@@ -17,8 +17,8 @@ use rustc_type_ir::{
     IntVid, Interner, TyVid, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, UintTy, Upcast, WithCachedTypeInfo,
     inherent::{
-        AdtDef as _, BoundExistentialPredicates, BoundVarLike, Const as _, GenericArgs as _,
-        IntoKind, ParamLike, PlaceholderLike, Safety as _, SliceLike, Ty as _,
+        AdtDef as _, BoundExistentialPredicates, Const as _, GenericArgs as _, IntoKind, ParamLike,
+        Safety as _, SliceLike, Ty as _,
     },
     relate::Relate,
     solve::SizedTraitKind,
@@ -40,7 +40,7 @@ use crate::{
 };
 
 use super::{
-    BoundVarKind, DbInterner, GenericArgs, Placeholder, SolverDefId,
+    DbInterner, GenericArgs, SolverDefId,
     util::{FloatExt, IntegerExt},
 };
 
@@ -97,7 +97,7 @@ impl<'db> Ty<'db> {
         Ty::new(interner, TyKind::Param(ParamTy { id, index }))
     }
 
-    pub fn new_placeholder(interner: DbInterner<'db>, placeholder: PlaceholderTy) -> Self {
+    pub fn new_placeholder(interner: DbInterner<'db>, placeholder: PlaceholderType<'db>) -> Self {
         Ty::new(interner, TyKind::Placeholder(placeholder))
     }
 
@@ -177,7 +177,10 @@ impl<'db> Ty<'db> {
         def_id: SolverDefId,
         args: GenericArgs<'db>,
     ) -> Self {
-        Ty::new_alias(interner, AliasTyKind::Opaque, AliasTy::new_from_args(interner, def_id, args))
+        Ty::new_alias(
+            interner,
+            AliasTy::new_from_args(interner, AliasTyKind::Opaque { def_id }, args),
+        )
     }
 
     /// Returns the `Size` for primitive types (bool, uint, int, char, float).
@@ -681,12 +684,11 @@ impl<'db> Ty<'db> {
         let interner = DbInterner::new_no_crate(db);
 
         match self.kind() {
-            TyKind::Alias(AliasTyKind::Opaque, opaque_ty) => Some(
-                opaque_ty
-                    .def_id
+            TyKind::Alias(AliasTy { kind: AliasTyKind::Opaque { def_id }, args, .. }) => Some(
+                def_id
                     .expect_opaque_ty()
                     .predicates(db)
-                    .iter_instantiated_copied(interner, opaque_ty.args.as_slice())
+                    .iter_instantiated_copied(interner, args.as_slice())
                     .collect(),
             ),
             TyKind::Param(param) => {
@@ -743,9 +745,7 @@ impl<'db> Ty<'db> {
                 true
             }
             (TyKind::FnDef(def_id, ..), TyKind::FnDef(def_id2, ..)) => def_id == def_id2,
-            (TyKind::Alias(_, alias, ..), TyKind::Alias(_, alias2)) => {
-                alias.def_id == alias2.def_id
-            }
+            (TyKind::Alias(alias), TyKind::Alias(alias2)) => alias.kind == alias2.kind,
             (TyKind::Foreign(ty_id, ..), TyKind::Foreign(ty_id2, ..)) => ty_id == ty_id2,
             (TyKind::Closure(id1, _), TyKind::Closure(id2, _)) => id1 == id2,
             (TyKind::Ref(.., mutability), TyKind::Ref(.., mutability2))
@@ -858,7 +858,7 @@ impl<'db> TypeSuperVisitable<DbInterner<'db>> for Ty<'db> {
             TyKind::CoroutineWitness(_did, ref args) => args.visit_with(visitor),
             TyKind::Closure(_did, ref args) => args.visit_with(visitor),
             TyKind::CoroutineClosure(_did, ref args) => args.visit_with(visitor),
-            TyKind::Alias(_, ref data) => data.visit_with(visitor),
+            TyKind::Alias(ref data) => data.visit_with(visitor),
 
             TyKind::Pat(ty, pat) => {
                 try_visit!(ty.visit_with(visitor));
@@ -925,7 +925,7 @@ impl<'db> TypeSuperFoldable<DbInterner<'db>> for Ty<'db> {
             TyKind::CoroutineClosure(did, args) => {
                 TyKind::CoroutineClosure(did, args.try_fold_with(folder)?)
             }
-            TyKind::Alias(kind, data) => TyKind::Alias(kind, data.try_fold_with(folder)?),
+            TyKind::Alias(data) => TyKind::Alias(data.try_fold_with(folder)?),
             TyKind::Pat(ty, pat) => {
                 TyKind::Pat(ty.try_fold_with(folder)?, pat.try_fold_with(folder)?)
             }
@@ -974,7 +974,7 @@ impl<'db> TypeSuperFoldable<DbInterner<'db>> for Ty<'db> {
             TyKind::CoroutineClosure(did, args) => {
                 TyKind::CoroutineClosure(did, args.fold_with(folder))
             }
-            TyKind::Alias(kind, data) => TyKind::Alias(kind, data.fold_with(folder)),
+            TyKind::Alias(data) => TyKind::Alias(data.fold_with(folder)),
             TyKind::Pat(ty, pat) => TyKind::Pat(ty.fold_with(folder), pat.fold_with(folder)),
 
             TyKind::Bool
@@ -1045,11 +1045,11 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
         Ty::new(interner, TyKind::Param(param))
     }
 
-    fn new_placeholder(interner: DbInterner<'db>, param: PlaceholderTy) -> Self {
+    fn new_placeholder(interner: DbInterner<'db>, param: PlaceholderType<'db>) -> Self {
         Ty::new(interner, TyKind::Placeholder(param))
     }
 
-    fn new_bound(interner: DbInterner<'db>, debruijn: DebruijnIndex, var: BoundTy) -> Self {
+    fn new_bound(interner: DbInterner<'db>, debruijn: DebruijnIndex, var: BoundTy<'db>) -> Self {
         Ty::new(interner, TyKind::Bound(BoundVarIndexKind::Bound(debruijn), var))
     }
 
@@ -1070,8 +1070,8 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
         )
     }
 
-    fn new_alias(interner: DbInterner<'db>, kind: AliasTyKind, alias_ty: AliasTy<'db>) -> Self {
-        Ty::new(interner, TyKind::Alias(kind, alias_ty))
+    fn new_alias(interner: DbInterner<'db>, alias_ty: AliasTy<'db>) -> Self {
+        Ty::new(interner, TyKind::Alias(alias_ty))
     }
 
     fn new_error(interner: DbInterner<'db>, guar: ErrorGuaranteed) -> Self {
@@ -1352,7 +1352,7 @@ impl<'db> rustc_type_ir::inherent::Tys<DbInterner<'db>> for Tys<'db> {
     }
 }
 
-pub type PlaceholderTy = Placeholder<BoundTy>;
+pub type PlaceholderType<'db> = rustc_type_ir::PlaceholderType<DbInterner<'db>>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ParamTy {
@@ -1375,27 +1375,8 @@ impl std::fmt::Debug for ParamTy {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct BoundTy {
-    pub var: BoundVar,
-    // FIXME: This is for diagnostics in rustc, do we really need it?
-    pub kind: BoundTyKind,
-}
-
-impl std::fmt::Debug for BoundTy {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.kind {
-            BoundTyKind::Anon => write!(f, "{:?}", self.var),
-            BoundTyKind::Param(def_id) => write!(f, "{def_id:?}"),
-        }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum BoundTyKind {
-    Anon,
-    Param(SolverDefId),
-}
+pub type BoundTy<'db> = rustc_type_ir::BoundTy<DbInterner<'db>>;
+pub type BoundTyKind<'db> = rustc_type_ir::BoundTyKind<DbInterner<'db>>;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct ErrorGuaranteed;
@@ -1428,40 +1409,6 @@ impl<'db> TypeFoldable<DbInterner<'db>> for ErrorGuaranteed {
 impl ParamLike for ParamTy {
     fn index(self) -> u32 {
         self.index
-    }
-}
-
-impl<'db> BoundVarLike<DbInterner<'db>> for BoundTy {
-    fn var(self) -> BoundVar {
-        self.var
-    }
-
-    fn assert_eq(self, var: BoundVarKind) {
-        assert_eq!(self.kind, var.expect_ty())
-    }
-}
-
-impl<'db> PlaceholderLike<DbInterner<'db>> for PlaceholderTy {
-    type Bound = BoundTy;
-
-    fn universe(self) -> rustc_type_ir::UniverseIndex {
-        self.universe
-    }
-
-    fn var(self) -> BoundVar {
-        self.bound.var
-    }
-
-    fn with_updated_universe(self, ui: rustc_type_ir::UniverseIndex) -> Self {
-        Placeholder { universe: ui, bound: self.bound }
-    }
-
-    fn new(ui: rustc_type_ir::UniverseIndex, bound: BoundTy) -> Self {
-        Placeholder { universe: ui, bound }
-    }
-
-    fn new_anon(ui: rustc_type_ir::UniverseIndex, var: rustc_type_ir::BoundVar) -> Self {
-        Placeholder { universe: ui, bound: BoundTy { var, kind: BoundTyKind::Anon } }
     }
 }
 

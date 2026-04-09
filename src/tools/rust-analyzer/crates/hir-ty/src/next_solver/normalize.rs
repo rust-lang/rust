@@ -229,6 +229,7 @@ impl<'db> FallibleTypeFolder<DbInterner<'db>> for NormalizationFolder<'_, 'db> {
 }
 
 // Deeply normalize a value and return it
+#[expect(dead_code, reason = "rustc has this")]
 pub(crate) fn deeply_normalize_for_diagnostics<'db, T: TypeFoldable<DbInterner<'db>>>(
     infcx: &InferCtxt<'db>,
     param_env: ParamEnv<'db>,

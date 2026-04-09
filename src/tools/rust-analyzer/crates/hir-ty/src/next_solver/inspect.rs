@@ -1,5 +1,3 @@
-pub(crate) use rustc_next_trait_solver::solve::inspect::*;
-
 use rustc_ast_ir::try_visit;
 use rustc_next_trait_solver::{
     canonical::instantiate_canonical_state,
@@ -327,10 +325,6 @@ impl<'a, 'db> InspectGoal<'a, 'db> {
 
     pub(crate) fn result(&self) -> Result<Certainty, NoSolution> {
         self.result
-    }
-
-    pub(crate) fn source(&self) -> GoalSource {
-        self.source
     }
 
     pub(crate) fn depth(&self) -> usize {

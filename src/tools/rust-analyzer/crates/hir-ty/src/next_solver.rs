@@ -101,7 +101,7 @@ pub struct DefaultEmpty<'db> {
     pub tys: Tys<'db>,
     pub generic_args: GenericArgs<'db>,
     pub bound_var_kinds: BoundVarKinds<'db>,
-    pub canonical_vars: CanonicalVars<'db>,
+    pub canonical_vars: CanonicalVarKinds<'db>,
     pub variances: VariancesOf<'db>,
     pub pat_list: PatList<'db>,
     pub predefined_opaques: PredefinedOpaques<'db>,
@@ -109,6 +109,7 @@ pub struct DefaultEmpty<'db> {
     pub bound_existential_predicates: BoundExistentialPredicates<'db>,
     pub clauses: Clauses<'db>,
     pub region_assumptions: RegionAssumptions<'db>,
+    pub consts: Consts<'db>,
 }
 
 pub struct DefaultAny<'db> {
@@ -167,7 +168,7 @@ pub fn default_types<'a, 'db>(db: &'db dyn HirDatabase) -> &'a DefaultAny<'db> {
             ty.as_ref()
         };
         let create_canonical_vars = |slice| {
-            let ty = CanonicalVars::new_from_slice(slice);
+            let ty = CanonicalVarKinds::new_from_slice(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
@@ -216,6 +217,12 @@ pub fn default_types<'a, 'db>(db: &'db dyn HirDatabase) -> &'a DefaultAny<'db> {
         };
         let create_tys = |slice| {
             let ty = Tys::new_from_slice(slice);
+            // We need to increase the refcount (forever), so that the types won't be freed.
+            let ty = ManuallyDrop::new(ty.store());
+            ty.as_ref()
+        };
+        let create_consts = |slice| {
+            let ty = Consts::new_from_slice(slice);
             // We need to increase the refcount (forever), so that the types won't be freed.
             let ty = ManuallyDrop::new(ty.store());
             ty.as_ref()
@@ -270,11 +277,12 @@ pub fn default_types<'a, 'db>(db: &'db dyn HirDatabase) -> &'a DefaultAny<'db> {
                 bound_existential_predicates: create_bound_existential_predicates(&[]),
                 clauses: create_clauses(&[]),
                 region_assumptions: create_region_assumptions(&[]),
+                consts: create_consts(&[]),
             },
             one_invariant: create_variances_of(&[rustc_type_ir::Variance::Invariant]),
             one_covariant: create_variances_of(&[rustc_type_ir::Variance::Covariant]),
             coroutine_captures_by_ref_bound_var_kinds: create_bound_var_kinds(&[
-                BoundVarKind::Region(BoundRegionKind::ClosureEnv),
+                BoundVariableKind::Region(BoundRegionKind::ClosureEnv),
             ]),
         }
     })

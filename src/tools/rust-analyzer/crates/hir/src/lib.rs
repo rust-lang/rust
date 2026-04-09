@@ -5736,8 +5736,11 @@ impl<'db> Type<'db> {
         // FIXME: We don't handle GATs yet.
         let projection = Ty::new_alias(
             interner,
-            AliasTyKind::Projection,
-            AliasTy::new_from_args(interner, alias.id.into(), args),
+            AliasTy::new_from_args(
+                interner,
+                AliasTyKind::Projection { def_id: alias.id.into() },
+                args,
+            ),
         );
 
         let infcx = interner.infer_ctxt().build(TypingMode::PostAnalysis);
@@ -6353,8 +6356,12 @@ impl<'db> Type<'db> {
     }
 
     pub fn as_associated_type_parent_trait(&self, db: &'db dyn HirDatabase) -> Option<Trait> {
-        let TyKind::Alias(AliasTyKind::Projection, alias) = self.ty.kind() else { return None };
-        match alias.def_id.expect_type_alias().loc(db).container {
+        let TyKind::Alias(AliasTy { kind: AliasTyKind::Projection { def_id }, .. }) =
+            self.ty.kind()
+        else {
+            return None;
+        };
+        match def_id.expect_type_alias().loc(db).container {
             ItemContainerId::TraitId(id) => Some(Trait { id }),
             _ => None,
         }
@@ -6670,8 +6677,8 @@ impl Layout {
                 let offset = stride.bytes() * tail;
                 self.0.size.bytes().checked_sub(offset)?.checked_sub(tail_field_size)
             }),
-            layout::FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
-                let tail = memory_index.last_index()?;
+            layout::FieldsShape::Arbitrary { ref offsets, ref in_memory_order } => {
+                let tail = in_memory_order[in_memory_order.len().checked_sub(1)? as u32];
                 let tail_field_size = field_size(tail.0.into_raw().into_u32() as usize)?;
                 let offset = offsets.get(tail)?.bytes();
                 self.0.size.bytes().checked_sub(offset)?.checked_sub(tail_field_size)
@@ -6691,10 +6698,11 @@ impl Layout {
                 let size = field_size(0)?;
                 stride.bytes().checked_sub(size)
             }
-            layout::FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
-                let mut reverse_index = vec![None; memory_index.len()];
-                for (src, (mem, offset)) in memory_index.iter().zip(offsets.iter()).enumerate() {
-                    reverse_index[*mem as usize] = Some((src, offset.bytes()));
+            layout::FieldsShape::Arbitrary { ref offsets, ref in_memory_order } => {
+                let mut reverse_index = vec![None; in_memory_order.len()];
+                for (mem, src) in in_memory_order.iter().enumerate() {
+                    reverse_index[mem] =
+                        Some((src.0.into_raw().into_u32() as usize, offsets[*src].bytes()));
                 }
                 if reverse_index.iter().any(|it| it.is_none()) {
                     stdx::never!();

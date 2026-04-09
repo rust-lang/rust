@@ -10,16 +10,19 @@ use rustc_type_ir::{
     BoundVar, BoundVarIndexKind, ConstVid, DebruijnIndex, FlagComputation, Flags,
     GenericTypeVisitable, InferConst, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, WithCachedTypeInfo,
-    inherent::{IntoKind, ParamEnv as _, PlaceholderLike, SliceLike},
+    inherent::{IntoKind, ParamEnv as _, SliceLike},
     relate::Relate,
 };
 
 use crate::{
     MemoryMap,
-    next_solver::{ClauseKind, ParamEnv, impl_stored_interned},
+    next_solver::{
+        ClauseKind, ParamEnv, impl_foldable_for_interned_slice, impl_stored_interned,
+        interned_slice,
+    },
 };
 
-use super::{BoundVarKind, DbInterner, ErrorGuaranteed, GenericArgs, Placeholder, Ty};
+use super::{DbInterner, ErrorGuaranteed, GenericArgs, Ty};
 
 pub type ConstKind<'db> = rustc_type_ir::ConstKind<DbInterner<'db>>;
 pub type UnevaluatedConst<'db> = rustc_type_ir::UnevaluatedConst<DbInterner<'db>>;
@@ -71,11 +74,15 @@ impl<'db> Const<'db> {
         Const::new(interner, ConstKind::Param(param))
     }
 
-    pub fn new_placeholder(interner: DbInterner<'db>, placeholder: PlaceholderConst) -> Self {
+    pub fn new_placeholder(interner: DbInterner<'db>, placeholder: PlaceholderConst<'db>) -> Self {
         Const::new(interner, ConstKind::Placeholder(placeholder))
     }
 
-    pub fn new_bound(interner: DbInterner<'db>, index: DebruijnIndex, bound: BoundConst) -> Self {
+    pub fn new_bound(
+        interner: DbInterner<'db>,
+        index: DebruijnIndex,
+        bound: BoundConst<'db>,
+    ) -> Self {
         Const::new(interner, ConstKind::Bound(BoundVarIndexKind::Bound(index), bound))
     }
 
@@ -120,7 +127,7 @@ impl<'db> std::fmt::Debug for Const<'db> {
     }
 }
 
-pub type PlaceholderConst = Placeholder<BoundConst>;
+pub type PlaceholderConst<'db> = rustc_type_ir::PlaceholderConst<DbInterner<'db>>;
 
 #[derive(Copy, Clone, Hash, Eq, PartialEq)]
 pub struct ParamConst {
@@ -168,6 +175,8 @@ impl ParamConst {
         ty
     }
 }
+
+pub type ValTreeKind<'db> = rustc_type_ir::ValTreeKind<DbInterner<'db>>;
 
 /// A type-level constant value.
 ///
@@ -234,6 +243,14 @@ const _: () = {
     const fn is_copy<T: Copy>() {}
     is_copy::<Valtree<'static>>();
 };
+
+impl<'db> IntoKind for Valtree<'db> {
+    type Kind = ValTreeKind<'db>;
+
+    fn kind(self) -> Self::Kind {
+        todo!()
+    }
+}
 
 impl<'db> Valtree<'db> {
     #[inline]
@@ -388,25 +405,22 @@ impl<'db> rustc_type_ir::inherent::Const<DbInterner<'db>> for Const<'db> {
         Const::new(interner, ConstKind::Infer(InferConst::Var(var)))
     }
 
-    fn new_bound(interner: DbInterner<'db>, debruijn: DebruijnIndex, var: BoundConst) -> Self {
+    fn new_bound(interner: DbInterner<'db>, debruijn: DebruijnIndex, var: BoundConst<'db>) -> Self {
         Const::new(interner, ConstKind::Bound(BoundVarIndexKind::Bound(debruijn), var))
     }
 
     fn new_anon_bound(interner: DbInterner<'db>, debruijn: DebruijnIndex, var: BoundVar) -> Self {
         Const::new(
             interner,
-            ConstKind::Bound(BoundVarIndexKind::Bound(debruijn), BoundConst { var }),
+            ConstKind::Bound(BoundVarIndexKind::Bound(debruijn), BoundConst::new(var)),
         )
     }
 
     fn new_canonical_bound(interner: DbInterner<'db>, var: BoundVar) -> Self {
-        Const::new(interner, ConstKind::Bound(BoundVarIndexKind::Canonical, BoundConst { var }))
+        Const::new(interner, ConstKind::Bound(BoundVarIndexKind::Canonical, BoundConst::new(var)))
     }
 
-    fn new_placeholder(
-        interner: DbInterner<'db>,
-        param: <DbInterner<'db> as rustc_type_ir::Interner>::PlaceholderConst,
-    ) -> Self {
+    fn new_placeholder(interner: DbInterner<'db>, param: PlaceholderConst<'db>) -> Self {
         Const::new(interner, ConstKind::Placeholder(param))
     }
 
@@ -426,43 +440,7 @@ impl<'db> rustc_type_ir::inherent::Const<DbInterner<'db>> for Const<'db> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct BoundConst {
-    pub var: BoundVar,
-}
-
-impl<'db> rustc_type_ir::inherent::BoundVarLike<DbInterner<'db>> for BoundConst {
-    fn var(self) -> BoundVar {
-        self.var
-    }
-
-    fn assert_eq(self, var: BoundVarKind) {
-        var.expect_const()
-    }
-}
-
-impl<'db> PlaceholderLike<DbInterner<'db>> for PlaceholderConst {
-    type Bound = BoundConst;
-
-    fn universe(self) -> rustc_type_ir::UniverseIndex {
-        self.universe
-    }
-
-    fn var(self) -> rustc_type_ir::BoundVar {
-        self.bound.var
-    }
-
-    fn with_updated_universe(self, ui: rustc_type_ir::UniverseIndex) -> Self {
-        Placeholder { universe: ui, bound: self.bound }
-    }
-
-    fn new(ui: rustc_type_ir::UniverseIndex, var: BoundConst) -> Self {
-        Placeholder { universe: ui, bound: var }
-    }
-    fn new_anon(ui: rustc_type_ir::UniverseIndex, var: rustc_type_ir::BoundVar) -> Self {
-        Placeholder { universe: ui, bound: BoundConst { var } }
-    }
-}
+pub type BoundConst<'db> = rustc_type_ir::BoundConst<DbInterner<'db>>;
 
 impl<'db> Relate<DbInterner<'db>> for ExprConst {
     fn relate<R: rustc_type_ir::relate::TypeRelation<DbInterner<'db>>>(
@@ -483,3 +461,6 @@ impl<'db> rustc_type_ir::inherent::ExprConst<DbInterner<'db>> for ExprConst {
         GenericArgs::default()
     }
 }
+
+interned_slice!(ConstsStorage, Consts, StoredConsts, consts, Const<'db>, Const<'static>);
+impl_foldable_for_interned_slice!(Consts);

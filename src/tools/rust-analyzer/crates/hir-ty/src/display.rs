@@ -646,7 +646,7 @@ fn write_projection<'db>(
                     ClauseKind::TypeOutlives(t) => t.0,
                     _ => return false,
                 };
-                let TyKind::Alias(AliasTyKind::Projection, a) = ty.kind() else {
+                let TyKind::Alias(a) = ty.kind() else {
                     return false;
                 };
                 a == *alias
@@ -657,7 +657,7 @@ fn write_projection<'db>(
                 write_bounds_like_dyn_trait_with_prefix(
                     f,
                     "impl",
-                    Either::Left(Ty::new_alias(f.interner, AliasTyKind::Projection, *alias)),
+                    Either::Left(Ty::new_alias(f.interner, *alias)),
                     &bounds,
                     SizedByDefault::NotSized,
                     needs_parens_if_multi,
@@ -673,7 +673,7 @@ fn write_projection<'db>(
     write!(
         f,
         ">::{}",
-        TypeAliasSignature::of(f.db, alias.def_id.expect_type_alias())
+        TypeAliasSignature::of(f.db, alias.kind.def_id().expect_type_alias())
             .name
             .display(f.db, f.edition())
     )?;
@@ -1005,7 +1005,7 @@ fn render_const_scalar_inner<'db>(
         TyKind::Pat(_, _) => f.write_str("<pat>"),
         TyKind::Error(..)
         | TyKind::Placeholder(_)
-        | TyKind::Alias(_, _)
+        | TyKind::Alias(..)
         | TyKind::Param(_)
         | TyKind::Bound(_, _)
         | TyKind::Infer(_) => f.write_str("<placeholder-or-unknown-type>"),
@@ -1280,7 +1280,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
 
                 hir_fmt_generics(f, parameters.as_slice(), Some(def.def_id().0.into()), None)?;
             }
-            TyKind::Alias(AliasTyKind::Projection, alias_ty) => {
+            TyKind::Alias(alias_ty @ AliasTy { kind: AliasTyKind::Projection { .. }, .. }) => {
                 write_projection(f, &alias_ty, trait_bounds_need_parens)?
             }
             TyKind::Foreign(alias) => {
@@ -1289,8 +1289,8 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 write!(f, "{}", type_alias.name.display(f.db, f.edition()))?;
                 f.end_location_link();
             }
-            TyKind::Alias(AliasTyKind::Opaque, alias_ty) => {
-                let opaque_ty_id = match alias_ty.def_id {
+            TyKind::Alias(alias_ty @ AliasTy { kind: AliasTyKind::Opaque { def_id }, .. }) => {
+                let opaque_ty_id = match def_id {
                     SolverDefId::InternedOpaqueTyId(id) => id,
                     _ => unreachable!(),
                 };
@@ -1585,7 +1585,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
             TyKind::CoroutineWitness(..) => write!(f, "{{coroutine witness}}")?,
             TyKind::Pat(_, _) => write!(f, "{{pat}}")?,
             TyKind::UnsafeBinder(_) => write!(f, "{{unsafe binder}}")?,
-            TyKind::Alias(_, _) => write!(f, "{{alias}}")?,
+            TyKind::Alias(..) => write!(f, "{{alias}}")?,
         }
         Ok(())
     }

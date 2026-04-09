@@ -538,8 +538,11 @@ impl<'db> InferenceTable<'db> {
             let proj_args = self.infer_ctxt.fill_rest_fresh_args(output_assoc_type.into(), args);
             let projection = Ty::new_alias(
                 self.interner(),
-                rustc_type_ir::AliasTyKind::Projection,
-                AliasTy::new_from_args(self.interner(), output_assoc_type.into(), proj_args),
+                AliasTy::new_from_args(
+                    self.interner(),
+                    rustc_type_ir::Projection { def_id: output_assoc_type.into() },
+                    proj_args,
+                ),
             );
 
             let pred = Predicate::upcast_from(trait_ref, self.interner());

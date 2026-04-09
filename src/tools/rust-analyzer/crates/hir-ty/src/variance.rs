@@ -216,7 +216,7 @@ impl<'db> Context<'db> {
             TyKind::Adt(def, args) => {
                 self.add_constraints_from_args(def.def_id().0.into(), args, variance);
             }
-            TyKind::Alias(_, alias) => {
+            TyKind::Alias(alias) => {
                 // FIXME: Probably not correct wrt. opaques.
                 self.add_constraints_from_invariant_args(alias.args);
             }
