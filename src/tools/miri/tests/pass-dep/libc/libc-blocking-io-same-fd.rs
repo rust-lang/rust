@@ -11,7 +11,7 @@ use libc_utils::*;
 // same fd at the same time.
 
 fn main() {
-    let (server_sockfd, addr) = net::make_listener_ipv4(0).unwrap();
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 

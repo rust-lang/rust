@@ -62,6 +62,20 @@ pub trait UnixFileDescription: FileDescription {
         throw_unsup_format!("cannot flock {}", self.name());
     }
 
+    /// Modifies device parameters.
+    /// `op` is the device-dependent operation code. It's either a `c_long` or `c_int`, depending on
+    /// the target and whether it uses glibc or musl.
+    /// `arg` is the optional third argument which exists depending on the operation code. It's either
+    /// an integer or a pointer.
+    fn ioctl<'tcx>(
+        &self,
+        _op: Scalar,
+        _arg: Option<&OpTy<'tcx>>,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, i32> {
+        throw_unsup_format!("cannot use ioctl on {}", self.name());
+    }
+
     /// Return which epoll events are currently active.
     fn epoll_active_events<'tcx>(&self) -> InterpResult<'tcx, EpollEvents> {
         throw_unsup_format!("{}: epoll does not support this file description", self.name());
@@ -127,6 +141,39 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // return `0` if flock is successful
         let result = result.map(|()| 0i32);
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
+    }
+
+    fn ioctl(
+        &mut self,
+        fd: &OpTy<'tcx>,
+        op: &OpTy<'tcx>,
+        varargs: &[OpTy<'tcx>],
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let fd = this.read_scalar(fd)?.to_i32()?;
+        let op = this.read_scalar(op)?;
+        // There is at most one relevant variadic argument.
+        // It exists depending on the device and the opcode and thus we can't
+        // use `check_min_vararg_count` here.
+        let arg = varargs.first();
+
+        let Some(fd) = this.machine.fds.get(fd) else {
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+        };
+
+        // Handle common opcodes.
+        let fioclex = this.eval_libc("FIOCLEX");
+        let fionclex = this.eval_libc("FIONCLEX");
+        if op == fioclex || op == fionclex {
+            // Since we don't support `exec`, those are NOPs.
+            return interp_ok(Scalar::from_i32(0));
+        }
+
+        // Since some ioctl operations use the return value as an output parameter, we cannot strictly use the convention of
+        // zero indicating success and -1 indicating an error.
+        let return_value = fd.as_unix(this).ioctl(op, arg, this)?;
+        interp_ok(Scalar::from_i32(return_value))
     }
 
     fn fcntl(

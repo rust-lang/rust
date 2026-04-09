@@ -15,7 +15,8 @@ use rustc_target::spec::Os;
 
 use crate::concurrency::blocking_io::InterestReceiver;
 use crate::shims::files::{EvalContextExt as _, FdId, FileDescription, FileDescriptionRef};
-use crate::{OpTy, Scalar, *};
+use crate::shims::unix::UnixFileDescription;
+use crate::*;
 
 #[derive(Debug, PartialEq)]
 enum SocketFamily {
@@ -171,6 +172,10 @@ impl FileDescription for Socket {
         true
     }
 
+    fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
+        self
+    }
+
     fn get_flags<'tcx>(&self, ecx: &mut MiriInterpCx<'tcx>) -> InterpResult<'tcx, Scalar> {
         let mut flags = ecx.eval_libc_i32("O_RDWR");
 
@@ -183,10 +188,64 @@ impl FileDescription for Socket {
 
     fn set_flags<'tcx>(
         &self,
-        mut _flag: i32,
-        _ecx: &mut MiriInterpCx<'tcx>,
+        mut flag: i32,
+        ecx: &mut MiriInterpCx<'tcx>,
     ) -> InterpResult<'tcx, Scalar> {
-        throw_unsup_format!("fcntl: socket flags aren't supported")
+        let o_nonblock = ecx.eval_libc_i32("O_NONBLOCK");
+
+        // O_NONBLOCK flag can be set / unset by user.
+        if flag & o_nonblock == o_nonblock {
+            self.is_non_block.set(true);
+            flag &= !o_nonblock;
+        } else {
+            self.is_non_block.set(false);
+        }
+
+        // Throw error if there is any unsupported flag.
+        if flag != 0 {
+            throw_unsup_format!("fcntl: only O_NONBLOCK is supported for sockets")
+        }
+
+        interp_ok(Scalar::from_i32(0))
+    }
+}
+
+impl UnixFileDescription for Socket {
+    fn ioctl<'tcx>(
+        &self,
+        op: Scalar,
+        arg: Option<&OpTy<'tcx>>,
+        ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, i32> {
+        assert!(ecx.machine.communicate(), "cannot have `Socket` with isolation enabled!");
+
+        let fionbio = ecx.eval_libc("FIONBIO");
+
+        if op == fionbio {
+            // On these OSes, Rust uses the ioctl, so we trust that it is reasonable and controls
+            // the same internal flag as fcntl.
+            if !matches!(ecx.tcx.sess.target.os, Os::Linux | Os::Android | Os::MacOs | Os::FreeBsd)
+            {
+                // FIONBIO cannot be used to change the blocking mode of a socket on solarish targets:
+                // <https://github.com/rust-lang/rust/commit/dda5c97675b4f5b1f6fdab64606c8a1f21021b0a>
+                // Since there might be more targets which do weird things with this option, we use
+                // an allowlist instead of just denying solarish targets.
+                throw_unsup_format!(
+                    "ioctl: setting FIONBIO on sockets is unsupported on target {}",
+                    ecx.tcx.sess.target.os
+                );
+            }
+
+            let Some(value_ptr) = arg else {
+                throw_ub_format!("ioctl: setting FIONBIO on sockets requires a third argument");
+            };
+            let value = ecx.deref_pointer_as(value_ptr, ecx.machine.layouts.i32)?;
+            let non_block = ecx.read_scalar(&value)?.to_i32()? != 0;
+            self.is_non_block.set(non_block);
+            return interp_ok(0);
+        }
+
+        throw_unsup_format!("ioctl: unsupported operation {op:#x} on socket");
     }
 }
 
