@@ -956,7 +956,7 @@ pub enum BoundVarIndexKind {
 /// identified by both a universe, as well as a name residing within that universe. Distinct bound
 /// regions/types/consts within the same universe simply have an unknown relationship to one
 #[derive_where(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash; I: Interner, T)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -995,7 +995,7 @@ where
 }
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
-#[derive(Lift_Generic)]
+#[derive(Lift_Generic, GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -1058,7 +1058,7 @@ impl<I: Interner> BoundRegionKind<I> {
 }
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Debug, Hash; I: Interner)]
-#[derive(Lift_Generic)]
+#[derive(Lift_Generic, GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -1069,7 +1069,7 @@ pub enum BoundTyKind<I: Interner> {
 }
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Debug, Hash; I: Interner)]
-#[derive(Lift_Generic)]
+#[derive(Lift_Generic, GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -1104,6 +1104,7 @@ impl<I: Interner> BoundVariableKind<I> {
 }
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
+#[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, HashStable_NoContext, Decodable_NoContext)
@@ -1164,6 +1165,7 @@ impl<I: Interner> PlaceholderRegion<I> {
 }
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
+#[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
@@ -1229,6 +1231,7 @@ impl<I: Interner> PlaceholderType<I> {
 }
 
 #[derive_where(Clone, Copy, PartialEq, Debug, Eq, Hash; I: Interner)]
+#[derive(GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
