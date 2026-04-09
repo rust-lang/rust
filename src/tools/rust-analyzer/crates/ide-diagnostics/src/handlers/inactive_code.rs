@@ -40,7 +40,10 @@ pub(crate) fn inactive_code(
 
 #[cfg(test)]
 mod tests {
-    use crate::{DiagnosticsConfig, tests::check_diagnostics_with_config};
+    use ide_db::RootDatabase;
+    use test_fixture::WithFixture;
+
+    use crate::{DiagnosticCode, DiagnosticsConfig, tests::check_diagnostics_with_config};
 
     #[track_caller]
     pub(crate) fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
@@ -210,6 +213,43 @@ union FooBar {
 //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: true is enabled
 
 "#,
+        );
+    }
+
+    #[test]
+    fn inactive_crate() {
+        let db = RootDatabase::with_files(
+            r#"
+#![cfg(false)]
+
+fn foo() {}
+        "#,
+        );
+        let file_id = db.test_crate().root_file_id(&db);
+        let diagnostics = hir::attach_db(&db, || {
+            crate::full_diagnostics(
+                &db,
+                &DiagnosticsConfig::test_sample(),
+                &ide_db::assists::AssistResolveStrategy::All,
+                file_id.file_id(&db),
+            )
+        });
+        let [inactive_code] = &*diagnostics else {
+            panic!("expected one inactive_code diagnostic, found {diagnostics:#?}");
+        };
+        assert_eq!(
+            inactive_code.code,
+            DiagnosticCode::Ra("inactive-code", ide_db::Severity::WeakWarning)
+        );
+        assert_eq!(
+            inactive_code.message,
+            "code is inactive due to #[cfg] directives: false is disabled",
+        );
+        assert!(inactive_code.fixes.is_none());
+        let full_file_range = file_id.parse(&db).syntax_node().text_range();
+        assert_eq!(
+            inactive_code.range,
+            ide_db::FileRange { file_id: file_id.file_id(&db), range: full_file_range },
         );
     }
 }
