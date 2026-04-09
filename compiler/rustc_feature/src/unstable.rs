@@ -594,6 +594,8 @@ declare_features! (
     (unstable, mips_target_feature, "1.27.0", Some(150253)),
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
+    /// Allows `move(expr)` in closures.
+    (incomplete, move_expr, "CURRENT_RUSTC_VERSION", None),
     /// The `movrs` target feature on x86.
     (unstable, movrs_target_feature, "1.88.0", Some(137976)),
     /// Allows the `multiple_supertrait_upcastable` lint.
@@ -602,8 +604,6 @@ declare_features! (
     (unstable, must_not_suspend, "1.57.0", Some(83310)),
     /// Allows `mut ref` and `mut ref mut` identifier patterns.
     (incomplete, mut_ref, "1.79.0", Some(123076)),
-    /// Allows `move(expr)` in closures.
-    (incomplete, move_expr, "CURRENT_RUSTC_VERSION", None),
     /// Allows using `#[naked]` on `extern "Rust"` functions.
     (unstable, naked_functions_rustic_abi, "1.88.0", Some(138997)),
     /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.
