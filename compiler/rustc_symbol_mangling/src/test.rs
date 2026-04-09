@@ -1,5 +1,5 @@
 //! Walks the crate looking for items/impl-items/trait-items that have
-//! either a `rustc_symbol_name` or `rustc_def_path` attribute and
+//! either a `rustc_symbol_name` or `rustc_dump_def_path` attribute and
 //! generates an error giving, respectively, the symbol name or
 //! def-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
@@ -80,7 +80,7 @@ impl SymbolNamesTest<'_> {
 
         if let Some(attr_span) = find_attr!(
             tcx, def_id,
-            RustcDefPath(span) => span
+            RustcDumpDefPath(span) => span
         ) {
             tcx.dcx().emit_err(TestOutput {
                 span: *attr_span,

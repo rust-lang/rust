@@ -302,7 +302,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcConstStableIndirect
                     | AttributeKind::RustcConversionSuggestion
                     | AttributeKind::RustcDeallocator
-                    | AttributeKind::RustcDefPath(..)
                     | AttributeKind::RustcDelayedBugFromInsideQuery
                     | AttributeKind::RustcDenyExplicitImpl(..)
                     | AttributeKind::RustcDeprecatedSafe2024 {..}
@@ -311,6 +310,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDocPrimitive(..)
                     | AttributeKind::RustcDummy
                     | AttributeKind::RustcDumpDefParents
+                    | AttributeKind::RustcDumpDefPath(..)
                     | AttributeKind::RustcDumpHiddenTypeOfOpaques
                     | AttributeKind::RustcDumpInferredOutlives
                     | AttributeKind::RustcDumpItemBounds

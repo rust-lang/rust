@@ -18,7 +18,7 @@ mod foo {
          //[v0]~^^^^ ERROR symbol-name(_RNvMNtCs
             //[v0]~| ERROR demangling(<impl1[
             //[v0]~| ERROR demangling-alt(<impl1::foo::Foo>::bar)
-        #[rustc_def_path]
+        #[rustc_dump_def_path]
         //[legacy]~^ ERROR def-path(foo::Foo::bar)
            //[v0]~^^ ERROR def-path(foo::Foo::bar)
         fn bar() { }
@@ -36,7 +36,7 @@ mod bar {
          //[v0]~^^^^ ERROR symbol-name(_RNvMNtCs
             //[v0]~| ERROR demangling(<impl1[
             //[v0]~| ERROR demangling-alt(<impl1::foo::Foo>::baz)
-        #[rustc_def_path]
+        #[rustc_dump_def_path]
         //[legacy]~^ ERROR def-path(bar::<impl foo::Foo>::baz)
            //[v0]~^^ ERROR def-path(bar::<impl foo::Foo>::baz)
         fn baz() { }
@@ -66,7 +66,7 @@ fn main() {
              //[v0]~^^^^ ERROR symbol-name(_RNvXNCNvCs
                 //[v0]~| ERROR demangling(<[&dyn
                 //[v0]~| ERROR demangling-alt(<[&dyn impl1::Foo<Assoc = for<'a> extern "C" fn(&'a u8, ...)> + impl1::AutoTrait; 3] as impl1::main::{closure#1}::Bar>::method)
-            #[rustc_def_path]
+            #[rustc_dump_def_path]
             //[legacy]~^ ERROR def-path(<[&dyn Foo<Assoc = for<'a> extern "C" fn(&'a u8, ...)> + AutoTrait; 3] as main::{closure#1}::Bar>::method)
                //[v0]~^^ ERROR def-path(<[&dyn Foo<Assoc = for<'a> extern "C" fn(&'a u8, ...)> + AutoTrait; 3] as main::{closure#1}::Bar>::method)
             fn method(&self) {}

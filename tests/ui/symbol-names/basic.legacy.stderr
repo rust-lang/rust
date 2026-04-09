@@ -19,8 +19,8 @@ LL | #[rustc_symbol_name]
 error: def-path(main)
   --> $DIR/basic.rs:15:1
    |
-LL | #[rustc_def_path]
-   | ^^^^^^^^^^^^^^^^^
+LL | #[rustc_dump_def_path]
+   | ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
 

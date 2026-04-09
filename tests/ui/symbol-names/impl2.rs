@@ -8,7 +8,7 @@ trait Foo {
 }
 
 impl Foo for [u8; 1 + 2] {
-    #[rustc_def_path] //~ ERROR def-path(<[u8; 1 + 2] as Foo>::baz)
+    #[rustc_dump_def_path] //~ ERROR def-path(<[u8; 1 + 2] as Foo>::baz)
     fn baz() {}
 }
 

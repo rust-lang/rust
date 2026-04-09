@@ -1343,9 +1343,6 @@ pub enum AttributeKind {
     /// Represents `#[rustc_deallocator]`
     RustcDeallocator,
 
-    /// Represents `#[rustc_def_path]`
-    RustcDefPath(Span),
-
     /// Represents `#[rustc_delayed_bug_from_inside_query]`
     RustcDelayedBugFromInsideQuery,
 
@@ -1370,6 +1367,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_dump_def_parents]`
     RustcDumpDefParents,
+
+    /// Represents `#[rustc_dump_def_path]`
+    RustcDumpDefPath(Span),
 
     /// Represents `#[rustc_dump_hidden_type_of_opaques]`
     RustcDumpHiddenTypeOfOpaques,

@@ -273,8 +273,8 @@ Here are some notable ones:
 
 | Attribute | Description |
 |----------------|-------------|
-| `rustc_def_path` | Dumps the [`def_path_str`] of an item. |
 | `rustc_dump_def_parents` | Dumps the chain of `DefId` parents of certain definitions. |
+| `rustc_dump_def_path` | Dumps the [`def_path_str`] of an item. |
 | `rustc_dump_hidden_type_of_opaques` | Dumps the [hidden type of each opaque types][opaq] in the crate. |
 | `rustc_dump_inferred_outlives` | Dumps implied bounds of an item. More precisely, the [`inferred_outlives_of`] an item. |
 | `rustc_dump_item_bounds` | Dumps the [`item_bounds`] of an item. |
