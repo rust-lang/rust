@@ -1,3 +1,4 @@
+// ignore-tidy-tab
 // This test checks that the Rust lexer treats a vertical tab (\x0B)
 // as whitespace. That matches how the language parses code, even though
 // the standard library's is_ascii_whitespace does not include it.

@@ -1,3 +1,4 @@
+// ignore-tidy-tab
 // This test checks that split_ascii_whitespace does not split on a
 // vertical tab (\x0B). The standard library follows the WhatWG ASCII
 // whitespace definition, which does not include vertical tab.
