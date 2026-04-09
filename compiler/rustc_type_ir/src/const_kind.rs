@@ -141,7 +141,7 @@ impl<Hcx> HashStable<Hcx> for InferConst {
 /// `ValTree` does not have this problem with representation, as it only contains integers or
 /// lists of (nested) `ty::Const`s (which may indirectly contain more `ValTree`s).
 #[derive_where(Clone, Copy, Debug, Hash, Eq, PartialEq; I: Interner)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
+#[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable)]
 #[cfg_attr(
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
