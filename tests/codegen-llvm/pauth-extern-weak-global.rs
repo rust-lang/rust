@@ -38,8 +38,8 @@ extern "C" {
 static FUNCTION_PTR_DECL: unsafe extern "C" fn(i32, *mut i64, i32, *mut i64, i64, i32) -> i64 =
     copy_file_range;
 
-// O0_PAUTH: !{{[0-9]+}} = !{i32 7, !"ptrauth-sign-personality", i32 1}
-// O3_PAUTH: !{{[0-9]+}} = !{i32 7, !"ptrauth-sign-personality", i32 1}
+// O0_PAUTH: !{{[0-9]+}} = !{i32 1, !"ptrauth-sign-personality", i32 1}
+// O3_PAUTH: !{{[0-9]+}} = !{i32 1, !"ptrauth-sign-personality", i32 1}
 
-// O0_NO_PAUTH-NOT: !{{[0-9]+}} = !{i32 7, !"ptrauth-sign-personality", i32 1}
-// O3_NO_PAUTH-NOT: !{{[0-9]+}} = !{i32 7, !"ptrauth-sign-personality", i32 1}
+// O0_NO_PAUTH-NOT: !{{[0-9]+}} = !{i32 1, !"ptrauth-sign-personality", i32 1}
+// O3_NO_PAUTH-NOT: !{{[0-9]+}} = !{i32 1, !"ptrauth-sign-personality", i32 1}
