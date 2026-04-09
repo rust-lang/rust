@@ -1,0 +1,12 @@
+error[E0658]: `move(expr)` syntax is experimental
+  --> $DIR/feature-gate-move_expr.rs:2:16
+   |
+LL |     let _ = || move(2);
+   |                ^^^^
+   |
+   = help: add `#![feature(move_expr)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

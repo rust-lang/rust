@@ -20,8 +20,8 @@ use visit::{Visitor, walk_expr};
 use super::errors::{
     AsyncCoroutinesNotSupported, AwaitOnlyInAsyncFnAndBlocks, ClosureCannotBeStatic,
     CoroutineTooManyParameters, FunctionalRecordUpdateDestructuringAssignment,
-    InclusiveRangeWithNoEnd, MatchArmWithNoBody, NeverPatternWithBody, NeverPatternWithGuard,
-    UnderscoreExprLhsAssign,
+    InclusiveRangeWithNoEnd, MatchArmWithNoBody, MoveExprOnlyInPlainClosures, NeverPatternWithBody,
+    NeverPatternWithGuard, UnderscoreExprLhsAssign,
 };
 use super::{
     GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt,
@@ -212,6 +212,18 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     },
                 ),
                 ExprKind::Await(expr, await_kw_span) => self.lower_expr_await(*await_kw_span, expr),
+                ExprKind::Move(_, move_kw_span) => {
+                    if !self.tcx.features().move_expr() {
+                        return self.expr_err(
+                            *move_kw_span,
+                            self.dcx().span_delayed_bug(*move_kw_span, "invalid move(expr)"),
+                        );
+                    }
+                    self.dcx().emit_err(MoveExprOnlyInPlainClosures { span: *move_kw_span });
+                    hir::ExprKind::Err(
+                        self.dcx().span_delayed_bug(*move_kw_span, "invalid move(expr)"),
+                    )
+                }
                 ExprKind::Use(expr, use_kw_span) => self.lower_expr_use(*use_kw_span, expr),
                 ExprKind::Closure(box Closure {
                     binder,
