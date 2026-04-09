@@ -1838,7 +1838,15 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(clean_ty(m.ty, cx)) }
         }
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
-        TyKind::Pat(ty, pat) => Type::Pat(Box::new(clean_ty(ty, cx)), format!("{pat:?}").into()),
+        TyKind::Pat(inner_ty, pat) => {
+            // Local HIR pattern types should print the same way as cross-crate inlined ones,
+            // so lower to the canonical `rustc_middle::ty::Pattern` representation first.
+            let pat = match lower_ty(cx.tcx, ty).kind() {
+                ty::Pat(_, pat) => format!("{pat:?}").into_boxed_str(),
+                _ => format!("{pat:?}").into(),
+            };
+            Type::Pat(Box::new(clean_ty(inner_ty, cx)), pat)
+        }
         TyKind::FieldOf(ty, hir::TyFieldPath { variant, field }) => {
             let field_str = if let Some(variant) = variant {
                 format!("{variant}.{field}")
