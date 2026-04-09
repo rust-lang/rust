@@ -159,7 +159,7 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: ast::Meta) -> ControlFlow<
                 None => match &*first_segment {
                     "deprecated" => attr_flags.insert(AttrFlags::IS_DEPRECATED),
                     "doc" => extract_doc_tt_attr(attr_flags, tt),
-                    "repr" => attr_flags.insert(AttrFlags::HAS_REPR),
+                    "repr" | "rustc_scalable_vector" => attr_flags.insert(AttrFlags::HAS_REPR),
                     "target_feature" => attr_flags.insert(AttrFlags::HAS_TARGET_FEATURE),
                     "proc_macro_derive" | "rustc_builtin_macro" => {
                         attr_flags.insert(AttrFlags::IS_DERIVE_OR_BUILTIN_MACRO)
@@ -217,6 +217,7 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: ast::Meta) -> ControlFlow<
                     "rustc_allow_incoherent_impl" => {
                         attr_flags.insert(AttrFlags::RUSTC_ALLOW_INCOHERENT_IMPL)
                     }
+                    "rustc_scalable_vector" => attr_flags.insert(AttrFlags::HAS_REPR),
                     "fundamental" => attr_flags.insert(AttrFlags::FUNDAMENTAL),
                     "no_std" => attr_flags.insert(AttrFlags::IS_NO_STD),
                     "may_dangle" => attr_flags.insert(AttrFlags::MAY_DANGLE),
@@ -724,14 +725,40 @@ impl AttrFlags {
         fn repr(db: &dyn DefDatabase, owner: AdtId) -> Option<ReprOptions> {
             let mut result = None;
             collect_attrs::<Infallible>(db, owner.into(), |attr| {
-                if let ast::Meta::TokenTreeMeta(attr) = attr
-                    && attr.path().is1("repr")
+                let mut current = None;
+                if let ast::Meta::TokenTreeMeta(attr) = &attr
+                    && let Some(path) = attr.path()
                     && let Some(tt) = attr.token_tree()
-                    && let Some(repr) = parse_repr_tt(&tt)
                 {
+                    if path.is1("repr")
+                        && let Some(repr) = parse_repr_tt(&tt)
+                    {
+                        current = Some(repr);
+                    } else if path.is1("rustc_scalable_vector")
+                        && let mut tt = TokenTreeChildren::new(&tt)
+                        && let Some(NodeOrToken::Token(scalable)) = tt.next()
+                        && let Some(scalable) = ast::IntNumber::cast(scalable)
+                        && let Ok(scalable) = scalable.value()
+                        && let Ok(scalable) = scalable.try_into()
+                    {
+                        current = Some(ReprOptions {
+                            scalable: Some(rustc_abi::ScalableElt::ElementCount(scalable)),
+                            ..ReprOptions::default()
+                        });
+                    }
+                } else if let ast::Meta::PathMeta(attr) = &attr
+                    && attr.path().is1("rustc_scalable_vector")
+                {
+                    current = Some(ReprOptions {
+                        scalable: Some(rustc_abi::ScalableElt::Container),
+                        ..ReprOptions::default()
+                    });
+                }
+
+                if let Some(current) = current {
                     match &mut result {
-                        Some(existing) => merge_repr(existing, repr),
-                        None => result = Some(repr),
+                        Some(existing) => merge_repr(existing, current),
+                        None => result = Some(current),
                     }
                 }
                 ControlFlow::Continue(())
@@ -1079,7 +1106,7 @@ impl AttrFlags {
 }
 
 fn merge_repr(this: &mut ReprOptions, other: ReprOptions) {
-    let ReprOptions { int, align, pack, flags, field_shuffle_seed: _ } = this;
+    let ReprOptions { int, align, pack, flags, scalable, field_shuffle_seed: _ } = this;
     flags.insert(other.flags);
     *align = (*align).max(other.align);
     *pack = match (*pack, other.pack) {
@@ -1088,6 +1115,9 @@ fn merge_repr(this: &mut ReprOptions, other: ReprOptions) {
     };
     if other.int.is_some() {
         *int = other.int;
+    }
+    if other.scalable.is_some() {
+        *scalable = other.scalable;
     }
 }
 
