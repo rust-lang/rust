@@ -1,9 +1,7 @@
-
-// This test checks that split_ascii_whitespace does not split on a
-// vertical tab (\x0B). The standard library follows the WhatWG ASCII
-// whitespace definition, which does not include vertical tab.
-//
-// So in this case, "a\x0Bb" should stay as a single piece.
+// This test checks that split_ascii_whitespace does NOT split on
+// vertical tab (\x0B), because the standard library uses the WhatWG
+// Infra Standard definition of ASCII whitespace, which excludes
+// vertical tab.
 //
 // See: https://github.com/rust-lang/rust-project-goals/issues/53
 
