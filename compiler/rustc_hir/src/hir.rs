@@ -1656,9 +1656,17 @@ impl<'tcx> OwnerInfo<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, HashStable_Generic)]
+pub enum DelayedOwnerKind {
+    Item,
+    ImplItem,
+    TraitItem,
+}
+
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum MaybeOwner<'tcx> {
     Owner(&'tcx OwnerInfo<'tcx>),
     NonOwner(HirId),
+    Delayed(DelayedOwnerKind),
     /// Used as a placeholder for unused LocalDefId.
     Phantom,
 }
@@ -1667,12 +1675,19 @@ impl<'tcx> MaybeOwner<'tcx> {
     pub fn as_owner(self) -> Option<&'tcx OwnerInfo<'tcx>> {
         match self {
             MaybeOwner::Owner(i) => Some(i),
-            MaybeOwner::NonOwner(_) | MaybeOwner::Phantom => None,
+            _ => None,
         }
     }
 
     pub fn unwrap(self) -> &'tcx OwnerInfo<'tcx> {
-        self.as_owner().unwrap_or_else(|| panic!("Not a HIR owner"))
+        self.as_owner().unwrap_or_else(|| panic!("not a HIR owner"))
+    }
+
+    pub fn expect_delayed(self) -> DelayedOwnerKind {
+        match self {
+            MaybeOwner::Delayed(delayed_owner) => delayed_owner,
+            _ => panic!("not a delayed owner"),
+        }
     }
 }
 
