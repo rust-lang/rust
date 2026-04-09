@@ -19,7 +19,7 @@ fn main() -> () {
 
     bb1: {
         StorageDead(_3);
-        _1 = std::mem::drop::<String>(move _2) -> [return: bb2, unwind continue];
+        _1 = std::mem::drop::<String>(move _2) -> [return: bb2, unwind: bb3];
     }
 
     bb2: {
@@ -28,6 +28,14 @@ fn main() -> () {
         StorageDead(_1);
         _0 = const ();
         return;
+    }
+
+    bb3 (cleanup): {
+        drop(_2) -> [return: bb4, unwind terminate(cleanup)];
+    }
+
+    bb4 (cleanup): {
+        resume;
     }
 }
 

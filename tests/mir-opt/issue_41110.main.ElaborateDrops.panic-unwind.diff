@@ -21,7 +21,7 @@
           StorageLive(_3);
           StorageLive(_4);
           _4 = S;
-          _3 = S::id(move _4) -> [return: bb1, unwind: bb3];
+          _3 = S::id(move _4) -> [return: bb1, unwind: bb4];
       }
   
       bb1: {
@@ -40,20 +40,30 @@
       }
   
       bb3 (cleanup): {
--         drop(_2) -> [return: bb4, unwind terminate(cleanup)];
-+         goto -> bb6;
+-         drop(_3) -> [return: bb5, unwind terminate(cleanup)];
++         goto -> bb5;
       }
   
       bb4 (cleanup): {
+-         drop(_4) -> [return: bb5, unwind terminate(cleanup)];
++         goto -> bb5;
+      }
+  
+      bb5 (cleanup): {
+-         drop(_2) -> [return: bb6, unwind terminate(cleanup)];
++         goto -> bb8;
+      }
+  
+      bb6 (cleanup): {
           resume;
 +     }
 + 
-+     bb5 (cleanup): {
-+         drop(_2) -> [return: bb4, unwind terminate(cleanup)];
++     bb7 (cleanup): {
++         drop(_2) -> [return: bb6, unwind terminate(cleanup)];
 +     }
 + 
-+     bb6 (cleanup): {
-+         switchInt(copy _5) -> [0: bb4, otherwise: bb5];
++     bb8 (cleanup): {
++         switchInt(copy _5) -> [0: bb6, otherwise: bb7];
       }
   }
   
