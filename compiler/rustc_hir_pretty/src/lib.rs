@@ -1643,6 +1643,7 @@ impl<'a> State<'a> {
                 fn_arg_span: _,
                 kind: _,
                 def_id: _,
+                explicit_captures: _,
             }) => {
                 self.print_closure_binder(binder, bound_generic_params);
                 self.print_constness(constness);
