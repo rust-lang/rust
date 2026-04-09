@@ -13,8 +13,8 @@ The `rustc_attrs` feature allows debugging rustc type layouts by using
 with `cargo check`) as an alternative to `rustc -Z print-type-sizes`
 that is way more verbose.
 
-Options provided by `#[rustc_dump_layout(...)]` are `abi`, `align`, `debug`,
-`homogeneous_aggregate` and `size`.
+Options provided by `#[rustc_dump_layout(...)]` are `backend_repr`, `align`,
+`debug`, `homogeneous_aggregate` and `size`.
 Note that it only works on sized types without generics.
 
 ## Examples
@@ -22,7 +22,7 @@ Note that it only works on sized types without generics.
 ```rust,compile_fail
 #![feature(rustc_attrs)]
 
-#[rustc_dump_layout(abi, size)]
+#[rustc_dump_layout(backend_repr, size)]
 pub enum X {
     Y(u8, u8, u8),
     Z(isize),
@@ -32,7 +32,7 @@ pub enum X {
 When that is compiled, the compiler will error with something like
 
 ```text
-error: abi: Aggregate { sized: true }
+error: backend_repr: Aggregate { sized: true }
  --> src/lib.rs:4:1
   |
 4 | / pub enum T {

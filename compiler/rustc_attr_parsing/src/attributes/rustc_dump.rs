@@ -86,15 +86,21 @@ impl<S: Stage> CombineAttributeParser<S> for RustcDumpLayoutParser {
                 return vec![];
             };
             let kind = match ident.name {
-                sym::abi => RustcDumpLayoutKind::Abi,
                 sym::align => RustcDumpLayoutKind::Align,
-                sym::size => RustcDumpLayoutKind::Size,
-                sym::homogeneous_aggregate => RustcDumpLayoutKind::HomogenousAggregate,
+                sym::backend_repr => RustcDumpLayoutKind::BackendRepr,
                 sym::debug => RustcDumpLayoutKind::Debug,
+                sym::homogeneous_aggregate => RustcDumpLayoutKind::HomogenousAggregate,
+                sym::size => RustcDumpLayoutKind::Size,
                 _ => {
                     cx.adcx().expected_specific_argument(
                         ident.span,
-                        &[sym::abi, sym::align, sym::size, sym::homogeneous_aggregate, sym::debug],
+                        &[
+                            sym::align,
+                            sym::backend_repr,
+                            sym::debug,
+                            sym::homogeneous_aggregate,
+                            sym::size,
+                        ],
                     );
                     continue;
                 }

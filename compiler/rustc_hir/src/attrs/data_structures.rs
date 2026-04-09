@@ -758,11 +758,11 @@ impl IntoDiagArg for CrateType {
 
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum RustcDumpLayoutKind {
-    Abi,
     Align,
-    Size,
-    HomogenousAggregate,
+    BackendRepr,
     Debug,
+    HomogenousAggregate,
+    Size,
 }
 
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute, PartialEq, Eq)]

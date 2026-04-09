@@ -6,7 +6,7 @@
 #![crate_type = "lib"]
 
 #[rustc_dump_layout(align)]
-enum UninhabitedVariantAlign { //~ERROR: abi: Align(2 bytes)
+enum UninhabitedVariantAlign { //~ERROR: align: Align(2 bytes)
     A([u8; 32]),
     B([u16; 0], !), // make sure alignment in uninhabited fields is respected
 }
@@ -17,8 +17,8 @@ enum UninhabitedVariantSpace { //~ERROR: size: Size(16 bytes)
     B([u8; 15], !), // make sure there is space being reserved for this field.
 }
 
-#[rustc_dump_layout(abi)]
-enum ScalarPairDifferingSign { //~ERROR: abi: ScalarPair
+#[rustc_dump_layout(backend_repr)]
+enum ScalarPairDifferingSign { //~ERROR: backend_repr: ScalarPair
     A(u8),
     B(i8),
 }

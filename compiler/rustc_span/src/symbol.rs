@@ -505,6 +505,7 @@ symbols! {
         avx512f,
         await_macro,
         backchain,
+        backend_repr,
         bang,
         begin_panic,
         bench,

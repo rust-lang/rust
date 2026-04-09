@@ -70,20 +70,21 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, kinds: &[RustcDumpLa
         Ok(ty_layout) => {
             for kind in kinds {
                 let message = match kind {
-                    // FIXME: this never was about ABI and now this dump arg is confusing
-                    RustcDumpLayoutKind::Abi => format!("abi: {:?}", ty_layout.backend_repr),
-                    RustcDumpLayoutKind::Align => format!("align: {:?}", ty_layout.align),
-                    RustcDumpLayoutKind::Size => format!("size: {:?}", ty_layout.size),
-                    RustcDumpLayoutKind::HomogenousAggregate => {
-                        let data =
-                            ty_layout.homogeneous_aggregate(&UnwrapLayoutCx { tcx, typing_env });
-                        format!("homogeneous_aggregate: {data:?}")
+                    RustcDumpLayoutKind::Align => format!("align: {:?}", *ty_layout.align),
+                    RustcDumpLayoutKind::BackendRepr => {
+                        format!("backend_repr: {:?}", ty_layout.backend_repr)
                     }
                     RustcDumpLayoutKind::Debug => {
                         let normalized_ty = tcx.normalize_erasing_regions(typing_env, ty);
                         // FIXME: using the `Debug` impl here isn't ideal.
                         format!("layout_of({normalized_ty}) = {:#?}", *ty_layout)
                     }
+                    RustcDumpLayoutKind::HomogenousAggregate => {
+                        let data =
+                            ty_layout.homogeneous_aggregate(&UnwrapLayoutCx { tcx, typing_env });
+                        format!("homogeneous_aggregate: {data:?}")
+                    }
+                    RustcDumpLayoutKind::Size => format!("size: {:?}", ty_layout.size),
                 };
                 tcx.dcx().span_err(span, message);
             }
