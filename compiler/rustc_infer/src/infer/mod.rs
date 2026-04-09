@@ -33,6 +33,7 @@ use rustc_middle::ty::{
     TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
 use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_type_ir::TypingModeEqWrapper;
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
@@ -564,7 +565,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let infcx = self.build(input.typing_mode);
+        let infcx = self.build(input.typing_mode.0);
         let (value, args) = infcx.instantiate_canonical(span, &input.canonical);
         (infcx, value, args)
     }
@@ -573,7 +574,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
         mut self,
         TypingEnv { typing_mode, param_env }: TypingEnv<'tcx>,
     ) -> (InferCtxt<'tcx>, ty::ParamEnv<'tcx>) {
-        (self.build(typing_mode), param_env)
+        (self.build(typing_mode.0), param_env)
     }
 
     pub fn build(&mut self, typing_mode: TypingMode<'tcx>) -> InferCtxt<'tcx> {
@@ -1376,7 +1377,7 @@ impl<'tcx> InferCtxt<'tcx> {
             | ty::TypingMode::PostBorrowckAnalysis { .. }
             | ty::TypingMode::PostAnalysis) => mode,
         };
-        ty::TypingEnv { typing_mode, param_env }
+        ty::TypingEnv { typing_mode: TypingModeEqWrapper(typing_mode), param_env }
     }
 
     /// Similar to [`Self::canonicalize_query`], except that it returns

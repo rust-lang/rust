@@ -371,10 +371,20 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     // This shouldn't be used for statics, since statics are conceptually places,
     // not values -- so what we do here could break pointer identity.
     assert!(key.value.promoted.is_some() || !tcx.is_static(key.value.instance.def_id()));
-    // Const eval always happens in PostAnalysis mode . See the comment in
-    // `InterpCx::new` for more details.
-    debug_assert_eq!(key.typing_env.typing_mode, ty::TypingMode::PostAnalysis);
+
     if cfg!(debug_assertions) {
+        match key.typing_env.typing_mode.0 {
+            ty::TypingMode::PostAnalysis => {}
+            ty::TypingMode::Coherence
+            | ty::TypingMode::Analysis { .. }
+            | ty::TypingMode::Borrowck { .. }
+            | ty::TypingMode::PostBorrowckAnalysis { .. } => {
+                bug!(
+                    "Const eval should always happens in PostAnalysis mode. See the comment in `InterpCx::new` for more details."
+                )
+            }
+        }
+
         // Make sure we format the instance even if we do not print it.
         // This serves as a regression test against an ICE on printing.
         // The next two lines concatenated contain some discussion:

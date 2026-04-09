@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
@@ -18,11 +20,28 @@ use crate::{self as ty, Interner, TyVid};
 ///
 /// If neither of these functions are available, feel free to reach out to
 /// t-types for help.
-#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+///
+/// Because typing rules get subtly different based on what typing mode we're in,
+/// subtle enough that changing the behavior of typing modes can sometimes cause
+/// changes that we don't even have tests for, we'd like to enforce the rule that
+/// any place where we specialize behavior based on the typing mode, we match
+/// *exhaustively* on the typing mode. That way, it's easy to determine all the
+/// places that must change when anything about typing modes changes.
+///
+/// Hence, `TypingMode` does not implement `Eq`, though [`TypingModeEqWrapper`] is available
+/// in the rare case that you do need this. Most cases where this currently matters is
+/// where we pass typing modes through the query system and want to cache based on it.
+/// See also `#[rustc_must_match_exhaustively]`, which tries to detect non-exhaustive
+/// matches.
+///
+/// Since matching on typing mode to single out `Coherence` is so common, and `Coherence`
+/// is so different from the other modes: see also [`is_coherence`](TypingMode::is_coherence)
+#[derive_where(Clone, Copy, Hash, Debug; I: Interner)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
+#[cfg_attr(not(bootstrap), rustc_must_match_exhaustively)]
 pub enum TypingMode<I: Interner> {
     /// When checking whether impls overlap, we check whether any obligations
     /// are guaranteed to never hold when unifying the impls. This requires us
@@ -90,9 +109,64 @@ pub enum TypingMode<I: Interner> {
     PostAnalysis,
 }
 
-impl<I: Interner> Eq for TypingMode<I> {}
+/// We want to highly discourage using equality checks on typing modes.
+/// Instead you should match, **exhaustively**, so when we ever modify the enum we get a compile
+/// error. Only use `TypingModeEqWrapper` when you really really really have to.
+/// Prefer unwrapping `TypingModeEqWrapper` in apis that should return a `TypingMode` whenever
+/// possible, and if you ever get an `TypingModeEqWrapper`, prefer unwrapping it and matching on it **exhaustively**.
+#[derive_where(Clone, Copy, Debug; I: Interner)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
+pub struct TypingModeEqWrapper<I: Interner>(pub TypingMode<I>);
+
+impl<I: Interner> Hash for TypingModeEqWrapper<I> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self.0, other.0) {
+            (TypingMode::Coherence, TypingMode::Coherence) => true,
+            (
+                TypingMode::Analysis { defining_opaque_types_and_generators: l },
+                TypingMode::Analysis { defining_opaque_types_and_generators: r },
+            ) => l == r,
+            (
+                TypingMode::Borrowck { defining_opaque_types: l },
+                TypingMode::Borrowck { defining_opaque_types: r },
+            ) => l == r,
+            (
+                TypingMode::PostBorrowckAnalysis { defined_opaque_types: l },
+                TypingMode::PostBorrowckAnalysis { defined_opaque_types: r },
+            ) => l == r,
+            (TypingMode::PostAnalysis, TypingMode::PostAnalysis) => true,
+            _ => false,
+        }
+    }
+}
+
+impl<I: Interner> Eq for TypingModeEqWrapper<I> {}
 
 impl<I: Interner> TypingMode<I> {
+    /// There are a bunch of places in the compiler where we single out `Coherence`,
+    /// and alter behavior. We'd like to *always* match on `TypingMode` exhaustively,
+    /// but not having this method leads to a bunch of noisy code.
+    ///
+    /// See also the documentation on [`TypingMode`] about exhaustive matching.
+    pub fn is_coherence(&self) -> bool {
+        match self {
+            TypingMode::Coherence => true,
+            TypingMode::Analysis { .. }
+            | TypingMode::Borrowck { .. }
+            | TypingMode::PostBorrowckAnalysis { .. }
+            | TypingMode::PostAnalysis => false,
+        }
+    }
+
     /// Analysis outside of a body does not define any opaque types.
     pub fn non_body_analysis() -> TypingMode<I> {
         TypingMode::Analysis { defining_opaque_types_and_generators: Default::default() }
@@ -127,6 +201,7 @@ impl<I: Interner> TypingMode<I> {
 
     pub fn post_borrowck_analysis(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
         let defined_opaque_types = cx.opaque_types_defined_by(body_def_id);
+
         if defined_opaque_types.is_empty() {
             TypingMode::non_body_analysis()
         } else {
@@ -322,6 +397,13 @@ where
     // Note: `feature_bound_holds_in_crate` does not consider a feature to be enabled
     // if we are in std/core even if there is a corresponding `feature` attribute on the crate.
 
-    (infcx.typing_mode() == TypingMode::PostAnalysis)
-        || infcx.cx().features().feature_bound_holds_in_crate(symbol)
+    match infcx.typing_mode() {
+        TypingMode::Coherence
+        | TypingMode::Analysis { .. }
+        | TypingMode::Borrowck { .. }
+        | TypingMode::PostBorrowckAnalysis { .. } => {
+            infcx.cx().features().feature_bound_holds_in_crate(symbol)
+        }
+        TypingMode::PostAnalysis => true,
+    }
 }

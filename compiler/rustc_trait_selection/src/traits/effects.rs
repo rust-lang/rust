@@ -25,11 +25,17 @@ pub fn evaluate_host_effect_obligation<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
-    if selcx.infcx.typing_mode() == TypingMode::Coherence {
-        span_bug!(
-            obligation.cause.span,
-            "should not select host obligation in old solver in intercrate mode"
-        );
+    match selcx.infcx.typing_mode() {
+        TypingMode::Coherence => {
+            span_bug!(
+                obligation.cause.span,
+                "should not select host obligation in old solver in intercrate mode"
+            );
+        }
+        TypingMode::Analysis { .. }
+        | TypingMode::Borrowck { .. }
+        | TypingMode::PostBorrowckAnalysis { .. }
+        | TypingMode::PostAnalysis => {}
     }
 
     let ref obligation = selcx.infcx.resolve_vars_if_possible(obligation.clone());

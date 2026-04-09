@@ -243,7 +243,21 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // opaque types. This is needed for trivial things like `size_of`, but also for using associated
         // types that are not specified in the opaque type. We also use MIR bodies whose opaque types have
         // already been revealed, so we'd be able to at least partially observe the hidden types anyways.
-        debug_assert_matches!(typing_env.typing_mode, ty::TypingMode::PostAnalysis);
+        debug_assert_matches!(typing_env.typing_mode.0, ty::TypingMode::PostAnalysis);
+        if cfg!(debug_assertions) {
+            match typing_env.typing_mode.0 {
+                ty::TypingMode::PostAnalysis => {}
+                ty::TypingMode::Coherence
+                | ty::TypingMode::Analysis { .. }
+                | ty::TypingMode::Borrowck { .. }
+                | ty::TypingMode::PostBorrowckAnalysis { .. } => {
+                    use rustc_middle::bug;
+
+                    bug!("Const eval should always happens in PostAnalysis mode.")
+                }
+            }
+        }
+
         InterpCx {
             machine,
             tcx: tcx.at(root_span),

@@ -33,7 +33,7 @@ use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
 use crate::ty::{
     self, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt, TypeVisitableExt,
-    TypingEnv, UserTypeAnnotationIndex,
+    TypingEnv, TypingModeEqWrapper, UserTypeAnnotationIndex,
 };
 
 mod basic_blocks;
@@ -416,7 +416,7 @@ impl<'tcx> Body<'tcx> {
         match self.phase {
             // FIXME(#132279): we should reveal the opaques defined in the body during analysis.
             MirPhase::Built | MirPhase::Analysis(_) => TypingEnv {
-                typing_mode: ty::TypingMode::non_body_analysis(),
+                typing_mode: TypingModeEqWrapper(ty::TypingMode::non_body_analysis()),
                 param_env: tcx.param_env(self.source.def_id()),
             },
             MirPhase::Runtime(_) => TypingEnv::post_analysis(tcx, self.source.def_id()),

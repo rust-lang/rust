@@ -24,8 +24,12 @@ use rustc_middle::lint::LevelAndSource;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_no_trimmed_paths};
-use rustc_middle::ty::{self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode};
-use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintExpectationId, LintId};
+use rustc_middle::ty::{
+    self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode, TypingModeEqWrapper,
+};
+use rustc_session::lint::{
+    CheckLintNameResult, FutureIncompatibleInfo, Lint, LintExpectationId, LintId,
+};
 use rustc_session::{DynLintStore, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -637,7 +641,10 @@ impl<'tcx> LateContext<'tcx> {
     }
 
     pub fn typing_env(&self) -> TypingEnv<'tcx> {
-        TypingEnv { typing_mode: self.typing_mode(), param_env: self.param_env }
+        TypingEnv {
+            typing_mode: TypingModeEqWrapper(self.typing_mode()),
+            param_env: self.param_env,
+        }
     }
 
     pub fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
