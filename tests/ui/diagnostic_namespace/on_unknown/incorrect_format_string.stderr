@@ -1,0 +1,96 @@
+error[E0432]: foo {}
+  --> $DIR/incorrect_format_string.rs:5:5
+   |
+LL | use std::does_not_exist;
+   |     ^^^^^^^^^^^^^^^^^^^ no `does_not_exist` in the root
+   |
+   = note: unresolved import `std::does_not_exist`
+
+error[E0432]: foo {}
+  --> $DIR/incorrect_format_string.rs:10:5
+   |
+LL | use std::does_not_exist2;
+   |     ^^^^^^^^^^^^^^^^^^^^ no `does_not_exist2` in the root
+   |
+   = note: unresolved import `std::does_not_exist2`
+
+error[E0432]: unresolved import `std::does_not_exist3`
+  --> $DIR/incorrect_format_string.rs:15:5
+   |
+LL | use std::does_not_exist3;
+   |     ^^^^^^^^^^^^^^^^^^^^ foo {}
+
+error[E0432]: unresolved import `std::does_not_exist4`
+  --> $DIR/incorrect_format_string.rs:20:5
+   |
+LL | use std::does_not_exist4;
+   |     ^^^^^^^^^^^^^^^^^^^^ foo {}
+
+error[E0432]: unresolved import `std::does_not_exist5`
+  --> $DIR/incorrect_format_string.rs:25:5
+   |
+LL | use std::does_not_exist5;
+   |     ^^^^^^^^^^^^^^^^^^^^ no `does_not_exist5` in the root
+   |
+   = note: foo {}
+
+error[E0432]: unresolved import `std::does_not_exist6`
+  --> $DIR/incorrect_format_string.rs:30:5
+   |
+LL | use std::does_not_exist6;
+   |     ^^^^^^^^^^^^^^^^^^^^ no `does_not_exist6` in the root
+   |
+   = note: foo {}
+
+warning: format arguments are not allowed here
+  --> $DIR/incorrect_format_string.rs:3:42
+   |
+LL | #[diagnostic::on_unknown(message = "foo {}")]
+   |                                          ^
+   |
+   = help: consider removing this format argument
+   = note: `#[warn(malformed_diagnostic_format_literals)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: format arguments are not allowed here
+  --> $DIR/incorrect_format_string.rs:8:42
+   |
+LL | #[diagnostic::on_unknown(message = "foo {A}")]
+   |                                          ^
+   |
+   = help: consider removing this format argument
+
+warning: format arguments are not allowed here
+  --> $DIR/incorrect_format_string.rs:13:40
+   |
+LL | #[diagnostic::on_unknown(label = "foo {}")]
+   |                                        ^
+   |
+   = help: consider removing this format argument
+
+warning: format arguments are not allowed here
+  --> $DIR/incorrect_format_string.rs:18:40
+   |
+LL | #[diagnostic::on_unknown(label = "foo {A}")]
+   |                                        ^
+   |
+   = help: consider removing this format argument
+
+warning: format arguments are not allowed here
+  --> $DIR/incorrect_format_string.rs:23:39
+   |
+LL | #[diagnostic::on_unknown(note = "foo {}")]
+   |                                       ^
+   |
+   = help: consider removing this format argument
+
+warning: format arguments are not allowed here
+  --> $DIR/incorrect_format_string.rs:28:39
+   |
+LL | #[diagnostic::on_unknown(note = "foo {A}")]
+   |                                       ^
+   |
+   = help: consider removing this format argument
+
+error: aborting due to 6 previous errors; 6 warnings emitted
+
+For more information about this error, try `rustc --explain E0432`.

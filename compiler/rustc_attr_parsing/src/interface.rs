@@ -30,7 +30,7 @@ pub struct AttributeParser<'sess, S: Stage = Late> {
     /// *Only* parse attributes with this symbol.
     ///
     /// Used in cases where we want the lowering infrastructure for parse just a single attribute.
-    parse_only: Option<Symbol>,
+    parse_only: Option<&'static [Symbol]>,
 }
 
 impl<'sess> AttributeParser<'sess, Early> {
@@ -53,7 +53,7 @@ impl<'sess> AttributeParser<'sess, Early> {
     pub fn parse_limited(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
-        sym: Symbol,
+        sym: &'static [Symbol],
         target_span: Span,
         target_node_id: NodeId,
         features: Option<&'sess Features>,
@@ -77,7 +77,7 @@ impl<'sess> AttributeParser<'sess, Early> {
     pub fn parse_limited_should_emit(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
-        sym: Symbol,
+        sym: &'static [Symbol],
         target_span: Span,
         target_node_id: NodeId,
         target: Target,
@@ -109,7 +109,7 @@ impl<'sess> AttributeParser<'sess, Early> {
     pub fn parse_limited_all<'a>(
         sess: &'sess Session,
         attrs: impl IntoIterator<Item = &'a ast::Attribute>,
-        parse_only: Option<Symbol>,
+        parse_only: Option<&'static [Symbol]>,
         target: Target,
         target_span: Span,
         target_node_id: NodeId,
@@ -301,7 +301,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         for attr in attrs.into_iter() {
             // If we're only looking for a single attribute, skip all the ones we don't care about.
             if let Some(expected) = self.parse_only {
-                if !attr.has_name(expected) {
+                if !attr.path_matches(expected) {
                     continue;
                 }
             }

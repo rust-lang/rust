@@ -814,6 +814,7 @@ pub fn is_stable_diagnostic_attribute(sym: Symbol, features: &Features) -> bool 
         sym::on_unimplemented | sym::do_not_recommend => true,
         sym::on_const => features.diagnostic_on_const(),
         sym::on_move => features.diagnostic_on_move(),
+        sym::on_unknown => features.diagnostic_on_unknown(),
         _ => false,
     }
 }
