@@ -8,8 +8,8 @@ use rustc_data_structures::{outline, sharded, sync};
 use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::{
-    ActiveKeyStatus, Cycle, EnsureMode, QueryCache, QueryJob, QueryJobId, QueryKey, QueryLatch,
-    QueryMode, QueryState, QueryVTable,
+    ActiveKeyStatus, Cycle, EnsureMode, QueryCache, QueryHelper, QueryJob, QueryJobId, QueryKey,
+    QueryLatch, QueryMode, QueryState, QueryVTable,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::verify_ich::incremental_verify_ich;
@@ -62,13 +62,14 @@ pub fn collect_active_query_jobs<'tcx>(
 /// Internal plumbing for collecting the set of active jobs for this query.
 ///
 /// Aborts if jobs can't be gathered as specified by `collect_kind`.
-fn collect_active_query_jobs_inner<'tcx, C>(
-    query: &'tcx QueryVTable<'tcx, C>,
+fn collect_active_query_jobs_inner<'tcx, C, H>(
+    query: &'tcx QueryVTable<'tcx, C, H>,
     collect_kind: CollectActiveJobsKind,
     job_map: &mut QueryJobMap<'tcx>,
 ) where
     C: QueryCache<Key: QueryKey + DynSend + DynSync>,
-    QueryVTable<'tcx, C>: DynSync,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+    QueryVTable<'tcx, C, H>: DynSync,
 {
     let mut collect_shard_jobs = |shard: &HashTable<(C::Key, ActiveKeyStatus<'tcx>)>| {
         for (key, status) in shard.iter() {
@@ -108,8 +109,8 @@ fn collect_active_query_jobs_inner<'tcx, C>(
 
 #[cold]
 #[inline(never)]
-fn handle_cycle<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
+fn handle_cycle<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
+    query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
     cycle: Cycle<'tcx>,
@@ -194,8 +195,8 @@ where
 
 #[cold]
 #[inline(never)]
-fn find_and_handle_cycle<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
+fn find_and_handle_cycle<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
+    query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
     try_execute: QueryJobId,
@@ -210,8 +211,8 @@ fn find_and_handle_cycle<'tcx, C: QueryCache>(
 }
 
 #[inline(always)]
-fn wait_for_query<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
+fn wait_for_query<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
+    query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
     span: Span,
     key: C::Key,
@@ -256,13 +257,17 @@ fn wait_for_query<'tcx, C: QueryCache>(
 
 /// Shared main part of both [`execute_query_incr_inner`] and [`execute_query_non_incr_inner`].
 #[inline(never)]
-fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
-    query: &'tcx QueryVTable<'tcx, C>,
+fn try_execute_query<'tcx, C, H, const INCR: bool>(
+    query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
     span: Span,
     key: C::Key,
     dep_node: Option<DepNode>, // `None` for non-incremental, `Some` for incremental
-) -> (C::Value, Option<DepNodeIndex>) {
+) -> (C::Value, Option<DepNodeIndex>)
+where
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
     let key_hash = sharded::make_hash(&key);
     let mut state_lock = query.state.active.lock_shard_by_hash(key_hash);
 
@@ -340,9 +345,9 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 }
 
 #[inline(always)]
-fn check_feedable_consistency<'tcx, C: QueryCache>(
+fn check_feedable_consistency<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
     tcx: TyCtxt<'tcx>,
-    query: &'tcx QueryVTable<'tcx, C>,
+    query: &'tcx QueryVTable<'tcx, C, H>,
     key: C::Key,
     value: &C::Value,
 ) {
@@ -382,8 +387,8 @@ fn check_feedable_consistency<'tcx, C: QueryCache>(
 
 // Fast path for when incr. comp. is off.
 #[inline(always)]
-fn execute_job_non_incr<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
+fn execute_job_non_incr<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
+    query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
     job_id: QueryJobId,
@@ -410,8 +415,8 @@ fn execute_job_non_incr<'tcx, C: QueryCache>(
 }
 
 #[inline(always)]
-fn execute_job_incr<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
+fn execute_job_incr<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
+    query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
     dep_node: DepNode,
@@ -462,10 +467,14 @@ fn execute_job_incr<'tcx, C: QueryCache>(
 /// by loading one from disk if possible, or by invoking its query provider if
 /// necessary.
 #[inline(always)]
-fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
+fn load_from_disk_or_invoke_provider_green<
+    'tcx,
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+>(
     tcx: TyCtxt<'tcx>,
     dep_graph_data: &DepGraphData,
-    query: &'tcx QueryVTable<'tcx, C>,
+    query: &'tcx QueryVTable<'tcx, C, H>,
     key: C::Key,
     dep_node: &DepNode,
     prev_index: SerializedDepNodeIndex,
@@ -479,7 +488,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
     // First try to load the result from the on-disk cache. Some things are never cached on disk.
     let try_value = if (query.will_cache_on_disk_for_key_fn)(key) {
         let prof_timer = tcx.prof.incr_cache_loading();
-        let value = (query.try_load_from_disk_fn)(tcx, prev_index);
+        let value = H::try_load_from_disk_fn(tcx, prev_index);
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
         value
     } else {
@@ -545,8 +554,8 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
 /// on having the dependency graph (and in some cases a disk-cached value)
 /// from the previous incr-comp session.
 #[inline(never)]
-fn ensure_can_skip_execution<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
+fn ensure_can_skip_execution<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
+    query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
     dep_node: DepNode,
@@ -593,25 +602,33 @@ fn ensure_can_skip_execution<'tcx, C: QueryCache>(
 /// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
 /// in non-incremental mode.
 #[inline(always)]
-pub(super) fn execute_query_non_incr_inner<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
+pub(super) fn execute_query_non_incr_inner<
+    'tcx,
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+>(
+    query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
     span: Span,
     key: C::Key,
 ) -> C::Value {
-    ensure_sufficient_stack(|| try_execute_query::<C, false>(query, tcx, span, key, None).0)
+    ensure_sufficient_stack(|| try_execute_query::<C, H, false>(query, tcx, span, key, None).0)
 }
 
 /// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
 /// in incremental mode.
 #[inline(always)]
-pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
+pub(super) fn execute_query_incr_inner<'tcx, C, H>(
+    query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
     span: Span,
     key: C::Key,
     mode: QueryMode,
-) -> Option<C::Value> {
+) -> Option<C::Value>
+where
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
     let dep_node = DepNode::construct(tcx, query.dep_kind, &key);
 
     // Check if query execution can be skipped, for `ensure_ok` or `ensure_done`.
@@ -622,7 +639,7 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
     }
 
     let (result, dep_node_index) = ensure_sufficient_stack(|| {
-        try_execute_query::<C, true>(query, tcx, span, key, Some(dep_node))
+        try_execute_query::<C, H, true>(query, tcx, span, key, Some(dep_node))
     });
     if let Some(dep_node_index) = dep_node_index {
         tcx.dep_graph.read_index(dep_node_index)
@@ -634,11 +651,15 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
 /// for query nodes.
 ///
 /// [force_fn]: rustc_middle::dep_graph::DepKindVTable::force_from_dep_node_fn
-pub(crate) fn force_query_dep_node<'tcx, C: QueryCache>(
+pub(crate) fn force_query_dep_node<'tcx, C, H>(
     tcx: TyCtxt<'tcx>,
-    query: &'tcx QueryVTable<'tcx, C>,
+    query: &'tcx QueryVTable<'tcx, C, H>,
     dep_node: DepNode,
-) -> bool {
+) -> bool
+where
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
     let Some(key) = C::Key::try_recover_key(tcx, &dep_node) else {
         // We couldn't recover a key from the node's key fingerprint.
         // Tell the caller that we couldn't force the node.
@@ -646,7 +667,7 @@ pub(crate) fn force_query_dep_node<'tcx, C: QueryCache>(
     };
 
     ensure_sufficient_stack(|| {
-        try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node))
+        try_execute_query::<C, H, true>(query, tcx, DUMMY_SP, key, Some(dep_node))
     });
 
     // We did manage to recover a key and force the node, though it's up to

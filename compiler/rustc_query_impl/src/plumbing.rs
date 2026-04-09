@@ -7,11 +7,11 @@ use rustc_middle::bug;
 use rustc_middle::dep_graph::DepKindVTable;
 use rustc_middle::dep_graph::{DepNode, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::erase::{Erasable, Erased};
-use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder};
-use rustc_middle::query::{QueryCache, QueryJobId, QueryMode, QueryVTable, erase};
+use rustc_middle::query::on_disk_cache::CacheEncoder;
+use rustc_middle::query::{QueryCache, QueryHelper, QueryJobId, QueryMode, QueryVTable, erase};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::Encodable;
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::LOCAL_CRATE;
 
@@ -81,12 +81,13 @@ pub(crate) fn encode_query_values<'tcx>(tcx: TyCtxt<'tcx>, encoder: &mut CacheEn
     });
 }
 
-fn encode_query_values_inner<'a, 'tcx, C, V>(
+fn encode_query_values_inner<'a, 'tcx, C, V, H>(
     tcx: TyCtxt<'tcx>,
-    query: &'tcx QueryVTable<'tcx, C>,
+    query: &'tcx QueryVTable<'tcx, C, H>,
     encoder: &mut CacheEncoder<'a, 'tcx>,
 ) where
     C: QueryCache<Value = Erased<V>>,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
     V: Erasable + Encodable<CacheEncoder<'a, 'tcx>>,
 {
     let _timer = tcx.prof.generic_activity_with_arg("encode_query_results_for", query.name);
@@ -109,8 +110,8 @@ pub(crate) fn verify_query_key_hashes<'tcx>(tcx: TyCtxt<'tcx>) {
     }
 }
 
-fn verify_query_key_hashes_inner<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
+fn verify_query_key_hashes_inner<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
+    query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
 ) {
     let _timer = tcx.prof.generic_activity_with_arg("query_key_hash_verify_for", query.name);
@@ -136,11 +137,13 @@ fn verify_query_key_hashes_inner<'tcx, C: QueryCache>(
 }
 
 /// Inner implementation of [`DepKindVTable::promote_from_disk_fn`] for queries.
-pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
+pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache, H>(
     tcx: TyCtxt<'tcx>,
-    query: &'tcx QueryVTable<'tcx, C>,
+    query: &'tcx QueryVTable<'tcx, C, H>,
     dep_node: DepNode,
-) {
+) where
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
     debug_assert!(tcx.dep_graph.is_green(&dep_node));
 
     let key = C::Key::try_recover_key(tcx, &dep_node).unwrap_or_else(|| {
@@ -179,19 +182,4 @@ pub(crate) fn loadable_from_disk<'tcx>(tcx: TyCtxt<'tcx>, id: SerializedDepNodeI
     } else {
         false
     }
-}
-
-pub(crate) fn try_load_from_disk<'tcx, V>(
-    tcx: TyCtxt<'tcx>,
-    prev_index: SerializedDepNodeIndex,
-) -> Option<V>
-where
-    V: for<'a> Decodable<CacheDecoder<'a, 'tcx>>,
-{
-    let on_disk_cache = tcx.query_system.on_disk_cache.as_ref()?;
-
-    // The call to `with_query_deserialization` enforces that no new `DepNodes`
-    // are created during deserialization. See the docs of that method for more
-    // details.
-    tcx.dep_graph.with_query_deserialization(|| on_disk_cache.try_load_query_value(tcx, prev_index))
 }

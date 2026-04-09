@@ -12,7 +12,7 @@ use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::dep_graph;
 use rustc_middle::queries::{ExternProviders, Providers};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
-use rustc_middle::query::{QueryCache, QuerySystem, QueryVTable};
+use rustc_middle::query::{QueryCache, QueryHelper, QuerySystem, QueryVTable};
 use rustc_middle::ty::TyCtxt;
 
 pub use crate::dep_kind_vtables::make_dep_kind_vtables;
@@ -38,8 +38,9 @@ mod query_impl;
 /// on the type `rustc_query_impl::query_impl::$name::VTableGetter`.
 trait GetQueryVTable<'tcx> {
     type Cache: QueryCache + 'tcx;
+    type Helper: QueryHelper<'tcx, <Self::Cache as QueryCache>::Key, <Self::Cache as QueryCache>::Value>;
 
-    fn query_vtable(tcx: TyCtxt<'tcx>) -> &'tcx QueryVTable<'tcx, Self::Cache>;
+    fn query_vtable(tcx: TyCtxt<'tcx>) -> &'tcx QueryVTable<'tcx, Self::Cache, Self::Helper>;
 }
 
 pub fn query_system<'tcx>(

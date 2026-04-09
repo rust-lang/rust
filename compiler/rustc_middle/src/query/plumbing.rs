@@ -8,12 +8,13 @@ use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
+use rustc_serialize::Decodable;
 use rustc_span::Span;
 
 use crate::dep_graph::{DepKind, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
-use crate::query::on_disk_cache::OnDiskCache;
+use crate::query::on_disk_cache::{CacheDecoder, OnDiskCache};
 use crate::query::{IntoQueryKey, QueryCache, QueryJob, QueryStackFrame};
 use crate::ty::{self, TyCtxt};
 
@@ -76,7 +77,7 @@ pub enum EnsureMode {
 }
 
 /// Stores data and metadata (e.g. function pointers) for a particular query.
-pub struct QueryVTable<'tcx, C: QueryCache> {
+pub struct QueryVTable<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>> {
     pub name: &'static str,
 
     /// True if this query has the `eval_always` modifier.
@@ -99,11 +100,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
 
     pub will_cache_on_disk_for_key_fn: fn(key: C::Key) -> bool,
 
-    /// Function pointer that tries to load a query value from disk.
-    ///
-    /// This should only be called after a successful check of `will_cache_on_disk_for_key_fn`.
-    pub try_load_from_disk_fn:
-        fn(tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) -> Option<C::Value>,
+    pub helper: H,
 
     /// Function pointer that hashes this query's result values.
     ///
@@ -133,7 +130,13 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub execute_query_fn: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
 }
 
-impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
+pub trait QueryHelper<'tcx, K, V>: Default + 'static {
+    fn try_load_from_disk_fn(tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) -> Option<V>;
+}
+
+impl<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>> fmt::Debug
+    for QueryVTable<'tcx, C, H>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // When debug-printing a query vtable (e.g. for ICE or tracing),
         // just print the query name to know what query we're dealing with.
@@ -339,6 +342,32 @@ macro_rules! define_callbacks {
                 #[cfg(not($arena_cache))]
                 pub type ProvidedValue<'tcx> = Value<'tcx>;
 
+                #[derive(Default)]
+                pub struct Helper;
+
+                impl<'tcx> crate::query::QueryHelper<'tcx, Key<'tcx>, Erased<Value<'tcx>>> for Helper {
+                    #[cfg($cache_on_disk)]
+                    fn try_load_from_disk_fn(
+                        tcx: TyCtxt<'tcx>,
+                        prev_index: crate::dep_graph::SerializedDepNodeIndex,
+                    ) -> Option<Erased<Value<'tcx>>> {
+                        use rustc_middle::queries::$name::{ProvidedValue, provided_to_erased};
+
+                        let loaded_value: ProvidedValue<'tcx> =
+                            rustc_middle::query::plumbing::try_load_from_disk(tcx, prev_index)?;
+
+                        // Arena-alloc the value if appropriate, and erase it.
+                        Some(provided_to_erased(tcx, loaded_value))
+                    }
+                    #[cfg(not($cache_on_disk))]
+                    fn try_load_from_disk_fn(
+                        _tcx: TyCtxt<'tcx>,
+                        _prev_index: crate::dep_graph::SerializedDepNodeIndex,
+                    ) -> Option<Erased<Value<'tcx>>> {
+                        None
+                    }
+                }
+
                 pub type Cache<'tcx> =
                     <Key<'tcx> as $crate::query::QueryKey>::Cache<Erased<Value<'tcx>>>;
 
@@ -468,7 +497,7 @@ macro_rules! define_callbacks {
         /// Holds a `QueryVTable` for each query.
         pub struct QueryVTables<'tcx> {
             $(
-                pub $name: $crate::query::QueryVTable<'tcx, $name::Cache<'tcx>>,
+                pub $name: $crate::query::QueryVTable<'tcx, $name::Cache<'tcx>, $name::Helper>,
             )*
         }
 
@@ -659,4 +688,19 @@ pub(crate) fn default_extern_query(name: &str, key: &dyn std::fmt::Debug) -> ! {
         "`tcx.{name}({key:?})` unsupported by its crate; \
          perhaps the `{name}` query was never assigned a provider function",
     )
+}
+
+pub(crate) fn try_load_from_disk<'tcx, V>(
+    tcx: TyCtxt<'tcx>,
+    prev_index: SerializedDepNodeIndex,
+) -> Option<V>
+where
+    V: for<'a> Decodable<CacheDecoder<'a, 'tcx>>,
+{
+    let on_disk_cache = tcx.query_system.on_disk_cache.as_ref()?;
+
+    // The call to `with_query_deserialization` enforces that no new `DepNodes`
+    // are created during deserialization. See the docs of that method for more
+    // details.
+    tcx.dep_graph.with_query_deserialization(|| on_disk_cache.try_load_query_value(tcx, prev_index))
 }

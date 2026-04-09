@@ -142,7 +142,7 @@ macro_rules! define_queries {
                 }
 
                 pub(crate) fn make_query_vtable<'tcx>(incremental: bool)
-                    -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>>
+                    -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>, rustc_middle::queries::$name::Helper>
                 {
                     use rustc_middle::queries::$name::Value;
                     QueryVTable {
@@ -159,18 +159,7 @@ macro_rules! define_queries {
                         will_cache_on_disk_for_key_fn:
                             $crate::query_impl::$name::will_cache_on_disk_for_key,
 
-                        #[cfg($cache_on_disk)]
-                        try_load_from_disk_fn: |tcx, prev_index| {
-                            use rustc_middle::queries::$name::{ProvidedValue, provided_to_erased};
-
-                            let loaded_value: ProvidedValue<'tcx> =
-                                $crate::plumbing::try_load_from_disk(tcx, prev_index)?;
-
-                            // Arena-alloc the value if appropriate, and erase it.
-                            Some(provided_to_erased(tcx, loaded_value))
-                        },
-                        #[cfg(not($cache_on_disk))]
-                        try_load_from_disk_fn: |_tcx, _prev_index| None,
+                        helper: Default::default(),
 
                         #[cfg($handle_cycle_error)]
                         handle_cycle_error_fn: |tcx, key, cycle, err| {
@@ -208,9 +197,10 @@ macro_rules! define_queries {
 
                 impl<'tcx> GetQueryVTable<'tcx> for VTableGetter {
                     type Cache = rustc_middle::queries::$name::Cache<'tcx>;
+                    type Helper = rustc_middle::queries::$name::Helper;
 
                     #[inline(always)]
-                    fn query_vtable(tcx: TyCtxt<'tcx>) -> &'tcx QueryVTable<'tcx, Self::Cache> {
+                    fn query_vtable(tcx: TyCtxt<'tcx>) -> &'tcx QueryVTable<'tcx, Self::Cache, Self::Helper> {
                         &tcx.query_system.query_vtables.$name
                     }
                 }
@@ -246,7 +236,7 @@ macro_rules! define_queries {
             (ALL, $tcx:expr, $closure:expr) => {{
                 let tcx: rustc_middle::ty::TyCtxt<'_> = $tcx;
                 $(
-                    let query: &rustc_middle::query::QueryVTable<'_, _> =
+                    let query: &rustc_middle::query::QueryVTable<'_, _, _> =
                         &tcx.query_system.query_vtables.$name;
                     $closure(query);
                 )*
@@ -261,7 +251,7 @@ macro_rules! define_queries {
                 $(
                     #[cfg($cache_on_disk)]
                     {
-                        let query: &rustc_middle::query::QueryVTable<'_, _> =
+                        let query: &rustc_middle::query::QueryVTable<'_, _, _> =
                             &tcx.query_system.query_vtables.$name;
                         $closure(query);
                     }
