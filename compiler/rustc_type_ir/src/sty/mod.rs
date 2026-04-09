@@ -26,18 +26,7 @@ pub struct Region<I: Interner>(pub I::InternedRegionKind);
 impl<I: Interner> Region<I> {
     #[inline]
     pub fn new_bound(interner: I, debruijn: DebruijnIndex, bound_region: BoundRegion<I>) -> Self {
-        // Use a pre-interned one when possible.
-        if let BoundRegion { var, kind: BoundRegionKind::Anon } = bound_region
-            && let Some(re) =
-                interner.get_anon_re_bounds_lifetime(debruijn.as_usize(), var.as_usize())
-        {
-            re
-        } else {
-            interner.intern_region(RegionKind::ReBound(
-                BoundVarIndexKind::Bound(debruijn),
-                bound_region,
-            ))
-        }
+        interner.intern_bound_region(debruijn, bound_region)
     }
 
     #[inline]
@@ -47,15 +36,7 @@ impl<I: Interner> Region<I> {
 
     #[inline]
     pub fn new_canonical_bound(interner: I, var: BoundVar) -> Self {
-        // Use a pre-interned one when possible.
-        if let Some(re) = interner.get_anon_re_canonical_bounds_lifetime(var.as_usize()) {
-            re
-        } else {
-            interner.intern_region(RegionKind::ReBound(
-                BoundVarIndexKind::Canonical,
-                BoundRegion { var, kind: BoundRegionKind::Anon },
-            ))
-        }
+        interner.intern_canonical_bound(var)
     }
 
     #[inline]

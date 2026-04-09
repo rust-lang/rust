@@ -11,7 +11,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
-use rustc_type_ir::{CollectAndApply, Interner, TypeFoldable, search_graph};
+use rustc_type_ir::{
+    BoundVar, CollectAndApply, DebruijnIndex, Interner, TypeFoldable, search_graph,
+};
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
 use crate::infer::canonical::CanonicalVarKinds;
@@ -20,8 +22,8 @@ use crate::traits::solve::{
     self, CanonicalInput, ExternalConstraints, ExternalConstraintsData, QueryResult, inspect,
 };
 use crate::ty::{
-    self, Clause, Const, List, ParamTy, Pattern, PolyExistentialPredicate, Predicate, Region,
-    RegionKind, Ty, TyCtxt,
+    self, BoundRegion, Clause, Const, List, ParamTy, Pattern, PolyExistentialPredicate, Predicate,
+    Region, RegionKind, Ty, TyCtxt,
 };
 
 #[allow(rustc::usage_of_ty_tykind)]
@@ -741,6 +743,34 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn intern_region(self, region_kind: RegionKind<'tcx>) -> Region<'tcx> {
         self.intern_region(region_kind)
+    }
+
+    fn intern_bound_region(
+        self,
+        debruijn: DebruijnIndex,
+        bound_region: BoundRegion<'tcx>,
+    ) -> Region<'tcx> {
+        // Use a pre-interned one when possible.
+        if let ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon } = bound_region
+            && let Some(inner) = self.lifetimes.anon_re_bounds.get(debruijn.as_usize())
+            && let Some(re) = inner.get(var.as_usize()).copied()
+        {
+            re
+        } else {
+            self.intern_region(ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), bound_region))
+        }
+    }
+
+    fn intern_canonical_bound(self, var: BoundVar) -> Region<'tcx> {
+        // Use a pre-interned one when possible.
+        if let Some(re) = self.lifetimes.anon_re_canonical_bounds.get(var.as_usize()).copied() {
+            re
+        } else {
+            self.intern_region(ty::ReBound(
+                ty::BoundVarIndexKind::Canonical,
+                BoundRegion { var, kind: ty::BoundRegionKind::Anon },
+            ))
+        }
     }
 }
 
