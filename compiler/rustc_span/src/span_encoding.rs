@@ -460,3 +460,16 @@ impl SpanInterner {
 fn with_span_interner<T, F: FnOnce(&mut SpanInterner) -> T>(f: F) -> T {
     crate::with_session_globals(|session_globals| f(&mut session_globals.span_interner.lock()))
 }
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::*;
+    // tidy-alphabetical-start
+    static_assert_size!(InlineCtxt, 8);
+    static_assert_size!(InlineParent, 8);
+    static_assert_size!(Span, 8);
+    // tidy-alphabetical-end
+}
