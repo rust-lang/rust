@@ -2001,11 +2001,12 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             return None;
         }
 
-        // FIXME(jchlanda) operand bundles should only be attached to indirect function calls.
-        // However, as function signing is unstable, we end up signing too eagerly (including
-        // direct function calls), hence add operand bundles to all calls. We should analyze the
-        // call and bail out on direct calls here.
-
+        // FIXME(jchlanda) Operand bundles should only be attached to indirect function calls.
+        // However, signing of function pointers is currently performed in `get_fn_addr`. This
+        // causes the logic to apply too broadly, including to function values (not just pointers).
+        // As a result, direct calls using signed function values must also receive operand bundles.
+        // Once this is resolved, we should analyze each call and skip direct calls here. The issue
+        // is discussed further at: <https://github.com/rust-lang/rust/issues/152532>j
         let key: u32 = 0;
         let discriminator: u64 = 0;
         Some(llvm::OperandBundleBox::new(
