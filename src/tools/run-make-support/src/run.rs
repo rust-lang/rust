@@ -147,17 +147,11 @@ mod tests {
 
     #[test]
     fn multiple_ifs_separators() {
-        assert_eq!(
-            split_maybe_args("a  b\t\tc\n\nd"),
-            vec![os("a"), os("b"), os("c"), os("d")]
-        );
+        assert_eq!(split_maybe_args("a  b\t\tc\n\nd"), vec![os("a"), os("b"), os("c"), os("d")]);
     }
 
     #[test]
     fn leading_and_trailing_whitespace() {
-        assert_eq!(
-            split_maybe_args("  valgrind\t"),
-            vec![os("valgrind")]
-        );
+        assert_eq!(split_maybe_args("  valgrind\t"), vec![os("valgrind")]);
     }
 }
