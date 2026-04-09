@@ -437,7 +437,7 @@ fn mir_promoted(
 
     let const_qualifs = match tcx.def_kind(def) {
         DefKind::Fn | DefKind::AssocFn | DefKind::Closure
-            if tcx.constness(def) == hir::Constness::Const =>
+            if tcx.hir_body_const_context(def).is_some() =>
         {
             tcx.mir_const_qualif(def)
         }
