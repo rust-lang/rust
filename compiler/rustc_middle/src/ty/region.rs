@@ -1,7 +1,4 @@
-use std::fmt;
-
-use rustc_errors::{DiagArgValue, IntoDiagArg, MultiSpan};
-use rustc_hir::def::Namespace;
+use rustc_errors::MultiSpan;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Symbol, kw, sym};
@@ -9,33 +6,10 @@ pub use rustc_type_ir::RegionVid;
 use rustc_type_ir::{Region as IrRegion, RegionKind as IrRegionKind};
 use tracing::debug;
 
-use crate::ty::print::{FmtPrinter, Print};
 use crate::ty::{self, BoundVar, TyCtxt, TypeFlags};
 
 pub type Region<'tcx> = IrRegion<TyCtxt<'tcx>>;
 pub type RegionKind<'tcx> = IrRegionKind<TyCtxt<'tcx>>;
-
-#[derive(Copy, Clone)]
-pub struct RegionDisplay<'tcx>(pub Region<'tcx>);
-
-#[derive(Copy, Clone)]
-pub struct RegionDiagArg<'tcx>(pub Region<'tcx>);
-
-impl fmt::Display for RegionDisplay<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| {
-            let mut p = FmtPrinter::new(tcx, Namespace::TypeNS);
-            tcx.lift(self.0).expect("could not lift region for printing").print(&mut p)?;
-            f.write_str(&p.into_buffer())
-        })
-    }
-}
-
-impl IntoDiagArg for RegionDiagArg<'_> {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        DiagArgValue::Str(RegionDisplay(self.0).to_string().into())
-    }
-}
 
 #[extension(pub trait RegionExt<'tcx>)]
 impl<'tcx> Region<'tcx> {
@@ -118,18 +92,6 @@ impl<'tcx> Region<'tcx> {
 /// Region utilities
 #[extension(pub trait RegionUtilitiesExt<'tcx>)]
 impl<'tcx> Region<'tcx> {
-    fn display(self) -> RegionDisplay<'tcx> {
-        RegionDisplay(self)
-    }
-
-    fn diag_arg(self) -> RegionDiagArg<'tcx> {
-        RegionDiagArg(self)
-    }
-
-    fn to_string(self) -> String {
-        self.display().to_string()
-    }
-
     fn kind(self) -> RegionKind<'tcx> {
         *self.0.0
     }

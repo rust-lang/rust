@@ -916,9 +916,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                 e
             } else {
                 bug!(
-                    "expected to map region {} to early-bound identity region, but got {}",
-                    region.to_string(),
-                    id_region.to_string()
+                    "expected to map region {region} to early-bound identity region, but got {id_region}"
                 );
             }
         } else {

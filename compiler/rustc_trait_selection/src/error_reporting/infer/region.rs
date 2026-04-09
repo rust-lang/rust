@@ -499,7 +499,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     span,
                     impl_item_def_id,
                     trait_item_def_id,
-                    &format!("`{}: {}`", sup.to_string(), sub.to_string()),
+                    &format!("`{sup}: {sub}`"),
                 );
                 // We should only suggest rewriting the `where` clause if the predicate is within that `where` clause
                 if let Some(generics) = self.tcx.hir_get_generics(impl_item_def_id)
@@ -712,7 +712,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 span,
                 impl_item_def_id,
                 trait_item_def_id,
-                &format!("`{bound_kind}: {}`", sub.to_string()),
+                &format!("`{bound_kind}: {sub}`"),
             );
         }
 
@@ -743,7 +743,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ty::ReEarlyParam(_) | ty::ReLateParam(_) | ty::ReStatic => {
                     msg_span_from_named_region(self.tcx, generic_param_scope, sub, Some(span))
                 }
-                _ => (format!("lifetime `{}`", sub.to_string()), Some(span)),
+                _ => (format!("lifetime `{sub}`"), Some(span)),
             };
             let prefix = format!("{labeled_user_string} must be valid for ");
             label_msg_span(&mut err, &prefix, description, span, "...");
@@ -858,7 +858,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let suggestion = format!("{} {}", generics.add_where_or_trailing_comma(), pred);
                 suggs.push((generics.tail_span_for_predicate_suggestion(), suggestion))
             } else {
-                let consider = format!("{msg} `{bound_kind}: {}`...", sub.to_string());
+                let consider = format!("{msg} `{bound_kind}: {sub}`...");
                 err.help(consider);
             }
 
@@ -1137,7 +1137,7 @@ pub(super) fn note_and_explain_region<'tcx>(
         ty::ReError(_) => return,
 
         // FIXME(#125431): `ReVar` shouldn't reach here.
-        ty::ReVar(_) => (format!("lifetime `{}`", region.to_string()), alt_span),
+        ty::ReVar(_) => (format!("lifetime `{region}`"), alt_span),
 
         ty::ReBound(..) | ty::ReErased => {
             bug!("unexpected region for note_and_explain_region: {:?}", region);
@@ -1199,7 +1199,7 @@ fn msg_span_from_named_region<'tcx>(
                         Some(tcx.def_span(generic_param_scope)),
                     ),
                     _ => (
-                        format!("the lifetime `{}` as defined here", region.to_string()),
+                        format!("the lifetime `{region}` as defined here"),
                         Some(tcx.def_span(generic_param_scope)),
                     ),
                 }

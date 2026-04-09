@@ -2,7 +2,7 @@ use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, Subdiagnostic, msg};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
-use rustc_middle::ty::{self, RegionUtilitiesExt, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{Span, kw};
 
 use crate::error_reporting::infer::nice_region_error::find_anon_type;

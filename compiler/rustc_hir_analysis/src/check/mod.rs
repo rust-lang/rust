@@ -406,9 +406,8 @@ fn bounds_from_generic_predicates<'tcx>(
                     && !v.is_empty()
                 {
                     format!(
-                        "{}: {}",
-                        region.to_string(),
-                        v.into_iter().map(|r| r.to_string()).collect::<Vec<_>>().join(" + ")
+                        "{region}: {}",
+                        v.into_iter().map(Region::to_string).collect::<Vec<_>>().join(" + ")
                     )
                 } else {
                     region.to_string()
@@ -454,7 +453,7 @@ fn fn_sig_suggestion<'tcx>(
             Some(match ty.kind() {
                 ty::Param(_) if assoc.is_method() && i == 0 => "self".to_string(),
                 ty::Ref(reg, ref_ty, mutability) if i == 0 => {
-                    let reg = format!("{} ", reg.to_string());
+                    let reg = format!("{reg} ");
                     let reg = match &reg[..] {
                         "'_ " | " " => "",
                         reg => reg,

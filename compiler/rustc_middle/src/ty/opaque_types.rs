@@ -5,8 +5,8 @@ use tracing::{debug, instrument, trace};
 
 use crate::error::ConstNotUsedTraitAlias;
 use crate::ty::{
-    self, GenericArg, GenericArgKind, RegionExt, RegionUtilitiesExt, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable,
+    self, GenericArg, GenericArgKind, RegionExt, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable,
 };
 
 pub type OpaqueTypeKey<'tcx> = rustc_type_ir::OpaqueTypeKey<TyCtxt<'tcx>>;
@@ -126,7 +126,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
             Some(u) => panic!("region mapped to unexpected kind: {u:?}"),
             None if self.do_not_error => self.tcx.lifetimes.re_static,
             None => {
-                let r = r.to_string();
                 let e = self
                     .tcx
                     .dcx()
@@ -134,9 +133,8 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                     .with_span_label(
                         self.span,
                         format!(
-                            "lifetime `{}` is part of concrete type but not used in \
+                            "lifetime `{r}` is part of concrete type but not used in \
                              parameter list of the `impl Trait` type alias",
-                            r
                         ),
                     )
                     .emit();

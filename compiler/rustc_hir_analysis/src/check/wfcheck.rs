@@ -620,7 +620,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
             // In our example, requires that `Self: 'a`
             if ty_known_to_outlive(tcx, item_def_id, param_env, wf_tys, *ty, *region_a) {
                 debug!(?ty_idx, ?region_a_idx);
-                debug!("required clause: {ty} must outlive {}", region_a.to_string());
+                debug!("required clause: {ty} must outlive {region_a}");
                 // Translate into the generic parameters of the GAT. In
                 // our example, the type was `Self`, which will also be
                 // `Self` in the GAT.
@@ -655,11 +655,7 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
             }
             if region_known_to_outlive(tcx, item_def_id, param_env, wf_tys, *region_a, *region_b) {
                 debug!(?region_a_idx, ?region_b_idx);
-                debug!(
-                    "required clause: {} must outlive {}",
-                    region_a.to_string(),
-                    region_b.to_string()
-                );
+                debug!("required clause: {region_a} must outlive {region_b}");
                 // Translate into the generic parameters of the GAT.
                 let region_a_param = gat_generics.param_at(*region_a_idx, tcx);
                 let region_a_param = ty::Region::new_early_param(
@@ -2496,10 +2492,7 @@ fn lint_redundant_lifetimes<'tcx>(
                     rustc_lint_defs::builtin::REDUNDANT_LIFETIMES,
                     tcx.local_def_id_to_hir_id(def_id.expect_local()),
                     tcx.def_span(def_id),
-                    RedundantLifetimeArgsLint {
-                        candidate: candidate.diag_arg(),
-                        victim: victim.diag_arg(),
-                    },
+                    RedundantLifetimeArgsLint { candidate, victim },
                 );
             }
         }
@@ -2511,7 +2504,7 @@ fn lint_redundant_lifetimes<'tcx>(
 #[note("you can use the `{$candidate}` lifetime directly, in place of `{$victim}`")]
 struct RedundantLifetimeArgsLint<'tcx> {
     /// The lifetime we have found to be redundant.
-    victim: ty::RegionDiagArg<'tcx>,
+    victim: ty::Region<'tcx>,
     // The lifetime we can replace the victim with.
-    candidate: ty::RegionDiagArg<'tcx>,
+    candidate: ty::Region<'tcx>,
 }
