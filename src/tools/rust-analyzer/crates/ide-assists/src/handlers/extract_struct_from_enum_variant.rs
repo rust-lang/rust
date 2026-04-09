@@ -159,16 +159,24 @@ pub(crate) fn extract_struct_from_enum_variant(
                 &field_list,
                 generic_params.clone(),
                 &enum_ast,
-                comments_for_struct,
             );
 
             let enum_ast = variant.parent_enum();
             let indent = enum_ast.indent_level();
             let def = def.indent(indent);
 
-            editor.insert_all(
+            let mut insert_items: Vec<SyntaxElement> = Vec::new();
+            for attr in enum_ast.attrs() {
+                insert_items.push(attr.syntax().clone().into());
+                insert_items.push(make.whitespace("\n").into());
+            }
+            insert_items.extend(comments_for_struct);
+            insert_items.push(def.syntax().clone().into());
+            insert_items.push(make.whitespace(&format!("\n\n{indent}")).into());
+            editor.insert_all_with_whitespace(
                 Position::before(enum_ast.syntax()),
-                vec![def.syntax().clone().into(), make.whitespace(&format!("\n\n{indent}")).into()],
+                insert_items,
+                &make,
             );
 
             update_variant(&make, &mut editor, &variant, generic_params);
@@ -288,7 +296,6 @@ fn create_struct_def(
     field_list: &Either<ast::RecordFieldList, ast::TupleFieldList>,
     generics: Option<ast::GenericParamList>,
     enum_: &ast::Enum,
-    comments: Vec<SyntaxElement>,
 ) -> ast::Struct {
     let enum_vis = enum_.visibility();
 
@@ -296,59 +303,40 @@ fn create_struct_def(
     let field_list: ast::FieldList = match field_list {
         Either::Left(field_list) => {
             if let Some(vis) = &enum_vis {
-                let (mut fl_editor, new_fl) = SyntaxEditor::with_ast_node(field_list);
-                for field in new_fl.fields() {
+                let new_fields = field_list.fields().map(|field| {
                     if field.visibility().is_none()
-                        && let Some(field_name) = field.name()
+                        && let Some(name) = field.name()
+                        && let Some(ty) = field.ty()
                     {
-                        fl_editor.insert_all(
-                            Position::before(field_name.syntax()),
-                            vec![vis.syntax().clone().into(), make.whitespace(" ").into()],
-                        );
+                        make.record_field(Some(vis.clone()), name, ty)
+                    } else {
+                        field
                     }
-                }
-                let new_fl = fl_editor.finish().new_root().clone();
-                ast::RecordFieldList::cast(new_fl).unwrap().into()
+                });
+                make.record_field_list(new_fields).into()
             } else {
                 field_list.clone().into()
             }
         }
         Either::Right(field_list) => {
             if let Some(vis) = &enum_vis {
-                let (mut fl_editor, new_fl) = SyntaxEditor::with_ast_node(field_list);
-                for field in new_fl.fields() {
+                let new_fields = field_list.fields().map(|field| {
                     if field.visibility().is_none()
                         && let Some(ty) = field.ty()
                     {
-                        fl_editor.insert_all(
-                            Position::before(ty.syntax()),
-                            vec![vis.syntax().clone().into(), make.whitespace(" ").into()],
-                        );
+                        make.tuple_field(Some(vis.clone()), ty)
+                    } else {
+                        field
                     }
-                }
-                let new_fl = fl_editor.finish().new_root().clone();
-                ast::TupleFieldList::cast(new_fl).unwrap().into()
+                });
+                make.tuple_field_list(new_fields).into()
             } else {
                 field_list.clone().into()
             }
         }
     };
 
-    let strukt = make.struct_(enum_vis, name, generics, field_list);
-    let mut items_to_prepend: Vec<SyntaxElement> = Vec::new();
-    for attr in enum_.attrs() {
-        items_to_prepend.push(attr.syntax().clone().into());
-        items_to_prepend.push(make.whitespace("\n").into());
-    }
-    items_to_prepend.extend(comments);
-
-    if !items_to_prepend.is_empty() {
-        let (mut strukt_editor, strukt_root) = SyntaxEditor::with_ast_node(&strukt);
-        strukt_editor.insert_all(Position::first_child_of(strukt_root.syntax()), items_to_prepend);
-        ast::Struct::cast(strukt_editor.finish().new_root().clone()).unwrap()
-    } else {
-        strukt
-    }
+    make.struct_(enum_vis, name, generics, field_list)
 }
 
 fn update_variant(
