@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0](https://github.com/rust-lang/hashbrown/compare/v0.16.1...v0.17.0) - 2026-04-06
+
+### Added
+
+- Added `hash_table::OccupiedEntry::replace_entry_with` (#669)
+- Added `hash_map::{OccupiedEntry::into_entry, VacantEntryRef::insert_entry_with_key}` (#670)
+- Added `hash_table::UnsafeIter` (#667)
+- Added `iter` methods to various `HashTable` iterators (#667)
+- Added `HashMap::{replace_key,replace_key_unchecked,insert_with_key_unchecked}` (#681)
+- Added `into_map` methods to all `HashMap` entry types (#686)
+- Added `into_table` methods to all `HashTable` entry types (#686)
+- Added `#[must_use]` to constructors (#697)
+- `TryReserveError` now implements `Error` (#698)
+
+### Changed
+
+- Changed `EntryRef` to use `ToOwned` (#670)
+- Bumped MSRV to 1.85 (2024 edition) (#676)
+
+### Fixed
+
+- `HashTable:clone_from` now forwards to `RawTable::clone_from` instead of using the default implementation (#668)
+- Fixed potential UB in `RawTableInner::fallible_with_capacity` (#692)
+- Fixed incorrect length if a hasher panics during rehash (#710)
+
 ## [0.16.1](https://github.com/rust-lang/hashbrown/compare/v0.16.0...v0.16.1) - 2025-11-20
 
 ### Added
