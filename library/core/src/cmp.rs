@@ -241,10 +241,9 @@ use crate::ops::ControlFlow;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(alias = "==")]
 #[doc(alias = "!=")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "can't compare `{Self}` with `{Rhs}`",
-    label = "no implementation for `{Self} == {Rhs}`",
-    append_const_msg
+    label = "no implementation for `{Self} == {Rhs}`"
 )]
 #[rustc_diagnostic_item = "PartialEq"]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
@@ -1356,10 +1355,9 @@ pub macro Ord($item:item) {
 #[doc(alias = "<")]
 #[doc(alias = "<=")]
 #[doc(alias = ">=")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "can't compare `{Self}` with `{Rhs}`",
-    label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`",
-    append_const_msg
+    label = "no implementation for `{Self} < {Rhs}` and `{Self} > {Rhs}`"
 )]
 #[rustc_diagnostic_item = "PartialOrd"]
 #[allow(multiple_supertrait_upcastable)] // FIXME(sized_hierarchy): remove this

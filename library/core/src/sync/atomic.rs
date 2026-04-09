@@ -2136,7 +2136,7 @@ impl<T> AtomicPtr<T> {
     /// ```
     #[inline]
     #[stable(feature = "atomic_try_update", since = "1.95.0")]
-    #[cfg(target_has_atomic = "8")]
+    #[cfg(target_has_atomic = "ptr")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[rustc_should_not_be_called_on_const_items]
     pub fn update(

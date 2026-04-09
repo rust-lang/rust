@@ -16,12 +16,13 @@ impl<S: Stage> SingleAttributeParser<S> for CrateNameParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(n) = args else {
-            cx.expected_name_value(cx.attr_span, None);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_name_value(attr_span, None);
             return None;
         };
 
         let Some(name) = n.value_as_str() else {
-            cx.expected_string_literal(n.value_span, Some(n.value_as_lit()));
+            cx.adcx().expected_string_literal(n.value_span, Some(n.value_as_lit()));
             return None;
         };
 
@@ -46,12 +47,13 @@ impl<S: Stage> CombineAttributeParser<S> for CrateTypeParser {
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         let ArgParser::NameValue(n) = args else {
-            cx.expected_name_value(cx.attr_span, None);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_name_value(attr_span, None);
             return None;
         };
 
         let Some(crate_type) = n.value_as_str() else {
-            cx.expected_string_literal(n.value_span, Some(n.value_as_lit()));
+            cx.adcx().expected_string_literal(n.value_span, Some(n.value_as_lit()));
             return None;
         };
 
@@ -89,7 +91,8 @@ impl<S: Stage> SingleAttributeParser<S> for RecursionLimitParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
-            cx.expected_name_value(cx.attr_span, None);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_name_value(attr_span, None);
             return None;
         };
 
@@ -111,7 +114,8 @@ impl<S: Stage> SingleAttributeParser<S> for MoveSizeLimitParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
-            cx.expected_name_value(cx.attr_span, None);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_name_value(attr_span, None);
             return None;
         };
 
@@ -133,7 +137,8 @@ impl<S: Stage> SingleAttributeParser<S> for TypeLengthLimitParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
-            cx.expected_name_value(cx.attr_span, None);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_name_value(attr_span, None);
             return None;
         };
 
@@ -155,7 +160,8 @@ impl<S: Stage> SingleAttributeParser<S> for PatternComplexityLimitParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let ArgParser::NameValue(nv) = args else {
-            cx.expected_name_value(cx.attr_span, None);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_name_value(attr_span, None);
             return None;
         };
 
@@ -213,8 +219,9 @@ impl<S: Stage> SingleAttributeParser<S> for WindowsSubsystemParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
-            cx.expected_name_value(
-                args.span().unwrap_or(cx.inner_span),
+            let inner_span = cx.inner_span;
+            cx.adcx().expected_name_value(
+                args.span().unwrap_or(inner_span),
                 Some(sym::windows_subsystem),
             );
             return None;
@@ -224,7 +231,10 @@ impl<S: Stage> SingleAttributeParser<S> for WindowsSubsystemParser {
             Some(sym::console) => WindowsSubsystemKind::Console,
             Some(sym::windows) => WindowsSubsystemKind::Windows,
             Some(_) | None => {
-                cx.expected_specific_argument_strings(nv.value_span, &[sym::console, sym::windows]);
+                cx.adcx().expected_specific_argument_strings(
+                    nv.value_span,
+                    &[sym::console, sym::windows],
+                );
                 return None;
             }
         };
@@ -310,29 +320,31 @@ impl<S: Stage> CombineAttributeParser<S> for FeatureParser {
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         let ArgParser::List(list) = args else {
-            cx.expected_list(cx.attr_span, args);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
             return Vec::new();
         };
 
         if list.is_empty() {
-            cx.warn_empty_attribute(cx.attr_span);
+            let attr_span = cx.attr_span;
+            cx.adcx().warn_empty_attribute(attr_span);
         }
 
         let mut res = Vec::new();
 
         for elem in list.mixed() {
             let Some(elem) = elem.meta_item() else {
-                cx.expected_identifier(elem.span());
+                cx.adcx().expected_identifier(elem.span());
                 continue;
             };
             if let Err(arg_span) = elem.args().no_args() {
-                cx.expected_no_args(arg_span);
+                cx.adcx().expected_no_args(arg_span);
                 continue;
             }
 
             let path = elem.path();
             let Some(ident) = path.word() else {
-                cx.expected_identifier(path.span());
+                cx.adcx().expected_identifier(path.span());
                 continue;
             };
             res.push(ident);
@@ -356,29 +368,31 @@ impl<S: Stage> CombineAttributeParser<S> for RegisterToolParser {
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
         let ArgParser::List(list) = args else {
-            cx.expected_list(cx.attr_span, args);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
             return Vec::new();
         };
 
         if list.is_empty() {
-            cx.warn_empty_attribute(cx.attr_span);
+            let attr_span = cx.attr_span;
+            cx.adcx().warn_empty_attribute(attr_span);
         }
 
         let mut res = Vec::new();
 
         for elem in list.mixed() {
             let Some(elem) = elem.meta_item() else {
-                cx.expected_identifier(elem.span());
+                cx.adcx().expected_identifier(elem.span());
                 continue;
             };
             if let Err(arg_span) = elem.args().no_args() {
-                cx.expected_no_args(arg_span);
+                cx.adcx().expected_no_args(arg_span);
                 continue;
             }
 
             let path = elem.path();
             let Some(ident) = path.word() else {
-                cx.expected_identifier(path.span());
+                cx.adcx().expected_identifier(path.span());
                 continue;
             };
 

@@ -569,7 +569,7 @@ pub struct MiriMachine<'tcx> {
     pub(crate) user_relevant_crates: Vec<CrateNum>,
 
     /// Mapping extern static names to their pointer.
-    extern_statics: FxHashMap<Symbol, StrictPointer>,
+    pub(crate) extern_statics: FxHashMap<Symbol, StrictPointer>,
 
     /// The random number generator used for resolving non-determinism.
     /// Needs to be queried by ptr_to_int, hence needs interior mutability.

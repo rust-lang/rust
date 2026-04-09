@@ -210,7 +210,7 @@ impl SingleComponentPathImports {
                                 if !macros.contains(&name) {
                                     single_use_usages.push(SingleUse {
                                         name,
-                                        span: tree.0.span,
+                                        span: tree.0.span(),
                                         item_id: item.id,
                                         can_suggest: false,
                                     });

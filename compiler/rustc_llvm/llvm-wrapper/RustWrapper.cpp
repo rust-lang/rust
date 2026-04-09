@@ -70,6 +70,10 @@ using namespace llvm::object;
 // This opcode is an LLVM detail that could hypothetically change (?), so
 // verify that the hard-coded value in `dwarf_const.rs` still agrees with LLVM.
 static_assert(dwarf::DW_OP_LLVM_fragment == 0x1000);
+static_assert(dwarf::DW_OP_constu == 0x10);
+static_assert(dwarf::DW_OP_minus == 0x1c);
+static_assert(dwarf::DW_OP_mul == 0x1e);
+static_assert(dwarf::DW_OP_bregx == 0x92);
 static_assert(dwarf::DW_OP_stack_value == 0x9f);
 
 static LLVM_THREAD_LOCAL char *LastError;
@@ -361,6 +365,7 @@ enum class LLVMRustAttributeKind {
   CapturesNone = 46,
   SanitizeRealtimeNonblocking = 47,
   SanitizeRealtimeBlocking = 48,
+  Convergent = 49,
 };
 
 static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
@@ -457,6 +462,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttributeKind Kind) {
     return Attribute::SanitizeRealtime;
   case LLVMRustAttributeKind::SanitizeRealtimeBlocking:
     return Attribute::SanitizeRealtimeBlocking;
+  case LLVMRustAttributeKind::Convergent:
+    return Attribute::Convergent;
   }
   report_fatal_error("bad LLVMRustAttributeKind");
 }
@@ -731,7 +738,7 @@ extern "C" bool LLVMRustInlineAsmVerify(LLVMTypeRef Ty, char *Constraints,
 }
 
 template <typename DIT> DIT *unwrapDIPtr(LLVMMetadataRef Ref) {
-  return (DIT *)(Ref ? unwrap<MDNode>(Ref) : nullptr);
+  return (DIT *)(Ref ? unwrap<Metadata>(Ref) : nullptr);
 }
 
 #define DIDescriptor DIScope
@@ -1205,6 +1212,36 @@ extern "C" void LLVMRustDICompositeTypeReplaceArrays(
   DICompositeType *Tmp = unwrapDI<DICompositeType>(CompositeTy);
   unwrap(Builder)->replaceArrays(Tmp, DINodeArray(unwrap<MDTuple>(Elements)),
                                  DINodeArray(unwrap<MDTuple>(Params)));
+}
+
+// LLVM's C FFI bindings don't expose the overload of `GetOrCreateSubrange`
+// which takes a metadata node as the upper bound.
+extern "C" LLVMMetadataRef
+LLVMRustDIGetOrCreateSubrange(LLVMDIBuilderRef Builder,
+                              LLVMMetadataRef CountNode, LLVMMetadataRef LB,
+                              LLVMMetadataRef UB, LLVMMetadataRef Stride) {
+  return wrap(unwrap(Builder)->getOrCreateSubrange(
+      unwrapDI<Metadata>(CountNode), unwrapDI<Metadata>(LB),
+      unwrapDI<Metadata>(UB), unwrapDI<Metadata>(Stride)));
+}
+
+// LLVM's CI FFI bindings don't expose the `BitStride` parameter of
+// `createVectorType`.
+extern "C" LLVMMetadataRef
+LLVMRustDICreateVectorType(LLVMDIBuilderRef Builder, uint64_t Size,
+                           uint32_t AlignInBits, LLVMMetadataRef Type,
+                           LLVMMetadataRef Subscripts,
+                           LLVMMetadataRef BitStride) {
+#if LLVM_VERSION_GE(22, 0)
+  return wrap(unwrap(Builder)->createVectorType(
+      Size, AlignInBits, unwrapDI<DIType>(Type),
+      DINodeArray(unwrapDI<MDTuple>(Subscripts)),
+      unwrapDI<Metadata>(BitStride)));
+#else
+  return wrap(unwrap(Builder)->createVectorType(
+      Size, AlignInBits, unwrapDI<DIType>(Type),
+      DINodeArray(unwrapDI<MDTuple>(Subscripts))));
+#endif
 }
 
 extern "C" LLVMMetadataRef

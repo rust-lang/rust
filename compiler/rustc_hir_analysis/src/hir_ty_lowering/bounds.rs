@@ -639,8 +639,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             .map_bound(|projection_term| projection_term.expect_ty(self.tcx()));
                         // Calling `skip_binder` is okay, because `lower_bounds` expects the `param_ty`
                         // parameter to have a skipped binder.
-                        let param_ty =
-                            Ty::new_alias(tcx, ty::Projection, projection_ty.skip_binder());
+                        let param_ty = Ty::new_alias(tcx, projection_ty.skip_binder());
                         self.lower_bounds(
                             param_ty,
                             hir_bounds,
@@ -730,7 +729,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     ty::Binder::bind_with_vars(trait_ref, tcx.late_bound_vars(item_segment.hir_id));
 
                 match self.lower_return_type_notation_ty(candidate, item_def_id, hir_ty.span) {
-                    Ok(ty) => Ty::new_alias(tcx, ty::Projection, ty),
+                    Ok(ty) => Ty::new_alias(tcx, ty),
                     Err(guar) => Ty::new_error(tcx, guar),
                 }
             }
@@ -773,7 +772,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
 
                 match self.lower_return_type_notation_ty(bound, item_def_id, hir_ty.span) {
-                    Ok(ty) => Ty::new_alias(tcx, ty::Projection, ty),
+                    Ok(ty) => Ty::new_alias(tcx, ty),
                     Err(guar) => Ty::new_error(tcx, guar),
                 }
             }
@@ -833,8 +832,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // Next, we need to check that the return-type notation is being used on
         // an RPITIT (return-position impl trait in trait) or AFIT (async fn in trait).
         let output = tcx.fn_sig(item_def_id).skip_binder().output();
-        let output = if let ty::Alias(ty::Projection, alias_ty) = *output.skip_binder().kind()
-            && tcx.is_impl_trait_in_trait(alias_ty.def_id)
+        let output = if let ty::Alias(alias_ty) = *output.skip_binder().kind()
+            && let ty::AliasTy { kind: ty::Projection { def_id: projection_def_id }, .. } = alias_ty
+            && tcx.is_impl_trait_in_trait(projection_def_id)
         {
             alias_ty
         } else {

@@ -1,0 +1,12 @@
+error[E0277]: my message
+  --> $DIR/it_works_local.rs:20:5
+   |
+LL |     x == x;
+   |     ^^^^^^ my label
+   |
+   = note: my note
+   = note: my other note
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

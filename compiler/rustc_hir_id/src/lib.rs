@@ -8,7 +8,7 @@ use std::fmt::{self, Debug};
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-pub use rustc_span::HashStableContext;
+use rustc_span::HashStableContext;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, DefIndex, DefPathHash, LocalDefId};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable)]
@@ -54,18 +54,18 @@ impl rustc_index::Idx for OwnerId {
     }
 }
 
-impl<CTX: HashStableContext> HashStable<CTX> for OwnerId {
+impl<Hcx: HashStableContext> HashStable<Hcx> for OwnerId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
     }
 }
 
-impl<CTX: HashStableContext> ToStableHashKey<CTX> for OwnerId {
+impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for OwnerId {
     type KeyType = DefPathHash;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> DefPathHash {
         hcx.def_path_hash(self.to_def_id())
     }
 }
@@ -176,21 +176,21 @@ pub const CRATE_HIR_ID: HirId =
 
 pub const CRATE_OWNER_ID: OwnerId = OwnerId { def_id: CRATE_DEF_ID };
 
-impl<CTX: rustc_span::HashStableContext> ToStableHashKey<CTX> for HirId {
+impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for HirId {
     type KeyType = (DefPathHash, ItemLocalId);
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &CTX) -> (DefPathHash, ItemLocalId) {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> (DefPathHash, ItemLocalId) {
         let def_path_hash = self.owner.def_id.to_stable_hash_key(hcx);
         (def_path_hash, self.local_id)
     }
 }
 
-impl<CTX: HashStableContext> ToStableHashKey<CTX> for ItemLocalId {
+impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for ItemLocalId {
     type KeyType = ItemLocalId;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &CTX) -> ItemLocalId {
+    fn to_stable_hash_key(&self, _: &mut Hcx) -> ItemLocalId {
         *self
     }
 }

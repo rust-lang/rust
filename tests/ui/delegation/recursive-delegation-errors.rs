@@ -5,6 +5,7 @@
 mod first_mod {
     reuse foo;
     //~^ ERROR failed to resolve delegation callee
+    //~| WARN: function cannot return without recursing
 }
 
 mod second_mod {
@@ -33,8 +34,10 @@ mod fourth_mod {
     trait Trait {
         reuse Trait::foo as bar;
         //~^ ERROR encountered a cycle during delegation signature resolution
+        //~| ERROR: type annotations needed
         reuse Trait::bar as foo;
         //~^ ERROR encountered a cycle during delegation signature resolution
+        //~| ERROR: type annotations needed
     }
 }
 
@@ -48,6 +51,9 @@ mod fifth_mod {
         //~^ ERROR encountered a cycle during delegation signature resolution
         //~| ERROR encountered a cycle during delegation signature resolution
         //~| ERROR encountered a cycle during delegation signature resolution
+        //~| ERROR: type annotations needed
+        //~| ERROR: type annotations needed
+        //~| ERROR: type annotations needed
     }
 }
 

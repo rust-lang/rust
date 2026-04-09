@@ -217,15 +217,15 @@ impl<I: Interner> fmt::Debug for RegionKind<I> {
 
 #[cfg(feature = "nightly")]
 // This is not a derived impl because a derive would require `I: HashStable`
-impl<CTX, I: Interner> HashStable<CTX> for RegionKind<I>
+impl<Hcx, I: Interner> HashStable<Hcx> for RegionKind<I>
 where
-    I::EarlyParamRegion: HashStable<CTX>,
-    I::LateParamRegion: HashStable<CTX>,
-    I::DefId: HashStable<CTX>,
-    I::Symbol: HashStable<CTX>,
+    I::EarlyParamRegion: HashStable<Hcx>,
+    I::LateParamRegion: HashStable<Hcx>,
+    I::DefId: HashStable<Hcx>,
+    I::Symbol: HashStable<Hcx>,
 {
     #[inline]
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         std::mem::discriminant(self).hash_stable(hcx, hasher);
         match self {
             ReErased | ReStatic | ReError(_) => {

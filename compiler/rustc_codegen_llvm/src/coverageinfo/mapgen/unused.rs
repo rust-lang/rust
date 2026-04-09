@@ -2,7 +2,7 @@ use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir;
-use rustc_middle::mir::mono::MonoItemPartitions;
+use rustc_middle::mono::{MonoItem, MonoItemPartitions};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefIdSet;
 
@@ -109,8 +109,8 @@ fn prepare_usage_sets<'tcx>(tcx: TyCtxt<'tcx>) -> UsageSets<'tcx> {
         .iter()
         .flat_map(|cgu| cgu.items().keys())
         .filter_map(|item| match item {
-            mir::mono::MonoItem::Fn(instance) => Some(instance),
-            mir::mono::MonoItem::Static(_) | mir::mono::MonoItem::GlobalAsm(_) => None,
+            MonoItem::Fn(instance) => Some(instance),
+            MonoItem::Static(_) | MonoItem::GlobalAsm(_) => None,
         })
         // We only need one arbitrary instance per definition.
         .filter(move |instance| def_ids_seen.insert(instance.def_id()))

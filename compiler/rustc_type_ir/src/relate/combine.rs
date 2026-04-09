@@ -128,7 +128,8 @@ where
         // All other cases of inference are errors
         (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
 
-        (ty::Alias(ty::Opaque, _), _) | (_, ty::Alias(ty::Opaque, _)) => {
+        (ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }), _)
+        | (_, ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })) => {
             assert!(!infcx.next_trait_solver());
             match infcx.typing_mode() {
                 // During coherence, opaque types should be treated as *possibly*

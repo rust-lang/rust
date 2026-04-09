@@ -21,24 +21,25 @@ impl<S: Stage> SingleAttributeParser<S> for InstructionSetParser {
         const POSSIBLE_SYMBOLS: &[Symbol] = &[sym::arm_a32, sym::arm_t32];
         const POSSIBLE_ARM_SYMBOLS: &[Symbol] = &[sym::a32, sym::t32];
         let Some(maybe_meta_item) = args.list().and_then(MetaItemListParser::single) else {
-            cx.expected_specific_argument(cx.attr_span, POSSIBLE_SYMBOLS);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_specific_argument(attr_span, POSSIBLE_SYMBOLS);
             return None;
         };
 
         let Some(meta_item) = maybe_meta_item.meta_item() else {
-            cx.expected_specific_argument(maybe_meta_item.span(), POSSIBLE_SYMBOLS);
+            cx.adcx().expected_specific_argument(maybe_meta_item.span(), POSSIBLE_SYMBOLS);
             return None;
         };
 
         let mut segments = meta_item.path().segments();
 
         let Some(architecture) = segments.next() else {
-            cx.expected_specific_argument(meta_item.span(), POSSIBLE_SYMBOLS);
+            cx.adcx().expected_specific_argument(meta_item.span(), POSSIBLE_SYMBOLS);
             return None;
         };
 
         let Some(instruction_set) = segments.next() else {
-            cx.expected_specific_argument(architecture.span, POSSIBLE_SYMBOLS);
+            cx.adcx().expected_specific_argument(architecture.span, POSSIBLE_SYMBOLS);
             return None;
         };
 
@@ -56,13 +57,14 @@ impl<S: Stage> SingleAttributeParser<S> for InstructionSetParser {
                     sym::a32 => InstructionSetAttr::ArmA32,
                     sym::t32 => InstructionSetAttr::ArmT32,
                     _ => {
-                        cx.expected_specific_argument(instruction_set.span, POSSIBLE_ARM_SYMBOLS);
+                        cx.adcx()
+                            .expected_specific_argument(instruction_set.span, POSSIBLE_ARM_SYMBOLS);
                         return None;
                     }
                 }
             }
             _ => {
-                cx.expected_specific_argument(architecture.span, POSSIBLE_SYMBOLS);
+                cx.adcx().expected_specific_argument(architecture.span, POSSIBLE_SYMBOLS);
                 return None;
             }
         };

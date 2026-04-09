@@ -23,7 +23,8 @@ use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{
-    FileName, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, Symbol, sym,
+    FileName, HashStableContext, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm,
+    Symbol, sym,
 };
 use rustc_target::spec::{
     FramePointer, LinkSelfContainedComponents, LinkerFeatures, PanicStrategy, SplitDebuginfo,
@@ -38,7 +39,7 @@ use crate::errors::FileWriteFail;
 pub use crate::options::*;
 use crate::search_paths::SearchPath;
 use crate::utils::CanonicalizedPath;
-use crate::{EarlyDiagCtxt, HashStableContext, Session, filesearch, lint};
+use crate::{EarlyDiagCtxt, Session, filesearch, lint};
 
 mod cfg;
 mod externs;
@@ -636,10 +637,10 @@ macro_rules! define_output_types {
             const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
         }
 
-        impl<HCX: HashStableContext> ToStableHashKey<HCX> for OutputType {
+        impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for OutputType {
             type KeyType = Self;
 
-            fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+            fn to_stable_hash_key(&self, _: &mut Hcx) -> Self::KeyType {
                 *self
             }
         }

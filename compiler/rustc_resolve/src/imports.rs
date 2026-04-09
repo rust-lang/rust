@@ -674,6 +674,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
+        if self.cstore().had_extern_crate_load_failure() {
+            self.tcx.sess.dcx().abort_if_errors();
+        }
+
         if !errors.is_empty() {
             self.throw_unresolved_import_error(errors, glob_error);
             return;

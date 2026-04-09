@@ -1,7 +1,6 @@
 #![feature(
     exit_status_error,
     new_range,
-    new_range_api,
     os_str_slice,
     os_string_truncate,
     pattern,

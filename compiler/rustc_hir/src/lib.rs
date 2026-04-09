@@ -43,7 +43,6 @@ pub use hir::*;
 pub use lang_items::{LangItem, LanguageItems};
 pub use rustc_ast::attr::version::*;
 pub use stability::*;
-pub use stable_hash_impls::HashStableContext;
 pub use target::{MethodKind, Target};
 
 arena_types!(rustc_arena::declare_arena);

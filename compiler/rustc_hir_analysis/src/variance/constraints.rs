@@ -273,12 +273,16 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_args(current, def.did(), args, variance);
             }
 
-            ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, ref data) => {
-                self.add_constraints_from_invariant_args(current, data.args, variance);
+            ty::Alias(ty::AliasTy {
+                kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Opaque { .. },
+                args,
+                ..
+            }) => {
+                self.add_constraints_from_invariant_args(current, args, variance);
             }
 
-            ty::Alias(ty::Free, ref data) => {
-                self.add_constraints_from_args(current, data.def_id, data.args, variance);
+            ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, args, .. }) => {
+                self.add_constraints_from_args(current, def_id, args, variance);
             }
 
             ty::Dynamic(data, r) => {

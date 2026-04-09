@@ -117,8 +117,8 @@ impl fmt::Debug for InferConst {
 }
 
 #[cfg(feature = "nightly")]
-impl<CTX> HashStable<CTX> for InferConst {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+impl<Hcx> HashStable<Hcx> for InferConst {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         match self {
             InferConst::Var(_) => {
                 panic!("const variables should not be hashed: {self:?}")
@@ -210,9 +210,9 @@ pub enum AnonConstKind {
     GCE,
     /// stable `min_const_generics` anon consts are not allowed to use any generic parameters
     MCG,
-    /// `feature(opaque_generic_const_args)` anon consts are allowed to use arbitrary
+    /// `feature(generic_const_args)` anon consts are allowed to use arbitrary
     /// generic parameters in scope, but only if they syntactically reference them.
-    OGCA,
+    GCA,
     /// anon consts used as the length of a repeat expr are syntactically allowed to use generic parameters
     /// but must not depend on the actual instantiation. See #76200 for more information
     RepeatExprCount,

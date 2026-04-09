@@ -34,11 +34,11 @@ mod signatures {
     }
 
     #[rustc_then_this_would_need(fn_sig)] //~ ERROR OK
-    #[rustc_then_this_would_need(typeck)] //~ ERROR OK
+    #[rustc_then_this_would_need(typeck_root)] //~ ERROR OK
     fn some_fn(x: WillChange) { }
 
     #[rustc_then_this_would_need(fn_sig)] //~ ERROR OK
-    #[rustc_then_this_would_need(typeck)] //~ ERROR OK
+    #[rustc_then_this_would_need(typeck_root)] //~ ERROR OK
     fn new_foo(x: u32, y: u32) -> WillChange {
         WillChange { x: x, y: y }
     }
@@ -46,14 +46,14 @@ mod signatures {
     #[rustc_then_this_would_need(type_of)] //~ ERROR OK
     impl WillChange {
         #[rustc_then_this_would_need(fn_sig)] //~ ERROR OK
-        #[rustc_then_this_would_need(typeck)] //~ ERROR OK
+        #[rustc_then_this_would_need(typeck_root)] //~ ERROR OK
         fn new(x: u32, y: u32) -> WillChange { loop { } }
     }
 
     #[rustc_then_this_would_need(type_of)] //~ ERROR OK
     impl WillChange {
         #[rustc_then_this_would_need(fn_sig)] //~ ERROR OK
-        #[rustc_then_this_would_need(typeck)] //~ ERROR OK
+        #[rustc_then_this_would_need(typeck_root)] //~ ERROR OK
         fn method(&self, x: u32) { }
     }
 
@@ -82,6 +82,6 @@ mod invalid_signatures {
     fn b(x: WontChange) { }
 
     #[rustc_then_this_would_need(fn_sig)] //~ ERROR no path from `WillChange`
-    #[rustc_then_this_would_need(typeck)] //~ ERROR no path from `WillChange`
+    #[rustc_then_this_would_need(typeck_root)] //~ ERROR no path from `WillChange`
     fn c(x: u32) { }
 }

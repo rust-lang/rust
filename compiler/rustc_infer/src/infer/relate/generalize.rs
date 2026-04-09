@@ -61,103 +61,13 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> RelateResult<'tcx, ()> {
         debug_assert!(self.inner.borrow_mut().type_variables().probe(target_vid).is_unknown());
 
-        // Generalize `source_ty` depending on the current variance. As an example, assume
-        // `?target <: &'x ?1`, where `'x` is some free region and `?1` is an inference
-        // variable.
-        //
-        // Then the `generalized_ty` would be `&'?2 ?3`, where `'?2` and `?3` are fresh
-        // region/type inference variables.
-        //
-        // We then relate `generalized_ty <: source_ty`, adding constraints like `'x: '?2` and
-        // `?1 <: ?3`.
-        let Generalization { value_may_be_infer: generalized_ty } = self.generalize(
-            relation.span(),
-            relation.structurally_relate_aliases(),
-            target_vid,
+        self.instantiate_var(
+            relation,
+            target_is_expected,
+            target_vid.into(),
             instantiation_variance,
-            source_ty,
-        )?;
-
-        // Constrain `b_vid` to the generalized type `generalized_ty`.
-        if let &ty::Infer(ty::TyVar(generalized_vid)) = generalized_ty.kind() {
-            self.inner.borrow_mut().type_variables().equate(target_vid, generalized_vid);
-        } else {
-            self.inner.borrow_mut().type_variables().instantiate(target_vid, generalized_ty);
-        }
-
-        // Finally, relate `generalized_ty` to `source_ty`, as described in previous comment.
-        //
-        // FIXME(#16847): This code is non-ideal because all these subtype
-        // relations wind up attributed to the same spans. We need
-        // to associate causes/spans with each of the relations in
-        // the stack to get this right.
-        if generalized_ty.is_ty_var() {
-            // This happens for cases like `<?0 as Trait>::Assoc == ?0`.
-            // We can't instantiate `?0` here as that would result in a
-            // cyclic type. We instead delay the unification in case
-            // the alias can be normalized to something which does not
-            // mention `?0`.
-            if self.next_trait_solver() {
-                let (lhs, rhs, direction) = match instantiation_variance {
-                    ty::Invariant => {
-                        (generalized_ty.into(), source_ty.into(), AliasRelationDirection::Equate)
-                    }
-                    ty::Covariant => {
-                        (generalized_ty.into(), source_ty.into(), AliasRelationDirection::Subtype)
-                    }
-                    ty::Contravariant => {
-                        (source_ty.into(), generalized_ty.into(), AliasRelationDirection::Subtype)
-                    }
-                    ty::Bivariant => unreachable!("bivariant generalization"),
-                };
-
-                relation.register_predicates([ty::PredicateKind::AliasRelate(lhs, rhs, direction)]);
-            } else {
-                match source_ty.kind() {
-                    &ty::Alias(ty::Projection, data) => {
-                        // FIXME: This does not handle subtyping correctly, we could
-                        // instead create a new inference variable `?normalized_source`, emitting
-                        // `Projection(normalized_source, ?ty_normalized)` and
-                        // `?normalized_source <: generalized_ty`.
-                        relation.register_predicates([ty::ProjectionPredicate {
-                            projection_term: data.into(),
-                            term: generalized_ty.into(),
-                        }]);
-                    }
-                    // The old solver only accepts projection predicates for associated types.
-                    ty::Alias(ty::Inherent | ty::Free | ty::Opaque, _) => {
-                        return Err(TypeError::CyclicTy(source_ty));
-                    }
-                    _ => bug!("generalized `{source_ty:?} to infer, not an alias"),
-                }
-            }
-        } else {
-            // NOTE: The `instantiation_variance` is not the same variance as
-            // used by the relation. When instantiating `b`, `target_is_expected`
-            // is flipped and the `instantiation_variance` is also flipped. To
-            // constrain the `generalized_ty` while using the original relation,
-            // we therefore only have to flip the arguments.
-            //
-            // ```ignore (not code)
-            // ?a rel B
-            // instantiate_ty_var(?a, B) # expected and variance not flipped
-            // B' rel B
-            // ```
-            // or
-            // ```ignore (not code)
-            // A rel ?b
-            // instantiate_ty_var(?b, A) # expected and variance flipped
-            // A rel A'
-            // ```
-            if target_is_expected {
-                relation.relate(generalized_ty, source_ty)?;
-            } else {
-                debug!("flip relation");
-                relation.relate(source_ty, generalized_ty)?;
-            }
-        }
-
-        Ok(())
+            source_ty.into(),
+        )
     }
 
     /// Instantiates the const variable `target_vid` with the given constant.
@@ -204,59 +114,196 @@ impl<'tcx> InferCtxt<'tcx> {
     ) -> RelateResult<'tcx, ()> {
         // FIXME(generic_const_exprs): Occurs check failures for unevaluated
         // constants and generic expressions are not yet handled correctly.
-        let Generalization { value_may_be_infer: generalized_ct } = self.generalize(
+        debug_assert!(
+            self.inner.borrow_mut().const_unification_table().probe_value(target_vid).is_unknown()
+        );
+
+        self.instantiate_var(
+            relation,
+            target_is_expected,
+            target_vid.into(),
+            ty::Invariant,
+            source_ct.into(),
+        )
+    }
+
+    #[instrument(level = "debug", skip(self, relation))]
+    fn instantiate_var<R: PredicateEmittingRelation<Self>>(
+        &self,
+        relation: &mut R,
+        target_is_expected: bool,
+        target_vid: TermVid,
+        instantiation_variance: ty::Variance,
+        source_term: Term<'tcx>,
+    ) -> RelateResult<'tcx, ()> {
+        // Generalize `source_term` depending on the current variance. As an example, assume
+        // `?target <: &'x ?1`, where `'x` is some free region and `?1` is an inference
+        // variable.
+        //
+        // Then the `generalized_term` would be `&'?2 ?3`, where `'?2` and `?3` are fresh
+        // region/type inference variables.
+        //
+        // We then relate `generalized_term <: source_term`, adding constraints like `'x: '?2` and
+        // `?1 <: ?3`.
+        let Generalization { value_may_be_infer: generalized_term } = self.generalize(
             relation.span(),
             relation.structurally_relate_aliases(),
             target_vid,
-            ty::Invariant,
-            source_ct,
+            instantiation_variance,
+            source_term,
         )?;
 
-        debug_assert!(!generalized_ct.is_ct_infer());
+        // Constrain `b_vid` to the generalized type `generalized_term`.
+        self.union_var_term(target_vid, generalized_term);
 
-        self.inner
-            .borrow_mut()
-            .const_unification_table()
-            .union_value(target_vid, ConstVariableValue::Known { value: generalized_ct });
+        // Finally, relate `generalized_term` to `source_term`, as described in previous comment.
+        //
+        // FIXME(#16847): This code is non-ideal because all these subtype
+        // relations wind up attributed to the same spans. We need
+        // to associate causes/spans with each of the relations in
+        // the stack to get this right.
+        if generalized_term.is_infer() {
+            // This happens for cases like `<?0 as Trait>::Assoc == ?0`.
+            // We can't instantiate `?0` here as that would result in a
+            // cyclic type. We instead delay the unification in case
+            // the alias can be normalized to something which does not
+            // mention `?0`.
+            if self.next_trait_solver() {
+                let (lhs, rhs, direction) = match instantiation_variance {
+                    ty::Invariant => {
+                        (generalized_term, source_term, AliasRelationDirection::Equate)
+                    }
+                    ty::Covariant => {
+                        (generalized_term, source_term, AliasRelationDirection::Subtype)
+                    }
+                    ty::Contravariant => {
+                        (source_term, generalized_term, AliasRelationDirection::Subtype)
+                    }
+                    ty::Bivariant => unreachable!("bivariant generalization"),
+                };
 
-        // Make sure that the order is correct when relating the
-        // generalized const and the source.
-        if target_is_expected {
-            relation.relate_with_variance(
-                ty::Invariant,
-                ty::VarianceDiagInfo::default(),
-                generalized_ct,
-                source_ct,
-            )?;
+                relation.register_predicates([ty::PredicateKind::AliasRelate(lhs, rhs, direction)]);
+            } else {
+                let Some(source_alias) = source_term.to_alias_term() else {
+                    bug!("generalized `{source_term:?} to infer, not an alias");
+                };
+                match source_alias.kind(self.tcx) {
+                    ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
+                        // FIXME: This does not handle subtyping correctly, we could
+                        // instead create a new inference variable `?normalized_source`, emitting
+                        // `Projection(normalized_source, ?ty_normalized)` and
+                        // `?normalized_source <: generalized_term`.
+                        relation.register_predicates([ty::ProjectionPredicate {
+                            projection_term: source_alias,
+                            term: generalized_term,
+                        }]);
+                    }
+                    // The old solver only accepts projection predicates for associated types.
+                    ty::AliasTermKind::InherentTy
+                    | ty::AliasTermKind::FreeTy
+                    | ty::AliasTermKind::OpaqueTy => {
+                        return Err(TypeError::CyclicTy(source_term.expect_type()));
+                    }
+                    ty::AliasTermKind::InherentConst
+                    | ty::AliasTermKind::FreeConst
+                    | ty::AliasTermKind::UnevaluatedConst => {
+                        return Err(TypeError::CyclicConst(source_term.expect_const()));
+                    }
+                }
+            }
         } else {
-            relation.relate_with_variance(
-                ty::Invariant,
-                ty::VarianceDiagInfo::default(),
-                source_ct,
-                generalized_ct,
-            )?;
+            // NOTE: The `instantiation_variance` is not the same variance as
+            // used by the relation. When instantiating `b`, `target_is_expected`
+            // is flipped and the `instantiation_variance` is also flipped. To
+            // constrain the `generalized_term` while using the original relation,
+            // we therefore only have to flip the arguments.
+            //
+            // ```ignore (not code)
+            // ?a rel B
+            // instantiate_ty_var(?a, B) # expected and variance not flipped
+            // B' rel B
+            // ```
+            // or
+            // ```ignore (not code)
+            // A rel ?b
+            // instantiate_ty_var(?b, A) # expected and variance flipped
+            // A rel A'
+            // ```
+            match generalized_term.kind() {
+                ty::TermKind::Ty(_) => {
+                    if target_is_expected {
+                        relation.relate(generalized_term, source_term)?;
+                    } else {
+                        debug!("flip relation");
+                        relation.relate(source_term, generalized_term)?;
+                    }
+                }
+                ty::TermKind::Const(_) => {
+                    // Override consts to always be invariant
+                    if target_is_expected {
+                        relation.relate_with_variance(
+                            ty::Invariant,
+                            ty::VarianceDiagInfo::default(),
+                            generalized_term,
+                            source_term,
+                        )?;
+                    } else {
+                        relation.relate_with_variance(
+                            ty::Invariant,
+                            ty::VarianceDiagInfo::default(),
+                            source_term,
+                            generalized_term,
+                        )?;
+                    }
+                }
+            }
         }
 
         Ok(())
     }
 
+    /// This is a thin wrapper around inserting into the var tables. You probably want
+    /// [`Self::instantiate_var`] instead, which calls this method.
+    fn union_var_term(&self, l: TermVid, r: ty::Term<'tcx>) {
+        match (l, r.kind()) {
+            (TermVid::Ty(l), ty::TermKind::Ty(r)) => {
+                if let Some(r) = r.ty_vid() {
+                    self.inner.borrow_mut().type_variables().equate(l, r)
+                } else {
+                    self.inner.borrow_mut().type_variables().instantiate(l, r)
+                }
+            }
+            (TermVid::Const(l), ty::TermKind::Const(r)) => {
+                if let Some(r) = r.ct_vid() {
+                    self.inner.borrow_mut().const_unification_table().union(l, r)
+                } else {
+                    self.inner
+                        .borrow_mut()
+                        .const_unification_table()
+                        .union_value(l, ConstVariableValue::Known { value: r })
+                }
+            }
+            _ => bug!("mismatched term kinds in generalize: {l:?}, {r:?}"),
+        }
+    }
+
     /// Attempts to generalize `source_term` for the type variable `target_vid`.
     /// This checks for cycles -- that is, whether `source_term` references `target_vid`.
-    fn generalize<T: Into<Term<'tcx>> + Relate<TyCtxt<'tcx>>>(
+    fn generalize(
         &self,
         span: Span,
         structurally_relate_aliases: StructurallyRelateAliases,
-        target_vid: impl Into<TermVid>,
+        target_vid: TermVid,
         ambient_variance: ty::Variance,
-        source_term: T,
-    ) -> RelateResult<'tcx, Generalization<T>> {
+        source_term: Term<'tcx>,
+    ) -> RelateResult<'tcx, Generalization<Term<'tcx>>> {
         assert!(!source_term.has_escaping_bound_vars());
-        let (for_universe, root_vid) = match target_vid.into() {
+        let (for_universe, root_vid) = match target_vid {
             TermVid::Ty(ty_vid) => {
-                (self.probe_ty_var(ty_vid).unwrap_err(), TermVid::Ty(self.root_var(ty_vid)))
+                (self.try_resolve_ty_var(ty_vid).unwrap_err(), TermVid::Ty(self.root_var(ty_vid)))
             }
             TermVid::Const(ct_vid) => (
-                self.probe_const_var(ct_vid).unwrap_err(),
+                self.try_resolve_const_var(ct_vid).unwrap_err(),
                 TermVid::Const(self.inner.borrow_mut().const_unification_table().find(ct_vid).vid),
             ),
         };
@@ -267,7 +314,7 @@ impl<'tcx> InferCtxt<'tcx> {
             structurally_relate_aliases,
             root_vid,
             for_universe,
-            root_term: source_term.into(),
+            root_term: source_term,
             ambient_variance,
             in_alias: false,
             cache: Default::default(),
@@ -377,8 +424,12 @@ impl<'tcx> Generalizer<'_, 'tcx> {
 
     /// Create a new type variable in the universe of the target when
     /// generalizing an alias.
-    fn next_ty_var_for_alias(&self) -> Ty<'tcx> {
-        self.infcx.next_ty_var_in_universe(self.span, self.for_universe)
+    fn next_var_for_alias_of_kind(&self, alias: ty::AliasTerm<'tcx>) -> ty::Term<'tcx> {
+        if alias.kind(self.cx()).is_type() {
+            self.infcx.next_ty_var_in_universe(self.span, self.for_universe).into()
+        } else {
+            self.infcx.next_const_var_in_universe(self.span, self.for_universe).into()
+        }
     }
 
     /// An occurs check failure inside of an alias does not mean
@@ -399,10 +450,10 @@ impl<'tcx> Generalizer<'_, 'tcx> {
     ///   continue generalizing the alias. This ends up pulling down the universe of the
     ///   inference variable and is incomplete in case the alias would normalize to a type
     ///   which does not mention that inference variable.
-    fn generalize_alias_ty(
+    fn generalize_alias_term(
         &mut self,
-        alias: ty::AliasTy<'tcx>,
-    ) -> Result<Ty<'tcx>, TypeError<'tcx>> {
+        alias: ty::AliasTerm<'tcx>,
+    ) -> Result<Term<'tcx>, TypeError<'tcx>> {
         // We do not eagerly replace aliases with inference variables if they have
         // escaping bound vars, see the method comment for details. However, when we
         // are inside of an alias with escaping bound vars replacing nested aliases
@@ -410,12 +461,12 @@ impl<'tcx> Generalizer<'_, 'tcx> {
         //
         // cc trait-system-refactor-initiative#110
         if self.infcx.next_trait_solver() && !alias.has_escaping_bound_vars() && !self.in_alias {
-            return Ok(self.next_ty_var_for_alias());
+            return Ok(self.next_var_for_alias_of_kind(alias));
         }
 
         let is_nested_alias = mem::replace(&mut self.in_alias, true);
         let result = match self.relate(alias, alias) {
-            Ok(alias) => Ok(alias.to_ty(self.cx())),
+            Ok(alias) => Ok(alias.to_term(self.cx())),
             Err(e) => {
                 if is_nested_alias {
                     return Err(e);
@@ -430,7 +481,7 @@ impl<'tcx> Generalizer<'_, 'tcx> {
                     }
 
                     debug!("generalization failure in alias");
-                    Ok(self.next_ty_var_for_alias())
+                    Ok(self.next_var_for_alias_of_kind(alias))
                 }
             }
         };
@@ -584,8 +635,10 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                 }
             }
 
-            ty::Alias(_, data) => match self.structurally_relate_aliases {
-                StructurallyRelateAliases::No => self.generalize_alias_ty(data),
+            ty::Alias(data) => match self.structurally_relate_aliases {
+                StructurallyRelateAliases::No => {
+                    self.generalize_alias_term(data.into()).map(|v| v.expect_type())
+                }
                 StructurallyRelateAliases::Yes => relate::structurally_relate_tys(self, t, t),
             },
 
@@ -695,17 +748,26 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
             // FIXME: Unevaluated constants are also not rigid, so the current
             // approach of always relating them structurally is incomplete.
             //
-            // FIXME: remove this branch once `structurally_relate_consts` is fully
-            // structural.
-            ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args }) => {
-                let args = self.relate_with_variance(
-                    ty::Invariant,
-                    ty::VarianceDiagInfo::default(),
-                    args,
-                    args,
-                )?;
-                Ok(ty::Const::new_unevaluated(self.cx(), ty::UnevaluatedConst { def, args }))
-            }
+            // FIXME: replace the StructurallyRelateAliases::Yes branch with
+            // `structurally_relate_consts` once it is fully structural.
+            ty::ConstKind::Unevaluated(uv) => match self.structurally_relate_aliases {
+                // Hack: Fall back to old behavior if GCE is enabled (it used to just be the Yes
+                // path), as doing this new No path breaks some GCE things. I expect GCE to be
+                // ripped out soon so this shouldn't matter soon.
+                StructurallyRelateAliases::No if !self.cx().features().generic_const_exprs() => {
+                    self.generalize_alias_term(uv.into()).map(|v| v.expect_const())
+                }
+                _ => {
+                    let ty::UnevaluatedConst { def, args } = uv;
+                    let args = self.relate_with_variance(
+                        ty::Invariant,
+                        ty::VarianceDiagInfo::default(),
+                        args,
+                        args,
+                    )?;
+                    Ok(ty::Const::new_unevaluated(self.cx(), ty::UnevaluatedConst { def, args }))
+                }
+            },
             ty::ConstKind::Placeholder(placeholder) => {
                 if self.for_universe.can_name(placeholder.universe) {
                     Ok(c)

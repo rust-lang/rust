@@ -12,13 +12,5 @@ warning: this lint expectation is unfulfilled
 LL |         #[expect(invalid_nan_comparisons)]
    |                  ^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: this lint expectation is unfulfilled
-  --> $DIR/expect_tool_lint_rfc_2383.rs:38:18
-   |
-LL |         #[expect(invalid_nan_comparisons)]
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-warning: 3 warnings emitted
+warning: 2 warnings emitted
 

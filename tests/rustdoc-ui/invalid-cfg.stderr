@@ -13,6 +13,17 @@ LL | #[doc(cfg(x, y))]
    | ^^^^^^^^^------^^
    |          |
    |          expected a single argument here
+   |
+help: if the struct should be enabled when all these predicates are, wrap them in `all`
+   |
+LL - #[doc(cfg(x, y))]
+LL + #[doc(cfg(all(x, y)))]
+   |
+help: alternately, if the struct should be enabled when any of these predicates are, wrap them in `any`
+   |
+LL - #[doc(cfg(x, y))]
+LL + #[doc(cfg(any(x, y)))]
+   |
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:7:1
@@ -29,6 +40,17 @@ LL | #[doc(cfg(x, y))]
    | ^^^^^^^^^------^^
    |          |
    |          expected a single argument here
+   |
+help: if the struct should be enabled when all these predicates are, wrap them in `all`
+   |
+LL - #[doc(cfg(x, y))]
+LL + #[doc(cfg(all(x, y)))]
+   |
+help: alternately, if the struct should be enabled when any of these predicates are, wrap them in `any`
+   |
+LL - #[doc(cfg(x, y))]
+LL + #[doc(cfg(any(x, y)))]
+   |
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:12:1
@@ -45,6 +67,17 @@ LL | #[doc(cfg(x, y))]
    | ^^^^^^^^^------^^
    |          |
    |          expected a single argument here
+   |
+help: if the struct should be enabled when all these predicates are, wrap them in `all`
+   |
+LL - #[doc(cfg(x, y))]
+LL + #[doc(cfg(all(x, y)))]
+   |
+help: alternately, if the struct should be enabled when any of these predicates are, wrap them in `any`
+   |
+LL - #[doc(cfg(x, y))]
+LL + #[doc(cfg(any(x, y)))]
+   |
 
 error[E0539]: malformed `doc` attribute input
   --> $DIR/invalid-cfg.rs:18:1
@@ -61,6 +94,17 @@ LL | #[doc(cfg(x, y))]
    | ^^^^^^^^^------^^
    |          |
    |          expected a single argument here
+   |
+help: if the struct should be enabled when all these predicates are, wrap them in `all`
+   |
+LL - #[doc(cfg(x, y))]
+LL + #[doc(cfg(all(x, y)))]
+   |
+help: alternately, if the struct should be enabled when any of these predicates are, wrap them in `any`
+   |
+LL - #[doc(cfg(x, y))]
+LL + #[doc(cfg(any(x, y)))]
+   |
 
 error: aborting due to 8 previous errors
 

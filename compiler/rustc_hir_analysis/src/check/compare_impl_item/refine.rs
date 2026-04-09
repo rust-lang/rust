@@ -80,10 +80,14 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
 
     for trait_projection in collector.types.into_iter().rev() {
         let impl_opaque_args = trait_projection.args.rebase_onto(tcx, trait_m.def_id, impl_m_args);
-        let hidden_ty = hidden_tys[&trait_projection.def_id].instantiate(tcx, impl_opaque_args);
+        let hidden_ty =
+            hidden_tys[&trait_projection.kind.def_id()].instantiate(tcx, impl_opaque_args);
 
         // If the hidden type is not an opaque, then we have "refined" the trait signature.
-        let ty::Alias(ty::Opaque, impl_opaque) = *hidden_ty.kind() else {
+        let ty::Alias(
+            impl_opaque @ ty::AliasTy { kind: ty::Opaque { def_id: impl_opaque_def_id }, .. },
+        ) = *hidden_ty.kind()
+        else {
             report_mismatched_rpitit_signature(
                 tcx,
                 trait_m_sig_with_self_for_diag,
@@ -97,7 +101,7 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
 
         // This opaque also needs to be from the impl method -- otherwise,
         // it's a refinement to a TAIT.
-        if !tcx.hir_get_if_local(impl_opaque.def_id).is_some_and(|node| {
+        if !tcx.hir_get_if_local(impl_opaque_def_id).is_some_and(|node| {
             matches!(
                 node.expect_opaque_ty().origin,
                 hir::OpaqueTyOrigin::AsyncFn { parent, .. }  | hir::OpaqueTyOrigin::FnReturn { parent, .. }
@@ -116,11 +120,12 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         }
 
         trait_bounds.extend(
-            tcx.item_bounds(trait_projection.def_id).iter_instantiated(tcx, trait_projection.args),
+            tcx.item_bounds(trait_projection.kind.def_id())
+                .iter_instantiated(tcx, trait_projection.args),
         );
         impl_bounds.extend(elaborate(
             tcx,
-            tcx.explicit_item_bounds(impl_opaque.def_id)
+            tcx.explicit_item_bounds(impl_opaque_def_id)
                 .iter_instantiated_copied(tcx, impl_opaque.args),
         ));
 
@@ -218,7 +223,7 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     // is literally unrepresentable in the type system; however, we may be
     // promising stronger outlives guarantees if we capture *fewer* regions.
     for (trait_projection, impl_opaque) in pairs {
-        let impl_variances = tcx.variances_of(impl_opaque.def_id);
+        let impl_variances = tcx.variances_of(impl_opaque.kind.def_id());
         let impl_captures: FxIndexSet<_> = impl_opaque
             .args
             .iter()
@@ -227,7 +232,7 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
             .map(|(arg, _)| arg)
             .collect();
 
-        let trait_variances = tcx.variances_of(trait_projection.def_id);
+        let trait_variances = tcx.variances_of(trait_projection.kind.def_id());
         let mut trait_captures = FxIndexSet::default();
         for (arg, variance) in trait_projection.args.iter().zip_eq(trait_variances) {
             if *variance != ty::Invariant {
@@ -239,7 +244,7 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         if !trait_captures.iter().all(|arg| impl_captures.contains(arg)) {
             report_mismatched_rpitit_captures(
                 tcx,
-                impl_opaque.def_id.expect_local(),
+                impl_opaque.kind.def_id().expect_local(),
                 trait_captures,
                 is_internal,
             );
@@ -254,13 +259,13 @@ struct ImplTraitInTraitCollector<'tcx> {
 
 impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) {
-        if let ty::Alias(ty::Projection, proj) = *ty.kind()
-            && self.tcx.is_impl_trait_in_trait(proj.def_id)
+        if let ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }) = *ty.kind()
+            && self.tcx.is_impl_trait_in_trait(def_id)
         {
             if self.types.insert(proj) {
                 for (pred, _) in self
                     .tcx
-                    .explicit_item_bounds(proj.def_id)
+                    .explicit_item_bounds(def_id)
                     .iter_instantiated_copied(self.tcx, proj.args)
                 {
                     pred.visit_with(self);
@@ -303,14 +308,17 @@ fn report_mismatched_rpitit_signature<'tcx>(
     let mut return_ty = trait_m_sig.output().fold_with(&mut super::RemapLateParam { tcx, mapping });
 
     if tcx.asyncness(impl_m_def_id).is_async() && tcx.asyncness(trait_m_def_id).is_async() {
-        let ty::Alias(ty::Projection, future_ty) = return_ty.kind() else {
+        let &ty::Alias(
+            future_ty @ ty::AliasTy { kind: ty::Projection { def_id: future_ty_def_id }, .. },
+        ) = return_ty.kind()
+        else {
             span_bug!(
                 tcx.def_span(trait_m_def_id),
                 "expected return type of async fn in trait to be a AFIT projection"
             );
         };
         let Some(future_output_ty) = tcx
-            .explicit_item_bounds(future_ty.def_id)
+            .explicit_item_bounds(future_ty_def_id)
             .iter_instantiated_copied(tcx, future_ty.args)
             .find_map(|(clause, _)| match clause.kind().no_bound_vars()? {
                 ty::ClauseKind::Projection(proj) => proj.term.as_type(),

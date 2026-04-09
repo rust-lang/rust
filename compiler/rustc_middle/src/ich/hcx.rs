@@ -6,11 +6,10 @@ use rustc_hir::definitions::DefPathHash;
 use rustc_session::Session;
 use rustc_session::cstore::Untracked;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{CachingSourceMapView, DUMMY_SP, Pos, Span};
+use rustc_span::{CachingSourceMapView, DUMMY_SP, HashStableContext, Pos, Span};
 
 // Very often, we are hashing something that does not need the `CachingSourceMapView`, so we
 // initialize it lazily.
-#[derive(Clone)]
 enum CachingSourceMap<'a> {
     Unused(&'a SourceMap),
     InUse(CachingSourceMapView<'a>),
@@ -20,7 +19,6 @@ enum CachingSourceMap<'a> {
 /// enough information to transform `DefId`s and `HirId`s into stable `DefPath`s (i.e.,
 /// a reference to the `TyCtxt`) and it holds a few caches for speeding up various
 /// things (e.g., each `DefId`/`DefPath` is only hashed once).
-#[derive(Clone)]
 pub struct StableHashingContext<'a> {
     untracked: &'a Untracked,
     // The value of `-Z incremental-ignore-spans`.
@@ -73,7 +71,7 @@ impl<'a> StableHashingContext<'a> {
     }
 }
 
-impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
+impl<'a> HashStableContext for StableHashingContext<'a> {
     /// Hashes a span in a stable way. We can't directly hash the span's `BytePos` fields (that
     /// would be similar to hashing pointers, since those are just offsets into the `SourceMap`).
     /// Instead, we hash the (file name, line, column) triple, which stays the same even if the
@@ -189,8 +187,3 @@ impl<'a> rustc_span::HashStableContext for StableHashingContext<'a> {
         );
     }
 }
-
-impl<'a> rustc_abi::HashStableContext for StableHashingContext<'a> {}
-impl<'a> rustc_ast::HashStableContext for StableHashingContext<'a> {}
-impl<'a> rustc_hir::HashStableContext for StableHashingContext<'a> {}
-impl<'a> rustc_session::HashStableContext for StableHashingContext<'a> {}

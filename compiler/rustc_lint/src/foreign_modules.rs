@@ -354,9 +354,18 @@ fn structurally_same_type_impl<'tcx>(
                 | (ty::Closure(..), ty::Closure(..))
                 | (ty::Coroutine(..), ty::Coroutine(..))
                 | (ty::CoroutineWitness(..), ty::CoroutineWitness(..))
-                | (ty::Alias(ty::Projection, ..), ty::Alias(ty::Projection, ..))
-                | (ty::Alias(ty::Inherent, ..), ty::Alias(ty::Inherent, ..))
-                | (ty::Alias(ty::Opaque, ..), ty::Alias(ty::Opaque, ..)) => false,
+                | (
+                    ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }),
+                    ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }),
+                )
+                | (
+                    ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }),
+                    ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }),
+                )
+                | (
+                    ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }),
+                    ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }),
+                ) => false,
 
                 // These definitely should have been caught above.
                 (ty::Bool, ty::Bool)

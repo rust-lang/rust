@@ -31,7 +31,8 @@ use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
 pub use rustc_span::AttrId;
 use rustc_span::{
-    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, respan, sym,
+    ByteSymbol, DUMMY_SP, ErrorGuaranteed, HashStableContext, Ident, Span, Spanned, Symbol, kw,
+    respan, sym,
 };
 use thin_vec::{ThinVec, thin_vec};
 
@@ -120,8 +121,8 @@ impl PartialEq<&[Symbol]> for Path {
     }
 }
 
-impl<CTX: rustc_span::HashStableContext> HashStable<CTX> for Path {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+impl<Hcx: HashStableContext> HashStable<Hcx> for Path {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.segments.len().hash_stable(hcx, hasher);
         for segment in &self.segments {
             segment.ident.hash_stable(hcx, hasher);
@@ -3337,7 +3338,7 @@ pub enum UseTreeKind {
     /// ```
     Nested { items: ThinVec<(UseTree, NodeId)>, span: Span },
     /// `use prefix::*`
-    Glob,
+    Glob(Span),
 }
 
 /// A tree of paths sharing common prefixes.
@@ -3346,10 +3347,11 @@ pub enum UseTreeKind {
 pub struct UseTree {
     pub prefix: Path,
     pub kind: UseTreeKind,
-    pub span: Span,
 }
 
 impl UseTree {
+    /// If the `UseTree` is just an identifier, return that.
+    /// Panics if it's a glob (`*`) or a nested use tree.
     pub fn ident(&self) -> Ident {
         match self.kind {
             UseTreeKind::Simple(Some(rename)) => rename,
@@ -3357,6 +3359,27 @@ impl UseTree {
                 self.prefix.segments.last().expect("empty prefix in a simple import").ident
             }
             _ => panic!("`UseTree::ident` can only be used on a simple import"),
+        }
+    }
+
+    /// Returns the full span from the start of the path to the
+    /// closing `}` or nested spans, `*` of glob spans or the end of the
+    /// identifier of simple spans.
+    pub fn span(&self) -> Span {
+        self.prefix.span.to(self.hi_span())
+    }
+
+    /// Returns the trailing element's span. So for a nested
+    /// span you get the entire `{}`-block, for a glob you
+    /// get the span of the `*` itself, and for simple use trees
+    /// you get the identifier to rename the import to or the full
+    /// path if no rename is specified.
+    pub fn hi_span(&self) -> Span {
+        match self.kind {
+            UseTreeKind::Simple(None) => self.prefix.span,
+            UseTreeKind::Simple(Some(name)) => name.span,
+            UseTreeKind::Nested { span, .. } => span,
+            UseTreeKind::Glob(span) => span,
         }
     }
 }

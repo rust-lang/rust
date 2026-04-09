@@ -22,7 +22,7 @@ use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::limit::Limit;
 use rustc_hir::lints::DelayedLint;
-use rustc_hir::{Attribute, MaybeOwner, find_attr};
+use rustc_hir::{Attribute, MaybeOwner, Target, find_attr};
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{
     BufferedEarlyLint, DecorateAttrLint, EarlyCheckNode, LintStore, unerased_lint_store,
@@ -119,11 +119,10 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
         features: &Features,
         registered_tools: &RegisteredTools,
         node_id: ast::NodeId,
-        attrs: &[ast::Attribute],
         items: &[Box<ast::Item>],
         name: Symbol,
     ) {
-        pre_expansion_lint(sess, features, self.0, registered_tools, (node_id, attrs, items), name);
+        pre_expansion_lint(sess, features, self.0, registered_tools, (node_id, items), name);
     }
 }
 
@@ -1373,6 +1372,7 @@ pub(crate) fn parse_crate_name(
             sym::crate_name,
             DUMMY_SP,
             rustc_ast::node_id::CRATE_NODE_ID,
+            Target::Crate,
             None,
             emit_errors,
         )?
@@ -1422,6 +1422,7 @@ pub fn collect_crate_types(
                 sym::crate_type,
                 crate_span,
                 CRATE_NODE_ID,
+                Target::Crate,
                 None,
                 ShouldEmit::EarlyFatal { also_emit_lints: false },
             )
@@ -1478,6 +1479,7 @@ fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit 
         sym::recursion_limit,
         DUMMY_SP,
         rustc_ast::node_id::CRATE_NODE_ID,
+        Target::Crate,
         None,
         // errors are fatal here, but lints aren't.
         // If things aren't fatal we continue, and will parse this again.

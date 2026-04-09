@@ -2718,12 +2718,13 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    #[cfg_attr(bootstrap, doc = "```rust")]
+    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
     /// enum Void {}
     /// unsafe extern {
     ///     static EXTERN: Void;
     /// }
-    /// ```
+    #[doc = "```"]
     ///
     /// {{produces}}
     ///
@@ -2734,10 +2735,11 @@ declare_lint! {
     /// compiler which assumes that there are no initialized uninhabited places (such as locals or
     /// statics). This was accidentally allowed, but is being phased out.
     pub UNINHABITED_STATIC,
-    Warn,
+    Deny,
     "uninhabited static",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #74840),
+        report_in_deps: true,
     };
 }
 
@@ -3156,7 +3158,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #[cfg(FALSE)]
+    /// #[cfg(feature = "nightly")]
     /// macro foo() {}
     /// ```
     ///
@@ -3180,22 +3182,22 @@ declare_lint! {
     ///    ( $($tokens:tt)* ) => { $($tokens)* }
     /// }
     ///
-    /// #[cfg(FALSE)]
+    /// #[cfg(feature = "nightly")]
     /// identity! {
     ///    macro foo() {}
     /// }
     /// ```
     ///
     /// This is a [future-incompatible] lint to transition this
-    /// to a hard error in the future. See [issue #65860] for more details.
+    /// to a hard error in the future. See [issue #154045] for more details.
     ///
-    /// [issue #65860]: https://github.com/rust-lang/rust/issues/65860
+    /// [issue #154045]: https://github.com/rust-lang/rust/issues/154045
     /// [future-incompatible]: ../index.md#future-incompatible-lints
     pub UNSTABLE_SYNTAX_PRE_EXPANSION,
     Warn,
     "unstable syntax can change at any point in the future, causing a hard error!",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #65860),
+        reason: fcw!(FutureReleaseError #154045),
     };
 }
 

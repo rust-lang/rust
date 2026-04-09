@@ -24,7 +24,8 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{
-    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
+    FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError,
+    LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{self, AtomicOrdering, Instance, Ty, TyCtxt};
 use rustc_span::Span;
@@ -943,8 +944,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             .get_address(self.location)
     }
 
-    fn scalable_alloca(&mut self, _elt: u64, _align: Align, _element_ty: Ty<'_>) -> RValue<'gcc> {
-        todo!()
+    fn alloca_with_ty(&mut self, ty: TyAndLayout<'tcx>) -> RValue<'gcc> {
+        self.alloca(ty.layout.size, ty.layout.align.abi)
     }
 
     fn load(&mut self, pointee_ty: Type<'gcc>, ptr: RValue<'gcc>, align: Align) -> RValue<'gcc> {
@@ -1653,10 +1654,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _unwind: Option<Block<'gcc>>,
         _handlers: &[Block<'gcc>],
     ) -> RValue<'gcc> {
-        unimplemented!();
-    }
-
-    fn get_funclet_cleanuppad(&self, _funclet: &Funclet) -> RValue<'gcc> {
         unimplemented!();
     }
 

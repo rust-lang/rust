@@ -219,11 +219,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
-use rustc_middle::mir::mono::{
-    CollectionMode, InstantiationMode, MonoItem, NormalizationErrorInMono,
-};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Body, Location, MentionedItem, traversal};
+use rustc_middle::mono::{CollectionMode, InstantiationMode, MonoItem, NormalizationErrorInMono};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
@@ -1824,8 +1822,8 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
 
     // The set of MonoItems was created in an inherently indeterministic order because
     // of parallelism. We sort it here to ensure that the output is deterministic.
-    let mono_items = tcx.with_stable_hashing_context(move |ref hcx| {
-        state.visited.into_inner().into_sorted(hcx, true)
+    let mono_items = tcx.with_stable_hashing_context(move |mut hcx| {
+        state.visited.into_inner().into_sorted(&mut hcx, true)
     });
 
     (mono_items, state.usage_map.into_inner())
