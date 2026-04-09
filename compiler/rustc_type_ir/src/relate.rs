@@ -270,7 +270,10 @@ impl<I: Interner> Relate<I> for ty::ExistentialProjection<I> {
         b: ty::ExistentialProjection<I>,
     ) -> RelateResult<I, ty::ExistentialProjection<I>> {
         if a.def_id != b.def_id {
-            Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.def_id, b.def_id)))
+            Err(TypeError::ProjectionMismatched(ExpectedFound::new(
+                a.def_id.into(),
+                b.def_id.into(),
+            )))
         } else {
             let term = relation.relate_with_variance(
                 ty::Invariant,

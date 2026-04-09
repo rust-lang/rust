@@ -1,6 +1,6 @@
 /// Lang items used by the new trait solver. This can be mapped to whatever internal
 /// representation of `LangItem`s used in the underlying compiler implementation.
-pub enum SolverLangItem {
+pub enum SolverProjectionLangItem {
     // tidy-alphabetical-start
     AsyncFnKindUpvars,
     AsyncFnOnceOutput,

@@ -9,7 +9,7 @@ use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
+use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::{CollectAndApply, Interner, TypeFoldable, search_graph};
 
 use crate::dep_graph::{DepKind, DepNodeIndex};
@@ -40,6 +40,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type AdtId = DefId;
     type ImplId = DefId;
     type UnevaluatedConstId = DefId;
+    type ProjectionTyId = DefId;
+    type ProjectionId = DefId;
+    type OpaqueId = DefId;
+    type FreeAliasId = DefId;
+    type ImplTyAliasId = DefId;
     type Span = Span;
 
     type GenericArgs = ty::GenericArgsRef<'tcx>;
@@ -290,7 +295,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.mk_type_list_from_iter(args)
     }
 
-    fn parent(self, def_id: DefId) -> DefId {
+    fn projection_parent(self, def_id: Self::ProjectionId) -> Self::TraitId {
+        self.parent(def_id)
+    }
+
+    fn impl_ty_alias_parent(self, def_id: Self::ImplTyAliasId) -> Self::ImplId {
         self.parent(def_id)
     }
 
@@ -436,7 +445,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         !self.codegen_fn_attrs(def_id).target_features.is_empty()
     }
 
-    fn require_lang_item(self, lang_item: SolverLangItem) -> DefId {
+    fn require_projection_lang_item(self, lang_item: SolverProjectionLangItem) -> DefId {
         self.require_lang_item(solver_lang_item_to_lang_item(lang_item), DUMMY_SP)
     }
 
@@ -448,7 +457,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.require_lang_item(solver_adt_lang_item_to_lang_item(lang_item), DUMMY_SP)
     }
 
-    fn is_lang_item(self, def_id: DefId, lang_item: SolverLangItem) -> bool {
+    fn is_projection_lang_item(self, def_id: DefId, lang_item: SolverProjectionLangItem) -> bool {
         self.is_lang_item(def_id, solver_lang_item_to_lang_item(lang_item))
     }
 
@@ -468,7 +477,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.is_sizedness_trait(def_id)
     }
 
-    fn as_lang_item(self, def_id: DefId) -> Option<SolverLangItem> {
+    fn as_projection_lang_item(self, def_id: DefId) -> Option<SolverProjectionLangItem> {
         lang_item_to_solver_lang_item(self.lang_items().from_def_id(def_id)?)
     }
 
@@ -747,7 +756,7 @@ macro_rules! bidirectional_lang_item_map {
 }
 
 bidirectional_lang_item_map! {
-    SolverLangItem, fn lang_item_to_solver_lang_item, fn solver_lang_item_to_lang_item;
+    SolverProjectionLangItem, fn lang_item_to_solver_lang_item, fn solver_lang_item_to_lang_item;
 
 // tidy-alphabetical-start
     AsyncFnKindUpvars,

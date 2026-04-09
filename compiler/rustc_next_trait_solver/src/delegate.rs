@@ -77,10 +77,10 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     fn fetch_eligible_assoc_item(
         &self,
         goal_trait_ref: ty::TraitRef<Self::Interner>,
-        trait_assoc_def_id: <Self::Interner as Interner>::DefId,
+        trait_assoc_def_id: <Self::Interner as Interner>::ProjectionId,
         impl_def_id: <Self::Interner as Interner>::ImplId,
     ) -> Result<
-        Option<<Self::Interner as Interner>::DefId>,
+        Option<<Self::Interner as Interner>::ImplTyAliasId>,
         <Self::Interner as Interner>::ErrorGuaranteed,
     >;
 
