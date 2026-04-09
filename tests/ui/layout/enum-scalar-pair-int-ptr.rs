@@ -8,7 +8,7 @@
 #![feature(never_type)]
 #![crate_type = "lib"]
 
-#[rustc_layout(abi)]
+#[rustc_dump_layout(abi)]
 enum ScalarPairPointerWithInt { //~ERROR: abi: ScalarPair
     A(usize),
     B(Box<()>),
@@ -17,7 +17,7 @@ enum ScalarPairPointerWithInt { //~ERROR: abi: ScalarPair
 // Negative test--ensure that pointers are not commoned with integers
 // of a different size. (Assumes that no target has 8 bit pointers, which
 // feels pretty safe.)
-#[rustc_layout(abi)]
+#[rustc_dump_layout(abi)]
 enum NotScalarPairPointerWithSmallerInt { //~ERROR: abi: Memory
     A(u8),
     B(Box<()>),

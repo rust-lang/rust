@@ -313,6 +313,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDumpDefParents
                     | AttributeKind::RustcDumpInferredOutlives
                     | AttributeKind::RustcDumpItemBounds
+                    | AttributeKind::RustcDumpLayout(..)
                     | AttributeKind::RustcDumpPredicates
                     | AttributeKind::RustcDumpUserArgs
                     | AttributeKind::RustcDumpVariances
@@ -329,7 +330,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcInsignificantDtor
                     | AttributeKind::RustcIntrinsic
                     | AttributeKind::RustcIntrinsicConstStableIndirect
-                    | AttributeKind::RustcLayout(..)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
                     | AttributeKind::RustcLayoutScalarValidRangeStart(..)
                     | AttributeKind::RustcLintOptDenyFieldAccess { .. }

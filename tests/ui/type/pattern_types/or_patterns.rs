@@ -13,11 +13,11 @@
 
 use std::pat::pattern_type;
 
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 type NonNullI8 = pattern_type!(i8 is ..0 | 1..);
 //~^ ERROR: layout_of
 
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 type NonNegOneI8 = pattern_type!(i8 is ..-1 | 0..);
 //~^ ERROR: layout_of
 

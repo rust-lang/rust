@@ -4,8 +4,7 @@ use rustc_ast::{LitIntType, LitKind, MetaItemLit};
 use rustc_hir::LangItem;
 use rustc_hir::attrs::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, DivergingBlockBehavior,
-    DivergingFallbackBehavior, RustcCleanAttribute, RustcCleanQueries, RustcLayoutType,
-    RustcMirKind,
+    DivergingFallbackBehavior, RustcCleanAttribute, RustcCleanQueries, RustcMirKind,
 };
 use rustc_session::errors;
 use rustc_span::Symbol;
@@ -711,64 +710,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcOffloadKernelParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOffloadKernel;
-}
-
-pub(crate) struct RustcLayoutParser;
-
-impl<S: Stage> CombineAttributeParser<S> for RustcLayoutParser {
-    const PATH: &[Symbol] = &[sym::rustc_layout];
-
-    type Item = RustcLayoutType;
-
-    const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::RustcLayout(items);
-
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
-        Allow(Target::Struct),
-        Allow(Target::Enum),
-        Allow(Target::Union),
-        Allow(Target::TyAlias),
-    ]);
-
-    const TEMPLATE: AttributeTemplate =
-        template!(List: &["abi", "align", "size", "homogenous_aggregate", "debug"]);
-    fn extend(
-        cx: &mut AcceptContext<'_, '_, S>,
-        args: &ArgParser,
-    ) -> impl IntoIterator<Item = Self::Item> {
-        let ArgParser::List(items) = args else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return vec![];
-        };
-
-        let mut result = Vec::new();
-        for item in items.mixed() {
-            let Some(arg) = item.meta_item() else {
-                cx.adcx().expected_not_literal(item.span());
-                continue;
-            };
-            let Some(ident) = arg.ident() else {
-                cx.adcx().expected_identifier(arg.span());
-                return vec![];
-            };
-            let ty = match ident.name {
-                sym::abi => RustcLayoutType::Abi,
-                sym::align => RustcLayoutType::Align,
-                sym::size => RustcLayoutType::Size,
-                sym::homogeneous_aggregate => RustcLayoutType::HomogenousAggregate,
-                sym::debug => RustcLayoutType::Debug,
-                _ => {
-                    cx.adcx().expected_specific_argument(
-                        ident.span,
-                        &[sym::abi, sym::align, sym::size, sym::homogeneous_aggregate, sym::debug],
-                    );
-                    continue;
-                }
-            };
-            result.push(ty);
-        }
-        result
-    }
 }
 
 pub(crate) struct RustcMirParser;

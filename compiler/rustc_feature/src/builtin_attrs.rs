@@ -1453,7 +1453,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_layout, Normal, template!(List: &["field1, field2, ..."]),
+        TEST, rustc_dump_layout, Normal, template!(List: &["field1, field2, ..."]),
         WarnFollowing, EncodeCrossCrate::Yes
     ),
     rustc_attr!(

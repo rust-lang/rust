@@ -172,7 +172,7 @@ attribute_parsers!(
         Combine<ReprParser>,
         Combine<RustcAllowConstFnUnstableParser>,
         Combine<RustcCleanParser>,
-        Combine<RustcLayoutParser>,
+        Combine<RustcDumpLayoutParser>,
         Combine<RustcMirParser>,
         Combine<RustcThenThisWouldNeedParser>,
         Combine<TargetFeatureParser>,

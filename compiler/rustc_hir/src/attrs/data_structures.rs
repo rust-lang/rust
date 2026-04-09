@@ -757,7 +757,7 @@ impl IntoDiagArg for CrateType {
 }
 
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
-pub enum RustcLayoutType {
+pub enum RustcDumpLayoutKind {
     Abi,
     Align,
     Size,
@@ -1377,6 +1377,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dump_item_bounds]`
     RustcDumpItemBounds,
 
+    /// Represents `#[rustc_dump_layout]`
+    RustcDumpLayout(ThinVec<RustcDumpLayoutKind>),
+
     /// Represents `#[rustc_dump_object_lifetime_defaults]`.
     RustcDumpObjectLifetimeDefaults,
 
@@ -1426,9 +1429,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_intrinsic_const_stable_indirect]`
     RustcIntrinsicConstStableIndirect,
-
-    /// Represents `#[rustc_layout]`
-    RustcLayout(ThinVec<RustcLayoutType>),
 
     /// Represents `#[rustc_layout_scalar_valid_range_end]`.
     RustcLayoutScalarValidRangeEnd(Box<u128>, Span),

@@ -1,9 +1,8 @@
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttributeKind, RustcDumpLayoutKind};
 use rustc_hir::{MethodKind, Target};
 use rustc_span::{Span, Symbol, sym};
 
-use crate::attributes::prelude::Allow;
-use crate::attributes::{NoArgsAttributeParser, OnDuplicate};
+use super::prelude::*;
 use crate::context::Stage;
 use crate::target_checking::AllowedTargets;
 
@@ -46,6 +45,64 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcDumpItemBoundsParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::AssocTy)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpItemBounds;
+}
+
+pub(crate) struct RustcDumpLayoutParser;
+
+impl<S: Stage> CombineAttributeParser<S> for RustcDumpLayoutParser {
+    const PATH: &[Symbol] = &[sym::rustc_dump_layout];
+
+    type Item = RustcDumpLayoutKind;
+
+    const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::RustcDumpLayout(items);
+
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::Union),
+        Allow(Target::TyAlias),
+    ]);
+
+    const TEMPLATE: AttributeTemplate =
+        template!(List: &["abi", "align", "size", "homogenous_aggregate", "debug"]);
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
+        let ArgParser::List(items) = args else {
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
+            return vec![];
+        };
+
+        let mut result = Vec::new();
+        for item in items.mixed() {
+            let Some(arg) = item.meta_item() else {
+                cx.adcx().expected_not_literal(item.span());
+                continue;
+            };
+            let Some(ident) = arg.ident() else {
+                cx.adcx().expected_identifier(arg.span());
+                return vec![];
+            };
+            let kind = match ident.name {
+                sym::abi => RustcDumpLayoutKind::Abi,
+                sym::align => RustcDumpLayoutKind::Align,
+                sym::size => RustcDumpLayoutKind::Size,
+                sym::homogeneous_aggregate => RustcDumpLayoutKind::HomogenousAggregate,
+                sym::debug => RustcDumpLayoutKind::Debug,
+                _ => {
+                    cx.adcx().expected_specific_argument(
+                        ident.span,
+                        &[sym::abi, sym::align, sym::size, sym::homogeneous_aggregate, sym::debug],
+                    );
+                    continue;
+                }
+            };
+            result.push(kind);
+        }
+        result
+    }
 }
 
 pub(crate) struct RustcDumpObjectLifetimeDefaultsParser;

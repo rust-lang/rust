@@ -9,19 +9,20 @@ only discuss a few of them.
 ------------------------
 
 The `rustc_attrs` feature allows debugging rustc type layouts by using
-`#[rustc_layout(...)]` to debug layout at compile time (it even works
+`#[rustc_dump_layout(...)]` to debug layout at compile time (it even works
 with `cargo check`) as an alternative to `rustc -Z print-type-sizes`
 that is way more verbose.
 
-Options provided by `#[rustc_layout(...)]` are `debug`, `size`, `align`,
-`abi`. Note that it only works on sized types without generics.
+Options provided by `#[rustc_dump_layout(...)]` are `abi`, `align`, `debug`,
+`homogeneous_aggregate` and `size`.
+Note that it only works on sized types without generics.
 
 ## Examples
 
 ```rust,compile_fail
 #![feature(rustc_attrs)]
 
-#[rustc_layout(abi, size)]
+#[rustc_dump_layout(abi, size)]
 pub enum X {
     Y(u8, u8, u8),
     Z(isize),
