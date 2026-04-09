@@ -8,7 +8,6 @@ use pulldown_cmark::{
     BrokenLink, BrokenLinkCallback, CowStr, Event, LinkType, Options, Parser, Tag,
 };
 use rustc_ast as ast;
-use rustc_ast::attr::AttributeExt;
 use rustc_ast::join_path_syms;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::util::comments::beautify_doc_string;
@@ -197,14 +196,15 @@ pub fn add_doc_fragment(out: &mut String, frag: &DocFragment) {
     }
 }
 
-pub fn attrs_to_doc_fragments<'a, A: AttributeExt + Clone + 'a>(
-    attrs: impl Iterator<Item = (&'a A, Option<DefId>)>,
+pub fn attrs_to_doc_fragments<'a>(
+    attrs: impl Iterator<Item = (&'a ast::Attribute, Option<DefId>)>,
     doc_only: bool,
-) -> (Vec<DocFragment>, ThinVec<A>) {
+) -> (Vec<DocFragment>, ThinVec<ast::Attribute>) {
     let (min_size, max_size) = attrs.size_hint();
     let size_hint = max_size.unwrap_or(min_size);
     let mut doc_fragments = Vec::with_capacity(size_hint);
-    let mut other_attrs = ThinVec::<A>::with_capacity(if doc_only { 0 } else { size_hint });
+    let mut other_attrs =
+        ThinVec::<ast::Attribute>::with_capacity(if doc_only { 0 } else { size_hint });
     for (attr, item_id) in attrs {
         if let Some((doc_str, fragment_kind)) = attr.doc_str_and_fragment_kind() {
             let doc = beautify_doc_string(doc_str, fragment_kind.comment_kind());
@@ -355,7 +355,7 @@ pub fn strip_generics_from_path(path_str: &str) -> Result<Box<str>, MalformedGen
 ///
 /// If there are no doc-comments, return true.
 /// FIXME(#78591): Support both inner and outer attributes on the same item.
-pub fn inner_docs(attrs: &[impl AttributeExt]) -> bool {
+pub fn inner_docs(attrs: &[ast::Attribute]) -> bool {
     for attr in attrs {
         if let Some(attr_style) = attr.doc_resolution_scope() {
             return attr_style == ast::AttrStyle::Inner;
@@ -365,7 +365,7 @@ pub fn inner_docs(attrs: &[impl AttributeExt]) -> bool {
 }
 
 /// Has `#[rustc_doc_primitive]` or `#[doc(keyword)]` or `#[doc(attribute)]`.
-pub fn has_primitive_or_keyword_or_attribute_docs(attrs: &[impl AttributeExt]) -> bool {
+pub fn has_primitive_or_keyword_or_attribute_docs(attrs: &[ast::Attribute]) -> bool {
     for attr in attrs {
         if attr.is_rustc_doc_primitive() || attr.is_doc_keyword_or_attribute() {
             return true;
@@ -409,7 +409,7 @@ pub fn may_be_doc_link(link_type: LinkType) -> bool {
 
 /// Simplified version of `preprocessed_markdown_links` from rustdoc.
 /// Must return at least the same links as it, but may add some more links on top of that.
-pub(crate) fn attrs_to_preprocessed_links<A: AttributeExt + Clone>(attrs: &[A]) -> Vec<Box<str>> {
+pub(crate) fn attrs_to_preprocessed_links(attrs: &[ast::Attribute]) -> Vec<Box<str>> {
     let (doc_fragments, other_attrs) =
         attrs_to_doc_fragments(attrs.iter().map(|attr| (attr, None)), false);
     let mut doc =
