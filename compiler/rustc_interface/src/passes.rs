@@ -950,8 +950,13 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     let definitions = FreezeLock::new(Definitions::new(stable_crate_id));
 
     let stable_crate_ids = FreezeLock::new(StableCrateIdMap::default());
-    let untracked =
-        Untracked { cstore, source_span: AppendOnlyIndexVec::new(), definitions, stable_crate_ids };
+    let untracked = Untracked {
+        cstore,
+        source_span: AppendOnlyIndexVec::new(),
+        definitions,
+        stable_crate_ids,
+        local_crate_hash: OnceLock::new(),
+    };
 
     // We're constructing the HIR here; we don't care what we will
     // read, since we haven't even constructed the *input* to

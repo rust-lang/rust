@@ -740,4 +740,101 @@ fn provide_cstore_hooks(providers: &mut Providers) {
             cdata.imported_source_file(tcx, file_index as u32);
         }
     };
+
+    providers.queries.crate_hash = |tcx: TyCtxt<'_>, _: LocalCrate| {
+        *tcx.untracked()
+            .local_crate_hash
+            .get()
+            .expect("crate_hash(LOCAL_CRATE) called before metadata encoding")
+    };
 }
+
+/*pub(super) fn crate_hash(tcx: TyCtxt<'_>, cnum: rustc_hir::def_id::CrateNum) -> Svh {
+    let cstore = CStore::from_tcx(tcx);
+    let crate_data = cstore.get_crate_data(cnum);
+    crate_data.root.header.hash
+
+    let upstream_crates = upstream_crates(tcx);
+
+    let resolutions = tcx.resolutions(());
+
+    // We hash the final, remapped names of all local source files so we
+    // don't have to include the path prefix remapping commandline args.
+    // If we included the full mapping in the SVH, we could only have
+    // reproducible builds by compiling from the same directory. So we just
+    // hash the result of the mapping instead of the mapping itself.
+    let mut source_file_names: Vec<_> = tcx
+        .sess
+        .source_map()
+        .files()
+        .iter()
+        .filter(|source_file| source_file.cnum == LOCAL_CRATE)
+        .map(|source_file| source_file.stable_id)
+        .collect();
+
+    source_file_names.sort_unstable();
+
+    // We have to take care of debugger visualizers explicitly. The HIR (and
+    // thus `hir_body_hash`) contains the #[debugger_visualizer] attributes but
+    // these attributes only store the file path to the visualizer file, not
+    // their content. Yet that content is exported into crate metadata, so any
+    // changes to it need to be reflected in the crate hash.
+    let debugger_visualizers: Vec<_> = tcx
+        .debugger_visualizers(LOCAL_CRATE)
+        .iter()
+        // We ignore the path to the visualizer file since it's not going to be
+        // encoded in crate metadata and we already hash the full contents of
+        // the file.
+        .map(DebuggerVisualizerFile::path_erased)
+        .collect();
+
+    let crate_hash: Fingerprint = tcx.with_stable_hashing_context(|mut hcx| {
+        let mut stable_hasher = StableHasher::new();
+        metadata_hash.hash_stable(&mut hcx, &mut stable_hasher);
+        upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
+        source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
+        debugger_visualizers.hash_stable(&mut hcx, &mut stable_hasher);
+        if tcx.sess.opts.incremental.is_some() {
+            let definitions = tcx.untracked().definitions.freeze();
+            let mut owner_spans: Vec<_> = tcx
+                .hir_crate_items(())
+                .definitions()
+                .map(|def_id| {
+                    let def_path_hash = definitions.def_path_hash(def_id);
+                    let span = tcx.source_span(def_id);
+                    debug_assert_eq!(span.parent(), None);
+                    (def_path_hash, span)
+                })
+                .collect();
+            owner_spans.sort_unstable_by_key(|bn| bn.0);
+            owner_spans.hash_stable(&mut hcx, &mut stable_hasher);
+        }
+        tcx.sess.opts.dep_tracking_hash(true).hash_stable(&mut hcx, &mut stable_hasher);
+        tcx.stable_crate_id(LOCAL_CRATE).hash_stable(&mut hcx, &mut stable_hasher);
+        // Hash visibility information since it does not appear in HIR.
+        // FIXME: Figure out how to remove `visibilities_for_hashing` by hashing visibilities on
+        // the fly in the resolver, storing only their accumulated hash in `ResolverGlobalCtxt`,
+        // and combining it with other hashes here.
+        resolutions.visibilities_for_hashing.hash_stable(&mut hcx, &mut stable_hasher);
+        with_metavar_spans(|mspans| {
+            mspans.freeze_and_get_read_spans().hash_stable(&mut hcx, &mut stable_hasher);
+        });
+        stable_hasher.finish()
+    });
+
+    Svh::new(crate_hash)
+}
+
+fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
+    let mut upstream_crates: Vec<_> = tcx
+        .crates(())
+        .iter()
+        .map(|&cnum| {
+            let stable_crate_id = tcx.stable_crate_id(cnum);
+            let hash = tcx.crate_hash(cnum);
+            (stable_crate_id, hash)
+        })
+        .collect();
+    upstream_crates.sort_unstable_by_key(|&(stable_crate_id, _)| stable_crate_id);
+    upstream_crates
+}*/
