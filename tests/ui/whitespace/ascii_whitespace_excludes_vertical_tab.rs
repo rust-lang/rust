@@ -18,5 +18,5 @@ fn main() {
     assert_eq!(parts2.len(), 2,
         "regular space should split correctly");
 
-    println!("All assertions passed.");
 }
+
