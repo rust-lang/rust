@@ -1,6 +1,6 @@
 use either::Either;
 use hir::{
-    AssocItem, FindPathConfig, HirDisplay, InFile, Type,
+    AssocItem, FindPathConfig, HasVisibility, HirDisplay, InFile, Type,
     db::{ExpandDatabase, HirDatabase},
     sym,
 };
@@ -35,7 +35,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 // ```
 pub(crate) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Diagnostic {
     let mut message = String::from("missing structure fields:\n");
-    for field in &d.missed_fields {
+    for (field, _) in &d.missed_fields {
         format_to!(message, "- {}\n", field.display(ctx.sema.db, ctx.edition));
     }
 
@@ -57,7 +57,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
     // `struct A(usize);`
     // `let a = A { 0: () }`
     // but it is uncommon usage and it should not be encouraged.
-    if d.missed_fields.iter().any(|it| it.as_tuple_index().is_some()) {
+    if d.missed_fields.iter().any(|(name, _)| name.as_tuple_index().is_some()) {
         return None;
     }
 
@@ -67,6 +67,12 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
         ctx.sema.scope(d.field_list_parent.to_node(&root).syntax()).map(|it| it.module());
     let range = InFile::new(d.file, d.field_list_parent.text_range())
         .original_node_file_range_rooted_opt(ctx.sema.db)?;
+
+    if let Some(current_module) = current_module
+        && d.missed_fields.iter().any(|(_, field)| !field.is_visible_from(ctx.db(), current_module))
+    {
+        return None;
+    }
 
     let build_text_edit = |new_syntax: &SyntaxNode, old_syntax| {
         let edit = {
@@ -254,7 +260,7 @@ fn get_default_constructor(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_fix, check_no_fix};
 
     #[test]
     fn missing_record_pat_field_diagnostic() {
@@ -956,6 +962,21 @@ struct A {
 fn f() -> A {
     let v = loop {};
     A { v }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn inaccessible_fields() {
+        check_no_fix(
+            r#"
+mod foo {
+    pub struct Bar { baz: i32 }
+}
+
+fn qux() {
+    foo::Bar {$0};
 }
         "#,
         );

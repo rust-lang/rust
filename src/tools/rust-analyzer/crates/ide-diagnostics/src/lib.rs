@@ -285,6 +285,12 @@ struct DiagnosticsContext<'a> {
     is_nightly: bool,
 }
 
+impl<'a> DiagnosticsContext<'a> {
+    fn db(&self) -> &'a RootDatabase {
+        self.sema.db
+    }
+}
+
 /// Request parser level diagnostics for the given [`FileId`].
 pub fn syntax_diagnostics(
     db: &RootDatabase,
