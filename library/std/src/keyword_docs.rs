@@ -2213,7 +2213,6 @@ mod type_keyword {}
 /// It is also possible to have `unsafe fn` in a regular safe `trait`:
 ///
 /// ```rust
-/// # #![feature(never_type)]
 /// #![deny(unsafe_op_in_unsafe_fn)]
 ///
 /// trait Indexable {

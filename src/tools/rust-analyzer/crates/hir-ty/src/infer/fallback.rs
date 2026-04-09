@@ -1,10 +1,6 @@
 //! Fallback of infer vars to `!` and `i32`/`f64`.
 
-use intern::sym;
-use petgraph::{
-    Graph,
-    visit::{Dfs, Walker},
-};
+use petgraph::{Graph, visit::Dfs};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use rustc_type_ir::{
     TyVid,
@@ -19,10 +15,6 @@ use crate::{
 
 #[derive(Copy, Clone)]
 pub(crate) enum DivergingFallbackBehavior {
-    /// Always fallback to `()` (aka "always spontaneous decay")
-    ToUnit,
-    /// Sometimes fallback to `!`, but mainly fallback to `()` so that most of the crates are not broken.
-    ContextDependent,
     /// Always fallback to `!` (which should be equivalent to never falling back + not making
     /// never-to-any coercions unless necessary)
     ToNever,
@@ -76,15 +68,8 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 
     fn diverging_fallback_behavior(&self) -> DivergingFallbackBehavior {
-        if self.krate().data(self.db).edition.at_least_2024() {
-            return DivergingFallbackBehavior::ToNever;
-        }
-
-        if self.resolver.def_map().is_unstable_feature_enabled(&sym::never_type_fallback) {
-            return DivergingFallbackBehavior::ContextDependent;
-        }
-
-        DivergingFallbackBehavior::ToUnit
+        // FIXME: remove this whole system for changing diverging fallback behavior
+        DivergingFallbackBehavior::ToNever
     }
 
     fn fallback_types(&mut self) -> bool {
@@ -325,59 +310,12 @@ impl<'db> InferenceContext<'_, 'db> {
 
         for &diverging_vid in &diverging_vids {
             let diverging_ty = Ty::new_var(self.interner(), diverging_vid);
-            let root_vid = self.table.infer_ctxt.root_var(diverging_vid);
-            let can_reach_non_diverging = Dfs::new(&coercion_graph, root_vid.as_u32().into())
-                .iter(&coercion_graph)
-                .any(|n| roots_reachable_from_non_diverging.discovered.contains(n.index()));
 
             let mut fallback_to = |ty| {
                 diverging_fallback.insert(diverging_ty, ty);
             };
 
             match behavior {
-                DivergingFallbackBehavior::ToUnit => {
-                    debug!("fallback to () - legacy: {:?}", diverging_vid);
-                    fallback_to(self.types.types.unit);
-                }
-                DivergingFallbackBehavior::ContextDependent => {
-                    // FIXME: rustc does the following, but given this is only relevant when the unstable
-                    // `never_type_fallback` feature is active, I chose to not port this.
-                    // if found_infer_var_info.self_in_trait && found_infer_var_info.output {
-                    //     // This case falls back to () to ensure that the code pattern in
-                    //     // tests/ui/never_type/fallback-closure-ret.rs continues to
-                    //     // compile when never_type_fallback is enabled.
-                    //     //
-                    //     // This rule is not readily explainable from first principles,
-                    //     // but is rather intended as a patchwork fix to ensure code
-                    //     // which compiles before the stabilization of never type
-                    //     // fallback continues to work.
-                    //     //
-                    //     // Typically this pattern is encountered in a function taking a
-                    //     // closure as a parameter, where the return type of that closure
-                    //     // (checked by `relationship.output`) is expected to implement
-                    //     // some trait (checked by `relationship.self_in_trait`). This
-                    //     // can come up in non-closure cases too, so we do not limit this
-                    //     // rule to specifically `FnOnce`.
-                    //     //
-                    //     // When the closure's body is something like `panic!()`, the
-                    //     // return type would normally be inferred to `!`. However, it
-                    //     // needs to fall back to `()` in order to still compile, as the
-                    //     // trait is specifically implemented for `()` but not `!`.
-                    //     //
-                    //     // For details on the requirements for these relationships to be
-                    //     // set, see the relationship finding module in
-                    //     // compiler/rustc_trait_selection/src/traits/relationships.rs.
-                    //     debug!("fallback to () - found trait and projection: {:?}", diverging_vid);
-                    //     fallback_to(self.types.types.unit);
-                    // }
-                    if can_reach_non_diverging {
-                        debug!("fallback to () - reached non-diverging: {:?}", diverging_vid);
-                        fallback_to(self.types.types.unit);
-                    } else {
-                        debug!("fallback to ! - all diverging: {:?}", diverging_vid);
-                        fallback_to(self.types.types.never);
-                    }
-                }
                 DivergingFallbackBehavior::ToNever => {
                     debug!(
                         "fallback to ! - `rustc_never_type_mode = \"fallback_to_never\")`: {:?}",

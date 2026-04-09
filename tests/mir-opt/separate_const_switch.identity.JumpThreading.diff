@@ -4,14 +4,14 @@
   fn identity(_1: Result<i32, i32>) -> Result<i32, i32> {
       debug x => _1;
       let mut _0: std::result::Result<i32, i32>;
-      let mut _2: std::ops::ControlFlow<std::result::Result<std::convert::Infallible, i32>, i32>;
+      let mut _2: std::ops::ControlFlow<std::result::Result<!, i32>, i32>;
       let mut _3: isize;
-      let _4: std::result::Result<std::convert::Infallible, i32>;
+      let _4: std::result::Result<!, i32>;
       let _5: i32;
       scope 1 {
           debug residual => _4;
           scope 2 {
-              scope 8 (inlined #[track_caller] <Result<i32, i32> as FromResidual<Result<Infallible, i32>>>::from_residual) {
+              scope 8 (inlined #[track_caller] <Result<i32, i32> as FromResidual<Result<!, i32>>>::from_residual) {
                   let mut _10: isize;
                   let _11: i32;
                   let mut _12: bool;
@@ -31,7 +31,7 @@
           let mut _6: isize;
           let _7: i32;
           let _8: i32;
-          let mut _9: std::result::Result<std::convert::Infallible, i32>;
+          let mut _9: std::result::Result<!, i32>;
           scope 6 {
           }
           scope 7 {
@@ -59,7 +59,7 @@
       }
   
       bb3: {
-          _4 = copy ((_2 as Break).0: std::result::Result<std::convert::Infallible, i32>);
+          _4 = copy ((_2 as Break).0: std::result::Result<!, i32>);
           StorageLive(_10);
           StorageLive(_12);
           _10 = discriminant(_4);
@@ -84,8 +84,8 @@
       bb5: {
           _8 = copy ((_1 as Err).0: i32);
           StorageLive(_9);
-          _9 = Result::<Infallible, i32>::Err(copy _8);
-          _2 = ControlFlow::<Result<Infallible, i32>, i32>::Break(move _9);
+          _9 = Result::<!, i32>::Err(copy _8);
+          _2 = ControlFlow::<Result<!, i32>, i32>::Break(move _9);
           StorageDead(_9);
 -         goto -> bb4;
 +         goto -> bb7;
@@ -93,7 +93,7 @@
   
       bb6: {
           _7 = copy ((_1 as Ok).0: i32);
-          _2 = ControlFlow::<Result<Infallible, i32>, i32>::Continue(copy _7);
+          _2 = ControlFlow::<Result<!, i32>, i32>::Continue(copy _7);
 -         goto -> bb4;
 +         goto -> bb8;
 +     }

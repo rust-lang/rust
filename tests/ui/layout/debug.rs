@@ -1,6 +1,6 @@
 //@ normalize-stderr: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
-#![feature(never_type, rustc_attrs, type_alias_impl_trait, repr_simd)]
+#![feature(rustc_attrs, type_alias_impl_trait, repr_simd)]
 #![crate_type = "lib"]
 
 #[rustc_layout(debug)]

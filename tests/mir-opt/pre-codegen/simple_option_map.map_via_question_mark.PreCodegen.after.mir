@@ -3,14 +3,14 @@
 fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
     debug x => _1;
     let mut _0: std::option::Option<i32>;
-    let mut _4: std::option::Option<std::convert::Infallible>;
-    let mut _7: std::ops::ControlFlow<std::option::Option<std::convert::Infallible>, i32>;
+    let mut _4: std::option::Option<!>;
+    let mut _7: std::ops::ControlFlow<std::option::Option<!>, i32>;
     let _8: i32;
     let mut _9: i32;
     scope 1 {
-        debug residual => const Option::<Infallible>::None;
+        debug residual => const Option::<!>::None;
         scope 2 {
-            scope 7 (inlined <Option<i32> as FromResidual<Option<Infallible>>>::from_residual) {
+            scope 7 (inlined <Option<i32> as FromResidual<Option<!>>>::from_residual) {
                 let mut _3: isize;
                 let mut _5: bool;
             }
@@ -55,7 +55,7 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
 
     bb2: {
         _6 = copy ((_1 as Some).0: i32);
-        _7 = ControlFlow::<Option<Infallible>, i32>::Continue(copy _6);
+        _7 = ControlFlow::<Option<!>, i32>::Continue(copy _6);
         StorageDead(_6);
         StorageDead(_2);
         _8 = copy ((_7 as Continue).0: i32);

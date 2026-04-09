@@ -127,7 +127,6 @@ mod issue14577 {
     trait Unit {}
     impl Unit for () {}
 
-    #[allow(dependency_on_unit_never_type_fallback)]
     fn bar() -> () {
         //~[edition2021]^ unused_unit
         panic!()

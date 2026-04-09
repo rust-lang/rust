@@ -3,7 +3,6 @@
 //
 // Test case with only one inhabited variant, for which rustc used to not emit
 // a discriminant read in the first place. See: rust-lang/miri#4778
-#![feature(never_type)]
 
 #[repr(C)]
 #[allow(dead_code)]

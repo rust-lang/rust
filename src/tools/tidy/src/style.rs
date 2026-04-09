@@ -602,10 +602,15 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     err(DOUBLE_SPACE_AFTER_DOT)
                 }
 
-                if trimmed.contains("//") {
+                if trimmed.contains("//")
+                    || (trimmed.contains("cfg_attr") && trimmed.contains("doc"))
+                {
                     let (start_line, mut backtick_count) = comment_block.unwrap_or((i + 1, 0));
                     let line_backticks = trimmed.chars().filter(|ch| *ch == '`').count();
-                    let comment_text = trimmed.split("//").nth(1).unwrap();
+                    let comment_text = trimmed
+                        .split("//")
+                        .nth(1)
+                        .unwrap_or_else(|| trimmed.split_once("doc").unwrap().1);
                     // This check ensures that we don't lint for code that has `//` in a string literal
                     if line_backticks % 2 == 1 {
                         backtick_count += comment_text.chars().filter(|ch| *ch == '`').count();

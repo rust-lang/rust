@@ -8,14 +8,13 @@ fn main() -> () {
     let mut _0: ();
     let _1: std::option::Option<u8> as UserTypeProjection { base: UserType(0), projs: [] };
     let mut _2: !;
-    let _3: ();
-    let mut _4: !;
-    let mut _6: isize;
+    let _3: !;
+    let mut _5: isize;
     scope 1 {
         debug x => _1;
-        let _5: u8;
+        let _4: u8;
         scope 2 {
-            debug y => _5;
+            debug y => _4;
         }
     }
 
@@ -25,18 +24,16 @@ fn main() -> () {
         FakeRead(ForLet(None), _1);
         AscribeUserType(_1, o, UserTypeProjection { base: UserType(1), projs: [] });
         PlaceMention(_1);
-        _6 = discriminant(_1);
-        switchInt(move _6) -> [1: bb4, otherwise: bb3];
+        _5 = discriminant(_1);
+        switchInt(move _5) -> [1: bb4, otherwise: bb3];
     }
 
     bb1: {
         StorageLive(_3);
-        StorageLive(_4);
-        _4 = std::rt::begin_panic::<&str>(const "explicit panic") -> bb8;
+        _3 = std::rt::begin_panic::<&str>(const "explicit panic") -> bb8;
     }
 
     bb2: {
-        StorageDead(_4);
         StorageDead(_3);
         unreachable;
     }
@@ -54,10 +51,10 @@ fn main() -> () {
     }
 
     bb6: {
-        StorageLive(_5);
-        _5 = copy ((_1 as Some).0: u8);
+        StorageLive(_4);
+        _4 = copy ((_1 as Some).0: u8);
         _0 = const ();
-        StorageDead(_5);
+        StorageDead(_4);
         StorageDead(_1);
         return;
     }

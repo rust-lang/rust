@@ -1,7 +1,5 @@
 //@ only-x86_64
 
-#![feature(never_type)]
-
 use std::arch::asm;
 
 fn main() {

@@ -1,6 +1,5 @@
 #![warn(clippy::zero_repeat_side_effects)]
 #![allow(clippy::diverging_sub_expression)]
-#![feature(never_type)]
 
 fn issue_14998() {
     // nameable type thanks to `never_type` being enabled, suggest
