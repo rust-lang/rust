@@ -18,7 +18,7 @@ use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::Os;
 
 use crate::concurrency::GlobalDataRaceHandler;
-use crate::concurrency::blocking_io::InterestReason;
+use crate::concurrency::blocking_io::InterestReceiver;
 use crate::shims::tls;
 use crate::*;
 
@@ -823,10 +823,10 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             Err(e) => panic!("unexpected error while polling: {e}"),
         };
 
-        ready.into_iter().try_for_each(|(reason, source_id)| {
-            match reason {
-                InterestReason::ThreadBlocked(thread_id) => {
-                    this.machine.blocking_io.deregister(source_id, reason);
+        ready.into_iter().try_for_each(|(receiver, source)| {
+            match receiver {
+                InterestReceiver::UnblockThread(thread_id) => {
+                    this.machine.blocking_io.deregister(source.id(), receiver);
                     this.unblock_thread(thread_id, BlockReason::IO)
                 }
             }
