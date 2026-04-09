@@ -8,7 +8,7 @@ use std::sync::LazyLock;
 use private::Sealed;
 use rustc_ast::{AttrStyle, MetaItemLit, NodeId};
 use rustc_errors::{Diag, Diagnostic, Level, MultiSpan};
-use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
+use rustc_feature::{AttrSuggestionStyle, AttributeGate, AttributeTemplate};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrPath, HirId};
@@ -77,6 +77,7 @@ pub(super) struct GroupTypeInnerAccept<S: Stage> {
     pub(super) accept_fn: AcceptFn<S>,
     pub(super) allowed_targets: AllowedTargets,
     pub(super) safety: AttributeSafety,
+    pub(super) gated: AttributeGate,
     pub(super) finalizer: FinalizeFn<S>,
 }
 
@@ -117,7 +118,7 @@ macro_rules! attribute_parsers {
                         static STATE_OBJECT: RefCell<$names> = RefCell::new(<$names>::default());
                     };
 
-                    for (path, template, accept_fn) in <$names>::ATTRIBUTES {
+                    for (path, template, gated, accept_fn) in <$names>::ATTRIBUTES {
                         match accepters.entry(*path) {
                             Entry::Vacant(e) => {
                                 e.insert(GroupTypeInnerAccept {
@@ -128,6 +129,7 @@ macro_rules! attribute_parsers {
                                         })
                                     }),
                                     safety: <$names as crate::attributes::AttributeParser<$stage>>::SAFETY,
+                                    gated: *gated,
                                     allowed_targets: <$names as crate::attributes::AttributeParser<$stage>>::ALLOWED_TARGETS,
                                     finalizer: Box::new(|cx| {
                                         let state = STATE_OBJECT.take();
@@ -451,6 +453,8 @@ pub struct AcceptContext<'f, 'sess, S: Stage> {
 
     /// The name of the attribute we're currently accepting.
     pub(crate) attr_path: AttrPath,
+
+    pub(crate) do_nothing_due_to_gate: bool,
 }
 
 impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {

@@ -9,6 +9,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcMacroTransparencyParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Custom(|cx, used, unused| {
         cx.dcx().span_err(vec![used, unused], "multiple macro transparency attributes");
     });
+    const GATED: AttributeGate = gated_rustc_attr!(rustc_macro_transparency);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
     const TEMPLATE: AttributeTemplate =
         template!(NameValueStr: ["transparent", "semiopaque", "opaque"]);

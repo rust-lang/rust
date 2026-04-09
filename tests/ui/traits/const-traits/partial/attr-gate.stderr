@@ -1,8 +1,8 @@
 error[E0658]: use of an internal attribute
-  --> $DIR/attr-gate.rs:2:5
+  --> $DIR/attr-gate.rs:2:7
    |
 LL |     #[rustc_non_const_trait_method]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: the `#[rustc_non_const_trait_method]` attribute is an internal implementation detail that will never be stable

@@ -1,3 +1,4 @@
+use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_session::lint::builtin::AMBIGUOUS_DERIVE_HELPERS;
 
@@ -11,6 +12,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroParser {
     const PATH: &[Symbol] = &[sym::proc_macro];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
+    const GATED: AttributeGate = AttributeGate::Ungated;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::ProcMacro;
 }
 
@@ -19,6 +21,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for ProcMacroAttributeParser {
     const PATH: &[Symbol] = &[sym::proc_macro_attribute];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
+    const GATED: AttributeGate = AttributeGate::Ungated;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::ProcMacroAttribute;
 }
 
@@ -27,6 +30,8 @@ impl<S: Stage> SingleAttributeParser<S> for ProcMacroDeriveParser {
     const PATH: &[Symbol] = &[sym::proc_macro_derive];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = PROC_MACRO_ALLOWED_TARGETS;
+    const GATED: AttributeGate = AttributeGate::Ungated;
+
     const TEMPLATE: AttributeTemplate = template!(
         List: &["TraitName", "TraitName, attributes(name1, name2, ...)"],
         "https://doc.rust-lang.org/reference/procedural-macros.html#derive-macros"
@@ -46,6 +51,7 @@ pub(crate) struct RustcBuiltinMacroParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcBuiltinMacroParser {
     const PATH: &[Symbol] = &[sym::rustc_builtin_macro];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const GATED: AttributeGate = gated_rustc_attr!(rustc_builtin_macro);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::MacroDef)]);
     const TEMPLATE: AttributeTemplate =
         template!(List: &["TraitName", "TraitName, attributes(name1, name2, ...)"]);
@@ -128,7 +134,7 @@ fn parse_derive_like<S: Stage>(
                 cx.adcx().expected_identifier(ident.span);
                 return None;
             }
-            if rustc_feature::is_builtin_attr_name(ident.name) {
+            if BUILTIN_ATTRIBUTES.contains(&ident.name) {
                 cx.emit_lint(
                     AMBIGUOUS_DERIVE_HELPERS,
                     AttributeLintKind::AmbiguousDeriveHelpers,

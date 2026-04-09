@@ -61,6 +61,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
         Allow(Target::Crate),
         Error(Target::WherePredicate),
     ]);
+    const GATED: AttributeGate = Ungated;
     const TEMPLATE: AttributeTemplate = template!(
         Word,
         List: &[r#"since = "version""#, r#"note = "reason""#, r#"since = "version", note = "reason""#],

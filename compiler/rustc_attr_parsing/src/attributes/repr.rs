@@ -18,6 +18,7 @@ pub(crate) struct ReprParser;
 impl<S: Stage> CombineAttributeParser<S> for ReprParser {
     type Item = (ReprAttr, Span);
     const PATH: &[Symbol] = &[sym::repr];
+    const GATED: AttributeGate = Ungated;
     const CONVERT: ConvertFn<Self::Item> =
         |items, first_span| AttributeKind::Repr { reprs: items, first_span };
     // FIXME(jdonszelmann): never used
@@ -287,6 +288,7 @@ pub(crate) struct RustcAlignParser(Option<(Align, Span)>);
 
 impl RustcAlignParser {
     const PATH: &[Symbol] = &[sym::rustc_align];
+    const GATED: AttributeGate = gated!(fn_align, experimental!(rustc_align));
     const TEMPLATE: AttributeTemplate = template!(List: &["<alignment in bytes>"]);
 
     fn parse<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
@@ -324,7 +326,9 @@ impl RustcAlignParser {
 }
 
 impl<S: Stage> AttributeParser<S> for RustcAlignParser {
-    const ATTRIBUTES: AcceptMapping<Self, S> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
+    const ATTRIBUTES: AcceptMapping<Self, S> =
+        &[(Self::PATH, Self::TEMPLATE, Self::GATED, Self::parse)];
+    // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -345,6 +349,7 @@ pub(crate) struct RustcAlignStaticParser(RustcAlignParser);
 
 impl RustcAlignStaticParser {
     const PATH: &[Symbol] = &[sym::rustc_align_static];
+    const GATED: AttributeGate = gated!(static_align, experimental!(rustc_align_static));
     const TEMPLATE: AttributeTemplate = RustcAlignParser::TEMPLATE;
 
     fn parse<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
@@ -353,7 +358,10 @@ impl RustcAlignStaticParser {
 }
 
 impl<S: Stage> AttributeParser<S> for RustcAlignStaticParser {
-    const ATTRIBUTES: AcceptMapping<Self, S> = &[(Self::PATH, Self::TEMPLATE, Self::parse)];
+    const ATTRIBUTES: AcceptMapping<Self, S> =
+        &[(Self::PATH, Self::TEMPLATE, Self::GATED, Self::parse)];
+    // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
+
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Static), Allow(Target::ForeignStatic)]);
 

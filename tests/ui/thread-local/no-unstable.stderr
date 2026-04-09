@@ -1,24 +1,18 @@
 error[E0658]: use of an internal attribute
-  --> $DIR/no-unstable.rs:1:1
+  --> $DIR/no-unstable.rs:4:7
    |
-LL | / thread_local! {
-...  |
-LL | |     pub static BAZ: () = ();
-LL | | }
-   | |_^
+LL |     #[rustc_dummy = 17]
+   |       ^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: the `#[rustc_dummy]` attribute is an internal implementation detail that will never be stable
    = note: the `#[rustc_dummy]` attribute is used for rustc unit tests
 
 error[E0658]: use of an internal attribute
-  --> $DIR/no-unstable.rs:1:1
+  --> $DIR/no-unstable.rs:8:22
    |
-LL | / thread_local! {
-...  |
-LL | |     pub static BAZ: () = ();
-LL | | }
-   | |_^
+LL |     #[cfg_attr(true, rustc_dummy = 17)]
+   |                      ^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: the `#[rustc_dummy]` attribute is an internal implementation detail that will never be stable
@@ -28,6 +22,9 @@ error[E0658]: `#[used(linker)]` is currently unstable
   --> $DIR/no-unstable.rs:1:1
    |
 LL | / thread_local! {
+LL | |
+LL | |
+LL | |     #[rustc_dummy = 17]
 ...  |
 LL | |     pub static BAZ: () = ();
 LL | | }
@@ -41,6 +38,9 @@ error: `#[used]` attribute cannot be used on constants
   --> $DIR/no-unstable.rs:1:1
    |
 LL | / thread_local! {
+LL | |
+LL | |
+LL | |     #[rustc_dummy = 17]
 ...  |
 LL | |     pub static BAZ: () = ();
 LL | | }

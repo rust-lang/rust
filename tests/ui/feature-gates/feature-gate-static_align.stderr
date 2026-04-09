@@ -1,18 +1,18 @@
 error[E0658]: the `#[rustc_align_static]` attribute is an experimental feature
-  --> $DIR/feature-gate-static_align.rs:3:1
+  --> $DIR/feature-gate-static_align.rs:3:3
    |
 LL | #[rustc_align_static(16)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #146177 <https://github.com/rust-lang/rust/issues/146177> for more information
    = help: add `#![feature(static_align)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `#[rustc_align_static]` attribute is an experimental feature
-  --> $DIR/feature-gate-static_align.rs:8:5
+  --> $DIR/feature-gate-static_align.rs:8:7
    |
 LL |     #[rustc_align_static(16)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #146177 <https://github.com/rust-lang/rust/issues/146177> for more information
    = help: add `#![feature(static_align)]` to the crate attributes to enable

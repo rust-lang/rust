@@ -408,6 +408,7 @@ impl<'a> StripUnconfigured<'a> {
             &CFG_TEMPLATE,
             AllowExprMetavar::Yes,
             AttributeSafety::Normal,
+            rustc_feature::AttributeGate::Ungated,
         ) else {
             // Cfg attribute was not parsable, give up
             return EvalConfigResult::True;

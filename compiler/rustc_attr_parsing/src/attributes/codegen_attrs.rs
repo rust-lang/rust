@@ -3,7 +3,6 @@ use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition::Edition2024;
 
 use super::prelude::*;
-use crate::attributes::AttributeSafety;
 use crate::session_diagnostics::{
     NakedFunctionIncompatibleAttribute, NullOnExport, NullOnObjcClass, NullOnObjcSelector,
     ObjcClassExpectedStringLiteral, ObjcSelectorExpectedStringLiteral,
@@ -12,9 +11,11 @@ use crate::target_checking::Policy::AllowSilent;
 
 pub(crate) struct OptimizeParser;
 
+// RFC 2412
 impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     const PATH: &[Symbol] = &[sym::optimize];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const GATED: AttributeGate = gated!(optimize_attribute, experimental!(optimize));
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Closure),
@@ -47,6 +48,7 @@ pub(crate) struct ColdParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ColdParser {
     const PATH: &[Symbol] = &[sym::cold];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const GATED: AttributeGate = Ungated;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Trait { body: true })),
@@ -63,6 +65,7 @@ pub(crate) struct CoverageParser;
 impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
     const PATH: &[Symbol] = &[sym::coverage];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const GATED: AttributeGate = gated!(coverage_attribute, experimental!(coverage));
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Closure),
@@ -106,6 +109,7 @@ impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
     const PATH: &[rustc_span::Symbol] = &[sym::export_name];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: Some(Edition2024) };
+    const GATED: AttributeGate = Ungated;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Static),
         Allow(Target::Fn),
@@ -144,6 +148,7 @@ pub(crate) struct RustcObjcClassParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcObjcClassParser {
     const PATH: &[rustc_span::Symbol] = &[sym::rustc_objc_class];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const GATED: AttributeGate = gated_rustc_attr!(rustc_objc_class);
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::ForeignStatic)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "ClassName");
@@ -176,6 +181,7 @@ pub(crate) struct RustcObjcSelectorParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcObjcSelectorParser {
     const PATH: &[rustc_span::Symbol] = &[sym::rustc_objc_selector];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const GATED: AttributeGate = gated_rustc_attr!(rustc_objc_selector);
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::ForeignStatic)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "methodName");
@@ -210,7 +216,7 @@ pub(crate) struct NakedParser {
 
 impl<S: Stage> AttributeParser<S> for NakedParser {
     const ATTRIBUTES: AcceptMapping<Self, S> =
-        &[(&[sym::naked], template!(Word), |this, cx, args| {
+        &[(&[sym::naked], template!(Word), Ungated, |this, cx, args| {
             if let Err(span) = args.no_args() {
                 cx.adcx().expected_no_args(span);
                 return;
@@ -324,6 +330,7 @@ pub(crate) struct TrackCallerParser;
 impl<S: Stage> NoArgsAttributeParser<S> for TrackCallerParser {
     const PATH: &[Symbol] = &[sym::track_caller];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const GATED: AttributeGate = Ungated;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -345,6 +352,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for NoMangleParser {
     const PATH: &[Symbol] = &[sym::no_mangle];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: Some(Edition2024) };
+    const GATED: AttributeGate = Ungated;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
         Allow(Target::Static),
@@ -371,6 +379,7 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::used],
         template!(Word, List: &["compiler", "linker"]),
+        Ungated,
         |group: &mut Self, cx, args| {
             let used_by = match args {
                 ArgParser::NoArgs => UsedBy::Default,
@@ -515,6 +524,7 @@ pub(crate) struct TargetFeatureParser;
 impl<S: Stage> CombineAttributeParser<S> for TargetFeatureParser {
     type Item = (Symbol, Span);
     const PATH: &[Symbol] = &[sym::target_feature];
+    const GATED: AttributeGate = Ungated;
     const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature {
         features: items,
         attr_span: span,
@@ -548,6 +558,8 @@ impl<S: Stage> CombineAttributeParser<S> for ForceTargetFeatureParser {
     type Item = (Symbol, Span);
     const PATH: &[Symbol] = &[sym::force_target_feature];
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
+    const GATED: AttributeGate =
+        gated!(effective_target_features, experimental!(force_target_feature));
     const CONVERT: ConvertFn<Self::Item> = |items, span| AttributeKind::TargetFeature {
         features: items,
         attr_span: span,
@@ -592,6 +604,8 @@ impl<S: Stage> SingleAttributeParser<S> for SanitizeParser {
     ]);
 
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+
+    const GATED: AttributeGate = gated!(sanitize);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
@@ -696,6 +710,10 @@ pub(crate) struct ThreadLocalParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ThreadLocalParser {
     const PATH: &[Symbol] = &[sym::thread_local];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const GATED: AttributeGate = gated!(
+        thread_local,
+        "`#[thread_local]` is an experimental feature, and does not currently handle destructors"
+    );
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Static), Allow(Target::ForeignStatic)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ThreadLocal;
@@ -707,6 +725,10 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcPassIndirectlyInNonRusticAbisPa
     const PATH: &[Symbol] = &[sym::rustc_pass_indirectly_in_non_rustic_abis];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const GATED: AttributeGate = gated_rustc_attr!(
+        rustc_pass_indirectly_in_non_rustic_abis,
+        "types marked with `#[rustc_pass_indirectly_in_non_rustic_abis]` are always passed indirectly by non-Rustic ABIs"
+    );
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcPassIndirectlyInNonRusticAbis;
 }
 
@@ -715,6 +737,10 @@ pub(crate) struct RustcEiiForeignItemParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcEiiForeignItemParser {
     const PATH: &[Symbol] = &[sym::rustc_eii_foreign_item];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const GATED: AttributeGate = gated!(
+        eii_internals,
+        "used internally to mark types with a `transparent` representation when it is guaranteed by the documentation"
+    );
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::ForeignFn), Allow(Target::ForeignStatic)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcEiiForeignItem;
@@ -725,6 +751,7 @@ pub(crate) struct PatchableFunctionEntryParser;
 impl<S: Stage> SingleAttributeParser<S> for PatchableFunctionEntryParser {
     const PATH: &[Symbol] = &[sym::patchable_function_entry];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const GATED: AttributeGate = gated!(patchable_function_entry);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["prefix_nops = m, entry_nops = n"]);
 

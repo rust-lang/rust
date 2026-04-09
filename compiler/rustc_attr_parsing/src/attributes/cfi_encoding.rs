@@ -2,6 +2,7 @@ use super::prelude::*;
 pub(crate) struct CfiEncodingParser;
 impl<S: Stage> SingleAttributeParser<S> for CfiEncodingParser {
     const PATH: &[Symbol] = &[sym::cfi_encoding];
+    const GATED: AttributeGate = gated!(cfi_encoding);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Struct),
         Allow(Target::ForeignTy),

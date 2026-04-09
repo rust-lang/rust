@@ -101,6 +101,7 @@ pub mod parser;
 
 mod early_parsed;
 mod errors;
+mod feature_gate;
 mod safety;
 mod session_diagnostics;
 mod target_checking;
@@ -111,7 +112,7 @@ pub use attributes::cfg::{
     CFG_TEMPLATE, EvalConfigResult, eval_config_entry, parse_cfg, parse_cfg_attr, parse_cfg_entry,
 };
 pub use attributes::cfg_select::*;
-pub use attributes::util::{is_builtin_attr, parse_version};
+pub use attributes::util::{is_builtin_attr, is_builtin_attr_name, parse_version};
 pub use context::{Early, Late, OmitDoc, ShouldEmit};
 pub use interface::AttributeParser;
 pub use session_diagnostics::ParsedDescription;

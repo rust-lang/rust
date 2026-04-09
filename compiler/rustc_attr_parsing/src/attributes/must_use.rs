@@ -20,6 +20,8 @@ impl<S: Stage> SingleAttributeParser<S> for MustUseParser {
         Allow(Target::Trait),
         Error(Target::WherePredicate),
     ]);
+    const GATED: AttributeGate = AttributeGate::Ungated;
+
     const TEMPLATE: AttributeTemplate = template!(
         Word, NameValueStr: "reason",
         "https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute"

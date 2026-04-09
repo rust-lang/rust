@@ -12,6 +12,7 @@ impl<S: Stage> SingleAttributeParser<S> for MustNotSuspendParser {
         Allow(Target::Trait),
     ]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["count"]);
+    const GATED: AttributeGate = gated!(must_not_suspend);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let reason = match args {

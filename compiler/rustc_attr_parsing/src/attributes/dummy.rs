@@ -2,15 +2,13 @@ use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::AttributeKind;
 use rustc_span::{Symbol, sym};
 
-use crate::attributes::{OnDuplicate, SingleAttributeParser};
-use crate::context::{AcceptContext, Stage};
-use crate::parser::ArgParser;
-use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+use super::prelude::*;
 
 pub(crate) struct RustcDummyParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcDummyParser {
     const PATH: &[Symbol] = &[sym::rustc_dummy];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
+    const GATED: AttributeGate = gated_rustc_attr!(TEST, rustc_dummy);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
     const TEMPLATE: AttributeTemplate = template!(Word); // Anything, really
 

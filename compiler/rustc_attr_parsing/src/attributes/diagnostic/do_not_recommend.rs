@@ -4,15 +4,13 @@ use rustc_hir::lints::AttributeLintKind;
 use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::{Symbol, sym};
 
-use crate::attributes::{OnDuplicate, SingleAttributeParser};
-use crate::context::{AcceptContext, Stage};
-use crate::parser::ArgParser;
-use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+use super::super::prelude::*;
 
 pub(crate) struct DoNotRecommendParser;
 impl<S: Stage> SingleAttributeParser<S> for DoNotRecommendParser {
     const PATH: &[Symbol] = &[sym::diagnostic, sym::do_not_recommend];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const GATED: rustc_feature::AttributeGate = Ungated;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); // Checked in check_attr.
     const TEMPLATE: AttributeTemplate = template!(Word /*doesn't matter */);
 

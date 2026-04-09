@@ -4,6 +4,7 @@ pub(crate) struct NoLinkParser;
 impl<S: Stage> NoArgsAttributeParser<S> for NoLinkParser {
     const PATH: &[Symbol] = &[sym::no_link];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const GATED: AttributeGate = Ungated;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::ExternCrate),
         Warn(Target::Field),

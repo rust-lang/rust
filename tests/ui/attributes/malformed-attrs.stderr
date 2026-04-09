@@ -124,15 +124,6 @@ error: the `#[proc_macro_derive]` attribute is only usable with crates of the `p
 LL | #[proc_macro_derive]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error[E0658]: allow_internal_unsafe side-steps the unsafe_code lint
-  --> $DIR/malformed-attrs.rs:219:1
-   |
-LL | #[allow_internal_unsafe = 1]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(allow_internal_unsafe)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0539]: malformed `windows_subsystem` attribute input
   --> $DIR/malformed-attrs.rs:26:1
    |
@@ -674,6 +665,15 @@ LL + #[macro_export(local_inner_macros)]
 LL - #[macro_export = 18]
 LL + #[macro_export]
    |
+
+error[E0658]: allow_internal_unsafe side-steps the unsafe_code lint
+  --> $DIR/malformed-attrs.rs:219:3
+   |
+LL | #[allow_internal_unsafe = 1]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(allow_internal_unsafe)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0565]: malformed `allow_internal_unsafe` attribute input
   --> $DIR/malformed-attrs.rs:219:1

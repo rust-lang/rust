@@ -1,8 +1,8 @@
 error[E0658]: use of an internal attribute
-  --> $DIR/rustc_must_implement_one_of_gated.rs:1:1
+  --> $DIR/rustc_must_implement_one_of_gated.rs:1:3
    |
 LL | #[rustc_must_implement_one_of(eq, neq)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: the `#[rustc_must_implement_one_of]` attribute is an internal implementation detail that will never be stable
