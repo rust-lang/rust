@@ -15,7 +15,7 @@ macro_rules! ident {
         //~^ ERROR: unsafe attribute used without unsafe
         //~| WARN this is accepted in the current edition
         extern "C" fn bar() {}
-    }
+    };
 }
 
 macro_rules! ident2 {
@@ -24,26 +24,26 @@ macro_rules! ident2 {
         //~^ ERROR: unsafe attribute used without unsafe
         //~| WARN this is accepted in the current edition
         extern "C" fn bars() {}
-    }
+    };
 }
 
 macro_rules! meta {
     ($m:meta) => {
         #[$m]
         extern "C" fn baz() {}
-    }
+    };
 }
 
 macro_rules! meta2 {
     ($m:meta) => {
         #[$m]
         extern "C" fn baw() {}
-    }
+    };
 }
 
 macro_rules! with_cfg_attr {
     () => {
-        #[cfg_attr(true, unsafe(link_section = ".custom_section"))]
+        #[cfg_attr(true, unsafe(link_section = "__TEXT,__custom"))]
         //~^ ERROR: unsafe attribute used without unsafe
         //~| WARN this is accepted in the current edition
         pub extern "C" fn abc() {}
