@@ -89,7 +89,7 @@ pub fn cmd<S: AsRef<OsStr>>(program: S) -> Command {
     command
 }
 
-fn split_maybe_args(s: &str) -> Vec<OsString> {
+pub(crate) fn split_maybe_args(s: &str) -> Vec<OsString> {
     // Split on default shell IFS (space, tab, newline).
     s.split(|c: char| matches!(c, ' ' | '\t' | '\n'))
         .filter(|s| !s.is_empty())
@@ -98,60 +98,4 @@ fn split_maybe_args(s: &str) -> Vec<OsString> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn os(s: &str) -> OsString {
-        OsString::from(s)
-    }
-
-    // --- Tests that PASS on the current (buggy) code ---
-
-    #[test]
-    fn split_on_space() {
-        assert_eq!(
-            split_maybe_args("valgrind --tool=memcheck"),
-            vec![os("valgrind"), os("--tool=memcheck")]
-        );
-    }
-
-    #[test]
-    fn single_arg_no_whitespace() {
-        assert_eq!(split_maybe_args("valgrind"), vec![os("valgrind")]);
-    }
-
-    #[test]
-    fn empty_string() {
-        assert_eq!(split_maybe_args(""), Vec::<OsString>::new());
-    }
-
-    // --- Tests that FAIL on the current (buggy) code ---
-    // They prove the bug: split_maybe_args only splits on space,
-    // but shells split on IFS which defaults to space, tab, and newline.
-
-    #[test]
-    fn split_on_tab() {
-        assert_eq!(
-            split_maybe_args("valgrind\t--tool=memcheck"),
-            vec![os("valgrind"), os("--tool=memcheck")]
-        );
-    }
-
-    #[test]
-    fn split_on_newline() {
-        assert_eq!(
-            split_maybe_args("valgrind\n--tool=memcheck"),
-            vec![os("valgrind"), os("--tool=memcheck")]
-        );
-    }
-
-    #[test]
-    fn multiple_ifs_separators() {
-        assert_eq!(split_maybe_args("a  b\t\tc\n\nd"), vec![os("a"), os("b"), os("c"), os("d")]);
-    }
-
-    #[test]
-    fn leading_and_trailing_whitespace() {
-        assert_eq!(split_maybe_args("  valgrind\t"), vec![os("valgrind")]);
-    }
-}
+mod tests;
