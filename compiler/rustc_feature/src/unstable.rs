@@ -595,7 +595,7 @@ declare_features! (
     /// Allows qualified paths in struct expressions, struct patterns and tuple struct patterns.
     (unstable, more_qualified_paths, "1.54.0", Some(86935)),
     /// Allows `move(expr)` in closures.
-    (incomplete, move_expr, "CURRENT_RUSTC_VERSION", Some(132290)),
+    (incomplete, move_expr, "CURRENT_RUSTC_VERSION", Some(155050)),
     /// The `movrs` target feature on x86.
     (unstable, movrs_target_feature, "1.88.0", Some(137976)),
     /// Allows the `multiple_supertrait_upcastable` lint.
