@@ -1753,6 +1753,7 @@ symbols! {
         rustc_main,
         rustc_mir,
         rustc_must_implement_one_of,
+        rustc_must_match_exhaustively,
         rustc_never_returns_null_ptr,
         rustc_never_type_options,
         rustc_no_implicit_autorefs,

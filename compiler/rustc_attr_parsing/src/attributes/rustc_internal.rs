@@ -1349,3 +1349,12 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcIntrinsicConstStableIndirectPar
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsicConstStableIndirect;
 }
+
+pub(crate) struct RustcExhaustiveParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcExhaustiveParser {
+    const PATH: &'static [Symbol] = &[sym::rustc_must_match_exhaustively];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Enum)]);
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcMustMatchExhaustively;
+}

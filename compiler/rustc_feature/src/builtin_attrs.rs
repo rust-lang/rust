@@ -1414,6 +1414,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_scalable_vector, Normal, template!(List: &["count"]), WarnFollowing, EncodeCrossCrate::Yes,
         "`#[rustc_scalable_vector]` defines a scalable vector type"
     ),
+    rustc_attr!(
+        rustc_must_match_exhaustively, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
+        "enums with `#[rustc_must_match_exhaustively]` must be matched on with a match block that mentions all variants explicitly"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:
