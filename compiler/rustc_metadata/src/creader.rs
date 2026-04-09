@@ -1024,12 +1024,19 @@ impl CStore {
 
         info!("loading profiler");
 
+        // HACK: This uses conditional despite actually being unconditional to ensure that
+        // there is no error emitted when two dylibs independently depend on profiler_builtins.
+        // This is fine as profiler_builtins is always statically linked into the dylib just
+        // like compiler_builtins. Unlike compiler_builtins however there is no guaranteed
+        // common dylib that the duplicate crate check believes the crate to be included in.
+        // add_upstream_rust_crates has a corresponding check that forces profiler_builtins
+        // to be statically linked in even when marked as NotLinked.
         let name = Symbol::intern(&tcx.sess.opts.unstable_opts.profiler_runtime);
         let Some(cnum) = self.resolve_crate(
             tcx,
             name,
             DUMMY_SP,
-            CrateDepKind::Unconditional,
+            CrateDepKind::Conditional,
             CrateOrigin::Injected,
         ) else {
             return;

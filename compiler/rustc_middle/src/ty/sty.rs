@@ -1594,7 +1594,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn is_impl_trait(self) -> bool {
+    pub fn is_opaque(self) -> bool {
         matches!(self.kind(), Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }))
     }
 
