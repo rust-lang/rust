@@ -72,7 +72,7 @@ impl BlockingIoManager {
     ///   specified duration.
     /// - If the timeout is [`None`] the poll blocks indefinitely until an event occurs.
     ///
-    /// Returns the [`InterestReceiver`]s for all file descriptions which received an I/O event together
+    /// Returns the interest receivers for all file descriptions which received an I/O event together
     /// with the file description they were registered for.
     pub fn poll(
         &mut self,
