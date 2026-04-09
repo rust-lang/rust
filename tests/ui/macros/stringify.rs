@@ -10,7 +10,6 @@
 #![feature(coroutines)]
 #![feature(decl_macro)]
 #![feature(macro_guard_matcher)]
-#![feature(more_qualified_paths)]
 #![feature(never_patterns)]
 #![feature(specialization)]
 #![feature(trait_alias)]
