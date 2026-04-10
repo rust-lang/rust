@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::hash::Hash;
-use crate::marker::Destruct;
+use crate::marker::{Destruct, StructuralPartialEq};
 /// An unbounded range (`..`).
 ///
 /// `RangeFull` is primarily used as a [slicing index], its shorthand is `..`.
@@ -351,8 +351,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// ```
 #[lang = "RangeInclusive"]
 #[doc(alias = "..=")]
-#[derive(Clone, Hash)]
-#[derive_const(Eq, PartialEq)] // not Copy -- see #27186
+#[derive(Clone)] // not Copy -- see #27186
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
     // Note that the fields here are not public to allow changing the
@@ -363,10 +362,15 @@ pub struct RangeInclusive<Idx> {
     pub(crate) start: Idx,
     pub(crate) end: Idx,
 
-    // This field is:
+    // This field represents an overflow flag for either bound (start or end):
     //  - `false` upon construction
-    //  - `false` when iteration has yielded an element and the iterator is not exhausted
-    //  - `true` when iteration has been used to exhaust the iterator
+    //  - `false` when iteration has yielded an element and
+    //    neither bound has overflowed the valid range of `Idx`
+    //  - `true` when iteration has caused either bound to
+    //    overflow the valid range of `Idx`
+    //
+    // When this is true, `start` or `end` may be left in an unspecified state,
+    // often wrapping (modular arithmetic) around at the boundary of `Idx`.
     //
     // This is required to support PartialEq and Hash without a PartialOrd bound or specialization.
     pub(crate) exhausted: bool,
@@ -483,6 +487,33 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
             write!(fmt, " (exhausted)")?;
         }
         Ok(())
+    }
+}
+
+#[stable(feature = "inclusive_range", since = "1.26.0")]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<Idx: [const] PartialEq> const PartialEq for RangeInclusive<Idx> {
+    fn eq(&self, other: &Self) -> bool {
+        if self.exhausted || other.exhausted {
+            return false;
+        }
+        self.start == other.start && self.end == other.end
+    }
+}
+
+#[stable(feature = "inclusive_range", since = "1.26.0")]
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<Idx: [const] Eq> const Eq for RangeInclusive<Idx> {}
+
+#[unstable(feature = "structural_match", issue = "31434")]
+impl<Idx: StructuralPartialEq> StructuralPartialEq for RangeInclusive<Idx> {}
+
+#[stable(feature = "inclusive_range", since = "1.26.0")]
+impl<Idx: Hash> Hash for RangeInclusive<Idx> {
+    fn hash<H: crate::hash::Hasher>(&self, state: &mut H) {
+        self.start.hash(state);
+        self.end.hash(state);
+        self.exhausted.hash(state);
     }
 }
 
