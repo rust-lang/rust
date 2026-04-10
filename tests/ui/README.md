@@ -1492,12 +1492,6 @@ See [Uninhabited | Reference](https://doc.rust-lang.org/reference/glossary.html?
 
 See [Unions | Reference](https://doc.rust-lang.org/reference/items/unions.html).
 
-## `tests/ui/unknown-unstable-lints/`: Attempting to refer to an unstable lint which does not exist
-
-Tests for trying to use non-existent unstable lints.
-
-**FIXME**: move this under `tests/ui/lints/`.
-
 ## `tests/ui/unop/`: Unary operators `-`, `*` and `!`
 
 Tests the three unary operators for negating, dereferencing and inverting, across different contexts.
