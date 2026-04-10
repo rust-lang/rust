@@ -73,6 +73,7 @@ declare_lint_pass! {
         MALFORMED_DIAGNOSTIC_ATTRIBUTES,
         MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
         META_VARIABLE_MISUSE,
+        MISLEADING_CFG_IN_BUILD_SCRIPT,
         MISPLACED_DIAGNOSTIC_ATTRIBUTES,
         MISSING_ABI,
         MISSING_UNSAFE_ON_EXTERN,
@@ -5694,4 +5695,30 @@ declare_lint! {
         reason: fcw!(FutureReleaseError #154024),
         report_in_deps: false,
     };
+}
+
+declare_lint! {
+    /// Checks for usage of `#[cfg]`/`#[cfg_attr]`/`cfg!()` in `build.rs` scripts.
+    ///
+    /// ### Explanation
+    ///
+    /// It checks the `cfg` values for the *host*, not the target. For example, `cfg!(windows)` is
+    /// true when compiling on Windows, so it will give the wrong answer if you are cross compiling.
+    /// This is because build scripts run on the machine performing compilation, rather than on the
+    /// target.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (should only be run in cargo build scripts)
+    /// if cfg!(windows) {}
+    /// ```
+    ///
+    /// Use instead:
+    ///
+    /// ```rust
+    /// if std::env::var("CARGO_CFG_WINDOWS").is_ok() {}
+    /// ```
+    pub MISLEADING_CFG_IN_BUILD_SCRIPT,
+    Allow,
+    "use of host configs in `build.rs` scripts"
 }

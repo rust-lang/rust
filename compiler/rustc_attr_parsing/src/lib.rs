@@ -109,6 +109,7 @@ pub mod validate_attr;
 pub use attributes::AttributeSafety;
 pub use attributes::cfg::{
     CFG_TEMPLATE, EvalConfigResult, eval_config_entry, parse_cfg, parse_cfg_attr, parse_cfg_entry,
+    parse_cfg_entry_macro,
 };
 pub use attributes::cfg_select::*;
 pub use attributes::util::{is_builtin_attr, parse_version};

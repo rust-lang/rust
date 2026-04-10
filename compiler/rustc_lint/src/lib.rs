@@ -57,7 +57,6 @@ pub mod lifetime_syntax;
 mod lints;
 mod macro_expr_fragment_specifier_2024_migration;
 mod map_unit_fn;
-mod misleading_cfg_in_build_script;
 mod multiple_supertrait_upcastable;
 mod non_ascii_idents;
 mod non_fmt_panic;
@@ -102,7 +101,6 @@ use let_underscore::*;
 use lifetime_syntax::*;
 use macro_expr_fragment_specifier_2024_migration::*;
 use map_unit_fn::*;
-use misleading_cfg_in_build_script::MisleadingCfgInBuildScript;
 use multiple_supertrait_upcastable::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
@@ -157,7 +155,6 @@ early_lint_methods!(
         pub BuiltinCombinedPreExpansionLintPass,
         [
             KeywordIdents: KeywordIdents,
-            MisleadingCfgInBuildScript: MisleadingCfgInBuildScript,
         ]
     ]
 );
