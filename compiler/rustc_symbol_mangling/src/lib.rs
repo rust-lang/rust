@@ -307,7 +307,21 @@ fn compute_symbol_name<'tcx>(
                     mangled_name
                 }
             }
-            SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate, false),
+            SymbolManglingVersion::V0 => {
+                let mangled = v0::mangle(tcx, instance, instantiating_crate, false);
+                // v0 mangling can produce symbols that are too deeply nested for
+                // `rustc_demangle` to handle. This happens with pathologically
+                // nested generic types: the v0 format uses backreferences to encode
+                // repeated path components, and following those backreferences
+                // during demangling recurses, exceeding `rustc_demangle`'s internal
+                // recursion limit. Fall back to hashed mangling in that case so we
+                // always emit a demanglable symbol.
+                if rustc_demangle::try_demangle(&mangled).is_ok() {
+                    mangled
+                } else {
+                    hashed::mangle(tcx, instance, instantiating_crate, || mangled)
+                }
+            }
             SymbolManglingVersion::Hashed => {
                 hashed::mangle(tcx, instance, instantiating_crate, || {
                     v0::mangle(tcx, instance, instantiating_crate, false)
