@@ -377,3 +377,25 @@ fn test_codeblock_trailing_whitespace() {
     assert_eq!(t, MdTree::CodeBlock { txt: "code\n```abc\nrest", lang: Some("rust") });
     assert_eq!(r, b"");
 }
+
+#[rustfmt::skip]
+#[test]
+fn test_list_item_leading_whitespace() {
+    // extra spaces after marker
+    let buf = "-   hello";
+    let (t, r) = parse_unordered_li(buf.as_bytes());
+    assert_eq!(t, MdTree::UnorderedListItem(vec![MdTree::PlainText("hello")].into()));
+    assert_eq!(r, b"");
+
+    // tab after the marker space — needs #[rustfmt::skip] or rustfmt removes it
+    let buf = "- \thello";
+    let (t, r) = parse_unordered_li(buf.as_bytes());
+    assert_eq!(t, MdTree::UnorderedListItem(vec![MdTree::PlainText("hello")].into()));
+    assert_eq!(r, b"");
+
+    // ordered list
+    let buf = "1.   hello";
+    let (t, r) = parse_ordered_li(buf.as_bytes());
+    assert_eq!(t, MdTree::OrderedListItem(1, vec![MdTree::PlainText("hello")].into()));
+    assert_eq!(r, b"");
+}
