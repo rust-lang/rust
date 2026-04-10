@@ -1344,6 +1344,14 @@ impl<'test> TestCx<'test> {
 
         rustc.envs(self.props.rustc_env.clone());
         self.props.unset_rustc_env.iter().fold(&mut rustc, Command::env_remove);
+
+        // Inject LLVM_PROFILE_FILE when coverage collection is requested.
+        // Set COMPILETEST_LLVM_PROFILE_DIR to a directory path to collect profraw files
+        // from every rustc invocation during testing.
+        if let Ok(profile_dir) = std::env::var("COMPILETEST_LLVM_PROFILE_DIR") {
+            rustc.env("LLVM_PROFILE_FILE", format!("{}/rustc-%p.profraw", profile_dir));
+        }
+
         self.compose_and_run(
             rustc,
             self.config.host_compile_lib_path.as_path(),
