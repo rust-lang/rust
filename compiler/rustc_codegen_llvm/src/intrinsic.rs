@@ -1784,7 +1784,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     let supports_scalable = match name {
-        sym::simd_cast => true,
+        sym::simd_cast | sym::simd_select => true,
         _ => false,
     };
 
@@ -1984,7 +1984,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if name == sym::simd_select {
         let m_elem_ty = in_elem;
         let m_len = in_len;
-        let (v_len, _) = require_simd!(args[1].layout.ty, SimdArgument);
+        let (v_len, _, _) = require_simd_or_scalable!(args[1].layout.ty, SimdArgument);
         require!(
             m_len == v_len,
             InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
