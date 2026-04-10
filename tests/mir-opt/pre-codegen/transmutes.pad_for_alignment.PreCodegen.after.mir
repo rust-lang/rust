@@ -1,0 +1,29 @@
+// MIR for `pad_for_alignment` after PreCodegen
+
+fn pad_for_alignment(_1: u32) -> Align64<u32> {
+    debug x => _1;
+    let mut _0: Align64<u32>;
+    scope 1 (inlined transmute_prefix::<u32, Align64<u32>>) {
+        let _2: std::mem::ManuallyDrop<u32>;
+        let mut _3: std::mem::transmute_prefix::Transmute<u32, Align64<u32>>;
+        scope 2 {
+        }
+        scope 3 {
+            scope 4 (inlined transmute_neo::<ManuallyDrop<Align64<u32>>, Align64<u32>>) {
+            }
+        }
+        scope 5 (inlined transmute_neo::<u32, ManuallyDrop<u32>>) {
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);
+        _2 = copy _1 as std::mem::ManuallyDrop<u32> (Transmute);
+        StorageLive(_3);
+        _3 = transmute_prefix::Transmute::<u32, Align64<u32>> { a: copy _2 };
+        _0 = move _3 as Align64<u32> (Transmute);
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
+    }
+}
