@@ -5,7 +5,6 @@
 // Miri running with GenMC intercepts the Mutex functions `lock`, `try_lock` and `unlock`, instead of running their actual implementation.
 // This interception should not break any functionality.
 //
-// FIXME(genmc): Once GenMC supports mixed size accesses, add stack/heap allocated Mutexes to the test.
 // FIXME(genmc): Once the actual implementation of mutexes can be used in GenMC mode and there is a setting to disable Mutex interception: Add test revision without interception.
 //
 // Miri provides annotations to GenMC for the condition required to unblock a thread blocked on a Mutex lock call.
@@ -25,7 +24,6 @@ use crate::genmc::*;
 const REPS: u64 = 3;
 
 static LOCK: Mutex<u64> = Mutex::new(0);
-static OTHER_LOCK: Mutex<u64> = Mutex::new(1234);
 
 #[unsafe(no_mangle)]
 fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
@@ -35,7 +33,8 @@ fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
 
 fn main_() {
     // Two mutexes should not interfere, holding this guard does not affect the other mutex.
-    let other_guard = OTHER_LOCK.lock().unwrap();
+    let other_lock = Mutex::new(1234);
+    let other_guard = other_lock.lock().unwrap();
 
     let guard = LOCK.lock().unwrap();
     // Trying to lock should fail if the mutex is already held.

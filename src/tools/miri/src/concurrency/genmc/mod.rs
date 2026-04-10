@@ -19,7 +19,6 @@ use self::helper::{
 };
 use self::run::GenmcMode;
 use self::thread_id_map::ThreadIdMap;
-use crate::concurrency::genmc::helper::split_access;
 use crate::diagnostics::SpanDedupDiagnostic;
 use crate::intrinsics::AtomicRmwOp;
 use crate::*;
@@ -496,22 +495,7 @@ impl GenmcCtx {
             return interp_ok(());
         }
 
-        let handle_non_atomic_load = |address, size| {
-            self.handle_non_atomic_load(machine, address, size)?;
-            interp_ok(())
-        };
-
-        // This load is small enough so GenMC can handle it.
-        if size.bytes() <= MAX_ACCESS_SIZE {
-            return handle_non_atomic_load(address, size);
-        }
-
-        // This load is too big to be a single GenMC access, we have to split it.
-        // FIXME(genmc): This will misbehave if there are non-64bit-atomics in there.
-        // Needs proper support on the GenMC side for large and mixed atomic accesses.
-        for (address, size) in split_access(address, size) {
-            handle_non_atomic_load(Size::from_bytes(address), Size::from_bytes(size))?;
-        }
+        self.handle_non_atomic_load(machine, address, size)?;
         interp_ok(())
     }
 
@@ -538,22 +522,7 @@ impl GenmcCtx {
             return interp_ok(());
         }
 
-        let handle_non_atomic_store = |address, size| {
-            self.handle_non_atomic_store(machine, address, size)?;
-            interp_ok(())
-        };
-
-        // This store is small enough so GenMC can handle it.
-        if size.bytes() <= MAX_ACCESS_SIZE {
-            return handle_non_atomic_store(address, size);
-        }
-
-        // This store is too big to be a single GenMC access, we have to split it.
-        // FIXME(genmc): This will misbehave if there are non-64bit-atomics in there.
-        // Needs proper support on the GenMC side for large and mixed atomic accesses.
-        for (address, size) in split_access(address, size) {
-            handle_non_atomic_store(Size::from_bytes(address), Size::from_bytes(size))?;
-        }
+        self.handle_non_atomic_store(machine, address, size)?;
         interp_ok(())
     }
 
