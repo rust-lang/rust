@@ -422,11 +422,12 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
                 .linker(*target)
                 .expect("aarch64-unknown-linux-pauthtest requires an explicit clang linker");
 
-            if !cc_tool.is_like_clang() || !linker_path.to_string_lossy().contains("clang") {
+            if !cc_tool.is_like_clang() {
                 panic!(
-                    "Clang is required to build C code for aarch64-unknown-linux-pauthtest target, got:\n\
+                    "Clang is required to build C code for {} target, got:\n\
                      cc tool: `{}`,\n\
                      linker: `{}`\n",
+                    target.triple,
                     cc_tool.path().display(),
                     linker_path.display(),
                 );
@@ -435,9 +436,10 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
             let linker_canon = t!(fs::canonicalize(&linker_path));
             if cc_canon != linker_canon {
                 panic!(
-                    "CC and Linker are expected to be the same for aarch64-unknown-linux-pauthtest target, got:\n\
+                    "CC and Linker are expected to be the same for {} target, got:\n\
                      CC: `{}`,\n\
                      Linker: `{}`\n",
+                    target.triple,
                     cc_canon.display(),
                     linker_canon.display(),
                 );
