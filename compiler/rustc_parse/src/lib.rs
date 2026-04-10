@@ -257,6 +257,15 @@ pub fn fake_token_stream_for_item(psess: &ParseSess, item: &ast::Item) -> TokenS
     unwrap_or_emit_fatal(source_str_to_stream(psess, filename, source, Some(item.span)))
 }
 
+pub fn fake_token_stream_for_foreign_item(
+    psess: &ParseSess,
+    item: &ast::ForeignItem,
+) -> TokenStream {
+    let source = pprust::foreign_item_to_string(item);
+    let filename = FileName::macro_expansion_source_code(&source);
+    unwrap_or_emit_fatal(source_str_to_stream(psess, filename, source, Some(item.span)))
+}
+
 pub fn fake_token_stream_for_crate(psess: &ParseSess, krate: &ast::Crate) -> TokenStream {
     let source = pprust::crate_to_string_for_macros(krate);
     let filename = FileName::macro_expansion_source_code(&source);
