@@ -144,6 +144,7 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_endian, Some(_))
             | (sym::target_env, None | Some(_))
             | (sym::target_family, Some(_))
+            | (sym::target_object_format, Some(_))
             | (sym::target_os, Some(_))
             | (sym::target_pointer_width, Some(_))
             | (sym::target_vendor, None | Some(_))
@@ -252,8 +253,9 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
 
     ins_sym!(sym::target_abi, sess.target.cfg_abi.desc_symbol());
     ins_sym!(sym::target_arch, sess.target.arch.desc_symbol());
-    ins_str!(sym::target_endian, sess.target.endian.as_str());
+    ins_sym!(sym::target_endian, sess.target.endian.desc_symbol());
     ins_sym!(sym::target_env, sess.target.env.desc_symbol());
+    ins_sym!(sym::target_object_format, sess.target.options.binary_format.desc_symbol());
 
     for family in sess.target.families.as_ref() {
         ins_str!(sym::target_family, family);
@@ -420,12 +422,13 @@ impl CheckCfg {
 
         // sym::target_*
         {
-            const VALUES: [&Symbol; 8] = [
+            const VALUES: [&Symbol; 9] = [
                 &sym::target_abi,
                 &sym::target_arch,
                 &sym::target_endian,
                 &sym::target_env,
                 &sym::target_family,
+                &sym::target_object_format,
                 &sym::target_os,
                 &sym::target_pointer_width,
                 &sym::target_vendor,
@@ -449,6 +452,7 @@ impl CheckCfg {
                     Some(values_target_endian),
                     Some(values_target_env),
                     Some(values_target_family),
+                    Some(values_target_object_format),
                     Some(values_target_os),
                     Some(values_target_pointer_width),
                     Some(values_target_vendor),
@@ -460,11 +464,12 @@ impl CheckCfg {
                 for target in Target::builtins().chain(iter::once(current_target.clone())) {
                     values_target_abi.insert(target.options.cfg_abi.desc_symbol());
                     values_target_arch.insert(target.arch.desc_symbol());
-                    values_target_endian.insert(Symbol::intern(target.options.endian.as_str()));
+                    values_target_endian.insert(target.options.endian.desc_symbol());
                     values_target_env.insert(target.options.env.desc_symbol());
                     values_target_family.extend(
                         target.options.families.iter().map(|family| Symbol::intern(family)),
                     );
+                    values_target_object_format.insert(target.options.binary_format.desc_symbol());
                     values_target_os.insert(target.options.os.desc_symbol());
                     values_target_pointer_width.insert(sym::integer(target.pointer_width));
                     values_target_vendor.insert(target.vendor_symbol());

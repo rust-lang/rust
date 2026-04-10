@@ -589,6 +589,7 @@ symbols! {
         cfg_target_has_atomic,
         cfg_target_has_atomic_equal_alignment,
         cfg_target_has_reliable_f16_f128,
+        cfg_target_object_format,
         cfg_target_thread_local,
         cfg_target_vendor,
         cfg_trace: "<cfg_trace>", // must not be a valid identifier
@@ -623,6 +624,7 @@ symbols! {
         coerce_pointee_validated,
         coerce_shared,
         coerce_unsized,
+        coff,
         cold,
         cold_path,
         collapse_debuginfo,
@@ -853,6 +855,7 @@ symbols! {
         eii_internals,
         eii_shared_macro,
         element_ty,
+        elf,
         // Notes about `sym::empty`:
         // - It should only be used when it genuinely means "empty symbol". Use
         //   `Option<Symbol>` when "no symbol" is a possibility.
@@ -1167,6 +1170,7 @@ symbols! {
         linkonce_odr,
         lint_reasons,
         literal,
+        little, big,
         load,
         loaded_from_disk,
         local,
@@ -1193,6 +1197,7 @@ symbols! {
         lt,
         m68k,
         m68k_target_feature,
+        macho: "mach-o",
         macro_at_most_once_rep,
         macro_attr,
         macro_attributes_in_derive_output,
@@ -2014,6 +2019,7 @@ symbols! {
         target_has_reliable_f16_math,
         target_has_reliable_f128,
         target_has_reliable_f128_math,
+        target_object_format,
         target_os,
         target_pointer_width,
         target_thread_local,
@@ -2237,6 +2243,7 @@ symbols! {
         vtable_size,
         warn,
         wasip2,
+        wasm,
         wasm32,
         wasm64,
         wasm_abi,
@@ -2271,6 +2278,7 @@ symbols! {
         x86_amx_intrinsics,
         x87_reg,
         x87_target_feature,
+        xcoff,
         xer,
         xmm_reg,
         xop_target_feature,
