@@ -12,6 +12,9 @@
 //@ [O3_NO_PAUTH] compile-flags: --target=aarch64-unknown-linux-gnu -C opt-level=3
 
 #![crate_type = "lib"]
+#![no_std]
+#![no_core]
+#![feature(no_core)]
 #![feature(linkage)]
 
 // O0_PAUTH: @{{[0-9A-Za-z_]+}}FUNCTION_PTR_DECL = constant ptr ptrauth (ptr @copy_file_range, i32 0)
