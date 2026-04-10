@@ -1,8 +1,53 @@
-error: expected identifier, found `#`
-  --> $DIR/attr-in-use-tree.rs:4:5
+error: attributes are not allowed inside imports
+  --> $DIR/attr-in-use-tree.rs:6:5
    |
 LL |     #[cfg(true)]
-   |     ^ expected identifier
+   |     ^^^^^^^^^^^^
+   |
+help: move the import to its own item
+   |
+LL + #[cfg(true)]
+LL + use foo::bar;
+LL | use foo::{
+LL ~     
+LL |
+LL ~     
+   |
 
-error: aborting due to 1 previous error
+error: attributes are not allowed inside imports
+  --> $DIR/attr-in-use-tree.rs:9:5
+   |
+LL |     #[cfg(false)]
+   |     ^^^^^^^^^^^^^
+   |
+help: move the import to its own item
+   |
+LL + #[cfg(false)]
+LL + use foo::baz;
+LL | use foo::{
+LL |     #[cfg(true)]
+LL |
+LL |     bar,
+LL ~     
+LL |
+LL ~     
+   |
+
+error: attributes are not allowed inside imports
+  --> $DIR/attr-in-use-tree.rs:16:5
+   |
+LL |     #[cfg(false)]
+   |     ^^^^^^^^^^^^^
+   |
+help: move the import to its own item
+   |
+LL + #[cfg(false)]
+LL + use ::foo::qux;
+LL | use ::foo::{
+LL ~     
+LL |
+LL ~     
+   |
+
+error: aborting due to 3 previous errors
 
