@@ -83,7 +83,7 @@ pub struct LintGroup {
     let lints_json = project_root().join("./target/clippy_lints.json");
     cmd!(
         sh,
-        "curl https://rust-lang.github.io/rust-clippy/stable/lints.json --output {lints_json}"
+        "curl -f https://raw.githubusercontent.com/rust-lang/rust-clippy/21fd71e3fe6eb063cfb619ecc37b1023f5283894/beta/lints.json --output {lints_json}"
     )
     .run()
     .unwrap();
