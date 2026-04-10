@@ -120,7 +120,8 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
             as u64;
 
         let address_space = cx.tcx.global_alloc(prov.alloc_id()).address_space(cx);
-        // Pauthtest function pointers stored in init/fini arrays need special handling.
+        // For aarch64-unknown-linux-pauthtest function pointers stored in init/fini arrays need
+        // special handling.
         let pac_metadata = Some(
             if cx.sess().target.env == Env::Pauthtest && matches!(is_init_fini, IsInitOrFini::Yes) {
                 PacMetadata {
