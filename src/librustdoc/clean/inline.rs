@@ -309,7 +309,7 @@ fn build_trait_alias(cx: &mut DocContext<'_>, did: DefId) -> clean::TraitAlias {
 }
 
 pub(super) fn build_function(cx: &mut DocContext<'_>, def_id: DefId) -> Box<clean::Function> {
-    let sig = cx.tcx.fn_sig(def_id).instantiate_identity();
+    let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_normalization();
     // The generics need to be cleaned before the signature.
     let mut generics = clean_ty_generics(cx, def_id);
     let bound_vars = clean_bound_vars(sig.bound_vars(), cx.tcx);
@@ -369,7 +369,7 @@ fn build_type_alias(
     did: DefId,
     ret: &mut Vec<Item>,
 ) -> Box<clean::TypeAlias> {
-    let ty = cx.tcx.type_of(did).instantiate_identity();
+    let ty = cx.tcx.type_of(did).instantiate_identity().skip_normalization();
     let type_ = clean_middle_ty(ty::Binder::dummy(ty), cx, Some(did), None);
     let inner_type = clean_ty_alias_inner_type(ty, cx, ret);
 
@@ -488,7 +488,7 @@ pub(crate) fn build_impl(
     let for_ = match &impl_item {
         Some(impl_) => clean_ty(impl_.self_ty, cx),
         None => clean_middle_ty(
-            ty::Binder::dummy(tcx.type_of(did).instantiate_identity()),
+            ty::Binder::dummy(tcx.type_of(did).instantiate_identity().skip_normalization()),
             cx,
             Some(did),
             None,
@@ -749,7 +749,7 @@ fn build_const_item(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     let mut generics = clean_ty_generics(cx, def_id);
     clean::simplify::move_bounds_to_generic_parameters(&mut generics);
     let ty = clean_middle_ty(
-        ty::Binder::dummy(cx.tcx.type_of(def_id).instantiate_identity()),
+        ty::Binder::dummy(cx.tcx.type_of(def_id).instantiate_identity().skip_normalization()),
         cx,
         None,
         None,
@@ -760,7 +760,7 @@ fn build_const_item(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
 fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
     clean::Static {
         type_: Box::new(clean_middle_ty(
-            ty::Binder::dummy(cx.tcx.type_of(did).instantiate_identity()),
+            ty::Binder::dummy(cx.tcx.type_of(did).instantiate_identity().skip_normalization()),
             cx,
             Some(did),
             None,

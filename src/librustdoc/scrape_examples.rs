@@ -159,7 +159,11 @@ where
                 };
 
                 let ident_span = path.ident.span;
-                (tcx.type_of(def_id).instantiate_identity(), call_span, ident_span)
+                (
+                    tcx.type_of(def_id).instantiate_identity().skip_normalization(),
+                    call_span,
+                    ident_span,
+                )
             }
             _ => {
                 return;
