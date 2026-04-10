@@ -179,6 +179,9 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::MalformedOnUnimplementedAttr { span } => {
                 lints::MalformedOnUnimplementedAttrLint { span }.into_diag(dcx, level)
             }
+            &AttributeLintKind::MalformedOnUnknownAttr { span } => {
+                lints::MalformedOnUnknownAttrLint { span }.into_diag(dcx, level)
+            }
             &AttributeLintKind::MalformedOnConstAttr { span } => {
                 lints::MalformedOnConstAttrLint { span }.into_diag(dcx, level)
             }
@@ -188,6 +191,9 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                 }
                 FormatWarning::InvalidSpecifier { .. } => {
                     lints::InvalidFormatSpecifier.into_diag(dcx, level)
+                }
+                FormatWarning::DisallowedPlaceholder { .. } => {
+                    lints::DisallowedPlaceholder.into_diag(dcx, level)
                 }
             },
             AttributeLintKind::DiagnosticWrappedParserError { description, label, span } => {
@@ -214,6 +220,9 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             }
             &AttributeLintKind::MissingOptionsForOnMove => {
                 lints::MissingOptionsForOnMoveAttr.into_diag(dcx, level)
+            }
+            &AttributeLintKind::MissingOptionsForOnUnknown => {
+                lints::MissingOptionsForOnUnknownAttr.into_diag(dcx, level)
             }
         }
     }

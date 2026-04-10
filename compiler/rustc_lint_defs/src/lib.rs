@@ -736,6 +736,9 @@ pub enum AttributeLintKind {
     MalformedOnUnimplementedAttr {
         span: Span,
     },
+    MalformedOnUnknownAttr {
+        span: Span,
+    },
     MalformedOnConstAttr {
         span: Span,
     },
@@ -757,6 +760,7 @@ pub enum AttributeLintKind {
     },
     MissingOptionsForOnUnimplemented,
     MissingOptionsForOnConst,
+    MissingOptionsForOnUnknown,
     MissingOptionsForOnMove,
     OnMoveMalformedFormatLiterals {
         name: Symbol,
@@ -768,6 +772,7 @@ pub enum AttributeLintKind {
 pub enum FormatWarning {
     PositionalArgument { span: Span, help: String },
     InvalidSpecifier { name: String, span: Span },
+    DisallowedPlaceholder { span: Span },
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;
