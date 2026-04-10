@@ -39,6 +39,7 @@ declare_lint_pass! {
         DEPRECATED_IN_FUTURE,
         DEPRECATED_SAFE_2024,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
+        DOLLAR_CRATE_IN_MATCHER,
         DUPLICATE_FEATURES,
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
@@ -154,6 +155,33 @@ declare_lint_pass! {
         WARNINGS,
         // tidy-alphabetical-end
     ]
+}
+
+declare_lint! {
+    /// The `dollar_crate_in_matcher` lint detects cases where `$crate` is used in the matcher.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(dollar_crate_in_matcher)]
+    ///
+    /// macro_rules! m {
+    ///     ($crate) => {};
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// `$crate` is inconsistent with the behavior of other keywords in matchers, namely
+    /// that other keywords work like any other identifier, and are currently not reserved in this position.
+    pub DOLLAR_CRATE_IN_MATCHER,
+    Warn,
+    "detects when `$crate` is used in matcher",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #155123),
+    };
 }
 
 declare_lint! {
