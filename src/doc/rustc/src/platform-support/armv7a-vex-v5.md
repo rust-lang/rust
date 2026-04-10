@@ -110,4 +110,69 @@ The Rust test suite for `library/std` is not yet supported.
 
 This target can be cross-compiled from any host.
 
-Linking to C libraries is not supported.
+The recommended configuration for compiling compatible C code is via the [Arm Toolchain for Embedded](https://github.com/arm/arm-toolchain/tree/arm-software/arm-software/embedded#readme) the following compilation flags:
+
+```sh
+clang --target=arm-none-eabi -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -fno-pic -fno-exceptions -fno-rtti -funwind-tables
+```
+
+The following Cargo configuration can be used to link with picolibc (the libc used by the Arm Toolchain for Embedded):
+
+```toml
+[target.armv7a-vex-v5]
+# We use ARM Clang as a linker because ld.lld by itself doesn't include the
+# multilib logic for resolving static libraries.
+linker = "clang"
+
+rustflags = [
+    # These link flags resolve to this sysroot:
+    # `…/arm-none-eabi/armv7a_hard_vfpv3_d16_unaligned`
+    # (hard float / VFP version 3 with 16 regs / unaligned access)
+    "-Clink-arg=--target=armv7a-none-eabihf",
+
+    # To disable crt0 and use Rust's _boot implementation
+    # (or something custom):
+    #"-Clink-arg=-nostartfiles",
+
+    #  Explicit `-lc` required because Rust calls the linker with
+    # `-nodefaultlibs` which disables libc, libm, etc.
+    "-Clink-arg=-lc",
+]
+```
+
+You may also want to set these environment variables so that 3rd party crates use the correct C compiler:
+
+```sh
+PATH=/path/to/arm-toolchain/bin:$PATH
+CC_armv7a_vex_v5=clang
+AR_armv7a_vex_v5=clang
+CFLAGS_armv7a_vex_v5=[See above]
+```
+
+### CMake
+
+It may be helpful to create a CMake toolchain like the following if you are depending on the `cmake` crate:
+
+```cmake
+# toolchain.cmake
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_PROCESSOR arm)
+
+set(triple armv7a-none-eabihf)
+
+set(CMAKE_C_COMPILER clang)
+set(CMAKE_C_COMPILER_TARGET ${triple})
+set(CMAKE_CXX_COMPILER clang++)
+set(CMAKE_CXX_COMPILER_TARGET ${triple})
+set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
+```
+
+You can enable it by setting the following environment variable alongside the previously-mentioned environment variables:
+
+```sh
+CMAKE_TOOLCHAIN_FILE_armv7a_vex_v5=/path/to/toolchain.cmake
+```
+
+### Implementation of libc functions
+
+You may have to implement [certain system support functions](https://github.com/picolibc/picolibc/blob/main/doc/os.md) for some parts of libc to work properly.
