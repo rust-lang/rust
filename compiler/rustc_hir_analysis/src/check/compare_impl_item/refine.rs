@@ -9,7 +9,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_types_for_signature};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, TypingMode,
+    TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
 };
 use rustc_span::Span;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -44,19 +44,22 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     let impl_def_id = impl_m.container_id(tcx);
     let impl_m_args = ty::GenericArgs::identity_for_item(tcx, impl_m.def_id);
     let trait_m_to_impl_m_args = impl_m_args.rebase_onto(tcx, impl_def_id, impl_trait_ref.args);
-    let bound_trait_m_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_to_impl_m_args);
+    let bound_trait_m_sig =
+        tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_to_impl_m_args).skip_normalization();
     let trait_m_sig = tcx.liberate_late_bound_regions(impl_m.def_id, bound_trait_m_sig);
     // replace the self type of the trait ref with `Self` so that diagnostics render better.
     let trait_m_sig_with_self_for_diag = tcx.liberate_late_bound_regions(
         impl_m.def_id,
-        tcx.fn_sig(trait_m.def_id).instantiate(
-            tcx,
-            tcx.mk_args_from_iter(
-                [tcx.types.self_param.into()]
-                    .into_iter()
-                    .chain(trait_m_to_impl_m_args.iter().skip(1)),
-            ),
-        ),
+        tcx.fn_sig(trait_m.def_id)
+            .instantiate(
+                tcx,
+                tcx.mk_args_from_iter(
+                    [tcx.types.self_param.into()]
+                        .into_iter()
+                        .chain(trait_m_to_impl_m_args.iter().skip(1)),
+                ),
+            )
+            .skip_normalization(),
     );
 
     let Ok(hidden_tys) = tcx.collect_return_position_impl_trait_in_trait_tys(impl_m.def_id) else {
@@ -80,8 +83,9 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
 
     for trait_projection in collector.types.into_iter().rev() {
         let impl_opaque_args = trait_projection.args.rebase_onto(tcx, trait_m.def_id, impl_m_args);
-        let hidden_ty =
-            hidden_tys[&trait_projection.kind.def_id()].instantiate(tcx, impl_opaque_args);
+        let hidden_ty = hidden_tys[&trait_projection.kind.def_id()]
+            .instantiate(tcx, impl_opaque_args)
+            .skip_normalization();
 
         // If the hidden type is not an opaque, then we have "refined" the trait signature.
         let ty::Alias(
@@ -121,12 +125,14 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
 
         trait_bounds.extend(
             tcx.item_bounds(trait_projection.kind.def_id())
-                .iter_instantiated(tcx, trait_projection.args),
+                .iter_instantiated(tcx, trait_projection.args)
+                .map(Unnormalized::skip_normalization),
         );
         impl_bounds.extend(elaborate(
             tcx,
             tcx.explicit_item_bounds(impl_opaque_def_id)
-                .iter_instantiated_copied(tcx, impl_opaque.args),
+                .iter_instantiated_copied(tcx, impl_opaque.args)
+                .map(Unnormalized::skip_normalization),
         ));
 
         pairs.push((trait_projection, impl_opaque));
@@ -135,8 +141,13 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     let hybrid_preds = tcx
         .predicates_of(impl_def_id)
         .instantiate_identity(tcx)
+        .skip_normalization()
         .into_iter()
-        .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_m_to_impl_m_args))
+        .chain(
+            tcx.predicates_of(trait_m.def_id)
+                .instantiate_own(tcx, trait_m_to_impl_m_args)
+                .map(Unnormalized::skip_normalization),
+        )
         .map(|(clause, _)| clause);
     let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
     let param_env = normalize_param_env_or_error(tcx, param_env, ObligationCause::dummy());
@@ -267,6 +278,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitCollector<'tcx> {
                     .tcx
                     .explicit_item_bounds(def_id)
                     .iter_instantiated_copied(self.tcx, proj.args)
+                    .map(Unnormalized::skip_normalization)
                 {
                     pred.visit_with(self);
                 }
@@ -320,6 +332,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
         let Some(future_output_ty) = tcx
             .explicit_item_bounds(future_ty_def_id)
             .iter_instantiated_copied(tcx, future_ty.args)
+            .map(Unnormalized::skip_normalization)
             .find_map(|(clause, _)| match clause.kind().no_bound_vars()? {
                 ty::ClauseKind::Projection(proj) => proj.term.as_type(),
                 _ => None,

@@ -71,7 +71,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let impl_def_id = assoc_item.container_id(tcx);
         let generics = tcx.generics_of(def_id);
         let impl_args = &args[..generics.parent_count];
-        let self_ty = tcx.type_of(impl_def_id).instantiate(tcx, impl_args);
+        let self_ty = tcx.type_of(impl_def_id).instantiate(tcx, impl_args).skip_normalization();
         // Build new args: [Self, own_args...]
         let own_args = &args[generics.parent_count..];
         tcx.mk_args_from_iter(
@@ -431,7 +431,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
     ) -> ty::InstantiatedPredicates<'tcx> {
         let bounds = self.tcx.predicates_of(def_id);
-        let result = bounds.instantiate(self.tcx, args);
+        let result = bounds.instantiate(self.tcx, args).skip_normalization();
         let result = self.normalize(span, result);
         debug!("instantiate_bounds(bounds={:?}, args={:?}) = {:?}", bounds, args, result);
         result
@@ -1133,7 +1133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty = LoweredTy::from_raw(
                 self,
                 span,
-                tcx.at(span).type_of(impl_def_id).instantiate_identity(),
+                tcx.at(span).type_of(impl_def_id).instantiate_identity().skip_normalization(),
             );
 
             // Firstly, check that this SelfCtor even comes from the item we're currently
@@ -1291,7 +1291,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.fcx
                                 .tcx
                                 .type_of(param.def_id)
-                                .instantiate(self.fcx.tcx, preceding_args),
+                                .instantiate(self.fcx.tcx, preceding_args)
+                                .skip_normalization(),
                         )
                         .into(),
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
@@ -1311,7 +1312,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !infer_args && let Some(default) = param.default_value(tcx) {
                     // If we have a default, then it doesn't matter that we're not inferring
                     // the type/const arguments: We provide the default where any is missing.
-                    return default.instantiate(tcx, preceding_args);
+                    return default.instantiate(tcx, preceding_args).skip_normalization();
                 }
                 // If no type/const arguments were provided, we have to infer them.
                 // This case also occurs as a result of some malformed input, e.g.,
@@ -1358,7 +1359,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = tcx.type_of(def_id);
         assert!(!args.has_escaping_bound_vars());
         assert!(!ty.skip_binder().has_escaping_bound_vars());
-        let ty_instantiated = self.normalize(span, ty.instantiate(tcx, args));
+        let ty_instantiated = self.normalize(span, ty.instantiate(tcx, args).skip_normalization());
 
         if let Some(UserSelfTy { impl_def_id, self_ty }) = user_self_ty {
             // In the case of `Foo<T>::method` and `<Foo<T>>::method`, if `method`
@@ -1366,7 +1367,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // type parameters, which we can infer by unifying the provided `Self`
             // with the instantiated impl type.
             // This also occurs for an enum variant on a type alias.
-            let impl_ty = self.normalize(span, tcx.type_of(impl_def_id).instantiate(tcx, args));
+            let impl_ty = self.normalize(
+                span,
+                tcx.type_of(impl_def_id).instantiate(tcx, args).skip_normalization(),
+            );
             let self_ty = self.normalize(span, self_ty);
             match self.at(&self.misc(span), self.param_env).eq(
                 DefineOpaqueTypes::Yes,

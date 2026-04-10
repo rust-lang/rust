@@ -149,7 +149,9 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
     ) -> Result<(), PrintError> {
         self.print_def_path(def_id, parent_args)?;
 
-        let ty::Coroutine(_, args) = self.tcx.type_of(def_id).instantiate_identity().kind() else {
+        let ty::Coroutine(_, args) =
+            self.tcx.type_of(def_id).instantiate_identity().skip_normalization().kind()
+        else {
             // Could be `ty::Error`.
             return Ok(());
         };

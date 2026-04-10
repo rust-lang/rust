@@ -1,0 +1,129 @@
+id: append-method-call
+
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.instantiate($A1, $A2)
+# fix: $OBJ.instantiate($A1, $A2).skip_normalization()
+
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.instantiate_identity()
+# fix: $OBJ.instantiate_identity().skip_normalization()
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.instantiate_identity($A)
+# fix: $OBJ.instantiate_identity($A).skip_normalization()
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.instantiate_own($A1, $A2)
+# fix: $OBJ.instantiate_own($A1, $A2).map(Unnormalized::skip_normalization)
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.instantiate_own_identity()
+# fix: $OBJ.instantiate_own_identity().map(Unnormalized::skip_normalization)
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.iter_instantiated($A1, $A2)
+# fix: $OBJ.iter_instantiated($A1, $A2).map(Unnormalized::skip_normalization)
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.iter_identity()
+# fix: $OBJ.iter_identity().map(Unnormalized::skip_normalization)
+
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.iter_identity_copied()
+# fix: $OBJ.iter_identity_copied().map(Unnormalized::skip_normalization)
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.iter_instantiated_copied($A1, $A2)
+# fix: $OBJ.iter_instantiated_copied($A1, $A2).map(Unnormalized::skip_normalization)
+
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.type_of($A1).instantiate($A2, $A3)
+# fix: $OBJ.type_of($A1).instantiate($A2, $A3).uncertain_skip()
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.fn_sig($A1).instantiate($A2, $A3)
+# fix: $OBJ.fn_sig($A1).instantiate($A2, $A3).uncertain_skip()
+#
+# normalization.
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.normalize_erasing_regions($A1, $A2)
+# fix: $OBJ.normalize_erasing_regions($A1, Unnormalized::new($A2))
+
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.try_normalize_erasing_regions($A1, $A2)
+# fix: $OBJ.try_normalize_erasing_regions($A1, Unnormalized::new($A2))
+
+# rule:
+    # kind: call_expression
+    # pattern: wfcx.deeply_normalize($SPAN, $A2, $V)
+# fix: wfcx.deeply_normalize($SPAN, $A2, Unnormalized::new($V))
+#
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.normalize($SPAN, $A2, $V)
+# fix: $OBJ.normalize($SPAN, $A2, Unnormalized::new($V))
+# borrowck normalization
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.normalize($A1, $A2)
+# fix: $OBJ.normalize(Unnormalized::new($A1), $A2)
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.deeply_normalize($A1, $A2)
+# fix: $OBJ.deeply_normalize(Unnormalized::new($A1), $A2)
+
+# rule:
+    # kind: call_expression
+    # pattern: DeeplyNormalize { value: $V }
+# fix: DeeplyNormalize { value: Unnormalized::new($V), tcx: PhantomData }
+
+# uncertain skip iter
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.iter_instantiated_copied($A1, $A2)
+# fix: $OBJ.iter_instantiated_copied($A1, $A2).map(Unnormalized::uncertain_skip)
+
+
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.ty($A1, args)
+# fix: $OBJ.ty($A1, args).uncertain_skip()
+# rule:
+    # kind: call_expression
+    # pattern: ty::EarlyBinder::bind($A1).instantiate($A2, $A3)
+# fix: ty::EarlyBinder::bind($A1).instantiate($A2, $A3).uncertain_skip()
+
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.normalize($A1, $A2, $A3)
+# fix: ocx.structurally_normalize_ty($A1, $A2, Unnormalized::new($A3))
+#
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.instantiate_identity().skip_normalization()
+# fix: $OBJ.instantiate_identity()
+rule:
+    kind: call_expression
+    # pattern: $OBJ.instantiate($A1, $A2).skip_normalization()
+    pattern: $OBJ.instantiate($$$ARGS)
+# fix: $OBJ.instantiate($A1, $A2)
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.iter_identity().map(Unnormalized::skip_normalization)
+# fix: $OBJ.iter_identity()
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.iter_instantiated_copied($A1, $A2).map(Unnormalized::skip_normalization)
+# fix: $OBJ.iter_instantiated_copied($A1, $A2)
+# rule:
+    # kind: call_expression
+    # pattern: $OBJ.iter_instantiated($A1, $A2).map(Unnormalized::skip_normalization)
+# fix: $OBJ.iter_instantiated($A1, $A2)
+
+language: Rust

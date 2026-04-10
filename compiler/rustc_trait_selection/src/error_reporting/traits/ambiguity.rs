@@ -48,7 +48,8 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
             );
 
             let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
-            let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args);
+            let impl_trait_ref =
+                tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args).skip_normalization();
             let impl_trait_ref =
                 ocx.normalize(&ObligationCause::dummy(), param_env, impl_trait_ref);
 
@@ -70,6 +71,7 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
             let obligations = tcx
                 .predicates_of(impl_def_id)
                 .instantiate(tcx, impl_args)
+                .skip_normalization()
                 .into_iter()
                 .map(|(predicate, _)| {
                     Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate)
@@ -136,7 +138,8 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
     // otherwise would be more appropriate.
     let body_id = obligation.cause.body_id;
     if body_id != CRATE_DEF_ID {
-        let predicates = tcx.predicates_of(body_id.to_def_id()).instantiate_identity(tcx);
+        let predicates =
+            tcx.predicates_of(body_id.to_def_id()).instantiate_identity(tcx).skip_normalization();
         for (pred, span) in elaborate(tcx, predicates.into_iter()) {
             let kind = pred.kind();
             if let ty::ClauseKind::Trait(trait_pred) = kind.skip_binder()
@@ -443,7 +446,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                      implementation",
                                     vec![format!(
                                         "{}",
-                                        self.tcx.type_of(impl_def_id).instantiate_identity()
+                                        self.tcx
+                                            .type_of(impl_def_id)
+                                            .instantiate_identity()
+                                            .skip_normalization()
                                     )],
                                 )
                             } else if non_blanket_impl_count < 20 {
@@ -457,7 +463,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         .map(|&id| {
                                             format!(
                                                 "{}",
-                                                self.tcx.type_of(id).instantiate_identity()
+                                                self.tcx
+                                                    .type_of(id)
+                                                    .instantiate_identity()
+                                                    .skip_normalization()
                                             )
                                         })
                                         .collect::<Vec<String>>(),

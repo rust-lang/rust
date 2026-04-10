@@ -17,7 +17,7 @@ use rustc_hir::limit::Limit;
 use rustc_macros::{Lift, extension};
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::{Ident, RemapPathScopeComponents, Symbol, kw, sym};
-use rustc_type_ir::{FieldInfo, Upcast as _, elaborate};
+use rustc_type_ir::{FieldInfo, Unnormalized, Upcast as _, elaborate};
 use smallvec::SmallVec;
 
 // `pretty` is a separate module only for organization.
@@ -746,7 +746,11 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 if with_reduced_queries() {
                     self.print_def_path(def_id, args)?;
                 } else {
-                    let mut sig = self.tcx().fn_sig(def_id).instantiate(self.tcx(), args);
+                    let mut sig = self
+                        .tcx()
+                        .fn_sig(def_id)
+                        .instantiate(self.tcx(), args)
+                        .skip_normalization();
                     if self.tcx().codegen_fn_attrs(def_id).safe_target_features {
                         write!(self, "#[target_features] ")?;
                         sig = sig.map_bound(|mut sig| {
@@ -845,8 +849,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     DefKind::TyAlias | DefKind::AssocTy => {
                         // NOTE: I know we should check for NO_QUERIES here, but it's alright.
                         // `type_of` on a type alias or assoc type should never cause a cycle.
-                        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: d }, .. }) =
-                            *self.tcx().type_of(parent).instantiate_identity().kind()
+                        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: d }, .. }) = *self
+                            .tcx()
+                            .type_of(parent)
+                            .instantiate_identity()
+                            .skip_normalization()
+                            .kind()
                         {
                             if d == def_id {
                                 // If the type alias directly starts with the `impl` of the
@@ -1085,7 +1093,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let mut has_negative_sized_bound = false;
         let mut has_meta_sized_bound = false;
 
-        for (predicate, _) in bounds.iter_instantiated_copied(tcx, args) {
+        for (predicate, _) in
+            bounds.iter_instantiated_copied(tcx, args).map(Unnormalized::skip_normalization)
+        {
             let bound_predicate = predicate.kind();
 
             match bound_predicate.skip_binder() {

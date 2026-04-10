@@ -15,7 +15,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::DefId;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt, Unnormalized};
 
 use crate::clean;
 use crate::clean::{GenericArgs as PP, WherePredicate as WP};
@@ -116,6 +116,7 @@ fn trait_is_same_or_supertrait(tcx: TyCtxt<'_>, child: DefId, trait_: DefId) -> 
     let predicates = tcx.explicit_super_predicates_of(child);
     predicates
         .iter_identity_copied()
+        .map(Unnormalized::skip_normalization)
         .filter_map(|(pred, _)| Some(pred.as_trait_clause()?.def_id()))
         .any(|did| trait_is_same_or_supertrait(tcx, did, trait_))
 }

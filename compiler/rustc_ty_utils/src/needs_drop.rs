@@ -211,7 +211,9 @@ where
                                 for field_ty in &witness.field_tys {
                                     queue_type(
                                         self,
-                                        EarlyBinder::bind(field_ty.ty).instantiate(tcx, args),
+                                        EarlyBinder::bind(field_ty.ty)
+                                            .instantiate(tcx, args)
+                                            .skip_normalization(),
                                     );
                                 }
                             }
@@ -335,7 +337,9 @@ fn drop_tys_helper<'tcx>(
             match subty.kind() {
                 ty::Adt(adt_id, args) => {
                     for subty in tcx.adt_drop_tys(adt_id.did())? {
-                        vec.push(EarlyBinder::bind(subty).instantiate(tcx, args));
+                        vec.push(
+                            EarlyBinder::bind(subty).instantiate(tcx, args).skip_normalization(),
+                        );
                     }
                 }
                 _ => vec.push(subty),
@@ -368,7 +372,7 @@ fn drop_tys_helper<'tcx>(
             Ok(Vec::new())
         } else {
             let field_tys = adt_def.all_fields().map(|field| {
-                let r = tcx.type_of(field.did).instantiate(tcx, args);
+                let r = tcx.type_of(field.did).instantiate(tcx, args).skip_normalization();
                 debug!(
                     "drop_tys_helper: Instantiate into {:?} with {:?} getting {:?}",
                     field, args, r
@@ -425,7 +429,7 @@ fn adt_drop_tys<'tcx>(
     // `tcx.type_of(def_id)` identical to `tcx.make_adt(def, identity_args)`
     drop_tys_helper(
         tcx,
-        tcx.type_of(def_id).instantiate_identity(),
+        tcx.type_of(def_id).instantiate_identity().skip_normalization(),
         ty::TypingEnv::non_body_analysis(tcx, def_id),
         adt_has_dtor,
         false,
@@ -445,7 +449,7 @@ fn adt_async_drop_tys<'tcx>(
     // `tcx.type_of(def_id)` identical to `tcx.make_adt(def, identity_args)`
     drop_tys_helper(
         tcx,
-        tcx.type_of(def_id).instantiate_identity(),
+        tcx.type_of(def_id).instantiate_identity().skip_normalization(),
         ty::TypingEnv::non_body_analysis(tcx, def_id),
         adt_has_dtor,
         false,
@@ -464,7 +468,7 @@ fn adt_significant_drop_tys(
 ) -> Result<&ty::List<Ty<'_>>, AlwaysRequiresDrop> {
     drop_tys_helper(
         tcx,
-        tcx.type_of(def_id).instantiate_identity(), // identical to `tcx.make_adt(def, identity_args)`
+        tcx.type_of(def_id).instantiate_identity().skip_normalization(), // identical to `tcx.make_adt(def, identity_args)`
         ty::TypingEnv::non_body_analysis(tcx, def_id),
         adt_consider_insignificant_dtor(tcx),
         true,

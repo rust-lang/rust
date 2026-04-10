@@ -52,7 +52,7 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
     use EagernessSuggestion::{Eager, Lazy, NoChange};
 
     let ty = match cx.tcx.impl_of_assoc(fn_id) {
-        Some(id) => cx.tcx.type_of(id).instantiate_identity(),
+        Some(id) => cx.tcx.type_of(id).instantiate_identity().skip_normalization(),
         None => return Lazy,
     };
 
@@ -71,7 +71,7 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
         // Due to the limited operations on these types functions should be fairly cheap.
         if def.variants().iter().flat_map(|v| v.fields.iter()).any(|x| {
             matches!(
-                cx.tcx.type_of(x.did).instantiate_identity().peel_refs().kind(),
+                cx.tcx.type_of(x.did).instantiate_identity().skip_normalization().peel_refs().kind(),
                 ty::Param(_)
             )
         }) && all_predicates_of(cx.tcx, fn_id).all(|(pred, _)| match pred.kind().skip_binder() {
@@ -82,8 +82,7 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
             // Limit the function to either `(self) -> bool` or `(&self) -> bool`
             match &**cx
                 .tcx
-                .fn_sig(fn_id)
-                .instantiate_identity()
+                .fn_sig(fn_id).instantiate_identity().skip_normalization()
                 .skip_binder()
                 .inputs_and_output
             {

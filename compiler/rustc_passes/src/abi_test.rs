@@ -61,7 +61,7 @@ fn dump_abi_of_fn_item(
         Ok(Some(instance)) => instance,
         Ok(None) => {
             // Not sure what to do here, but `LayoutError::Unknown` seems reasonable?
-            let ty = tcx.type_of(item_def_id).instantiate_identity();
+            let ty = tcx.type_of(item_def_id).instantiate_identity().skip_normalization();
             tcx.dcx().span_fatal(tcx.def_span(item_def_id), LayoutError::Unknown(ty).to_string());
         }
         Err(_guaranteed) => return,
@@ -113,7 +113,7 @@ fn dump_abi_of_fn_type(
     attr_kind: RustcAbiAttrKind,
 ) {
     let typing_env = ty::TypingEnv::post_analysis(tcx, item_def_id);
-    let ty = tcx.type_of(item_def_id).instantiate_identity();
+    let ty = tcx.type_of(item_def_id).instantiate_identity().skip_normalization();
     let span = tcx.def_span(item_def_id);
     if !ensure_wf(tcx, typing_env, ty, item_def_id, span) {
         return;

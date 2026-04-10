@@ -633,7 +633,7 @@ impl<'tcx> Instance<'tcx> {
         span: Span,
     ) -> Instance<'tcx> {
         debug!("resolve_for_vtable(def_id={:?}, args={:?})", def_id, args);
-        let fn_sig = tcx.fn_sig(def_id).instantiate_identity();
+        let fn_sig = tcx.fn_sig(def_id).instantiate_identity().skip_normalization();
         let is_vtable_shim = !fn_sig.inputs().skip_binder().is_empty()
             && fn_sig.input(0).skip_binder().is_param(0)
             && tcx.generics_of(def_id).has_self;
@@ -863,9 +863,9 @@ impl<'tcx> Instance<'tcx> {
     {
         let v = v.map_bound(|v| *v);
         if let Some(args) = self.args_for_mir_body() {
-            v.instantiate(tcx, args)
+            v.instantiate(tcx, args).skip_normalization()
         } else {
-            v.instantiate_identity()
+            v.instantiate_identity().skip_normalization()
         }
     }
 
@@ -883,7 +883,7 @@ impl<'tcx> Instance<'tcx> {
         if let Some(args) = self.args_for_mir_body() {
             tcx.instantiate_and_normalize_erasing_regions(args, typing_env, v)
         } else {
-            tcx.normalize_erasing_regions(typing_env, v.instantiate_identity())
+            tcx.normalize_erasing_regions(typing_env, v.instantiate_identity().skip_normalization())
         }
     }
 
@@ -906,7 +906,10 @@ impl<'tcx> Instance<'tcx> {
             // instantiation of the `FnDef`, so the MIR body
             // is already instantiated. Any generic parameters it
             // contains are generic parameters from the caller.
-            tcx.try_normalize_erasing_regions(typing_env, v.instantiate_identity())
+            tcx.try_normalize_erasing_regions(
+                typing_env,
+                v.instantiate_identity().skip_normalization(),
+            )
         }
     }
 }

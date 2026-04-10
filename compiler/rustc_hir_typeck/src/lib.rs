@@ -144,7 +144,7 @@ fn typeck_with_inspect<'tcx>(
             // a suggestion later on.
             fcx.lowerer().lower_fn_ty(id, header.safety(), header.abi, decl, None, None)
         } else {
-            tcx.fn_sig(def_id).instantiate_identity()
+            tcx.fn_sig(def_id).instantiate_identity().skip_normalization()
         };
 
         check_abi(tcx, id, span, fn_sig.abi());
@@ -188,7 +188,7 @@ fn typeck_with_inspect<'tcx>(
             // a suggestion later on.
             fcx.lowerer().lower_ty(ty)
         } else {
-            tcx.type_of(def_id).instantiate_identity()
+            tcx.type_of(def_id).instantiate_identity().skip_normalization()
         };
 
         loops::check(tcx, def_id, body);
@@ -408,14 +408,15 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
             && let ty::AssocContainer::TraitImpl(Ok(trait_item_def_id)) = item.container
         {
             let impl_def_id = item.container_id(tcx);
-            let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate_identity();
+            let impl_trait_ref =
+                tcx.impl_trait_ref(impl_def_id).instantiate_identity().skip_normalization();
             let args = ty::GenericArgs::identity_for_item(tcx, def_id).rebase_onto(
                 tcx,
                 impl_def_id,
                 impl_trait_ref.args,
             );
             tcx.check_args_compatible(trait_item_def_id, args)
-                .then(|| tcx.type_of(trait_item_def_id).instantiate(tcx, args))
+                .then(|| tcx.type_of(trait_item_def_id).instantiate(tcx, args).skip_normalization())
         } else {
             Some(fcx.next_ty_var(span))
         }

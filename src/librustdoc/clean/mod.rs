@@ -46,7 +46,9 @@ use rustc_hir::{LangItem, PredicateOrigin, find_attr};
 use rustc_hir_analysis::{lower_const_arg_for_rustdoc, lower_ty};
 use rustc_middle::metadata::Reexport;
 use rustc_middle::middle::resolve_bound_vars as rbv;
-use rustc_middle::ty::{self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{
+    self, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::ExpnKind;
 use rustc_span::hygiene::{AstPass, MacroKind};
@@ -507,7 +509,8 @@ fn clean_hir_term<'tcx>(
         hir::Term::Ty(ty) => Term::Type(clean_ty(ty, cx)),
         hir::Term::Const(c) => {
             // FIXME(generic_const_items): this should instantiate with the alias item's args
-            let ty = cx.tcx.type_of(assoc_item.unwrap()).instantiate_identity();
+            let ty =
+                cx.tcx.type_of(assoc_item.unwrap()).instantiate_identity().skip_normalization();
             let ct = lower_const_arg_for_rustdoc(cx.tcx, c, ty);
             Term::Constant(clean_middle_const(ty::Binder::dummy(ct)))
         }
@@ -590,7 +593,9 @@ fn clean_generic_param_def(
                 && has_default
             {
                 Some(clean_middle_ty(
-                    ty::Binder::dummy(cx.tcx.type_of(def.def_id).instantiate_identity()),
+                    ty::Binder::dummy(
+                        cx.tcx.type_of(def.def_id).instantiate_identity().skip_normalization(),
+                    ),
                     cx,
                     Some(def.def_id),
                     None,
@@ -611,7 +616,9 @@ fn clean_generic_param_def(
             def.name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_middle_ty(
-                    ty::Binder::dummy(cx.tcx.type_of(def.def_id).instantiate_identity()),
+                    ty::Binder::dummy(
+                        cx.tcx.type_of(def.def_id).instantiate_identity().skip_normalization(),
+                    ),
                     cx,
                     Some(def.def_id),
                     None,
@@ -620,7 +627,11 @@ fn clean_generic_param_def(
                     && has_default
                 {
                     Some(Box::new(
-                        cx.tcx.const_param_default(def.def_id).instantiate_identity().to_string(),
+                        cx.tcx
+                            .const_param_default(def.def_id)
+                            .instantiate_identity()
+                            .skip_normalization()
+                            .to_string(),
                     ))
                 } else {
                     None
@@ -1328,7 +1339,9 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
     let kind = match assoc_item.kind {
         ty::AssocKind::Const { .. } => {
             let ty = clean_middle_ty(
-                ty::Binder::dummy(tcx.type_of(assoc_item.def_id).instantiate_identity()),
+                ty::Binder::dummy(
+                    tcx.type_of(assoc_item.def_id).instantiate_identity().skip_normalization(),
+                ),
                 cx,
                 Some(assoc_item.def_id),
                 None,
@@ -1363,13 +1376,18 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
 
             if has_self {
                 let self_ty = match assoc_item.container {
-                    ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
-                        tcx.type_of(assoc_item.container_id(tcx)).instantiate_identity()
-                    }
+                    ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => tcx
+                        .type_of(assoc_item.container_id(tcx))
+                        .instantiate_identity()
+                        .skip_normalization(),
                     ty::AssocContainer::Trait => tcx.types.self_param,
                 };
-                let self_param_ty =
-                    tcx.fn_sig(assoc_item.def_id).instantiate_identity().input(0).skip_binder();
+                let self_param_ty = tcx
+                    .fn_sig(assoc_item.def_id)
+                    .instantiate_identity()
+                    .skip_normalization()
+                    .input(0)
+                    .skip_binder();
                 if self_param_ty == self_ty {
                     item.decl.inputs[0].type_ = SelfTy;
                 } else if let ty::Ref(_, ty, _) = *self_param_ty.kind()
@@ -1423,7 +1441,10 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
 
             let mut predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
             if let ty::AssocContainer::Trait = assoc_item.container {
-                let bounds = tcx.explicit_item_bounds(assoc_item.def_id).iter_identity_copied();
+                let bounds = tcx
+                    .explicit_item_bounds(assoc_item.def_id)
+                    .iter_identity_copied()
+                    .map(Unnormalized::skip_normalization);
                 predicates = tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
             }
             let mut generics = clean_ty_generics_inner(
@@ -1509,7 +1530,9 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                         Box::new(TypeAlias {
                             type_: clean_middle_ty(
                                 ty::Binder::dummy(
-                                    tcx.type_of(assoc_item.def_id).instantiate_identity(),
+                                    tcx.type_of(assoc_item.def_id)
+                                        .instantiate_identity()
+                                        .skip_normalization(),
                                 ),
                                 cx,
                                 Some(assoc_item.def_id),
@@ -1529,7 +1552,9 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                     Box::new(TypeAlias {
                         type_: clean_middle_ty(
                             ty::Binder::dummy(
-                                tcx.type_of(assoc_item.def_id).instantiate_identity(),
+                                tcx.type_of(assoc_item.def_id)
+                                    .instantiate_identity()
+                                    .skip_normalization(),
                             ),
                             cx,
                             Some(assoc_item.def_id),
@@ -2267,7 +2292,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                     clean_middle_path(cx, def_id, false, ThinVec::new(), bound_ty.rebind(args));
                 Type::Path { path }
             } else {
-                let ty = cx.tcx.type_of(def_id).instantiate(cx.tcx, args);
+                let ty = cx.tcx.type_of(def_id).instantiate(cx.tcx, args).skip_normalization();
                 clean_middle_ty(bound_ty.rebind(ty), cx, None, None)
             }
         }
@@ -2330,6 +2355,7 @@ fn clean_middle_opaque_bounds<'tcx>(
         .tcx
         .explicit_item_bounds(impl_trait_def_id)
         .iter_instantiated_copied(cx.tcx, args)
+        .map(Unnormalized::skip_normalization)
         .collect();
 
     let mut bounds = bounds
@@ -2427,7 +2453,9 @@ pub(crate) fn clean_middle_field(field: &ty::FieldDef, cx: &mut DocContext<'_>) 
         field.did,
         field.name,
         clean_middle_ty(
-            ty::Binder::dummy(cx.tcx.type_of(field.did).instantiate_identity()),
+            ty::Binder::dummy(
+                cx.tcx.type_of(field.did).instantiate_identity().skip_normalization(),
+            ),
             cx,
             Some(field.did),
             None,
@@ -2491,7 +2519,8 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
                 .fields
                 .iter()
                 .map(|field| {
-                    let ty = cx.tcx.type_of(field.did).instantiate(cx.tcx, args);
+                    let ty =
+                        cx.tcx.type_of(field.did).instantiate(cx.tcx, args).skip_normalization();
 
                     // normalize the type to only show concrete types
                     // note: we do not use try_normalize_erasing_regions since we
@@ -2516,7 +2545,8 @@ pub(crate) fn clean_variant_def_with_args<'tcx>(
                 .fields
                 .iter()
                 .map(|field| {
-                    let ty = cx.tcx.type_of(field.did).instantiate(cx.tcx, args);
+                    let ty =
+                        cx.tcx.type_of(field.did).instantiate(cx.tcx, args).skip_normalization();
 
                     // normalize the type to only show concrete types
                     // note: we do not use try_normalize_erasing_regions since we
@@ -2860,7 +2890,7 @@ fn clean_maybe_renamed_item<'tcx>(
                     }
                 }
 
-                let ty = cx.tcx.type_of(def_id).instantiate_identity();
+                let ty = cx.tcx.type_of(def_id).instantiate_identity().skip_normalization();
 
                 let mut ret = Vec::new();
                 let inner_type = clean_ty_alias_inner_type(ty, cx, &mut ret);
@@ -2992,7 +3022,7 @@ fn clean_impl<'tcx>(
     let type_alias =
         for_.def_id(&cx.cache).and_then(|alias_def_id: DefId| match tcx.def_kind(alias_def_id) {
             DefKind::TyAlias => Some(clean_middle_ty(
-                ty::Binder::dummy(tcx.type_of(def_id).instantiate_identity()),
+                ty::Binder::dummy(tcx.type_of(def_id).instantiate_identity().skip_normalization()),
                 cx,
                 Some(def_id.to_def_id()),
                 None,

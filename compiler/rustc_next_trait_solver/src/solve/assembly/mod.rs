@@ -12,8 +12,8 @@ use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
 use rustc_type_ir::{
     self as ty, AliasTy, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
-    elaborate,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
+    Upcast, elaborate,
 };
 use tracing::{debug, instrument};
 
@@ -766,6 +766,7 @@ where
                     .cx()
                     .item_self_bounds(alias_ty.kind.def_id())
                     .iter_instantiated(self.cx(), alias_ty.args)
+                    .map(Unnormalized::skip_normalization)
                 {
                     candidates.extend(G::probe_and_consider_implied_clause(
                         self,
@@ -781,6 +782,7 @@ where
                     .cx()
                     .item_non_self_bounds(alias_ty.kind.def_id())
                     .iter_instantiated(self.cx(), alias_ty.args)
+                    .map(Unnormalized::skip_normalization)
                 {
                     candidates.extend(G::probe_and_consider_implied_clause(
                         self,
@@ -1061,6 +1063,7 @@ where
                 .cx()
                 .item_self_bounds(alias_ty.kind.def_id())
                 .iter_instantiated(self.cx(), alias_ty.args)
+                .map(Unnormalized::skip_normalization)
             {
                 let assumption =
                     item_bound.fold_with(&mut ReplaceOpaque { cx: self.cx(), alias_ty, self_ty });

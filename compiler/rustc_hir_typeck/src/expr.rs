@@ -594,7 +594,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.add_required_obligations_with_code(expr.span, def_id, args, |_, _| {
                     code.clone()
                 });
-                return tcx.type_of(def_id).instantiate(tcx, args);
+                return tcx.type_of(def_id).instantiate(tcx, args).skip_normalization();
             }
         }
 
@@ -2480,7 +2480,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let fn_sig = self
                         .tcx
                         .fn_sig(item.def_id)
-                        .instantiate(self.tcx, self.fresh_args_for_item(span, item.def_id));
+                        .instantiate(self.tcx, self.fresh_args_for_item(span, item.def_id))
+                        .skip_normalization();
                     let ret_ty = self.tcx.instantiate_bound_regions_with_erased(fn_sig.output());
                     if !self.can_eq(self.param_env, ret_ty, adt_ty) {
                         return None;
@@ -2592,7 +2593,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ),
                     );
                     err.span_label(field.ident.span, "field does not exist");
-                    let fn_sig = self.tcx.fn_sig(def_id).instantiate_identity();
+                    let fn_sig =
+                        self.tcx.fn_sig(def_id).instantiate_identity().skip_normalization();
                     let inputs = fn_sig.inputs().skip_binder();
                     let fields = format!(
                         "({})",
@@ -2620,7 +2622,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     err.span_label(variant_ident_span, format!("`{ty}` defined here"));
                     err.span_label(field.ident.span, "field does not exist");
-                    let fn_sig = self.tcx.fn_sig(def_id).instantiate_identity();
+                    let fn_sig =
+                        self.tcx.fn_sig(def_id).instantiate_identity().skip_normalization();
                     let inputs = fn_sig.inputs().skip_binder();
                     let fields = format!(
                         "({})",
@@ -3215,7 +3218,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         err.span_label(field.span, "this is an associated function, not a method");
                         err.note("found the following associated function; to be used as method, it must have a `self` parameter");
-                        let impl_ty = self.tcx.type_of(impl_def_id).instantiate_identity();
+                        let impl_ty = self
+                            .tcx
+                            .type_of(impl_def_id)
+                            .instantiate_identity()
+                            .skip_normalization();
                         err.span_note(
                             self.tcx.def_span(item.def_id),
                             format!("the candidate is defined in an impl for the type `{impl_ty}`"),
@@ -3545,8 +3552,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let ocx = ObligationCtxt::new_with_diagnostics(self);
             let impl_args = self.fresh_args_for_item(base_expr.span, impl_def_id);
-            let impl_trait_ref =
-                self.tcx.impl_trait_ref(impl_def_id).instantiate(self.tcx, impl_args);
+            let impl_trait_ref = self
+                .tcx
+                .impl_trait_ref(impl_def_id)
+                .instantiate(self.tcx, impl_args)
+                .skip_normalization();
             let cause = self.misc(base_expr.span);
 
             // Match the impl self type against the base ty. If this fails,
@@ -3575,7 +3585,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                 },
                 self.param_env,
-                self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_args),
+                self.tcx
+                    .predicates_of(impl_def_id)
+                    .instantiate(self.tcx, impl_args)
+                    .skip_normalization(),
             ));
 
             // Normalize the output type, which we can use later on as the

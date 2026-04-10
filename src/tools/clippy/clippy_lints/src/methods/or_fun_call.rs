@@ -135,7 +135,7 @@ fn check_unwrap_or_default(
     let output_type_implements_default = |fun| {
         let fun_ty = cx.typeck_results().expr_ty(fun);
         if let ty::FnDef(def_id, args) = *fun_ty.kind() {
-            let output_ty = cx.tcx.fn_sig(def_id).instantiate(cx.tcx, args).skip_binder().output();
+            let output_ty = cx.tcx.fn_sig(def_id).instantiate(cx.tcx, args).skip_normalization().skip_binder().output();
             cx.tcx
                 .get_diagnostic_item(sym::Default)
                 .is_some_and(|default_trait_id| implements_trait(cx, output_ty, default_trait_id, &[]))

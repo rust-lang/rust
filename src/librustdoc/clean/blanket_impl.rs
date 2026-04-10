@@ -40,11 +40,11 @@ pub(crate) fn synthesize_blanket_impls(
             }
             let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
             let args = infcx.fresh_args_for_item(DUMMY_SP, item_def_id);
-            let impl_ty = ty.instantiate(tcx, args);
+            let impl_ty = ty.instantiate(tcx, args).skip_normalization();
             let param_env = ty::ParamEnv::empty();
 
             let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
-            let impl_trait_ref = trait_ref.instantiate(tcx, impl_args);
+            let impl_trait_ref = trait_ref.instantiate(tcx, impl_args).skip_normalization();
 
             // Require the type the impl is implemented on to match
             // our type, and ignore the impl if there was a mismatch.
@@ -62,6 +62,7 @@ pub(crate) fn synthesize_blanket_impls(
             let predicates = tcx
                 .predicates_of(impl_def_id)
                 .instantiate(tcx, impl_args)
+                .skip_normalization()
                 .predicates
                 .into_iter()
                 .chain(Some(impl_trait_ref.upcast(tcx)));
@@ -95,11 +96,13 @@ pub(crate) fn synthesize_blanket_impls(
                         // the post-inference `trait_ref`, as it's more accurate.
                         trait_: Some(clean_trait_ref_with_constraints(
                             cx,
-                            ty::Binder::dummy(trait_ref.instantiate_identity()),
+                            ty::Binder::dummy(
+                                trait_ref.instantiate_identity().skip_normalization(),
+                            ),
                             ThinVec::new(),
                         )),
                         for_: clean_middle_ty(
-                            ty::Binder::dummy(ty.instantiate_identity()),
+                            ty::Binder::dummy(ty.instantiate_identity().skip_normalization()),
                             cx,
                             None,
                             None,
@@ -112,7 +115,9 @@ pub(crate) fn synthesize_blanket_impls(
                             .collect(),
                         polarity: ty::ImplPolarity::Positive,
                         kind: clean::ImplKind::Blanket(Box::new(clean_middle_ty(
-                            ty::Binder::dummy(trait_ref.instantiate_identity().self_ty()),
+                            ty::Binder::dummy(
+                                trait_ref.instantiate_identity().skip_normalization().self_ty(),
+                            ),
                             cx,
                             None,
                             None,

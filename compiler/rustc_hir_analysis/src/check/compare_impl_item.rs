@@ -16,7 +16,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty, TyCtxt, TypeFoldable,
     TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
-    Upcast,
+    Unnormalized, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{BytePos, DUMMY_SP, Span};
@@ -40,7 +40,8 @@ pub(super) fn compare_impl_item(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_item = tcx.associated_item(impl_item_def_id);
     let trait_item = tcx.associated_item(impl_item.expect_trait_impl()?);
-    let impl_trait_ref = tcx.impl_trait_ref(impl_item.container_id(tcx)).instantiate_identity();
+    let impl_trait_ref =
+        tcx.impl_trait_ref(impl_item.container_id(tcx)).instantiate_identity().skip_normalization();
     debug!(?impl_trait_ref);
 
     match impl_item.kind {
@@ -213,9 +214,13 @@ fn compare_method_predicate_entailment<'tcx>(
     // We then register the obligations from the impl_m and check to see
     // if all constraints hold.
     let impl_predicates = tcx.predicates_of(impl_m_predicates.parent.unwrap());
-    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx).predicates;
+    let mut hybrid_preds =
+        impl_predicates.instantiate_identity(tcx).skip_normalization().predicates;
     hybrid_preds.extend(
-        trait_m_predicates.instantiate_own(tcx, trait_to_impl_args).map(|(predicate, _)| predicate),
+        trait_m_predicates
+            .instantiate_own(tcx, trait_to_impl_args)
+            .map(Unnormalized::skip_normalization)
+            .map(|(predicate, _)| predicate),
     );
 
     let is_conditionally_const = tcx.is_conditionally_const(impl_m.def_id);
@@ -225,9 +230,12 @@ fn compare_method_predicate_entailment<'tcx>(
         hybrid_preds.extend(
             tcx.const_conditions(impl_def_id)
                 .instantiate_identity(tcx)
+                .skip_normalization()
                 .into_iter()
                 .chain(
-                    tcx.const_conditions(trait_m.def_id).instantiate_own(tcx, trait_to_impl_args),
+                    tcx.const_conditions(trait_m.def_id)
+                        .instantiate_own(tcx, trait_to_impl_args)
+                        .map(Unnormalized::skip_normalization),
                 )
                 .map(|(trait_ref, _)| {
                     trait_ref.to_host_effect_clause(tcx, ty::BoundConstness::Maybe)
@@ -266,7 +274,8 @@ fn compare_method_predicate_entailment<'tcx>(
     // definition in the context of the hybrid param-env. This makes
     // sure that the impl's method's where clauses are not more
     // restrictive than the trait's method (and the impl itself).
-    let impl_m_own_bounds = impl_m_predicates.instantiate_own_identity();
+    let impl_m_own_bounds =
+        impl_m_predicates.instantiate_own_identity().map(Unnormalized::skip_normalization);
     for (predicate, span) in impl_m_own_bounds {
         let normalize_cause = traits::ObligationCause::misc(span, impl_m_def_id);
         let predicate = ocx.normalize(&normalize_cause, param_env, predicate);
@@ -290,8 +299,10 @@ fn compare_method_predicate_entailment<'tcx>(
     // using the hybrid param-env that we earlier augmented with the const conditions
     // from the impl header and trait method declaration.
     if is_conditionally_const {
-        for (const_condition, span) in
-            tcx.const_conditions(impl_m.def_id).instantiate_own_identity()
+        for (const_condition, span) in tcx
+            .const_conditions(impl_m.def_id)
+            .instantiate_own_identity()
+            .map(Unnormalized::skip_normalization)
         {
             let normalize_cause = traits::ObligationCause::misc(span, impl_m_def_id);
             let const_condition = ocx.normalize(&normalize_cause, param_env, const_condition);
@@ -327,14 +338,15 @@ fn compare_method_predicate_entailment<'tcx>(
     let unnormalized_impl_sig = infcx.instantiate_binder_with_fresh_vars(
         impl_m_span,
         BoundRegionConversionTime::HigherRankedType,
-        tcx.fn_sig(impl_m.def_id).instantiate_identity(),
+        tcx.fn_sig(impl_m.def_id).instantiate_identity().skip_normalization(),
     );
 
     let norm_cause = ObligationCause::misc(impl_m_span, impl_m_def_id);
     let impl_sig = ocx.normalize(&norm_cause, param_env, unnormalized_impl_sig);
     debug!(?impl_sig);
 
-    let trait_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args);
+    let trait_sig =
+        tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args).skip_normalization();
     let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_sig);
 
     // Next, add all inputs and output as well-formed tys. Importantly,
@@ -463,8 +475,10 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 ) -> Result<&'tcx DefIdMap<ty::EarlyBinder<'tcx, Ty<'tcx>>>, ErrorGuaranteed> {
     let impl_m = tcx.associated_item(impl_m_def_id.to_def_id());
     let trait_m = tcx.associated_item(impl_m.expect_trait_impl()?);
-    let impl_trait_ref =
-        tcx.impl_trait_ref(tcx.parent(impl_m_def_id.to_def_id())).instantiate_identity();
+    let impl_trait_ref = tcx
+        .impl_trait_ref(tcx.parent(impl_m_def_id.to_def_id()))
+        .instantiate_identity()
+        .skip_normalization();
     // First, check a few of the same things as `compare_impl_method`,
     // just so we don't ICE during instantiation later.
     check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, true)?;
@@ -491,8 +505,13 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let hybrid_preds = tcx
         .predicates_of(impl_m.container_id(tcx))
         .instantiate_identity(tcx)
+        .skip_normalization()
         .into_iter()
-        .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_to_impl_args))
+        .chain(
+            tcx.predicates_of(trait_m.def_id)
+                .instantiate_own(tcx, trait_to_impl_args)
+                .map(Unnormalized::skip_normalization),
+        )
         .map(|(clause, _)| clause);
     let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
     let param_env = traits::normalize_param_env_or_error(
@@ -510,7 +529,10 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // up, then we don't want to give spurious other errors that point at the RPITITs.
     // They're not necessary to check, though, because we already check them in
     // `compare_method_predicate_entailment`.
-    let impl_m_own_bounds = tcx.predicates_of(impl_m_def_id).instantiate_own_identity();
+    let impl_m_own_bounds = tcx
+        .predicates_of(impl_m_def_id)
+        .instantiate_own_identity()
+        .map(Unnormalized::skip_normalization);
     for (predicate, span) in impl_m_own_bounds {
         let normalize_cause = traits::ObligationCause::misc(span, impl_m_def_id);
         let predicate = ocx.normalize(&normalize_cause, param_env, predicate);
@@ -535,7 +557,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         infcx.instantiate_binder_with_fresh_vars(
             return_span,
             BoundRegionConversionTime::HigherRankedType,
-            tcx.fn_sig(impl_m.def_id).instantiate_identity(),
+            tcx.fn_sig(impl_m.def_id).instantiate_identity().skip_normalization(),
         ),
     );
     impl_sig.error_reported()?;
@@ -549,7 +571,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let unnormalized_trait_sig = tcx
         .liberate_late_bound_regions(
             impl_m.def_id,
-            tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args),
+            tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args).skip_normalization(),
         )
         .fold_with(&mut collector);
 
@@ -838,6 +860,7 @@ where
                 .cx()
                 .explicit_item_bounds(def_id)
                 .iter_instantiated_copied(self.cx(), proj.args)
+                .map(Unnormalized::skip_normalization)
             {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
@@ -1251,11 +1274,12 @@ fn check_region_late_boundedness<'tcx>(
         .build_with_typing_env(ty::TypingEnv::non_body_analysis(tcx, impl_m.def_id));
 
     let impl_m_args = infcx.fresh_args_for_item(DUMMY_SP, impl_m.def_id);
-    let impl_m_sig = tcx.fn_sig(impl_m.def_id).instantiate(tcx, impl_m_args);
+    let impl_m_sig = tcx.fn_sig(impl_m.def_id).instantiate(tcx, impl_m_args).skip_normalization();
     let impl_m_sig = tcx.liberate_late_bound_regions(impl_m.def_id, impl_m_sig);
 
     let trait_m_args = infcx.fresh_args_for_item(DUMMY_SP, trait_m.def_id);
-    let trait_m_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_args);
+    let trait_m_sig =
+        tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_args).skip_normalization();
     let trait_m_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_m_sig);
 
     let ocx = ObligationCtxt::new(&infcx);
@@ -1441,7 +1465,9 @@ fn find_region_in_predicates<'tcx>(
     def_id: DefId,
     early_bound_region: ty::Region<'tcx>,
 ) -> Option<Span> {
-    for (pred, span) in tcx.explicit_predicates_of(def_id).instantiate_identity(tcx) {
+    for (pred, span) in
+        tcx.explicit_predicates_of(def_id).instantiate_identity(tcx).skip_normalization()
+    {
         if pred.visit_with(&mut FindRegion(early_bound_region)).is_break() {
             return Some(span);
         }
@@ -1507,7 +1533,8 @@ fn compare_self_type<'tcx>(
             }
             ty::AssocContainer::Trait => tcx.types.self_param,
         };
-        let self_arg_ty = tcx.fn_sig(method.def_id).instantiate_identity().input(0);
+        let self_arg_ty =
+            tcx.fn_sig(method.def_id).instantiate_identity().skip_normalization().input(0);
         let (infcx, param_env) = tcx
             .infer_ctxt()
             .build_with_typing_env(ty::TypingEnv::non_body_analysis(tcx, method.def_id));
@@ -2110,7 +2137,7 @@ fn compare_generic_param_kinds<'tcx>(
                     format!(
                         "{} const parameter of type `{}`",
                         prefix,
-                        tcx.type_of(param.def_id).instantiate_identity()
+                        tcx.type_of(param.def_id).instantiate_identity().skip_normalization()
                     )
                 }
                 Type { .. } => format!("{prefix} type parameter"),
@@ -2204,9 +2231,10 @@ fn compare_const_predicate_entailment<'tcx>(
 
     // Create a parameter environment that represents the implementation's
     // associated const.
-    let impl_ty = tcx.type_of(impl_ct_def_id).instantiate_identity();
+    let impl_ty = tcx.type_of(impl_ct_def_id).instantiate_identity().skip_normalization();
 
-    let trait_ty = tcx.type_of(trait_ct.def_id).instantiate(tcx, trait_to_impl_args);
+    let trait_ty =
+        tcx.type_of(trait_ct.def_id).instantiate(tcx, trait_to_impl_args).skip_normalization();
     let code = ObligationCauseCode::CompareImplItem {
         impl_item_def_id: impl_ct_def_id,
         trait_item_def_id: trait_ct.def_id,
@@ -2220,10 +2248,12 @@ fn compare_const_predicate_entailment<'tcx>(
     // The predicates declared by the impl definition, the trait and the
     // associated const in the trait are assumed.
     let impl_predicates = tcx.predicates_of(impl_ct_predicates.parent.unwrap());
-    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx).predicates;
+    let mut hybrid_preds =
+        impl_predicates.instantiate_identity(tcx).skip_normalization().predicates;
     hybrid_preds.extend(
         trait_ct_predicates
             .instantiate_own(tcx, trait_to_impl_args)
+            .map(Unnormalized::skip_normalization)
             .map(|(predicate, _)| predicate),
     );
 
@@ -2237,7 +2267,8 @@ fn compare_const_predicate_entailment<'tcx>(
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
-    let impl_ct_own_bounds = impl_ct_predicates.instantiate_own_identity();
+    let impl_ct_own_bounds =
+        impl_ct_predicates.instantiate_own_identity().map(Unnormalized::skip_normalization);
     for (predicate, span) in impl_ct_own_bounds {
         let cause = ObligationCause::misc(span, impl_ct_def_id);
         let predicate = ocx.normalize(&cause, param_env, predicate);
@@ -2334,7 +2365,8 @@ fn compare_type_predicate_entailment<'tcx>(
     let impl_ty_predicates = tcx.predicates_of(impl_ty.def_id);
     let trait_ty_predicates = tcx.predicates_of(trait_ty.def_id);
 
-    let impl_ty_own_bounds = impl_ty_predicates.instantiate_own_identity();
+    let impl_ty_own_bounds =
+        impl_ty_predicates.instantiate_own_identity().map(Unnormalized::skip_normalization);
     // If there are no bounds, then there are no const conditions, so no need to check that here.
     if impl_ty_own_bounds.len() == 0 {
         // Nothing to check.
@@ -2350,10 +2382,12 @@ fn compare_type_predicate_entailment<'tcx>(
     // The predicates declared by the impl definition, the trait and the
     // associated type in the trait are assumed.
     let impl_predicates = tcx.predicates_of(impl_ty_predicates.parent.unwrap());
-    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx).predicates;
+    let mut hybrid_preds =
+        impl_predicates.instantiate_identity(tcx).skip_normalization().predicates;
     hybrid_preds.extend(
         trait_ty_predicates
             .instantiate_own(tcx, trait_to_impl_args)
+            .map(Unnormalized::skip_normalization)
             .map(|(predicate, _)| predicate),
     );
     debug!(?hybrid_preds);
@@ -2368,9 +2402,12 @@ fn compare_type_predicate_entailment<'tcx>(
         hybrid_preds.extend(
             tcx.const_conditions(impl_ty_predicates.parent.unwrap())
                 .instantiate_identity(tcx)
+                .skip_normalization()
                 .into_iter()
                 .chain(
-                    tcx.const_conditions(trait_ty.def_id).instantiate_own(tcx, trait_to_impl_args),
+                    tcx.const_conditions(trait_ty.def_id)
+                        .instantiate_own(tcx, trait_to_impl_args)
+                        .map(Unnormalized::skip_normalization),
                 )
                 .map(|(trait_ref, _)| {
                     trait_ref.to_host_effect_clause(tcx, ty::BoundConstness::Maybe)
@@ -2403,8 +2440,10 @@ fn compare_type_predicate_entailment<'tcx>(
 
     if is_conditionally_const {
         // Validate the const conditions of the impl associated type.
-        let impl_ty_own_const_conditions =
-            tcx.const_conditions(impl_ty.def_id).instantiate_own_identity();
+        let impl_ty_own_const_conditions = tcx
+            .const_conditions(impl_ty.def_id)
+            .instantiate_own_identity()
+            .map(Unnormalized::skip_normalization);
         for (const_condition, span) in impl_ty_own_const_conditions {
             let normalize_cause = traits::ObligationCause::misc(span, impl_ty_def_id);
             let const_condition = ocx.normalize(&normalize_cause, param_env, const_condition);
@@ -2510,12 +2549,13 @@ pub(super) fn check_type_bounds<'tcx>(
 
     let mut obligations: Vec<_> = util::elaborate(
         tcx,
-        tcx.explicit_item_bounds(trait_ty.def_id).iter_instantiated_copied(tcx, rebased_args).map(
-            |(concrete_ty_bound, span)| {
+        tcx.explicit_item_bounds(trait_ty.def_id)
+            .iter_instantiated_copied(tcx, rebased_args)
+            .map(Unnormalized::skip_normalization)
+            .map(|(concrete_ty_bound, span)| {
                 debug!(?concrete_ty_bound);
                 traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)
-            },
-        ),
+            }),
     )
     .collect();
 
@@ -2525,6 +2565,7 @@ pub(super) fn check_type_bounds<'tcx>(
             tcx,
             tcx.explicit_implied_const_bounds(trait_ty.def_id)
                 .iter_instantiated_copied(tcx, rebased_args)
+                .map(Unnormalized::skip_normalization)
                 .map(|(c, span)| {
                     traits::Obligation::new(
                         tcx,
@@ -2700,8 +2741,10 @@ fn param_env_with_gat_bounds<'tcx>(
         // we want <T as X>::Y to normalize to S. This is valid because we are
         // checking the default value specifically here. Add this equality to the
         // ParamEnv for normalization specifically.
-        let normalize_impl_ty =
-            tcx.type_of(impl_ty.def_id).instantiate(tcx, normalize_impl_ty_args);
+        let normalize_impl_ty = tcx
+            .type_of(impl_ty.def_id)
+            .instantiate(tcx, normalize_impl_ty_args)
+            .skip_normalization();
         let rebased_args =
             normalize_impl_ty_args.rebase_onto(tcx, container_id, impl_trait_ref.args);
         let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);

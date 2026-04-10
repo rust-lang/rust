@@ -1275,7 +1275,11 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
 
             match inner_type {
                 clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive } => {
-                    let ty = cx.tcx().type_of(it.def_id().unwrap()).instantiate_identity();
+                    let ty = cx
+                        .tcx()
+                        .type_of(it.def_id().unwrap())
+                        .instantiate_identity()
+                        .skip_normalization();
                     let enum_def_id = ty.ty_adt_def().unwrap().did();
 
                     DisplayEnum {
@@ -1287,7 +1291,11 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
                     .render_into(cx, it, true, w)?;
                 }
                 clean::TypeAliasInnerType::Union { fields } => {
-                    let ty = cx.tcx().type_of(it.def_id().unwrap()).instantiate_identity();
+                    let ty = cx
+                        .tcx()
+                        .type_of(it.def_id().unwrap())
+                        .instantiate_identity()
+                        .skip_normalization();
                     let union_def_id = ty.ty_adt_def().unwrap().did();
 
                     ItemUnion {
@@ -1301,7 +1309,11 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
                     .render_into(w)?;
                 }
                 clean::TypeAliasInnerType::Struct { ctor_kind, fields } => {
-                    let ty = cx.tcx().type_of(it.def_id().unwrap()).instantiate_identity();
+                    let ty = cx
+                        .tcx()
+                        .type_of(it.def_id().unwrap())
+                        .instantiate_identity()
+                        .skip_normalization();
                     let struct_def_id = ty.ty_adt_def().unwrap().did();
 
                     DisplayStruct {

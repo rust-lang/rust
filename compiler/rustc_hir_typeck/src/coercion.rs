@@ -54,7 +54,7 @@ use rustc_middle::ty::adjustment::{
     PointerCoercion,
 };
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
@@ -1852,28 +1852,34 @@ impl<'tcx> CoerceMany<'tcx> {
             fcx.probe(|_| {
                 let ocx = ObligationCtxt::new(fcx);
                 ocx.register_obligations(
-                    fcx.tcx.item_self_bounds(rpit_def_id).iter_identity().filter_map(|clause| {
-                        let predicate = clause
-                            .kind()
-                            .map_bound(|clause| match clause {
-                                ty::ClauseKind::Trait(trait_pred) => Some(ty::ClauseKind::Trait(
-                                    trait_pred.with_replaced_self_ty(fcx.tcx, ty),
-                                )),
-                                ty::ClauseKind::Projection(proj_pred) => {
-                                    Some(ty::ClauseKind::Projection(
-                                        proj_pred.with_replaced_self_ty(fcx.tcx, ty),
-                                    ))
-                                }
-                                _ => None,
-                            })
-                            .transpose()?;
-                        Some(Obligation::new(
-                            fcx.tcx,
-                            ObligationCause::dummy(),
-                            fcx.param_env,
-                            predicate,
-                        ))
-                    }),
+                    fcx.tcx
+                        .item_self_bounds(rpit_def_id)
+                        .iter_identity()
+                        .map(Unnormalized::skip_normalization)
+                        .filter_map(|clause| {
+                            let predicate = clause
+                                .kind()
+                                .map_bound(|clause| match clause {
+                                    ty::ClauseKind::Trait(trait_pred) => {
+                                        Some(ty::ClauseKind::Trait(
+                                            trait_pred.with_replaced_self_ty(fcx.tcx, ty),
+                                        ))
+                                    }
+                                    ty::ClauseKind::Projection(proj_pred) => {
+                                        Some(ty::ClauseKind::Projection(
+                                            proj_pred.with_replaced_self_ty(fcx.tcx, ty),
+                                        ))
+                                    }
+                                    _ => None,
+                                })
+                                .transpose()?;
+                            Some(Obligation::new(
+                                fcx.tcx,
+                                ObligationCause::dummy(),
+                                fcx.param_env,
+                                predicate,
+                            ))
+                        }),
                 );
                 ocx.try_evaluate_obligations().is_empty()
             })

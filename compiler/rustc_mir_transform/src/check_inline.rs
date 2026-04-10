@@ -47,8 +47,10 @@ pub(super) fn is_inline_valid_on_fn<'tcx>(
     }
 
     let ty = tcx.type_of(def_id);
-    if match ty.instantiate_identity().kind() {
-        ty::FnDef(..) => tcx.fn_sig(def_id).instantiate_identity().c_variadic(),
+    if match ty.instantiate_identity().skip_normalization().kind() {
+        ty::FnDef(..) => {
+            tcx.fn_sig(def_id).instantiate_identity().skip_normalization().c_variadic()
+        }
         ty::Closure(_, args) => args.as_closure().sig().c_variadic(),
         _ => false,
     } {

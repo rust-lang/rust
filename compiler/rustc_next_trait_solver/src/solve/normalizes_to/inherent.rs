@@ -5,7 +5,7 @@
 //! 2. equate the self type, and
 //! 3. instantiate and register where clauses.
 
-use rustc_type_ir::{self as ty, Interner};
+use rustc_type_ir::{self as ty, Interner, Unnormalized};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource, QueryResult};
@@ -29,7 +29,7 @@ where
         self.eq(
             goal.param_env,
             inherent.self_ty(),
-            cx.type_of(impl_def_id).instantiate(cx, impl_args),
+            cx.type_of(impl_def_id).instantiate(cx, impl_args).skip_normalization(),
         )?;
 
         // Equate IAT with the RHS of the project goal
@@ -48,13 +48,17 @@ where
             GoalSource::Misc,
             cx.predicates_of(inherent.def_id)
                 .iter_instantiated(cx, inherent_args)
+                .map(Unnormalized::skip_normalization)
                 .map(|pred| goal.with(cx, pred)),
         );
 
         let normalized = if inherent.kind(cx).is_type() {
-            cx.type_of(inherent.def_id).instantiate(cx, inherent_args).into()
+            cx.type_of(inherent.def_id).instantiate(cx, inherent_args).skip_normalization().into()
         } else {
-            cx.const_of_item(inherent.def_id).instantiate(cx, inherent_args).into()
+            cx.const_of_item(inherent.def_id)
+                .instantiate(cx, inherent_args)
+                .skip_normalization()
+                .into()
         };
         self.instantiate_normalizes_to_term(goal, normalized);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

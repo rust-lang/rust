@@ -278,7 +278,7 @@ pub(crate) fn check_intrinsic_type(
                 kind: ty::BoundRegionKind::ClosureEnv,
             },
         );
-        let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]);
+        let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]).skip_normalization();
         (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
     };
 

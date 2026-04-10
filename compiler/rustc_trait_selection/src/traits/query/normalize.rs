@@ -237,7 +237,8 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                         }
 
                         let generic_ty = self.cx().type_of(data.kind.def_id());
-                        let mut concrete_ty = generic_ty.instantiate(self.cx(), args);
+                        let mut concrete_ty =
+                            generic_ty.instantiate(self.cx(), args).skip_normalization();
                         self.anon_depth += 1;
                         if concrete_ty == ty {
                             concrete_ty = Ty::new_error_with_message(

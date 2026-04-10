@@ -685,9 +685,12 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 };
 
                 let kind = match parent_ty.ty.kind() {
-                    &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
-                        self.tcx.type_of(def_id).instantiate(self.tcx, args).kind()
-                    }
+                    &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => self
+                        .tcx
+                        .type_of(def_id)
+                        .instantiate(self.tcx, args)
+                        .skip_normalization()
+                        .kind(),
                     kind => kind,
                 };
 
@@ -789,7 +792,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 return;
                             };
 
-                            ty::EarlyBinder::bind(f_ty.ty).instantiate(self.tcx, args)
+                            ty::EarlyBinder::bind(f_ty.ty)
+                                .instantiate(self.tcx, args)
+                                .skip_normalization()
                         } else {
                             let Some(&f_ty) = args.as_coroutine().prefix_tys().get(f.index())
                             else {

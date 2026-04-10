@@ -98,7 +98,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             if let Some(def) = self_ty.ty_adt_def() {
                 // We also want to be able to select self's original
                 // signature with no type arguments resolved
-                self_types.push(self.tcx.type_of(def.did()).instantiate_identity().to_string());
+                self_types.push(
+                    self.tcx
+                        .type_of(def.did())
+                        .instantiate_identity()
+                        .skip_normalization()
+                        .to_string(),
+                );
             }
 
             for GenericParamDef { name, kind, index, .. } in generics.own_params.iter() {
@@ -117,7 +123,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // original signature with no type arguments resolved
                         generic_args.push((
                             *name,
-                            self.tcx.type_of(def.did()).instantiate_identity().to_string(),
+                            self.tcx
+                                .type_of(def.did())
+                                .instantiate_identity()
+                                .skip_normalization()
+                                .to_string(),
                         ));
                     }
                 }
@@ -160,8 +170,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the slice's type's original
                     // signature with no type arguments resolved
-                    self_types
-                        .push(format!("[{}]", self.tcx.type_of(def.did()).instantiate_identity()));
+                    self_types.push(format!(
+                        "[{}]",
+                        self.tcx.type_of(def.did()).instantiate_identity().skip_normalization()
+                    ));
                 }
                 if aty.is_integral() {
                     self_types.push("[{integral}]".to_string());
@@ -179,7 +191,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the array's type's original
                     // signature with no type arguments resolved
-                    let def_ty = self.tcx.type_of(def.did()).instantiate_identity();
+                    let def_ty =
+                        self.tcx.type_of(def.did()).instantiate_identity().skip_normalization();
                     self_types.push(format!("[{def_ty}; _]"));
                     if let Some(n) = len {
                         self_types.push(format!("[{def_ty}; {n}]"));

@@ -209,11 +209,14 @@ fn fresh_impl_header<'tcx>(
     ImplHeader {
         impl_def_id,
         impl_args,
-        self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args),
-        trait_ref: is_of_trait.then(|| tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args)),
+        self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args).skip_normalization(),
+        trait_ref: is_of_trait.then(|| {
+            tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args).skip_normalization()
+        }),
         predicates: tcx
             .predicates_of(impl_def_id)
             .instantiate(tcx, impl_args)
+            .skip_normalization()
             .iter()
             .map(|(c, _)| c.as_predicate())
             .collect(),
@@ -535,12 +538,18 @@ fn impl_intersection_has_negative_obligation(
     // So there are no infer variables left now, except regions which aren't resolved by `resolve_vars_if_possible`.
     assert!(!impl1_header_args.has_non_region_infer());
 
-    let param_env =
-        ty::EarlyBinder::bind(tcx.param_env(impl1_def_id)).instantiate(tcx, impl1_header_args);
+    let param_env = ty::EarlyBinder::bind(tcx.param_env(impl1_def_id))
+        .instantiate(tcx, impl1_header_args)
+        .skip_normalization();
 
-    util::elaborate(tcx, tcx.predicates_of(impl2_def_id).instantiate(tcx, impl2_header.impl_args))
-        .elaborate_sized()
-        .any(|(clause, _)| try_prove_negated_where_clause(infcx, clause, param_env))
+    util::elaborate(
+        tcx,
+        tcx.predicates_of(impl2_def_id)
+            .instantiate(tcx, impl2_header.impl_args)
+            .skip_normalization(),
+    )
+    .elaborate_sized()
+    .any(|(clause, _)| try_prove_negated_where_clause(infcx, clause, param_env))
 }
 
 fn plug_infer_with_placeholders<'tcx>(

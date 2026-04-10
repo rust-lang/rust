@@ -116,8 +116,11 @@ pub fn translate_args_with_cause<'tcx>(
         "translate_args({:?}, {:?}, {:?}, {:?})",
         param_env, source_impl, source_args, target_node
     );
-    let source_trait_ref =
-        infcx.tcx.impl_trait_ref(source_impl).instantiate(infcx.tcx, source_args);
+    let source_trait_ref = infcx
+        .tcx
+        .impl_trait_ref(source_impl)
+        .instantiate(infcx.tcx, source_args)
+        .skip_normalization();
 
     // translate the Self and Param parts of the generic parameters, since those
     // vary across impls
@@ -176,7 +179,11 @@ fn fulfill_implication<'tcx>(
     let target_trait_ref = ocx.normalize(
         cause,
         param_env,
-        infcx.tcx.impl_trait_ref(target_impl).instantiate(infcx.tcx, target_args),
+        infcx
+            .tcx
+            .impl_trait_ref(target_impl)
+            .instantiate(infcx.tcx, target_args)
+            .skip_normalization(),
     );
 
     // do the impls unify? If not, no specialization.
@@ -188,7 +195,11 @@ fn fulfill_implication<'tcx>(
     let predicates = ocx.normalize(
         cause,
         param_env,
-        infcx.tcx.predicates_of(target_impl).instantiate(infcx.tcx, target_args),
+        infcx
+            .tcx
+            .predicates_of(target_impl)
+            .instantiate(infcx.tcx, target_args)
+            .skip_normalization(),
     );
     let obligations = predicates_for_generics(|_, _| cause.clone(), param_env, predicates);
     ocx.register_obligations(obligations);
@@ -279,7 +290,7 @@ pub(super) fn specializes(
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
 
     let specializing_impl_trait_ref =
-        specializing_impl_trait_header.trait_ref.instantiate_identity();
+        specializing_impl_trait_header.trait_ref.instantiate_identity().skip_normalization();
     let cause = &ObligationCause::dummy();
     debug!(
         "fulfill_implication({:?}, trait_ref={:?} |- {:?} applies)",
@@ -303,7 +314,11 @@ pub(super) fn specializes(
     let parent_impl_trait_ref = ocx.normalize(
         cause,
         param_env,
-        infcx.tcx.impl_trait_ref(parent_impl_def_id).instantiate(infcx.tcx, parent_args),
+        infcx
+            .tcx
+            .impl_trait_ref(parent_impl_def_id)
+            .instantiate(infcx.tcx, parent_args)
+            .skip_normalization(),
     );
 
     // do the impls unify? If not, no specialization.
@@ -318,7 +333,11 @@ pub(super) fn specializes(
     let predicates = ocx.normalize(
         cause,
         param_env,
-        infcx.tcx.predicates_of(parent_impl_def_id).instantiate(infcx.tcx, parent_args),
+        infcx
+            .tcx
+            .predicates_of(parent_impl_def_id)
+            .instantiate(infcx.tcx, parent_args)
+            .skip_normalization(),
     );
     let obligations = predicates_for_generics(|_, _| cause.clone(), param_env, predicates);
     ocx.register_obligations(obligations);
@@ -348,7 +367,11 @@ pub(super) fn specializes(
         let const_conditions = ocx.normalize(
             cause,
             param_env,
-            infcx.tcx.const_conditions(parent_impl_def_id).instantiate(infcx.tcx, parent_args),
+            infcx
+                .tcx
+                .const_conditions(parent_impl_def_id)
+                .instantiate(infcx.tcx, parent_args)
+                .skip_normalization(),
         );
         ocx.register_obligations(const_conditions.into_iter().map(|(trait_ref, _)| {
             Obligation::new(

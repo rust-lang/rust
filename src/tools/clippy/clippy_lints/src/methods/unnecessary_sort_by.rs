@@ -243,7 +243,7 @@ fn mapping_of_mirrored_pats(a_pat: &Pat<'_>, b_pat: &Pat<'_>) -> Option<BindingM
 fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>) -> Option<LintTrigger> {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
-        && cx.tcx.type_of(impl_id).instantiate_identity().is_slice()
+        && cx.tcx.type_of(impl_id).instantiate_identity().skip_normalization().is_slice()
         && let ExprKind::Closure(&Closure { body, .. }) = arg.kind
         && let closure_body = cx.tcx.hir_body(body)
         && let &[Param { pat: l_pat, .. }, Param { pat: r_pat, .. }] = closure_body.params

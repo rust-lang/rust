@@ -517,10 +517,14 @@ impl<'tcx> TyCtxt<'tcx> {
         // <P1, P2, P0>, and then look up which of the impl args refer to
         // parameters marked as pure.
 
-        let impl_args = match *self.type_of(impl_def_id).instantiate_identity().kind() {
-            ty::Adt(def_, args) if def_ == def => args,
-            _ => span_bug!(self.def_span(impl_def_id), "expected ADT for self type of `Drop` impl"),
-        };
+        let impl_args =
+            match *self.type_of(impl_def_id).instantiate_identity().skip_normalization().kind() {
+                ty::Adt(def_, args) if def_ == def => args,
+                _ => span_bug!(
+                    self.def_span(impl_def_id),
+                    "expected ADT for self type of `Drop` impl"
+                ),
+            };
 
         let item_args = ty::GenericArgs::identity_for_item(self, def.did());
 
@@ -724,7 +728,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns the type a reference to the thread local takes in MIR.
     pub fn thread_local_ptr_ty(self, def_id: DefId) -> Ty<'tcx> {
-        let static_ty = self.type_of(def_id).instantiate_identity();
+        let static_ty = self.type_of(def_id).instantiate_identity().skip_normalization();
         if self.is_mutable_static(def_id) {
             Ty::new_mut_ptr(self, static_ty)
         } else if self.is_foreign_item(def_id) {
@@ -738,8 +742,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Get the type of the pointer to the static that we use in MIR.
     pub fn static_ptr_ty(self, def_id: DefId, typing_env: ty::TypingEnv<'tcx>) -> Ty<'tcx> {
         // Make sure that any constants in the static's type are evaluated.
-        let static_ty =
-            self.normalize_erasing_regions(typing_env, self.type_of(def_id).instantiate_identity());
+        let static_ty = self.normalize_erasing_regions(
+            typing_env,
+            self.type_of(def_id).instantiate_identity().skip_normalization(),
+        );
 
         // Make sure that accesses to unsafe statics end up using raw pointers.
         // For thread-locals, this needs to be kept in sync with `Rvalue::ty`.
@@ -924,7 +930,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 return Ty::new_error(self, guar);
             }
 
-            ty = self.type_of(def_id).instantiate(self, args);
+            ty = self.type_of(def_id).instantiate(self, args).skip_normalization();
             depth += 1;
         }
 
@@ -987,7 +993,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
                 Some(expanded_ty) => *expanded_ty,
                 None => {
                     let generic_ty = self.tcx.type_of(def_id);
-                    let concrete_ty = generic_ty.instantiate(self.tcx, args);
+                    let concrete_ty = generic_ty.instantiate(self.tcx, args).skip_normalization();
                     let expanded_ty = self.fold_ty(concrete_ty);
                     self.expanded_cache.insert((def_id, args), expanded_ty);
                     expanded_ty
@@ -1067,7 +1073,11 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
 
         self.depth += 1;
         let ty = ensure_sufficient_stack(|| {
-            self.tcx.type_of(def_id).instantiate(self.tcx, args).fold_with(self)
+            self.tcx
+                .type_of(def_id)
+                .instantiate(self.tcx, args)
+                .skip_normalization()
+                .fold_with(self)
         });
         self.depth -= 1;
         ty

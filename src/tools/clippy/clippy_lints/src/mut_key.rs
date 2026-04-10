@@ -110,7 +110,7 @@ impl<'tcx> MutableKeyType<'tcx> {
     }
 
     fn check_sig(&mut self, cx: &LateContext<'tcx>, fn_def_id: LocalDefId, decl: &hir::FnDecl<'tcx>) {
-        let fn_sig = cx.tcx.fn_sig(fn_def_id).instantiate_identity();
+        let fn_sig = cx.tcx.fn_sig(fn_def_id).instantiate_identity().skip_normalization();
         for (hir_ty, ty) in iter::zip(decl.inputs, fn_sig.inputs().skip_binder()) {
             self.check_ty_(cx, hir_ty.span, *ty);
         }

@@ -388,15 +388,21 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
                 tcx.at(span).adt_dtorck_constraint(def.did());
             // FIXME: we can try to recursively `dtorck_constraint_on_ty`
             // there, but that needs some way to handle cycles.
-            constraints
-                .dtorck_types
-                .extend(dtorck_types.iter().map(|t| EarlyBinder::bind(*t).instantiate(tcx, args)));
-            constraints
-                .outlives
-                .extend(outlives.iter().map(|t| EarlyBinder::bind(*t).instantiate(tcx, args)));
-            constraints
-                .overflows
-                .extend(overflows.iter().map(|t| EarlyBinder::bind(*t).instantiate(tcx, args)));
+            constraints.dtorck_types.extend(
+                dtorck_types
+                    .iter()
+                    .map(|t| EarlyBinder::bind(*t).instantiate(tcx, args).skip_normalization()),
+            );
+            constraints.outlives.extend(
+                outlives
+                    .iter()
+                    .map(|t| EarlyBinder::bind(*t).instantiate(tcx, args).skip_normalization()),
+            );
+            constraints.overflows.extend(
+                overflows
+                    .iter()
+                    .map(|t| EarlyBinder::bind(*t).instantiate(tcx, args).skip_normalization()),
+            );
         }
 
         // Objects must be alive in order for their destructor

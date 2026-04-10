@@ -62,7 +62,7 @@ fn is_struct_with_trailing_zero_sized_array<'tcx>(cx: &LateContext<'tcx>, item: 
         && let Some(last_field) = data.fields().last()
         && let field_ty = cx.tcx.normalize_erasing_regions(
             cx.typing_env(),
-            cx.tcx.type_of(last_field.def_id).instantiate_identity(),
+            cx.tcx.type_of(last_field.def_id).instantiate_identity().skip_normalization(),
         )
         && let ty::Array(_, array_len) = *field_ty.kind()
         && let Some(0) = array_len.try_to_target_usize(cx.tcx)

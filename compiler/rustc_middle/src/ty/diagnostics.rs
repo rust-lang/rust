@@ -629,7 +629,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
 
             Alias(AliasTy { kind: Opaque { def_id }, .. }) => {
                 let parent = self.tcx.parent(def_id);
-                let parent_ty = self.tcx.type_of(parent).instantiate_identity();
+                let parent_ty =
+                    self.tcx.type_of(parent).instantiate_identity().skip_normalization();
                 if let DefKind::TyAlias | DefKind::AssocTy = self.tcx.def_kind(parent)
                     && let Alias(AliasTy { kind: Opaque { def_id: parent_opaque_def_id }, .. }) =
                         *parent_ty.kind()
@@ -696,9 +697,10 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
         let t = match *t.kind() {
             Infer(InferTy::TyVar(_)) if self.infer_suggestable => t,
 
-            FnDef(def_id, args) if self.placeholder.is_none() => {
-                Ty::new_fn_ptr(self.tcx, self.tcx.fn_sig(def_id).instantiate(self.tcx, args))
-            }
+            FnDef(def_id, args) if self.placeholder.is_none() => Ty::new_fn_ptr(
+                self.tcx,
+                self.tcx.fn_sig(def_id).instantiate(self.tcx, args).skip_normalization(),
+            ),
 
             Closure(..)
             | CoroutineClosure(..)
@@ -716,7 +718,8 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
 
             Alias(AliasTy { kind: Opaque { def_id }, .. }) => {
                 let parent = self.tcx.parent(def_id);
-                let parent_ty = self.tcx.type_of(parent).instantiate_identity();
+                let parent_ty =
+                    self.tcx.type_of(parent).instantiate_identity().skip_normalization();
                 if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy =
                     self.tcx.def_kind(parent)
                     && let Alias(AliasTy { kind: Opaque { def_id: parent_opaque_def_id }, .. }) =

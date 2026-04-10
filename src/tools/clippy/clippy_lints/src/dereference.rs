@@ -381,7 +381,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                     && let args =
                                         typeck.node_args_opt(hir_id).map(|args| &args[1..]).unwrap_or_default()
                                     && let impl_ty =
-                                        if cx.tcx.fn_sig(fn_id).instantiate_identity().skip_binder().inputs()[0]
+                                        if cx.tcx.fn_sig(fn_id).instantiate_identity().skip_normalization().skip_binder().inputs()[0]
                                             .is_ref()
                                         {
                                             // Trait methods taking `&self`

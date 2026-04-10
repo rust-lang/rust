@@ -48,7 +48,9 @@ fn path_for_rustc_pass_by_value(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> Optio
                 return Some(format!("{}{}", name, gen_args(cx, path_segment)));
             }
             Res::SelfTyAlias { alias_to: did, is_trait_impl: false, .. } => {
-                if let ty::Adt(adt, args) = cx.tcx.type_of(did).instantiate_identity().kind() {
+                if let ty::Adt(adt, args) =
+                    cx.tcx.type_of(did).instantiate_identity().skip_normalization().kind()
+                {
                     if find_attr!(cx.tcx, adt.did(), RustcPassByValue(_)) {
                         return Some(cx.tcx.def_path_str_with_args(adt.did(), args));
                     }

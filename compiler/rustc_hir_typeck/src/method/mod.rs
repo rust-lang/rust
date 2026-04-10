@@ -421,7 +421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // N.B., instantiate late-bound regions before normalizing the
         // function signature so that normalization does not need to deal
         // with bound regions.
-        let fn_sig = tcx.fn_sig(def_id).instantiate(self.tcx, args);
+        let fn_sig = tcx.fn_sig(def_id).instantiate(self.tcx, args).skip_normalization();
         let fn_sig = self.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
             BoundRegionConversionTime::FnCall,
@@ -440,7 +440,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // Note that as the method comes from a trait, it should not have
         // any late-bound regions appearing in its bounds.
-        let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, args);
+        let bounds =
+            self.tcx.predicates_of(def_id).instantiate(self.tcx, args).skip_normalization();
 
         let InferOk { value: bounds, obligations: o } =
             self.at(&obligation.cause, self.param_env).normalize(bounds);

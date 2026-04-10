@@ -203,7 +203,7 @@ impl<'tcx, 'a> ExportableItemsChecker<'tcx, 'a> {
             return;
         }
 
-        let sig = self.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
+        let sig = self.tcx.fn_sig(def_id).instantiate_identity().skip_normalization().skip_binder();
         if !matches!(sig.abi, ExternAbi::C { .. }) {
             self.tcx.dcx().emit_err(UnexportableItem::FnAbi(span));
             return;
@@ -280,7 +280,8 @@ impl<'tcx, 'a> TypeVisitor<TyCtxt<'tcx>> for ExportableItemsChecker<'tcx, 'a> {
                 }
                 for variant in adt_def.variants() {
                     for field in &variant.fields {
-                        let field_ty = self.tcx.type_of(field.did).instantiate_identity();
+                        let field_ty =
+                            self.tcx.type_of(field.did).instantiate_identity().skip_normalization();
                         field_ty.visit_with(self)?;
                     }
                 }

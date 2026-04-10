@@ -106,8 +106,11 @@ fn relate_mir_and_user_args<'tcx>(
     let args = if is_inherent_assoc_const {
         let impl_def_id = tcx.parent(def_id);
         let impl_args = ocx.infcx.fresh_args_for_item(span, impl_def_id);
-        let impl_self_ty =
-            ocx.normalize(&cause, param_env, tcx.type_of(impl_def_id).instantiate(tcx, impl_args));
+        let impl_self_ty = ocx.normalize(
+            &cause,
+            param_env,
+            tcx.type_of(impl_def_id).instantiate(tcx, impl_args).skip_normalization(),
+        );
         let user_self_ty = ocx.normalize(&cause, param_env, args[0].expect_ty());
         ocx.eq(&cause, param_env, impl_self_ty, user_self_ty)?;
 
@@ -117,7 +120,7 @@ fn relate_mir_and_user_args<'tcx>(
         args
     };
 
-    let ty = tcx.type_of(def_id).instantiate(tcx, args);
+    let ty = tcx.type_of(def_id).instantiate(tcx, args).skip_normalization();
     let ty = ocx.normalize(&cause, param_env, ty);
     debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
 
@@ -128,7 +131,8 @@ fn relate_mir_and_user_args<'tcx>(
     // Also, normalize the `instantiated_predicates`
     // because otherwise we wind up with duplicate "type
     // outlives" error messages.
-    let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
+    let instantiated_predicates =
+        tcx.predicates_of(def_id).instantiate(tcx, args).skip_normalization();
 
     debug!(?instantiated_predicates);
     for (instantiated_predicate, predicate_span) in instantiated_predicates {
@@ -170,7 +174,7 @@ fn relate_mir_and_user_args<'tcx>(
         ));
 
         let self_ty = ocx.normalize(&cause, param_env, self_ty);
-        let impl_self_ty = tcx.type_of(impl_def_id).instantiate(tcx, args);
+        let impl_self_ty = tcx.type_of(impl_def_id).instantiate(tcx, args).skip_normalization();
         let impl_self_ty = ocx.normalize(&cause, param_env, impl_self_ty);
 
         ocx.eq(&cause, param_env, self_ty, impl_self_ty)?;

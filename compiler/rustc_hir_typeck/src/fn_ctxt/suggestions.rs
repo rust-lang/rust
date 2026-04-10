@@ -1839,7 +1839,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Same item
             return false;
         }
-        let item_ty = self.tcx.type_of(item.def_id).instantiate_identity();
+        let item_ty = self.tcx.type_of(item.def_id).instantiate_identity().skip_normalization();
         // FIXME(compiler-errors): This check is *so* rudimentary
         if item_ty.has_param() {
             return false;

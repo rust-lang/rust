@@ -24,12 +24,12 @@ pub(crate) fn check_for_entry_fn(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed>
 }
 
 fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) -> Result<(), ErrorGuaranteed> {
-    let main_fnsig = tcx.fn_sig(main_def_id).instantiate_identity();
+    let main_fnsig = tcx.fn_sig(main_def_id).instantiate_identity().skip_normalization();
     let main_span = tcx.def_span(main_def_id);
 
     fn main_fn_diagnostics_def_id(tcx: TyCtxt<'_>, def_id: DefId, sp: Span) -> LocalDefId {
         if let Some(local_def_id) = def_id.as_local() {
-            let hir_type = tcx.type_of(local_def_id).instantiate_identity();
+            let hir_type = tcx.type_of(local_def_id).instantiate_identity().skip_normalization();
             if !matches!(hir_type.kind(), ty::FnDef(..)) {
                 span_bug!(sp, "main has a non-function type: found `{}`", hir_type);
             }

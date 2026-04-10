@@ -89,6 +89,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, OutlivesPredicate, Region, Ty, TyCtxt, TypingMode,
+    Unnormalized,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -238,7 +239,7 @@ fn missing_items_err(
         let snippet = with_types_for_signature!(suggestion_signature(
             tcx,
             trait_item,
-            tcx.impl_trait_ref(impl_def_id).instantiate_identity(),
+            tcx.impl_trait_ref(impl_def_id).instantiate_identity().skip_normalization(),
         ));
         let code = format!("{padding}{snippet}\n{padding}");
         if let Some(span) = tcx.hir_span_if_local(trait_item.def_id) {
@@ -489,6 +490,7 @@ fn fn_sig_suggestion<'tcx>(
             && let Some(output) = tcx
                 .explicit_item_self_bounds(alias_ty.kind.def_id())
                 .iter_instantiated_copied(tcx, alias_ty.args)
+                .map(Unnormalized::skip_normalization)
                 .find_map(|(bound, _)| {
                     bound.as_projection_clause()?.no_bound_vars()?.term.as_type()
                 }) {
@@ -536,22 +538,26 @@ fn suggestion_signature<'tcx>(
             tcx,
             tcx.liberate_late_bound_regions(
                 assoc.def_id,
-                tcx.fn_sig(assoc.def_id).instantiate(tcx, args),
+                tcx.fn_sig(assoc.def_id).instantiate(tcx, args).skip_normalization(),
             ),
             assoc.ident(tcx),
-            tcx.predicates_of(assoc.def_id).instantiate_own(tcx, args),
+            tcx.predicates_of(assoc.def_id)
+                .instantiate_own(tcx, args)
+                .map(Unnormalized::skip_normalization),
             assoc,
         ),
         ty::AssocKind::Type { .. } => {
             let (generics, where_clauses) = bounds_from_generic_predicates(
                 tcx,
-                tcx.predicates_of(assoc.def_id).instantiate_own(tcx, args),
+                tcx.predicates_of(assoc.def_id)
+                    .instantiate_own(tcx, args)
+                    .map(Unnormalized::skip_normalization),
                 assoc,
             );
             format!("type {}{generics} = /* Type */{where_clauses};", assoc.name())
         }
         ty::AssocKind::Const { name, .. } => {
-            let ty = tcx.type_of(assoc.def_id).instantiate_identity();
+            let ty = tcx.type_of(assoc.def_id).instantiate_identity().skip_normalization();
             let val = tcx
                 .infer_ctxt()
                 .build(TypingMode::non_body_analysis())
@@ -647,7 +653,7 @@ pub fn check_function_signature<'tcx>(
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
-    let actual_sig = tcx.fn_sig(fn_id).instantiate_identity();
+    let actual_sig = tcx.fn_sig(fn_id).instantiate_identity().skip_normalization();
 
     let norm_cause = ObligationCause::misc(cause.span, local_id);
     let actual_sig = ocx.normalize(&norm_cause, param_env, actual_sig);

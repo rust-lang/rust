@@ -65,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
             && let Some(did) = of_trait.trait_ref.trait_def_id()
             && tcx.is_lang_item(did, LangItem::Deref)
             // the self type is `dyn t_principal`
-            && let self_ty = tcx.type_of(item.owner_id).instantiate_identity()
+            && let self_ty = tcx.type_of(item.owner_id).instantiate_identity().skip_normalization()
             && let ty::Dynamic(data, _) = self_ty.kind()
             && let Some(self_principal) = data.principal()
             // `<T as Deref>::Target` is `dyn target_principal`

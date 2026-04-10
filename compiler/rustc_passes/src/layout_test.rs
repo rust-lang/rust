@@ -64,7 +64,7 @@ pub fn ensure_wf<'tcx>(
 
 fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attrs: &[RustcLayoutType]) {
     let typing_env = ty::TypingEnv::post_analysis(tcx, item_def_id);
-    let ty = tcx.type_of(item_def_id).instantiate_identity();
+    let ty = tcx.type_of(item_def_id).instantiate_identity().skip_normalization();
     let span = tcx.def_span(item_def_id.to_def_id());
     if !ensure_wf(tcx, typing_env, ty, item_def_id, span) {
         return;

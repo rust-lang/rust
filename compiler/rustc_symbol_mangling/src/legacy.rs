@@ -32,7 +32,7 @@ pub(super) fn mangle<'tcx>(
             | DefPathData::ValueNs(_)
             | DefPathData::Closure
             | DefPathData::SyntheticCoroutineBody => {
-                instance_ty = tcx.type_of(ty_def_id).instantiate_identity();
+                instance_ty = tcx.type_of(ty_def_id).instantiate_identity().skip_normalization();
                 debug!(?instance_ty);
                 break;
             }
@@ -434,8 +434,10 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
         {
             (
                 ty::TypingEnv::post_analysis(self.tcx, impl_def_id),
-                self_ty.instantiate_identity(),
-                impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate_identity()),
+                self_ty.instantiate_identity().skip_normalization(),
+                impl_trait_ref.map(|impl_trait_ref| {
+                    impl_trait_ref.instantiate_identity().skip_normalization()
+                }),
             )
         } else {
             assert!(
@@ -445,8 +447,10 @@ impl<'tcx> Printer<'tcx> for LegacySymbolMangler<'tcx> {
             );
             (
                 ty::TypingEnv::fully_monomorphized(),
-                self_ty.instantiate(self.tcx, args),
-                impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate(self.tcx, args)),
+                self_ty.instantiate(self.tcx, args).skip_normalization(),
+                impl_trait_ref.map(|impl_trait_ref| {
+                    impl_trait_ref.instantiate(self.tcx, args).skip_normalization()
+                }),
             )
         };
 

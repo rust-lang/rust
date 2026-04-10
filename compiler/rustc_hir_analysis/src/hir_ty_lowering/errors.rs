@@ -436,7 +436,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     tcx.visibility(trait_def_id).is_accessible_from(self.item_def_id(), tcx)
                         && header.polarity != ty::ImplPolarity::Negative
                 })
-                .map(|header| header.trait_ref.instantiate_identity().self_ty())
+                .map(|header| {
+                    header.trait_ref.instantiate_identity().skip_normalization().self_ty()
+                })
                 // We don't care about blanket impls.
                 .filter(|self_ty| !self_ty.has_non_region_param())
                 .map(|self_ty| tcx.erase_and_anonymize_regions(self_ty).to_string())
@@ -511,7 +513,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         }
                         Some((hir::def::CtorKind::Fn, def_id)) => {
                             // tuple
-                            let fn_sig = tcx.fn_sig(def_id).instantiate_identity();
+                            let fn_sig =
+                                tcx.fn_sig(def_id).instantiate_identity().skip_normalization();
                             let inputs = fn_sig.inputs().skip_binder();
                             suggestion = vec![(
                                 ident.span.with_hi(expr.span.hi()),
@@ -728,7 +731,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 "the candidate".into()
             };
 
-            let impl_ty = tcx.at(span).type_of(impl_).instantiate_identity();
+            let impl_ty = tcx.at(span).type_of(impl_).instantiate_identity().skip_normalization();
             let note = format!("{title} is defined in an impl for the type `{impl_ty}`");
 
             if let Some(span) = note_span {
@@ -782,7 +785,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .iter()
                 .take(limit)
                 .map(|cand| {
-                    format!("- `{}`", tcx.at(span).type_of(cand.impl_).instantiate_identity())
+                    format!(
+                        "- `{}`",
+                        tcx.at(span)
+                            .type_of(cand.impl_)
+                            .instantiate_identity()
+                            .skip_normalization()
+                    )
                 })
                 .collect::<Vec<_>>()
                 .join("\n");
@@ -1786,7 +1795,7 @@ fn generics_args_err_extend<'a>(
             );
         }
         GenericsArgsErrExtend::SelfTyAlias { def_id, span } => {
-            let ty = tcx.at(span).type_of(def_id).instantiate_identity();
+            let ty = tcx.at(span).type_of(def_id).instantiate_identity().skip_normalization();
             let span_of_impl = tcx.span_of_impl(def_id);
             let ty::Adt(self_def, _) = *ty.kind() else { return };
             let def_id = self_def.did();

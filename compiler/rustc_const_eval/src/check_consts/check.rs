@@ -384,7 +384,8 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             return None;
         }
 
-        let const_conditions = tcx.const_conditions(callee).instantiate(tcx, callee_args);
+        let const_conditions =
+            tcx.const_conditions(callee).instantiate(tcx, callee_args).skip_normalization();
         if const_conditions.is_empty() {
             return None;
         }

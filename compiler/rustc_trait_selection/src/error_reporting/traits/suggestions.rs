@@ -1370,8 +1370,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ))
                 }
                 ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
-                    self.tcx.item_self_bounds(def_id).instantiate(self.tcx, args).iter().find_map(
-                        |pred| {
+                    self.tcx
+                        .item_self_bounds(def_id)
+                        .instantiate(self.tcx, args)
+                        .skip_normalization()
+                        .iter()
+                        .find_map(|pred| {
                             if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
                             && self
                                 .tcx
@@ -1387,8 +1391,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             } else {
                                 None
                             }
-                        },
-                    )
+                        })
                 }
                 ty::Dynamic(data, _) => data.iter().find_map(|pred| {
                     if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
@@ -2509,7 +2512,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // the uninstantiated predicate list of the called function. And check
         // that the predicate that we failed to satisfy is a `Fn`-like trait.
         if let ObligationCauseCode::WhereClauseInExpr(def_id, _, _, idx) = *cause
-            && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
+            && let predicates =
+                self.tcx.predicates_of(def_id).instantiate_identity(self.tcx).skip_normalization()
             && let Some(pred) = predicates.predicates.get(idx)
             && let ty::ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
             && self.tcx.is_fn_trait(trait_pred.def_id())
@@ -3305,7 +3309,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         .map(|&&t| {
                                             with_no_trimmed_paths!(format!(
                                                 "  {}",
-                                                tcx.type_of(t).instantiate_identity(),
+                                                tcx.type_of(t)
+                                                    .instantiate_identity()
+                                                    .skip_normalization(),
                                             ))
                                         })
                                         .collect::<Vec<_>>();
@@ -4491,8 +4497,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let mut type_diffs = vec![];
             if let ObligationCauseCode::WhereClauseInExpr(def_id, _, _, idx) = *parent_code
                 && let Some(node_args) = typeck_results.node_args_opt(call_hir_id)
-                && let where_clauses =
-                    self.tcx.predicates_of(def_id).instantiate(self.tcx, node_args)
+                && let where_clauses = self
+                    .tcx
+                    .predicates_of(def_id)
+                    .instantiate(self.tcx, node_args)
+                    .skip_normalization()
                 && let Some(where_pred) = where_clauses.predicates.get(idx)
             {
                 if let Some(where_pred) = where_pred.as_trait_clause()

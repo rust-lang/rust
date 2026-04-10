@@ -2994,8 +2994,9 @@ fn repr_attribute<'tcx>(
 
             // Side note: There can only ever be one or zero non-1-ZST fields.
             let non_1zst_field = var.fields.iter().find(|field| {
-                let ty = ty::TypingEnv::post_analysis(tcx, field.did)
-                    .as_query_input(tcx.type_of(field.did).instantiate_identity());
+                let ty = ty::TypingEnv::post_analysis(tcx, field.did).as_query_input(
+                    tcx.type_of(field.did).instantiate_identity().skip_normalization(),
+                );
                 tcx.layout_of(ty).is_ok_and(|layout| !layout.is_1zst())
             });
 

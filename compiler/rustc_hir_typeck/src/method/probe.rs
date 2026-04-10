@@ -1073,7 +1073,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         match method.kind {
             ty::AssocKind::Fn { .. } => self.probe(|_| {
                 let args = self.fresh_args_for_item(self.span, method.def_id);
-                let fty = self.tcx.fn_sig(method.def_id).instantiate(self.tcx, args);
+                let fty =
+                    self.tcx.fn_sig(method.def_id).instantiate(self.tcx, args).skip_normalization();
                 let fty = self.instantiate_binder_with_fresh_vars(
                     self.span,
                     BoundRegionConversionTime::FnCall,
@@ -1971,7 +1972,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             match probe.kind {
                 InherentImplCandidate { impl_def_id, .. } => {
                     let impl_args = self.fresh_args_for_item(self.span, impl_def_id);
-                    let impl_ty = self.tcx.type_of(impl_def_id).instantiate(self.tcx, impl_args);
+                    let impl_ty = self
+                        .tcx
+                        .type_of(impl_def_id)
+                        .instantiate(self.tcx, impl_args)
+                        .skip_normalization();
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, impl_ty, impl_args);
                     xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
@@ -1987,8 +1992,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     xform_ret_ty = ocx.normalize(cause, self.param_env, xform_ret_ty);
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_def_id = probe.item.container_id(self.tcx);
-                    let impl_bounds =
-                        self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_args);
+                    let impl_bounds = self
+                        .tcx
+                        .predicates_of(impl_def_id)
+                        .instantiate(self.tcx, impl_args)
+                        .skip_normalization();
                     let impl_bounds = ocx.normalize(cause, self.param_env, impl_bounds);
                     // Convert the bounds into obligations.
                     ocx.register_obligations(traits::predicates_for_generics(
@@ -2557,7 +2565,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         assert_eq!(args.len(), generics.parent_count);
 
         let xform_fn_sig = if generics.is_own_empty() {
-            fn_sig.instantiate(self.tcx, args)
+            fn_sig.instantiate(self.tcx, args).skip_normalization()
         } else {
             let args = GenericArgs::for_item(self.tcx, method, |param, _| {
                 let i = param.index as usize;
@@ -2575,7 +2583,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     }
                 }
             });
-            fn_sig.instantiate(self.tcx, args)
+            fn_sig.instantiate(self.tcx, args).skip_normalization()
         };
 
         self.tcx.instantiate_bound_regions_with_erased(xform_fn_sig)

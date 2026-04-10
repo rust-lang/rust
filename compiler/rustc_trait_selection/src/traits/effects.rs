@@ -8,7 +8,7 @@ use rustc_middle::span_bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::elaborate::elaborate;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, Ty, TypingMode};
+use rustc_middle::ty::{self, Ty, TypingMode, Unnormalized};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::SelectionContext;
@@ -190,6 +190,7 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
                 tcx,
                 tcx.explicit_implied_const_bounds(def_id)
                     .iter_instantiated_copied(tcx, alias_ty.args)
+                    .map(Unnormalized::skip_normalization)
                     .map(|(trait_ref, _)| {
                         trait_ref.to_host_effect_clause(tcx, obligation.predicate.constness)
                     }),
@@ -239,7 +240,9 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
                 obligation.param_env,
                 obligation.cause.clone(),
                 obligation.recursion_depth,
-                tcx.const_conditions(alias_ty.kind.def_id()).instantiate(tcx, alias_ty.args),
+                tcx.const_conditions(alias_ty.kind.def_id())
+                    .instantiate(tcx, alias_ty.args)
+                    .skip_normalization(),
                 nested,
             );
             nested.extend(const_conditions.into_iter().map(|(trait_ref, _)| {
@@ -272,7 +275,11 @@ fn evaluate_host_effect_from_item_bounds<'tcx>(
         },
     ) = *consider_ty.kind()
     {
-        for clause in tcx.item_bounds(def_id).iter_instantiated(tcx, alias_ty.args) {
+        for clause in tcx
+            .item_bounds(def_id)
+            .iter_instantiated(tcx, alias_ty.args)
+            .map(Unnormalized::skip_normalization)
+        {
             let bound_clause = clause.kind();
             let ty::ClauseKind::HostEffect(data) = bound_clause.skip_binder() else {
                 continue;
@@ -411,6 +418,7 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
         ty::CoroutineWitness(def_id, args) => Ok(tcx
             .coroutine_hidden_types(def_id)
             .instantiate(tcx, args)
+            .skip_normalization()
             .map_bound(|bound| bound.types.to_vec())),
     }?;
 
@@ -561,6 +569,7 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
         hir::Constness::Const => Ok(tcx
             .const_conditions(def)
             .instantiate(tcx, args)
+            .skip_normalization()
             .into_iter()
             .map(|(c, span)| {
                 let code = ObligationCauseCode::WhereClause(def, span);
@@ -597,6 +606,7 @@ fn evaluate_host_effect_from_selection_candidate<'tcx>(
                     nested.extend(
                         tcx.const_conditions(impl_.impl_def_id)
                             .instantiate(tcx, impl_.args)
+                            .skip_normalization()
                             .into_iter()
                             .map(|(trait_ref, span)| {
                                 Obligation::new(
@@ -641,6 +651,7 @@ fn evaluate_host_effect_from_trait_alias<'tcx>(
     Ok(tcx
         .const_conditions(def_id)
         .instantiate(tcx, obligation.predicate.trait_ref.args)
+        .skip_normalization()
         .into_iter()
         .map(|(trait_ref, span)| {
             Obligation::new(

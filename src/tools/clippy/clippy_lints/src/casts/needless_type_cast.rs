@@ -158,7 +158,7 @@ fn has_generic_return_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
         .is_some(),
         ExprKind::MethodCall(..) => {
             if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
-                let sig = cx.tcx.fn_sig(def_id).instantiate_identity();
+                let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_normalization();
                 let ret_ty = sig.output().skip_binder();
                 return ret_ty.has_param();
             }
@@ -168,7 +168,7 @@ fn has_generic_return_type(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             if let ExprKind::Path(qpath) = &callee.kind {
                 let res = cx.qpath_res(qpath, callee.hir_id);
                 if let Res::Def(DefKind::Fn | DefKind::AssocFn, def_id) = res {
-                    let sig = cx.tcx.fn_sig(def_id).instantiate_identity();
+                    let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_normalization();
                     let ret_ty = sig.output().skip_binder();
                     return ret_ty.has_param();
                 }

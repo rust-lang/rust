@@ -190,6 +190,7 @@ fn resolve_associated_item<'tcx>(
                 let predicates = tcx
                     .predicates_of(impl_data.impl_def_id)
                     .instantiate(tcx, impl_data.args)
+                    .skip_normalization()
                     .predicates;
                 let sized_def_id = tcx.lang_items().sized_trait();
                 // If we find a `Self: Sized` bound on the item, then we know

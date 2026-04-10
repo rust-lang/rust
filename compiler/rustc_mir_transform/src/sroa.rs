@@ -24,7 +24,12 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
         debug!(def_id = ?body.source.def_id());
 
         // Avoid query cycles (coroutines require optimized MIR for layout).
-        if tcx.type_of(body.source.def_id()).instantiate_identity().is_coroutine() {
+        if tcx
+            .type_of(body.source.def_id())
+            .instantiate_identity()
+            .skip_normalization()
+            .is_coroutine()
+        {
             return;
         }
 

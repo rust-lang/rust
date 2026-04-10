@@ -542,14 +542,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (fn_sig, def_id) = match *callee_ty.kind() {
             ty::FnDef(def_id, args) => {
                 self.enforce_context_effects(Some(call_expr.hir_id), call_expr.span, def_id, args);
-                let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
+                let fn_sig =
+                    self.tcx.fn_sig(def_id).instantiate(self.tcx, args).skip_normalization();
 
                 // Unit testing: function items annotated with
                 // `#[rustc_evaluate_where_clauses]` trigger special output
                 // to let us test the trait evaluation system.
                 if self.has_rustc_attrs && find_attr!(self.tcx, def_id, RustcEvaluateWhereClauses) {
                     let predicates = self.tcx.predicates_of(def_id);
-                    let predicates = predicates.instantiate(self.tcx, args);
+                    let predicates = predicates.instantiate(self.tcx, args).skip_normalization();
                     for (predicate, predicate_span) in predicates {
                         let obligation = Obligation::new(
                             self.tcx,
@@ -947,7 +948,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if self.tcx.is_conditionally_const(callee_did) {
             let q = self.tcx.const_conditions(callee_did);
             for (idx, (cond, pred_span)) in
-                q.instantiate(self.tcx, callee_args).into_iter().enumerate()
+                q.instantiate(self.tcx, callee_args).skip_normalization().into_iter().enumerate()
             {
                 let cause = self.cause(
                     span,

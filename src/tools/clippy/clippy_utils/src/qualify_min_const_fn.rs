@@ -50,7 +50,7 @@ pub fn is_min_const_fn<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, msrv: Ms
     // impl trait is gone in MIR, so check the return type manually
     check_ty(
         cx,
-        cx.tcx.fn_sig(def_id).instantiate_identity().output().skip_binder(),
+        cx.tcx.fn_sig(def_id).instantiate_identity().skip_normalization().output().skip_binder(),
         body.local_decls.iter().next().unwrap().source_info.span,
         msrv,
     )?;

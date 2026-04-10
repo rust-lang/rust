@@ -164,7 +164,7 @@ impl<'tcx> InherentCollect<'tcx> {
 
         let id = id.owner_id.def_id;
         let item_span = self.tcx.def_span(id);
-        let self_ty = self.tcx.type_of(id).instantiate_identity();
+        let self_ty = self.tcx.type_of(id).instantiate_identity().skip_normalization();
         let mut self_ty = self.tcx.peel_off_free_alias_tys(self_ty);
         // We allow impls on pattern types exactly when we allow impls on the base type.
         // FIXME(pattern_types): Figure out the exact coherence rules we want here.

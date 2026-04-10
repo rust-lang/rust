@@ -14,7 +14,7 @@ use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{
     self, ClosureKind, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    TypeVisitableExt, TypeVisitor, Unnormalized,
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span};
@@ -312,6 +312,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx
                         .explicit_item_self_bounds(def_id)
                         .iter_instantiated_copied(self.tcx, args)
+                        .map(Unnormalized::skip_normalization)
                         .map(|(c, s)| (c.as_predicate(), s)),
                 ),
             ty::Dynamic(object_type, ..) => {
@@ -1028,6 +1029,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .tcx
                 .explicit_item_self_bounds(def_id)
                 .iter_instantiated_copied(self.tcx, args)
+                .map(Unnormalized::skip_normalization)
                 .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             ty::Error(_) => return Some(ret_ty),
             _ => {

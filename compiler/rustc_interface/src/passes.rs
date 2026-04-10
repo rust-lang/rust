@@ -1163,8 +1163,9 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             {
                 // Eagerly check the unsubstituted layout for cycles.
                 tcx.ensure_ok().layout_of(
-                    ty::TypingEnv::post_analysis(tcx, def_id.to_def_id())
-                        .as_query_input(tcx.type_of(def_id).instantiate_identity()),
+                    ty::TypingEnv::post_analysis(tcx, def_id.to_def_id()).as_query_input(
+                        tcx.type_of(def_id).instantiate_identity().skip_normalization(),
+                    ),
                 );
             }
         });

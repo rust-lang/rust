@@ -49,7 +49,7 @@ pub fn is_clone_like(cx: &LateContext<'_>, method_name: Symbol, method_parent_id
         sym::to_string => method_parent_id.is_diag_item(cx, sym::ToString),
         sym::to_vec => method_parent_id
             .opt_impl_ty(cx)
-            .is_some_and(|ty| ty.instantiate_identity().is_slice()),
+            .is_some_and(|ty| ty.instantiate_identity().skip_normalization().is_slice()),
         _ => false,
     }
 }

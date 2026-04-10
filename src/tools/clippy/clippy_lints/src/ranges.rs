@@ -401,7 +401,7 @@ fn can_switch_ranges<'tcx>(
         };
         let inputs = cx
             .tcx
-            .liberate_late_bound_regions(id, cx.tcx.fn_sig(id).instantiate_identity())
+            .liberate_late_bound_regions(id, cx.tcx.fn_sig(id).instantiate_identity().skip_normalization())
             .inputs();
         let expr_ty = inputs[input_idx];
         // Check that the `expr` type is present only once, otherwise modifying just one of them might be
@@ -445,8 +445,7 @@ fn can_switch_ranges<'tcx>(
         }
         && let switched_range_ty = cx
             .tcx
-            .type_of(switched_range_def_id)
-            .instantiate(cx.tcx, &[inner_ty.into()])
+            .type_of(switched_range_def_id).instantiate(cx.tcx, &[inner_ty.into()]).skip_normalization()
         // Check that the switched range type can be used for indexing the original expression
         // through the `Index` or `IndexMut` trait.
         && let ty::Ref(_, outer_ty, mutability) = cx.typeck_results().expr_ty_adjusted(outer_expr).kind()

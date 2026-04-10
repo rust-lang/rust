@@ -824,9 +824,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
         let fn_ty = instance.ty(tcx, self.typing_env());
         let fn_sig = match *fn_ty.kind() {
-            ty::FnDef(def_id, args) => {
-                tcx.instantiate_bound_regions_with_erased(tcx.fn_sig(def_id).instantiate(tcx, args))
-            }
+            ty::FnDef(def_id, args) => tcx.instantiate_bound_regions_with_erased(
+                tcx.fn_sig(def_id).instantiate(tcx, args).skip_normalization(),
+            ),
             _ => unreachable!(),
         };
         assert!(!fn_sig.c_variadic);
