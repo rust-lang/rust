@@ -38,3 +38,23 @@ LL | #[macro_export("blah")]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
+Future breakage diagnostic:
+warning: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
+  --> $DIR/invalid_macro_export_argument.rs:45:1
+   |
+LL | #[macro_export(local_inner_macros = false)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+
+Future breakage diagnostic:
+warning: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
+  --> $DIR/invalid_macro_export_argument.rs:52:1
+   |
+LL | #[macro_export(local_inner_macros(false))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
+

@@ -42,4 +42,18 @@ macro_rules! f {
     () => ()
 }
 
+#[macro_export(local_inner_macros = false)]
+//[deny]~^ ERROR valid forms for the attribute are
+//[deny]~| WARN this was previously accepted
+macro_rules! g {
+    () => ()
+}
+
+#[macro_export(local_inner_macros(false))]
+//[deny]~^ ERROR valid forms for the attribute are
+//[deny]~| WARN this was previously accepted
+macro_rules! h {
+    () => ()
+}
+
 fn main() {}

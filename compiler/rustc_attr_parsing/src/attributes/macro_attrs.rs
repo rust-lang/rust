@@ -146,13 +146,19 @@ impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
                     cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
                     return None;
                 };
-                match l.meta_item().and_then(|i| i.path().word_sym()) {
-                    Some(sym::local_inner_macros) => true,
-                    _ => {
-                        cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
-                        return None;
-                    }
+                let Some(l) = l.meta_item() else {
+                    cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
+                    return None;
+                };
+                if !l.path().word_is(sym::local_inner_macros) {
+                    cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
+                    return None;
                 }
+                if let Err(_) = l.args().no_args() {
+                    cx.adcx().warn_ill_formed_attribute_input(INVALID_MACRO_EXPORT_ARGUMENTS);
+                    return None;
+                }
+                true
             }
             ArgParser::NameValue(nv) => {
                 cx.adcx().expected_list_or_no_args(nv.args_span());
