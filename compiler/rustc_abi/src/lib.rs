@@ -47,6 +47,8 @@ use bitflags::bitflags;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
 #[cfg(feature = "nightly")]
+use rustc_error_messages::{DiagArgValue, IntoDiagArg};
+#[cfg(feature = "nightly")]
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, msg};
 use rustc_hashes::Hash64;
 use rustc_index::{Idx, IndexSlice, IndexVec};
@@ -1772,6 +1774,24 @@ impl NumScalableVectors {
             2..8 => Some(NumScalableVectors(count as u8)),
             _ => None,
         }
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl IntoDiagArg for NumScalableVectors {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(std::borrow::Cow::Borrowed(match self.0 {
+            0 => panic!("`NumScalableVectors(0)` is illformed"),
+            1 => "one",
+            2 => "two",
+            3 => "three",
+            4 => "four",
+            5 => "five",
+            6 => "six",
+            7 => "seven",
+            8 => "eight",
+            _ => panic!("`NumScalableVectors(N)` for N>8 is illformed"),
+        }))
     }
 }
 
