@@ -160,13 +160,8 @@ macro_rules! define_queries {
                             $crate::query_impl::$name::will_cache_on_disk_for_key,
 
                         #[cfg($cache_on_disk)]
-                        try_load_from_disk_fn: |tcx, key, prev_index, index| {
+                        try_load_from_disk_fn: |tcx, prev_index, index| {
                             use rustc_middle::queries::$name::{ProvidedValue, provided_to_erased};
-
-                            // Check the cache-on-disk condition for this key.
-                            if !$crate::query_impl::$name::will_cache_on_disk_for_key(key) {
-                                return None;
-                            }
 
                             let loaded_value: ProvidedValue<'tcx> =
                                 $crate::plumbing::try_load_from_disk(tcx, prev_index, index)?;
@@ -175,7 +170,7 @@ macro_rules! define_queries {
                             Some(provided_to_erased(tcx, loaded_value))
                         },
                         #[cfg(not($cache_on_disk))]
-                        try_load_from_disk_fn: |_tcx, _key, _prev_index, _index| None,
+                        try_load_from_disk_fn: |_tcx, _prev_index, _index| None,
 
                         #[cfg($handle_cycle_error)]
                         handle_cycle_error_fn: |tcx, key, cycle, err| {
