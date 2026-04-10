@@ -342,8 +342,10 @@ fn orphan_check<'tcx>(
             let mut collector =
                 UncoveredTyParamCollector { infcx: &infcx, uncovered_params: Default::default() };
             uncovered.visit_with(&mut collector);
-            // FIXME(fmease): This is very likely reachable.
-            debug_assert!(!collector.uncovered_params.is_empty());
+            assert!(
+                !collector.uncovered_params.is_empty(),
+                "orphan check: uncovered ty params should not be empty after collection"
+            );
 
             OrphanCheckErr::UncoveredTyParams(UncoveredTyParams {
                 uncovered: collector.uncovered_params,
@@ -480,7 +482,9 @@ fn emit_orphan_check_error<'tcx>(
                     None => tcx.dcx().emit_err(errors::TyParamSome { span, note: (), param: name }),
                 });
             }
-            reported.unwrap() // FIXME(fmease): This is very likely reachable.
+            reported.unwrap_or_else(|| {
+                bug!("orphan check: uncovered ty params was empty after collection")
+            })
         }
     }
 }
