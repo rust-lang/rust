@@ -5,7 +5,7 @@
 #![feature(extern_item_impls)]
 
 #[eii(hello)]
-unsafe static mut HELLO: u64;
+unsafe static HELLO: u64;
 
 #[hello]
 //~^ ERROR safety does not match with the definition of`#[hello]`

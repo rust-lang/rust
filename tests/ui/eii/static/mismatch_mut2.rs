@@ -5,10 +5,10 @@
 #![feature(extern_item_impls)]
 
 #[eii(hello)]
-//~^ ERROR `#[eii]` cannot be used on mutable statics
-static mut HELLO: u64;
+static HELLO: u64;
 
 #[hello]
+//~^ ERROR mutability does not match with the definition of`#[hello]`
 static mut HELLO_IMPL: u64 = 5;
 
 // what you would write:
@@ -17,5 +17,5 @@ fn main() {
     println!("{}", unsafe { HELLO_IMPL });
 
     // through the alias
-    println!("{}", unsafe { HELLO });
+    println!("{HELLO}");
 }

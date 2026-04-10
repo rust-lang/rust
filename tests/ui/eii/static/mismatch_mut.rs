@@ -5,6 +5,7 @@
 #![feature(extern_item_impls)]
 
 #[eii(hello)]
+//~^ ERROR `#[eii]` cannot be used on mutable statics
 static mut HELLO: u64;
 
 #[hello]

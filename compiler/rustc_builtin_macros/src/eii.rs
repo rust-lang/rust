@@ -1,7 +1,8 @@
 use rustc_ast::token::{Delimiter, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{
-    Attribute, DUMMY_NODE_ID, EiiDecl, EiiImpl, ItemKind, MetaItem, Path, StmtKind, Visibility, ast,
+    Attribute, DUMMY_NODE_ID, EiiDecl, EiiImpl, ItemKind, MetaItem, Mutability, Path, StmtKind,
+    Visibility, ast,
 };
 use rustc_ast_pretty::pprust::path_to_string;
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -11,7 +12,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::errors::{
     EiiExternTargetExpectedList, EiiExternTargetExpectedMacro, EiiExternTargetExpectedUnsafe,
     EiiMacroExpectedMaxOneArgument, EiiOnlyOnce, EiiSharedMacroInStatementPosition,
-    EiiSharedMacroTarget, EiiStaticArgumentRequired, EiiStaticDefault,
+    EiiSharedMacroTarget, EiiStaticArgumentRequired, EiiStaticDefault, EiiStaticMutable,
 };
 
 /// ```rust
@@ -100,6 +101,15 @@ fn eii_(
                 });
                 return vec![];
             }
+
+            // Mut statics are currently not supported
+            if stat.mutability == Mutability::Mut {
+                ecx.dcx().emit_err(EiiStaticMutable {
+                    span: eii_attr_span,
+                    name: path_to_string(&meta_item.path),
+                });
+            }
+
             (item.span, stat.ident)
         }
         _ => {

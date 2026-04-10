@@ -1141,6 +1141,14 @@ pub(crate) struct EiiStaticArgumentRequired {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[{$name}]` cannot be used on mutable statics")]
+pub(crate) struct EiiStaticMutable {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[{$name}]` can only be used on functions inside a module")]
 pub(crate) struct EiiSharedMacroInStatementPosition {
     #[primary_span]

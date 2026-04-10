@@ -5,16 +5,16 @@
 #![feature(extern_item_impls)]
 
 #[eii(hello)]
-//~^ ERROR `#[eii]` cannot be used on mutable statics
-static mut HELLO: u64;
+static HELLO: u64;
 
 #[hello]
-static mut HELLO_IMPL: u64 = 5;
+unsafe static HELLO_IMPL: u64 = 5;
+//~^ ERROR static items cannot be declared with `unsafe` safety qualifier outside of `extern` block
 
 // what you would write:
 fn main() {
     // directly
-    println!("{}", unsafe { HELLO_IMPL });
+    println!("{HELLO_IMPL}");
 
     // through the alias
     println!("{}", unsafe { HELLO });
