@@ -432,7 +432,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let match_scope = self.local_scope();
                 let guard_scope = arm
                     .guard
-                    .map(|_| region::Scope { data: region::ScopeData::MatchGuard, ..arm.scope });
+                    .map(|_| region::Scope { data: region::ScopeData::MatchGuard, ..arm.scope })
+                    .or_else(|| {
+                        if let PatKind::Guard { condition, .. } = arm.pattern.kind {
+                            Some(region::Scope {
+                                local_id: self.thir[condition].temp_scope_id,
+                                data: region::ScopeData::MatchGuard,
+                            })
+                        } else {
+                            None
+                        }
+                    });
                 self.in_scope(arm_scope, LintLevel::Explicit(arm.hir_id), |this| {
                     this.opt_in_scope(guard_scope.map(|scope| (scope, arm_source_info)), |this| {
                         // `if let` guard temps needing deduplicating will be in the guard scope.
@@ -731,7 +741,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     var,
                     ty,
                     user_tys,
-                    ArmHasGuard(guard.is_some()),
+                    ArmHasGuard(guard.is_some() || pattern.kind.is_guard()),
                     opt_match_place.map(|(x, y)| (x.cloned(), y)),
                     pattern.span,
                 );
@@ -741,6 +751,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if let Some(guard_expr) = guard {
             self.declare_guard_bindings(guard_expr, scope_span, visibility_scope);
         }
+        if let PatKind::Guard { condition, ..} = pattern.kind {
+            self.declare_guard_bindings(condition, scope_span, visibility_scope);
+        };
         visibility_scope
     }
 
@@ -2457,7 +2470,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Bindings for guards require some extra handling to automatically
             // insert implicit references/dereferences.
             // This always schedules storage drops, so we may need to unschedule them below.
-            self.bind_matched_candidate_for_guard(block, sub_branch.bindings.iter());
+            let _ = self.in_scope(
+                (match_scope, self.source_info(arm_span)),
+                LintLevel::Inherited,
+                |this| {
+                    this.bind_matched_candidate_for_guard(block, sub_branch.bindings.iter());
+                    BasicBlock::ZERO.unit()
+                },
+            );
             let guard_frame = GuardFrame {
                 locals: sub_branch
                     .bindings
@@ -2477,7 +2497,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             let (post_guard_block, otherwise_post_guard_block) =
                 self.in_if_then_scope(match_scope, arm_span, |this| {
-                    guards.into_iter().fold(BlockAnd(block, ()), |block, guard| {
+                    guards.into_iter().fold(block.unit(), |block, guard| {
                         this.then_else_break(
                             block.0,
                             guard,
@@ -2580,8 +2600,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         } else {
             let span = sub_branch.span;
             // There must be a scope if a guard pattern is present
-            let scope = sub_branch.scope.unwrap();
-
+            let scope = todo!();
             (span, scope, scope)
         };
         (arm_span, arm_scope, match_scope)
