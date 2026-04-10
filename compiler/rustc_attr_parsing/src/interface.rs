@@ -3,7 +3,7 @@ use std::convert::identity;
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrItemKind, AttrStyle, NodeId, Safety};
-use rustc_errors::DiagCtxtHandle;
+use rustc_errors::{DiagCtxtHandle, MultiSpan};
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
@@ -29,7 +29,7 @@ pub struct AttributeParser<'sess, S: Stage = Late> {
     /// *Only* parse attributes with this symbol.
     ///
     /// Used in cases where we want the lowering infrastructure for parse just a single attribute.
-    parse_only: Option<Symbol>,
+    parse_only: Option<&'static [Symbol]>,
 }
 
 impl<'sess> AttributeParser<'sess, Early> {
@@ -50,7 +50,7 @@ impl<'sess> AttributeParser<'sess, Early> {
     pub fn parse_limited(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
-        sym: Symbol,
+        sym: &'static [Symbol],
         target_span: Span,
         target_node_id: NodeId,
         features: Option<&'sess Features>,
@@ -72,7 +72,7 @@ impl<'sess> AttributeParser<'sess, Early> {
     pub fn parse_limited_should_emit(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
-        sym: Symbol,
+        sym: &'static [Symbol],
         target_span: Span,
         target_node_id: NodeId,
         target: Target,
@@ -103,7 +103,7 @@ impl<'sess> AttributeParser<'sess, Early> {
     pub fn parse_limited_all(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
-        parse_only: Option<Symbol>,
+        parse_only: Option<&'static [Symbol]>,
         target: Target,
         target_span: Span,
         target_node_id: NodeId,
@@ -195,7 +195,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             sess,
             stage: Early { emit_errors },
         };
-        let mut emit_lint = |lint_id: LintId, span: Span, kind: AttributeLintKind| {
+        let mut emit_lint = |lint_id: LintId, span: MultiSpan, kind: AttributeLintKind| {
             sess.psess.buffer_lint(lint_id.lint, span, target_node_id, kind)
         };
         if let Some(safety) = attr_safety {
@@ -256,7 +256,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         target: Target,
         omit_doc: OmitDoc,
         lower_span: impl Copy + Fn(Span) -> Span,
-        mut emit_lint: impl FnMut(LintId, Span, AttributeLintKind),
+        mut emit_lint: impl FnMut(LintId, MultiSpan, AttributeLintKind),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
         // We store the attributes we intend to discard at the end of this function in order to
@@ -272,7 +272,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         for attr in attrs {
             // If we're only looking for a single attribute, skip all the ones we don't care about.
             if let Some(expected) = self.parse_only {
-                if !attr.has_name(expected) {
+                if !attr.path_matches(expected) {
                     continue;
                 }
             }

@@ -1037,7 +1037,7 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
                         tcx.emit_node_span_lint(
                             attribute_lint.lint_id.lint,
                             attribute_lint.id,
-                            attribute_lint.span,
+                            attribute_lint.span.clone(),
                             DecorateAttrLint {
                                 sess: tcx.sess,
                                 tcx: Some(tcx),
@@ -1369,7 +1369,7 @@ pub(crate) fn parse_crate_name(
         AttributeParser::parse_limited_should_emit(
             sess,
             attrs,
-            sym::crate_name,
+            &[sym::crate_name],
             DUMMY_SP,
             rustc_ast::node_id::CRATE_NODE_ID,
             Target::Crate,
@@ -1419,7 +1419,7 @@ pub fn collect_crate_types(
             AttributeParser::<Early>::parse_limited_should_emit(
                 session,
                 attrs,
-                sym::crate_type,
+                &[sym::crate_type],
                 crate_span,
                 CRATE_NODE_ID,
                 Target::Crate,
@@ -1476,7 +1476,7 @@ fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit 
     let attr = AttributeParser::parse_limited_should_emit(
         sess,
         &krate_attrs,
-        sym::recursion_limit,
+        &[sym::recursion_limit],
         DUMMY_SP,
         rustc_ast::node_id::CRATE_NODE_ID,
         Target::Crate,

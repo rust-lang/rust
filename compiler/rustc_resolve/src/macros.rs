@@ -140,7 +140,7 @@ pub fn registered_tools_ast(
         AttributeParser::parse_limited(
             sess,
             pre_configured_attrs,
-            sym::register_tool,
+            &[sym::register_tool],
             DUMMY_SP,
             DUMMY_NODE_ID,
             Some(features),
@@ -712,17 +712,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
         }
 
-        const DIAG_ATTRS: &[Symbol] =
-            &[sym::on_unimplemented, sym::do_not_recommend, sym::on_const, sym::on_move];
+        let diagnostic_attributes: &[(Symbol, bool)] = &[
+            (sym::on_unimplemented, true),
+            (sym::do_not_recommend, true),
+            (sym::on_move, true),
+            (sym::on_const, self.tcx.features().diagnostic_on_const()),
+            (sym::on_unknown, self.tcx.features().diagnostic_on_unknown()),
+        ];
 
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
             && let [namespace, attribute, ..] = &*path.segments
             && namespace.ident.name == sym::diagnostic
-            && !DIAG_ATTRS.contains(&attribute.ident.name)
+            && !diagnostic_attributes
+                .iter()
+                .any(|(attr, stable)| *stable && attribute.ident.name == *attr)
         {
             let span = attribute.span();
-
-            let typo = find_best_match_for_name(DIAG_ATTRS, attribute.ident.name, Some(5))
+            let candidates = diagnostic_attributes
+                .iter()
+                .filter_map(|(sym, stable)| stable.then_some(*sym))
+                .collect::<Vec<_>>();
+            let typo = find_best_match_for_name(&candidates, attribute.ident.name, Some(5))
                 .map(|typo_name| errors::UnknownDiagnosticAttributeTypoSugg { span, typo_name });
 
             self.tcx.sess.psess.buffer_lint(
