@@ -20,6 +20,8 @@ pub(crate) const unsafe fn simd_imin<T: Copy>(a: T, b: T) -> T {
 pub(crate) unsafe trait SimdElement:
     Copy + const PartialEq + crate::fmt::Debug
 {
+    // SAFETY: all bits patterns of types implementing this trait must be valid
+    const ZERO: Self = unsafe { crate::mem::zeroed() };
 }
 
 unsafe impl SimdElement for u8 {}
@@ -42,8 +44,7 @@ pub(crate) struct Simd<T: SimdElement, const N: usize>([T; N]);
 
 impl<T: SimdElement, const N: usize> Simd<T, N> {
     /// A value of this type where all elements are zeroed out.
-    // SAFETY: `T` implements `SimdElement`, so it is zeroable.
-    pub(crate) const ZERO: Self = unsafe { crate::mem::zeroed() };
+    pub(crate) const ZERO: Self = Self::splat(T::ZERO);
 
     #[inline(always)]
     pub(crate) const fn from_array(elements: [T; N]) -> Self {
@@ -163,7 +164,6 @@ impl<T: SimdElement, const N: usize> SimdM<T, N> {
     #[inline(always)]
     const fn bool_to_internal(x: bool) -> T {
         // SAFETY: `T` implements `SimdElement`, so all bit patterns are valid.
-        let zeros = const { unsafe { crate::mem::zeroed::<T>() } };
         let ones = const {
             // Ideally, this would be `transmute([0xFFu8; size_of::<T>()])`, but
             // `size_of::<T>()` is not allowed to use a generic parameter there.
@@ -175,13 +175,24 @@ impl<T: SimdElement, const N: usize> SimdM<T, N> {
             }
             unsafe { r.assume_init() }
         };
-        [zeros, ones][x as usize]
+        [T::ZERO, ones][x as usize]
+    }
+
+    #[inline]
+    pub(crate) const fn from_array(elements: [bool; N]) -> Self {
+        let mut internal = [T::ZERO; N];
+        let mut i = 0;
+        while i < N {
+            internal[i] = Self::bool_to_internal(elements[i]);
+            i += 1;
+        }
+        Self(internal)
     }
 
     #[inline]
     #[rustc_const_unstable(feature = "stdarch_const_helpers", issue = "none")]
     pub(crate) const fn splat(value: bool) -> Self {
-        unsafe { crate::intrinsics::simd::simd_splat(value) }
+        unsafe { crate::intrinsics::simd::simd_splat(Self::bool_to_internal(value)) }
     }
 
     #[inline]
@@ -215,19 +226,6 @@ impl<T: SimdElement, const N: usize> crate::fmt::Debug for SimdM<T, N> {
     #[inline]
     fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
         debug_simd_finish(f, "SimdM", self.as_array())
-    }
-}
-
-macro_rules! simd_m_ty {
-    ($id:ident [$elem_type:ident ; $len:literal]: $($param_name:ident),*) => {
-        pub(crate) type $id  = SimdM<$elem_type, $len>;
-
-        impl $id {
-            #[inline(always)]
-            pub(crate) const fn new($($param_name: bool),*) -> Self {
-                Self([$(Self::bool_to_internal($param_name)),*])
-            }
-        }
     }
 }
 
@@ -363,38 +361,10 @@ simd_ty!(
 simd_ty!(f32x4[f32;4]: x0, x1, x2, x3);
 simd_ty!(f64x2[f64;2]: x0, x1);
 
-simd_m_ty!(
-    m8x16[i8;16]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15
-);
-simd_m_ty!(
-    m16x8[i16;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
-simd_m_ty!(m32x4[i32;4]: x0, x1, x2, x3);
-simd_m_ty!(m64x2[i64;2]: x0, x1);
+pub(crate) type m8x16 = SimdM<i8, 16>;
+pub(crate) type m16x8 = SimdM<i16, 8>;
+pub(crate) type m32x4 = SimdM<i32, 4>;
+pub(crate) type m64x2 = SimdM<i64, 2>;
 
 // 256-bit wide types:
 
@@ -564,71 +534,9 @@ simd_ty!(
 );
 simd_ty!(f64x4[f64;4]: x0, x1, x2, x3);
 
-simd_m_ty!(
-    m8x32[i8;32]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15,
-    x16,
-    x17,
-    x18,
-    x19,
-    x20,
-    x21,
-    x22,
-    x23,
-    x24,
-    x25,
-    x26,
-    x27,
-    x28,
-    x29,
-    x30,
-    x31
-);
-simd_m_ty!(
-    m16x16[i16;16]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7,
-    x8,
-    x9,
-    x10,
-    x11,
-    x12,
-    x13,
-    x14,
-    x15
-);
-simd_m_ty!(
-    m32x8[i32;8]:
-    x0,
-    x1,
-    x2,
-    x3,
-    x4,
-    x5,
-    x6,
-    x7
-);
+pub(crate) type m8x32 = SimdM<i8, 32>;
+pub(crate) type m16x16 = SimdM<i16, 16>;
+pub(crate) type m32x8 = SimdM<i32, 8>;
 
 // 512-bit wide types:
 
