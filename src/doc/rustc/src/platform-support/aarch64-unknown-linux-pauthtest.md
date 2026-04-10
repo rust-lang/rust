@@ -39,19 +39,16 @@ requires AArch64 with pointer authentication support (ARMv8.3 or higher).
 Full std support is available `core`, `alloc`, and `std` all build successfully.
 All library tests (`core`, `alloc`, `std`) pass for this target as well.
 
-## Building the target
+## Building the toolchain
 
 Building this target requires a pauthtest-enabled sysroot based on a custom musl
 toolchain. The sysroot must be available on the system before compilation. To
 build it, follow the instructions in the [build scripts
 repo](https://github.com/access-softek/pauth-toolchain-build-scripts).
 
-The target uses Clang (version 22.1.0 or higher). When building Clang from
-source, ensure that your checkout includes the commit [handling pauthtest
-options](https://github.com/llvm/llvm-project/commit/5b7f92863a44a58e5ffab694a8e6733d9519b976).
-
-When using a system-provided Clang, a compiler wrapper is required to supply the
-necessary flags. Please consult the listing:
+The target uses Clang, please make sure it is v22.1.0 or higher. When using a
+system-provided Clang, a compiler wrapper is required to supply the necessary
+flags. Please consult the listing:
 
 ```sh
 #!/usr/bin/env sh
@@ -72,7 +69,7 @@ a wrapper its name must contain `clang`. A recommended name is
 `aarch64-unknown-linux-pauthtest-clang`. Update the script to set `--sysroot`
 and `-resource-dir` correctly by replacing `<toolchain_root>` with the directory
 produced by the build scripts and the `<version>` with LLVM's version. Make the
-wrapper executable and ensure it is available in your `PATH`.
+wrapper executable.
 
 To verify that the toolchain layout is correct, check that:
 * the sysroot contains a pauthtest-enabled version of libunwind
@@ -80,12 +77,14 @@ To verify that the toolchain layout is correct, check that:
 * the Clang resource directory contains the appropriate `compiler-rt` objects
   (`<toolchain_root>/lib/clang/<version>/lib/aarch64-unknown-linux-pauthtest/{clang_rt.crtbegin.o,clang_rt.crtend.o}`)
 
-When using AccessSoftek scripts to build sysroot it is also possible to build
-Clang based toolchain. In that case, no wrapper script is required and the
-provided Clang can be used directly.
+When using the AccessSoftek scripts to build the sysroot, the result includes a
+Clang-based toolchain. In this case, no wrapper script is required,
+`<toolchain_root>/bin/aarch64-linux-pauthtest-clang` can be used directly.
+
+## Building the target
 
 Introduction of `aarch64-unknown-linux-pauthtest` target needs to be propagated
-to various crates/repos so that they can correctly recognise and handle it.
+to various crates/repos, so that they can correctly recognise and handle it.
 Specifically:
 * `cc-rs`: https://github.com/jchlanda/cc-rs/tree/jakub/cc-v1.2.28-pauthtest
 * `libc`: https://github.com/jchlanda/libc/tree/jakub/0.2.183-pauthtest
@@ -125,11 +124,11 @@ index e1725db60cf..46763cdf9a4 100644
 </details>
 
 In contrast to `cc-rs` and `libc`, which are external crates resolved from
-crates.io and can be overridden using `[patch.crates-io]`, `backtrace` is
-included in the Rust repository as a git submodule under:
-`<rust_root>/library/backtrace`. At the time of writing the necessary change has
-not yet been committed to it. Which means that for the time being it requires an
-in-tree patch to be applied. The patch:
+[crates.io](https://crates.io/) and can be overridden using `[patch.crates-io]`,
+`backtrace` is included in the Rust repository as a git submodule under
+`<rust_root>/library/backtrace`. At the time of writing, the necessary change
+has not yet been committed there, which means an in-tree patch is currently
+required. The patch:
 
 <details>
 
@@ -168,23 +167,22 @@ The target can be built by enabling it for a `rustc` build.
 target = ["aarch64-unknown-linux-pauthtest"]
 ```
 
-Make sure that the compiler wrapper or AccessSoftek's Clang is included in the
-`PATH`, then add it to the `bootstrap.toml`:
+Specify the binaries used by the target.
 
 ```toml
 [target.aarch64-unknown-linux-pauthtest]
-cc = "aarch64-unknown-linux-pauthtest-clang"
+cc = "<path_to>/aarch64-unknown-linux-pauthtest-clang"
 ar = "<path_to>/llvm-ar"
 ranlib = "<path_to>/llvm-ranlib"
-linker = "aarch64-unknown-linux-pauthtest-clang"
+linker = "<path_to>/aarch64-unknown-linux-pauthtest-clang"
 runner = "<toolchain_root>/aarch64-linux-pauthtest/usr/lib/libc.so"
 ```
 
 Note that `cc` and `linker` must refer to the same binary (either Clang itself
-or its wrapper). The bootstrap process will fail if they differ.
-On AArch64 systems, `runner` should point to the dynamic loader provided by the
-toolchain. On non-AArch64 systems, it should point to `qemu-aarch64` with
-`QEMU_LD_PREFIX` configured appropriately.
+or its wrapper). The bootstrap process will fail if they differ. On AArch64
+systems `runner` should point to the dynamic loader provided by the toolchain.
+On non-AArch64 systems it should point to `qemu-aarch64` with `QEMU_LD_PREFIX`
+configured appropriately.
 
 ## Building Rust programs
 
@@ -246,7 +244,7 @@ x.py test --target aarch64-unknown-linux-pauthtest --force-rerun \
 ## Cross-compilation toolchains and C code
 
 This target supports interoperability with C code. Use the PAC-enabled LLVM
-sysroot, described in Building the target section of this document. C code must
+sysroot, described in building the sysroot section of this document. C code must
 be compiled with the pauthtest aware compiler. Mixed Rust/C programs are
 supported and tested (e.g. quicksort examples). Pointer authentication semantics
 must be consistent across Rust and C components. The target only supports
@@ -257,8 +255,8 @@ Operand bundles should only be attached to indirect function calls. However,
 function pointer signing is currently performed in `get_fn_addr`, which causes
 the logic to be applied too broadly, including to function values (not just
 pointers). As a result, direct calls using signed function values must also
-receive operand bundles.
+receive operand bundles. Once this is resolved, we should analyze each call and
+skip direct calls.
 
-Once this is resolved, we should analyze each call and skip direct calls. See
-the discussion in the [rust-lang issue
+For more information please see the discussion in the [rust-lang issue
 tracker](https://github.com/rust-lang/rust/issues/152532).
