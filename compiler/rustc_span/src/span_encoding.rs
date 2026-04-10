@@ -1,4 +1,5 @@
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::stable_hasher::RawSpan;
 // This code is very hot and uses lots of arithmetic, avoid overflow checks for performance.
 // See https://github.com/rust-lang/rust/pull/119440#issuecomment-1874255727
 use rustc_serialize::int_overflow::DebugStrictAdd;
@@ -440,6 +441,16 @@ impl Span {
             PartiallyInterned(span) => interned_parent(span.index),
             Interned(span) => interned_parent(span.index),
         }
+    }
+
+    #[inline]
+    pub(crate) fn to_raw_span(self) -> RawSpan {
+        RawSpan(self.lo_or_index, self.len_with_tag_or_marker, self.ctxt_or_parent_or_marker)
+    }
+
+    #[inline]
+    pub fn from_raw_span(RawSpan(x, y, z): RawSpan) -> Span {
+        Span { lo_or_index: x, len_with_tag_or_marker: y, ctxt_or_parent_or_marker: z }
     }
 }
 

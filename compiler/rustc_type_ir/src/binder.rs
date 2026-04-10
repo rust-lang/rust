@@ -5,7 +5,7 @@ use std::ops::{ControlFlow, Deref};
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable, HashStable_NoContext};
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
@@ -942,10 +942,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
 /// solver, canonicalization is hot and there are some pathological cases where
 /// this is needed (`post-mono-higher-ranked-hang`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
-)]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, HashStable))]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 pub enum BoundVarIndexKind {
     Bound(DebruijnIndex),
@@ -1000,7 +997,6 @@ where
     feature = "nightly",
     derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
 )]
-
 pub enum BoundRegionKind<I: Interner> {
     /// An anonymous region parameter for a given fn (&T)
     Anon,

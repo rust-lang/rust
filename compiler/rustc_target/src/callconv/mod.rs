@@ -4,7 +4,7 @@ use rustc_abi::{
     AddressSpace, Align, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Primitive,
     Reg, RegKind, Scalar, Size, TyAbiInterface, TyAndLayout, Variants,
 };
-use rustc_macros::HashStable_Generic;
+use rustc_macros::HashStable;
 
 pub use crate::spec::AbiMap;
 use crate::spec::{Arch, HasTargetSpec, HasX86AbiOpt};
@@ -35,7 +35,7 @@ mod x86_win32;
 mod x86_win64;
 mod xtensa;
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable)]
 pub enum PassMode {
     /// Ignore the argument.
     ///
@@ -106,10 +106,10 @@ pub use attr_impl::ArgAttribute;
 #[allow(non_upper_case_globals)]
 #[allow(unused)]
 mod attr_impl {
-    use rustc_macros::HashStable_Generic;
+    use rustc_macros::HashStable;
 
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
-    #[derive(Clone, Copy, Default, Hash, PartialEq, Eq, HashStable_Generic)]
+    #[derive(Clone, Copy, Default, Hash, PartialEq, Eq, HashStable)]
     pub struct ArgAttribute(u8);
     bitflags::bitflags! {
         impl ArgAttribute: u8 {
@@ -129,7 +129,7 @@ mod attr_impl {
 /// Sometimes an ABI requires small integers to be extended to a full or partial register. This enum
 /// defines if this extension should be zero-extension or sign-extension when necessary. When it is
 /// not necessary to extend the argument, this enum is ignored.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
 pub enum ArgExtension {
     None,
     Zext,
@@ -138,7 +138,7 @@ pub enum ArgExtension {
 
 /// A compact representation of LLVM attributes (at least those relevant for this module)
 /// that can be manipulated without interacting with LLVM's Attribute machinery.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
 pub struct ArgAttributes {
     pub regular: ArgAttribute,
     pub arg_ext: ArgExtension,
@@ -212,7 +212,7 @@ impl From<ArgAttribute> for ArgAttributes {
 
 /// An argument passed entirely registers with the
 /// same kind (e.g., HFA / HVA on PPC64 and AArch64).
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable)]
 pub struct Uniform {
     pub unit: Reg,
 
@@ -261,7 +261,7 @@ impl Uniform {
 /// `rest.unit` register type gets repeated often enough to cover `rest.size`. This describes the
 /// actual type used for the call; the Rust type of the argument is then transmuted to this ABI type
 /// (and all data in the padding between the registers is dropped).
-#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable)]
 pub struct CastTarget {
     pub prefix: [Option<Reg>; 8],
     /// The offset of `rest` from the start of the value. Currently only implemented for a `Reg`
@@ -362,7 +362,7 @@ impl CastTarget {
 
 /// Information about how to pass an argument to,
 /// or return a value from, a function, under some ABI.
-#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, HashStable)]
 pub struct ArgAbi<'a, Ty> {
     pub layout: TyAndLayout<'a, Ty>,
     pub mode: PassMode,
@@ -563,7 +563,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
 pub enum RiscvInterruptKind {
     Machine,
     Supervisor,
@@ -588,7 +588,7 @@ impl RiscvInterruptKind {
 ///
 /// I will do my best to describe this structure, but these
 /// comments are reverse-engineered and may be inaccurate. -NDM
-#[derive(Clone, PartialEq, Eq, Hash, HashStable_Generic)]
+#[derive(Clone, PartialEq, Eq, Hash, HashStable)]
 pub struct FnAbi<'a, Ty> {
     /// The type, layout, and information about how each argument is passed.
     pub args: Box<[ArgAbi<'a, Ty>]>,

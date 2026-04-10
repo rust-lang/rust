@@ -4,7 +4,7 @@ use std::ops::Deref;
 use derive_where::derive_where;
 use rustc_ast_ir::Mutability;
 #[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir::data_structures::{NoError, UnifyKey, UnifyValue};
@@ -708,8 +708,8 @@ impl UnifyKey for FloatVid {
 }
 
 #[cfg(feature = "nightly")]
-impl<Hcx> HashStable<Hcx> for InferTy {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl HashStable for InferTy {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         use InferTy::*;
         std::mem::discriminant(self).hash_stable(hcx, hasher);
         match self {

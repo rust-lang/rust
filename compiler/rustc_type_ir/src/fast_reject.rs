@@ -7,9 +7,11 @@ use rustc_ast_ir::Mutability;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::fingerprint::Fingerprint;
 #[cfg(feature = "nightly")]
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashStableContext, StableHasher, ToStableHashKey,
+};
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable};
 
 use crate::inherent::*;
 use crate::visit::TypeVisitableExt as _;
@@ -17,10 +19,7 @@ use crate::{self as ty, Interner};
 
 /// See `simplify_type`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(
-    feature = "nightly",
-    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
-)]
+#[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, HashStable))]
 pub enum SimplifiedType<DefId> {
     Bool,
     Char,
@@ -50,11 +49,11 @@ pub enum SimplifiedType<DefId> {
 }
 
 #[cfg(feature = "nightly")]
-impl<Hcx, DefId: HashStable<Hcx>> ToStableHashKey<Hcx> for SimplifiedType<DefId> {
+impl<DefId: HashStable> ToStableHashKey for SimplifiedType<DefId> {
     type KeyType = Fingerprint;
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> Fingerprint {
+    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> Fingerprint {
         let mut hasher = StableHasher::new();
         self.hash_stable(hcx, &mut hasher);
         hasher.finish()

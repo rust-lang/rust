@@ -8,10 +8,10 @@ use std::{fmt, str};
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::stable_hasher::{
-    HashStable, StableCompare, StableHasher, ToStableHashKey,
+    HashStable, HashStableContext, StableCompare, StableHasher, ToStableHashKey,
 };
 use rustc_data_structures::sync::Lock;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic, symbols};
+use rustc_macros::{Decodable, Encodable, HashStable, symbols};
 
 use crate::edit_distance::find_best_match_for_name;
 use crate::{DUMMY_SP, Edition, Span, with_session_globals};
@@ -2289,7 +2289,7 @@ symbols! {
 /// `proc_macro`.
 pub const STDLIB_STABLE_CRATES: &[Symbol] = &[sym::std, sym::core, sym::alloc, sym::proc_macro];
 
-#[derive(Copy, Clone, Eq, HashStable_Generic, Encodable, Decodable)]
+#[derive(Copy, Clone, Eq, HashStable, Encodable, Decodable)]
 pub struct Ident {
     /// `name` should never be the empty symbol. If you are considering that,
     /// you are probably conflating "empty identifier with "no identifier" and
@@ -2612,17 +2612,17 @@ impl fmt::Display for Symbol {
     }
 }
 
-impl<Hcx> HashStable<Hcx> for Symbol {
+impl HashStable for Symbol {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.as_str().hash_stable(hcx, hasher);
     }
 }
 
-impl<Hcx> ToStableHashKey<Hcx> for Symbol {
+impl ToStableHashKey for Symbol {
     type KeyType = String;
     #[inline]
-    fn to_stable_hash_key(&self, _: &mut Hcx) -> String {
+    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> String {
         self.as_str().to_string()
     }
 }
@@ -2672,9 +2672,9 @@ impl fmt::Debug for ByteSymbol {
     }
 }
 
-impl<Hcx> HashStable<Hcx> for ByteSymbol {
+impl HashStable for ByteSymbol {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.as_byte_str().hash_stable(hcx, hasher);
     }
 }

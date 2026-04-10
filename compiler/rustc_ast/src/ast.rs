@@ -25,14 +25,13 @@ pub use GenericArgs::*;
 pub use UnsafeSource::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 use rustc_data_structures::packed::Pu128;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::tagged_ptr::Tag;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
+use rustc_macros::{Decodable, Encodable, HashStable, Walkable};
 pub use rustc_span::AttrId;
 use rustc_span::{
-    ByteSymbol, DUMMY_SP, ErrorGuaranteed, HashStableContext, Ident, Span, Spanned, Symbol, kw,
-    respan, sym,
+    ByteSymbol, DUMMY_SP, ErrorGuaranteed, Ident, Span, Spanned, Symbol, kw, respan, sym,
 };
 use thin_vec::{ThinVec, thin_vec};
 
@@ -53,7 +52,7 @@ use crate::visit::{AssocCtxt, BoundKind, LifetimeCtxt};
 /// ```
 ///
 /// `'outer` is a label.
-#[derive(Clone, Encodable, Decodable, Copy, HashStable_Generic, Eq, PartialEq, Walkable)]
+#[derive(Clone, Encodable, Decodable, Copy, HashStable, Eq, PartialEq, Walkable)]
 pub struct Label {
     pub ident: Ident,
 }
@@ -121,8 +120,8 @@ impl PartialEq<&[Symbol]> for Path {
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for Path {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl HashStable for Path {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.segments.len().hash_stable(hcx, hasher);
         for segment in &self.segments {
             segment.ident.hash_stable(hcx, hasher);
@@ -565,7 +564,7 @@ pub struct Crate {
 /// for most built-in attributes.
 ///
 /// E.g., `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, HashStable)]
 pub struct MetaItem {
     pub unsafety: Safety,
     pub path: Path,
@@ -574,7 +573,7 @@ pub struct MetaItem {
 }
 
 /// The meta item kind, containing the data after the initial path.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, HashStable)]
 pub enum MetaItemKind {
     /// Word meta item.
     ///
@@ -595,7 +594,7 @@ pub enum MetaItemKind {
 /// Values inside meta item lists.
 ///
 /// E.g., each of `Clone`, `Copy` in `#[derive(Clone, Copy)]`.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, HashStable)]
 pub enum MetaItemInner {
     /// A full MetaItem, for recursive meta items.
     MetaItem(MetaItem),
@@ -793,7 +792,7 @@ pub struct PatField {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[derive(Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Encodable, Decodable, HashStable, Walkable)]
 pub enum ByRef {
     Yes(Pinnedness, Mutability),
     No,
@@ -815,7 +814,7 @@ impl ByRef {
 /// `.0` is the by-reference mode (`ref`, `ref mut`, or by value),
 /// `.1` is the mutability of the binding.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-#[derive(Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Encodable, Decodable, HashStable, Walkable)]
 pub struct BindingMode(pub ByRef, pub Mutability);
 
 impl BindingMode {
@@ -965,7 +964,7 @@ pub enum PatFieldsRest {
 /// The kind of borrow in an `AddrOf` expression,
 /// e.g., `&place` or `&raw const place`.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[derive(Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Encodable, Decodable, HashStable, Walkable)]
 pub enum BorrowKind {
     /// A normal borrow, `&$expr` or `&mut $expr`.
     /// The resulting type is either `&'a T` or `&'a mut T`
@@ -981,7 +980,7 @@ pub enum BorrowKind {
     Pin,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable, Walkable)]
 pub enum BinOpKind {
     /// The `+` operator (addition)
     Add,
@@ -1111,7 +1110,7 @@ impl From<AssignOpKind> for BinOpKind {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable, Walkable)]
 pub enum AssignOpKind {
     /// The `+=` operator (addition)
     AddAssign,
@@ -1163,7 +1162,7 @@ pub type AssignOp = Spanned<AssignOpKind>;
 /// Unary operator.
 ///
 /// Note that `&data` is not an operator, it's an `AddrOf` expression.
-#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable, Walkable)]
 pub enum UnOp {
     /// The `*` operator for dereferencing
     Deref,
@@ -1962,7 +1961,7 @@ impl GenBlockKind {
 
 /// Whether we're unwrapping or wrapping an unsafe binder
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Encodable, Decodable, HashStable, Walkable)]
 pub enum UnsafeBinderCastKind {
     // e.g. `&i32` -> `unsafe<'a> &'a i32`
     Wrap,
@@ -1996,7 +1995,7 @@ pub struct QSelf {
 }
 
 /// A capture clause used in closures and `async` blocks.
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable, Walkable)]
 pub enum CaptureBy {
     /// `move |x| y + x`.
     Value {
@@ -2091,7 +2090,7 @@ impl AttrArgs {
 }
 
 /// Delimited arguments, as used in `#[attr()/[]/{}]` or `mac!()/[]/{}`.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Clone, Encodable, Decodable, Debug, HashStable, Walkable)]
 pub struct DelimArgs {
     pub dspan: DelimSpan,
     pub delim: Delimiter, // Note: `Delimiter::Invisible` never occurs
@@ -2107,7 +2106,7 @@ impl DelimArgs {
 }
 
 /// Represents a macro definition.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Clone, Encodable, Decodable, Debug, HashStable, Walkable)]
 pub struct MacroDef {
     pub body: Box<DelimArgs>,
     /// `true` if macro was defined with `macro_rules`.
@@ -2121,7 +2120,7 @@ pub struct MacroDef {
     pub eii_declaration: Option<EiiDecl>,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Clone, Encodable, Decodable, Debug, HashStable, Walkable)]
 pub struct EiiDecl {
     /// path to the extern item we're targeting
     pub foreign_item: Path,
@@ -2129,7 +2128,7 @@ pub struct EiiDecl {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Copy, Hash, Eq, PartialEq)]
-#[derive(HashStable_Generic, Walkable)]
+#[derive(HashStable, Walkable)]
 pub enum StrStyle {
     /// A regular string, like `"foo"`.
     Cooked,
@@ -2187,7 +2186,7 @@ impl YieldKind {
 }
 
 /// A literal in a meta item.
-#[derive(Clone, Copy, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, HashStable)]
 pub struct MetaItemLit {
     /// The original literal as written in the source code.
     pub symbol: Symbol,
@@ -2224,7 +2223,7 @@ impl StrLit {
 
 /// Type of the integer literal based on provided suffix.
 #[derive(Clone, Copy, Encodable, Decodable, Debug, Hash, Eq, PartialEq)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable)]
 pub enum LitIntType {
     /// e.g. `42_i32`.
     Signed(IntTy),
@@ -2236,7 +2235,7 @@ pub enum LitIntType {
 
 /// Type of the float literal based on provided suffix.
 #[derive(Clone, Copy, Encodable, Decodable, Debug, Hash, Eq, PartialEq)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable)]
 pub enum LitFloatType {
     /// A float literal with a suffix (`1f32` or `1E10f32`).
     Suffixed(FloatTy),
@@ -2250,7 +2249,7 @@ pub enum LitFloatType {
 /// deciding the `LitKind`. This means that float literals like `1f32` are
 /// classified by this type as `Float`. This is different to `token::LitKind`
 /// which does *not* consider the suffix.
-#[derive(Clone, Copy, Encodable, Decodable, Debug, Hash, Eq, PartialEq, HashStable_Generic)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, Hash, Eq, PartialEq, HashStable)]
 pub enum LitKind {
     /// A string literal (`"foo"`). The symbol is unescaped, and so may differ
     /// from the original token's symbol.
@@ -2653,7 +2652,7 @@ pub enum TyPatKind {
 }
 
 /// Syntax used to declare a trait object.
-#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable, Walkable)]
 #[repr(u8)]
 pub enum TraitObjectSyntax {
     // SAFETY: When adding new variants make sure to update the `Tag` impl.
@@ -2697,7 +2696,7 @@ pub enum InlineAsmRegOrRegClass {
     RegClass(Symbol),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable)]
 pub struct InlineAsmOptions(u16);
 bitflags::bitflags! {
     impl InlineAsmOptions: u16 {
@@ -2760,7 +2759,7 @@ impl std::fmt::Debug for InlineAsmOptions {
     }
 }
 
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Hash, HashStable_Generic, Walkable)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Hash, HashStable, Walkable)]
 pub enum InlineAsmTemplatePiece {
     String(Cow<'static, str>),
     Placeholder { operand_idx: usize, modifier: Option<char>, span: Span },
@@ -2863,7 +2862,7 @@ impl InlineAsmOperand {
     }
 }
 
-#[derive(Clone, Copy, Encodable, Decodable, Debug, HashStable_Generic, Walkable, PartialEq, Eq)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, HashStable, Walkable, PartialEq, Eq)]
 pub enum AsmMacro {
     /// The `asm!` macro
     Asm,
@@ -3061,7 +3060,7 @@ impl FnDecl {
 }
 
 /// Is the trait definition an auto trait?
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable, Walkable)]
 pub enum IsAuto {
     Yes,
     No,
@@ -3069,7 +3068,7 @@ pub enum IsAuto {
 
 /// Safety of items.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
-#[derive(HashStable_Generic, Walkable)]
+#[derive(HashStable, Walkable)]
 pub enum Safety {
     /// `unsafe` an item is explicitly marked as `unsafe`.
     Unsafe(Span),
@@ -3134,7 +3133,7 @@ impl CoroutineKind {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
-#[derive(HashStable_Generic, Walkable)]
+#[derive(HashStable, Walkable)]
 pub enum Const {
     Yes(Span),
     No,
@@ -3142,7 +3141,7 @@ pub enum Const {
 
 /// Item defaultness.
 /// For details see the [RFC #2532](https://github.com/rust-lang/rfcs/pull/2532).
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, Walkable)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable, Walkable)]
 pub enum Defaultness {
     /// Item is unmarked. Implicitly determined based off of position.
     /// For impls, this is `final`; for traits, this is `default`.
@@ -3156,7 +3155,7 @@ pub enum Defaultness {
     Final(Span),
 }
 
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, HashStable, Walkable)]
 pub enum ImplPolarity {
     /// `impl Trait for Type`
     Positive,
@@ -3175,7 +3174,7 @@ impl fmt::Debug for ImplPolarity {
 
 /// The polarity of a trait bound.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, Hash)]
-#[derive(HashStable_Generic, Walkable)]
+#[derive(HashStable, Walkable)]
 pub enum BoundPolarity {
     /// `Type: Trait`
     Positive,
@@ -3197,7 +3196,7 @@ impl BoundPolarity {
 
 /// The constness of a trait bound.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, Hash)]
-#[derive(HashStable_Generic, Walkable)]
+#[derive(HashStable, Walkable)]
 pub enum BoundConstness {
     /// `Type: Trait`
     Never,
@@ -3219,7 +3218,7 @@ impl BoundConstness {
 
 /// The asyncness of a trait bound.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug)]
-#[derive(HashStable_Generic, Walkable)]
+#[derive(HashStable, Walkable)]
 pub enum BoundAsyncness {
     /// `Type: Trait`
     Normal,
@@ -3388,7 +3387,7 @@ impl UseTree {
 /// are contained as statements within items. These two cases need to be
 /// distinguished for pretty-printing.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
-#[derive(Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Encodable, Decodable, HashStable, Walkable)]
 pub enum AttrStyle {
     Outer,
     Inner,
@@ -3485,7 +3484,7 @@ impl AttrItemKind {
 ///
 /// Currently all early parsed attributes are excluded from pretty printing at rustc_ast_pretty::pprust::state::print_attribute_inline.
 /// When adding new early parsed attributes, consider whether they should be pretty printed.
-#[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, HashStable)]
 pub enum EarlyParsedAttribute {
     CfgTrace(CfgEntry),
     CfgAttrTrace,
@@ -3608,7 +3607,7 @@ pub struct FieldDef {
 }
 
 /// Was parsing recovery performed?
-#[derive(Copy, Clone, Debug, Encodable, Decodable, HashStable_Generic, Walkable)]
+#[derive(Copy, Clone, Debug, Encodable, Decodable, HashStable, Walkable)]
 pub enum Recovered {
     No,
     Yes(ErrorGuaranteed),

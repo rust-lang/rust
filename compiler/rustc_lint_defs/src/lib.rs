@@ -5,14 +5,14 @@ use rustc_ast::AttrId;
 use rustc_ast::attr::AttributeExt;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
-    HashStable, StableCompare, StableHasher, ToStableHashKey,
+    HashStable, HashStableContext, StableCompare, StableHasher, ToStableHashKey,
 };
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hir_id::{HirId, ItemLocalId};
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::def_id::DefPathHash;
 pub use rustc_span::edition::Edition;
-use rustc_span::{HashStableContext, Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
@@ -138,9 +138,9 @@ impl LintExpectationId {
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for LintExpectationId {
+impl HashStable for LintExpectationId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 hir_id.hash_stable(hcx, hasher);
@@ -156,11 +156,11 @@ impl<Hcx: HashStableContext> HashStable<Hcx> for LintExpectationId {
     }
 }
 
-impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for LintExpectationId {
+impl ToStableHashKey for LintExpectationId {
     type KeyType = (DefPathHash, ItemLocalId, u16, u16);
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> Self::KeyType {
+    fn to_stable_hash_key<Hcx: HashStableContext>(&self, hcx: &mut Hcx) -> Self::KeyType {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 let (def_path_hash, lint_idx) = hir_id.to_stable_hash_key(hcx);
@@ -177,17 +177,7 @@ impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for LintExpectationId {
 ///
 /// See: <https://doc.rust-lang.org/rustc/lints/levels.html>
 #[derive(
-    Clone,
-    Copy,
-    PartialEq,
-    PartialOrd,
-    Eq,
-    Ord,
-    Debug,
-    Hash,
-    Encodable,
-    Decodable,
-    HashStable_Generic
+    Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, Encodable, Decodable, HashStable
 )]
 pub enum Level {
     /// The `allow` level will not issue any message.
@@ -621,18 +611,18 @@ impl LintId {
     }
 }
 
-impl<Hcx> HashStable<Hcx> for LintId {
+impl HashStable for LintId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.lint_name_raw().hash_stable(hcx, hasher);
     }
 }
 
-impl<Hcx> ToStableHashKey<Hcx> for LintId {
+impl ToStableHashKey for LintId {
     type KeyType = &'static str;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &mut Hcx) -> &'static str {
+    fn to_stable_hash_key<Hcx>(&self, _: &mut Hcx) -> &'static str {
         self.lint_name_raw()
     }
 }
@@ -652,7 +642,7 @@ pub enum DeprecatedSinceKind {
     InVersion(String),
 }
 
-#[derive(Debug, HashStable_Generic)]
+#[derive(Debug, HashStable)]
 pub enum AttributeLintKind {
     UnusedDuplicate {
         this: Span,
@@ -764,7 +754,7 @@ pub enum AttributeLintKind {
     OnMoveMalformedAttrExpectedLiteralOrDelimiter,
 }
 
-#[derive(Debug, Clone, HashStable_Generic)]
+#[derive(Debug, Clone, HashStable)]
 pub enum FormatWarning {
     PositionalArgument { span: Span, help: String },
     InvalidSpecifier { name: String, span: Span },

@@ -1,10 +1,10 @@
 use std::fmt::{self, Display};
 use std::sync::OnceLock;
 
-use rustc_macros::{BlobDecodable, Encodable, HashStable_Generic, current_rustc_version};
+use rustc_macros::{BlobDecodable, Encodable, HashStable, current_rustc_version};
 
 #[derive(Encodable, BlobDecodable, Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable)]
 pub struct RustcVersion {
     pub major: u16,
     pub minor: u16,

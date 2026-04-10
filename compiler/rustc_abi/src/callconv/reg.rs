@@ -1,9 +1,9 @@
 #[cfg(feature = "nightly")]
-use rustc_macros::HashStable_Generic;
+use rustc_macros::HashStable;
 
 use crate::{Align, HasDataLayout, Size};
 
-#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(HashStable))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum RegKind {
     Integer,
@@ -11,7 +11,7 @@ pub enum RegKind {
     Vector,
 }
 
-#[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
+#[cfg_attr(feature = "nightly", derive(HashStable))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Reg {
     pub kind: RegKind,

@@ -30,12 +30,14 @@ use std::{fmt, iter, mem};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{
+    HashStable, HashStableContext, StableHasher, ToStableHashKey,
+};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::{debug, trace};
 
@@ -43,7 +45,7 @@ use crate::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, StableCrateId};
 use crate::edition::Edition;
 use crate::source_map::SourceMap;
 use crate::symbol::{Symbol, kw, sym};
-use crate::{DUMMY_SP, HashStableContext, Span, SpanDecoder, SpanEncoder, with_session_globals};
+use crate::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, with_session_globals};
 
 /// A `SyntaxContext` represents a chain of pairs `(ExpnId, Transparency)` named "marks".
 ///
@@ -127,7 +129,7 @@ impl !Ord for LocalExpnId {}
 impl !PartialOrd for LocalExpnId {}
 
 /// A unique hash value associated to an expansion.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Encodable, Decodable, HashStable)]
 pub struct ExpnHash(Fingerprint);
 
 impl ExpnHash {
@@ -161,7 +163,7 @@ impl ExpnHash {
 /// A property of a macro expansion that determines how identifiers
 /// produced by that expansion are resolved.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash, Debug, Encodable, Decodable)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable)]
 pub enum Transparency {
     /// Identifier produced by a transparent expansion is always resolved at call-site.
     /// Call-site spans in procedural macros, hygiene opt-out in `macro` should use this.
@@ -963,7 +965,7 @@ impl Span {
 
 /// A subset of properties from both macro definition and macro call available through global data.
 /// Avoid using this if you have access to the original definition or call structures.
-#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Debug, Encodable, Decodable, HashStable)]
 pub struct ExpnData {
     // --- The part unique to each expansion.
     pub kind: ExpnKind,
@@ -1110,7 +1112,7 @@ impl ExpnData {
 }
 
 /// Expansion kind.
-#[derive(Clone, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Debug, PartialEq, Encodable, Decodable, HashStable)]
 pub enum ExpnKind {
     /// No expansion, aka root expansion. Only `ExpnId::root()` has this kind.
     Root,
@@ -1139,7 +1141,7 @@ impl ExpnKind {
 
 /// The kind of macro invocation or definition.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable, Hash, Debug)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable)]
 pub enum MacroKind {
     /// A bang macro `foo!()`.
     Bang,
@@ -1174,7 +1176,7 @@ impl MacroKind {
 }
 
 /// The kind of AST transform.
-#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Copy, Debug, PartialEq, Encodable, Decodable, HashStable)]
 pub enum AstPass {
     StdImports,
     TestHarness,
@@ -1192,7 +1194,7 @@ impl AstPass {
 }
 
 /// The kind of compiler desugaring.
-#[derive(Clone, Copy, PartialEq, Debug, Encodable, Decodable, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Debug, Encodable, Decodable, HashStable)]
 pub enum DesugaringKind {
     QuestionMark,
     TryBlock,
@@ -1514,11 +1516,11 @@ fn update_disambiguator(expn_data: &mut ExpnData, mut hcx: impl HashStableContex
         });
     }
 
-    ExpnHash::new(hcx.def_path_hash(LOCAL_CRATE.as_def_id()).stable_crate_id(), expn_hash)
+    ExpnHash::new(LOCAL_CRATE.as_def_id().to_stable_hash_key(&mut hcx).stable_crate_id(), expn_hash)
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for SyntaxContext {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl HashStable for SyntaxContext {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         const TAG_EXPANSION: u8 = 0;
         const TAG_NO_EXPANSION: u8 = 1;
 
@@ -1533,8 +1535,8 @@ impl<Hcx: HashStableContext> HashStable<Hcx> for SyntaxContext {
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for ExpnId {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl HashStable for ExpnId {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         hcx.assert_default_hashing_controls("ExpnId");
         let hash = if *self == ExpnId::root() {
             // Avoid fetching TLS storage for a trivial often-used value.
@@ -1547,8 +1549,8 @@ impl<Hcx: HashStableContext> HashStable<Hcx> for ExpnId {
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for LocalExpnId {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
+impl HashStable for LocalExpnId {
+    fn hash_stable<Hcx: HashStableContext>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.to_expn_id().hash_stable(hcx, hasher);
     }
 }

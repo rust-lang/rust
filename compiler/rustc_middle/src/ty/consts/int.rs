@@ -4,6 +4,7 @@ use std::num::NonZero;
 use rustc_abi::Size;
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_data_structures::stable_hasher::{HashStable, HashStableContext};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use crate::ty::TyCtxt;
@@ -151,8 +152,12 @@ pub struct ScalarInt {
 
 // Cannot derive these, as the derives take references to the fields, and we
 // can't take references to fields of packed structs.
-impl<Hcx> crate::ty::HashStable<Hcx> for ScalarInt {
-    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut crate::ty::StableHasher) {
+impl HashStable for ScalarInt {
+    fn hash_stable<Hcx: HashStableContext>(
+        &self,
+        hcx: &mut Hcx,
+        hasher: &mut crate::ty::StableHasher,
+    ) {
         // Using a block `{self.data}` here to force a copy instead of using `self.data`
         // directly, because `hash_stable` takes `&self` and would thus borrow `self.data`.
         // Since `Self` is a packed struct, that would create a possibly unaligned reference,

@@ -21,7 +21,7 @@ use rustc_errors::{
     TerminalUrl,
 };
 use rustc_hir::limit::Limit;
-use rustc_macros::HashStable_Generic;
+use rustc_macros::HashStable;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
@@ -57,7 +57,7 @@ pub enum CtfeBacktrace {
     Immediate,
 }
 
-#[derive(Clone, Copy, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, Debug, HashStable)]
 pub struct Limits {
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.

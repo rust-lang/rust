@@ -14,7 +14,7 @@ use rustc_codegen_ssa::back::write::produce_final_output_artifacts;
 use rustc_codegen_ssa::base::determine_cgu_reuse;
 use rustc_codegen_ssa::{CompiledModule, CompiledModules, ModuleKind};
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, HashStableContext, StableHasher};
 use rustc_data_structures::sync::{IntoDynSyncSend, par_map};
 use rustc_hir::attrs::Linkage as RLinkage;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -45,8 +45,8 @@ enum OngoingModuleCodegen {
     Async(JoinHandle<Result<ModuleCodegenResult, String>>),
 }
 
-impl<Hcx> HashStable<Hcx> for OngoingModuleCodegen {
-    fn hash_stable(&self, _: &mut Hcx, _: &mut StableHasher) {
+impl HashStable for OngoingModuleCodegen {
+    fn hash_stable<Hcx: HashStableContext>(&self, _: &mut Hcx, _: &mut StableHasher) {
         // do nothing
     }
 }
