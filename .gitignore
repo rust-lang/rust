@@ -112,5 +112,6 @@ dialect.rs
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db
+.beads
 .beads-credential-key
 .scratch/
