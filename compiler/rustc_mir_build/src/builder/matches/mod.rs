@@ -476,7 +476,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             branch,
                             &built_match_tree.fake_borrow_temps,
                             scrutinee_span,
-                            Some((arm, match_scope)),
+                            Some(arm),
+                            match_scope,
                         );
 
                         this.fixed_temps_scope = old_dedup_scope;
@@ -530,7 +531,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         branch: MatchTreeBranch<'tcx>,
         fake_borrow_temps: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
-        arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
+        arm: Option<&Arm<'tcx>>,
+        match_scope: region::Scope,
     ) -> BasicBlock {
         if branch.sub_branches.len() == 1 {
             let [sub_branch] = branch.sub_branches.try_into().unwrap();
@@ -539,7 +541,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 sub_branch,
                 fake_borrow_temps,
                 scrutinee_span,
-                arm_match_scope,
+                arm,
+                match_scope,
                 ScheduleDrops::Yes,
             )
         } else {
@@ -568,7 +571,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     sub_branch,
                     fake_borrow_temps,
                     scrutinee_span,
-                    arm_match_scope,
+                    arm,
+                    match_scope,
                     schedule_drops,
                 );
                 self.cfg.goto(binding_end, outer_source_info, target_block);
@@ -699,12 +703,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
+        let match_scope = self.local_scope();
         self.bind_pattern(
             self.source_info(irrefutable_pat.span),
             branch,
             &[],
             irrefutable_pat.span,
             None,
+            match_scope,
         )
         .unit()
     }
@@ -751,7 +757,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if let Some(guard_expr) = guard {
             self.declare_guard_bindings(guard_expr, scope_span, visibility_scope);
         }
-        if let PatKind::Guard { condition, ..} = pattern.kind {
+        if let PatKind::Guard { condition, .. } = pattern.kind {
             self.declare_guard_bindings(condition, scope_span, visibility_scope);
         };
         visibility_scope
@@ -2420,7 +2426,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let success = self.bind_pattern(self.source_info(pat.span), branch, &[], expr_span, None);
+        let match_scope = self.local_scope();
+        let success = self.bind_pattern(
+            self.source_info(pat.span),
+            branch,
+            &[],
+            expr_span,
+            None,
+            match_scope,
+        );
 
         // If branch coverage is enabled, record this branch.
         self.visit_coverage_conditional_let(pat, success, built_tree.otherwise_block);
@@ -2441,7 +2455,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut sub_branch: MatchTreeSubBranch<'tcx>,
         fake_borrows: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
-        arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
+        arm: Option<&Arm<'tcx>>,
+        match_scope: region::Scope,
         schedule_drops: ScheduleDrops,
     ) -> BasicBlock {
         debug!("bind_and_guard_matched_candidate(subbranch={:?})", sub_branch);
@@ -2458,13 +2473,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         self.ascribe_types(block, mem::take(&mut sub_branch.ascriptions));
 
-        if !sub_branch.guard_patterns.is_empty()
-            || arm_match_scope.is_some_and(|(arm, _)| arm.guard.is_some())
-        {
+        if !sub_branch.guard_patterns.is_empty() || arm.is_some_and(|arm| arm.guard.is_some()) {
             let tcx = self.tcx;
 
-            let (arm_span, arm_scope, match_scope) =
-                self.extract_span_scope(&mut sub_branch, arm_match_scope);
+            let (arm_span, arm_scope) = self.extract_arm_span_scope(&mut sub_branch, arm);
             let guards = sub_branch.guard_patterns;
 
             // Bindings for guards require some extra handling to automatically
@@ -2585,25 +2597,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    fn extract_span_scope(
+    fn extract_arm_span_scope(
         &mut self,
         sub_branch: &mut MatchTreeSubBranch<'tcx>,
-        arm_match_scope: Option<(&Arm<'tcx>, Scope)>,
-    ) -> (Span, Scope, Scope) {
-        let (arm_span, arm_scope, match_scope) = if let Some((arm, match_scope)) = arm_match_scope {
+        arm: Option<&Arm<'tcx>>,
+    ) -> (Span, Scope) {
+        if let Some(arm) = arm {
             let mut span = arm.span;
             if let Some(arm_guard) = arm.guard {
                 span = span.to(self.thir[arm_guard].span);
                 sub_branch.guard_patterns.push(arm_guard);
             };
-            (span, arm.scope, match_scope)
+            return (span, arm.scope);
         } else {
             let span = sub_branch.span;
-            // There must be a scope if a guard pattern is present
-            let scope = todo!();
-            (span, scope, scope)
+            let arm_scope = self.local_scope();
+            return (span, arm_scope);
         };
-        (arm_span, arm_scope, match_scope)
     }
 
     /// Append `AscribeUserType` statements onto the end of `block`
