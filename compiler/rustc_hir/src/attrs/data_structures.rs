@@ -1180,6 +1180,13 @@ pub enum AttributeKind {
         directive: Option<Box<Directive>>,
     },
 
+    /// Represents `#[diagnostic::on_missing_args]`.
+    OnMissingArgs {
+        span: Span,
+        /// None if the directive was malformed in some way.
+        directive: Option<Box<Directive>>,
+    },
+
     /// Represents `#[diagnostic::on_move]`
     OnMove {
         span: Span,

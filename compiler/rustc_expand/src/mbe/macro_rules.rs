@@ -14,6 +14,7 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_feature::Features;
 use rustc_hir as hir;
+use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::def::MacroKinds;
 use rustc_hir::find_attr;
 use rustc_lint_defs::builtin::{
@@ -164,6 +165,7 @@ pub struct MacroRulesMacroExpander {
     node_id: NodeId,
     name: Ident,
     span: Span,
+    on_missing_args: Option<Directive>,
     transparency: Transparency,
     kinds: MacroKinds,
     rules: Vec<MacroRule>,
@@ -194,7 +196,8 @@ impl MacroRulesMacroExpander {
     ) -> Result<TokenStream, ErrorGuaranteed> {
         // This is similar to `expand_macro`, but they have very different signatures, and will
         // diverge further once derives support arguments.
-        let Self { name, ref rules, node_id, .. } = *self;
+        let name = self.name;
+        let rules = &self.rules;
         let psess = &cx.sess.psess;
 
         if cx.trace_macros() {
@@ -220,8 +223,8 @@ impl MacroRulesMacroExpander {
                     trace_macros_note(&mut cx.expansions, sp, msg);
                 }
 
-                if is_defined_in_current_crate(node_id) {
-                    cx.resolver.record_macro_rule_usage(node_id, rule_index);
+                if is_defined_in_current_crate(self.node_id) {
+                    cx.resolver.record_macro_rule_usage(self.node_id, rule_index);
                 }
 
                 Ok(tts)
@@ -236,6 +239,7 @@ impl MacroRulesMacroExpander {
                     FailedMacro::Derive,
                     body,
                     rules,
+                    self.on_missing_args.as_ref(),
                 );
                 cx.macro_error_and_trace_macros_diag();
                 Err(guar)
@@ -260,6 +264,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
             self.transparency,
             input,
             &self.rules,
+            self.on_missing_args.as_ref(),
         ))
     }
 }
@@ -294,6 +299,7 @@ impl AttrProcMacro for MacroRulesMacroExpander {
             args,
             body,
             &self.rules,
+            self.on_missing_args.as_ref(),
         )
     }
 }
@@ -355,7 +361,7 @@ impl<'matcher> Tracker<'matcher> for NoopTracker {
 }
 
 /// Expands the rules based macro defined by `rules` for a given input `arg`.
-#[instrument(skip(cx, transparency, arg, rules))]
+#[instrument(skip(cx, transparency, arg, rules, on_missing_args))]
 fn expand_macro<'cx, 'a: 'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
@@ -365,6 +371,7 @@ fn expand_macro<'cx, 'a: 'cx>(
     transparency: Transparency,
     arg: TokenStream,
     rules: &'a [MacroRule],
+    on_missing_args: Option<&Directive>,
 ) -> Box<dyn MacResult + 'cx> {
     let psess = &cx.sess.psess;
 
@@ -423,6 +430,7 @@ fn expand_macro<'cx, 'a: 'cx>(
                 FailedMacro::Func,
                 &arg,
                 rules,
+                on_missing_args,
             );
             cx.macro_error_and_trace_macros_diag();
             DummyResult::any(span, guar)
@@ -431,7 +439,7 @@ fn expand_macro<'cx, 'a: 'cx>(
 }
 
 /// Expands the rules based macro defined by `rules` for a given attribute `args` and `body`.
-#[instrument(skip(cx, transparency, args, body, rules))]
+#[instrument(skip(cx, transparency, args, body, rules, on_missing_args))]
 fn expand_macro_attr(
     cx: &mut ExtCtxt<'_>,
     sp: Span,
@@ -443,6 +451,7 @@ fn expand_macro_attr(
     args: TokenStream,
     body: TokenStream,
     rules: &[MacroRule],
+    on_missing_args: Option<&Directive>,
 ) -> Result<TokenStream, ErrorGuaranteed> {
     let psess = &cx.sess.psess;
     // Macros defined in the current crate have a real node id,
@@ -507,6 +516,7 @@ fn expand_macro_attr(
                 FailedMacro::Attr(&args),
                 &body,
                 rules,
+                on_missing_args,
             );
             cx.trace_macros_diag();
             Err(guar)
@@ -849,7 +859,22 @@ pub fn compile_declarative_macro(
     // Return the number of rules for unused rule linting, if this is a local macro.
     let nrules = if is_defined_in_current_crate(node_id) { rules.len() } else { 0 };
 
-    let exp = MacroRulesMacroExpander { name: ident, kinds, span, node_id, transparency, rules };
+    let on_missing_args = find_attr!(
+        attrs,
+        OnMissingArgs { directive, .. } => directive.clone()
+    )
+    .flatten()
+    .map(|directive| *directive);
+
+    let exp = MacroRulesMacroExpander {
+        name: ident,
+        kinds,
+        span,
+        node_id,
+        on_missing_args,
+        transparency,
+        rules,
+    };
     (mk_syn_ext(SyntaxExtensionKind::MacroRules(Arc::new(exp))), nrules)
 }
 

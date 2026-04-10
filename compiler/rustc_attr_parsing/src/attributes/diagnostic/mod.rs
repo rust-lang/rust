@@ -22,6 +22,7 @@ use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItem
 
 pub(crate) mod do_not_recommend;
 pub(crate) mod on_const;
+pub(crate) mod on_missing_args;
 pub(crate) mod on_move;
 pub(crate) mod on_unimplemented;
 
@@ -33,6 +34,8 @@ pub(crate) enum Mode {
     DiagnosticOnUnimplemented,
     /// `#[diagnostic::on_const]`
     DiagnosticOnConst,
+    /// `#[diagnostic::on_missing_args]`
+    DiagnosticOnMissingArgs,
     /// `#[diagnostic::on_move]`
     DiagnosticOnMove,
 }
@@ -115,6 +118,13 @@ fn parse_directive_items<'p, S: Stage>(
                         span,
                     );
                 }
+                Mode::DiagnosticOnMissingArgs => {
+                    cx.emit_lint(
+                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        AttributeLintKind::MalformedOnMissingArgsAttr { span },
+                        span,
+                    );
+                }
                 Mode::DiagnosticOnMove => {
                     cx.emit_lint(
                         MALFORMED_DIAGNOSTIC_ATTRIBUTES,
@@ -140,7 +150,10 @@ fn parse_directive_items<'p, S: Stage>(
                 Mode::RustcOnUnimplemented => {
                     cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
                 }
-                Mode::DiagnosticOnUnimplemented |Mode::DiagnosticOnConst | Mode::DiagnosticOnMove => {
+                Mode::DiagnosticOnUnimplemented
+                | Mode::DiagnosticOnConst
+                | Mode::DiagnosticOnMissingArgs
+                | Mode::DiagnosticOnMove => {
                     cx.emit_lint(
                         MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                         AttributeLintKind::IgnoredDiagnosticOption {
@@ -332,7 +345,9 @@ fn parse_arg(
         Position::ArgumentNamed(name) => match (mode, Symbol::intern(name)) {
             // Only `#[rustc_on_unimplemented]` can use these
             (Mode::RustcOnUnimplemented { .. }, sym::ItemContext) => FormatArg::ItemContext,
-            (Mode::RustcOnUnimplemented { .. }, sym::This) => FormatArg::This,
+            (Mode::RustcOnUnimplemented { .. } | Mode::DiagnosticOnMissingArgs, sym::This) => {
+                FormatArg::This
+            }
             (Mode::RustcOnUnimplemented { .. }, sym::Trait) => FormatArg::Trait,
             // Any attribute can use these
             (_, kw::SelfUpper) => FormatArg::SelfUpper,

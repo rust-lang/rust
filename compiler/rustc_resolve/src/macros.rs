@@ -712,8 +712,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
         }
 
-        const DIAG_ATTRS: &[Symbol] =
-            &[sym::on_unimplemented, sym::do_not_recommend, sym::on_const, sym::on_move];
+        const DIAG_ATTRS: &[Symbol] = &[
+            sym::on_unimplemented,
+            sym::do_not_recommend,
+            sym::on_const,
+            sym::on_missing_args,
+            sym::on_move,
+        ];
 
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
             && let [namespace, attribute, ..] = &*path.segments

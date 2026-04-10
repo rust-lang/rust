@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage};
+use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_macros::Subdiagnostic;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
@@ -32,6 +33,7 @@ pub(super) fn failed_to_match_macro(
     args: FailedMacro<'_>,
     body: &TokenStream,
     rules: &[MacroRule],
+    on_missing_args: Option<&Directive>,
 ) -> (Span, ErrorGuaranteed) {
     debug!("failed to match macro");
     let def_head_span = if !def_span.is_dummy() && !psess.source_map().is_imported(def_span) {
@@ -72,9 +74,30 @@ pub(super) fn failed_to_match_macro(
     };
 
     let span = token.span.substitute_dummy(sp);
+    let CustomDiagnostic {
+        message: custom_message, label: custom_label, notes: custom_notes, ..
+    } = {
+        let macro_name = name.to_string();
+        on_missing_args
+            .map(|directive| {
+                directive.eval(
+                    None,
+                    &FormatArgs {
+                        this: macro_name.clone(),
+                        this_sugared: macro_name,
+                        item_context: "macro invocation",
+                        generic_args: Vec::new(),
+                    },
+                )
+            })
+            .unwrap_or_default()
+    };
 
-    let mut err = psess.dcx().struct_span_err(span, parse_failure_msg(&token, None));
-    err.span_label(span, label);
+    let mut err = match custom_message {
+        Some(message) => psess.dcx().struct_span_err(span, message),
+        None => psess.dcx().struct_span_err(span, parse_failure_msg(&token, None)),
+    };
+    err.span_label(span, custom_label.unwrap_or_else(|| label.to_string()));
     if !def_head_span.is_dummy() {
         err.span_label(def_head_span, "when calling this macro");
     }
@@ -85,6 +108,9 @@ pub(super) fn failed_to_match_macro(
         err.span_note(span, format!("while trying to match {remaining_matcher}"));
     } else {
         err.note(format!("while trying to match {remaining_matcher}"));
+    }
+    for note in custom_notes {
+        err.note(note);
     }
 
     if let MatcherLoc::Token { token: expected_token } = &remaining_matcher

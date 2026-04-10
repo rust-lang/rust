@@ -1317,3 +1317,10 @@ pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
 pub(crate) struct OnMoveMalformedFormatLiterals {
     pub name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag("unknown parameter `{$name}`")]
+#[help(r#"use {"`{This}`"} to refer to the macro name"#)]
+pub(crate) struct OnMissingArgsMalformedFormatLiterals {
+    pub name: Symbol,
+}

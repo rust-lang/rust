@@ -6,6 +6,7 @@ LL |     offset_of!(NotEnoughArguments);
    |
 note: while trying to match `,`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   = note: this macro expects a container type and a dot-separated field or variant path, like `offset_of!(Type, field)`
 
 error: unexpected end of macro invocation
   --> $DIR/offset-of-arg-count.rs:5:45
@@ -15,6 +16,7 @@ LL |     offset_of!(NotEnoughArgumentsWithAComma, );
    |
 note: while trying to match meta-variable `$fields:expr`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   = note: this macro expects a container type and a dot-separated field or variant path, like `offset_of!(Type, field)`
 
 error: no rules expected `too`
   --> $DIR/offset-of-arg-count.rs:6:34
@@ -23,6 +25,7 @@ LL |     offset_of!(Container, field, too many arguments);
    |                                  ^^^ no rules expected this token in macro call
    |
    = note: while trying to match sequence end
+   = note: this macro expects a container type and a dot-separated field or variant path, like `offset_of!(Type, field)`
 
 error: unexpected token: `)`
   --> $DIR/offset-of-arg-count.rs:9:21
