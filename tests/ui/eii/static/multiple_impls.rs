@@ -1,5 +1,3 @@
-//@ run-pass
-//@ check-run-results
 //@ ignore-backends: gcc
 // FIXME: linking on windows (specifically mingw) not yet supported, see tracking issue #125418
 //@ ignore-windows
@@ -14,6 +12,7 @@ static B: u64;
 
 #[a]
 #[b]
+//~^ ERROR static cannot implement multiple EIIs
 static IMPL: u64 = 5;
 
 fn main() {

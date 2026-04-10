@@ -1125,6 +1125,16 @@ pub(crate) struct EiiSharedMacroTarget {
 }
 
 #[derive(Diagnostic)]
+#[diag("static cannot implement multiple EIIs")]
+#[note(
+    "this is not allowed because multiple externally implementable statics that alias may be unintuitive"
+)]
+pub(crate) struct EiiStaticMultipleImplementations {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[{$name}]` cannot be used on statics with a value")]
 pub(crate) struct EiiStaticDefault {
     #[primary_span]

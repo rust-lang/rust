@@ -12,7 +12,8 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::errors::{
     EiiExternTargetExpectedList, EiiExternTargetExpectedMacro, EiiExternTargetExpectedUnsafe,
     EiiMacroExpectedMaxOneArgument, EiiOnlyOnce, EiiSharedMacroInStatementPosition,
-    EiiSharedMacroTarget, EiiStaticArgumentRequired, EiiStaticDefault, EiiStaticMutable,
+    EiiSharedMacroTarget, EiiStaticArgumentRequired, EiiStaticDefault,
+    EiiStaticMultipleImplementations, EiiStaticMutable,
 };
 
 /// ```rust
@@ -512,7 +513,14 @@ pub(crate) fn eii_shared_macro(
 
     let eii_impls = match &mut i.kind {
         ItemKind::Fn(func) => &mut func.eii_impls,
-        ItemKind::Static(stat) => &mut stat.eii_impls,
+        ItemKind::Static(stat) => {
+            if !stat.eii_impls.is_empty() {
+                // Reject multiple implementations on one static item
+                // because it might be unintuitive for libraries defining statics the defined statics may alias
+                ecx.dcx().emit_err(EiiStaticMultipleImplementations { span });
+            }
+            &mut stat.eii_impls
+        }
         _ => {
             ecx.dcx()
                 .emit_err(EiiSharedMacroTarget { span, name: path_to_string(&meta_item.path) });
