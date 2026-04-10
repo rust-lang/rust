@@ -6,4 +6,4 @@
 #![feature(no_core)]
 #![no_main]
 
-//~? ERROR aarch64-unknown-linux-pauthtest is incompatible with statically linked libc
+//~? ERROR pauthtest ABI is incompatible with statically linked libc
