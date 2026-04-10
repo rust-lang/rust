@@ -10,7 +10,7 @@ note: trait restricted here
 LL | pub impl(crate) trait TopLevel {}
    |     ^^^^^^^^^^^
 
-error: trait cannot be implemented outside `external::inner`
+error: trait cannot be implemented outside `external`
   --> $DIR/impl-restriction-check.rs:13:1
    |
 LL | impl external::inner::Inner for LocalType {}

@@ -140,7 +140,7 @@ impl ImplRestrictionKind {
                 if restricted_to.krate == rustc_hir::def_id::LOCAL_CRATE {
                     with_crate_prefix!(with_no_trimmed_paths!(tcx.def_path_str(restricted_to)))
                 } else {
-                    with_no_trimmed_paths!(tcx.def_path_str(restricted_to))
+                    tcx.def_path_str(restricted_to.krate.as_mod_def_id())
                 }
             }
         }
