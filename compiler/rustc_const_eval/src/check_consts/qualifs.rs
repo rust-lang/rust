@@ -105,7 +105,11 @@ impl Qualif for HasMutInterior {
         // opaque types.
         let typing_env = ty::TypingEnv::new(
             cx.typing_env.param_env,
-            ty::TypingMode::analysis_in_body(cx.tcx, cx.body.source.def_id().expect_local()),
+            if cx.tcx.next_trait_solver_globally() {
+                ty::TypingMode::PostAnalysis
+            } else {
+                ty::TypingMode::analysis_in_body(cx.tcx, cx.body.source.def_id().expect_local())
+            },
         );
         let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(typing_env);
         let ocx = ObligationCtxt::new(&infcx);
