@@ -75,7 +75,8 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     }
     let target = tgt.syntax().text_range();
 
-    let edit_tgt = tgt.syntax().clone_subtree();
+    let (mut editor, edit_tgt) = SyntaxEditor::new(tgt.syntax().clone());
+
     let assignments: Vec<_> = collector
         .assignments
         .into_iter()
@@ -93,7 +94,6 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         })
         .collect();
 
-    let mut editor = SyntaxEditor::new(edit_tgt);
     for (stmt, rhs) in assignments {
         let mut stmt = stmt.syntax().clone();
         if let Some(parent) = stmt.parent()

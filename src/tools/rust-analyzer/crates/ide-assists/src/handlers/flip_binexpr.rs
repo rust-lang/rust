@@ -142,11 +142,11 @@ pub(crate) fn flip_range_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
                 }
                 (Some(start), None) => {
                     edit.delete(start.syntax());
-                    edit.insert(Position::after(&op), start.syntax().clone_for_update());
+                    edit.insert(Position::after(&op), start.syntax());
                 }
                 (None, Some(end)) => {
                     edit.delete(end.syntax());
-                    edit.insert(Position::before(&op), end.syntax().clone_for_update());
+                    edit.insert(Position::before(&op), end.syntax());
                 }
                 (None, None) => (),
             }

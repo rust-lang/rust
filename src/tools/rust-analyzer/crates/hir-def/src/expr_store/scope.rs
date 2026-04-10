@@ -371,7 +371,6 @@ fn compute_expr_scopes(
 
 #[cfg(test)]
 mod tests {
-    use base_db::RootQueryDb;
     use hir_expand::{InFile, name::AsName};
     use span::FileId;
     use syntax::{AstNode, algo::find_node_at_offset, ast};
@@ -414,7 +413,7 @@ mod tests {
 
         let (file_id, _) = editioned_file_id.unpack(&db);
 
-        let file_syntax = db.parse(editioned_file_id).syntax_node();
+        let file_syntax = editioned_file_id.parse(&db).syntax_node();
         let marker: ast::PathExpr = find_node_at_offset(&file_syntax, offset).unwrap();
         let function = find_function(&db, file_id);
 
@@ -570,7 +569,7 @@ fn foo() {
 
         let (file_id, _) = editioned_file_id.unpack(&db);
 
-        let file = db.parse(editioned_file_id).ok().unwrap();
+        let file = editioned_file_id.parse(&db).ok().unwrap();
         let expected_name = find_node_at_offset::<ast::Name>(file.syntax(), expected_offset.into())
             .expect("failed to find a name at the target offset");
         let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), offset).unwrap();

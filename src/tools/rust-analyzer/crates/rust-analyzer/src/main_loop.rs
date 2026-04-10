@@ -830,12 +830,19 @@ impl GlobalState {
                     let command = cfg.command.clone();
                     let discover = DiscoverCommand::new(self.discover_sender.clone(), command);
 
+                    let discover_path = match &arg {
+                        DiscoverProjectParam::Buildfile(it) => it,
+                        DiscoverProjectParam::Path(it) => it,
+                    };
+                    let current_dir =
+                        self.config.workspace_root_for(discover_path.as_path()).clone();
+
                     let arg = match arg {
                         DiscoverProjectParam::Buildfile(it) => DiscoverArgument::Buildfile(it),
                         DiscoverProjectParam::Path(it) => DiscoverArgument::Path(it),
                     };
 
-                    match discover.spawn(arg, self.config.root_path().as_ref()) {
+                    match discover.spawn(arg, current_dir.as_ref()) {
                         Ok(handle) => {
                             if self.discover_jobs_active == 0 {
                                 let title = &cfg.progress_label.clone();
@@ -953,7 +960,7 @@ impl GlobalState {
                 if let Some(dir) = dir {
                     message += &format!(
                         ": {}",
-                        match dir.strip_prefix(self.config.root_path()) {
+                        match dir.strip_prefix(self.config.workspace_root_for(&dir)) {
                             Some(relative_path) => relative_path.as_utf8_path(),
                             None => dir.as_ref(),
                         }

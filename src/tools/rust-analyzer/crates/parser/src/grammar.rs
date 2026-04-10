@@ -303,6 +303,18 @@ fn opt_ret_type(p: &mut Parser<'_>) -> bool {
     }
 }
 
+fn opt_no_arrow_ret_type(p: &mut Parser<'_>) -> bool {
+    if p.at_ts(PATH_NAME_REF_KINDS) {
+        let m = p.start();
+        p.error("missing thin-arrow `->`");
+        types::type_no_bounds(p);
+        m.complete(p, RET_TYPE);
+        true
+    } else {
+        false
+    }
+}
+
 fn name_r(p: &mut Parser<'_>, recovery: TokenSet) {
     if p.at(IDENT) {
         let m = p.start();

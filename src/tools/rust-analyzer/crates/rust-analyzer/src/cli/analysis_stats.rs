@@ -23,10 +23,10 @@ use hir_def::{
 use hir_ty::InferenceResult;
 use ide::{
     Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, Edition, InlayFieldsToResolve,
-    InlayHintsConfig, LineCol, RootDatabase,
+    InlayHintsConfig, LineCol, RaFixtureConfig, RootDatabase,
 };
 use ide_db::{
-    EditionedFileId, LineIndexDatabase, MiniCore, SnippetCap,
+    EditionedFileId, LineIndexDatabase, SnippetCap,
     base_db::{SourceDatabase, salsa::Database},
 };
 use itertools::Itertools;
@@ -1367,6 +1367,7 @@ impl flags::AnalysisStats {
                 &InlayHintsConfig {
                     render_colons: false,
                     type_hints: true,
+                    type_hints_placement: ide::TypeHintsPlacement::Inline,
                     sized_bound: false,
                     discriminant_hints: ide::DiscriminantHints::Always,
                     parameter_hints: true,
@@ -1397,7 +1398,7 @@ impl flags::AnalysisStats {
                     closing_brace_hints_min_lines: Some(20),
                     fields_to_resolve: InlayFieldsToResolve::empty(),
                     range_exclusive_hints: true,
-                    minicore: MiniCore::default(),
+                    ra_fixture: RaFixtureConfig::default(),
                 },
                 analysis.editioned_file_id_to_vfs(file_id),
                 None,
@@ -1416,7 +1417,7 @@ impl flags::AnalysisStats {
             annotate_enum_variant_references: false,
             location: ide::AnnotationLocation::AboveName,
             filter_adjacent_derive_implementations: false,
-            minicore: MiniCore::default(),
+            ra_fixture: RaFixtureConfig::default(),
         };
         for &file_id in file_ids {
             let msg = format!("annotations: {}", vfs.file_path(file_id.file_id(db)));

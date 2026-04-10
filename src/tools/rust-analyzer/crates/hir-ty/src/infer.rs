@@ -1706,6 +1706,61 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             self.generic_def,
             LifetimeElisionKind::Infer,
         );
+
+        if let Some(type_anchor) = path.type_anchor() {
+            let mut segments = path.segments();
+            if segments.is_empty() {
+                return (self.err_ty(), None);
+            }
+            let (mut ty, type_ns) = ctx.lower_ty_ext(type_anchor);
+            ty = self.table.process_user_written_ty(ty);
+
+            if let Some(TypeNs::SelfType(impl_)) = type_ns
+                && let Some(trait_ref) = self.db.impl_trait(impl_)
+                && let trait_ref = trait_ref.instantiate_identity()
+                && let Some(assoc_type) = trait_ref
+                    .def_id
+                    .0
+                    .trait_items(self.db)
+                    .associated_type_by_name(segments.first().unwrap().name)
+            {
+                // `<Self>::AssocType`
+                let args = self.infcx().fill_rest_fresh_args(assoc_type.into(), trait_ref.args);
+                let alias = Ty::new_alias(
+                    self.interner(),
+                    AliasTyKind::Projection,
+                    AliasTy::new_from_args(self.interner(), assoc_type.into(), args),
+                );
+                ty = self.table.try_structurally_resolve_type(alias);
+                segments = segments.skip(1);
+            }
+
+            let variant = match ty.as_adt() {
+                Some((AdtId::StructId(id), _)) => id.into(),
+                Some((AdtId::UnionId(id), _)) => id.into(),
+                Some((AdtId::EnumId(id), _)) => {
+                    if let Some(segment) = segments.first()
+                        && let enum_data = id.enum_variants(self.db)
+                        && let Some(variant) = enum_data.variant(segment.name)
+                    {
+                        // FIXME: Report error if there are generics on the variant.
+                        segments = segments.skip(1);
+                        variant.into()
+                    } else {
+                        return (self.err_ty(), None);
+                    }
+                }
+                None => return (self.err_ty(), None),
+            };
+
+            if !segments.is_empty() {
+                // FIXME: Report an error.
+                return (self.err_ty(), None);
+            } else {
+                return (ty, Some(variant));
+            }
+        }
+
         let mut path_ctx = ctx.at_path(path, node);
         let interner = DbInterner::conjure();
         let (resolution, unresolved) = if value_ns {
@@ -1838,6 +1893,46 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                 });
                 (ty, variant)
             }
+            TypeNs::TraitId(_) => {
+                let Some(remaining_idx) = unresolved else {
+                    return (self.err_ty(), None);
+                };
+
+                let remaining_segments = path.segments().skip(remaining_idx);
+
+                if remaining_segments.len() >= 2 {
+                    path_ctx.ignore_last_segment();
+                }
+
+                let (mut ty, _) = path_ctx.lower_partly_resolved_path(resolution, true);
+                ty = self.table.process_user_written_ty(ty);
+
+                if let Some(segment) = remaining_segments.get(1)
+                    && let Some((AdtId::EnumId(id), _)) = ty.as_adt()
+                {
+                    let enum_data = id.enum_variants(self.db);
+                    if let Some(variant) = enum_data.variant(segment.name) {
+                        return if remaining_segments.len() == 2 {
+                            (ty, Some(variant.into()))
+                        } else {
+                            // We still have unresolved paths, but enum variants never have
+                            // associated types!
+                            // FIXME: Report an error.
+                            (self.err_ty(), None)
+                        };
+                    }
+                }
+
+                let variant = ty.as_adt().and_then(|(id, _)| match id {
+                    AdtId::StructId(s) => Some(VariantId::StructId(s)),
+                    AdtId::UnionId(u) => Some(VariantId::UnionId(u)),
+                    AdtId::EnumId(_) => {
+                        // FIXME Error E0071, expected struct, variant or union type, found enum `Foo`
+                        None
+                    }
+                });
+                (ty, variant)
+            }
             TypeNs::TypeAliasId(it) => {
                 let Some(mod_path) = path.mod_path() else {
                     never!("resolver should always resolve lang item paths");
@@ -1859,10 +1954,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                 // FIXME potentially resolve assoc type
                 (self.err_ty(), None)
             }
-            TypeNs::AdtId(AdtId::EnumId(_))
-            | TypeNs::BuiltinType(_)
-            | TypeNs::TraitId(_)
-            | TypeNs::ModuleId(_) => {
+            TypeNs::AdtId(AdtId::EnumId(_)) | TypeNs::BuiltinType(_) | TypeNs::ModuleId(_) => {
                 // FIXME diagnostic
                 (self.err_ty(), None)
             }

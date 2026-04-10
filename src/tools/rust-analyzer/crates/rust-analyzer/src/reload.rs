@@ -390,7 +390,7 @@ impl GlobalState {
         info!(%cause, "will fetch build data");
         let workspaces = Arc::clone(&self.workspaces);
         let config = self.config.cargo(None);
-        let root_path = self.config.root_path().clone();
+        let root_path = self.config.default_root_path().clone();
 
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
             sender.send(Task::FetchBuildData(BuildDataProgress::Begin)).unwrap();
@@ -582,7 +582,8 @@ impl GlobalState {
                                 [
                                     (base.clone(), "**/*.rs"),
                                     (base.clone(), "**/Cargo.{lock,toml}"),
-                                    (base, "**/rust-analyzer.toml"),
+                                    (base.clone(), "**/rust-analyzer.toml"),
+                                    (base, "**/*.md"),
                                 ]
                             })
                         })
@@ -607,6 +608,7 @@ impl GlobalState {
                                     format!("{base}/**/*.rs"),
                                     format!("{base}/**/Cargo.{{toml,lock}}"),
                                     format!("{base}/**/rust-analyzer.toml"),
+                                    format!("{base}/**/*.md"),
                                 ]
                             })
                         })
@@ -883,7 +885,7 @@ impl GlobalState {
                     config,
                     crate::flycheck::FlycheckConfigJson::default(),
                     None,
-                    self.config.root_path().clone(),
+                    self.config.default_root_path().clone(),
                     None,
                     None,
                 )]
@@ -975,6 +977,7 @@ pub(crate) fn should_refresh_for_change(
     change_kind: ChangeKind,
     additional_paths: &[&str],
 ) -> bool {
+    // Note: build scripts are retriggered on file save, no refresh is necessary
     const IMPLICIT_TARGET_FILES: &[&str] = &["build.rs", "src/main.rs", "src/lib.rs"];
     const IMPLICIT_TARGET_DIRS: &[&str] = &["src/bin", "examples", "tests", "benches"];
 
@@ -991,15 +994,20 @@ pub(crate) fn should_refresh_for_change(
         return true;
     }
 
+    // .cargo/config{.toml}
+    if matches!(file_name, "config.toml" | "config")
+        && path.parent().map(|parent| parent.as_str().ends_with(".cargo")).unwrap_or(false)
+    {
+        return true;
+    }
+
+    // Everything below only matters when files are created or deleted
     if change_kind == ChangeKind::Modify {
         return false;
     }
 
-    // .cargo/config{.toml}
     if path.extension().unwrap_or_default() != "rs" {
-        let is_cargo_config = matches!(file_name, "config.toml" | "config")
-            && path.parent().map(|parent| parent.as_str().ends_with(".cargo")).unwrap_or(false);
-        return is_cargo_config;
+        return false;
     }
 
     if IMPLICIT_TARGET_FILES.iter().any(|it| path.as_str().ends_with(it)) {

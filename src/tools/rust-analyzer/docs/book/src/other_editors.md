@@ -137,24 +137,22 @@ To use the LSP server in [ale](https://github.com/dense-analysis/ale):
 
 ### nvim-lsp
 
-Neovim 0.5 has built-in language server support. For a quick start
-configuration of rust-analyzer, use
-[neovim/nvim-lspconfig](https://github.com/neovim/nvim-lspconfig#rust_analyzer).
-Once `neovim/nvim-lspconfig` is installed, use
-`lua require'lspconfig'.rust_analyzer.setup({})` in your `init.vim`.
+Neovim 0.5+ added build-in support for language server with most of the heavy
+lifting happening in "framework" plugins such as
+[neovim/nvim-lspconfig](https://github.com/neovim/nvim-lspconfig).
+Since v0.11+ Neovim has full featured LSP support. nvim-lspconfig is
+still recommended to get the
+[rust-analyzer config](https://github.com/neovim/nvim-lspconfig/blob/master/lsp/rust_analyzer.lua)
+for free.
 
-You can also pass LSP settings to the server:
+1. Install [neovim/nvim-lspconfig](https://github.com/neovim/nvim-lspconfig)
+2. Add `lua vim.lsp.enable('rust-analyzer')` to your `init.vim`
+3. Customize your setup.
 
 ```lua
 lua << EOF
-local lspconfig = require'lspconfig'
-
-local on_attach = function(client)
-    require'completion'.on_attach(client)
-end
-
-lspconfig.rust_analyzer.setup({
-    on_attach = on_attach,
+-- You can pass LSP settings to the server:
+vim.lsp.config("rust_analyzer", {
     settings = {
         ["rust-analyzer"] = {
             imports = {
@@ -171,30 +169,35 @@ lspconfig.rust_analyzer.setup({
             procMacro = {
                 enable = true
             },
-        }
-    }
+        },
+    },
+})
+
+-- You can enable different LSP features
+vim.api.nvim_create_autocmd("LspAttach", {
+    callback = function(ev)
+        local client = assert(vim.lsp.get_client_by_id(ev.data.client_id))
+        -- Inlay hints display inferred types, etc.
+        if client:supports_method("inlayHint/resolve") then
+            vim.lsp.inlay_hint.enable(true, { bufnr = ev.buf })
+        end
+        -- Completion can be invoked via ctrl+x ctrl+o. It displays a list of
+        -- names inferred from the context (e.g. method names, variables, etc.)
+        if client:supports_method("textDocument/completion") then
+            vim.lsp.completion.enable(true, client.id, ev.buf, {})
+        end
+    end,
 })
 EOF
 ```
 
-If you're running Neovim 0.10 or later, you can enable inlay hints via `on_attach`:
+Note that the hints are only visible after `rust-analyzer` has finished loading
+**and** you have to edit the file to trigger a re-render.
 
-```lua
-lspconfig.rust_analyzer.setup({
-    on_attach = function(client, bufnr)
-        vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
-    end
-})
-```
-
-Note that the hints are only visible after `rust-analyzer` has finished loading **and** you have to
-edit the file to trigger a re-render.
-
-See <https://sharksforarms.dev/posts/neovim-rust/> for more tips on
-getting started.
-
-Check out <https://github.com/mrcjkb/rustaceanvim> for a batteries
-included rust-analyzer setup for Neovim.
+The instructions here use the 0.11+ API, if you're running an older version, you
+can follow this guide <https://sharksforarms.dev/posts/neovim-rust/> or check
+out <https://github.com/mrcjkb/rustaceanvim> for a batteries included
+rust-analyzer setup for Neovim.
 
 ### vim-lsp
 

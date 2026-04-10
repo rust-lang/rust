@@ -105,8 +105,7 @@ impl IndentLevel {
     }
 
     pub(super) fn clone_increase_indent(self, node: &SyntaxNode) -> SyntaxNode {
-        let node = node.clone_subtree();
-        let mut editor = SyntaxEditor::new(node.clone());
+        let (mut editor, node) = SyntaxEditor::new(node.clone());
         let tokens = node
             .preorder_with_tokens()
             .filter_map(|event| match event {
@@ -140,8 +139,7 @@ impl IndentLevel {
     }
 
     pub(super) fn clone_decrease_indent(self, node: &SyntaxNode) -> SyntaxNode {
-        let node = node.clone_subtree();
-        let mut editor = SyntaxEditor::new(node.clone());
+        let (mut editor, node) = SyntaxEditor::new(node.clone());
         let tokens = node
             .preorder_with_tokens()
             .filter_map(|event| match event {

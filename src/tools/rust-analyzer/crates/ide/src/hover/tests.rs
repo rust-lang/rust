@@ -1,5 +1,5 @@
 use expect_test::{Expect, expect};
-use ide_db::{FileRange, MiniCore, base_db::SourceDatabase};
+use ide_db::{FileRange, base_db::SourceDatabase, ra_fixture::RaFixtureConfig};
 use syntax::TextRange;
 
 use crate::{
@@ -25,7 +25,7 @@ const HOVER_BASE_CONFIG: HoverConfig<'_> = HoverConfig {
     max_enum_variants_count: Some(5),
     max_subst_ty_len: super::SubstTyLen::Unlimited,
     show_drop_glue: true,
-    minicore: MiniCore::default(),
+    ra_fixture: RaFixtureConfig::default(),
 };
 
 fn check_hover_no_result(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
@@ -3526,9 +3526,6 @@ fn foo_$0test() {}
                             test_id: Path(
                                 "foo_test",
                             ),
-                            attr: TestAttr {
-                                ignore: false,
-                            },
                         },
                         cfg: None,
                         update_test: UpdateTest {
@@ -10707,9 +10704,6 @@ macro_rules! str {
                             test_id: Path(
                                 "test",
                             ),
-                            attr: TestAttr {
-                                ignore: false,
-                            },
                         },
                         cfg: None,
                         update_test: UpdateTest {
@@ -10778,9 +10772,6 @@ pub use expect_test;
                             test_id: Path(
                                 "test",
                             ),
-                            attr: TestAttr {
-                                ignore: false,
-                            },
                         },
                         cfg: None,
                         update_test: UpdateTest {
@@ -11401,6 +11392,302 @@ pub trait MyTrait {
             ---
 
             * [`do_something`](https://docs.rs/ra_test_fixture/*/ra_test_fixture/trait.MyTrait.html#tymethod.do_something)
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_macro_generated_method_stringify_self_ty() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+#[rustc_builtin_macro]
+macro_rules! stringify {}
+
+macro_rules! bar {
+    ($SelfT:ident) => {
+        struct $SelfT;
+        impl $SelfT {
+            #[doc = concat!("Do the foo for ", stringify!($SelfT))]
+            fn foo(&self) {}
+        }
+    }
+}
+
+bar!(Bar);
+
+fn foo() { let bar = Bar; bar.fo$0o(); }
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture::Bar
+            ```
+
+            ```rust
+            fn foo(&self)
+            ```
+
+            ---
+
+            Do the foo for Bar
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_macro_argument_expr_issue_7688() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+macro_rules! doc_comment {
+    ($x:expr, $($tt:tt)*) => {
+        #[doc = $x]
+        $($tt)*
+    };
+}
+
+doc_comment! {
+    concat!("Hello", " world"),
+    struct Ba$0r;
+}
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            Hello world
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_concat_macro() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+#[doc = concat!("Hello", " ", "World")]
+struct Ba$0r;
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            Hello World
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_include_str_macro() {
+    check(
+        r#"
+//- /main.rs
+#[rustc_builtin_macro]
+macro_rules! include_str {}
+
+#[doc = include_str!("docs.md")]
+struct Ba$0r;
+
+//- /docs.md
+Included docs from file.
+Multiple lines of docs.
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            Included docs from file.
+            Multiple lines of docs.
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_user_macro_returning_string() {
+    check(
+        r#"
+macro_rules! doc_str {
+    () => { "Documentation from macro" };
+}
+
+#[doc = doc_str!()]
+struct Ba$0r;
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            Documentation from macro
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_mixed_literal_and_macro() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+/// First line
+#[doc = concat!("Second", " line")]
+struct Ba$0r;
+"#,
+        expect![[r#"
+            *Bar*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Bar
+            ```
+
+            ---
+
+            size = 0, align = 1, no Drop
+
+            ---
+
+            First line
+            Second line
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_field_with_macro() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+macro_rules! concat {}
+
+struct Bar {
+    #[doc = concat!("field", " docs")]
+    ba$0z: i32,
+}
+"#,
+        expect![[r#"
+            *baz*
+
+            ```rust
+            ra_test_fixture::Bar
+            ```
+
+            ```rust
+            baz: i32
+            ```
+
+            ---
+
+            size = 4, align = 4, offset = 0, no Drop
+
+            ---
+
+            field docs
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_doc_attr_macro_on_outlined_mod() {
+    // Outer doc-macro on `mod foo;` resolves from inside the module's scope
+    // (matching rustc behavior), and combines with inner `//!` docs from the module file.
+    check(
+        r#"
+//- /main.rs
+mod mac {
+    macro_rules! doc_str {
+        () => { "expanded from macro" };
+    }
+    pub(crate) use doc_str;
+}
+
+/// plain outer doc
+#[doc = super::mac::doc_str!()]
+mod foo$0;
+
+//- /foo.rs
+//! inner module docs
+pub struct Bar;
+"#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            mod foo
+            ```
+
+            ---
+
+            plain outer doc
+            expanded from macro
+            inner module docs
         "#]],
     );
 }

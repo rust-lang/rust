@@ -1465,7 +1465,15 @@ impl<'db> ExprCollector<'db> {
 
                 match kind {
                     ArrayExprKind::ElementList(e) => {
-                        let elements = e.map(|expr| self.collect_expr(expr)).collect();
+                        let elements = e
+                            .filter_map(|expr| {
+                                if self.check_cfg(&expr) {
+                                    Some(self.collect_expr(expr))
+                                } else {
+                                    None
+                                }
+                            })
+                            .collect();
                         self.alloc_expr(Expr::Array(Array::ElementList { elements }), syntax_ptr)
                     }
                     ArrayExprKind::Repeat { initializer, repeat } => {

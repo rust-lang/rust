@@ -19,10 +19,10 @@
 
 use hir::{PathResolution, Semantics};
 use ide_db::{
-    FileId, MiniCore, RootDatabase,
+    FileId, RootDatabase,
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
-    ra_fixture::UpmapFromRaFixture,
+    ra_fixture::{RaFixtureConfig, UpmapFromRaFixture},
     search::{ReferenceCategory, SearchScope, UsageSearchResult},
 };
 use itertools::Itertools;
@@ -90,7 +90,7 @@ pub struct Declaration {
 #[derive(Debug)]
 pub struct FindAllRefsConfig<'a> {
     pub search_scope: Option<SearchScope>,
-    pub minicore: MiniCore<'a>,
+    pub ra_fixture: RaFixtureConfig<'a>,
 }
 
 /// Find all references to the item at the given position.
@@ -179,7 +179,7 @@ pub(crate) fn find_all_refs(
     if let Some(token) = syntax.token_at_offset(position.offset).left_biased()
         && let Some(token) = ast::String::cast(token.clone())
         && let Some((analysis, fixture_analysis)) =
-            Analysis::from_ra_fixture(sema, token.clone(), &token, config.minicore)
+            Analysis::from_ra_fixture(sema, token.clone(), &token, &config.ra_fixture)
         && let Some((virtual_file_id, file_offset)) =
             fixture_analysis.map_offset_down(position.offset)
     {
@@ -462,7 +462,7 @@ fn handle_control_flow_keywords(
 mod tests {
     use expect_test::{Expect, expect};
     use hir::EditionedFileId;
-    use ide_db::{FileId, MiniCore, RootDatabase};
+    use ide_db::{FileId, RootDatabase, ra_fixture::RaFixtureConfig};
     use stdx::format_to;
 
     use crate::{SearchScope, fixture, references::FindAllRefsConfig};
@@ -1567,7 +1567,7 @@ fn main() {
         let (analysis, pos) = fixture::position(ra_fixture);
         let config = FindAllRefsConfig {
             search_scope: search_scope.map(|it| it(&analysis.db)),
-            minicore: MiniCore::default(),
+            ra_fixture: RaFixtureConfig::default(),
         };
         let refs = analysis.find_all_refs(pos, &config).unwrap().unwrap();
 
