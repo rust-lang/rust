@@ -569,16 +569,17 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
         };
 
         // We erase all non-member region of the opaque and need to treat these as existentials.
-        let expected_ty =
-            ty::fold_regions(tcx, expected.ty.instantiate(tcx, key.args), |re, _dbi| {
-                match re.kind() {
-                    ty::ReErased => infcx.next_nll_region_var(
-                        NllRegionVariableOrigin::Existential { name: None },
-                        || crate::RegionCtxt::Existential(None),
-                    ),
-                    _ => re,
-                }
-            });
+        let expected_ty = ty::fold_regions(
+            tcx,
+            expected.ty.instantiate(tcx, key.args).skip_normalization(),
+            |re, _dbi| match re.kind() {
+                ty::ReErased => infcx.next_nll_region_var(
+                    NllRegionVariableOrigin::Existential { name: None },
+                    || crate::RegionCtxt::Existential(None),
+                ),
+                _ => re,
+            },
+        );
 
         // We now simply equate the expected with the actual hidden type.
         let locations = Locations::All(hidden_type.span);

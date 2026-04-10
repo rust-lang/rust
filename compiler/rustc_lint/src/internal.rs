@@ -128,7 +128,8 @@ fn has_unstable_into_iter_predicate<'tcx>(
     let Some(into_iter_fn_def_id) = cx.tcx.lang_items().into_iter_fn() else {
         return false;
     };
-    let predicates = cx.tcx.predicates_of(callee_def_id).instantiate(cx.tcx, generic_args);
+    let predicates =
+        cx.tcx.predicates_of(callee_def_id).instantiate(cx.tcx, generic_args).skip_normalization();
     for (predicate, _) in predicates {
         let Some(trait_pred) = predicate.as_trait_clause() else {
             continue;
@@ -291,7 +292,8 @@ fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, path: &hir::Path<'_>) -> Option<String
         }
         // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
         Res::SelfTyAlias { alias_to: did, is_trait_impl: false, .. } => {
-            if let ty::Adt(adt, args) = cx.tcx.type_of(did).instantiate_identity().kind()
+            if let ty::Adt(adt, args) =
+                cx.tcx.type_of(did).instantiate_identity().skip_normalization().kind()
                 && let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(adt.did())
             {
                 return Some(format!("{}<{}>", name, args[0]));

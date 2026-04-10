@@ -1699,7 +1699,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let fresh_args = infcx.fresh_args_for_item(span, def_id.to_def_id());
         let sig = tcx.liberate_late_bound_regions(
             def_id.to_def_id(),
-            tcx.fn_sig(def_id).instantiate(tcx, fresh_args),
+            tcx.fn_sig(def_id).instantiate(tcx, fresh_args).skip_normalization(),
         );
 
         let mut cause = ObligationCause::misc(span, def_id);

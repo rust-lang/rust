@@ -281,9 +281,11 @@ fn get_delegation_self_ty<'tcx>(tcx: TyCtxt<'tcx>, delegation_id: LocalDefId) ->
         }
 
         (FnKind::AssocTraitImpl, FnKind::AssocTrait)
-        | (FnKind::AssocInherentImpl, FnKind::AssocTrait) => {
-            Some(tcx.type_of(tcx.local_parent(delegation_id)).instantiate_identity())
-        }
+        | (FnKind::AssocInherentImpl, FnKind::AssocTrait) => Some(
+            tcx.type_of(tcx.local_parent(delegation_id))
+                .instantiate_identity()
+                .skip_normalization(),
+        ),
 
         // For trait impl's `sig_id` is always equal to the corresponding trait method.
         // For inherent methods delegation is not yet supported.
@@ -335,7 +337,12 @@ fn create_generic_args<'tcx>(
             // them as parent args. We always generate a function whose generics match
             // child generics in trait.
             let parent = tcx.local_parent(delegation_id);
-            parent_args = tcx.impl_trait_header(parent).trait_ref.instantiate_identity().args;
+            parent_args = tcx
+                .impl_trait_header(parent)
+                .trait_ref
+                .instantiate_identity()
+                .skip_normalization()
+                .args;
 
             assert!(child_args.is_empty(), "Child args can not be used in trait impl case");
 
@@ -343,7 +350,10 @@ fn create_generic_args<'tcx>(
         }
 
         (FnKind::AssocInherentImpl, FnKind::AssocTrait) => {
-            let self_ty = tcx.type_of(tcx.local_parent(delegation_id)).instantiate_identity();
+            let self_ty = tcx
+                .type_of(tcx.local_parent(delegation_id))
+                .instantiate_identity()
+                .skip_normalization();
 
             tcx.mk_args_from_iter(
                 std::iter::once(ty::GenericArg::from(self_ty)).chain(delegation_args.iter()),
@@ -450,7 +460,10 @@ pub(crate) fn inherit_predicates_for_delegation_item<'tcx>(
 
             for pred in preds.predicates {
                 let new_pred = pred.0.fold_with(&mut self.folder);
-                self.preds.push((EarlyBinder::bind(new_pred).instantiate(self.tcx, args), pred.1));
+                self.preds.push((
+                    EarlyBinder::bind(new_pred).instantiate(self.tcx, args).skip_normalization(),
+                    pred.1,
+                ));
             }
 
             self
@@ -539,7 +552,8 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
     let caller_sig = tcx.fn_sig(sig_id);
 
     if let Err(err) = check_constraints(tcx, def_id, sig_id) {
-        let sig_len = caller_sig.instantiate_identity().skip_binder().inputs().len() + 1;
+        let sig_len =
+            caller_sig.instantiate_identity().skip_normalization().skip_binder().inputs().len() + 1;
         let err_type = Ty::new_error(tcx, err);
         return tcx.arena.alloc_from_iter((0..sig_len).map(|_| err_type));
     }
@@ -548,7 +562,7 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
     let (mut folder, args) = create_folder_and_args(tcx, def_id, sig_id, parent_args, child_args);
     let caller_sig = EarlyBinder::bind(caller_sig.skip_binder().fold_with(&mut folder));
 
-    let sig = caller_sig.instantiate(tcx, args.as_slice()).skip_binder();
+    let sig = caller_sig.instantiate(tcx, args.as_slice()).skip_normalization().skip_binder();
     let sig_iter = sig.inputs().iter().cloned().chain(std::iter::once(sig.output()));
     tcx.arena.alloc_from_iter(sig_iter)
 }

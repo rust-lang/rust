@@ -53,6 +53,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .tcx
                     .predicates_of(def_id)
                     .instantiate_identity(self.tcx)
+                    .skip_normalization()
                     .predicates
                     .into_iter()
                     .nth(idx) =>
@@ -64,6 +65,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .tcx
                     .const_conditions(def_id)
                     .instantiate_identity(self.tcx)
+                    .skip_normalization()
                     .into_iter()
                     .nth(idx) =>
             {
@@ -524,7 +526,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     return Some((
                         expr_field.expr,
-                        self.tcx.type_of(field.did).instantiate_identity(),
+                        self.tcx.type_of(field.did).instantiate_identity().skip_normalization(),
                     ));
                 }
             }
@@ -552,7 +554,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         receiver: Option<&'tcx hir::Expr<'tcx>>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> bool {
-        let ty = self.tcx.type_of(def_id).instantiate_identity();
+        let ty = self.tcx.type_of(def_id).instantiate_identity().skip_normalization();
         if !ty.is_fn() {
             return false;
         }

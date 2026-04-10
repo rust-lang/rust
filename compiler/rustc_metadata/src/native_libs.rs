@@ -363,6 +363,7 @@ impl<'tcx> Collector<'tcx> {
             self.tcx
                 .type_of(item)
                 .instantiate_identity()
+                .skip_normalization()
                 .fn_sig(self.tcx)
                 .inputs()
                 .map_bound(|slice| self.tcx.mk_type_list(slice)),
@@ -408,8 +409,13 @@ impl<'tcx> Collector<'tcx> {
                 // `__stdcall` only applies on x86 and on non-variadic functions:
                 // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
                 ExternAbi::System { .. } => {
-                    let c_variadic =
-                        self.tcx.type_of(item).instantiate_identity().fn_sig(self.tcx).c_variadic();
+                    let c_variadic = self
+                        .tcx
+                        .type_of(item)
+                        .instantiate_identity()
+                        .skip_normalization()
+                        .fn_sig(self.tcx)
+                        .c_variadic();
 
                     if c_variadic {
                         DllCallingConvention::C
@@ -475,7 +481,7 @@ impl<'tcx> Collector<'tcx> {
             // We cannot determine the size of a function at compile time, but it shouldn't matter anyway.
             DllImportSymbolType::Function => rustc_abi::Size::ZERO,
             DllImportSymbolType::Static | DllImportSymbolType::ThreadLocal => {
-                let ty = self.tcx.type_of(item).instantiate_identity();
+                let ty = self.tcx.type_of(item).instantiate_identity().skip_normalization();
                 self.tcx
                     .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
                     .ok()

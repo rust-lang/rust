@@ -595,7 +595,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
         if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = *output_ty.kind() {
-            output_ty = self.infcx.tcx.type_of(def_id).instantiate_identity()
+            output_ty = self.infcx.tcx.type_of(def_id).instantiate_identity().skip_normalization()
         };
 
         debug!("report_fnmut_error: output_ty={:?}", output_ty);
@@ -930,7 +930,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         debug!(?fn_did, ?args);
 
         // Only suggest this on function calls, not closures
-        let ty = tcx.type_of(fn_did).instantiate_identity();
+        let ty = tcx.type_of(fn_did).instantiate_identity().skip_normalization();
         debug!("ty: {:?}, ty.kind: {:?}", ty, ty.kind());
         if let ty::Closure(_, _) = ty.kind() {
             return;
@@ -1050,7 +1050,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         else {
             return;
         };
-        let ty::Closure(_, args) = *tcx.type_of(closure_def_id).instantiate_identity().kind()
+        let ty::Closure(_, args) =
+            *tcx.type_of(closure_def_id).instantiate_identity().skip_normalization().kind()
         else {
             return;
         };
@@ -1143,7 +1144,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         });
 
-        let preds = tcx.predicates_of(method_def_id).instantiate(tcx, args);
+        let preds = tcx.predicates_of(method_def_id).instantiate(tcx, args).skip_normalization();
 
         let ocx = ObligationCtxt::new(&self.infcx);
         ocx.register_obligations(preds.iter().map(|(pred, span)| {

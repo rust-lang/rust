@@ -88,8 +88,10 @@ fn encode_args<'tcx>(
                 }
                 GenericArgKind::Const(c) => {
                     let n = n + (has_erased_self as usize);
-                    let ct_ty =
-                        tcx.type_of(def_generics.param_at(n, tcx).def_id).instantiate_identity();
+                    let ct_ty = tcx
+                        .type_of(def_generics.param_at(n, tcx).def_id)
+                        .instantiate_identity()
+                        .skip_normalization();
                     s.push_str(&encode_const(tcx, c, ct_ty, dict, options));
                 }
             }
@@ -250,7 +252,9 @@ fn encode_predicate<'tcx>(
                 TermKind::Const(c) => s.push_str(&encode_const(
                     tcx,
                     c,
-                    tcx.type_of(projection.def_id).instantiate(tcx, projection.args),
+                    tcx.type_of(projection.def_id)
+                        .instantiate(tcx, projection.args)
+                        .skip_normalization(),
                     dict,
                     options,
                 )),

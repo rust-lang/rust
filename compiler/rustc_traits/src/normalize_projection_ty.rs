@@ -2,7 +2,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
+use rustc_middle::ty::{ParamEnvAnd, TyCtxt, Unnormalized};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::normalize::NormalizationResult;
@@ -75,21 +75,26 @@ fn normalize_canonicalized_free_alias<'tcx>(
     tcx.infer_ctxt().enter_canonical_trait_query(
         &goal,
         |ocx, ParamEnvAnd { param_env, value: goal }| {
-            let obligations = tcx.predicates_of(goal.def_id).instantiate_own(tcx, goal.args).map(
-                |(predicate, span)| {
+            let obligations = tcx
+                .predicates_of(goal.def_id)
+                .instantiate_own(tcx, goal.args)
+                .map(Unnormalized::skip_normalization)
+                .map(|(predicate, span)| {
                     traits::Obligation::new(
                         tcx,
                         ObligationCause::dummy_with_span(span),
                         param_env,
                         predicate,
                     )
-                },
-            );
+                });
             ocx.register_obligations(obligations);
             let normalized_term = if goal.kind(tcx).is_type() {
-                tcx.type_of(goal.def_id).instantiate(tcx, goal.args).into()
+                tcx.type_of(goal.def_id).instantiate(tcx, goal.args).skip_normalization().into()
             } else {
-                tcx.const_of_item(goal.def_id).instantiate(tcx, goal.args).into()
+                tcx.const_of_item(goal.def_id)
+                    .instantiate(tcx, goal.args)
+                    .skip_normalization()
+                    .into()
             };
             Ok(NormalizationResult { normalized_term })
         },

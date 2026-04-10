@@ -411,8 +411,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (ty::FnPtr(sig_tys, hdr), ty::FnDef(did, args)) => {
                 let sig = sig_tys.with(*hdr);
                 let expected_sig = &(self.normalize_fn_sig)(sig);
-                let found_sig =
-                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
+                let found_sig = &(self.normalize_fn_sig)(
+                    self.tcx.fn_sig(*did).instantiate(self.tcx, args).skip_normalization(),
+                );
 
                 let fn_name = self.tcx.def_path_str_with_args(*did, args);
 
@@ -447,10 +448,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 diag.subdiagnostic(sugg);
             }
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
-                let expected_sig =
-                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did1).instantiate(self.tcx, args1));
-                let found_sig =
-                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did2).instantiate(self.tcx, args2));
+                let expected_sig = &(self.normalize_fn_sig)(
+                    self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_normalization(),
+                );
+                let found_sig = &(self.normalize_fn_sig)(
+                    self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_normalization(),
+                );
 
                 if self.same_type_modulo_infer(*expected_sig, *found_sig) {
                     diag.subdiagnostic(FnUniqTypes);
@@ -490,8 +493,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 diag.subdiagnostic(sug);
             }
             (ty::FnDef(did, args), ty::FnPtr(sig_tys, hdr)) => {
-                let expected_sig =
-                    &(self.normalize_fn_sig)(self.tcx.fn_sig(*did).instantiate(self.tcx, args));
+                let expected_sig = &(self.normalize_fn_sig)(
+                    self.tcx.fn_sig(*did).instantiate(self.tcx, args).skip_normalization(),
+                );
                 let found_sig = &(self.normalize_fn_sig)(sig_tys.with(*hdr));
 
                 if !self.same_type_modulo_infer(*found_sig, *expected_sig) {

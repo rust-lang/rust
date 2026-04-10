@@ -467,7 +467,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             // If the method is an impl for an item with docs_hidden, don't doc.
             AssocContainer::InherentImpl => {
                 let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id());
-                let impl_ty = cx.tcx.type_of(parent).instantiate_identity();
+                let impl_ty = cx.tcx.type_of(parent).instantiate_identity().skip_normalization();
                 let outerdef = match impl_ty.kind() {
                     ty::Adt(def, _) => Some(def.did()),
                     ty::Foreign(def_id) => Some(*def_id),
@@ -576,7 +576,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         // and recommending Copy might be a bad idea.
         for field in def.all_fields() {
             let did = field.did;
-            if cx.tcx.type_of(did).instantiate_identity().is_raw_ptr() {
+            if cx.tcx.type_of(did).instantiate_identity().skip_normalization().is_raw_ptr() {
                 return;
             }
         }
@@ -706,7 +706,10 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
 
         let has_impl = cx
             .tcx
-            .non_blanket_impls_for_ty(debug, cx.tcx.type_of(item.owner_id).instantiate_identity())
+            .non_blanket_impls_for_ty(
+                debug,
+                cx.tcx.type_of(item.owner_id).instantiate_identity().skip_normalization(),
+            )
             .next()
             .is_some();
         if !has_impl {
@@ -1379,7 +1382,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
 
         // FIXME(generic_const_exprs): Revisit this before stabilization.
         // See also `tests/ui/const-generics/generic_const_exprs/type-alias-bounds.rs`.
-        let ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
+        let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_normalization();
         if ty.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION)
             && cx.tcx.features().generic_const_exprs()
         {

@@ -65,7 +65,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeErrorToStringExt};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, WrapBinderMode, with_forced_trimmed_paths};
 use rustc_middle::ty::{
     self, List, ParamEnv, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt,
+    TypeVisitableExt, Unnormalized,
 };
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, sym};
 use tracing::{debug, instrument};
@@ -196,6 +196,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         self.tcx
             .explicit_item_self_bounds(def_id)
             .iter_instantiated_copied(self.tcx, args)
+            .map(Unnormalized::skip_normalization)
             .find_map(|(predicate, _)| {
                 predicate
                     .kind()
@@ -277,7 +278,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             let is_shadowed = self.infcx.probe(|_| {
                 let impl_substs = self.infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
-                let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_substs);
+                let impl_trait_ref = tcx
+                    .impl_trait_ref(impl_def_id)
+                    .instantiate(tcx, impl_substs)
+                    .skip_normalization();
 
                 let expected_trait_ref = alias.trait_ref(tcx);
 
@@ -307,7 +311,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if !tcx.check_args_compatible(impl_item_def_id, rebased_args) {
                     return false;
                 }
-                let impl_assoc_ty = tcx.type_of(impl_item_def_id).instantiate(tcx, rebased_args);
+                let impl_assoc_ty = tcx
+                    .type_of(impl_item_def_id)
+                    .instantiate(tcx, rebased_args)
+                    .skip_normalization();
 
                 self.infcx.can_eq(param_env, impl_assoc_ty, concrete)
             });
@@ -1272,8 +1279,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
-                let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
+                let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_normalization();
+                let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_normalization();
                 self.cmp_fn_sig(
                     &sig1,
                     Some((*did1, Some(args1))),
@@ -1283,12 +1290,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             (ty::FnDef(did1, args1), ty::FnPtr(sig_tys2, hdr2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
+                let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_normalization();
                 self.cmp_fn_sig(&sig1, Some((*did1, Some(args1))), &sig_tys2.with(*hdr2), None)
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnDef(did2, args2)) => {
-                let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
+                let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_normalization();
                 self.cmp_fn_sig(&sig_tys1.with(*hdr1), None, &sig2, Some((*did2, Some(args2))))
             }
 

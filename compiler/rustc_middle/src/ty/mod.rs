@@ -877,8 +877,8 @@ impl<'tcx> DefinitionSiteHiddenType<'tcx> {
         other: &Self,
         tcx: TyCtxt<'tcx>,
     ) -> Result<Diag<'tcx>, ErrorGuaranteed> {
-        let self_ty = self.ty.instantiate_identity();
-        let other_ty = other.ty.instantiate_identity();
+        let self_ty = self.ty.instantiate_identity().skip_normalization();
+        let other_ty = other.ty.instantiate_identity().skip_normalization();
         (self_ty, other_ty).error_reported()?;
         // Found different concrete types for the opaque type.
         let sub_diag = if self.span == other.span {
@@ -1364,7 +1364,7 @@ impl<'tcx> FieldDef {
     /// Returns the type of this field. The resulting type is not normalized. The `arg` is
     /// typically obtained via the second field of [`TyKind::Adt`].
     pub fn ty(&self, tcx: TyCtxt<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        tcx.type_of(self.did).instantiate(tcx, args)
+        tcx.type_of(self.did).instantiate(tcx, args).skip_normalization()
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
@@ -1787,7 +1787,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // If we have a `Coroutine` that comes from an coroutine-closure,
             // then it may be a by-move or by-ref body.
             let ty::Coroutine(_, identity_args) =
-                *self.type_of(def_id).instantiate_identity().kind()
+                *self.type_of(def_id).instantiate_identity().skip_normalization().kind()
             else {
                 unreachable!();
             };

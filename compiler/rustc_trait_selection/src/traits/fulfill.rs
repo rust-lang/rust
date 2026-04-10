@@ -523,9 +523,11 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                             return ProcessResult::Changed(PendingPredicateObligations::new());
                         }
                         ty::ConstKind::Value(cv) => cv.ty,
-                        ty::ConstKind::Unevaluated(uv) => {
-                            infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args)
-                        }
+                        ty::ConstKind::Unevaluated(uv) => infcx
+                            .tcx
+                            .type_of(uv.def)
+                            .instantiate(infcx.tcx, uv.args)
+                            .skip_normalization(),
                         // FIXME(generic_const_exprs): we should construct an alias like
                         // `<lhs_ty as Add<rhs_ty>>::Output` when this is an `Expr` representing
                         // `lhs + rhs`.

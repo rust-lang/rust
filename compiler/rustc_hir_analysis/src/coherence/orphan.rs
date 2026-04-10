@@ -22,7 +22,7 @@ pub(crate) fn orphan_check_impl(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate_identity();
+    let trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate_identity().skip_normalization();
     trait_ref.error_reported()?;
 
     match orphan_check(tcx, impl_def_id, OrphanCheckMode::Proper) {
@@ -301,7 +301,7 @@ fn orphan_check<'tcx>(
     let infcx = tcx.infer_ctxt().build(TypingMode::Coherence);
     let cause = traits::ObligationCause::dummy();
     let args = infcx.fresh_args_for_item(cause.span, impl_def_id.to_def_id());
-    let trait_ref = trait_ref.instantiate(tcx, args);
+    let trait_ref = trait_ref.instantiate(tcx, args).skip_normalization();
 
     let lazily_normalize_ty = |user_ty: Ty<'tcx>| {
         let ty::Alias(..) = user_ty.kind() else { return Ok(user_ty) };

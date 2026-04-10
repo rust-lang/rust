@@ -418,7 +418,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
         // Get the parent fn's signature with liberated late-bound regions,
         // so we have `ReLateParam` instead of `ReBound`.
-        let parent_fn_sig = tcx.fn_sig(parent_def_id).instantiate_identity();
+        let parent_fn_sig = tcx.fn_sig(parent_def_id).instantiate_identity().skip_normalization();
         let liberated_sig = tcx.liberate_late_bound_regions(parent_def_id, parent_fn_sig);
         let parent_param_ty = *liberated_sig.inputs().get(param_index)?;
 
@@ -1023,10 +1023,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             return None;
         };
 
-        let found = tcx
-            .any_free_region_meets(&tcx.type_of(region_parent).instantiate_identity(), |r| {
-                r.kind() == ty::ReEarlyParam(region)
-            });
+        let found = tcx.any_free_region_meets(
+            &tcx.type_of(region_parent).instantiate_identity().skip_normalization(),
+            |r| r.kind() == ty::ReEarlyParam(region),
+        );
 
         Some(RegionName {
             name: self.synthesize_region_name(),
@@ -1056,6 +1056,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             .tcx
             .predicates_of(self.body.source.def_id())
             .instantiate_identity(self.infcx.tcx)
+            .skip_normalization()
             .predicates;
 
         if let Some(upvar_index) = self

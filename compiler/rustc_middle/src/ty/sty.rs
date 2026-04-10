@@ -156,7 +156,9 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
                 if tcx.is_async_drop_in_place_coroutine(def_id) {
                     layout.field_tys[*field].ty
                 } else {
-                    ty::EarlyBinder::bind(layout.field_tys[*field].ty).instantiate(tcx, self.args)
+                    ty::EarlyBinder::bind(layout.field_tys[*field].ty)
+                        .instantiate(tcx, self.args)
+                        .skip_normalization()
                 }
             })
         })
@@ -872,7 +874,7 @@ impl<'tcx> Ty<'tcx> {
                     ty_param.into()
                 } else {
                     assert!(has_default);
-                    tcx.type_of(param.def_id).instantiate(tcx, args).into()
+                    tcx.type_of(param.def_id).instantiate(tcx, args).skip_normalization().into()
                 }
             }
         });
@@ -1756,7 +1758,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Dynamic(_, _) => {
                 let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, DUMMY_SP);
-                Ok(tcx.type_of(dyn_metadata).instantiate(tcx, &[tail.into()]))
+                Ok(tcx.type_of(dyn_metadata).instantiate(tcx, &[tail.into()]).skip_normalization())
             }
 
             // We don't know the metadata of `self`, but it must be equal to the
@@ -1947,9 +1949,9 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Tuple(tys) => tys.last().is_none_or(|ty| ty.has_trivial_sizedness(tcx, sizedness)),
 
-            ty::Adt(def, args) => def
-                .sizedness_constraint(tcx, sizedness)
-                .is_none_or(|ty| ty.instantiate(tcx, args).has_trivial_sizedness(tcx, sizedness)),
+            ty::Adt(def, args) => def.sizedness_constraint(tcx, sizedness).is_none_or(|ty| {
+                ty.instantiate(tcx, args).skip_normalization().has_trivial_sizedness(tcx, sizedness)
+            }),
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
 

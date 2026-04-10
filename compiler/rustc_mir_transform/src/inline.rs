@@ -572,7 +572,7 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
                 return None;
             }
 
-            let fn_sig = tcx.fn_sig(def_id).instantiate(tcx, args);
+            let fn_sig = tcx.fn_sig(def_id).instantiate(tcx, args).skip_normalization();
 
             // Additionally, check that the body that we're inlining actually agrees
             // with the ABI of the trait that the item comes from.

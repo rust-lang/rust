@@ -455,7 +455,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> {
     use std::fmt::Write;
 
-    let trait_ref = tcx.impl_opt_trait_ref(impl_def_id)?.instantiate_identity();
+    let trait_ref =
+        tcx.impl_opt_trait_ref(impl_def_id)?.instantiate_identity().skip_normalization();
     let mut w = "impl".to_owned();
 
     #[derive(Debug, Default)]
@@ -485,7 +486,7 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
         " {}{} for {}",
         tcx.impl_polarity(impl_def_id).as_str(),
         trait_ref.print_only_trait_path(),
-        tcx.type_of(impl_def_id).instantiate_identity()
+        tcx.type_of(impl_def_id).instantiate_identity().skip_normalization()
     )
     .unwrap();
 

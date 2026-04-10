@@ -35,7 +35,7 @@ pub(super) fn fulfillment_error_for_no_solution<'tcx>(
         ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, expected_ty)) => {
             let ct_ty = match ct.kind() {
                 ty::ConstKind::Unevaluated(uv) => {
-                    infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args)
+                    infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args).skip_normalization()
                 }
                 ty::ConstKind::Param(param_ct) => {
                     param_ct.find_const_ty_from_env(obligation.param_env)
@@ -584,8 +584,12 @@ fn derive_cause<'tcx>(
             source: CandidateSource::Impl(impl_def_id),
             result: _,
         } => {
-            if let Some((_, span)) =
-                tcx.predicates_of(impl_def_id).instantiate_identity(tcx).iter().nth(idx)
+            if let Some((_, span)) = tcx
+                .predicates_of(impl_def_id)
+                .instantiate_identity(tcx)
+                .skip_normalization()
+                .iter()
+                .nth(idx)
             {
                 cause = cause.derived_cause(parent_trait_pred, |derived| {
                     ObligationCauseCode::ImplDerived(Box::new(traits::ImplDerivedCause {
@@ -623,18 +627,23 @@ fn derive_host_cause<'tcx>(
             if let Some((_, span)) = tcx
                 .predicates_of(impl_def_id)
                 .instantiate_identity(tcx)
+                .skip_normalization()
                 .into_iter()
-                .chain(tcx.const_conditions(impl_def_id).instantiate_identity(tcx).into_iter().map(
-                    |(trait_ref, span)| {
-                        (
-                            trait_ref.to_host_effect_clause(
-                                tcx,
-                                parent_host_pred.skip_binder().constness,
-                            ),
-                            span,
-                        )
-                    },
-                ))
+                .chain(
+                    tcx.const_conditions(impl_def_id)
+                        .instantiate_identity(tcx)
+                        .skip_normalization()
+                        .into_iter()
+                        .map(|(trait_ref, span)| {
+                            (
+                                trait_ref.to_host_effect_clause(
+                                    tcx,
+                                    parent_host_pred.skip_binder().constness,
+                                ),
+                                span,
+                            )
+                        }),
+                )
                 .nth(idx)
             {
                 cause =

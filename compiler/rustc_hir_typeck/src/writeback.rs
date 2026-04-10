@@ -623,6 +623,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 hidden_ty
                     .ty
                     .instantiate_identity()
+                    .skip_normalization()
                     .visit_with(&mut HasRecursiveOpaque {
                         def_id,
                         seen: Default::default(),
@@ -1060,7 +1061,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasRecursiveOpaque<'_, 'tcx> {
             if self.seen.insert(def_id)
                 && let Some(hidden_ty) = self.opaques.get(&def_id)
             {
-                hidden_ty.ty.instantiate(self.tcx, args).visit_with(self)?;
+                hidden_ty.ty.instantiate(self.tcx, args).skip_normalization().visit_with(self)?;
             }
         }
 

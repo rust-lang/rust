@@ -382,7 +382,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         if let hir::ImplItemImplKind::Trait { .. } = impl_item.impl_kind
             && let impl_of = self.tcx.local_parent(impl_item.owner_id.def_id)
             && self.tcx.is_automatically_derived(impl_of.to_def_id())
-            && let trait_ref = self.tcx.impl_trait_ref(impl_of).instantiate_identity()
+            && let trait_ref =
+                self.tcx.impl_trait_ref(impl_of).instantiate_identity().skip_normalization()
             && find_attr!(self.tcx, trait_ref.def_id, RustcTrivialFieldReads)
         {
             if let ty::Adt(adt_def, _) = trait_ref.self_ty().kind()
@@ -448,7 +449,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     //// This is done to handle the case where, for example, the static
                     //// method of a private type is used, but the type itself is never
                     //// called directly.
-                    let self_ty = self.tcx.type_of(item).instantiate_identity();
+                    let self_ty =
+                        self.tcx.type_of(item).instantiate_identity().skip_normalization();
                     match *self_ty.kind() {
                         ty::Adt(def, _) => self.check_def_id(def.did()),
                         ty::Foreign(did) => self.check_def_id(did),
@@ -507,7 +509,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         }
 
         // The impl or impl item is used if the corresponding trait or trait item is used and the ty is used.
-        if let ty::Adt(adt, _) = self.tcx.type_of(impl_block_id).instantiate_identity().kind()
+        if let ty::Adt(adt, _) =
+            self.tcx.type_of(impl_block_id).instantiate_identity().skip_normalization().kind()
             && let Some(adt_def_id) = adt.did().as_local()
             && !self.live_symbols.contains(&adt_def_id)
         {
@@ -927,7 +930,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         if self.live_symbols.contains(&field.did.expect_local()) {
             return ShouldWarnAboutField::No;
         }
-        let field_type = self.tcx.type_of(field.did).instantiate_identity();
+        let field_type = self.tcx.type_of(field.did).instantiate_identity().skip_normalization();
         if field_type.is_phantom_data() {
             return ShouldWarnAboutField::No;
         }
@@ -1076,8 +1079,11 @@ impl<'tcx> DeadVisitor<'tcx> {
                             tcx.def_kind(dead_item.def_id)
                             && let impl_did = tcx.local_parent(dead_item.def_id)
                             && let DefKind::Impl { of_trait: false } = tcx.def_kind(impl_did)
-                            && let ty::Adt(maybe_enum, _) =
-                                tcx.type_of(impl_did).instantiate_identity().kind()
+                            && let ty::Adt(maybe_enum, _) = tcx
+                                .type_of(impl_did)
+                                .instantiate_identity()
+                                .skip_normalization()
+                                .kind()
                             && maybe_enum.is_enum()
                             && let Some(variant) =
                                 maybe_enum.variants().iter().find(|i| i.name == dead_item.name)

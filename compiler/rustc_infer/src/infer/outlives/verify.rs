@@ -1,7 +1,7 @@
 use std::assert_matches;
 
 use rustc_middle::ty::outlives::{Component, compute_alias_components_recursive};
-use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt, Unnormalized};
 use smallvec::smallvec;
 use tracing::{debug, instrument, trace};
 
@@ -285,6 +285,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         trace!("{:#?}", bounds.skip_binder());
         bounds
             .iter_instantiated(tcx, alias_ty.args)
+            .map(Unnormalized::skip_normalization)
             .filter_map(|p| p.as_type_outlives_clause())
             .filter_map(|p| p.no_bound_vars())
             .map(|OutlivesPredicate(_, r)| r)

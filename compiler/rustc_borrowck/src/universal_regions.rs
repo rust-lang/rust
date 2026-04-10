@@ -585,7 +585,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         match tcx.hir_body_owner_kind(self.mir_def) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
-                let defining_ty = tcx.type_of(self.mir_def).instantiate_identity();
+                let defining_ty =
+                    tcx.type_of(self.mir_def).instantiate_identity().skip_normalization();
 
                 debug!("defining_ty (pre-replacement): {:?}", defining_ty);
 
@@ -780,7 +781,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
 
             DefiningTy::FnDef(def_id, _) => {
-                let sig = tcx.fn_sig(def_id).instantiate_identity();
+                let sig = tcx.fn_sig(def_id).instantiate_identity().skip_normalization();
                 let sig = indices.fold_to_region_vids(tcx, sig);
                 let inputs_and_output = sig.inputs_and_output();
 
@@ -804,7 +805,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                         .infcx
                         .tcx
                         .type_of(va_list_did)
-                        .instantiate(self.infcx.tcx, &[region.into()]);
+                        .instantiate(self.infcx.tcx, &[region.into()])
+                        .skip_normalization();
 
                     // The signature needs to follow the order [input_tys, va_list_ty, output_ty]
                     return inputs_and_output.map_bound(|tys| {
@@ -822,7 +824,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 // For a constant body, there are no inputs, and one
                 // "output" (the type of the constant).
                 assert_eq!(self.mir_def.to_def_id(), def_id);
-                let ty = tcx.type_of(self.mir_def).instantiate_identity();
+                let ty = tcx.type_of(self.mir_def).instantiate_identity().skip_normalization();
 
                 let ty = indices.fold_to_region_vids(tcx, ty);
                 ty::Binder::dummy(tcx.mk_type_list(&[ty]))
@@ -835,7 +837,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
 
             DefiningTy::GlobalAsm(def_id) => {
-                ty::Binder::dummy(tcx.mk_type_list(&[tcx.type_of(def_id).instantiate_identity()]))
+                ty::Binder::dummy(tcx.mk_type_list(&[
+                    tcx.type_of(def_id).instantiate_identity().skip_normalization(),
+                ]))
             }
         };
 
@@ -974,7 +978,7 @@ fn for_each_late_bound_region_in_item<'tcx>(
         // only deduced that a param in the closure signature is late-bound from a constraint
         // that we discover during typeck.
         DefKind::Closure => {
-            let ty = tcx.type_of(mir_def_id).instantiate_identity();
+            let ty = tcx.type_of(mir_def_id).instantiate_identity().skip_normalization();
             match *ty.kind() {
                 ty::Closure(_, args) => args.as_closure().sig().bound_vars(),
                 ty::CoroutineClosure(_, args) => {

@@ -627,12 +627,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             hir::ExprKind::Call(callee, _) => {
                 let ty = typeck_result.node_type_opt(callee.hir_id)?;
                 let ty::FnDef(fn_def_id, args) = *ty.kind() else { return None };
-                tcx.predicates_of(fn_def_id).instantiate(tcx, args)
+                tcx.predicates_of(fn_def_id).instantiate(tcx, args).skip_normalization()
             }
             hir::ExprKind::MethodCall(..) => {
                 let (_, method) = typeck_result.type_dependent_def(parent.hir_id)?;
                 let args = typeck_result.node_args(parent.hir_id);
-                tcx.predicates_of(method).instantiate(tcx, args)
+                tcx.predicates_of(method).instantiate(tcx, args).skip_normalization()
             }
             _ => return None,
         };

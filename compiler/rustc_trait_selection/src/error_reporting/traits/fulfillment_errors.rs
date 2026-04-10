@@ -2024,7 +2024,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 .filter_map(|(header, def_id)| {
                     (header.polarity == ty::ImplPolarity::Positive
                         || self.tcx.is_automatically_derived(def_id))
-                    .then(|| (header.trait_ref.instantiate_identity(), def_id))
+                    .then(|| (header.trait_ref.instantiate_identity().skip_normalization(), def_id))
                 })
                 .filter(|(trait_ref, _)| {
                     let self_ty = trait_ref.self_ty();
@@ -2080,13 +2080,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let impl_trait_ref = ocx.normalize(
                         &ObligationCause::dummy(),
                         param_env,
-                        ty::EarlyBinder::bind(single.trait_ref).instantiate(self.tcx, impl_args),
+                        ty::EarlyBinder::bind(single.trait_ref)
+                            .instantiate(self.tcx, impl_args)
+                            .skip_normalization(),
                     );
 
                     ocx.register_obligations(
                         self.tcx
                             .predicates_of(single.impl_def_id)
                             .instantiate(self.tcx, impl_args)
+                            .skip_normalization()
                             .into_iter()
                             .map(|(clause, _)| {
                                 Obligation::new(
@@ -3701,7 +3704,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self.dcx().struct_span_err(span, "unconstrained generic constant");
                     let const_span = self.tcx.def_span(uv.def);
 
-                    let const_ty = self.tcx.type_of(uv.def).instantiate(self.tcx, uv.args);
+                    let const_ty = self
+                        .tcx
+                        .type_of(uv.def)
+                        .instantiate(self.tcx, uv.args)
+                        .skip_normalization();
                     let cast = if const_ty != self.tcx.types.usize { " as usize" } else { "" };
                     let msg = "try adding a `where` bound";
                     match self.tcx.sess.source_map().span_to_snippet(const_span) {

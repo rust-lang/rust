@@ -37,7 +37,8 @@ fn alloc_caller_location<'tcx>(
     let loc_ty = ecx
         .tcx
         .type_of(ecx.tcx.require_lang_item(LangItem::PanicLocation, ecx.tcx.span))
-        .instantiate(*ecx.tcx, ecx.tcx.mk_args(&[ecx.tcx.lifetimes.re_erased.into()]));
+        .instantiate(*ecx.tcx, ecx.tcx.mk_args(&[ecx.tcx.lifetimes.re_erased.into()]))
+        .skip_normalization();
     let loc_layout = ecx.layout_of(loc_ty).unwrap();
     let location = ecx.allocate(loc_layout, MemoryKind::CallerLocation).unwrap();
 

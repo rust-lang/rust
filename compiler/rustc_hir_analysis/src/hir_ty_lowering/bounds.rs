@@ -543,7 +543,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                     hir::Term::Const(ct) => {
                         let ty = projection_term.map_bound(|alias| {
-                            tcx.type_of(alias.def_id).instantiate(tcx, alias.args)
+                            tcx.type_of(alias.def_id)
+                                .instantiate(tcx, alias.args)
+                                .skip_normalization()
                         });
                         let ty = check_assoc_const_binding_type(
                             self,
@@ -851,7 +853,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // `rustc_middle::ty::predicate::Clause::instantiate_supertrait`
         // and it's no coincidence why.
         let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
-        Ok(ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args))
+        Ok(ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args).skip_normalization())
     }
 }
 

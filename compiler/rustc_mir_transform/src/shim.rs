@@ -141,7 +141,8 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
                         .unwrap()
                 };
 
-                let mut body = EarlyBinder::bind(body.clone()).instantiate(tcx, args);
+                let mut body =
+                    EarlyBinder::bind(body.clone()).instantiate(tcx, args).skip_normalization();
                 debug!("make_shim({:?}) = {:?}", instance, body);
 
                 pm::run_passes(
@@ -339,7 +340,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     } else {
         GenericArgs::identity_for_item(tcx, def_id)
     };
-    let sig = tcx.fn_sig(def_id).instantiate(tcx, args);
+    let sig = tcx.fn_sig(def_id).instantiate(tcx, args).skip_normalization();
     let sig = tcx.instantiate_bound_regions_with_erased(sig);
     let span = tcx.def_span(def_id);
 
@@ -570,7 +571,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         // we must instantiate the self_ty because it's
         // otherwise going to be TySelf and we can't index
         // or access fields of a Place of type TySelf.
-        let sig = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]);
+        let sig = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).skip_normalization();
         let sig = tcx.instantiate_bound_regions_with_erased(sig);
         let span = tcx.def_span(def_id);
 
@@ -824,9 +825,9 @@ fn build_call_shim<'tcx>(
 
     assert_eq!(sig_args.is_some(), !instance.has_polymorphic_mir_body());
     let mut sig = if let Some(sig_args) = sig_args {
-        sig.instantiate(tcx, &sig_args)
+        sig.instantiate(tcx, &sig_args).skip_normalization()
     } else {
-        sig.instantiate_identity()
+        sig.instantiate_identity().skip_normalization()
     };
 
     if let CallKind::Indirect(fnty) = call_kind {
@@ -912,7 +913,7 @@ fn build_call_shim<'tcx>(
 
         // `FnDef` call with optional receiver.
         CallKind::Direct(def_id) => {
-            let ty = tcx.type_of(def_id).instantiate_identity();
+            let ty = tcx.type_of(def_id).instantiate_identity().skip_normalization();
             (
                 Operand::Constant(Box::new(ConstOperand {
                     span,
@@ -1036,6 +1037,7 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     let sig = tcx
         .fn_sig(ctor_id)
         .instantiate_identity()
+        .skip_normalization()
         .no_bound_vars()
         .expect("LBR in ADT constructor signature");
     let sig = tcx.normalize_erasing_regions(typing_env, sig);
@@ -1111,7 +1113,9 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
 fn build_fn_ptr_addr_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> Body<'tcx> {
     assert_matches!(self_ty.kind(), ty::FnPtr(..), "expected fn ptr, found {self_ty}");
     let span = tcx.def_span(def_id);
-    let Some(sig) = tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).no_bound_vars() else {
+    let Some(sig) =
+        tcx.fn_sig(def_id).instantiate(tcx, &[self_ty.into()]).skip_normalization().no_bound_vars()
+    else {
         span_bug!(span, "FnPtr::addr with bound vars for `{self_ty}`");
     };
     let locals = local_decls_for_sig(&sig, span);
@@ -1143,7 +1147,8 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
     coroutine_closure_def_id: DefId,
     receiver_by_ref: bool,
 ) -> Body<'tcx> {
-    let mut self_ty = tcx.type_of(coroutine_closure_def_id).instantiate_identity();
+    let mut self_ty =
+        tcx.type_of(coroutine_closure_def_id).instantiate_identity().skip_normalization();
     let mut self_local: Place<'tcx> = Local::from_usize(1).into();
     let ty::CoroutineClosure(_, args) = *self_ty.kind() else {
         bug!();

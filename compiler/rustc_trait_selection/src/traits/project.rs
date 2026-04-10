@@ -13,7 +13,8 @@ use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedData};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, FieldInfo, Term, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Upcast,
+    self, FieldInfo, Term, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Unnormalized,
+    Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::sym;
@@ -513,7 +514,8 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
     );
 
     // Register the obligations arising from the impl and from the associated type itself.
-    let predicates = tcx.predicates_of(alias_term.def_id).instantiate(tcx, args);
+    let predicates =
+        tcx.predicates_of(alias_term.def_id).instantiate(tcx, args).skip_normalization();
     for (predicate, span) in predicates {
         let predicate = normalize_with_depth_to(
             selcx,
@@ -544,9 +546,9 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
     }
 
     let term: Term<'tcx> = if alias_term.kind(tcx).is_type() {
-        tcx.type_of(alias_term.def_id).instantiate(tcx, args).into()
+        tcx.type_of(alias_term.def_id).instantiate(tcx, args).skip_normalization().into()
     } else {
-        tcx.const_of_item(alias_term.def_id).instantiate(tcx, args).into()
+        tcx.const_of_item(alias_term.def_id).instantiate(tcx, args).skip_normalization().into()
     };
 
     let mut term = selcx.infcx.resolve_vars_if_possible(term);
@@ -572,7 +574,7 @@ pub fn compute_inherent_assoc_term_args<'a, 'b, 'tcx>(
     let impl_def_id = tcx.parent(alias_term.def_id);
     let impl_args = selcx.infcx.fresh_args_for_item(cause.span, impl_def_id);
 
-    let mut impl_ty = tcx.type_of(impl_def_id).instantiate(tcx, impl_args);
+    let mut impl_ty = tcx.type_of(impl_def_id).instantiate(tcx, impl_args).skip_normalization();
     if !selcx.infcx.next_trait_solver() {
         impl_ty = normalize_with_depth_to(
             selcx,
@@ -2061,7 +2063,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         Progress { term: err, obligations: nested }
     } else {
         assoc_term_own_obligations(selcx, obligation, &mut nested);
-        Progress { term: term.instantiate(tcx, args), obligations: nested }
+        Progress { term: term.instantiate(tcx, args).skip_normalization(), obligations: nested }
     };
     Ok(Projected::Progress(progress))
 }
@@ -2080,7 +2082,8 @@ fn assoc_term_own_obligations<'cx, 'tcx>(
     let tcx = selcx.tcx();
     let predicates = tcx
         .predicates_of(obligation.predicate.def_id)
-        .instantiate_own(tcx, obligation.predicate.args);
+        .instantiate_own(tcx, obligation.predicate.args)
+        .map(Unnormalized::skip_normalization);
     for (predicate, span) in predicates {
         let normalized = normalize_with_depth_to(
             selcx,

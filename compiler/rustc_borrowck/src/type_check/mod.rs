@@ -1759,7 +1759,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
-                let unnormalized_ty = tcx.type_of(static_def_id).instantiate_identity();
+                let unnormalized_ty =
+                    tcx.type_of(static_def_id).instantiate_identity().skip_normalization();
                 let normalized_ty = self.normalize(unnormalized_ty, locations);
                 let literal_ty = constant.const_.ty().builtin_deref(true).unwrap();
 
@@ -1787,7 +1788,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
 
             if let ty::FnDef(def_id, args) = *constant.const_.ty().kind() {
-                let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
+                let instantiated_predicates =
+                    tcx.predicates_of(def_id).instantiate(tcx, args).skip_normalization();
                 self.normalize_and_prove_instantiated_predicates(
                     def_id,
                     instantiated_predicates,
@@ -2435,7 +2437,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         let (def_id, instantiated_predicates) = match *aggregate_kind {
             AggregateKind::Adt(adt_did, _, args, _, _) => {
-                (adt_did, tcx.predicates_of(adt_did).instantiate(tcx, args))
+                (adt_did, tcx.predicates_of(adt_did).instantiate(tcx, args).skip_normalization())
             }
 
             // For closures, we have some **extra requirements** we
@@ -2521,7 +2523,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             );
         }
 
-        tcx.predicates_of(def_id).instantiate(tcx, args)
+        tcx.predicates_of(def_id).instantiate(tcx, args).skip_normalization()
     }
 }
 

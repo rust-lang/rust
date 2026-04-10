@@ -9,6 +9,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::mir::{self, ConstraintCategory, Location};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    Unnormalized,
 };
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::infer::region::unexpected_hidden_region_diagnostic;
@@ -282,6 +283,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CheckExplicitRegionMentionAndCollectGen
                         .tcx
                         .explicit_item_bounds(def_id)
                         .iter_instantiated_copied(self.tcx, opaque.args)
+                        .map(Unnormalized::skip_normalization)
                     {
                         bound.visit_with(self)?;
                     }

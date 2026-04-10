@@ -6,7 +6,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
-use rustc_type_ir::{self as ty, Interner, TypingMode, elaborate};
+use rustc_type_ir::{self as ty, Interner, TypingMode, Unnormalized, elaborate};
 use tracing::instrument;
 
 use super::assembly::{Candidate, structural_traits};
@@ -92,6 +92,7 @@ where
             cx,
             cx.explicit_implied_const_bounds(alias_ty.kind.def_id())
                 .iter_instantiated(cx, alias_ty.args)
+                .map(Unnormalized::skip_normalization)
                 .map(|trait_ref| trait_ref.to_host_effect_clause(cx, goal.predicate.constness)),
         ) {
             candidates.extend(Self::probe_and_match_goal_against_assumption(
@@ -105,6 +106,7 @@ where
                         GoalSource::AliasBoundConstCondition,
                         cx.const_conditions(alias_ty.kind.def_id())
                             .iter_instantiated(cx, alias_ty.args)
+                            .map(Unnormalized::skip_normalization)
                             .map(|trait_ref| {
                                 goal.with(
                                     cx,
@@ -155,12 +157,13 @@ where
         ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id.into());
             ecx.record_impl_args(impl_args);
-            let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args);
+            let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args).skip_normalization();
 
             ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
             let where_clause_bounds = cx
                 .predicates_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
+                .map(Unnormalized::skip_normalization)
                 .map(|pred| goal.with(cx, pred));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
 
@@ -168,6 +171,7 @@ where
             let const_conditions = cx
                 .const_conditions(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
+                .map(Unnormalized::skip_normalization)
                 .map(|bound_trait_ref| {
                     goal.with(
                         cx,
@@ -206,11 +210,13 @@ where
             let where_clause_bounds = cx
                 .predicates_of(goal.predicate.def_id().into())
                 .iter_instantiated(cx, goal.predicate.trait_ref.args)
+                .map(Unnormalized::skip_normalization)
                 .map(|p| goal.with(cx, p));
 
             let const_conditions = cx
                 .const_conditions(goal.predicate.def_id().into())
                 .iter_instantiated(cx, goal.predicate.trait_ref.args)
+                .map(Unnormalized::skip_normalization)
                 .map(|bound_trait_ref| {
                     goal.with(
                         cx,
@@ -292,6 +298,7 @@ where
         let requirements = cx
             .const_conditions(def_id)
             .iter_instantiated(cx, args)
+            .map(Unnormalized::skip_normalization)
             .map(|trait_ref| {
                 (
                     GoalSource::ImplWhereBound,

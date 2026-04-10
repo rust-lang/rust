@@ -60,7 +60,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         let va_list_did = tcx.require_lang_item(LangItem::VaList, span);
         let region = fcx.next_region_var(RegionVariableOrigin::Misc(span));
 
-        tcx.type_of(va_list_did).instantiate(tcx, &[region.into()])
+        tcx.type_of(va_list_did).instantiate(tcx, &[region.into()]).skip_normalization()
     });
 
     // Add formal parameters.
@@ -181,14 +181,17 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
     let panic_info_did = tcx.require_lang_item(hir::LangItem::PanicInfo, span);
 
     // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
-    let panic_info_ty = tcx.type_of(panic_info_did).instantiate(
-        tcx,
-        &[ty::GenericArg::from(ty::Region::new_bound(
+    let panic_info_ty = tcx
+        .type_of(panic_info_did)
+        .instantiate(
             tcx,
-            ty::INNERMOST,
-            ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BoundRegionKind::Anon },
-        ))],
-    );
+            &[ty::GenericArg::from(ty::Region::new_bound(
+                tcx,
+                ty::INNERMOST,
+                ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BoundRegionKind::Anon },
+            ))],
+        )
+        .skip_normalization();
     let panic_info_ref_ty = Ty::new_imm_ref(
         tcx,
         ty::Region::new_bound(

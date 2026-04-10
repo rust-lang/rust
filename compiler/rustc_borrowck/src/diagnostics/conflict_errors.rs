@@ -472,8 +472,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     // The move occurred as one of the arguments to a function call. Is that
                     // argument generic? `def_id` can't be a closure here, so using `fn_sig` is fine
                     let arg_param = if self.infcx.tcx.def_kind(def_id).is_fn_like()
-                        && let sig =
-                            self.infcx.tcx.fn_sig(def_id).instantiate_identity().skip_binder()
+                        && let sig = self
+                            .infcx
+                            .tcx
+                            .fn_sig(def_id)
+                            .instantiate_identity()
+                            .skip_normalization()
+                            .skip_binder()
                         && let Some(arg_ty) = sig.inputs().get(pos + offset)
                         && let ty::Param(arg_param) = arg_ty.kind()
                     {
@@ -685,7 +690,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         place_span: Span,
     ) -> Option<ty::Mutability> {
         let tcx = self.infcx.tcx;
-        let sig = tcx.fn_sig(callee_did).instantiate_identity().skip_binder();
+        let sig = tcx.fn_sig(callee_did).instantiate_identity().skip_normalization().skip_binder();
         let clauses = tcx.predicates_of(callee_did);
 
         let generic_args = match call_expr.kind {
@@ -703,7 +708,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         // First, is there at least one method on one of `param`'s trait bounds?
         // This keeps us from suggesting borrowing the argument to `mem::drop`, e.g.
-        if !clauses.instantiate_identity(tcx).predicates.iter().any(|clause| {
+        if !clauses.instantiate_identity(tcx).skip_normalization().predicates.iter().any(|clause| {
             clause.as_trait_clause().is_some_and(|tc| {
                 tc.self_ty().skip_binder().is_param(param.index)
                     && tc.polarity() == ty::PredicatePolarity::Positive
@@ -729,8 +734,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             ));
             let can_subst = |ty: Ty<'tcx>| {
                 // Normalize before comparing to see through type aliases and projections.
-                let old_ty = ty::EarlyBinder::bind(ty).instantiate(tcx, generic_args);
-                let new_ty = ty::EarlyBinder::bind(ty).instantiate(tcx, new_args);
+                let old_ty =
+                    ty::EarlyBinder::bind(ty).instantiate(tcx, generic_args).skip_normalization();
+                let new_ty =
+                    ty::EarlyBinder::bind(ty).instantiate(tcx, new_args).skip_normalization();
                 if let Ok(old_ty) = tcx.try_normalize_erasing_regions(
                     self.infcx.typing_env(self.infcx.param_env),
                     old_ty,
@@ -754,21 +761,23 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             // Test the callee's predicates, substituting in `ref_ty` for the moved argument type.
-            clauses.instantiate(tcx, new_args).predicates.iter().all(|&(mut clause)| {
-                // Normalize before testing to see through type aliases and projections.
-                if let Ok(normalized) = tcx.try_normalize_erasing_regions(
-                    self.infcx.typing_env(self.infcx.param_env),
-                    clause,
-                ) {
-                    clause = normalized;
-                }
-                self.infcx.predicate_must_hold_modulo_regions(&Obligation::new(
-                    tcx,
-                    ObligationCause::dummy(),
-                    self.infcx.param_env,
-                    clause,
-                ))
-            })
+            clauses.instantiate(tcx, new_args).skip_normalization().predicates.iter().all(
+                |&(mut clause)| {
+                    // Normalize before testing to see through type aliases and projections.
+                    if let Ok(normalized) = tcx.try_normalize_erasing_regions(
+                        self.infcx.typing_env(self.infcx.param_env),
+                        clause,
+                    ) {
+                        clause = normalized;
+                    }
+                    self.infcx.predicate_must_hold_modulo_regions(&Obligation::new(
+                        tcx,
+                        ObligationCause::dummy(),
+                        self.infcx.param_env,
+                        clause,
+                    ))
+                },
+            )
         }) {
             let place_desc = if let Some(desc) = self.describe_place(moved_place) {
                 format!("`{desc}`")
@@ -4153,11 +4162,20 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             if is_closure {
                 None
             } else {
-                let ty = self.infcx.tcx.type_of(self.mir_def_id()).instantiate_identity();
+                let ty = self
+                    .infcx
+                    .tcx
+                    .type_of(self.mir_def_id())
+                    .instantiate_identity()
+                    .skip_normalization();
                 match ty.kind() {
                     ty::FnDef(_, _) | ty::FnPtr(..) => self.annotate_fn_sig(
                         self.mir_def_id(),
-                        self.infcx.tcx.fn_sig(self.mir_def_id()).instantiate_identity(),
+                        self.infcx
+                            .tcx
+                            .fn_sig(self.mir_def_id())
+                            .instantiate_identity()
+                            .skip_normalization(),
                     ),
                     _ => None,
                 }

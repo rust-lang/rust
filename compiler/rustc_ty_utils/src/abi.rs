@@ -51,8 +51,9 @@ fn fn_sig_for_fn_abi<'tcx>(
     let ty = instance.ty(tcx, typing_env);
     match *ty.kind() {
         ty::FnDef(def_id, args) => {
-            let mut sig = tcx
-                .instantiate_bound_regions_with_erased(tcx.fn_sig(def_id).instantiate(tcx, args));
+            let mut sig = tcx.instantiate_bound_regions_with_erased(
+                tcx.fn_sig(def_id).instantiate(tcx, args).skip_normalization(),
+            );
 
             // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
             if let ty::InstanceKind::VTableShim(..) = instance.def {

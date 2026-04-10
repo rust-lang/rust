@@ -6,7 +6,8 @@ use rustc_infer::traits::util::PredicateSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, Upcast, VtblEntry,
+    self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
+    VtblEntry,
 };
 use rustc_span::DUMMY_SP;
 use smallvec::{SmallVec, smallvec};
@@ -123,6 +124,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
             let mut direct_super_traits_iter = tcx
                 .explicit_super_predicates_of(inner_most_trait_ref.def_id)
                 .iter_identity_copied()
+                .map(Unnormalized::skip_normalization)
                 .filter_map(move |(pred, _)| {
                     pred.instantiate_supertrait(tcx, ty::Binder::dummy(inner_most_trait_ref))
                         .as_trait_clause()
@@ -276,7 +278,10 @@ fn vtable_entries<'tcx>(
                     // do not hold for this particular set of type parameters.
                     // Note that this method could then never be called, so we
                     // do not want to try and codegen it, in that case (see #23435).
-                    let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, args);
+                    let predicates = tcx
+                        .predicates_of(def_id)
+                        .instantiate_own(tcx, args)
+                        .map(Unnormalized::skip_normalization);
                     if impossible_predicates(
                         tcx,
                         predicates.map(|(predicate, _)| predicate).collect(),

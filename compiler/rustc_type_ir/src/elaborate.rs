@@ -6,7 +6,7 @@ use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::lang_items::SolverTraitLangItem;
 use crate::outlives::{Component, push_outlives_components};
-use crate::{self as ty, Interner, Upcast as _};
+use crate::{self as ty, Interner, Unnormalized, Upcast as _};
 
 /// "Elaboration" is the process of identifying all the predicates that
 /// are implied by a source predicate. Currently, this basically means
@@ -168,12 +168,14 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                     Filter::All => self.extend_deduped(
                         cx.explicit_implied_predicates_of(data.def_id().into())
                             .iter_identity()
+                            .map(Unnormalized::skip_normalization)
                             .enumerate()
                             .map(map_to_child_clause),
                     ),
                     Filter::OnlySelf => self.extend_deduped(
                         cx.explicit_super_predicates_of(data.def_id())
                             .iter_identity()
+                            .map(Unnormalized::skip_normalization)
                             .enumerate()
                             .map(map_to_child_clause),
                     ),
@@ -181,15 +183,16 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
             }
             // `T: [const] Trait` implies `T: [const] Supertrait`.
             ty::ClauseKind::HostEffect(data) => self.extend_deduped(
-                cx.explicit_implied_const_bounds(data.def_id().into()).iter_identity().map(
-                    |trait_ref| {
+                cx.explicit_implied_const_bounds(data.def_id().into())
+                    .iter_identity()
+                    .map(Unnormalized::skip_normalization)
+                    .map(|trait_ref| {
                         elaboratable.child(
                             trait_ref
                                 .to_host_effect_clause(cx, data.constness)
                                 .instantiate_supertrait(cx, bound_clause.rebind(data.trait_ref)),
                         )
-                    },
-                ),
+                    }),
             ),
             ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty_max, r_min)) => {
                 // We know that `T: 'a` for some type `T`. We can
@@ -324,7 +327,11 @@ pub fn supertrait_def_ids<I: Interner>(
     std::iter::from_fn(move || {
         let trait_def_id = stack.pop()?;
 
-        for (predicate, _) in cx.explicit_super_predicates_of(trait_def_id).iter_identity() {
+        for (predicate, _) in cx
+            .explicit_super_predicates_of(trait_def_id)
+            .iter_identity()
+            .map(Unnormalized::skip_normalization)
+        {
             if let ty::ClauseKind::Trait(data) = predicate.kind().skip_binder()
                 && set.insert(data.def_id())
             {

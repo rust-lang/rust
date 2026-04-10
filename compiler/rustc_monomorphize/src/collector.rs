@@ -1533,8 +1533,11 @@ impl<'v> RootCollector<'_, 'v> {
                         return;
                     }
 
-                    let ty =
-                        self.tcx.type_of(id.owner_id.to_def_id()).instantiate(self.tcx, id_args);
+                    let ty = self
+                        .tcx
+                        .type_of(id.owner_id.to_def_id())
+                        .instantiate(self.tcx, id_args)
+                        .skip_normalization();
                     assert!(!ty.has_non_region_param());
                     visit_drop_use(self.tcx, ty, true, DUMMY_SP, self.output);
                 }
@@ -1598,25 +1601,36 @@ impl<'v> RootCollector<'_, 'v> {
         match self.tcx.def_kind(def_id) {
             DefKind::Closure => {
                 // for 'pub async fn foo(..)' also trying to monomorphize foo::{closure}
-                let is_pub_fn_coroutine =
-                    match *self.tcx.type_of(def_id).instantiate_identity().kind() {
-                        ty::Coroutine(cor_id, _args) => {
-                            let tcx = self.tcx;
-                            let parent_id = tcx.parent(cor_id);
-                            tcx.def_kind(parent_id) == DefKind::Fn
-                                && tcx.asyncness(parent_id).is_async()
-                                && tcx.visibility(parent_id).is_public()
-                        }
-                        ty::Closure(..) | ty::CoroutineClosure(..) => false,
-                        _ => unreachable!(),
-                    };
+                let is_pub_fn_coroutine = match *self
+                    .tcx
+                    .type_of(def_id)
+                    .instantiate_identity()
+                    .skip_normalization()
+                    .kind()
+                {
+                    ty::Coroutine(cor_id, _args) => {
+                        let tcx = self.tcx;
+                        let parent_id = tcx.parent(cor_id);
+                        tcx.def_kind(parent_id) == DefKind::Fn
+                            && tcx.asyncness(parent_id).is_async()
+                            && tcx.visibility(parent_id).is_public()
+                    }
+                    ty::Closure(..) | ty::CoroutineClosure(..) => false,
+                    _ => unreachable!(),
+                };
                 if (self.strategy == MonoItemCollectionStrategy::Eager || is_pub_fn_coroutine)
                     && !self
                         .tcx
                         .generics_of(self.tcx.typeck_root_def_id_local(def_id))
                         .requires_monomorphization(self.tcx)
                 {
-                    let instance = match *self.tcx.type_of(def_id).instantiate_identity().kind() {
+                    let instance = match *self
+                        .tcx
+                        .type_of(def_id)
+                        .instantiate_identity()
+                        .skip_normalization()
+                        .kind()
+                    {
                         ty::Closure(def_id, args)
                         | ty::Coroutine(def_id, args)
                         | ty::CoroutineClosure(def_id, args) => {
@@ -1750,7 +1764,7 @@ fn create_mono_items_for_default_impls<'tcx>(
         }
     };
     let impl_args = GenericArgs::for_item(tcx, item.owner_id.to_def_id(), only_region_params);
-    let trait_ref = impl_.trait_ref.instantiate(tcx, impl_args);
+    let trait_ref = impl_.trait_ref.instantiate(tcx, impl_args).skip_normalization();
 
     // Unlike 'lazy' monomorphization that begins by collecting items transitively
     // called by `main` or other global items, when eagerly monomorphizing impl

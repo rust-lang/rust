@@ -243,7 +243,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     fn instantiate_opt(self, tcx: TyCtxt<'tcx>, args: ty::GenericArgsRef<'tcx>) -> Option<Self> {
         match self {
             Self::ConstIsZero(c) => {
-                let c = ty::EarlyBinder::bind(c).instantiate(tcx, args);
+                let c = ty::EarlyBinder::bind(c).instantiate(tcx, args).skip_normalization();
                 let pred = match c.try_to_target_usize(tcx) {
                     Some(0) => Self::True,
                     Some(1..) => Self::False,
@@ -251,9 +251,12 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                 };
                 Some(pred)
             }
-            Self::GenericType(t) => {
-                Some(ty::EarlyBinder::bind(t).instantiate(tcx, args).inhabited_predicate(tcx))
-            }
+            Self::GenericType(t) => Some(
+                ty::EarlyBinder::bind(t)
+                    .instantiate(tcx, args)
+                    .skip_normalization()
+                    .inhabited_predicate(tcx),
+            ),
             Self::And(&[a, b]) => match a.instantiate_opt(tcx, args) {
                 None => b.instantiate_opt(tcx, args).map(|b| a.and(tcx, b)),
                 Some(InhabitedPredicate::False) => Some(InhabitedPredicate::False),

@@ -70,7 +70,9 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
     body: &'tcx mir::Body<'tcx>,
 ) -> InterpResult<'tcx, R> {
     let tcx = *ecx.tcx;
-    let layout = ecx.layout_of(body.bound_return_ty().instantiate(tcx, cid.instance.args))?;
+    let layout = ecx.layout_of(
+        body.bound_return_ty().instantiate(tcx, cid.instance.args).skip_normalization(),
+    )?;
     let (intern_kind, ret) = setup_for_eval(ecx, cid, layout)?;
 
     trace!(

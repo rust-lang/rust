@@ -625,7 +625,9 @@ pub fn try_evaluate_const<'tcx>(
                         // does not actually make use of them. We handle this case specially and attempt to evaluate anyway.
                         match tcx.thir_abstract_const(uv.def) {
                             Ok(Some(ct)) => {
-                                let ct = tcx.expand_abstract_consts(ct.instantiate(tcx, uv.args));
+                                let ct = tcx.expand_abstract_consts(
+                                    ct.instantiate(tcx, uv.args).skip_normalization(),
+                                );
                                 if let Err(e) = ct.error_reported() {
                                     return Err(EvaluateConstErr::EvaluationFailure(e));
                                 } else if ct.has_non_region_infer() || ct.has_non_region_param() {
@@ -714,7 +716,7 @@ pub fn try_evaluate_const<'tcx>(
                 Ok(Ok(val)) => Ok(ty::Const::new_value(
                     tcx,
                     val,
-                    tcx.type_of(uv.def).instantiate(tcx, uv.args),
+                    tcx.type_of(uv.def).instantiate(tcx, uv.args).skip_normalization(),
                 )),
                 Ok(Err(_)) => {
                     let e = tcx.dcx().delayed_bug(
@@ -819,7 +821,8 @@ fn instantiate_and_check_impossible_predicates<'tcx>(
 ) -> bool {
     debug!("instantiate_and_check_impossible_predicates(key={:?})", key);
 
-    let mut predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
+    let mut predicates =
+        tcx.predicates_of(key.0).instantiate(tcx, key.1).skip_normalization().predicates;
 
     // Specifically check trait fulfillment to avoid an error when trying to resolve
     // associated items.
@@ -895,7 +898,8 @@ fn is_impossible_associated_item(
     let param_env = ty::ParamEnv::empty();
     let fresh_args = infcx.fresh_args_for_item(tcx.def_span(impl_def_id), impl_def_id);
 
-    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, fresh_args);
+    let impl_trait_ref =
+        tcx.impl_trait_ref(impl_def_id).instantiate(tcx, fresh_args).skip_normalization();
 
     let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };
     let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {
@@ -904,7 +908,9 @@ fn is_impossible_associated_item(
                 tcx,
                 ObligationCause::dummy_with_span(*span),
                 param_env,
-                ty::EarlyBinder::bind(*pred).instantiate(tcx, impl_trait_ref.args),
+                ty::EarlyBinder::bind(*pred)
+                    .instantiate(tcx, impl_trait_ref.args)
+                    .skip_normalization(),
             )
         })
     });

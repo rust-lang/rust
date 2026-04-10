@@ -131,7 +131,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                         continue;
                     }
 
-                    let expected = ty.ty.instantiate(tcx, opaque_type_key.args);
+                    let expected =
+                        ty.ty.instantiate(tcx, opaque_type_key.args).skip_normalization();
                     self.demand_eqtype(hidden_type.span, expected, hidden_type.ty);
                 }
 

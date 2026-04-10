@@ -12,7 +12,7 @@ use rustc_middle::bug;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
-    self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _, Upcast as _,
+    self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _, Unnormalized, Upcast as _,
 };
 use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol, kw, sym};
 use tracing::{debug, instrument};
@@ -440,8 +440,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let ty::Dynamic(preds, _) = ty.kind()
                     && let Some(def_id) = preds.principal_def_id()
                 {
-                    for (clause, span) in
-                        self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
+                    for (clause, span) in self
+                        .tcx
+                        .predicates_of(def_id)
+                        .instantiate_identity(self.tcx)
+                        .skip_normalization()
                     {
                         if let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) =
                             clause.kind().skip_binder()
@@ -584,6 +587,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let trait_ref = self.tcx.impl_trait_ref(impl_def_id);
         let trait_args = trait_ref
             .instantiate_identity()
+            .skip_normalization()
             // Replace the explicit self type with `Self` for better suggestion rendering
             .with_replaced_self_ty(self.tcx, Ty::new_param(self.tcx, 0, kw::SelfUpper))
             .args;
@@ -594,6 +598,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             self.tcx
                 .explicit_predicates_of(trait_item_def_id)
                 .instantiate_own(self.tcx, trait_item_args)
+                .map(Unnormalized::skip_normalization)
                 .map(|(pred, _)| {
                     if pred.is_suggestable(self.tcx, false) {
                         Ok(pred.to_string())

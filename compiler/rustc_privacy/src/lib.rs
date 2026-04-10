@@ -197,7 +197,12 @@ where
                 // `my_func` is public, so we need to visit signatures.
                 if let ty::FnDef(..) = ty_kind {
                     // FIXME: this should probably use `args` from `FnDef`
-                    try_visit!(tcx.fn_sig(def_id).instantiate_identity().visit_with(self));
+                    try_visit!(
+                        tcx.fn_sig(def_id)
+                            .instantiate_identity()
+                            .skip_normalization()
+                            .visit_with(self)
+                    );
                 }
                 // Inherent static methods don't have self type in args.
                 // Something like `fn() {my_method}` type of the method
@@ -206,7 +211,12 @@ where
                 if let Some(assoc_item) = tcx.opt_associated_item(def_id)
                     && let Some(impl_def_id) = assoc_item.impl_container(tcx)
                 {
-                    try_visit!(tcx.type_of(impl_def_id).instantiate_identity().visit_with(self));
+                    try_visit!(
+                        tcx.type_of(impl_def_id)
+                            .instantiate_identity()
+                            .skip_normalization()
+                            .visit_with(self)
+                    );
                 }
             }
             ty::Alias(
@@ -373,9 +383,11 @@ trait VisibilityLike: Sized {
         effective_visibilities: &EffectiveVisibilities,
     ) -> Self {
         let mut find = FindMin::<_, SHALLOW> { tcx, effective_visibilities, min: Self::MAX };
-        find.visit(tcx.type_of(def_id).instantiate_identity());
+        find.visit(tcx.type_of(def_id).instantiate_identity().skip_normalization());
         if of_trait {
-            find.visit_trait(tcx.impl_trait_ref(def_id).instantiate_identity());
+            find.visit_trait(
+                tcx.impl_trait_ref(def_id).instantiate_identity().skip_normalization(),
+            );
         }
         find.min
     }
@@ -832,10 +844,12 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
     fn generics(&mut self) -> &mut Self {
         for param in &self.ev.tcx.generics_of(self.item_def_id).own_params {
             if let GenericParamDefKind::Const { .. } = param.kind {
-                self.visit(self.ev.tcx.type_of(param.def_id).instantiate_identity());
+                self.visit(
+                    self.ev.tcx.type_of(param.def_id).instantiate_identity().skip_normalization(),
+                );
             }
             if let Some(default) = param.default_value(self.ev.tcx) {
-                self.visit(default.instantiate_identity());
+                self.visit(default.instantiate_identity().skip_normalization());
             }
         }
         self
@@ -852,12 +866,20 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
     }
 
     fn ty(&mut self) -> &mut Self {
-        self.visit(self.ev.tcx.type_of(self.item_def_id).instantiate_identity());
+        self.visit(
+            self.ev.tcx.type_of(self.item_def_id).instantiate_identity().skip_normalization(),
+        );
         self
     }
 
     fn trait_ref(&mut self) -> &mut Self {
-        self.visit_trait(self.ev.tcx.impl_trait_ref(self.item_def_id).instantiate_identity());
+        self.visit_trait(
+            self.ev
+                .tcx
+                .impl_trait_ref(self.item_def_id)
+                .instantiate_identity()
+                .skip_normalization(),
+        );
         self
     }
 }
@@ -1260,7 +1282,10 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                     .maybe_typeck_results
                     .unwrap_or_else(|| span_bug!(self.span, "`hir::Expr` outside of a body"));
                 if let Some(def_id) = typeck_results.type_dependent_def_id(expr.hir_id) {
-                    if self.visit(self.tcx.type_of(def_id).instantiate_identity()).is_break() {
+                    if self
+                        .visit(self.tcx.type_of(def_id).instantiate_identity().skip_normalization())
+                        .is_break()
+                    {
                         return;
                     }
                 } else {
@@ -1389,10 +1414,12 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         self.in_primary_interface = true;
         for param in &self.tcx.generics_of(self.item_def_id).own_params {
             if let GenericParamDefKind::Const { .. } = param.kind {
-                let _ = self.visit(self.tcx.type_of(param.def_id).instantiate_identity());
+                let _ = self.visit(
+                    self.tcx.type_of(param.def_id).instantiate_identity().skip_normalization(),
+                );
             }
             if let Some(default) = param.default_value(self.tcx) {
-                let _ = self.visit(default.instantiate_identity());
+                let _ = self.visit(default.instantiate_identity().skip_normalization());
             }
         }
         self
@@ -1418,13 +1445,16 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
     fn ty(&mut self) -> &mut Self {
         self.in_primary_interface = true;
-        let _ = self.visit(self.tcx.type_of(self.item_def_id).instantiate_identity());
+        let _ = self
+            .visit(self.tcx.type_of(self.item_def_id).instantiate_identity().skip_normalization());
         self
     }
 
     fn trait_ref(&mut self) -> &mut Self {
         self.in_primary_interface = true;
-        let _ = self.visit_trait(self.tcx.impl_trait_ref(self.item_def_id).instantiate_identity());
+        let _ = self.visit_trait(
+            self.tcx.impl_trait_ref(self.item_def_id).instantiate_identity().skip_normalization(),
+        );
         self
     }
 
@@ -1782,7 +1812,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
 
         if let DefKind::Impl { of_trait: true } = tcx.def_kind(def_id) {
             let trait_ref = tcx.impl_trait_ref(def_id);
-            let trait_ref = trait_ref.instantiate_identity();
+            let trait_ref = trait_ref.instantiate_identity().skip_normalization();
             visitor.span =
                 tcx.hir_expect_item(def_id).expect_impl().of_trait.unwrap().trait_ref.path.span;
             let _ =

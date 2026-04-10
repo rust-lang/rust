@@ -128,7 +128,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let filler_args = rcvr_args
             .extend_to(self.tcx, pick.item.def_id, |def, _| self.tcx.mk_param_from_def(def));
         let illegal_sized_bound = self.predicates_require_illegal_sized_bound(
-            self.tcx.predicates_of(pick.item.def_id).instantiate(self.tcx, filler_args),
+            self.tcx
+                .predicates_of(pick.item.def_id)
+                .instantiate(self.tcx, filler_args)
+                .skip_normalization(),
         );
 
         // Unify the (adjusted) self type with what the method expects.
@@ -461,7 +464,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                             self.cfcx
                                 .tcx
                                 .type_of(param.def_id)
-                                .instantiate(self.cfcx.tcx, preceding_args),
+                                .instantiate(self.cfcx.tcx, preceding_args)
+                                .skip_normalization(),
                         )
                         .into(),
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
@@ -588,11 +592,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // type/early-bound-regions instantiations performed. There can
         // be no late-bound regions appearing here.
         let def_id = pick.item.def_id;
-        let method_predicates = self.tcx.predicates_of(def_id).instantiate(self.tcx, all_args);
+        let method_predicates =
+            self.tcx.predicates_of(def_id).instantiate(self.tcx, all_args).skip_normalization();
 
         debug!("method_predicates after instantiation = {:?}", method_predicates);
 
-        let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, all_args);
+        let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, all_args).skip_normalization();
         debug!("type scheme instantiated, sig={:?}", sig);
 
         let sig = self.instantiate_binder_with_fresh_vars(sig);

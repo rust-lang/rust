@@ -58,7 +58,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return true;
     }
 
-    let sig = tcx.fn_sig(def_id).instantiate_identity();
+    let sig = tcx.fn_sig(def_id).instantiate_identity().skip_normalization();
     for ty in sig.inputs().skip_binder().iter().chain(std::iter::once(&sig.output().skip_binder()))
     {
         // FIXME(f16_f128): in order to avoid crashes building `core`, always inline to skip

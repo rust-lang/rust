@@ -286,7 +286,7 @@ where
             // Resolving async_drop_in_place<T> function for drop_ty
             let drop_fn_def_id = tcx.require_lang_item(LangItem::AsyncDropInPlace, span);
             let trait_args = tcx.mk_args(&[drop_ty.into()]);
-            let sig = tcx.fn_sig(drop_fn_def_id).instantiate(tcx, trait_args);
+            let sig = tcx.fn_sig(drop_fn_def_id).instantiate(tcx, trait_args).skip_normalization();
             let sig = tcx.instantiate_bound_regions_with_erased(sig);
             (sig.output(), drop_fn_def_id, trait_args)
         };

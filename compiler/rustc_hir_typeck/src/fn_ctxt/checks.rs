@@ -1385,7 +1385,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let instantiated = self
                             .tcx
                             .explicit_predicates_of(self.body_id)
-                            .instantiate_identity(self.tcx);
+                            .instantiate_identity(self.tcx)
+                            .skip_normalization();
                         // FIXME(compiler-errors): This could be problematic if something has two
                         // fn-like predicates with different args, but callable types really never
                         // do that, so it's OK.
@@ -1571,8 +1572,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             err.span_note(spans, format!("{} defined here", self.tcx.def_descr(def_id)));
             if let DefKind::Fn | DefKind::AssocFn = self.tcx.def_kind(def_id)
-                && let ty::Param(_) =
-                    self.tcx.fn_sig(def_id).instantiate_identity().skip_binder().output().kind()
+                && let ty::Param(_) = self
+                    .tcx
+                    .fn_sig(def_id)
+                    .instantiate_identity()
+                    .skip_normalization()
+                    .skip_binder()
+                    .output()
+                    .kind()
                 && let parent = self.tcx.hir_get_parent_item(call_expr.hir_id).def_id
                 && let Some((output, body_id)) = match self.tcx.hir_node_by_def_id(parent) {
                     hir::Node::Item(hir::Item {
@@ -3014,7 +3021,8 @@ impl<'a, 'b, 'tcx> ArgsCtxt<'a, 'b, 'tcx> {
                 .fn_ctxt
                 .tcx
                 .fn_sig(assoc.def_id)
-                .instantiate(self.call_ctxt.fn_ctxt.tcx, args);
+                .instantiate(self.call_ctxt.fn_ctxt.tcx, args)
+                .skip_normalization();
 
             self.call_ctxt.fn_ctxt.instantiate_binder_with_fresh_vars(
                 call_name.span,

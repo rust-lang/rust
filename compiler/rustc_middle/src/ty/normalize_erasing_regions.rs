@@ -133,7 +133,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let instantiated = value.instantiate(self, param_args);
+        let instantiated = value.instantiate(self, param_args).skip_normalization();
         self.normalize_erasing_regions(typing_env, instantiated)
     }
 
@@ -151,7 +151,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let instantiated = value.instantiate(self, param_args);
+        let instantiated = value.instantiate(self, param_args).skip_normalization();
         self.try_normalize_erasing_regions(typing_env, instantiated)
     }
 }
