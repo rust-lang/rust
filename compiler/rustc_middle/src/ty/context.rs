@@ -66,6 +66,7 @@ use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, PredefinedOpaques};
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
+use crate::ty::region::{RegionExt, RegionUtilitiesExt};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
     GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, Pattern,
@@ -1777,8 +1778,8 @@ macro_rules! nop_list_lift {
 }
 
 nop_lift! { type_; Ty<'a> => Ty<'tcx> }
-nop_lift! { region; Region<'a> => Region<'tcx> }
 nop_lift! { const_; Const<'a> => Const<'tcx> }
+nop_lift! { region; Region<'a> => Region<'tcx> }
 nop_lift! { pat; Pattern<'a> => Pattern<'tcx> }
 nop_lift! { const_allocation; ConstAllocation<'a> => ConstAllocation<'tcx> }
 nop_lift! { predicate; Predicate<'a> => Predicate<'tcx> }

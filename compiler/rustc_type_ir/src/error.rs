@@ -2,7 +2,7 @@ use derive_where::derive_where;
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::solve::NoSolution;
-use crate::{self as ty, Interner};
+use crate::{self as ty, Interner, Region};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[derive(TypeFoldable_Generic, TypeVisitable_Generic, GenericTypeVisitable)]
@@ -32,8 +32,8 @@ pub enum TypeError<I: Interner> {
     ArraySize(ExpectedFound<I::Const>),
     ArgCount,
 
-    RegionsDoesNotOutlive(I::Region, I::Region),
-    RegionsInsufficientlyPolymorphic(ty::BoundRegion<I>, I::Region),
+    RegionsDoesNotOutlive(Region<I>, Region<I>),
+    RegionsInsufficientlyPolymorphic(ty::BoundRegion<I>, Region<I>),
     RegionsPlaceholderMismatch,
 
     Sorts(ExpectedFound<I::Ty>),

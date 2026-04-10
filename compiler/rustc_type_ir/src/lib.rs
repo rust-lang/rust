@@ -5,7 +5,7 @@
 #![allow(rustc::usage_of_type_ir_inherent)]
 #![allow(rustc::usage_of_type_ir_traits)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
-#![cfg_attr(feature = "nightly", feature(associated_type_defaults, rustc_attrs, negative_impls))]
+#![cfg_attr(feature = "nightly", feature(associated_type_defaults, negative_impls, rustc_attrs))]
 // tidy-alphabetical-end
 
 extern crate self as rustc_type_ir;
@@ -31,6 +31,7 @@ pub mod outlives;
 pub mod relate;
 pub mod search_graph;
 pub mod solve;
+pub mod sty;
 pub mod walk;
 
 // These modules are not `pub` since they are glob-imported.
@@ -78,6 +79,7 @@ pub use predicate_kind::*;
 pub use region_kind::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 use rustc_type_ir_macros::GenericTypeVisitable;
+pub use sty::*;
 pub use ty_info::*;
 pub use ty_kind::*;
 pub use upcast::*;

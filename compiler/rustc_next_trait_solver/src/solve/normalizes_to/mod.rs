@@ -7,7 +7,9 @@ use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
-use rustc_type_ir::{self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Upcast as _};
+use rustc_type_ir::{
+    self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Region, Upcast as _,
+};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;

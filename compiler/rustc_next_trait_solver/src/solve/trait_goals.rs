@@ -8,8 +8,8 @@ use rustc_type_ir::solve::{
     AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, SizedTraitKind,
 };
 use rustc_type_ir::{
-    self as ty, FieldInfo, Interner, Movability, PredicatePolarity, TraitPredicate, TraitRef,
-    TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
+    self as ty, FieldInfo, Interner, Movability, PredicatePolarity, Region, TraitPredicate,
+    TraitRef, TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
 };
 use tracing::{debug, instrument, trace};
 
@@ -939,9 +939,9 @@ where
         &mut self,
         goal: Goal<I, (I::Ty, I::Ty)>,
         a_data: I::BoundExistentialPredicates,
-        a_region: I::Region,
+        a_region: Region<I>,
         b_data: I::BoundExistentialPredicates,
-        b_region: I::Region,
+        b_region: Region<I>,
     ) -> Vec<Candidate<I>> {
         let cx = self.cx();
         let Goal { predicate: (a_ty, _b_ty), .. } = goal;
@@ -987,7 +987,7 @@ where
         &mut self,
         goal: Goal<I, (I::Ty, I::Ty)>,
         b_data: I::BoundExistentialPredicates,
-        b_region: I::Region,
+        b_region: Region<I>,
     ) -> Result<Candidate<I>, NoSolution> {
         let cx = self.cx();
         let Goal { predicate: (a_ty, _), .. } = goal;
@@ -1029,9 +1029,9 @@ where
         goal: Goal<I, (I::Ty, I::Ty)>,
         source: CandidateSource<I>,
         a_data: I::BoundExistentialPredicates,
-        a_region: I::Region,
+        a_region: Region<I>,
         b_data: I::BoundExistentialPredicates,
-        b_region: I::Region,
+        b_region: Region<I>,
         upcast_principal: Option<ty::Binder<I, ty::ExistentialTraitRef<I>>>,
     ) -> Result<Candidate<I>, NoSolution> {
         let param_env = goal.param_env;

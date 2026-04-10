@@ -14,7 +14,8 @@ use rustc_infer::traits::query::{
 };
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
-    self, RePlaceholder, Region, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex,
+    self, RePlaceholder, Region, RegionExt, RegionUtilitiesExt, RegionVid, Ty, TyCtxt,
+    TypeFoldable, UniverseIndex,
 };
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;

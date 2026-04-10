@@ -9,7 +9,8 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{HirId, PathSegment};
 use rustc_middle::ty::{
-    self, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, EarlyBinder, RegionExt, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt,
 };
 use rustc_span::{ErrorGuaranteed, Span, kw};
 
