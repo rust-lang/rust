@@ -3,6 +3,8 @@
 #![crate_type = "lib"]
 
 // Adapted from <https://github.com/rust-lang/rust/issues/73258#issue-637346014>
+// We explicitly match against `call{{.*}}(` because the aarch64-unknown-linux-pauthtest target
+// emits `ptrauth-calls` attribute, which would otherwise make a plain `call` match ambiguous.
 
 #[derive(Clone, Copy)]
 #[repr(u8)]
