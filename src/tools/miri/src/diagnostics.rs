@@ -18,7 +18,7 @@ pub enum TerminationInfo {
         leak_check: bool,
     },
     Abort(String),
-    /// Miri was interrupted by a Ctrl+C from the user
+    /// Miri was interrupted by a Ctrl+C from the user.
     Interrupted,
     UnsupportedInIsolation(String),
     StackedBorrowsUb {
