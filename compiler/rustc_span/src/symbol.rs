@@ -1201,6 +1201,7 @@ symbols! {
         macro_literal_matcher,
         macro_metavar_expr,
         macro_metavar_expr_concat,
+        macro_metavar_expr_dollar_dollar_crate,
         macro_reexport,
         macro_use,
         macro_vis_matcher,
