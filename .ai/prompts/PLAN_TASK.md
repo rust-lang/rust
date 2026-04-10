@@ -111,6 +111,12 @@ provided `TASK_ID`.
 
 When complete, print:
 Planning complete for <task-id>. Run again with another TASK_ID if needed.
+TASK_SUCCESS
 
 Then exit cleanly.
+
+If any failure path is hit (missing TASK_ID, invalid labels, task update failure,
+label validation failure, or any other stop-with-error condition), print:
+TASK_FAILED
+before exiting.
 

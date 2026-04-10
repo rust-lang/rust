@@ -304,3 +304,16 @@ Options:
   continue coding in the same invocation.
 - Always run `bd sync --flush-only` before stopping so Beads state is
   persisted to JSONL.
+
+---
+
+## Exit Tokens (required)
+
+- On successful completion of the invocation (for example: PR created/updated
+  as intended, review-comments cycle completed successfully, or merge-close
+  flow completed), print exactly:
+  `TASK_SUCCESS`
+- On any failure or blocked/abort path (for example: missing `TASK_ID`, invalid
+  labels, command failure, blocked after max iterations, or execution paused
+  and sent back to planning), print exactly:
+  `TASK_FAILED`
