@@ -8,30 +8,6 @@ LL | #[derive(CoercePointee)]
    = help: add `#![feature(derive_coerce_pointee)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0659]: `pointee` is ambiguous
-  --> $DIR/feature-gate-derive-coerce-pointee.rs:5:24
-   |
-LL | struct MyPointer<'a, #[pointee] T: ?Sized> {
-   |                        ^^^^^^^ ambiguous name
-   |
-   = note: ambiguous because of a name conflict with a builtin attribute
-   = note: `pointee` could refer to a built-in attribute
-note: `pointee` could also refer to the derive helper attribute defined here
-  --> $DIR/feature-gate-derive-coerce-pointee.rs:3:10
-   |
-LL | #[derive(CoercePointee)]
-   |          ^^^^^^^^^^^^^
-
-error[E0658]: the `#[pointee]` attribute is an experimental feature
-  --> $DIR/feature-gate-derive-coerce-pointee.rs:5:24
-   |
-LL | struct MyPointer<'a, #[pointee] T: ?Sized> {
-   |                        ^^^^^^^
-   |
-   = note: see issue #123430 <https://github.com/rust-lang/rust/issues/123430> for more information
-   = help: add `#![feature(derive_coerce_pointee)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0658]: use of unstable library feature `derive_coerce_pointee`
   --> $DIR/feature-gate-derive-coerce-pointee.rs:1:5
    |
@@ -42,7 +18,6 @@ LL | use std::marker::CoercePointee;
    = help: add `#![feature(derive_coerce_pointee)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0658, E0659.
-For more information about an error, try `rustc --explain E0658`.
+For more information about this error, try `rustc --explain E0658`.
