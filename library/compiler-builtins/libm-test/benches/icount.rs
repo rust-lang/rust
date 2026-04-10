@@ -395,7 +395,6 @@ main!(
         icount_bench_ftoi_f64_u32_group,
         icount_bench_ftoi_f64_u64_group,
         icount_bench_gef128_group,
-        icount_bench_gef128_group,
         icount_bench_gef16_group,
         icount_bench_gef32_group,
         icount_bench_gef64_group,
