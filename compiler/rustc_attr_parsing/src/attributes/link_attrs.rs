@@ -14,8 +14,9 @@ use crate::attributes::cfg::parse_cfg_entry;
 use crate::session_diagnostics::{
     AsNeededCompatibility, BundleNeedsStatic, EmptyLinkName, ExportSymbolsNeedsStatic,
     ImportNameTypeRaw, ImportNameTypeX86, IncompatibleWasmLink, InvalidLinkModifier,
-    LinkFrameworkApple, LinkOrdinalOutOfRange, LinkRequiresName, MultipleModifiers,
-    NullOnLinkSection, RawDylibNoNul, RawDylibOnlyWindows, WholeArchiveNeedsStatic,
+    InvalidMachoSection, InvalidMachoSectionReason, LinkFrameworkApple, LinkOrdinalOutOfRange,
+    LinkRequiresName, MultipleModifiers, NullOnLinkSection, RawDylibNoNul, RawDylibOnlyWindows,
+    WholeArchiveNeedsStatic,
 };
 
 pub(crate) struct LinkNameParser;
@@ -465,6 +466,29 @@ impl LinkParser {
 
 pub(crate) struct LinkSectionParser;
 
+fn check_link_section_macho(name: Symbol) -> Result<(), InvalidMachoSectionReason> {
+    let mut parts = name.as_str().split(',').map(|s| s.trim());
+
+    // The segment can be empty.
+    let _segment = parts.next();
+
+    // But the section is required.
+    let section = match parts.next() {
+        None | Some("") => return Err(InvalidMachoSectionReason::MissingSection),
+        Some(section) => section,
+    };
+
+    if section.len() > 16 {
+        return Err(InvalidMachoSectionReason::SectionTooLong { section: section.to_string() });
+    }
+
+    // LLVM also checks the other components of the section specifier, but that logic is hard to
+    // keep in sync. We skip it here for now, assuming that if you got that far you'll be able
+    // to interpret the LLVM errors.
+
+    Ok(())
+}
+
 impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
     const PATH: &[Symbol] = &[sym::link_section];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
@@ -495,6 +519,18 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
             // so it may not contain any null characters.
             cx.emit_err(NullOnLinkSection { span: cx.attr_span });
             return None;
+        }
+
+        // We (currently) only validate macho section specifiers.
+        match cx.sess.target.binary_format {
+            BinaryFormat::MachO => match check_link_section_macho(name) {
+                Ok(()) => {}
+                Err(reason) => {
+                    cx.emit_err(InvalidMachoSection { name_span: nv.value_span, reason });
+                    return None;
+                }
+            },
+            BinaryFormat::Coff | BinaryFormat::Elf | BinaryFormat::Wasm | BinaryFormat::Xcoff => {}
         }
 
         Some(LinkSection { name, span: cx.attr_span })
