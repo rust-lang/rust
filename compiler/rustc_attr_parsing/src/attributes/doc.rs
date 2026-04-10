@@ -204,6 +204,8 @@ impl DocParser {
 
                 // FIXME: convert list into a Vec of `AttributeKind` because current code is awful.
                 for attr in list.mixed() {
+                    // Arguments of `attr` are checked via the span, so can be safely ignored
+                    attr.ignore_args();
                     self.attribute.test_attrs.push(attr.span());
                 }
             }

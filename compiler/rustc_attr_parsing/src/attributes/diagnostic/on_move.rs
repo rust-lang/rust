@@ -24,6 +24,7 @@ impl OnMoveParser {
         mode: Mode,
     ) {
         if !cx.features().diagnostic_on_move() {
+            args.ignore_args();
             return;
         }
 
