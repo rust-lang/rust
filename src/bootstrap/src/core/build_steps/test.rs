@@ -2231,7 +2231,8 @@ Please disable assertions with `rust.debug-assertions = false`.
             let target_helpers = builder.test_helpers_out(target);
             targetflags.push(format!("-Lnative={}", target_helpers.display()));
             if target.is_pauthtest() {
-                // Embed rpath to the shared object
+                // For the pauthtest target, embed an rpath to the directory containing the helper
+                // dynamic library.
                 targetflags.push(format!("-Clink-arg=-Wl,-rpath,{}", target_helpers.display()));
             }
         }
