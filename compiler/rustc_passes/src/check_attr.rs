@@ -339,6 +339,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcMacroTransparency(_)
                     | AttributeKind::RustcMain
                     | AttributeKind::RustcMir(_)
+                    | AttributeKind::RustcMustMatchExhaustively(..)
                     | AttributeKind::RustcNeverReturnsNullPtr
                     | AttributeKind::RustcNeverTypeOptions {..}
                     | AttributeKind::RustcNoImplicitAutorefs

@@ -105,7 +105,8 @@ pub use self::sty::{
     AliasTy, AliasTyKind, Article, Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy,
     BoundTyKind, BoundVariableKind, CanonicalPolyFnSig, CoroutineArgsExt, EarlyBinder, FnSig,
     InlineConstArgs, InlineConstArgsParts, ParamConst, ParamTy, PlaceholderConst,
-    PlaceholderRegion, PlaceholderType, PolyFnSig, TyKind, TypeAndMut, TypingMode, UpvarArgs,
+    PlaceholderRegion, PlaceholderType, PolyFnSig, TyKind, TypeAndMut, TypingMode,
+    TypingModeEqWrapper, UpvarArgs,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -980,11 +981,19 @@ pub struct ParamEnvAnd<'tcx, T> {
 pub struct TypingEnv<'tcx> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
-    pub typing_mode: TypingMode<'tcx>,
+    typing_mode: TypingModeEqWrapper<'tcx>,
     pub param_env: ParamEnv<'tcx>,
 }
 
 impl<'tcx> TypingEnv<'tcx> {
+    pub fn new(param_env: ParamEnv<'tcx>, typing_mode: TypingMode<'tcx>) -> Self {
+        Self { typing_mode: TypingModeEqWrapper(typing_mode), param_env }
+    }
+
+    pub fn typing_mode(&self) -> TypingMode<'tcx> {
+        self.typing_mode.0
+    }
+
     /// Create a typing environment with no where-clauses in scope
     /// where all opaque types and default associated items are revealed.
     ///
@@ -993,7 +1002,7 @@ impl<'tcx> TypingEnv<'tcx> {
     /// use `TypingMode::PostAnalysis`, they may still have where-clauses
     /// in scope.
     pub fn fully_monomorphized() -> TypingEnv<'tcx> {
-        TypingEnv { typing_mode: TypingMode::PostAnalysis, param_env: ParamEnv::empty() }
+        Self::new(ParamEnv::empty(), TypingMode::PostAnalysis)
     }
 
     /// Create a typing environment for use during analysis outside of a body.
@@ -1006,7 +1015,7 @@ impl<'tcx> TypingEnv<'tcx> {
         def_id: impl IntoQueryKey<DefId>,
     ) -> TypingEnv<'tcx> {
         let def_id = def_id.into_query_key();
-        TypingEnv { typing_mode: TypingMode::non_body_analysis(), param_env: tcx.param_env(def_id) }
+        Self::new(tcx.param_env(def_id), TypingMode::non_body_analysis())
     }
 
     pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {
@@ -1018,8 +1027,12 @@ impl<'tcx> TypingEnv<'tcx> {
     /// opaque types in the `param_env`.
     pub fn with_post_analysis_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
         let TypingEnv { typing_mode, param_env } = self;
-        if let TypingMode::PostAnalysis = typing_mode {
-            return self;
+        match typing_mode.0 {
+            TypingMode::Coherence
+            | TypingMode::Analysis { .. }
+            | TypingMode::Borrowck { .. }
+            | TypingMode::PostBorrowckAnalysis { .. } => {}
+            TypingMode::PostAnalysis => return self,
         }
 
         // No need to reveal opaques with the new solver enabled,
@@ -1029,7 +1042,7 @@ impl<'tcx> TypingEnv<'tcx> {
         } else {
             ParamEnv::new(tcx.reveal_opaque_types_in_bounds(param_env.caller_bounds()))
         };
-        TypingEnv { typing_mode: TypingMode::PostAnalysis, param_env }
+        TypingEnv { typing_mode: TypingModeEqWrapper(TypingMode::PostAnalysis), param_env }
     }
 
     /// Combine this typing environment with the given `value` to be used by

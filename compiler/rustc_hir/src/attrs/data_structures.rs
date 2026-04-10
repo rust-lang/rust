@@ -1471,6 +1471,9 @@ pub enum AttributeKind {
         fn_names: ThinVec<Ident>,
     },
 
+    /// Represents `#[rustc_must_match_exhaustively]`
+    RustcMustMatchExhaustively(Span),
+
     /// Represents `#[rustc_never_returns_null_ptr]`
     RustcNeverReturnsNullPtr,
 

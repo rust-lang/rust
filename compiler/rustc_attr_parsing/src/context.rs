@@ -297,6 +297,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcEffectiveVisibilityParser>>,
         Single<WithoutArgs<RustcEiiForeignItemParser>>,
         Single<WithoutArgs<RustcEvaluateWhereClausesParser>>,
+        Single<WithoutArgs<RustcExhaustiveParser>>,
         Single<WithoutArgs<RustcHasIncoherentInherentImplsParser>>,
         Single<WithoutArgs<RustcHiddenTypeOfOpaquesParser>>,
         Single<WithoutArgs<RustcInheritOverflowChecksParser>>,
