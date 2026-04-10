@@ -626,41 +626,41 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
 
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename) => {
-                let mut ident = use_tree.ident();
                 let mut module_path = prefix;
-                let mut source = module_path.pop().unwrap();
+                let source = module_path.pop().unwrap();
 
                 // `true` for `...::{self [as target]}` imports, `false` otherwise.
                 let type_ns_only = nested && source.ident.name == kw::SelfLower;
 
+                // Suggest `use prefix::{self};` for `use prefix::self;`
                 if source.ident.name == kw::SelfLower
-                    && let Some(parent) = module_path.pop()
+                    && let Some(parent) = module_path.last()
+                    && !type_ns_only
+                    && (parent.ident.name != kw::PathRoot
+                        || self.r.path_root_is_crate_root(parent.ident))
                 {
-                    // Suggest `use prefix::{self};` for `use prefix::self;`
-                    if !type_ns_only
-                        && (parent.ident.name != kw::PathRoot
-                            || self.r.path_root_is_crate_root(parent.ident))
-                    {
-                        let span_with_rename = match rename {
-                            Some(rename) => source.ident.span.to(rename.span),
-                            None => source.ident.span,
-                        };
+                    let span_with_rename = match rename {
+                        Some(rename) => source.ident.span.to(rename.span),
+                        None => source.ident.span,
+                    };
 
-                        self.r.report_error(
-                            parent.ident.span.shrink_to_hi().to(source.ident.span),
-                            ResolutionError::SelfImportsOnlyAllowedWithin {
-                                root: parent.ident.name == kw::PathRoot,
-                                span_with_rename,
-                            },
-                        );
-                    }
-
-                    let self_span = source.ident.span;
-                    source = parent;
-                    if rename.is_none() {
-                        ident = Ident::new(source.ident.name, self_span);
-                    }
+                    self.r.report_error(
+                        parent.ident.span.shrink_to_hi().to(source.ident.span),
+                        ResolutionError::SelfImportsOnlyAllowedWithin {
+                            root: parent.ident.name == kw::PathRoot,
+                            span_with_rename,
+                        },
+                    );
                 }
+
+                let ident = if source.ident.name == kw::SelfLower
+                    && rename.is_none()
+                    && let Some(parent) = module_path.last()
+                {
+                    Ident::new(parent.ident.name, source.ident.span)
+                } else {
+                    use_tree.ident()
+                };
 
                 match source.ident.name {
                     kw::DollarCrate => {
@@ -698,7 +698,11 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         }
                     }
                     // Deny `use ::{self};` after edition 2015
-                    kw::PathRoot if !self.r.path_root_is_crate_root(source.ident) => {
+                    kw::SelfLower
+                        if let Some(parent) = module_path.last()
+                            && parent.ident.name == kw::PathRoot
+                            && !self.r.path_root_is_crate_root(parent.ident) =>
+                    {
                         self.r.dcx().span_err(use_tree.span(), "extern prelude cannot be imported");
                         return;
                     }
