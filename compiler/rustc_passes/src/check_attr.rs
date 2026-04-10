@@ -302,7 +302,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcConstStableIndirect
                     | AttributeKind::RustcConversionSuggestion
                     | AttributeKind::RustcDeallocator
-                    | AttributeKind::RustcDefPath(..)
                     | AttributeKind::RustcDelayedBugFromInsideQuery
                     | AttributeKind::RustcDenyExplicitImpl(..)
                     | AttributeKind::RustcDeprecatedSafe2024 {..}
@@ -311,9 +310,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcDocPrimitive(..)
                     | AttributeKind::RustcDummy
                     | AttributeKind::RustcDumpDefParents
+                    | AttributeKind::RustcDumpDefPath(..)
+                    | AttributeKind::RustcDumpHiddenTypeOfOpaques
                     | AttributeKind::RustcDumpInferredOutlives
                     | AttributeKind::RustcDumpItemBounds
+                    | AttributeKind::RustcDumpLayout(..)
                     | AttributeKind::RustcDumpPredicates
+                    | AttributeKind::RustcDumpSymbolName(..)
                     | AttributeKind::RustcDumpUserArgs
                     | AttributeKind::RustcDumpVariances
                     | AttributeKind::RustcDumpVariancesOfOpaques
@@ -323,13 +326,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcEiiForeignItem
                     | AttributeKind::RustcEvaluateWhereClauses
                     | AttributeKind::RustcHasIncoherentInherentImpls
-                    | AttributeKind::RustcHiddenTypeOfOpaques
                     | AttributeKind::RustcIfThisChanged(..)
                     | AttributeKind::RustcInheritOverflowChecks
                     | AttributeKind::RustcInsignificantDtor
                     | AttributeKind::RustcIntrinsic
                     | AttributeKind::RustcIntrinsicConstStableIndirect
-                    | AttributeKind::RustcLayout(..)
                     | AttributeKind::RustcLayoutScalarValidRangeEnd(..)
                     | AttributeKind::RustcLayoutScalarValidRangeStart(..)
                     | AttributeKind::RustcLintOptDenyFieldAccess { .. }
@@ -339,6 +340,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcMacroTransparency(_)
                     | AttributeKind::RustcMain
                     | AttributeKind::RustcMir(_)
+                    | AttributeKind::RustcMustMatchExhaustively(..)
                     | AttributeKind::RustcNeverReturnsNullPtr
                     | AttributeKind::RustcNeverTypeOptions {..}
                     | AttributeKind::RustcNoImplicitAutorefs
@@ -365,7 +367,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcSpecializationTrait(..)
                     | AttributeKind::RustcStdInternalSymbol (..)
                     | AttributeKind::RustcStrictCoherence(..)
-                    | AttributeKind::RustcSymbolName(..)
                     | AttributeKind::RustcTestMarker(..)
                     | AttributeKind::RustcThenThisWouldNeed(..)
                     | AttributeKind::RustcTrivialFieldReads

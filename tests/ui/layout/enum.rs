@@ -5,20 +5,20 @@
 #![feature(never_type)]
 #![crate_type = "lib"]
 
-#[rustc_layout(align)]
-enum UninhabitedVariantAlign { //~ERROR: abi: Align(2 bytes)
+#[rustc_dump_layout(align)]
+enum UninhabitedVariantAlign { //~ERROR: align: Align(2 bytes)
     A([u8; 32]),
     B([u16; 0], !), // make sure alignment in uninhabited fields is respected
 }
 
-#[rustc_layout(size)]
+#[rustc_dump_layout(size)]
 enum UninhabitedVariantSpace { //~ERROR: size: Size(16 bytes)
     A,
     B([u8; 15], !), // make sure there is space being reserved for this field.
 }
 
-#[rustc_layout(abi)]
-enum ScalarPairDifferingSign { //~ERROR: abi: ScalarPair
+#[rustc_dump_layout(backend_repr)]
+enum ScalarPairDifferingSign { //~ERROR: backend_repr: ScalarPair
     A(u8),
     B(i8),
 }
@@ -26,7 +26,7 @@ enum ScalarPairDifferingSign { //~ERROR: abi: ScalarPair
 enum Never {}
 
 // See https://github.com/rust-lang/rust/issues/146984
-#[rustc_layout(size)]
+#[rustc_dump_layout(size)]
 #[repr(u32)]
 enum DefinedLayoutAllUninhabited { //~ERROR: size: Size(4 bytes)
     A(Never),

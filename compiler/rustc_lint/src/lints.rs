@@ -1162,6 +1162,18 @@ pub(crate) struct ImplicitSysrootCrateImportDiag<'a> {
 #[help("remove `AttributeKind`")]
 pub(crate) struct AttributeKindInFindAttr;
 
+#[derive(Diagnostic)]
+#[diag("match is not exhaustive")]
+#[help("explicitly list all variants of the enum in a `match`")]
+pub(crate) struct RustcMustMatchExhaustivelyNotExhaustive {
+    #[label("required because of this attribute")]
+    pub attr_span: Span,
+
+    #[note("{$message}")]
+    pub pat_span: Span,
+    pub message: &'static str,
+}
+
 // let_underscore.rs
 #[derive(Diagnostic)]
 pub(crate) enum NonBindingLet {

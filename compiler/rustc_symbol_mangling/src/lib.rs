@@ -101,7 +101,6 @@ mod hashed;
 mod legacy;
 mod v0;
 
-pub mod errors;
 pub mod test;
 
 pub use v0::mangle_internal_symbol;

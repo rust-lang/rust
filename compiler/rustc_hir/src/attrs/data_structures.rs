@@ -757,12 +757,12 @@ impl IntoDiagArg for CrateType {
 }
 
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
-pub enum RustcLayoutType {
-    Abi,
+pub enum RustcDumpLayoutKind {
     Align,
-    Size,
-    HomogenousAggregate,
+    BackendRepr,
     Debug,
+    HomogenousAggregate,
+    Size,
 }
 
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute, PartialEq, Eq)]
@@ -1343,9 +1343,6 @@ pub enum AttributeKind {
     /// Represents `#[rustc_deallocator]`
     RustcDeallocator,
 
-    /// Represents `#[rustc_def_path]`
-    RustcDefPath(Span),
-
     /// Represents `#[rustc_delayed_bug_from_inside_query]`
     RustcDelayedBugFromInsideQuery,
 
@@ -1371,17 +1368,29 @@ pub enum AttributeKind {
     /// Represents `#[rustc_dump_def_parents]`
     RustcDumpDefParents,
 
+    /// Represents `#[rustc_dump_def_path]`
+    RustcDumpDefPath(Span),
+
+    /// Represents `#[rustc_dump_hidden_type_of_opaques]`
+    RustcDumpHiddenTypeOfOpaques,
+
     /// Represents `#[rustc_dump_inferred_outlives]`
     RustcDumpInferredOutlives,
 
     /// Represents `#[rustc_dump_item_bounds]`
     RustcDumpItemBounds,
 
+    /// Represents `#[rustc_dump_layout]`
+    RustcDumpLayout(ThinVec<RustcDumpLayoutKind>),
+
     /// Represents `#[rustc_dump_object_lifetime_defaults]`.
     RustcDumpObjectLifetimeDefaults,
 
     /// Represents `#[rustc_dump_predicates]`
     RustcDumpPredicates,
+
+    /// Represents `#[rustc_dump_symbol_name]`
+    RustcDumpSymbolName(Span),
 
     /// Represents `#[rustc_dump_user_args]`
     RustcDumpUserArgs,
@@ -1409,9 +1418,6 @@ pub enum AttributeKind {
 
     RustcHasIncoherentInherentImpls,
 
-    /// Represents `#[rustc_hidden_type_of_opaques]`
-    RustcHiddenTypeOfOpaques,
-
     /// Represents `#[rustc_if_this_changed]`
     RustcIfThisChanged(Span, Option<Symbol>),
 
@@ -1426,9 +1432,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_intrinsic_const_stable_indirect]`
     RustcIntrinsicConstStableIndirect,
-
-    /// Represents `#[rustc_layout]`
-    RustcLayout(ThinVec<RustcLayoutType>),
 
     /// Represents `#[rustc_layout_scalar_valid_range_end]`.
     RustcLayoutScalarValidRangeEnd(Box<u128>, Span),
@@ -1470,6 +1473,9 @@ pub enum AttributeKind {
         attr_span: Span,
         fn_names: ThinVec<Ident>,
     },
+
+    /// Represents `#[rustc_must_match_exhaustively]`
+    RustcMustMatchExhaustively(Span),
 
     /// Represents `#[rustc_never_returns_null_ptr]`
     RustcNeverReturnsNullPtr,
@@ -1569,9 +1575,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_strict_coherence]`.
     RustcStrictCoherence(Span),
-
-    /// Represents `#[rustc_symbol_name]`
-    RustcSymbolName(Span),
 
     /// Represents `#[rustc_test_marker]`
     RustcTestMarker(Symbol),

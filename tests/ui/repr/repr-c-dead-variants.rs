@@ -40,14 +40,14 @@ enum Void {}
 
 // Compiler must not remove dead variants of `#[repr(C, int)]` ADTs.
 #[repr(C)]
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 enum Univariant { //~ ERROR layout_of
     Variant(Void),
 }
 
 // ADTs with variants that have fields must have space allocated for those fields.
 #[repr(C)]
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 enum TwoVariants { //~ ERROR layout_of
     Variant1(Void),
     Variant2(u8),
@@ -59,7 +59,7 @@ struct Align8U64(u64);
 
 // This one is 2 x u64: we reserve space for fields in a dead branch.
 #[repr(C)]
-#[rustc_layout(debug)]
+#[rustc_dump_layout(debug)]
 enum DeadBranchHasOtherField { //~ ERROR layout_of
     Variant1(Void, Align8U64),
     Variant2(u8),

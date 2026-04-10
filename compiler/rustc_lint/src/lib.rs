@@ -668,6 +668,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_early_pass(|| Box::new(ImplicitSysrootCrateImport));
     store.register_lints(&BadUseOfFindAttr::lint_vec());
     store.register_early_pass(|| Box::new(BadUseOfFindAttr));
+    store.register_lints(&RustcMustMatchExhaustively::lint_vec());
+    store.register_late_pass(|_| Box::new(RustcMustMatchExhaustively));
     store.register_group(
         false,
         "rustc::internal",
@@ -688,6 +690,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(DIRECT_USE_OF_RUSTC_TYPE_IR),
             LintId::of(IMPLICIT_SYSROOT_CRATE_IMPORT),
             LintId::of(BAD_USE_OF_FIND_ATTR),
+            LintId::of(RUSTC_MUST_MATCH_EXHAUSTIVELY),
         ],
     );
 }

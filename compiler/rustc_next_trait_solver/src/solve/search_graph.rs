@@ -62,7 +62,7 @@ where
             // See `tests/ui/traits/next-solver/cycles/unproductive-in-coherence.rs` for an
             // example where this would matter. We likely should change these cycles to `NoSolution`
             // even in coherence once this is a bit more settled.
-            PathKind::Inductive => match input.typing_mode {
+            PathKind::Inductive => match input.typing_mode.0 {
                 TypingMode::Coherence => {
                     response_no_constraints(cx, input, Certainty::overflow(false))
                 }

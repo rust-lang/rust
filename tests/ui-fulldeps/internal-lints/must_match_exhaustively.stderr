@@ -1,0 +1,71 @@
+error: match is not exhaustive
+  --> $DIR/must_match_exhaustively.rs:21:11
+   |
+LL | #[rustc_must_match_exhaustively]
+   | -------------------------------- required because of this attribute
+...
+LL |     match f {
+   |           ^
+   |
+   = help: explicitly list all variants of the enum in a `match`
+note: because of this wildcard pattern
+  --> $DIR/must_match_exhaustively.rs:24:9
+   |
+LL |         _ => {}
+   |         ^
+note: the lint level is defined here
+  --> $DIR/must_match_exhaustively.rs:6:9
+   |
+LL | #![deny(rustc::rustc_must_match_exhaustively)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: match is not exhaustive
+  --> $DIR/must_match_exhaustively.rs:27:11
+   |
+LL | #[rustc_must_match_exhaustively]
+   | -------------------------------- required because of this attribute
+...
+LL |     match f {
+   |           ^
+   |
+   = help: explicitly list all variants of the enum in a `match`
+note: because of this variable binding
+  --> $DIR/must_match_exhaustively.rs:30:9
+   |
+LL |         a => {}
+   |         ^
+
+error: match is not exhaustive
+  --> $DIR/must_match_exhaustively.rs:33:11
+   |
+LL | #[rustc_must_match_exhaustively]
+   | -------------------------------- required because of this attribute
+...
+LL |     match &f {
+   |           ^^
+   |
+   = help: explicitly list all variants of the enum in a `match`
+note: because of this variable binding
+  --> $DIR/must_match_exhaustively.rs:36:9
+   |
+LL |         a => {}
+   |         ^
+
+error: match is not exhaustive
+  --> $DIR/must_match_exhaustively.rs:44:8
+   |
+LL | #[rustc_must_match_exhaustively]
+   | -------------------------------- required because of this attribute
+...
+LL |     if let Foo::A { .. } = f {}
+   |        ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: explicitly list all variants of the enum in a `match`
+note: using if let only matches on one variant (try using `match`)
+  --> $DIR/must_match_exhaustively.rs:44:8
+   |
+LL |     if let Foo::A { .. } = f {}
+   |        ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
