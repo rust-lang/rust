@@ -1,8 +1,8 @@
 error: target-based cfg should be avoided in build scripts
-  --> $DIR/misleading_cfg_in_build_script.rs:8:1
+  --> $DIR/misleading_cfg_in_build_script.rs:8:7
    |
 LL | #[cfg(windows)]
-   | ^^^^^^^^^^^^^^^
+   |       ^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/misleading_cfg_in_build_script.rs:5:9
@@ -11,10 +11,10 @@ LL | #![deny(misleading_cfg_in_build_script)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: target-based cfg should be avoided in build scripts
-  --> $DIR/misleading_cfg_in_build_script.rs:11:1
+  --> $DIR/misleading_cfg_in_build_script.rs:11:11
    |
 LL | #[cfg(not(windows))]
-   | ^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^
 
 error: target-based cfg should be avoided in build scripts
   --> $DIR/misleading_cfg_in_build_script.rs:14:11
@@ -65,10 +65,10 @@ LL |     if cfg!(not(all(target_os = "freebsd", windows))) {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use cargo environment variables if possible: `!(std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() == "freebsd" && std::env::var("CARGO_CFG_WINDOWS").is_ok())`
 
 error: target-based cfg should be avoided in build scripts
-  --> $DIR/misleading_cfg_in_build_script.rs:39:8
+  --> $DIR/misleading_cfg_in_build_script.rs:39:17
    |
 LL |     if cfg!(all(target_os = "freebsd", any(windows, not(feature = "red")))) {}
-   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use cargo environment variables if possible: `std::env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() == "freebsd" && (std::env::var("CARGO_CFG_WINDOWS").is_ok() || cfg!(not(feature = red)))`
+   |                 ^^^^^^^^^^^^^^^^^^^^^      ^^^^^^^
 
 error: aborting due to 11 previous errors
 

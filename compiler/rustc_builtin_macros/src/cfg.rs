@@ -7,7 +7,7 @@ use rustc_ast::{AttrStyle, token};
 use rustc_attr_parsing::parser::{AllowExprMetavar, MetaItemOrLitParser};
 use rustc_attr_parsing::{
     self as attr, AttributeParser, AttributeSafety, CFG_TEMPLATE, ParsedDescription, ShouldEmit,
-    parse_cfg_entry,
+    parse_cfg_entry_macro,
 };
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_hir::attrs::CfgEntry;
@@ -63,7 +63,7 @@ fn parse_cfg(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry,
         Some(cx.ecfg.features),
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
         &meta,
-        parse_cfg_entry,
+        parse_cfg_entry_macro,
         &CFG_TEMPLATE,
     )?;
 
