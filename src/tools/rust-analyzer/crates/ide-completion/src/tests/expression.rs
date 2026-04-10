@@ -1030,8 +1030,6 @@ fn main() {
 "#,
         expect![[r#"
             fn test() fn() -> Zulu
-            ex Zulu
-            ex Zulu::test()
         "#]],
     );
 }
