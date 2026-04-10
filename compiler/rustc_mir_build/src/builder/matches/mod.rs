@@ -731,7 +731,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.visit_primary_bindings_special(
             pattern,
             &ProjectedUserTypesNode::None,
-            &mut |this, name, mode, var, span, ty, user_tys| {
+            false,
+            &mut |this, name, mode, var, span, ty, user_tys, has_guard_pattern| {
                 let saved_scope = this.source_scope;
                 this.set_correct_source_scope_for_arg(var.0, saved_scope, span);
                 let vis_scope = *visibility_scope
@@ -747,7 +748,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     var,
                     ty,
                     user_tys,
-                    ArmHasGuard(guard.is_some() || pattern.kind.is_guard()),
+                    ArmHasGuard(guard.is_some() || has_guard_pattern),
                     opt_match_place.map(|(x, y)| (x.cloned(), y)),
                     pattern.span,
                 );
@@ -860,6 +861,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         pattern: &Pat<'tcx>,
         user_tys: &ProjectedUserTypesNode<'_>,
+        mut guard_pat_present: bool,
         f: &mut impl FnMut(
             &mut Self,
             Symbol,
@@ -868,8 +870,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Span,
             Ty<'tcx>,
             &ProjectedUserTypesNode<'_>,
+            bool,
         ),
     ) {
+        guard_pat_present |= pattern.kind.is_guard();
+
         // Ascriptions correspond to user-written types like `let A::<'a>(_): A<'static> = ...;`.
         //
         // Caution: Pushing user types here is load-bearing even for
@@ -892,13 +897,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // Avoid having to write the full method name at each recursive call.
         let visit_subpat = |this: &mut Self, subpat, user_tys: &_, f: &mut _| {
-            this.visit_primary_bindings_special(subpat, user_tys, f)
+            this.visit_primary_bindings_special(subpat, user_tys, guard_pat_present, f)
         };
 
         match pattern.kind {
             PatKind::Binding { name, mode, var, ty, ref subpattern, is_primary, .. } => {
                 if is_primary {
-                    f(self, name, mode, var, pattern.span, ty, user_tys);
+                    f(self, name, mode, var, pattern.span, ty, user_tys, guard_pat_present);
                 }
                 if let Some(subpattern) = subpattern.as_ref() {
                     visit_subpat(self, subpattern, user_tys, f);
