@@ -3,7 +3,7 @@ use std::convert::identity;
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrItemKind, AttrStyle, NodeId, Safety};
-use rustc_errors::DiagCtxtHandle;
+use rustc_errors::{DiagCtxtHandle, MultiSpan};
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
@@ -195,7 +195,7 @@ impl<'sess> AttributeParser<'sess, Early> {
             sess,
             stage: Early { emit_errors },
         };
-        let mut emit_lint = |lint_id: LintId, span: Span, kind: AttributeLintKind| {
+        let mut emit_lint = |lint_id: LintId, span: MultiSpan, kind: AttributeLintKind| {
             sess.psess.buffer_lint(lint_id.lint, span, target_node_id, kind)
         };
         if let Some(safety) = attr_safety {
@@ -256,7 +256,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         target: Target,
         omit_doc: OmitDoc,
         lower_span: impl Copy + Fn(Span) -> Span,
-        mut emit_lint: impl FnMut(LintId, Span, AttributeLintKind),
+        mut emit_lint: impl FnMut(LintId, MultiSpan, AttributeLintKind),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
         // We store the attributes we intend to discard at the end of this function in order to
