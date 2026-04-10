@@ -16,7 +16,7 @@ use crate::*;
 /// is definitely unique, the address would expose interpreter internal state when used
 /// for sorting things. So instead we generate a unique id per file description which is the same
 /// for all `dup`licates and is never reused.
-#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FdId(usize);
 
 impl FdId {

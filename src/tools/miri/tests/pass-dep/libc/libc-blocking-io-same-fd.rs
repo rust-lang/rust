@@ -1,10 +1,9 @@
 //@ignore-target: windows # No libc socket on Windows
-//@compile-flags: -Zmiri-disable-isolation
+//@compile-flags: -Zmiri-disable-isolation -Zmiri-fixed-schedule
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
 use std::thread;
-use std::time::Duration;
 
 use libc_utils::*;
 
@@ -22,7 +21,7 @@ fn main() {
 
         // Yield back to reader threads to ensure that we have
         // two threads being blocked on the same fd at the same time.
-        thread::sleep(Duration::from_millis(10));
+        thread::yield_now();
 
         let mut buffer = [22u8; 128];
         let bytes_written = unsafe {

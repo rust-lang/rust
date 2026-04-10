@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::io;
 use std::time::Duration;
 
@@ -19,12 +20,11 @@ pub trait WithSource {
     fn with_source(&self, f: &mut dyn FnMut(&mut dyn Source) -> io::Result<()>) -> io::Result<()>;
 }
 
+/// An interest receiver defines the action that should be taken when
+/// the associated [`Interest`] is fulfilled.
 #[derive(Debug, Hash, PartialEq, Clone, Copy, Eq, PartialOrd, Ord)]
-/// An interest receiver is associated with an [`Interest`] and an action
-/// to be done when the [`Interest`] is fulfilled.
 pub enum InterestReceiver {
-    /// The specified thread should be unblocked when the interest
-    /// associated with the receiver is fulfilled.
+    /// The specified thread should be unblocked.
     UnblockThread(ThreadId),
 }
 
@@ -46,10 +46,8 @@ pub struct BlockingIoManager {
     events: Events,
     /// Map from source ids to the actual sources and their registered receivers
     /// together with their associated interests.
-    sources: FxHashMap<
-        FdId,
-        (FileDescriptionRef<dyn WithSource>, FxHashMap<InterestReceiver, Interest>),
-    >,
+    sources:
+        BTreeMap<FdId, (FileDescriptionRef<dyn WithSource>, FxHashMap<InterestReceiver, Interest>)>,
 }
 
 impl BlockingIoManager {
@@ -59,7 +57,7 @@ impl BlockingIoManager {
         let manager = Self {
             poll: communicate.then_some(Poll::new()?),
             events: Events::with_capacity(IO_EVENT_CAPACITY),
-            sources: FxHashMap::default(),
+            sources: BTreeMap::default(),
         };
         Ok(manager)
     }
@@ -89,9 +87,11 @@ impl BlockingIoManager {
             .iter()
             .flat_map(|event| {
                 let token = event.token();
+                // We know all tokens are valid `FdId`.
                 let fd_id = FdId::new_unchecked(token.0);
                 let (source, interests) =
                     self.sources.get(&fd_id).expect("Source should be registered");
+                assert_eq!(source.id(), fd_id);
                 // Because we allow spurious wake-ups, we mark all interests as ready even
                 // though some may not have been fulfilled.
                 interests.keys().map(move |receiver| (*receiver, source.clone()))
@@ -143,14 +143,8 @@ impl BlockingIoManager {
             .unwrap_or_else(|_| panic!("Receiver should be unique"));
 
         let new_interest = old_interest.add(interest);
-        if new_interest == old_interest {
-            // The overall interests in the source did not change and thus we
-            // don't need to reregister it.
-            return;
-        }
 
-        // The overall interests in the source changed. We need to reregister
-        // it with the updated interests.
+        // Reregister the source since the overall interests might have changed.
 
         // Treat errors from reregistering as fatal. On UNIX hosts this can only
         // fail due to system resource errors (e.g. ENOMEM or ENOSPC).
@@ -169,8 +163,6 @@ impl BlockingIoManager {
         let token = Token(source_id.to_usize());
         let (fd, current_interests) =
             self.sources.get_mut(&source_id).expect("Source should be registered");
-        let old_interest =
-            interest_union(current_interests).expect("Source should contain at least one interest");
 
         current_interests
             .remove(&receiver)
@@ -187,14 +179,7 @@ impl BlockingIoManager {
             return;
         };
 
-        if new_interest == old_interest {
-            // The overall interests in the source did not change and thus we
-            // don't need to reregister it.
-            return;
-        }
-
-        // The overall interests in the source changed. We need to reregister
-        // it with the updated interests.
+        // Reregister the source since the overall interests might have changed.
 
         // Treat errors from reregistering as fatal. On UNIX hosts this can only
         // fail due to system resource errors (e.g. ENOMEM or ENOSPC).
@@ -203,7 +188,7 @@ impl BlockingIoManager {
     }
 }
 
-/// Get the union of all interests for a source.
+/// Get the union of all interests for a source. Returns `None` if the map is empty.
 fn interest_union(interests: &FxHashMap<InterestReceiver, Interest>) -> Option<Interest> {
     interests
         .values()
@@ -223,7 +208,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     #[inline]
     fn block_thread_for_io(
         &mut self,
-        source_fd: FileDescriptionRef<impl WithSource + 'static>,
+        source_fd: FileDescriptionRef<dyn WithSource>,
         interests: Interest,
         timeout: Option<(TimeoutClock, TimeoutAnchor, Duration)>,
         callback: DynUnblockCallback<'tcx>,
