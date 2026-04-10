@@ -5,7 +5,7 @@
 #![allow(rustc::usage_of_type_ir_inherent)]
 #![allow(rustc::usage_of_type_ir_traits)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
-#![cfg_attr(feature = "nightly", feature(associated_type_defaults, rustc_attrs, negative_impls))]
+#![cfg_attr(feature = "nightly", feature(associated_type_defaults, negative_impls, rustc_attrs))]
 // tidy-alphabetical-end
 
 extern crate self as rustc_type_ir;

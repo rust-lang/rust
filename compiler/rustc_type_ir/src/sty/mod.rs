@@ -1,6 +1,7 @@
 use std::fmt;
 
 use derive_where::derive_where;
+#[cfg(feature = "nightly")]
 use rustc_data_structures::intern::Interned;
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_NoContext;
@@ -19,7 +20,7 @@ use crate::{
 /// Use this rather than `RegionKind`, whenever possible.
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
-#[rustc_pass_by_value]
+#[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub struct Region<I: Interner>(pub I::InternedRegionKind);
 
 // These are only the `inherent` trait methods that have been ported across
@@ -128,6 +129,7 @@ impl<I: Interner> IntoKind for Region<I> {
     }
 }
 
+#[cfg(feature = "nightly")]
 impl<'tcx, T: Copy> IntoKind for Interned<'tcx, T> {
     type Kind = T;
 
