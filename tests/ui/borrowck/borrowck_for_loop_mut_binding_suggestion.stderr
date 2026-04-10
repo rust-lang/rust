@@ -1,16 +1,15 @@
 error[E0384]: cannot assign twice to immutable variable `num`
-  --> $DIR/borrowck-for-loop-deref-pattern-assignment.rs:7:9
+  --> $DIR/borrowck_for_loop_mut_binding_suggestion.rs:6:9
    |
-LL |     for &num in nums {
-   |          --- first assignment to `num`
+LL |     for num in nums {
+   |         --- first assignment to `num`
 LL |         num *= 2;
    |         ^^^^^^^^ cannot assign twice to immutable variable
    |
 help: consider making this binding mutable
    |
-LL -     for &num in nums {
-LL +     for &(mut num) in nums {
-   |
+LL |     for mut num in nums {
+   |         +++
 
 error: aborting due to 1 previous error
 
