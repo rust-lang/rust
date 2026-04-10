@@ -88,6 +88,24 @@ pub fn parse_cfg_entry<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     item: &MetaItemOrLitParser,
 ) -> Result<CfgEntry, ErrorGuaranteed> {
+    let entry = parse_cfg_entry_inner(cx, item)?;
+    let mut spans = Vec::new();
+    let total = misleading_cfgs(&entry, &mut spans);
+    if !spans.is_empty() {
+        cx.emit_lint(
+            UNEXPECTED_CFGS,
+            AttributeLintKind::UnexpectedCfgName((name, name_span), value),
+            span,
+        );
+    }
+    Ok(entry)
+}
+
+fn parse_cfg_entry_inner<S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    item: &MetaItemOrLitParser,
+) -> Result<CfgEntry, ErrorGuaranteed> {
+
     Ok(match item {
         MetaItemOrLitParser::MetaItemParser(meta) => match meta.args() {
             ArgParser::List(list) => match meta.path().word_sym() {

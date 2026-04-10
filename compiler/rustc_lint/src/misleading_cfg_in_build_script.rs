@@ -203,8 +203,6 @@ const ERROR_MESSAGE: &str = "target-based cfg should be avoided in build scripts
 
 impl EarlyLintPass for MisleadingCfgInBuildScript {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
-        let mut spans = Vec::new();
-        let mut has_unknown = false;
         match attr.name() {
             Some(sym::cfg) if let Some(meta) = attr.meta() => {
                 get_invalid_cfg_attrs(&meta, &mut spans, &mut has_unknown);

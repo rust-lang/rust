@@ -18,7 +18,7 @@ use rustc_feature::{GateIssue, UnstableFeatures, find_feature_issue};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::Session;
 use crate::config::{Cfg, CheckCfg};
@@ -378,4 +378,31 @@ impl ParseSess {
     pub fn dcx(&self) -> DiagCtxtHandle<'_> {
         self.dcx.handle()
     }
+}
+
+pub fn parse_cfg(parser: &mut rustc_parse::Parser<'_>, sess: &rustc_session::Session<'_>, span: Span, tts: TokenStream) -> Result<CfgEntry, ErrorGuaranteed> {
+    let meta = MetaItemOrLitParser::parse_single(
+        &mut parser,
+        ShouldEmit::Nothing,
+        AllowExprMetavar::Yes,
+    )
+    .map_err(|_| diag.emit())?;
+    AttributeParser::parse_single_args(
+        sess,
+        span,
+        span,
+        AttrStyle::Inner,
+        AttrPath { segments: vec![sym::cfg].into_boxed_slice(), span },
+        None,
+        ParsedDescription::Macro,
+        span,
+        cx.current_expansion.lint_node_id,
+        // Doesn't matter what the target actually is here.
+        Target::Crate,
+        Some(cx.ecfg.features),
+        ShouldEmit::Nothing,
+        &meta,
+        parse_cfg_entry,
+        &CFG_TEMPLATE,
+    )
 }
