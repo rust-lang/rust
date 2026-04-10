@@ -108,7 +108,7 @@ pub use self::sty::{
     BoundTyKind, BoundVariableKind, CanonicalPolyFnSig, CoroutineArgsExt, EarlyBinder, FnSig,
     FnSigKind, InlineConstArgs, InlineConstArgsParts, ParamConst, ParamTy, PlaceholderConst,
     PlaceholderRegion, PlaceholderType, PolyFnSig, TyKind, TypeAndMut, TypingMode,
-    TypingModeEqWrapper, UpvarArgs,
+    TypingModeEqWrapper, Unnormalized, UpvarArgs,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -695,7 +695,7 @@ impl<'tcx> TermKind<'tcx> {
 /// [usize:Bar<isize>]]`.
 #[derive(Clone, Debug)]
 pub struct InstantiatedPredicates<'tcx> {
-    pub predicates: Vec<Clause<'tcx>>,
+    pub predicates: Vec<Unnormalized<'tcx, Clause<'tcx>>>,
     pub spans: Vec<Span>,
 }
 
@@ -714,9 +714,12 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 }
 
 impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
-    type Item = (Clause<'tcx>, Span);
+    type Item = (Unnormalized<'tcx, Clause<'tcx>>, Span);
 
-    type IntoIter = std::iter::Zip<std::vec::IntoIter<Clause<'tcx>>, std::vec::IntoIter<Span>>;
+    type IntoIter = std::iter::Zip<
+        std::vec::IntoIter<Unnormalized<'tcx, Clause<'tcx>>>,
+        std::vec::IntoIter<Span>,
+    >;
 
     fn into_iter(self) -> Self::IntoIter {
         debug_assert_eq!(self.predicates.len(), self.spans.len());
@@ -725,10 +728,10 @@ impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
 }
 
 impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
-    type Item = (Clause<'tcx>, Span);
+    type Item = (Unnormalized<'tcx, Clause<'tcx>>, Span);
 
     type IntoIter = std::iter::Zip<
-        std::iter::Copied<std::slice::Iter<'a, Clause<'tcx>>>,
+        std::iter::Copied<std::slice::Iter<'a, Unnormalized<'tcx, Clause<'tcx>>>>,
         std::iter::Copied<std::slice::Iter<'a, Span>>,
     >;
 
