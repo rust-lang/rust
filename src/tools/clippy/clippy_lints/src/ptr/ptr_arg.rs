@@ -36,7 +36,7 @@ pub(super) fn check_body<'tcx>(
     }
 
     let decl = sig.decl;
-    let sig = cx.tcx.fn_sig(item_id).instantiate_identity().skip_binder();
+    let sig = cx.tcx.fn_sig(item_id).instantiate_identity().skip_normalization().skip_binder();
     let lint_args: Vec<_> = check_fn_args(cx, sig, decl.inputs, body.params)
         .filter(|arg| !is_trait_item || arg.mutability() == Mutability::Not)
         .collect();
@@ -68,7 +68,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item_id: OwnerId, s
 
     for arg in check_fn_args(
         cx,
-        cx.tcx.fn_sig(item_id).instantiate_identity().skip_binder(),
+        cx.tcx.fn_sig(item_id).instantiate_identity().skip_normalization().skip_binder(),
         sig.decl.inputs,
         &[],
     )

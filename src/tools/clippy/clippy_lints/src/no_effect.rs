@@ -154,8 +154,7 @@ impl NoEffect {
                                 let expr_ty = cx.typeck_results().expr_ty(expr);
                                 let mut ret_ty = cx
                                     .tcx
-                                    .fn_sig(item.owner_id)
-                                    .instantiate_identity()
+                                    .fn_sig(item.owner_id).instantiate_identity().skip_normalization()
                                     .output()
                                     .skip_binder();
 

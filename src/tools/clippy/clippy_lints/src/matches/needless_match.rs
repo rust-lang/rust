@@ -129,8 +129,7 @@ fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>
             if let ItemKind::Fn { .. } = item.kind {
                 let output = cx
                     .tcx
-                    .fn_sig(item.owner_id)
-                    .instantiate_identity()
+                    .fn_sig(item.owner_id).instantiate_identity().skip_normalization()
                     .output()
                     .skip_binder();
                 return same_type_modulo_regions(output, cx.typeck_results().expr_ty(expr));

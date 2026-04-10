@@ -67,7 +67,7 @@ fn check_sig(cx: &LateContext<'_>, name: Symbol, sig: &FnSig<'_>, fn_id: LocalDe
     if sig.decl.implicit_self.has_implicit_self() {
         let ret_ty = cx
             .tcx
-            .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(fn_id).instantiate_identity().output());
+            .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(fn_id).instantiate_identity().skip_normalization().output());
         let ret_ty = cx
             .tcx
             .try_normalize_erasing_regions(cx.typing_env(), ret_ty)

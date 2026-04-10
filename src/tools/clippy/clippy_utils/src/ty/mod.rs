@@ -22,6 +22,7 @@ use rustc_middle::ty::{
     self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,
     GenericArgKind, GenericArgsRef, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
+    Unnormalized,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span, Symbol};
@@ -110,7 +111,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                         return false;
                     }
 
-                    for (predicate, _span) in cx.tcx.explicit_item_self_bounds(def_id).iter_identity_copied() {
+                    for (predicate, _span) in cx.tcx.explicit_item_self_bounds(def_id).iter_identity_copied().map(Unnormalized::skip_normalization) {
                         match predicate.kind().skip_binder() {
                             // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
                             // and check substitutions to find `U`.
@@ -605,7 +606,7 @@ impl<'tcx> ExprFnSig<'tcx> {
 /// If the expression is function like, get the signature for it.
 pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnSig<'tcx>> {
     if let Res::Def(DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::AssocFn, id) = expr.res(cx) {
-        Some(ExprFnSig::Sig(cx.tcx.fn_sig(id).instantiate_identity(), Some(id)))
+        Some(ExprFnSig::Sig(cx.tcx.fn_sig(id).instantiate_identity().skip_normalization(), Some(id)))
     } else {
         ty_sig(cx, cx.typeck_results().expr_ty_adjusted(expr).peel_refs())
     }
@@ -623,7 +624,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
                 .and_then(|id| cx.tcx.hir_fn_decl_by_hir_id(cx.tcx.local_def_id_to_hir_id(id)));
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
-        ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.fn_sig(id).instantiate(cx.tcx, subs), Some(id))),
+        ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.fn_sig(id).instantiate(cx.tcx, subs).skip_normalization(), Some(id))),
         ty::Alias(AliasTy {
             kind: ty::Opaque { def_id },
             args,
@@ -631,7 +632,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
         }) => sig_from_bounds(
             cx,
             ty,
-            cx.tcx.item_self_bounds(def_id).iter_instantiated(cx.tcx, args),
+            cx.tcx.item_self_bounds(def_id).iter_instantiated(cx.tcx, args).map(Unnormalized::skip_normalization),
             cx.tcx.opt_parent(def_id),
         ),
         ty::FnPtr(sig_tys, hdr) => Some(ExprFnSig::Sig(sig_tys.with(hdr), None)),
@@ -715,8 +716,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option
 
     for (pred, _) in cx
         .tcx
-        .explicit_item_bounds(ty.kind.def_id())
-        .iter_instantiated_copied(cx.tcx, ty.args)
+        .explicit_item_bounds(ty.kind.def_id()).iter_instantiated_copied(cx.tcx, ty.args).map(Unnormalized::skip_normalization)
     {
         match pred.kind().skip_binder() {
             ty::ClauseKind::Trait(p)
@@ -764,7 +764,7 @@ impl core::ops::Add<u32> for EnumValue {
 /// Attempts to read the given constant as though it were an enum value.
 pub fn read_explicit_enum_value(tcx: TyCtxt<'_>, id: DefId) -> Option<EnumValue> {
     if let Ok(ConstValue::Scalar(Scalar::Int(value))) = tcx.const_eval_poly(id) {
-        match tcx.type_of(id).instantiate_identity().kind() {
+        match tcx.type_of(id).instantiate_identity().skip_normalization().kind() {
             ty::Int(_) => Some(EnumValue::Signed(value.to_int(value.size()))),
             ty::Uint(_) => Some(EnumValue::Unsigned(value.to_uint(value.size()))),
             _ => None,
@@ -886,7 +886,7 @@ pub fn adt_and_variant_of_res<'tcx>(cx: &LateContext<'tcx>, res: Res) -> Option<
             Some((adt, adt.variant_with_id(var_id)))
         },
         Res::SelfCtor(id) => {
-            let adt = cx.tcx.type_of(id).instantiate_identity().ty_adt_def().unwrap();
+            let adt = cx.tcx.type_of(id).instantiate_identity().skip_normalization().ty_adt_def().unwrap();
             Some((adt, adt.non_enum_variant()))
         },
         _ => None,

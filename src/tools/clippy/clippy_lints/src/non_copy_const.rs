@@ -380,7 +380,7 @@ impl<'tcx> NonCopyConst<'tcx> {
         e: &'tcx Expr<'tcx>,
     ) -> bool {
         // Make sure to instantiate all types coming from `typeck` with `gen_args`.
-        let ty = EarlyBinder::bind(typeck.expr_ty(e)).instantiate(tcx, gen_args);
+        let ty = EarlyBinder::bind(typeck.expr_ty(e)).instantiate(tcx, gen_args).skip_normalization();
         let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
         match self.is_ty_freeze(tcx, typing_env, ty) {
             IsFreeze::Yes => true,
@@ -395,7 +395,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                 },
                 ExprKind::Path(ref p) => {
                     let res = typeck.qpath_res(p, e.hir_id);
-                    let gen_args = EarlyBinder::bind(typeck.node_args(e.hir_id)).instantiate(tcx, gen_args);
+                    let gen_args = EarlyBinder::bind(typeck.node_args(e.hir_id)).instantiate(tcx, gen_args).skip_normalization();
                     match res {
                         Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
                             if let Ok(val) =
@@ -588,7 +588,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                     },
                     ExprKind::Path(ref init_path) => {
                         let next_init_args =
-                            EarlyBinder::bind(init_typeck.node_args(init_expr.hir_id)).instantiate(tcx, init_args);
+                            EarlyBinder::bind(init_typeck.node_args(init_expr.hir_id)).instantiate(tcx, init_args).skip_normalization();
                         match init_typeck.qpath_res(init_path, init_expr.hir_id) {
                             Res::Def(DefKind::Ctor(..), _) => return None,
                             Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
@@ -702,7 +702,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Const(ident, .., ct_rhs) = item.kind
             && !ident.is_special()
-            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_normalization()
             && match self.is_ty_freeze(cx.tcx, cx.typing_env(), ty) {
                 IsFreeze::No => true,
                 IsFreeze::Yes => false,
@@ -743,7 +743,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Const(_, ct_rhs_opt, _) = item.kind
-            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_normalization()
             && match self.is_ty_freeze(cx.tcx, cx.typing_env(), ty) {
                 IsFreeze::No => true,
                 IsFreeze::Maybe if let Some(ct_rhs) = ct_rhs_opt => {
@@ -778,7 +778,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Const(_, ct_rhs) = item.kind
-            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_normalization()
             && match self.is_ty_freeze(cx.tcx, cx.typing_env(), ty) {
                 IsFreeze::Yes => false,
                 IsFreeze::No => {
@@ -795,9 +795,9 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                         let ty = (ReplaceAssocFolder {
                             tcx: cx.tcx,
                             trait_id,
-                            self_ty: cx.tcx.type_of(parent_item.owner_id).instantiate_identity(),
+                            self_ty: cx.tcx.type_of(parent_item.owner_id).instantiate_identity().skip_normalization(),
                         })
-                        .fold_ty(cx.tcx.type_of(item.owner_id).instantiate_identity());
+                        .fold_ty(cx.tcx.type_of(item.owner_id).instantiate_identity().skip_normalization());
                         // `ty` may not be normalizable, but that should be fine.
                         !self.is_ty_freeze(cx.tcx, cx.typing_env(), ty).is_not_freeze()
                     } else {

@@ -344,7 +344,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
         };
 
         let fn_sig = if let Some(def_id) = self.cx.typeck_results().type_dependent_def_id(parent_expr.hir_id) {
-            self.cx.tcx.fn_sig(def_id).instantiate_identity()
+            self.cx.tcx.fn_sig(def_id).instantiate_identity().skip_normalization()
         } else {
             return;
         };

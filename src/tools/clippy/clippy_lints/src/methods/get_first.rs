@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(
 ) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
-        && let identity = cx.tcx.type_of(impl_id).instantiate_identity()
+        && let identity = cx.tcx.type_of(impl_id).instantiate_identity().skip_normalization()
         && let hir::ExprKind::Lit(Spanned {
             node: LitKind::Int(Pu128(0), _),
             ..

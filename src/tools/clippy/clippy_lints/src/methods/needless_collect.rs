@@ -194,7 +194,7 @@ fn check_collect_into_intoiterator<'tcx>(
             // that contains `collect_expr`
             let inputs = cx
                 .tcx
-                .liberate_late_bound_regions(id, cx.tcx.fn_sig(id).instantiate_identity())
+                .liberate_late_bound_regions(id, cx.tcx.fn_sig(id).instantiate_identity().skip_normalization())
                 .inputs();
 
             // map IntoIterator generic bounds to their signature
@@ -233,7 +233,7 @@ fn check_collect_into_intoiterator<'tcx>(
 /// Checks if the given method call matches the expected signature of `([&[mut]] self) -> bool`
 fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
     cx.typeck_results().type_dependent_def_id(call_id).is_some_and(|id| {
-        let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_binder();
+        let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_normalization().skip_binder();
         sig.inputs().len() == 1 && sig.output().is_bool()
     })
 }
@@ -261,7 +261,7 @@ fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty:
 fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -> bool {
     let typeck = cx.typeck_results();
     if let Some(id) = typeck.type_dependent_def_id(call_id)
-        && let sig = cx.tcx.fn_sig(id).instantiate_identity()
+        && let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_normalization()
         && sig.skip_binder().output().is_bool()
         && let [_, search_ty] = *sig.skip_binder().inputs()
         && let ty::Ref(_, search_ty, Mutability::Not) = *cx
@@ -279,7 +279,7 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
         && let proj_ty = Ty::new_projection_from_args(cx.tcx, iter_item.def_id, args)
         && let Ok(item_ty) = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), proj_ty)
     {
-        item_ty == EarlyBinder::bind(search_ty).instantiate(cx.tcx, cx.typeck_results().node_args(call_id))
+        item_ty == EarlyBinder::bind(search_ty).instantiate(cx.tcx, cx.typeck_results().node_args(call_id)).skip_normalization()
     } else {
         false
     }

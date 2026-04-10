@@ -153,7 +153,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             let impl_trait_ref = cx.tcx.impl_trait_ref(impl_id);
             // `self_ty` is the semantic self type of `impl <trait> for <type>`. This cannot be
             // `Self`.
-            let self_ty = impl_trait_ref.instantiate_identity().self_ty();
+            let self_ty = impl_trait_ref.instantiate_identity().skip_normalization().self_ty();
 
             // `trait_method_sig` is the signature of the function, how it is declared in the
             // trait, not in the impl of the trait.
@@ -161,7 +161,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
                 .tcx
                 .trait_item_of(impl_item.owner_id)
                 .expect("impl method matches a trait method");
-            let trait_method_sig = cx.tcx.fn_sig(trait_method).instantiate_identity();
+            let trait_method_sig = cx.tcx.fn_sig(trait_method).instantiate_identity().skip_normalization();
             let trait_method_sig = cx.tcx.instantiate_bound_regions_with_erased(trait_method_sig);
 
             // `impl_inputs_outputs` is an iterator over the types (`hir::Ty`) declared in the
@@ -217,7 +217,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             && !ty_is_in_generic_args(cx, hir_ty)
             && !types_to_skip.contains(&hir_ty.hir_id)
             && let ty = ty_from_hir_ty(cx, hir_ty.as_unambig_ty())
-            && let impl_ty = cx.tcx.type_of(impl_id).instantiate_identity()
+            && let impl_ty = cx.tcx.type_of(impl_id).instantiate_identity().skip_normalization()
             && same_type_modulo_regions(ty, impl_ty)
             // Ensure the type we encounter and the one from the impl have the same lifetime parameters. It may be that
             // the lifetime parameters of `ty` are elided (`impl<'a> Foo<'a> { fn new() -> Self { Foo{..} } }`), in
@@ -232,7 +232,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if !expr.span.from_expansion()
             && let Some(&StackItem::Check { impl_id, .. }) = self.stack.last()
-            && cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id).instantiate_identity()
+            && cx.typeck_results().expr_ty(expr) == cx.tcx.type_of(impl_id).instantiate_identity().skip_normalization()
             && self.msrv.meets(cx, msrvs::TYPE_ALIAS_ENUM_VARIANTS)
         {
             match expr.kind {
@@ -255,7 +255,7 @@ impl<'tcx> LateLintPass<'tcx> for UseSelf {
             && let PatKind::Expr(&PatExpr { kind: PatExprKind::Path(QPath::Resolved(_, path)), .. })
                  | PatKind::TupleStruct(QPath::Resolved(_, path), _, _)
                  | PatKind::Struct(QPath::Resolved(_, path), _, _) = pat.kind
-            && cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id).instantiate_identity()
+            && cx.typeck_results().pat_ty(pat) == cx.tcx.type_of(impl_id).instantiate_identity().skip_normalization()
             && self.msrv.meets(cx, msrvs::TYPE_ALIAS_ENUM_VARIANTS)
         {
             check_path(cx, path);

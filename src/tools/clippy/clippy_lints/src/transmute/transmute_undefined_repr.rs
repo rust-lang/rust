@@ -266,7 +266,7 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
                     .non_enum_variant()
                     .fields
                     .iter()
-                    .map(|f| cx.tcx.type_of(f.did).instantiate(cx.tcx, args));
+                    .map(|f| cx.tcx.type_of(f.did).instantiate(cx.tcx, args).skip_normalization());
                 let Some(sized_ty) = iter.find(|&ty| !is_zero_sized_ty(cx, ty)) else {
                     return ReducedTy::TypeErasure { raw_ptr_only: false };
                 };

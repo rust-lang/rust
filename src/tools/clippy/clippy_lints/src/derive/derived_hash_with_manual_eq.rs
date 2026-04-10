@@ -31,7 +31,7 @@ pub(super) fn check<'tcx>(
 
             // Only care about `impl PartialEq<Foo> for Foo`
             // For `impl PartialEq<B> for A, input_types is [A, B]
-            if trait_ref.instantiate_identity().args.type_at(1) == ty {
+            if trait_ref.instantiate_identity().skip_normalization().args.type_at(1) == ty {
                 span_lint_hir_and_then(
                     cx,
                     DERIVED_HASH_WITH_MANUAL_EQ,

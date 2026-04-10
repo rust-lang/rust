@@ -32,7 +32,7 @@ pub(super) fn check<'tcx>(
     if !is_copy(cx, ty) {
         if ty_subs.non_erasable_generics().next().is_some() {
             let has_copy_impl = cx.tcx.local_trait_impls(copy_id).iter().any(|&id| {
-                matches!(cx.tcx.type_of(id).instantiate_identity().kind(), ty::Adt(adt, _)
+                matches!(cx.tcx.type_of(id).instantiate_identity().skip_normalization().kind(), ty::Adt(adt, _)
                                         if ty_adt.did() == adt.did())
             });
             if !has_copy_impl {

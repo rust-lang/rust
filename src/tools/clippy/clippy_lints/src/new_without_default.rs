@@ -90,14 +90,14 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                 && impl_item.generics.params.is_empty()
                 && sig.decl.inputs.is_empty()
                 && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id)
-                && let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+                && let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_normalization()
                 && self_ty == return_ty(cx, impl_item.owner_id)
                 && let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)
             {
                 if self.impling_types.is_none() {
                     let mut impls = HirIdSet::default();
                     for &d in cx.tcx.local_trait_impls(default_trait_id) {
-                        let ty = cx.tcx.type_of(d).instantiate_identity();
+                        let ty = cx.tcx.type_of(d).instantiate_identity().skip_normalization();
                         if let Some(ty_def) = ty.ty_adt_def()
                             && let Some(local_def_id) = ty_def.did().as_local()
                         {
@@ -110,7 +110,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                 // Check if a Default implementation exists for the Self type, regardless of
                 // generics
                 if let Some(ref impling_types) = self.impling_types
-                    && let self_def = cx.tcx.type_of(item.owner_id).instantiate_identity()
+                    && let self_def = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_normalization()
                     && let Some(self_def) = self_def.ty_adt_def()
                     && let Some(self_local_did) = self_def.did().as_local()
                     && let self_id = cx.tcx.local_def_id_to_hir_id(self_local_did)

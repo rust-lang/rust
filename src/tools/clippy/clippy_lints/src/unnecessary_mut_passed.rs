@@ -60,7 +60,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryMutPassed {
                 if let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id) =>
             {
                 let args = cx.typeck_results().node_args(e.hir_id);
-                let method_type = cx.tcx.type_of(def_id).instantiate(cx.tcx, args);
+                let method_type = cx.tcx.type_of(def_id).instantiate(cx.tcx, args).skip_normalization();
                 check_arguments(
                     cx,
                     &mut iter::once(receiver).chain(arguments.iter()),

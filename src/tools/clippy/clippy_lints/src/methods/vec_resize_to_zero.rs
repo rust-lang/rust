@@ -20,8 +20,7 @@ pub(super) fn check<'tcx>(
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && cx
             .tcx
-            .type_of(impl_id)
-            .instantiate_identity()
+            .type_of(impl_id).instantiate_identity().skip_normalization()
             .is_diag_item(cx, sym::Vec)
         && let ExprKind::Lit(Spanned {
             node: LitKind::Int(Pu128(0), _),

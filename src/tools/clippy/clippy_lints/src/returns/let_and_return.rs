@@ -71,8 +71,7 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
         if let Some(def_id) = fn_def_id(cx, e)
             && cx
                 .tcx
-                .fn_sig(def_id)
-                .instantiate_identity()
+                .fn_sig(def_id).instantiate_identity().skip_normalization()
                 .skip_binder()
                 .output()
                 .walk()

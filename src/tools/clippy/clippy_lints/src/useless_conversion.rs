@@ -112,7 +112,7 @@ fn into_iter_bound<'tcx>(
                     }
                 }));
 
-                let predicate = EarlyBinder::bind(tr).instantiate(cx.tcx, args);
+                let predicate = EarlyBinder::bind(tr).instantiate(cx.tcx, args).skip_normalization();
                 let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
                 if !cx
                     .tcx

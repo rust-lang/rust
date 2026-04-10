@@ -89,7 +89,7 @@ fn get_args_to_check<'tcx>(
 ) -> Vec<(usize, Symbol)> {
     let mut args_to_check = Vec::new();
     if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
-        let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity();
+        let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_normalization();
         let generics = cx.tcx.predicates_of(def_id);
         let [fn_mut_preds, ord_preds, partial_ord_preds] =
             get_trait_predicates_for_trait_ids(cx, generics, &[Some(fn_mut_trait), ord_trait, partial_ord_trait]);

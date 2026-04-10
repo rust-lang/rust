@@ -249,7 +249,7 @@ fn path_segment_certainty(
                 let certainty = lhs.join_clearing_def_ids(rhs);
                 if resolves_to_type {
                     if let DefKind::TyAlias = cx.tcx.def_kind(def_id) {
-                        adt_def_id(cx.tcx.type_of(def_id).instantiate_identity())
+                        adt_def_id(cx.tcx.type_of(def_id).instantiate_identity().skip_normalization())
                             .map_or(certainty, |def_id| certainty.with_def_id(def_id))
                     } else {
                         certainty.with_def_id(def_id)
