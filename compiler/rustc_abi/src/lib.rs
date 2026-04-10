@@ -36,16 +36,19 @@ even other Rust compilers, such as rust-analyzer!
 
 */
 
+use std::borrow::Cow;
 use std::fmt;
 #[cfg(feature = "nightly")]
 use std::iter::Step;
 use std::num::{NonZeroUsize, ParseIntError};
 use std::ops::{Add, AddAssign, Deref, Mul, RangeFull, RangeInclusive, Sub};
+use std::path::PathBuf;
 use std::str::FromStr;
 
 use bitflags::bitflags;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
+use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_hashes::Hash64;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 #[cfg(feature = "nightly")]
@@ -1715,6 +1718,23 @@ impl NumScalableVectors {
             2..8 => Some(NumScalableVectors(count as u8)),
             _ => None,
         }
+    }
+}
+
+impl IntoDiagArg for NumScalableVectors {
+    fn into_diag_arg(self, _: &mut Option<PathBuf>) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Borrowed(match self.0 {
+            0 => panic!("`NumScalableVectors(0)` is illformed"),
+            1 => "one",
+            2 => "two",
+            3 => "three",
+            4 => "four",
+            5 => "five",
+            6 => "six",
+            7 => "seven",
+            8 => "eight",
+            _ => panic!("`NumScalableVectors(N)` for N>8 is illformed"),
+        }))
     }
 }
 
