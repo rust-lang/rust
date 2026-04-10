@@ -151,11 +151,17 @@ pub(crate) fn compile_codegen_unit(
 
             if cx.sess().target.env == Env::Pauthtest {
                 // FIXME(jchlanda): In LLVM/Clang, there are also `aarch64-elf-pauthabi-platform`
-                // and `aarch64-elf-pauthabi-version` module flags. These end up in the PAuth core
-                // info section of the resulting ELF, which the linker uses to check binary
-                // compatibility. By default, the absence of this info is treated as compatible with
-                // any binary. While not needed now, this will become relevant once C++ interop is
-                // implemented.
+                // and `aarch64-elf-pauthabi-version` module flags. These are emitted into the
+                // PAuth core info section of the resulting ELF, which the linker uses to enforce
+                // binary compatibility.
+                //
+                // We intentionally do not emit this flags now, since only a subset of pointer
+                // authentication features is currently supported. By default, the absence of this
+                // info is treated as compatible with any binary.
+                //
+                // Please note, that this would cause compatibility issues when linking against
+                // fully PAuth-enabled C/C++ binaries.
+                //
                 // Link to PAuth core info:
                 // <https://github.com/ARM-software/abi-aa/blob/2025Q4/pauthabielf64/pauthabielf64.rst#core-information>
                 if cx.sess().opts.unstable_opts.pauth_enable_elf_got {
