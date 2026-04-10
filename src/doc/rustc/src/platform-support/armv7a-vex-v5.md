@@ -22,19 +22,29 @@ This target is cross-compiled. Dynamic linking is unsupported.
 `#![no_std]` crates can be built using `build-std` to build `core` and `panic_abort` and optionally `alloc`. Unwinding panics are not yet supported on this target.
 
 `std` has only partial support due to platform limitations. Notably:
+
 - `std::process` and `std::net` are unimplemented. `std::thread` only supports sleeping and yielding, as this is a single-threaded environment.
 - `std::time` has full support for `Instant`, but no support for `SystemTime`.
 - `std::io` has full support for `stdin`/`stdout`/`stderr`. `stdout` and `stderr` both write to USB channel 1 on this platform and are not differentiated.
-- `std::fs` has limited support for reading or writing to files. Directory operations, file deletion, and some file opening features are unsupported and will return errors.
+- `std::fs` has limited support for reading or writing to files. The following features are unsupported:
+  - All directory operations (including mkdir and readdir), although reading directories is possible through [3rd party crates](https://docs.rs/vex-sdk/latest/vex_sdk/file/fn.vexFileDirectoryGet.html)
+  - Deleting files and directories
+  - File metadata other than file size and type (that is, file vs directory)
+  - Opening files with an uncommon combination of open options, such as read + write at the same time.
+    The supported modes for opening files are in read-only mode, append mode, or write mode (with or without truncation).
 - A global allocator implemented on top of `dlmalloc` is provided.
 - Modules that do not need to interact with the OS beyond allocation such as `std::collections`, `std::hash`, `std::future`, `std::sync`, etc are fully supported.
 - Random number generation and hashing is insecure, as there is no reliable source of entropy on this platform.
 
-In order to support some APIs, users are expected to provide a supporting runtime SDK for `libstd` to link against. This library may be provided either by [`vex-sdk-build`](https://github.com/vexide/vex-sdk/tree/main/packages/vex-sdk-build) (which will download an official SDK from VEX) or through an open-source implementation such as [`vex-sdk-jumptable`](https://crates.io/crates/vex-sdk-jumptable).
-
 When compiling for this target, the "C" calling convention maps to AAPCS with VFP registers (hard float ABI) and the "system" calling convention maps to AAPCS without VFP registers (softfp ABI).
 
 This target generates binaries in the ELF format that may be uploaded to the brain with external tools.
+
+### Platform SDKs
+
+In order to use most platform-specific APIs, users must configure a supporting runtime SDK for `libstd` to link against. Official *VEXcode* SDKs from VEX can be downloaded and linked via the [`vex-sdk-vexcode`](https://crates.io/crates/vex-sdk-vexcode) crate, but they have a restrictive redistribution policy that might not be suitable for all projects. The suggested SDK for open-source projects is the community-supported [`vex-sdk-jumptable`](https://crates.io/crates/vex-sdk-jumptable) crate. SDK implementations are generally thin wrappers over system calls so projects should not expect to see significant differences in behavior depending on which SDK they use.
+
+Libraries may access symbols from the active VEX SDK without depending on a specific implementation by using the [`vex-sdk`](https://crates.io/crates/vex-sdk) crate.
 
 ## Building the target
 
@@ -76,6 +86,16 @@ Programs can also be directly uploaded to the brain over a USB connection immedi
 
 ```sh
 cargo v5 upload --release
+```
+
+### Hello World program
+
+```rs
+use ::vex_sdk_jumptable as _; // Bring VEX SDK symbols into scope
+
+fn main() {
+    println!("Hello, world");
+}
 ```
 
 ## Testing
