@@ -14,7 +14,7 @@ use rustc_middle::ty::{
 use rustc_span::{ErrorGuaranteed, Span, kw};
 
 use crate::collect::ItemCtxt;
-use crate::hir_ty_lowering::{AddSyntheticArgs, GenericArgPosition, HirTyLowerer};
+use crate::hir_ty_lowering::{GenericArgPosition, HirTyLowerer};
 
 type RemapTable = FxHashMap<u32, u32>;
 
@@ -594,7 +594,6 @@ fn get_delegation_user_specified_args<'tcx>(
                 &[],
                 segment,
                 self_ty,
-                AddSyntheticArgs::No,
                 GenericArgPosition::Type,
             )
             .0
@@ -624,7 +623,6 @@ fn get_delegation_user_specified_args<'tcx>(
                     parent_args,
                     segment,
                     None,
-                    AddSyntheticArgs::Yes,
                     GenericArgPosition::Value,
                 )
                 .0;
