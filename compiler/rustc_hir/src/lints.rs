@@ -1,8 +1,8 @@
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_error_messages::MultiSpan;
 use rustc_lint_defs::LintId;
 pub use rustc_lint_defs::{AttributeLintKind, FormatWarning};
 use rustc_macros::HashStable_Generic;
-use rustc_span::Span;
 
 use crate::HirId;
 
@@ -28,6 +28,6 @@ pub enum DelayedLint {
 pub struct AttributeLint<Id> {
     pub lint_id: LintId,
     pub id: Id,
-    pub span: Span,
+    pub span: MultiSpan,
     pub kind: AttributeLintKind,
 }

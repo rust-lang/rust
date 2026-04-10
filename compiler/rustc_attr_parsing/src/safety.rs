@@ -1,4 +1,5 @@
 use rustc_ast::Safety;
+use rustc_errors::MultiSpan;
 use rustc_feature::{AttributeSafety, BUILTIN_ATTRIBUTE_MAP};
 use rustc_hir::AttrPath;
 use rustc_hir::lints::AttributeLintKind;
@@ -15,7 +16,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         attr_path: &AttrPath,
         attr_span: Span,
         attr_safety: Safety,
-        emit_lint: &mut impl FnMut(LintId, Span, AttributeLintKind),
+        emit_lint: &mut impl FnMut(LintId, MultiSpan, AttributeLintKind),
     ) {
         if matches!(self.stage.should_emit(), ShouldEmit::Nothing) {
             return;
@@ -83,7 +84,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 } else {
                     emit_lint(
                         LintId::of(UNSAFE_ATTR_OUTSIDE_UNSAFE),
-                        path_span,
+                        path_span.into(),
                         AttributeLintKind::UnsafeAttrOutsideUnsafe {
                             attribute_name_span: path_span,
                             sugg_spans: not_from_proc_macro

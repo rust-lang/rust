@@ -1037,7 +1037,7 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
                         tcx.emit_node_span_lint(
                             attribute_lint.lint_id.lint,
                             attribute_lint.id,
-                            attribute_lint.span,
+                            attribute_lint.span.clone(),
                             DecorateAttrLint {
                                 sess: tcx.sess,
                                 tcx: Some(tcx),

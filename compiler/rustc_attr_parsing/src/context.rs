@@ -7,7 +7,7 @@ use std::sync::LazyLock;
 
 use private::Sealed;
 use rustc_ast::{AttrStyle, MetaItemLit, NodeId};
-use rustc_errors::{Diag, Diagnostic, Level};
+use rustc_errors::{Diag, Diagnostic, Level, MultiSpan};
 use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
@@ -457,14 +457,19 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     /// Emit a lint. This method is somewhat special, since lints emitted during attribute parsing
     /// must be delayed until after HIR is built. This method will take care of the details of
     /// that.
-    pub(crate) fn emit_lint(&mut self, lint: &'static Lint, kind: AttributeLintKind, span: Span) {
+    pub(crate) fn emit_lint<M: Into<MultiSpan>>(
+        &mut self,
+        lint: &'static Lint,
+        kind: AttributeLintKind,
+        span: M,
+    ) {
         if !matches!(
             self.stage.should_emit(),
             ShouldEmit::ErrorsAndLints { .. } | ShouldEmit::EarlyFatal { also_emit_lints: true }
         ) {
             return;
         }
-        (self.emit_lint)(LintId::of(lint), span, kind);
+        (self.emit_lint)(LintId::of(lint), span.into(), kind);
     }
 
     pub(crate) fn warn_unused_duplicate(&mut self, used_span: Span, unused_span: Span) {
@@ -530,7 +535,7 @@ pub struct SharedContext<'p, 'sess, S: Stage> {
 
     /// The second argument of the closure is a [`NodeId`] if `S` is `Early` and a [`HirId`] if `S`
     /// is `Late` and is the ID of the syntactical component this attribute was applied to.
-    pub(crate) emit_lint: &'p mut dyn FnMut(LintId, Span, AttributeLintKind),
+    pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, AttributeLintKind),
 }
 
 /// Context given to every attribute parser during finalization.
