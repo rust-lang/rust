@@ -5,7 +5,7 @@
 
 use std::borrow::Borrow;
 use std::fmt::{Debug, Display};
-
+use std::sync::atomic::AtomicBool;
 use rustc_ast::token::{self, Delimiter, MetaVarKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{
@@ -87,7 +87,7 @@ impl<P: Borrow<Path>> Display for PathParser<P> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 #[must_use]
 pub enum ArgParser {
     NoArgs,
@@ -215,7 +215,7 @@ impl ArgParser {
 /// This enum represents that.
 ///
 /// Choose which one you want using the provided methods.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum MetaItemOrLitParser {
     MetaItemParser(MetaItemParser),
     Lit(MetaItemLit),
@@ -268,7 +268,6 @@ impl MetaItemOrLitParser {
 ///   `= value` part
 ///
 /// The syntax of MetaItems can be found at <https://doc.rust-lang.org/reference/attributes.html>
-#[derive(Clone)]
 pub struct MetaItemParser {
     path: OwnedPathParser,
     args: ArgParser,
@@ -655,7 +654,7 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct MetaItemListParser {
     sub_parsers: ThinVec<MetaItemOrLitParser>,
     pub span: Span,
