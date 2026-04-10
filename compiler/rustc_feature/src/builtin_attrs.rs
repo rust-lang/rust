@@ -1453,11 +1453,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_hidden_type_of_opaques, Normal, template!(Word),
+        TEST, rustc_dump_hidden_type_of_opaques, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_layout, Normal, template!(List: &["field1, field2, ..."]),
+        TEST, rustc_dump_layout, Normal, template!(List: &["field1, field2, ..."]),
         WarnFollowing, EncodeCrossCrate::Yes
     ),
     rustc_attr!(
@@ -1508,11 +1508,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_symbol_name, Normal, template!(Word),
+        TEST, rustc_dump_symbol_name, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
-        TEST, rustc_def_path, Normal, template!(Word),
+        TEST, rustc_dump_def_path, Normal, template!(Word),
         WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(

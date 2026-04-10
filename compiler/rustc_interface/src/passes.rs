@@ -1273,7 +1273,7 @@ pub(crate) fn start_codegen<'tcx>(
     // Don't run this test assertions when not doing codegen. Compiletest tries to build
     // build-fail tests in check mode first and expects it to not give an error in that case.
     if tcx.sess.opts.output_types.should_codegen() {
-        rustc_symbol_mangling::test::report_symbol_names(tcx);
+        rustc_symbol_mangling::test::dump_symbol_names_and_def_paths(tcx);
     }
 
     // Don't do code generation if there were any errors. Likewise if

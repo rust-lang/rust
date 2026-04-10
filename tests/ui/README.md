@@ -1352,7 +1352,7 @@ See [Strict Version Hash](https://rustc-dev-guide.rust-lang.org/backend/libs-and
 
 ## `tests/ui/symbol-names/`: Symbol mangling and related attributes
 
-These tests revolve around `#[no_mangle]` attribute, as well as consistently mangled symbol names (checked with the `rustc_symbol_name` attribute), which is important to build reproducible binaries.
+These tests revolve around `#[no_mangle]` attribute, as well as consistently mangled symbol names (checked with the `rustc_dump_symbol_name` attribute), which is important to build reproducible binaries.
 
 ## `tests/ui/sync/`: `Sync` trait
 

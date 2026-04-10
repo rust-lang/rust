@@ -5,8 +5,8 @@
 #![feature(never_type)]
 #![crate_type = "lib"]
 
-#[rustc_layout(abi)]
-struct AlignedZstPreventsScalar(i16, [i32; 0]); //~ERROR: abi: Memory
+#[rustc_dump_layout(backend_repr)]
+struct AlignedZstPreventsScalar(i16, [i32; 0]); //~ERROR: backend_repr: Memory
 
-#[rustc_layout(abi)]
-struct AlignedZstButStillScalar(i32, [i16; 0]); //~ERROR: abi: Scalar
+#[rustc_dump_layout(backend_repr)]
+struct AlignedZstButStillScalar(i32, [i16; 0]); //~ERROR: backend_repr: Scalar
