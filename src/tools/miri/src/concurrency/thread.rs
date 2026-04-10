@@ -823,12 +823,10 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             Err(e) => panic!("unexpected error while polling: {e}"),
         };
 
-        ready.into_iter().try_for_each(|(receiver, source)| {
+        ready.into_iter().try_for_each(|(receiver, _source)| {
             match receiver {
-                InterestReceiver::UnblockThread(thread_id) => {
-                    this.machine.blocking_io.deregister(source.id(), receiver);
-                    this.unblock_thread(thread_id, BlockReason::IO)
-                }
+                InterestReceiver::UnblockThread(thread_id) =>
+                    this.unblock_thread(thread_id, BlockReason::IO),
             }
         })
     }

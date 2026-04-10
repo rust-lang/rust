@@ -98,6 +98,9 @@ impl BlockingIoManager {
             })
             .collect::<Vec<_>>();
 
+        // Deregister all ready sources as we only want to receive one event per receiver.
+        ready.iter().for_each(|(receiver, source)| self.deregister(source.id(), *receiver));
+
         Ok(ready)
     }
 
