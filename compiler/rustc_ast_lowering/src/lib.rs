@@ -51,7 +51,7 @@ use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
-use rustc_hir::definitions::{DefPathData, DisambiguatorState};
+use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::lints::{AttributeLint, DelayedLint};
 use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
@@ -94,7 +94,7 @@ pub mod stability;
 struct LoweringContext<'a, 'hir, R> {
     tcx: TyCtxt<'hir>,
     resolver: &'a mut R,
-    disambiguator: DisambiguatorState,
+    disambiguator: PerParentDisambiguatorState,
 
     /// Used to allocate HIR nodes.
     arena: &'hir hir::Arena<'hir>,
@@ -159,7 +159,7 @@ impl<'a, 'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'a, 'hir, R> {
         Self {
             tcx,
             resolver,
-            disambiguator: DisambiguatorState::new(),
+            disambiguator: Default::default(),
             arena: tcx.hir_arena,
 
             // HirId handling.
@@ -302,6 +302,10 @@ impl<'a, 'tcx> ResolverAstLoweringExt<'tcx> for ResolverDelayedAstLowering<'a, '
     fn next_node_id(&mut self) -> NodeId {
         next_node_id(&mut self.next_node_id)
     }
+
+    fn steal_or_create_disambiguator(&self, parent: LocalDefId) -> PerParentDisambiguatorState {
+        self.base.steal_or_create_disambiguator(parent)
+    }
 }
 
 fn next_node_id(current_id: &mut NodeId) -> NodeId {
@@ -403,6 +407,10 @@ impl<'tcx> ResolverAstLowering<'tcx> {
     #[inline]
     fn next_node_id(&mut self) -> NodeId {
         next_node_id(&mut self.next_node_id)
+    }
+
+    fn steal_or_create_disambiguator(&self, parent: LocalDefId) -> PerParentDisambiguatorState {
+        self.per_parent_disambiguators.get(&parent).map(|s| s.steal()).unwrap_or_default()
     }
 }
 
@@ -717,7 +725,6 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         node_id: ast::NodeId,
         name: Option<Symbol>,
         def_kind: DefKind,
-        def_path_data: DefPathData,
         span: Span,
     ) -> LocalDefId {
         let parent = self.current_hir_id_owner.def_id;
@@ -733,7 +740,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         let def_id = self
             .tcx
             .at(span)
-            .create_def(parent, name, def_kind, Some(def_path_data), &mut self.disambiguator)
+            .create_def(parent, name, def_kind, None, &mut self.disambiguator)
             .def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
@@ -774,6 +781,8 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     ) {
         let owner_id = self.owner_id(owner);
 
+        let new_disambig = self.resolver.steal_or_create_disambiguator(owner_id.def_id);
+        let disambiguator = std::mem::replace(&mut self.disambiguator, new_disambig);
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
         let current_define_opaque = std::mem::take(&mut self.define_opaque);
@@ -808,6 +817,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         assert!(self.impl_trait_bounds.is_empty());
         let info = self.make_owner_info(item);
 
+        self.disambiguator = disambiguator;
         self.attrs = current_attrs;
         self.bodies = current_bodies;
         self.define_opaque = current_define_opaque;
@@ -1015,7 +1025,6 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     param,
                     Some(kw::UnderscoreLifetime),
                     DefKind::LifetimeParam,
-                    DefPathData::DesugaredAnonymousLifetime,
                     ident.span,
                 );
                 debug!(?_def_id);
@@ -2504,13 +2513,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             // We're lowering a const argument that was originally thought to be a type argument,
             // so the def collector didn't create the def ahead of time. That's why we have to do
             // it here.
-            let def_id = self.create_def(
-                node_id,
-                None,
-                DefKind::AnonConst,
-                DefPathData::LateAnonConst,
-                span,
-            );
+            let def_id = self.create_def(node_id, None, DefKind::AnonConst, span);
             let hir_id = self.lower_node_id(node_id);
 
             let path_expr = Expr {

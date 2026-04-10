@@ -1523,7 +1523,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     None,
                     DefKind::LifetimeParam,
                     Some(DefPathData::OpaqueLifetime(ident.name)),
-                    &mut self.disambiguator,
+                    self.disambiguator,
                 );
                 feed.def_span(ident.span);
                 feed.def_ident_span(Some(ident.span));
