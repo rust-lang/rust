@@ -5,7 +5,7 @@
 
 use std::borrow::Borrow;
 use std::fmt::{Debug, Display};
-use std::sync::atomic::AtomicBool;
+
 use rustc_ast::token::{self, Delimiter, MetaVarKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{
@@ -209,6 +209,19 @@ impl ArgParser {
             Self::NameValue(args) => Err(args.args_span()),
         }
     }
+
+    /// Explicitly ignore the arguments, disarming the arguments-used check
+    pub fn ignore_args(&self) {
+        #[cfg(debug_assertions)]
+        match self {
+            ArgParser::List(list) => {
+                for item in list.mixed() {
+                    item.ignore_args();
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 /// Inside lists, values could be either literals, or more deeply nested meta items.
@@ -253,6 +266,26 @@ impl MetaItemOrLitParser {
             MetaItemOrLitParser::Lit(_) => None,
         }
     }
+
+    /// Returns some if this `MetaItemOrLitParser` is a `MetaItem` with no arguments
+    pub fn meta_item_no_args(&self) -> Option<&MetaItemParser> {
+        let meta_item = self.meta_item()?;
+        match meta_item.args().no_args() {
+            Ok(_) => Some(meta_item),
+            Err(_) => None,
+        }
+    }
+
+    /// Explicitly ignore the arguments, disarming the arguments-used check
+    pub fn ignore_args(&self) {
+        #[cfg(debug_assertions)]
+        match self {
+            MetaItemOrLitParser::MetaItemParser(meta_item) => {
+                meta_item.ignore_args();
+            }
+            MetaItemOrLitParser::Lit(_) => {}
+        }
+    }
 }
 
 /// Utility that deconstructs a MetaItem into usable parts.
@@ -271,6 +304,11 @@ impl MetaItemOrLitParser {
 pub struct MetaItemParser {
     path: OwnedPathParser,
     args: ArgParser,
+
+    /// Whether the `args` of this meta item have been looked at.
+    /// This is tracked because if the arguments of a `MetaItemParser` are ignored, this is probably a mistake
+    #[cfg(debug_assertions)]
+    args_checked: std::sync::atomic::AtomicBool,
 }
 
 impl Debug for MetaItemParser {
@@ -307,6 +345,8 @@ impl MetaItemParser {
 
     /// Gets just the args parser, without caring about the path.
     pub fn args(&self) -> &ArgParser {
+        #[cfg(debug_assertions)]
+        self.args_checked.store(true, std::sync::atomic::Ordering::Relaxed);
         &self.args
     }
 
@@ -318,6 +358,17 @@ impl MetaItemParser {
     ///   and not a word and should instead be parsed using [`path`](Self::path)
     pub fn word_is(&self, sym: Symbol) -> Option<&ArgParser> {
         self.path().word_is(sym).then(|| self.args())
+    }
+
+    /// Explicitly ignore the arguments, disarming the arguments-used check
+    pub fn ignore_args(&self) {
+        #[cfg(debug_assertions)]
+        self.args().ignore_args();
+    }
+
+    #[cfg(debug_assertions)]
+    pub fn are_args_checked(&self) -> bool {
+        self.args_checked.load(std::sync::atomic::Ordering::Relaxed)
     }
 }
 
@@ -529,7 +580,12 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
             ArgParser::NoArgs
         };
 
-        Ok(MetaItemParser { path: PathParser(path), args })
+        Ok(MetaItemParser {
+            path: PathParser(path),
+            args,
+            #[cfg(debug_assertions)]
+            args_checked: std::sync::atomic::AtomicBool::new(false),
+        })
     }
 
     fn parse_meta_item_inner(&mut self) -> PResult<'sess, MetaItemOrLitParser> {

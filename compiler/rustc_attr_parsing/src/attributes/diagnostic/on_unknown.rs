@@ -19,6 +19,7 @@ impl OnUnknownParser {
     ) {
         if !cx.features().diagnostic_on_unknown() {
             // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
+            args.ignore_args();
             return;
         }
         let span = cx.attr_span;
