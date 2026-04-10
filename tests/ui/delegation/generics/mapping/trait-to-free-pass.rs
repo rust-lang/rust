@@ -11,9 +11,10 @@
 //! added. At some tests user-specified args are specified in reuse statement.
 
 // Testing lifetimes + types/consts in child, lifetimes + types/consts in delegation parent,
-// with(out) user-specified args
+// with(out) user-specified args, with impl traits
 mod test_1 {
-    fn foo<'a: 'a, 'b: 'b, T: Clone + ToString, U: Clone, const N: usize>() {}
+    fn foo<'a: 'a, 'b: 'b, T: Clone + ToString, U: Clone, const N: usize>(
+        _f: impl FnOnce(T) -> (T, U)) {}
 
     trait Trait<'a, A, B, C, const N: usize> {
         reuse foo;
@@ -22,8 +23,10 @@ mod test_1 {
 
     impl Trait<'static, i32, i32, i32, 1> for u32 {}
     pub fn check() {
-        <u32 as Trait<'static, i32, i32, i32, 1>>::foo::<'static, 'static, i32, String, 1>();
-        <u32 as Trait<'static, i32, i32, i32, 1>>::bar();
+        <u32 as Trait<'static, i32, i32, i32, 1>>
+            ::foo::<'static, 'static, i32, String, 1>(|t| (t, "".to_string()));
+        <u32 as Trait<'static, i32, i32, i32, 1>>::bar(|t| (t, t.to_string()));
+        u32::bar(|t| (t, t.to_string()));
     }
 }
 

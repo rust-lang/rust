@@ -328,6 +328,12 @@ pub(crate) enum GenericArgPosition {
     MethodCall,
 }
 
+#[derive(Debug)]
+pub(crate) enum AddSyntheticArgs {
+    Yes,
+    No,
+}
+
 /// Whether to allow duplicate associated iten constraints in a trait ref, e.g.
 /// `Trait<Assoc = Ty, Assoc = Ty>`. This is forbidden in `dyn Trait<...>`
 /// but allowed everywhere else.
@@ -562,6 +568,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             &[],
             item_segment,
             None,
+            AddSyntheticArgs::No,
             GenericArgPosition::Type,
         );
         if let Some(c) = item_segment.args().constraints.first() {
@@ -612,6 +619,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         parent_args: &[ty::GenericArg<'tcx>],
         segment: &hir::PathSegment<'tcx>,
         self_ty: Option<Ty<'tcx>>,
+        add_synth_args: AddSyntheticArgs,
         pos: GenericArgPosition,
     ) -> (GenericArgsRef<'tcx>, GenericArgCountResult) {
         // If the type is parameterized by this region, then replace this
@@ -653,6 +661,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span: Span,
             infer_args: bool,
             incorrect_args: &'a Result<(), GenericArgCountMismatch>,
+            add_synth_args: bool,
         }
 
         impl<'a, 'tcx> GenericArgsLowerer<'a, 'tcx> for GenericArgsCtxt<'a, 'tcx> {
@@ -745,7 +754,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     GenericParamDefKind::Lifetime => {
                         self.lowerer.re_infer(self.span, RegionInferReason::Param(param)).into()
                     }
-                    GenericParamDefKind::Type { has_default, .. } => {
+                    GenericParamDefKind::Type { has_default, synthetic } => {
                         if !infer_args && has_default {
                             // No type parameter provided, but a default exists.
                             if let Some(prev) =
@@ -761,6 +770,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 .type_of(param.def_id)
                                 .instantiate(tcx, preceding_args)
                                 .into()
+                        } else if self.add_synth_args && synthetic {
+                            Ty::new_param(tcx, param.index, param.name).into()
                         } else if infer_args {
                             self.lowerer.ty_infer(Some(param), self.span).into()
                         } else {
@@ -798,6 +809,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             generic_args: segment.args(),
             infer_args: segment.infer_args,
             incorrect_args: &arg_count.correct,
+            add_synth_args: matches!(add_synth_args, AddSyntheticArgs::Yes),
         };
 
         let args = lower_generic_args(
@@ -827,6 +839,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             parent_args,
             item_segment,
             None,
+            AddSyntheticArgs::No,
             GenericArgPosition::Type,
         );
         if let Some(c) = item_segment.args().constraints.first() {
@@ -940,6 +953,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             &[],
             segment,
             Some(self_ty),
+            AddSyntheticArgs::No,
             GenericArgPosition::Type,
         );
 
@@ -1122,6 +1136,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             &[],
             trait_segment,
             Some(self_ty),
+            AddSyntheticArgs::No,
             GenericArgPosition::Type,
         );
         if let Some(c) = trait_segment.args().constraints.first() {
