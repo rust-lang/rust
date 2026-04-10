@@ -1158,14 +1158,6 @@ Exercises `[Type; n]` syntax for creating arrays with repeated types across a se
 
 Tests on the `#[repr(..)]` attribute. See [Representations | Reference](https://doc.rust-lang.org/reference/type-layout.html#representations).
 
-## `tests/ui/reserved/`
-
-Reserved keywords and attribute names.
-
-See e.g. [Reserved keywords | Reference](https://doc.rust-lang.org/reference/keywords.html).
-
-**FIXME**: maybe merge under `tests/ui/keyword/`.
-
 ## `tests/ui/resolve/`: Name resolution
 
 See [Name resolution | rustc-dev-guide](https://rustc-dev-guide.rust-lang.org/name-resolution.html).
