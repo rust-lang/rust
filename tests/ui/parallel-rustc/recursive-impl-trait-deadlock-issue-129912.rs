@@ -1,7 +1,7 @@
 // Test for #129912, which causes a deadlock bug without finding a cycle
 
 #![feature(generators)]
-//~^ ERROR feature has been removed
+//~^ ERROR feature was renamed
 #![allow(unconditional_recursion)]
 
 fn option(i: i32) -> impl Sync {
