@@ -151,7 +151,7 @@ pub(crate) struct CannotEnableCrtStaticLinux;
 
 #[derive(Diagnostic)]
 #[diag(
-    "aarch64-unknown-linux-pauthtest is incompatible with statically linked libc, disable it using `-C target-feature=-crt-static`"
+    "pauthtest ABI is incompatible with statically linked libc, disable it using `-C target-feature=-crt-static`"
 )]
 pub(crate) struct CannotEnableCrtStaticPauthtest;
 
