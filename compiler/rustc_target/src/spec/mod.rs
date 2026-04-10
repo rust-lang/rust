@@ -3718,7 +3718,25 @@ impl Target {
                     return load_file(&p, unstable_options);
                 }
 
-                Err(format!("could not find specification for target {target_tuple:?}"))
+                let mut msg = format!("could not find specification for target {target_tuple:?}");
+                // Suggest the closest built-in target using edit distance
+                let max_dist = target_tuple.len() / 3;
+                let mut best: Option<(&str, usize)> = None;
+                for candidate in TARGETS {
+                    if let Some(dist) = rustc_span::edit_distance::edit_distance_with_substrings(
+                        target_tuple,
+                        candidate,
+                        max_dist,
+                    ) {
+                        if best.is_none() || dist < best.unwrap().1 {
+                            best = Some((candidate, dist));
+                        }
+                    }
+                }
+                if let Some((suggestion, _)) = best {
+                    msg.push_str(&format!(". Did you mean `{suggestion}`?"));
+                }
+                Err(msg)
             }
             TargetTuple::TargetJson { ref contents, .. } if !unstable_options => {
                 Err("custom targets are unstable and require `-Zunstable-options`".to_string())
