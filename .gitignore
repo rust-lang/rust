@@ -108,3 +108,9 @@ compile_commands.json
 .cache
 .clangd
 dialect.rs
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.scratch/
