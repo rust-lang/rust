@@ -582,6 +582,42 @@ pub fn split<'ctx>(
     Ok(op)
 }
 
+/// Build a `tt.join` operation.
+///
+/// Joins two tensors of the same shape along a new, minor (last) dimension.
+/// For example, two `tensor<4x8xf32>` inputs produce a `tensor<4x8x2xf32>`
+/// result.  Both inputs must have identical shape (`SameTypeOperands` trait).
+///
+/// # Arguments
+/// * `lhs`       – first input tensor.
+/// * `rhs`       – second input tensor (same type as `lhs`).
+/// * `result_ty` – result tensor type (same element type, one new trailing dim
+///                 of size 2).
+///
+/// # Example
+///
+/// ```text
+/// %result = tt.join %lhs, %rhs : tensor<4x8xf32> -> tensor<4x8x2xf32>
+/// ```
+///
+/// Assembly format (from TableGen):
+/// ```text
+/// $lhs `,` $rhs attr-dict `:` type($lhs) `->` type($result)
+/// ```
+pub fn join<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, '_>,
+    rhs: Value<'ctx, '_>,
+    result_ty: Type<'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    OperationBuilder::new("tt.join", location)
+        .add_operands(&[lhs, rhs])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.join: {e}") })
+}
+
 /// Build a `tt.reshape` operation.
 ///
 /// Reinterprets the elements of a tensor to a different shape.  The total
@@ -2103,6 +2139,112 @@ mod tests {
         assert!(
             output.contains("tensor<4x2xf32>") && output.contains("tensor<4xf32>"),
             "missing type annotations in tt.split output:\n{output}"
+        );
+    }
+
+    /// Verify that `join` emits the correct `tt.join` op.
+    ///
+    /// Two `tensor<4x8xf32>` inputs → `tensor<4x8x2xf32>`.
+    #[test]
+    fn test_join() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        // Inputs: tensor<4x8xf32>
+        let in_ty: Type = tensor_type(&[4, 8], f32_type).into();
+        // Result: tensor<4x8x2xf32>
+        let out_ty: Type = tensor_type(&[4, 8, 2], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_join",
+            "public",
+            &[in_ty, in_ty],
+            &[out_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(in_ty, location), (in_ty, location)]);
+        let lhs: Value = block.argument(0).unwrap().into();
+        let rhs: Value = block.argument(1).unwrap().into();
+
+        let join_op: Operation<'_> = join(&context, location, lhs, rhs, out_ty).unwrap();
+
+        let result: Value = join_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result]).build();
+
+        block.append_operation(join_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.join"), "missing op mnemonic:\n{output}");
+        assert!(
+            output.contains("tensor<4x8xf32>"),
+            "missing input tensor type:\n{output}"
+        );
+        assert!(
+            output.contains("tensor<4x8x2xf32>"),
+            "missing result tensor type:\n{output}"
+        );
+    }
+
+    /// Verify pretty-printed `tt.join` with exact IR form.
+    #[test]
+    fn test_join_pretty_format() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let in_ty: Type = tensor_type(&[4, 8], f32_type).into();
+        let out_ty: Type = tensor_type(&[4, 8, 2], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_join_pretty",
+            "public",
+            &[in_ty, in_ty],
+            &[out_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(in_ty, location), (in_ty, location)]);
+        let lhs: Value = block.argument(0).unwrap().into();
+        let rhs: Value = block.argument(1).unwrap().into();
+
+        let join_op: Operation<'_> = join(&context, location, lhs, rhs, out_ty).unwrap();
+
+        let result: Value = join_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result]).build();
+
+        block.append_operation(join_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        // Pretty-printed form: "tt.join %arg0, %arg1 : tensor<4x8xf32> -> tensor<4x8x2xf32>"
+        assert!(
+            output.contains("tt.join"),
+            "missing tt.join mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("tensor<4x8xf32>") && output.contains("tensor<4x8x2xf32>"),
+            "missing type annotations in tt.join output:\n{output}"
         );
     }
 
