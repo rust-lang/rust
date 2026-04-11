@@ -1768,6 +1768,48 @@ pub fn broadcast<'ctx>(
         .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.broadcast: {e}") })
 }
 
+/// Build a `tt.trans` operation.
+///
+/// Rearranges the dimensions of a tensor according to a permutation order.
+/// For example, a `tensor<1x2x4xf32>` transposed with `order = [2, 0, 1]`
+/// produces a `tensor<4x1x2xf32>`.  This op implements both `tl.trans()` and
+/// `tl.permute()`.
+///
+/// Traits: `Pure`, `SameOperandsAndResultElementType`.
+///
+/// # Arguments
+/// * `src`       – source tensor to transpose.
+/// * `order`     – permutation of dimension indices (length == tensor rank).
+/// * `result_ty` – result tensor type (same element type, dimensions permuted
+///                 according to `order`).
+///
+/// # Example
+///
+/// ```text
+/// // Swap the two dimensions of a 2-D tensor:
+/// %1 = tt.trans %src {order = array<i32: 1, 0>} : tensor<4x8xf32> -> tensor<8x4xf32>
+/// ```
+///
+/// Assembly format (from TableGen):
+/// ```text
+/// $src attr-dict `:` type($src) `->` type($result)
+/// ```
+pub fn trans<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    src: Value<'ctx, '_>,
+    order: &[i32],
+    result_ty: Type<'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    let order_attr = DenseI32ArrayAttribute::new(context, order);
+    OperationBuilder::new("tt.trans", location)
+        .add_operands(&[src])
+        .add_attributes(&[(Identifier::new(context, "order"), Attribute::from(order_attr))])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.trans: {e}") })
+}
+
 /// Build a `tt.bitcast` operation.
 ///
 /// Reinterprets the bits of `src` as `result_ty` without any conversion.
@@ -6147,6 +6189,110 @@ mod tests {
         assert!(output.contains("tt.broadcast"), "missing op mnemonic:\n{output}");
         assert!(output.contains("tensor<1x32x1xf32>"), "missing src tensor type:\n{output}");
         assert!(output.contains("tensor<2x32x4xf32>"), "missing result tensor type:\n{output}");
+    }
+
+    /// Verify that `trans` emits the correct `tt.trans` IR for a 2-D swap.
+    ///
+    /// Transposes `tensor<4x8xf32>` with order `[1, 0]` to `tensor<8x4xf32>`.
+    ///
+    /// Expected assembly fragment:
+    /// ```text
+    /// %0 = tt.trans %arg0 {order = array<i32: 1, 0>} : tensor<4x8xf32> -> tensor<8x4xf32>
+    /// ```
+    #[test]
+    fn test_trans_2d() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[4, 8], f32_type).into();
+        let result_ty: Type = tensor_type(&[8, 4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_trans_2d",
+            "public",
+            &[src_ty],
+            &[result_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let trans_op: Operation<'_> =
+            super::trans(&context, location, src, &[1, 0], result_ty).unwrap();
+        let result_val: Value = trans_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(trans_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.trans"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("tensor<4x8xf32>"), "missing src tensor type:\n{output}");
+        assert!(output.contains("tensor<8x4xf32>"), "missing result tensor type:\n{output}");
+        assert!(output.contains("order"), "missing order attribute:\n{output}");
+    }
+
+    /// Verify that `trans` emits the correct `tt.trans` IR for a 3-D permutation.
+    ///
+    /// Permutes `tensor<1x2x4xf32>` with order `[2, 0, 1]` to `tensor<4x1x2xf32>`.
+    ///
+    /// Expected assembly fragment:
+    /// ```text
+    /// %0 = tt.trans %arg0 {order = array<i32: 2, 0, 1>} : tensor<1x2x4xf32> -> tensor<4x1x2xf32>
+    /// ```
+    #[test]
+    fn test_trans_3d_permute() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[1, 2, 4], f32_type).into();
+        let result_ty: Type = tensor_type(&[4, 1, 2], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_trans_3d_permute",
+            "public",
+            &[src_ty],
+            &[result_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let trans_op: Operation<'_> =
+            super::trans(&context, location, src, &[2, 0, 1], result_ty).unwrap();
+        let result_val: Value = trans_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(trans_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.trans"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("tensor<1x2x4xf32>"), "missing src tensor type:\n{output}");
+        assert!(output.contains("tensor<4x1x2xf32>"), "missing result tensor type:\n{output}");
+        assert!(output.contains("order"), "missing order attribute:\n{output}");
     }
 
     /// Verify that `bitcast` emits the correct `tt.bitcast` IR for a scalar cast.
