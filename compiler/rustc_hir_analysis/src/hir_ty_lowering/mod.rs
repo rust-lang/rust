@@ -1150,22 +1150,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn lower_path_segment(
         &self,
         span: Span,
-        did: DefId,
+        def_id: DefId,
         item_segment: &hir::PathSegment<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
-        let args = self.lower_generic_args_of_path_segment(span, did, item_segment);
+        let args = self.lower_generic_args_of_path_segment(span, def_id, item_segment);
 
-        if let DefKind::TyAlias = tcx.def_kind(did)
-            && tcx.type_alias_is_lazy(did)
+        if let DefKind::TyAlias = tcx.def_kind(def_id)
+            && tcx.type_alias_is_lazy(def_id)
         {
             // Type aliases defined in crates that have the
             // feature `lazy_type_alias` enabled get encoded as a type alias that normalization will
             // then actually instantiate the where bounds of.
-            let alias_ty = ty::AliasTy::new_from_args(tcx, ty::Free { def_id: did }, args);
+            let alias_ty = ty::AliasTy::new_from_args(tcx, ty::Free { def_id }, args);
             Ty::new_alias(tcx, alias_ty)
         } else {
-            tcx.at(span).type_of(did).instantiate(tcx, args)
+            tcx.at(span).type_of(def_id).instantiate(tcx, args)
         }
     }
 
