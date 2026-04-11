@@ -2,7 +2,7 @@ use std::convert::identity;
 
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
-use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, ast, token};
+use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
 use rustc_errors::{Applicability, PResult, msg};
 use rustc_feature::{
     AttrSuggestionStyle, AttributeTemplate, Features, GatedCfg, find_gated_cfg, template,
@@ -324,12 +324,13 @@ pub fn parse_cfg_attr(
     cfg_attr: &Attribute,
     sess: &Session,
     features: Option<&Features>,
+    lint_node_id: ast::NodeId,
 ) -> Option<(CfgEntry, Vec<(AttrItem, Span)>)> {
     match cfg_attr.get_normal_item().args.unparsed_ref().unwrap() {
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, tokens }) if !tokens.is_empty() => {
             check_cfg_attr_bad_delim(&sess.psess, *dspan, *delim);
             match parse_in(&sess.psess, tokens.clone(), "`cfg_attr` input", |p| {
-                parse_cfg_attr_internal(p, sess, features, cfg_attr)
+                parse_cfg_attr_internal(p, sess, features, lint_node_id, cfg_attr)
             }) {
                 Ok(r) => return Some(r),
                 Err(e) => {
@@ -390,6 +391,7 @@ fn parse_cfg_attr_internal<'a>(
     parser: &mut Parser<'a>,
     sess: &'a Session,
     features: Option<&Features>,
+    lint_node_id: ast::NodeId,
     attribute: &Attribute,
 ) -> PResult<'a, (CfgEntry, Vec<(ast::AttrItem, Span)>)> {
     // Parse cfg predicate
@@ -410,7 +412,7 @@ fn parse_cfg_attr_internal<'a>(
         Some(attribute.get_normal_item().unsafety),
         ParsedDescription::Attribute,
         pred_span,
-        CRATE_NODE_ID,
+        lint_node_id,
         Target::Crate,
         features,
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
