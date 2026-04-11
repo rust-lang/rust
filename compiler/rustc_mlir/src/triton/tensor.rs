@@ -204,6 +204,33 @@ pub fn splat<'ctx>(
     Ok(SplatOperation::builder(context, location).src(src).result(result_ty).build())
 }
 
+/// Build a `tt.unsplat` operation.
+///
+/// Converts a single-element tensor to a scalar by extracting its only
+/// element.  The result type must be the element type of the source tensor.
+///
+/// # Arguments
+/// * `src`       – single-element tensor operand (e.g. `tensor<1xf32>`).
+/// * `result_ty` – scalar result type (element type of `src`, e.g. `f32`).
+///
+/// Assembly format:
+/// ```text
+/// tt.unsplat %src : tensor<1xf32>
+/// ```
+/// (The result type is inferred via `InferTypeOpInterface` and is not printed.)
+pub fn unsplat<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    src: Value<'ctx, '_>,
+    result_ty: Type<'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    OperationBuilder::new("tt.unsplat", location)
+        .add_operands(&[src])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.unsplat: {e}") })
+}
+
 pub fn add_ptr<'ctx>(
     context: &'ctx Context,
     location: Location<'ctx>,
@@ -2105,6 +2132,59 @@ mod tests {
         assert!(output.contains("tt.splat"), "missing op mnemonic:\n{output}");
         assert!(output.contains("i32"), "missing src type:\n{output}");
         assert!(output.contains("tensor<8xi32>"), "missing result type:\n{output}");
+    }
+
+    /// Verify that `unsplat` emits the correct `tt.unsplat` IR.
+    ///
+    /// Uses a function block argument as the tensor source so the pretty-printed
+    /// IR does not mix `arith.constant` (generic format) with `tt.*` (pretty).
+    ///
+    /// Expected assembly fragment:
+    /// ```text
+    /// tt.unsplat %arg0 : tensor<1xf32>
+    /// ```
+    #[test]
+    fn test_unsplat() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = Type::float32(&context);
+        let tensor_ty: Type = tensor_type(&[1], f32_type).into();
+
+        // Function: (tensor<1xf32>) -> f32
+        let func_op = create_func(
+            &context,
+            location,
+            "test_unsplat",
+            "public",
+            &[tensor_ty],
+            &[f32_type],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(tensor_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let unsplat_op: Operation<'_> =
+            super::unsplat(&context, location, src, f32_type).unwrap().into();
+        let result_val: Value = unsplat_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(unsplat_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        // Pretty-printed form: "tt.unsplat %arg0 : tensor<1xf32>"
+        assert!(output.contains("tt.unsplat"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("tensor<1xf32>"), "missing source tensor type:\n{output}");
+        assert!(output.contains("f32"), "missing element/result type:\n{output}");
     }
 
     #[test]
