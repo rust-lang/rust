@@ -1376,13 +1376,6 @@ Default: `false`
 Exclude imports from find-all-references.
 
 
-## rust-analyzer.references.excludeLibraries {#references.excludeLibraries}
-
-Default: `false`
-
-Exclude references from dependencies and stdlib in find-all-references.
-
-
 ## rust-analyzer.references.excludeTests {#references.excludeTests}
 
 Default: `false`

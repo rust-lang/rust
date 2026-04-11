@@ -20,6 +20,7 @@
 use hir::{PathResolution, Semantics};
 use ide_db::{
     FileId, RootDatabase,
+    base_db::SourceDatabase,
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
     ra_fixture::{RaFixtureConfig, UpmapFromRaFixture},
@@ -93,7 +94,6 @@ pub struct FindAllRefsConfig<'a> {
     pub ra_fixture: RaFixtureConfig<'a>,
     pub exclude_imports: bool,
     pub exclude_tests: bool,
-    pub exclude_library_refs: bool,
 }
 
 /// Find all references to the item at the given position.
@@ -128,6 +128,7 @@ pub(crate) fn find_all_refs(
 ) -> Option<Vec<ReferenceSearchResult>> {
     let _p = tracing::info_span!("find_all_refs").entered();
     let syntax = sema.parse_guess_edition(position.file_id).syntax().clone();
+    let exclude_library_refs = !is_library_file(sema.db, position.file_id);
     let make_searcher = |literal_search: bool| {
         move |def: Definition| {
             let mut excluded_categories = ReferenceCategory::empty();
@@ -141,7 +142,7 @@ pub(crate) fn find_all_refs(
                 .usages(sema)
                 .set_scope(config.search_scope.as_ref())
                 .set_excluded_categories(excluded_categories)
-                .set_exclude_library_files(config.exclude_library_refs)
+                .set_exclude_library_files(exclude_library_refs)
                 .include_self_refs()
                 .all();
             if literal_search {
@@ -182,9 +183,7 @@ pub(crate) fn find_all_refs(
                     nav,
                 }
             })
-            .filter(|decl| {
-                !(config.exclude_library_refs && is_library_file(sema.db, decl.nav.file_id))
-            });
+            .filter(|decl| !(exclude_library_refs && is_library_file(sema.db, decl.nav.file_id)));
             ReferenceSearchResult { declaration, references }
         }
     };
@@ -507,7 +506,6 @@ fn test() {
 "#,
             false,
             false,
-            false,
             expect![[r#"
                 test_func Function FileId(0) 0..17 3..12
 
@@ -529,7 +527,6 @@ fn test() {
     test_func();
 }
 "#,
-            false,
             false,
             false,
             expect![[r#"
@@ -555,7 +552,6 @@ fn test() {
 "#,
             false,
             true,
-            false,
             expect![[r#"
                 test_func Function FileId(0) 0..17 3..12
 
@@ -585,7 +581,6 @@ pub fn also_calls_foo() {
 "#,
             false,
             false,
-            true,
             expect![[r#"
                 FileId(0) 9..12 import
                 FileId(0) 31..34
@@ -602,7 +597,6 @@ fn main() {
 "#,
             false,
             false,
-            true,
             expect![[r#"
                 FileId(0) 46..50
             "#]],
@@ -627,7 +621,36 @@ pub fn also_calls_foo() {
 "#,
             false,
             false,
-            true,
+            expect![[r#"
+                foo Function FileId(1) 0..15 7..10
+
+                FileId(0) 9..12 import
+                FileId(0) 31..34
+                FileId(1) 47..50
+            "#]],
+        );
+    }
+
+    #[test]
+    fn find_refs_from_library_source_keeps_library_refs() {
+        check_with_filters(
+            r#"
+//- /main.rs crate:main deps:dep
+use dep::foo;
+
+fn main() {
+    foo();
+}
+
+//- /dep/lib.rs crate:dep new_source_root:library
+pub fn foo$0() {}
+
+pub fn also_calls_foo() {
+    foo();
+}
+"#,
+            false,
+            false,
             expect![[r#"
                 foo Function FileId(1) 0..15 7..10
 
@@ -1682,24 +1705,16 @@ fn main() {
     }
 
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
-        check_with_filters(ra_fixture, false, false, false, expect)
+        check_with_filters(ra_fixture, false, false, expect)
     }
 
     fn check_with_filters(
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
         exclude_imports: bool,
         exclude_tests: bool,
-        exclude_library_refs: bool,
         expect: Expect,
     ) {
-        check_with_scope_and_filters(
-            ra_fixture,
-            None,
-            exclude_imports,
-            exclude_tests,
-            exclude_library_refs,
-            expect,
-        )
+        check_with_scope_and_filters(ra_fixture, None, exclude_imports, exclude_tests, expect)
     }
 
     fn check_with_scope(
@@ -1707,7 +1722,7 @@ fn main() {
         search_scope: Option<&mut dyn FnMut(&RootDatabase) -> SearchScope>,
         expect: Expect,
     ) {
-        check_with_scope_and_filters(ra_fixture, search_scope, false, false, false, expect)
+        check_with_scope_and_filters(ra_fixture, search_scope, false, false, expect)
     }
 
     fn check_with_scope_and_filters(
@@ -1715,7 +1730,6 @@ fn main() {
         search_scope: Option<&mut dyn FnMut(&RootDatabase) -> SearchScope>,
         exclude_imports: bool,
         exclude_tests: bool,
-        exclude_library_refs: bool,
         expect: Expect,
     ) {
         let (analysis, pos) = fixture::position(ra_fixture);
@@ -1724,10 +1738,6 @@ fn main() {
             ra_fixture: RaFixtureConfig::default(),
             exclude_imports,
             exclude_tests,
-            exclude_library_refs,
-            exclude_imports: false,
-            exclude_tests: false,
-            exclude_library_refs: false,
         };
         let refs = analysis.find_all_refs(pos, &config).unwrap().unwrap();
 
@@ -2234,8 +2244,6 @@ use proc_macros::identity;
 fn func() {}
 "#,
             expect![[r#"
-                identity Attribute FileId(1) 1..107 32..40
-
                 FileId(0) 17..25 import
                 FileId(0) 43..51
             "#]],
@@ -2265,8 +2273,6 @@ use proc_macros::mirror;
 mirror$0! {}
 "#,
             expect![[r#"
-                mirror ProcMacro FileId(1) 1..77 22..28
-
                 FileId(0) 17..23 import
                 FileId(0) 26..32
             "#]],
@@ -2285,8 +2291,6 @@ use proc_macros::DeriveIdentity;
 struct Foo;
 "#,
             expect![[r#"
-                derive_identity Derive FileId(2) 1..107 45..60
-
                 FileId(0) 17..31 import
                 FileId(0) 56..70
             "#]],

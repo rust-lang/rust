@@ -615,7 +615,7 @@ impl<'a> FindUsages<'a> {
         search_scope: &SearchScope,
         name: &str,
     ) -> bool {
-        if self.scope.is_some() || self.exclude_library_files {
+        if self.scope.is_some() {
             return false;
         }
 
@@ -897,12 +897,16 @@ impl<'a> FindUsages<'a> {
         let finder = Finder::new(name.as_bytes());
         // The search for `Self` may return duplicate results with `ContainerName`, so deduplicate them.
         let mut self_positions = FxHashSet::default();
+        let is_possibly_self = is_possibly_self.into_iter().filter(|position| {
+            !self.exclude_library_files
+                || !is_library_file(self.sema.db, position.file_id.file_id(self.sema.db))
+        });
         tracing::info_span!("Self_search").in_scope(|| {
             search(
                 self,
                 &finder,
                 name,
-                is_possibly_self.into_iter().map(|position| {
+                is_possibly_self.map(|position| {
                     (position.file_text(self.sema.db).clone(), position.file_id, position.range)
                 }),
                 |path, name_position| {
