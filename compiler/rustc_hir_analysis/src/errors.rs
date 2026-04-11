@@ -1036,6 +1036,16 @@ pub(crate) struct SpecializationTrait {
 }
 
 #[derive(Diagnostic)]
+#[diag("trait cannot be implemented outside `{$restriction_path}`")]
+pub(crate) struct ImplOfRestrictedTrait {
+    #[primary_span]
+    pub impl_span: Span,
+    #[note("trait restricted here")]
+    pub restriction_span: Span,
+    pub restriction_path: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("implicit types in closure signatures are forbidden when `for<...>` is present")]
 pub(crate) struct ClosureImplicitHrtb {
     #[primary_span]

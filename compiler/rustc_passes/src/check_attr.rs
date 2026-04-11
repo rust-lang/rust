@@ -616,7 +616,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
         if let Some(directive) = directive {
             if let Node::Item(Item {
-                kind: ItemKind::Trait(_, _, _, trait_name, generics, _, _),
+                kind: ItemKind::Trait(_, _, _, _, trait_name, generics, _, _),
                 ..
             }) = self.tcx.hir_node(hir_id)
             {
@@ -1069,7 +1069,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match item.kind {
             ItemKind::Enum(_, generics, _) | ItemKind::Struct(_, generics, _)
                 if generics.params.len() != 0 => {}
-            ItemKind::Trait(_, _, _, _, generics, _, items)
+            ItemKind::Trait(_, _, _, _, _, generics, _, items)
                 if generics.params.len() != 0
                     || items.iter().any(|item| {
                         matches!(self.tcx.def_kind(item.owner_id), DefKind::AssocTy)
