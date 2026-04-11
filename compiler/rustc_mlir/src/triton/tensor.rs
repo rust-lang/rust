@@ -28,8 +28,8 @@ use crate::shared::builtin::tensor_type;
 use crate::triton::attr_i32;
 use crate::triton::tt::{
     AddPtrOperation, DescriptorGatherOperation, LoadOperation, MakeRangeOperation,
-    MulhiUIOperation, ReduceReturnOperation, ReturnOperation, ScanOperation, ScanReturnOperation,
-    SplatOperation,
+    MulhiUIOperation, ReduceOperation, ReduceReturnOperation, ReturnOperation, ScanOperation,
+    ScanReturnOperation, SplatOperation,
 };
 
 /// Mirror of Triton's `InputPrecision` enum (TritonAttrDefs.td).
@@ -673,6 +673,52 @@ pub fn scan<'ctx>(
         .combine_op(combine_op)
         .axis(axis_attr)
         .reverse(reverse_attr)
+        .build())
+}
+
+/// Build a `tt.reduce` operation.
+///
+/// `tt.reduce` performs a reduction over tensors along a given axis using a
+/// user-supplied combination region.  Each input tensor produces one scalar
+/// result whose type is the element type of the corresponding source tensor.
+///
+/// # Arguments
+/// * `srcs`         – input tensors; must all have the same shape and encoding.
+/// * `result_types` – result types, one per source tensor (element type of the
+///                    corresponding source, i.e. the axis dimension is collapsed).
+/// * `axis`         – the tensor axis to reduce along (0-based, i32).
+/// * `combine_op`   – the `combineOp` region: a single block whose arguments
+///                    are 2 × len(srcs) scalars (lhs₀, rhs₀, lhs₁, rhs₁, …)
+///                    terminated by a `tt.reduce.return`.
+///
+/// # Example
+///
+/// ```text
+/// %result = tt.reduce(%src) {axis = 0 : i32} (
+///   ^bb0(%lhs: f32, %rhs: f32):
+///     tt.reduce.return %lhs : f32
+/// ) : (tensor<4xf32>) -> f32
+/// ```
+///
+/// # Panics / Errors
+///
+/// Returns an error if the operation builder rejects the supplied operands
+/// or result types.
+pub fn reduce<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    srcs: &[Value<'ctx, '_>],
+    result_types: &[Type<'ctx>],
+    axis: i32,
+    combine_op: melior::ir::Region<'ctx>,
+) -> Result<ReduceOperation<'ctx>, Error> {
+    let axis_attr = attr_i32(context, axis);
+
+    Ok(ReduceOperation::builder(context, location)
+        .result(result_types)
+        .srcs(srcs)
+        .combine_op(combine_op)
+        .axis(axis_attr)
         .build())
 }
 
@@ -2379,6 +2425,157 @@ mod tests {
         assert!(
             output.contains("axis = 0") || output.contains("axis = 0 :"),
             "missing axis attribute:\n{output}"
+        );
+    }
+
+    /// Verify that `reduce` emits a valid `tt.reduce` op with a `combineOp` region.
+    ///
+    /// Reduces `tensor<4xf32>` to `f32` along axis 0.  The `combineOp` region
+    /// passes through the lhs argument via `tt.reduce.return`.
+    ///
+    /// Expected IR contains:
+    /// ```text
+    /// tt.reduce(%arg0) {axis = 0 : i32} (
+    ///   ^bb0(%arg0: f32, %arg1: f32):
+    ///     tt.reduce.return %arg0 : f32
+    /// ) : (tensor<4xf32>) -> f32
+    /// ```
+    #[test]
+    fn test_reduce() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_reduce",
+            "public",
+            &[src_ty],
+            &[f32_type],
+            0,
+        )
+        .unwrap();
+
+        // combineOp region: two f32 block args, returns lhs via tt.reduce.return
+        let combine_block = Block::new(&[(f32_type, location), (f32_type, location)]);
+        let lhs: Value = combine_block.argument(0).unwrap().into();
+        let reduce_ret_op: Operation<'_> =
+            reduce_return(&context, location, &[lhs]).unwrap().into();
+        combine_block.append_operation(reduce_ret_op);
+
+        let combine_region = melior::ir::Region::new();
+        combine_region.append_block(combine_block);
+
+        let func_block = Block::new(&[(src_ty, location)]);
+        let src: Value = func_block.argument(0).unwrap().into();
+
+        let reduce_op: Operation<'_> =
+            reduce(&context, location, &[src], &[f32_type], 0, combine_region)
+                .unwrap()
+                .into();
+
+        let reduce_result: Value = reduce_op.result(0).unwrap().into();
+        let ret_op = crate::triton::tt::ReturnOperation::builder(&context, location)
+            .srcs(&[reduce_result])
+            .build();
+
+        func_block.append_operation(reduce_op);
+        func_block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(func_block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.reduce"),
+            "missing tt.reduce mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("tt.reduce.return"),
+            "missing tt.reduce.return terminator:\n{output}"
+        );
+        assert!(
+            output.contains("f32"),
+            "missing f32 type annotation:\n{output}"
+        );
+    }
+
+    /// Verify pretty-printed `tt.reduce` with exact IR form.
+    ///
+    /// Checks that the emitted IR contains the canonical pretty-print strings
+    /// for a `tt.reduce` op with axis=0.
+    #[test]
+    fn test_reduce_pretty_format() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_reduce_pretty",
+            "public",
+            &[src_ty],
+            &[f32_type],
+            0,
+        )
+        .unwrap();
+
+        let combine_block = Block::new(&[(f32_type, location), (f32_type, location)]);
+        let lhs: Value = combine_block.argument(0).unwrap().into();
+        let reduce_ret_op: Operation<'_> =
+            reduce_return(&context, location, &[lhs]).unwrap().into();
+        combine_block.append_operation(reduce_ret_op);
+
+        let combine_region = melior::ir::Region::new();
+        combine_region.append_block(combine_block);
+
+        let func_block = Block::new(&[(src_ty, location)]);
+        let src: Value = func_block.argument(0).unwrap().into();
+
+        let reduce_op: Operation<'_> =
+            reduce(&context, location, &[src], &[f32_type], 0, combine_region)
+                .unwrap()
+                .into();
+
+        let reduce_result: Value = reduce_op.result(0).unwrap().into();
+        let ret_op = crate::triton::tt::ReturnOperation::builder(&context, location)
+            .srcs(&[reduce_result])
+            .build();
+
+        func_block.append_operation(reduce_op);
+        func_block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(func_block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.reduce"),
+            "missing tt.reduce mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("axis = 0") || output.contains("axis = 0 :"),
+            "missing axis attribute:\n{output}"
+        );
+        assert!(
+            output.contains("tensor<4xf32>"),
+            "missing source tensor type:\n{output}"
+        );
+        assert!(
+            output.contains("-> f32") || output.contains(") : (tensor<4xf32>) -> f32"),
+            "missing scalar result type:\n{output}"
         );
     }
 }
