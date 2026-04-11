@@ -31,6 +31,21 @@ use crate::triton::tt::{
     MulhiUIOperation, SplatOperation, StoreOperation,
 };
 
+/// Mirror of Triton's `InputPrecision` enum (TritonAttrDefs.td).
+///
+/// Controls how tensor cores are used when inputs are f32.
+/// Integer values must stay in sync with the TableGen definition so that
+/// the resulting `IntegerAttr<i32>` is accepted as `InputPrecisionAttr`
+/// by MLIR's `classof` check.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum InputPrecision {
+    TF32   = 0,
+    TF32x3 = 1,
+    IEEE   = 2,
+    BF16x3 = 3,
+    BF16x6 = 4,
+}
+
 /// Mirror of Triton's `ScaleDotElemType` enum (TritonAttrDefs.td).
 ///
 /// Integer values must stay in sync with the TableGen definition so that
@@ -157,6 +172,64 @@ pub fn descriptor_gather<'ctx>(
         .y_offset(y_offset)
         .result(result_ty)
         .build())
+}
+
+/// Build a `tt.dot` operation.
+///
+/// Computes `d = matrix_multiply(a, b) + c`.
+///
+/// # Arguments
+/// * `a`, `b`                 – input matrices (TT_FpIntTensor)
+/// * `c`                      – accumulator; result `d` has the same type
+/// * `input_precision`        – how to use tensor cores for f32 inputs
+///                              (default: `InputPrecision::IEEE`)
+/// * `max_num_imprecise_acc`  – maximum allowed imprecise accumulations
+///                              (0 = unlimited; default)
+///
+/// The result type is identical to `c` (enforced by the TableGen
+/// `TypesMatchWith<"result's type matches accumulator's type", "d", "c", "$_self">`
+/// constraint).
+///
+/// Assembly format:
+/// ```text
+/// %d = tt.dot %a, %b, %c [, inputPrecision = <prec>]
+///     { maxNumImpreciseAcc = N : i32 }
+///     : type(a) * type(b) -> type(d)
+/// ```
+pub fn dot<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    a: Value<'ctx, 'ctx>,
+    b: Value<'ctx, 'ctx>,
+    c: Value<'ctx, 'ctx>,
+    input_precision: InputPrecision,
+    max_num_imprecise_acc: i32,
+) -> Result<Operation<'ctx>, Error> {
+    // Result type matches accumulator type (TypesMatchWith constraint).
+    let result_type = c.r#type();
+
+    // InputPrecisionAttr is backed by IntegerAttr<i32>; attr_i32 produces a
+    // compatible value that satisfies classof(InputPrecisionAttr).
+    let input_prec_attr = attr_i32(context, input_precision as i32);
+    let max_imprecise_attr = attr_i32(context, max_num_imprecise_acc);
+
+    let op = OperationBuilder::new("tt.dot", location)
+        .add_operands(&[a, b, c])
+        .add_attributes(&[
+            (
+                Identifier::new(context, "inputPrecision"),
+                Attribute::from(input_prec_attr),
+            ),
+            (
+                Identifier::new(context, "maxNumImpreciseAcc"),
+                Attribute::from(max_imprecise_attr),
+            ),
+        ])
+        .add_results(&[result_type])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.dot: {e}") })?;
+
+    Ok(op)
 }
 
 /// Build a `tt.dot_scaled` operation.
@@ -618,6 +691,180 @@ mod tests {
         assert!(
             output.contains("scale") || output.contains("arg3"),
             "optional scale operands missing from output:\n{output}",
+        );
+    }
+
+    /// Verify that `dot` emits a valid `tt.dot` op with the default IEEE precision.
+    ///
+    /// Uses function block-arguments as tensor values to avoid constant-folding.
+    #[test]
+    fn test_dot_ieee() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let tensor_16x16: Type = tensor_type(&[16, 16], f32_type).into();
+
+        // Function: (a, b, c: tensor<16x16xf32>) -> tensor<16x16xf32>
+        let func_op = create_func(
+            &context,
+            location,
+            "test_dot_ieee",
+            "public",
+            &[tensor_16x16, tensor_16x16, tensor_16x16],
+            &[tensor_16x16],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (tensor_16x16, location),
+            (tensor_16x16, location),
+            (tensor_16x16, location),
+        ]);
+
+        let a: Value = block.argument(0).unwrap().into();
+        let b: Value = block.argument(1).unwrap().into();
+        let c: Value = block.argument(2).unwrap().into();
+
+        let dot_op =
+            dot(&context, location, a, b, c, InputPrecision::IEEE, 0).unwrap();
+
+        let ret_val: Value = dot_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ret_val]).build();
+
+        block.append_operation(dot_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.dot"), "missing op mnemonic:\n{output}");
+        assert!(
+            output.contains("tensor<16x16xf32> * tensor<16x16xf32>"),
+            "missing operand types:\n{output}"
+        );
+        assert!(
+            output.contains("-> tensor<16x16xf32>"),
+            "missing result type:\n{output}"
+        );
+    }
+
+    /// Verify that `dot` emits `inputPrecision = tf32` for TF32 precision.
+    #[test]
+    fn test_dot_tf32_precision() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let tensor_16x16: Type = tensor_type(&[16, 16], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_dot_tf32",
+            "public",
+            &[tensor_16x16, tensor_16x16, tensor_16x16],
+            &[tensor_16x16],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (tensor_16x16, location),
+            (tensor_16x16, location),
+            (tensor_16x16, location),
+        ]);
+
+        let a: Value = block.argument(0).unwrap().into();
+        let b: Value = block.argument(1).unwrap().into();
+        let c: Value = block.argument(2).unwrap().into();
+
+        let dot_op =
+            dot(&context, location, a, b, c, InputPrecision::TF32, 0).unwrap();
+
+        let ret_val: Value = dot_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ret_val]).build();
+
+        block.append_operation(dot_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.dot"), "missing op mnemonic:\n{output}");
+        // TF32 is non-default so inputPrecision must appear in the output.
+        assert!(
+            output.contains("inputPrecision = tf32") || output.contains("inputPrecision = 0"),
+            "missing inputPrecision = tf32:\n{output}"
+        );
+        assert!(
+            output.contains("-> tensor<16x16xf32>"),
+            "missing result type:\n{output}"
+        );
+    }
+
+    /// Verify pretty-printed `tt.dot` with IEEE precision and exact IR form.
+    #[test]
+    fn test_dot_pretty_format() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let tensor_16x16: Type = tensor_type(&[16, 16], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_dot_pretty",
+            "public",
+            &[tensor_16x16, tensor_16x16, tensor_16x16],
+            &[tensor_16x16],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (tensor_16x16, location),
+            (tensor_16x16, location),
+            (tensor_16x16, location),
+        ]);
+
+        let a: Value = block.argument(0).unwrap().into();
+        let b: Value = block.argument(1).unwrap().into();
+        let c: Value = block.argument(2).unwrap().into();
+
+        let dot_op =
+            dot(&context, location, a, b, c, InputPrecision::IEEE, 0).unwrap();
+
+        let ret_val: Value = dot_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ret_val]).build();
+
+        block.append_operation(dot_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        // The pretty-printed form must include the tt.dot mnemonic with proper types.
+        // inputPrecision = ieee may be omitted when it equals the default value.
+        let expected_fragment =
+            "tt.dot %arg0, %arg1, %arg2 : tensor<16x16xf32> * tensor<16x16xf32> -> tensor<16x16xf32>";
+        assert!(
+            output.contains(expected_fragment),
+            "expected pretty fragment not found.\nExpected fragment:\n  {expected_fragment}\nActual output:\n{output}"
         );
     }
 }
