@@ -24,6 +24,7 @@ use hir_def::{
 };
 use hir_expand::{
     EditionedFileId, ExpandResult, FileRange, HirFileId, InMacroFile, MacroCallId,
+    attrs::AstPathExt,
     builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     files::{FileRangeWrapper, HirFileRange, InRealFile},
@@ -298,14 +299,15 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
         hir_expand::attrs::expand_cfg_attr::<Infallible>(
             extra_crate_attrs.chain(ast::attrs_including_inner(&item)),
             cfg_options,
-            |attr, _, _, _| {
-                let hir_expand::attrs::Meta::TokenTree { path, tt } = attr else {
+            |attr, _| {
+                let ast::Meta::TokenTreeMeta(attr) = attr else {
                     return ControlFlow::Continue(());
                 };
-                if path.segments.len() != 1 {
+                let (Some(segment), Some(tt)) = (attr.path().as_one_segment(), attr.token_tree())
+                else {
                     return ControlFlow::Continue(());
-                }
-                let lint_attr = match path.segments[0].text() {
+                };
+                let lint_attr = match &*segment {
                     "allow" => LintAttr::Allow,
                     "expect" => LintAttr::Expect,
                     "warn" => LintAttr::Warn,
@@ -554,17 +556,6 @@ impl<'db> SemanticsImpl<'db> {
         Some(InFile::new(file_id.into(), node))
     }
 
-    pub fn check_cfg_attr(&self, attr: &ast::TokenTree) -> Option<bool> {
-        let file_id = self.find_file(attr.syntax()).file_id;
-        let krate = match file_id {
-            HirFileId::FileId(file_id) => {
-                self.file_to_module_defs(file_id.file_id(self.db)).next()?.krate(self.db).id
-            }
-            HirFileId::MacroFile(macro_file) => self.db.lookup_intern_macro_call(macro_file).krate,
-        };
-        hir_expand::check_cfg_attr_value(self.db, attr, krate)
-    }
-
     /// Expands the macro if it isn't one of the built-in ones that expand to custom syntax or dummy
     /// expansions.
     pub fn expand_allowed_builtins(
@@ -608,8 +599,8 @@ impl<'db> SemanticsImpl<'db> {
         Some(self.expand(macro_call_id).map(|it| InFile::new(macro_call_id.into(), it)))
     }
 
-    pub fn expand_derive_as_pseudo_attr_macro(&self, attr: &ast::Attr) -> Option<SyntaxNode> {
-        let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
+    pub fn expand_derive_as_pseudo_attr_macro(&self, attr: &ast::Meta) -> Option<SyntaxNode> {
+        let adt = attr.parent_attr()?.syntax().parent().and_then(ast::Adt::cast)?;
         let src = self.wrap_node_infile(attr.clone());
         let call_id = self.with_ctx(|ctx| {
             ctx.attr_to_derive_macro_call(src.with_value(&adt), src).map(|(_, it, _)| it)
@@ -617,7 +608,7 @@ impl<'db> SemanticsImpl<'db> {
         Some(self.parse_or_expand(call_id.into()))
     }
 
-    pub fn resolve_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<Option<Macro>>> {
+    pub fn resolve_derive_macro(&self, attr: &ast::Meta) -> Option<Vec<Option<Macro>>> {
         let calls = self.derive_macro_calls(attr)?;
         self.with_ctx(|ctx| {
             Some(
@@ -644,7 +635,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn expand_derive_macro(
         &self,
-        attr: &ast::Attr,
+        attr: &ast::Meta,
     ) -> Option<Vec<Option<ExpandResult<SyntaxNode>>>> {
         let res: Vec<_> = self
             .derive_macro_calls(attr)?
@@ -662,9 +653,9 @@ impl<'db> SemanticsImpl<'db> {
 
     fn derive_macro_calls(
         &self,
-        attr: &ast::Attr,
+        attr: &ast::Meta,
     ) -> Option<Vec<Option<Either<MacroCallId, BuiltinDeriveImplId>>>> {
-        let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
+        let adt = attr.parent_attr()?.syntax().parent().and_then(ast::Adt::cast)?;
         let file_id = self.find_file(adt.syntax()).file_id;
         let adt = InFile::new(file_id, &adt);
         let src = InFile::new(file_id, attr.clone());
@@ -773,7 +764,11 @@ impl<'db> SemanticsImpl<'db> {
         let attr = self.wrap_node_infile(actual_macro_call.clone());
         let adt = actual_macro_call.syntax().parent().and_then(ast::Adt::cast)?;
         let macro_call_id = self.with_ctx(|ctx| {
-            ctx.attr_to_derive_macro_call(attr.with_value(&adt), attr).map(|(_, it, _)| it)
+            ctx.attr_to_derive_macro_call(
+                attr.with_value(&adt),
+                attr.with_value(attr.value.meta()?),
+            )
+            .map(|(_, it, _)| it)
         })?;
         hir_expand::db::expand_speculative(
             self.db,
@@ -1328,7 +1323,7 @@ impl<'db> SemanticsImpl<'db> {
                                         // text ranges of the outer ones, and then all of the inner ones up
                                         // to the invoking attribute so that the inbetween is ignored.
                                         // FIXME: Should cfg_attr be handled differently?
-                                        let (attr, _, _, _) = attr_ids
+                                        let (attr, _) = attr_ids
                                             .invoc_attr()
                                             .find_attr_range_with_source(db, loc.krate, &item);
                                         let start = attr.syntax().text_range().start();
@@ -1435,7 +1430,7 @@ impl<'db> SemanticsImpl<'db> {
                                         let derive_call = ctx
                                             .attr_to_derive_macro_call(
                                                 InFile::new(expansion, &adt),
-                                                InFile::new(expansion, attr.clone()),
+                                                InFile::new(expansion, meta.clone()),
                                             )?
                                             .1;
 

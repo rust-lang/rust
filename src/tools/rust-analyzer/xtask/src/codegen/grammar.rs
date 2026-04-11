@@ -780,7 +780,7 @@ impl Field {
     }
     fn token_kind(&self) -> Option<proc_macro2::TokenStream> {
         match self {
-            Field::Token(token) => {
+            Field::Token { token, .. } => {
                 let token: proc_macro2::TokenStream = token.parse().unwrap();
                 Some(quote! { T![#token] })
             }
@@ -789,8 +789,11 @@ impl Field {
     }
     fn method_name(&self) -> String {
         match self {
-            Field::Token(name) => {
-                let name = match name.as_str() {
+            Field::Token { name, token, .. } => {
+                if let Some(name) = name {
+                    return name.clone();
+                }
+                let name = match token.as_str() {
                     ";" => "semicolon",
                     "->" => "thin_arrow",
                     "'{'" => "l_curly",
@@ -820,7 +823,7 @@ impl Field {
                     "," => "comma",
                     "|" => "pipe",
                     "~" => "tilde",
-                    _ => name,
+                    _ => token,
                 };
                 format!("{name}_token",)
             }
@@ -835,7 +838,7 @@ impl Field {
     }
     fn ty(&self) -> proc_macro2::Ident {
         match self {
-            Field::Token(_) => format_ident!("SyntaxToken"),
+            Field::Token { .. } => format_ident!("SyntaxToken"),
             Field::Node { ty, .. } => format_ident!("{}", ty),
         }
     }
@@ -885,7 +888,7 @@ fn lower(grammar: &Grammar) -> AstSrc {
     res.nodes.iter_mut().for_each(|it| {
         it.traits.sort();
         it.fields.sort_by_key(|it| match it {
-            Field::Token(name) => (true, name.clone()),
+            Field::Token { token, .. } => (true, token.clone()),
             Field::Node { name, .. } => (false, name.clone()),
         });
     });
@@ -925,12 +928,11 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
             acc.push(field);
         }
         Rule::Token(token) => {
-            assert!(label.is_none());
-            let mut name = clean_token_name(&grammar[*token].name);
-            if "[]{}()".contains(&name) {
-                name = format!("'{name}'");
+            let mut token = clean_token_name(&grammar[*token].name);
+            if "[]{}()".contains(&token) {
+                token = format!("'{token}'");
             }
-            let field = Field::Token(name);
+            let field = Field::Token { name: label.cloned(), token };
             acc.push(field);
         }
         Rule::Rep(inner) => {
@@ -1018,8 +1020,8 @@ fn lower_separated_list(
     }
     match nt {
         Either::Right(token) => {
-            let name = clean_token_name(&grammar[*token].name);
-            let field = Field::Token(name);
+            let token = clean_token_name(&grammar[*token].name);
+            let field = Field::Token { token, name: None };
             acc.push(field);
         }
         Either::Left(node) => {

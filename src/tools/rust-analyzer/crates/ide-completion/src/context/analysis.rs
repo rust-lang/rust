@@ -284,9 +284,12 @@ fn expand(
     };
 
     // Expand pseudo-derive expansion aka `derive(Debug$0)`
-    if let Some((orig_attr, spec_attr)) = attrs {
+    if let Some((orig_attr, spec_attr)) = attrs
+        && let Some(orig_meta) = orig_attr.meta()
+    {
+        // FIXME: Support speculative expansion with `cfg_attr`.
         if let (Some(actual_expansion), Some((fake_expansion, fake_mapped_tokens))) = (
-            sema.expand_derive_as_pseudo_attr_macro(&orig_attr),
+            sema.expand_derive_as_pseudo_attr_macro(&orig_meta),
             sema.speculative_expand_derive_as_pseudo_attr_macro(
                 &orig_attr,
                 &spec_attr,
@@ -463,7 +466,9 @@ fn analyze<'db>(
     }
 
     // Overwrite the path kind for derives
-    if let Some((original_file, file_with_fake_ident, offset, origin_attr)) = derive_ctx {
+    if let Some((original_file, file_with_fake_ident, offset, origin_attr)) = derive_ctx
+        && let Some(origin_meta) = origin_attr.meta()
+    {
         if let Some(ast::NameLike::NameRef(name_ref)) =
             find_node_at_offset(&file_with_fake_ident, offset)
         {
@@ -473,7 +478,7 @@ fn analyze<'db>(
             if let NameRefKind::Path(path_ctx) = &mut nameref_ctx.kind {
                 path_ctx.kind = PathKind::Derive {
                     existing_derives: sema
-                        .resolve_derive_macro(&origin_attr)
+                        .resolve_derive_macro(&origin_meta)
                         .into_iter()
                         .flatten()
                         .flatten()
@@ -498,7 +503,7 @@ fn analyze<'db>(
             let token = syntax::algo::skip_trivia_token(self_token.clone(), Direction::Prev)?;
             let p = token.parent()?;
             if p.kind() == SyntaxKind::TOKEN_TREE
-                && p.ancestors().any(|it| it.kind() == SyntaxKind::META)
+                && p.ancestors().any(|it| it.kind() == SyntaxKind::TOKEN_TREE_META)
             {
                 let colon_prefix = previous_non_trivia_token(self_token.clone())
                     .is_some_and(|it| T![:] == it.kind());
@@ -506,7 +511,7 @@ fn analyze<'db>(
                 CompletionAnalysis::UnexpandedAttrTT {
                     fake_attribute_under_caret: fake_ident_token
                         .parent_ancestors()
-                        .find_map(ast::Attr::cast),
+                        .find_map(ast::TokenTreeMeta::cast),
                     colon_prefix,
                     extern_crate: p.ancestors().find_map(ast::ExternCrate::cast),
                 }
@@ -525,6 +530,13 @@ fn analyze<'db>(
                 } else {
                     return None;
                 }
+            } else if find_node_at_offset::<ast::CfgPredicate>(
+                &speculative_file,
+                speculative_offset,
+            )
+            .is_some()
+            {
+                CompletionAnalysis::CfgPredicate
             } else {
                 return None;
             }

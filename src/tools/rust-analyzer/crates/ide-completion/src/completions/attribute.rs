@@ -30,6 +30,7 @@ mod lint;
 mod macro_use;
 mod repr;
 
+pub(crate) use self::cfg::complete_cfg;
 pub(crate) use self::derive::complete_derive_path;
 
 /// Complete inputs to known builtin attributes as well as derive attributes
@@ -37,7 +38,7 @@ pub(crate) fn complete_known_attribute_input(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
     &colon_prefix: &bool,
-    fake_attribute_under_caret: &ast::Attr,
+    fake_attribute_under_caret: &ast::TokenTreeMeta,
     extern_crate: Option<&ast::ExternCrate>,
 ) -> Option<()> {
     let attribute = fake_attribute_under_caret;
@@ -70,7 +71,6 @@ pub(crate) fn complete_known_attribute_input(
 
             lint::complete_lint(acc, ctx, colon_prefix, &existing_lints, &lints);
         }
-        ["cfg"] | ["cfg_attr"] => cfg::complete_cfg(acc, ctx),
         ["macro_use"] => macro_use::complete_macro_use(
             acc,
             ctx,

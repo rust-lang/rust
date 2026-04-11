@@ -68,9 +68,11 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
                     ],
                 );
 
-                let delimiter = derive
-                    .meta()
-                    .expect("make::attr_outer was expected to have Meta")
+                let meta = derive.meta().expect("make::attr_outer was expected to have Meta");
+                let ast::Meta::TokenTreeMeta(meta) = meta else {
+                    unreachable!("make::attr_outer was passed a token tree meta");
+                };
+                let delimiter = meta
                     .token_tree()
                     .expect("failed to get token tree out of Meta")
                     .r_paren_token()

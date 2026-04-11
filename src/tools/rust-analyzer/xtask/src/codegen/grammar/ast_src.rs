@@ -111,8 +111,19 @@ const RESERVED: &[&str] = &[
 ];
 // keywords that are keywords only in specific parse contexts
 #[doc(alias = "WEAK_KEYWORDS")]
-const CONTEXTUAL_KEYWORDS: &[&str] =
-    &["macro_rules", "union", "default", "raw", "dyn", "auto", "yeet", "safe", "bikeshed"];
+const CONTEXTUAL_KEYWORDS: &[&str] = &[
+    "macro_rules",
+    "union",
+    "default",
+    "raw",
+    "dyn",
+    "auto",
+    "yeet",
+    "safe",
+    "bikeshed",
+    "cfg_attr",
+    "cfg",
+];
 // keywords we use for special macro expansions
 const CONTEXTUAL_BUILTIN_KEYWORDS: &[&str] = &[
     "asm",
@@ -261,7 +272,7 @@ pub(crate) struct AstNodeSrc {
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Field {
-    Token(String),
+    Token { name: Option<String>, token: String },
     Node { name: String, ty: String, cardinality: Cardinality },
 }
 
