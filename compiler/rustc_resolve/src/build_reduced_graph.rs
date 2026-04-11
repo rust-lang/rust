@@ -37,8 +37,8 @@ use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
     BindingKey, Decl, DeclData, DeclKind, ExternPreludeEntry, Finalize, IdentKey, MacroData,
-    Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, ResolutionError, Resolver,
-    Segment, Used, VisResolutionError, errors,
+    Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, Resolver, Segment, Used,
+    VisResolutionError, errors,
 };
 
 type Res = def::Res<NodeId>;
@@ -631,28 +631,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 let source = module_path.pop().unwrap();
 
                 // `true` for `...::{self [as target]}` imports, `false` otherwise.
-                let type_ns_only = nested && source.ident.name == kw::SelfLower;
-
-                // Suggest `use prefix::{self};` for `use prefix::self;`
-                if source.ident.name == kw::SelfLower
-                    && let Some(parent) = module_path.last()
-                    && !type_ns_only
-                    && (parent.ident.name != kw::PathRoot
-                        || self.r.path_root_is_crate_root(parent.ident))
-                {
-                    let span_with_rename = match rename {
-                        Some(rename) => source.ident.span.to(rename.span),
-                        None => source.ident.span,
-                    };
-
-                    self.r.report_error(
-                        parent.ident.span.shrink_to_hi().to(source.ident.span),
-                        ResolutionError::SelfImportsOnlyAllowedWithin {
-                            root: parent.ident.name == kw::PathRoot,
-                            span_with_rename,
-                        },
-                    );
-                }
+                let type_ns_only = source.ident.name == kw::SelfLower;
 
                 let ident = if source.ident.name == kw::SelfLower
                     && rename.is_none()
@@ -698,31 +677,36 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                             return;
                         }
                     }
-                    // Deny `use ::{self};` after edition 2015
-                    kw::SelfLower
-                        if let Some(parent) = module_path.last()
-                            && parent.ident.name == kw::PathRoot
-                            && !self.r.path_root_is_crate_root(parent.ident) =>
-                    {
-                        self.r.dcx().span_err(use_tree.span(), "extern prelude cannot be imported");
-                        return;
+                    kw::SelfLower if let Some(parent) = module_path.last() => {
+                        // Deny `use ::{self};` after edition 2015
+                        if parent.ident.name == kw::PathRoot
+                            && !self.r.path_root_is_crate_root(parent.ident)
+                        {
+                            self.r
+                                .dcx()
+                                .span_err(use_tree.span(), "extern prelude cannot be imported");
+                            return;
+                        }
+
+                        // Deny `use ...::self::self [as name];` but allow `use self::self as name;`
+                        if parent.ident.name == kw::SelfLower && module_path.len() > 1 {
+                            self.r.dcx().span_err(
+                                parent.ident.span,
+                                "`self` in paths can only be used in start position or last position",
+                            );
+                            return;
+                        }
                     }
-                    _ => {}
+                    _ => (),
                 }
 
                 // Deny importing path-kw without renaming
                 if rename.is_none() && ident.is_path_segment_keyword() {
                     let ident = use_tree.ident();
-
-                    // Don't suggest `use xx::self as name;` for `use xx::self;`
-                    // But it's OK to suggest `use xx::{self as name};` for `use xx::{self};`
-                    let sugg = if !type_ns_only && ident.name == kw::SelfLower {
-                        None
-                    } else {
-                        Some(errors::UnnamedImportSugg { span: ident.span, ident })
-                    };
-
-                    self.r.dcx().emit_err(errors::UnnamedImport { span: ident.span, sugg });
+                    self.r.dcx().emit_err(errors::UnnamedImport {
+                        span: ident.span,
+                        sugg: errors::UnnamedImportSugg { span: ident.span, ident },
+                    });
                     return;
                 }
 

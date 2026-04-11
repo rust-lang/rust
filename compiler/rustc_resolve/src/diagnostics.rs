@@ -902,29 +902,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     sub_unreachable,
                 })
             }
-            ResolutionError::SelfImportsOnlyAllowedWithin { root, span_with_rename } => {
-                // None of the suggestions below would help with a case like `use self`.
-                let (suggestion, mpart_suggestion) = if root {
-                    (None, None)
-                } else {
-                    // use foo::bar::self        -> foo::bar
-                    // use foo::bar::self as abc -> foo::bar as abc
-                    let suggestion = errs::SelfImportsOnlyAllowedWithinSuggestion { span };
-
-                    // use foo::bar::self        -> foo::bar::{self}
-                    // use foo::bar::self as abc -> foo::bar::{self as abc}
-                    let mpart_suggestion = errs::SelfImportsOnlyAllowedWithinMultipartSuggestion {
-                        multipart_start: span_with_rename.shrink_to_lo(),
-                        multipart_end: span_with_rename.shrink_to_hi(),
-                    };
-                    (Some(suggestion), Some(mpart_suggestion))
-                };
-                self.dcx().create_err(errs::SelfImportsOnlyAllowedWithin {
-                    span,
-                    suggestion,
-                    mpart_suggestion,
-                })
-            }
             ResolutionError::FailedToResolve { segment, label, suggestion, module, message } => {
                 let mut err = struct_span_code_err!(self.dcx(), span, E0433, "{message}");
                 err.span_label(span, label);
