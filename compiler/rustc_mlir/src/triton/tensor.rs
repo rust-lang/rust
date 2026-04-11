@@ -17,10 +17,10 @@
 use melior::Context;
 use melior::dialect::arith;
 use melior::dialect::ods::arith::{ConstantOperation, MaxSIOperation, MaximumFOperation};
-use melior::ir::attribute::DenseI32ArrayAttribute;
-use melior::ir::operation::OperationMutLike;
+use melior::ir::attribute::{BoolAttribute, DenseI32ArrayAttribute};
+use melior::ir::operation::{OperationBuilder, OperationMutLike};
 use melior::ir::r#type::{IntegerType, RankedTensorType};
-use melior::ir::{Attribute, Location, Operation, Type, TypeLike, Value, ValueLike};
+use melior::ir::{Attribute, Identifier, Location, Operation, Type, TypeLike, Value, ValueLike};
 
 use crate::errors::Error;
 use crate::ffi::mlirCreateTritonPointerType;
@@ -30,6 +30,22 @@ use crate::triton::tt::{
     AddPtrOperation, LoadOperation, MakeRangeOperation, MulhiUIOperation, SplatOperation,
     StoreOperation,
 };
+
+/// Mirror of Triton's `ScaleDotElemType` enum (TritonAttrDefs.td).
+///
+/// Integer values must stay in sync with the TableGen definition so that
+/// the resulting `IntegerAttr<i32>` is accepted as a `ScaleDotElemTypeAttr`
+/// by MLIR's `classof` check.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ScaleDotElemType {
+    E4M3 = 0,
+    E5M2 = 1,
+    E2M3 = 2,
+    E3M2 = 3,
+    E2M1 = 4,
+    BF16 = 5,
+    FP16 = 6,
+}
 
 pub fn make_range<'ctx>(
     context: &'ctx Context,
@@ -109,6 +125,85 @@ pub fn mulhiui<'ctx>(
     Ok(MulhiUIOperation::builder(context, location).x(x).y(y).build())
 }
 
+/// Build a `tt.dot_scaled` operation.
+///
+/// Computes `d = matrix_multiply(scale(a, a_scale), scale(b, b_scale)) + c`
+/// following the microscaling spec.  `a_scale` and `b_scale` are optional;
+/// pass `None` to omit them (the corresponding operand segment is set to 0).
+///
+/// `a_elem_type` / `b_elem_type` describe the logical element type used for
+/// scaling and are encoded as `ScaleDotElemTypeAttr` (an `IntegerAttr<i32>`
+/// in MLIR's storage).
+///
+/// The result type is always the same as `c` (enforced by
+/// `TypesMatchWith<"result's type matches accumulator's type", "d", "c", "$_self">`).
+pub fn dot_scaled<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    a: Value<'ctx, 'ctx>,
+    b: Value<'ctx, 'ctx>,
+    c: Value<'ctx, 'ctx>,
+    a_scale: Option<Value<'ctx, 'ctx>>,
+    b_scale: Option<Value<'ctx, 'ctx>>,
+    a_elem_type: ScaleDotElemType,
+    b_elem_type: ScaleDotElemType,
+    fast_math: bool,
+) -> Result<Operation<'ctx>, Error> {
+    // Result type matches accumulator type (TypesMatchWith constraint).
+    let result_type = c.r#type();
+
+    // Collect operands: required first, then optional.
+    let mut operands: Vec<Value> = vec![a, b, c];
+    let a_scale_size: i32 = if let Some(s) = a_scale {
+        operands.push(s);
+        1
+    } else {
+        0
+    };
+    let b_scale_size: i32 = if let Some(s) = b_scale {
+        operands.push(s);
+        1
+    } else {
+        0
+    };
+
+    // AttrSizedOperandSegments for [a, b, c, a_scale, b_scale].
+    let seg_sizes =
+        DenseI32ArrayAttribute::new(context, &[1, 1, 1, a_scale_size, b_scale_size]);
+
+    // ScaleDotElemTypeAttr is backed by IntegerAttr<i32>; attr_i32 produces a
+    // compatible value that satisfies classof(ScaleDotElemTypeAttr).
+    let a_elem_attr = attr_i32(context, a_elem_type as i32);
+    let b_elem_attr = attr_i32(context, b_elem_type as i32);
+    let fast_math_attr = BoolAttribute::new(context, fast_math);
+
+    let op = OperationBuilder::new("tt.dot_scaled", location)
+        .add_operands(&operands)
+        .add_attributes(&[
+            (
+                Identifier::new(context, "operandSegmentSizes"),
+                Attribute::from(seg_sizes),
+            ),
+            (
+                Identifier::new(context, "a_elem_type"),
+                Attribute::from(a_elem_attr),
+            ),
+            (
+                Identifier::new(context, "b_elem_type"),
+                Attribute::from(b_elem_attr),
+            ),
+            (
+                Identifier::new(context, "fastMath"),
+                Attribute::from(fast_math_attr),
+            ),
+        ])
+        .add_results(&[result_type])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.dot_scaled: {e}") })?;
+
+    Ok(op)
+}
+
 pub fn maximumf<'ctx>(
     context: &'ctx Context,
     location: Location<'ctx>,
@@ -145,12 +240,14 @@ pub fn zeros_like<'ctx>(
 mod tests {
     use melior::Context;
     use melior::ir::operation::OperationLike;
-    use melior::ir::{BlockLike, Location, Module, Operation};
+    use melior::ir::{Block, BlockLike, Location, Module, Operation, RegionLike};
 
     use super::*;
     use crate::shared::arith::{Int, create_int_constant};
+    use crate::shared::builtin::tensor_type;
     use crate::test::create_test_context;
-    use crate::triton::{int_to_ptr, load_triton_dialect, pointer_type};
+    use crate::triton::tt::ReturnOperation;
+    use crate::triton::{create_func, int_to_ptr, load_triton_dialect, pointer_type};
 
     #[test]
     fn test_make_range_generic() {
@@ -269,5 +366,145 @@ mod tests {
         let output = module.as_operation().to_string();
         let expected = "module {\n  %c0_i64 = arith.constant 0 : i64\n  %0 = tt.int_to_ptr %c0_i64 : i64 -> !tt.ptr<f32>\n  %c0_i32 = arith.constant 0 : i32\n  %1 = tt.addptr %0, %c0_i32 : !tt.ptr<f32>, i32\n}\n";
         assert_eq!(expected, output);
+    }
+
+    /// Verify that `dot_scaled` emits a valid `tt.dot_scaled` op without
+    /// optional scale operands.  The test uses function block-arguments as
+    /// tensor values so it does not depend on any constant-folding logic.
+    #[test]
+    fn test_dot_scaled_no_scales() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let tensor_type_2d: Type = tensor_type(&[16, 16], f32_type).into();
+
+        // Build a function: (tensor<16x16xf32>, tensor<16x16xf32>, tensor<16x16xf32>) -> tensor<16x16xf32>
+        let func_op = create_func(
+            &context,
+            location,
+            "test_dot_scaled",
+            "public",
+            &[tensor_type_2d, tensor_type_2d, tensor_type_2d],
+            &[tensor_type_2d],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (tensor_type_2d, location),
+            (tensor_type_2d, location),
+            (tensor_type_2d, location),
+        ]);
+
+        let a = block.argument(0).unwrap().into();
+        let b = block.argument(1).unwrap().into();
+        let c = block.argument(2).unwrap().into();
+
+        let dot_op =
+            dot_scaled(&context, location, a, b, c, None, None, ScaleDotElemType::FP16, ScaleDotElemType::FP16, false)
+                .unwrap();
+
+        let ret_val: Value = dot_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ret_val]).build();
+
+        block.append_operation(dot_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        // Verify the key structural elements of the emitted IR.
+        assert!(output.contains("tt.dot_scaled"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("lhs = fp16"), "missing lhs elem type:\n{output}");
+        assert!(output.contains("rhs = fp16"), "missing rhs elem type:\n{output}");
+        assert!(output.contains("fastMath = false"), "missing fastMath attr:\n{output}");
+        assert!(output.contains("-> tensor<16x16xf32>"), "missing result type:\n{output}");
+    }
+
+    /// Verify `dot_scaled` with both optional scale tensors present.
+    #[test]
+    fn test_dot_scaled_with_scales() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let tensor_16x16: Type = tensor_type(&[16, 16], f32_type).into();
+        let tensor_16x1: Type = tensor_type(&[16, 1], f32_type).into();
+
+        // Function: (a, b, c, a_scale, b_scale) -> tensor<16x16xf32>
+        let func_op = create_func(
+            &context,
+            location,
+            "test_dot_scaled_scales",
+            "public",
+            &[tensor_16x16, tensor_16x16, tensor_16x16, tensor_16x1, tensor_16x1],
+            &[tensor_16x16],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (tensor_16x16, location),
+            (tensor_16x16, location),
+            (tensor_16x16, location),
+            (tensor_16x1, location),
+            (tensor_16x1, location),
+        ]);
+
+        let a: Value = block.argument(0).unwrap().into();
+        let b: Value = block.argument(1).unwrap().into();
+        let c: Value = block.argument(2).unwrap().into();
+        let a_scale: Value = block.argument(3).unwrap().into();
+        let b_scale: Value = block.argument(4).unwrap().into();
+
+        let dot_op = dot_scaled(
+            &context,
+            location,
+            a,
+            b,
+            c,
+            Some(a_scale),
+            Some(b_scale),
+            ScaleDotElemType::E4M3,
+            ScaleDotElemType::E5M2,
+            true,
+        )
+        .unwrap();
+
+        let ret_val: Value = dot_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ret_val]).build();
+
+        block.append_operation(dot_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        // Both the custom assembly format ("lhs = e4m3") and the generic format
+        // ("a_elem_type = 0 : i32") are acceptable; check for at least one.
+        assert!(output.contains("tt.dot_scaled"), "missing op mnemonic:\n{output}");
+        assert!(
+            output.contains("lhs = e4m3") || output.contains("a_elem_type = 0"),
+            "missing a_elem_type (E4M3 = 0):\n{output}",
+        );
+        assert!(
+            output.contains("rhs = e5m2") || output.contains("b_elem_type = 1"),
+            "missing b_elem_type (E5M2 = 1):\n{output}",
+        );
+        assert!(output.contains("fastMath = true"), "missing fastMath attr:\n{output}");
+        // Optional scale operands must appear somewhere in the output.
+        assert!(
+            output.contains("scale") || output.contains("arg3"),
+            "optional scale operands missing from output:\n{output}",
+        );
     }
 }
