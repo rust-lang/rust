@@ -1,3 +1,7 @@
+//! This pass implements a part of the MIR semantics: when invoking a function with the
+//! `#[rustc_panic_entrypoint]` attribute, if the current panic strategy is immediate-abort,
+//! instead of executing the function body we just abort the program.
+
 use rustc_hir::LangItem;
 use rustc_middle::mir::{Const, ConstValue, UnwindAction, *};
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
