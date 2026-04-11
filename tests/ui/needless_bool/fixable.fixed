@@ -167,3 +167,15 @@ fn issue12846() {
     let _x = a.then(|| todo!());
     //~^ needless_bool
 }
+
+fn wrongly_unmangled_macros() {
+    macro_rules! test_expr {
+        ($val:expr) => {
+            ($val + 1 > 0)
+        };
+    }
+
+    let x = 42;
+    test_expr!(x);
+    //~^^^^^ needless_bool
+}

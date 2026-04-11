@@ -40,3 +40,16 @@ fn main() {
         println!("true") // This is a BinOp with no side effects
     }
 }
+
+fn wrongly_unmangled_macros() {
+    let (x, y) = (false, true);
+    macro_rules! inverse {
+        ($e:expr) => {
+            !$e
+        };
+    }
+    if inverse!(y) & inverse!(x) {
+        //~^ needless_bitwise_bool
+        println!("true")
+    }
+}

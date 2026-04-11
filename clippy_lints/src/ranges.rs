@@ -518,11 +518,11 @@ fn check_range_switch<'tcx>(
         span_lint_and_then(cx, lint, span, msg, |diag| {
             let mut app = Applicability::MachineApplicable;
             let start = start.map_or(String::new(), |x| {
-                Sugg::hir_with_applicability(cx, x, "<x>", &mut app)
+                Sugg::hir_with_context(cx, x, span.ctxt(), "<x>", &mut app)
                     .maybe_paren()
                     .to_string()
             });
-            let end = Sugg::hir_with_applicability(cx, y, "<y>", &mut app).maybe_paren();
+            let end = Sugg::hir_with_context(cx, y, span.ctxt(), "<y>", &mut app).maybe_paren();
             match span.with_source_text(cx, |src| src.starts_with('(') && src.ends_with(')')) {
                 Some(true) => {
                     diag.span_suggestion(span, "use", format!("({start}{operator}{end})"), app);

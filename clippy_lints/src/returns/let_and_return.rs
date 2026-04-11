@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::SpanRangeExt;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{binary_expr_needs_parentheses, fn_def_id, span_contains_non_whitespace};
@@ -38,30 +38,29 @@ pub(super) fn check_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'_>) 
             |err| {
                 err.span_label(local.span, "unnecessary `let` binding");
 
-                if let Some(src) = initexpr.span.get_source_text(cx) {
-                    let sugg = if binary_expr_needs_parentheses(initexpr) {
-                        if has_enclosing_paren(&src) {
-                            src.to_owned()
-                        } else {
-                            format!("({src})")
-                        }
-                    } else if !cx.typeck_results().expr_adjustments(retexpr).is_empty() {
-                        if has_enclosing_paren(&src) {
-                            format!("{src} as _")
-                        } else {
-                            format!("({src}) as _")
-                        }
+                let mut app = Applicability::MachineApplicable;
+                let (src, _) = snippet_with_context(cx, initexpr.span, local.span.ctxt(), "..", &mut app);
+
+                let sugg = if binary_expr_needs_parentheses(initexpr) {
+                    if has_enclosing_paren(&src) {
+                        src.to_string()
                     } else {
-                        src.to_owned()
-                    };
-                    err.multipart_suggestion(
-                        "return the expression directly",
-                        vec![(local.span, String::new()), (retexpr.span, sugg)],
-                        Applicability::MachineApplicable,
-                    );
+                        format!("({src})")
+                    }
+                } else if !cx.typeck_results().expr_adjustments(retexpr).is_empty() {
+                    if has_enclosing_paren(&src) {
+                        format!("{src} as _")
+                    } else {
+                        format!("({src}) as _")
+                    }
                 } else {
-                    err.span_help(initexpr.span, "this expression can be directly returned");
-                }
+                    src.to_string()
+                };
+                err.multipart_suggestion(
+                    "return the expression directly",
+                    vec![(local.span, String::new()), (retexpr.span, sugg)],
+                    app,
+                );
             },
         );
     }

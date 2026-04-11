@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::{Sugg, make_binop};
 use clippy_utils::{
     SpanlessEq, eq_expr_value, higher, is_in_const_context, is_integer_literal, is_integer_literal_untyped,
@@ -246,33 +246,35 @@ fn check_subtraction(
             // This part of the condition is voluntarily split from the one before to ensure that
             // if `snippet_opt` fails, it won't try the next conditions.
             if !is_in_const_context(cx) || msrv.meets(cx, msrvs::SATURATING_SUB_CONST) {
-                let mut applicability = Applicability::MachineApplicable;
-                let big_expr_sugg = (if is_integer_literal_untyped(big_expr) {
-                    let get_snippet = |span: Span| {
-                        let snippet = snippet_with_applicability(cx, span, "..", &mut applicability);
-                        let big_expr_ty = cx.typeck_results().expr_ty(big_expr);
-                        Cow::Owned(format!("{snippet}_{big_expr_ty}"))
-                    };
-                    Sugg::hir_from_snippet(cx, big_expr, get_snippet)
-                } else {
-                    Sugg::hir_with_applicability(cx, big_expr, "..", &mut applicability)
-                })
-                .maybe_paren();
-                let little_expr_sugg = Sugg::hir_with_applicability(cx, little_expr, "..", &mut applicability);
-
-                let sugg = format!(
-                    "{}{big_expr_sugg}.saturating_sub({little_expr_sugg}){}",
-                    if is_composited { "{ " } else { "" },
-                    if is_composited { " }" } else { "" }
-                );
-                span_lint_and_sugg(
+                span_lint_and_then(
                     cx,
                     IMPLICIT_SATURATING_SUB,
                     expr_span,
                     "manual arithmetic check found",
-                    "replace it with",
-                    sugg,
-                    applicability,
+                    |diag| {
+                        let mut applicability = Applicability::MachineApplicable;
+                        let expr_span_ctxt = expr_span.ctxt();
+                        let big_expr_sugg = (if is_integer_literal_untyped(big_expr) {
+                            let get_snippet = |span: Span| {
+                                let (snippet, _) =
+                                    snippet_with_context(cx, span, expr_span_ctxt, "..", &mut applicability);
+                                let big_expr_ty = cx.typeck_results().expr_ty(big_expr);
+                                Cow::Owned(format!("{snippet}_{big_expr_ty}"))
+                            };
+                            Sugg::hir_from_snippet(cx, big_expr, get_snippet)
+                        } else {
+                            Sugg::hir_with_context(cx, big_expr, expr_span_ctxt, "..", &mut applicability)
+                        })
+                        .maybe_paren();
+                        let little_expr_sugg =
+                            Sugg::hir_with_context(cx, little_expr, expr_span_ctxt, "..", &mut applicability);
+                        let sugg = format!(
+                            "{}{big_expr_sugg}.saturating_sub({little_expr_sugg}){}",
+                            if is_composited { "{ " } else { "" },
+                            if is_composited { " }" } else { "" }
+                        );
+                        diag.span_suggestion(expr_span, "replace it with", sugg, applicability);
+                    },
                 );
             }
         } else if eq_expr_value(cx, left, little_expr)
