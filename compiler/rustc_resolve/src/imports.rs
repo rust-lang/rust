@@ -146,7 +146,7 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct OnUnknownData {
-    directive: Directive,
+    directive: Box<Directive>,
 }
 
 impl OnUnknownData {
@@ -161,7 +161,7 @@ impl OnUnknownData {
                 Some(tcx.features()),
             )
         {
-            Some(Self { directive: *directive? })
+            Some(Self { directive: Box::new(*directive?) })
         } else {
             None
         }
