@@ -755,12 +755,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.source_scope = saved_scope;
             },
         );
+        // FIXME(guard_patterns): same kind of handling will be need to support `if let` guards.
         if let Some(guard_expr) = guard {
             self.declare_guard_bindings(guard_expr, scope_span, visibility_scope);
         }
-        if let PatKind::Guard { condition, .. } = pattern.kind {
-            self.declare_guard_bindings(condition, scope_span, visibility_scope);
-        };
         visibility_scope
     }
 
