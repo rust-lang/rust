@@ -712,35 +712,33 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
         }
 
-        let diagnostic_attributes: &[(Symbol, bool)] = &[
-            (sym::on_unimplemented, true),
-            (sym::do_not_recommend, true),
-            (sym::on_move, true),
-            (sym::on_const, self.tcx.features().diagnostic_on_const()),
-            (sym::on_unknown, self.tcx.features().diagnostic_on_unknown()),
-        ];
-
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
             && let [namespace, attribute, ..] = &*path.segments
             && namespace.ident.name == sym::diagnostic
-            && !diagnostic_attributes
-                .iter()
-                .any(|(attr, stable)| *stable && attribute.ident.name == *attr)
         {
-            let span = attribute.span();
-            let candidates = diagnostic_attributes
-                .iter()
-                .filter_map(|(sym, stable)| stable.then_some(*sym))
-                .collect::<Vec<_>>();
-            let typo = find_best_match_for_name(&candidates, attribute.ident.name, Some(5))
+            let stable_diagnostic_attributes: Vec<_> =
+                [sym::on_unimplemented, sym::do_not_recommend, sym::on_move]
+                    .into_iter()
+                    .chain(self.tcx.features().diagnostic_on_const().then_some(sym::on_const))
+                    .chain(self.tcx.features().diagnostic_on_unknown().then_some(sym::on_unknown))
+                    .collect();
+
+            if !stable_diagnostic_attributes.iter().any(|&attr| attribute.ident.name == attr) {
+                let span = attribute.span();
+                let typo = find_best_match_for_name(
+                    &stable_diagnostic_attributes,
+                    attribute.ident.name,
+                    Some(5),
+                )
                 .map(|typo_name| errors::UnknownDiagnosticAttributeTypoSugg { span, typo_name });
 
-            self.tcx.sess.psess.buffer_lint(
-                UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
-                span,
-                node_id,
-                errors::UnknownDiagnosticAttribute { typo },
-            );
+                self.tcx.sess.psess.buffer_lint(
+                    UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
+                    span,
+                    node_id,
+                    errors::UnknownDiagnosticAttribute { typo },
+                );
+            }
         }
 
         Ok((ext, res))
