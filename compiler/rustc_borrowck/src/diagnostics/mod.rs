@@ -602,8 +602,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             BorrowedContentSource::DerefRawPointer
         } else if base_ty.is_mutable_ptr() {
             BorrowedContentSource::DerefMutableRef
-        } else {
+        } else if base_ty.is_ref() {
             BorrowedContentSource::DerefSharedRef
+        } else {
+            // Custom type implementing `Deref` (e.g. `MyBox<T>`, `Rc<T>`, `Arc<T>`)
+            // that wasn't detected via the MIR init trace above. This can happen
+            // when the deref base is initialized by a regular statement rather than
+            // a `TerminatorKind::Call` with `CallSource::OverloadedOperator`.
+            BorrowedContentSource::OverloadedDeref(base_ty)
         }
     }
 
@@ -1002,10 +1008,12 @@ struct CapturedMessageOpt {
     maybe_reinitialized_locations_is_empty: bool,
 }
 
-/// Tracks which suggestions were emitted by [`MirBorrowckCtxt::explain_captures`],
-/// so callers can avoid emitting redundant suggestions downstream.
-struct ExplainCapturesResult {
-    clone_suggestion: bool,
+/// Tracks whether [`MirBorrowckCtxt::explain_captures`] emitted a clone
+/// suggestion, so callers can avoid emitting redundant suggestions downstream.
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub(super) enum CloneSuggestion {
+    Emitted,
+    NotEmitted,
 }
 
 impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
@@ -1232,7 +1240,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         move_spans: UseSpans<'tcx>,
         moved_place: Place<'tcx>,
         msg_opt: CapturedMessageOpt,
-    ) -> ExplainCapturesResult {
+    ) -> CloneSuggestion {
         let CapturedMessageOpt {
             is_partial_move: is_partial,
             is_loop_message,
@@ -1596,7 +1604,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 })
             }
         }
-        ExplainCapturesResult { clone_suggestion: suggested_cloning }
+        if suggested_cloning { CloneSuggestion::Emitted } else { CloneSuggestion::NotEmitted }
     }
 
     /// Skip over locals that begin with an underscore or have no name

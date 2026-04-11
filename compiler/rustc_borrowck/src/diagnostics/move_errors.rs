@@ -14,7 +14,9 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
 
 use crate::MirBorrowckCtxt;
-use crate::diagnostics::{CapturedMessageOpt, DescribePlaceOpt, UseSpans};
+use crate::diagnostics::{
+    BorrowedContentSource, CapturedMessageOpt, CloneSuggestion, DescribePlaceOpt, UseSpans,
+};
 use crate::prefixes::PrefixSet;
 
 #[derive(Debug)]
@@ -270,7 +272,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             return;
         }
 
-        let mut has_clone_suggestion = false;
+        let mut has_clone_suggestion = CloneSuggestion::NotEmitted;
         let mut err = match kind {
             &IllegalMoveOriginKind::BorrowedContent { target_place } => {
                 let (diag, clone_sugg) = self.report_cannot_move_from_borrowed_content(
@@ -431,7 +433,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         deref_target_place: Place<'tcx>,
         span: Span,
         use_spans: Option<UseSpans<'tcx>>,
-    ) -> (Diag<'infcx>, bool) {
+    ) -> (Diag<'infcx>, CloneSuggestion) {
         let tcx = self.infcx.tcx;
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
@@ -464,10 +466,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         "variables bound in patterns cannot be moved from \
                          until after the end of the pattern guard",
                     ),
-                    false,
+                    CloneSuggestion::NotEmitted,
                 );
             } else if decl.is_ref_to_static() {
-                return (self.report_cannot_move_from_static(move_place, span), false);
+                return (
+                    self.report_cannot_move_from_static(move_place, span),
+                    CloneSuggestion::NotEmitted,
+                );
             }
         }
 
@@ -548,9 +553,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         };
         let suggested_cloning = if let Some(use_spans) = use_spans {
             self.explain_captures(&mut err, span, span, use_spans, move_place, msg_opt)
-                .clone_suggestion
         } else {
-            false
+            CloneSuggestion::NotEmitted
         };
         (err, suggested_cloning)
     }
@@ -686,12 +690,48 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
+    /// Suggest cloning via UFCS when a move occurs through a custom `Deref` impl.
+    ///
+    /// A simple `.clone()` on a type like `MyBox<Vec<i32>>` would clone the wrapper,
+    /// not the inner `Vec<i32>`. Instead, we suggest `<Vec<i32> as Clone>::clone(&val)`.
+    fn suggest_cloning_through_overloaded_deref(
+        &self,
+        err: &mut Diag<'_>,
+        ty: Ty<'tcx>,
+        span: Span,
+    ) -> CloneSuggestion {
+        let tcx = self.infcx.tcx;
+        let Some(clone_trait) = tcx.lang_items().clone_trait() else {
+            return CloneSuggestion::NotEmitted;
+        };
+        let Some(errors) =
+            self.infcx.type_implements_trait_shallow(clone_trait, ty, self.infcx.param_env)
+        else {
+            return CloneSuggestion::NotEmitted;
+        };
+
+        if !errors.is_empty() {
+            return CloneSuggestion::NotEmitted;
+        }
+        let sugg = vec![
+            (span.shrink_to_lo(), format!("<{ty} as Clone>::clone(&")),
+            (span.shrink_to_hi(), ")".to_string()),
+        ];
+        err.multipart_suggestion(
+            "you can `clone` the value and consume it, but this might not be \
+             your desired behavior",
+            sugg,
+            Applicability::MaybeIncorrect,
+        );
+        CloneSuggestion::Emitted
+    }
+
     fn add_move_hints(
         &self,
         error: GroupedMoveError<'tcx>,
         err: &mut Diag<'_>,
         span: Span,
-        has_clone_suggestion: bool,
+        has_clone_suggestion: CloneSuggestion,
     ) {
         match error {
             GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
@@ -735,15 +775,42 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     None => "value".to_string(),
                 };
 
-                if !has_clone_suggestion {
-                    if let Some(expr) = self.find_expr(use_span) {
-                        self.suggest_cloning(
-                            err,
-                            original_path.as_ref(),
-                            place_ty,
-                            expr,
-                            Some(use_spans),
-                        );
+                if has_clone_suggestion == CloneSuggestion::NotEmitted {
+                    // Check if the move is directly through a custom Deref impl
+                    // (e.g. `*my_box` where MyBox implements Deref).
+                    // A simple `.clone()` would clone the wrapper type rather than
+                    // the inner value, so we need a UFCS suggestion instead.
+                    //
+                    // However, if there are further projections after the deref
+                    // (e.g. `(*rc).field`), the value accessed is already the inner
+                    // type and a simple `.clone()` works correctly.
+                    let needs_ufcs = original_path.projection.last()
+                        == Some(&ProjectionElem::Deref)
+                        && original_path.iter_projections().any(|(place, elem)| {
+                            matches!(elem, ProjectionElem::Deref)
+                                && matches!(
+                                    self.borrowed_content_source(place),
+                                    BorrowedContentSource::OverloadedDeref(_)
+                                        | BorrowedContentSource::OverloadedIndex(_)
+                                )
+                        });
+
+                    let emitted_ufcs = if needs_ufcs {
+                        self.suggest_cloning_through_overloaded_deref(err, place_ty, use_span)
+                    } else {
+                        CloneSuggestion::NotEmitted
+                    };
+
+                    if emitted_ufcs == CloneSuggestion::NotEmitted {
+                        if let Some(expr) = self.find_expr(use_span) {
+                            self.suggest_cloning(
+                                err,
+                                original_path.as_ref(),
+                                place_ty,
+                                expr,
+                                Some(use_spans),
+                            );
+                        }
                     }
                 }
 
