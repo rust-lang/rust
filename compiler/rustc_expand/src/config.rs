@@ -283,9 +283,12 @@ impl<'a> StripUnconfigured<'a> {
         trace_attr.replace_args(AttrItemKind::Parsed(EarlyParsedAttribute::CfgAttrTrace));
         let trace_attr = attr_into_trace(trace_attr, sym::cfg_attr_trace);
 
-        let Some((cfg_predicate, expanded_attrs)) =
-            rustc_attr_parsing::parse_cfg_attr(cfg_attr, &self.sess, self.features)
-        else {
+        let Some((cfg_predicate, expanded_attrs)) = rustc_attr_parsing::parse_cfg_attr(
+            cfg_attr,
+            &self.sess,
+            self.features,
+            self.lint_node_id,
+        ) else {
             return vec![trace_attr];
         };
 
