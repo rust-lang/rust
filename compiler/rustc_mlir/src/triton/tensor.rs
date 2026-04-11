@@ -1897,6 +1897,48 @@ pub fn atomic_rmw<'ctx>(
         .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.atomic_rmw: {e}") })
 }
 
+/// Build a `tt.atomic_cas` operation.
+///
+/// Compares `cmp` with the value at `ptr`; if equal, stores `val` to `ptr`.
+/// Returns the **old** value regardless of whether the swap occurred.
+///
+/// # Arguments
+/// * `ptr`       – pointer to the memory location (`!tt.ptr<T>` or `tensor<Nx!tt.ptr<T>>`).
+/// * `cmp`       – value to compare against; pointee type of `ptr`.
+/// * `val`       – value to store on match; same type as `cmp`.
+/// * `result_ty` – result type; same as the pointee type of `ptr`.
+/// * `sem`       – memory ordering semantics (e.g. `MemSemantic::Relaxed`).
+/// * `scope`     – synchronisation scope (e.g. `MemSyncScope::Gpu`).
+///
+/// Assembly format:
+/// ```text
+/// tt.atomic_cas <sem>, <scope>, %ptr, %cmp, %val
+///     attr-dict : functional-type(operands, result)
+/// ```
+pub fn atomic_cas<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    ptr: Value<'ctx, 'ctx>,
+    cmp: Value<'ctx, 'ctx>,
+    val: Value<'ctx, 'ctx>,
+    result_ty: Type<'ctx>,
+    sem: MemSemantic,
+    scope: MemSyncScope,
+) -> Result<Operation<'ctx>, Error> {
+    let sem_attr   = attr_i32(context, sem as i32);
+    let scope_attr = attr_i32(context, scope as i32);
+
+    OperationBuilder::new("tt.atomic_cas", location)
+        .add_operands(&[ptr, cmp, val])
+        .add_attributes(&[
+            (Identifier::new(context, "sem"),   Attribute::from(sem_attr)),
+            (Identifier::new(context, "scope"), Attribute::from(scope_attr)),
+        ])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.atomic_cas: {e}") })
+}
+
 #[cfg(test)]
 mod tests {
     use melior::Context;
@@ -6212,5 +6254,144 @@ mod tests {
         assert!(output.contains("gpu"), "missing sync scope:\n{output}");
         assert!(output.contains("tensor<8xi32>"), "missing tensor i32 type:\n{output}");
         assert!(output.contains("tensor<8xi1>"), "missing mask type:\n{output}");
+    }
+
+    /// Verify that `atomic_cas` emits the correct `tt.atomic_cas` IR for a scalar
+    /// i32 compare-and-swap with relaxed ordering and GPU scope.
+    ///
+    /// Expected assembly fragment:
+    /// ```text
+    /// %0 = tt.atomic_cas relaxed, gpu, %arg0, %arg1, %arg2 attr-dict :
+    ///      (!tt.ptr<i32>, i32, i32) -> i32
+    /// ```
+    #[test]
+    fn test_atomic_cas_scalar() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+        let ptr_i32_type = pointer_type(i32_type);
+
+        // Function: (!tt.ptr<i32>, i32, i32) -> i32
+        let func_op = create_func(
+            &context,
+            location,
+            "test_atomic_cas_scalar",
+            "public",
+            &[ptr_i32_type, i32_type, i32_type],
+            &[i32_type],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (ptr_i32_type, location),
+            (i32_type, location),
+            (i32_type, location),
+        ]);
+        let ptr_arg: Value = block.argument(0).unwrap().into();
+        let cmp_arg: Value = block.argument(1).unwrap().into();
+        let val_arg: Value = block.argument(2).unwrap().into();
+
+        let cas_op = super::atomic_cas(
+            &context,
+            location,
+            ptr_arg,
+            cmp_arg,
+            val_arg,
+            i32_type,
+            super::MemSemantic::Relaxed,
+            super::MemSyncScope::Gpu,
+        )
+        .unwrap();
+
+        let result_val: Value = cas_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(cas_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.atomic_cas"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("relaxed"), "missing memory semantic:\n{output}");
+        assert!(output.contains("gpu"), "missing sync scope:\n{output}");
+        assert!(output.contains("i32"), "missing value type:\n{output}");
+    }
+
+    /// Verify that `atomic_cas` emits the correct `tt.atomic_cas` IR for a tensor
+    /// i32 compare-and-swap with acquire_release ordering and GPU scope.
+    ///
+    /// Expected assembly fragment:
+    /// ```text
+    /// %0 = tt.atomic_cas acq_rel, gpu, %arg0, %arg1, %arg2 attr-dict :
+    ///      (tensor<8x!tt.ptr<i32>>, tensor<8xi32>, tensor<8xi32>) -> tensor<8xi32>
+    /// ```
+    #[test]
+    fn test_atomic_cas_tensor() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+        let ptr_i32_type = pointer_type(i32_type);
+
+        let tensor_ptr_ty: Type = tensor_type(&[8], ptr_i32_type).into();
+        let tensor_i32_ty: Type = tensor_type(&[8], i32_type).into();
+
+        // Function: (tensor<8x!tt.ptr<i32>>, tensor<8xi32>, tensor<8xi32>) -> tensor<8xi32>
+        let func_op = create_func(
+            &context,
+            location,
+            "test_atomic_cas_tensor",
+            "public",
+            &[tensor_ptr_ty, tensor_i32_ty, tensor_i32_ty],
+            &[tensor_i32_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (tensor_ptr_ty, location),
+            (tensor_i32_ty, location),
+            (tensor_i32_ty, location),
+        ]);
+        let ptr_arg: Value = block.argument(0).unwrap().into();
+        let cmp_arg: Value = block.argument(1).unwrap().into();
+        let val_arg: Value = block.argument(2).unwrap().into();
+
+        let cas_op = super::atomic_cas(
+            &context,
+            location,
+            ptr_arg,
+            cmp_arg,
+            val_arg,
+            tensor_i32_ty,
+            super::MemSemantic::AcquireRelease,
+            super::MemSyncScope::Gpu,
+        )
+        .unwrap();
+
+        let result_val: Value = cas_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(cas_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.atomic_cas"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("acq_rel"), "missing memory semantic:\n{output}");
+        assert!(output.contains("gpu"), "missing sync scope:\n{output}");
+        assert!(output.contains("tensor<8xi32>"), "missing tensor i32 type:\n{output}");
     }
 }
