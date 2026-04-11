@@ -1,6 +1,7 @@
 #![no_std]
 #![feature(
     convert_float_to_int,
+    f16,
     core_intrinsics,
     decl_macro,
     repr_simd,
