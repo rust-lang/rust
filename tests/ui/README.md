@@ -1582,7 +1582,7 @@ Tests on various well-formedness checks, e.g. [Type-checking normal functions](h
 
 Tests on `where` clauses. See [Where clauses | Reference](https://doc.rust-lang.org/reference/items/generics.html#where-clauses).
 
-## `whitespace`
+## `tests/ui/whitespace/`
 
 Tests for whitespace handling in the Rust lexer. The Rust language
 defines whitespace as Unicode Pattern_White_Space, which is not the
