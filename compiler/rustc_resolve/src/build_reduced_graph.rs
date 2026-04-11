@@ -615,6 +615,8 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 // `true` for `...::{self [as target]}` imports, `false` otherwise.
                 let type_ns_only = source.ident.name == kw::SelfLower;
 
+                // If the identifier is `self` without a rename,
+                // then it is replaced with the parent identifier.
                 let ident = if source.ident.name == kw::SelfLower
                     && rename.is_none()
                     && let Some(parent) = module_path.last()
@@ -659,27 +661,29 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                             return;
                         }
                     }
-                    kw::SelfLower if let Some(parent) = module_path.last() => {
-                        // Deny `use ::{self};` after edition 2015
-                        if parent.ident.name == kw::PathRoot
-                            && !self.r.path_root_is_crate_root(parent.ident)
-                        {
-                            self.r
-                                .dcx()
-                                .span_err(use_tree.span(), "extern prelude cannot be imported");
-                            return;
-                        }
-
-                        // Deny `use ...::self::self [as name];` but allow `use self::self as name;`
-                        if parent.ident.name == kw::SelfLower && module_path.len() > 1 {
-                            self.r.dcx().span_err(
-                                parent.ident.span,
-                                "`self` in paths can only be used in start position or last position",
-                            );
-                            return;
-                        }
+                    // Deny `use ::{self};` after edition 2015
+                    kw::SelfLower
+                        if let Some(parent) = module_path.last()
+                            && parent.ident.name == kw::PathRoot
+                            && !self.r.path_root_is_crate_root(parent.ident) =>
+                    {
+                        self.r.dcx().span_err(use_tree.span(), "extern prelude cannot be imported");
+                        return;
                     }
                     _ => (),
+                }
+
+                // Deny `use ...::self::source [as target];` or `use ...::self::self [as target];`,
+                // but allow `use self::source [as target];` and `use self::self as target;`.
+                if let Some(parent) = module_path.last()
+                    && parent.ident.name == kw::SelfLower
+                    && module_path.len() > 1
+                {
+                    self.r.dcx().span_err(
+                        parent.ident.span,
+                        "`self` in paths can only be used in start position or last position",
+                    );
+                    return;
                 }
 
                 // Deny importing path-kw without renaming
