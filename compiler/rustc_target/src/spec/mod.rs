@@ -1395,6 +1395,16 @@ impl BinaryFormat {
             Self::Xcoff => object::BinaryFormat::Xcoff,
         }
     }
+
+    pub fn desc_symbol(&self) -> Symbol {
+        match self {
+            Self::Coff => sym::coff,
+            Self::Elf => sym::elf,
+            Self::MachO => sym::macho,
+            Self::Wasm => sym::wasm,
+            Self::Xcoff => sym::xcoff,
+        }
+    }
 }
 
 impl ToJson for Align {
