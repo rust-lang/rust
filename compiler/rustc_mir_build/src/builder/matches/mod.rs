@@ -2505,14 +2505,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Bindings for guards require some extra handling to automatically
             // insert implicit references/dereferences.
             // This always schedules storage drops, so we may need to unschedule them below.
-            let _ = self.in_scope(
-                (match_scope, self.source_info(arm_span)),
-                LintLevel::Inherited,
-                |this| {
-                    this.bind_matched_candidate_for_guard(block, sub_branch.bindings.iter());
-                    BasicBlock::ZERO.unit()
-                },
-            );
+            self.bind_matched_candidate_for_guard(block, sub_branch.bindings.iter());
             let guard_frame = GuardFrame {
                 locals: sub_branch
                     .bindings
