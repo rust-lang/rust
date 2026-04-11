@@ -62,6 +62,34 @@ pub enum ScaleDotElemType {
     FP16 = 6,
 }
 
+/// Mirror of Triton's `CacheModifier` enum (TritonAttrDefs.td).
+///
+/// Controls L1/L2 cache behaviour for load/store ops.
+/// Integer values must stay in sync with the TableGen definition so that
+/// the resulting `IntegerAttr<i32>` is accepted as a `CacheModifierAttr`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum CacheModifier {
+    None = 1,
+    Ca   = 2,
+    Cg   = 3,
+    Wb   = 4,
+    Cs   = 5,
+    Wt   = 6,
+    Cv   = 7,
+}
+
+/// Mirror of Triton's `EvictionPolicy` enum (TritonAttrDefs.td).
+///
+/// Controls cache eviction policy for load/store ops.
+/// Integer values must stay in sync with the TableGen definition so that
+/// the resulting `IntegerAttr<i32>` is accepted as an `EvictionPolicyAttr`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum EvictionPolicy {
+    Normal     = 1,
+    EvictFirst = 2,
+    EvictLast  = 3,
+}
+
 pub fn make_range<'ctx>(
     context: &'ctx Context,
     location: Location<'ctx>,
@@ -172,6 +200,61 @@ pub fn descriptor_gather<'ctx>(
         .y_offset(y_offset)
         .result(result_ty)
         .build())
+}
+
+/// Build a `tt.descriptor_load` operation.
+///
+/// Lowers to NVIDIA TMA load, reading a tile from global memory into a
+/// register tensor using a TMA descriptor.
+///
+/// # Arguments
+/// * `desc`      – value of type `!tt.tensordesc<tensor<...>>`; describes the
+///                 source tile layout and strides in global memory.
+/// * `indices`   – slice of scalar `i32` values giving the multi-dimensional
+///                 load offset (one index per descriptor dimension).
+/// * `result_ty` – the tensor type of the loaded result; must match the
+///                 element type and shape encoded in the descriptor.
+/// * `cache`     – L1/L2 cache modifier (default: `CacheModifier::None`).
+/// * `evict`     – cache eviction hint (default: `EvictionPolicy::Normal`).
+///
+/// Assembly format:
+/// ```text
+/// %result = tt.descriptor_load %desc[%i0, %i1, ...]
+///     [cacheModifier = <cache>] [evictionPolicy = <evict>]
+///     : !tt.tensordesc<tensor<...>> -> tensor<...>
+/// ```
+pub fn descriptor_load<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    desc: Value<'ctx, 'ctx>,
+    indices: &[Value<'ctx, 'ctx>],
+    result_ty: Type<'ctx>,
+    cache: CacheModifier,
+    evict: EvictionPolicy,
+) -> Result<Operation<'ctx>, Error> {
+    let mut operands: Vec<Value> = Vec::with_capacity(1 + indices.len());
+    operands.push(desc);
+    operands.extend_from_slice(indices);
+
+    // CacheModifierAttr and EvictionPolicyAttr are both backed by
+    // IntegerAttr<i32>; attr_i32 produces a compatible value that satisfies
+    // classof for each attribute kind.
+    let cache_attr = attr_i32(context, cache as i32);
+    let evict_attr = attr_i32(context, evict as i32);
+
+    let op = OperationBuilder::new("tt.descriptor_load", location)
+        .add_operands(&operands)
+        .add_attributes(&[
+            (Identifier::new(context, "cache"), Attribute::from(cache_attr)),
+            (Identifier::new(context, "evict"), Attribute::from(evict_attr)),
+        ])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType {
+            msg: format!("failed to build tt.descriptor_load: {e}"),
+        })?;
+
+    Ok(op)
 }
 
 /// Build a `tt.dot` operation.
@@ -865,6 +948,86 @@ mod tests {
         assert!(
             output.contains(expected_fragment),
             "expected pretty fragment not found.\nExpected fragment:\n  {expected_fragment}\nActual output:\n{output}"
+        );
+    }
+
+    /// Verify that `descriptor_load` emits the correct `tt.descriptor_load` IR.
+    ///
+    /// Uses function block-arguments to supply typed values without needing a
+    /// real TMA descriptor at compile time.
+    #[test]
+    fn test_descriptor_load() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        // Result type: tensor<16x16xf32>.
+        let f32_type = melior::ir::Type::float32(&context);
+        let result_tensor_ty: Type = tensor_type(&[16, 16], f32_type).into();
+
+        // Descriptor type: !tt.tensordesc<tensor<16x16xf32>>.
+        let desc_ty = Type::parse(&context, "!tt.tensordesc<tensor<16x16xf32>>")
+            .expect("valid tensordesc type");
+
+        // Two i32 indices for a 2-D descriptor.
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+
+        // Build a wrapper function so operands have proper block-argument types.
+        let func_op = create_func(
+            &context,
+            location,
+            "test_descriptor_load",
+            "public",
+            &[desc_ty, i32_type, i32_type],
+            &[result_tensor_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (desc_ty, location),
+            (i32_type, location),
+            (i32_type, location),
+        ]);
+
+        let desc: Value = block.argument(0).unwrap().into();
+        let idx0: Value = block.argument(1).unwrap().into();
+        let idx1: Value = block.argument(2).unwrap().into();
+
+        let load_op: Operation<'_> = descriptor_load(
+            &context,
+            location,
+            desc,
+            &[idx0, idx1],
+            result_tensor_ty,
+            CacheModifier::None,
+            EvictionPolicy::Normal,
+        )
+        .unwrap();
+
+        let ret_val: Value = load_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ret_val]).build();
+
+        block.append_operation(load_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.descriptor_load"),
+            "missing op mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("tensordesc"),
+            "missing tensordesc operand type:\n{output}"
+        );
+        assert!(
+            output.contains("tensor<16x16xf32>"),
+            "missing result tensor type:\n{output}"
         );
     }
 }
