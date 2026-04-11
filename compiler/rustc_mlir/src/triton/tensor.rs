@@ -573,6 +573,53 @@ mod tests {
         assert_eq!(expected, output);
     }
 
+    /// Verify pretty-printed `tt.splat` with exact IR form.
+    ///
+    /// Uses a function block argument as the scalar source to avoid `arith.constant`
+    /// mixing generic and pretty formats.  The expected assembly form is:
+    /// `tt.splat %arg0 : i32 -> tensor<8xi32>`
+    #[test]
+    fn test_splat_pretty_format() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+        let result_ty: Type = tensor_type(&[8], i32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_splat_pretty",
+            "public",
+            &[i32_type],
+            &[result_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(i32_type, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let splat_op: Operation<'_> = splat(&context, location, src, result_ty).unwrap().into();
+        let ret_val: Value = splat_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ret_val]).build();
+
+        block.append_operation(splat_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        // Pretty-printed form: "tt.splat %arg0 : i32 -> tensor<8xi32>"
+        assert!(output.contains("tt.splat"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("i32"), "missing src type:\n{output}");
+        assert!(output.contains("tensor<8xi32>"), "missing result type:\n{output}");
+    }
+
     #[test]
     fn test_mulhiui() {
         let context = create_test_context();
