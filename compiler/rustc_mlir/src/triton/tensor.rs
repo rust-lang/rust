@@ -181,4 +181,42 @@ mod tests {
         let expected = "\"builtin.module\"() ({\n  %0 = \"arith.constant\"() <{value = 0 : i32}> : () -> i32\n  %1 = \"tt.splat\"(%0) : (i32) -> tensor<5xi32>\n}) : () -> ()\n";
         assert_eq!(expected, output);
     }
+
+    #[test]
+    fn test_add_ptr() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        // Create an i64 zero constant to cast to a pointer
+        let i64_zero_op: Operation<'_> =
+            create_int_constant(&context, location, Int::I64(0)).unwrap().into();
+        let i64_zero = i64_zero_op.result(0).unwrap().into();
+
+        // Cast i64 → !tt.ptr<f32>
+        let f32_type = melior::ir::Type::float32(&context);
+        let ptr_f32_type = pointer_type(f32_type);
+        let int_to_ptr_op: Operation<'_> =
+            int_to_ptr(&context, location, i64_zero, ptr_f32_type).unwrap().into();
+        let ptr_val = int_to_ptr_op.result(0).unwrap().into();
+
+        // i32 offset constant
+        let offset_op: Operation<'_> =
+            create_int_constant(&context, location, Int::I32(0)).unwrap().into();
+        let offset_val = offset_op.result(0).unwrap().into();
+
+        // tt.addptr: result type is the same pointer type
+        let add_ptr_op = add_ptr(&context, location, ptr_val, offset_val, ptr_f32_type).unwrap();
+
+        module.body().append_operation(i64_zero_op);
+        module.body().append_operation(int_to_ptr_op);
+        module.body().append_operation(offset_op);
+        module.body().append_operation(add_ptr_op.into());
+
+        let output = module.as_operation().to_string();
+        let expected = "module {\n  %c0_i64 = arith.constant 0 : i64\n  %0 = tt.int_to_ptr %c0_i64 : i64 -> !tt.ptr<f32>\n  %c0_i32 = arith.constant 0 : i32\n  %1 = tt.addptr %0, %c0_i32 : !tt.ptr<f32>, i32\n}\n";
+        assert_eq!(expected, output);
+    }
 }
