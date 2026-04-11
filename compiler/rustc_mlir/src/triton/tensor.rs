@@ -1659,6 +1659,43 @@ pub fn expand_dims<'ctx>(
         .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.expand_dims: {e}") })
 }
 
+/// Build a `tt.broadcast` operation.
+///
+/// Broadcasts a tensor by expanding dimensions of size 1 to a larger size.
+/// For example, `tensor<1x32x1xf32>` can be broadcast to `tensor<2x32x4xf32>`.
+/// Non-size-1 dimensions must remain unchanged.
+///
+/// Traits: `Pure`, `SameOperandsAndResultElementType`, `SameOperandsAndResultEncoding`.
+///
+/// # Arguments
+/// * `src`       – source tensor with one or more size-1 dimensions to broadcast.
+/// * `result_ty` – result tensor type (same rank and element type as `src`, with
+///                 size-1 dimensions expanded to new sizes).
+///
+/// # Example
+///
+/// ```text
+/// // Broadcast a tensor<1x32xf32> to tensor<4x32xf32>:
+/// %1 = tt.broadcast %src : tensor<1x32xf32> -> tensor<4x32xf32>
+/// ```
+///
+/// Assembly format (from TableGen):
+/// ```text
+/// $src attr-dict `:` type($src) `->` type($result)
+/// ```
+pub fn broadcast<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    src: Value<'ctx, '_>,
+    result_ty: Type<'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    OperationBuilder::new("tt.broadcast", location)
+        .add_operands(&[src])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.broadcast: {e}") })
+}
+
 /// Build a `tt.clampf` operation.
 ///
 /// Clamps a floating-point scalar or tensor `x` to the closed interval
@@ -5675,5 +5712,109 @@ mod tests {
         assert!(output.contains("propagateNan"), "missing propagateNan attr:\n{output}");
         assert!(output.contains("all"), "missing 'all' propagateNan value:\n{output}");
         assert!(output.contains("tensor<8xf32>"), "missing tensor<8xf32> type:\n{output}");
+    }
+
+    /// Verify that `broadcast` emits the correct `tt.broadcast` IR.
+    ///
+    /// Broadcasts a `tensor<1x32xf32>` to `tensor<4x32xf32>` by expanding
+    /// the size-1 leading dimension.
+    ///
+    /// Expected assembly fragment (inside a `tt.func`):
+    /// ```text
+    /// %0 = tt.broadcast %arg0 : tensor<1x32xf32> -> tensor<4x32xf32>
+    /// ```
+    #[test]
+    fn test_broadcast() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[1, 32], f32_type).into();
+        let result_ty: Type = tensor_type(&[4, 32], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_broadcast",
+            "public",
+            &[src_ty],
+            &[result_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let broadcast_op: Operation<'_> =
+            super::broadcast(&context, location, src, result_ty).unwrap();
+        let result_val: Value = broadcast_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(broadcast_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.broadcast"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("tensor<1x32xf32>"), "missing src tensor type:\n{output}");
+        assert!(output.contains("tensor<4x32xf32>"), "missing result tensor type:\n{output}");
+    }
+
+    /// Verify that `broadcast` works with a 3-D tensor expanding the first and
+    /// third dimensions simultaneously.
+    ///
+    /// Broadcasts `tensor<1x32x1xf32>` to `tensor<2x32x4xf32>`.
+    ///
+    /// Expected assembly fragment:
+    /// ```text
+    /// %0 = tt.broadcast %arg0 : tensor<1x32x1xf32> -> tensor<2x32x4xf32>
+    /// ```
+    #[test]
+    fn test_broadcast_multi_dim() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[1, 32, 1], f32_type).into();
+        let result_ty: Type = tensor_type(&[2, 32, 4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_broadcast_multi_dim",
+            "public",
+            &[src_ty],
+            &[result_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let broadcast_op: Operation<'_> =
+            super::broadcast(&context, location, src, result_ty).unwrap();
+        let result_val: Value = broadcast_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(broadcast_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.broadcast"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("tensor<1x32x1xf32>"), "missing src tensor type:\n{output}");
+        assert!(output.contains("tensor<2x32x4xf32>"), "missing result tensor type:\n{output}");
     }
 }
