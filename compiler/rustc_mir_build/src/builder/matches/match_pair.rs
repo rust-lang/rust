@@ -12,59 +12,58 @@ use crate::builder::matches::{
     FlatPat, MatchPairTree, PatConstKind, PatternExtraData, SliceLenOp, TestableCase,
 };
 
-impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// Builds [`MatchPairTree`] subtrees for the prefix/middle/suffix parts of an
-    /// array pattern or slice pattern, and adds those trees to `match_pairs`.
-    ///
-    /// Used internally by [`MatchPairTree::for_pattern`].
-    fn prefix_slice_suffix(
-        &mut self,
-        match_pairs: &mut Vec<MatchPairTree<'tcx>>,
-        extra_data: &mut PatternExtraData<'tcx>,
-        place: &PlaceBuilder<'tcx>,
-        array_len: Option<u64>,
-        prefix: &[Pat<'tcx>],
-        opt_slice: &Option<Box<Pat<'tcx>>>,
-        suffix: &[Pat<'tcx>],
-    ) {
-        let prefix_len = u64::try_from(prefix.len()).unwrap();
-        let suffix_len = u64::try_from(suffix.len()).unwrap();
+/// For an array or slice pattern's subpatterns (prefix/slice/suffix), returns a list
+/// of those subpatterns, each paired with a suitably-projected [`PlaceBuilder`].
+fn prefix_slice_suffix<'a, 'tcx>(
+    place: &PlaceBuilder<'tcx>,
+    array_len: Option<u64>, // Some for array patterns; None for slice patterns
+    prefix: &'a [Pat<'tcx>],
+    opt_slice: &'a Option<Box<Pat<'tcx>>>,
+    suffix: &'a [Pat<'tcx>],
+) -> Vec<(PlaceBuilder<'tcx>, &'a Pat<'tcx>)> {
+    let prefix_len = u64::try_from(prefix.len()).unwrap();
+    let suffix_len = u64::try_from(suffix.len()).unwrap();
 
-        // For slice patterns with a `..` followed by 0 or more suffix subpatterns,
-        // the actual slice index of those subpatterns isn't statically known, so
-        // we have to index them relative to the end of the slice.
-        //
-        // For array patterns, all subpatterns are indexed relative to the start.
-        let (min_length, is_array) = match array_len {
-            Some(len) => (len, true),
-            None => (prefix_len + suffix_len, false),
-        };
+    let mut output_pairs =
+        Vec::with_capacity(prefix.len() + usize::from(opt_slice.is_some()) + suffix.len());
 
-        for (offset, subpattern) in (0u64..).zip(prefix) {
-            let elem = ProjectionElem::ConstantIndex { offset, min_length, from_end: false };
-            let place = place.clone_project(elem);
-            MatchPairTree::for_pattern(place, subpattern, self, match_pairs, extra_data)
-        }
+    // For slice patterns with a `..` followed by 0 or more suffix subpatterns,
+    // the actual slice index of those subpatterns isn't statically known, so
+    // we have to index them relative to the end of the slice.
+    //
+    // For array patterns, all subpatterns are indexed relative to the start.
+    let (min_length, is_array) = match array_len {
+        Some(len) => (len, true),
+        None => (prefix_len + suffix_len, false),
+    };
 
-        if let Some(subslice_pat) = opt_slice {
-            let subslice = place.clone_project(PlaceElem::Subslice {
-                from: prefix_len,
-                to: if is_array { min_length - suffix_len } else { suffix_len },
-                from_end: !is_array,
-            });
-            MatchPairTree::for_pattern(subslice, subslice_pat, self, match_pairs, extra_data);
-        }
-
-        for (end_offset, subpattern) in (1u64..).zip(suffix.iter().rev()) {
-            let elem = ProjectionElem::ConstantIndex {
-                offset: if is_array { min_length - end_offset } else { end_offset },
-                min_length,
-                from_end: !is_array,
-            };
-            let place = place.clone_project(elem);
-            MatchPairTree::for_pattern(place, subpattern, self, match_pairs, extra_data)
-        }
+    for (offset, prefix_subpat) in (0u64..).zip(prefix) {
+        let elem = ProjectionElem::ConstantIndex { offset, min_length, from_end: false };
+        let subplace = place.clone_project(elem);
+        output_pairs.push((subplace, prefix_subpat));
     }
+
+    if let Some(slice_subpat) = opt_slice {
+        let elem = PlaceElem::Subslice {
+            from: prefix_len,
+            to: if is_array { min_length - suffix_len } else { suffix_len },
+            from_end: !is_array,
+        };
+        let subplace = place.clone_project(elem);
+        output_pairs.push((subplace, slice_subpat));
+    }
+
+    for (offset_from_end, suffix_subpat) in (1u64..).zip(suffix.iter().rev()) {
+        let elem = ProjectionElem::ConstantIndex {
+            offset: if is_array { min_length - offset_from_end } else { offset_from_end },
+            min_length,
+            from_end: !is_array,
+        };
+        let subplace = place.clone_project(elem);
+        output_pairs.push((subplace, suffix_subpat));
+    }
+
+    output_pairs
 }
 
 impl<'tcx> MatchPairTree<'tcx> {
@@ -221,15 +220,11 @@ impl<'tcx> MatchPairTree<'tcx> {
                     _ => None,
                 };
                 if let Some(array_len) = array_len {
-                    cx.prefix_slice_suffix(
-                        &mut subpairs,
-                        extra_data,
-                        &place_builder,
-                        Some(array_len),
-                        prefix,
-                        slice,
-                        suffix,
-                    );
+                    for (subplace, subpat) in
+                        prefix_slice_suffix(&place_builder, Some(array_len), prefix, slice, suffix)
+                    {
+                        MatchPairTree::for_pattern(subplace, subpat, cx, &mut subpairs, extra_data);
+                    }
                 } else {
                     // If the array length couldn't be determined, ignore the
                     // subpatterns and delayed-assert that compilation will fail.
@@ -245,15 +240,11 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                cx.prefix_slice_suffix(
-                    &mut subpairs,
-                    extra_data,
-                    &place_builder,
-                    None,
-                    prefix,
-                    slice,
-                    suffix,
-                );
+                for (subplace, subpat) in
+                    prefix_slice_suffix(&place_builder, None, prefix, slice, suffix)
+                {
+                    MatchPairTree::for_pattern(subplace, subpat, cx, &mut subpairs, extra_data);
+                }
 
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
                     // This pattern is shaped like `[..]`. It can match a slice
