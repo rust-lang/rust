@@ -1223,6 +1223,67 @@ pub fn int_to_ptr<'ctx>(
         .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.int_to_ptr: {e}") })
 }
 
+/// Build a `tt.gather` operation.
+///
+/// Gathers elements from `src` using `indices` along a single `axis`.  The
+/// output tensor has the same shape as `indices`.  Each dimension of `indices`
+/// that is *not* the gather axis must be no greater than the corresponding
+/// dimension of `src`.
+///
+/// The optional `efficient_layout` flag signals that the compiler has already
+/// selected an optimised layout for this gather and it should not be changed
+/// by subsequent passes.
+///
+/// # Arguments
+/// * `src`              – source tensor to gather from.
+/// * `indices`          – integer tensor of indices (same rank as `src`).
+/// * `axis`             – axis along which to gather (i32).
+/// * `efficient_layout` – when `true`, sets the `efficient_layout` unit attr.
+/// * `result_ty`        – result tensor type; same shape as `indices`.
+///
+/// # Example
+///
+/// ```text
+/// // Gather 8 elements from a 16-element f32 tensor along axis 0:
+/// %result = tt.gather %src[%idx] {axis = 0 : i32}
+///     : (tensor<16xf32>, tensor<8xi32>) -> tensor<8xf32>
+/// ```
+///
+/// Assembly format (from TableGen):
+/// ```text
+/// $src `[` $indices `]` attr-dict `:` functional-type(operands, results)
+/// ```
+pub fn gather<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    src: Value<'ctx, '_>,
+    indices: Value<'ctx, '_>,
+    axis: i32,
+    efficient_layout: bool,
+    result_ty: Type<'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    let axis_attr = attr_i32(context, axis);
+
+    let mut attrs: Vec<(Identifier<'_>, Attribute<'_>)> = vec![(
+        Identifier::new(context, "axis"),
+        Attribute::from(axis_attr),
+    )];
+
+    if efficient_layout {
+        attrs.push((
+            Identifier::new(context, "efficient_layout"),
+            Attribute::unit(context),
+        ));
+    }
+
+    OperationBuilder::new("tt.gather", location)
+        .add_operands(&[src, indices])
+        .add_attributes(&attrs)
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.gather: {e}") })
+}
+
 /// Build a `tt.histogram` operation.
 ///
 /// Returns a histogram of the input integer tensor. The number of bins is
@@ -4352,5 +4413,110 @@ mod tests {
         assert!(output.contains("tt.histogram"), "missing op mnemonic:\n{output}");
         assert!(output.contains("tensor<16xi32>"), "missing src/result tensor type:\n{output}");
         assert!(output.contains("tensor<16xi1>"), "missing mask tensor type:\n{output}");
+    }
+
+    /// Verify that `gather` emits the correct `tt.gather` IR without `efficient_layout`.
+    ///
+    /// Expected form:
+    /// ```text
+    /// %result = tt.gather %src[%indices] {axis = 0 : i32}
+    ///     : (tensor<16xf32>, tensor<8xi32>) -> tensor<8xf32>
+    /// ```
+    #[test]
+    fn test_gather() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type: Type = melior::ir::Type::float32(&context);
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+
+        // src: tensor<16xf32>, indices: tensor<8xi32>, result: tensor<8xf32>
+        let src_ty: Type = tensor_type(&[16], f32_type).into();
+        let idx_ty: Type = tensor_type(&[8], i32_type).into();
+        let result_ty: Type = tensor_type(&[8], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_gather",
+            "public",
+            &[src_ty, idx_ty],
+            &[result_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location), (idx_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+        let indices: Value = block.argument(1).unwrap().into();
+
+        let gather_op: Operation<'_> =
+            super::gather(&context, location, src, indices, 0, false, result_ty).unwrap();
+        let ret_val: Value = gather_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ret_val]).build();
+
+        block.append_operation(gather_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.gather"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("axis = 0"), "missing axis attribute:\n{output}");
+        assert!(output.contains("tensor<16xf32>"), "missing src tensor type:\n{output}");
+        assert!(output.contains("tensor<8xi32>"), "missing indices tensor type:\n{output}");
+        assert!(output.contains("tensor<8xf32>"), "missing result tensor type:\n{output}");
+        assert!(!output.contains("efficient_layout"), "unexpected efficient_layout in output:\n{output}");
+    }
+
+    /// Verify that `gather` with `efficient_layout = true` includes the unit attr.
+    #[test]
+    fn test_gather_efficient_layout() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type: Type = melior::ir::Type::float32(&context);
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+
+        let src_ty: Type = tensor_type(&[16], f32_type).into();
+        let idx_ty: Type = tensor_type(&[8], i32_type).into();
+        let result_ty: Type = tensor_type(&[8], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_gather_efficient_layout",
+            "public",
+            &[src_ty, idx_ty],
+            &[result_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location), (idx_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+        let indices: Value = block.argument(1).unwrap().into();
+
+        let gather_op: Operation<'_> =
+            super::gather(&context, location, src, indices, 0, true, result_ty).unwrap();
+        let ret_val: Value = gather_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ret_val]).build();
+
+        block.append_operation(gather_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.gather"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("efficient_layout"), "missing efficient_layout attr:\n{output}");
     }
 }
