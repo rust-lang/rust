@@ -728,11 +728,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         guard: Option<ExprId>,
         opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
     ) -> Option<SourceScope> {
+        let has_guard = guard.is_some() || self.pat_has_guard(pattern);
         self.visit_primary_bindings_special(
             pattern,
             &ProjectedUserTypesNode::None,
-            false,
-            &mut |this, name, mode, var, span, ty, user_tys, has_guard_pattern| {
+            &mut |this, name, mode, var, span, ty, user_tys| {
                 let saved_scope = this.source_scope;
                 this.set_correct_source_scope_for_arg(var.0, saved_scope, span);
                 let vis_scope = *visibility_scope
@@ -748,7 +748,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     var,
                     ty,
                     user_tys,
-                    ArmHasGuard(guard.is_some() || has_guard_pattern),
+                    ArmHasGuard(has_guard),
                     opt_match_place.map(|(x, y)| (x.cloned(), y)),
                     pattern.span,
                 );
@@ -787,6 +787,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 self.declare_guard_bindings(rhs, scope_span, visibility_scope);
             }
             _ => {}
+        }
+    }
+
+    fn pat_has_guard(&self, pat: &Pat<'tcx>) -> bool {
+        match &pat.kind {
+            PatKind::Guard { .. } => return true,
+            PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
+                return prefix.iter().any(|subpat| self.pat_has_guard(subpat))
+                    || slice.as_deref().is_some_and(|subpat| self.pat_has_guard(subpat))
+                    || suffix.iter().any(|subpat| self.pat_has_guard(subpat));
+            }
+            PatKind::Variant { subpatterns, .. } | PatKind::Leaf { subpatterns } => {
+                subpatterns.iter().any(|subpat| self.pat_has_guard(&subpat.pattern))
+            }
+            PatKind::Or { pats: subpatterns } => {
+                subpatterns.iter().any(|subpat| self.pat_has_guard(subpat))
+            }
+            PatKind::Binding { subpattern, .. } => {
+                return subpattern.as_deref().is_some_and(|subpat| self.pat_has_guard(subpat));
+            }
+            PatKind::Deref { subpattern, .. } | PatKind::DerefPattern { subpattern, .. } => {
+                return self.pat_has_guard(subpattern.as_ref());
+            }
+            _ => false,
         }
     }
 
@@ -859,7 +883,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         pattern: &Pat<'tcx>,
         user_tys: &ProjectedUserTypesNode<'_>,
-        mut guard_pat_present: bool,
         f: &mut impl FnMut(
             &mut Self,
             Symbol,
@@ -868,11 +891,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             Span,
             Ty<'tcx>,
             &ProjectedUserTypesNode<'_>,
-            bool,
         ),
     ) {
-        guard_pat_present |= pattern.kind.is_guard();
-
         // Ascriptions correspond to user-written types like `let A::<'a>(_): A<'static> = ...;`.
         //
         // Caution: Pushing user types here is load-bearing even for
@@ -895,13 +915,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // Avoid having to write the full method name at each recursive call.
         let visit_subpat = |this: &mut Self, subpat, user_tys: &_, f: &mut _| {
-            this.visit_primary_bindings_special(subpat, user_tys, guard_pat_present, f)
+            this.visit_primary_bindings_special(subpat, user_tys, f)
         };
 
         match pattern.kind {
             PatKind::Binding { name, mode, var, ty, ref subpattern, is_primary, .. } => {
                 if is_primary {
-                    f(self, name, mode, var, pattern.span, ty, user_tys, guard_pat_present);
+                    f(self, name, mode, var, pattern.span, ty, user_tys);
                 }
                 if let Some(subpattern) = subpattern.as_ref() {
                     visit_subpat(self, subpattern, user_tys, f);
