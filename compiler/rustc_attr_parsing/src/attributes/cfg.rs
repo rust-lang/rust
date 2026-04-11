@@ -78,7 +78,7 @@ pub fn parse_cfg<S: Stage>(
             }
         }
 
-        adcx.expected_single_argument(list.span);
+        adcx.expected_single_argument(list.span, list.len());
         return None;
     };
     parse_cfg_entry(cx, single).ok()
@@ -93,7 +93,7 @@ pub fn parse_cfg_entry<S: Stage>(
             ArgParser::List(list) => match meta.path().word_sym() {
                 Some(sym::not) => {
                     let Some(single) = list.single() else {
-                        return Err(cx.adcx().expected_single_argument(list.span));
+                        return Err(cx.adcx().expected_single_argument(list.span, list.len()));
                     };
                     CfgEntry::Not(Box::new(parse_cfg_entry(cx, single)?), list.span)
                 }

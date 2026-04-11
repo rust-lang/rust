@@ -557,6 +557,7 @@ pub(crate) enum AttributeParseErrorReason<'a> {
         upper_bound: isize,
     },
     ExpectedAtLeastOneArgument,
+    ExpectedArgument,
     ExpectedSingleArgument,
     ExpectedList,
     ExpectedListOrNoArgs,
@@ -771,6 +772,10 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
             }
             AttributeParseErrorReason::ExpectedSingleArgument => {
                 diag.span_label(self.span, "expected a single argument here");
+                diag.code(E0805);
+            }
+            AttributeParseErrorReason::ExpectedArgument => {
+                diag.span_label(self.span, "expected an argument here");
                 diag.code(E0805);
             }
             AttributeParseErrorReason::ExpectedAtLeastOneArgument => {
