@@ -38,7 +38,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
             ArgParser::NoArgs => Some(AttributeKind::Inline(InlineAttr::Hint, cx.attr_span)),
             ArgParser::List(list) => {
                 let Some(l) = list.single() else {
-                    cx.adcx().expected_single_argument(list.span);
+                    cx.adcx().expected_single_argument(list.span, list.len());
                     return None;
                 };
 
@@ -80,7 +80,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
             ArgParser::NoArgs => None,
             ArgParser::List(list) => {
                 let Some(l) = list.single() else {
-                    cx.adcx().expected_single_argument(list.span);
+                    cx.adcx().expected_single_argument(list.span, list.len());
                     return None;
                 };
 

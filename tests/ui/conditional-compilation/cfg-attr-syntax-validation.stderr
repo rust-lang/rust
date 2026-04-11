@@ -26,7 +26,7 @@ error[E0805]: malformed `cfg` attribute input
 LL | #[cfg()]
    | ^^^^^--^
    |      |
-   |      expected a single argument here
+   |      expected an argument here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
 help: if the struct should be disabled, use `#[cfg(false)]`
