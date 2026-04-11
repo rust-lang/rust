@@ -28,7 +28,7 @@ use crate::shared::builtin::tensor_type;
 use crate::triton::attr_i32;
 use crate::triton::tt::{
     AddPtrOperation, DescriptorGatherOperation, LoadOperation, MakeRangeOperation,
-    MulhiUIOperation, SplatOperation, StoreOperation,
+    MulhiUIOperation, SplatOperation,
 };
 
 /// Mirror of Triton's `InputPrecision` enum (TritonAttrDefs.td).
@@ -148,14 +148,61 @@ pub fn load<'ctx>(
     Ok(LoadOperation::try_from(op).expect("valid tt.load"))
 }
 
+/// Build a `tt.store` operation.
+///
+/// Stores `value` to the memory location(s) described by `ptr`.
+/// An optional `mask` (same shape as `ptr`) guards individual lanes; elements
+/// whose mask bit is `false` are not written.
+///
+/// # Arguments
+/// * `ptr`   – pointer value (`!tt.ptr<T>` or `tensor<Nx!tt.ptr<T>>`).
+/// * `value` – value to store; must match the pointee type of `ptr`.
+/// * `mask`  – optional boolean lane mask (`i1` or `tensor<Nxi1>`).
+/// * `cache` – L1/L2 cache modifier (use `CacheModifier::None` for default).
+/// * `evict` – cache eviction policy (use `EvictionPolicy::Normal` for default).
+///
+/// Assembly format:
+/// ```text
+/// tt.store %ptr, %value [, %mask] {cache = <cache>, evict = <evict>}
+///     : type(%ptr), type(%value)
+/// ```
 pub fn store<'ctx>(
     context: &'ctx Context,
     location: Location<'ctx>,
     ptr: Value<'ctx, 'ctx>,
     value: Value<'ctx, 'ctx>,
-    mask: Value<'ctx, 'ctx>,
-) -> Result<StoreOperation<'ctx>, Error> {
-    Ok(StoreOperation::builder(context, location).ptr(ptr).value(value).mask(mask).build())
+    mask: Option<Value<'ctx, 'ctx>>,
+    cache: CacheModifier,
+    evict: EvictionPolicy,
+) -> Result<Operation<'ctx>, Error> {
+    let mask_size = if mask.is_some() { 1i32 } else { 0i32 };
+
+    let mut operands: Vec<Value> = vec![ptr, value];
+    if let Some(m) = mask {
+        operands.push(m);
+    }
+
+    // operandSegmentSizes encodes [ptr=1, value=1, mask=0|1] so the verifier
+    // knows which optional operand slots are populated.
+    let seg_sizes = DenseI32ArrayAttribute::new(context, &[1, 1, mask_size]);
+
+    // CacheModifierAttr and EvictionPolicyAttr are both backed by IntegerAttr<i32>;
+    // attr_i32 produces a compatible value that satisfies classof for each kind.
+    let cache_attr = attr_i32(context, cache as i32);
+    let evict_attr = attr_i32(context, evict as i32);
+
+    OperationBuilder::new("tt.store", location)
+        .add_operands(&operands)
+        .add_attributes(&[
+            (
+                Identifier::new(context, "operandSegmentSizes"),
+                Attribute::from(seg_sizes),
+            ),
+            (Identifier::new(context, "cache"), Attribute::from(cache_attr)),
+            (Identifier::new(context, "evict"), Attribute::from(evict_attr)),
+        ])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.store: {e}") })
 }
 
 pub fn mulhiui<'ctx>(
@@ -1028,6 +1075,207 @@ mod tests {
         assert!(
             output.contains("tensor<16x16xf32>"),
             "missing result tensor type:\n{output}"
+        );
+    }
+
+    /// Verify that `store` without a mask emits a valid `tt.store` op.
+    ///
+    /// Uses function block-arguments to supply typed pointer and value operands
+    /// so the test does not depend on constant-folding or a real GPU pointer.
+    #[test]
+    fn test_store_no_mask() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        // Tensor pointer: tensor<8x!tt.ptr<f32>>
+        let ptr_elem_ty = pointer_type(f32_type);
+        let ptr_tensor_ty: Type = tensor_type(&[8], ptr_elem_ty).into();
+        // Value tensor: tensor<8xf32>
+        let val_tensor_ty: Type = tensor_type(&[8], f32_type).into();
+
+        // Wrapper function so block-arguments carry their types.
+        let func_op = create_func(
+            &context,
+            location,
+            "test_store_no_mask",
+            "public",
+            &[ptr_tensor_ty, val_tensor_ty],
+            &[],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(ptr_tensor_ty, location), (val_tensor_ty, location)]);
+
+        let ptr_val: melior::ir::Value = block.argument(0).unwrap().into();
+        let val_val: melior::ir::Value = block.argument(1).unwrap().into();
+
+        let store_op: Operation<'_> =
+            store(&context, location, ptr_val, val_val, None, CacheModifier::None, EvictionPolicy::Normal)
+                .unwrap();
+
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[]).build();
+
+        block.append_operation(store_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.store"), "missing op mnemonic:\n{output}");
+        assert!(
+            output.contains("tensor<8x!tt.ptr<f32>>"),
+            "missing ptr tensor type:\n{output}"
+        );
+        assert!(
+            output.contains("tensor<8xf32>"),
+            "missing value tensor type:\n{output}"
+        );
+    }
+
+    /// Verify that `store` with a mask emits a valid `tt.store` op including the
+    /// mask operand.
+    #[test]
+    fn test_store_with_mask() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let i1_type: Type = melior::ir::r#type::IntegerType::new(&context, 1).into();
+
+        // Tensor types: tensor<16x!tt.ptr<f32>>, tensor<16xf32>, tensor<16xi1>.
+        let ptr_elem_ty = pointer_type(f32_type);
+        let ptr_tensor_ty: Type = tensor_type(&[16], ptr_elem_ty).into();
+        let val_tensor_ty: Type = tensor_type(&[16], f32_type).into();
+        let mask_tensor_ty: Type = tensor_type(&[16], i1_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_store_masked",
+            "public",
+            &[ptr_tensor_ty, val_tensor_ty, mask_tensor_ty],
+            &[],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (ptr_tensor_ty, location),
+            (val_tensor_ty, location),
+            (mask_tensor_ty, location),
+        ]);
+
+        let ptr_val: melior::ir::Value = block.argument(0).unwrap().into();
+        let val_val: melior::ir::Value = block.argument(1).unwrap().into();
+        let mask_val: melior::ir::Value = block.argument(2).unwrap().into();
+
+        let store_op: Operation<'_> = store(
+            &context,
+            location,
+            ptr_val,
+            val_val,
+            Some(mask_val),
+            CacheModifier::None,
+            EvictionPolicy::Normal,
+        )
+        .unwrap();
+
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[]).build();
+
+        block.append_operation(store_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.store"), "missing op mnemonic:\n{output}");
+        assert!(
+            output.contains("tensor<16x!tt.ptr<f32>>"),
+            "missing ptr tensor type:\n{output}"
+        );
+        assert!(
+            output.contains("tensor<16xf32>"),
+            "missing value tensor type:\n{output}"
+        );
+        assert!(
+            output.contains("tensor<16xi1>"),
+            "missing mask tensor type:\n{output}"
+        );
+    }
+
+    /// Verify that `store` with a non-default cache modifier emits the cache
+    /// attribute in the IR output.
+    #[test]
+    fn test_store_cache_modifier() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let ptr_elem_ty = pointer_type(f32_type);
+        let ptr_tensor_ty: Type = tensor_type(&[8], ptr_elem_ty).into();
+        let val_tensor_ty: Type = tensor_type(&[8], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_store_cache",
+            "public",
+            &[ptr_tensor_ty, val_tensor_ty],
+            &[],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(ptr_tensor_ty, location), (val_tensor_ty, location)]);
+
+        let ptr_val: melior::ir::Value = block.argument(0).unwrap().into();
+        let val_val: melior::ir::Value = block.argument(1).unwrap().into();
+
+        // CacheModifier::Ca (write-back cache) and EvictionPolicy::EvictFirst.
+        let store_op: Operation<'_> = store(
+            &context,
+            location,
+            ptr_val,
+            val_val,
+            None,
+            CacheModifier::Ca,
+            EvictionPolicy::EvictFirst,
+        )
+        .unwrap();
+
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[]).build();
+
+        block.append_operation(store_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.store"), "missing op mnemonic:\n{output}");
+        // Non-default cache/evict attributes must appear in the emitted IR.
+        // Pretty-printed form: "cacheModifier = ca" / "evictionPolicy = evict_first".
+        // Generic form: "cache = 2 : i32" / "evict = 2 : i32".
+        assert!(
+            output.contains("cacheModifier = ca") || output.contains("cache = 2"),
+            "missing cacheModifier = ca (CacheModifier::Ca = 2):\n{output}"
+        );
+        assert!(
+            output.contains("evictionPolicy = evict_first") || output.contains("evict = 2"),
+            "missing evictionPolicy = evict_first (EvictionPolicy::EvictFirst = 2):\n{output}"
         );
     }
 }
