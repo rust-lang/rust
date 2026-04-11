@@ -1,3 +1,4 @@
+//@ run-pass
 // ignore-tidy-tab
 //
 // Tests that the Rust lexer accepts Unicode Pattern_White_Space characters.
@@ -15,34 +16,33 @@
 
 #[rustfmt::skip]
 fn main() {
-    // tab (\x09) between `let` and the name
+    // tab (\x09) between let and the name
     let	_ws1 = 1_i32;
 
-    // vertical tab (\x0B) between `let` and the name
+    // vertical tab (\x0B) between let and the name
     // this is the one is_ascii_whitespace gets wrong
-    let_ws2 = 2_i32;
+    let_ws2 = 2_i32;
 
-    // form feed (\x0C) between `let` and the name
-    let_ws3 = 3_i32;
+    // form feed (\x0C) between let and the name
+    let_ws3 = 3_i32;
 
     // plain space (\x20), here just so every character is represented
     let _ws4 = 4_i32;
 
-    // NEL (\u{85}) between `let` and the name
-    let_ws5 = 5_i32;
+    // NEL (\u{85}) between let and the name
+    let_ws5 = 5_i32;
 
-    // left-to-right mark (\u{200E}) between `let` and the name
+    // left-to-right mark (\u{200E}) between let and the name
     let‎_ws6 = 6_i32;
 
-    // right-to-left mark (\u{200F}) between `let` and the name
+    // right-to-left mark (\u{200F}) between let and the name
     let‏_ws7 = 7_i32;
 
     // \x0A, \x0D, \u{2028}, \u{2029} are also Pattern_White_Space but they
     // act as line endings, so you can't stick them in the middle of a statement.
     // The lexer still handles them correctly at line boundaries.
 
-    // These are Unicode White_Space but NOT Pattern_White_Space, so the Rust
-    // lexer won't accept them between tokens:
+    // These are Unicode White_Space but NOT Pattern_White_Space:
     //   \u{A0}   no-break space       \u{1680} ogham space mark
     //   \u{2000} en quad              \u{2001} em quad
     //   \u{2002} en space             \u{2003} em space

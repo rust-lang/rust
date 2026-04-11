@@ -1,3 +1,4 @@
+//@ run-pass
 // This test checks that split_ascii_whitespace does NOT split on
 // vertical tab (\x0B), because the standard library uses the WhatWG
 // Infra Standard definition of ASCII whitespace, which excludes
