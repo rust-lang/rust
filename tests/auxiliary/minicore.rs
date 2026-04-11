@@ -187,6 +187,12 @@ macro_rules! stringify {
     };
 }
 
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! compile_error {
+    ($msg:expr $(,)?) => {{ /* compiler built-in */ }};
+}
+
 #[lang = "add"]
 pub trait Add<Rhs = Self> {
     type Output;

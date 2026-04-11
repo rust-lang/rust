@@ -52,6 +52,8 @@ use rustc_hashes::Hash64;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_Generic};
+#[cfg(feature = "nightly")]
+use rustc_span::{Symbol, sym};
 
 mod callconv;
 mod canon_abi;
@@ -768,6 +770,14 @@ impl Endian {
         match self {
             Self::Little => "little",
             Self::Big => "big",
+        }
+    }
+
+    #[cfg(feature = "nightly")]
+    pub fn desc_symbol(&self) -> Symbol {
+        match self {
+            Self::Little => sym::little,
+            Self::Big => sym::big,
         }
     }
 }
