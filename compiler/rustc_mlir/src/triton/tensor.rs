@@ -117,6 +117,20 @@ pub enum RoundingMode {
     RTNE = 1,
 }
 
+/// Mirror of Triton's `PropagateNan` enum (TritonAttrDefs.td).
+///
+/// Controls NaN propagation behaviour for `tt.clampf`.
+/// Integer values must stay in sync with the TableGen definition so that
+/// the resulting `IntegerAttr<i32>` is accepted as a `PropagateNanAttr`.
+///
+/// - `None` = 0      – do not propagate NaN; clamp NaN inputs as if they were in-range
+/// - `All`  = 0xFFFF – propagate NaN; a NaN input produces a NaN output
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum PropagateNan {
+    None = 0,
+    All  = 0xFFFF,
+}
+
 pub fn make_range<'ctx>(
     context: &'ctx Context,
     location: Location<'ctx>,
@@ -1643,6 +1657,53 @@ pub fn expand_dims<'ctx>(
         .add_results(&[result_ty])
         .build()
         .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.expand_dims: {e}") })
+}
+
+/// Build a `tt.clampf` operation.
+///
+/// Clamps a floating-point scalar or tensor `x` to the closed interval
+/// `[min, max]`.  All three operands and the result share the same type
+/// (`SameOperandsAndResultType`).
+///
+/// The `propagate_nan` argument controls NaN handling:
+/// - [`PropagateNan::None`] – NaN inputs are treated as in-range values
+///   (behaviour is implementation-defined per backend).
+/// - [`PropagateNan::All`]  – a NaN in any operand produces a NaN result.
+///
+/// Traits: `Elementwise`, `SameOperandsAndResultType`, `Pure`.
+///
+/// # Arguments
+/// * `x`             – value to clamp (scalar or tensor float type).
+/// * `min`           – lower bound; same type as `x`.
+/// * `max`           – upper bound; same type as `x`.
+/// * `propagate_nan` – NaN propagation mode.
+///
+/// # Assembly format
+///
+/// ```text
+/// %result = tt.clampf %x, %min, %max, propagateNan = none : f32
+/// %result = tt.clampf %x, %min, %max, propagateNan = all  : tensor<8xf32>
+/// ```
+pub fn clampf<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    x: Value<'ctx, '_>,
+    min: Value<'ctx, '_>,
+    max: Value<'ctx, '_>,
+    propagate_nan: PropagateNan,
+    result_ty: Type<'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    let propagate_nan_attr = attr_i32(context, propagate_nan as i32);
+
+    OperationBuilder::new("tt.clampf", location)
+        .add_operands(&[x, min, max])
+        .add_attributes(&[(
+            Identifier::new(context, "propagateNan"),
+            Attribute::from(propagate_nan_attr),
+        )])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.clampf: {e}") })
 }
 
 #[cfg(test)]
@@ -5505,5 +5566,114 @@ mod tests {
             output.contains("tensor<16x16xf32>"),
             "missing src tensor type:\n{output}"
         );
+    }
+
+    /// Verify that `clampf` emits a correct `tt.clampf` op with
+    /// `propagateNan = none` for a scalar f32 operand.
+    ///
+    /// Expected assembly fragment (inside a `tt.func`):
+    /// ```text
+    /// %result = tt.clampf %arg0, %arg1, %arg2, propagateNan = none : f32
+    /// ```
+    #[test]
+    fn test_clampf_scalar_none() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_clampf_scalar_none",
+            "public",
+            &[f32_type, f32_type, f32_type],
+            &[f32_type],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(f32_type, location), (f32_type, location), (f32_type, location)]);
+        let x: Value = block.argument(0).unwrap().into();
+        let min: Value = block.argument(1).unwrap().into();
+        let max: Value = block.argument(2).unwrap().into();
+
+        let clamp_op: Operation<'_> =
+            super::clampf(&context, location, x, min, max, super::PropagateNan::None, f32_type)
+                .unwrap();
+        let result_val: Value = clamp_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(clamp_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.clampf"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("propagateNan"), "missing propagateNan attr:\n{output}");
+        assert!(output.contains("none"), "missing 'none' propagateNan value:\n{output}");
+        assert!(output.contains("f32"), "missing f32 type:\n{output}");
+    }
+
+    /// Verify that `clampf` emits a correct `tt.clampf` op with
+    /// `propagateNan = all` for a tensor operand.
+    ///
+    /// Expected assembly fragment (inside a `tt.func`):
+    /// ```text
+    /// %result = tt.clampf %arg0, %arg1, %arg2, propagateNan = all : tensor<8xf32>
+    /// ```
+    #[test]
+    fn test_clampf_tensor_all() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let tensor_ty: Type = tensor_type(&[8], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_clampf_tensor_all",
+            "public",
+            &[tensor_ty, tensor_ty, tensor_ty],
+            &[tensor_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (tensor_ty, location),
+            (tensor_ty, location),
+            (tensor_ty, location),
+        ]);
+        let x: Value = block.argument(0).unwrap().into();
+        let min: Value = block.argument(1).unwrap().into();
+        let max: Value = block.argument(2).unwrap().into();
+
+        let clamp_op: Operation<'_> =
+            super::clampf(&context, location, x, min, max, super::PropagateNan::All, tensor_ty)
+                .unwrap();
+        let result_val: Value = clamp_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(clamp_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.clampf"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("propagateNan"), "missing propagateNan attr:\n{output}");
+        assert!(output.contains("all"), "missing 'all' propagateNan value:\n{output}");
+        assert!(output.contains("tensor<8xf32>"), "missing tensor<8xf32> type:\n{output}");
     }
 }
