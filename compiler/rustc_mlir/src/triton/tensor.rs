@@ -92,6 +92,17 @@ pub enum EvictionPolicy {
     EvictLast  = 3,
 }
 
+/// Mirror of Triton's `PaddingOption` enum (TritonAttrDefs.td).
+///
+/// Controls out-of-bounds padding behaviour for `tt.make_tensor_descriptor`.
+/// Integer values must stay in sync with the TableGen definition so that
+/// the resulting `IntegerAttr<i32>` is accepted as a `PaddingOptionAttr`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum PaddingOption {
+    PadZero = 1,
+    PadNan  = 2,
+}
+
 pub fn make_range<'ctx>(
     context: &'ctx Context,
     location: Location<'ctx>,
@@ -1010,6 +1021,68 @@ pub fn print<'ctx>(
         ])
         .build()
         .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.print: {e}") })
+}
+
+/// Build a `tt.make_tensor_descriptor` operation.
+///
+/// `tt.make_tensor_descriptor` takes meta information of a parent tensor (its
+/// base pointer, dynamic shape, and dynamic strides) together with a statically
+/// known block shape encoded in the result type, and returns a descriptor
+/// object (`!tt.tensordesc<tensor<...>>`) that can be used by
+/// `tt.descriptor_load` / `tt.descriptor_store` / `tt.descriptor_gather` /
+/// `tt.descriptor_scatter`.
+///
+/// # Arguments
+/// * `base`      – base pointer value (`!tt.ptr<T>`).
+/// * `shape`     – one `i32` operand per dimension giving the dynamic extent.
+/// * `strides`   – one `i64` operand per dimension giving the dynamic stride.
+/// * `padding`   – out-of-bounds padding mode (default: `PaddingOption::PadZero`).
+/// * `result_ty` – complete `!tt.tensordesc<tensor<...>>` result type.
+///
+/// # Panics (debug only)
+///
+/// Asserts that `shape.len() == strides.len()`, matching the
+/// `SameVariadicOperandSize` trait on the Triton op.
+///
+/// # Assembly format
+///
+/// ```text
+/// tt.make_tensor_descriptor %base, [%s0, ...], [%str0, ...] {padding = ...}
+///     : !tt.ptr<T>, !tt.tensordesc<tensor<...>>
+/// ```
+pub fn make_tensor_descriptor<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    base: Value<'ctx, '_>,
+    shape: &[Value<'ctx, '_>],
+    strides: &[Value<'ctx, '_>],
+    padding: PaddingOption,
+    result_ty: Type<'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    debug_assert_eq!(
+        shape.len(),
+        strides.len(),
+        "make_tensor_descriptor: shape and strides must have the same length"
+    );
+
+    let mut operands: Vec<Value> = Vec::with_capacity(1 + shape.len() + strides.len());
+    operands.push(base);
+    operands.extend_from_slice(shape);
+    operands.extend_from_slice(strides);
+
+    let padding_attr = attr_i32(context, padding as i32);
+
+    OperationBuilder::new("tt.make_tensor_descriptor", location)
+        .add_operands(&operands)
+        .add_attributes(&[(
+            Identifier::new(context, "padding"),
+            Attribute::from(padding_attr),
+        )])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType {
+            msg: format!("failed to build tt.make_tensor_descriptor: {e}"),
+        })
 }
 
 #[cfg(test)]
@@ -3404,6 +3477,96 @@ mod tests {
         assert!(
             output.contains("order = array<i32: 1, 0>"),
             "missing order attribute:\n{output}"
+        );
+    }
+
+    /// Verify that `make_tensor_descriptor` emits the correct
+    /// `tt.make_tensor_descriptor` IR.
+    ///
+    /// Expected IR (schematic):
+    /// ```text
+    /// %0 = tt.make_tensor_descriptor %arg0, [%arg1, %arg2], [%arg3, %arg4]
+    ///         {padding = 1 : i32} : !tt.ptr<f32>, !tt.tensordesc<tensor<8x16xf32>>
+    /// ```
+    #[test]
+    fn test_make_tensor_descriptor() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = Type::float32(&context);
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+        let i64_type: Type = IntegerType::new(&context, 64).into();
+
+        // base pointer: !tt.ptr<f32>
+        let base_ptr_ty = pointer_type(f32_type);
+
+        // result type: !tt.tensordesc<tensor<8x16xf32>>
+        let result_ty = Type::parse(&context, "!tt.tensordesc<tensor<8x16xf32>>")
+            .expect("valid tensordesc type");
+
+        // Function arguments: base, s0, s1 (shape i32), str0, str1 (strides i64)
+        let arg_types = [base_ptr_ty, i32_type, i32_type, i64_type, i64_type];
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_make_tensor_descriptor",
+            "public",
+            &arg_types,
+            &[result_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (base_ptr_ty, location),
+            (i32_type, location),
+            (i32_type, location),
+            (i64_type, location),
+            (i64_type, location),
+        ]);
+
+        let base: Value = block.argument(0).unwrap().into();
+        let s0: Value = block.argument(1).unwrap().into();
+        let s1: Value = block.argument(2).unwrap().into();
+        let str0: Value = block.argument(3).unwrap().into();
+        let str1: Value = block.argument(4).unwrap().into();
+
+        let desc_op: Operation<'_> = make_tensor_descriptor(
+            &context,
+            location,
+            base,
+            &[s0, s1],
+            &[str0, str1],
+            PaddingOption::PadZero,
+            result_ty,
+        )
+        .unwrap();
+
+        let desc_val: Value = desc_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[desc_val]).build();
+
+        block.append_operation(desc_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.make_tensor_descriptor"),
+            "missing op mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("!tt.tensordesc<tensor<8x16xf32>>"),
+            "missing tensordesc result type:\n{output}"
+        );
+        assert!(
+            output.contains("!tt.ptr<f32>"),
+            "missing base pointer type:\n{output}"
         );
     }
 }
