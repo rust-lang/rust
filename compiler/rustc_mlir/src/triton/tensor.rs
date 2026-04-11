@@ -27,10 +27,10 @@ use crate::ffi::mlirCreateTritonPointerType;
 use crate::shared::builtin::tensor_type;
 use crate::triton::attr_i32;
 use crate::triton::tt::{
-    AddPtrOperation, DescriptorGatherOperation, LoadOperation, MapElementwiseReturnOperation,
-    MakeRangeOperation, MulhiUIOperation, PreciseDivFOperation, PreciseSqrtOperation,
-    ReduceOperation, ReduceReturnOperation, ReturnOperation, ScanOperation, ScanReturnOperation,
-    SplatOperation,
+    AddPtrOperation, DescriptorGatherOperation, LoadOperation, MapElementwiseOperation,
+    MapElementwiseReturnOperation, MakeRangeOperation, MulhiUIOperation, PreciseDivFOperation,
+    PreciseSqrtOperation, ReduceOperation, ReduceReturnOperation, ReturnOperation, ScanOperation,
+    ScanReturnOperation, SplatOperation,
 };
 
 /// Mirror of Triton's `InputPrecision` enum (TritonAttrDefs.td).
@@ -656,6 +656,52 @@ pub fn map_elementwise_return<'ctx>(
     result: &[Value<'ctx, '_>],
 ) -> Result<MapElementwiseReturnOperation<'ctx>, Error> {
     Ok(MapElementwiseReturnOperation::builder(context, location).result(result).build())
+}
+
+/// Build a `tt.map_elementwise` operation.
+///
+/// `tt.map_elementwise` applies a scalar computation (expressed as a region)
+/// element-wise over one or more input tensors, producing one output tensor per
+/// input.  The `scalarOp` region receives the element values as block arguments
+/// and must be terminated by a `tt.map_elementwise.return`.
+///
+/// # Arguments
+/// * `srcs`         – input tensors; all must share the same shape and encoding.
+/// * `result_types` – result tensor types, one per source tensor (same shape/encoding).
+/// * `pack`         – packing factor attribute (`I32Attr`); use `0` for unpacked.
+/// * `scalar_op`    – the `scalarOp` region: a single block whose arguments are
+///                    the element values of each source tensor, terminated by
+///                    `tt.map_elementwise.return`.
+///
+/// # Example
+///
+/// ```text
+/// %result = tt.map_elementwise %src {pack = 0 : i32} (
+///   ^bb0(%elem: f32):
+///     tt.map_elementwise.return %elem : f32
+/// ) : (tensor<4xf32>) -> tensor<4xf32>
+/// ```
+///
+/// # Panics / Errors
+///
+/// Returns an error if the operation builder rejects the supplied operands or
+/// result types.
+pub fn map_elementwise<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    srcs: &[Value<'ctx, '_>],
+    result_types: &[Type<'ctx>],
+    pack: i32,
+    scalar_op: melior::ir::Region<'ctx>,
+) -> Result<MapElementwiseOperation<'ctx>, Error> {
+    let pack_attr = attr_i32(context, pack);
+
+    Ok(MapElementwiseOperation::builder(context, location)
+        .result(result_types)
+        .srcs(srcs)
+        .scalar_op(scalar_op)
+        .pack(pack_attr)
+        .build())
 }
 
 /// Build a `tt.scan` operation.
@@ -2962,6 +3008,81 @@ mod tests {
         );
     }
 
+    /// Verify that `map_elementwise` builds a valid `tt.map_elementwise` op.
+    ///
+    /// Constructs a `tt.map_elementwise` over a `tensor<4xf32>` whose `scalarOp`
+    /// region passes the element through unchanged via `tt.map_elementwise.return`.
+    ///
+    /// Expected IR contains:
+    /// ```text
+    /// tt.map_elementwise
+    /// tt.map_elementwise.return
+    /// pack = 0
+    /// ```
+    #[test]
+    fn test_map_elementwise() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_map_elementwise",
+            "public",
+            &[src_ty],
+            &[src_ty],
+            0,
+        )
+        .unwrap();
+
+        // scalarOp region: block(%arg0: f32) { tt.map_elementwise.return %arg0 : f32 }
+        let scalar_block = Block::new(&[(f32_type, location)]);
+        let elem: Value = scalar_block.argument(0).unwrap().into();
+        let ret_op: Operation<'_> =
+            map_elementwise_return(&context, location, &[elem]).unwrap().into();
+        scalar_block.append_operation(ret_op);
+        let scalar_region = melior::ir::Region::new();
+        scalar_region.append_block(scalar_block);
+
+        let func_block = Block::new(&[(src_ty, location)]);
+        let src: Value = func_block.argument(0).unwrap().into();
+
+        let map_op: Operation<'_> =
+            map_elementwise(&context, location, &[src], &[src_ty], 0, scalar_region)
+                .unwrap()
+                .into();
+
+        let map_result: Value = map_op.result(0).unwrap().into();
+        let fn_ret = ReturnOperation::builder(&context, location).srcs(&[map_result]).build();
+
+        func_block.append_operation(map_op);
+        func_block.append_operation(fn_ret.into());
+        func_op.body().unwrap().append_block(func_block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.map_elementwise"),
+            "missing tt.map_elementwise mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("tt.map_elementwise.return"),
+            "missing tt.map_elementwise.return terminator:\n{output}"
+        );
+        assert!(
+            output.contains("pack = 0") || output.contains("pack = 0 :"),
+            "missing pack attribute:\n{output}"
+        );
+        assert!(output.contains("tensor<4xf32>"), "missing tensor<4xf32> type:\n{output}");
+    }
+
     /// Verify that `map_elementwise_return` emits a valid `tt.map_elementwise.return` op.
     ///
     /// Builds a `tt.map_elementwise` op over a `tensor<4xf32>` whose `scalarOp`
@@ -2974,8 +3095,6 @@ mod tests {
     /// ```
     #[test]
     fn test_map_elementwise_return() {
-        use crate::triton::tt::MapElementwiseOperation;
-
         let context = create_test_context();
         load_triton_dialect(&context);
 
@@ -3053,8 +3172,6 @@ mod tests {
     /// ```
     #[test]
     fn test_map_elementwise_return_pretty_format() {
-        use crate::triton::tt::MapElementwiseOperation;
-
         let context = create_test_context();
         load_triton_dialect(&context);
 
