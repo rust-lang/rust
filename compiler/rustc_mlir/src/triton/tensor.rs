@@ -1183,6 +1183,46 @@ pub fn make_tensor_descriptor<'ctx>(
         })
 }
 
+/// Build a `tt.int_to_ptr` operation.
+///
+/// Casts an integer value (scalar `i64` or a tensor of `i64`) to a Triton
+/// pointer type.  The operation is elementwise: for tensor inputs every lane
+/// is individually converted.
+///
+/// Traits: `Elementwise`, `SameOperandsAndResultShape`,
+/// `SameOperandsAndResultEncoding`, `Pure`.
+///
+/// # Arguments
+/// * `src`       – integer operand (`i64` scalar or `tensor<Nxi64>`).
+/// * `result_ty` – pointer result type (`!tt.ptr<T>` or `tensor<Nx!tt.ptr<T>>`);
+///                 must share the same shape as `src` when both are tensors.
+///
+/// # Example
+///
+/// ```text
+/// // Scalar cast:
+/// %ptr  = tt.int_to_ptr %addr  : i64          -> !tt.ptr<f32>
+/// // Tensor cast:
+/// %ptrs = tt.int_to_ptr %addrs : tensor<8xi64> -> tensor<8x!tt.ptr<f32>>
+/// ```
+///
+/// Assembly format (from TableGen):
+/// ```text
+/// $src attr-dict `:` type($src) `->` type($result)
+/// ```
+pub fn int_to_ptr<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    src: Value<'ctx, '_>,
+    result_ty: Type<'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    OperationBuilder::new("tt.int_to_ptr", location)
+        .add_operands(&[src])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.int_to_ptr: {e}") })
+}
+
 #[cfg(test)]
 mod tests {
     use melior::Context;
@@ -1439,6 +1479,112 @@ mod tests {
         let output = module.as_operation().to_string();
         let expected = "module {\n  %c0_i64 = arith.constant 0 : i64\n  %0 = tt.int_to_ptr %c0_i64 : i64 -> !tt.ptr<f32>\n  %c0_i32 = arith.constant 0 : i32\n  %1 = tt.addptr %0, %c0_i32 : !tt.ptr<f32>, i32\n}\n";
         assert_eq!(expected, output);
+    }
+
+    /// Verify that `tensor::int_to_ptr` emits the correct `tt.int_to_ptr` IR
+    /// for a scalar `i64 -> !tt.ptr<f32>` cast inside a `tt.func`.
+    ///
+    /// Expected assembly:
+    /// ```text
+    /// %0 = tt.int_to_ptr %arg0 : i64 -> !tt.ptr<f32>
+    /// ```
+    #[test]
+    fn test_int_to_ptr() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let ptr_f32_type = pointer_type(f32_type);
+        let i64_type: Type = IntegerType::new(&context, 64).into();
+
+        // Function: (i64) -> !tt.ptr<f32>
+        let func_op = create_func(
+            &context,
+            location,
+            "test_int_to_ptr_fn",
+            "public",
+            &[i64_type],
+            &[ptr_f32_type],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(i64_type, location)]);
+        let src: melior::ir::Value = block.argument(0).unwrap().into();
+
+        // Use the tensor-module int_to_ptr (super::int_to_ptr, not crate::triton::int_to_ptr).
+        let cast_op: Operation<'_> =
+            super::int_to_ptr(&context, location, src, ptr_f32_type).unwrap();
+        let ptr_val: melior::ir::Value = cast_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ptr_val]).build();
+
+        block.append_operation(cast_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        // The op mnemonic must appear in the emitted IR.
+        assert!(output.contains("tt.int_to_ptr"), "missing op mnemonic:\n{output}");
+        // The source and result types must be visible in the assembly.
+        assert!(
+            output.contains("i64 -> !tt.ptr<f32>"),
+            "wrong type signature in IR:\n{output}"
+        );
+    }
+
+    /// Verify that `tensor::int_to_ptr` works for a tensor operand:
+    /// `tensor<8xi64> -> tensor<8x!tt.ptr<f32>>`.
+    #[test]
+    fn test_int_to_ptr_tensor() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let ptr_f32_type = pointer_type(f32_type);
+        let i64_type: Type = IntegerType::new(&context, 64).into();
+
+        let src_ty: Type = tensor_type(&[8], i64_type).into();
+        let res_ty: Type = tensor_type(&[8], ptr_f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_int_to_ptr_tensor_fn",
+            "public",
+            &[src_ty],
+            &[res_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: melior::ir::Value = block.argument(0).unwrap().into();
+
+        let cast_op: Operation<'_> =
+            super::int_to_ptr(&context, location, src, res_ty).unwrap();
+        let result_val: melior::ir::Value = cast_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(cast_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.int_to_ptr"), "missing op mnemonic:\n{output}");
+        assert!(
+            output.contains("tensor<8xi64>") && output.contains("tensor<8x!tt.ptr<f32>>"),
+            "wrong tensor types in IR:\n{output}"
+        );
     }
 
     /// Verify that `dot_scaled` emits a valid `tt.dot_scaled` op without
