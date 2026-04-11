@@ -2,23 +2,28 @@ error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-attr-syntax-validation.rs:1:1
    |
 LL | #[cfg]
-   | ^^^^^^
-   | |
-   | expected this to be a list
-   | help: must be of the form: `#[cfg(predicate)]`
+   | ^^^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL | #[cfg(predicate)]
+   |      +++++++++++
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-attr-syntax-validation.rs:7:1
    |
 LL | #[cfg = 10]
    | ^^^^^^----^
-   | |     |
-   | |     expected this to be a list
-   | help: must be of the form: `#[cfg(predicate)]`
+   |       |
+   |       expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL - #[cfg = 10]
+LL + #[cfg(predicate)]
+   |
 
 error[E0805]: malformed `cfg` attribute input
   --> $DIR/cfg-attr-syntax-validation.rs:13:1
@@ -59,22 +64,30 @@ error[E0539]: malformed `cfg` attribute input
    |
 LL | #[cfg("str")]
    | ^^^^^^-----^^
-   | |     |
-   | |     expected a valid identifier here
-   | help: must be of the form: `#[cfg(predicate)]`
+   |       |
+   |       expected a valid identifier here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL - #[cfg("str")]
+LL + #[cfg(predicate)]
+   |
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-attr-syntax-validation.rs:31:1
    |
 LL | #[cfg(a::b)]
    | ^^^^^^----^^
-   | |     |
-   | |     expected a valid identifier here
-   | help: must be of the form: `#[cfg(predicate)]`
+   |       |
+   |       expected a valid identifier here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL - #[cfg(a::b)]
+LL + #[cfg(predicate)]
+   |
 
 error[E0537]: invalid predicate `a`
   --> $DIR/cfg-attr-syntax-validation.rs:37:7
@@ -87,11 +100,15 @@ error[E0539]: malformed `cfg` attribute input
    |
 LL | #[cfg(a = 10)]
    | ^^^^^^^^^^--^^
-   | |         |
-   | |         expected a string literal here
-   | help: must be of the form: `#[cfg(predicate)]`
+   |           |
+   |           expected a string literal here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL - #[cfg(a = 10)]
+LL + #[cfg(predicate)]
+   |
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-attr-syntax-validation.rs:45:1
