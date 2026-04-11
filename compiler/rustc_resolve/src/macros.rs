@@ -735,7 +735,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     stable.is_none_or(|f| self.tcx.features().enabled(f)).then_some(*sym)
                 })
                 .collect::<Vec<_>>();
-            let typo = find_best_match_for_name(&candidates, attribute.ident.name, Some(5))
+            let typo = find_best_match_for_name(&candidates, attribute.ident.name, None)
                 .map(|typo_name| errors::UnknownDiagnosticAttributeTypoSugg { span, typo_name });
 
             self.tcx.sess.psess.buffer_lint(
