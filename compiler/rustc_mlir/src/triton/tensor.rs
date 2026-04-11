@@ -393,6 +393,47 @@ pub fn descriptor_load<'ctx>(
     Ok(op)
 }
 
+/// Build a `tt.descriptor_store` operation.
+///
+/// Lowers to NVIDIA TMA store, writing a register tensor tile back to global
+/// memory using a TMA descriptor.
+///
+/// # Arguments
+/// * `desc`    – value of type `!tt.tensordesc<tensor<...>>`; describes the
+///               destination tile layout and strides in global memory.
+/// * `src`     – the tensor value to store; element type and shape must match
+///               the descriptor.
+/// * `indices` – slice of scalar `i32` values giving the multi-dimensional
+///               store offset (one index per descriptor dimension).
+///
+/// Assembly format:
+/// ```text
+/// tt.descriptor_store %desc[%i0, %i1, ...], %src
+///     : !tt.tensordesc<tensor<...>>, tensor<...>
+/// ```
+pub fn descriptor_store<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    desc: Value<'ctx, 'ctx>,
+    src: Value<'ctx, 'ctx>,
+    indices: &[Value<'ctx, 'ctx>],
+) -> Result<Operation<'ctx>, Error> {
+    // Operand order: desc, src, indices (matches TableGen $desc, $src, $indices).
+    let mut operands: Vec<Value> = Vec::with_capacity(2 + indices.len());
+    operands.push(desc);
+    operands.push(src);
+    operands.extend_from_slice(indices);
+
+    let op = OperationBuilder::new("tt.descriptor_store", location)
+        .add_operands(&operands)
+        .build()
+        .map_err(|e| Error::InvalidType {
+            msg: format!("failed to build tt.descriptor_store: {e}"),
+        })?;
+
+    Ok(op)
+}
+
 /// Build a `tt.dot` operation.
 ///
 /// Computes `d = matrix_multiply(a, b) + c`.
@@ -5276,5 +5317,79 @@ mod tests {
         );
         assert!(output.contains("=r,r,r"), "missing constraints attribute:\n{output}");
         assert!(output.contains("tensor<4xf32>"), "missing tensor type:\n{output}");
+    }
+
+    /// Verify that `descriptor_store` emits the correct `tt.descriptor_store` IR.
+    ///
+    /// Uses function block-arguments to supply typed values without needing a
+    /// real TMA descriptor at compile time.
+    #[test]
+    fn test_descriptor_store() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        // Source tensor type: tensor<16x16xf32>.
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_tensor_ty: Type = tensor_type(&[16, 16], f32_type).into();
+
+        // Descriptor type: !tt.tensordesc<tensor<16x16xf32>>.
+        let desc_ty = Type::parse(&context, "!tt.tensordesc<tensor<16x16xf32>>")
+            .expect("valid tensordesc type");
+
+        // Two i32 indices for a 2-D descriptor.
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+
+        // Build a wrapper function so operands have proper block-argument types.
+        let func_op = create_func(
+            &context,
+            location,
+            "test_descriptor_store",
+            "public",
+            &[desc_ty, src_tensor_ty, i32_type, i32_type],
+            &[],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (desc_ty, location),
+            (src_tensor_ty, location),
+            (i32_type, location),
+            (i32_type, location),
+        ]);
+
+        let desc: Value = block.argument(0).unwrap().into();
+        let src: Value = block.argument(1).unwrap().into();
+        let idx0: Value = block.argument(2).unwrap().into();
+        let idx1: Value = block.argument(3).unwrap().into();
+
+        let store_op: Operation<'_> =
+            descriptor_store(&context, location, desc, src, &[idx0, idx1]).unwrap();
+
+        // tt.descriptor_store has no results; emit a void return.
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[]).build();
+
+        block.append_operation(store_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.descriptor_store"),
+            "missing op mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("tensordesc"),
+            "missing tensordesc operand type:\n{output}"
+        );
+        assert!(
+            output.contains("tensor<16x16xf32>"),
+            "missing src tensor type:\n{output}"
+        );
     }
 }
