@@ -115,4 +115,6 @@ dialect.rs
 .beads
 .beads-credential-key
 .scratch/
+agent.log
+claude_limit.lock
 tasks.md
