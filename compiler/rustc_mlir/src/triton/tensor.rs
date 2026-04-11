@@ -891,6 +891,75 @@ pub fn return_op<'ctx>(
     Ok(ReturnOperation::builder(context, location).srcs(srcs).build())
 }
 
+/// Build a `tt.make_tensor_ptr` operation.
+///
+/// Creates a block-tensor pointer from a flat base pointer and per-dimension
+/// metadata.  The result type is `!tt.ptr<tensor<D0x…xT>>`, where the
+/// dimension sizes are encoded in the result type's tensor shape.
+///
+/// # Arguments
+/// * `base`      – base pointer `!tt.ptr<T>` into the parent tensor.
+/// * `shape`     – variadic `i64` values: dimension sizes of the parent tensor.
+/// * `strides`   – variadic `i64` values: strides (in elements) of each dimension.
+/// * `offsets`   – variadic `i32` values: initial offsets into each dimension.
+/// * `order`     – permutation of `[0..rank-1]` specifying the memory layout
+///                 (e.g. `[1, 0]` for row-major 2-D).
+/// * `result_ty` – the tensor-pointer result type, `!tt.ptr<tensor<…xT>>`.
+///
+/// `shape`, `strides`, and `offsets` must all have the same length, equal to
+/// the rank of the result tensor.
+///
+/// # Assembly format
+/// ```text
+/// tt.make_tensor_ptr %base, [%s0, …], [%str0, …], [%off0, …]
+///     {order = array<i32: …>} : !tt.ptr<tensor<…>>
+/// ```
+///
+/// # Errors
+/// Returns an [`Error`] if the underlying MLIR operation builder fails.
+pub fn make_tensor_ptr<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    base: Value<'ctx, '_>,
+    shape: &[Value<'ctx, '_>],
+    strides: &[Value<'ctx, '_>],
+    offsets: &[Value<'ctx, '_>],
+    order: &[i32],
+    result_ty: Type<'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    debug_assert_eq!(
+        shape.len(),
+        strides.len(),
+        "make_tensor_ptr: shape and strides must have the same length"
+    );
+    debug_assert_eq!(
+        shape.len(),
+        offsets.len(),
+        "make_tensor_ptr: shape and offsets must have the same length"
+    );
+
+    let mut operands: Vec<Value> =
+        Vec::with_capacity(1 + shape.len() + strides.len() + offsets.len());
+    operands.push(base);
+    operands.extend_from_slice(shape);
+    operands.extend_from_slice(strides);
+    operands.extend_from_slice(offsets);
+
+    let order_attr = DenseI32ArrayAttribute::new(context, order);
+
+    OperationBuilder::new("tt.make_tensor_ptr", location)
+        .add_operands(&operands)
+        .add_attributes(&[(
+            Identifier::new(context, "order"),
+            Attribute::from(order_attr),
+        )])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType {
+            msg: format!("failed to build tt.make_tensor_ptr: {e}"),
+        })
+}
+
 /// Build a `tt.print` operation.
 ///
 /// `tt.print` is a device-side print statement for debugging Triton kernels.
@@ -3237,6 +3306,104 @@ mod tests {
         assert!(
             output.contains("pack = 0") || output.contains("pack = 0 :"),
             "missing pack attribute:\n{output}"
+        );
+    }
+
+    /// Verify that `make_tensor_ptr` emits a valid `tt.make_tensor_ptr` op.
+    ///
+    /// Uses function block arguments for all SSA operands so that the
+    /// pretty-printed IR does not mix `arith.constant` (generic format) with
+    /// `tt.*` ops (pretty format).
+    ///
+    /// Expected assembly fragment:
+    /// ```text
+    /// %0 = tt.make_tensor_ptr %arg0, [%arg1, %arg2], [%arg3, %arg4], [%arg5, %arg6]
+    ///         {order = array<i32: 1, 0>} : !tt.ptr<tensor<8x4xf16>>
+    /// ```
+    #[test]
+    fn test_make_tensor_ptr() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f16_type = Type::float16(&context);
+        let i64_type: Type = IntegerType::new(&context, 64).into();
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+
+        // base: !tt.ptr<f16>
+        let base_ptr_ty = pointer_type(f16_type);
+        // result: !tt.ptr<tensor<8x4xf16>>
+        let tensor_ty: Type = tensor_type(&[8, 4], f16_type).into();
+        let result_ty = pointer_type(tensor_ty);
+
+        // Function arguments: base, s0, s1 (shape), str0, str1 (strides), off0, off1 (offsets)
+        let arg_types =
+            [base_ptr_ty, i64_type, i64_type, i64_type, i64_type, i32_type, i32_type];
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_make_tensor_ptr",
+            "public",
+            &arg_types,
+            &[result_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (base_ptr_ty, location),
+            (i64_type, location),
+            (i64_type, location),
+            (i64_type, location),
+            (i64_type, location),
+            (i32_type, location),
+            (i32_type, location),
+        ]);
+
+        let base: Value = block.argument(0).unwrap().into();
+        let s0: Value = block.argument(1).unwrap().into();
+        let s1: Value = block.argument(2).unwrap().into();
+        let str0: Value = block.argument(3).unwrap().into();
+        let str1: Value = block.argument(4).unwrap().into();
+        let off0: Value = block.argument(5).unwrap().into();
+        let off1: Value = block.argument(6).unwrap().into();
+
+        let ptr_op: Operation<'_> = make_tensor_ptr(
+            &context,
+            location,
+            base,
+            &[s0, s1],
+            &[str0, str1],
+            &[off0, off1],
+            &[1, 0],
+            result_ty,
+        )
+        .unwrap();
+
+        let ptr_val: Value = ptr_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ptr_val]).build();
+
+        block.append_operation(ptr_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.make_tensor_ptr"),
+            "missing op mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("!tt.ptr<tensor<8x4xf16>>"),
+            "missing result tensor-pointer type:\n{output}"
+        );
+        assert!(
+            output.contains("order = array<i32: 1, 0>"),
+            "missing order attribute:\n{output}"
         );
     }
 }
