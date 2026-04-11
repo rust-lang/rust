@@ -25,7 +25,7 @@ use melior::ir::{Identifier, Location, Operation, Region, Type, TypeLike, Value}
 
 use crate::errors::Error;
 use crate::ffi::{mlirCreateTritonPointerType, mlirLoadTritonDialect};
-use crate::triton::tt::{CallOperation, FuncOperation, IntToPtrOperation, ReturnOperation};
+use crate::triton::tt::{CallOperation, FuncOperation, IntToPtrOperation, PtrToIntOperation, ReturnOperation};
 
 pub mod compiler;
 pub mod program;
@@ -145,6 +145,15 @@ pub fn int_to_ptr<'ctx, 'b>(
     Ok(IntToPtrOperation::builder(context, location).result(dest).src(src).build())
 }
 
+pub fn ptr_to_int<'ctx, 'b>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    src: Value<'ctx, 'b>,
+    dest: Type<'ctx>,
+) -> Result<PtrToIntOperation<'ctx>, Error> {
+    Ok(PtrToIntOperation::builder(context, location).result(dest).src(src).build())
+}
+
 #[cfg(test)]
 mod tests {
     use melior::dialect::ods::arith;
@@ -238,6 +247,43 @@ mod tests {
         let expected = "module {
   %c0_i64 = arith.constant 0 : i64
   %0 = tt.int_to_ptr %c0_i64 : i64 -> !tt.ptr<f32>
+}
+";
+        assert_eq!(expected, output);
+    }
+
+    #[test]
+    fn test_create_ptr_to_int() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        // Create a pointer value via int_to_ptr, then cast it back to i64
+        let f32_type = Type::float32(&context);
+        let f32_ptr_type = pointer_type(f32_type);
+        let i64_type = Type::from(IntegerType::new(&context, 64));
+
+        let i64_zero = create_int_constant(&context, location, Int::I64(0)).unwrap();
+        let i64_zero_value = i64_zero.result().unwrap();
+
+        let int_to_ptr_op =
+            int_to_ptr(&context, location, i64_zero_value.into(), f32_ptr_type).unwrap();
+        let ptr_value: Value<'_, '_> = int_to_ptr_op.result().unwrap().into();
+
+        let cast_op = ptr_to_int(&context, location, ptr_value, i64_type).unwrap();
+
+        module.body().append_operation(i64_zero.into());
+        module.body().append_operation(int_to_ptr_op.into());
+        module.body().append_operation(cast_op.into());
+
+        let output = module.as_operation().to_string();
+
+        let expected = "module {
+  %c0_i64 = arith.constant 0 : i64
+  %0 = tt.int_to_ptr %c0_i64 : i64 -> !tt.ptr<f32>
+  %1 = tt.ptr_to_int %0 : !tt.ptr<f32> -> i64
 }
 ";
         assert_eq!(expected, output);
