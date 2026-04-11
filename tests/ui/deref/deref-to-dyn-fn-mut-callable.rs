@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/26186
+
 //@ check-pass
 use std::sync::Mutex;
 use std::cell::RefCell;

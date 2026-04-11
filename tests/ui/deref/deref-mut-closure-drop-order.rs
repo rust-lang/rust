@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/16774
+
 //@ run-pass
 #![feature(box_patterns)]
 

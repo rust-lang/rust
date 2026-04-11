@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/26205
+
 //@ check-pass
 #![allow(dead_code)]
 use std::ops::{Deref, DerefMut};

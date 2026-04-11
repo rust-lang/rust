@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/22992
+
 //@ run-pass
 struct A(B);
 struct B;

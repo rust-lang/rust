@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/24589
+
 //@ run-pass
 pub struct _X([u8]);
 
