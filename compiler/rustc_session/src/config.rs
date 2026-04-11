@@ -1616,6 +1616,19 @@ pub fn build_target_config(
             let mut err =
                 early_dcx.early_struct_fatal(format!("error loading target specification: {e}"));
             err.help("run `rustc --print target-list` for a list of built-in targets");
+            let typed = target.tuple();
+            let limit = typed.len() / 3 + 1;
+            if let Some(suggestion) = rustc_target::spec::TARGETS
+                .iter()
+                .filter_map(|&t| {
+                    rustc_span::edit_distance::edit_distance_with_substrings(typed, t, limit)
+                        .map(|d| (d, t))
+                })
+                .min_by_key(|(d, _)| *d)
+                .map(|(_, t)| t)
+            {
+                err.help(format!("did you mean `{suggestion}`?"));
+            }
             err.emit()
         }
     }
