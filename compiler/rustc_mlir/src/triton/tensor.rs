@@ -30,7 +30,7 @@ use crate::triton::tt::{
     AddPtrOperation, LoadOperation, MakeRangeOperation, SplatOperation, StoreOperation,
 };
 
-pub fn arange<'ctx>(
+pub fn make_range<'ctx>(
     context: &'ctx Context,
     location: Location<'ctx>,
     start: i32,
@@ -47,6 +47,15 @@ pub fn arange<'ctx>(
         .end(end_attr)
         .result(result)
         .build())
+}
+
+pub fn arange<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    start: i32,
+    end: i32,
+) -> Result<MakeRangeOperation<'ctx>, Error> {
+    make_range(context, location, start, end)
 }
 
 pub fn splat<'ctx>(
@@ -155,6 +164,22 @@ mod tests {
         let output = op.as_operation().to_string();
         let expected =
             "%0 = \"tt.make_range\"() {end = 5 : i32, start = 0 : i32} : () -> tensor<5xi32>\n";
+        assert_eq!(expected, output);
+    }
+
+    #[test]
+    fn test_make_range() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let range_op = make_range(&context, location, 0, 8).unwrap();
+        module.body().append_operation(range_op.into());
+
+        let output = module.as_operation().to_string();
+        let expected = "module {\n  %0 = tt.make_range {end = 8 : i32, start = 0 : i32} : tensor<8xi32>\n}\n";
         assert_eq!(expected, output);
     }
 
