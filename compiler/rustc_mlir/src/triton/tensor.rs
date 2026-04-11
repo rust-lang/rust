@@ -103,6 +103,20 @@ pub enum PaddingOption {
     PadNan  = 2,
 }
 
+/// Mirror of Triton's `RoundingMode` enum (TritonAttrDefs.td).
+///
+/// Controls the rounding mode for `tt.fp_to_fp` floating-point casts.
+/// Integer values must stay in sync with the TableGen definition so that
+/// the resulting `IntegerAttr<i32>` is accepted as a `RoundingModeAttr`.
+///
+/// - `RTZ`  = 0 – round toward zero
+/// - `RTNE` = 1 – round to nearest, ties to even
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum RoundingMode {
+    RTZ  = 0,
+    RTNE = 1,
+}
+
 pub fn make_range<'ctx>(
     context: &'ctx Context,
     location: Location<'ctx>,
@@ -1338,6 +1352,72 @@ pub fn histogram<'ctx>(
         .add_results(&[result_ty])
         .build()
         .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.histogram: {e}") })
+}
+
+/// Build a `tt.fp_to_fp` operation.
+///
+/// Performs a floating-point cast between custom or non-standard types.
+/// Primarily used for F8 ↔ FP16/BF16/FP32/FP64 conversions, and for
+/// non-default rounding modes.
+///
+/// Traits: `Elementwise`, `SameOperandsAndResultShape`,
+/// `SameOperandsAndResultEncoding`, `Pure`.
+///
+/// # Arguments
+/// * `src`       – source floating-point operand (scalar or tensor).
+/// * `result_ty` – destination floating-point type; must share the same shape
+///                 as `src` when both are tensors.
+/// * `rounding`  – optional rounding mode ([`RoundingMode`]).  When `None` the
+///                 attribute is omitted and the verifier applies the default
+///                 (implementation-defined) rounding for the chosen type pair.
+///
+/// # Examples
+///
+/// ```text
+/// // Scalar cast with no rounding attribute:
+/// %0 = tt.fp_to_fp %arg0 : f32 -> f16
+///
+/// // Scalar cast with explicit RTZ rounding:
+/// %1 = tt.fp_to_fp %arg0, rounding = rtz : f32 -> f8e4m3fnuz
+///
+/// // Tensor cast:
+/// %2 = tt.fp_to_fp %arg0 : tensor<8xf32> -> tensor<8xf16>
+/// ```
+///
+/// Assembly format (from TableGen):
+/// ```text
+/// $src attr-dict (`,` `rounding` `=` $rounding^)? `:` type($src) `->` type($result)
+/// ```
+pub fn fp_to_fp<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    src: Value<'ctx, '_>,
+    result_ty: Type<'ctx>,
+    rounding: Option<RoundingMode>,
+) -> Result<Operation<'ctx>, Error> {
+    let mut attrs: Vec<(Identifier<'_>, Attribute<'_>)> = Vec::new();
+
+    if let Some(mode) = rounding {
+        // RoundingModeAttr is backed by IntegerAttr<i32>; attr_i32 produces a
+        // compatible value that satisfies classof for the RoundingModeAttr check.
+        let rounding_attr = attr_i32(context, mode as i32);
+        attrs.push((
+            Identifier::new(context, "rounding"),
+            Attribute::from(rounding_attr),
+        ));
+    }
+
+    let mut builder = OperationBuilder::new("tt.fp_to_fp", location)
+        .add_operands(&[src])
+        .add_results(&[result_ty]);
+
+    if !attrs.is_empty() {
+        builder = builder.add_attributes(&attrs);
+    }
+
+    builder
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.fp_to_fp: {e}") })
 }
 
 #[cfg(test)]
@@ -4518,5 +4598,159 @@ mod tests {
 
         assert!(output.contains("tt.gather"), "missing op mnemonic:\n{output}");
         assert!(output.contains("efficient_layout"), "missing efficient_layout attr:\n{output}");
+    }
+
+    /// Verify that `fp_to_fp` emits the correct `tt.fp_to_fp` IR without the
+    /// optional `rounding` attribute.
+    ///
+    /// Expected assembly fragment (inside a `tt.func`):
+    /// ```text
+    /// %0 = tt.fp_to_fp %arg0 : f32 -> f16
+    /// ```
+    #[test]
+    fn test_fp_to_fp_no_rounding() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let f16_type = melior::ir::Type::float16(&context);
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_fp_to_fp_no_rounding",
+            "public",
+            &[f32_type],
+            &[f16_type],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(f32_type, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let cast_op: Operation<'_> =
+            super::fp_to_fp(&context, location, src, f16_type, None).unwrap();
+        let result_val: Value = cast_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(cast_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.fp_to_fp"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("f32"), "missing src type:\n{output}");
+        assert!(output.contains("f16"), "missing result type:\n{output}");
+        // No rounding attribute should appear in the output (match attribute syntax,
+        // not the function name which also contains the word "rounding").
+        assert!(!output.contains("rounding ="), "unexpected rounding attr:\n{output}");
+    }
+
+    /// Verify that `fp_to_fp` emits the correct `tt.fp_to_fp` IR with the
+    /// optional `rounding = rtz` attribute present.
+    ///
+    /// Expected assembly fragment (inside a `tt.func`):
+    /// ```text
+    /// %0 = tt.fp_to_fp %arg0, rounding = rtz : f32 -> f16
+    /// ```
+    #[test]
+    fn test_fp_to_fp_with_rounding() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let f16_type = melior::ir::Type::float16(&context);
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_fp_to_fp_rtz",
+            "public",
+            &[f32_type],
+            &[f16_type],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(f32_type, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let cast_op: Operation<'_> =
+            super::fp_to_fp(&context, location, src, f16_type, Some(super::RoundingMode::RTZ))
+                .unwrap();
+        let result_val: Value = cast_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(cast_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.fp_to_fp"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("f32"), "missing src type:\n{output}");
+        assert!(output.contains("f16"), "missing result type:\n{output}");
+        // rtz = 0; the attr appears as either the pretty "rounding = rtz" or
+        // the generic "rounding = 0 : i32".
+        assert!(
+            output.contains("rounding"),
+            "missing rounding attr:\n{output}"
+        );
+    }
+
+    /// Verify that `fp_to_fp` works with tensor operands:
+    /// `tensor<8xf32> -> tensor<8xf16>`, no rounding.
+    #[test]
+    fn test_fp_to_fp_tensor() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let f16_type = melior::ir::Type::float16(&context);
+        let src_ty: Type = tensor_type(&[8], f32_type).into();
+        let res_ty: Type = tensor_type(&[8], f16_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_fp_to_fp_tensor",
+            "public",
+            &[src_ty],
+            &[res_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let cast_op: Operation<'_> =
+            super::fp_to_fp(&context, location, src, res_ty, None).unwrap();
+        let result_val: Value = cast_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(cast_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.fp_to_fp"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("tensor<8xf32>"), "missing src tensor type:\n{output}");
+        assert!(output.contains("tensor<8xf16>"), "missing result tensor type:\n{output}");
     }
 }
