@@ -1335,7 +1335,7 @@ impl<'tcx> ItemCollector<'tcx> {
             let delayed_kinds =
                 krate.delayed_ids.iter().copied().map(|id| (id, krate.owners[id].expect_delayed()));
 
-            // FIXME(fn_delegation): need to add delayed lints, eiis
+            // FIXME(fn_delegation): need to add eiis
             for (def_id, kind) in delayed_kinds {
                 let owner_id = OwnerId { def_id };
 
@@ -1350,6 +1350,9 @@ impl<'tcx> ItemCollector<'tcx> {
                 };
 
                 collector.body_owners.push(def_id);
+                // Delegation items are skipped by the HIR walk (see `visit_if_delayed`),
+                // so we have to account for their delayed lints manually.
+                collector.delayed_lint_items.push(owner_id);
             }
         }
 

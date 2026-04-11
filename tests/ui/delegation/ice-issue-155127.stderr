@@ -1,0 +1,12 @@
+error: `#[deprecated]` attribute cannot be used on delegations
+  --> $DIR/ice-issue-155127.rs:11:5
+   |
+LL |     #[deprecated]
+   |     ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[deprecated]` can be applied to associated consts, associated types, constants, crates, data types, enum variants, foreign statics, functions, inherent impl blocks, macro defs, modules, statics, struct fields, traits, type aliases, and use statements
+   = note: `#[deny(useless_deprecated)]` on by default
+
+error: aborting due to 1 previous error
+
