@@ -268,7 +268,7 @@ LL |         use self as name;
    |                  +++++++
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:176:15
+  --> $DIR/use-path-segment-kw.rs:178:15
    |
 LL |         use ::self;
    |               ^^^^
@@ -279,7 +279,7 @@ LL |         use ::self as name;
    |                    +++++++
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:179:16
+  --> $DIR/use-path-segment-kw.rs:181:16
    |
 LL |         use ::{self};
    |                ^^^^
@@ -290,7 +290,7 @@ LL |         use ::{self as name};
    |                     +++++++
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:192:20
+  --> $DIR/use-path-segment-kw.rs:194:20
    |
 LL |         use crate::self;
    |                    ^^^^
@@ -301,7 +301,7 @@ LL |         use crate::self as name;
    |                         +++++++
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:194:21
+  --> $DIR/use-path-segment-kw.rs:196:21
    |
 LL |         use crate::{self};
    |                     ^^^^
@@ -312,7 +312,7 @@ LL |         use crate::{self as name};
    |                          +++++++
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:198:20
+  --> $DIR/use-path-segment-kw.rs:200:20
    |
 LL |         use super::self;
    |                    ^^^^
@@ -323,7 +323,7 @@ LL |         use super::self as name;
    |                         +++++++
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:200:21
+  --> $DIR/use-path-segment-kw.rs:202:21
    |
 LL |         use super::{self};
    |                     ^^^^
@@ -334,7 +334,7 @@ LL |         use super::{self as name};
    |                          +++++++
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:204:19
+  --> $DIR/use-path-segment-kw.rs:206:19
    |
 LL |         use self::self;
    |                   ^^^^
@@ -345,7 +345,7 @@ LL |         use self::self as name;
    |                        +++++++
 
 error: imports need to be explicitly named
-  --> $DIR/use-path-segment-kw.rs:206:20
+  --> $DIR/use-path-segment-kw.rs:208:20
    |
 LL |         use self::{self};
    |                    ^^^^
@@ -753,7 +753,7 @@ LL |         use $crate::{self as name};
    |                           +++++++
 
 error[E0433]: cannot find module or crate `foobar` in the crate root
-  --> $DIR/use-path-segment-kw.rs:184:17
+  --> $DIR/use-path-segment-kw.rs:186:17
    |
 LL |         pub use foobar::qux::self;
    |                 ^^^^^^ use of unresolved module or unlinked crate `foobar`
@@ -764,7 +764,7 @@ LL + extern crate foobar;
    |
 
 error[E0433]: cannot find module or crate `foobar` in the crate root
-  --> $DIR/use-path-segment-kw.rs:188:17
+  --> $DIR/use-path-segment-kw.rs:190:17
    |
 LL |         pub use foobar::baz::{self};
    |                 ^^^^^^ use of unresolved module or unlinked crate `foobar`
@@ -775,7 +775,7 @@ LL + extern crate foobar;
    |
 
 error[E0432]: unresolved import `foobar`
-  --> $DIR/use-path-segment-kw.rs:186:17
+  --> $DIR/use-path-segment-kw.rs:188:17
    |
 LL |         pub use foobar::self as _self3;
    |                 ^^^^^^
@@ -786,7 +786,7 @@ LL |         pub use self::foobar::self as _self3;
    |                 ++++++
 
 error[E0432]: unresolved import `foobar`
-  --> $DIR/use-path-segment-kw.rs:189:17
+  --> $DIR/use-path-segment-kw.rs:191:17
    |
 LL |         pub use foobar::{self as _nested_self3};
    |                 ^^^^^^
@@ -796,17 +796,22 @@ help: a similar path exists
 LL |         pub use self::foobar::{self as _nested_self3};
    |                 ++++++
 
-error[E0433]: `self` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:209:36
-   |
-LL |         type D7 = crate::foo::bar::self;
-   |                                    ^^^^ can only be used in path start position
-
 error[E0573]: expected type, found module `$crate`
   --> $DIR/use-path-segment-kw.rs:10:19
    |
 LL |         type A1 = $crate;
    |                   ^^^^^^ not a type
+...
+LL |         macro_dollar_crate!();
+   |         --------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0573]: expected type, found module `$crate::self`
+  --> $DIR/use-path-segment-kw.rs:62:20
+   |
+LL |         type A10 = $crate::self;
+   |                    ^^^^^^^^^^^^ not a type
 ...
 LL |         macro_dollar_crate!();
    |         --------------------- in this macro invocation
@@ -842,6 +847,42 @@ error[E0573]: expected type, found module `self`
    |
 LL |         type D1 = self;
    |                   ^^^^ not a type
+
+error[E0573]: expected type, found module `::self`
+  --> $DIR/use-path-segment-kw.rs:175:19
+   |
+LL |         type D2 = ::self;
+   |                   ^^^^^^ not a type
+
+error[E0573]: expected type, found module `foobar::self`
+  --> $DIR/use-path-segment-kw.rs:185:19
+   |
+LL |         type D3 = foobar::self;
+   |                   ^^^^^^^^^^^^ not a type
+
+error[E0573]: expected type, found module `crate::self`
+  --> $DIR/use-path-segment-kw.rs:193:19
+   |
+LL |         type D4 = crate::self;
+   |                   ^^^^^^^^^^^ not a type
+
+error[E0573]: expected type, found module `super::self`
+  --> $DIR/use-path-segment-kw.rs:199:19
+   |
+LL |         type D5 = super::self;
+   |                   ^^^^^^^^^^^ not a type
+
+error[E0573]: expected type, found module `self::self`
+  --> $DIR/use-path-segment-kw.rs:205:19
+   |
+LL |         type D6 = self::self;
+   |                   ^^^^^^^^^^ not a type
+
+error[E0573]: expected type, found module `crate::foo::bar::self`
+  --> $DIR/use-path-segment-kw.rs:211:19
+   |
+LL |         type D7 = crate::foo::bar::self;
+   |                   ^^^^^^^^^^^^^^^^^^^^^ not a type
 
 error[E0433]: global paths cannot start with `$crate`
   --> $DIR/use-path-segment-kw.rs:14:21
@@ -931,17 +972,6 @@ LL |         macro_dollar_crate!();
    |
    = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0433]: `self` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:62:28
-   |
-LL |         type A10 = $crate::self;
-   |                            ^^^^ can only be used in path start position
-...
-LL |         macro_dollar_crate!();
-   |         --------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `macro_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error[E0433]: global paths cannot start with `crate`
   --> $DIR/use-path-segment-kw.rs:99:21
    |
@@ -989,36 +1019,6 @@ error[E0433]: `super` in paths can only be used in start position
    |
 LL |         type C4 = crate::super;
    |                          ^^^^^ can only be used in path start position
-
-error[E0433]: global paths cannot start with `self`
-  --> $DIR/use-path-segment-kw.rs:175:21
-   |
-LL |         type D2 = ::self;
-   |                     ^^^^ cannot start with this
-
-error[E0433]: `self` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:183:27
-   |
-LL |         type D3 = foobar::self;
-   |                           ^^^^ can only be used in path start position
-
-error[E0433]: `self` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:191:26
-   |
-LL |         type D4 = crate::self;
-   |                          ^^^^ can only be used in path start position
-
-error[E0433]: `self` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:197:26
-   |
-LL |         type D5 = super::self;
-   |                          ^^^^ can only be used in path start position
-
-error[E0433]: `self` in paths can only be used in start position
-  --> $DIR/use-path-segment-kw.rs:203:25
-   |
-LL |         type D6 = self::self;
-   |                         ^^^^ can only be used in path start position
 
 error: aborting due to 115 previous errors
 
