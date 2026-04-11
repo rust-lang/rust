@@ -1475,6 +1475,49 @@ pub fn extern_elementwise<'ctx>(
         })
 }
 
+/// Build a `tt.expand_dims` operation.
+///
+/// Inserts a new dimension of size 1 into the tensor `src` at position `axis`.
+/// The element type is preserved.  The result rank is `rank(src) + 1`, with
+/// all original dimensions in their original relative order and a new size-1
+/// dimension at index `axis`.
+///
+/// Traits: `Pure`, `InferTypeOpInterface`, `SameOperandsAndResultElementType`.
+///
+/// # Arguments
+/// * `src`       – source tensor to expand.
+/// * `axis`      – position at which to insert the new dimension (i32).
+/// * `result_ty` – result tensor type (must be `src` type with a size-1 dim
+///                 inserted at `axis`).
+///
+/// # Example
+///
+/// ```text
+/// // Expand a 1-D tensor into 2-D by inserting a size-1 dimension at axis 1:
+/// %1 = tt.expand_dims %src {axis = 1 : i32} : tensor<8xf32> -> tensor<8x1xf32>
+/// ```
+///
+/// Assembly format (from TableGen):
+/// ```text
+/// $src attr-dict `:` type($src) `->` type($result)
+/// ```
+pub fn expand_dims<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    src: Value<'ctx, '_>,
+    axis: i32,
+    result_ty: Type<'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    let axis_attr = attr_i32(context, axis);
+
+    OperationBuilder::new("tt.expand_dims", location)
+        .add_operands(&[src])
+        .add_attributes(&[(Identifier::new(context, "axis"), Attribute::from(axis_attr))])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.expand_dims: {e}") })
+}
+
 #[cfg(test)]
 mod tests {
     use melior::Context;
@@ -4944,5 +4987,110 @@ mod tests {
             output.contains("tensor<4xf32>"),
             "missing tensor type:\n{output}"
         );
+    }
+
+    /// Verify that `expand_dims` emits the correct `tt.expand_dims` IR.
+    ///
+    /// Expands a 1-D `tensor<8xf32>` to a 2-D `tensor<8x1xf32>` by inserting a
+    /// size-1 dimension at axis 1.
+    ///
+    /// Expected assembly fragment (inside a `tt.func`):
+    /// ```text
+    /// %0 = tt.expand_dims %arg0 {axis = 1 : i32} : tensor<8xf32> -> tensor<8x1xf32>
+    /// ```
+    #[test]
+    fn test_expand_dims() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[8], f32_type).into();
+        let result_ty: Type = tensor_type(&[8, 1], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_expand_dims",
+            "public",
+            &[src_ty],
+            &[result_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let expand_op: Operation<'_> =
+            super::expand_dims(&context, location, src, 1, result_ty).unwrap();
+        let ret_val: Value = expand_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ret_val]).build();
+
+        block.append_operation(expand_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.expand_dims"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("axis = 1"), "missing axis attribute:\n{output}");
+        assert!(output.contains("tensor<8xf32>"), "missing src tensor type:\n{output}");
+        assert!(output.contains("tensor<8x1xf32>"), "missing result tensor type:\n{output}");
+    }
+
+    /// Verify that `expand_dims` at axis 0 inserts the new dimension at the front.
+    ///
+    /// Expands a 1-D `tensor<4xf32>` to `tensor<1x4xf32>` with `axis = 0`.
+    ///
+    /// Expected assembly fragment:
+    /// ```text
+    /// %0 = tt.expand_dims %arg0 {axis = 0 : i32} : tensor<4xf32> -> tensor<1x4xf32>
+    /// ```
+    #[test]
+    fn test_expand_dims_axis0() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[4], f32_type).into();
+        let result_ty: Type = tensor_type(&[1, 4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_expand_dims_axis0",
+            "public",
+            &[src_ty],
+            &[result_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let expand_op: Operation<'_> =
+            super::expand_dims(&context, location, src, 0, result_ty).unwrap();
+        let ret_val: Value = expand_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ret_val]).build();
+
+        block.append_operation(expand_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.expand_dims"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("axis = 0"), "missing axis attribute:\n{output}");
+        assert!(output.contains("tensor<4xf32>"), "missing src tensor type:\n{output}");
+        assert!(output.contains("tensor<1x4xf32>"), "missing result tensor type:\n{output}");
     }
 }
