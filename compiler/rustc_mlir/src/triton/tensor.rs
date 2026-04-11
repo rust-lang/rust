@@ -1223,6 +1223,62 @@ pub fn int_to_ptr<'ctx>(
         .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.int_to_ptr: {e}") })
 }
 
+/// Build a `tt.histogram` operation.
+///
+/// Returns a histogram of the input integer tensor. The number of bins is
+/// equal to the size of the 1-D result tensor; each bin has width 1 and
+/// starts at 0.  An optional boolean mask (same shape as `src`) suppresses
+/// individual lanes from contributing to the histogram.
+///
+/// # Arguments
+/// * `src`       – source 1-D integer tensor whose elements are histogrammed.
+/// * `mask`      – optional boolean mask tensor (same shape as `src`); only
+///                 lanes where the mask is `true` contribute to the histogram.
+/// * `result_ty` – result integer tensor type (determines the number of bins).
+///
+/// # Examples
+///
+/// ```text
+/// // Without mask:
+/// %hist = tt.histogram %src : tensor<16xi32> -> tensor<16xi32>
+///
+/// // With mask:
+/// %hist = tt.histogram %src, %mask : tensor<16xi32> -> tensor<16xi32>
+/// ```
+///
+/// Assembly format (from TableGen):
+/// ```text
+/// $src (`,` $mask^)? attr-dict `:` type($src) `->` type($result)
+/// ```
+pub fn histogram<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    src: Value<'ctx, '_>,
+    mask: Option<Value<'ctx, '_>>,
+    result_ty: Type<'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    let mask_size = if mask.is_some() { 1i32 } else { 0i32 };
+
+    let mut operands: Vec<Value> = vec![src];
+    if let Some(m) = mask {
+        operands.push(m);
+    }
+
+    // operandSegmentSizes encodes [src=1, mask=0|1] so the verifier knows
+    // which optional operand slots are populated.
+    let seg_sizes = DenseI32ArrayAttribute::new(context, &[1, mask_size]);
+
+    OperationBuilder::new("tt.histogram", location)
+        .add_operands(&operands)
+        .add_attributes(&[(
+            Identifier::new(context, "operandSegmentSizes"),
+            Attribute::from(seg_sizes),
+        )])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.histogram: {e}") })
+}
+
 #[cfg(test)]
 mod tests {
     use melior::Context;
@@ -4197,5 +4253,104 @@ mod tests {
             output.contains("evictionPolicy = evict_first") || output.contains("evict = 2"),
             "missing evictionPolicy = evict_first (EvictionPolicy::EvictFirst = 2):\n{output}"
         );
+    }
+
+    /// Verify that `tt.histogram` without a mask emits the correct op.
+    ///
+    /// Uses a function block-argument as the source to get a typed tensor value
+    /// without relying on a constant-folding pass.
+    ///
+    /// Expected pretty-printed form:
+    /// `%0 = tt.histogram %arg0 : tensor<16xi32> -> tensor<16xi32>`
+    #[test]
+    fn test_histogram_no_mask() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+        let src_ty: Type = tensor_type(&[16], i32_type).into();
+        let result_ty: Type = tensor_type(&[16], i32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_histogram_no_mask",
+            "public",
+            &[src_ty],
+            &[result_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let hist_op: Operation<'_> =
+            super::histogram(&context, location, src, None, result_ty).unwrap();
+        let ret_val: Value = hist_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ret_val]).build();
+
+        block.append_operation(hist_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.histogram"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("tensor<16xi32>"), "missing tensor type:\n{output}");
+    }
+
+    /// Verify that `tt.histogram` with a mask emits the correct op.
+    ///
+    /// Expected pretty-printed form:
+    /// `%0 = tt.histogram %arg0, %arg1 : tensor<16xi32> -> tensor<16xi32>`
+    #[test]
+    fn test_histogram_with_mask() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+        let i1_type: Type = IntegerType::new(&context, 1).into();
+        let src_ty: Type = tensor_type(&[16], i32_type).into();
+        let mask_ty: Type = tensor_type(&[16], i1_type).into();
+        let result_ty: Type = tensor_type(&[16], i32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_histogram_with_mask",
+            "public",
+            &[src_ty, mask_ty],
+            &[result_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location), (mask_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+        let mask_val: Value = block.argument(1).unwrap().into();
+
+        let hist_op: Operation<'_> =
+            super::histogram(&context, location, src, Some(mask_val), result_ty).unwrap();
+        let ret_val: Value = hist_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ret_val]).build();
+
+        block.append_operation(hist_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.histogram"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("tensor<16xi32>"), "missing src/result tensor type:\n{output}");
+        assert!(output.contains("tensor<16xi1>"), "missing mask tensor type:\n{output}");
     }
 }
