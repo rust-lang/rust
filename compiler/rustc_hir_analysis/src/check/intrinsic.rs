@@ -813,7 +813,7 @@ pub(crate) fn check_intrinsic_type(
         | sym::atomic_xor => (2, 1, vec![Ty::new_mut_ptr(tcx, param(0)), param(1)], param(0)),
         sym::atomic_fence | sym::atomic_singlethreadfence => (0, 1, Vec::new(), tcx.types.unit),
 
-        sym::return_address => (1, 0, vec![], Ty::new_imm_ptr(tcx, param(0))),
+        sym::return_address => (0, 0, vec![], Ty::new_imm_ptr(tcx, tcx.types.unit)),
 
         other => {
             tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });

@@ -3597,6 +3597,6 @@ pub const unsafe fn va_end(ap: &mut VaList<'_>) {
 /// Other forms of the corresponding gcc or llvm intrinsic (which can have wildly unpredictable results or even crash at runtime) are not exposed.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn return_address<T>() -> *const T {
-    core::ptr::null::<T>()
+pub fn return_address() -> *const () {
+    core::ptr::null()
 }
