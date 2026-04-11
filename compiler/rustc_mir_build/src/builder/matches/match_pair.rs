@@ -13,24 +13,6 @@ use crate::builder::matches::{
 };
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// Builds and pushes [`MatchPairTree`] subtrees, one for each pattern in
-    /// `subpatterns`, representing the fields of a [`PatKind::Variant`] or
-    /// [`PatKind::Leaf`].
-    ///
-    /// Used internally by [`MatchPairTree::for_pattern`].
-    fn field_match_pairs(
-        &mut self,
-        match_pairs: &mut Vec<MatchPairTree<'tcx>>,
-        extra_data: &mut PatternExtraData<'tcx>,
-        place: PlaceBuilder<'tcx>,
-        subpatterns: &[FieldPat<'tcx>],
-    ) {
-        for fieldpat in subpatterns {
-            let place = place.clone_project(PlaceElem::Field(fieldpat.field, fieldpat.pattern.ty));
-            MatchPairTree::for_pattern(place, &fieldpat.pattern, self, match_pairs, extra_data);
-        }
-    }
-
     /// Builds [`MatchPairTree`] subtrees for the prefix/middle/suffix parts of an
     /// array pattern or slice pattern, and adds those trees to `match_pairs`.
     ///
@@ -294,7 +276,10 @@ impl<'tcx> MatchPairTree<'tcx> {
 
             PatKind::Variant { adt_def, variant_index, args: _, ref subpatterns } => {
                 let downcast_place = place_builder.downcast(adt_def, variant_index); // `(x as Variant)`
-                cx.field_match_pairs(&mut subpairs, extra_data, downcast_place, subpatterns);
+                for &FieldPat { field, pattern: ref subpat } in subpatterns {
+                    let subplace = downcast_place.clone_project(PlaceElem::Field(field, subpat.ty));
+                    MatchPairTree::for_pattern(subplace, subpat, cx, &mut subpairs, extra_data);
+                }
 
                 // We treat non-exhaustive enums the same independent of the crate they are
                 // defined in, to avoid differences in the operational semantics between crates.
@@ -308,7 +293,10 @@ impl<'tcx> MatchPairTree<'tcx> {
             }
 
             PatKind::Leaf { ref subpatterns } => {
-                cx.field_match_pairs(&mut subpairs, extra_data, place_builder, subpatterns);
+                for &FieldPat { field, pattern: ref subpat } in subpatterns {
+                    let subplace = place_builder.clone_project(PlaceElem::Field(field, subpat.ty));
+                    MatchPairTree::for_pattern(subplace, subpat, cx, &mut subpairs, extra_data);
+                }
                 None
             }
 
