@@ -27,7 +27,8 @@ use crate::ffi::mlirCreateTritonPointerType;
 use crate::shared::builtin::tensor_type;
 use crate::triton::attr_i32;
 use crate::triton::tt::{
-    AddPtrOperation, LoadOperation, MakeRangeOperation, SplatOperation, StoreOperation,
+    AddPtrOperation, LoadOperation, MakeRangeOperation, MulhiUIOperation, SplatOperation,
+    StoreOperation,
 };
 
 pub fn make_range<'ctx>(
@@ -96,6 +97,16 @@ pub fn store<'ctx>(
     mask: Value<'ctx, 'ctx>,
 ) -> Result<StoreOperation<'ctx>, Error> {
     Ok(StoreOperation::builder(context, location).ptr(ptr).value(value).mask(mask).build())
+}
+
+pub fn mulhiui<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    x: Value<'ctx, 'ctx>,
+    y: Value<'ctx, 'ctx>,
+) -> Result<MulhiUIOperation<'ctx>, Error> {
+    // SameOperandsAndResultType: result type is inferred from operand types
+    Ok(MulhiUIOperation::builder(context, location).x(x).y(y).build())
 }
 
 pub fn maximumf<'ctx>(
@@ -191,6 +202,34 @@ mod tests {
 
         let output = module.as_operation().to_string();
         let expected = "\"builtin.module\"() ({\n  %0 = \"arith.constant\"() <{value = 0 : i32}> : () -> i32\n  %1 = \"tt.splat\"(%0) : (i32) -> tensor<5xi32>\n}) : () -> ()\n";
+        assert_eq!(expected, output);
+    }
+
+    #[test]
+    fn test_mulhiui() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        // Create two i32 constants as operands
+        let x_op: Operation<'_> =
+            create_int_constant(&context, location, Int::I32(3)).unwrap().into();
+        let x_val = x_op.result(0).unwrap().into();
+
+        let y_op: Operation<'_> =
+            create_int_constant(&context, location, Int::I32(5)).unwrap().into();
+        let y_val = y_op.result(0).unwrap().into();
+
+        let mulhi_op = mulhiui(&context, location, x_val, y_val).unwrap();
+
+        module.body().append_operation(x_op);
+        module.body().append_operation(y_op);
+        module.body().append_operation(mulhi_op.into());
+
+        let output = module.as_operation().to_string();
+        let expected = "module {\n  %c3_i32 = arith.constant 3 : i32\n  %c5_i32 = arith.constant 5 : i32\n  %0 = tt.mulhiui %c3_i32, %c5_i32 : i32\n}\n";
         assert_eq!(expected, output);
     }
 
