@@ -17,7 +17,7 @@
 use melior::Context;
 use melior::dialect::arith;
 use melior::dialect::ods::arith::{ConstantOperation, MaxSIOperation, MaximumFOperation};
-use melior::ir::attribute::{BoolAttribute, DenseI32ArrayAttribute};
+use melior::ir::attribute::{BoolAttribute, DenseI32ArrayAttribute, StringAttribute};
 use melior::ir::operation::{OperationBuilder, OperationMutLike};
 use melior::ir::r#type::{IntegerType, RankedTensorType};
 use melior::ir::{Attribute, Identifier, Location, Operation, Type, TypeLike, Value, ValueLike};
@@ -751,6 +751,58 @@ pub fn return_op<'ctx>(
     srcs: &[Value<'ctx, '_>],
 ) -> Result<ReturnOperation<'ctx>, Error> {
     Ok(ReturnOperation::builder(context, location).srcs(srcs).build())
+}
+
+/// Build a `tt.print` operation.
+///
+/// `tt.print` is a device-side print statement for debugging Triton kernels.
+/// It prints the given string prefix followed by the formatted values of any
+/// supplied tensor or scalar arguments.
+///
+/// # Arguments
+/// * `prefix`    – string literal prefix printed before the argument values.
+/// * `hex`       – when `true`, integer arguments are printed in hexadecimal.
+/// * `args`      – zero or more scalar / tensor values to print.
+/// * `is_signed` – one `i32` flag per element of `args`; non-zero means the
+///                 corresponding argument should be printed as signed.
+///
+/// # Example
+///
+/// ```text
+/// tt.print "x: " {hex = false, isSigned = array<i32: 1>} : %0 : tensor<8xi32>
+/// ```
+///
+/// Assembly format (from TableGen):
+/// ```text
+/// tt.print $prefix attr-dict (`:` $args^ `:` type($args))?
+/// ```
+///
+/// # Notes
+///
+/// The `isSigned` array must have exactly one entry per element of `args`.
+/// Passing an empty slice for both `args` and `is_signed` produces a plain
+/// prefix-only print with no operands.
+pub fn print<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    prefix: &str,
+    hex: bool,
+    args: &[Value<'ctx, '_>],
+    is_signed: &[i32],
+) -> Result<Operation<'ctx>, Error> {
+    let prefix_attr = StringAttribute::new(context, prefix);
+    let hex_attr = BoolAttribute::new(context, hex);
+    let is_signed_attr = DenseI32ArrayAttribute::new(context, is_signed);
+
+    OperationBuilder::new("tt.print", location)
+        .add_operands(args)
+        .add_attributes(&[
+            (Identifier::new(context, "prefix"), Attribute::from(prefix_attr)),
+            (Identifier::new(context, "hex"), Attribute::from(hex_attr)),
+            (Identifier::new(context, "isSigned"), Attribute::from(is_signed_attr)),
+        ])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.print: {e}") })
 }
 
 #[cfg(test)]
@@ -2577,5 +2629,84 @@ mod tests {
             output.contains("-> f32") || output.contains(") : (tensor<4xf32>) -> f32"),
             "missing scalar result type:\n{output}"
         );
+    }
+
+    /// Verify that `print` without arguments emits a valid `tt.print` with only
+    /// the prefix and attribute annotations (no operands).
+    #[test]
+    fn test_print_no_args() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let func_op = create_func(&context, location, "test_print_no_args", "public", &[], &[], 0)
+            .unwrap();
+
+        let block = Block::new(&[]);
+
+        let print_op: Operation<'_> =
+            print(&context, location, "hello: ", false, &[], &[]).unwrap();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[]).build();
+
+        block.append_operation(print_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.print"), "missing tt.print mnemonic:\n{output}");
+        assert!(output.contains("hello: "), "missing prefix string:\n{output}");
+        assert!(
+            output.contains("hex = false") || output.contains("hex = 0"),
+            "missing hex attribute:\n{output}"
+        );
+    }
+
+    /// Verify that `print` with a tensor argument emits the operand and its
+    /// type in the IR, along with the `isSigned` array attribute.
+    #[test]
+    fn test_print_with_arg() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+        let tensor_ty: Type = tensor_type(&[8], i32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_print_with_arg",
+            "public",
+            &[tensor_ty],
+            &[],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(tensor_ty, location)]);
+        let arg_val: Value = block.argument(0).unwrap().into();
+
+        // is_signed = [1] means the single argument is treated as signed.
+        let print_op: Operation<'_> =
+            print(&context, location, "x: ", false, &[arg_val], &[1]).unwrap();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[]).build();
+
+        block.append_operation(print_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.print"), "missing tt.print mnemonic:\n{output}");
+        assert!(output.contains("x: "), "missing prefix string:\n{output}");
+        assert!(output.contains("tensor<8xi32>"), "missing operand type:\n{output}");
+        assert!(output.contains("isSigned"), "missing isSigned attribute:\n{output}");
     }
 }
