@@ -27,10 +27,10 @@ use crate::ffi::mlirCreateTritonPointerType;
 use crate::shared::builtin::tensor_type;
 use crate::triton::attr_i32;
 use crate::triton::tt::{
-    AddPtrOperation, DescriptorGatherOperation, DescriptorScatterOperation, MapElementwiseOperation,
-    MapElementwiseReturnOperation, MakeRangeOperation, MulhiUIOperation, PreciseDivFOperation,
-    PreciseSqrtOperation, ReduceOperation, ReduceReturnOperation, ReturnOperation, ScanOperation,
-    ScanReturnOperation, SplatOperation,
+    AddPtrOperation, AssertOperation, DescriptorGatherOperation, DescriptorScatterOperation,
+    MapElementwiseOperation, MapElementwiseReturnOperation, MakeRangeOperation, MulhiUIOperation,
+    PreciseDivFOperation, PreciseSqrtOperation, ReduceOperation, ReduceReturnOperation,
+    ReturnOperation, ScanOperation, ScanReturnOperation, SplatOperation,
 };
 
 /// Mirror of Triton's `InputPrecision` enum (TritonAttrDefs.td).
@@ -1937,6 +1937,31 @@ pub fn atomic_cas<'ctx>(
         .add_results(&[result_ty])
         .build()
         .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.atomic_cas: {e}") })
+}
+
+/// Build a `tt.assert` operation.
+///
+/// Checks `condition` at runtime; if false, prints `message` and aborts the
+/// program.  This is a side-effecting op with no results.
+///
+/// # Arguments
+/// * `condition` – boolean condition (`i1` scalar or `tensor<Nxi1>`).
+/// * `message`   – diagnostic string printed when the assertion fails.
+///
+/// Assembly format:
+/// ```text
+/// tt.assert %cond, "msg" : i1
+/// ```
+pub fn assert_op<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    condition: Value<'ctx, 'ctx>,
+    message: &str,
+) -> Result<AssertOperation<'ctx>, Error> {
+    Ok(AssertOperation::builder(context, location)
+        .condition(condition)
+        .message(StringAttribute::new(context, message))
+        .build())
 }
 
 #[cfg(test)]
@@ -6393,5 +6418,45 @@ mod tests {
         assert!(output.contains("acq_rel"), "missing memory semantic:\n{output}");
         assert!(output.contains("gpu"), "missing sync scope:\n{output}");
         assert!(output.contains("tensor<8xi32>"), "missing tensor i32 type:\n{output}");
+    }
+
+    /// Verify that `assert_op` emits the correct `tt.assert` IR.
+    ///
+    /// Expected assembly fragment:
+    /// ```text
+    /// tt.assert %0, "check" : i1
+    /// ```
+    #[test]
+    fn test_assert_op() {
+        use melior::dialect::ods::arith as ods_arith;
+        use melior::ir::attribute::IntegerAttribute;
+
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let i1_type: Type = IntegerType::new(&context, 1).into();
+
+        // arith.constant 1 : i1  (true)
+        let true_attr = Attribute::from(IntegerAttribute::new(i1_type, 1));
+        let const_op: Operation<'_> = ods_arith::ConstantOperation::builder(&context, location)
+            .value(true_attr)
+            .result(i1_type)
+            .build()
+            .into();
+        let cond_val: Value = const_op.result(0).unwrap().into();
+
+        let assert_operation = super::assert_op(&context, location, cond_val, "check").unwrap();
+
+        module.body().append_operation(const_op);
+        module.body().append_operation(assert_operation.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.assert"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("\"check\""), "missing message string:\n{output}");
+        assert!(output.contains("i1"), "missing condition type:\n{output}");
     }
 }
