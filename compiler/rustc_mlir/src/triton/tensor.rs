@@ -1475,6 +1475,59 @@ pub fn extern_elementwise<'ctx>(
         })
 }
 
+/// Build a `tt.elementwise_inline_asm` operation.
+///
+/// Runs an inline assembly block to generate one or more tensors, applying an
+/// elementwise operation to a group of `packed_element` elements at a time.
+/// Exactly which elements the asm block receives is unspecified.
+///
+/// Traits: `Elementwise`, `SameOperandsAndResultEncoding`,
+/// `MemoryEffectsOpInterface`, `ConditionallySpeculatable`.
+///
+/// # Arguments
+/// * `asm_string`     – inline assembly source string (e.g. `"add.f32 $0, $1, $2;"`).
+/// * `constraints`    – PTX constraint string (e.g. `"=r,r,r"`).
+/// * `pure`           – when `true` the op has no side effects and may be hoisted / CSE'd.
+/// * `packed_element` – number of elements processed per asm invocation (i32 ≥ 1).
+/// * `args`           – variadic input operands (scalar or tensor, any `TT_Type`).
+/// * `result_types`   – result types; may be empty or multiple for multi-output asm.
+///
+/// # Assembly format
+///
+/// ```text
+/// tt.elementwise_inline_asm "add.f32 $0, $1, $2;" constraints="=r,r,r" {pure = true, packed_element = 1}
+///     %arg0, %arg1 : tensor<8xf32>, tensor<8xf32> -> tensor<8xf32>
+/// ```
+pub fn elementwise_inline_asm<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    asm_string: &str,
+    constraints: &str,
+    pure: bool,
+    packed_element: i32,
+    args: &[Value<'ctx, '_>],
+    result_types: &[Type<'ctx>],
+) -> Result<Operation<'ctx>, Error> {
+    let asm_string_attr = StringAttribute::new(context, asm_string);
+    let constraints_attr = StringAttribute::new(context, constraints);
+    let pure_attr = BoolAttribute::new(context, pure);
+    let packed_element_attr = attr_i32(context, packed_element);
+
+    OperationBuilder::new("tt.elementwise_inline_asm", location)
+        .add_operands(args)
+        .add_attributes(&[
+            (Identifier::new(context, "asm_string"), Attribute::from(asm_string_attr)),
+            (Identifier::new(context, "constraints"), Attribute::from(constraints_attr)),
+            (Identifier::new(context, "pure"), Attribute::from(pure_attr)),
+            (Identifier::new(context, "packed_element"), Attribute::from(packed_element_attr)),
+        ])
+        .add_results(result_types)
+        .build()
+        .map_err(|e| Error::InvalidType {
+            msg: format!("failed to build tt.elementwise_inline_asm: {e}"),
+        })
+}
+
 /// Build a `tt.expand_dims` operation.
 ///
 /// Inserts a new dimension of size 1 into the tensor `src` at position `axis`.
@@ -5092,5 +5145,136 @@ mod tests {
         assert!(output.contains("axis = 0"), "missing axis attribute:\n{output}");
         assert!(output.contains("tensor<4xf32>"), "missing src tensor type:\n{output}");
         assert!(output.contains("tensor<1x4xf32>"), "missing result tensor type:\n{output}");
+    }
+
+    /// Verify that `elementwise_inline_asm` with a single input emits the correct
+    /// `tt.elementwise_inline_asm` IR.
+    ///
+    /// Uses a function block-argument as the operand to avoid dependency on
+    /// constant-folding.  The expected IR contains the op mnemonic, asm string,
+    /// constraint string, `pure` attribute, `packed_element` attribute, and the
+    /// operand / result types.
+    #[test]
+    fn test_elementwise_inline_asm() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let tensor_ty: Type = tensor_type(&[8], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_elementwise_inline_asm",
+            "public",
+            &[tensor_ty],
+            &[tensor_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(tensor_ty, location)]);
+        let arg: Value = block.argument(0).unwrap().into();
+
+        let op: Operation<'_> = super::elementwise_inline_asm(
+            &context,
+            location,
+            "cvt.rn.f32.f32 $0, $1;",
+            "=r,r",
+            true,
+            1,
+            &[arg],
+            &[tensor_ty],
+        )
+        .unwrap();
+
+        let result_val: Value = op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.elementwise_inline_asm"),
+            "missing op mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("cvt.rn.f32.f32 $0, $1;"),
+            "missing asm_string attribute:\n{output}"
+        );
+        assert!(output.contains("=r,r"), "missing constraints attribute:\n{output}");
+        assert!(output.contains("packed_element"), "missing packed_element attribute:\n{output}");
+        assert!(output.contains("tensor<8xf32>"), "missing tensor type:\n{output}");
+    }
+
+    /// Verify that `elementwise_inline_asm` with multiple inputs emits correctly.
+    ///
+    /// Two `tensor<4xf32>` inputs are passed to a two-operand inline asm block
+    /// that produces a single `tensor<4xf32>` result.
+    #[test]
+    fn test_elementwise_inline_asm_multi_arg() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let tensor_ty: Type = tensor_type(&[4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_elementwise_inline_asm_multi",
+            "public",
+            &[tensor_ty, tensor_ty],
+            &[tensor_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(tensor_ty, location), (tensor_ty, location)]);
+        let arg0: Value = block.argument(0).unwrap().into();
+        let arg1: Value = block.argument(1).unwrap().into();
+
+        let op: Operation<'_> = super::elementwise_inline_asm(
+            &context,
+            location,
+            "add.f32 $0, $1, $2;",
+            "=r,r,r",
+            true,
+            1,
+            &[arg0, arg1],
+            &[tensor_ty],
+        )
+        .unwrap();
+
+        let result_val: Value = op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.elementwise_inline_asm"),
+            "missing op mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("add.f32 $0, $1, $2;"),
+            "missing asm_string attribute:\n{output}"
+        );
+        assert!(output.contains("=r,r,r"), "missing constraints attribute:\n{output}");
+        assert!(output.contains("tensor<4xf32>"), "missing tensor type:\n{output}");
     }
 }
