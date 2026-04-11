@@ -308,9 +308,9 @@ fn report_mismatched_rpitit_signature<'tcx>(
     let mut return_ty = trait_m_sig.output().fold_with(&mut super::RemapLateParam { tcx, mapping });
 
     if tcx.asyncness(impl_m_def_id).is_async() && tcx.asyncness(trait_m_def_id).is_async() {
-        let &ty::Alias(
-            future_ty @ ty::AliasTy { kind: ty::Projection { def_id: future_ty_def_id }, .. },
-        ) = return_ty.kind()
+        let &ty::Alias(ty::AliasTy {
+            kind: ty::Projection { def_id: future_ty_def_id }, args, ..
+        }) = return_ty.kind()
         else {
             span_bug!(
                 tcx.def_span(trait_m_def_id),
@@ -319,7 +319,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
         };
         let Some(future_output_ty) = tcx
             .explicit_item_bounds(future_ty_def_id)
-            .iter_instantiated_copied(tcx, future_ty.args)
+            .iter_instantiated_copied(tcx, args)
             .find_map(|(clause, _)| match clause.kind().no_bound_vars()? {
                 ty::ClauseKind::Projection(proj) => proj.term.as_type(),
                 _ => None,

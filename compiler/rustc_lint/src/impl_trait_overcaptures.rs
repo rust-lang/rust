@@ -242,13 +242,12 @@ where
             return;
         }
 
-        if let ty::Alias(opaque_ty @ ty::AliasTy { kind: ty::Projection { def_id }, .. }) =
-            *t.kind()
+        if let ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) = *t.kind()
             && self.tcx.is_impl_trait_in_trait(def_id)
         {
             // visit the opaque of the RPITIT
-            self.tcx.type_of(def_id).instantiate(self.tcx, opaque_ty.args).visit_with(self)
-        } else if let ty::Alias(opaque_ty @ ty::AliasTy { kind: ty::Opaque { def_id}, .. }) = *t.kind()
+            self.tcx.type_of(def_id).instantiate(self.tcx, args).visit_with(self)
+        } else if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args: opaque_ty_args, .. }) = *t.kind()
             && let Some(opaque_def_id) = def_id.as_local()
             // Don't recurse infinitely on an opaque
             && self.seen.insert(opaque_def_id)
@@ -280,7 +279,7 @@ where
                             continue;
                         }
 
-                        let arg = opaque_ty.args[param.index as usize];
+                        let arg = opaque_ty_args[param.index as usize];
                         // We need to turn all `ty::Param`/`ConstKind::Param` and
                         // `ReEarlyParam`/`ReBound` into def ids.
                         captured.insert(extract_def_id_from_arg(self.tcx, generics, arg));
@@ -413,7 +412,7 @@ where
             // in this lint as well. Interestingly, one place that I expect this lint to fire
             // is for `impl for<'a> Bound<Out = impl Other>`, since `impl Other` will begin
             // to capture `'a` in e2024 (even though late-bound vars in opaques are not allowed).
-            for clause in self.tcx.item_bounds(def_id).iter_instantiated(self.tcx, opaque_ty.args) {
+            for clause in self.tcx.item_bounds(def_id).iter_instantiated(self.tcx, opaque_ty_args) {
                 clause.visit_with(self)
             }
         }
