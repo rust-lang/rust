@@ -100,6 +100,14 @@ fn enforce_trait_manually_implementable(
             return Err(tcx.dcx().emit_err(errors::SpecializationTrait { span: impl_header_span }));
         }
     }
+
+    if !trait_def.impl_restriction.is_allowed_in(impl_def_id.to_def_id(), tcx) {
+        return Err(tcx.dcx().emit_err(errors::ImplOfRestrictedTrait {
+            impl_span: impl_header_span,
+            restriction_span: trait_def.impl_restriction.expect_span(),
+            restriction_path: trait_def.impl_restriction.restriction_path(tcx),
+        }));
+    }
     Ok(())
 }
 

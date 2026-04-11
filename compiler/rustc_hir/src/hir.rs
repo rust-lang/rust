@@ -4341,13 +4341,14 @@ impl<'hir> Item<'hir> {
                 Constness,
                 IsAuto,
                 Safety,
+                &'hir ImplRestriction<'hir>,
                 Ident,
                 &'hir Generics<'hir>,
                 GenericBounds<'hir>,
                 &'hir [TraitItemId]
             ),
-            ItemKind::Trait(constness, is_auto, safety, ident, generics, bounds, items),
-            (*constness, *is_auto, *safety, *ident, generics, bounds, items);
+            ItemKind::Trait(constness, is_auto, safety, impl_restriction, ident, generics, bounds, items),
+            (*constness, *is_auto, *safety, impl_restriction, *ident, generics, bounds, items);
 
         expect_trait_alias, (Constness, Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
             ItemKind::TraitAlias(constness, ident, generics, bounds), (*constness, *ident, generics, bounds);
@@ -4414,6 +4415,20 @@ impl fmt::Display for Constness {
             Self::NotConst => "non-const",
         })
     }
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub struct ImplRestriction<'hir> {
+    pub kind: RestrictionKind<'hir>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, HashStable_Generic)]
+pub enum RestrictionKind<'hir> {
+    /// The restriction does not affect the item.
+    Unrestricted,
+    /// The restriction only applies outside of this path.
+    Restricted(&'hir Path<'hir, DefId>),
 }
 
 /// The actual safety specified in syntax. We may treat
@@ -4528,6 +4543,7 @@ pub enum ItemKind<'hir> {
         Constness,
         IsAuto,
         Safety,
+        &'hir ImplRestriction<'hir>,
         Ident,
         &'hir Generics<'hir>,
         GenericBounds<'hir>,
@@ -4578,7 +4594,7 @@ impl ItemKind<'_> {
             | ItemKind::Enum(ident, ..)
             | ItemKind::Struct(ident, ..)
             | ItemKind::Union(ident, ..)
-            | ItemKind::Trait(_, _, _, ident, ..)
+            | ItemKind::Trait(_, _, _, _, ident, ..)
             | ItemKind::TraitAlias(_, ident, ..) => Some(ident),
 
             ItemKind::Use(_, UseKind::Glob | UseKind::ListStem)
@@ -4596,7 +4612,7 @@ impl ItemKind<'_> {
             | ItemKind::Enum(_, generics, _)
             | ItemKind::Struct(_, generics, _)
             | ItemKind::Union(_, generics, _)
-            | ItemKind::Trait(_, _, _, _, generics, _, _)
+            | ItemKind::Trait(_, _, _, _, _, generics, _, _)
             | ItemKind::TraitAlias(_, _, generics, _)
             | ItemKind::Impl(Impl { generics, .. }) => generics,
             _ => return None,
