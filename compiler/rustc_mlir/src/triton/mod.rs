@@ -114,8 +114,8 @@ pub fn call<'ctx>(
 ) -> Result<CallOperation<'ctx>, Error> {
     let callee_attr = FlatSymbolRefAttribute::new(context, callee);
 
-    // For now, we attach empty dictionaries for each argument/result, which satisfies
-    // the `ArgAndResultAttrsOpInterface` requirements of `tt.call`.
+    // Attach empty dictionaries for each argument/result to satisfy the
+    // `ArgAndResultAttrsOpInterface` requirements of `tt.call`.
     let arg_attr_dicts: Vec<_> = (0..args.len())
         .map(|_| Attribute::parse(context, "{}").expect("valid empty arg attrs dict"))
         .collect();
@@ -126,14 +126,22 @@ pub fn call<'ctx>(
         .collect();
     let res_attrs = ArrayAttribute::new(context, &res_attr_dicts);
 
-    let call_op = CallOperation::builder(context, location)
-        .callee(callee_attr)
-        .arg_attrs(arg_attrs)
-        .res_attrs(res_attrs)
-        .operands(args)
-        .build();
+    // `CallOperation` has `Variadic<AnyType>` results without an explicit ODS name,
+    // so the melior-generated typed builder does not expose a result-type setter.
+    // We therefore fall back to the raw `OperationBuilder`, which accepts result
+    // types via `add_results`, and then coerce the result into `CallOperation`.
+    let op = OperationBuilder::new("tt.call", location)
+        .add_attributes(&[
+            (Identifier::new(context, "callee"), callee_attr.into()),
+            (Identifier::new(context, "arg_attrs"), arg_attrs.into()),
+            (Identifier::new(context, "res_attrs"), res_attrs.into()),
+        ])
+        .add_operands(args)
+        .add_results(result_ty)
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.call: {e}") })?;
 
-    Ok(call_op)
+    op.try_into().map_err(|_| Error::InvalidType { msg: "tt.call operation type mismatch".into() })
 }
 
 pub fn int_to_ptr<'ctx, 'b>(
@@ -158,8 +166,8 @@ pub fn ptr_to_int<'ctx, 'b>(
 mod tests {
     use melior::dialect::ods::arith;
     use melior::ir::attribute::BoolAttribute;
-    use melior::ir::operation::OperationMutLike;
-    use melior::ir::{Block, BlockLike, Location, Module, Operation, RegionLike, Type};
+    use melior::ir::operation::{OperationLike, OperationMutLike};
+    use melior::ir::{Block, BlockLike, Location, Module, Operation, RegionLike, Type, Value};
 
     use super::*;
     use crate::shared::arith::{Int, create_int_constant};
@@ -250,6 +258,110 @@ mod tests {
 }
 ";
         assert_eq!(expected, output);
+    }
+
+    /// Verify `tt.call` emits the correct MLIR form.
+    ///
+    /// The assembly format for `tt.call` is:
+    ///   `$callee ( $operands ) attr-dict : functional-type($operands, results)`
+    ///
+    /// Empty `arg_attrs`/`res_attrs` are elided from the attr-dict by MLIR's printer
+    /// (matching real Triton test files), so the expected form is:
+    ///   `%0 = tt.call @my_add(%arg0, %arg1) : (f32, f32) -> f32`
+    #[test]
+    fn test_call_op() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = Type::float32(&context);
+
+        // ── callee: my_add(%arg0: f32, %arg1: f32) -> f32 ──────────────────────
+        let callee_func =
+            create_func(&context, location, "my_add", "private", &[f32_type, f32_type], &[f32_type], 16)
+                .unwrap();
+        let callee_block = Block::new(&[(f32_type, location), (f32_type, location)]);
+        let first_arg: Value<'_, '_> = callee_block.argument(0).unwrap().into();
+        let callee_return = create_return(&context, location, &[first_arg]).unwrap();
+        callee_block.append_operation(callee_return.into());
+        callee_func.body().unwrap().append_block(callee_block);
+        module.body().append_operation(callee_func.into());
+
+        // ── caller: calls my_add with block arguments ───────────────────────────
+        let caller_func =
+            create_func(&context, location, "caller", "public", &[f32_type, f32_type], &[f32_type], 16)
+                .unwrap();
+        let caller_block = Block::new(&[(f32_type, location), (f32_type, location)]);
+        let arg0: Value<'_, '_> = caller_block.argument(0).unwrap().into();
+        let arg1: Value<'_, '_> = caller_block.argument(1).unwrap().into();
+
+        let call_op: Operation<'_> =
+            call(&context, location, "my_add", &[arg0, arg1], &[f32_type]).unwrap().into();
+        let call_result: Value<'_, '_> = call_op.result(0).unwrap().into();
+        let caller_return = create_return(&context, location, &[call_result]).unwrap();
+        caller_block.append_operation(call_op);
+        caller_block.append_operation(caller_return.into());
+        caller_func.body().unwrap().append_block(caller_block);
+        module.body().append_operation(caller_func.into());
+
+        let output = module.as_operation().to_string();
+
+        // Verify the call op emits the correct mnemonic, callee symbol, and
+        // functional type.  We use contains() rather than exact matching to remain
+        // robust to how MLIR renders the optional/empty arg_attrs/res_attrs.
+        assert!(
+            output.contains("tt.call @my_add"),
+            "expected 'tt.call @my_add' in output:\n{output}"
+        );
+        assert!(
+            output.contains(": (f32, f32) -> f32"),
+            "expected functional-type '(f32, f32) -> f32' in output:\n{output}"
+        );
+    }
+
+    /// Verify `tt.call` with no arguments and no results.
+    ///
+    /// Assembly form: `tt.call @my_void_func() : () -> ()`
+    #[test]
+    fn test_call_op_void() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        // ── callee: my_void_func() -> () ────────────────────────────────────────
+        let callee_func =
+            create_func(&context, location, "my_void_func", "private", &[], &[], 16).unwrap();
+        let callee_block = Block::new(&[]);
+        let callee_return = create_return(&context, location, &[]).unwrap();
+        callee_block.append_operation(callee_return.into());
+        callee_func.body().unwrap().append_block(callee_block);
+        module.body().append_operation(callee_func.into());
+
+        // ── caller: calls my_void_func with no args ──────────────────────────────
+        let caller_func =
+            create_func(&context, location, "caller_void", "public", &[], &[], 16).unwrap();
+        let caller_block = Block::new(&[]);
+        let void_call = call(&context, location, "my_void_func", &[], &[]).unwrap();
+        let void_return = create_return(&context, location, &[]).unwrap();
+        caller_block.append_operation(void_call.into());
+        caller_block.append_operation(void_return.into());
+        caller_func.body().unwrap().append_block(caller_block);
+        module.body().append_operation(caller_func.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.call @my_void_func()"),
+            "expected 'tt.call @my_void_func()' in output:\n{output}"
+        );
+        assert!(
+            output.contains(": () -> ()"),
+            "expected functional-type '() -> ()' in output:\n{output}"
+        );
     }
 
     #[test]
