@@ -787,11 +787,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 });
                 match lifetime.kind {
                     LifetimeKind::ImplicitObjectLifetimeDefault => {
-                        // If the user does not write *anything*, we
-                        // use the object lifetime defaulting
-                        // rules. So e.g., `Box<dyn Debug>` becomes
-                        // `Box<dyn Debug + 'static>`.
-                        self.resolve_object_lifetime_default(&*lifetime)
+                        // If the user doesn't write *anything*, we apply the
+                        // trait object lifetime defaulting rules.
+                        // E.g., `Box<dyn Debug>` becomes `Box<dyn Debug + 'static>`.
+                        self.resolve_object_lifetime_default(&*lifetime);
                     }
                     LifetimeKind::Infer => {
                         // If the user writes `'_`, we use the *ordinary* elision
@@ -810,7 +809,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             hir::TyKind::Ref(lifetime_ref, ref mt) => {
                 self.visit_lifetime(lifetime_ref);
                 let scope = Scope::ObjectLifetimeDefault {
-                    lifetime: self.rbv.defs.get(&lifetime_ref.hir_id.local_id).cloned(),
+                    lifetime: self.rbv.defs.get(&lifetime_ref.hir_id.local_id).copied(),
                     s: self.scope,
                 };
                 self.with(scope, |this| this.visit_ty_unambig(mt.ty));
@@ -900,11 +899,40 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         }
     }
 
+    fn visit_qpath(&mut self, qpath: &'tcx hir::QPath<'tcx>, id: HirId, _: Span) {
+        match qpath {
+            hir::QPath::Resolved(maybe_qself, path) => {
+                if let Some(qself) = maybe_qself {
+                    // FIXME(fmease): Make assocated type paths induce a trait object lifetime
+                    //                default for the self type, too!
+                    let scope = Scope::ObjectLifetimeDefault { lifetime: None, s: self.scope };
+                    self.with(scope, |this| this.visit_ty_unambig(qself));
+                }
+                self.visit_path(path, id);
+            }
+            hir::QPath::TypeRelative(qself, segment) => {
+                // Computing the trait object lifetime defaults that are induced by type-relative
+                // paths would require full type-dependent resolution as performed by HIR ty
+                // lowering whose results we don't have access to here (esp. in ItemCtxts which
+                // don't "persist" any resolutions during lowering).
+                // For maximum forward compatibility, in ItemCtxts we make HIR ty lowering reject
+                // implicit trait object lifetime bounds inside such paths on grounds of
+                // the default being *indeterminate*.
+                // FIXME: Figure out if there's a feasible way to obtain the map of type-dependent
+                //        definitions here / interleave RBV and HIR ty lowering.
+                let scope = Scope::ObjectLifetimeDefault { lifetime: None, s: self.scope };
+                self.with(scope, |this| {
+                    this.visit_ty_unambig(qself);
+                    this.visit_path_segment(segment)
+                });
+            }
+        }
+    }
+
     fn visit_path(&mut self, path: &hir::Path<'tcx>, hir_id: HirId) {
-        for (i, segment) in path.segments.iter().enumerate() {
-            let depth = path.segments.len() - i - 1;
+        for (index, segment) in path.segments.iter().enumerate() {
             if let Some(args) = segment.args {
-                self.visit_segment_args(path.res, depth, args);
+                self.visit_path_segment_args(args, index, path);
             }
         }
         if let Res::Def(DefKind::TyParam | DefKind::ConstParam, param_def_id) = path.res {
@@ -1670,58 +1698,70 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn visit_segment_args(
+    fn visit_path_segment_args(
         &mut self,
-        res: Res,
-        depth: usize,
         generic_args: &'tcx hir::GenericArgs<'tcx>,
+        index: usize,
+        path: &hir::Path<'tcx>,
     ) {
         if let Some((inputs, output)) = generic_args.paren_sugar_inputs_output() {
             self.visit_fn_like_elision(inputs, Some(output), false);
             return;
         }
 
+        // Let's first resolve all lifetime arguments because we need their
+        // resolution for computing the trait object lifetime defaults.
         for arg in generic_args.args {
             if let hir::GenericArg::Lifetime(lt) = arg {
                 self.visit_lifetime(lt);
             }
         }
 
-        // Figure out if this is a type/trait segment,
-        // which requires object lifetime defaults.
-        let type_def_id = match res {
-            Res::Def(DefKind::AssocTy, def_id) if depth == 1 => Some(self.tcx.parent(def_id)),
-            Res::Def(DefKind::Variant, def_id) if depth == 0 => Some(self.tcx.parent(def_id)),
+        // Figure out if this is an eligible container that induces lifetime defaults for
+        // trait object types contained in any of the type arguments passed to it
+        // (any inner containers will of course end up shadowing that default).
+        //
+        // FIXME(mgca, #151649): Assoc (and free?) consts should also qualify.
+        // FIXME(return_type_notation, #151662): Assoc fns should also qualify.
+        let depth = path.segments.len() - index - 1;
+        let container = match path.res {
+            Res::Def(DefKind::AssocTy, def_id) if depth == 1 => {
+                Some((self.tcx.parent(def_id), &path.segments[..=index]))
+            }
+            Res::Def(DefKind::Variant, def_id) if depth == 0 => {
+                Some((self.tcx.parent(def_id), path.segments))
+            }
             Res::Def(
                 DefKind::Struct
                 | DefKind::Union
                 | DefKind::Enum
                 | DefKind::TyAlias
                 | DefKind::Trait
-                | DefKind::TraitAlias,
+                | DefKind::TraitAlias
+                | DefKind::AssocTy,
                 def_id,
-            ) if depth == 0 => Some(def_id),
+            ) if depth == 0 => Some((def_id, path.segments)),
+            // Note: We don't need to care about definition kinds that may have generics if they
+            // can only ever appear in positions where we can perform type inference (i.e., bodies).
             _ => None,
         };
 
-        debug!(?type_def_id);
+        debug!(?container);
 
-        // Compute a vector of defaults, one for each type parameter,
-        // per the rules given in RFCs 599 and 1156. Example:
+        // Compute a list of trait object lifetime defaults, one for each type parameter,
+        // per the rules initially given in RFCs 599 and 1156. Example:
         //
         // ```rust
-        // struct Foo<'a, T: 'a, U> { }
+        // struct Foo<'a, T: 'a + ?Sized, U: ?Sized>(&'a T, &'a U);
         // ```
         //
-        // If you have `Foo<'x, dyn Bar, dyn Baz>`, we want to default
-        // `dyn Bar` to `dyn Bar + 'x` (because of the `T: 'a` bound)
-        // and `dyn Baz` to `dyn Baz + 'static` (because there is no
-        // such bound).
+        // If you have `Foo<'x, dyn Bar, dyn Baz>`, we want to elaborate
+        // * `dyn Bar` to `dyn Bar + 'x` (because of the `T: 'a` bound) and
+        // * `dyn Baz` to `dyn Baz + 'static` (because there is no such bound).
         //
-        // Therefore, we would compute `object_lifetime_defaults` to a
-        // vector like `['x, 'static]`. Note that the vector only
-        // includes type parameters.
-        let object_lifetime_defaults = type_def_id.map_or_else(Vec::new, |def_id| {
+        // Therefore, we would compute a list like `['x, 'static]`.
+        // Note that the list only includes the lifetimes for type parameters.
+        let object_lifetime_defaults = container.map_or_else(Vec::new, |(def_id, segments)| {
             let in_body = {
                 let mut scope = self.scope;
                 loop {
@@ -1745,9 +1785,6 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             let rbv = &self.rbv;
             let generics = self.tcx.generics_of(def_id);
 
-            // `type_def_id` points to an item, so there is nothing to inherit generics from.
-            debug_assert_eq!(generics.parent_count, 0);
-
             let set_to_region = |set: ObjectLifetimeDefault| match set {
                 ObjectLifetimeDefault::Empty => {
                     if in_body {
@@ -1758,12 +1795,31 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 }
                 ObjectLifetimeDefault::Static => Some(ResolvedArg::StaticLifetime),
                 ObjectLifetimeDefault::Param(param_def_id) => {
-                    // This index can be used with `generic_args` since `parent_count == 0`.
-                    let index = generics.param_def_id_to_index[&param_def_id] as usize;
-                    generic_args.args.get(index).and_then(|arg| match arg {
-                        GenericArg::Lifetime(lt) => rbv.defs.get(&lt.hir_id.local_id).copied(),
-                        _ => None,
-                    })
+                    fn param_to_depth_and_index(
+                        generics: &ty::Generics,
+                        tcx: TyCtxt<'_>,
+                        def_id: DefId,
+                    ) -> (usize, usize) {
+                        if let Some(&index) = generics.param_def_id_to_index.get(&def_id) {
+                            let has_self = generics.has_own_self();
+                            (0, index as usize - generics.parent_count - has_self as usize)
+                        } else if let Some(parent) = generics.parent {
+                            let parent = tcx.generics_of(parent);
+                            let (depth, index) = param_to_depth_and_index(parent, tcx, def_id);
+                            (depth + 1, index)
+                        } else {
+                            unreachable!()
+                        }
+                    }
+
+                    let (depth, index) = param_to_depth_and_index(generics, self.tcx, param_def_id);
+                    segments[segments.len() - depth - 1]
+                        .args
+                        .and_then(|args| args.args.get(index))
+                        .and_then(|arg| match arg {
+                            GenericArg::Lifetime(lt) => rbv.defs.get(&lt.hir_id.local_id).copied(),
+                            _ => None,
+                        })
                 }
                 ObjectLifetimeDefault::Ambiguous => None,
             };
@@ -1772,7 +1828,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 .iter()
                 .filter_map(|param| {
                     match self.tcx.def_kind(param.def_id) {
-                        // Generic consts don't impose any constraints.
+                        // Const parameters don't impose any constraints.
                         //
                         // We still store a dummy value here to allow generic parameters
                         // in an arbitrary order.
@@ -1793,6 +1849,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         let mut i = 0;
         for arg in generic_args.args {
             match arg {
+                // We've already visited all lifetime arguments at the start.
                 GenericArg::Lifetime(_) => {}
                 GenericArg::Type(ty) => {
                     if let Some(&lt) = object_lifetime_defaults.get(i) {
@@ -1867,11 +1924,12 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             //    `for<'a> for<'r> <T as Trait<'a>>::x::<'r, T>::{opaque#0}: for<'b> Other<'b>`.
             if constraint.gen_args.parenthesized == hir::GenericArgsParentheses::ReturnTypeNotation
             {
-                let bound_vars = if let Some(type_def_id) = type_def_id
-                    && let DefKind::Trait | DefKind::TraitAlias = self.tcx.def_kind(type_def_id)
+                let bound_vars = if let Some((container_def_id, _)) = container
+                    && let DefKind::Trait | DefKind::TraitAlias =
+                        self.tcx.def_kind(container_def_id)
                     && let Some((mut bound_vars, assoc_fn)) = BoundVarContext::supertrait_hrtb_vars(
                         self.tcx,
-                        type_def_id,
+                        container_def_id,
                         constraint.ident,
                         ty::AssocTag::Fn,
                     ) {
@@ -1900,10 +1958,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         this.visit_assoc_item_constraint(constraint)
                     });
                 });
-            } else if let Some(type_def_id) = type_def_id {
+            } else if let Some((container_def_id, _)) = container {
                 let bound_vars = BoundVarContext::supertrait_hrtb_vars(
                     self.tcx,
-                    type_def_id,
+                    container_def_id,
                     constraint.ident,
                     ty::AssocTag::Type,
                 )
@@ -2079,7 +2137,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     //    `for<'a, 'b, 'r> <T as Trait<'a>>::x::<'r, T>::{opaque#0}: Other<'b>`.
     //
     // We handle this similarly for associated-type-bound style return-type-notation
-    // in `visit_segment_args`.
+    // in `visit_path_segment_args`.
     fn try_append_return_type_notation_params(
         &mut self,
         hir_id: HirId,
