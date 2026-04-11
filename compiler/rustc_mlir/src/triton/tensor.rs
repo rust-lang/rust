@@ -131,6 +131,50 @@ pub enum PropagateNan {
     All  = 0xFFFF,
 }
 
+/// Mirror of Triton's `RMWOp` enum (`TT_AtomicRMWAttr` in TritonAttrDefs.td).
+///
+/// Selects the read-modify-write operation performed by `tt.atomic_rmw`.
+/// Integer values must stay in sync with the TableGen definition so that
+/// the resulting `IntegerAttr<i32>` is accepted as a `TT_AtomicRMWAttr`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum RmwOp {
+    And  = 1,
+    Or   = 2,
+    Xor  = 3,
+    Add  = 4,
+    Fadd = 5,
+    Max  = 6,
+    Min  = 7,
+    Umax = 8,
+    Umin = 9,
+    Xchg = 10,
+}
+
+/// Mirror of Triton's `MemSemantic` enum (`TT_MemSemanticAttr` in TritonAttrDefs.td).
+///
+/// Controls the memory ordering semantics of atomic operations.
+/// Integer values must stay in sync with the TableGen definition so that
+/// the resulting `IntegerAttr<i32>` is accepted as a `TT_MemSemanticAttr`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum MemSemantic {
+    Relaxed        = 1,
+    Acquire        = 2,
+    Release        = 3,
+    AcquireRelease = 4,
+}
+
+/// Mirror of Triton's `MemSyncScope` enum (`TT_MemSyncScopeAttr` in TritonAttrDefs.td).
+///
+/// Controls the synchronisation scope of atomic operations.
+/// Integer values must stay in sync with the TableGen definition so that
+/// the resulting `IntegerAttr<i32>` is accepted as a `TT_MemSyncScopeAttr`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum MemSyncScope {
+    Gpu    = 1,
+    Cta    = 2,
+    System = 3,
+}
+
 pub fn make_range<'ctx>(
     context: &'ctx Context,
     location: Location<'ctx>,
@@ -1782,6 +1826,75 @@ pub fn clampf<'ctx>(
         .add_results(&[result_ty])
         .build()
         .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.clampf: {e}") })
+}
+
+/// Build a `tt.atomic_rmw` operation.
+///
+/// Loads the value at `ptr`, applies `rmw_op` with `val`, stores the result back
+/// to `ptr`, and returns the **old** value.  An optional `mask` guards individual
+/// lanes; unmasked lanes are not touched.
+///
+/// # Arguments
+/// * `ptr`       – pointer to the memory location (`!tt.ptr<T>` or `tensor<Nx!tt.ptr<T>>`).
+/// * `val`       – value to combine with; type matches the pointee type of `ptr`.
+/// * `mask`      – optional boolean lane mask (`i1` or `tensor<Nxi1>`).
+/// * `result_ty` – result type; same as the pointee type of `ptr`.
+/// * `rmw_op`    – which RMW operation to perform (e.g. `RmwOp::Add`).
+/// * `sem`       – memory ordering semantics (e.g. `MemSemantic::Relaxed`).
+/// * `scope`     – synchronisation scope (e.g. `MemSyncScope::Gpu`).
+///
+/// Assembly format:
+/// ```text
+/// tt.atomic_rmw <rmw_op>, <sem>, <scope>, %ptr, %val [, %mask]
+///     attr-dict : functional-type(operands, result)
+/// ```
+pub fn atomic_rmw<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    ptr: Value<'ctx, 'ctx>,
+    val: Value<'ctx, 'ctx>,
+    mask: Option<Value<'ctx, 'ctx>>,
+    result_ty: Type<'ctx>,
+    rmw_op: RmwOp,
+    sem: MemSemantic,
+    scope: MemSyncScope,
+) -> Result<Operation<'ctx>, Error> {
+    let mask_size = if mask.is_some() { 1i32 } else { 0i32 };
+
+    // Operand order: ptr, val, [mask]
+    let mut operands: Vec<Value> = vec![ptr, val];
+    if let Some(m) = mask {
+        operands.push(m);
+    }
+
+    // operandSegmentSizes encodes [ptr=1, val=1, mask=0|1] so the verifier
+    // knows which optional operand slot is populated.
+    let seg_sizes = DenseI32ArrayAttribute::new(context, &[1, 1, mask_size]);
+
+    // TT_AtomicRMWAttr, TT_MemSemanticAttr, and TT_MemSyncScopeAttr are all
+    // backed by IntegerAttr<i32>; attr_i32 produces compatible values that
+    // satisfy classof for each attribute kind.
+    let rmw_op_attr = attr_i32(context, rmw_op as i32);
+    let sem_attr    = attr_i32(context, sem as i32);
+    let scope_attr  = attr_i32(context, scope as i32);
+
+    OperationBuilder::new("tt.atomic_rmw", location)
+        .add_operands(&operands)
+        .add_attributes(&[
+            (
+                Identifier::new(context, "operandSegmentSizes"),
+                Attribute::from(seg_sizes),
+            ),
+            (
+                Identifier::new(context, "atomic_rmw_op"),
+                Attribute::from(rmw_op_attr),
+            ),
+            (Identifier::new(context, "sem"), Attribute::from(sem_attr)),
+            (Identifier::new(context, "scope"), Attribute::from(scope_attr)),
+        ])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.atomic_rmw: {e}") })
 }
 
 #[cfg(test)]
@@ -5959,5 +6072,145 @@ mod tests {
         assert!(output.contains("tt.bitcast"), "missing op mnemonic:\n{output}");
         assert!(output.contains("tensor<8xf32>"), "missing src tensor type:\n{output}");
         assert!(output.contains("tensor<8xi32>"), "missing result tensor type:\n{output}");
+    }
+
+    /// Verify that `atomic_rmw` emits the correct `tt.atomic_rmw` IR for a scalar
+    /// FADD with relaxed ordering and GPU scope (no mask).
+    ///
+    /// Expected assembly fragment:
+    /// ```text
+    /// %0 = tt.atomic_rmw fadd, relaxed, gpu, %arg0, %arg1  attr-dict : (…) -> f32
+    /// ```
+    #[test]
+    fn test_atomic_rmw_no_mask() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let ptr_f32_type = pointer_type(f32_type);
+
+        // Function: (!tt.ptr<f32>, f32) -> f32
+        let func_op = create_func(
+            &context,
+            location,
+            "test_atomic_rmw_no_mask",
+            "public",
+            &[ptr_f32_type, f32_type],
+            &[f32_type],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(ptr_f32_type, location), (f32_type, location)]);
+        let ptr_arg: Value = block.argument(0).unwrap().into();
+        let val_arg: Value = block.argument(1).unwrap().into();
+
+        let rmw_op = super::atomic_rmw(
+            &context,
+            location,
+            ptr_arg,
+            val_arg,
+            None,
+            f32_type,
+            super::RmwOp::Fadd,
+            super::MemSemantic::Relaxed,
+            super::MemSyncScope::Gpu,
+        )
+        .unwrap();
+
+        let result_val: Value = rmw_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(rmw_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.atomic_rmw"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("fadd"), "missing rmw op kind:\n{output}");
+        assert!(output.contains("relaxed"), "missing memory semantic:\n{output}");
+        assert!(output.contains("gpu"), "missing sync scope:\n{output}");
+        assert!(output.contains("f32"), "missing value type:\n{output}");
+    }
+
+    /// Verify that `atomic_rmw` emits the correct `tt.atomic_rmw` IR for a tensor
+    /// ADD with acquire_release ordering and GPU scope, including a mask operand.
+    ///
+    /// Expected assembly fragment:
+    /// ```text
+    /// %0 = tt.atomic_rmw add, acq_rel, gpu, %arg0, %arg1, %arg2
+    ///      attr-dict : (tensor<8x!tt.ptr<i32>>, tensor<8xi32>, tensor<8xi1>) -> tensor<8xi32>
+    /// ```
+    #[test]
+    fn test_atomic_rmw_with_mask() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+        let i1_type: Type = IntegerType::new(&context, 1).into();
+        let ptr_i32_type = pointer_type(i32_type);
+
+        let tensor_ptr_ty: Type = tensor_type(&[8], ptr_i32_type).into();
+        let tensor_i32_ty: Type = tensor_type(&[8], i32_type).into();
+        let tensor_i1_ty: Type = tensor_type(&[8], i1_type).into();
+
+        // Function: (tensor<8x!tt.ptr<i32>>, tensor<8xi32>, tensor<8xi1>) -> tensor<8xi32>
+        let func_op = create_func(
+            &context,
+            location,
+            "test_atomic_rmw_with_mask",
+            "public",
+            &[tensor_ptr_ty, tensor_i32_ty, tensor_i1_ty],
+            &[tensor_i32_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (tensor_ptr_ty, location),
+            (tensor_i32_ty, location),
+            (tensor_i1_ty, location),
+        ]);
+        let ptr_arg: Value = block.argument(0).unwrap().into();
+        let val_arg: Value = block.argument(1).unwrap().into();
+        let mask_arg: Value = block.argument(2).unwrap().into();
+
+        let rmw_op = super::atomic_rmw(
+            &context,
+            location,
+            ptr_arg,
+            val_arg,
+            Some(mask_arg),
+            tensor_i32_ty,
+            super::RmwOp::Add,
+            super::MemSemantic::AcquireRelease,
+            super::MemSyncScope::Gpu,
+        )
+        .unwrap();
+
+        let result_val: Value = rmw_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(rmw_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.atomic_rmw"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("add"), "missing rmw op kind:\n{output}");
+        assert!(output.contains("acq_rel"), "missing memory semantic:\n{output}");
+        assert!(output.contains("gpu"), "missing sync scope:\n{output}");
+        assert!(output.contains("tensor<8xi32>"), "missing tensor i32 type:\n{output}");
+        assert!(output.contains("tensor<8xi1>"), "missing mask type:\n{output}");
     }
 }
