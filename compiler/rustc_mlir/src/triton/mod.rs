@@ -182,7 +182,7 @@ mod tests {
 
         // Use the new function in test:
         let func_op =
-            create_func(&context, location, "public", "test_func_attrs", &inputs, &results, 16)
+            create_func(&context, location, "test_func_attrs", "public", &inputs, &results, 16)
                 .unwrap();
 
         // Create a constant op returning f32 1.0
