@@ -39,6 +39,11 @@ Run relevant checks before finishing work (scope to changed areas when possible)
 
 If your change touches compiler behavior, add or update the appropriate `tests/ui`, `tests/codegen`, or backend-specific tests.
 
+## Key reference material
+
+- This code uses third party libraries such as melior, you can find the melior generated dialects for MLIR in .ai/melior-dialect.rs
+- This project also uses triton, if you need to reference the triton documentation in can be found in .ai/specs/triton
+
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker
 
