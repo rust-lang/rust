@@ -32,6 +32,7 @@
 
 use crate::alloc::Layout;
 use crate::clone::TrivialClone;
+use crate::cmp::Ordering;
 use crate::marker::{Destruct, DiscriminantKind};
 use crate::panic::const_assert;
 use crate::{clone, cmp, fmt, hash, intrinsics, ptr};
@@ -1086,6 +1087,102 @@ pub const unsafe fn transmute_copy<Src, Dst>(src: &Src) -> Dst {
         // The caller must guarantee that the actual transmutation is safe.
         unsafe { ptr::read(src as *const Src as *const Dst) }
     }
+}
+
+/// Like [`transmute`], but only initializes the "common prefix" of the first
+/// `min(size_of::<Src>(), size_of::<Dst>())` bytes of the destination from the
+/// corresponding bytes of the source.
+///
+/// This is equivalent to a "union cast" through a `union` with `#[repr(C)]`.
+///
+/// That means some size mismatches are not UB, like `[T; 2]` to `[T; 1]`.
+/// Increasing size is usually UB from being insufficiently initialized -- like
+/// `u8` to `u32` -- but isn't always.  For example, going from `u8` to
+/// `#[repr(C, align(4))] AlignedU8(u8);` is sound.
+///
+/// Prefer normal `transmute` where possible, for the extra checking, since
+/// both do exactly the same thing at runtime, if they both compile.
+///
+/// # Safety
+///
+/// If `size_of::<Src>() >= size_of::<Dst>()`, the first `size_of::<Dst>()` bytes
+/// of `src` must be be *valid* when interpreted as a `Dst`.  (In this case, the
+/// preconditions are the same as for `transmute_copy(&ManuallyDrop::new(src))`.)
+///
+/// If `size_of::<Src>() <= size_of::<Dst>()`, the bytes of `src` padded with
+/// uninitialized bytes afterwards up to a total size of `size_of::<Dst>()`
+/// must be *valid* when interpreted as a `Dst`.
+///
+/// In both cases, any safety preconditions of the `Dst` type must also be upheld.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(transmute_prefix)]
+/// use std::mem::transmute_prefix;
+///
+/// assert_eq!(unsafe { transmute_prefix::<[i32; 4], [i32; 2]>([1, 2, 3, 4]) }, [1, 2]);
+///
+/// let expected = if cfg!(target_endian = "little") { 0x34 } else { 0x12 };
+/// assert_eq!(unsafe { transmute_prefix::<u16, u8>(0x1234) }, expected);
+///
+/// // Would be UB because the destination is incompletely initialized.
+/// // transmute_prefix::<u8, u16>(123)
+///
+/// // OK because the destination is allowed to be partially initialized.
+/// let _: std::mem::MaybeUninit<u16> = unsafe { transmute_prefix(123_u8) };
+/// ```
+#[unstable(feature = "transmute_prefix", issue = "155079")]
+pub const unsafe fn transmute_prefix<Src, Dst>(src: Src) -> Dst {
+    #[repr(C)]
+    union Transmute<A, B> {
+        a: ManuallyDrop<A>,
+        b: ManuallyDrop<B>,
+    }
+
+    match const { Ord::cmp(&Src::SIZE, &Dst::SIZE) } {
+        // SAFETY: When Dst is bigger, the union is the size of Dst
+        Ordering::Less => unsafe {
+            let a = transmute_neo(src);
+            intrinsics::transmute_unchecked(Transmute::<Src, Dst> { a })
+        },
+        // SAFETY: When they're the same size, we can use the MIR primitive
+        Ordering::Equal => unsafe { intrinsics::transmute_unchecked::<Src, Dst>(src) },
+        // SAFETY: When Src is bigger, the union is the size of Src
+        Ordering::Greater => unsafe {
+            let u: Transmute<Src, Dst> = intrinsics::transmute_unchecked(src);
+            transmute_neo(u.b)
+        },
+    }
+}
+
+/// New version of `transmute`, exposed under this name so it can be iterated upon
+/// without risking breakage to uses of "real" transmute.
+///
+/// It will not be stabilized under this name.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(transmute_neo)]
+/// use std::mem::transmute_neo;
+///
+/// assert_eq!(unsafe { transmute_neo::<f32, u32>(0.0) }, 0);
+/// ```
+///
+/// ```compile_fail,E0080
+/// #![feature(transmute_neo)]
+/// use std::mem::transmute_neo;
+///
+/// unsafe { transmute_neo::<u32, u16>(123) };
+/// ```
+#[unstable(feature = "transmute_neo", issue = "155079")]
+pub const unsafe fn transmute_neo<Src, Dst>(src: Src) -> Dst {
+    const { assert!(Src::SIZE == Dst::SIZE) };
+
+    // SAFETY: the const-assert just checked that they're the same size,
+    // and any other safety invariants need to be upheld by the caller.
+    unsafe { intrinsics::transmute_unchecked(src) }
 }
 
 /// Opaque type representing the discriminant of an enum.
