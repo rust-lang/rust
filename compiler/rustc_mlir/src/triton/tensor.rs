@@ -27,10 +27,11 @@ use crate::ffi::mlirCreateTritonPointerType;
 use crate::shared::builtin::tensor_type;
 use crate::triton::attr_i32;
 use crate::triton::tt::{
-    AddPtrOperation, AssertOperation, DescriptorGatherOperation, DescriptorScatterOperation,
-    MapElementwiseOperation, MapElementwiseReturnOperation, MakeRangeOperation, MulhiUIOperation,
-    PreciseDivFOperation, PreciseSqrtOperation, ReduceOperation, ReduceReturnOperation,
-    ReturnOperation, ScanOperation, ScanReturnOperation, SplatOperation,
+    AddPtrOperation, AdvanceOperation, AssertOperation, DescriptorGatherOperation,
+    DescriptorScatterOperation, MapElementwiseOperation, MapElementwiseReturnOperation,
+    MakeRangeOperation, MulhiUIOperation, PreciseDivFOperation, PreciseSqrtOperation,
+    ReduceOperation, ReduceReturnOperation, ReturnOperation, ScanOperation, ScanReturnOperation,
+    SplatOperation,
 };
 
 /// Mirror of Triton's `InputPrecision` enum (TritonAttrDefs.td).
@@ -1961,6 +1962,35 @@ pub fn assert_op<'ctx>(
     Ok(AssertOperation::builder(context, location)
         .condition(condition)
         .message(StringAttribute::new(context, message))
+        .build())
+}
+
+/// Build a `tt.advance` operation.
+///
+/// Advances a tensor pointer by the given per-dimension i32 offsets, returning
+/// a new tensor pointer of the same type.
+///
+/// # Arguments
+/// * `ptr`       – tensor pointer operand (`!tt.ptr<tensor<...>>`).
+/// * `offsets`   – per-dimension i32 offset values; length must match the rank
+///                 of the pointed-to tensor.
+/// * `result_ty` – result type; must equal the type of `ptr`.
+///
+/// Assembly format:
+/// ```text
+/// tt.advance %ptr, [%off0, %off1, …] : !tt.ptr<tensor<…>>
+/// ```
+pub fn advance<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    ptr: Value<'ctx, 'ctx>,
+    offsets: &[Value<'ctx, 'ctx>],
+    result_ty: Type<'ctx>,
+) -> Result<AdvanceOperation<'ctx>, Error> {
+    Ok(AdvanceOperation::builder(context, location)
+        .ptr(ptr)
+        .offsets(offsets)
+        .result(result_ty)
         .build())
 }
 
@@ -6458,5 +6488,70 @@ mod tests {
         assert!(output.contains("tt.assert"), "missing op mnemonic:\n{output}");
         assert!(output.contains("\"check\""), "missing message string:\n{output}");
         assert!(output.contains("i1"), "missing condition type:\n{output}");
+    }
+
+    /// Verify that `advance` emits the correct `tt.advance` IR.
+    ///
+    /// Uses function block arguments for all SSA operands so the pretty-printed
+    /// IR does not mix `arith.constant` (generic format) with `tt.*` (pretty).
+    ///
+    /// Expected assembly fragment:
+    /// ```text
+    /// %0 = tt.advance %arg0, [%arg1, %arg2] : !tt.ptr<tensor<8xf32>>
+    /// ```
+    #[test]
+    fn test_advance() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = Type::float32(&context);
+        let tensor_ty: Type = tensor_type(&[8], f32_type).into();
+        // !tt.ptr<tensor<8xf32>>
+        let tensor_ptr_ty = pointer_type(tensor_ty);
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+
+        // Function: (!tt.ptr<tensor<8xf32>>, i32, i32) -> !tt.ptr<tensor<8xf32>>
+        let func_op = create_func(
+            &context,
+            location,
+            "test_advance",
+            "public",
+            &[tensor_ptr_ty, i32_type, i32_type],
+            &[tensor_ptr_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (tensor_ptr_ty, location),
+            (i32_type, location),
+            (i32_type, location),
+        ]);
+        let ptr_arg: Value = block.argument(0).unwrap().into();
+        let off0: Value = block.argument(1).unwrap().into();
+        let off1: Value = block.argument(2).unwrap().into();
+
+        let adv_op: Operation<'_> =
+            super::advance(&context, location, ptr_arg, &[off0, off1], tensor_ptr_ty)
+                .unwrap()
+                .into();
+        let result_val: Value = adv_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(adv_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.advance"), "missing op mnemonic:\n{output}");
+        assert!(
+            output.contains("!tt.ptr<tensor<8xf32>>"),
+            "missing result tensor-pointer type:\n{output}"
+        );
     }
 }
