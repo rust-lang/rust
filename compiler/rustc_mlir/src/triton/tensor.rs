@@ -27,8 +27,8 @@ use crate::ffi::mlirCreateTritonPointerType;
 use crate::shared::builtin::tensor_type;
 use crate::triton::attr_i32;
 use crate::triton::tt::{
-    AddPtrOperation, LoadOperation, MakeRangeOperation, MulhiUIOperation, SplatOperation,
-    StoreOperation,
+    AddPtrOperation, DescriptorGatherOperation, LoadOperation, MakeRangeOperation,
+    MulhiUIOperation, SplatOperation, StoreOperation,
 };
 
 /// Mirror of Triton's `ScaleDotElemType` enum (TritonAttrDefs.td).
@@ -123,6 +123,40 @@ pub fn mulhiui<'ctx>(
 ) -> Result<MulhiUIOperation<'ctx>, Error> {
     // SameOperandsAndResultType: result type is inferred from operand types
     Ok(MulhiUIOperation::builder(context, location).x(x).y(y).build())
+}
+
+/// Build a `tt.descriptor_gather` operation.
+///
+/// Lowers to NVIDIA TMA gather, reading multiple rows from a TMA descriptor
+/// into a single 2D result tensor.
+///
+/// # Arguments
+/// * `desc`      – value of type `!tt.tensordesc<tensor<1xNxT>>`;
+///                 the descriptor block must have exactly one row.
+/// * `x_offsets` – 1-D `tensor<Kxi32>` of column offsets to gather.
+/// * `y_offset`  – scalar `i32` row offset.
+/// * `result_ty` – expected 2-D tensor type of the result (e.g.
+///                 `tensor<KxNxT>`).
+///
+/// The op's assembly format is:
+/// ```text
+/// tt.descriptor_gather %desc[%x_offsets, %y_offset]
+///     : (type(desc), type(x_offsets), type(y_offset)) -> result_ty
+/// ```
+pub fn descriptor_gather<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    desc: Value<'ctx, 'ctx>,
+    x_offsets: Value<'ctx, 'ctx>,
+    y_offset: Value<'ctx, 'ctx>,
+    result_ty: Type<'ctx>,
+) -> Result<DescriptorGatherOperation<'ctx>, Error> {
+    Ok(DescriptorGatherOperation::builder(context, location)
+        .desc(desc)
+        .x_offsets(x_offsets)
+        .y_offset(y_offset)
+        .result(result_ty)
+        .build())
 }
 
 /// Build a `tt.dot_scaled` operation.
@@ -328,6 +362,85 @@ mod tests {
         let output = module.as_operation().to_string();
         let expected = "module {\n  %c3_i32 = arith.constant 3 : i32\n  %c5_i32 = arith.constant 5 : i32\n  %0 = tt.mulhiui %c3_i32, %c5_i32 : i32\n}\n";
         assert_eq!(expected, output);
+    }
+
+    /// Verify that `descriptor_gather` emits the correct `tt.descriptor_gather` IR.
+    ///
+    /// Uses function block-arguments to supply typed values without needing
+    /// constant-folding or a real TMA descriptor at compile time.
+    #[test]
+    fn test_descriptor_gather() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        // Result type: tensor<16x16xf32> (16 rows gathered, 16 cols each).
+        let f32_type = melior::ir::Type::float32(&context);
+        let result_tensor_ty: Type = tensor_type(&[16, 16], f32_type).into();
+
+        // Descriptor type: !tt.tensordesc<tensor<1x16xf32>>.
+        // The block has 1 row and 16 columns – the gather restriction.
+        let desc_ty = Type::parse(&context, "!tt.tensordesc<tensor<1x16xf32>>")
+            .expect("valid tensordesc type");
+
+        // x_offsets type: tensor<16xi32> (16 column-offset indices).
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+        let x_offsets_ty: Type = tensor_type(&[16], i32_type).into();
+
+        // y_offset type: i32.
+        let y_offset_ty = i32_type;
+
+        // Build a wrapper function so operands have proper block-argument types.
+        let func_op = create_func(
+            &context,
+            location,
+            "test_descriptor_gather",
+            "public",
+            &[desc_ty, x_offsets_ty, y_offset_ty],
+            &[result_tensor_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[
+            (desc_ty, location),
+            (x_offsets_ty, location),
+            (y_offset_ty, location),
+        ]);
+
+        let desc: Value = block.argument(0).unwrap().into();
+        let x_offsets: Value = block.argument(1).unwrap().into();
+        let y_offset: Value = block.argument(2).unwrap().into();
+
+        let gather_op: Operation<'_> =
+            descriptor_gather(&context, location, desc, x_offsets, y_offset, result_tensor_ty)
+                .unwrap()
+                .into();
+
+        let ret_val: Value = gather_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[ret_val]).build();
+
+        block.append_operation(gather_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.descriptor_gather"),
+            "missing op mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("tensordesc"),
+            "missing tensordesc operand type:\n{output}"
+        );
+        assert!(
+            output.contains("tensor<16x16xf32>"),
+            "missing result tensor type:\n{output}"
+        );
     }
 
     #[test]
