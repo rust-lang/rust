@@ -715,7 +715,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         const DIAGNOSTIC_ATTRIBUTES: &[(Symbol, Option<Symbol>)] = &[
             (sym::on_unimplemented, None),
             (sym::do_not_recommend, None),
-            (sym::on_move, None),
+            (sym::on_move, Some(sym::diagnostic_on_move)),
             (sym::on_const, Some(sym::diagnostic_on_const)),
             (sym::on_unknown, Some(sym::diagnostic_on_unknown)),
         ];
