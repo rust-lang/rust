@@ -602,8 +602,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             BorrowedContentSource::DerefRawPointer
         } else if base_ty.is_mutable_ptr() {
             BorrowedContentSource::DerefMutableRef
-        } else {
+        } else if base_ty.is_ref() {
             BorrowedContentSource::DerefSharedRef
+        } else {
+            // Custom type implementing `Deref` (e.g. `MyBox<T>`, `Rc<T>`, `Arc<T>`)
+            // that wasn't detected via the MIR init trace above. This can happen
+            // when the deref base is initialized by a regular statement rather than
+            // a `TerminatorKind::Call` with `CallSource::OverloadedOperator`.
+            BorrowedContentSource::OverloadedDeref(base_ty)
         }
     }
 

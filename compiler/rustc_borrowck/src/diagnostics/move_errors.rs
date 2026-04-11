@@ -14,7 +14,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::debug;
 
 use crate::MirBorrowckCtxt;
-use crate::diagnostics::{CapturedMessageOpt, DescribePlaceOpt, UseSpans};
+use crate::diagnostics::{BorrowedContentSource, CapturedMessageOpt, DescribePlaceOpt, UseSpans};
 use crate::prefixes::PrefixSet;
 
 #[derive(Debug)]
@@ -685,6 +685,43 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
+    /// Suggest cloning via UFCS when a move occurs through a custom `Deref` impl.
+    ///
+    /// A simple `.clone()` on a type like `MyBox<Vec<i32>>` would clone the wrapper,
+    /// not the inner `Vec<i32>`. Instead, we suggest `<Vec<i32> as Clone>::clone(&val)`.
+    ///
+    /// Returns `true` if a suggestion was emitted, `false` otherwise (e.g. when the
+    /// type does not implement `Clone` at all).
+    fn suggest_cloning_through_overloaded_deref(
+        &self,
+        err: &mut Diag<'_>,
+        ty: Ty<'tcx>,
+        span: Span,
+    ) -> bool {
+        let tcx = self.infcx.tcx;
+        let Some(clone_trait) = tcx.lang_items().clone_trait() else { return false };
+        let Some(errors) =
+            self.infcx.type_implements_trait_shallow(clone_trait, ty, self.infcx.param_env)
+        else {
+            return false;
+        };
+
+        if !errors.is_empty() {
+            return false;
+        }
+        let sugg = vec![
+            (span.shrink_to_lo(), format!("<{ty} as Clone>::clone(&")),
+            (span.shrink_to_hi(), ")".to_string()),
+        ];
+        err.multipart_suggestion(
+            "you can `clone` the value and consume it, but this might not be \
+             your desired behavior",
+            sugg,
+            Applicability::MaybeIncorrect,
+        );
+        true
+    }
+
     fn add_move_hints(
         &self,
         error: GroupedMoveError<'tcx>,
@@ -735,14 +772,38 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 };
 
                 if !has_clone_suggestion {
-                    if let Some(expr) = self.find_expr(use_span) {
-                        self.suggest_cloning(
-                            err,
-                            original_path.as_ref(),
-                            place_ty,
-                            expr,
-                            Some(use_spans),
-                        );
+                    // Check if the move is directly through a custom Deref impl
+                    // (e.g. `*my_box` where MyBox implements Deref).
+                    // A simple `.clone()` would clone the wrapper type rather than
+                    // the inner value, so we need a UFCS suggestion instead.
+                    //
+                    // However, if there are further projections after the deref
+                    // (e.g. `(*rc).field`), the value accessed is already the inner
+                    // type and a simple `.clone()` works correctly.
+                    let needs_ufcs = original_path.projection.last()
+                        == Some(&ProjectionElem::Deref)
+                        && original_path.iter_projections().any(|(place, elem)| {
+                            matches!(elem, ProjectionElem::Deref)
+                                && matches!(
+                                    self.borrowed_content_source(place),
+                                    BorrowedContentSource::OverloadedDeref(_)
+                                        | BorrowedContentSource::OverloadedIndex(_)
+                                )
+                        });
+
+                    let emitted_ufcs = needs_ufcs
+                        && self.suggest_cloning_through_overloaded_deref(err, place_ty, use_span);
+
+                    if !emitted_ufcs {
+                        if let Some(expr) = self.find_expr(use_span) {
+                            self.suggest_cloning(
+                                err,
+                                original_path.as_ref(),
+                                place_ty,
+                                expr,
+                                Some(use_spans),
+                            );
+                        }
                     }
                 }
 
