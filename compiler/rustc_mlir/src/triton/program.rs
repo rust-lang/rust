@@ -20,7 +20,7 @@ use melior::ir::r#type::IntegerType;
 
 use crate::errors::Error;
 use crate::triton::attr_i32;
-use crate::triton::tt::GetProgramIdOperation;
+use crate::triton::tt::{GetNumProgramsOperation, GetProgramIdOperation};
 
 #[derive(Debug, Clone, Copy)]
 pub enum ProgramAxis {
@@ -50,6 +50,16 @@ pub fn create_get_program_id<'ctx>(
     Ok(GetProgramIdOperation::builder(context, location).axis(axis_attr).result(result).build())
 }
 
+pub fn create_get_num_programs<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    axis: ProgramAxis,
+) -> Result<GetNumProgramsOperation<'ctx>, Error> {
+    let axis_attr = attr_i32(context, axis as i32).into();
+    let result = IntegerType::new(context, 32).into();
+    Ok(GetNumProgramsOperation::builder(context, location).axis(axis_attr).result(result).build())
+}
+
 #[cfg(test)]
 mod tests {
     use melior::ir::{BlockLike, Module};
@@ -68,6 +78,35 @@ mod tests {
         let output = create_get_program_id(&context, location, axis).unwrap().as_operation().to_string();
         let expected = "%0 = \"tt.get_program_id\"() {axis = 1 : i32} : () -> i32\n";
         assert_eq!(expected, output);
+    }
+
+    #[test]
+    fn test_create_tt_get_num_programs_generic() {
+        let context = Context::new();
+        let location = Location::unknown(&context);
+        let axis = ProgramAxis::Axis2;
+
+        let output =
+            create_get_num_programs(&context, location, axis).unwrap().as_operation().to_string();
+        let expected = "%0 = \"tt.get_num_programs\"() {axis = 2 : i32} : () -> i32\n";
+        assert_eq!(expected, output);
+    }
+
+    #[test]
+    fn test_create_tt_get_num_programs_pretty() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let num_programs_op =
+            create_get_num_programs(&context, location, ProgramAxis::Axis0).unwrap();
+        module.body().append_operation(num_programs_op.into());
+
+        let output = module.as_operation().to_string();
+        assert!(output.contains("tt.get_num_programs"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("i32"), "missing result type:\n{output}");
     }
 
     /// Pretty (dialect loaded) format: op name is unquoted and axis prints as the enum mnemonic.
