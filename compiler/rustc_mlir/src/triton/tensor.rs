@@ -1696,6 +1696,47 @@ pub fn broadcast<'ctx>(
         .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.broadcast: {e}") })
 }
 
+/// Build a `tt.bitcast` operation.
+///
+/// Reinterprets the bits of `src` as `result_ty` without any conversion.
+/// Both types must have the same bitwidth.  Unlike `arith.bitcast`, this op
+/// supports Triton pointer types in addition to ordinary integer and
+/// floating-point types.
+///
+/// Traits: `Elementwise`, `SameOperandsAndResultShape`,
+/// `SameOperandsAndResultEncoding`, `Pure`.
+///
+/// # Arguments
+/// * `src`       – source value (scalar or tensor of any Triton-supported type).
+/// * `result_ty` – target type; must have the same bitwidth as `src`'s element
+///                 type and the same shape when both are tensors.
+///
+/// # Example
+///
+/// ```text
+/// // Reinterpret f32 bits as i32:
+/// %i = tt.bitcast %f : f32 -> i32
+/// // Reinterpret a tensor of f32 as tensor of i32:
+/// %is = tt.bitcast %fs : tensor<8xf32> -> tensor<8xi32>
+/// ```
+///
+/// Assembly format (from TableGen):
+/// ```text
+/// $src attr-dict `:` type($src) `->` type($result)
+/// ```
+pub fn bitcast<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    src: Value<'ctx, '_>,
+    result_ty: Type<'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    OperationBuilder::new("tt.bitcast", location)
+        .add_operands(&[src])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.bitcast: {e}") })
+}
+
 /// Build a `tt.clampf` operation.
 ///
 /// Clamps a floating-point scalar or tensor `x` to the closed interval
@@ -5816,5 +5857,107 @@ mod tests {
         assert!(output.contains("tt.broadcast"), "missing op mnemonic:\n{output}");
         assert!(output.contains("tensor<1x32x1xf32>"), "missing src tensor type:\n{output}");
         assert!(output.contains("tensor<2x32x4xf32>"), "missing result tensor type:\n{output}");
+    }
+
+    /// Verify that `bitcast` emits the correct `tt.bitcast` IR for a scalar cast.
+    ///
+    /// Casts `f32` to `i32` (same bitwidth, scalar).
+    ///
+    /// Expected assembly fragment:
+    /// ```text
+    /// %0 = tt.bitcast %arg0 : f32 -> i32
+    /// ```
+    #[test]
+    fn test_bitcast_scalar() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_bitcast_scalar",
+            "public",
+            &[f32_type],
+            &[i32_type],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(f32_type, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let bitcast_op: Operation<'_> =
+            super::bitcast(&context, location, src, i32_type).unwrap();
+        let result_val: Value = bitcast_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(bitcast_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.bitcast"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("f32"), "missing src type:\n{output}");
+        assert!(output.contains("i32"), "missing result type:\n{output}");
+    }
+
+    /// Verify that `bitcast` emits the correct `tt.bitcast` IR for a tensor cast.
+    ///
+    /// Reinterprets `tensor<8xf32>` as `tensor<8xi32>`.
+    ///
+    /// Expected assembly fragment:
+    /// ```text
+    /// %0 = tt.bitcast %arg0 : tensor<8xf32> -> tensor<8xi32>
+    /// ```
+    #[test]
+    fn test_bitcast_tensor() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let i32_type: Type = IntegerType::new(&context, 32).into();
+        let src_ty: Type = tensor_type(&[8], f32_type).into();
+        let result_ty: Type = tensor_type(&[8], i32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_bitcast_tensor",
+            "public",
+            &[src_ty],
+            &[result_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let bitcast_op: Operation<'_> =
+            super::bitcast(&context, location, src, result_ty).unwrap();
+        let result_val: Value = bitcast_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(bitcast_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.bitcast"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("tensor<8xf32>"), "missing src tensor type:\n{output}");
+        assert!(output.contains("tensor<8xi32>"), "missing result tensor type:\n{output}");
     }
 }
