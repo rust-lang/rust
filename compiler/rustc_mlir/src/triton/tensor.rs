@@ -27,9 +27,10 @@ use crate::ffi::mlirCreateTritonPointerType;
 use crate::shared::builtin::tensor_type;
 use crate::triton::attr_i32;
 use crate::triton::tt::{
-    AddPtrOperation, DescriptorGatherOperation, LoadOperation, MakeRangeOperation,
-    MulhiUIOperation, PreciseDivFOperation, PreciseSqrtOperation, ReduceOperation, ReduceReturnOperation,
-    ReturnOperation, ScanOperation, ScanReturnOperation, SplatOperation,
+    AddPtrOperation, DescriptorGatherOperation, LoadOperation, MapElementwiseReturnOperation,
+    MakeRangeOperation, MulhiUIOperation, PreciseDivFOperation, PreciseSqrtOperation,
+    ReduceOperation, ReduceReturnOperation, ReturnOperation, ScanOperation, ScanReturnOperation,
+    SplatOperation,
 };
 
 /// Mirror of Triton's `InputPrecision` enum (TritonAttrDefs.td).
@@ -624,6 +625,37 @@ pub fn reduce_return<'ctx>(
     result: &[Value<'ctx, '_>],
 ) -> Result<ReduceReturnOperation<'ctx>, Error> {
     Ok(ReduceReturnOperation::builder(context, location).result(result).build())
+}
+
+/// Build a `tt.map_elementwise.return` operation.
+///
+/// `tt.map_elementwise.return` is the terminator for the `scalarOp` region
+/// inside a `tt.map_elementwise` op.  It yields the scalar results produced
+/// by the body back to the enclosing map operation.  The operand types must
+/// match the element types of the corresponding result tensors declared by
+/// the enclosing `tt.map_elementwise` op.
+///
+/// # Arguments
+/// * `result` – scalar values to yield; types must match the element types of
+///              the enclosing `tt.map_elementwise` result tensors.
+///
+/// # Example
+///
+/// ```text
+/// // Inside a tt.map_elementwise scalarOp region where %arg0 : f32:
+/// tt.map_elementwise.return %arg0 : f32
+/// ```
+///
+/// Assembly format (from TableGen):
+/// ```text
+/// tt.map_elementwise.return attr-dict ($result^ `:` type($result))?
+/// ```
+pub fn map_elementwise_return<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    result: &[Value<'ctx, '_>],
+) -> Result<MapElementwiseReturnOperation<'ctx>, Error> {
+    Ok(MapElementwiseReturnOperation::builder(context, location).result(result).build())
 }
 
 /// Build a `tt.scan` operation.
@@ -2927,6 +2959,167 @@ mod tests {
         assert!(
             output.contains("tensor<8xf32>"),
             "missing tensor<8xf32> type:\n{output}"
+        );
+    }
+
+    /// Verify that `map_elementwise_return` emits a valid `tt.map_elementwise.return` op.
+    ///
+    /// Builds a `tt.map_elementwise` op over a `tensor<4xf32>` whose `scalarOp`
+    /// region contains a single block argument (`f32`) and a
+    /// `tt.map_elementwise.return` that yields it unchanged.
+    ///
+    /// Expected IR contains:
+    /// ```text
+    /// tt.map_elementwise.return %arg0 : f32
+    /// ```
+    #[test]
+    fn test_map_elementwise_return() {
+        use crate::triton::tt::MapElementwiseOperation;
+
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[4], f32_type).into();
+
+        // Wrap inside a tt.func so all SSA values are valid.
+        let func_op = create_func(
+            &context,
+            location,
+            "test_map_elementwise_return",
+            "public",
+            &[src_ty],
+            &[src_ty],
+            0,
+        )
+        .unwrap();
+
+        // --- Build the scalarOp region ---
+        // The block has one f32 argument (the element value); yield it back unchanged.
+        let scalar_block = Block::new(&[(f32_type, location)]);
+        let elem: Value = scalar_block.argument(0).unwrap().into();
+
+        // tt.map_elementwise.return %elem : f32
+        let ret_op: Operation<'_> =
+            map_elementwise_return(&context, location, &[elem]).unwrap().into();
+        scalar_block.append_operation(ret_op);
+
+        let scalar_region = melior::ir::Region::new();
+        scalar_region.append_block(scalar_block);
+
+        // --- Build the tt.map_elementwise op ---
+        let func_block = Block::new(&[(src_ty, location)]);
+        let src: Value = func_block.argument(0).unwrap().into();
+
+        let pack_attr = attr_i32(&context, 0);
+
+        let map_op: Operation<'_> = MapElementwiseOperation::builder(&context, location)
+            .result(&[src_ty])
+            .srcs(&[src])
+            .scalar_op(scalar_region)
+            .pack(pack_attr)
+            .build()
+            .into();
+
+        let map_result: Value = map_op.result(0).unwrap().into();
+        let fn_ret = ReturnOperation::builder(&context, location).srcs(&[map_result]).build();
+
+        func_block.append_operation(map_op);
+        func_block.append_operation(fn_ret.into());
+        func_op.body().unwrap().append_block(func_block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.map_elementwise"),
+            "missing tt.map_elementwise mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("tt.map_elementwise.return"),
+            "missing tt.map_elementwise.return terminator:\n{output}"
+        );
+        assert!(output.contains("f32"), "missing f32 type annotation:\n{output}");
+    }
+
+    /// Verify the exact pretty-printed form of `tt.map_elementwise.return`.
+    ///
+    /// Checks that the emitted IR contains the canonical assembly-format string:
+    /// ```text
+    /// tt.map_elementwise.return %arg0 : f32
+    /// ```
+    #[test]
+    fn test_map_elementwise_return_pretty_format() {
+        use crate::triton::tt::MapElementwiseOperation;
+
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_map_elementwise_return_pretty",
+            "public",
+            &[src_ty],
+            &[src_ty],
+            0,
+        )
+        .unwrap();
+
+        // scalarOp region: block(%arg0: f32) { tt.map_elementwise.return %arg0 : f32 }
+        let scalar_block = Block::new(&[(f32_type, location)]);
+        let elem: Value = scalar_block.argument(0).unwrap().into();
+        let ret_op: Operation<'_> =
+            map_elementwise_return(&context, location, &[elem]).unwrap().into();
+        scalar_block.append_operation(ret_op);
+
+        let scalar_region = melior::ir::Region::new();
+        scalar_region.append_block(scalar_block);
+
+        let func_block = Block::new(&[(src_ty, location)]);
+        let src: Value = func_block.argument(0).unwrap().into();
+
+        let pack_attr = attr_i32(&context, 0);
+
+        let map_op: Operation<'_> = MapElementwiseOperation::builder(&context, location)
+            .result(&[src_ty])
+            .srcs(&[src])
+            .scalar_op(scalar_region)
+            .pack(pack_attr)
+            .build()
+            .into();
+
+        let map_result: Value = map_op.result(0).unwrap().into();
+        let fn_ret = ReturnOperation::builder(&context, location).srcs(&[map_result]).build();
+
+        func_block.append_operation(map_op);
+        func_block.append_operation(fn_ret.into());
+        func_op.body().unwrap().append_block(func_block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        // Pretty-printed form: "tt.map_elementwise.return %arg0 : f32"
+        assert!(
+            output.contains("tt.map_elementwise.return"),
+            "missing tt.map_elementwise.return mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains(": f32"),
+            "missing f32 type annotation in tt.map_elementwise.return:\n{output}"
+        );
+        assert!(
+            output.contains("pack = 0") || output.contains("pack = 0 :"),
+            "missing pack attribute:\n{output}"
         );
     }
 }
