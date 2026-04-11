@@ -507,6 +507,64 @@ pub fn split<'ctx>(
     Ok(op)
 }
 
+/// Build a `tt.reshape` operation.
+///
+/// Reinterprets the elements of a tensor to a different shape.  The total
+/// element count must be identical in source and result; the element type is
+/// unchanged.
+///
+/// # Arguments
+/// * `src`              – source tensor to reshape.
+/// * `result_ty`        – target tensor type (same element type, new shape).
+/// * `allow_reorder`    – when `true` the compiler may change element order
+///                        to produce more efficient code.
+/// * `efficient_layout` – hint that the destination layout should be
+///                        preserved for performance (compiler may override).
+///
+/// # Example
+///
+/// ```text
+/// // Without flags:
+/// %1 = tt.reshape %0 : tensor<8xf32> -> tensor<2x4xf32>
+///
+/// // With allow_reorder:
+/// %1 = tt.reshape %0 allow_reorder : tensor<8xf32> -> tensor<2x4xf32>
+/// ```
+///
+/// Assembly format (from TableGen):
+/// ```text
+/// $src (`allow_reorder` $allow_reorder^)? (`efficient_layout` $efficient_layout^)? attr-dict `:` type($src) `->` type($result)
+/// ```
+pub fn reshape<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    src: Value<'ctx, 'ctx>,
+    result_ty: Type<'ctx>,
+    allow_reorder: bool,
+    efficient_layout: bool,
+) -> Result<Operation<'ctx>, Error> {
+    let mut builder = OperationBuilder::new("tt.reshape", location)
+        .add_operands(&[src])
+        .add_results(&[result_ty]);
+
+    if allow_reorder {
+        builder = builder.add_attributes(&[(
+            Identifier::new(context, "allow_reorder"),
+            Attribute::unit(context),
+        )]);
+    }
+    if efficient_layout {
+        builder = builder.add_attributes(&[(
+            Identifier::new(context, "efficient_layout"),
+            Attribute::unit(context),
+        )]);
+    }
+
+    builder
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.reshape: {e}") })
+}
+
 /// Build a `tt.scan.return` operation.
 ///
 /// `tt.scan.return` is the terminator for the `combineOp` region inside a
@@ -1575,6 +1633,146 @@ mod tests {
             output.contains("tensor<4x2xf32>") && output.contains("tensor<4xf32>"),
             "missing type annotations in tt.split output:\n{output}"
         );
+    }
+
+    /// Verify that `reshape` emits the correct `tt.reshape` op without flags.
+    ///
+    /// Input `tensor<8xf32>` → `tensor<2x4xf32>` with no optional attributes.
+    #[test]
+    fn test_reshape_no_flags() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[8], f32_type).into();
+        let dst_ty: Type = tensor_type(&[2, 4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_reshape_no_flags",
+            "public",
+            &[src_ty],
+            &[dst_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let reshape_op: Operation<'_> =
+            reshape(&context, location, src, dst_ty, false, false).unwrap();
+
+        let result: Value = reshape_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result]).build();
+
+        block.append_operation(reshape_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.reshape"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("tensor<8xf32>"), "missing src type:\n{output}");
+        assert!(output.contains("tensor<2x4xf32>"), "missing result type:\n{output}");
+        // No optional attributes should appear.
+        assert!(!output.contains("allow_reorder"), "unexpected allow_reorder flag:\n{output}");
+        assert!(!output.contains("efficient_layout"), "unexpected efficient_layout flag:\n{output}");
+    }
+
+    /// Verify that `reshape` with `allow_reorder = true` emits the flag.
+    #[test]
+    fn test_reshape_allow_reorder() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[8], f32_type).into();
+        let dst_ty: Type = tensor_type(&[2, 4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_reshape_allow_reorder",
+            "public",
+            &[src_ty],
+            &[dst_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let reshape_op: Operation<'_> =
+            reshape(&context, location, src, dst_ty, true, false).unwrap();
+
+        let result: Value = reshape_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result]).build();
+
+        block.append_operation(reshape_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.reshape"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("allow_reorder"), "missing allow_reorder flag:\n{output}");
+        assert!(!output.contains("efficient_layout"), "unexpected efficient_layout flag:\n{output}");
+    }
+
+    /// Verify that `reshape` with both flags emits both attributes.
+    #[test]
+    fn test_reshape_both_flags() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[8], f32_type).into();
+        let dst_ty: Type = tensor_type(&[2, 4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_reshape_both_flags",
+            "public",
+            &[src_ty],
+            &[dst_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let reshape_op: Operation<'_> =
+            reshape(&context, location, src, dst_ty, true, true).unwrap();
+
+        let result: Value = reshape_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result]).build();
+
+        block.append_operation(reshape_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.reshape"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("allow_reorder"), "missing allow_reorder flag:\n{output}");
+        assert!(output.contains("efficient_layout"), "missing efficient_layout flag:\n{output}");
     }
 
     /// Verify that `scan_return` emits `tt.scan.return` with the correct
