@@ -473,6 +473,40 @@ pub fn zeros_like<'ctx>(
     todo!()
 }
 
+/// Build a `tt.split` operation.
+///
+/// Splits a tensor along its last dimension into two equal halves.
+/// The input must be a tensor whose last dimension has size 2.
+///
+/// # Arguments
+/// * `src`      – source tensor; last dimension must be 2
+/// * `out_type` – element type for both `outLHS` and `outRHS`
+///                (the src type with its last dimension removed)
+///
+/// # Example
+///
+/// Input `tensor<4x2xf32>` → two results of type `tensor<4xf32>`.
+///
+/// Assembly format:
+/// ```text
+/// %lhs, %rhs = tt.split %src : tensor<4x2xf32> -> tensor<4xf32>
+/// ```
+pub fn split<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    src: Value<'ctx, 'ctx>,
+    out_type: Type<'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    // Both outLHS and outRHS have the same type (TypesMatchWith constraint).
+    let op = OperationBuilder::new("tt.split", location)
+        .add_operands(&[src])
+        .add_results(&[out_type, out_type])
+        .build()
+        .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.split: {e}") })?;
+
+    Ok(op)
+}
+
 #[cfg(test)]
 mod tests {
     use melior::Context;
@@ -1276,6 +1310,112 @@ mod tests {
         assert!(
             output.contains("evictionPolicy = evict_first") || output.contains("evict = 2"),
             "missing evictionPolicy = evict_first (EvictionPolicy::EvictFirst = 2):\n{output}"
+        );
+    }
+
+    /// Verify that `split` emits the correct `tt.split` op.
+    ///
+    /// Input tensor `tensor<4x2xf32>` → two outputs of type `tensor<4xf32>`.
+    #[test]
+    fn test_split() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        // Input: tensor<4x2xf32>  (last dimension must be 2)
+        let src_ty: Type = tensor_type(&[4, 2], f32_type).into();
+        // Each output: tensor<4xf32>
+        let out_ty: Type = tensor_type(&[4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_split",
+            "public",
+            &[src_ty],
+            &[out_ty, out_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let split_op: Operation<'_> = split(&context, location, src, out_ty).unwrap();
+
+        let lhs: Value = split_op.result(0).unwrap().into();
+        let rhs: Value = split_op.result(1).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[lhs, rhs]).build();
+
+        block.append_operation(split_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.split"), "missing op mnemonic:\n{output}");
+        assert!(
+            output.contains("tensor<4x2xf32>"),
+            "missing src tensor type:\n{output}"
+        );
+        assert!(
+            output.contains("tensor<4xf32>"),
+            "missing output tensor type:\n{output}"
+        );
+    }
+
+    /// Verify pretty-printed `tt.split` with exact IR form.
+    #[test]
+    fn test_split_pretty_format() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[4, 2], f32_type).into();
+        let out_ty: Type = tensor_type(&[4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_split_pretty",
+            "public",
+            &[src_ty],
+            &[out_ty, out_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(src_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let split_op: Operation<'_> = split(&context, location, src, out_ty).unwrap();
+
+        let lhs: Value = split_op.result(0).unwrap().into();
+        let rhs: Value = split_op.result(1).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[lhs, rhs]).build();
+
+        block.append_operation(split_op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        // Pretty-printed form: "tt.split %arg0 : tensor<4x2xf32> -> tensor<4xf32>"
+        assert!(
+            output.contains("tt.split"),
+            "missing tt.split mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("tensor<4x2xf32>") && output.contains("tensor<4xf32>"),
+            "missing type annotations in tt.split output:\n{output}"
         );
     }
 }
