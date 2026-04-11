@@ -1601,10 +1601,6 @@ See: https://github.com/rustfoundation/interop-initiative/issues/53
 
 See [the `windows_subsystem` attribute](https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute).
 
-## `whitespace`
-Contains tests for ASCII whitespace handling, excluding vertical tab, and ensures correct lexer behavior.
-
-
 ## `tests/ui/zero-sized/`: Zero-sized types
 
 See [Zero-Sized Types | Reference](https://doc.rust-lang.org/nomicon/exotic-sizes.html#zero-sized-types-zsts).
