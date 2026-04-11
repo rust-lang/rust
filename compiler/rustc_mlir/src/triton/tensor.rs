@@ -1420,6 +1420,61 @@ pub fn fp_to_fp<'ctx>(
         .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.fp_to_fp: {e}") })
 }
 
+/// Build a `tt.extern_elementwise` operation.
+///
+/// Calls an external elementwise function identified by `symbol` from the
+/// shared library `libpath/libname`, passing `srcs` as arguments and
+/// returning a value of `result_ty`.
+///
+/// Traits: `Elementwise`, `SameOperandsAndResultEncoding`,
+/// `SameVariadicOperandSize`, `MemoryEffectsOpInterface`,
+/// `ConditionallySpeculatable`.
+///
+/// # Arguments
+/// * `srcs`      – variadic source operands (scalar or tensor, any `TT_Type`).
+/// * `libname`   – name of the shared library (e.g. `"libdevice"`).
+/// * `libpath`   – filesystem path to the library (e.g. `"/usr/local/cuda/nvvm/libdevice"`).
+/// * `symbol`    – symbol name inside the library (e.g. `"__nv_sinf"`).
+/// * `pure`      – when `true` the call has no side effects and may be
+///                 hoisted / CSE'd.
+/// * `result_ty` – result element/tensor type.
+///
+/// # Assembly format
+///
+/// ```text
+/// tt.extern_elementwise %arg0, %arg1 {libname = "libdevice", libpath = "/path", symbol = "__nv_sinf", pure = true}
+///     : (f32, f32) -> f32
+/// ```
+pub fn extern_elementwise<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    srcs: &[Value<'ctx, '_>],
+    libname: &str,
+    libpath: &str,
+    symbol: &str,
+    pure: bool,
+    result_ty: Type<'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    let libname_attr = StringAttribute::new(context, libname);
+    let libpath_attr = StringAttribute::new(context, libpath);
+    let symbol_attr = StringAttribute::new(context, symbol);
+    let pure_attr = BoolAttribute::new(context, pure);
+
+    OperationBuilder::new("tt.extern_elementwise", location)
+        .add_operands(srcs)
+        .add_attributes(&[
+            (Identifier::new(context, "libname"), Attribute::from(libname_attr)),
+            (Identifier::new(context, "libpath"), Attribute::from(libpath_attr)),
+            (Identifier::new(context, "symbol"), Attribute::from(symbol_attr)),
+            (Identifier::new(context, "pure"), Attribute::from(pure_attr)),
+        ])
+        .add_results(&[result_ty])
+        .build()
+        .map_err(|e| Error::InvalidType {
+            msg: format!("failed to build tt.extern_elementwise: {e}"),
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use melior::Context;
@@ -4752,5 +4807,142 @@ mod tests {
         assert!(output.contains("tt.fp_to_fp"), "missing op mnemonic:\n{output}");
         assert!(output.contains("tensor<8xf32>"), "missing src tensor type:\n{output}");
         assert!(output.contains("tensor<8xf16>"), "missing result tensor type:\n{output}");
+    }
+
+    /// Verify that `extern_elementwise` builds successfully and emits the
+    /// correct `tt.extern_elementwise` mnemonic with all four required
+    /// attributes.
+    ///
+    /// A `tensor<8xf32>` function argument is passed as the sole source
+    /// operand.  The result type is also `tensor<8xf32>`.  We check that the
+    /// pretty-printed IR contains the op mnemonic, the `libname`, `libpath`,
+    /// `symbol`, and `pure` attributes.
+    #[test]
+    fn test_extern_elementwise() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let tensor_ty: Type = tensor_type(&[8], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_extern_elementwise",
+            "public",
+            &[tensor_ty],
+            &[tensor_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(tensor_ty, location)]);
+        let src: Value = block.argument(0).unwrap().into();
+
+        let op: Operation<'_> = super::extern_elementwise(
+            &context,
+            location,
+            &[src],
+            "libdevice",
+            "/usr/local/cuda/nvvm/libdevice",
+            "__nv_sinf",
+            true,
+            tensor_ty,
+        )
+        .unwrap();
+
+        let result_val: Value = op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.extern_elementwise"),
+            "missing op mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("libdevice"),
+            "missing libname attribute:\n{output}"
+        );
+        assert!(
+            output.contains("__nv_sinf"),
+            "missing symbol attribute:\n{output}"
+        );
+        assert!(
+            output.contains("tensor<8xf32>"),
+            "missing tensor type:\n{output}"
+        );
+    }
+
+    /// Verify that `extern_elementwise` with multiple source operands emits
+    /// correctly — the `functional-type` format should list all operand types.
+    #[test]
+    fn test_extern_elementwise_multi_src() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let tensor_ty: Type = tensor_type(&[4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_extern_elementwise_multi",
+            "public",
+            &[tensor_ty, tensor_ty],
+            &[tensor_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(tensor_ty, location), (tensor_ty, location)]);
+        let src0: Value = block.argument(0).unwrap().into();
+        let src1: Value = block.argument(1).unwrap().into();
+
+        let op: Operation<'_> = super::extern_elementwise(
+            &context,
+            location,
+            &[src0, src1],
+            "libdevice",
+            "/path/to/lib",
+            "__nv_fmaf",
+            false,
+            tensor_ty,
+        )
+        .unwrap();
+
+        let result_val: Value = op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result_val]).build();
+
+        block.append_operation(op);
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.extern_elementwise"),
+            "missing op mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("__nv_fmaf"),
+            "missing symbol attribute:\n{output}"
+        );
+        assert!(
+            output.contains("tensor<4xf32>"),
+            "missing tensor type:\n{output}"
+        );
     }
 }
