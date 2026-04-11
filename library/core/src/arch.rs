@@ -93,4 +93,4 @@ pub fn breakpoint() {
 /// ```
 #[unstable(feature = "return_address", issue = "154966")]
 #[allow_internal_unstable(core_intrinsics)]
-pub macro return_address() {{ core::intrinsics::return_address::<()>() }}
+pub macro return_address() {{ core::intrinsics::return_address() }}
