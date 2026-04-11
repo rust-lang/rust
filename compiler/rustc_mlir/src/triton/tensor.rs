@@ -28,7 +28,7 @@ use crate::shared::builtin::tensor_type;
 use crate::triton::attr_i32;
 use crate::triton::tt::{
     AddPtrOperation, DescriptorGatherOperation, LoadOperation, MakeRangeOperation,
-    MulhiUIOperation, SplatOperation,
+    MulhiUIOperation, ScanReturnOperation, SplatOperation,
 };
 
 /// Mirror of Triton's `InputPrecision` enum (TritonAttrDefs.td).
@@ -505,6 +505,36 @@ pub fn split<'ctx>(
         .map_err(|e| Error::InvalidType { msg: format!("failed to build tt.split: {e}") })?;
 
     Ok(op)
+}
+
+/// Build a `tt.scan.return` operation.
+///
+/// `tt.scan.return` is the terminator for the `combineOp` region inside a
+/// `tt.scan` op.  It returns the element-wise combined values back to the
+/// scan loop.  The operands must match the element types declared by the
+/// enclosing `tt.scan` op (one scalar per input tensor).
+///
+/// # Arguments
+/// * `result` – the values to return; their types must match the element
+///              types of the enclosing `tt.scan` combineOp block arguments.
+///
+/// # Example
+///
+/// ```text
+/// // Inside a tt.scan combineOp region where %arg0 and %arg1 : f32:
+/// tt.scan.return %arg0 : f32
+/// ```
+///
+/// Assembly format (from TableGen):
+/// ```text
+/// tt.scan.return $result attr-dict : type($result)
+/// ```
+pub fn scan_return<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    result: &[Value<'ctx, '_>],
+) -> Result<ScanReturnOperation<'ctx>, Error> {
+    Ok(ScanReturnOperation::builder(context, location).result(result).build())
 }
 
 #[cfg(test)]
@@ -1463,6 +1493,187 @@ mod tests {
         assert!(
             output.contains("tensor<4x2xf32>") && output.contains("tensor<4xf32>"),
             "missing type annotations in tt.split output:\n{output}"
+        );
+    }
+
+    /// Verify that `scan_return` emits `tt.scan.return` with the correct
+    /// operands and type annotation.
+    ///
+    /// The test builds a minimal `tt.scan` over a `tensor<4xf32>` with
+    /// axis=0 and reverse=false.  The `combineOp` region holds one block
+    /// with two `f32` block arguments (lhs, rhs); `tt.scan.return` yields
+    /// the lhs value back to the scan loop.
+    ///
+    /// Expected pretty-printed form inside the region:
+    /// ```text
+    /// tt.scan.return %arg0 : f32
+    /// ```
+    #[test]
+    fn test_scan_return() {
+        use melior::ir::attribute::BoolAttribute;
+        use melior::ir::operation::OperationMutLike;
+        use crate::triton::tt::{ScanOperation, ScanReturnOperation};
+
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        // Source tensor: tensor<4xf32>
+        let src_ty: Type = tensor_type(&[4], f32_type).into();
+
+        // Wrap in a tt.func so block-arguments are valid SSA values.
+        let func_op = create_func(
+            &context,
+            location,
+            "test_scan_return",
+            "public",
+            &[src_ty],
+            &[src_ty],
+            0,
+        )
+        .unwrap();
+
+        // --- Build the combineOp region ---
+        // The region has a single block with two f32 arguments (lhs, rhs).
+        let combine_block = Block::new(&[(f32_type, location), (f32_type, location)]);
+        let lhs: Value = combine_block.argument(0).unwrap().into();
+
+        // tt.scan.return %lhs : f32
+        let scan_ret_op: Operation<'_> =
+            scan_return(&context, location, &[lhs]).unwrap().into();
+        combine_block.append_operation(scan_ret_op);
+
+        let combine_region = melior::ir::Region::new();
+        combine_region.append_block(combine_block);
+
+        // --- Build the tt.scan op ---
+        let func_block = Block::new(&[(src_ty, location)]);
+        let src: Value = func_block.argument(0).unwrap().into();
+
+        let axis_attr = attr_i32(&context, 0);
+        let reverse_attr: melior::ir::Attribute =
+            BoolAttribute::new(&context, false).into();
+
+        let scan_op: Operation<'_> = ScanOperation::builder(&context, location)
+            .result(&[src_ty])
+            .srcs(&[src])
+            .combine_op(combine_region)
+            .axis(axis_attr)
+            .reverse(reverse_attr)
+            .build()
+            .into();
+
+        let scan_result: Value = scan_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location)
+            .srcs(&[scan_result])
+            .build();
+
+        func_block.append_operation(scan_op);
+        func_block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(func_block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(
+            output.contains("tt.scan"),
+            "missing tt.scan mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains("tt.scan.return"),
+            "missing tt.scan.return terminator:\n{output}"
+        );
+        assert!(
+            output.contains("f32"),
+            "missing f32 type annotation:\n{output}"
+        );
+    }
+
+    /// Verify pretty-printed `tt.scan.return` with exact IR form.
+    ///
+    /// Checks that the emitted IR contains the canonical assembly-format
+    /// string for `tt.scan.return`:
+    /// ```text
+    /// tt.scan.return %arg0 : f32
+    /// ```
+    #[test]
+    fn test_scan_return_pretty_format() {
+        use melior::ir::attribute::BoolAttribute;
+        use crate::triton::tt::{ScanOperation, ScanReturnOperation};
+
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = melior::ir::Type::float32(&context);
+        let src_ty: Type = tensor_type(&[4], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_scan_return_pretty",
+            "public",
+            &[src_ty],
+            &[src_ty],
+            0,
+        )
+        .unwrap();
+
+        // combineOp region: block(%arg0: f32, %arg1: f32) { tt.scan.return %arg0 : f32 }
+        let combine_block = Block::new(&[(f32_type, location), (f32_type, location)]);
+        let lhs: Value = combine_block.argument(0).unwrap().into();
+        let scan_ret_op: Operation<'_> =
+            scan_return(&context, location, &[lhs]).unwrap().into();
+        combine_block.append_operation(scan_ret_op);
+
+        let combine_region = melior::ir::Region::new();
+        combine_region.append_block(combine_block);
+
+        let func_block = Block::new(&[(src_ty, location)]);
+        let src: Value = func_block.argument(0).unwrap().into();
+
+        let axis_attr = attr_i32(&context, 0);
+        let reverse_attr: melior::ir::Attribute =
+            BoolAttribute::new(&context, false).into();
+
+        let scan_op: Operation<'_> = ScanOperation::builder(&context, location)
+            .result(&[src_ty])
+            .srcs(&[src])
+            .combine_op(combine_region)
+            .axis(axis_attr)
+            .reverse(reverse_attr)
+            .build()
+            .into();
+
+        let scan_result: Value = scan_op.result(0).unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location)
+            .srcs(&[scan_result])
+            .build();
+
+        func_block.append_operation(scan_op);
+        func_block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(func_block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        // Pretty-printed form: "tt.scan.return %arg0 : f32"
+        assert!(
+            output.contains("tt.scan.return"),
+            "missing tt.scan.return mnemonic:\n{output}"
+        );
+        assert!(
+            output.contains(": f32"),
+            "missing f32 type annotation in tt.scan.return:\n{output}"
+        );
+        assert!(
+            output.contains("axis = 0") || output.contains("axis = 0 :"),
+            "missing axis attribute:\n{output}"
         );
     }
 }
