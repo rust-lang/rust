@@ -35,6 +35,8 @@ ENV PATH="/node/bin:${PATH}"
 
 WORKDIR /build/
 COPY scripts/musl-toolchain.sh /build/
+COPY scripts/musl-cve-2026-6042.diff /build/
+COPY scripts/musl-cve-2026-40200.diff /build/
 RUN bash musl-toolchain.sh x86_64 && rm -rf build
 WORKDIR /
 
