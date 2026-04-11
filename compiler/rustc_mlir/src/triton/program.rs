@@ -52,18 +52,39 @@ pub fn create_get_program_id<'ctx>(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use melior::ir::{BlockLike, Module};
 
+    use super::*;
+    use crate::test::create_test_context;
+    use crate::triton::load_triton_dialect;
+
+    /// Generic (no dialect loaded) format: op name is quoted and result has `%0 =` prefix.
     #[test]
-    fn test_create_tt_program_id() {
+    fn test_create_tt_program_id_generic() {
         let context = Context::new();
         let location = Location::unknown(&context);
         let axis = ProgramAxis::Axis1;
 
-        let program_id_op = create_get_program_id(&context, location, axis);
-
-        let output = program_id_op.unwrap().as_operation().to_string();
-        let expected = "tt.get_program_id\"() {axis = 1 : i32} : () -> i32\n";
+        let output = create_get_program_id(&context, location, axis).unwrap().as_operation().to_string();
+        let expected = "%0 = \"tt.get_program_id\"() {axis = 1 : i32} : () -> i32\n";
         assert_eq!(expected, output);
+    }
+
+    /// Pretty (dialect loaded) format: op name is unquoted and axis prints as the enum mnemonic.
+    #[test]
+    fn test_create_tt_program_id_pretty() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let program_id_op =
+            create_get_program_id(&context, location, ProgramAxis::Axis1).unwrap();
+        module.body().append_operation(program_id_op.into());
+
+        let output = module.as_operation().to_string();
+        assert!(output.contains("tt.get_program_id"), "missing op mnemonic:\n{output}");
+        assert!(output.contains("i32"), "missing result type:\n{output}");
     }
 }
