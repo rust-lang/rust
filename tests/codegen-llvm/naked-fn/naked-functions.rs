@@ -13,7 +13,7 @@
 //@[thumb] needs-llvm-components: arm
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core, lang_items, rustc_attrs, cfg_target_object_format)]
 #![no_core]
 
 extern crate minicore;
@@ -153,8 +153,8 @@ pub extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize {
 #[unsafe(naked)]
 // FIXME: configure this with `cfg(target_binary_format = "mach-o")`,
 // see https://github.com/rust-lang/rust/issues/152586.
-#[cfg_attr(not(target_vendor = "apple"), link_section = ".text.some_different_name")]
-#[cfg_attr(target_vendor = "apple", link_section = "__TEXT,different")]
+#[cfg_attr(not(target_object_format = "mach-o"), link_section = ".text.some_different_name")]
+#[cfg_attr(target_object_format = "mach-o", link_section = "__TEXT,different")]
 pub extern "C" fn test_link_section() {
     cfg_select! {
         all(target_arch = "arm", target_feature = "thumb-mode") => {
