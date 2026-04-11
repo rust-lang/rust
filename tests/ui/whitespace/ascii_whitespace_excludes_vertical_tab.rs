@@ -19,4 +19,3 @@ fn main() {
         "regular space should split correctly");
 
 }
-
