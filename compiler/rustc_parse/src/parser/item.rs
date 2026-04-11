@@ -9,7 +9,7 @@ use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast_pretty::pprust;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, PResult, StashKey, msg, struct_span_code_err};
+use rustc_errors::{Applicability, MultiSpan, PResult, StashKey, msg, struct_span_code_err};
 use rustc_session::lint::builtin::VARARGS_WITHOUT_PATTERN;
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
@@ -1997,7 +1997,47 @@ impl<'a> Parser<'a> {
             VariantData::Struct { fields, recovered }
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenParen {
-            let body = VariantData::Tuple(self.parse_tuple_struct_body()?, DUMMY_NODE_ID);
+            let openparen = self.token.span;
+            let tuple = self.parse_tuple_struct_body().or_else(|mut err| {
+                if !self.check_noexpect(&TokenKind::Colon) {
+                    Err(err)
+                } else {
+                    // Handle the case where there is a colon in a tuple struct
+                    // The user might have add field names in a tuple struct
+                    // this part gives user suggestions to fix the code
+                    let mut field_names_span = MultiSpan::new();
+                    while self.token != token::CloseParen {
+                        if self.prev_token.is_ident() {
+                            field_names_span
+                                .push_span_label(self.prev_token.span.to(self.token.span), "")
+                        }
+                        self.bump();
+                        self.eat_to_tokens(&[exp!(CloseParen), exp!(Colon)]);
+                    }
+                    if !field_names_span.has_span_labels() {
+                        return Err(err);
+                    }
+                    err.span_help(
+                        field_names_span,
+                        "if you wanted to create a tuple struct, remove field names:",
+                    );
+                    let mut suggestions =
+                        vec![(openparen, "{".to_string()), (self.token.span, "}".to_string())];
+                    // check if there's a semicolon at the end of this tuple struct
+                    // if so, remove it in the suggestion
+                    self.bump();
+                    if self.token == token::Semi {
+                        suggestions.push((self.token.span, "".to_string()));
+                    }
+                    err.multipart_suggestion(
+                        "if you wanted to create a regular struct, use curly braces:",
+                        suggestions,
+                        Applicability::MaybeIncorrect,
+                    );
+                    Err(err)
+                }
+            })?;
+            let body = VariantData::Tuple(tuple, DUMMY_NODE_ID);
             generics.where_clause = self.parse_where_clause()?;
             self.expect_semi()?;
             body
