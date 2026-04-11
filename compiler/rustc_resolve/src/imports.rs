@@ -73,8 +73,6 @@ pub(crate) enum ImportKind<'ra> {
         target: Ident,
         /// Name declarations introduced by the import.
         decls: PerNS<CmCell<PendingDecl<'ra>>>,
-        /// `true` for `...::{self [as target]}` imports, `false` otherwise.
-        type_ns_only: bool,
         /// Did this import result from a nested import? i.e. `use foo::{bar, baz};`
         nested: bool,
         /// The ID of the `UseTree` that imported this `Import`.
@@ -115,7 +113,7 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         use ImportKind::*;
         match self {
-            Single { source, target, decls, type_ns_only, nested, id, .. } => f
+            Single { source, target, decls, nested, id, .. } => f
                 .debug_struct("Single")
                 .field("source", source)
                 .field("target", target)
@@ -124,7 +122,6 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
                     "decls",
                     &decls.clone().map(|b| b.into_inner().decl().map(|_| format_args!(".."))),
                 )
-                .field("type_ns_only", type_ns_only)
                 .field("nested", nested)
                 .field("id", id)
                 .finish(),
@@ -1004,10 +1001,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
 
         import.imported_module.set_unchecked(Some(module));
-        let (source, target, bindings, type_ns_only) = match import.kind {
-            ImportKind::Single { source, target, ref decls, type_ns_only, .. } => {
-                (source, target, decls, type_ns_only)
-            }
+        let (source, target, bindings) = match import.kind {
+            ImportKind::Single { source, target, ref decls, .. } => (source, target, decls),
             ImportKind::Glob { .. } => {
                 self.get_mut_unchecked().resolve_glob_import(import);
                 return 0;
@@ -1017,64 +1012,62 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let mut indeterminate_count = 0;
         self.per_ns_cm(|mut this, ns| {
-            if !type_ns_only || ns == TypeNS {
-                if bindings[ns].get() != PendingDecl::Pending {
-                    return;
-                };
-                let binding_result = this.reborrow().maybe_resolve_ident_in_module(
-                    module,
-                    source,
-                    ns,
-                    &import.parent_scope,
-                    Some(import),
-                );
-                let parent = import.parent_scope.module;
-                let binding = match binding_result {
-                    Ok(binding) => {
-                        if binding.is_assoc_item()
-                            && !this.tcx.features().import_trait_associated_functions()
-                        {
-                            feature_err(
-                                this.tcx.sess,
-                                sym::import_trait_associated_functions,
-                                import.span,
-                                "`use` associated items of traits is unstable",
-                            )
-                            .emit();
-                        }
-                        // We need the `target`, `source` can be extracted.
-                        let import_decl = this.new_import_decl(binding, import);
-                        this.get_mut_unchecked().plant_decl_into_local_module(
-                            IdentKey::new(target),
+            if bindings[ns].get() != PendingDecl::Pending {
+                return;
+            };
+            let binding_result = this.reborrow().maybe_resolve_ident_in_module(
+                module,
+                source,
+                ns,
+                &import.parent_scope,
+                Some(import),
+            );
+            let parent = import.parent_scope.module;
+            let binding = match binding_result {
+                Ok(binding) => {
+                    if binding.is_assoc_item()
+                        && !this.tcx.features().import_trait_associated_functions()
+                    {
+                        feature_err(
+                            this.tcx.sess,
+                            sym::import_trait_associated_functions,
+                            import.span,
+                            "`use` associated items of traits is unstable",
+                        )
+                        .emit();
+                    }
+                    // We need the `target`, `source` can be extracted.
+                    let import_decl = this.new_import_decl(binding, import);
+                    this.get_mut_unchecked().plant_decl_into_local_module(
+                        IdentKey::new(target),
+                        target.span,
+                        ns,
+                        import_decl,
+                    );
+                    PendingDecl::Ready(Some(import_decl))
+                }
+                Err(Determinacy::Determined) => {
+                    // Don't remove underscores from `single_imports`, they were never added.
+                    if target.name != kw::Underscore {
+                        let key = BindingKey::new(IdentKey::new(target), ns);
+                        this.get_mut_unchecked().update_local_resolution(
+                            parent.expect_local(),
+                            key,
                             target.span,
-                            ns,
-                            import_decl,
+                            false,
+                            |_, resolution| {
+                                resolution.single_imports.swap_remove(&import);
+                            },
                         );
-                        PendingDecl::Ready(Some(import_decl))
                     }
-                    Err(Determinacy::Determined) => {
-                        // Don't remove underscores from `single_imports`, they were never added.
-                        if target.name != kw::Underscore {
-                            let key = BindingKey::new(IdentKey::new(target), ns);
-                            this.get_mut_unchecked().update_local_resolution(
-                                parent.expect_local(),
-                                key,
-                                target.span,
-                                false,
-                                |_, resolution| {
-                                    resolution.single_imports.swap_remove(&import);
-                                },
-                            );
-                        }
-                        PendingDecl::Ready(None)
-                    }
-                    Err(Determinacy::Undetermined) => {
-                        indeterminate_count += 1;
-                        PendingDecl::Pending
-                    }
-                };
-                bindings[ns].set_unchecked(binding);
-            }
+                    PendingDecl::Ready(None)
+                }
+                Err(Determinacy::Undetermined) => {
+                    indeterminate_count += 1;
+                    PendingDecl::Pending
+                }
+            };
+            bindings[ns].set_unchecked(binding);
         });
 
         indeterminate_count
@@ -1215,10 +1208,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             PathResult::Indeterminate => unreachable!(),
         };
 
-        let (ident, target, bindings, type_ns_only, import_id) = match import.kind {
-            ImportKind::Single { source, target, ref decls, type_ns_only, id, .. } => {
-                (source, target, decls, type_ns_only, id)
-            }
+        let (ident, target, bindings, import_id) = match import.kind {
+            ImportKind::Single { source, target, ref decls, id, .. } => (source, target, decls, id),
             ImportKind::Glob { ref max_vis, id } => {
                 if import.module_path.len() <= 1 {
                     // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
@@ -1286,66 +1277,64 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let mut all_ns_err = true;
         self.per_ns(|this, ns| {
-            if !type_ns_only || ns == TypeNS {
-                let binding = this.cm().resolve_ident_in_module(
-                    module,
-                    ident,
-                    ns,
-                    &import.parent_scope,
-                    Some(Finalize {
-                        report_private: false,
-                        import: Some(import.summary()),
-                        ..finalize
-                    }),
-                    bindings[ns].get().decl(),
-                    Some(import),
-                );
+            let binding = this.cm().resolve_ident_in_module(
+                module,
+                ident,
+                ns,
+                &import.parent_scope,
+                Some(Finalize {
+                    report_private: false,
+                    import: Some(import.summary()),
+                    ..finalize
+                }),
+                bindings[ns].get().decl(),
+                Some(import),
+            );
 
-                match binding {
-                    Ok(binding) => {
-                        // Consistency checks, analogous to `finalize_macro_resolutions`.
-                        let initial_res = bindings[ns].get().decl().map(|binding| {
-                            let initial_binding = binding.import_source();
-                            all_ns_err = false;
-                            if target.name == kw::Underscore
-                                && initial_binding.is_extern_crate()
-                                && !initial_binding.is_import()
-                            {
-                                let used = if import.module_path.is_empty() {
-                                    Used::Scope
-                                } else {
-                                    Used::Other
-                                };
-                                this.record_use(ident, binding, used);
-                            }
-                            initial_binding.res()
-                        });
-                        let res = binding.res();
-                        let has_ambiguity_error =
-                            this.ambiguity_errors.iter().any(|error| error.warning.is_none());
-                        if res == Res::Err || has_ambiguity_error {
-                            this.dcx()
-                                .span_delayed_bug(import.span, "some error happened for an import");
-                            return;
+            match binding {
+                Ok(binding) => {
+                    // Consistency checks, analogous to `finalize_macro_resolutions`.
+                    let initial_res = bindings[ns].get().decl().map(|binding| {
+                        let initial_binding = binding.import_source();
+                        all_ns_err = false;
+                        if target.name == kw::Underscore
+                            && initial_binding.is_extern_crate()
+                            && !initial_binding.is_import()
+                        {
+                            let used = if import.module_path.is_empty() {
+                                Used::Scope
+                            } else {
+                                Used::Other
+                            };
+                            this.record_use(ident, binding, used);
                         }
-                        if let Some(initial_res) = initial_res {
-                            if res != initial_res && !this.issue_145575_hack_applied {
-                                span_bug!(import.span, "inconsistent resolution for an import");
-                            }
-                        } else if this.privacy_errors.is_empty() {
-                            this.dcx()
-                                .create_err(CannotDetermineImportResolution { span: import.span })
-                                .emit();
+                        initial_binding.res()
+                    });
+                    let res = binding.res();
+                    let has_ambiguity_error =
+                        this.ambiguity_errors.iter().any(|error| error.warning.is_none());
+                    if res == Res::Err || has_ambiguity_error {
+                        this.dcx()
+                            .span_delayed_bug(import.span, "some error happened for an import");
+                        return;
+                    }
+                    if let Some(initial_res) = initial_res {
+                        if res != initial_res && !this.issue_145575_hack_applied {
+                            span_bug!(import.span, "inconsistent resolution for an import");
                         }
+                    } else if this.privacy_errors.is_empty() {
+                        this.dcx()
+                            .create_err(CannotDetermineImportResolution { span: import.span })
+                            .emit();
                     }
-                    Err(..) => {
-                        // FIXME: This assert may fire if public glob is later shadowed by a private
-                        // single import (see test `issue-55884-2.rs`). In theory single imports should
-                        // always block globs, even if they are not yet resolved, so that this kind of
-                        // self-inconsistent resolution never happens.
-                        // Re-enable the assert when the issue is fixed.
-                        // assert!(result[ns].get().is_err());
-                    }
+                }
+                Err(..) => {
+                    // FIXME: This assert may fire if public glob is later shadowed by a private
+                    // single import (see test `issue-55884-2.rs`). In theory single imports should
+                    // always block globs, even if they are not yet resolved, so that this kind of
+                    // self-inconsistent resolution never happens.
+                    // Re-enable the assert when the issue is fixed.
+                    // assert!(result[ns].get().is_err());
                 }
             }
         });
@@ -1353,19 +1342,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if all_ns_err {
             let mut all_ns_failed = true;
             self.per_ns(|this, ns| {
-                if !type_ns_only || ns == TypeNS {
-                    let binding = this.cm().resolve_ident_in_module(
-                        module,
-                        ident,
-                        ns,
-                        &import.parent_scope,
-                        Some(finalize),
-                        None,
-                        None,
-                    );
-                    if binding.is_ok() {
-                        all_ns_failed = false;
-                    }
+                let binding = this.cm().resolve_ident_in_module(
+                    module,
+                    ident,
+                    ns,
+                    &import.parent_scope,
+                    Some(finalize),
+                    None,
+                    None,
+                );
+                if binding.is_ok() {
+                    all_ns_failed = false;
                 }
             });
 

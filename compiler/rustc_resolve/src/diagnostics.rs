@@ -386,9 +386,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut suggestion = None;
         let mut span = binding_span;
         match import.kind {
-            ImportKind::Single { type_ns_only: true, .. } => {
-                suggestion = Some(format!("self as {suggested_name}"))
-            }
             ImportKind::Single { source, .. } => {
                 if let Some(pos) = source.span.hi().0.checked_sub(binding_span.lo().0)
                     && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(binding_span)
