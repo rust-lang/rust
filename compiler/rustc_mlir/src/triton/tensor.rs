@@ -49,15 +49,6 @@ pub fn make_range<'ctx>(
         .build())
 }
 
-pub fn arange<'ctx>(
-    context: &'ctx Context,
-    location: Location<'ctx>,
-    start: i32,
-    end: i32,
-) -> Result<MakeRangeOperation<'ctx>, Error> {
-    make_range(context, location, start, end)
-}
-
 pub fn splat<'ctx>(
     context: &'ctx Context,
     location: Location<'ctx>,
@@ -151,15 +142,11 @@ mod tests {
     use crate::triton::{int_to_ptr, load_triton_dialect, pointer_type};
 
     #[test]
-    fn test_create_arange() {
+    fn test_make_range_generic() {
         let context = Context::new();
         let location = Location::unknown(&context);
-        let start = 0;
-        let end = 5;
 
-        let arange_op = arange(&context, location, start, end);
-        assert!(arange_op.is_ok());
-        let op = arange_op.unwrap();
+        let op = make_range(&context, location, 0, 5).unwrap();
 
         let output = op.as_operation().to_string();
         let expected =
