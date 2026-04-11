@@ -1,5 +1,9 @@
 # Execute one Beads task
 
+**Beads task id for this invocation:** $TASK_ID
+
+(The `agent` script replaces `$TASK_ID` before sending this file to Claude. If you still see the literal text `$TASK_ID`, run: `./agent EXECUTE <task-id>`.)
+
 ## Your role
 
 You are a coding agent. For this invocation you read **one** task identified by
