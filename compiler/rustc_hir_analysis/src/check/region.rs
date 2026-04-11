@@ -198,24 +198,13 @@ fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir:
     visitor.cx.var_parent = visitor.cx.parent;
 
     resolve_pat(visitor, arm.pat);
-    match (arm.guard, arm.pat.kind) {
-        (Some(arm_guard), PatKind::Guard(_, pat_guard)) => {
-            // We introduce a new scope to contain bindings and temporaries from `if let` guards, to
-            // ensure they're dropped before the arm's pattern's bindings. This extends to the end of
-            // the arm body and is the scope of its locals as well.
-            visitor
-                .enter_scope(Scope { local_id: arm.hir_id.local_id, data: ScopeData::MatchGuard });
-            visitor.cx.var_parent = visitor.cx.parent;
-            resolve_cond(visitor, arm_guard);
-            resolve_cond(visitor, pat_guard);
-        }
-        (Some(guard), _) | (_, PatKind::Guard(_, guard)) => {
-            visitor
-                .enter_scope(Scope { local_id: arm.hir_id.local_id, data: ScopeData::MatchGuard });
-            visitor.cx.var_parent = visitor.cx.parent;
-            resolve_cond(visitor, guard);
-        }
-        _ => (),
+    if let Some(guard) = arm.guard {
+        // We introduce a new scope to contain bindings and temporaries from `if let` guards, to
+        // ensure they're dropped before the arm's pattern's bindings. This extends to the end of
+        // the arm body and is the scope of its locals as well.
+        visitor.enter_scope(Scope { local_id: arm.hir_id.local_id, data: ScopeData::MatchGuard });
+        visitor.cx.var_parent = visitor.cx.parent;
+        resolve_cond(visitor, guard);
     }
     resolve_expr(visitor, arm.body, false);
 
@@ -224,6 +213,13 @@ fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir:
 
 #[tracing::instrument(level = "debug", skip(visitor))]
 fn resolve_pat<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
+    // We walk the whole pattern here to avoid walking `cond` expr another time on `walk_pat`
+    if let PatKind::Guard(pat, cond) = pat.kind {
+        resolve_cond(visitor, cond);
+        resolve_pat(visitor, pat);
+        return;
+    }
+
     // If this is a binding then record the lifetime of that binding.
     if let PatKind::Binding(..) = pat.kind {
         record_var_lifetime(visitor, pat.hir_id.local_id);
