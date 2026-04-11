@@ -28,7 +28,7 @@ use crate::shared::builtin::tensor_type;
 use crate::triton::attr_i32;
 use crate::triton::tt::{
     AddPtrOperation, DescriptorGatherOperation, LoadOperation, MakeRangeOperation,
-    MulhiUIOperation, PreciseSqrtOperation, ReduceOperation, ReduceReturnOperation,
+    MulhiUIOperation, PreciseDivFOperation, PreciseSqrtOperation, ReduceOperation, ReduceReturnOperation,
     ReturnOperation, ScanOperation, ScanReturnOperation, SplatOperation,
 };
 
@@ -764,6 +764,37 @@ pub fn precise_sqrt<'ctx>(
 ) -> Result<PreciseSqrtOperation<'ctx>, Error> {
     // SameOperandsAndResultType: result type is inferred from the operand type.
     Ok(PreciseSqrtOperation::builder(context, location).x(x).build())
+}
+
+/// Build a `tt.precise_divf` operation.
+///
+/// Computes the IEEE-precise floating-point division of two scalars or tensors.
+/// The operation has the `Elementwise`, `SameOperandsAndResultType`, and `Pure`
+/// traits, so the result type is inferred from the operand types.
+///
+/// # Arguments
+/// * `x` – dividend: floating-point scalar or tensor
+/// * `y` – divisor: floating-point scalar or tensor (same type as `x`)
+///
+/// # Example
+///
+/// ```text
+/// %result = tt.precise_divf %x, %y : f32
+/// %result = tt.precise_divf %x, %y : tensor<8xf32>
+/// ```
+///
+/// Assembly format (from TableGen):
+/// ```text
+/// tt.precise_divf $x, $y attr-dict `:` type($x)
+/// ```
+pub fn precise_divf<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    x: Value<'ctx, 'ctx>,
+    y: Value<'ctx, 'ctx>,
+) -> Result<PreciseDivFOperation<'ctx>, Error> {
+    // SameOperandsAndResultType: result type is inferred from the operand types.
+    Ok(PreciseDivFOperation::builder(context, location).x(x).y(y).build())
 }
 
 /// Assembly format (from TableGen):
@@ -2812,6 +2843,87 @@ mod tests {
         let output = module.as_operation().to_string();
 
         assert!(output.contains("tt.precise_sqrt"), "missing tt.precise_sqrt mnemonic:\n{output}");
+        assert!(
+            output.contains("tensor<8xf32>"),
+            "missing tensor<8xf32> type:\n{output}"
+        );
+    }
+
+    /// Verify that `precise_divf` on scalar f32 emits the canonical
+    /// `tt.precise_divf %arg0, %arg1 : f32` IR form.
+    #[test]
+    fn test_precise_divf_scalar() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = Type::float32(&context);
+
+        let func_op =
+            create_func(&context, location, "test_precise_divf_scalar", "public", &[f32_type, f32_type], &[f32_type], 0)
+                .unwrap();
+
+        let block = Block::new(&[(f32_type, location), (f32_type, location)]);
+        let x: Value = block.argument(0).unwrap().into();
+        let y: Value = block.argument(1).unwrap().into();
+
+        let divf_op = precise_divf(&context, location, x, y).unwrap();
+        let result: Value = divf_op.result().unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result]).build();
+
+        block.append_operation(divf_op.into());
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.precise_divf"), "missing tt.precise_divf mnemonic:\n{output}");
+        assert!(output.contains("f32"), "missing f32 type:\n{output}");
+    }
+
+    /// Verify that `precise_divf` on a tensor emits the canonical
+    /// `tt.precise_divf %arg0, %arg1 : tensor<8xf32>` IR form.
+    #[test]
+    fn test_precise_divf_tensor() {
+        let context = create_test_context();
+        load_triton_dialect(&context);
+
+        let location = Location::unknown(&context);
+        let module = Module::new(location);
+
+        let f32_type = Type::float32(&context);
+        let tensor_ty: Type = tensor_type(&[8], f32_type).into();
+
+        let func_op = create_func(
+            &context,
+            location,
+            "test_precise_divf_tensor",
+            "public",
+            &[tensor_ty, tensor_ty],
+            &[tensor_ty],
+            0,
+        )
+        .unwrap();
+
+        let block = Block::new(&[(tensor_ty, location), (tensor_ty, location)]);
+        let x: Value = block.argument(0).unwrap().into();
+        let y: Value = block.argument(1).unwrap().into();
+
+        let divf_op = precise_divf(&context, location, x, y).unwrap();
+        let result: Value = divf_op.result().unwrap().into();
+        let ret_op = ReturnOperation::builder(&context, location).srcs(&[result]).build();
+
+        block.append_operation(divf_op.into());
+        block.append_operation(ret_op.into());
+        func_op.body().unwrap().append_block(block);
+        module.body().append_operation(func_op.into());
+
+        let output = module.as_operation().to_string();
+
+        assert!(output.contains("tt.precise_divf"), "missing tt.precise_divf mnemonic:\n{output}");
         assert!(
             output.contains("tensor<8xf32>"),
             "missing tensor<8xf32> type:\n{output}"
