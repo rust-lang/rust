@@ -2610,7 +2610,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if let Some(arm) = arm {
             let mut span = arm.span;
             if let Some(arm_guard) = arm.guard {
-                span = span.to(self.thir[arm_guard].span);
+                span = self.thir[arm_guard].span;
                 sub_branch.guard_patterns.push(arm_guard);
             };
             return (span, arm.scope);
