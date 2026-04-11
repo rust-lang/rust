@@ -550,18 +550,16 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
 
         self.r.indeterminate_imports.push(import);
         match import.kind {
-            ImportKind::Single { target, type_ns_only, .. } => {
+            ImportKind::Single { target, .. } => {
                 // Don't add underscore imports to `single_imports`
                 // because they cannot define any usable names.
                 if target.name != kw::Underscore {
                     self.r.per_ns(|this, ns| {
-                        if !type_ns_only || ns == TypeNS {
-                            let key = BindingKey::new(IdentKey::new(target), ns);
-                            this.resolution_or_default(current_module, key, target.span)
-                                .borrow_mut(this)
-                                .single_imports
-                                .insert(import);
-                        }
+                        let key = BindingKey::new(IdentKey::new(target), ns);
+                        this.resolution_or_default(current_module, key, target.span)
+                            .borrow_mut(this)
+                            .single_imports
+                            .insert(import);
                     });
                 }
             }
@@ -629,9 +627,6 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             ast::UseTreeKind::Simple(rename) => {
                 let mut module_path = prefix;
                 let source = module_path.pop().unwrap();
-
-                // `true` for `...::{self [as target]}` imports, `false` otherwise.
-                let type_ns_only = source.ident.name == kw::SelfLower;
 
                 // If the identifier is `self` without a rename,
                 // then it is replaced with the parent identifier.
@@ -718,7 +713,6 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     source: source.ident,
                     target: ident,
                     decls: Default::default(),
-                    type_ns_only,
                     nested,
                     id,
                 };
