@@ -3,7 +3,7 @@
 //@ ignore-spirv
 //@ reference: attributes.codegen.naked.body
 
-#![feature(asm_unwind, linkage, rustc_attrs)]
+#![feature(asm_unwind, linkage, rustc_attrs, cfg_target_object_format)]
 #![crate_type = "lib"]
 
 use std::arch::{asm, naked_asm};
@@ -200,7 +200,8 @@ pub extern "C" fn compatible_must_use_attributes() -> u64 {
 }
 
 #[export_name = "exported_function_name"]
-#[link_section = ".custom_section"]
+#[cfg_attr(not(target_object_format = "mach-o"), link_section = ".custom")]
+#[cfg_attr(target_object_format = "mach-o", link_section = "__TEXT,__custom")]
 #[unsafe(naked)]
 pub extern "C" fn compatible_ffi_attributes_1() {
     naked_asm!("", options(raw));

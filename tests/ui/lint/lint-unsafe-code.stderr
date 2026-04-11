@@ -54,16 +54,16 @@ LL | #[export_name = "BAR"] static BAR: u32 = 5;
 error: declaration of a function with `link_section`
   --> $DIR/lint-unsafe-code.rs:51:1
    |
-LL | #[link_section = ".example_section"] fn uwu() {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[link_section = "__TEXT,__text"] fn uwu() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the program's behavior with overridden link sections on items is unpredictable and Rust cannot provide guarantees when you manually override them
 
 error: declaration of a static with `link_section`
   --> $DIR/lint-unsafe-code.rs:52:1
    |
-LL | #[link_section = ".example_section"] static UWU: u32 = 5;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[link_section = "__TEXT,__text"] static UWU: u32 = 5;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the program's behavior with overridden link sections on items is unpredictable and Rust cannot provide guarantees when you manually override them
 
