@@ -5,6 +5,9 @@
 //@ ignore-wasm32-unknown-unknown stack protector is not supported
 //@ edition:future
 
+// msvc has an extra unwind dependency of std, normalize it in the error messages
+//@ normalize-stderr: "\b(unwind|libc)\b" -> "unwind/libc"
+
 // test that stack-protector is denied-partial in edition=future
 //@ [stack-protector-future] compile-flags:  -Z unstable-options -Z stack-protector=all
 

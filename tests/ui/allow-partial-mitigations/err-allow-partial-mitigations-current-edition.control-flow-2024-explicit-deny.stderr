@@ -1,5 +1,5 @@
 error: your program uses the crate `std`, that is not compiled with `control-flow-guard` enabled
-  --> $DIR/err-allow-partial-mitigations-current-edition.rs:13:1
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:18:1
    |
 LL | fn main() {}
    | ^
@@ -8,7 +8,7 @@ LL | fn main() {}
    = help: it is possible to disable `-Z allow-partial-mitigations=control-flow-guard` via `-Z deny-partial-mitigations=control-flow-guard`
 
 error: your program uses the crate `core`, that is not compiled with `control-flow-guard` enabled
-  --> $DIR/err-allow-partial-mitigations-current-edition.rs:13:1
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:18:1
    |
 LL | fn main() {}
    | ^
@@ -17,7 +17,7 @@ LL | fn main() {}
    = help: it is possible to disable `-Z allow-partial-mitigations=control-flow-guard` via `-Z deny-partial-mitigations=control-flow-guard`
 
 error: your program uses the crate `alloc`, that is not compiled with `control-flow-guard` enabled
-  --> $DIR/err-allow-partial-mitigations-current-edition.rs:13:1
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:18:1
    |
 LL | fn main() {}
    | ^
@@ -26,7 +26,7 @@ LL | fn main() {}
    = help: it is possible to disable `-Z allow-partial-mitigations=control-flow-guard` via `-Z deny-partial-mitigations=control-flow-guard`
 
 error: your program uses the crate `compiler_builtins`, that is not compiled with `control-flow-guard` enabled
-  --> $DIR/err-allow-partial-mitigations-current-edition.rs:13:1
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:18:1
    |
 LL | fn main() {}
    | ^
@@ -34,13 +34,13 @@ LL | fn main() {}
    = note: recompile `compiler_builtins` with `control-flow-guard` enabled, or use `-Z allow-partial-mitigations=control-flow-guard` to allow creating an artifact that has the mitigation partially enabled
    = help: it is possible to disable `-Z allow-partial-mitigations=control-flow-guard` via `-Z deny-partial-mitigations=control-flow-guard`
 
-error: your program uses the crate `libc`, that is not compiled with `control-flow-guard` enabled
-  --> $DIR/err-allow-partial-mitigations-current-edition.rs:13:1
+error: your program uses the crate `unwind/libc`, that is not compiled with `control-flow-guard` enabled
+  --> $DIR/err-allow-partial-mitigations-current-edition.rs:18:1
    |
 LL | fn main() {}
    | ^
    |
-   = note: recompile `libc` with `control-flow-guard` enabled, or use `-Z allow-partial-mitigations=control-flow-guard` to allow creating an artifact that has the mitigation partially enabled
+   = note: recompile `unwind/libc` with `control-flow-guard` enabled, or use `-Z allow-partial-mitigations=control-flow-guard` to allow creating an artifact that has the mitigation partially enabled
    = help: it is possible to disable `-Z allow-partial-mitigations=control-flow-guard` via `-Z deny-partial-mitigations=control-flow-guard`
 
 error: aborting due to 5 previous errors
