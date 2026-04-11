@@ -1571,7 +1571,7 @@ fn sub_branch_ordered_pat_data<'a, T: Copy>(
     all_items
 }
 
-/// Helper for [`sub_branch_ordered_data`]. Collects bindings/guard patterns from `candidate_items` into
+/// Helper for [`sub_branch_ordered_pat_data`]. Collects bindings/guard patterns from `candidate_items` into
 /// `flattened`. Those items in or-patterns are collected recursively from `remainder`.
 fn push_sub_branch_ordered_pat_data<'c, T: Copy>(
     flattened: &mut Vec<T>,
