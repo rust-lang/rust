@@ -503,7 +503,7 @@ fn upstream_monomorphizations_provider(
 
     let mut instances: DefIdMap<UnordMap<_, _>> = Default::default();
 
-    let drop_glue_fn_def_id = tcx.lang_items().drop_glue_fn();
+    let drop_in_place_fn_def_id = tcx.lang_items().destruct_drop_in_place();
     let async_drop_in_place_fn_def_id = tcx.lang_items().async_drop_in_place_fn();
 
     for &cnum in cnums.iter() {
@@ -572,7 +572,7 @@ fn upstream_drop_glue_for_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     args: GenericArgsRef<'tcx>,
 ) -> Option<CrateNum> {
-    let def_id = tcx.lang_items().drop_glue_fn()?;
+    let def_id = tcx.lang_items().destruct_drop_in_place()?;
     tcx.upstream_monomorphizations_for(def_id)?.get(&args).cloned()
 }
 
