@@ -567,11 +567,10 @@ impl Query {
         cb: impl FnMut(&'db FileSymbol<'db>) -> ControlFlow<T>,
     ) -> Option<T> {
         let _p = tracing::info_span!("symbol_index::Query::search").entered();
-
-        let mut op = fst::map::OpBuilder::new();
         match self.mode {
             SearchMode::Exact => {
                 let automaton = fst::automaton::Str::new(&self.lowercased);
+                let mut op = fst::map::OpBuilder::new();
 
                 for index in indices.iter() {
                     op = op.add(index.map.search(&automaton));
@@ -580,6 +579,7 @@ impl Query {
             }
             SearchMode::Fuzzy => {
                 let automaton = fst::automaton::Subsequence::new(&self.lowercased);
+                let mut op = fst::map::OpBuilder::new();
 
                 for index in indices.iter() {
                     op = op.add(index.map.search(&automaton));
@@ -588,6 +588,7 @@ impl Query {
             }
             SearchMode::Prefix => {
                 let automaton = fst::automaton::Str::new(&self.lowercased).starts_with();
+                let mut op = fst::map::OpBuilder::new();
 
                 for index in indices.iter() {
                     op = op.add(index.map.search(&automaton));
