@@ -53,3 +53,11 @@ static H: u64 = 5;
 trait T {
 
 }
+
+#[rustc_dump_layout(debug = 5)]
+//~^ ERROR malformed
+#[rustc_dump_layout(debug(x, y, z))]
+//~^ ERROR malformed
+enum E {
+
+}
