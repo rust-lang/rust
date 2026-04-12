@@ -600,6 +600,12 @@ impl From<Local> for PlaceRef<'_> {
     }
 }
 
+/// Checks whether reading `src` while assigning to `dest` would violate MIR's
+/// non-overlap requirement for assignments.
+pub fn places_conflict_for_assignment<'tcx>(dest: Place<'tcx>, src: Place<'tcx>) -> bool {
+    dest == src || (dest.local == src.local && !dest.is_indirect() && !src.is_indirect())
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Operands
 

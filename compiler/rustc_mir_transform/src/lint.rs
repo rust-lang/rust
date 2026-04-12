@@ -96,11 +96,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
                 // The sides of an assignment must not alias.
                 if forbid_aliasing {
                     VisitPlacesWith(|src: Place<'tcx>, _| {
-                        if *dest == src
-                            || (dest.local == src.local
-                                && !dest.is_indirect()
-                                && !src.is_indirect())
-                        {
+                        if places_conflict_for_assignment(*dest, src) {
                             self.fail(
                                 location,
                                 format!(
