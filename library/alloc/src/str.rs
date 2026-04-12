@@ -415,13 +415,6 @@ impl str {
                 && !case_ignorable_then_cased(from[i + const { 'Σ'.len_utf8() }..].chars());
             if is_word_final { 'ς' } else { 'σ' }
         }
-
-        fn case_ignorable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
-            match iter.skip_while(|&c| c.is_case_ignorable()).next() {
-                Some(c) => c.is_cased(),
-                None => false,
-            }
-        }
     }
 
     /// Returns the uppercase equivalent of this string slice, as a new [`String`].
@@ -481,7 +474,17 @@ impl str {
         }
         s
     }
+}
 
+#[cfg(not(no_global_oom_handling))]
+pub(crate) fn case_ignorable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
+    match iter.skip_while(|&c| c.is_case_ignorable()).next() {
+        Some(c) => c.is_cased(),
+        None => false,
+    }
+}
+
+impl str {
     /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.
     ///
     /// # Examples
