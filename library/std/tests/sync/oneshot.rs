@@ -11,6 +11,7 @@ fn send_before_try_recv() {
     let (sender, receiver) = oneshot::channel();
 
     assert!(sender.send(19i128).is_ok());
+    assert_eq!(receiver.is_ready(), Ok(true));
 
     match receiver.try_recv() {
         Ok(19) => {}
@@ -42,6 +43,7 @@ fn sender_drop() {
         let (sender, receiver) = oneshot::channel::<u128>();
 
         mem::drop(sender);
+        assert_eq!(receiver.is_ready(), Err(RecvError));
 
         match receiver.recv() {
             Err(RecvError) => {}
@@ -53,6 +55,7 @@ fn sender_drop() {
         let (sender, receiver) = oneshot::channel::<i32>();
 
         mem::drop(sender);
+        assert_eq!(receiver.is_ready(), Err(RecvError));
 
         match receiver.try_recv() {
             Err(TryRecvError::Disconnected) => {}
@@ -63,6 +66,7 @@ fn sender_drop() {
         let (sender, receiver) = oneshot::channel::<i32>();
 
         mem::drop(sender);
+        assert_eq!(receiver.is_ready(), Err(RecvError));
 
         match receiver.recv_timeout(Duration::from_secs(1)) {
             Err(RecvTimeoutError::Disconnected) => {}
@@ -76,6 +80,7 @@ fn send_never_deadline() {
     let (sender, receiver) = oneshot::channel::<i32>();
 
     mem::drop(sender);
+    assert_eq!(receiver.is_ready(), Err(RecvError));
 
     match receiver.recv_deadline(Instant::now()) {
         Err(RecvTimeoutError::Disconnected) => {}
@@ -88,6 +93,7 @@ fn send_before_recv_timeout() {
     let (sender, receiver) = oneshot::channel();
 
     assert!(sender.send(22i128).is_ok());
+    assert_eq!(receiver.is_ready(), Ok(true));
 
     let timeout = Duration::from_secs(1);
     match receiver.recv_timeout(timeout) {
@@ -185,11 +191,36 @@ fn drop_sender_then_recv() {
 #[test]
 fn try_recv_empty() {
     let (sender, receiver) = oneshot::channel::<u128>();
+    assert_eq!(receiver.is_ready(), Ok(false));
+
     match receiver.try_recv() {
         Err(TryRecvError::Empty(_)) => {}
         _ => panic!("expected empty error"),
     }
     mem::drop(sender);
+}
+
+#[test]
+fn not_ready_then_ready() {
+    let (sender, receiver) = oneshot::channel();
+    assert_eq!(receiver.is_ready(), Ok(false));
+    assert_eq!(receiver.is_ready(), Ok(false)); // Check stability.
+
+    sender.send(42u128).unwrap();
+    assert_eq!(receiver.is_ready(), Ok(true));
+    assert_eq!(receiver.is_ready(), Ok(true)); // Check stability.
+
+    assert_eq!(receiver.recv(), Ok(42));
+}
+
+#[test]
+fn not_ready_then_disconnected() {
+    let (sender, receiver) = oneshot::channel::<u128>();
+    assert_eq!(receiver.is_ready(), Ok(false));
+
+    mem::drop(sender);
+    assert_eq!(receiver.is_ready(), Err(RecvError));
+    assert_eq!(receiver.is_ready(), Err(RecvError)); // Check stability.
 }
 
 #[test]
@@ -275,6 +306,8 @@ fn non_send_type_can_be_used_on_same_thread() {
 
     let (sender, receiver) = oneshot::channel();
     sender.send(NotSend(ptr::null_mut())).unwrap();
+    assert_eq!(receiver.is_ready(), Ok(true));
+
     let reply = receiver.try_recv().unwrap();
     assert_eq!(reply, NotSend(ptr::null_mut()));
 }
@@ -314,6 +347,7 @@ fn message_in_channel_dropped_on_receiver_drop() {
 
     sender.send(message).unwrap();
     assert_eq!(counter.count(), 0);
+    assert_eq!(receiver.is_ready(), Ok(true));
 
     mem::drop(receiver);
     assert_eq!(counter.count(), 1);
