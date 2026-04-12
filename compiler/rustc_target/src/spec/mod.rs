@@ -2360,6 +2360,10 @@ pub struct TargetOptions {
     /// Whether a cpu needs to be explicitly set.
     /// Set to true if there is no default cpu. Defaults to false.
     pub need_explicit_cpu: bool,
+    /// A list of CPUs that are provided by LLVM but are considered unsupported by Rust.
+    /// These CPUs are omitted from `--print target-cpus` output and will cause an error
+    /// if used with `-Ctarget-cpu`.
+    pub unsupported_cpus: StaticCow<[StaticCow<str>]>,
     /// Default (Rust) target features to enable for this target. These features
     /// overwrite `-Ctarget-cpu` but can be overwritten with `-Ctarget-features`.
     /// Corresponds to `llc -mattr=$llvm_features` where `$llvm_features` is the
@@ -2817,6 +2821,7 @@ impl Default for TargetOptions {
             asm_args: cvs![],
             cpu: "generic".into(),
             need_explicit_cpu: false,
+            unsupported_cpus: cvs![],
             features: "".into(),
             direct_access_external_data: None,
             dynamic_linking: false,
