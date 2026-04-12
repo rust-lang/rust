@@ -5,7 +5,6 @@ use Namespace::*;
 use rustc_ast::{self as ast, NodeId};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, PartialRes, PerNS};
-use rustc_middle::ty::Visibility;
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::PROC_MACRO_DERIVE_RESOLUTION_FALLBACK;
 use rustc_session::parse::feature_err;
@@ -24,9 +23,9 @@ use crate::late::{
 use crate::macros::{MacroRulesScope, sub_namespace_match};
 use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingKey, CmResolver, Decl, DeclKind,
-    Determinacy, Finalize, IdentKey, ImportKind, LateDecl, Module, ModuleKind, ModuleOrUniformRoot,
-    ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet,
-    Segment, Stage, Symbol, Used, errors,
+    Determinacy, Finalize, IdentKey, ImportKind, ImportSummary, LateDecl, Module, ModuleKind,
+    ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver,
+    Scope, ScopeSet, Segment, Stage, Symbol, Used, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -485,11 +484,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // We do not need to report them if we are either in speculative resolution,
                         // or in late resolution when everything is already imported and expanded
                         // and no ambiguities exist.
-                        let import_vis = match finalize {
+                        let import = match finalize {
                             None | Some(Finalize { stage: Stage::Late, .. }) => {
                                 return ControlFlow::Break(Ok(decl));
                             }
-                            Some(Finalize { import_vis, .. }) => import_vis,
+                            Some(Finalize { import, .. }) => import,
                         };
 
                         if let Some(&(innermost_decl, _)) = innermost_results.first() {
@@ -503,7 +502,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 decl,
                                 scope,
                                 &innermost_results,
-                                import_vis,
+                                import,
                             ) {
                                 // No need to search for more potential ambiguities, one is enough.
                                 return ControlFlow::Break(Ok(innermost_decl));
@@ -790,19 +789,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         decl: Decl<'ra>,
         scope: Scope<'ra>,
         innermost_results: &[(Decl<'ra>, Scope<'ra>)],
-        import_vis: Option<Visibility>,
+        import: Option<ImportSummary>,
     ) -> bool {
         let (innermost_decl, innermost_scope) = innermost_results[0];
         let (res, innermost_res) = (decl.res(), innermost_decl.res());
         let ambig_vis = if res != innermost_res {
             None
-        } else if let Some(import_vis) = import_vis
-            && let min =
-                (|d: Decl<'_>| d.vis().min(import_vis.to_def_id(), self.tcx).expect_local())
-            && let (min1, min2) = (min(decl), min(innermost_decl))
-            && min1 != min2
+        } else if let Some(import) = import
+            && let vis1 = self.import_decl_vis(decl, import)
+            && let vis2 = self.import_decl_vis(innermost_decl, import)
+            && vis1 != vis2
         {
-            Some((min1, min2))
+            Some((vis1, vis2))
         } else {
             return false;
         };
