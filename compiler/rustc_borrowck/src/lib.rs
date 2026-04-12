@@ -53,11 +53,12 @@ use tracing::{debug, instrument};
 
 use crate::borrow_set::{BorrowData, BorrowSet};
 use crate::consumers::{BodyWithBorrowckFacts, RustcFacts};
-use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows};
+use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows, Pins};
 use crate::diagnostics::{
     AccessKind, BorrowckDiagnosticsBuffer, IllegalMoveOriginKind, MoveError, RegionName,
 };
 use crate::path_utils::*;
+use crate::pin_set::PinSet;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
 use crate::polonius::PoloniusContext;
@@ -81,6 +82,7 @@ mod diagnostics;
 mod handle_placeholders;
 mod nll;
 mod path_utils;
+mod pin_set;
 mod place_ext;
 mod places_conflict;
 mod polonius;
@@ -292,6 +294,7 @@ struct CollectRegionConstraintsResult<'tcx> {
     promoted: IndexVec<Promoted, Body<'tcx>>,
     move_data: MoveData<'tcx>,
     borrow_set: BorrowSet<'tcx>,
+    pin_set: PinSet,
     location_table: PoloniusLocationTable,
     location_map: Rc<DenseLocationMap>,
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
@@ -336,6 +339,7 @@ fn borrowck_collect_region_constraints<'tcx>(
 
     let locals_are_invalidated_at_exit = tcx.hir_body_owner_kind(def).is_fn_or_closure();
     let borrow_set = BorrowSet::build(tcx, body, locals_are_invalidated_at_exit, &move_data);
+    let pin_set = PinSet::build(tcx, body, &borrow_set);
 
     let location_map = Rc::new(DenseLocationMap::new(body));
 
@@ -371,6 +375,7 @@ fn borrowck_collect_region_constraints<'tcx>(
         promoted,
         move_data,
         borrow_set,
+        pin_set,
         location_table,
         location_map,
         universal_region_relations,
@@ -395,6 +400,7 @@ fn borrowck_check_region_constraints<'tcx>(
         promoted,
         move_data,
         borrow_set,
+        pin_set,
         location_table,
         location_map,
         universal_region_relations,
@@ -536,7 +542,7 @@ fn borrowck_check_region_constraints<'tcx>(
         mbcx.report_region_errors(nll_errors);
     }
 
-    let flow_results = get_flow_results(tcx, body, &move_data, &borrow_set, &regioncx);
+    let flow_results = get_flow_results(tcx, body, &move_data, &borrow_set, &pin_set, &regioncx);
     visit_results(
         body,
         traversal::reverse_postorder(body).map(|(bb, _)| bb),
@@ -600,15 +606,18 @@ fn get_flow_results<'a, 'tcx>(
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
     borrow_set: &'a BorrowSet<'tcx>,
+    pin_set: &'a PinSet,
     regioncx: &RegionInferenceContext<'tcx>,
 ) -> Results<'tcx, Borrowck<'a, 'tcx>> {
-    // We compute these three analyses individually, but them combine them into
+    // We compute these four analyses individually, but them combine them into
     // a single results so that `mbcx` can visit them all together.
     let borrows = Borrows::new(tcx, body, regioncx, borrow_set).iterate_to_fixpoint(
         tcx,
         body,
         Some("borrowck"),
     );
+    let pins =
+        Pins::new(tcx, body, borrow_set, pin_set).iterate_to_fixpoint(tcx, body, Some("borrowck"));
     let uninits = MaybeUninitializedPlaces::new(tcx, body, move_data).iterate_to_fixpoint(
         tcx,
         body,
@@ -622,16 +631,27 @@ fn get_flow_results<'a, 'tcx>(
 
     let analysis = Borrowck {
         borrows: borrows.analysis,
+        pins: pins.analysis,
         uninits: uninits.analysis,
         ever_inits: ever_inits.analysis,
     };
 
+    assert_eq!(borrows.entry_states.len(), pins.entry_states.len());
     assert_eq!(borrows.entry_states.len(), uninits.entry_states.len());
     assert_eq!(borrows.entry_states.len(), ever_inits.entry_states.len());
-    let entry_states: EntryStates<_> =
-        itertools::izip!(borrows.entry_states, uninits.entry_states, ever_inits.entry_states)
-            .map(|(borrows, uninits, ever_inits)| BorrowckDomain { borrows, uninits, ever_inits })
-            .collect();
+    let entry_states: EntryStates<_> = itertools::izip!(
+        borrows.entry_states,
+        pins.entry_states,
+        uninits.entry_states,
+        ever_inits.entry_states
+    )
+    .map(|(borrows, pinned_borrows, uninits, ever_inits)| BorrowckDomain {
+        borrows,
+        pinned_borrows,
+        uninits,
+        ever_inits,
+    })
+    .collect();
 
     Results { analysis, entry_states }
 }
@@ -1254,6 +1274,23 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         }
     }
 
+    fn pinned_borrows<'s>(
+        &self,
+        state: &'s BorrowckDomain,
+    ) -> Option<&'s MixedBitSet<BorrowIndex>> {
+        // FIXME(pin_ergonomics): borrowck behaviors depend on a safe trait
+        // which should not contain any safety invariants.
+        // if place
+        //     .ty(self.body, self.infcx.tcx)
+        //     .ty
+        //     .is_unpin(self.infcx.tcx, self.body.typing_env(self.infcx.tcx))
+        // {
+        //     None
+        // } else {
+        Some(&state.pinned_borrows)
+        // }
+    }
+
     #[instrument(level = "debug", skip(self, state))]
     fn check_access_for_conflict(
         &mut self,
@@ -1266,6 +1303,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         let mut error_reported = false;
 
         let borrows_in_scope = self.borrows_in_scope(location, state);
+        let pinned_borrows = self.pinned_borrows(state);
 
         each_borrow_involving_path(
             self,
@@ -1273,7 +1311,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             self.body,
             (sd, place_span.0),
             self.borrow_set,
-            |borrow_index| borrows_in_scope.contains(borrow_index),
+            |borrow_index| {
+                borrows_in_scope.contains(borrow_index)
+                    || pinned_borrows.is_some_and(|p| p.contains(borrow_index))
+            },
             |this, borrow_index, borrow| match (rw, borrow.kind) {
                 // Obviously an activation is compatible with its own
                 // reservation (or even prior activating uses of same
@@ -1310,6 +1351,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     ControlFlow::Continue(())
                 }
 
+                // Ignore the expired borrow (pinnedness never conflicts with a read)
+                (Read(_), BorrowKind::Mut { .. }) if !borrows_in_scope.contains(borrow_index) => {
+                    ControlFlow::Continue(())
+                }
+
                 (Read(kind), BorrowKind::Mut { .. }) => {
                     // Reading from mere reservations of mutable-borrows is OK.
                     if !is_active(this.dominators(), borrow, location) {
@@ -1331,6 +1377,43 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                         }
                     }
                     ControlFlow::Break(())
+                }
+
+                // Handle the expired borrows (only pinned borrows)
+                (Reservation(kind) | Activation(kind, _) | Write(kind), _)
+                    if !borrows_in_scope.contains(borrow_index) =>
+                {
+                    debug_assert!(
+                        pinned_borrows.is_none_or(|p| p.contains(borrow_index)),
+                        "unexpected expired but non-pinned borrow {borrow_index:?}: {borrow:?}",
+                    );
+                    match kind {
+                        // Pinnedness doesn't conflict with a drop or write
+                        WriteKind::StorageDeadOrDrop | WriteKind::Mutate | WriteKind::Replace => {
+                            ControlFlow::Continue(())
+                        }
+                        // Mutable (pinned) borrow doesn't conflict with an expired borrow
+                        WriteKind::MutableBorrow(_)
+                            if self
+                                .borrow_set
+                                .location_map
+                                .get(&location)
+                                .is_none_or(|b| b.pinnedness.is_pinned()) =>
+                        {
+                            ControlFlow::Continue(())
+                        }
+                        // Mutable (but non-pinned) borrow conflicts with an earlier pinned borrow
+                        WriteKind::MutableBorrow(_) => {
+                            this.report_mutably_borrow_after_pinned(location, place_span, borrow);
+                            error_reported = true;
+                            ControlFlow::Break(())
+                        }
+                        WriteKind::Move => {
+                            this.report_move_after_pinned(location, place_span, borrow);
+                            error_reported = true;
+                            ControlFlow::Break(())
+                        }
+                    }
                 }
 
                 (Reservation(kind) | Activation(kind, _) | Write(kind), _) => {

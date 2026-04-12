@@ -2038,6 +2038,60 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         err
     }
 
+    pub(crate) fn report_move_after_pinned(
+        &mut self,
+        location: Location,
+        (place, span): (Place<'tcx>, Span),
+        borrow: &BorrowData<'tcx>,
+    ) {
+        debug!(
+            "report_move_after_pinned: location={:?} place={:?} span={:?} borrow={:?}",
+            location, place, span, borrow
+        );
+
+        let value_msg = self.describe_any_place(place.as_ref());
+        let borrow_msg = self.describe_any_place(borrow.borrowed_place.as_ref());
+
+        let borrow_spans = self.retrieve_borrow_spans(borrow);
+        let borrow_span = borrow_spans.args_or_use();
+
+        let move_spans = self.move_spans(place.as_ref(), location);
+        let span = move_spans.args_or_use();
+
+        let err = self.cannot_move_out_while_pinned(
+            span,
+            borrow_span,
+            &self.describe_any_place(place.as_ref()),
+            &borrow_msg,
+            &value_msg,
+        );
+        self.buffer_error(err);
+    }
+
+    pub(crate) fn report_mutably_borrow_after_pinned(
+        &mut self,
+        location: Location,
+        (place, span): (Place<'tcx>, Span),
+        borrow: &BorrowData<'tcx>,
+    ) {
+        debug!(
+            "report_mutably_borrow_after_pinned: location={:?} place={:?} span={:?} borrow={:?}",
+            location, place, span, borrow
+        );
+
+        let borrow_spans = self.borrow_spans(span, location);
+        let span = borrow_spans.args_or_use();
+
+        let pin_spans = self.retrieve_borrow_spans(borrow);
+        let pin_span = pin_spans.args_or_use();
+
+        let value_msg = self.describe_any_place(place.as_ref());
+        let pin_msg = self.describe_any_place(borrow.borrowed_place.as_ref());
+
+        let err = self.cannot_mutably_borrow_pinned(span, pin_span, &value_msg, &pin_msg);
+        self.buffer_error(err);
+    }
+
     fn suggest_copy_for_type_in_cloned_ref(&self, err: &mut Diag<'infcx>, place: Place<'tcx>) {
         let tcx = self.infcx.tcx;
         let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
