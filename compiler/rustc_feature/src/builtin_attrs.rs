@@ -62,6 +62,7 @@ const GATED_CFGS: &[GatedCfg] = &[
         sym::cfg_target_has_reliable_f16_f128,
         Features::cfg_target_has_reliable_f16_f128,
     ),
+    (sym::target_object_format, sym::cfg_target_object_format, Features::cfg_target_object_format),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.

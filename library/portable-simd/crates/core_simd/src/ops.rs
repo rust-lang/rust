@@ -245,7 +245,7 @@ for_base_ops! {
 // We don't need any special precautions here:
 // Floats always accept arithmetic ops, but may become NaN.
 for_base_ops! {
-    T = (f32, f64);
+    T = (f16, f32, f64);
     type Lhs = Simd<T, N>;
     type Rhs = Simd<T, N>;
     type Output = Self;

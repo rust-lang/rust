@@ -39,7 +39,7 @@ macro_rules! impl_else {
     }
 }
 
-impl_float! { f32, f64 }
+impl_float! { f16, f32, f64 }
 impl_else! { i8, i16, i32, i64, isize, u8, u16, u32, u64, usize }
 
 /// AltiVec should flush subnormal inputs to zero, but QEMU seems to only flush outputs.

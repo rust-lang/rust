@@ -423,6 +423,13 @@ impl fmt::Display for Display<'_> {
                     (sym::unix, None) => "Unix",
                     (sym::windows, None) => "Windows",
                     (sym::debug_assertions, None) => "debug-assertions enabled",
+                    (sym::target_object_format, Some(format)) => match self.1 {
+                        Format::LongHtml => {
+                            return write!(fmt, "object format <code>{format}</code>");
+                        }
+                        Format::LongPlain => return write!(fmt, "object format `{format}`"),
+                        Format::ShortHtml => return write!(fmt, "<code>{format}</code>"),
+                    },
                     (sym::target_os, Some(os)) => human_readable_target_os(*os).unwrap_or_default(),
                     (sym::target_arch, Some(arch)) => {
                         human_readable_target_arch(*arch).unwrap_or_default()
