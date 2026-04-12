@@ -309,6 +309,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     trace,
                     self.tcx.param_env(generic_param_scope),
                     terr,
+                    None,
                 );
                 match (sub.kind(), sup.kind()) {
                     (ty::RePlaceholder(_), ty::RePlaceholder(_)) => {}
@@ -669,6 +670,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     trace,
                     self.tcx.param_env(generic_param_scope),
                     terr,
+                    None,
                 );
             }
             _ => {

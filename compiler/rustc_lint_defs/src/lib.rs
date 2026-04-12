@@ -770,6 +770,9 @@ pub enum AttributeLintKind {
     MalformedOnMoveAttr {
         span: Span,
     },
+    MalformedOnTypeErrorAttr {
+        span: Span,
+    },
     MalformedDiagnosticFormat {
         warning: FormatWarning,
     },
@@ -786,10 +789,15 @@ pub enum AttributeLintKind {
     MissingOptionsForOnUnimplemented,
     MissingOptionsForOnConst,
     MissingOptionsForOnMove,
+    MissingOptionsForOnTypeError,
     OnMoveMalformedFormatLiterals {
         name: Symbol,
     },
+    OnTypeErrorMalformedFormatLiterals {
+        name: Symbol,
+    },
     OnMoveMalformedAttrExpectedLiteralOrDelimiter,
+    OnTypeErrorMalformedAttrExpectedLiteralOrDelimiter,
     RenamedLint {
         name: Symbol,
         replace: Symbol,

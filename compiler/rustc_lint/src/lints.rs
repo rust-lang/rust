@@ -3652,6 +3652,11 @@ pub(crate) struct MissingOptionsForOnConstAttr;
 pub(crate) struct MissingOptionsForOnMoveAttr;
 
 #[derive(Diagnostic)]
+#[diag("missing options for `on_type_error` attribute")]
+#[help("at least one of the `message`, `note` and `label` options are expected")]
+pub(crate) struct MissingOptionsForOnTypeErrorAttr;
+
+#[derive(Diagnostic)]
 #[diag("malformed `on_unimplemented` attribute")]
 #[help("only `message`, `note` and `label` are allowed as options")]
 pub(crate) struct MalformedOnUnimplementedAttrLint {
@@ -3683,9 +3688,26 @@ pub(crate) struct MalformedOnMoveAttrLint {
 }
 
 #[derive(Diagnostic)]
+#[diag("unknown or malformed `on_type_error` attribute")]
+#[help(
+    "only `message`, `note` and `label` are allowed as options. Their values must be string literals"
+)]
+pub(crate) struct MalformedOnTypeErrorAttrLint {
+    #[label("invalid option found here")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("unknown parameter `{$name}`")]
 #[help("expect `Self` as format argument")]
 pub(crate) struct OnMoveMalformedFormatLiterals {
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown parameter `{$name}`")]
+#[help("expect `Self` as format argument")]
+pub(crate) struct OnTypeErrorMalformedFormatLiterals {
     pub name: Symbol,
 }
 
@@ -3695,3 +3717,10 @@ pub(crate) struct OnMoveMalformedFormatLiterals {
     "only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma"
 )]
 pub(crate) struct OnMoveMalformedAttrExpectedLiteralOrDelimiter;
+
+#[derive(Diagnostic)]
+#[diag("expected a literal or missing delimiter")]
+#[help(
+    "only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma"
+)]
+pub(crate) struct OnTypeErrorMalformedAttrExpectedLiteralOrDelimiter;

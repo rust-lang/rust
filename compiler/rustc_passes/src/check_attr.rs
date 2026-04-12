@@ -71,6 +71,10 @@ struct DiagnosticOnConstOnlyForNonConstTraitImpls {
 #[diag("`#[diagnostic::on_move]` can only be applied to enums, structs or unions")]
 struct DiagnosticOnMoveOnlyForAdt;
 
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_move]` can only be applied to enums, structs or unions")]
+struct DiagnosticOnTypeErrorOnlyForAdt;
+
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
@@ -217,6 +221,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)}
                 Attribute::Parsed(AttributeKind::OnMove { span, directive }) => {
                     self.check_diagnostic_on_move(*span, hir_id, target, directive.as_deref())
+                },
+                Attribute::Parsed(AttributeKind::OnTypeError{ span, directive }) => {
+                    self.check_diagnostic_on_type_error(*span, hir_id, target, directive.as_deref())
                 },
                 Attribute::Parsed(AttributeKind::LintAttributes(sub_attrs)) => self.check_lint_attr(hir_id, sub_attrs),
                 Attribute::Parsed(
@@ -647,6 +654,56 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             hir_id,
                             span,
                             errors::OnMoveMalformedFormatLiterals { name: argument_name },
+                        )
+                    }
+                });
+            }
+        }
+    }
+
+    /// Checks if `#[diagnostic::on_type_error]` is applied to an ADT definition
+    fn check_diagnostic_on_type_error(
+        &self,
+        attr_span: Span,
+        hir_id: HirId,
+        target: Target,
+        directive: Option<&Directive>,
+    ) {
+        if !matches!(target, Target::Enum | Target::Struct | Target::Union) {
+            self.tcx.emit_node_span_lint(
+                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                hir_id,
+                attr_span,
+                DiagnosticOnTypeErrorOnlyForAdt,
+            );
+        }
+
+        if let Some(directive) = directive {
+            if let Node::Item(Item {
+                kind:
+                    ItemKind::Struct(_, generics, _)
+                    | ItemKind::Enum(_, generics, _)
+                    | ItemKind::Union(_, generics, _),
+                ..
+            }) = self.tcx.hir_node(hir_id)
+            {
+                directive.visit_params(&mut |argument_name, span| {
+                    let has_generic = generics.params.iter().any(|p| {
+                        if !matches!(p.kind, GenericParamKind::Lifetime { .. })
+                            && let ParamName::Plain(name) = p.name
+                            && name.name == argument_name
+                        {
+                            true
+                        } else {
+                            false
+                        }
+                    });
+                    if !has_generic {
+                        self.tcx.emit_node_span_lint(
+                            MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                            hir_id,
+                            span,
+                            errors::OnTypeErrorMalformedFormatLiterals { name: argument_name },
                         )
                     }
                 });

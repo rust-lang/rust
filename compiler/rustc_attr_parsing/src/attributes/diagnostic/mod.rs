@@ -23,6 +23,7 @@ use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItem
 pub(crate) mod do_not_recommend;
 pub(crate) mod on_const;
 pub(crate) mod on_move;
+pub(crate) mod on_type_error;
 pub(crate) mod on_unimplemented;
 
 #[derive(Copy, Clone)]
@@ -35,6 +36,8 @@ pub(crate) enum Mode {
     DiagnosticOnConst,
     /// `#[diagnostic::on_move]`
     DiagnosticOnMove,
+    /// `#[diagnostic::on_type_error]`
+    DiagnosticOnTypeError,
 }
 
 fn merge_directives<S: Stage>(
@@ -122,6 +125,13 @@ fn parse_directive_items<'p, S: Stage>(
                         span,
                     );
                 }
+                Mode::DiagnosticOnTypeError => {
+                    cx.emit_lint(
+                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        AttributeLintKind::MalformedOnTypeErrorAttr { span },
+                        span,
+                    );
+                }
             }
             continue;
         }}
@@ -140,7 +150,7 @@ fn parse_directive_items<'p, S: Stage>(
                 Mode::RustcOnUnimplemented => {
                     cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
                 }
-                Mode::DiagnosticOnUnimplemented |Mode::DiagnosticOnConst | Mode::DiagnosticOnMove => {
+                Mode::DiagnosticOnUnimplemented |Mode::DiagnosticOnConst | Mode::DiagnosticOnMove | Mode::DiagnosticOnTypeError => {
                     cx.emit_lint(
                         MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                         AttributeLintKind::IgnoredDiagnosticOption {

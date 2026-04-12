@@ -3342,10 +3342,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         } else {
             (obligation.cause.clone(), terr)
         };
+        tracing::info!("cyclic ");
         self.report_and_explain_type_error(
             TypeTrace::trait_refs(&cause, expected_trait_ref, found_trait_ref),
             obligation.param_env,
             terr,
+            None,
         )
     }
 
@@ -3403,10 +3405,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // traits manually, but don't make it more confusing when it does
         // happen.
         if !self.tcx.is_lang_item(expected_trait_ref.def_id, LangItem::Coroutine) && not_tupled {
+            tracing::info!("is lang");
             return Ok(self.report_and_explain_type_error(
                 TypeTrace::trait_refs(&obligation.cause, expected_trait_ref, found_trait_ref),
                 obligation.param_env,
                 ty::error::TypeError::Mismatch,
+                None,
             ));
         }
         if found.len() != expected.len() {

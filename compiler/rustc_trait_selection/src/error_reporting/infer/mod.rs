@@ -53,10 +53,11 @@ use std::{cmp, fmt, iter};
 use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
-use rustc_hir as hir;
+use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::extension;
 use rustc_middle::bug;
@@ -67,7 +68,8 @@ use rustc_middle::ty::{
     self, List, ParamEnv, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt,
 };
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, sym};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, kw, sym};
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use crate::error_reporting::TypeErrCtxt;
@@ -153,10 +155,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         actual: Ty<'tcx>,
         err: TypeError<'tcx>,
     ) -> Diag<'a> {
+        tracing::info!(
+            "H-========================================================================="
+        );
+
+        debug!("report_mismatched_types(actual={:?}, expected={:?})", actual, expected);
+        tracing::info!(?expected, ?actual);
         let mut diag = self.report_and_explain_type_error(
             TypeTrace::types(cause, expected, actual),
             param_env,
             err,
+            None,
         );
 
         self.suggest_param_env_shadowing(&mut diag, expected, actual, param_env);
@@ -172,10 +181,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         actual: ty::Const<'tcx>,
         err: TypeError<'tcx>,
     ) -> Diag<'a> {
+        tracing::info!(
+            "H-==== report_mismatched_consts====================================================================="
+        );
+
+        debug!("report_mismatched_const(actual={:?}, expected={:?})", actual, expected);
         self.report_and_explain_type_error(
             TypeTrace::consts(cause, expected, actual),
             param_env,
             err,
+            None,
         )
     }
 
@@ -1978,16 +1993,110 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
+    fn check_on_type_error_attribute(
+        &self,
+        expected_ty: Ty<'tcx>,
+        found_ty: Ty<'tcx>,
+        def_site_ty: Option<Ty<'tcx>>,
+        // param_env: &ty::ParamEnv<'tcx>,
+    ) -> (Option<String>, Option<String>, ThinVec<String>) {
+        tracing::info!("{:#?} {:#?}", expected_ty, found_ty);
+        // Check expected type for attribute
+        if let Some(def_site) = def_site_ty
+            && let ty::Adt(item_def, args) = def_site.kind()
+        {
+            if let Some(Some(directive)) =
+                find_attr!(self.tcx, item_def.did(), OnTypeError { directive, .. } => directive)
+            {
+                return self.format_on_type_error_message(directive, args, item_def.clone());
+            }
+        }
+
+        // Check found type for attribute
+        if let ty::Adt(item_def, args) = found_ty.kind() {
+            if let Some(Some(directive)) =
+                find_attr!(self.tcx, item_def.did(), OnTypeError { directive, .. } => directive)
+            {
+                tracing::info!(
+                    "directive{:#?}, args{:#?}, item_def {:#?}",
+                    directive,
+                    args,
+                    item_def
+                );
+                return self.format_on_type_error_message(directive, args, item_def.clone());
+            }
+        }
+
+        // Check found type for attribute
+        if let ty::Adt(item_def, args) = expected_ty.kind() {
+            if let Some(Some(directive)) =
+                find_attr!(self.tcx, item_def.did(), OnTypeError { directive, .. } => directive)
+            {
+                tracing::info!(
+                    "directive{:#?}, args{:#?}, item_def {:#?}",
+                    directive,
+                    args,
+                    item_def
+                );
+                return self.format_on_type_error_message(directive, args, item_def.clone());
+            }
+        }
+
+        (None, None, ThinVec::new())
+    }
+
+    fn format_on_type_error_message(
+        &self,
+        directive: &Directive,
+        args: &ty::GenericArgsRef<'tcx>,
+        item_def: ty::AdtDef<'tcx>,
+        // expected_ty: Ty<'tcx>,
+        // found_ty: Ty<'tcx>,
+    ) -> (Option<String>, Option<String>, ThinVec<String>) {
+        let item_name = self.tcx.item_name(item_def.did()).to_string();
+        let mut generic_args: Vec<_> = self
+            .tcx
+            .generics_of(item_def.did())
+            .own_params
+            .iter()
+            .filter_map(|param| Some((param.name, args[param.index as usize].to_string())))
+            .collect();
+        generic_args.push((kw::SelfUpper, item_name.clone()));
+
+        let format_args = FormatArgs {
+            this: item_name,
+            // Unused
+            this_sugared: String::new(),
+            // Unused
+            item_context: "",
+            generic_args,
+        };
+        let CustomDiagnostic { message, label, notes, parent_label: _ } =
+            directive.eval(None, &format_args);
+
+        (message, label, notes.into())
+    }
+
     pub fn report_and_explain_type_error(
         &self,
         trace: TypeTrace<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         terr: TypeError<'tcx>,
+        def_site_ty: Option<Ty<'tcx>>,
     ) -> Diag<'a> {
         debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
 
         let span = trace.cause.span;
         let mut path = None;
+
+        // Check for on_type_error attribute
+        let (on_type_error_message, on_type_error_label, on_type_error_notes) =
+            if let Some((expected_ty, found_ty)) = trace.values.ty() {
+                self.check_on_type_error_attribute(expected_ty, found_ty, def_site_ty)
+            } else {
+                (None, None, ThinVec::new())
+            };
+
         let failure_code = trace.cause.as_failure_code_diag(
             terr,
             span,
@@ -1995,6 +2104,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
         let mut diag = self.dcx().create_err(failure_code);
         *diag.long_ty_path() = path;
+
+        // Use custom message if available
+        if let Some(message) = on_type_error_message {
+            diag.primary_message(message);
+        }
+
+        // Add custom label if available
+        if let Some(label) = on_type_error_label {
+            diag.span_label(span, label);
+        }
+
+        // Add custom notes
+        for note in on_type_error_notes {
+            diag.note(note);
+        }
+
         self.note_type_err(
             &mut diag,
             &trace.cause,

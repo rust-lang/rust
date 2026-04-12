@@ -79,6 +79,7 @@ impl AttributeKind {
             NonExhaustive(..) => Yes, // Needed for rustdoc
             OnConst { .. } => Yes,
             OnMove { .. } => Yes,
+            OnTypeError { .. } => Yes,
             OnUnimplemented { .. } => Yes,
             Optimize(..) => No,
             PanicRuntime => No,

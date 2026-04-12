@@ -509,10 +509,12 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
         .try_report_from_nll()
         .or_else(|| {
             if let SubregionOrigin::Subtype(trace) = cause {
+                tracing::info!("borrow checker");
                 Some(infcx.err_ctxt().report_and_explain_type_error(
                     *trace,
                     infcx.tcx.param_env(generic_param_scope),
                     TypeError::RegionsPlaceholderMismatch,
+                    None,
                 ))
             } else {
                 None

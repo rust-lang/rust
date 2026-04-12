@@ -314,6 +314,18 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::MissingOptionsForOnMove => {
                 lints::MissingOptionsForOnMoveAttr.into_diag(dcx, level)
             }
+            &AttributeLintKind::MalformedOnTypeErrorAttr { span } => {
+                lints::MalformedOnTypeErrorAttrLint { span }.into_diag(dcx, level)
+            }
+            &AttributeLintKind::OnTypeErrorMalformedFormatLiterals { name } => {
+                lints::OnTypeErrorMalformedFormatLiterals { name }.into_diag(dcx, level)
+            }
+            &AttributeLintKind::OnTypeErrorMalformedAttrExpectedLiteralOrDelimiter => {
+                lints::OnTypeErrorMalformedAttrExpectedLiteralOrDelimiter.into_diag(dcx, level)
+            }
+            &AttributeLintKind::MissingOptionsForOnTypeError => {
+                lints::MissingOptionsForOnTypeErrorAttr.into_diag(dcx, level)
+            }
             &AttributeLintKind::RenamedLint { name, replace, suggestion } => lints::RenamedLint {
                 name,
                 replace,
