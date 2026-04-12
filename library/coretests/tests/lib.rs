@@ -120,7 +120,6 @@
 #![feature(try_find)]
 #![feature(try_trait_v2)]
 #![feature(type_info)]
-#![feature(uint_bit_width)]
 #![feature(uint_carryless_mul)]
 #![feature(uint_gather_scatter_bits)]
 #![feature(unicode_internals)]
