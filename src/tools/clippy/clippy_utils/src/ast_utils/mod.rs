@@ -339,6 +339,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 expr: le,
                 safety: ls,
                 define_opaque: _,
+                eii_impls: _,
             }),
             Static(box StaticItem {
                 ident: ri,
@@ -347,6 +348,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 expr: re,
                 safety: rs,
                 define_opaque: _,
+                eii_impls: _,
             }),
         ) => eq_id(*li, *ri) && lm == rm && ls == rs && eq_ty(lt, rt) && eq_expr_opt(le.as_deref(), re.as_deref()),
         (
@@ -540,6 +542,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 expr: le,
                 safety: ls,
                 define_opaque: _,
+                eii_impls: _,
             }),
             Static(box StaticItem {
                 ident: ri,
@@ -548,6 +551,7 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 expr: re,
                 safety: rs,
                 define_opaque: _,
+                eii_impls: _,
             }),
         ) => eq_id(*li, *ri) && eq_ty(lt, rt) && lm == rm && eq_expr_opt(le.as_deref(), re.as_deref()) && ls == rs,
         (
