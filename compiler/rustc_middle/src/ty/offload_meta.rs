@@ -1,7 +1,10 @@
 use bitflags::bitflags;
+use rustc_abi::{BackendRepr, TyAbiInterface};
+use rustc_target::callconv::ArgAbi;
 
 use crate::ty::{self, PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
 
+#[derive(Debug, Copy, Clone)]
 pub struct OffloadMetadata {
     pub payload_size: OffloadSize,
     pub mode: MappingFlags,
@@ -9,13 +12,18 @@ pub struct OffloadMetadata {
 
 #[derive(Debug, Copy, Clone)]
 pub enum OffloadSize {
-    Dynamic,
     Static(u64),
+    Dynamic(DynamicSize),
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum DynamicSize {
+    Slice { element_size: u64 },
 }
 
 bitflags! {
     /// Mirrors `OpenMPOffloadMappingFlags` from Clang/OpenMP.
-    #[derive(Debug, Copy, Clone)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     #[repr(transparent)]
     pub struct MappingFlags: u64 {
         /// No flags.
@@ -62,11 +70,38 @@ impl OffloadMetadata {
             mode: MappingFlags::from_ty(tcx, ty),
         }
     }
+
+    pub fn handle_abi<'tcx, C>(
+        cx: &C,
+        tcx: TyCtxt<'tcx>,
+        ty: Ty<'tcx>,
+        arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
+    ) -> Vec<(Self, Ty<'tcx>)>
+    where
+        Ty<'tcx>: TyAbiInterface<'tcx, C>,
+    {
+        match arg_abi.layout.backend_repr {
+            BackendRepr::ScalarPair(_, _) => (0..2)
+                .map(|i| {
+                    let ty = arg_abi.layout.field(cx, i).ty;
+                    (OffloadMetadata::from_ty(tcx, ty), ty)
+                })
+                .collect(),
+            _ => vec![(OffloadMetadata::from_ty(tcx, ty), ty)],
+        }
+    }
 }
 
 // FIXME(Sa4dUs): implement a solid logic to determine the payload size
 fn get_payload_size<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> OffloadSize {
     match ty.kind() {
+        ty::Slice(elem_ty) => {
+            let layout = tcx.layout_of(PseudoCanonicalInput {
+                typing_env: TypingEnv::fully_monomorphized(),
+                value: *elem_ty,
+            });
+            OffloadSize::Dynamic(DynamicSize::Slice { element_size: layout.unwrap().size.bytes() })
+        }
         ty::RawPtr(inner, _) | ty::Ref(_, inner, _) => get_payload_size(tcx, *inner),
         _ => OffloadSize::Static(
             tcx.layout_of(PseudoCanonicalInput {
