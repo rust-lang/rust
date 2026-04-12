@@ -1,0 +1,189 @@
+error[E0271]: type mismatch resolving `<Self as Super>::Assoc == ()`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:21:5
+   |
+LL |     fn transmute(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^ expected `()`, found type parameter `T`
+   |
+   = note:   expected unit type `()`
+           found type parameter `T`
+note: required for `Self` to implement `Mirror`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:31:28
+   |
+LL | impl<T: Super<Assoc = ()>> Mirror for T {}
+   |               ----------   ^^^^^^     ^
+   |               |
+   |               unsatisfied trait bound introduced here
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-144888-generics-of-crate-node.rs:21:5
+   |
+LL |     fn transmute(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required for `Self` to implement `Mirror`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:31:28
+   |
+LL | impl<T: Super<Assoc = ()>> Mirror for T {}
+   |      -                     ^^^^^^     ^
+   |      |
+   |      unsatisfied trait bound implicitly introduced here
+
+error[E0271]: type mismatch resolving `<Self as Super>::Assoc == ()`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:11:1
+   |
+LL | trait Foo<T>: Super<Assoc = T>
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found type parameter `T`
+   |
+   = note:   expected unit type `()`
+           found type parameter `T`
+note: required for `Self` to implement `Mirror`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:31:28
+   |
+LL | impl<T: Super<Assoc = ()>> Mirror for T {}
+   |               ----------   ^^^^^^     ^
+   |               |
+   |               unsatisfied trait bound introduced here
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-144888-generics-of-crate-node.rs:11:1
+   |
+LL | trait Foo<T>: Super<Assoc = T>
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required for `Self` to implement `Mirror`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:31:28
+   |
+LL | impl<T: Super<Assoc = ()>> Mirror for T {}
+   |      -                     ^^^^^^     ^
+   |      |
+   |      unsatisfied trait bound implicitly introduced here
+help: consider further restricting `Self`
+   |
+LL | trait Foo<T>: Super<Assoc = T> + Sized
+   |                                +++++++
+
+error[E0271]: type mismatch resolving `<Self as Super>::Assoc == ()`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:15:30
+   |
+LL | trait Foo<T>: Super<Assoc = T>
+   |           - found this type parameter
+...
+LL |     <Self as Mirror>::Assoc: Clone,
+   |                              ^^^^^ expected `()`, found type parameter `T`
+   |
+   = note:   expected unit type `()`
+           found type parameter `T`
+note: required for `Self` to implement `Mirror`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:31:28
+   |
+LL | impl<T: Super<Assoc = ()>> Mirror for T {}
+   |               ----------   ^^^^^^     ^
+   |               |
+   |               unsatisfied trait bound introduced here
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-144888-generics-of-crate-node.rs:15:30
+   |
+LL |     <Self as Mirror>::Assoc: Clone,
+   |                              ^^^^^ doesn't have a size known at compile-time
+   |
+note: required for `Self` to implement `Mirror`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:31:28
+   |
+LL | impl<T: Super<Assoc = ()>> Mirror for T {}
+   |      -                     ^^^^^^     ^
+   |      |
+   |      unsatisfied trait bound implicitly introduced here
+help: consider further restricting `Self`
+   |
+LL | trait Foo<T>: Super<Assoc = T> + Sized
+   |                                +++++++
+
+error[E0046]: not all trait items implemented, missing: `Assoc`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:31:1
+   |
+LL |     type Assoc;
+   |     ---------- `Assoc` from trait
+LL | }
+LL | impl<T: Super<Assoc = ()>> Mirror for T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `Assoc` in implementation
+
+error[E0271]: type mismatch resolving `<Self as Super>::Assoc == ()`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:21:5
+   |
+LL | trait Foo<T>: Super<Assoc = T>
+   |           - found this type parameter
+...
+LL |     fn transmute(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^ expected `()`, found type parameter `T`
+   |
+   = note:   expected unit type `()`
+           found type parameter `T`
+note: required for `Self` to implement `Mirror`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:31:28
+   |
+LL | impl<T: Super<Assoc = ()>> Mirror for T {}
+   |               ----------   ^^^^^^     ^
+   |               |
+   |               unsatisfied trait bound introduced here
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-144888-generics-of-crate-node.rs:21:5
+   |
+LL |     fn transmute(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+note: required for `Self` to implement `Mirror`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:31:28
+   |
+LL | impl<T: Super<Assoc = ()>> Mirror for T {}
+   |      -                     ^^^^^^     ^
+   |      |
+   |      unsatisfied trait bound implicitly introduced here
+help: consider further restricting `Self`
+   |
+LL |     fn transmute(&self) where Self: Sized {}
+   |                         +++++++++++++++++
+
+error[E0271]: type mismatch resolving `<Self as Super>::Assoc == ()`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:15:30
+   |
+LL | trait Foo<T>: Super<Assoc = T>
+   |           - found this type parameter
+...
+LL |     <Self as Mirror>::Assoc: Clone,
+   |                              ^^^^^ expected `()`, found type parameter `T`
+   |
+   = note:   expected unit type `()`
+           found type parameter `T`
+note: required for `Self` to implement `Mirror`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:31:28
+   |
+LL | impl<T: Super<Assoc = ()>> Mirror for T {}
+   |               ----------   ^^^^^^     ^
+   |               |
+   |               unsatisfied trait bound introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/issue-144888-generics-of-crate-node.rs:15:30
+   |
+LL |     <Self as Mirror>::Assoc: Clone,
+   |                              ^^^^^ doesn't have a size known at compile-time
+   |
+note: required for `Self` to implement `Mirror`
+  --> $DIR/issue-144888-generics-of-crate-node.rs:31:28
+   |
+LL | impl<T: Super<Assoc = ()>> Mirror for T {}
+   |      -                     ^^^^^^     ^
+   |      |
+   |      unsatisfied trait bound implicitly introduced here
+help: consider further restricting `Self`
+   |
+LL |     fn transmute(&self) where Self: Sized {}
+   |                         +++++++++++++++++
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0046, E0271, E0277.
+For more information about an error, try `rustc --explain E0046`.

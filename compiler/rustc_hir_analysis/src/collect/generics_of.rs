@@ -206,7 +206,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         }
 
         // All of these nodes have no parent from which to inherit generics.
-        Node::Item(_) | Node::ForeignItem(_) => None,
+        Node::Item(_) | Node::ForeignItem(_) | Node::Crate(_) => None,
 
         // Params don't really have generics, but we use it when instantiating their value paths.
         Node::GenericParam(_) => None,
