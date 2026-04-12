@@ -80,7 +80,7 @@ mod ambiguous_macros_only {
 #[doc(no_inline)]
 pub use self::ambiguous_macros_only::{env, panic};
 
-#[unstable(feature = "cfg_select", issue = "115585")]
+#[stable(feature = "cfg_select", since = "CURRENT_RUSTC_VERSION")]
 #[doc(no_inline)]
 pub use crate::cfg_select;
 

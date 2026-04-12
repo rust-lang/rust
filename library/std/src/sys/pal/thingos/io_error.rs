@@ -1,0 +1,63 @@
+pub fn errno() -> i32 {
+    0
+}
+
+pub fn is_interrupted(code: i32) -> bool {
+    code == 4
+}
+
+pub fn decode_error_kind(code: i32) -> crate::crate::io::ErrorKind {
+    match code {
+        1 => crate::crate::io::ErrorKind::PermissionDenied,    // EPERM
+        2 => crate::crate::io::ErrorKind::NotFound,            // ENOENT
+        4 => crate::crate::io::ErrorKind::Interrupted,         // EINTR
+        5 => crate::crate::io::ErrorKind::Uncategorized,       // EIO
+        9 => crate::crate::io::ErrorKind::InvalidInput,        // EBADF
+        11 => crate::crate::io::ErrorKind::WouldBlock,         // EAGAIN / EWOULDBLOCK
+        12 => crate::crate::io::ErrorKind::OutOfMemory,        // ENOMEM
+        13 => crate::crate::io::ErrorKind::PermissionDenied,   // EACCES
+        16 => crate::crate::io::ErrorKind::ResourceBusy,       // EBUSY
+        17 => crate::crate::io::ErrorKind::AlreadyExists,      // EEXIST
+        20 => crate::crate::io::ErrorKind::NotADirectory,      // ENOTDIR
+        21 => crate::crate::io::ErrorKind::IsADirectory,       // EISDIR
+        22 => crate::crate::io::ErrorKind::InvalidInput,       // EINVAL
+        28 => crate::crate::io::ErrorKind::StorageFull,        // ENOSPC
+        32 => crate::crate::io::ErrorKind::BrokenPipe,         // EPIPE
+        38 => crate::crate::io::ErrorKind::Unsupported,        // ENOSYS
+        39 => crate::crate::io::ErrorKind::DirectoryNotEmpty,  // ENOTEMPTY
+        75 => crate::crate::io::ErrorKind::InvalidData,        // EOVERFLOW
+        95 | 97 => crate::crate::io::ErrorKind::Unsupported,   // EOPNOTSUPP / EAFNOSUPPORT
+        110 => crate::crate::io::ErrorKind::TimedOut,          // ETIMEDOUT
+        111 => crate::crate::io::ErrorKind::ConnectionRefused, // ECONNREFUSED
+        _ => crate::crate::io::ErrorKind::Uncategorized,
+    }
+}
+
+pub fn error_string(errno: i32) -> String {
+    match errno {
+        1 => "operation not permitted",
+        2 => "no such file or directory",
+        4 => "interrupted system call",
+        5 => "i/o error",
+        9 => "bad file descriptor",
+        11 => "resource temporarily unavailable",
+        12 => "cannot allocate memory",
+        13 => "permission denied",
+        16 => "device or resource busy",
+        17 => "file exists",
+        20 => "not a directory",
+        21 => "is a directory",
+        22 => "invalid argument",
+        28 => "no space left on device",
+        32 => "broken pipe",
+        38 => "function not implemented",
+        39 => "directory not empty",
+        75 => "value too large for defined data type",
+        95 => "operation not supported",
+        97 => "address family not supported",
+        110 => "timed out",
+        111 => "connection refused",
+        _ => "uncategorized error",
+    }
+    .to_string()
+}

@@ -13,6 +13,10 @@ cfg_select! {
         mod motor;
         pub use motor::{Pipe, pipe};
     }
+    target_os = "thingos" => {
+        mod thingos;
+        pub use thingos::{Pipe, pipe};
+    }
     _ => {
         mod unsupported;
         pub use unsupported::{Pipe, pipe};

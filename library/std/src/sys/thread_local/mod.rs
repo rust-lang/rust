@@ -118,6 +118,7 @@ pub(crate) mod guard {
         any(
             target_os = "hermit",
             target_os = "xous",
+            target_os = "thingos",
         ) => {
             // `std` is the only runtime, so it just calls the destructor functions
             // itself when the time comes.

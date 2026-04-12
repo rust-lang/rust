@@ -696,6 +696,10 @@ fn configure_cmake(
             cfg.define("CMAKE_SYSTEM_NAME", "visionOS");
         } else if target.contains("watchos") {
             cfg.define("CMAKE_SYSTEM_NAME", "watchOS");
+        } else if target.contains("thingos") {
+            cfg.define("CMAKE_SYSTEM_NAME", "Generic");
+            cfg.define("LLVM_ON_UNIX", "ON");
+            cfg.define("LLVM_HAVE_LINK_VERSION_SCRIPT", "ON");
         } else if target.contains("none") {
             // "none" should be the last branch
             cfg.define("CMAKE_SYSTEM_NAME", "Generic");
@@ -795,6 +799,9 @@ fn configure_cmake(
     if target.contains("ohos") {
         cflags.push(" -D_LINUX_SYSINFO_H");
     }
+    if target.contains("thingos") {
+        cflags.push(" -DLLVM_ON_UNIX");
+    }
     if builder.config.llvm_clang_cl.is_some() {
         cflags.push(format!(" --target={target}"));
     }
@@ -819,6 +826,9 @@ fn configure_cmake(
     }
     if target.contains("ohos") {
         cxxflags.push(" -D_LINUX_SYSINFO_H");
+    }
+    if target.contains("thingos") {
+        cxxflags.push(" -DLLVM_ON_UNIX");
     }
     if builder.config.llvm_clang_cl.is_some() {
         cxxflags.push(format!(" --target={target}"));
