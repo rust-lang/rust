@@ -178,7 +178,7 @@ impl Alignment {
     /// Returns the alignment as a <code>[NonZero]<[usize]></code>.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[deprecated(
-        since = "CURRENT_RUSTC_VERSION",
+        since = "1.96.0",
         note = "renamed to `as_nonzero_usize`",
         suggestion = "as_nonzero_usize"
     )]
