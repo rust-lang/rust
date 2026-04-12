@@ -2313,65 +2313,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.vector_extremum(a, b, ExtremumOperation::Min)
     }
 
-    #[cfg(feature = "master")]
-    pub fn vector_reduce_fmin(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
-        let vector_type = src.get_type().unqualified().dyncast_vector().expect("vector type");
-        let element_count = vector_type.get_num_units();
-        let mut acc = self
-            .context
-            .new_vector_access(self.location, src, self.context.new_rvalue_zero(self.int_type))
-            .to_rvalue();
-        for i in 1..element_count {
-            let elem = self
-                .context
-                .new_vector_access(
-                    self.location,
-                    src,
-                    self.context.new_rvalue_from_int(self.int_type, i as _),
-                )
-                .to_rvalue();
-            let cmp = self.context.new_comparison(self.location, ComparisonOp::LessThan, acc, elem);
-            acc = self.select(cmp, acc, elem);
-        }
-        acc
-    }
-
-    #[cfg(not(feature = "master"))]
-    pub fn vector_reduce_fmin(&mut self, _src: RValue<'gcc>) -> RValue<'gcc> {
-        unimplemented!();
-    }
-
     pub fn vector_maximum_number_nsz(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         self.vector_extremum(a, b, ExtremumOperation::Max)
-    }
-
-    #[cfg(feature = "master")]
-    pub fn vector_reduce_fmax(&mut self, src: RValue<'gcc>) -> RValue<'gcc> {
-        let vector_type = src.get_type().unqualified().dyncast_vector().expect("vector type");
-        let element_count = vector_type.get_num_units();
-        let mut acc = self
-            .context
-            .new_vector_access(self.location, src, self.context.new_rvalue_zero(self.int_type))
-            .to_rvalue();
-        for i in 1..element_count {
-            let elem = self
-                .context
-                .new_vector_access(
-                    self.location,
-                    src,
-                    self.context.new_rvalue_from_int(self.int_type, i as _),
-                )
-                .to_rvalue();
-            let cmp =
-                self.context.new_comparison(self.location, ComparisonOp::GreaterThan, acc, elem);
-            acc = self.select(cmp, acc, elem);
-        }
-        acc
-    }
-
-    #[cfg(not(feature = "master"))]
-    pub fn vector_reduce_fmax(&mut self, _src: RValue<'gcc>) -> RValue<'gcc> {
-        unimplemented!();
     }
 
     pub fn vector_select(
