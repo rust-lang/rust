@@ -6,7 +6,7 @@
 #[cfg(test)]
 mod tests;
 
-#[cfg(all(target_os = "linux", target_env = "gnu"))]
+#[cfg(all(target_os = "linux"))]
 use libc::c_char;
 #[cfg(any(
     all(target_os = "linux", not(target_env = "musl")),
@@ -93,7 +93,7 @@ use crate::sys::fd::FileDesc;
 pub use crate::sys::fs::common::exists;
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::time::SystemTime;
-#[cfg(all(target_os = "linux", target_env = "gnu"))]
+#[cfg(all(target_os = "linux"))]
 use crate::sys::weak::syscall;
 #[cfg(target_os = "android")]
 use crate::sys::weak::weak;
@@ -102,14 +102,14 @@ use crate::{mem, ptr};
 
 pub struct File(FileDesc);
 
-// FIXME: This should be available on Linux with all `target_env`.
-// But currently only glibc exposes `statx` fn and structs.
-// We don't want to import unverified raw C structs here directly.
+// statx is available on Linux when:
+//   - target_env = "gnu": added in glibc >= 2.28
+//   - target_env = "musl": added in musl >= 1.2.5
 // https://github.com/rust-lang/rust/pull/67774
 macro_rules! cfg_has_statx {
     ({ $($then_tt:tt)* } else { $($else_tt:tt)* }) => {
         cfg_select! {
-            all(target_os = "linux", target_env = "gnu") => {
+            all(target_os = "linux") => {
                 $($then_tt)*
             }
             _ => {
@@ -118,7 +118,7 @@ macro_rules! cfg_has_statx {
         }
     };
     ($($block_inner:tt)*) => {
-        #[cfg(all(target_os = "linux", target_env = "gnu"))]
+        #[cfg(all(target_os = "linux"))]
         {
             $($block_inner)*
         }
