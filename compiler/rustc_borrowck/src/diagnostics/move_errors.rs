@@ -825,21 +825,25 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
                 // If the `inner` is a raw pointer, do not suggest removing the "*", see #126863
                 // FIXME: need to check whether the assigned object can be a raw pointer, see `tests/ui/borrowck/issue-20801.rs`.
-                if !is_raw_ptr && (!is_destructuring_pattern_move || is_ref) {
+                if is_raw_ptr {
+                    return;
+                }
+
+                if !is_destructuring_pattern_move || is_ref {
                     err.span_suggestion_verbose(
                         span.with_hi(span.lo() + BytePos(1)),
                         "consider removing the dereference here",
                         String::new(),
                         Applicability::MaybeIncorrect,
                     );
-                } else if !is_raw_ptr && !is_destructuring_assignment && !is_nested_deref {
+                } else if !is_destructuring_assignment && !is_nested_deref {
                     err.span_suggestion_verbose(
                         span.shrink_to_lo(),
                         "consider borrowing here",
                         '&',
                         Applicability::MaybeIncorrect,
                     );
-                } else if !is_raw_ptr {
+                } else {
                     err.span_help(
                         span,
                         "destructuring assignment cannot borrow from this expression; consider using a `let` binding instead",
