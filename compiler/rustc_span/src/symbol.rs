@@ -833,6 +833,7 @@ symbols! {
         dreg_low8,
         dreg_low16,
         drop,
+        drop_glue,
         drop_in_place,
         drop_types_in_const,
         dropck_eyepatch,

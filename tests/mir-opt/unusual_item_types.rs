@@ -22,7 +22,7 @@ enum E {
     V = 5,
 }
 
-// EMIT_MIR core.ptr-drop_in_place.Vec_i32_.AddMovesForPackedDrops.before.mir
+// EMIT_MIR core.ptr-drop_glue.Vec_i32_.AddMovesForPackedDrops.before.mir
 pub fn main() {
     let f = Test::X as fn(usize) -> Test;
     let v = Vec::<i32>::new();

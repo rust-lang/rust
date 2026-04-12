@@ -147,11 +147,10 @@ pub enum InstanceKind<'tcx> {
     /// Proxy shim for async drop of future (def_id, proxy_cor_ty, impl_cor_ty)
     FutureDropPollShim(DefId, Ty<'tcx>, Ty<'tcx>),
 
-    /// `core::ptr::drop_in_place::<T>`.
+    /// `core::ptr::drop_glue::<T>`.
     ///
-    /// The `DefId` is for `core::ptr::drop_in_place`.
-    /// The `Option<Ty<'tcx>>` is either `Some(T)`, or `None` for empty drop
-    /// glue.
+    /// The `DefId` is for `core::ptr::drop_glue`.
+    /// The `Option<Ty<'tcx>>` is either `Some(T)`, or `None` for empty drop glue.
     DropGlue(DefId, Option<Ty<'tcx>>),
 
     /// Compiler-generated `<T as Clone>::clone` implementation.
@@ -293,7 +292,7 @@ impl<'tcx> InstanceKind<'tcx> {
         use rustc_hir::definitions::DefPathData;
         let def_id = match *self {
             ty::InstanceKind::Item(def) => def,
-            ty::InstanceKind::DropGlue(_, Some(_)) => return false,
+            ty::InstanceKind::DropGlue(_, Some(ty)) => return ty.is_array(),
             ty::InstanceKind::AsyncDropGlueCtorShim(_, ty) => return ty.is_coroutine(),
             ty::InstanceKind::FutureDropPollShim(_, _, _) => return false,
             ty::InstanceKind::AsyncDropGlue(_, _) => return false,
@@ -717,8 +716,8 @@ impl<'tcx> Instance<'tcx> {
         }
     }
 
-    pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
-        let def_id = tcx.require_lang_item(LangItem::DropInPlace, DUMMY_SP);
+    pub fn resolve_drop_glue(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
+        let def_id = tcx.require_lang_item(LangItem::DropGlue, DUMMY_SP);
         let args = tcx.mk_args(&[ty.into()]);
         Instance::expect_resolve(
             tcx,
