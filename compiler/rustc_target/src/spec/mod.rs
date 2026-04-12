@@ -1716,6 +1716,7 @@ supported_targets! {
     ("riscv64im-unknown-none-elf", riscv64im_unknown_none_elf),
     ("riscv64imac-unknown-none-elf", riscv64imac_unknown_none_elf),
     ("riscv64gc-unknown-none-elf", riscv64gc_unknown_none_elf),
+    ("riscv64a23-unknown-none-elf", riscv64a23_unknown_none_elf),
     ("riscv64gc-unknown-linux-gnu", riscv64gc_unknown_linux_gnu),
     ("riscv64gc-unknown-linux-musl", riscv64gc_unknown_linux_musl),
     ("riscv64a23-unknown-linux-gnu", riscv64a23_unknown_linux_gnu),
