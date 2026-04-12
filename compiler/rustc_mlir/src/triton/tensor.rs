@@ -531,7 +531,7 @@ pub fn descriptor_load<'ctx>(
 ///     : !tt.tensordesc<tensor<...>>, tensor<...>
 /// ```
 pub fn descriptor_store<'ctx>(
-    context: &'ctx Context,
+    _context: &'ctx Context,
     location: Location<'ctx>,
     desc: Value<'ctx, 'ctx>,
     src: Value<'ctx, 'ctx>,
@@ -691,31 +691,31 @@ pub fn dot_scaled<'ctx>(
 }
 
 pub fn maximumf<'ctx>(
-    context: &'ctx Context,
-    location: Location<'ctx>,
-    a: Value<'ctx, 'ctx>,
-    b: Value<'ctx, 'ctx>,
+    _context: &'ctx Context,
+    _location: Location<'ctx>,
+    _a: Value<'ctx, 'ctx>,
+    _b: Value<'ctx, 'ctx>,
 ) -> Result<MaximumFOperation<'ctx>, Error> {
     todo!()
     // Ok(MaximumOperation::builder(context, location).a(a).b(b).build())
 }
 
 pub fn maxsi<'ctx>(
-    context: &'ctx Context,
-    location: Location<'ctx>,
-    a: Value<'ctx, 'ctx>,
-    b: Value<'ctx, 'ctx>,
+    _context: &'ctx Context,
+    _location: Location<'ctx>,
+    _a: Value<'ctx, 'ctx>,
+    _b: Value<'ctx, 'ctx>,
 ) -> Result<MaxSIOperation<'ctx>, Error> {
     todo!()
     // Ok(MaximumOperation::builder(context, location).a(a).b(b).build())
 }
 
 pub fn zeros_like<'ctx>(
-    context: &'ctx Context,
-    location: Location<'ctx>,
+    _context: &'ctx Context,
+    _location: Location<'ctx>,
     src: Value<'ctx, 'ctx>,
 ) -> Result<ConstantOperation<'ctx>, Error> {
-    let ty: RankedTensorType<'ctx> = src
+    let _ty: RankedTensorType<'ctx> = src
         .r#type()
         .try_into()
         .map_err(|_| Error::InvalidType { msg: "Invalid tensor type".to_string() })?;
@@ -741,7 +741,7 @@ pub fn zeros_like<'ctx>(
 /// %lhs, %rhs = tt.split %src : tensor<4x2xf32> -> tensor<4xf32>
 /// ```
 pub fn split<'ctx>(
-    context: &'ctx Context,
+    _context: &'ctx Context,
     location: Location<'ctx>,
     src: Value<'ctx, 'ctx>,
     out_type: Type<'ctx>,
@@ -1756,7 +1756,7 @@ pub fn expand_dims<'ctx>(
 /// $src attr-dict `:` type($src) `->` type($result)
 /// ```
 pub fn broadcast<'ctx>(
-    context: &'ctx Context,
+    _context: &'ctx Context,
     location: Location<'ctx>,
     src: Value<'ctx, '_>,
     result_ty: Type<'ctx>,
