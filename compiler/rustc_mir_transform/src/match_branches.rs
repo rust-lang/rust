@@ -47,6 +47,8 @@ struct SimplifyMatch<'tcx, 'a> {
     discr: &'a Operand<'tcx>,
     discr_local: Option<Local>,
     discr_ty: Ty<'tcx>,
+    /// Extra statements to emit after the unified statements (e.g., range assumes).
+    extra_stmts: Vec<StatementKind<'tcx>>,
 }
 
 impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
@@ -206,6 +208,56 @@ impl<'tcx, 'a> SimplifyMatch<'tcx, 'a> {
             } else {
                 Rvalue::Cast(CastKind::IntToInt, operand, first_const.ty())
             };
+
+            // Emit range assume so that subsequent passes (and LLVM) can
+            // eliminate bounds checks that depend on the cast result.
+            // We know the result is one of the constant values, so we can
+            // assert `dest <= max_value`.
+            let dest_ty = first_const.ty();
+            if !dest_ty.is_signed() {
+                let max_val = consts
+                    .iter()
+                    .filter_map(|(_, c)| {
+                        c.const_.try_eval_scalar_int(self.tcx, self.typing_env).map(|s| {
+                            s.to_uint(
+                                self.tcx
+                                    .layout_of(self.typing_env.as_query_input(dest_ty))
+                                    .unwrap()
+                                    .size,
+                            )
+                        })
+                    })
+                    .max()
+                    .unwrap();
+                let max_const = Operand::const_from_scalar(
+                    self.tcx,
+                    dest_ty,
+                    rustc_const_eval::interpret::Scalar::from_uint(
+                        max_val,
+                        self.tcx
+                            .layout_of(self.typing_env.as_query_input(dest_ty))
+                            .unwrap()
+                            .size,
+                    ),
+                    rustc_span::DUMMY_SP,
+                );
+                let bool_local = self.patch.new_temp(
+                    self.tcx.types.bool,
+                    self.body.basic_blocks[self.switch_bb].terminator().source_info.span,
+                );
+                let cmp = Rvalue::BinaryOp(
+                    BinOp::Le,
+                    Box::new((Operand::Copy(dest), max_const)),
+                );
+                self.extra_stmts.push(StatementKind::Assign(Box::new((
+                    Place::from(bool_local),
+                    cmp,
+                ))));
+                self.extra_stmts.push(StatementKind::Intrinsic(Box::new(
+                    NonDivergingIntrinsic::Assume(Operand::Move(Place::from(bool_local))),
+                )));
+            }
+
             Some(StatementKind::Assign(Box::new((dest, rval))))
         } else {
             None
@@ -381,6 +433,7 @@ fn simplify_match<'tcx>(
         discr,
         discr_local: None,
         discr_ty: discr.ty(body.local_decls(), tcx),
+        extra_stmts: Vec::new(),
     };
     let reachable_cases: Vec<_> =
         targets.iter().filter(|&(_, bb)| !body.basic_blocks[bb].is_empty_unreachable()).collect();
@@ -431,6 +484,9 @@ fn simplify_match<'tcx>(
     }
     for new_stmt in new_stmts {
         patch.add_statement(parent_end, new_stmt);
+    }
+    for extra_stmt in simplify_match.extra_stmts {
+        patch.add_statement(parent_end, extra_stmt);
     }
     if let Some(discr_local) = simplify_match.discr_local {
         patch.add_statement(parent_end, StatementKind::StorageDead(discr_local));

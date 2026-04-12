@@ -6,6 +6,7 @@
       let mut _0: u128;
       let mut _2: i128;
 +     let mut _3: i128;
++     let mut _4: bool;
   
       bb0: {
           _2 = discriminant(_1);
@@ -40,6 +41,8 @@
 +         StorageLive(_3);
 +         _3 = move _2;
 +         _0 = copy _3 as u128 (IntToInt);
++         _4 = Le(copy _0, const u128::MAX);
++         assume(move _4);
 +         StorageDead(_3);
           return;
       }
