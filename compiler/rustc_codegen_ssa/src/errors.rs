@@ -1189,14 +1189,17 @@ pub(crate) struct UnstableCTargetFeature<'a> {
 
 #[derive(Diagnostic)]
 #[diag("target feature `{$feature}` cannot be {$enabled} with `-Ctarget-feature`: {$reason}")]
-#[note(
-    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-)]
-#[note("for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>")]
 pub(crate) struct ForbiddenCTargetFeature<'a> {
     pub feature: &'a str,
     pub enabled: &'a str,
     pub reason: &'a str,
+    #[note(
+        "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+    )]
+    #[note(
+        "for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>"
+    )]
+    pub future_compat_note: bool,
 }
 
 pub struct TargetFeatureDisableOrEnable<'a> {
