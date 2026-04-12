@@ -430,19 +430,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let arm_source_info = self.source_info(arm.span);
                 let arm_scope = (arm.scope, arm_source_info);
                 let match_scope = self.local_scope();
-                let guard_scope = arm
-                    .guard
-                    .map(|_| region::Scope { data: region::ScopeData::MatchGuard, ..arm.scope })
-                    .or_else(|| {
-                        if let PatKind::Guard { condition, .. } = arm.pattern.kind {
-                            Some(region::Scope {
-                                local_id: self.thir[condition].temp_scope_id,
-                                data: region::ScopeData::MatchGuard,
-                            })
-                        } else {
-                            None
-                        }
-                    });
+                let guard_scope = if arm.guard.is_some() || self.pat_has_guard(&arm.pattern) {
+                    Some(region::Scope { data: region::ScopeData::MatchGuard, ..arm.scope })
+                } else {
+                    None
+                };
                 self.in_scope(arm_scope, LintLevel::Explicit(arm.hir_id), |this| {
                     this.opt_in_scope(guard_scope.map(|scope| (scope, arm_source_info)), |this| {
                         // `if let` guard temps needing deduplicating will be in the guard scope.
