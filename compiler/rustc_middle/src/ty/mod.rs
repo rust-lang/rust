@@ -24,7 +24,7 @@ pub use generic_args::{GenericArgKind, TermKind, *};
 pub use generics::*;
 pub use intrinsic::IntrinsicDef;
 use rustc_abi::{
-    Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, VariantIdx,
+    Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, ScalableElt, Size, VariantIdx,
 };
 use rustc_ast as ast;
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
@@ -37,7 +37,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Diag, ErrorGuaranteed, LintBuffer};
 use rustc_hir as hir;
-use rustc_hir::attrs::StrippedCfgItem;
+use rustc_hir::attrs::{AttrResolution, StrippedCfgItem};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
 use rustc_hir::{LangItem, attrs as attr, find_attr};
@@ -51,7 +51,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::config::OptLevel;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol};
+use rustc_span::{AttrId, DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol};
 use rustc_target::callconv::FnAbi;
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
@@ -117,6 +117,7 @@ use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::ich::StableHashingContext;
 use crate::metadata::{AmbigModChild, ModChild};
 use crate::middle::privacy::EffectiveVisibilities;
+use crate::mir::interpret::ErrorHandled;
 use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, SourceInfo};
 use crate::query::{IntoQueryKey, Providers};
 use crate::ty;
@@ -210,6 +211,9 @@ pub struct ResolverAstLowering<'tcx> {
     pub lifetimes_res_map: NodeMap<LifetimeRes>,
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, LifetimeRes)>>,
+    /// Resolutions for builtin attribute arguments that need late name resolution, keyed by
+    /// attribute ID.
+    pub attr_res_map: FxIndexMap<AttrId, Vec<AttrResolution<ast::NodeId>>>,
 
     pub next_node_id: ast::NodeId,
 
@@ -1404,6 +1408,107 @@ pub enum ImplTraitInTraitData {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    pub fn eval_attr_int_value(
+        self,
+        value: attr::AttrIntValue,
+        attr_name: &'static str,
+    ) -> Option<u128> {
+        match value {
+            attr::AttrIntValue::Lit(value) => Some(value),
+            attr::AttrIntValue::Const { def_id, span } => {
+                let ty = self.type_of(def_id).instantiate_identity();
+                if !ty.is_integral() {
+                    self.dcx().emit_err(crate::error::AttrConstNonInt { span, attr_name, ty });
+                    return None;
+                }
+
+                let typing_env = ty::TypingEnv::post_analysis(self, def_id);
+                let size = match self
+                    .layout_of(typing_env.with_post_analysis_normalized(self).as_query_input(ty))
+                {
+                    Ok(layout) => layout.size,
+                    Err(_) => return None,
+                };
+
+                match self.const_eval_poly(def_id) {
+                    Ok(val) => {
+                        let Some(int) = val.try_to_scalar_int() else {
+                            self.dcx().emit_err(crate::error::AttrConstNonInt {
+                                span,
+                                attr_name,
+                                ty,
+                            });
+                            return None;
+                        };
+
+                        if ty.is_signed() {
+                            let value = int.to_int(size);
+                            if value < 0 {
+                                self.dcx()
+                                    .emit_err(crate::error::AttrConstNegative { span, attr_name });
+                                None
+                            } else {
+                                Some(value as u128)
+                            }
+                        } else {
+                            Some(int.to_uint(size))
+                        }
+                    }
+                    Err(ErrorHandled::Reported(..)) => None,
+                    Err(ErrorHandled::TooGeneric(_)) => {
+                        self.dcx().emit_err(crate::error::AttrConstTooGeneric { span, attr_name });
+                        None
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn eval_attr_alignment(
+        self,
+        value: attr::AttrIntValue,
+        attr_name: &'static str,
+    ) -> Option<Align> {
+        let span = match value {
+            attr::AttrIntValue::Lit(_) => DUMMY_SP,
+            attr::AttrIntValue::Const { span, .. } => span,
+        };
+        let value = self.eval_attr_int_value(value, attr_name)?;
+
+        if !value.is_power_of_two() {
+            self.dcx().emit_err(crate::error::InvalidAttrValue {
+                span,
+                attr_name,
+                reason: "not a power of two".to_string(),
+            });
+            return None;
+        }
+
+        let align =
+            value.try_into().ok().and_then(|a| Align::from_bytes(a).ok()).or_else(|| {
+                self.dcx().emit_err(crate::error::InvalidAttrValue {
+                    span,
+                    attr_name,
+                    reason: "larger than 2^29".to_string(),
+                });
+                None
+            })?;
+
+        let max = Size::from_bits(self.sess.target.pointer_width).signed_int_max() as u64;
+        if align.bytes() > max {
+            self.dcx().emit_err(crate::error::InvalidAttrValue {
+                span,
+                attr_name,
+                reason: format!(
+                    "alignment larger than `isize::MAX` bytes ({max} for the current target)"
+                ),
+            });
+            return None;
+        }
+
+        Some(align)
+    }
+
     pub fn typeck_body(self, body: hir::BodyId) -> &'tcx TypeckResults<'tcx> {
         self.typeck(self.hir_body_owner_def_id(body))
     }
@@ -1446,11 +1551,13 @@ impl<'tcx> TyCtxt<'tcx> {
                     attr::ReprRust => ReprFlags::empty(),
                     attr::ReprC => ReprFlags::IS_C,
                     attr::ReprPacked(pack) => {
-                        min_pack = Some(if let Some(min_pack) = min_pack {
-                            min_pack.min(pack)
-                        } else {
-                            pack
-                        });
+                        if let Some(pack) = self.eval_attr_alignment(pack, "repr(packed)") {
+                            min_pack = Some(if let Some(min_pack) = min_pack {
+                                min_pack.min(pack)
+                            } else {
+                                pack
+                            });
+                        }
                         ReprFlags::empty()
                     }
                     attr::ReprTransparent => ReprFlags::IS_TRANSPARENT,
@@ -1477,7 +1584,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         ReprFlags::empty()
                     }
                     attr::ReprAlign(align) => {
-                        max_align = max_align.max(Some(align));
+                        max_align = max_align.max(self.eval_attr_alignment(align, "repr(align)"));
                         ReprFlags::empty()
                     }
                 });

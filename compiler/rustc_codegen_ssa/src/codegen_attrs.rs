@@ -76,7 +76,14 @@ fn process_builtin_attrs(
                 interesting_spans.inline = Some(*span);
             }
             AttributeKind::Naked(_) => codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED,
-            AttributeKind::RustcAlign { align, .. } => codegen_fn_attrs.alignment = Some(*align),
+            AttributeKind::RustcAlign { aligns } => {
+                for (align, _) in aligns {
+                    if let Some(align) = tcx.eval_attr_alignment(*align, "rustc_align") {
+                        codegen_fn_attrs.alignment =
+                            Some(codegen_fn_attrs.alignment.map_or(align, |cur| cur.max(align)));
+                    }
+                }
+            }
             AttributeKind::LinkName { name, .. } => {
                 // FIXME Remove check for foreign functions once #[link_name] on non-foreign
                 // functions is a hard error

@@ -1,8 +1,9 @@
+#![feature(const_attr_paths)]
+
 //@ compile-flags: -Zdeduplicate-diagnostics=yes
 
 const N: usize = 8;
 #[repr(align(N))]
-//~^ ERROR: incorrect `repr(align)` attribute format
 struct T;
 
 #[repr(align('a'))]
@@ -19,7 +20,6 @@ struct X;
 
 const P: usize = 8;
 #[repr(packed(P))]
-//~^ ERROR: attribute format: `packed` expects a literal integer as argument
 struct A;
 
 #[repr(packed())]

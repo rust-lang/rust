@@ -646,6 +646,7 @@ symbols! {
         console,
         const_allocate,
         const_async_blocks,
+        const_attr_paths,
         const_block_items,
         const_c_variadic,
         const_closures,

@@ -3,7 +3,6 @@ use std::fmt;
 use std::path::PathBuf;
 
 pub use ReprAttr::*;
-use rustc_abi::Align;
 pub use rustc_ast::attr::data_structures::*;
 use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
 use rustc_ast::expand::typetree::TypeTree;
@@ -21,6 +20,7 @@ use thin_vec::ThinVec;
 
 use crate::attrs::diagnostic::*;
 use crate::attrs::pretty_printing::PrintAttribute;
+use crate::def::Res;
 use crate::limit::Limit;
 use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
 
@@ -170,10 +170,47 @@ pub enum ReprAttr {
     ReprInt(IntType),
     ReprRust,
     ReprC,
-    ReprPacked(Align),
+    ReprPacked(AttrIntValue),
     ReprSimd,
     ReprTransparent,
-    ReprAlign(Align),
+    ReprAlign(AttrIntValue),
+}
+
+#[derive(PartialEq, Eq, Debug, Encodable, Decodable, Copy, Clone, HashStable_Generic)]
+pub enum AttrIntValue {
+    Lit(u128),
+    Const { def_id: DefId, span: Span },
+}
+
+/// The resolution strategy a parsed builtin attribute argument expects.
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    HashStable_Generic,
+    Encodable,
+    Decodable,
+    PrintAttribute
+)]
+pub enum AttrResolutionKind {
+    Const,
+}
+
+/// A resolved attribute argument path, or an error placeholder if resolution failed.
+#[derive(Debug, Copy, Clone, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub enum AttrResolved<Id = ast::NodeId> {
+    Resolved(Res<Id>),
+    Error,
+}
+
+/// A resolved attribute argument path produced by late resolution for a builtin attribute.
+#[derive(Debug, Copy, Clone, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
+pub struct AttrResolution<Id = ast::NodeId> {
+    pub kind: AttrResolutionKind,
+    pub path_span: Span,
+    pub resolved: AttrResolved<Id>,
 }
 
 pub enum TransparencyError {
@@ -1275,8 +1312,7 @@ pub enum AttributeKind {
     /// Represents `#[align(N)]`.
     // FIXME(#82232, #143834): temporarily renamed to mitigate `#[align]` nameres ambiguity
     RustcAlign {
-        align: Align,
-        span: Span,
+        aligns: ThinVec<(AttrIntValue, Span)>,
     },
 
     /// Represents `#[rustc_allocator]`

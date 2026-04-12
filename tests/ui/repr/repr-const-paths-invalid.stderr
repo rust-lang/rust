@@ -1,0 +1,73 @@
+error[E0425]: cannot find value `N` in this scope
+  --> $DIR/repr-const-paths-invalid.rs:21:14
+   |
+LL | #[repr(align(N))]
+   |              ^ not found in this scope
+   |
+help: you might be missing a const parameter
+   |
+LL | struct Generic<const N: usize, const N: /* Type */>;
+   |                              +++++++++++++++++++++
+
+error: paths in `repr(align)` must refer to `const` items, not function
+  --> $DIR/repr-const-paths-invalid.rs:7:14
+   |
+LL | #[repr(align(not_const))]
+   |              ^^^^^^^^^
+
+error: const item used in `repr(align)` must have an integer type, found `bool`
+  --> $DIR/repr-const-paths-invalid.rs:12:14
+   |
+LL | #[repr(align(BOOL_ALIGN))]
+   |              ^^^^^^^^^^
+
+error: const item used in `repr(align)` must evaluate to a non-negative integer
+  --> $DIR/repr-const-paths-invalid.rs:17:14
+   |
+LL | #[repr(align(NEG_ALIGN))]
+   |              ^^^^^^^^^
+
+error[E0391]: cycle detected when computing ADT definition for `Cycle`
+  --> $DIR/repr-const-paths-invalid.rs:27:1
+   |
+LL | struct Cycle;
+   | ^^^^^^^^^^^^
+   |
+note: ...which requires simplifying constant for the type system `CYCLE`...
+  --> $DIR/repr-const-paths-invalid.rs:25:1
+   |
+LL | const CYCLE: usize = core::mem::align_of::<Cycle>();
+   | ^^^^^^^^^^^^^^^^^^
+note: ...which requires checking if `CYCLE` is a trivial const...
+  --> $DIR/repr-const-paths-invalid.rs:25:1
+   |
+LL | const CYCLE: usize = core::mem::align_of::<Cycle>();
+   | ^^^^^^^^^^^^^^^^^^
+note: ...which requires building MIR for `CYCLE`...
+  --> $DIR/repr-const-paths-invalid.rs:25:1
+   |
+LL | const CYCLE: usize = core::mem::align_of::<Cycle>();
+   | ^^^^^^^^^^^^^^^^^^
+note: ...which requires match-checking `CYCLE`...
+  --> $DIR/repr-const-paths-invalid.rs:25:1
+   |
+LL | const CYCLE: usize = core::mem::align_of::<Cycle>();
+   | ^^^^^^^^^^^^^^^^^^
+note: ...which requires type-checking `CYCLE`...
+  --> $DIR/repr-const-paths-invalid.rs:25:44
+   |
+LL | const CYCLE: usize = core::mem::align_of::<Cycle>();
+   |                                            ^^^^^
+note: ...which requires computing type of `Cycle`...
+  --> $DIR/repr-const-paths-invalid.rs:27:1
+   |
+LL | struct Cycle;
+   | ^^^^^^^^^^^^
+   = note: ...which again requires computing ADT definition for `Cycle`, completing the cycle
+   = note: cycle used when computing the inferred outlives-predicates for items in this crate
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0391, E0425.
+For more information about an error, try `rustc --explain E0391`.

@@ -39,16 +39,16 @@ use std::mem;
 use std::sync::Arc;
 
 use rustc_ast::node_id::NodeMap;
-use rustc_ast::visit::AssocCtxt;
 use rustc_ast::{self as ast, *};
 use rustc_attr_parsing::{AttributeParser, Late, OmitDoc};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
+use rustc_hir::attrs::AttrResolution;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatorState};
@@ -156,6 +156,7 @@ struct LoweringContext<'a, 'hir, R> {
 impl<'a, 'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'a, 'hir, R> {
     fn new(tcx: TyCtxt<'hir>, resolver: &'a mut R) -> Self {
         let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
+        let attr_res_map = resolver.all_attr_resolutions();
         Self {
             tcx,
             resolver,
@@ -210,6 +211,7 @@ impl<'a, 'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'a, 'hir, R> {
                 tcx.sess,
                 tcx.features(),
                 registered_tools,
+                attr_res_map,
                 Late,
             ),
             delayed_lints: Vec::new(),
@@ -240,6 +242,7 @@ impl SpanLowerer {
 struct ResolverDelayedAstLowering<'a, 'tcx> {
     node_id_to_def_id: NodeMap<LocalDefId>,
     partial_res_map: NodeMap<PartialRes>,
+    attr_res_map: FxIndexMap<rustc_span::AttrId, Vec<AttrResolution<ast::NodeId>>>,
     next_node_id: NodeId,
     base: &'a ResolverAstLowering<'tcx>,
 }
@@ -252,6 +255,16 @@ impl<'a, 'tcx> ResolverAstLoweringExt<'tcx> for ResolverDelayedAstLowering<'a, '
 
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
         self.partial_res_map.get(&id).copied().or_else(|| self.base.get_partial_res(id))
+    }
+
+    fn all_attr_resolutions(
+        &self,
+    ) -> FxIndexMap<rustc_span::AttrId, Vec<AttrResolution<ast::NodeId>>> {
+        let mut map = self.base.all_attr_resolutions();
+        for (attr_id, resolutions) in &self.attr_res_map {
+            map.entry(*attr_id).or_default().extend(resolutions.iter().copied());
+        }
+        map
     }
 
     fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>> {
@@ -344,6 +357,12 @@ impl<'tcx> ResolverAstLowering<'tcx> {
 
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
         self.partial_res_map.get(&id).copied()
+    }
+
+    fn all_attr_resolutions(
+        &self,
+    ) -> FxIndexMap<rustc_span::AttrId, Vec<AttrResolution<ast::NodeId>>> {
+        self.attr_res_map.clone()
     }
 
     /// Obtains per-namespace resolutions for `use` statement with the given `NodeId`.
@@ -635,13 +654,13 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
 
     for def_id in ast_index.indices() {
         let delayed_owner_kind = match &ast_index[def_id] {
-            AstOwner::Item(Item { kind: ItemKind::Delegation(_), .. }) => {
+            AstOwner::Item(Item { kind: ItemKind::Delegation(..), .. }) => {
                 Some(hir::DelayedOwnerKind::Item)
             }
-            AstOwner::AssocItem(Item { kind: AssocItemKind::Delegation(_), .. }, ctx) => {
+            AstOwner::AssocItem(Item { kind: AssocItemKind::Delegation(..), .. }, ctx) => {
                 Some(match ctx {
-                    AssocCtxt::Trait => hir::DelayedOwnerKind::TraitItem,
-                    AssocCtxt::Impl { .. } => hir::DelayedOwnerKind::ImplItem,
+                    visit::AssocCtxt::Trait => hir::DelayedOwnerKind::TraitItem,
+                    visit::AssocCtxt::Impl { .. } => hir::DelayedOwnerKind::ImplItem,
                 })
             }
             _ => None,
@@ -680,6 +699,7 @@ pub fn lower_delayed_owner(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let mut resolver = ResolverDelayedAstLowering {
         next_node_id: resolver.next_node_id,
         partial_res_map: Default::default(),
+        attr_res_map: Default::default(),
         node_id_to_def_id: Default::default(),
         base: resolver,
     };
