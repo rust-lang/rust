@@ -86,7 +86,7 @@ where
         return None;
     }
 
-    let Rvalue::Use(Operand::Constant(c)) = rvalue else {
+    let Rvalue::Use(Operand::Constant(c), _) = rvalue else {
         return None;
     };
     match c.const_ {

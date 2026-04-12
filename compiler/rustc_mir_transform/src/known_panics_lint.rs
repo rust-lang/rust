@@ -546,7 +546,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let val: Value<'_> = match *rvalue {
             ThreadLocalRef(_) => return None,
 
-            Use(ref operand) | WrapUnsafeBinder(ref operand, _) => {
+            Use(ref operand, _) | WrapUnsafeBinder(ref operand, _) => {
                 self.eval_operand(operand)?.into()
             }
 

@@ -124,7 +124,7 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
 
                 // ... that contains a `NonNull`... (gladly, only a single field here)
                 assert_eq!(nonnull_ptr.layout().fields.count(), 1);
-                let raw_ptr = self.ecx().project_field(&nonnull_ptr, FieldIdx::ZERO)?; // the actual raw ptr
+                let raw_ptr = self.ecx().project_field(&nonnull_ptr, FieldIdx::ZERO)?;
 
                 // ... whose only field finally is a raw ptr we can dereference.
                 self.visit_box(ty, &raw_ptr)?;

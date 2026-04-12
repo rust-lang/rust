@@ -1,6 +1,6 @@
 use std::borrow::{Borrow, Cow};
-use std::fmt;
 use std::hash::Hash;
+use std::{fmt, mem};
 
 use rustc_abi::{Align, FIRST_VARIANT, Size};
 use rustc_ast::Mutability;
@@ -21,8 +21,8 @@ use super::error::*;
 use crate::errors::{LongRunning, LongRunningWarn};
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
-    GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, Scalar,
-    compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok, throw_exhaust,
+    GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, RetagMode,
+    Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok, throw_exhaust,
     throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
     type_implements_dyn_trait,
 };
@@ -67,6 +67,9 @@ pub struct CompileTimeMachine<'tcx> {
 
     /// A cache of "data range" computations for unions (i.e., the offsets of non-padding bytes).
     union_data_ranges: FxHashMap<Ty<'tcx>, RangeSet>,
+
+    /// The current retag mode.
+    retag_mode: RetagMode,
 }
 
 #[derive(Copy, Clone)]
@@ -102,6 +105,7 @@ impl<'tcx> CompileTimeMachine<'tcx> {
             check_alignment,
             static_root_ids: None,
             union_data_ranges: FxHashMap::default(),
+            retag_mode: RetagMode::Default,
         }
     }
 }
@@ -824,9 +828,12 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
 
     fn retag_ptr_value(
         ecx: &mut InterpCx<'tcx, Self>,
-        _kind: mir::RetagKind,
         val: &ImmTy<'tcx, CtfeProvenance>,
-    ) -> InterpResult<'tcx, ImmTy<'tcx, CtfeProvenance>> {
+        _ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx, Option<ImmTy<'tcx, CtfeProvenance>>> {
+        if matches!(ecx.machine.retag_mode, RetagMode::None | RetagMode::Raw) {
+            return interp_ok(None);
+        }
         // If it's a frozen shared reference that's not already immutable, potentially make it immutable.
         // (Do nothing on `None` provenance, that cannot store immutability anyway.)
         if let ty::Ref(_, ty, mutbl) = val.layout.ty.kind()
@@ -850,10 +857,21 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 // even when there is interior mutability.)
                 place.map_provenance(CtfeProvenance::as_shared_ref)
             };
-            interp_ok(ImmTy::from_immediate(new_place.to_ref(ecx), val.layout))
+            interp_ok(Some(ImmTy::from_immediate(new_place.to_ref(ecx), val.layout)))
         } else {
-            interp_ok(val.clone())
+            interp_ok(None)
         }
+    }
+
+    fn with_retag_mode<T>(
+        ecx: &mut InterpCx<'tcx, Self>,
+        mode: RetagMode,
+        f: impl FnOnce(&mut InterpCx<'tcx, Self>) -> InterpResult<'tcx, T>,
+    ) -> InterpResult<'tcx, T> {
+        let old_mode = mem::replace(&mut ecx.machine.retag_mode, mode);
+        let ret = f(ecx);
+        ecx.machine.retag_mode = old_mode;
+        ret
     }
 
     fn before_memory_write(

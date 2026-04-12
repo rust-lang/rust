@@ -191,7 +191,6 @@ struct RetagOp {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RetagInfo {
     pub cause: RetagCause,
-    pub in_field: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -386,10 +385,7 @@ impl<'history, 'ecx, 'tcx> DiagnosticCx<'history, 'ecx, 'tcx> {
             self.history.id,
             self.offset.bytes(),
         );
-        let mut helps = vec![operation_summary(&op.info.summary(), self.history.id, op.range)];
-        if op.info.in_field {
-            helps.push(format!("errors for retagging in fields are fairly new; please reach out to us (e.g. at <https://rust-lang.zulipchat.com/#narrow/stream/269128-miri>) if you find this error troubling"));
-        }
+        let helps = vec![operation_summary(&op.info.summary(), self.history.id, op.range)];
         err_sb_ub(
             format!("{action}{}", error_cause(stack, op.orig_tag)),
             helps,
@@ -505,16 +501,12 @@ fn error_cause(stack: &Stack, prov_extra: ProvenanceExtra) -> &'static str {
 
 impl RetagInfo {
     fn summary(&self) -> String {
-        let mut s = match self.cause {
+        match self.cause {
             RetagCause::Normal => "retag",
             RetagCause::FnEntry => "function-entry retag",
             RetagCause::InPlaceFnPassing => "in-place function argument/return passing protection",
             RetagCause::TwoPhase => "two-phase retag",
         }
-        .to_string();
-        if self.in_field {
-            s.push_str(" (of a reference/box inside this compound value)");
-        }
-        s
+        .to_string()
     }
 }

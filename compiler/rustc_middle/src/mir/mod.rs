@@ -649,7 +649,7 @@ impl<'tcx> Body<'tcx> {
         }
 
         match rvalue {
-            Rvalue::Use(Operand::Constant(constant)) => {
+            Rvalue::Use(Operand::Constant(constant), _) => {
                 let bits = eval_mono_const(constant)?;
                 Some((bits, targets))
             }

@@ -295,40 +295,6 @@ fn local_decls_for_sig<'tcx>(
         .collect()
 }
 
-fn dropee_emit_retag<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
-    mut dropee_ptr: Place<'tcx>,
-    span: Span,
-) -> Place<'tcx> {
-    if tcx.sess.opts.unstable_opts.mir_emit_retag {
-        let source_info = SourceInfo::outermost(span);
-        // We want to treat the function argument as if it was passed by `&mut`. As such, we
-        // generate
-        // ```
-        // temp = &mut *arg;
-        // Retag(temp, FnEntry)
-        // ```
-        // It's important that we do this first, before anything that depends on `dropee_ptr`
-        // has been put into the body.
-        let reborrow = Rvalue::Ref(
-            tcx.lifetimes.re_erased,
-            BorrowKind::Mut { kind: MutBorrowKind::Default },
-            tcx.mk_place_deref(dropee_ptr),
-        );
-        let ref_ty = reborrow.ty(body.local_decls(), tcx);
-        dropee_ptr = body.local_decls.push(LocalDecl::new(ref_ty, span)).into();
-        let new_statements = [
-            StatementKind::Assign(Box::new((dropee_ptr, reborrow))),
-            StatementKind::Retag(RetagKind::FnEntry, Box::new(dropee_ptr)),
-        ];
-        for s in new_statements {
-            body.basic_blocks_mut()[START_BLOCK].statements.push(Statement::new(source_info, s));
-        }
-    }
-    dropee_ptr
-}
-
 fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>) -> Body<'tcx> {
     debug!("build_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
 
@@ -359,7 +325,6 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 
     // The first argument (index 0), but add 1 for the return value.
     let dropee_ptr = Place::from(Local::new(1 + 0));
-    let dropee_ptr = dropee_emit_retag(tcx, &mut body, dropee_ptr, span);
 
     if ty.is_some() {
         let patch = {
@@ -626,7 +591,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let rcvr = self.tcx.mk_place_deref(Place::from(Local::new(1 + 0)));
         let ret_statement = self.make_statement(StatementKind::Assign(Box::new((
             Place::return_place(),
-            Rvalue::Use(Operand::Copy(rcvr)),
+            Rvalue::Use(Operand::Copy(rcvr), WithRetag::Yes),
         ))));
         self.block(vec![ret_statement], TerminatorKind::Return, false);
     }

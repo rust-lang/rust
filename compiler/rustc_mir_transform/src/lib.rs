@@ -22,7 +22,7 @@ use rustc_index::IndexVec;
 use rustc_middle::mir::{
     AnalysisPhase, Body, CallSource, ClearCrossCrate, ConstOperand, ConstQualifs, LocalDecl,
     MirPhase, Operand, Place, ProjectionElem, Promoted, RuntimePhase, Rvalue, START_BLOCK,
-    SourceInfo, Statement, StatementKind, TerminatorKind,
+    SourceInfo, Statement, StatementKind, TerminatorKind, WithRetag,
 };
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
@@ -122,7 +122,6 @@ declare_passes! {
     mod abort_unwinding_calls : AbortUnwindingCalls;
     mod add_call_guards : AddCallGuards { AllCallEdges, CriticalCallEdges };
     mod add_moves_for_packed_drops : AddMovesForPackedDrops;
-    mod add_retag : AddRetag;
     mod add_subtyping_projections : Subtyper;
     mod check_inline : CheckForceInline;
     mod check_call_recursion : CheckCallRecursion, CheckDropRecursion;
@@ -275,7 +274,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                                 SourceInfo::outermost(fn_span),
                                 StatementKind::Assign(Box::new((
                                     local.into(),
-                                    Rvalue::Use(tupled_args.node.clone()),
+                                    Rvalue::Use(tupled_args.node.clone(), WithRetag::Yes),
                                 ))),
                             ));
                             (Operand::Move, local.into())
@@ -647,9 +646,6 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // AddMovesForPackedDrops needs to run after drop
         // elaboration.
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
-        // `AddRetag` needs to run after `ElaborateDrops` but before `ElaborateBoxDerefs`.
-        // Otherwise it should run fairly late, but before optimizations begin.
-        &add_retag::AddRetag,
         &erase_deref_temps::EraseDerefTemps,
         &elaborate_box_derefs::ElaborateBoxDerefs,
         &coroutine::StateTransform,

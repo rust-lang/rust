@@ -57,7 +57,7 @@ impl<'tcx> CFG<'tcx> {
             block,
             source_info,
             temp,
-            Rvalue::Use(Operand::Constant(Box::new(constant))),
+            Rvalue::Use(Operand::Constant(Box::new(constant)), WithRetag::Yes),
         );
     }
 
@@ -72,11 +72,14 @@ impl<'tcx> CFG<'tcx> {
             block,
             source_info,
             place,
-            Rvalue::Use(Operand::Constant(Box::new(ConstOperand {
-                span: source_info.span,
-                user_ty: None,
-                const_: Const::zero_sized(tcx.types.unit),
-            }))),
+            Rvalue::Use(
+                Operand::Constant(Box::new(ConstOperand {
+                    span: source_info.span,
+                    user_ty: None,
+                    const_: Const::zero_sized(tcx.types.unit),
+                })),
+                WithRetag::Yes,
+            ),
         );
     }
 

@@ -106,7 +106,17 @@ impl fmt::Debug for TerminationInfo {
     }
 }
 
-impl MachineStopType for TerminationInfo {}
+impl MachineStopType for TerminationInfo {
+    fn with_validation_path(&mut self, path: String) {
+        use TerminationInfo::*;
+        match self {
+            StackedBorrowsUb { help, .. } => {
+                help.push(format!("while retagging field {path}"));
+            }
+            _ => {}
+        }
+    }
+}
 
 /// Miri specific diagnostics
 pub enum NonHaltingDiagnostic {

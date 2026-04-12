@@ -231,8 +231,8 @@
           _10 = &(*_21);
           StorageLive(_27);
           StorageLive(_28);
-          _27 = copy (*_8);
-          _28 = copy (*_10);
+          _27 = no_retag copy (*_8);
+          _28 = no_retag copy (*_10);
           StorageLive(_29);
           StorageLive(_30);
           StorageLive(_31);
@@ -295,8 +295,8 @@
           _17 = &(*_20);
           StorageLive(_47);
           StorageLive(_48);
-          _47 = copy (*_15);
-          _48 = copy (*_17);
+          _47 = no_retag copy (*_15);
+          _48 = no_retag copy (*_17);
           StorageLive(_49);
           StorageLive(_50);
           StorageLive(_51);
