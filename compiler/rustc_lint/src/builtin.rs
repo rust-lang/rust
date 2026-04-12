@@ -53,11 +53,11 @@ use crate::lints::{
     BuiltinExplicitOutlives, BuiltinExplicitOutlivesSuggestion, BuiltinFeatureIssueNote,
     BuiltinIncompleteFeatures, BuiltinIncompleteFeaturesHelp, BuiltinInternalFeatures,
     BuiltinKeywordIdents, BuiltinMissingCopyImpl, BuiltinMissingDebugImpl, BuiltinMissingDoc,
-    BuiltinMutablesTransmutes, BuiltinNoMangleGeneric, BuiltinNonShorthandFieldPatterns,
-    BuiltinSpecialModuleNameUsed, BuiltinTrivialBounds, BuiltinTypeAliasBounds,
-    BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub,
-    BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
-    BuiltinUnusedDocCommentSub, BuiltinWhileTrue, EqInternalMethodImplemented, InvalidAsmLabel,
+    BuiltinMutablesTransmutes, BuiltinNonShorthandFieldPatterns, BuiltinSpecialModuleNameUsed,
+    BuiltinTrivialBounds, BuiltinTypeAliasBounds, BuiltinUngatedAsyncFnTrackCaller,
+    BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub, BuiltinUnreachablePub,
+    BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment, BuiltinUnusedDocCommentSub,
+    BuiltinWhileTrue, EqInternalMethodImplemented, InvalidAsmLabel,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext};
 declare_lint! {
@@ -924,36 +924,7 @@ declare_lint! {
     "const items will not have their symbols exported"
 }
 
-declare_lint! {
-    /// The `no_mangle_generic_items` lint detects generic items that must be
-    /// mangled.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #[unsafe(no_mangle)]
-    /// fn foo<T>(t: T) {}
-    ///
-    /// #[unsafe(export_name = "bar")]
-    /// fn bar<T>(t: T) {}
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// A function with generics must have its symbol mangled to accommodate
-    /// the generic parameter. The [`no_mangle`] and [`export_name`] attributes
-    /// have no effect in this situation, and should be removed.
-    ///
-    /// [`no_mangle`]: https://doc.rust-lang.org/reference/abi.html#the-no_mangle-attribute
-    /// [`export_name`]: https://doc.rust-lang.org/reference/abi.html#the-export_name-attribute
-    NO_MANGLE_GENERIC_ITEMS,
-    Warn,
-    "generic items must be mangled"
-}
-
-declare_lint_pass!(InvalidNoMangleItems => [NO_MANGLE_CONST_ITEMS, NO_MANGLE_GENERIC_ITEMS]);
+declare_lint_pass!(InvalidNoMangleItems => [NO_MANGLE_CONST_ITEMS]);
 
 impl InvalidNoMangleItems {
     fn check_no_mangle_on_generic_fn(
@@ -964,11 +935,10 @@ impl InvalidNoMangleItems {
     ) {
         let generics = cx.tcx.generics_of(def_id);
         if generics.requires_monomorphization(cx.tcx) {
-            cx.emit_span_lint(
-                NO_MANGLE_GENERIC_ITEMS,
-                cx.tcx.def_span(def_id),
-                BuiltinNoMangleGeneric { suggestion: attr_span },
-            );
+            cx.tcx.dcx().emit_err(crate::errors::BuiltinNoMangleGeneric {
+                span: cx.tcx.def_span(def_id),
+                suggestion: attr_span,
+            });
         }
     }
 }
@@ -1607,7 +1577,6 @@ declare_lint_pass!(
         ANONYMOUS_PARAMETERS,
         UNUSED_DOC_COMMENTS,
         NO_MANGLE_CONST_ITEMS,
-        NO_MANGLE_GENERIC_ITEMS,
         MUTABLE_TRANSMUTES,
         UNSTABLE_FEATURES,
         UNREACHABLE_PUB,
