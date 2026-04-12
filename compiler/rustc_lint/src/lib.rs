@@ -72,6 +72,7 @@ mod precedence;
 mod ptr_nulls;
 mod redundant_semicolon;
 mod reference_casting;
+mod runtime_symbols;
 mod shadowed_into_iter;
 mod static_mut_refs;
 mod traits;
@@ -117,6 +118,7 @@ use precedence::*;
 use ptr_nulls::*;
 use redundant_semicolon::*;
 use reference_casting::*;
+use runtime_symbols::*;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -246,6 +248,7 @@ late_lint_methods!(
             AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
             InteriorMutableConsts: InteriorMutableConsts,
+            RuntimeSymbols: RuntimeSymbols,
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,
