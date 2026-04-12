@@ -1503,6 +1503,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_no_mir_inline]`
     RustcNoMirInline,
 
+    /// Represents `#[rustc_no_writable]`
+    RustcNoWritable,
+
     /// Represents `#[rustc_non_const_trait_method]`.
     RustcNonConstTraitMethod,
 

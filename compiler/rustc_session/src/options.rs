@@ -2463,6 +2463,8 @@ options! {
         "a list LLVM plugins to enable (space separated)"),
     llvm_time_trace: bool = (false, parse_bool, [UNTRACKED],
         "generate JSON tracing data file from LLVM data (default: no)"),
+    llvm_writable: bool = (false, parse_bool, [TRACKED],
+        "enable insertion of the LLVM writable attribute; mutable retags count as writes under Tree Borrows"),
     location_detail: LocationDetail = (LocationDetail::all(), parse_location_detail, [TRACKED],
         "what location details should be tracked when using caller_location, either \
         `none`, or a comma separated list of location details, for which \

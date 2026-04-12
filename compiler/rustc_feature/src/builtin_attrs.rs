@@ -1419,6 +1419,9 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_must_match_exhaustively, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
         "enums with `#[rustc_must_match_exhaustively]` must be matched on with a match block that mentions all variants explicitly"
     ),
+    rustc_attr!(
+        rustc_no_writable, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes, "`#[rustc_no_writable]` stops the compiler from adding the `writable` flag in LLVM, thus under Tree Borrows, mutable retags no longer count as writes"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:
