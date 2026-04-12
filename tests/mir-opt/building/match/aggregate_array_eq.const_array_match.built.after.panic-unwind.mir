@@ -1,0 +1,64 @@
+// MIR for `const_array_match` after built
+
+fn const_array_match(_1: [u8; 4]) -> bool {
+    debug x => _1;
+    let mut _0: bool;
+    scope 1 {
+    }
+
+    bb0: {
+        PlaceMention(_1);
+        switchInt(copy _1[0 of 4]) -> [1: bb2, otherwise: bb1];
+    }
+
+    bb1: {
+        _0 = const false;
+        goto -> bb12;
+    }
+
+    bb2: {
+        switchInt(copy _1[1 of 4]) -> [2: bb4, otherwise: bb3];
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4: {
+        switchInt(copy _1[2 of 4]) -> [3: bb6, otherwise: bb5];
+    }
+
+    bb5: {
+        goto -> bb3;
+    }
+
+    bb6: {
+        switchInt(copy _1[3 of 4]) -> [4: bb8, otherwise: bb7];
+    }
+
+    bb7: {
+        goto -> bb5;
+    }
+
+    bb8: {
+        falseEdge -> [real: bb11, imaginary: bb1];
+    }
+
+    bb9: {
+        goto -> bb7;
+    }
+
+    bb10: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb11: {
+        _0 = const true;
+        goto -> bb12;
+    }
+
+    bb12: {
+        return;
+    }
+}

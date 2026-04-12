@@ -1,0 +1,197 @@
+// MIR for `const_try_from_matched` after built
+
+fn const_try_from_matched(_1: [u8; 4]) -> Result<MyEnum, ()> {
+    debug value => _1;
+    let mut _0: std::result::Result<MyEnum, ()>;
+    let mut _2: &[u8; 4];
+    let mut _3: MyEnum;
+    let mut _4: MyEnum;
+    let mut _5: MyEnum;
+    let mut _6: MyEnum;
+    let mut _7: ();
+
+    bb0: {
+        StorageLive(_2);
+        _2 = &_1;
+        PlaceMention(_2);
+        switchInt(copy (*_2)[0 of 4]) -> [65: bb2, 69: bb10, 73: bb18, 77: bb26, otherwise: bb1];
+    }
+
+    bb1: {
+        StorageLive(_7);
+        _7 = ();
+        _0 = Result::<MyEnum, ()>::Err(move _7);
+        StorageDead(_7);
+        goto -> bb39;
+    }
+
+    bb2: {
+        switchInt(copy (*_2)[1 of 4]) -> [66: bb4, otherwise: bb3];
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4: {
+        switchInt(copy (*_2)[2 of 4]) -> [67: bb6, otherwise: bb5];
+    }
+
+    bb5: {
+        goto -> bb3;
+    }
+
+    bb6: {
+        switchInt(copy (*_2)[3 of 4]) -> [68: bb8, otherwise: bb7];
+    }
+
+    bb7: {
+        goto -> bb5;
+    }
+
+    bb8: {
+        falseEdge -> [real: bb38, imaginary: bb10];
+    }
+
+    bb9: {
+        goto -> bb7;
+    }
+
+    bb10: {
+        switchInt(copy (*_2)[1 of 4]) -> [70: bb12, otherwise: bb11];
+    }
+
+    bb11: {
+        goto -> bb1;
+    }
+
+    bb12: {
+        switchInt(copy (*_2)[2 of 4]) -> [71: bb14, otherwise: bb13];
+    }
+
+    bb13: {
+        goto -> bb11;
+    }
+
+    bb14: {
+        switchInt(copy (*_2)[3 of 4]) -> [72: bb16, otherwise: bb15];
+    }
+
+    bb15: {
+        goto -> bb13;
+    }
+
+    bb16: {
+        falseEdge -> [real: bb37, imaginary: bb18];
+    }
+
+    bb17: {
+        goto -> bb15;
+    }
+
+    bb18: {
+        switchInt(copy (*_2)[1 of 4]) -> [74: bb20, otherwise: bb19];
+    }
+
+    bb19: {
+        goto -> bb1;
+    }
+
+    bb20: {
+        switchInt(copy (*_2)[2 of 4]) -> [75: bb22, otherwise: bb21];
+    }
+
+    bb21: {
+        goto -> bb19;
+    }
+
+    bb22: {
+        switchInt(copy (*_2)[3 of 4]) -> [76: bb24, otherwise: bb23];
+    }
+
+    bb23: {
+        goto -> bb21;
+    }
+
+    bb24: {
+        falseEdge -> [real: bb36, imaginary: bb26];
+    }
+
+    bb25: {
+        goto -> bb23;
+    }
+
+    bb26: {
+        switchInt(copy (*_2)[1 of 4]) -> [78: bb28, otherwise: bb27];
+    }
+
+    bb27: {
+        goto -> bb1;
+    }
+
+    bb28: {
+        switchInt(copy (*_2)[2 of 4]) -> [79: bb30, otherwise: bb29];
+    }
+
+    bb29: {
+        goto -> bb27;
+    }
+
+    bb30: {
+        switchInt(copy (*_2)[3 of 4]) -> [80: bb32, otherwise: bb31];
+    }
+
+    bb31: {
+        goto -> bb29;
+    }
+
+    bb32: {
+        falseEdge -> [real: bb35, imaginary: bb1];
+    }
+
+    bb33: {
+        goto -> bb31;
+    }
+
+    bb34: {
+        FakeRead(ForMatchedPlace(None), _2);
+        unreachable;
+    }
+
+    bb35: {
+        StorageLive(_6);
+        _6 = MyEnum::D;
+        _0 = Result::<MyEnum, ()>::Ok(move _6);
+        StorageDead(_6);
+        goto -> bb39;
+    }
+
+    bb36: {
+        StorageLive(_5);
+        _5 = MyEnum::C;
+        _0 = Result::<MyEnum, ()>::Ok(move _5);
+        StorageDead(_5);
+        goto -> bb39;
+    }
+
+    bb37: {
+        StorageLive(_4);
+        _4 = MyEnum::B;
+        _0 = Result::<MyEnum, ()>::Ok(move _4);
+        StorageDead(_4);
+        goto -> bb39;
+    }
+
+    bb38: {
+        StorageLive(_3);
+        _3 = MyEnum::A;
+        _0 = Result::<MyEnum, ()>::Ok(move _3);
+        StorageDead(_3);
+        goto -> bb39;
+    }
+
+    bb39: {
+        StorageDead(_2);
+        return;
+    }
+}
