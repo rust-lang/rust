@@ -7,7 +7,7 @@ use rustc_abi::VariantIdx;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
-use rustc_hir::def::CtorKind;
+use rustc_hir::def::{CtorKind, MacroKinds};
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::ty::{self, TyCtxt};
@@ -129,6 +129,9 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
         let item_vars = ItemVars {
             typ,
             name: item.name.as_ref().unwrap().as_str(),
+            // If `type_` returns `None`, it means it's a bang macro with multiple kinds, but
+            // since we're generating its documentation page, we can default to the "parent" type,
+            // ie "bang macro".
             item_type: &item.type_().to_string(),
             path_components,
             stability_since_raw: &stability_since_raw,
@@ -153,7 +156,7 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
             clean::TypeAliasItem(t) => {
                 write!(buf, "{}", item_type_alias(cx, item, t))
             }
-            clean::MacroItem(m) => write!(buf, "{}", item_macro(cx, item, m)),
+            clean::MacroItem(m, kinds) => write!(buf, "{}", item_macro(cx, item, m, *kinds)),
             clean::ProcMacroItem(m) => {
                 write!(buf, "{}", item_proc_macro(cx, item, m))
             }
@@ -228,7 +231,16 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
             FxIndexMap::default();
 
         for (index, item) in items.iter().filter(|i| !i.is_stripped()).enumerate() {
-            not_stripped_items.entry(item.type_()).or_default().push((index, item));
+            // To prevent having new "bang macro attribute/derive" sections in the module,
+            // we cheat by turning them into their "proc-macro equivalent".
+            for type_ in item.types() {
+                let type_ = match type_ {
+                    ItemType::BangMacroAttribute => ItemType::ProcAttribute,
+                    ItemType::BangMacroDerive => ItemType::ProcDerive,
+                    type_ => type_,
+                };
+                not_stripped_items.entry(type_).or_default().push((index, item));
+            }
         }
 
         // the order of item types in the listing
@@ -314,34 +326,18 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
         let mut types = not_stripped_items.keys().copied().collect::<Vec<_>>();
         types.sort_unstable_by(|a, b| reorder(*a).cmp(&reorder(*b)));
 
-        let mut last_section: Option<super::ItemSection> = None;
-
         for type_ in types {
             let my_section = item_ty_to_section(type_);
-
-            // Only render section heading if the section changed
-            if last_section != Some(my_section) {
-                // Close the previous section if there was one
-                if last_section.is_some() {
-                    w.write_str(ITEM_TABLE_CLOSE)?;
-                }
-                let tag = if my_section == super::ItemSection::Reexports {
-                    REEXPORTS_TABLE_OPEN
-                } else {
-                    ITEM_TABLE_OPEN
-                };
-                write!(
-                    w,
-                    "{}",
-                    write_section_heading(
-                        my_section.name(),
-                        &cx.derive_id(my_section.id()),
-                        None,
-                        tag
-                    )
-                )?;
-                last_section = Some(my_section);
-            }
+            let tag = if my_section == super::ItemSection::Reexports {
+                REEXPORTS_TABLE_OPEN
+            } else {
+                ITEM_TABLE_OPEN
+            };
+            write!(
+                w,
+                "{}",
+                write_section_heading(my_section.name(), &cx.derive_id(my_section.id()), None, tag)
+            )?;
 
             for (_, myitem) in &not_stripped_items[&type_] {
                 let visibility_and_hidden = |item: &clean::Item| match item.visibility(tcx) {
@@ -468,16 +464,13 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                             stab_tags = print_extra_info_tags(tcx, myitem, item, None),
                             class = type_,
                             unsafety_flag = unsafety_flag,
-                            href = print_item_path(type_, item_name.as_str()),
+                            href = print_item_path(myitem),
                             title1 = myitem.type_(),
                             title2 = full_path(cx, myitem),
                         )?;
                     }
                 }
             }
-        }
-        // Close the final section
-        if last_section.is_some() {
             w.write_str(ITEM_TABLE_CLOSE)?;
         }
 
@@ -1876,8 +1869,13 @@ fn item_variants(
     })
 }
 
-fn item_macro(cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) -> impl fmt::Display {
-    fmt::from_fn(|w| {
+fn item_macro(
+    cx: &Context<'_>,
+    it: &clean::Item,
+    t: &clean::Macro,
+    kinds: MacroKinds,
+) -> impl fmt::Display {
+    fmt::from_fn(move |w| {
         wrap_item(w, |w| {
             render_attributes_in_code(w, it, "", cx)?;
             if !t.macro_rules {
@@ -1885,6 +1883,14 @@ fn item_macro(cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) -> impl fmt:
             }
             write!(w, "{}", Escape(&t.source))
         })?;
+        if kinds != MacroKinds::BANG {
+            write!(
+                w,
+                "<h3 class='macro-info'>ⓘ This is {} {}</h3>",
+                kinds.article(),
+                kinds.descr(),
+            )?;
+        }
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))
     })
 }
@@ -2260,7 +2266,16 @@ pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
     s
 }
 
-pub(super) fn print_item_path(ty: ItemType, name: &str) -> impl Display {
+pub(super) fn print_item_path(item: &clean::Item) -> impl Display {
+    fmt::from_fn(move |f| match item.kind {
+        clean::ItemKind::ModuleItem(..) => {
+            write!(f, "{}index.html", ensure_trailing_slash(item.name.unwrap().as_str()))
+        }
+        _ => f.write_str(&item.html_filename()),
+    })
+}
+
+pub(super) fn print_ty_path(ty: ItemType, name: &str) -> impl Display {
     fmt::from_fn(move |f| match ty {
         ItemType::Module => write!(f, "{}index.html", ensure_trailing_slash(name)),
         _ => write!(f, "{ty}.{name}.html"),

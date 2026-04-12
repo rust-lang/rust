@@ -45,6 +45,27 @@ pub(crate) fn try_inline(
     attrs: Option<(&[hir::Attribute], Option<LocalDefId>)>,
     visited: &mut DefIdSet,
 ) -> Option<Vec<clean::Item>> {
+    fn try_inline_inner(
+        cx: &mut DocContext<'_>,
+        kind: clean::ItemKind,
+        did: DefId,
+        name: Symbol,
+        import_def_id: Option<LocalDefId>,
+    ) -> clean::Item {
+        cx.inlined.insert(did.into());
+        let mut item = crate::clean::generate_item_with_correct_attrs(
+            cx,
+            kind,
+            did,
+            name,
+            import_def_id.as_slice(),
+            None,
+        );
+        // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
+        item.inner.inline_stmt_id = import_def_id;
+        item
+    }
+
     let did = res.opt_def_id()?;
     if did.is_local() {
         return None;
@@ -139,32 +160,21 @@ pub(crate) fn try_inline(
         Res::Def(DefKind::Macro(kinds), did) => {
             let mac = build_macro(cx.tcx, did, name, kinds);
 
-            // FIXME: handle attributes and derives that aren't proc macros, and macros with
-            // multiple kinds
             let type_kind = match kinds {
                 MacroKinds::BANG => ItemType::Macro,
                 MacroKinds::ATTR => ItemType::ProcAttribute,
                 MacroKinds::DERIVE => ItemType::ProcDerive,
-                _ => todo!("Handle macros with multiple kinds"),
+                // Then it means it's more than one type so we default to "macro".
+                _ => ItemType::Macro,
             };
             record_extern_fqn(cx, did, type_kind);
-            mac
+            ret.push(try_inline_inner(cx, mac, did, name, import_def_id));
+            return Some(ret);
         }
         _ => return None,
     };
 
-    cx.inlined.insert(did.into());
-    let mut item = crate::clean::generate_item_with_correct_attrs(
-        cx,
-        kind,
-        did,
-        name,
-        import_def_id.as_slice(),
-        None,
-    );
-    // The visibility needs to reflect the one from the reexport and not from the "source" DefId.
-    item.inner.inline_stmt_id = import_def_id;
-    ret.push(item);
+    ret.push(try_inline_inner(cx, kind, did, name, import_def_id));
     Some(ret)
 }
 
@@ -777,13 +787,7 @@ fn build_macro(
     macro_kinds: MacroKinds,
 ) -> clean::ItemKind {
     match CStore::from_tcx(tcx).load_macro_untracked(tcx, def_id) {
-        // FIXME: handle attributes and derives that aren't proc macros, and macros with multiple
-        // kinds
         LoadedMacro::MacroDef { def, .. } => match macro_kinds {
-            MacroKinds::BANG => clean::MacroItem(clean::Macro {
-                source: utils::display_macro_source(tcx, name, &def),
-                macro_rules: def.macro_rules,
-            }),
             MacroKinds::DERIVE => clean::ProcMacroItem(clean::ProcMacro {
                 kind: MacroKind::Derive,
                 helpers: Vec::new(),
@@ -792,7 +796,13 @@ fn build_macro(
                 kind: MacroKind::Attr,
                 helpers: Vec::new(),
             }),
-            _ => todo!("Handle macros with multiple kinds"),
+            _ => clean::MacroItem(
+                clean::Macro {
+                    source: utils::display_macro_source(tcx, name, &def),
+                    macro_rules: def.macro_rules,
+                },
+                macro_kinds,
+            ),
         },
         LoadedMacro::ProcMacro(ext) => {
             // Proc macros can only have a single kind

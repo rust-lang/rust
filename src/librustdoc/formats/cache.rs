@@ -382,8 +382,8 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::RequiredAssocTypeItem(..)
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
-            | clean::KeywordItem
-            | clean::AttributeItem => {
+            | clean::AttributeItem
+            | clean::KeywordItem => {
                 // FIXME: Do these need handling?
                 // The person writing this comment doesn't know.
                 // So would rather leave them to an expert,
@@ -597,8 +597,9 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     let aliases = item.attrs.get_doc_aliases();
     let is_deprecated = item.is_deprecated(tcx);
     let is_unstable = item.is_unstable();
+    let mut types = item.types();
     let index_item = IndexItem {
-        ty: item.type_(),
+        ty: types.pop().unwrap(),
         defid: Some(defid),
         name,
         module_path: parent_path.to_vec(),
@@ -614,7 +615,11 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         is_deprecated,
         is_unstable,
     };
-
+    for type_ in types {
+        let mut index_item_copy = index_item.clone();
+        index_item_copy.ty = type_;
+        cache.search_index.push(index_item_copy);
+    }
     cache.search_index.push(index_item);
 }
 

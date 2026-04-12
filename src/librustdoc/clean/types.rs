@@ -13,7 +13,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, DocAttribute};
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Attribute, BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
@@ -750,6 +750,29 @@ impl Item {
         ItemType::from(self)
     }
 
+    // FIXME: Return an iterator instead of a `ThinVec`.
+    pub(crate) fn types(&self) -> ThinVec<ItemType> {
+        if let ItemKind::MacroItem(_, macro_kinds) = self.kind {
+            let mut types = ThinVec::with_capacity(3);
+            for kind in macro_kinds.iter() {
+                match kind {
+                    MacroKinds::ATTR => types.push(ItemType::BangMacroAttribute),
+                    MacroKinds::DERIVE => types.push(ItemType::BangMacroDerive),
+                    MacroKinds::BANG => types.push(ItemType::Macro),
+                    _ => panic!("unsupported macro kind {kind:?}"),
+                }
+            }
+            return types;
+        }
+        let mut types = ThinVec::with_capacity(1);
+        types.push(self.type_());
+        types
+    }
+
+    pub(crate) fn is_macro_rules(&self) -> bool {
+        matches!(self.kind, ItemKind::MacroItem(..))
+    }
+
     pub(crate) fn defaultness(&self) -> Option<Defaultness> {
         match self.kind {
             ItemKind::MethodItem(_, defaultness) | ItemKind::RequiredMethodItem(_, defaultness) => {
@@ -757,6 +780,11 @@ impl Item {
             }
             _ => None,
         }
+    }
+
+    /// Generates the HTML file name based on the item kind.
+    pub(crate) fn html_filename(&self) -> String {
+        format!("{type_}.{name}.html", type_ = self.type_(), name = self.name.unwrap())
     }
 
     /// Returns a `FnHeader` if `self` is a function item, otherwise returns `None`.
@@ -918,7 +946,9 @@ pub(crate) enum ItemKind {
     ForeignStaticItem(Static, hir::Safety),
     /// `type`s from an extern block
     ForeignTypeItem,
-    MacroItem(Macro),
+    /// A bang macro. it can be multiple things (macro, derive and attribute, potentially multiple
+    /// at once). Don't forget to look into the `MacroKinds` values.
+    MacroItem(Macro, MacroKinds),
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
@@ -973,7 +1003,7 @@ impl ItemKind {
             | ForeignFunctionItem(_, _)
             | ForeignStaticItem(_, _)
             | ForeignTypeItem
-            | MacroItem(_)
+            | MacroItem(..)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
             | RequiredAssocConstItem(..)
