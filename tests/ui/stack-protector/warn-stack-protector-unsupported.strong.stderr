@@ -1,4 +1,0 @@
-warning: `-Z stack-protector=strong` is not supported for target nvptx64-nvidia-cuda and will be ignored
-
-warning: 1 warning emitted
-
