@@ -695,6 +695,7 @@ symbols! {
         contract_build_check_ensures,
         contract_check_ensures,
         contract_check_requires,
+        contract_check_requires_and_build_ensures,
         contract_checks,
         contracts,
         contracts_ensures,

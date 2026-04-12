@@ -2358,6 +2358,48 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         self.expr(span, hir::ExprKind::Lit(Spanned { node: LitKind::Bool(val), span }))
     }
 
+    pub(super) fn expr_closure(
+        &mut self,
+        span: Span,
+        body_expr: hir::Expr<'hir>,
+    ) -> hir::Expr<'hir> {
+        let closure_node_id = self.next_node_id();
+
+        let closure_def_id = self.create_def(
+            closure_node_id,
+            None,
+            hir::def::DefKind::Closure,
+            hir::definitions::DefPathData::LateClosure,
+            span,
+        );
+
+        let hir_id = self.lower_node_id(closure_node_id);
+        let body_id = self.lower_body(|_| (Default::default(), body_expr));
+
+        let fn_decl = self.arena.alloc(hir::FnDecl {
+            inputs: &[],
+            output: hir::FnRetTy::DefaultReturn(span),
+            c_variadic: false,
+            implicit_self: hir::ImplicitSelfKind::None,
+            lifetime_elision_allowed: true,
+        });
+
+        let closure = self.arena.alloc(hir::Closure {
+            def_id: closure_def_id,
+            binder: hir::ClosureBinder::Default,
+            constness: hir::Constness::NotConst,
+            capture_clause: hir::CaptureBy::Ref,
+            bound_generic_params: &[],
+            fn_decl,
+            body: body_id,
+            fn_decl_span: span,
+            fn_arg_span: None,
+            kind: hir::ClosureKind::Closure,
+        });
+
+        hir::Expr { hir_id, kind: hir::ExprKind::Closure(closure), span }
+    }
+
     pub(super) fn expr(&mut self, span: Span, kind: hir::ExprKind<'hir>) -> hir::Expr<'hir> {
         let hir_id = self.next_id();
         hir::Expr { hir_id, kind, span: self.lower_span(span) }
