@@ -25,7 +25,7 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let single = cx.single_element_list(args, cx.attr_span)?;
 
-        let res = match single.meta_item().and_then(|i| i.path().word().map(|i| i.name)) {
+        let res = match single.meta_item_no_args().and_then(|i| i.path().word().map(|i| i.name)) {
             Some(sym::size) => OptimizeAttr::Size,
             Some(sym::speed) => OptimizeAttr::Speed,
             Some(sym::none) => OptimizeAttr::DoNotOptimize,

@@ -1,4 +1,6 @@
 #![feature(rustc_attrs)]
+#![feature(optimize_attribute)]
+#![allow(unused_attributes)]
 
 #[inline(always = 5)]
 //~^ ERROR malformed
@@ -7,6 +9,10 @@
 #[instruction_set(arm::a32 = 5)]
 //~^ ERROR malformed
 #[instruction_set(arm::a32(x, y, z))]
+//~^ ERROR malformed
+#[optimize(size = 5)]
+//~^ ERROR malformed
+#[optimize(size(x, y, z))]
 //~^ ERROR malformed
 fn main() {
 
