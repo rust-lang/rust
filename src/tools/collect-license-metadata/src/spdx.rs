@@ -97,3 +97,6 @@ fn build_file_entry(
             .ok_or_else(|| anyhow::anyhow!("file missing FileCopyrightText"))?,
     })
 }
+
+#[cfg(test)]
+mod tests;
