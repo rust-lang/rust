@@ -332,18 +332,58 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     let block = |blocks: &mut IndexVec<_, _>, kind| {
         blocks.push(BasicBlockData::new(Some(Terminator { source_info, kind }), false))
     };
-    block(&mut blocks, TerminatorKind::Goto { target: return_block });
+    if ty.is_some() {
+        block(&mut blocks, TerminatorKind::Goto { target: return_block });
+    }
     block(&mut blocks, TerminatorKind::Return);
 
     let source = MirSource::from_instance(ty::InstanceKind::DropGlue(def_id, ty));
     let mut body =
         new_body(source, blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
 
+    let Some(ty) = ty else {
+        return body;
+    };
+
     // The first argument (index 0), but add 1 for the return value.
     let dropee_ptr = Place::from(Local::new(1 + 0));
     dropee_emit_retag(tcx, &mut body, dropee_ptr, span);
 
-    if ty.is_some() {
+    if let ty::Array(ety, _len) = *ty.kind() {
+        // Don't write out the elaboration for each array type.
+        // Instead, just delegate to the slice version.
+        let slice_ty = Ty::new_slice(tcx, ety);
+        let mut_slice_ty = Ty::new_ref(tcx, tcx.lifetimes.re_erased, slice_ty, ty::Mutability::Mut);
+        let erased_local = body.local_decls.push(LocalDecl::new(mut_slice_ty, span));
+
+        let start = &mut body.basic_blocks_mut()[START_BLOCK];
+        start.statements.push(Statement::new(
+            source_info,
+            StatementKind::Assign(Box::new((
+                Place::from(erased_local),
+                Rvalue::Cast(
+                    CastKind::PointerCoercion(
+                        ty::adjustment::PointerCoercion::Unsize,
+                        CoercionSource::Implicit,
+                    ),
+                    Operand::Move(dropee_ptr),
+                    mut_slice_ty,
+                ),
+            ))),
+        ));
+        start.terminator = Some(Terminator {
+            source_info,
+            kind: TerminatorKind::Call {
+                func: Operand::function_handle(tcx, def_id, [ty::GenericArg::from(slice_ty)], span),
+                args: Box::new([Spanned { span, node: Operand::Move(Place::from(erased_local)) }]),
+                destination: Place::from(RETURN_PLACE),
+                target: Some(return_block),
+                unwind: UnwindAction::Continue,
+                call_source: CallSource::Misc,
+                fn_span: span,
+            },
+        });
+    } else {
         let patch = {
             let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
             let mut elaborator = DropShimElaborator {
