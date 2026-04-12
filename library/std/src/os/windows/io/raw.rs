@@ -140,6 +140,24 @@ impl<'a> AsRawHandle for io::StderrLock<'a> {
     }
 }
 
+impl AsRawHandle for io::StdinRaw {
+    fn as_raw_handle(&self) -> RawHandle {
+        stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_INPUT_HANDLE) as RawHandle })
+    }
+}
+
+impl AsRawHandle for io::StdoutRaw {
+    fn as_raw_handle(&self) -> RawHandle {
+        stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_OUTPUT_HANDLE) as RawHandle })
+    }
+}
+
+impl AsRawHandle for io::StderrRaw {
+    fn as_raw_handle(&self) -> RawHandle {
+        stdio_handle(unsafe { sys::c::GetStdHandle(sys::c::STD_ERROR_HANDLE) as RawHandle })
+    }
+}
+
 // Translate a handle returned from `GetStdHandle` into a handle to return to
 // the user.
 fn stdio_handle(raw: RawHandle) -> RawHandle {

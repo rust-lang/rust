@@ -497,6 +497,13 @@ impl<'a> AsFd for io::StdinLock<'a> {
     }
 }
 
+impl AsFd for io::StdinRaw {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(0) }
+    }
+}
+
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for io::Stdout {
     #[inline]
@@ -514,6 +521,13 @@ impl<'a> AsFd for io::StdoutLock<'a> {
     }
 }
 
+impl AsFd for io::StdoutRaw {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        unsafe { BorrowedFd::borrow_raw(1) }
+    }
+}
+
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for io::Stderr {
     #[inline]
@@ -527,6 +541,13 @@ impl<'a> AsFd for io::StderrLock<'a> {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
         // SAFETY: user code should not close stderr out from under the standard library
+        unsafe { BorrowedFd::borrow_raw(2) }
+    }
+}
+
+impl AsFd for io::StderrRaw {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
         unsafe { BorrowedFd::borrow_raw(2) }
     }
 }
