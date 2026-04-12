@@ -906,6 +906,13 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, pin_ergonomics, experimental!(pin_v2),
     ),
 
+    // RFC 3917
+    // `#[instrument_fn = "on|off"]` to insert or inhibit instrumentation function
+    // calls inside a function, usually around the prologue.
+    gated!(
+        instrument_fn, instrument_fn, experimental!(instrument_fn),
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

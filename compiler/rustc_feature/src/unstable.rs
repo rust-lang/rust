@@ -554,6 +554,8 @@ declare_features! (
     (unstable, import_trait_associated_functions, "1.86.0", Some(134691)),
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
+    /// Enable #[instrument_fn] on function (todo: tracking issue)
+    (unstable, instrument_fn, "CURRENT_RUSTC_VERSION", Some(99999)),
     /// Allows using `pointer` and `reference` in intra-doc links
     (unstable, intra_doc_pointers, "1.51.0", Some(80896)),
     /// lahfsahf target feature on x86.

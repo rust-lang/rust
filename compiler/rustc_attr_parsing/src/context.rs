@@ -193,6 +193,7 @@ attribute_parsers!(
         Single<IgnoreParser>,
         Single<InlineParser>,
         Single<InstructionSetParser>,
+        Single<InstrumentFnParser>,
         Single<LangParser>,
         Single<LinkNameParser>,
         Single<LinkOrdinalParser>,
