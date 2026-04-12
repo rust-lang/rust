@@ -1,0 +1,45 @@
+error[E0539]: malformed `inline` attribute input
+  --> $DIR/args-checked.rs:1:1
+   |
+LL | #[inline(always = 5)]
+   | ^^^^^^^^^----------^^
+   |          |
+   |          valid arguments are `always` or `never`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[inline(always = 5)]
+LL + #[inline(always)]
+   |
+LL - #[inline(always = 5)]
+LL + #[inline(never)]
+   |
+LL - #[inline(always = 5)]
+LL + #[inline]
+   |
+
+error[E0539]: malformed `inline` attribute input
+  --> $DIR/args-checked.rs:3:1
+   |
+LL | #[inline(always(x, y, z))]
+   | ^^^^^^^^^---------------^^
+   |          |
+   |          valid arguments are `always` or `never`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[inline(always(x, y, z))]
+LL + #[inline(always)]
+   |
+LL - #[inline(always(x, y, z))]
+LL + #[inline(never)]
+   |
+LL - #[inline(always(x, y, z))]
+LL + #[inline]
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0539`.
