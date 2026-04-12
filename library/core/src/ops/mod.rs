@@ -145,6 +145,7 @@ mod control_flow;
 mod coroutine;
 mod deref;
 mod drop;
+mod field_projections;
 mod function;
 mod index;
 mod index_range;
@@ -177,6 +178,11 @@ pub use self::deref::Receiver;
 pub use self::deref::{Deref, DerefMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::drop::Drop;
+#[unstable(feature = "field_projections", issue = "145383")]
+pub use self::field_projections::{
+    DropHusk, Place, PlaceBorrow, PlaceDeref, PlaceDrop, PlaceMove, PlaceRead, PlaceWrapper,
+    PlaceWrite,
+};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::function::{Fn, FnMut, FnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]
