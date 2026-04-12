@@ -658,8 +658,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     abi,
                     args,
                 )?;
-                let result = this.getpeername(socket, address, address_len)?;
-                this.write_scalar(result, dest)?;
+                this.getpeername(socket, address, address_len, dest)?;
             }
 
             // Time
