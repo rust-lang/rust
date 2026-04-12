@@ -181,14 +181,14 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let simple = call_simple_intrinsic(self, name, args);
         let llval = match name {
             _ if simple.is_some() => simple.unwrap(),
-            sym::minimum_number_nsz_f16
-            | sym::minimum_number_nsz_f32
-            | sym::minimum_number_nsz_f64
-            | sym::minimum_number_nsz_f128
-            | sym::maximum_number_nsz_f16
-            | sym::maximum_number_nsz_f32
-            | sym::maximum_number_nsz_f64
-            | sym::maximum_number_nsz_f128
+            sym::minimum_number_f16
+            | sym::minimum_number_f32
+            | sym::minimum_number_f64
+            | sym::minimum_number_f128
+            | sym::maximum_number_f16
+            | sym::maximum_number_f32
+            | sym::maximum_number_f64
+            | sym::maximum_number_f128
                 // Need at least LLVM 22 for `min/maximumnum` to not crash LLVM.
                 if crate::llvm_util::get_version() >= (22, 0, 0) =>
             {
@@ -202,9 +202,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     &[args[0].layout.immediate_llvm_type(self.cx)],
                     &[args[0].immediate(), args[1].immediate()],
                 );
-                // `nsz` on minimumnum/maximumnum is special: its only effect is to make
-                // signed-zero ordering non-deterministic.
-                unsafe { llvm::LLVMRustSetNoSignedZeros(call) };
                 call
             }
             sym::ptr_mask => {
