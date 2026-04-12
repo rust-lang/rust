@@ -3607,7 +3607,7 @@ pub(crate) struct OnMoveMalformedFormatLiterals {
 #[help(
     "only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma"
 )]
-pub(crate) struct OnMoveMalformedAttrExpectedLiteralOrDelimiter;
+pub(crate) struct NonMetaItemDiagnosticAttribute;
 
 #[derive(Diagnostic)]
 #[diag("malformed `{$attribute}` attribute")]

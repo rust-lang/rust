@@ -204,8 +204,8 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::OnMoveMalformedFormatLiterals { name } => {
                 lints::OnMoveMalformedFormatLiterals { name }.into_diag(dcx, level)
             }
-            &AttributeLintKind::OnMoveMalformedAttrExpectedLiteralOrDelimiter => {
-                lints::OnMoveMalformedAttrExpectedLiteralOrDelimiter.into_diag(dcx, level)
+            &AttributeLintKind::NonMetaItemDiagnosticAttribute => {
+                lints::NonMetaItemDiagnosticAttribute.into_diag(dcx, level)
             }
         }
     }

@@ -95,6 +95,44 @@ fn merge<T, S: Stage>(
     }
 }
 
+fn parse_list<'p, S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    args: &'p ArgParser,
+    mode: Mode,
+) -> Option<&'p MetaItemListParser> {
+    let span = cx.attr_span;
+    match args {
+        ArgParser::List(items) if items.len() != 0 => return Some(items),
+        ArgParser::List(list) => {
+            // We're dealing with `#[diagnostic::attr()]`.
+            // This can be because that is what the user typed, but that's also what we'd see
+            // if the user used non-metaitem syntax. See `ArgParser::from_attr_args`.
+            cx.emit_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                AttributeLintKind::NonMetaItemDiagnosticAttribute,
+                list.span,
+            );
+        }
+        ArgParser::NoArgs => {
+            cx.emit_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                AttributeLintKind::MissingOptionsForDiagnosticAttribute {
+                    attribute: mode.as_str(),
+                },
+                span,
+            );
+        }
+        ArgParser::NameValue(_) => {
+            cx.emit_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                AttributeLintKind::MalFormedDiagnosticAttribute { attribute: mode.as_str(), span },
+                span,
+            );
+        }
+    }
+    None
+}
+
 fn parse_directive_items<'p, S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     mode: Mode,

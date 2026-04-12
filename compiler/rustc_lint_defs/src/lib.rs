@@ -756,7 +756,7 @@ pub enum AttributeLintKind {
     OnMoveMalformedFormatLiterals {
         name: Symbol,
     },
-    OnMoveMalformedAttrExpectedLiteralOrDelimiter,
+    NonMetaItemDiagnosticAttribute,
 }
 
 #[derive(Debug, Clone, HashStable_Generic)]

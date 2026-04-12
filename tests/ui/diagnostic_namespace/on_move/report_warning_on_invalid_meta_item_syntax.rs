@@ -1,7 +1,7 @@
 #![feature(diagnostic_on_move)]
 
 #[diagnostic::on_move = "foo"]
-//~^WARN missing options for `diagnostic::on_move` attribute [malformed_diagnostic_attributes]
+//~^WARN malformed `diagnostic::on_move` attribute [malformed_diagnostic_attributes]
 struct Foo;
 
 fn takes_foo(_: Foo) {}
