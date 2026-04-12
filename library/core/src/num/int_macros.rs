@@ -270,6 +270,94 @@ macro_rules! int_impl {
             self as $UnsignedT
         }
 
+        /// Saturating conversion of `self` to an unsigned integer of the same size.
+        ///
+        /// Negative values are clamped to `0`.
+        ///
+        /// For other kinds of unsigned integer casts, see
+        /// [`cast_unsigned`](Self::cast_unsigned),
+        /// [`checked_cast_unsigned`](Self::checked_cast_unsigned),
+        /// or [`strict_cast_unsigned`](Self::strict_cast_unsigned).
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_cast_extras)]
+        #[doc = concat!("let n = ", stringify!($SelfT), "::MIN;")]
+        ///
+        #[doc = concat!("assert_eq!(n.saturating_cast_unsigned(), 0", stringify!($UnsignedT), ");")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".saturating_cast_unsigned(), 64", stringify!($UnsignedT), ");")]
+        /// ```
+        #[rustc_const_unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn saturating_cast_unsigned(self) -> $UnsignedT {
+            if self >= 0 {
+                self.cast_unsigned()
+            } else {
+                0
+            }
+        }
+
+        /// Checked conversion of `self` to an unsigned integer of the same size,
+        /// returning `None` if `self` is negative.
+        ///
+        /// For other kinds of unsigned integer casts, see
+        /// [`cast_unsigned`](Self::cast_unsigned),
+        /// [`saturating_cast_unsigned`](Self::saturating_cast_unsigned),
+        /// or [`strict_cast_unsigned`](Self::strict_cast_unsigned).
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_cast_extras)]
+        #[doc = concat!("let n = ", stringify!($SelfT), "::MIN;")]
+        ///
+        #[doc = concat!("assert_eq!(n.checked_cast_unsigned(), None);")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_cast_unsigned(), Some(64", stringify!($UnsignedT), "));")]
+        /// ```
+        #[rustc_const_unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn checked_cast_unsigned(self) -> Option<$UnsignedT> {
+            if self >= 0 {
+                Some(self.cast_unsigned())
+            } else {
+                None
+            }
+        }
+
+        /// Strict conversion of `self` to an unsigned integer of the same size,
+        /// which panics if `self` is negative.
+        ///
+        /// For other kinds of unsigned integer casts, see
+        /// [`cast_unsigned`](Self::cast_unsigned),
+        /// [`checked_cast_unsigned`](Self::checked_cast_unsigned),
+        /// or [`saturating_cast_unsigned`](Self::saturating_cast_unsigned).
+        ///
+        /// # Examples
+        ///
+        /// ```should_panic
+        /// #![feature(integer_cast_extras)]
+        #[doc = concat!("let _ = ", stringify!($SelfT), "::MIN.strict_cast_unsigned();")]
+        /// ```
+        #[rustc_const_unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[track_caller]
+        pub const fn strict_cast_unsigned(self) -> $UnsignedT {
+            match self.checked_cast_unsigned() {
+                Some(n) => n,
+                None => imp::overflow_panic::cast_integer(),
+            }
+        }
+
         /// Shifts the bits to the left by a specified amount, `n`,
         /// wrapping the truncated bits to the end of the resulting integer.
         ///
