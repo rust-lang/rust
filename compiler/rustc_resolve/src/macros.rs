@@ -723,26 +723,44 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
             && let [namespace, attribute, ..] = &*path.segments
             && namespace.ident.name == sym::diagnostic
-            && !DIAGNOSTIC_ATTRIBUTES.iter().any(|(attr, stable)| {
+            && !DIAGNOSTIC_ATTRIBUTES.iter().any(|(attr, feature)| {
                 attribute.ident.name == *attr
-                    && stable.is_none_or(|f| self.tcx.features().enabled(f))
+                    && feature.is_none_or(|f| self.tcx.features().enabled(f))
             })
         {
+            let name = attribute.ident.name;
             let span = attribute.span();
-            let candidates = DIAGNOSTIC_ATTRIBUTES
-                .iter()
-                .filter_map(|(sym, stable)| {
-                    stable.is_none_or(|f| self.tcx.features().enabled(f)).then_some(*sym)
+
+            let help = 'help: {
+                if self.tcx.sess.is_nightly_build() {
+                    for (attr, feature) in DIAGNOSTIC_ATTRIBUTES {
+                        if let Some(feature) = *feature
+                            && *attr == name
+                        {
+                            break 'help Some(errors::UnknownDiagnosticAttributeHelp::UseFeature {
+                                feature,
+                            });
+                        }
+                    }
+                }
+
+                let candidates = DIAGNOSTIC_ATTRIBUTES
+                    .iter()
+                    .filter_map(|(attr, feature)| {
+                        feature.is_none_or(|f| self.tcx.features().enabled(f)).then_some(*attr)
+                    })
+                    .collect::<Vec<_>>();
+
+                find_best_match_for_name(&candidates, name, None).map(|typo_name| {
+                    errors::UnknownDiagnosticAttributeHelp::Typo { span, typo_name }
                 })
-                .collect::<Vec<_>>();
-            let typo = find_best_match_for_name(&candidates, attribute.ident.name, None)
-                .map(|typo_name| errors::UnknownDiagnosticAttributeTypoSugg { span, typo_name });
+            };
 
             self.tcx.sess.psess.buffer_lint(
                 UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
                 span,
                 node_id,
-                errors::UnknownDiagnosticAttribute { typo },
+                errors::UnknownDiagnosticAttribute { help },
             );
         }
 
