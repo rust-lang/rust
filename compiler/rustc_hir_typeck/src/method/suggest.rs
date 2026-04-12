@@ -4426,6 +4426,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     name = item_name,
                 )
             };
+            if candidates_len > 1 {
+                let rcvr_ty_kind = match rcvr_ty.peel_refs().kind() {
+                    ty::Param(_) => "type parameter",
+                    ty::Adt(def, _) => self.tcx.def_descr(def.did()),
+                    _ => "type",
+                };
+                err.primary_message(format!(
+                    "no method named `{item_name}` found for {rcvr_ty_kind} `{rcvr_ty}` in the \
+                     current scope",
+                ));
+            }
             // Obtain the span for `param` and use it for a structured suggestion.
             if let Some(param) = param_type {
                 let generics = self.tcx.generics_of(self.body_id.to_def_id());
