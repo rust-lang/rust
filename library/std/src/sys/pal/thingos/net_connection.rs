@@ -3,10 +3,9 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, SocketAddrV4, ToSocketAddrs};
 use crate::string::String;
 use crate::sync::{Arc, Mutex};
+use crate::sys::pal::raw_syscall6;
 use crate::time::Duration;
 use crate::{fmt, thread, vec};
-
-use crate::sys::pal::raw_syscall6;
 
 const SYS_SLEEP_NS: u32 = 0x1200;
 const SYS_TIME_MONOTONIC: u32 = 0x1202;
@@ -17,6 +16,7 @@ const SYS_VFS_WRITE: u32 = 0x4003;
 const SYS_VFS_READV: u32 = 0x4021;
 const SYS_VFS_WRITEV: u32 = 0x4022;
 const SYS_FS_DUP: u32 = 0x400C;
+const SYS_FS_POLL: u32 = 0x400B;
 
 // ── Scatter-gather I/O vector (matches abi::syscall::IoVec / POSIX struct iovec) ──
 #[repr(C)]
@@ -25,13 +25,22 @@ struct KernelIoVec {
     len: usize,
 }
 
+#[repr(C)]
+struct KernelPollFd {
+    fd: i32,
+    events: u16,
+    revents: u16,
+}
+
 const O_RDONLY: u32 = 0x0000;
 const O_WRONLY: u32 = 0x0001;
 const O_RDWR: u32 = 0x0002;
 const O_NONBLOCK: u32 = 0x0800;
 
 const EAGAIN: i32 = 11;
+const EINTR: i32 = 4;
 const EINVAL: i32 = 22;
+const ENOSYS: i32 = 38;
 const EPIPE: i32 = 32;
 const EAFNOSUPPORT: i32 = 97;
 const ETIMEDOUT: i32 = 110;
@@ -41,6 +50,9 @@ const ENOTCONN: i32 = 107;
 
 const CONNECT_POLL_NS: u64 = 5_000_000;
 const IO_POLL_NS: u64 = 1_000_000;
+
+const POLLIN: u16 = 0x0001;
+const POLLOUT: u16 = 0x0004;
 
 /// Default TCP listen backlog passed to netd.
 const LISTEN_BACKLOG: u16 = 128;
@@ -193,8 +205,7 @@ impl TcpStream {
                         if deadline_expired(deadline) {
                             return Err(crate::io::Error::from_raw_os_error(ETIMEDOUT));
                         }
-                        sleep_ns(IO_POLL_NS);
-                        thread::yield_now();
+                        wait_fd_or_sleep(self.data_fd, POLLIN, deadline)?;
                     }
                     Err(err) => return Err(err),
                 }
@@ -235,8 +246,7 @@ impl TcpStream {
                     if deadline_expired(deadline) {
                         return Err(crate::io::Error::from_raw_os_error(ETIMEDOUT));
                     }
-                    sleep_ns(IO_POLL_NS);
-                    thread::yield_now();
+                    wait_fd_or_sleep(self.data_fd, POLLIN, deadline)?;
                 }
                 Err(err) => return Err(err),
             }
@@ -267,10 +277,8 @@ impl TcpStream {
                 return Ok(0);
             }
         }
-        let iovecs: vec::Vec<KernelIoVec> = bufs
-            .iter()
-            .map(|b| KernelIoVec { base: b.as_ptr() as usize, len: b.len() })
-            .collect();
+        let iovecs: vec::Vec<KernelIoVec> =
+            bufs.iter().map(|b| KernelIoVec { base: b.as_ptr() as usize, len: b.len() }).collect();
         let nonblocking = *self.nonblocking.lock().unwrap();
         let timeout = *self.read_timeout.lock().unwrap();
         let deadline = timeout.map(|dur| monotonic_ns().saturating_add(duration_to_ns(dur)));
@@ -295,8 +303,7 @@ impl TcpStream {
                     if deadline_expired(deadline) {
                         return Err(crate::io::Error::from_raw_os_error(ETIMEDOUT));
                     }
-                    sleep_ns(IO_POLL_NS);
-                    thread::yield_now();
+                    wait_fd_or_sleep(self.data_fd, POLLIN, deadline)?;
                 }
                 Err(err) => return Err(err),
             }
@@ -327,8 +334,7 @@ impl TcpStream {
                     if deadline_expired(deadline) {
                         return Err(crate::io::Error::from_raw_os_error(ETIMEDOUT));
                     }
-                    sleep_ns(IO_POLL_NS);
-                    thread::yield_now();
+                    wait_fd_or_sleep(self.data_fd, POLLOUT, deadline)?;
                 }
                 Err(err) => return Err(err),
             }
@@ -339,10 +345,8 @@ impl TcpStream {
         if bufs.is_empty() {
             return Ok(0);
         }
-        let iovecs: vec::Vec<KernelIoVec> = bufs
-            .iter()
-            .map(|b| KernelIoVec { base: b.as_ptr() as usize, len: b.len() })
-            .collect();
+        let iovecs: vec::Vec<KernelIoVec> =
+            bufs.iter().map(|b| KernelIoVec { base: b.as_ptr() as usize, len: b.len() }).collect();
         let nonblocking = *self.nonblocking.lock().unwrap();
         let timeout = *self.write_timeout.lock().unwrap();
         let deadline = timeout.map(|dur| monotonic_ns().saturating_add(duration_to_ns(dur)));
@@ -368,8 +372,7 @@ impl TcpStream {
                     if deadline_expired(deadline) {
                         return Err(crate::io::Error::from_raw_os_error(ETIMEDOUT));
                     }
-                    sleep_ns(IO_POLL_NS);
-                    thread::yield_now();
+                    wait_fd_or_sleep(self.data_fd, POLLOUT, deadline)?;
                 }
                 Err(err) => return Err(err),
             }
@@ -400,13 +403,11 @@ impl TcpStream {
 
     pub fn duplicate(&self) -> crate::io::Result<TcpStream> {
         let new_data_fd = {
-            let ret =
-                unsafe { raw_syscall6(SYS_FS_DUP, self.data_fd as usize, 0, 0, 0, 0, 0) };
+            let ret = unsafe { raw_syscall6(SYS_FS_DUP, self.data_fd as usize, 0, 0, 0, 0, 0) };
             decode_ret(ret).map(|fd| fd as i32)?
         };
         let new_ctl_fd = {
-            let ret =
-                unsafe { raw_syscall6(SYS_FS_DUP, self.ctl_fd as usize, 0, 0, 0, 0, 0) };
+            let ret = unsafe { raw_syscall6(SYS_FS_DUP, self.ctl_fd as usize, 0, 0, 0, 0, 0) };
             match decode_ret(ret).map(|fd| fd as i32) {
                 Ok(fd) => fd,
                 Err(e) => {
@@ -595,15 +596,13 @@ impl TcpListener {
                     if nonblocking {
                         return Err(crate::io::Error::from_raw_os_error(EAGAIN));
                     }
-                    sleep_ns(IO_POLL_NS);
-                    thread::yield_now();
+                    wait_fd_or_sleep(self.accept_fd, POLLIN, None)?;
                 }
                 Err(ref e) if e.raw_os_error() == Some(EAGAIN) => {
                     if nonblocking {
                         return Err(crate::io::Error::from_raw_os_error(EAGAIN));
                     }
-                    sleep_ns(IO_POLL_NS);
-                    thread::yield_now();
+                    wait_fd_or_sleep(self.accept_fd, POLLIN, None)?;
                 }
                 Err(e) => return Err(e),
             }
@@ -731,12 +730,10 @@ impl UdpSocket {
                 Ok(n) if n >= header_len => {
                     let src_ip: [u8; 4] = raw[..4].try_into().unwrap();
                     let src_port = u16::from_le_bytes([raw[4], raw[5]]);
-                    let payload_len =
-                        u32::from_le_bytes([raw[6], raw[7], raw[8], raw[9]]) as usize;
+                    let payload_len = u32::from_le_bytes([raw[6], raw[7], raw[8], raw[9]]) as usize;
                     let copy_len = payload_len.min(buf.len()).min(n - header_len);
                     buf[..copy_len].copy_from_slice(&raw[header_len..header_len + copy_len]);
-                    let src_addr =
-                        SocketAddr::new(IpAddr::V4(Ipv4Addr::from(src_ip)), src_port);
+                    let src_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::from(src_ip)), src_port);
                     return Ok((copy_len, src_addr));
                 }
                 Ok(_) => return Err(crate::io::Error::from_raw_os_error(EINVAL)),
@@ -747,8 +744,7 @@ impl UdpSocket {
                     if deadline_expired(deadline) {
                         return Err(crate::io::Error::from_raw_os_error(ETIMEDOUT));
                     }
-                    sleep_ns(IO_POLL_NS);
-                    thread::yield_now();
+                    wait_fd_or_sleep(self.data_fd, POLLIN, deadline)?;
                 }
                 Err(e) => return Err(e),
             }
@@ -966,14 +962,14 @@ pub fn lookup_host(host: &str, port: u16) -> crate::io::Result<LookupHost> {
                     let _ = vfs_close(lookup_fd);
                     return Err(crate::io::Error::from_raw_os_error(ETIMEDOUT));
                 }
-                sleep_ns(CONNECT_POLL_NS);
+                wait_fd_or_sleep(lookup_fd, POLLIN, Some(deadline))?;
             }
             Err(ref e) if e.raw_os_error() == Some(EAGAIN) => {
                 if monotonic_ns() >= deadline {
                     let _ = vfs_close(lookup_fd);
                     return Err(crate::io::Error::from_raw_os_error(ETIMEDOUT));
                 }
-                sleep_ns(CONNECT_POLL_NS);
+                wait_fd_or_sleep(lookup_fd, POLLIN, Some(deadline))?;
             }
             Err(e) => {
                 let _ = vfs_close(lookup_fd);
@@ -988,8 +984,9 @@ fn allocate_tcp_socket() -> crate::io::Result<u32> {
     let mut buf = [0u8; 32];
     let n = vfs_read(fd, &mut buf)?;
     vfs_close(fd)?;
-    let text =
-        crate::str::from_utf8(&buf[..n]).map_err(|_| crate::io::Error::from_raw_os_error(EINVAL))?.trim();
+    let text = crate::str::from_utf8(&buf[..n])
+        .map_err(|_| crate::io::Error::from_raw_os_error(EINVAL))?
+        .trim();
     text.parse::<u32>().map_err(|_| crate::io::Error::from_raw_os_error(EINVAL))
 }
 
@@ -1002,8 +999,9 @@ fn allocate_udp_socket() -> crate::io::Result<u32> {
     let mut buf = [0u8; 32];
     let n = vfs_read(fd, &mut buf)?;
     vfs_close(fd)?;
-    let text =
-        crate::str::from_utf8(&buf[..n]).map_err(|_| crate::io::Error::from_raw_os_error(EINVAL))?.trim();
+    let text = crate::str::from_utf8(&buf[..n])
+        .map_err(|_| crate::io::Error::from_raw_os_error(EINVAL))?
+        .trim();
     text.parse::<u32>().map_err(|_| crate::io::Error::from_raw_os_error(EINVAL))
 }
 
@@ -1018,8 +1016,8 @@ fn read_status(id: u32) -> crate::io::Result<StatusInfo> {
     let n = vfs_read(fd, &mut buf)?;
     vfs_close(fd)?;
 
-    let text =
-        crate::str::from_utf8(&buf[..n]).map_err(|_| crate::io::Error::from_raw_os_error(EINVAL))?;
+    let text = crate::str::from_utf8(&buf[..n])
+        .map_err(|_| crate::io::Error::from_raw_os_error(EINVAL))?;
 
     let mut out = StatusInfo::default();
     for line in text.lines() {
@@ -1063,8 +1061,7 @@ fn parse_accept_line(text: &str) -> crate::io::Result<(u32, [u8; 4], u16)> {
         .ok_or_else(|| crate::io::Error::from_raw_os_error(EINVAL))?
         .parse()
         .map_err(|_| crate::io::Error::from_raw_os_error(EINVAL))?;
-    let ip: Ipv4Addr =
-        ip_str.parse().map_err(|_| crate::io::Error::from_raw_os_error(EINVAL))?;
+    let ip: Ipv4Addr = ip_str.parse().map_err(|_| crate::io::Error::from_raw_os_error(EINVAL))?;
     Ok((conn_id, ip.octets(), port))
 }
 
@@ -1086,6 +1083,63 @@ fn monotonic_ns() -> u64 {
 
 fn sleep_ns(ns: u64) {
     let _ = unsafe { raw_syscall6(SYS_SLEEP_NS, ns as usize, 0, 0, 0, 0, 0) };
+}
+
+fn wait_fd_or_sleep(fd: i32, events: u16, deadline: Option<u64>) -> crate::io::Result<()> {
+    match wait_fd(fd, events, deadline) {
+        Ok(()) => Ok(()),
+        Err(err) if err.raw_os_error() == Some(ENOSYS) => {
+            sleep_ns(IO_POLL_NS);
+            thread::yield_now();
+            Ok(())
+        }
+        Err(err) => Err(err),
+    }
+}
+
+fn wait_fd(fd: i32, events: u16, deadline: Option<u64>) -> crate::io::Result<()> {
+    loop {
+        let timeout_ms = match deadline {
+            Some(ns) => {
+                let now = monotonic_ns();
+                if now >= ns {
+                    return Err(crate::io::Error::from_raw_os_error(ETIMEDOUT));
+                }
+                ns_to_timeout_ms(ns - now)
+            }
+            None => usize::MAX,
+        };
+
+        let mut pfd = KernelPollFd { fd, events, revents: 0 };
+        let ret = unsafe {
+            raw_syscall6(
+                SYS_FS_POLL,
+                &mut pfd as *mut KernelPollFd as usize,
+                1,
+                timeout_ms,
+                0,
+                0,
+                0,
+            )
+        };
+
+        match decode_ret(ret) {
+            Ok(0) => {
+                if deadline.is_some() {
+                    return Err(crate::io::Error::from_raw_os_error(ETIMEDOUT));
+                }
+            }
+            Ok(_) => return Ok(()),
+            Err(err) if err.raw_os_error() == Some(EINTR) => continue,
+            Err(err) => return Err(err),
+        }
+    }
+}
+
+fn ns_to_timeout_ms(ns: u64) -> usize {
+    let ms = ns.saturating_add(999_999) / 1_000_000;
+    let ms = ms.max(1);
+    if ms > usize::MAX as u64 { usize::MAX } else { ms as usize }
 }
 
 fn vfs_open(path: &str, flags: u32) -> crate::io::Result<i32> {
