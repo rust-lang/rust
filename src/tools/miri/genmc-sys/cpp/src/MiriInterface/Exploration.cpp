@@ -576,11 +576,19 @@ void MiriGenmcShim::handle_thread_join(ThreadId thread_id, ThreadId child_id) {
     const auto ret =
         GenMCDriver::handleThreadJoin(nullptr, curr_pos(thread_id), child_id, EventDeps());
     inc_pos(thread_id, ret.count);
-    // FIXME(genmc): handle `HandleResult::{Invalid, Reset, VerificationError}` return values.
+    // FIXME(genmc): handle `HandleResult::{Invalid, VerificationError}` return values.
     ERROR_ON(
         !std::holds_alternative<SVal>(ret.result) && !std::holds_alternative<Reset>(ret.result),
         "Unimplemented: unexpected return value for thread join"
     );
+    // FIXME(genmc): Here Reset{} is silently accepted. Double-check why that is.
+    // The reason is likely that, although GenMC wants to re-run the join instruction,
+    // when GenMC deems that the join has executed, it will also deem it successful,
+    // i.e., the return value is guaranteed to be 0 (or at least we assume that).
+    // In this case, it doesn't matter that we don't re-run the instruction, since
+    // Miri sets the correct return value, and GenMC will only schedule this thread
+    // when it knows the child has terminated.
+
     // NOTE: Thread return value is ignored, since Miri doesn't need it.
 }
 
