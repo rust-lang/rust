@@ -941,7 +941,7 @@ impl<'a> Iterator for Components<'a> {
                         self.path = &self.path[1..];
                         return Some(Component::RootDir);
                     } else if HAS_PREFIXES && let Some(p) = self.prefix {
-                        if p.has_implicit_root() && !p.is_verbatim() {
+                        if p.has_implicit_root() {
                             return Some(Component::RootDir);
                         }
                     } else if self.include_cur_dir() {
@@ -992,7 +992,7 @@ impl<'a> DoubleEndedIterator for Components<'a> {
                         self.path = &self.path[..self.path.len() - 1];
                         return Some(Component::RootDir);
                     } else if HAS_PREFIXES && let Some(p) = self.prefix {
-                        if p.has_implicit_root() && !p.is_verbatim() {
+                        if p.has_implicit_root() {
                             return Some(Component::RootDir);
                         }
                     } else if self.include_cur_dir() {
