@@ -753,9 +753,6 @@ pub enum AttributeLintKind {
     MissingOptionsForDiagnosticAttribute {
         attribute: &'static str,
     },
-    OnMoveMalformedFormatLiterals {
-        name: Symbol,
-    },
     NonMetaItemDiagnosticAttribute,
 }
 

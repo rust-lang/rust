@@ -3596,13 +3596,6 @@ pub(crate) struct MissingOptionsForDiagnosticAttribute {
 pub(crate) struct EqInternalMethodImplemented;
 
 #[derive(Diagnostic)]
-#[diag("unknown parameter `{$name}`")]
-#[help("expect `Self` as format argument")]
-pub(crate) struct OnMoveMalformedFormatLiterals {
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("expected a literal or missing delimiter")]
 #[help(
     "only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma"
