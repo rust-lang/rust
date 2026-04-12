@@ -177,16 +177,16 @@ fn parse_directive_items<'p, S: Stage>(
         macro duplicate($name: ident, $($first_span:tt)*) {{
             if matches!(mode, Mode::RustcOnUnimplemented) {
                 cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
-            }else{
+            } else {
                 cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::IgnoredDiagnosticOption {
-                            first_span: $($first_span)*,
-                            later_span: span,
-                            option_name: $name,
-                        },
-                        span,
-                    );
+                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                    AttributeLintKind::IgnoredDiagnosticOption {
+                        first_span: $($first_span)*,
+                        later_span: span,
+                        option_name: $name,
+                    },
+                    span,
+                );
             }
         }}
 
