@@ -274,6 +274,10 @@ impl<'tcx> Generics {
         })
     }
 
+    pub fn own_synthetic_params_count(&'tcx self) -> usize {
+        self.own_params.iter().filter(|p| p.kind.is_synthetic()).count()
+    }
+
     /// Returns the args corresponding to the generic parameters
     /// of this item, excluding `Self`.
     ///
