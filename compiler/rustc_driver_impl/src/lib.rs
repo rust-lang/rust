@@ -324,10 +324,6 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 
             tcx.ensure_ok().analysis(());
 
-            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
-                dump_feature_usage_metrics(tcx, metrics_dir);
-            }
-
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
                 return early_exit();
             }
@@ -339,6 +335,10 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             }
 
             let linker = Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend);
+
+            if let Some(metrics_dir) = &sess.opts.unstable_opts.metrics_dir {
+                dump_feature_usage_metrics(tcx, metrics_dir);
+            }
 
             tcx.report_unused_features();
 
