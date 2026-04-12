@@ -1392,7 +1392,7 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> Option<CoroutineLayout<'tcx>> {
-    let (body, _) = tcx.mir_promoted(def_id);
+    let body = tcx.mir_post_borrowck_cleanup(def_id);
     let body = body.borrow();
     let body = &*body;
 
