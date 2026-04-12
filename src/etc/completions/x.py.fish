@@ -420,6 +420,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand test" -l extra-checks -d 'comm
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l compare-mode -d 'mode describing what file the actual ui output will be compared to' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l pass -d 'force {check,build,run}-pass tests to this mode' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l run -d 'whether to execute run-* tests' -r
+complete -c x.py -n "__fish_x.py_using_subcommand test" -l verbose-run-make-subprocess-output -d 'whether to show verbose subprocess output for run-make tests; set to false to suppress output for passing tests (e.g. for cg_clif with --no-capture)' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l test-codegen-backend -d 'Use a different codegen backend when running tests' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
@@ -473,6 +474,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand t" -l extra-checks -d 'comma-s
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l compare-mode -d 'mode describing what file the actual ui output will be compared to' -r
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l pass -d 'force {check,build,run}-pass tests to this mode' -r
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l run -d 'whether to execute run-* tests' -r
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l verbose-run-make-subprocess-output -d 'whether to show verbose subprocess output for run-make tests; set to false to suppress output for passing tests (e.g. for cg_clif with --no-capture)' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l test-codegen-backend -d 'Use a different codegen backend when running tests' -r
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
