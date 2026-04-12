@@ -1,2 +1,0 @@
-error: `-C linker-features=+lld` is unstable, and also requires the `-Z unstable-options` flag to be used
-

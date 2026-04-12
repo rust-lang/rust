@@ -1,5 +1,0 @@
-{
-  "foo/macro.foo!.html": "foo/macro.foo.html",
-  "foo/private/struct.Quz.html": "foo/struct.Quz.html",
-  "foo/hidden/struct.Bar.html": "foo/struct.Bar.html"
-}

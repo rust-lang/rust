@@ -1,2 +1,0 @@
-#[cfg(any())]
-extern "C++" {}

@@ -1,2 +1,0 @@
-[build]
-rustdocflags = ["--default-theme", "ayu"]

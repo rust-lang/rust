@@ -1,3 +1,0 @@
-todo!(); //~ ERROR
-
-fn main() {}

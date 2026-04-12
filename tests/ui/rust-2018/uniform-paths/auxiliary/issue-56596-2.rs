@@ -1,1 +1,0 @@
-pub extern crate core;

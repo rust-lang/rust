@@ -1,4 +1,0 @@
-Foo::new(10)
-MiddleFuture first poll
-Foo::async drop(10)
-done

@@ -1,4 +1,0 @@
-error: `-Zsanitizer=address` is incompatible with `-Zsanitizer=memory`
-
-error: aborting due to 1 previous error
-

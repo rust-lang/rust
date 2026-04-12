@@ -1,6 +1,0 @@
-//@ run-rustfix
-extern "system" fn systen() {} //~ ERROR invalid ABI
-
-fn main() {
-    systen();
-}

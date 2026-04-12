@@ -1,7 +1,0 @@
-   LL|       |//@ edition: 2021
-   LL|       |
-   LL|       |// Force this function to be generated in its home crate, so that it ends up
-   LL|       |// with normal coverage metadata.
-   LL|       |#[inline(never)]
-   LL|      1|pub fn external_function() {}
-

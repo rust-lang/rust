@@ -1,3 +1,0 @@
-# Make vscode *not* count `bootstrap.toml` and `config.toml` as ignored, so it is included in search
-!/bootstrap.toml
-!/config.toml

@@ -1,3 +1,0 @@
-Foo::new(10)
-Foo::async drop(10)
-done

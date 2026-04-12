@@ -1,3 +1,0 @@
-file::my_file!() = remapped/errors/remap-path-prefix-macro.rs
-file::file() = $DIR/auxiliary/file.rs
-file!() = remapped/errors/remap-path-prefix-macro.rs

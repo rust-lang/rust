@@ -1,2 +1,0 @@
-error: unknown library kind ``, expected one of: static, dylib, framework, link-arg
-

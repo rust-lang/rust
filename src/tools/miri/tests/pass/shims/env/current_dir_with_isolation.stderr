@@ -1,4 +1,0 @@
-warning: `$GETCWD` was made to return an error due to isolation
-
-warning: `$SETCWD` was made to return an error due to isolation
-

@@ -1,8 +1,0 @@
-[package]
-name = "date-check"
-edition = "2024"
-
-[dependencies]
-glob = "0.3"
-regex = "1"
-chrono = "0.4"

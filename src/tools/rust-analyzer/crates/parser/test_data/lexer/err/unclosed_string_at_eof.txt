@@ -1,1 +1,0 @@
-STRING "\"" error: Missing trailing `"` symbol to terminate the string literal

@@ -1,1 +1,0 @@
-fn foo() { safe = true; }

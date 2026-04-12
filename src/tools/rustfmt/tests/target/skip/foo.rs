@@ -1,5 +1,0 @@
-#![rustfmt::skip]
-
-fn
-foo()
-{}

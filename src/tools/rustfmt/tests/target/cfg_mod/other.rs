@@ -1,3 +1,0 @@
-fn other() -> &str {
-    "other"
-}

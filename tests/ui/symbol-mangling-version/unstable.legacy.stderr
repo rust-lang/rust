@@ -1,2 +1,0 @@
-error: `-C symbol-mangling-version=legacy` requires `-Z unstable-options`
-

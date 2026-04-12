@@ -1,5 +1,0 @@
-style_edition = "2024"
-use_small_heuristics = "Max"
-merge_derives = false
-group_imports = "StdExternalCrate"
-imports_granularity = "Module"

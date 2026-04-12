@@ -1,2 +1,0 @@
-#gcc-path = "gcc-build/gcc"
-download-gccjit = true

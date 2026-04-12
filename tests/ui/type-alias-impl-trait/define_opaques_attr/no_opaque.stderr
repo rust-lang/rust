@@ -1,8 +1,0 @@
-error: item does not contain any opaque types
-  --> $DIR/no_opaque.rs:5:17
-   |
-LL | #[define_opaque(Thing)]
-   |                 ^^^^^
-
-error: aborting due to 1 previous error
-

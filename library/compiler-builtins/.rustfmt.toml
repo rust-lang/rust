@@ -1,4 +1,0 @@
-# This matches rustc
-style_edition = "2024"
-group_imports = "StdExternalCrate"
-imports_granularity = "Module"

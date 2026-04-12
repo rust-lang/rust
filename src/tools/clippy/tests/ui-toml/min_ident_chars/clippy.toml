@@ -1,2 +1,0 @@
-allowed-idents-below-min-chars = ["Owo", "Uwu", "wha", "t_e", "lse", "_do", "_i_", "put", "her", "_e"]
-min-ident-chars-threshold = 3

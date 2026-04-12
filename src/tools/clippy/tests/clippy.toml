@@ -1,2 +1,0 @@
-# default config for tests, overrides clippy.toml at the project root
-lint-commented-code = false

@@ -1,2 +1,0 @@
-CHECK: rust_plus_one_global_asm
-CHECK: lfence

@@ -1,5 +1,0 @@
-error: invalid `--check-cfg` argument: `cfg(foo,any())`
-   |
-   = note: `cfg(any())` can only be provided in isolation
-   = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
-

@@ -1,1 +1,0 @@
-fn f(_: &impl 'a + Sized) {}

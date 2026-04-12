@@ -1,3 +1,0 @@
-panicked at $DIR/panic-in-message-fmt.rs:18:9:
-not yet implemented
-thread panicked while processing panic. aborting.

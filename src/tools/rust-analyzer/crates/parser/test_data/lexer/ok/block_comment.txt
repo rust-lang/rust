@@ -1,6 +1,0 @@
-COMMENT "/* */"
-WHITESPACE "\n"
-COMMENT "/**/"
-WHITESPACE "\n"
-COMMENT "/* /* */ */"
-WHITESPACE "\n"

@@ -1,8 +1,0 @@
-error: circular modules: $DIR/recursive.rs -> $DIR/recursive.rs
-  --> $DIR/recursive.rs:6:1
-   |
-LL | mod recursive;
-   | ^^^^^^^^^^^^^^
-
-error: aborting due to 1 previous error
-

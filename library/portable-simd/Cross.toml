@@ -1,2 +1,0 @@
-[build.env]
-passthrough = ["PROPTEST_CASES"]

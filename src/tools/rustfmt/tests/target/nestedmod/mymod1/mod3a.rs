@@ -1,2 +1,0 @@
-// Another mod
-fn a() {}

@@ -1,2 +1,0 @@
-error: incorrect value `bad` for unstable option `coverage-options` - `block` | `branch` | `condition` | `mcdc` | `no-mir-spans` was expected
-

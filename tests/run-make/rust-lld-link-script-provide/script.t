@@ -1,1 +1,0 @@
-PROVIDE(foo = bar);

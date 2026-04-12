@@ -1,3 +1,0 @@
-extern "C" {
-    fn bar();
-}

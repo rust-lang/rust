@@ -1,4 +1,0 @@
-//@run-rustfix
-fn main() {
-    let _ = || { while let Some(_) = Some(1) { } }; //~ ERROR mismatched types
-}

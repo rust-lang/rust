@@ -1,6 +1,0 @@
-warning: unknown feature specified for `-Ctarget-feature`: `banana`
-   |
-   = note: features must begin with a `+` to enable or `-` to disable it
-
-warning: 1 warning emitted
-

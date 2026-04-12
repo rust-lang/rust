@@ -1,5 +1,0 @@
-error: invalid `--check-cfg` argument: `cfg(any(),any())`
-   |
-   = note: `any()` cannot be specified multiple times
-   = note: visit <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more details
-

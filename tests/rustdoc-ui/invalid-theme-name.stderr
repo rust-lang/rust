@@ -1,4 +1,0 @@
-error: invalid argument: "$DIR/invalid-theme-name.rs"
-   |
-   = help: arguments to --theme must have a .css extension
-

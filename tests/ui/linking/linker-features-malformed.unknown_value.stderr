@@ -1,2 +1,0 @@
-error: incorrect value `unknown` for codegen option `linker-features` - a list of enabled (`+` prefix) and disabled (`-` prefix) features: `lld` was expected
-
