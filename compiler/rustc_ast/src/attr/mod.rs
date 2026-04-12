@@ -3,7 +3,6 @@
 pub mod data_structures;
 pub mod version;
 
-use std::fmt::Debug;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_index::bit_set::GrowableBitSet;
@@ -83,12 +82,12 @@ impl Attribute {
     }
 }
 
-impl AttributeExt for Attribute {
-    fn id(&self) -> AttrId {
+impl Attribute {
+    pub fn id(&self) -> AttrId {
         self.id
     }
 
-    fn value_span(&self) -> Option<Span> {
+    pub fn value_span(&self) -> Option<Span> {
         match &self.kind {
             AttrKind::Normal(normal) => match &normal.item.args.unparsed_ref()? {
                 AttrArgs::Eq { expr, .. } => Some(expr.span),
@@ -101,15 +100,15 @@ impl AttributeExt for Attribute {
     /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).
     /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
     /// a doc comment) will return `false`.
-    fn is_doc_comment(&self) -> Option<Span> {
+    pub fn is_doc_comment(&self) -> bool {
         match self.kind {
-            AttrKind::Normal(..) => None,
-            AttrKind::DocComment(..) => Some(self.span),
+            AttrKind::Normal(..) => false,
+            AttrKind::DocComment(..) => true,
         }
     }
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
-    fn name(&self) -> Option<Symbol> {
+    pub fn name(&self) -> Option<Symbol> {
         match &self.kind {
             AttrKind::Normal(normal) => {
                 if let [ident] = &*normal.item.path.segments {
@@ -122,7 +121,7 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
+    pub fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
         match &self.kind {
             AttrKind::Normal(p) => {
                 Some(p.item.path.segments.iter().map(|i| i.ident.name).collect())
@@ -131,14 +130,14 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn path_span(&self) -> Option<Span> {
+    pub fn path_span(&self) -> Option<Span> {
         match &self.kind {
             AttrKind::Normal(attr) => Some(attr.item.path.span),
             AttrKind::DocComment(_, _) => None,
         }
     }
 
-    fn path_matches(&self, name: &[Symbol]) -> bool {
+    pub fn path_matches(&self, name: &[Symbol]) -> bool {
         match &self.kind {
             AttrKind::Normal(normal) => {
                 normal.item.path.segments.len() == name.len()
@@ -154,11 +153,11 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn span(&self) -> Span {
+    pub fn span(&self) -> Span {
         self.span
     }
 
-    fn is_word(&self) -> bool {
+    pub fn is_word(&self) -> bool {
         if let AttrKind::Normal(normal) = &self.kind {
             matches!(normal.item.args, AttrItemKind::Unparsed(AttrArgs::Empty))
         } else {
@@ -173,7 +172,7 @@ impl AttributeExt for Attribute {
     /// #[attr = ""] // Returns `None`.
     /// #[attr] // Returns `None`.
     /// ```
-    fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
+    pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_item_list(),
             AttrKind::DocComment(..) => None,
@@ -195,7 +194,7 @@ impl AttributeExt for Attribute {
     /// ```text
     /// #[attr("value")]
     /// ```
-    fn value_str(&self) -> Option<Symbol> {
+    pub fn value_str(&self) -> Option<Symbol> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.value_str(),
             AttrKind::DocComment(..) => None,
@@ -207,7 +206,7 @@ impl AttributeExt for Attribute {
     /// * `/** doc */` returns `Some(("doc", DocFragmentKind::Sugared(CommentKind::Block)))`.
     /// * `#[doc = "doc"]` returns `Some(("doc", DocFragmentKind::Raw))`.
     /// * `#[doc(...)]` returns `None`.
-    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
+    pub fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
         match &self.kind {
             AttrKind::DocComment(kind, data) => Some((*data, DocFragmentKind::Sugared(*kind))),
             AttrKind::Normal(normal) if normal.item.path == sym::doc => {
@@ -227,7 +226,7 @@ impl AttributeExt for Attribute {
     /// * `///doc` returns `Some("doc")`.
     /// * `#[doc = "doc"]` returns `Some("doc")`.
     /// * `#[doc(...)]` returns `None`.
-    fn doc_str(&self) -> Option<Symbol> {
+    pub fn doc_str(&self) -> Option<Symbol> {
         match &self.kind {
             AttrKind::DocComment(.., data) => Some(*data),
             AttrKind::Normal(normal) if normal.item.path == sym::doc => normal.item.value_str(),
@@ -235,7 +234,7 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn deprecation_note(&self) -> Option<Ident> {
+    pub fn deprecation_note(&self) -> Option<Ident> {
         match &self.kind {
             AttrKind::Normal(normal) if normal.item.path == sym::deprecated => {
                 let meta = &normal.item;
@@ -263,7 +262,7 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn doc_resolution_scope(&self) -> Option<AttrStyle> {
+    pub fn doc_resolution_scope(&self) -> Option<AttrStyle> {
         match &self.kind {
             AttrKind::DocComment(..) => Some(self.style),
             AttrKind::Normal(normal)
@@ -275,16 +274,16 @@ impl AttributeExt for Attribute {
         }
     }
 
-    fn is_automatically_derived_attr(&self) -> bool {
+    pub fn is_automatically_derived_attr(&self) -> bool {
         self.has_name(sym::automatically_derived)
     }
 
-    fn is_doc_hidden(&self) -> bool {
+    pub fn is_doc_hidden(&self) -> bool {
         self.has_name(sym::doc)
             && self.meta_item_list().is_some_and(|l| list_contains_name(&l, sym::hidden))
     }
 
-    fn is_doc_keyword_or_attribute(&self) -> bool {
+    pub fn is_doc_keyword_or_attribute(&self) -> bool {
         if self.has_name(sym::doc)
             && let Some(items) = self.meta_item_list()
         {
@@ -297,12 +296,37 @@ impl AttributeExt for Attribute {
         false
     }
 
-    fn is_rustc_doc_primitive(&self) -> bool {
+    pub fn is_rustc_doc_primitive(&self) -> bool {
         self.has_name(sym::rustc_doc_primitive)
     }
-}
 
-impl Attribute {
+    /// Returns whether this attribute is any of the proc macro attributes.
+    /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
+    pub fn is_proc_macro_attr(&self) -> bool {
+        [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
+            .iter()
+            .any(|kind| self.has_name(*kind))
+    }
+
+    /// Returns true if the attribute's first *and only* path segment is equal to the passed-in
+    /// symbol.
+    #[inline]
+    pub fn has_name(&self, name: Symbol) -> bool {
+        self.name().map(|x| x == name).unwrap_or(false)
+    }
+
+    /// Returns true if the attribute's first *and only* path segment is any of the passed-in
+    /// symbols.
+    #[inline]
+    pub fn has_any_name(&self, names: &[Symbol]) -> bool {
+        names.iter().any(|&name| self.has_name(name))
+    }
+
+    #[inline]
+    pub fn path(&self) -> SmallVec<[Symbol; 1]> {
+        self.symbol_path().unwrap_or(smallvec![sym::doc])
+    }
+
     pub fn style(&self) -> AttrStyle {
         self.style
     }
@@ -824,19 +848,19 @@ pub fn mk_attr_name_value_str(
     mk_attr(g, style, unsafety, path, args, span)
 }
 
-pub fn filter_by_name<A: AttributeExt>(attrs: &[A], name: Symbol) -> impl Iterator<Item = &A> {
+pub fn filter_by_name(attrs: &[Attribute], name: Symbol) -> impl Iterator<Item = &Attribute> {
     attrs.iter().filter(move |attr| attr.has_name(name))
 }
 
-pub fn find_by_name<A: AttributeExt>(attrs: &[A], name: Symbol) -> Option<&A> {
+pub fn find_by_name(attrs: &[Attribute], name: Symbol) -> Option<&Attribute> {
     filter_by_name(attrs, name).next()
 }
 
-pub fn first_attr_value_str_by_name(attrs: &[impl AttributeExt], name: Symbol) -> Option<Symbol> {
+pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: Symbol) -> Option<Symbol> {
     find_by_name(attrs, name).and_then(|attr| attr.value_str())
 }
 
-pub fn contains_name(attrs: &[impl AttributeExt], name: Symbol) -> bool {
+pub fn contains_name(attrs: &[Attribute], name: Symbol) -> bool {
     find_by_name(attrs, name).is_some()
 }
 
@@ -847,174 +871,5 @@ pub fn list_contains_name(items: &[MetaItemInner], name: Symbol) -> bool {
 impl MetaItemLit {
     pub fn value_str(&self) -> Option<Symbol> {
         LitKind::from_token_lit(self.as_token_lit()).ok().and_then(|lit| lit.str())
-    }
-}
-
-pub trait AttributeExt: Debug {
-    fn id(&self) -> AttrId;
-
-    /// For a single-segment attribute (i.e., `#[attr]` and not `#[path::atrr]`),
-    /// return the name of the attribute; otherwise, returns `None`.
-    fn name(&self) -> Option<Symbol>;
-
-    /// Get the meta item list, `#[attr(meta item list)]`
-    fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>>;
-
-    /// Gets the value literal, as string, when using `#[attr = value]`
-    fn value_str(&self) -> Option<Symbol>;
-
-    /// Gets the span of the value literal, as string, when using `#[attr = value]`
-    fn value_span(&self) -> Option<Span>;
-
-    /// Checks whether the path of this attribute matches the name.
-    ///
-    /// Matches one segment of the path to each element in `name`
-    fn path_matches(&self, name: &[Symbol]) -> bool;
-
-    /// Returns `true` if it is a sugared doc comment (`///` or `//!` for example).
-    /// So `#[doc = "doc"]` (which is a doc comment) and `#[doc(...)]` (which is not
-    /// a doc comment) will return `false`.
-    fn is_doc_comment(&self) -> Option<Span>;
-
-    /// Returns true if the attribute's first *and only* path segment is equal to the passed-in
-    /// symbol.
-    #[inline]
-    fn has_name(&self, name: Symbol) -> bool {
-        self.name().map(|x| x == name).unwrap_or(false)
-    }
-
-    /// Returns true if the attribute's first *and only* path segment is any of the passed-in
-    /// symbols.
-    #[inline]
-    fn has_any_name(&self, names: &[Symbol]) -> bool {
-        names.iter().any(|&name| self.has_name(name))
-    }
-
-    /// get the span of the entire attribute
-    fn span(&self) -> Span;
-
-    /// Returns whether the attribute is a path, without any arguments.
-    fn is_word(&self) -> bool;
-
-    fn path(&self) -> SmallVec<[Symbol; 1]> {
-        self.symbol_path().unwrap_or(smallvec![sym::doc])
-    }
-
-    fn path_span(&self) -> Option<Span>;
-
-    /// Returns None for doc comments
-    fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>>;
-
-    /// Returns the documentation if this is a doc comment or a sugared doc comment.
-    /// * `///doc` returns `Some("doc")`.
-    /// * `#[doc = "doc"]` returns `Some("doc")`.
-    /// * `#[doc(...)]` returns `None`.
-    fn doc_str(&self) -> Option<Symbol>;
-
-    /// Returns the deprecation note if this is deprecation attribute.
-    /// * `#[deprecated = "note"]` returns `Some("note")`.
-    /// * `#[deprecated(note = "note", ...)]` returns `Some("note")`.
-    fn deprecation_note(&self) -> Option<Ident>;
-
-    /// Returns whether this attribute is any of the proc macro attributes.
-    /// i.e. `proc_macro`, `proc_macro_attribute` or `proc_macro_derive`.
-    fn is_proc_macro_attr(&self) -> bool {
-        [sym::proc_macro, sym::proc_macro_attribute, sym::proc_macro_derive]
-            .iter()
-            .any(|kind| self.has_name(*kind))
-    }
-    /// Returns true if this attribute is `#[automatically_deived]`.
-    fn is_automatically_derived_attr(&self) -> bool;
-
-    /// Returns the documentation and its kind if this is a doc comment or a sugared doc comment.
-    /// * `///doc` returns `Some(("doc", CommentKind::Line))`.
-    /// * `/** doc */` returns `Some(("doc", CommentKind::Block))`.
-    /// * `#[doc = "doc"]` returns `Some(("doc", CommentKind::Line))`.
-    /// * `#[doc(...)]` returns `None`.
-    fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)>;
-
-    /// Returns outer or inner if this is a doc attribute or a sugared doc
-    /// comment, otherwise None.
-    ///
-    /// This is used in the case of doc comments on modules, to decide whether
-    /// to resolve intra-doc links against the symbols in scope within the
-    /// commented module (for inner doc) vs within its parent module (for outer
-    /// doc).
-    fn doc_resolution_scope(&self) -> Option<AttrStyle>;
-
-    /// Returns `true` if this attribute contains `doc(hidden)`.
-    fn is_doc_hidden(&self) -> bool;
-
-    /// Returns `true` is this attribute contains `doc(keyword)` or `doc(attribute)`.
-    fn is_doc_keyword_or_attribute(&self) -> bool;
-
-    /// Returns `true` if this is a `#[rustc_doc_primitive]` attribute.
-    fn is_rustc_doc_primitive(&self) -> bool;
-}
-
-// FIXME(fn_delegation): use function delegation instead of manually forwarding
-
-impl Attribute {
-    pub fn id(&self) -> AttrId {
-        AttributeExt::id(self)
-    }
-
-    pub fn name(&self) -> Option<Symbol> {
-        AttributeExt::name(self)
-    }
-
-    pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
-        AttributeExt::meta_item_list(self)
-    }
-
-    pub fn value_str(&self) -> Option<Symbol> {
-        AttributeExt::value_str(self)
-    }
-
-    pub fn value_span(&self) -> Option<Span> {
-        AttributeExt::value_span(self)
-    }
-
-    pub fn path_matches(&self, name: &[Symbol]) -> bool {
-        AttributeExt::path_matches(self, name)
-    }
-
-    // on ast attributes we return a bool since that's what most code already expects
-    pub fn is_doc_comment(&self) -> bool {
-        AttributeExt::is_doc_comment(self).is_some()
-    }
-
-    #[inline]
-    pub fn has_name(&self, name: Symbol) -> bool {
-        AttributeExt::has_name(self, name)
-    }
-
-    #[inline]
-    pub fn has_any_name(&self, names: &[Symbol]) -> bool {
-        AttributeExt::has_any_name(self, names)
-    }
-
-    pub fn span(&self) -> Span {
-        AttributeExt::span(self)
-    }
-
-    pub fn is_word(&self) -> bool {
-        AttributeExt::is_word(self)
-    }
-
-    pub fn path(&self) -> SmallVec<[Symbol; 1]> {
-        AttributeExt::path(self)
-    }
-
-    pub fn doc_str(&self) -> Option<Symbol> {
-        AttributeExt::doc_str(self)
-    }
-
-    pub fn is_proc_macro_attr(&self) -> bool {
-        AttributeExt::is_proc_macro_attr(self)
-    }
-
-    pub fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
-        AttributeExt::doc_str_and_fragment_kind(self)
     }
 }
