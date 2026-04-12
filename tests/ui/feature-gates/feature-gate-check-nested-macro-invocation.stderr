@@ -1,5 +1,5 @@
 error[E0658]: allow_internal_unstable side-steps feature gating and stability checks
-  --> $DIR/issue-32782.rs:7:9
+  --> $DIR/feature-gate-check-nested-macro-invocation.rs:8:9
    |
 LL |         #[allow_internal_unstable()]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | foo!();
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: `#[allow_internal_unstable]` attribute cannot be used on macro calls
-  --> $DIR/issue-32782.rs:7:9
+  --> $DIR/feature-gate-check-nested-macro-invocation.rs:8:9
    |
 LL |         #[allow_internal_unstable()]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
