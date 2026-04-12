@@ -17,6 +17,7 @@ impl<S: Stage> AttributeParser<S> for OnConstParser {
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
         |this, cx, args| {
             if !cx.features().diagnostic_on_const() {
+                args.ignore_args();
                 return;
             }
 

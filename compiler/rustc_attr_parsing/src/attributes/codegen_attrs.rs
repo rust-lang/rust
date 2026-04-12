@@ -25,7 +25,7 @@ impl<S: Stage> SingleAttributeParser<S> for OptimizeParser {
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let single = cx.single_element_list(args, cx.attr_span)?;
 
-        let res = match single.meta_item().and_then(|i| i.path().word().map(|i| i.name)) {
+        let res = match single.meta_item_no_args().and_then(|i| i.path().word().map(|i| i.name)) {
             Some(sym::size) => OptimizeAttr::Size,
             Some(sym::speed) => OptimizeAttr::Speed,
             Some(sym::none) => OptimizeAttr::DoNotOptimize,
@@ -80,7 +80,7 @@ impl<S: Stage> SingleAttributeParser<S> for CoverageParser {
         let mut fail_incorrect_argument =
             |span| cx.adcx().expected_specific_argument(span, &[sym::on, sym::off]);
 
-        let Some(arg) = arg.meta_item() else {
+        let Some(arg) = arg.meta_item_no_args() else {
             fail_incorrect_argument(arg.span());
             return None;
         };
@@ -375,7 +375,7 @@ impl<S: Stage> AttributeParser<S> for UsedParser {
                         return;
                     };
 
-                    match l.meta_item().and_then(|i| i.path().word_sym()) {
+                    match l.meta_item_no_args().and_then(|i| i.path().word_sym()) {
                         Some(sym::compiler) => {
                             if !cx.features().used_with_arg() {
                                 feature_err(

@@ -18,6 +18,7 @@ impl OnUnknownParser {
         mode: Mode,
     ) {
         if !cx.features().diagnostic_on_unknown() {
+            args.ignore_args();
             return;
         }
         let span = cx.attr_span;

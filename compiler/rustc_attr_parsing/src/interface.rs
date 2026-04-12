@@ -207,6 +207,8 @@ impl<'sess> AttributeParser<'sess, Early> {
                 target_span,
                 target,
                 emit_lint: &mut emit_lint,
+                #[cfg(debug_assertions)]
+                has_lint_been_emitted: std::sync::atomic::AtomicBool::new(false),
             },
             attr_span,
             inner_span,
@@ -372,6 +374,8 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                                 target_span,
                                 target,
                                 emit_lint: &mut emit_lint,
+                                #[cfg(debug_assertions)]
+                                has_lint_been_emitted: std::sync::atomic::AtomicBool::new(false),
                             },
                             attr_span,
                             inner_span: lower_span(n.item.span()),
@@ -384,6 +388,14 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         (accept.accept_fn)(&mut cx, &args);
                         finalizers.push(&accept.finalizer);
 
+                        #[cfg(debug_assertions)]
+                        if !cx
+                            .shared
+                            .has_lint_been_emitted
+                            .load(std::sync::atomic::Ordering::Relaxed)
+                        {
+                            cx.shared.cx.check_args_used(&attr, &args)
+                        }
                         if !matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
                             Self::check_target(&accept.allowed_targets, target, &mut cx);
                         }
@@ -423,7 +435,14 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         early_parsed_state.finalize_early_parsed_attributes(&mut attributes);
         for f in &finalizers {
             if let Some(attr) = f(&mut FinalizeContext {
-                shared: SharedContext { cx: self, target_span, target, emit_lint: &mut emit_lint },
+                shared: SharedContext {
+                    cx: self,
+                    target_span,
+                    target,
+                    emit_lint: &mut emit_lint,
+                    #[cfg(debug_assertions)]
+                    has_lint_been_emitted: std::sync::atomic::AtomicBool::new(false),
+                },
                 all_attrs: &attr_paths,
             }) {
                 attributes.push(Attribute::Parsed(attr));
@@ -437,6 +456,32 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         }
 
         attributes
+    }
+
+    #[cfg(debug_assertions)]
+    /// Checks whether all `ArgParser`s were observed by an attribute parser at least once
+    /// This check exists because otherwise it is too easy to accidentally ignore the arguments of an attribute
+    fn check_args_used(&self, attr: &ast::Attribute, args: &ArgParser) {
+        match args {
+            ArgParser::List(items) => {
+                for item in items.mixed() {
+                    match item {
+                        crate::parser::MetaItemOrLitParser::MetaItemParser(item) => {
+                            if !item.are_args_checked() {
+                                self.dcx().span_delayed_bug(
+                                    item.span(),
+                                    "attribute args were not properly checked",
+                                );
+                                return;
+                            }
+                            self.check_args_used(attr, item.args());
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 
     /// Returns whether there is a parser for an attribute with this name
