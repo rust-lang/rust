@@ -1,8 +1,9 @@
-use rustc_ast::token::{self, Delimiter, IdentIsRaw, NonterminalKind, Token};
+use rustc_ast::token::{self, Delimiter, NonterminalKind, Token};
 use rustc_ast::tokenstream::TokenStreamIter;
 use rustc_ast::{NodeId, tokenstream};
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
+use rustc_lint_defs::builtin::DOLLAR_CRATE_IN_MATCHER;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
@@ -299,7 +300,30 @@ fn parse_tree<'a>(
                 Some(tokenstream::TokenTree::Token(token, _)) if token.is_ident() => {
                     let (ident, is_raw) = token.ident().unwrap();
                     let span = ident.span.with_lo(dollar_span.lo());
-                    if ident.name == kw::Crate && matches!(is_raw, IdentIsRaw::No) {
+
+                    // NOTE: `$crate` and `crate` cannot be raw identifiers,
+                    // see `Symbol::is_path_segment_keyword()`
+
+                    if matches!(ident.name, kw::Crate | kw::DollarCrate) {
+                        // FCW for `$crate` in matcher, and:
+                        //
+                        // $ $crate
+                        //   ^^^^^^ where this is a single identifier token, NOT
+                        //          '$' token followed by 'crate' token.
+                        //
+                        //          (this can happen under special circumstances with
+                        //          macros-generating-macros, see the `dollar-crate-in-matcher.rs` test)
+                        if part.is_pattern() {
+                            sess.psess.buffer_lint(
+                                DOLLAR_CRATE_IN_MATCHER,
+                                ident.span,
+                                node_id,
+                                crate::errors::DollarCrateInMatcher,
+                            );
+                        }
+                    }
+
+                    if ident.name == kw::Crate {
                         TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
                     } else {
                         TokenTree::MetaVar(span, ident)
