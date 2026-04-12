@@ -578,8 +578,10 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                 })?;
             }
 
-            // FIXME(unsafe_binder):
-            ty::UnsafeBinder(..) => todo!(),
+            ty::UnsafeBinder(binder) => {
+                self.push("U");
+                self.wrap_binder(&*binder, |p, ty| ty.print(p))?;
+            }
 
             ty::Dynamic(predicates, r) => {
                 self.push("D");
