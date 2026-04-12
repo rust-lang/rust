@@ -678,8 +678,11 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     fn add_move_hints(&self, error: GroupedMoveError<'tcx>, err: &mut Diag<'_>, span: Span) {
         match error {
             GroupedMoveError::MovesFromPlace { mut binds_to, move_from, .. } => {
-                self.add_borrow_suggestions(err, span);
+                binds_to.sort();
+                binds_to.dedup();
+
                 if binds_to.is_empty() {
+                    self.add_borrow_suggestions(err, span);
                     let place_ty = move_from.ty(self.body, self.infcx.tcx).ty;
                     let place_desc = match self.describe_place(move_from.as_ref()) {
                         Some(desc) => format!("`{desc}`"),
@@ -696,18 +699,20 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         place: &place_desc,
                         span,
                     });
+                } else if self.should_suggest_pattern_binding_instead(span, &binds_to)
+                    && self.add_move_error_suggestions(err, &binds_to)
+                {
                 } else {
-                    binds_to.sort();
-                    binds_to.dedup();
-
+                    self.add_borrow_suggestions(err, span);
                     self.add_move_error_details(err, &binds_to, &[]);
                 }
             }
             GroupedMoveError::MovesFromValue { mut binds_to, .. } => {
                 binds_to.sort();
                 binds_to.dedup();
-                let desugar_spans = self.add_move_error_suggestions(err, &binds_to);
-                self.add_move_error_details(err, &binds_to, &desugar_spans);
+                if !self.add_move_error_suggestions(err, &binds_to) {
+                    self.add_move_error_details(err, &binds_to, &[]);
+                }
             }
             // No binding. Nothing to suggest.
             GroupedMoveError::OtherIllegalMove { ref original_path, use_spans, .. } => {
@@ -823,7 +828,43 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
     }
 
-    fn add_move_error_suggestions(&self, err: &mut Diag<'_>, binds_to: &[Local]) -> Vec<Span> {
+    fn should_suggest_pattern_binding_instead(&self, span: Span, binds_to: &[Local]) -> bool {
+        if binds_to.is_empty() {
+            return false;
+        }
+
+        let Some(expr) = self.find_expr(span) else {
+            return false;
+        };
+
+        if !matches!(expr.kind, hir::ExprKind::Field(..)) {
+            return false;
+        }
+
+        let Some((pat_span, binding_spans)) = self.pattern_binding_info(binds_to) else {
+            return false;
+        };
+
+        binding_spans.len() != 1 || binding_spans[0] != pat_span
+    }
+
+    fn pattern_binding_info(&self, binds_to: &[Local]) -> Option<(Span, Vec<Span>)> {
+        let mut pat_span = None;
+        let mut binding_spans = Vec::new();
+        for local in binds_to {
+            let bind_to = &self.body.local_decls[*local];
+            if let LocalInfo::User(BindingForm::Var(VarBindingForm { pat_span: pat_sp, .. })) =
+                *bind_to.local_info()
+            {
+                pat_span = Some(pat_sp);
+                binding_spans.push(bind_to.source_info.span);
+            }
+        }
+
+        Some((pat_span?, binding_spans))
+    }
+
+    fn add_move_error_suggestions(&self, err: &mut Diag<'_>, binds_to: &[Local]) -> bool {
         /// A HIR visitor to associate each binding with a `&` or `&mut` that could be removed to
         /// make it bind by reference instead (if possible)
         struct BindingFinder<'tcx> {
@@ -926,21 +967,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 self.has_adjustments = parent_has_adjustments;
             }
         }
-        let mut pat_span = None;
-        let mut binding_spans = Vec::new();
-        for local in binds_to {
-            let bind_to = &self.body.local_decls[*local];
-            if let LocalInfo::User(BindingForm::Var(VarBindingForm { pat_span: pat_sp, .. })) =
-                *bind_to.local_info()
-            {
-                pat_span = Some(pat_sp);
-                binding_spans.push(bind_to.source_info.span);
-            }
-        }
-        let Some(pat_span) = pat_span else { return Vec::new() };
+        let Some((pat_span, binding_spans)) = self.pattern_binding_info(binds_to) else {
+            return false;
+        };
 
         let tcx = self.infcx.tcx;
-        let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id()) else { return Vec::new() };
+        let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id()) else {
+            return false;
+        };
         let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
         let mut finder = BindingFinder {
             typeck_results,
@@ -977,7 +1011,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         for (span, msg, suggestion) in suggestions {
             err.span_suggestion_verbose(span, msg, suggestion, Applicability::MachineApplicable);
         }
-        finder.desugar_binding_spans
+
+        self.add_move_error_details(err, binds_to, &finder.desugar_binding_spans);
+        true
     }
 
     fn add_move_error_details(
