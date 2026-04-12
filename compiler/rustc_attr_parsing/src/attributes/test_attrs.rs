@@ -173,7 +173,7 @@ impl SingleAttributeParser for TestRunnerParser {
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
         let single = cx.expect_single_element_list(args, cx.attr_span)?;
 
-        let Some(meta) = single.meta_item() else {
+        let Some(meta) = single.meta_item_no_args() else {
             cx.adcx().expected_not_literal(single.span());
             return None;
         };
