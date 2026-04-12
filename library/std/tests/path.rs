@@ -890,7 +890,7 @@ pub fn test_decompositions_windows() {
     );
 
     t!("\\\\?\\bar",
-    iter: ["\\\\?\\bar"],
+    iter: ["\\\\?\\bar", "\\"],
     has_root: true,
     is_absolute: true,
     parent: None,
@@ -901,7 +901,7 @@ pub fn test_decompositions_windows() {
     );
 
     t!("\\\\?\\",
-    iter: ["\\\\?\\"],
+    iter: ["\\\\?\\", "\\"],
     has_root: true,
     is_absolute: true,
     parent: None,
@@ -923,7 +923,7 @@ pub fn test_decompositions_windows() {
     );
 
     t!("\\\\?\\UNC\\server",
-    iter: ["\\\\?\\UNC\\server"],
+    iter: ["\\\\?\\UNC\\server", "\\"],
     has_root: true,
     is_absolute: true,
     parent: None,
@@ -934,7 +934,7 @@ pub fn test_decompositions_windows() {
     );
 
     t!("\\\\?\\UNC\\",
-    iter: ["\\\\?\\UNC\\"],
+    iter: ["\\\\?\\UNC\\", "\\"],
     has_root: true,
     is_absolute: true,
     parent: None,
@@ -967,7 +967,7 @@ pub fn test_decompositions_windows() {
     );
 
     t!("\\\\?\\C:",
-    iter: ["\\\\?\\C:"],
+    iter: ["\\\\?\\C:", "\\"],
     has_root: true,
     is_absolute: true,
     parent: None,
@@ -1258,7 +1258,7 @@ pub fn test_decompositions_cygwin() {
     );
 
     t!("\\\\?\\bar",
-    iter: ["\\\\?\\bar"],
+    iter: ["\\\\?\\bar", "\\"],
     has_root: true,
     is_absolute: true,
     parent: None,
@@ -1269,7 +1269,7 @@ pub fn test_decompositions_cygwin() {
     );
 
     t!("\\\\?\\",
-    iter: ["\\\\?\\"],
+    iter: ["\\\\?\\", "\\"],
     has_root: true,
     is_absolute: true,
     parent: None,
@@ -1324,7 +1324,7 @@ pub fn test_decompositions_cygwin() {
     );
 
     t!("\\\\?\\UNC\\server",
-    iter: ["\\\\?\\UNC\\server"],
+    iter: ["\\\\?\\UNC\\server", "\\"],
     has_root: true,
     is_absolute: true,
     parent: None,
@@ -1335,7 +1335,7 @@ pub fn test_decompositions_cygwin() {
     );
 
     t!("\\\\?\\UNC\\",
-    iter: ["\\\\?\\UNC\\"],
+    iter: ["\\\\?\\UNC\\", "\\"],
     has_root: true,
     is_absolute: true,
     parent: None,
@@ -1390,7 +1390,7 @@ pub fn test_decompositions_cygwin() {
     );
 
     t!("\\\\?\\C:",
-    iter: ["\\\\?\\C:"],
+    iter: ["\\\\?\\C:", "\\"],
     has_root: true,
     is_absolute: true,
     parent: None,
@@ -2218,6 +2218,29 @@ pub fn test_compare() {
         starts_with: false,
         ends_with: false,
         relative_from: None
+        );
+
+        // issue #155183: strip_prefix for VerbatimUNC share roots
+        tc!(r"\\?\UNC\server\share\dir1\dir2", r"\\?\UNC\server\share",
+        eq: false,
+        starts_with: true,
+        ends_with: false,
+        relative_from: Some(r"dir1\dir2")
+        );
+
+        tc!(r"\\?\UNC\server\share\dir1\dir2", r"\\?\UNC\server\share\dir1",
+        eq: false,
+        starts_with: true,
+        ends_with: false,
+        relative_from: Some("dir2")
+        );
+
+        // VerbatimDisk without trailing separator
+        tc!(r"\\?\C:\dir1\dir2", r"\\?\C:",
+        eq: false,
+        starts_with: true,
+        ends_with: false,
+        relative_from: Some(r"dir1\dir2")
         );
     }
 }
