@@ -1297,19 +1297,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                             )
                                         });
 
-                                        // FIXME(mgca): code duplication with other places we lower
-                                        // the rhs' of associated const bindings
-                                        let ty = projection_term.map_bound(|alias| {
-                                            tcx.type_of(alias.def_id).instantiate(tcx, alias.args)
-                                        });
-                                        let ty = bounds::check_assoc_const_binding_type(
-                                            self,
+                                        self.lower_assoc_const_binding_rhs(
+                                            ct,
                                             constraint.ident,
-                                            ty,
                                             constraint.hir_id,
-                                        );
-
-                                        self.lower_const_arg(ct, ty).into()
+                                            projection_term,
+                                        )
+                                        .into()
                                     }
                                 };
                                 if term.references_error() {
