@@ -116,6 +116,13 @@ cfg_select! {
         mod unsupported;
         pub use unsupported::{current_os_id, set_name};
     }
+    target_os = "thingos" => {
+        mod thingos;
+        pub use thingos::{
+            Thread, DEFAULT_MIN_STACK_SIZE, available_parallelism, current_os_id,
+            sleep, yield_now, set_name,
+        };
+    }
     _ => {
         mod unsupported;
         pub use unsupported::{Thread, available_parallelism, current_os_id, set_name, sleep, yield_now, DEFAULT_MIN_STACK_SIZE};

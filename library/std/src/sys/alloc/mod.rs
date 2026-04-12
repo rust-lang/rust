@@ -98,6 +98,9 @@ cfg_select! {
     target_os = "vexos" => {
         mod vexos;
     }
+    target_os = "thingos" => {
+        mod thingos;
+    }
     target_family = "wasm" => {
         mod wasm;
     }

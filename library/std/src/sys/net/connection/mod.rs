@@ -29,6 +29,10 @@ cfg_select! {
         mod uefi;
         pub use uefi::*;
     }
+    target_os = "thingos" => {
+        mod thingos;
+        pub use thingos::*;
+    }
     _ => {
         mod unsupported;
         pub use unsupported::*;
