@@ -101,10 +101,10 @@ LL | #![no_std(foo = "bar")]
    | ^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/malformed-no-std.rs:5:1
+  --> $DIR/malformed-no-std.rs:3:1
    |
-LL | #![no_std("bar")]
-   | ^^^^^^^^^^^^^^^^^
+LL | #![no_std = "foo"]
+   | ^^^^^^^^^^^^^^^^^^
 
 warning: unused attribute
   --> $DIR/malformed-no-std.rs:13:1
@@ -125,10 +125,10 @@ LL | #![no_core(foo = "bar")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/malformed-no-std.rs:13:1
+  --> $DIR/malformed-no-std.rs:11:1
    |
-LL | #![no_core("bar")]
-   | ^^^^^^^^^^^^^^^^^^
+LL | #![no_core = "foo"]
+   | ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 8 previous errors; 4 warnings emitted
 
