@@ -499,18 +499,18 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         fr: RegionVid,
     ) -> Option<RegionName> {
         let implicit_inputs = self.regioncx.universal_regions().defining_ty.implicit_inputs();
-        let argument_index = self.regioncx.get_argument_index_for_region(self.infcx.tcx, fr)?;
+        let user_arg_index = self.regioncx.get_user_arg_index_for_region(self.infcx.tcx, fr)?;
 
         let arg_ty = self.regioncx.universal_regions().unnormalized_input_tys
-            [implicit_inputs + argument_index];
+            [implicit_inputs + user_arg_index];
         let (_, span) = self.regioncx.get_argument_name_and_span_for_region(
             self.body,
             self.local_names(),
-            argument_index,
+            user_arg_index,
         );
 
         let highlight = self
-            .get_argument_hir_ty_for_highlighting(argument_index)
+            .get_argument_hir_ty_for_highlighting(user_arg_index)
             .and_then(|arg_hir_ty| self.highlight_if_we_can_match_hir_ty(fr, arg_ty, arg_hir_ty))
             .unwrap_or_else(|| {
                 // `highlight_if_we_cannot_match_hir_ty` needs to know the number we will give to
@@ -528,10 +528,11 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
     fn get_argument_hir_ty_for_highlighting(
         &self,
-        argument_index: usize,
+        user_arg_index: usize,
     ) -> Option<&hir::Ty<'tcx>> {
         let fn_decl = self.infcx.tcx.hir_fn_decl_by_hir_id(self.mir_hir_id())?;
-        let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(argument_index)?;
+        // Closures don't have implicit self arguments in HIR, so use `user_arg_index` directly.
+        let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(user_arg_index)?;
         match argument_hir_ty.kind {
             // This indicates a variable with no type annotation, like
             // `|x|`... in that case, we can't highlight the type but
