@@ -10,10 +10,13 @@
 //! For the purpose of future feature-tracking, once a feature gate is added,
 //! even if it is stabilized or removed, *do not remove it*. Instead, move the
 //! symbol to the `accepted` or `removed` modules respectively.
+//!
+//! If a feature is renamed, move it to the `renamed` module.
 
 mod accepted;
 mod builtin_attrs;
 mod removed;
+mod renamed;
 mod unstable;
 
 #[cfg(test)]
@@ -103,6 +106,9 @@ fn find_lang_feature_issue(feature: Symbol) -> Option<NonZero<u32>> {
     if let Some(f) = REMOVED_LANG_FEATURES.iter().find(|f| f.feature.name == feature) {
         return f.feature.issue;
     }
+    if let Some(f) = RENAMED_LANG_FEATURES.iter().find(|f| f.feature.name == feature) {
+        return f.feature.issue;
+    }
     panic!("feature `{feature}` is not declared anywhere");
 }
 
@@ -135,7 +141,18 @@ pub use builtin_attrs::{
     is_valid_for_get_attr,
 };
 pub use removed::REMOVED_LANG_FEATURES;
+pub use renamed::{RENAMED_LANG_FEATURES, RenamedFeature};
 pub use unstable::{
     DEPENDENT_FEATURES, EnabledLangFeature, EnabledLibFeature, Features, INCOMPATIBLE_FEATURES,
     TRACK_FEATURE, UNSTABLE_LANG_FEATURES,
 };
+
+macro_rules! opt_nonzero_u32 {
+    () => {
+        None
+    };
+    ($val:expr) => {
+        Some(core::num::NonZeroU32::new($val).unwrap())
+    };
+}
+pub(crate) use opt_nonzero_u32;

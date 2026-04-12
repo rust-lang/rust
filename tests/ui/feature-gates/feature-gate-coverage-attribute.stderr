@@ -1,11 +1,13 @@
-error[E0557]: feature has been removed
+error[E0557]: feature was renamed
   --> $DIR/feature-gate-coverage-attribute.rs:2:12
    |
 LL | #![feature(no_coverage)]
-   |            ^^^^^^^^^^^ feature has been removed
+   |            ^^^^^^^^^^^
+   |            |
+   |            feature was renamed
+   |            help: update to the new name: `coverage_attribute`
    |
-   = note: removed in 1.74.0; see <https://github.com/rust-lang/rust/pull/114656> for more information
-   = note: renamed to `coverage_attribute`
+   = note: renamed in 1.74.0; see <https://github.com/rust-lang/rust/pull/114656> for more information
 
 error[E0658]: the `#[coverage]` attribute is an experimental feature
   --> $DIR/feature-gate-coverage-attribute.rs:10:1
