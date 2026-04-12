@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_NoContext;
-use rustc_type_ir::data_structures::{HashMap, HashSet};
+use rustc_type_ir::data_structures::{HashMap, HashSet, IndexMap};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
@@ -1076,6 +1076,10 @@ where
         self.delegate.shallow_resolve(ty)
     }
 
+    pub(super) fn shallow_resolve_const(&self, ct: I::Const) -> I::Const {
+        self.delegate.shallow_resolve_const(ct)
+    }
+
     pub(super) fn eager_resolve_region(&self, r: I::Region) -> I::Region {
         if let ty::ReVar(vid) = r.kind() {
             self.delegate.opportunistic_resolve_lt_var(vid)
@@ -1183,6 +1187,19 @@ where
         universes: &mut Vec<Option<ty::UniverseIndex>>,
     ) -> T {
         BoundVarReplacer::replace_bound_vars(&**self.delegate, universes, t).0
+    }
+
+    pub(super) fn replace_escaping_bound_vars<T: TypeFoldable<I>>(
+        &self,
+        value: T,
+        universes: &mut Vec<Option<ty::UniverseIndex>>,
+    ) -> (
+        T,
+        IndexMap<ty::PlaceholderRegion<I>, ty::BoundRegion<I>>,
+        IndexMap<ty::PlaceholderType<I>, ty::BoundTy<I>>,
+        IndexMap<ty::PlaceholderConst<I>, ty::BoundConst<I>>,
+    ) {
+        BoundVarReplacer::replace_bound_vars(&**self.delegate, universes, value)
     }
 
     pub(super) fn may_use_unstable_feature(

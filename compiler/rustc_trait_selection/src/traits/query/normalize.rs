@@ -360,7 +360,7 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
         self.obligations.extend(obligations);
         let res = if let Some((mapped_regions, mapped_types, mapped_consts)) = maps {
             PlaceholderReplacer::replace_placeholders(
-                infcx,
+                infcx.tcx,
                 mapped_regions,
                 mapped_types,
                 mapped_consts,

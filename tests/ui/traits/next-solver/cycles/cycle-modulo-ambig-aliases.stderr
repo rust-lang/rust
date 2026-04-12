@@ -1,15 +1,270 @@
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Ogre well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:52:18
+   |
+LL |     &'b E::Ogre: Typed,
+   |                  ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Cyclops well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:53:21
+   |
+LL |     &'b E::Cyclops: Typed,
+   |                     ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Wendigo well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:54:21
+   |
+LL |     &'b E::Wendigo: Typed,
+   |                     ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Cavetroll well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:55:23
+   |
+LL |     &'b E::Cavetroll: Typed,
+   |                       ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Mountaintroll well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:56:27
+   |
+LL |     &'b E::Mountaintroll: Typed,
+   |                           ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Swamptroll well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:57:24
+   |
+LL |     &'b E::Swamptroll: Typed,
+   |                        ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Dullahan well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:58:22
+   |
+LL |     &'b E::Dullahan: Typed,
+   |                      ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Werewolf well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:59:22
+   |
+LL |     &'b E::Werewolf: Typed,
+   |                      ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Occultsaurok well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:60:26
+   |
+LL |     &'b E::Occultsaurok: Typed,
+   |                          ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Mightysaurok well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:61:26
+   |
+LL |     &'b E::Mightysaurok: Typed,
+   |                          ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Slysaurok well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:62:23
+   |
+LL |     &'b E::Slysaurok: Typed,
+   |                       ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Mindflayer well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:63:24
+   |
+LL |     &'b E::Mindflayer: Typed,
+   |                        ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Minotaur well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:64:22
+   |
+LL |     &'b E::Minotaur: Typed,
+   |                      ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Tidalwarrior well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:65:26
+   |
+LL |     &'b E::Tidalwarrior: Typed,
+   |                          ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Yeti well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:66:18
+   |
+LL |     &'b E::Yeti: Typed,
+   |                  ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Harvester well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:67:23
+   |
+LL |     &'b E::Harvester: Typed,
+   |                       ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Blueoni well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:68:21
+   |
+LL |     &'b E::Blueoni: Typed,
+   |                     ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Redoni well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:69:20
+   |
+LL |     &'b E::Redoni: Typed,
+   |                    ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Cultistwarlord well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:70:28
+   |
+LL |     &'b E::Cultistwarlord: Typed,
+   |                            ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Cultistwarlock well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:71:28
+   |
+LL |     &'b E::Cultistwarlock: Typed,
+   |                            ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Huskbrute well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:72:23
+   |
+LL |     &'b E::Huskbrute: Typed,
+   |                       ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Tursus well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:73:20
+   |
+LL |     &'b E::Tursus: Typed,
+   |                    ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Gigasfrost well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:74:24
+   |
+LL |     &'b E::Gigasfrost: Typed,
+   |                        ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::AdletElder well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:75:24
+   |
+LL |     &'b E::AdletElder: Typed,
+   |                        ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::SeaBishop well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:76:23
+   |
+LL |     &'b E::SeaBishop: Typed,
+   |                       ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::HaniwaGeneral well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:77:27
+   |
+LL |     &'b E::HaniwaGeneral: Typed,
+   |                           ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::TerracottaBesieger well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:78:32
+   |
+LL |     &'b E::TerracottaBesieger: Typed,
+   |                                ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::TerracottaDemolisher well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:79:34
+   |
+LL |     &'b E::TerracottaDemolisher: Typed,
+   |                                  ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::TerracottaPunisher well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:80:32
+   |
+LL |     &'b E::TerracottaPunisher: Typed,
+   |                                ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::TerracottaPursuer well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:81:31
+   |
+LL |     &'b E::TerracottaPursuer: Typed,
+   |                               ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0275]: overflow evaluating the requirement `&'b <E as SpeciesPackedElim>::Cursekeeper well-formed`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:82:25
+   |
+LL |     &'b E::Cursekeeper: Typed,
+   |                         ^^^^^
+   |
+   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`cycle_modulo_ambig_aliases`)
+
+error[E0284]: type annotations needed: cannot satisfy `_: '_`
+  --> $DIR/cycle-modulo-ambig-aliases.rs:88:11
+   |
+LL |     foo::<&_>();
+   |           ^^ cannot satisfy `_: '_`
+
 error[E0275]: overflow evaluating the requirement `&_: Typed`
-  --> $DIR/cycle-modulo-ambig-aliases.rs:87:11
+  --> $DIR/cycle-modulo-ambig-aliases.rs:88:11
    |
 LL |     foo::<&_>();
    |           ^^
    |
 note: required by a bound in `foo`
-  --> $DIR/cycle-modulo-ambig-aliases.rs:84:11
+  --> $DIR/cycle-modulo-ambig-aliases.rs:85:11
    |
 LL | fn foo<T: Typed>() {}
    |           ^^^^^ required by this bound in `foo`
 
-error: aborting due to 1 previous error
+error: aborting due to 33 previous errors
 
-For more information about this error, try `rustc --explain E0275`.
+Some errors have detailed explanations: E0275, E0284.
+For more information about an error, try `rustc --explain E0275`.
