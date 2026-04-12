@@ -1,14 +1,21 @@
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_Generic;
 
-use crate::{Align, HasDataLayout, Size};
+use crate::{Align, HasDataLayout, Integer, Primitive, Size};
 
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum RegKind {
     Integer,
     Float,
-    Vector,
+    Vector {
+        /// The `hint_vector_elem` is strictly for optimization purposes and can be safely ignored (e.g.
+        /// by always picking i8) by codegen backends.
+        ///
+        /// The element kind is used to provide more accurate type information to the backend, which
+        /// helps with optimization (e.g. because it prevents extra bitcasts that obscure a pattern).
+        hint_vector_elem: Primitive,
+    },
 }
 
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
@@ -36,6 +43,12 @@ impl Reg {
     reg_ctor!(f32, Float, 32);
     reg_ctor!(f64, Float, 64);
     reg_ctor!(f128, Float, 128);
+
+    /// A vector of the given size with an unknown (and irrelevant) element type.
+    pub fn opaque_vector(size: Size) -> Reg {
+        // Default to an i8 vector of the given size.
+        Reg { kind: RegKind::Vector { hint_vector_elem: Primitive::Int(Integer::I8, true) }, size }
+    }
 }
 
 impl Reg {
@@ -58,7 +71,7 @@ impl Reg {
                 128 => dl.f128_align,
                 _ => panic!("unsupported float: {self:?}"),
             },
-            RegKind::Vector => dl.llvmlike_vector_align(self.size),
+            RegKind::Vector { .. } => dl.llvmlike_vector_align(self.size),
         }
     }
 }

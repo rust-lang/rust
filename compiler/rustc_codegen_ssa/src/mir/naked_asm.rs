@@ -421,7 +421,7 @@ fn wasm_type<'tcx>(signature: &mut String, arg_abi: &ArgAbi<'_, Ty<'tcx>>, ptr_t
                     ..=8 => "f64",
                     _ => ptr_type,
                 },
-                RegKind::Vector => "v128",
+                RegKind::Vector { .. } => "v128",
             };
 
             signature.push_str(wrapped_wasm_type);
