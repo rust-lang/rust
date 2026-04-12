@@ -4487,7 +4487,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         let Finalize { node_id, path_span, .. } = finalize;
         let report_errors = |this: &mut Self, res: Option<Res>| {
-            if this.should_report_errs() {
+            if this.should_report_errs_for_path(path) {
                 let (mut err, candidates) = this.smart_resolve_report_errors(
                     path,
                     None,
@@ -4630,7 +4630,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                 let def_id = this.parent_scope.module.nearest_parent_mod();
 
-                if this.should_report_errs() {
+                if this.should_report_errs_for_path(path) {
                     if candidates.is_empty() {
                         if path.len() == 2
                             && let [segment] = prefix_path
@@ -4740,7 +4740,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
             Err(err) => {
                 if let Some(err) = report_errors_for_call(self, err) {
-                    self.report_error(err.span, err.node);
+                    if self.should_report_errs_for_path(path) {
+                        self.r.report_error(err.span, err.node);
+                    }
                 }
 
                 PartialRes::new(Res::Err)
@@ -4787,6 +4789,20 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     fn should_report_errs(&self) -> bool {
         !(self.r.tcx.sess.opts.actually_rustdoc && self.in_func_body)
             && !self.r.glob_error.is_some()
+    }
+
+    /// Like `should_report_errs`, but also suppresses errors for paths whose
+    /// first segment matches a known-failed import prefix.
+    fn should_report_errs_for_path(&self, path: &[Segment]) -> bool {
+        if !self.should_report_errs() {
+            return false;
+        }
+        if let Some(first) = path.first() {
+            if self.r.failed_import_prefixes.contains(&first.ident.name) {
+                return false;
+            }
+        }
+        true
     }
 
     // Resolve in alternative namespaces if resolution in the primary namespace fails.

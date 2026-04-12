@@ -10,5 +10,4 @@ use my_api::utils::utils_helper;
 
 fn main() {
     let _ = my_api::utils::utils_helper();
-    //~^ ERROR cannot find `utils` in `my_api` [E0433]
 }
