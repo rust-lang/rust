@@ -812,7 +812,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
                 let place = unpack!(block = this.as_place(block, expr_id));
-                let rvalue = Rvalue::Use(this.consume_by_copy_or_move(place));
+                let operand = if places_conflict_for_assignment(destination, place) {
+                    let temp = this.temp(expr.ty, expr_span);
+                    this.cfg.push_assign(
+                        block,
+                        source_info,
+                        temp,
+                        Rvalue::Use(this.consume_by_copy_or_move(place)),
+                    );
+                    this.consume_by_copy_or_move(temp)
+                } else {
+                    this.consume_by_copy_or_move(place)
+                };
+                let rvalue = Rvalue::Use(operand);
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
