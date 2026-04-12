@@ -689,7 +689,7 @@ impl Step for Rustdoc {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/rustdoc").path("src/librustdoc")
+        run.path_aliases(&["src/tools/rustdoc", "src/librustdoc"])
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
