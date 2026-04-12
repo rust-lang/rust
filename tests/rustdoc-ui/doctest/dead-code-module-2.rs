@@ -9,6 +9,7 @@
 //@ failure-status: 101
 
 #![doc(test(attr(allow(unused_variables))))]
+#![allow(rustdoc::failed_merged_doctest_compilation)]
 
 mod my_mod {
     #![doc(test(attr(deny(warnings))))]
