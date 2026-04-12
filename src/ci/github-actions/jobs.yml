@@ -732,6 +732,7 @@ auto:
         --build=x86_64-pc-windows-gnullvm
         --enable-full-tools
         --enable-profiler
+        --enable-sanitizers
         --enable-llvm-link-shared
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
