@@ -49,7 +49,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcMustImplementOneOfParser {
 
         let mut errored = false;
         for argument in inputs {
-            let Some(meta) = argument.meta_item() else {
+            let Some(meta) = argument.meta_item_no_args() else {
                 cx.adcx().expected_identifier(argument.span());
                 return None;
             };
