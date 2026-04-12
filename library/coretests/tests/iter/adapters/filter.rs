@@ -63,3 +63,33 @@ fn test_next_chunk_does_not_leak() {
         assert_eq!(Rc::strong_count(w), 1);
     }
 }
+
+#[test]
+fn test_next_chunk_zero_len() {
+    let result = (0usize..).filter(|_| true).next_chunk::<0>();
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), [] as [usize; 0]);
+}
+
+#[test]
+#[should_panic(expected = "closure called after `ControlFlow::Break` was returned")]
+fn test_next_chunk_malicious_try_for_each() {
+    struct OverEager(usize, usize);
+    impl Iterator for OverEager {
+        type Item = usize;
+        fn next(&mut self) -> Option<usize> {
+            unreachable!()
+        }
+        fn try_for_each<F, R>(&mut self, mut f: F) -> R
+        where
+            F: FnMut(usize) -> R,
+            R: std::ops::Try<Output = ()>,
+        {
+            for i in 0..self.1 {
+                let _ = f(self.0 + i);
+            }
+            R::from_output(())
+        }
+    }
+    let _ = OverEager(0, 8).filter(|_| true).next_chunk::<4>();
+}
