@@ -35,7 +35,6 @@
 +         StorageLive(_2);
 +         _2 = sleep;
 +         StorageLive(_4);
-+         StorageLive(_6);
 +         StorageLive(_3);
 +         _3 = &_2;
 +         StorageLive(_7);
