@@ -19,6 +19,10 @@
 //~^ ERROR malformed
 #[coverage(off(x, y, z))]
 //~^ ERROR malformed
+#[rustc_abi(debug = 5)]
+//~^ ERROR malformed
+#[rustc_abi(debug(x, y, z))]
+//~^ ERROR malformed
 fn main() {
 
 }
