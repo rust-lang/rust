@@ -4,7 +4,10 @@ version = "0.0.0"
 edition = "2024"
 
 [lib]
-crate-type = ["dylib"]
+# Allow both dylib (for hosts with dynamic linking support) and rlib (fallback for
+# targets like ThingOS where dynamic-linking: false). The bootstrap will select the
+# appropriate crate-type based on target capabilities.
+crate-type = ["dylib", "rlib"]
 
 [dependencies]
 # tidy-alphabetical-start

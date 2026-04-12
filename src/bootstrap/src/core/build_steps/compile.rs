@@ -1151,6 +1151,18 @@ impl Step for Rustc {
 
         rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
 
+        // For targets that don't support dynamic linking, we must build rustc_driver as rlib only.
+        // Temporarily modify rustc_driver/Cargo.toml if needed, and ensure restoration after build.
+        let (modified_path, original_content) = setup_rustc_driver_for_target(builder, target);
+        let _cargo_toml_guard = RevertCargoToml::new(modified_path, original_content);
+
+        // Set environment variable for rustc_driver's build script to detect static-only mode
+        if !target_supports_dylib(builder, target) {
+            cargo.env("RUSTC_DRIVER_FORCE_STATIC", "1");
+            // Also forbid dynamic linking in any rustc code that might try to use it
+            cargo.rustflag("-Cdynamic-linking=no");
+        }
+
         // NB: all RUSTFLAGS should be added to `rustc_cargo()` so they will be
         // consistently applied by check/doc/test modes too.
 
@@ -2940,4 +2952,93 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
 /// We only use LTO for stage 2+, to speed up build time of intermediate stages.
 pub fn is_lto_stage(build_compiler: &Compiler) -> bool {
     build_compiler.stage != 0
+}
+
+/// Check if a target supports dynamic linking (dylib/shared libraries).
+///
+/// Targets with `"dynamic-linking": false` in their spec cannot produce or load shared libraries,
+/// including rustc_driver.so. This function detects such targets so the bootstrap can fall back
+/// to static rlib linking for rustc_driver instead of dylib.
+pub fn target_supports_dylib(builder: &Builder<'_>, target: TargetSelection) -> bool {
+    // First, try to read the target spec JSON if it exists
+    let target_spec_path = builder.src.join(format!("targets/{}.json", target));
+    if target_spec_path.exists() {
+        if let Ok(content) = fs::read_to_string(&target_spec_path) {
+            // Check for "dynamic-linking": false in the JSON
+            if content.contains("\"dynamic-linking\": false") || content.contains("\"dynamic-linking\":false") {
+                return false;
+            }
+        }
+    }
+
+    // Fallback: check target triple for known no-dylib targets
+    let target_str: &str = &target.triple;
+    if target_str.contains("thingos") {
+        return false;
+    }
+
+    // By default, assume targets support dylib
+    true
+}
+
+/// Temporarily modify rustc_driver's Cargo.toml to build only rlib for targets without dylib support.
+/// Returns the path to the modified file and its original content if a modification was made.
+/// Returns (None, None) if no modification was needed.
+fn setup_rustc_driver_for_target(
+    builder: &Builder<'_>,
+    target: TargetSelection,
+) -> (Option<PathBuf>, Option<String>) {
+    if target_supports_dylib(builder, target) {
+        return (None, None); // No changes needed for dylib-capable targets
+    }
+
+    let cargo_toml_path = builder.src.join("compiler/rustc_driver/Cargo.toml");
+    if !cargo_toml_path.exists() {
+        return (None, None); // If file doesn't exist, no changes needed
+    }
+
+    // Read the original Cargo.toml
+    let original_content = match fs::read_to_string(&cargo_toml_path) {
+        Ok(c) => c,
+        Err(_) => return (None, None),
+    };
+
+    // Create modified content with only rlib
+    let modified_content = original_content
+        .replace(r#"crate-type = ["dylib", "rlib"]"#, r#"crate-type = ["rlib"]"#)
+        .replace(r#"crate-type = ["rlib", "dylib"]"#, r#"crate-type = ["rlib"]"#)
+        .replace("crate-type = [\"dylib\"]", "crate-type = [\"rlib\"]");
+
+    // Only modify if we made a change
+    if modified_content != original_content {
+        // Write the modified content
+        if let Err(_) = fs::write(&cargo_toml_path, &modified_content) {
+            return (None, None);
+        }
+        return (Some(cargo_toml_path), Some(original_content));
+    }
+
+    (None, None)
+}
+
+/// RAII guard that restores rustc_driver/Cargo.toml to its original state when dropped.
+struct RevertCargoToml {
+    path: Option<PathBuf>,
+    original_content: Option<String>,
+}
+
+impl RevertCargoToml {
+    fn new(path: Option<PathBuf>, original_content: Option<String>) -> Self {
+        RevertCargoToml { path, original_content }
+    }
+}
+
+impl Drop for RevertCargoToml {
+    fn drop(&mut self) {
+        // Restore the original Cargo.toml if we modified it
+        if let (Some(path), Some(content)) = (self.path.as_ref(), self.original_content.as_ref()) {
+            // Try to restore; if this fails, log it but don't panic
+            let _ = fs::write(path, content);
+        }
+    }
 }
