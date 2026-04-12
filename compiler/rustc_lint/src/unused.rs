@@ -135,6 +135,14 @@ trait UnusedDelimLint {
         is_kw: bool,
     );
 
+    fn is_expr_simple_arg(expr: &ast::Expr) -> bool {
+        match &expr.peel_parens().kind {
+            ast::ExprKind::Lit(_) | ast::ExprKind::Path(..) => true,
+            ast::ExprKind::Type(expr, _) => Self::is_expr_simple_arg(expr),
+            _ => false,
+        }
+    }
+
     fn is_expr_delims_necessary(
         inner: &ast::Expr,
         ctx: UnusedDelimsCtx,
@@ -1025,6 +1033,9 @@ impl UnusedDelimLint for UnusedBraces {
                 if let [stmt] = inner.stmts.as_slice()
                     && let ast::StmtKind::Expr(ref expr) = stmt.kind
                     && !Self::is_expr_delims_necessary(expr, ctx, followed_by_block)
+                    && !(matches!(ctx, UnusedDelimsCtx::FunctionArg | UnusedDelimsCtx::MethodArg)
+                        && value.span.edition().at_least_rust_2024()
+                        && !Self::is_expr_simple_arg(expr))
                     && (ctx != UnusedDelimsCtx::AnonConst
                         || (matches!(expr.kind, ast::ExprKind::Lit(_))
                             && !expr.span.from_expansion()))
