@@ -888,7 +888,6 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             DefPathData::Closure => 'C',
             DefPathData::Ctor => 'c',
             DefPathData::AnonConst => 'K',
-            DefPathData::LateAnonConst => 'k',
             DefPathData::OpaqueTy => 'i',
             DefPathData::SyntheticCoroutineBody => 's',
             DefPathData::NestedStatic => 'n',
@@ -900,7 +899,6 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             | DefPathData::Impl
             | DefPathData::MacroNs(_)
             | DefPathData::LifetimeNs(_)
-            | DefPathData::DesugaredAnonymousLifetime
             | DefPathData::OpaqueLifetime(_)
             | DefPathData::AnonAssocTy(..) => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)
