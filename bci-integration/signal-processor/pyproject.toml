@@ -18,6 +18,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+deep = [
+    "torch>=2.0.0",
+    "braindecode>=0.8.0",
+    "mne>=1.6.0",
+]
 dev = [
     "pytest>=8.0.0",
     "httpx>=0.27.0",

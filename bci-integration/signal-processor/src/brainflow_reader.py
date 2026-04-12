@@ -14,6 +14,7 @@ from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds
 
 from . import config
 from .classifier import Classifier, HeuristicClassifier
+from .deep_classifier import RawClassifier
 from .dsp import (
     assess_signal_quality,
     compute_attention,
@@ -66,12 +67,14 @@ class BCIReader:
         recorder: "SessionRecorder | None" = None,
         classifier: Classifier | None = None,
         pause_detector: PauseDetector | None = None,
+        raw_classifier: RawClassifier | None = None,
     ) -> None:
         self._state_manager = state_manager
         self._synthetic = synthetic
         self._recorder = recorder
         self._classifier: Classifier = classifier if classifier is not None else HeuristicClassifier()
         self._pause_detector = pause_detector
+        self._raw_classifier = raw_classifier
         self._session_id = f"session-{uuid.uuid4().hex[:12]}"
 
         # Set up BrainFlow board

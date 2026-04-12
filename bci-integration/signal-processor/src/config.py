@@ -31,6 +31,9 @@ HEADSET_REMOVED_QUALITY_THRESHOLD: float = float(os.environ.get("BCI_HEADSET_REM
 # ML Classifier
 MODEL_PATH: str | None = os.environ.get("BCI_MODEL_PATH", None)
 
+# Deep Learning Classifier (EEGNet)
+DEEP_MODEL_PATH: str | None = os.environ.get("BCI_DEEP_MODEL_PATH", None)
+
 # Webhooks
 WEBHOOK_COOLDOWN_MS: int = int(os.environ.get("BCI_WEBHOOK_COOLDOWN_MS", "1000"))
 WEBHOOK_TIMEOUT_S: int = int(os.environ.get("BCI_WEBHOOK_TIMEOUT_S", "5"))

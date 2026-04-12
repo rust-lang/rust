@@ -1,0 +1,23 @@
+{
+  "name": "openclaw-bci-plugin",
+  "version": "0.1.0",
+  "description": "OpenClaw plugin that injects real-time BCI brain state into agent context",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "node --experimental-vm-modules node_modules/.bin/vitest run"
+  },
+  "peerDependencies": {
+    "openclaw": ">=0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0",
+    "@types/node": "^20.0.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT"
+}
