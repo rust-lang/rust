@@ -1345,7 +1345,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "uninhabited_static",
         description: r##"uninhabited static"##,
-        default_severity: Severity::Warning,
+        default_severity: Severity::Error,
         warn_since: None,
         deny_since: None,
     },
@@ -6926,6 +6926,22 @@ Allows giving on-move borrowck custom diagnostic messages for a type
 The tracking issue for this feature is: [#154181]
 
 [#154181]: https://github.com/rust-lang/rust/issues/154181
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "diagnostic_on_unknown",
+        description: r##"# `diagnostic_on_unknown`
+
+Allows giving unresolved imports a custom diagnostic message
+
+The tracking issue for this feature is: [#152900]
+
+[#152900]: https://github.com/rust-lang/rust/issues/152900
 
 ------------------------
 "##,
@@ -12989,19 +13005,20 @@ only discuss a few of them.
 ------------------------
 
 The `rustc_attrs` feature allows debugging rustc type layouts by using
-`#[rustc_layout(...)]` to debug layout at compile time (it even works
+`#[rustc_dump_layout(...)]` to debug layout at compile time (it even works
 with `cargo check`) as an alternative to `rustc -Z print-type-sizes`
 that is way more verbose.
 
-Options provided by `#[rustc_layout(...)]` are `debug`, `size`, `align`,
-`abi`. Note that it only works on sized types without generics.
+Options provided by `#[rustc_dump_layout(...)]` are `backend_repr`, `align`,
+`debug`, `homogeneous_aggregate` and `size`.
+Note that it only works on sized types without generics.
 
 ## Examples
 
 ```rust,compile_fail
 #![feature(rustc_attrs)]
 
-#[rustc_layout(abi, size)]
+#[rustc_dump_layout(backend_repr, size)]
 pub enum X {
     Y(u8, u8, u8),
     Z(isize),
@@ -13011,7 +13028,7 @@ pub enum X {
 When that is compiled, the compiler will error with something like
 
 ```text
-error: abi: Aggregate { sized: true }
+error: backend_repr: Aggregate { sized: true }
  --> src/lib.rs:4:1
   |
 4 | / pub enum T {
