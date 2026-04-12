@@ -37,8 +37,9 @@ use crate::errors::{
 use crate::ref_mut::CmCell;
 use crate::{
     AmbiguityError, BindingKey, CmResolver, Decl, DeclData, DeclKind, Determinacy, Finalize,
-    IdentKey, ImportSuggestion, Module, ModuleOrUniformRoot, ParentScope, PathResult, PerNS,
-    ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string, names_to_string,
+    IdentKey, ImportSuggestion, ImportSummary, Module, ModuleOrUniformRoot, ParentScope,
+    PathResult, PerNS, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string,
+    names_to_string,
 };
 
 type Res = def::Res<NodeId>;
@@ -269,6 +270,14 @@ impl<'ra> ImportData<'ra> {
             ImportKind::MacroExport => Reexport::MacroExport,
         }
     }
+
+    fn summary(&self) -> ImportSummary {
+        ImportSummary {
+            vis: self.vis,
+            nearest_parent_mod: self.parent_scope.module.nearest_parent_mod().expect_local(),
+            is_single: matches!(self.kind, ImportKind::Single { .. }),
+        }
+    }
 }
 
 /// Records information about the resolution of a name in a namespace of a module.
@@ -322,9 +331,9 @@ struct UnresolvedImportError {
 
 // Reexports of the form `pub use foo as bar;` where `foo` is `extern crate foo;`
 // are permitted for backward-compatibility under a deprecation lint.
-fn pub_use_of_private_extern_crate_hack(import: Import<'_>, decl: Decl<'_>) -> Option<NodeId> {
-    match (&import.kind, &decl.kind) {
-        (ImportKind::Single { .. }, DeclKind::Import { import: decl_import, .. })
+fn pub_use_of_private_extern_crate_hack(import: ImportSummary, decl: Decl<'_>) -> Option<NodeId> {
+    match (import.is_single, decl.kind) {
+        (true, DeclKind::Import { import: decl_import, .. })
             if let ImportKind::ExternCrate { id, .. } = decl_import.kind
                 && import.vis.is_public() =>
         {
@@ -356,23 +365,44 @@ fn remove_same_import<'ra>(d1: Decl<'ra>, d2: Decl<'ra>) -> (Decl<'ra>, Decl<'ra
 }
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
+    pub(crate) fn import_decl_vis(&self, decl: Decl<'ra>, import: ImportSummary) -> Visibility {
+        assert!(import.vis.is_accessible_from(import.nearest_parent_mod, self.tcx));
+        let decl_vis = decl.vis();
+        let vis = if decl_vis.is_at_least(import.vis, self.tcx) {
+            // Ordered, import is less visible than the imported declaration, or the same,
+            // use the import's visibility.
+            import.vis
+        } else if decl_vis.is_accessible_from(import.nearest_parent_mod, self.tcx) {
+            // Ordered, imported declaration is less visible than the import, but is still visible
+            // from the current module, use the declaration's visibility.
+            assert!(import.vis.is_at_least(decl_vis, self.tcx));
+            if pub_use_of_private_extern_crate_hack(import, decl).is_some() {
+                import.vis
+            } else {
+                decl_vis.expect_local()
+            }
+        } else {
+            // Ordered or not, the imported declaration is too private for the current module.
+            // It doesn't matter what visibility we choose here (except in the `PRIVATE_MACRO_USE`
+            // case), because either some error will be reported, or the import declaration
+            // will be thrown away (unfortunately cannot use delayed bug here for this reason).
+            // Use import visibility to keep the all declaration visibilities in a module ordered.
+            import.vis
+        };
+        assert!(vis.is_accessible_from(import.nearest_parent_mod, self.tcx));
+        vis
+    }
+
     /// Given an import and the declaration that it points to,
     /// create the corresponding import declaration.
     pub(crate) fn new_import_decl(&self, decl: Decl<'ra>, import: Import<'ra>) -> Decl<'ra> {
-        let import_vis = import.vis.to_def_id();
-        let vis = if decl.vis().is_at_least(import_vis, self.tcx)
-            || pub_use_of_private_extern_crate_hack(import, decl).is_some()
-        {
-            import_vis
-        } else {
-            decl.vis()
-        };
+        let vis = self.import_decl_vis(decl, import.summary());
 
         if let ImportKind::Glob { ref max_vis, .. } = import.kind
-            && (vis == import_vis
+            && (vis == import.vis
                 || max_vis.get().is_none_or(|max_vis| vis.is_at_least(max_vis, self.tcx)))
         {
-            max_vis.set_unchecked(Some(vis.expect_local()))
+            max_vis.set_unchecked(Some(vis))
         }
 
         self.arenas.alloc_decl(DeclData {
@@ -380,7 +410,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ambiguity: CmCell::new(None),
             warn_ambiguity: CmCell::new(false),
             span: import.span,
-            vis: CmCell::new(vis),
+            vis: CmCell::new(vis.to_def_id()),
             expansion: import.parent_scope.expansion,
             parent_module: Some(import.parent_scope.module),
         })
@@ -443,6 +473,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         } else if !old_glob_decl.vis().is_at_least(glob_decl.vis(), self.tcx) {
             // We are glob-importing the same item but with greater visibility.
+            // All visibilities here are ordered because all of them are ancestors of `module`.
             // FIXME: Update visibility in place, but without regressions
             // (#152004, #151124, #152347).
             glob_decl
@@ -466,7 +497,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         decl: Decl<'ra>,
         warn_ambiguity: bool,
     ) -> Result<(), Decl<'ra>> {
+        assert!(!decl.warn_ambiguity.get());
+        assert!(decl.ambiguity.get().is_none());
         let module = decl.parent_module.unwrap();
+        assert!(self.is_accessible_from(decl.vis(), module));
         let res = decl.res();
         self.check_reserved_macro_name(ident.name, orig_ident_span, res);
         // Even if underscore names cannot be looked up, we still need to add them to modules,
@@ -484,7 +518,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             |this, resolution| {
                 if let Some(old_decl) = resolution.best_decl() {
                     assert_ne!(decl, old_decl);
-                    assert!(!decl.warn_ambiguity.get());
                     if res == Res::Err && old_decl.res() != Res::Err {
                         // Do not override real declarations with `Res::Err`s from error recovery.
                         return Ok(());
@@ -1275,7 +1308,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     &import.parent_scope,
                     Some(Finalize {
                         report_private: false,
-                        import_vis: Some(import.vis),
+                        import: Some(import.summary()),
                         ..finalize
                     }),
                     bindings[ns].get().decl(),
@@ -1475,7 +1508,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // All namespaces must be re-exported with extra visibility for an error to occur.
         if !any_successful_reexport {
             let (ns, binding) = reexport_error.unwrap();
-            if let Some(extern_crate_id) = pub_use_of_private_extern_crate_hack(import, binding) {
+            if let Some(extern_crate_id) =
+                pub_use_of_private_extern_crate_hack(import.summary(), binding)
+            {
                 let extern_crate_sp = self.tcx.source_span(self.local_def_id(extern_crate_id));
                 self.lint_buffer.buffer_lint(
                     PUB_USE_OF_PRIVATE_EXTERN_CRATE,
