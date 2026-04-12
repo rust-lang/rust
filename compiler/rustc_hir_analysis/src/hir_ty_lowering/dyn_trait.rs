@@ -236,7 +236,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                 .filter(|item| item.is_type() || item.is_type_const())
                                 // Traits with RPITITs are simply not dyn compatible (for now).
                                 .filter(|item| !item.is_impl_trait_in_trait())
-                                .map(|item| (item.def_id, trait_ref)),
+                                .map(|item| (item, trait_ref)),
                         );
                     }
                     ty::ClauseKind::Projection(pred) => {
@@ -316,14 +316,24 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut missing_assoc_items = FxIndexSet::default();
         let projection_bounds: Vec<_> = ordered_associated_items
             .into_iter()
-            .filter_map(|key @ (def_id, _)| {
-                if let Some(&assoc) = projection_bounds.get(&key) {
+            .filter_map(|(item, trait_ref)| {
+                let def_id = item.def_id;
+                let key = (def_id, trait_ref);
+                if let Some(&(assoc, _)) = projection_bounds.get(&key) {
                     return Some(assoc);
                 }
-                if !tcx.generics_require_sized_self(def_id) {
+                let has_default = item.defaultness(tcx).has_value();
+                if !has_default && !tcx.generics_require_sized_self(def_id) {
                     missing_assoc_items.insert(key);
                 }
-                None
+                if has_default {
+                    Some(trait_ref.map_bound(|trait_ref| ty::ProjectionPredicate {
+                        projection_term: ty::AliasTerm::new_from_args(tcx, def_id, trait_ref.args),
+                        term: tcx.type_of(def_id).instantiate(tcx, trait_ref.args).into(),
+                    }))
+                } else {
+                    None
+                }
             })
             .collect();
 
@@ -396,7 +406,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             })
         });
 
-        let existential_projections = projection_bounds.into_iter().map(|(bound, _)| {
+        let existential_projections = projection_bounds.into_iter().map(|bound| {
             bound.map_bound(|mut b| {
                 assert_eq!(b.projection_term.self_ty(), dummy_self);
 
