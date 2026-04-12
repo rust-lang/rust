@@ -9,7 +9,7 @@
 #![feature(const_trait_impl)]
 #![feature(const_try)]
 
-use std::ops::{ControlFlow, FromResidual, Try};
+use std::ops::{ControlFlow, FromResidual, Branch, FromOutput};
 
 struct TryMe;
 struct Error;
@@ -20,14 +20,17 @@ impl const FromResidual<Error> for TryMe {
     }
 }
 
-impl const Try for TryMe {
+impl const Branch for TryMe {
     type Output = ();
     type Residual = Error;
-    fn from_output(output: Self::Output) -> Self {
-        TryMe
-    }
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         ControlFlow::Break(Error)
+    }
+}
+
+impl const FromOutput for TryMe {
+    fn from_output(output: Self::Output) -> Self {
+        TryMe
     }
 }
 

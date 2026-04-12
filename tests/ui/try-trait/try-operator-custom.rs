@@ -2,7 +2,7 @@
 
 #![feature(try_trait_v2)]
 
-use std::ops::{ControlFlow, FromResidual, Try};
+use std::ops::{ControlFlow, FromResidual, FromOutput, Branch};
 
 enum MyResult<T, U> {
     Awesome(T),
@@ -11,19 +11,20 @@ enum MyResult<T, U> {
 
 enum Never {}
 
-impl<U, V> Try for MyResult<U, V> {
+impl<U, V> Branch for MyResult<U, V> {
     type Output = U;
     type Residual = MyResult<Never, V>;
-
-    fn from_output(u: U) -> MyResult<U, V> {
-        MyResult::Awesome(u)
-    }
 
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         match self {
             MyResult::Awesome(u) => ControlFlow::Continue(u),
             MyResult::Terrible(e) => ControlFlow::Break(MyResult::Terrible(e)),
         }
+    }
+}
+impl<U, V> FromOutput for MyResult<U, V> {
+    fn from_output(u: U) -> MyResult<U, V> {
+        MyResult::Awesome(u)
     }
 }
 

@@ -9,7 +9,7 @@ use crate::array;
 use crate::cmp::{self, Ordering};
 use crate::marker::Destruct;
 use crate::num::NonZero;
-use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
+use crate::ops::{Branch, ChangeOutputType, ControlFlow, FromOutput, FromResidual, Residual, Try};
 
 fn _assert_is_dyn_compatible(_: &dyn Iterator<Item = ()>) {}
 
@@ -2168,7 +2168,7 @@ pub const trait Iterator {
     where
         Self: Sized,
         Self::Item: Try<Residual: Residual<B>>,
-        B: FromIterator<<Self::Item as Try>::Output>,
+        B: FromIterator<<Self::Item as Branch>::Output>,
     {
         try_process(ByRefSized(self), |i| i.collect())
     }
@@ -2781,12 +2781,12 @@ pub const trait Iterator {
     {
         let first = match self.next() {
             Some(i) => i,
-            None => return Try::from_output(None),
+            None => return FromOutput::from_output(None),
         };
 
         match self.try_fold(first, f).branch() {
             ControlFlow::Break(r) => FromResidual::from_residual(r),
-            ControlFlow::Continue(i) => Try::from_output(Some(i)),
+            ControlFlow::Continue(i) => FromOutput::from_output(Some(i)),
         }
     }
 
@@ -3067,14 +3067,14 @@ pub const trait Iterator {
         {
             move |(), x| match f(&x).branch() {
                 ControlFlow::Continue(false) => ControlFlow::Continue(()),
-                ControlFlow::Continue(true) => ControlFlow::Break(Try::from_output(Some(x))),
-                ControlFlow::Break(r) => ControlFlow::Break(FromResidual::from_residual(r)),
+                ControlFlow::Continue(true) => ControlFlow::Break(<_>::from_output(Some(x))),
+                ControlFlow::Break(r) => ControlFlow::Break(<_>::from_residual(r)),
             }
         }
 
         match self.try_fold((), check(f)) {
             ControlFlow::Break(x) => x,
-            ControlFlow::Continue(()) => Try::from_output(None),
+            ControlFlow::Continue(()) => <_>::from_output(None),
         }
     }
 
