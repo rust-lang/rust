@@ -1,0 +1,13 @@
+// MIR for `neo_to_cast` after PreCodegen
+
+fn neo_to_cast(_1: f32) -> i32 {
+    debug x => _1;
+    let mut _0: i32;
+    scope 1 (inlined transmute_neo::<f32, i32>) {
+    }
+
+    bb0: {
+        _0 = copy _1 as i32 (Transmute);
+        return;
+    }
+}
