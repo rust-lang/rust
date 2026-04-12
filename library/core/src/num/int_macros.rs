@@ -2568,7 +2568,7 @@ macro_rules! int_impl {
         ///
         /// ```
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_add_unsigned(2), (3, false));")]
-        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN).overflowing_add_unsigned(", stringify!($UnsignedT), "::MAX), (", stringify!($SelfT), "::MAX, false));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.overflowing_add_unsigned(", stringify!($UnsignedT), "::MAX), (", stringify!($SelfT), "::MAX, false));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX - 2).overflowing_add_unsigned(3), (", stringify!($SelfT), "::MIN, true));")]
         /// ```
         #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
@@ -2675,7 +2675,7 @@ macro_rules! int_impl {
         ///
         /// ```
         #[doc = concat!("assert_eq!(1", stringify!($SelfT), ".overflowing_sub_unsigned(2), (-1, false));")]
-        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX).overflowing_sub_unsigned(", stringify!($UnsignedT), "::MAX), (", stringify!($SelfT), "::MIN, false));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.overflowing_sub_unsigned(", stringify!($UnsignedT), "::MAX), (", stringify!($SelfT), "::MIN, false));")]
         #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN + 2).overflowing_sub_unsigned(3), (", stringify!($SelfT), "::MAX, true));")]
         /// ```
         #[stable(feature = "mixed_integer_ops", since = "1.66.0")]
@@ -3008,7 +3008,7 @@ macro_rules! int_impl {
         /// ```
         #[doc = concat!("assert_eq!(10", stringify!($SelfT), ".overflowing_abs(), (10, false));")]
         #[doc = concat!("assert_eq!((-10", stringify!($SelfT), ").overflowing_abs(), (10, false));")]
-        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MIN).overflowing_abs(), (", stringify!($SelfT), "::MIN, true));")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MIN.overflowing_abs(), (", stringify!($SelfT), "::MIN, true));")]
         /// ```
         #[stable(feature = "no_panic_abs", since = "1.13.0")]
         #[rustc_const_stable(feature = "const_int_methods", since = "1.32.0")]
