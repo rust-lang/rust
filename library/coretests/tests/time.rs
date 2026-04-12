@@ -642,10 +642,20 @@ fn duration_fp_div_negative() {
 }
 
 const TOO_LARGE_FACTOR: f64 = Duration::MAX.as_nanos() as f64;
-const TOO_LARGE_DIVISOR: f64 = (Duration::MAX.as_secs_f64() * 2e9).next_up();
-const SMALLEST_DIVISOR: f64 = (TOO_LARGE_DIVISOR.recip() * 2.0).next_up().next_up();
 const SMALLEST_FACTOR: f64 = TOO_LARGE_FACTOR.recip() / 2.0;
-const SMALLEST_NEGFACTOR: f64 = (0.0f64.next_down() * 0.5e9).next_up();
+
+cfg_select! {
+    target_has_reliable_f128 => {
+        const TOO_LARGE_DIVISOR: f64 = TOO_LARGE_FACTOR * 2.0;
+        const SMALLEST_DIVISOR: f64 = TOO_LARGE_DIVISOR.recip() * 2.0;
+        const SMALLEST_NEGFACTOR: f64 = -0.0f64;
+    }
+    _ => {
+        const TOO_LARGE_DIVISOR: f64 = (Duration::MAX.as_secs_f64() * 2e9).next_up();
+        const SMALLEST_DIVISOR: f64 = (TOO_LARGE_DIVISOR.recip() * 2.0).next_up().next_up();
+        const SMALLEST_NEGFACTOR: f64 = (0.0f64.next_down() * 0.5e9).next_up();
+    }
+}
 
 #[test]
 fn duration_fp_boundaries() {
@@ -694,4 +704,71 @@ fn duration_fp_mul_overflow() {
 #[should_panic(expected = "value is either too big or NaN")]
 fn duration_fp_div_overflow() {
     let _ = Duration::NANOSECOND.div_f64(SMALLEST_DIVISOR.next_down());
+}
+
+#[test]
+#[cfg_attr(not(target_has_reliable_f128), ignore)]
+fn precise_duration_fp_mul() {
+    let d1 = Duration::from_nanos_u128(1 << 90);
+    let d2 = Duration::from_nanos_u128(2 << 90);
+    let d3 = Duration::from_nanos_u128(3 << 90);
+
+    assert_eq!(d1.mul_f32(1.0), d1);
+    assert_eq!(d1.mul_f32(2.0), d2);
+    assert_eq!(d1.mul_f32(3.0), d3);
+    assert_eq!(d2.mul_f32(1.5), d3);
+
+    let _ = Duration::MAX.mul_f32(1.0);
+}
+
+#[test]
+#[cfg_attr(not(target_has_reliable_f128), ignore)]
+fn precise_duration_fp_div() {
+    let d1 = Duration::from_nanos_u128(1 << 90);
+    let d2 = Duration::from_nanos_u128(2 << 90);
+    let d3 = Duration::from_nanos_u128(3 << 90);
+
+    assert_eq!(d1.div_f32(1.0), d1);
+    assert_eq!(d2.div_f32(2.0), d1);
+    assert_eq!(d3.div_f32(3.0), d1);
+    assert_eq!(d3.div_f32(1.5), d2);
+
+    let _ = Duration::MAX.div_f32(1.0);
+}
+
+#[test]
+#[cfg_attr(not(target_has_reliable_f128), ignore)]
+fn duration_fp_mul_rounding() {
+    // This precise result in ns would start 9223372036854777855999999999.4999999999999998...
+    // If that is rounded too early to 9223372036854777855999999999.5,
+    // then the final result would be incorrectly rounded up again.
+    assert_eq!(
+        Duration::MAX.mul_f64(0.5_f64.next_up()),
+        Duration::from_nanos_u128(9223372036854777855999999999)
+    );
+    // This is precisely 9223372036854775807999999999.5 ns, which *should* round up.
+    assert_eq!(Duration::MAX.mul_f64(0.5_f64), Duration::from_secs(9223372036854775808));
+}
+
+#[test]
+#[cfg_attr(not(target_has_reliable_f128), ignore)]
+fn duration_fp_div_rounding() {
+    let nanos = 1u128 << 93;
+    let divisor = ((1u64 << 47) - 1) as f64 / (1u64 << 47) as f64;
+    // This precise result in ns would start 9903520314283112567937171456.500000000000003...
+    // If that is rounded too early to 9903520314283112567937171456.5,
+    // then the final result may be incorrectly rounded down again by
+    // `round_to_even()`, but `round()` would have been ok in this case.
+    assert_eq!(
+        Duration::from_nanos_u128(nanos).div_f64(divisor),
+        Duration::from_nanos_u128(9903520314283112567937171457),
+    );
+    // This precise result in ns would start 9903520314283112567937171455.499999999999996...
+    // If that is rounded too early to 9903520314283112567937171455.5,
+    // then the final result would be incorrectly rounded up again,
+    // whether that used `round()` or `round_to_even()`.
+    assert_eq!(
+        Duration::from_nanos_u128(nanos - 1).div_f64(divisor),
+        Duration::from_nanos_u128(9903520314283112567937171455),
+    );
 }
