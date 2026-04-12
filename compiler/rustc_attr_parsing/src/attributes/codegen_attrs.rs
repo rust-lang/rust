@@ -80,7 +80,7 @@ impl SingleAttributeParser for CoverageParser {
         let mut fail_incorrect_argument =
             |span| cx.adcx().expected_specific_argument(span, &[sym::on, sym::off]);
 
-        let Some(arg) = arg.meta_item() else {
+        let Some(arg) = arg.meta_item_no_args() else {
             fail_incorrect_argument(arg.span());
             return None;
         };
