@@ -443,6 +443,7 @@ language_item_table! {
     FieldBase,               sym::field_base,              field_base,                 Target::AssocTy,        GenericRequirement::Exact(0);
     FieldType,               sym::field_type,              field_type,                 Target::AssocTy,        GenericRequirement::Exact(0);
     FieldOffset,             sym::field_offset,            field_offset,               Target::AssocConst,     GenericRequirement::Exact(0);
+    AlignType,               sym::align_type,              align_type,                 Target::Struct,         GenericRequirement::Exact(1);
 }
 
 /// The requirement imposed on the generics of a lang item

@@ -1,0 +1,13 @@
+error[E0080]: the type `Align<3>` has an unknown layout
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+   = note: evaluation of `<std::mem::Align<3> as std::mem::SizedTypeProperties>::ALIGN` failed here
+
+error[E0080]: the type `Align<1073741824>` has an unknown layout
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+   = note: evaluation of `<std::mem::Align<1073741824> as std::mem::SizedTypeProperties>::ALIGN` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
