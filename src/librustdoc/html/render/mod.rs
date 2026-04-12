@@ -2803,7 +2803,7 @@ fn render_call_locations<W: fmt::Write>(
             contents_subset,
             file_span,
             cx,
-            &cx.root_path(),
+            cx.current.len(),
             &highlight::DecorationInfo(decoration_info),
             &sources::SourceContext::Embedded(sources::ScrapedInfo {
                 needs_expansion,
