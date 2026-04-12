@@ -1307,7 +1307,11 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(exp!(Mut)) { Mutability::Mut } else { Mutability::Not }
     }
 
-    /// Parses reference binding mode (`ref`, `ref mut`, `ref pin const`, `ref pin mut`, or nothing).
+    /// Parse a reference binding mode.
+    ///
+    /// ```ebnf
+    /// ByRef = ("ref" ("mut" | "pin" ("const" | "mut"))?)?
+    /// ```
     fn parse_byref(&mut self) -> ByRef {
         if self.eat_keyword(exp!(Ref)) {
             let (pinnedness, mutability) = self.parse_pin_and_mut();
@@ -1328,20 +1332,47 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Parse a field name.
+    ///
+    /// ```enbf
+    /// FieldName = TupleIndex | Ident
+    /// TupleIndex = re"0|[1-9][0-9]*"
+    /// ```
     fn parse_field_name(&mut self) -> PResult<'a, Ident> {
+        // FIXME(fmease): It would be nice if we could emit a custom error when encountering
+        //                float literals. E.g., ideally, we'd emit "invalid tuple index" for `1e1`.
+        //                I'm even thinking about breaking up float lits here, just so we can emit
+        //                unexpected token `.` for `1.2` etc.
         if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) = self.token.kind
         {
+            let ident_span = self.token.span;
+            let symbol = self.validate_tuple_index(symbol, ident_span);
             if let Some(suffix) = suffix {
                 self.dcx().emit_err(errors::InvalidLiteralSuffixOnTupleIndex {
-                    span: self.token.span,
+                    span: ident_span,
                     suffix,
                 });
             }
             self.bump();
-            Ok(Ident::new(symbol, self.prev_token.span))
+            Ok(Ident::new(symbol, ident_span))
         } else {
             self.parse_ident_common(true)
         }
+    }
+
+    // FIXME(fmease): De-jank this impl.
+    fn validate_tuple_index(&mut self, symbol: Symbol, span: Span) -> Symbol {
+        let str = symbol.as_str();
+
+        if str.contains(|c: char| !c.is_ascii_digit()) || matches!(str.as_bytes(), [b'0', _, ..]) {
+            self.dcx().span_err(span, "invalid tuple index");
+            let str = str.replace(|c: char| !c.is_ascii_digit(), "");
+            let str = str.trim_start_matches('0');
+            let str = if str.is_empty() { "0" } else { str };
+            return Symbol::intern(str);
+        }
+
+        symbol
     }
 
     fn parse_delim_args(&mut self) -> PResult<'a, Box<DelimArgs>> {
