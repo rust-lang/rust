@@ -16,6 +16,9 @@
 //~^ WARNING unknown lint
 //~| HELP did you mean
 
+#[deny(rust_2018_idiots)] //~ WARNING unknown lint
+                           //~| HELP did you mean
+
 fn main() {
     unimplemented!();
 }
