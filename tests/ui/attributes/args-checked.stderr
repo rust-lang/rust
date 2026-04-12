@@ -148,6 +148,46 @@ error: `rustc_allow_const_fn_unstable` expects feature names
 LL | #[rustc_allow_const_fn_unstable(x(x, y, z))]
    |                                 ^^^^^^^^^^
 
+error[E0539]: malformed `used` attribute input
+  --> $DIR/args-checked.rs:42:1
+   |
+LL | #[used(always = 5)]
+   | ^^^^^^^----------^^
+   |        |
+   |        valid arguments are `compiler` or `linker`
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[used(always = 5)]
+LL + #[used(compiler)]
+   |
+LL - #[used(always = 5)]
+LL + #[used(linker)]
+   |
+LL - #[used(always = 5)]
+LL + #[used]
+   |
+
+error[E0539]: malformed `used` attribute input
+  --> $DIR/args-checked.rs:44:1
+   |
+LL | #[used(always(x, y, z))]
+   | ^^^^^^^---------------^^
+   |        |
+   |        valid arguments are `compiler` or `linker`
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[used(always(x, y, z))]
+LL + #[used(compiler)]
+   |
+LL - #[used(always(x, y, z))]
+LL + #[used(linker)]
+   |
+LL - #[used(always(x, y, z))]
+LL + #[used]
+   |
+
 error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
   --> $DIR/args-checked.rs:26:1
    |
@@ -167,7 +207,7 @@ LL | #[macro_export(local_inner_macros(x, y, z))]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
-error: aborting due to 12 previous errors
+error: aborting due to 14 previous errors
 
 For more information about this error, try `rustc --explain E0539`.
 Future incompatibility report: Future breakage diagnostic:

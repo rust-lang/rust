@@ -38,3 +38,9 @@ macro_rules! m {
 #[rustc_allow_const_fn_unstable(x(x, y, z))]
 //~^ ERROR `rustc_allow_const_fn_unstable` expects feature names
 const fn g() {}
+
+#[used(always = 5)]
+//~^ ERROR malformed
+#[used(always(x, y, z))]
+//~^ ERROR malformed
+static H: u64 = 5;
