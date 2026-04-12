@@ -39,6 +39,7 @@ impl<'a> TritonCodegen<'a> {
         unwind: &UnwindAction,
         call_source: &CallSource,
         fn_span: &Span,
+        location: Location<'a>,
         mlir_block: &BlockRef,
         _ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -47,13 +48,10 @@ impl<'a> TritonCodegen<'a> {
         let value = self.to_scalar_int(tcx, instance, &args[0].node)?;
         let axis = <ProgramAxis as From<i32>>::from(value.to_bits(value.size()) as i32);
 
-        let program_id_op: Operation<'a> = create_get_program_id(
-            self.module.context(),
-            Location::unknown(self.module.context()),
-            axis,
-        )
-        .map_err(|e| MlirError::CreateOperation { err: e })?
-        .into();
+        let program_id_op: Operation<'a> =
+            create_get_program_id(self.module.context(), location, axis)
+                .map_err(|e| MlirError::CreateOperation { err: e })?
+                .into();
 
         let result = program_id_op.result(0).expect("Program ID operation result not found");
         eprintln!(

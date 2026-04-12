@@ -47,9 +47,11 @@ use rustc_mlir::triton::{create_func, int_to_ptr, load_triton_dialect, pointer_t
 
 use crate::mlir::MlirModule;
 use crate::mlir::codegen::Codegen;
+use crate::mlir::codegen::triton::location::span_to_location;
 use crate::mlir::codegen::triton::types::TypeMapper;
 use crate::mlir::errors::MlirError;
 
+mod location;
 mod ops;
 mod types;
 
@@ -196,9 +198,11 @@ impl<'a> TritonCodegen<'a> {
         // Iterate over MIR basic blocks and codegen each one
         let visibility = if func_name.ends_with("entry_point") { "public" } else { "private" };
 
+        let func_loc =
+            span_to_location(self.module.context(), tcx, tcx.def_span(instance.def_id()));
         let func_op: Operation = create_func(
             self.module.context(),
-            Location::unknown(self.module.context()),
+            func_loc,
             func_name,
             visibility,
             &arg_types,
@@ -209,7 +213,7 @@ impl<'a> TritonCodegen<'a> {
         .into();
 
         let mir = tcx.instance_mir(instance.def);
-        let location = Location::unknown(self.module.context());
+        let location = func_loc;
 
         if func_name.contains("program_id") {
             println!(
@@ -295,6 +299,7 @@ impl<'a> TritonCodegen<'a> {
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<(), MlirError> {
         println!("[DEBUG] TritonCodegen::codegen_statement: ssa_values: {:?}", ssa_values);
+        let location = span_to_location(self.module.context(), tcx, stmt.source_info.span);
         match &stmt.kind {
             StatementKind::Assign(assign) => {
                 let (place, rvalue) = assign.as_ref();
@@ -302,7 +307,9 @@ impl<'a> TritonCodegen<'a> {
                     "[DEBUG] TritonCodegen::codegen_statement: Assign: {:?}, {:?} {:?}",
                     stmt, place, rvalue
                 );
-                self.codegen_assign(tcx, instance, mir, place, rvalue, mlir_block, ssa_values)
+                self.codegen_assign(
+                    tcx, instance, mir, place, rvalue, location, mlir_block, ssa_values,
+                )
             }
             StatementKind::SetDiscriminant { place, variant_index } => {
                 self.codegen_set_discriminant(tcx, place, *variant_index, mlir_block)
@@ -335,6 +342,7 @@ impl<'a> TritonCodegen<'a> {
         mir: &Body<'tcx>,
         place: &Place<'tcx>,
         rvalue: &Rvalue<'tcx>,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<(), MlirError> {
@@ -353,6 +361,7 @@ impl<'a> TritonCodegen<'a> {
                     instance,
                     operand,
                     normalized_ty,
+                    location,
                     mlir_block,
                     ssa_values,
                 )?;
@@ -364,8 +373,9 @@ impl<'a> TritonCodegen<'a> {
             }
             Rvalue::Cast(cast_kind, operand, ty) => {
                 println!("Cast cast_kind: {:?}, operand: {:?}, ty: {:?}", cast_kind, operand, ty);
-                let result = self
-                    .codegen_cast(tcx, instance, cast_kind, operand, ty, mlir_block, ssa_values)?;
+                let result = self.codegen_cast(
+                    tcx, instance, cast_kind, operand, ty, location, mlir_block, ssa_values,
+                )?;
 
                 println!(
                     "[DEBUG] TritonCodegen::codegen_assign ssa_values_insert 2: result: Place: {:?}, Result: {:?}",
@@ -386,6 +396,7 @@ impl<'a> TritonCodegen<'a> {
                     mir,
                     aggregate_kind,
                     index_vec,
+                    location,
                     mlir_block,
                     ssa_values,
                 )?;
@@ -415,7 +426,7 @@ impl<'a> TritonCodegen<'a> {
             Rvalue::RawPtr(raw_ptr_kind, place) => todo!("RawPtr: {:?} {:?}", raw_ptr_kind, place),
             Rvalue::BinaryOp(bin_op, operands) => {
                 let value = self.codegen_binary_op(
-                    tcx, instance, mir, place, bin_op, operands, mlir_block, ssa_values,
+                    tcx, instance, mir, place, bin_op, operands, location, mlir_block, ssa_values,
                 )?;
                 if let Some(value) = value {
                     ssa_values.insert(place.local, value);
@@ -441,6 +452,7 @@ impl<'a> TritonCodegen<'a> {
         mir: &Body<'tcx>,
         aggregate_kind: &AggregateKind<'tcx>,
         index_vec: &IndexVec<FieldIdx, Operand<'tcx>>,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -454,11 +466,11 @@ impl<'a> TritonCodegen<'a> {
 
                 if "triton::llvm::triton::tensor::Tensor" == adt_name {
                     self.codegen_create_tensor(
-                        tcx, instance, mir, index_vec, mlir_block, ssa_values,
+                        tcx, instance, mir, index_vec, location, mlir_block, ssa_values,
                     )
                 } else if "triton::llvm::triton::pointer::Pointer" == adt_name {
                     self.codegen_create_pointer(
-                        tcx, instance, mir, index_vec, mlir_block, ssa_values,
+                        tcx, instance, mir, index_vec, location, mlir_block, ssa_values,
                     )
                 } else {
                     todo!(
@@ -479,6 +491,7 @@ impl<'a> TritonCodegen<'a> {
         instance: &Instance<'tcx>,
         mir: &Body<'tcx>,
         index_vec: &IndexVec<FieldIdx, Operand<'tcx>>,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -496,12 +509,8 @@ impl<'a> TritonCodegen<'a> {
             _ => todo!("codegen_create_tensor: arg1_ty: {:?}", arg1_ty),
         };
         let tensor_type = tensor_type(&[i64::MIN], pointee_ty).into();
-        let tensor_op = create_ub_poison(
-            self.module.context(),
-            Location::unknown(self.module.context()),
-            tensor_type,
-        )
-        .map_err(|e| MlirError::CreateOperation { err: e })?;
+        let tensor_op = create_ub_poison(self.module.context(), location, tensor_type)
+            .map_err(|e| MlirError::CreateOperation { err: e })?;
 
         let tensor_result = tensor_op.result(0).unwrap();
         mlir_block.append_operation(tensor_op);
@@ -514,6 +523,7 @@ impl<'a> TritonCodegen<'a> {
         instance: &Instance<'tcx>,
         mir: &Body<'tcx>,
         index_vec: &IndexVec<FieldIdx, Operand<'tcx>>,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -526,7 +536,7 @@ impl<'a> TritonCodegen<'a> {
         // `Pointer<T>` is a newtype wrapper around a raw pointer in Triton DSL.
         // Preserve the wrapped pointer SSA value rather than materializing poison.
         let pointer_value =
-            self.codegen_operand(tcx, instance, arg1, arg1_ty, mlir_block, ssa_values)?;
+            self.codegen_operand(tcx, instance, arg1, arg1_ty, location, mlir_block, ssa_values)?;
         Ok(Some(pointer_value))
     }
 
@@ -537,6 +547,7 @@ impl<'a> TritonCodegen<'a> {
         adt_def: &AdtDef<'tcx>,
         value: Value<'a, 'a>,
         raw_list: &[GenericArg<'tcx>],
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
         let name = format!("{:?}", adt_def);
@@ -555,12 +566,8 @@ impl<'a> TritonCodegen<'a> {
         if name == "triton::llvm::triton::tensor::Tensor" {
             let ty = map_ty(0);
             let tensor_type = tensor_type(&[i64::MIN], ty).into();
-            let tensor_op = create_ub_poison(
-                self.module.context(),
-                Location::unknown(self.module.context()),
-                tensor_type,
-            )
-            .map_err(|e| MlirError::CreateOperation { err: e })?;
+            let tensor_op = create_ub_poison(self.module.context(), location, tensor_type)
+                .map_err(|e| MlirError::CreateOperation { err: e })?;
 
             let tensor_result = tensor_op.result(0).unwrap();
             mlir_block.append_operation(tensor_op);
@@ -581,6 +588,7 @@ impl<'a> TritonCodegen<'a> {
         place: &Place<'tcx>,
         bin_op: &BinOp,
         operands: &(Operand<'tcx>, Operand<'tcx>),
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -596,8 +604,10 @@ impl<'a> TritonCodegen<'a> {
             TypingEnv::fully_monomorphized(),
             EarlyBinder::bind(rhs_op.ty(mir, tcx)),
         );
-        let lhs = self.codegen_operand(tcx, instance, lhs_op, lhs_ty, mlir_block, ssa_values)?;
-        let rhs = self.codegen_operand(tcx, instance, rhs_op, rhs_ty, mlir_block, ssa_values)?;
+        let lhs =
+            self.codegen_operand(tcx, instance, lhs_op, lhs_ty, location, mlir_block, ssa_values)?;
+        let rhs =
+            self.codegen_operand(tcx, instance, rhs_op, rhs_ty, location, mlir_block, ssa_values)?;
 
         match bin_op {
             BinOp::Add => todo!(),
@@ -606,7 +616,7 @@ impl<'a> TritonCodegen<'a> {
             BinOp::Sub => todo!(),
             BinOp::SubUnchecked => todo!(),
             BinOp::SubWithOverflow => todo!(),
-            BinOp::Mul => self.codegen_mul(lhs, rhs, mlir_block),
+            BinOp::Mul => self.codegen_mul(location, lhs, rhs, mlir_block),
             BinOp::MulUnchecked => todo!(),
             BinOp::MulWithOverflow => todo!(),
             BinOp::Div => todo!(),
@@ -677,18 +687,21 @@ impl<'a> TritonCodegen<'a> {
         cast_kind: &CastKind,
         operand: &Operand<'tcx>,
         ty: &Ty<'tcx>,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
         match cast_kind {
-            CastKind::PointerWithExposedProvenance => self.codegen_pointer_with_exposed_provenance(
-                tcx, instance, operand, ty, mlir_block, ssa_values,
-            ),
+            CastKind::PointerWithExposedProvenance => {
+                self.codegen_pointer_with_exposed_provenance(
+                    tcx, instance, operand, ty, location, mlir_block, ssa_values,
+                )
+            }
             CastKind::PtrToPtr => {
-                self.codegen_ptr_to_ptr(tcx, instance, operand, ty, mlir_block, ssa_values)
+                self.codegen_ptr_to_ptr(tcx, instance, operand, ty, location, mlir_block, ssa_values)
             }
             CastKind::IntToInt => {
-                self.codegen_int_to_int(tcx, instance, operand, ty, mlir_block, ssa_values)
+                self.codegen_int_to_int(tcx, instance, operand, ty, location, mlir_block, ssa_values)
             }
             _ => todo!("CastKind: {:?}", cast_kind),
         }
@@ -700,6 +713,7 @@ impl<'a> TritonCodegen<'a> {
         instance: &Instance<'tcx>,
         operand: &Operand<'tcx>,
         ty: &Ty<'tcx>,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
@@ -717,7 +731,7 @@ impl<'a> TritonCodegen<'a> {
             operand, ty, normalized_ty
         );
 
-        self.codegen_operand(tcx, instance, operand, normalized_ty, mlir_block, ssa_values)
+        self.codegen_operand(tcx, instance, operand, normalized_ty, location, mlir_block, ssa_values)
     }
 
     fn codegen_ptr_to_ptr<'tcx>(
@@ -726,6 +740,7 @@ impl<'a> TritonCodegen<'a> {
         instance: &Instance<'tcx>,
         operand: &Operand<'tcx>,
         ty: &Ty<'tcx>,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
@@ -736,7 +751,7 @@ impl<'a> TritonCodegen<'a> {
             EarlyBinder::bind(*ty),
         );
 
-        self.codegen_operand(tcx, instance, operand, normalized_ty, mlir_block, ssa_values)
+        self.codegen_operand(tcx, instance, operand, normalized_ty, location, mlir_block, ssa_values)
     }
 
     fn codegen_int_to_int<'tcx>(
@@ -745,6 +760,7 @@ impl<'a> TritonCodegen<'a> {
         instance: &Instance<'tcx>,
         operand: &Operand<'tcx>,
         ty: &Ty<'tcx>,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
@@ -754,7 +770,7 @@ impl<'a> TritonCodegen<'a> {
             typing_env,
             EarlyBinder::bind(*ty),
         );
-        self.codegen_operand(tcx, instance, operand, normalized_ty, mlir_block, ssa_values)
+        self.codegen_operand(tcx, instance, operand, normalized_ty, location, mlir_block, ssa_values)
     }
 
     fn codegen_operand<'tcx>(
@@ -763,6 +779,7 @@ impl<'a> TritonCodegen<'a> {
         instance: &Instance<'tcx>,
         operand: &Operand<'tcx>,
         normalized_ty: Ty<'tcx>,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
@@ -774,9 +791,14 @@ impl<'a> TritonCodegen<'a> {
         // For MLIR move is the same as copy
         match operand {
             Operand::Copy(place) | Operand::Move(place) => self.codegen_copy(place, ssa_values),
-            Operand::Constant(const_operand) => {
-                self.codegen_constant_cast(tcx, instance, const_operand, normalized_ty, mlir_block)
-            }
+            Operand::Constant(const_operand) => self.codegen_constant_cast(
+                tcx,
+                instance,
+                const_operand,
+                normalized_ty,
+                location,
+                mlir_block,
+            ),
             Operand::RuntimeChecks(_) => todo!("RuntimeChecks operand not yet supported"),
         }
     }
@@ -803,6 +825,7 @@ impl<'a> TritonCodegen<'a> {
         instance: &Instance<'tcx>,
         const_operand: &ConstOperand<'tcx>,
         normalized_ty: Ty<'tcx>,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
         println!(
@@ -812,7 +835,8 @@ impl<'a> TritonCodegen<'a> {
 
         match const_operand.const_ {
             Const::Val(const_val, ty) => {
-                let value = self.codegen_const_value(tcx, instance, const_val, ty, mlir_block)?;
+                let value =
+                    self.codegen_const_value(tcx, instance, const_val, ty, location, mlir_block)?;
 
                 match normalized_ty.kind() {
                     TyKind::RawPtr(_, _) => {
@@ -826,7 +850,7 @@ impl<'a> TritonCodegen<'a> {
                             self.type_mapper.map_type(self.module.context(), &tcx, &normalized_ty);
                         let cast_op: Operation = int_to_ptr(
                             self.module.context(),
-                            Location::unknown(self.module.context()),
+                            location,
                             value.into(),
                             ptr_ty,
                         )
@@ -845,6 +869,7 @@ impl<'a> TritonCodegen<'a> {
                             adt_def,
                             value,
                             args.as_slice(),
+                            location,
                             mlir_block,
                         )?;
                         Ok(result)
@@ -858,7 +883,7 @@ impl<'a> TritonCodegen<'a> {
             }
             Const::Ty(ty, const_val) => match const_val.kind() {
                 ConstKind::Param(param) => {
-                    self.codegen_param_const(tcx, instance, ty, param, mlir_block)
+                    self.codegen_param_const(tcx, instance, ty, param, location, mlir_block)
                 }
                 ConstKind::Infer(_infer_const) => todo!("ConstKind::Infer"),
                 ConstKind::Bound(_bound_var_index_kind, _) => todo!("ConstKind::Bound"),
@@ -878,22 +903,24 @@ impl<'a> TritonCodegen<'a> {
         instance: &Instance<'tcx>,
         _ty: Ty<'tcx>,
         param: ParamConst,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
         let value = instance.args.const_at(param.index as usize).to_value();
-        self.codegen_param_value(tcx, value, mlir_block)
+        self.codegen_param_value(tcx, value, location, mlir_block)
     }
 
     fn codegen_param_value<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
         value: ty::Value<'tcx>,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
         let scalar = value.try_to_scalar();
 
         if let Some(scalar) = scalar {
-            self.codegen_scalar(value.ty, scalar, mlir_block)
+            self.codegen_scalar(value.ty, scalar, location, mlir_block)
         } else {
             todo!("codegen_param_value: {:?} scalar: {:?}", value, scalar);
         }
@@ -903,6 +930,7 @@ impl<'a> TritonCodegen<'a> {
         &self,
         ty: Ty<'tcx>,
         scalar: Scalar,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
         match scalar {
@@ -912,7 +940,7 @@ impl<'a> TritonCodegen<'a> {
 
                 let op = create_constant(
                     self.module.context(),
-                    Location::unknown(self.module.context()),
+                    location,
                     scalar_attr.0,
                     scalar_attr.1,
                 )
@@ -933,11 +961,12 @@ impl<'a> TritonCodegen<'a> {
         instance: &Instance<'tcx>,
         const_val: ConstValue,
         ty: Ty<'tcx>,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
         match const_val {
             ConstValue::Scalar(scalar) => {
-                self.codegen_scalar_const_value(tcx, instance, ty, scalar, mlir_block)
+                self.codegen_scalar_const_value(tcx, instance, ty, scalar, location, mlir_block)
             }
             ConstValue::ZeroSized => todo!("ZeroSized"),
             ConstValue::Slice { alloc_id, meta } => {
@@ -955,6 +984,7 @@ impl<'a> TritonCodegen<'a> {
         instance: &Instance<'tcx>,
         ty: Ty<'tcx>,
         scalar: Scalar,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
         match scalar {
@@ -965,13 +995,10 @@ impl<'a> TritonCodegen<'a> {
                             node: format!("Invalid scalar: {:?} {:?} {:?}", e, ty, scalar_int),
                         })?;
 
-                    let const_op: Operation<'a> = create_int_constant(
-                        self.module.context(),
-                        Location::unknown(self.module.context()),
-                        value,
-                    )
-                    .map_err(|e| MlirError::CreateOperation { err: e })?
-                    .into();
+                    let const_op: Operation<'a> =
+                        create_int_constant(self.module.context(), location, value)
+                            .map_err(|e| MlirError::CreateOperation { err: e })?
+                            .into();
 
                     let result = const_op.result(0).unwrap();
                     mlir_block.append_operation(const_op);
@@ -1003,13 +1030,9 @@ impl<'a> TritonCodegen<'a> {
                                     ),
                                 }
                             })?;
-                            create_int_constant(
-                                self.module.context(),
-                                Location::unknown(self.module.context()),
-                                value,
-                            )
-                            .map_err(|e| MlirError::CreateOperation { err: e })?
-                            .into()
+                            create_int_constant(self.module.context(), location, value)
+                                .map_err(|e| MlirError::CreateOperation { err: e })?
+                                .into()
                         }
                         Scalar::Ptr(pointer, _) => todo!("Scalar::Ptr: {:?}", pointer),
                     };

@@ -27,6 +27,7 @@ pub mod tensor;
 impl<'a> TritonCodegen<'a> {
     pub fn codegen_return<'tcx>(
         &self,
+        location: Location<'a>,
         _terminator: &Terminator<'tcx>,
         mlir_block: &BlockRef,
         ssa_values: &mut SsaValues<'a, 'a>,
@@ -34,12 +35,8 @@ impl<'a> TritonCodegen<'a> {
         println!("[DEBUG] TritonCodegen::codegen_return: ssa_values: {:?}", ssa_values);
         println!("[DEBUG] TritonCodegen::codegen_return: terminator: {:?}", _terminator);
         let value = ssa_values.get(&Local::ZERO).copied();
-        let return_op = create_return(
-            self.module.context(),
-            Location::unknown(self.module.context()),
-            value.as_slice(),
-        )
-        .map_err(|e| MlirError::CreateOperation { err: e })?;
+        let return_op = create_return(self.module.context(), location, value.as_slice())
+            .map_err(|e| MlirError::CreateOperation { err: e })?;
         eprintln!(
             "[DEBUG] AXM TritonCodegen::codegen_return: return_op: {:?}",
             return_op.as_operation().to_string()

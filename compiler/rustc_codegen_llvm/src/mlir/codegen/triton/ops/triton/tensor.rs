@@ -45,6 +45,7 @@ impl<'a> TritonCodegen<'a> {
         unwind: &UnwindAction,
         call_source: &CallSource,
         fn_span: &Span,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -62,10 +63,9 @@ impl<'a> TritonCodegen<'a> {
         let start = self.to_scalar_int(tcx, instance, &args[0].node)?.to_i32();
         let end = self.to_scalar_int(tcx, instance, &args[1].node)?.to_i32();
 
-        let arange_op: Operation<'a> =
-            arange(self.module.context(), Location::unknown(self.module.context()), start, end)
-                .map_err(|e| MlirError::CreateOperation { err: e })?
-                .into();
+        let arange_op: Operation<'a> = arange(self.module.context(), location, start, end)
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
 
         let result = arange_op.result(0).expect("Arange operation result not found");
         eprintln!("[DEBUG] AXM TritonCodegen::codegen_arange: {:?}", arange_op.to_string());
@@ -86,6 +86,7 @@ impl<'a> TritonCodegen<'a> {
         _unwind: &UnwindAction,
         _call_source: &CallSource,
         _fn_span: &Span,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -97,17 +98,18 @@ impl<'a> TritonCodegen<'a> {
         let arg0 = &args[0].node;
         let arg1 = &args[1].node;
 
-        let ptr =
-            self.codegen_operand(tcx, instance, arg0, arg0.ty(mir, tcx), mlir_block, ssa_values)?;
-        let offset =
-            self.codegen_operand(tcx, instance, arg1, arg1.ty(mir, tcx), mlir_block, ssa_values)?;
+        let ptr = self.codegen_operand(
+            tcx, instance, arg0, arg0.ty(mir, tcx), location, mlir_block, ssa_values,
+        )?;
+        let offset = self.codegen_operand(
+            tcx, instance, arg1, arg1.ty(mir, tcx), location, mlir_block, ssa_values,
+        )?;
 
         debug_assert!(
             offset.r#type().is_tensor(),
             "TritonCodegen::codegen_add_offset: rhs is not a tensor"
         );
 
-        let location = Location::unknown(self.module.context());
         let ptr = self.like_tensor(tcx, location, offset, ptr, mlir_block)?;
 
         let add_ptr_op: Operation<'a> =
@@ -134,6 +136,7 @@ impl<'a> TritonCodegen<'a> {
         unwind: &UnwindAction,
         call_source: &CallSource,
         fn_span: &Span,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -151,13 +154,15 @@ impl<'a> TritonCodegen<'a> {
         let arg0 = &args[0].node;
         let arg1 = &args[1].node;
 
-        let ptr =
-            self.codegen_operand(tcx, instance, arg0, arg0.ty(mir, tcx), mlir_block, ssa_values)?;
-        let mask =
-            self.codegen_operand(tcx, instance, arg1, arg1.ty(mir, tcx), mlir_block, ssa_values)?;
+        let ptr = self.codegen_operand(
+            tcx, instance, arg0, arg0.ty(mir, tcx), location, mlir_block, ssa_values,
+        )?;
+        let mask = self.codegen_operand(
+            tcx, instance, arg1, arg1.ty(mir, tcx), location, mlir_block, ssa_values,
+        )?;
 
         let load_op: Operation<'a> =
-            load(self.module.context(), Location::unknown(self.module.context()), ptr, mask)
+            load(self.module.context(), location, ptr, mask)
                 .map_err(|e| MlirError::CreateOperation { err: e })?
                 .into();
         let result = load_op.result(0).expect("Load operation result not found");
@@ -179,6 +184,7 @@ impl<'a> TritonCodegen<'a> {
         unwind: &UnwindAction,
         call_source: &CallSource,
         fn_span: &Span,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -197,15 +203,18 @@ impl<'a> TritonCodegen<'a> {
         let arg1 = &args[1].node;
         let arg2 = &args[2].node;
 
-        let dest =
-            self.codegen_operand(tcx, instance, arg0, arg0.ty(mir, tcx), mlir_block, ssa_values)?;
-        let src =
-            self.codegen_operand(tcx, instance, arg1, arg1.ty(mir, tcx), mlir_block, ssa_values)?;
-        let mask =
-            self.codegen_operand(tcx, instance, arg2, arg2.ty(mir, tcx), mlir_block, ssa_values)?;
+        let dest = self.codegen_operand(
+            tcx, instance, arg0, arg0.ty(mir, tcx), location, mlir_block, ssa_values,
+        )?;
+        let src = self.codegen_operand(
+            tcx, instance, arg1, arg1.ty(mir, tcx), location, mlir_block, ssa_values,
+        )?;
+        let mask = self.codegen_operand(
+            tcx, instance, arg2, arg2.ty(mir, tcx), location, mlir_block, ssa_values,
+        )?;
 
         let store_op: Operation<'a> =
-            store(self.module.context(), Location::unknown(self.module.context()), dest, src, mask)
+            store(self.module.context(), location, dest, src, mask)
                 .map_err(|e| MlirError::CreateOperation { err: e })?
                 .into();
 
@@ -228,6 +237,7 @@ impl<'a> TritonCodegen<'a> {
         unwind: &UnwindAction,
         call_source: &CallSource,
         fn_span: &Span,
+        _location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -245,14 +255,16 @@ impl<'a> TritonCodegen<'a> {
         let arg0 = &args[0].node;
         let arg1 = &args[1].node;
 
-        let x =
-            self.codegen_operand(tcx, instance, arg0, arg0.ty(mir, tcx), mlir_block, ssa_values)?;
-        let y =
-            self.codegen_operand(tcx, instance, arg1, arg1.ty(mir, tcx), mlir_block, ssa_values)?;
+        let _x = self.codegen_operand(
+            tcx, instance, arg0, arg0.ty(mir, tcx), _location, mlir_block, ssa_values,
+        )?;
+        let _y = self.codegen_operand(
+            tcx, instance, arg1, arg1.ty(mir, tcx), _location, mlir_block, ssa_values,
+        )?;
 
         todo!()
         // let maximum_op: Operation<'a> =
-        //     maximumf(self.module.context(), Location::unknown(self.module.context()), x, y)
+        //     maximumf(self.module.context(), _location, x, y)
         //         .map_err(|e| MlirError::CreateOperation { err: e })?
         //         .into();
         // let result = maximum_op.result(0).expect("Maximum operation result not found");
@@ -274,6 +286,7 @@ impl<'a> TritonCodegen<'a> {
         unwind: &UnwindAction,
         call_source: &CallSource,
         fn_span: &Span,
+        _location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -289,12 +302,13 @@ impl<'a> TritonCodegen<'a> {
         );
 
         let arg0 = &args[0].node;
-        let tensor =
-            self.codegen_operand(tcx, instance, arg0, arg0.ty(mir, tcx), mlir_block, ssa_values)?;
+        let _tensor = self.codegen_operand(
+            tcx, instance, arg0, arg0.ty(mir, tcx), _location, mlir_block, ssa_values,
+        )?;
 
         todo!()
         // let zeros_like_op: Operation<'a> =
-        //     zeros_like(self.module.context(), Location::unknown(self.module.context()), tensor)
+        //     zeros_like(self.module.context(), _location, tensor)
         //         .map_err(|e| MlirError::CreateOperation { err: e })?
         //         .into();
         // let result = zeros_like_op.result(0).expect("ZerosLike operation result not found");

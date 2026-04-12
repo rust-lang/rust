@@ -47,6 +47,7 @@ impl<'a> TritonCodegen<'a> {
         _unwind: &UnwindAction,
         _call_source: &CallSource,
         _fn_span: &Span,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -58,12 +59,26 @@ impl<'a> TritonCodegen<'a> {
         println!("[DEBUG] TritonCodegen::codegen_mul_call: arg0: {:?}", arg0);
         println!("[DEBUG] TritonCodegen::codegen_mul_call: arg1: {:?}", arg1);
 
-        let arg0_value =
-            self.codegen_operand(tcx, instance, arg0, arg0.ty(mir, tcx), mlir_block, ssa_values)?;
-        let arg1_value =
-            self.codegen_operand(tcx, instance, arg1, arg1.ty(mir, tcx), mlir_block, ssa_values)?;
+        let arg0_value = self.codegen_operand(
+            tcx,
+            instance,
+            arg0,
+            arg0.ty(mir, tcx),
+            location,
+            mlir_block,
+            ssa_values,
+        )?;
+        let arg1_value = self.codegen_operand(
+            tcx,
+            instance,
+            arg1,
+            arg1.ty(mir, tcx),
+            location,
+            mlir_block,
+            ssa_values,
+        )?;
 
-        self.codegen_mul(arg0_value, arg1_value, mlir_block)
+        self.codegen_mul(location, arg0_value, arg1_value, mlir_block)
     }
 
     pub fn codegen_add_call<'tcx>(
@@ -79,6 +94,7 @@ impl<'a> TritonCodegen<'a> {
         _unwind: &UnwindAction,
         _call_source: &CallSource,
         _fn_span: &Span,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -90,12 +106,26 @@ impl<'a> TritonCodegen<'a> {
         println!("[DEBUG] TritonCodegen::codegen_add_call: arg0: {:?}", arg0);
         println!("[DEBUG] TritonCodegen::codegen_add_call: arg1: {:?}", arg1);
 
-        let lhs =
-            self.codegen_operand(tcx, instance, arg0, arg0.ty(mir, tcx), mlir_block, ssa_values)?;
-        let rhs =
-            self.codegen_operand(tcx, instance, arg1, arg1.ty(mir, tcx), mlir_block, ssa_values)?;
+        let lhs = self.codegen_operand(
+            tcx,
+            instance,
+            arg0,
+            arg0.ty(mir, tcx),
+            location,
+            mlir_block,
+            ssa_values,
+        )?;
+        let rhs = self.codegen_operand(
+            tcx,
+            instance,
+            arg1,
+            arg1.ty(mir, tcx),
+            location,
+            mlir_block,
+            ssa_values,
+        )?;
 
-        self.codegen_add(tcx, lhs, rhs, mlir_block)
+        self.codegen_add(tcx, location, lhs, rhs, mlir_block)
     }
 
     pub fn codegen_lt_call<'tcx>(
@@ -111,6 +141,7 @@ impl<'a> TritonCodegen<'a> {
         _unwind: &UnwindAction,
         _call_source: &CallSource,
         _fn_span: &Span,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -119,25 +150,39 @@ impl<'a> TritonCodegen<'a> {
         let arg0 = &args[0].node;
         let arg1 = &args[1].node;
 
-        let lhs =
-            self.codegen_operand(tcx, instance, arg0, arg0.ty(mir, tcx), mlir_block, ssa_values)?;
-        let rhs =
-            self.codegen_operand(tcx, instance, arg1, arg1.ty(mir, tcx), mlir_block, ssa_values)?;
+        let lhs = self.codegen_operand(
+            tcx,
+            instance,
+            arg0,
+            arg0.ty(mir, tcx),
+            location,
+            mlir_block,
+            ssa_values,
+        )?;
+        let rhs = self.codegen_operand(
+            tcx,
+            instance,
+            arg1,
+            arg1.ty(mir, tcx),
+            location,
+            mlir_block,
+            ssa_values,
+        )?;
 
-        self.codegen_cmpi(tcx, Predicate::SLT, lhs, rhs, mlir_block)
+        self.codegen_cmpi(tcx, Predicate::SLT, location, lhs, rhs, mlir_block)
     }
 
     pub fn codegen_cmpi<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
         predicate: Predicate,
+        location: Location<'a>,
         lhs: Value<'a, 'a>,
         rhs: Value<'a, 'a>,
         mlir_block: &BlockRef<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         let lhs_is_tensor = lhs.r#type().is_tensor();
         let rhs_is_tensor = rhs.r#type().is_tensor();
-        let location = Location::unknown(self.module.context());
 
         let (lhs, rhs) = match (lhs_is_tensor, rhs_is_tensor) {
             (true, true) => (lhs, rhs),
@@ -156,16 +201,10 @@ impl<'a> TritonCodegen<'a> {
         )
         .map_err(|e| MlirError::InvalidType { msg: e.to_string() })?;
 
-        let lt_op: Operation<'a> = create_cmpi(
-            self.module.context(),
-            Location::unknown(self.module.context()),
-            predicate,
-            lhs,
-            rhs,
-            result_ty.into(),
-        )
-        .map_err(|e| MlirError::CreateOperation { err: e })?
-        .into();
+        let lt_op: Operation<'a> =
+            create_cmpi(self.module.context(), location, predicate, lhs, rhs, result_ty.into())
+                .map_err(|e| MlirError::CreateOperation { err: e })?
+                .into();
         let result = lt_op.result(0).expect("LT operation result not found");
         mlir_block.append_operation(lt_op);
         Ok(Some(result.into()))
@@ -173,6 +212,7 @@ impl<'a> TritonCodegen<'a> {
 
     pub fn codegen_mul(
         &self,
+        location: Location<'a>,
         lhs: Value<'a, 'a>,
         rhs: Value<'a, 'a>,
         mlir_block: &BlockRef<'a, 'a>,
@@ -181,14 +221,10 @@ impl<'a> TritonCodegen<'a> {
         let rhs_ty = rhs.r#type();
 
         if lhs_ty.is_integer() {
-            let mul_op: Operation = create_muli(
-                self.module.context(),
-                Location::unknown(self.module.context()),
-                lhs,
-                rhs,
-            )
-            .map_err(|e| MlirError::CreateOperation { err: e })?
-            .into();
+            let mul_op: Operation =
+                create_muli(self.module.context(), location, lhs, rhs)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+                    .into();
             let result = mul_op.result(0).expect("Mul operation result not found");
             mlir_block.append_operation(mul_op);
             Ok(Some(result.into()))
@@ -200,6 +236,7 @@ impl<'a> TritonCodegen<'a> {
     pub fn codegen_add<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
+        location: Location<'a>,
         lhs: Value<'a, 'a>,
         rhs: Value<'a, 'a>,
         mlir_block: &BlockRef<'a, 'a>,
@@ -212,26 +249,8 @@ impl<'a> TritonCodegen<'a> {
 
         let (lhs, rhs) = match (lhs_is_tensor, rhs_is_tensor) {
             (true, true) => (lhs, rhs),
-            (true, false) => (
-                lhs,
-                self.like_tensor(
-                    tcx,
-                    Location::unknown(self.module.context()),
-                    lhs,
-                    rhs,
-                    mlir_block,
-                )?,
-            ),
-            (false, true) => (
-                self.like_tensor(
-                    tcx,
-                    Location::unknown(self.module.context()),
-                    rhs,
-                    lhs,
-                    mlir_block,
-                )?,
-                rhs,
-            ),
+            (true, false) => (lhs, self.like_tensor(tcx, location, lhs, rhs, mlir_block)?),
+            (false, true) => (self.like_tensor(tcx, location, rhs, lhs, mlir_block)?, rhs),
             (false, false) => todo!(
                 "TritonCodegen::codegen_add: {:?}-> {:?} {:?}-> {:?}",
                 lhs,
@@ -251,17 +270,16 @@ impl<'a> TritonCodegen<'a> {
             .try_into()
             .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?;
 
-        let add_op: Operation<'a> = if lhs_ty.element().is_integer()
-            && rhs_ty.element().is_integer()
-        {
-            create_addi(self.module.context(), Location::unknown(self.module.context()), lhs, rhs)
-                .map_err(|e| MlirError::CreateOperation { err: e })?
-                .into()
-        } else {
-            create_addf(self.module.context(), Location::unknown(self.module.context()), lhs, rhs)
-                .map_err(|e| MlirError::CreateOperation { err: e })?
-                .into()
-        };
+        let add_op: Operation<'a> =
+            if lhs_ty.element().is_integer() && rhs_ty.element().is_integer() {
+                create_addi(self.module.context(), location, lhs, rhs)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+                    .into()
+            } else {
+                create_addf(self.module.context(), location, lhs, rhs)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+                    .into()
+            };
 
         let result = add_op.result(0).expect("Add operation result not found");
 

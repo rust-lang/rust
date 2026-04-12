@@ -27,6 +27,7 @@ use rustc_mlir::triton::call;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 
+use crate::mlir::codegen::triton::location::span_to_location;
 use crate::mlir::codegen::triton::{SsaValues, TritonCodegen};
 use crate::mlir::errors::MlirError;
 
@@ -44,6 +45,7 @@ type LocalCallHandler<'a, 'tcx> = fn(
     &UnwindAction,
     &CallSource,
     &Span,
+    Location<'a>,
     &BlockRef<'a, 'a>,
     &mut SsaValues<'a, 'a>,
 ) -> Result<Option<Value<'a, 'a>>, MlirError>;
@@ -64,12 +66,15 @@ impl<'a> TritonCodegen<'a> {
             ssa_values, terminator
         );
 
+        let location =
+            span_to_location(self.module.context(), tcx, terminator.source_info.span);
+
         match &terminator.kind {
             rustc_middle::mir::TerminatorKind::Return => {
-                self.codegen_return(terminator, mlir_block, ssa_values)
+                self.codegen_return(location, terminator, mlir_block, ssa_values)
             }
             rustc_middle::mir::TerminatorKind::Goto { target } => {
-                self.codegen_goto(target, mlir_block, basic_blocks)
+                self.codegen_goto(location, target, mlir_block, basic_blocks)
             }
             rustc_middle::mir::TerminatorKind::SwitchInt { discr, targets } => {
                 todo!("SwitchInt: {:?} {:?}", discr, targets)
@@ -81,7 +86,7 @@ impl<'a> TritonCodegen<'a> {
             rustc_middle::mir::TerminatorKind::Unreachable => todo!("Unreachable"),
             rustc_middle::mir::TerminatorKind::Drop { target, .. } => {
                 // All kernel types are Copy with no destructors; treat as goto target.
-                self.codegen_goto(target, mlir_block, basic_blocks)
+                self.codegen_goto(location, target, mlir_block, basic_blocks)
             }
             rustc_middle::mir::TerminatorKind::Call {
                 func,
@@ -91,21 +96,26 @@ impl<'a> TritonCodegen<'a> {
                 unwind,
                 call_source,
                 fn_span,
-            } => self.codegen_terminator_call(
-                tcx,
-                instance,
-                mir,
-                func,
-                args,
-                destination,
-                target,
-                unwind,
-                call_source,
-                fn_span,
-                mlir_block,
-                basic_blocks,
-                ssa_values,
-            ),
+            } => {
+                // Use the call-site span for a more precise location on Call terminators.
+                let call_loc = span_to_location(self.module.context(), tcx, *fn_span);
+                self.codegen_terminator_call(
+                    tcx,
+                    instance,
+                    mir,
+                    func,
+                    args,
+                    destination,
+                    target,
+                    unwind,
+                    call_source,
+                    fn_span,
+                    call_loc,
+                    mlir_block,
+                    basic_blocks,
+                    ssa_values,
+                )
+            }
             rustc_middle::mir::TerminatorKind::TailCall { func, args, fn_span } => {
                 todo!("TailCall: {:?} {:?} {:?}", func, args, fn_span)
             }
@@ -153,6 +163,7 @@ impl<'a> TritonCodegen<'a> {
         unwind: &UnwindAction,
         call_source: &CallSource,
         fn_span: &Span,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         basic_blocks: &HashMap<BasicBlock, BlockRef>,
         ssa_values: &mut SsaValues<'a, 'a>,
@@ -210,6 +221,7 @@ impl<'a> TritonCodegen<'a> {
             unwind,
             call_source,
             fn_span,
+            location,
             mlir_block,
             ssa_values,
         )?;
@@ -217,7 +229,7 @@ impl<'a> TritonCodegen<'a> {
         if let Some(value) = value {
             ssa_values.insert(destination.local, value);
         }
-        self.codegen_goto(&target.expect("target must be Some"), mlir_block, basic_blocks)?;
+        self.codegen_goto(location, &target.expect("target must be Some"), mlir_block, basic_blocks)?;
         Ok(())
     }
 
@@ -234,6 +246,7 @@ impl<'a> TritonCodegen<'a> {
         _unwind: &UnwindAction,
         _call_source: &CallSource,
         _fn_span: &Span,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         ssa_values: &mut SsaValues<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
@@ -245,6 +258,7 @@ impl<'a> TritonCodegen<'a> {
                     instance,
                     &arg.node,
                     arg.node.ty(mir, tcx),
+                    location,
                     mlir_block,
                     ssa_values,
                 )
@@ -313,7 +327,7 @@ impl<'a> TritonCodegen<'a> {
         let ret_ty = self.type_mapper.map_type(self.module.context(), &tcx, &ret_ty);
         let call_op: Operation<'a> = call(
             self.module.context(),
-            Location::unknown(self.module.context()),
+            location,
             callee_name.as_str(),
             &args,
             &[ret_ty],
@@ -336,17 +350,14 @@ impl<'a> TritonCodegen<'a> {
 
     fn codegen_goto(
         &self,
+        location: Location<'a>,
         target: &BasicBlock,
         mlir_block: &BlockRef<'a, 'a>,
         basic_blocks: &HashMap<BasicBlock, BlockRef>,
     ) -> Result<(), MlirError> {
         let target_block = basic_blocks.get(target).unwrap();
-        let br_op = create_cf_br(
-            self.module.context(),
-            Location::unknown(self.module.context()),
-            target_block,
-        )
-        .map_err(|e| MlirError::CreateOperation { err: e })?;
+        let br_op = create_cf_br(self.module.context(), location, target_block)
+            .map_err(|e| MlirError::CreateOperation { err: e })?;
 
         eprintln!(
             "[DEBUG] AXM TritonCodegen::codegen_goto: br_op: {:?}",
