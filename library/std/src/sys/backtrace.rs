@@ -4,6 +4,7 @@
 use crate::backtrace_rs::{self, BacktraceFmt, BytesOrWideString, PrintFmt};
 use crate::borrow::Cow;
 use crate::io::prelude::*;
+use crate::mem::{ManuallyDrop, MaybeUninit};
 use crate::path::{self, Path, PathBuf};
 use crate::sync::{Mutex, MutexGuard, PoisonError};
 use crate::{env, fmt, io};
@@ -81,12 +82,26 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
                 let frame_ip = frame.ip();
                 res = writeln!(bt_fmt.formatter(), "{idx:4}: {frame_ip:HEX_WIDTH$?}");
             } else {
+                // `call_with_end_short_backtrace_marker` means we are done hiding symbols
+                // for now. Print until we see `call_with_begin_short_backtrace_marker`.
+                if print_fmt == PrintFmt::Short {
+                    let sym = frame.symbol_address();
+                    if sym == call_with_end_short_backtrace_marker as _ {
+                        print = true;
+                        return true;
+                    } else if print && sym == call_with_begin_short_backtrace_marker as _ {
+                        print = false;
+                        return true;
+                    }
+                }
+
                 let mut hit = false;
                 backtrace_rs::resolve_frame_unsynchronized(frame, |symbol| {
                     hit = true;
 
-                    // `__rust_end_short_backtrace` means we are done hiding symbols
-                    // for now. Print until we see `__rust_begin_short_backtrace`.
+                    // Hide `__rust_[begin|end]_short_backtrace` frames from short backtraces.
+                    // Unfortunately these generic functions have to be matched by name, as we do
+                    // not know their generic parameters.
                     if print_fmt == PrintFmt::Short {
                         if let Some(sym) = symbol.name().and_then(|s| s.as_str()) {
                             if sym.contains("__rust_end_short_backtrace") {
@@ -155,36 +170,60 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
     Ok(())
 }
 
-/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`. Note that
-/// this is only inline(never) when backtraces in std are enabled, otherwise
-/// it's fine to optimize away.
-#[cfg_attr(feature = "backtrace", inline(never))]
-pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
-where
-    F: FnOnce() -> T,
-{
-    let result = f();
+macro_rules! short_backtrace_controls {
+    ($($adapter:ident => $marker:ident($unique:literal)),* $(,)?) => {$(
+        /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`. Note that
+        /// this is only inline(never) when backtraces in std are enabled, otherwise
+        /// it's fine to optimize away.
+        ///
+        /// It is guaranteed that `f` will be called exactly once, and `unsafe` code may
+        /// rely on this to be the case.
+        #[cfg_attr(feature = "backtrace", inline(never))]
+        fn $marker(f: &mut dyn FnMut()) {
+            f();
 
-    // prevent this frame from being tail-call optimised away
-    crate::hint::black_box(());
+            // (Try to) prevent both Identical Code Folding (which might merge the different
+            // versions of this function, giving them the same address) and Tail Call Optimisation
+            // (which could remove their frames from the call stack).
+            crate::hint::black_box($unique);
+        }
 
-    result
+        /// Invokes `$marker` with an adaptation of `f`, returning its result.
+        /// This is a more ergonomic interface for placing the marker frame on the stack than
+        /// the `$marker` function itself. It can be inlined without problem.
+        #[doc(hidden)]
+        #[unstable(
+            feature = "short_backtrace_controls",
+            reason = "to control abbreviation of backtraces",
+            issue = "none"
+        )]
+        #[inline(always)]
+        pub fn $adapter<F, T>(f: F) -> T
+        where
+            F: FnOnce() -> T,
+        {
+            let mut result = MaybeUninit::<T>::uninit();
+            let mut f = ManuallyDrop::new(f);
+
+            let mut adapted = || {
+                // SAFETY: `adapted` is called exactly once, by `$marker`;
+                //         and the `ManuallyDrop` is not otherwise used again.
+                let f = unsafe { ManuallyDrop::take(&mut f) };
+                result.write(f());
+            };
+
+            $marker(&mut adapted);
+
+            // SAFETY: `$marker` guaranteed that it would call `adapted`, which
+            //         initialized `result`.
+            unsafe { result.assume_init() }
+        }
+    )*};
 }
 
-/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`. Note that
-/// this is only inline(never) when backtraces in std are enabled, otherwise
-/// it's fine to optimize away.
-#[cfg_attr(feature = "backtrace", inline(never))]
-pub fn __rust_end_short_backtrace<F, T>(f: F) -> T
-where
-    F: FnOnce() -> T,
-{
-    let result = f();
-
-    // prevent this frame from being tail-call optimised away
-    crate::hint::black_box(());
-
-    result
+short_backtrace_controls! {
+    __rust_begin_short_backtrace => call_with_begin_short_backtrace_marker(0),
+    __rust_end_short_backtrace => call_with_end_short_backtrace_marker(1),
 }
 
 /// Prints the filename of the backtrace frame.
