@@ -1063,6 +1063,87 @@ impl str {
         Chars { iter: self.as_bytes().iter() }
     }
 
+    /// # Safety
+    ///
+    /// `bytes` must be the UTF-8 encoding of exactly one valid Unicode scalar value.
+    #[inline]
+    const unsafe fn decode_utf8_char(bytes: &[u8]) -> char {
+        let ch = match bytes {
+            &[a] => a as u32,
+            &[a, b] => ((a & 0x1F) as u32) << 6 | (b & 0x3F) as u32,
+            &[a, b, c] => ((a & 0x0F) as u32) << 12 | ((b & 0x3F) as u32) << 6 | (c & 0x3F) as u32,
+            &[a, b, c, d] => {
+                ((a & 0x07) as u32) << 18
+                    | ((b & 0x3F) as u32) << 12
+                    | ((c & 0x3F) as u32) << 6
+                    | (d & 0x3F) as u32
+            }
+            // SAFETY: All valid UTF-8 sequences are covered above; this arm is unreachable for valid input.
+            _ => unsafe { crate::hint::unreachable_unchecked() },
+        };
+        // SAFETY: the caller must ensure `bytes` contains a valid UTF-8 sequence.
+        unsafe { char::from_u32_unchecked(ch) }
+    }
+
+    /// Returns the first [`prim@char`] of a string slice, or [`None`] if it's empty.
+    #[must_use]
+    #[unstable(feature = "str_first_last_char", issue = "154393")]
+    #[rustc_const_unstable(feature = "str_first_last_char", issue = "154393")]
+    #[inline]
+    pub const fn first_char(&self) -> Option<char> {
+        match self.split_first_char() {
+            Some((c, _)) => Some(c),
+            None => None,
+        }
+    }
+
+    /// Returns the last [`prim@char`] of a string slice, or [`None`] if it's empty.
+    #[must_use]
+    #[unstable(feature = "str_first_last_char", issue = "154393")]
+    #[rustc_const_unstable(feature = "str_first_last_char", issue = "154393")]
+    #[inline]
+    pub const fn last_char(&self) -> Option<char> {
+        match self.split_last_char() {
+            Some((c, _)) => Some(c),
+            None => None,
+        }
+    }
+
+    /// Returns the first [`prim@char`] and the rest of the string slice, or [`None`] if it's empty.
+    #[must_use]
+    #[unstable(feature = "str_first_last_char", issue = "154393")]
+    #[rustc_const_unstable(feature = "str_first_last_char", issue = "154393")]
+    pub const fn split_first_char(&self) -> Option<(char, &str)> {
+        let bytes = self.as_bytes();
+        let Some(&x) = bytes.first() else {
+            return None;
+        };
+        let width = utf8_char_width(x);
+        // SAFETY: self is valid UTF-8 and width is correct
+        let (head, tail) = unsafe { self.split_at_unchecked(width) };
+        // SAFETY: head is valid UTF-8 for exactly one char
+        Some((unsafe { Self::decode_utf8_char(head.as_bytes()) }, tail))
+    }
+
+    /// Returns the last [`prim@char`] and the rest of the string slice, or [`None`] if it's empty.
+    #[must_use]
+    #[unstable(feature = "str_first_last_char", issue = "154393")]
+    #[rustc_const_unstable(feature = "str_first_last_char", issue = "154393")]
+    pub const fn split_last_char(&self) -> Option<(char, &str)> {
+        let bytes = self.as_bytes();
+        if bytes.is_empty() {
+            return None;
+        }
+        let mut i = bytes.len() - 1;
+        while i > 0 && !self.is_char_boundary(i) {
+            i -= 1;
+        }
+        // SAFETY: i is a char boundary
+        let (head, tail) = unsafe { self.split_at_unchecked(i) };
+        // SAFETY: tail is valid UTF-8 for exactly one char
+        Some((unsafe { Self::decode_utf8_char(tail.as_bytes()) }, head))
+    }
+
     /// Returns an iterator over the [`char`]s of a string slice, and their
     /// positions.
     ///
