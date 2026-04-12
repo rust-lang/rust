@@ -1472,13 +1472,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         old_self_ty: Ty<'tcx>,
     ) -> bool {
-        if !matches!(obligation.cause.code(), ObligationCauseCode::WhereClauseInExpr(..)) {
-            return true;
-        }
-        let Some(typeck_results) = &self.typeck_results else {
+        let ObligationCauseCode::WhereClauseInExpr(..) = obligation.cause.code() else {
             return true;
         };
-        let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) else {
+        let (Some(typeck_results), Some(body)) = (
+            self.typeck_results.as_ref(),
+            self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id),
+        ) else {
             return true;
         };
 
@@ -1493,7 +1493,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => None,
         };
 
-        [typeck_results.expr_ty_opt(expr), typeck_results.expr_ty_adjusted_opt(expr)]
+        [typeck_results.expr_ty_adjusted_opt(expr), typeck_results.expr_ty_opt(expr)]
             .into_iter()
             .flatten()
             .any(|expr_ty| {
