@@ -277,6 +277,7 @@ RecordFieldList =
 
 RecordField =
   Attr* Visibility? 'unsafe'?
+  MutRestriction?
   Name ':' Type ('=' default_val:ConstArg)?
 
 TupleFieldList =
@@ -284,11 +285,15 @@ TupleFieldList =
 
 TupleField =
   Attr* Visibility?
+  MutRestriction?
   Type
 
 FieldList =
   RecordFieldList
 | TupleFieldList
+
+MutRestriction =
+  'mut' VisibilityInner
 
 Enum =
   Attr* Visibility?
@@ -336,9 +341,13 @@ Static =
 Trait =
   Attr* Visibility?
   'unsafe'? 'auto'?
+  ImplRestriction?
   'trait' Name GenericParamList?
   (((':' TypeBoundList?)? WhereClause? AssocItemList) |
   ('=' TypeBoundList? WhereClause? ';'))
+
+ImplRestriction =
+  'impl' VisibilityInner
 
 AssocItemList =
   '{' Attr* AssocItem* '}'
@@ -368,8 +377,10 @@ ExternItem =
 | TypeAlias
 
 Visibility =
-  'pub' ('(' 'in'? Path ')')?
+  'pub' VisibilityInner?
 
+VisibilityInner =
+  '(' 'in'? Path ')'
 
 //****************************//
 // Statements and Expressions //
