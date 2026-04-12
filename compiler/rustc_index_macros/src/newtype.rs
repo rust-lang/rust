@@ -146,6 +146,20 @@ impl Parse for Newtype {
                     fn backward_checked(start: Self, u: usize) -> Option<Self> {
                         Self::index(start).checked_sub(u).map(Self::from_usize)
                     }
+
+                    #[inline]
+                    #[cfg(not(bootstrap))]
+                    fn forward_overflowing(start: Self, u: usize) -> (Self, bool) {
+                        let (s, o) = Self::index(start).overflowing_add(u);
+                        (Self::from_usize(s), o)
+                    }
+
+                    #[inline]
+                    #[cfg(not(bootstrap))]
+                    fn backward_overflowing(start: Self, u: usize) -> (Self, bool) {
+                        let (s, o) = Self::index(start).overflowing_sub(u);
+                        (Self::from_usize(s), o)
+                    }
                 }
                 impl ::std::cmp::Ord for #name {
                     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
