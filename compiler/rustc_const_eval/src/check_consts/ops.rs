@@ -591,7 +591,7 @@ impl<'tcx> NonConstOp<'tcx> for LiveDrop<'tcx> {
     }
 
     fn build_error(&self, ccx: &ConstCx<'_, 'tcx>, span: Span) -> Diag<'tcx> {
-        if self.needs_non_const_drop {
+        let mut err = if self.needs_non_const_drop {
             ccx.dcx().create_err(errors::LiveDrop {
                 span,
                 dropped_ty: self.dropped_ty,
@@ -608,7 +608,27 @@ impl<'tcx> NonConstOp<'tcx> for LiveDrop<'tcx> {
                 },
                 sym::const_destruct,
             )
+        };
+
+        // If the dropped type is a type parameter, suggest adding a `[const] Destruct` bound.
+        if let Param(param_ty) = self.dropped_ty.kind() {
+            let tcx = ccx.tcx;
+            let caller = ccx.def_id();
+            if let Some(generics) = tcx.hir_node_by_def_id(caller).generics() {
+                let destruct_def_id = tcx.lang_items().destruct_trait();
+                suggest_constraining_type_param(
+                    tcx,
+                    generics,
+                    &mut err,
+                    param_ty.name.as_str(),
+                    "[const] Destruct",
+                    destruct_def_id,
+                    None,
+                );
+            }
         }
+
+        err
     }
 }
 
