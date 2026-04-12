@@ -29,7 +29,7 @@ jobs:
       # Needed to write to the ghcr.io registry
       packages: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
