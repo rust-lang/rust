@@ -9,9 +9,10 @@ use core::{fmt, mem, ops, ptr, slice};
 
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
+#[cfg(not(no_rc))]
 use crate::rc::Rc;
 use crate::string::String;
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 use crate::sync::Arc;
 use crate::vec::Vec;
 
@@ -898,7 +899,7 @@ impl<'a> From<&'a CString> for Cow<'a, CStr> {
     }
 }
 
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Arc<CStr> {
     /// Converts a [`CString`] into an <code>[Arc]<[CStr]></code> by moving the [`CString`]
@@ -910,7 +911,7 @@ impl From<CString> for Arc<CStr> {
     }
 }
 
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&CStr> for Arc<CStr> {
     /// Converts a `&CStr` into a `Arc<CStr>`,
@@ -922,7 +923,7 @@ impl From<&CStr> for Arc<CStr> {
     }
 }
 
-#[cfg(target_has_atomic = "ptr")]
+#[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 #[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl From<&mut CStr> for Arc<CStr> {
     /// Converts a `&mut CStr` into a `Arc<CStr>`,
@@ -933,6 +934,7 @@ impl From<&mut CStr> for Arc<CStr> {
     }
 }
 
+#[cfg(not(no_rc))]
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<CString> for Rc<CStr> {
     /// Converts a [`CString`] into an <code>[Rc]<[CStr]></code> by moving the [`CString`]
@@ -944,6 +946,7 @@ impl From<CString> for Rc<CStr> {
     }
 }
 
+#[cfg(not(no_rc))]
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&CStr> for Rc<CStr> {
     /// Converts a `&CStr` into a `Rc<CStr>`,
@@ -955,6 +958,7 @@ impl From<&CStr> for Rc<CStr> {
     }
 }
 
+#[cfg(not(no_rc))]
 #[stable(feature = "shared_from_mut_slice", since = "1.84.0")]
 impl From<&mut CStr> for Rc<CStr> {
     /// Converts a `&mut CStr` into a `Rc<CStr>`,
@@ -965,6 +969,7 @@ impl From<&mut CStr> for Rc<CStr> {
     }
 }
 
+#[cfg(not(no_rc))]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "more_rc_default_impls", since = "1.80.0")]
 impl Default for Rc<CStr> {
