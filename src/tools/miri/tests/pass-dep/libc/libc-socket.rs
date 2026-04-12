@@ -238,16 +238,15 @@ fn test_send_peek_recv() {
         let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
 
         // Write the bytes into the stream.
-        let bytes_written = unsafe {
-            errno_result(libc_utils::net::send_all(
-                peerfd,
+        unsafe {
+            errno_result(libc_utils::write_all_generic(
                 TEST_BYTES.as_ptr().cast(),
                 TEST_BYTES.len(),
-                0,
+                libc_utils::NoRetry,
+                |buf, count| libc::send(peerfd, buf, count, 0),
             ))
             .unwrap()
         };
-        assert_eq!(bytes_written as usize, TEST_BYTES.len());
     });
 
     net::connect_ipv4(client_sockfd, addr).unwrap();
@@ -271,17 +270,15 @@ fn test_send_peek_recv() {
     // able to read the same bytes again into a new buffer.
 
     let mut buffer = [0; TEST_BYTES.len()];
-    let bytes_read = unsafe {
-        errno_result(libc_utils::net::recv_all(
-            client_sockfd,
+    unsafe {
+        errno_result(libc_utils::read_all_generic(
             buffer.as_mut_ptr().cast(),
             buffer.len(),
-            0,
+            libc_utils::NoRetry,
+            |buf, count| libc::recv(client_sockfd, buf, count, 0),
         ))
         .unwrap()
     };
-
-    assert_eq!(bytes_read as usize, TEST_BYTES.len());
     assert_eq!(&buffer, TEST_BYTES);
 
     server_thread.join().unwrap();
@@ -323,11 +320,10 @@ fn test_partial_send_recv() {
     let buffer = [0u8; 100_000];
     // Write a lot of bytes into the socket such that we can test
     // incomplete reads.
-    let bytes_written = unsafe {
+    unsafe {
         errno_result(libc_utils::write_all(client_sockfd, buffer.as_ptr().cast(), buffer.len()))
             .unwrap()
     };
-    assert_eq!(bytes_written as usize, buffer.len());
 
     server_thread.join().unwrap();
 }
@@ -360,12 +356,10 @@ fn test_write_read() {
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
     let mut buffer = [0; TEST_BYTES.len()];
-    let bytes_read = unsafe {
+    unsafe {
         errno_result(libc_utils::read_all(client_sockfd, buffer.as_mut_ptr().cast(), buffer.len()))
             .unwrap()
     };
-
-    assert_eq!(bytes_read as usize, TEST_BYTES.len());
     assert_eq!(&buffer, TEST_BYTES);
 
     server_thread.join().unwrap();
