@@ -1,8 +1,5 @@
 PRINT-DERIVE INPUT (DISPLAY): struct
 Foo([bool; #[rustc_dummy(first)]
-#[rustc_dummy(second)] { #![rustc_dummy(third)] #[rustc_dummy(fourth)] 30 }]);
-PRINT-DERIVE DEEP-RE-COLLECTED (DISPLAY): struct
-Foo([bool; #[rustc_dummy(first)]
 #[rustc_dummy(second)]
 { #! [rustc_dummy(third)] #[rustc_dummy(fourth)] 30 }]);
 PRINT-DERIVE INPUT (DEBUG): TokenStream [

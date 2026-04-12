@@ -62,7 +62,7 @@ pub use span;
 
 pub use crate::bridge::*;
 pub use crate::server_impl::literal_from_str;
-pub use crate::token_stream::{TokenStream, TokenStreamIter, literal_to_string};
+pub use crate::token_stream::{TokenStream, TokenTree, Group, TokenStreamIter, literal_to_string};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum ProcMacroKind {
@@ -236,9 +236,7 @@ impl ProcMacroSrv<'_> {
 }
 
 pub trait ProcMacroSrvSpan: Copy + Send + Sync {
-    type Server<'a>: rustc_proc_macro::bridge::server::Server<
-            TokenStream = crate::token_stream::TokenStream<Self>,
-        >;
+    type Server<'a>: rustc_proc_macro::bridge::server::Server<Span = Self, Symbol = intern::Symbol>;
     fn make_server<'a>(
         call_site: Self,
         def_site: Self,
