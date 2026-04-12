@@ -770,7 +770,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
         record_variants!(
             (self, attr, attr.kind, None, ast, Attribute, AttrKind),
-            [Normal, DocComment]
+            [Normal, DocComment, Comment]
         );
         ast_visit::walk_attribute(self, attr)
     }

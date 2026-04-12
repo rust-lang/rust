@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::node_id::NodeId;
+use rustc_ast::token::CommentKind;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sync::{AppendOnlyVec, DynSend, DynSync, Lock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
@@ -18,7 +19,7 @@ use rustc_feature::{GateIssue, UnstableFeatures, find_feature_issue};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{BytePos, Span, Symbol, sym};
 
 use crate::Session;
 use crate::config::{Cfg, CheckCfg};
@@ -271,6 +272,9 @@ pub struct ParseSess {
     proc_macro_quoted_spans: AppendOnlyVec<Span>,
     /// Used to generate new `AttrId`s. Every `AttrId` is unique.
     pub attr_id_generator: AttrIdGenerator,
+    /// All regular (non-doc) comments encountered during lexing.
+    /// Used by the parser to attach comments to the nearest following AST node.
+    pub all_comments: Lock<Vec<(BytePos, CommentKind, Symbol)>>,
 }
 
 impl ParseSess {
@@ -302,6 +306,7 @@ impl ParseSess {
             assume_incomplete_release: false,
             proc_macro_quoted_spans: Default::default(),
             attr_id_generator: AttrIdGenerator::new(),
+            all_comments: Default::default(),
         }
     }
 
