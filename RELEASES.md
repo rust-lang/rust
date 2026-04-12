@@ -1,3 +1,134 @@
+Version 1.95 (2026-04-16)
+==========================
+
+<a id="1.95-Language"></a>
+
+Language
+--------
+- [Stabilize `if let` guards on match arms](https://github.com/rust-lang/rust/pull/141295)
+- [`irrefutable_let_patterns` lint no longer lints on let chains](https://github.com/rust-lang/rust/pull/146832)
+- [Support importing path-segment keywords with renaming](https://github.com/rust-lang/rust/pull/146972)
+- [Stabilize inline assembly for PowerPC and PowerPC64](https://github.com/rust-lang/rust/pull/147996)
+- [const-eval: be more consistent in the behavior of padding during typed copies](https://github.com/rust-lang/rust/pull/148967)
+- [Const blocks are no longer evaluated to determine if expressions involving fallible operations can implicitly be constant-promoted.](https://github.com/rust-lang/rust/pull/150557). Expressions whose ability to implicitly be promoted would depend on the result of a const block are no longer implicitly promoted.
+- [Make operational semantics of pattern matching independent of crate and module](https://github.com/rust-lang/rust/pull/150681)
+
+
+<a id="1.95-Compiler"></a>
+
+Compiler
+--------
+- [Stabilize `--remap-path-scope` for controlling the scoping of how paths get remapped in the resulting binary](https://github.com/rust-lang/rust/pull/147611)
+
+
+<a id="1.95-Platform-Support"></a>
+
+Platform Support
+----------------
+- [Promote `powerpc64-unknown-linux-musl` to Tier 2 with host tools](https://github.com/rust-lang/rust/pull/149962)
+- [Promote `aarch64-apple-tvos` to Tier 2](https://github.com/rust-lang/rust/pull/152021)
+- [Promote `aarch64-apple-tvos-sim` to Tier 2](https://github.com/rust-lang/rust/pull/152021)
+- [Promote `aarch64-apple-watchos` to Tier 2](https://github.com/rust-lang/rust/pull/152021)
+- [Promote `aarch64-apple-watchos-sim` to Tier 2](https://github.com/rust-lang/rust/pull/152021)
+- [Promote `aarch64-apple-visionos` to Tier 2](https://github.com/rust-lang/rust/pull/152021)
+- [Promote `aarch64-apple-visionos-sim` to Tier 2](https://github.com/rust-lang/rust/pull/152021)
+
+
+Refer to Rust's [platform support page][platform-support-doc]
+for more information on Rust's tiered platform support.
+
+[platform-support-doc]: https://doc.rust-lang.org/rustc/platform-support.html
+
+<a id="1.95-Libraries"></a>
+
+Libraries
+---------
+- [`thread::scope`: document how join interacts with TLS destructors](https://github.com/rust-lang/rust/pull/149482)
+- [Speed up `str::contains` on aarch64 targets with `neon` target feature enabled by default](https://github.com/rust-lang/rust/pull/152176)
+
+
+<a id="1.95-Stabilized-APIs"></a>
+
+Stabilized APIs
+---------------
+
+- [`MaybeUninit<[T; N]>: From<[MaybeUninit<T>; N]>`](https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#impl-From%3CMaybeUninit%3C%5BT;+N%5D%3E%3E-for-%5BMaybeUninit%3CT%3E;+N%5D)
+- [`MaybeUninit<[T; N]>: AsRef<[MaybeUninit<T>; N]>`](https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#impl-AsRef%3C%5BMaybeUninit%3CT%3E;+N%5D%3E-for-MaybeUninit%3C%5BT;+N%5D%3E)
+- [`MaybeUninit<[T; N]>: AsRef<[MaybeUninit<T>]>`](https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#impl-AsRef%3C%5BMaybeUninit%3CT%3E%5D%3E-for-MaybeUninit%3C%5BT;+N%5D%3E)
+- [`MaybeUninit<[T; N]>: AsMut<[MaybeUninit<T>; N]>`](https://doc.rust-lang.org/beta/std/mem/union.MaybeUninit.html#impl-AsMut%3C%5BMaybeUninit%3CT%3E;+N%5D%3E-for-MaybeUninit%3C%5BT;+N%5D%3E)
+- [`MaybeUninit<[T; N]>: AsMut<[MaybeUninit<T>]>`](https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#impl-AsMut%3C%5BMaybeUninit%3CT%3E%5D%3E-for-MaybeUninit%3C%5BT;+N%5D%3E)
+- [`[MaybeUninit<T>; N]: From<MaybeUninit<[T; N]>>`](https://doc.rust-lang.org/stable/std/mem/union.MaybeUninit.html#impl-From%3C%5BMaybeUninit%3CT%3E;+N%5D%3E-for-MaybeUninit%3C%5BT;+N%5D%3E)
+- [`Cell<[T; N]>: AsRef<[Cell<T>; N]>`](https://doc.rust-lang.org/stable/std/cell/struct.Cell.html#impl-AsRef%3C%5BCell%3CT%3E;+N%5D%3E-for-Cell%3C%5BT;+N%5D%3E)
+- [`Cell<[T; N]>: AsRef<[Cell<T>]>`](https://doc.rust-lang.org/stable/std/cell/struct.Cell.html#impl-AsRef%3C%5BCell%3CT%3E%5D%3E-for-Cell%3C%5BT;+N%5D%3E)
+- [`Cell<[T]>: AsRef<[Cell<T>]>`](https://doc.rust-lang.org/stable/std/cell/struct.Cell.html#impl-AsRef%3C%5BCell%3CT%3E%5D%3E-for-Cell%3C%5BT%5D%3E)
+- [`bool: TryFrom<{integer}>`](https://doc.rust-lang.org/stable/std/primitive.bool.html#impl-TryFrom%3Cu128%3E-for-bool)
+- [`AtomicPtr::update`](https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicPtr.html#method.update)
+- [`AtomicPtr::try_update`](https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicPtr.html#method.try_update)
+- [`AtomicBool::update`](https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicBool.html#method.update)
+- [`AtomicBool::try_update`](https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicBool.html#method.try_update)
+- [`AtomicIn::update`](https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicIsize.html#method.update)
+- [`AtomicIn::try_update`](https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicIsize.html#method.try_update)
+- [`AtomicUn::update`](https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicUsize.html#method.update)
+- [`AtomicUn::try_update`](https://doc.rust-lang.org/stable/std/sync/atomic/struct.AtomicUsize.html#method.try_update)
+- [`cfg_select!`](https://doc.rust-lang.org/stable/std/macro.cfg_select.html)
+- [`mod core::range`](https://doc.rust-lang.org/stable/core/range/index.html)
+- [`core::range::RangeInclusive`](https://doc.rust-lang.org/stable/core/range/struct.RangeInclusive.html)
+- [`core::range::RangeInclusiveIter`](https://doc.rust-lang.org/stable/core/range/struct.RangeInclusiveIter.html)
+- [`core::hint::cold_path`](https://doc.rust-lang.org/stable/core/hint/fn.cold_path.html)
+- [`<*const T>::as_ref_unchecked`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.as_ref_unchecked)
+- [`<*mut T>::as_ref_unchecked`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.as_ref_unchecked-1)
+- [`<*mut T>::as_mut_unchecked`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.as_mut_unchecked)
+
+
+These previously stable APIs are now stable in const contexts:
+
+- [`fmt::from_fn`](https://doc.rust-lang.org/stable/std/fmt/fn.from_fn.html)
+- [`ControlFlow::is_break`](https://doc.rust-lang.org/stable/core/ops/enum.ControlFlow.html#method.is_break)
+- [`ControlFlow::is_continue`](https://doc.rust-lang.org/stable/core/ops/enum.ControlFlow.html#method.is_continue)
+
+
+<a id="1.95-Cargo"></a>
+
+Cargo
+-----
+- [docs(report): enhance man pages for `cargo report *`](https://github.com/rust-lang/cargo/pull/16430/)<a id="1.95-Rustdoc"></a>
+
+Rustdoc
+-----
+- [In search results, rank unstable items lower](https://github.com/rust-lang/rust/pull/149460)
+- [Add new "hide deprecated items" setting in rustdoc](https://github.com/rust-lang/rust/pull/151091)
+<a id="1.95-Compatibility-Notes"></a>
+
+Compatibility Notes
+-------------------
+- [Array coercions may now result in less inference constraints than before](https://github.com/rust-lang/rust/pull/140283)
+- Importing `$crate` without renaming, i.e. `use $crate::{self};`, is now no longer permitted due to stricter error checking for `self` imports.
+- [const-eval: be more consistent in the behavior of padding during typed copies.](https://github.com/rust-lang/rust/pull/148967)
+  In very rare cases, this may cause compilation errors due to bytes from parts of a pointer ending up in the padding bytes of a `const` or `static`.
+- [A future-incompatibility warning lint `ambiguous_glob_imported_traits` is now reported when using an ambiguously glob imported trait](https://github.com/rust-lang/rust/pull/149058)
+- [Check lifetime bounds of types mentioning only type parameters](https://github.com/rust-lang/rust/pull/149389)
+- [Report more visibility-related ambiguous import errors](https://github.com/rust-lang/rust/pull/149596)
+- [Deprecate `Eq::assert_receiver_is_total_eq` and emit future compatibility warnings on manual impls](https://github.com/rust-lang/rust/pull/149978)
+- [powerpc64: Use the ELF ABI version set in target spec instead of guessing](https://github.com/rust-lang/rust/pull/150468) (fixes the ELF ABI used by the OpenBSD target)
+- Matching on a `#[non_exhaustive]` enum [now reads the discriminant, even if the enum has only one variant](https://github.com/rust-lang/rust/pull/150681). This can cause closures to capture values that they previously wouldn't.
+- `mut ref` and `mut ref mut` patterns, part of the unstable [Match Ergonomics 2024 RFC](https://github.com/rust-lang/rust/issues/123076), were accidentally allowed on stable within struct pattern field shorthand. These patterns are now correctly feature-gated as unstable in this position.
+- [Add future-compatibility warning for derive helper attributes which conflict with built-in attributes](https://github.com/rust-lang/rust/pull/151152)
+- [JSON target specs](https://doc.rust-lang.org/rustc/targets/custom.html) have been destabilized and now require `-Z unstable-options` to use. Previously, they could not be used without the standard library, which has no stable build mechanism. In preparation for the `build-std` project adding that support, JSON target specs are being proactively gated to ensure they remain unstable even if `build-std` is stabilized. Cargo now includes the `-Z json-target-spec` CLI flag to automatically pass `-Z unstable-options` to the compiler when needed. See [#150151](https://github.com/rust-lang/rust/pull/150151), [#151534](https://github.com/rust-lang/rust/pull/150151), and [rust-lang/cargo#16557](https://github.com/rust-lang/cargo/pull/16557).
+- [The arguments of `#[feature]` attributes on invalid targets are now checked](https://github.com/rust-lang/rust/issues/153764)
+
+
+<a id="1.95-Internal-Changes"></a>
+
+Internal Changes
+----------------
+
+These changes do not affect any public interfaces of Rust, but they represent
+significant improvements to the performance or internals of rustc and related
+tools.
+
+- [Update to LLVM 22](https://github.com/rust-lang/rust/pull/150722)
+
+
 Version 1.94.1 (2026-03-26)
 ===========================
 
