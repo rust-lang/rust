@@ -1766,6 +1766,22 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         let explanation = self.explain_why_borrow_contains_point(location, issued_borrow, None);
         let second_borrow_desc = if explanation.is_explained() { "second " } else { "" };
+        let old_place_desc_for_label = if msg_place.is_empty()
+            && place != issued_borrow.borrowed_place
+            && place.local == issued_borrow.borrowed_place.local
+            && self.local_name(place.local) == Some(kw::SelfLower)
+            && place.as_ref().is_prefix_of(issued_borrow.borrowed_place.as_ref())
+            && issued_borrow
+                .borrowed_place
+                .projection
+                .iter()
+                .skip(place.projection.len())
+                .any(|elem| !matches!(elem, ProjectionElem::Deref))
+        {
+            Some(self.describe_any_place(issued_borrow.borrowed_place.as_ref()))
+        } else {
+            None
+        };
 
         // FIXME: supply non-"" `opt_via` when appropriate
         let first_borrow_desc;
@@ -1783,6 +1799,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     issued_span,
                     "it",
                     "mutable",
+                    old_place_desc_for_label.as_deref(),
                     &msg_borrow,
                     None,
                 );
@@ -1808,6 +1825,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     issued_span,
                     "it",
                     "immutable",
+                    old_place_desc_for_label.as_deref(),
                     &msg_borrow,
                     None,
                 );
@@ -1910,6 +1928,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         issued_span,
                         "it",
                         "immutable",
+                        old_place_desc_for_label.as_deref(),
                         &msg_borrow,
                         None,
                     )
