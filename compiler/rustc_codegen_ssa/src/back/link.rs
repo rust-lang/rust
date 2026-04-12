@@ -58,7 +58,7 @@ use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
 use super::rpath::{self, RPathConfig};
-use super::{apple, versioned_llvm_target};
+use super::{apple, rmeta_link, versioned_llvm_target};
 use crate::base::needs_allocator_shim_for_linking;
 use crate::{
     CodegenLintLevels, CompiledModule, CompiledModules, CrateInfo, NativeLib, errors,
@@ -329,8 +329,11 @@ fn link_rlib<'a>(
         RlibFlavor::StaticlibBase => None,
     };
 
+    let mut rust_object_files: Vec<String> = Vec::new();
+
     for m in &compiled_modules.modules {
         if let Some(obj) = m.object.as_ref() {
+            rust_object_files.push(obj.file_name().unwrap().to_str().unwrap().to_string());
             ab.add_file(obj);
         }
 
@@ -442,6 +445,16 @@ fn link_rlib<'a>(
         ab.add_file(&lib)
     }
 
+    // Add the rlib digest as the very last member. This records which archive
+    // members are Rust object files, replacing filename-based heuristics.
+    if matches!(flavor, RlibFlavor::Normal) {
+        let digest = rmeta_link::RmetaLink { rust_object_files };
+        let digest_data = digest.encode();
+        let (wrapper, _) = create_wrapper_file(sess, rmeta_link::SECTION.to_string(), &digest_data);
+        let digest_file = emit_wrapper_file(sess, &wrapper, tmpdir.as_ref(), rmeta_link::FILENAME);
+        ab.add_file(&digest_file);
+    }
+
     ab
 }
 
@@ -486,16 +499,18 @@ fn link_staticlib(
         let relevant_libs: FxIndexSet<_> = relevant.filter_map(|lib| lib.filename).collect();
 
         let bundled_libs: FxIndexSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
+        let archive_map = unsafe { Mmap::map(File::open(path).unwrap()).unwrap() };
+        let digest = rmeta_link::read(&archive_map, path).unwrap();
         ab.add_archive(
             path,
             Box::new(move |fname: &str| {
-                // Ignore metadata files, no matter the name.
-                if fname == METADATA_FILENAME {
+                // Ignore metadata and rlib digest files.
+                if fname == METADATA_FILENAME || fname == rmeta_link::FILENAME {
                     return true;
                 }
 
-                // Don't include Rust objects if LTO is enabled
-                if lto && looks_like_rust_object_file(fname) {
+                // Don't include Rust objects if LTO is enabled.
+                if lto && digest.rust_object_files.iter().any(|f| f == fname) {
                     return true;
                 }
 
@@ -3155,7 +3170,7 @@ fn add_static_crate(
         if let Err(error) = archive.add_archive(
             cratepath,
             Box::new(move |f| {
-                if f == METADATA_FILENAME {
+                if f == METADATA_FILENAME || f == rmeta_link::FILENAME {
                     return true;
                 }
 
