@@ -6,7 +6,9 @@
 
 fn assign_both_fields_and_use() {
     let mut x: (u32, u32);
-    x.0 = 1; //~ ERROR
+    x.0 = 1;
+    //~^ ERROR E0381
+    //~| ERROR E0658
     x.1 = 22;
     drop(x.0);
     drop(x.1);
@@ -14,9 +16,11 @@ fn assign_both_fields_and_use() {
 
 fn assign_both_fields_the_use_var() {
     let mut x: (u32, u32);
-    x.0 = 1; //~ ERROR
+    x.0 = 1;
+    //~^ ERROR E0381
+    //~| ERROR E0658
     x.1 = 22;
     drop(x);
 }
 
-fn main() { }
+fn main() {}

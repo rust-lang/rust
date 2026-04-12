@@ -1,7 +1,7 @@
 error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
-  --> $DIR/borrowck-uninit-ref-chain.rs:18:5
+  --> $DIR/disallow-possibly-uninitialized.rs:11:5
    |
-LL |     a.x = 0;
+LL |     t.0 = 1;
    |     ^^^^^^^
    |
    = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
@@ -9,19 +9,9 @@ LL |     a.x = 0;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
-  --> $DIR/borrowck-uninit-ref-chain.rs:23:5
+  --> $DIR/disallow-possibly-uninitialized.rs:17:5
    |
-LL |     a.x = &&0;
-   |     ^^^^^^^^^
-   |
-   = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
-   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
-  --> $DIR/borrowck-uninit-ref-chain.rs:29:5
-   |
-LL |     a.x = 0;
+LL |     t.1 = 1;
    |     ^^^^^^^
    |
    = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
@@ -29,95 +19,66 @@ LL |     a.x = 0;
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
-  --> $DIR/borrowck-uninit-ref-chain.rs:34:5
+  --> $DIR/disallow-possibly-uninitialized.rs:23:5
    |
-LL |     a.x = &&0;
-   |     ^^^^^^^^^
+LL |     t.0 = 1;
+   |     ^^^^^^^
    |
    = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
    = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0381]: used binding `x` isn't initialized
-  --> $DIR/borrowck-uninit-ref-chain.rs:8:14
+error[E0658]: #![feature(partial_init_locals)] might be able to enable the initialisation here
+  --> $DIR/disallow-possibly-uninitialized.rs:28:5
    |
-LL |     let x: &&Box<i32>;
-   |         - binding declared here but left uninitialized
-LL |     let _y = &**x;
-   |              ^^^^ `**x` used here but it isn't initialized
+LL |     t.0 = 1;
+   |     ^^^^^^^
    |
-help: consider assigning a value
-   |
-LL |     let x: &&Box<i32> = &&Box::new(42);
-   |                       ++++++++++++++++
+   = note: see issue #153699 <https://github.com/rust-lang/rust/issues/153699> for more information
+   = help: add `#![feature(partial_init_locals)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0381]: used binding `x` isn't initialized
-  --> $DIR/borrowck-uninit-ref-chain.rs:11:14
+error[E0381]: partially assigned binding `t` isn't fully initialized
+  --> $DIR/disallow-possibly-uninitialized.rs:11:5
    |
-LL |     let x: &&S<i32, i32>;
-   |         - binding declared here but left uninitialized
-LL |     let _y = &**x;
-   |              ^^^^ `**x` used here but it isn't initialized
-   |
-help: consider assigning a value
-   |
-LL |     let x: &&S<i32, i32> = &&/* value */;
-   |                          +++++++++++++++
-
-error[E0381]: used binding `x` isn't initialized
-  --> $DIR/borrowck-uninit-ref-chain.rs:14:14
-   |
-LL |     let x: &&i32;
-   |         - binding declared here but left uninitialized
-LL |     let _y = &**x;
-   |              ^^^^ `**x` used here but it isn't initialized
-   |
-help: consider assigning a value
-   |
-LL |     let x: &&i32 = &&42;
-   |                  ++++++
-
-error[E0381]: partially assigned binding `a` isn't fully initialized
-  --> $DIR/borrowck-uninit-ref-chain.rs:18:5
-   |
-LL |     let mut a: S<i32, i32>;
+LL |     let mut t: (u64, u64);
    |         ----- binding declared here but left uninitialized
-LL |     a.x = 0;
-   |     ^^^^^^^ `a` partially assigned here but it isn't fully initialized
+LL |     t.0 = 1;
+   |     ^^^^^^^ `t` partially assigned here but it isn't fully initialized
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: partially assigned binding `a` isn't fully initialized
-  --> $DIR/borrowck-uninit-ref-chain.rs:23:5
+error[E0381]: partially assigned binding `t` isn't fully initialized
+  --> $DIR/disallow-possibly-uninitialized.rs:17:5
    |
-LL |     let mut a: S<&&i32, &&i32>;
+LL |     let mut t: (u64, u64);
    |         ----- binding declared here but left uninitialized
-LL |     a.x = &&0;
-   |     ^^^^^^^^^ `a` partially assigned here but it isn't fully initialized
+LL |     t.1 = 1;
+   |     ^^^^^^^ `t` partially assigned here but it isn't fully initialized
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: partially assigned binding `a` isn't fully initialized
-  --> $DIR/borrowck-uninit-ref-chain.rs:29:5
+error[E0381]: partially assigned binding `t` isn't fully initialized
+  --> $DIR/disallow-possibly-uninitialized.rs:23:5
    |
-LL |     let mut a: S<i32, i32>;
+LL |     let mut t: (u64, u64);
    |         ----- binding declared here but left uninitialized
-LL |     a.x = 0;
-   |     ^^^^^^^ `a` partially assigned here but it isn't fully initialized
+LL |     t.0 = 1;
+   |     ^^^^^^^ `t` partially assigned here but it isn't fully initialized
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error[E0381]: partially assigned binding `a` isn't fully initialized
-  --> $DIR/borrowck-uninit-ref-chain.rs:34:5
+error[E0381]: partially assigned binding `t` isn't fully initialized
+  --> $DIR/disallow-possibly-uninitialized.rs:28:5
    |
-LL |     let mut a: S<&&i32, &&i32>;
+LL |     let mut t: (u64,);
    |         ----- binding declared here but left uninitialized
-LL |     a.x = &&0;
-   |     ^^^^^^^^^ `a` partially assigned here but it isn't fully initialized
+LL |     t.0 = 1;
+   |     ^^^^^^^ `t` partially assigned here but it isn't fully initialized
    |
    = help: partial initialization isn't supported, fully initialize the binding with a default value and mutate it, or use `std::mem::MaybeUninit`
 
-error: aborting due to 11 previous errors
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0381, E0658.
 For more information about an error, try `rustc --explain E0381`.

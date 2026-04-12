@@ -29,6 +29,7 @@ use rustc_middle::ty::{
     suggest_constraining_type_params,
 };
 use rustc_mir_dataflow::move_paths::{InitKind, MoveOutIndex, MovePathIndex};
+use rustc_session::parse::feature_err;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{BytePos, ExpnKind, Ident, MacroKind, Span, Symbol, kw, sym};
@@ -879,6 +880,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 "partial initialization isn't supported, fully initialize the binding with a \
                  default value and mutate it, or use `std::mem::MaybeUninit`",
             );
+            if !tcx.features().partial_init_locals() {
+                feature_err(
+                    tcx.sess,
+                    sym::partial_init_locals,
+                    span,
+                    "#![feature(partial_init_locals)] might be able to \
+                    enable the initialisation here",
+                )
+                .emit();
+            }
         }
         err.span_label(span, format!("{path} {used} here but it {isnt_initialized}"));
 
