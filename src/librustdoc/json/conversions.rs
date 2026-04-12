@@ -75,6 +75,7 @@ impl JsonRenderer<'_> {
             name: name.map(|sym| sym.to_string()),
             span: span.and_then(|span| span.into_json(self)),
             visibility: visibility.into_json(self),
+            stability: item.stability(self.tcx).into_json(self),
             docs,
             attrs,
             deprecation: deprecation.into_json(self),
@@ -200,6 +201,18 @@ impl FromClean<attrs::Deprecation> for Deprecation {
             DeprecatedSince::Unspecified | DeprecatedSince::Err => None,
         };
         Deprecation { since, note: note.map(|sym| sym.to_string()) }
+    }
+}
+
+impl FromClean<hir::Stability> for Stability {
+    fn from_clean(stab: &hir::Stability, _renderer: &JsonRenderer<'_>) -> Self {
+        Stability {
+            feature: stab.feature.to_string(),
+            level: match stab.level {
+                hir::StabilityLevel::Unstable { .. } => StabilityLevel::Unstable,
+                hir::StabilityLevel::Stable { .. } => StabilityLevel::Stable,
+            },
+        }
     }
 }
 
@@ -921,6 +934,8 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
 
     vec![match kind {
         AK::Deprecated { .. } => return Vec::new(), // Handled separately into Item::deprecation.
+        AK::Stability { .. } => return Vec::new(),  // Handled separately into Item::stability
+
         AK::DocComment { .. } => unreachable!("doc comments stripped out earlier"),
 
         AK::MacroExport { .. } => Attribute::MacroExport,
