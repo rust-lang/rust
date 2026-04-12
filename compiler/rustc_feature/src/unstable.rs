@@ -363,6 +363,8 @@ declare_features! (
     (unstable, arbitrary_self_types_pointers, "1.83.0", Some(44874)),
     /// Target features on arm.
     (unstable, arm_target_feature, "1.27.0", Some(150246)),
+    /// Allows using `const` operands with pointer in inline assembly.
+    (unstable, asm_const_ptr, "CURRENT_RUSTC_VERSION", Some(128464)),
     /// Enables experimental inline assembly support for additional architectures.
     (unstable, asm_experimental_arch, "1.58.0", Some(93335)),
     /// Enables experimental register support in inline assembly.
