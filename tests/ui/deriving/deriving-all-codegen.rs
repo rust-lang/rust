@@ -79,6 +79,10 @@ struct Reorder {
     b10: &'static *const bool,
 }
 
+// A struct with a recursive type.
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+struct Recursive(Option<Box<Self>>);
+
 // A struct that doesn't impl `Copy`, which means it gets the non-trivial
 // `clone` implemention that clones the fields individually.
 #[derive(Clone)]
@@ -119,6 +123,10 @@ struct Generic<T: Trait, U> {
     u: U,
 }
 
+// A generic struct involving a lifetime and an associated type.
+#[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
+struct GenericLifetime<'a, T: Trait>(&'a T);
+
 // A packed, generic tuple struct involving an associated type. Because it is
 // packed, a `T: Copy` bound is added to all impls (and where clauses within
 // them) except for `Default`. This is because we must access fields using
@@ -127,6 +135,14 @@ struct Generic<T: Trait, U> {
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(packed)]
 struct PackedGeneric<T: Trait, U>(T, T::A, U);
+
+// A struct with a field referencing an associated constant.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+struct AssociatedConst([u8; Self::LEN]);
+
+impl AssociatedConst {
+    const LEN: usize = 10;
+}
 
 // An empty enum.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
