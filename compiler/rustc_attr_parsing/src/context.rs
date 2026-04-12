@@ -199,6 +199,7 @@ attribute_parsers!(
         Single<LinkSectionParser>,
         Single<LinkageParser>,
         Single<MacroExportParser>,
+        Single<MacroTokenLimitParser>,
         Single<MoveSizeLimitParser>,
         Single<MustNotSuspendParser>,
         Single<MustUseParser>,

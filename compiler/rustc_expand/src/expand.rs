@@ -2639,6 +2639,9 @@ pub struct ExpansionConfig<'feat> {
     pub crate_name: Symbol,
     pub features: &'feat Features,
     pub recursion_limit: Limit,
+    /// Maximum number of tokens allowed as input to a single `macro_rules!` expansion.
+    /// Prevents exponential token growth from hanging the compiler.
+    pub macro_token_limit: Limit,
     pub trace_mac: bool,
     /// If false, strip `#[test]` nodes
     pub should_test: bool,
@@ -2655,6 +2658,7 @@ impl ExpansionConfig<'_> {
             features,
             // FIXME should this limit be configurable?
             recursion_limit: Limit::new(1024),
+            macro_token_limit: Limit::new(1 << 20),
             trace_mac: false,
             should_test: false,
             span_debug: false,

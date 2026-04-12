@@ -368,6 +368,22 @@ fn expand_macro<'cx, 'a: 'cx>(
 ) -> Box<dyn MacResult + 'cx> {
     let psess = &cx.sess.psess;
 
+    // Guard against exponential token growth from recursive macros (issue #95698).
+    // A macro that doubles its output on each expansion can produce an astronomical
+    // number of tokens long before the recursion depth limit is reached.
+    // Configurable via `#![macro_token_limit = "N"]`.
+    if !cx.ecfg.macro_token_limit.value_within_limit(arg.len()) {
+        let limit = cx.ecfg.macro_token_limit.0;
+        let guar = cx.dcx().emit_err(errors::MacroInputTooLarge {
+            span: sp,
+            name,
+            token_count: arg.len(),
+            limit,
+            suggested_limit: limit.saturating_mul(2),
+        });
+        return DummyResult::any(sp, guar);
+    }
+
     if cx.trace_macros() {
         let msg = format!("expanding `{}! {{ {} }}`", name, pprust::tts_to_string(&arg));
         trace_macros_note(&mut cx.expansions, sp, msg);

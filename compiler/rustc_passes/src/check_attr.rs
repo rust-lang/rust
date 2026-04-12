@@ -264,6 +264,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::LinkSection { .. }
                     | AttributeKind::Linkage(..)
                     | AttributeKind::MacroEscape( .. )
+                    | AttributeKind::MacroTokenLimit { .. }
                     | AttributeKind::MacroUse { .. }
                     | AttributeKind::Marker(..)
                     | AttributeKind::MoveSizeLimit { .. }

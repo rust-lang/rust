@@ -184,6 +184,21 @@ pub(crate) struct RecursionLimitReached {
 }
 
 #[derive(Diagnostic)]
+#[diag("macro expansion token limit reached while expanding `{$name}!`")]
+#[help("the macro input has {$token_count} tokens, exceeding the limit of {$limit}")]
+#[note(
+    "this is typically caused by a macro that recursively produces exponentially growing output; consider adding `#![macro_token_limit = \"{$suggested_limit}\"]` to your crate if this is intentional"
+)]
+pub(crate) struct MacroInputTooLarge {
+    #[primary_span]
+    pub span: Span,
+    pub name: Ident,
+    pub token_count: usize,
+    pub limit: usize,
+    pub suggested_limit: usize,
+}
+
+#[derive(Diagnostic)]
 #[diag("removing an expression is not supported in this position")]
 pub(crate) struct RemoveExprNotSupported {
     #[primary_span]
