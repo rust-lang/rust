@@ -625,11 +625,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         FutureWarnPreceding, EncodeCrossCrate::Yes
     ),
     ungated!(
-        no_link, Normal,
-        template!(Word, "https://doc.rust-lang.org/reference/items/extern-crates.html#the-no_link-attribute"),
-        WarnFollowing, EncodeCrossCrate::No
-    ),
-    ungated!(
         repr, Normal,
         template!(
             List: &["C", "Rust", "transparent", "align(...)", "packed(...)", "<integer type>"],

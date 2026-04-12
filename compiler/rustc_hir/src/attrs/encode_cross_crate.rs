@@ -71,7 +71,6 @@ impl AttributeKind {
             NoBuiltins => Yes,
             NoCore(..) => No,
             NoImplicitPrelude(..) => No,
-            NoLink => No,
             NoMain => No,
             NoMangle(..) => Yes, // Needed for rustdoc
             NoStd(..) => No,
