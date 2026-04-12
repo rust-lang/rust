@@ -1,11 +1,11 @@
-use std::assert_matches;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::{assert_matches, env};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -18,9 +18,8 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
 use rustc_span::Symbol;
 use tracing::instrument;
-#[cfg(debug_assertions)]
-use {super::debug::EdgeFilter, std::env};
 
+use super::debug::EdgeFilter;
 use super::retained::RetainedDepGraph;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepKind, DepNode, WorkProductId, read_deps, with_deps};
@@ -1110,13 +1109,11 @@ pub(super) struct CurrentDepGraph {
     anon_node_to_index: ShardedHashMap<DepNode, DepNodeIndex>,
 
     /// This is used to verify that value fingerprints do not change between the
-    /// creation of a node and its recomputation.
-    #[cfg(debug_assertions)]
+    /// creation of a node and its recomputation. Only active with `debug_assertions`.
     value_fingerprints: Lock<IndexVec<DepNodeIndex, Option<Fingerprint>>>,
 
     /// Used to trap when a specific edge is added to the graph.
     /// This is used for debug purposes and is only active with `debug_assertions`.
-    #[cfg(debug_assertions)]
     forbidden_edge: Option<EdgeFilter>,
 
     /// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
@@ -1148,13 +1145,16 @@ impl CurrentDepGraph {
         previous.session_count().hash(&mut stable_hasher);
         let anon_id_seed = stable_hasher.finish();
 
-        #[cfg(debug_assertions)]
-        let forbidden_edge = match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
-            Ok(s) => match EdgeFilter::new(&s) {
-                Ok(f) => Some(f),
-                Err(err) => panic!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
-            },
-            Err(_) => None,
+        let forbidden_edge = if cfg!(debug_assertions) {
+            match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
+                Ok(s) => match EdgeFilter::new(&s) {
+                    Ok(f) => Some(f),
+                    Err(err) => panic!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
+                },
+                Err(_) => None,
+            }
+        } else {
+            None
         };
 
         let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
@@ -1166,10 +1166,12 @@ impl CurrentDepGraph {
                 new_node_count_estimate / sharded::shards(),
             ),
             anon_id_seed,
-            #[cfg(debug_assertions)]
             forbidden_edge,
-            #[cfg(debug_assertions)]
-            value_fingerprints: Lock::new(IndexVec::from_elem_n(None, new_node_count_estimate)),
+            value_fingerprints: Lock::new(if cfg!(debug_assertions) {
+                IndexVec::from_elem_n(None, new_node_count_estimate)
+            } else {
+                IndexVec::new()
+            }),
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
         }
@@ -1177,22 +1179,21 @@ impl CurrentDepGraph {
 
     fn record_edge(
         &self,
-        _dep_node_index: DepNodeIndex,
-        _key: DepNode,
-        _value_fingerprint: Fingerprint,
+        dep_node_index: DepNodeIndex,
+        key: DepNode,
+        value_fingerprint: Fingerprint,
     ) {
-        #[cfg(debug_assertions)]
-        {
+        if cfg!(debug_assertions) {
             if let Some(forbidden_edge) = &self.forbidden_edge {
-                forbidden_edge.index_to_node.lock().insert(_dep_node_index, _key);
+                forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
             }
             let prior_value_fingerprint = *self
                 .value_fingerprints
                 .lock()
-                .get_or_insert_with(_dep_node_index, || _value_fingerprint);
+                .get_or_insert_with(dep_node_index, || value_fingerprint);
             assert_eq!(
-                prior_value_fingerprint, _value_fingerprint,
-                "Unstable fingerprints for {_key:?}"
+                prior_value_fingerprint, value_fingerprint,
+                "Unstable fingerprints for {key:?}"
             );
         }
     }
