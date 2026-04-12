@@ -1,7 +1,13 @@
 #![feature(rustc_attrs)]
 #![feature(optimize_attribute)]
 #![feature(coverage_attribute)]
+#![feature(custom_test_frameworks)]
 #![allow(unused_attributes)]
+
+#![test_runner(x = 5)]
+//~^ ERROR malformed
+#![test_runner(x(x,y,z))]
+//~^ ERROR malformed
 
 #[inline(always = 5)]
 //~^ ERROR malformed

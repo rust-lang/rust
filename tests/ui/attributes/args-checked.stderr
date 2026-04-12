@@ -1,5 +1,23 @@
+error[E0565]: malformed `test_runner` attribute input
+  --> $DIR/args-checked.rs:7:1
+   |
+LL | #![test_runner(x = 5)]
+   | ^^^^^^^^^^^^^^^-----^^
+   | |              |
+   | |              didn't expect a literal here
+   | help: must be of the form: `#![test_runner(path)]`
+
+error[E0565]: malformed `test_runner` attribute input
+  --> $DIR/args-checked.rs:9:1
+   |
+LL | #![test_runner(x(x,y,z))]
+   | ^^^^^^^^^^^^^^^--------^^
+   | |              |
+   | |              didn't expect a literal here
+   | help: must be of the form: `#![test_runner(path)]`
+
 error[E0539]: malformed `inline` attribute input
-  --> $DIR/args-checked.rs:6:1
+  --> $DIR/args-checked.rs:12:1
    |
 LL | #[inline(always = 5)]
    | ^^^^^^^^^----------^^
@@ -20,7 +38,7 @@ LL + #[inline]
    |
 
 error[E0539]: malformed `inline` attribute input
-  --> $DIR/args-checked.rs:8:1
+  --> $DIR/args-checked.rs:14:1
    |
 LL | #[inline(always(x, y, z))]
    | ^^^^^^^^^---------------^^
@@ -41,7 +59,7 @@ LL + #[inline]
    |
 
 error[E0539]: malformed `instruction_set` attribute input
-  --> $DIR/args-checked.rs:10:1
+  --> $DIR/args-checked.rs:16:1
    |
 LL | #[instruction_set(arm::a32 = 5)]
    | ^^^^^^^^^^^^^^^^^^------------^^
@@ -52,7 +70,7 @@ LL | #[instruction_set(arm::a32 = 5)]
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
 
 error[E0539]: malformed `instruction_set` attribute input
-  --> $DIR/args-checked.rs:12:1
+  --> $DIR/args-checked.rs:18:1
    |
 LL | #[instruction_set(arm::a32(x, y, z))]
    | ^^^^^^^^^^^^^^^^^^-----------------^^
@@ -63,7 +81,7 @@ LL | #[instruction_set(arm::a32(x, y, z))]
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
 
 error[E0539]: malformed `optimize` attribute input
-  --> $DIR/args-checked.rs:14:1
+  --> $DIR/args-checked.rs:20:1
    |
 LL | #[optimize(size = 5)]
    | ^^^^^^^^^^^--------^^
@@ -83,7 +101,7 @@ LL + #[optimize(speed)]
    |
 
 error[E0539]: malformed `optimize` attribute input
-  --> $DIR/args-checked.rs:16:1
+  --> $DIR/args-checked.rs:22:1
    |
 LL | #[optimize(size(x, y, z))]
    | ^^^^^^^^^^^-------------^^
@@ -103,7 +121,7 @@ LL + #[optimize(speed)]
    |
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/args-checked.rs:18:1
+  --> $DIR/args-checked.rs:24:1
    |
 LL | #[coverage(off = 5)]
    | ^^^^^^^^^^^-------^^
@@ -120,7 +138,7 @@ LL + #[coverage(on)]
    |
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/args-checked.rs:20:1
+  --> $DIR/args-checked.rs:26:1
    |
 LL | #[coverage(off(x, y, z))]
    | ^^^^^^^^^^^------------^^
@@ -137,7 +155,7 @@ LL + #[coverage(on)]
    |
 
 error[E0539]: malformed `rustc_abi` attribute input
-  --> $DIR/args-checked.rs:22:1
+  --> $DIR/args-checked.rs:28:1
    |
 LL | #[rustc_abi(debug = 5)]
    | ^^^^^^^^^^^-----------^
@@ -154,7 +172,7 @@ LL + #[rustc_abi(debug)]
    |
 
 error[E0539]: malformed `rustc_abi` attribute input
-  --> $DIR/args-checked.rs:24:1
+  --> $DIR/args-checked.rs:30:1
    |
 LL | #[rustc_abi(debug(x, y, z))]
    | ^^^^^^^^^^^----------------^
@@ -171,19 +189,19 @@ LL + #[rustc_abi(debug)]
    |
 
 error: `rustc_allow_const_fn_unstable` expects feature names
-  --> $DIR/args-checked.rs:40:33
+  --> $DIR/args-checked.rs:46:33
    |
 LL | #[rustc_allow_const_fn_unstable(x = 5)]
    |                                 ^^^^^
 
 error: `rustc_allow_const_fn_unstable` expects feature names
-  --> $DIR/args-checked.rs:42:33
+  --> $DIR/args-checked.rs:48:33
    |
 LL | #[rustc_allow_const_fn_unstable(x(x, y, z))]
    |                                 ^^^^^^^^^^
 
 error[E0539]: malformed `used` attribute input
-  --> $DIR/args-checked.rs:46:1
+  --> $DIR/args-checked.rs:52:1
    |
 LL | #[used(always = 5)]
    | ^^^^^^^----------^^
@@ -203,7 +221,7 @@ LL + #[used]
    |
 
 error[E0539]: malformed `used` attribute input
-  --> $DIR/args-checked.rs:48:1
+  --> $DIR/args-checked.rs:54:1
    |
 LL | #[used(always(x, y, z))]
    | ^^^^^^^---------------^^
@@ -223,7 +241,7 @@ LL + #[used]
    |
 
 error[E0539]: malformed `rustc_must_implement_one_of` attribute input
-  --> $DIR/args-checked.rs:52:1
+  --> $DIR/args-checked.rs:58:1
    |
 LL | #[rustc_must_implement_one_of(eq = 5, neq)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------^^^^^^^
@@ -232,7 +250,7 @@ LL | #[rustc_must_implement_one_of(eq = 5, neq)]
    | help: must be of the form: `#[rustc_must_implement_one_of(function1, function2, ...)]`
 
 error[E0539]: malformed `rustc_must_implement_one_of` attribute input
-  --> $DIR/args-checked.rs:54:1
+  --> $DIR/args-checked.rs:60:1
    |
 LL | #[rustc_must_implement_one_of(eq(x, y, z), neq)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^^^^
@@ -241,7 +259,7 @@ LL | #[rustc_must_implement_one_of(eq(x, y, z), neq)]
    | help: must be of the form: `#[rustc_must_implement_one_of(function1, function2, ...)]`
 
 error[E0565]: malformed `rustc_dump_layout` attribute input
-  --> $DIR/args-checked.rs:60:1
+  --> $DIR/args-checked.rs:66:1
    |
 LL | #[rustc_dump_layout(debug = 5)]
    | ^^^^^^^^^^^^^^^^^^^^---------^^
@@ -249,7 +267,7 @@ LL | #[rustc_dump_layout(debug = 5)]
    |                     didn't expect a literal here
 
 error[E0565]: malformed `rustc_dump_layout` attribute input
-  --> $DIR/args-checked.rs:62:1
+  --> $DIR/args-checked.rs:68:1
    |
 LL | #[rustc_dump_layout(debug(x, y, z))]
    | ^^^^^^^^^^^^^^^^^^^^--------------^^
@@ -257,7 +275,7 @@ LL | #[rustc_dump_layout(debug(x, y, z))]
    |                     didn't expect a literal here
 
 error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
-  --> $DIR/args-checked.rs:30:1
+  --> $DIR/args-checked.rs:36:1
    |
 LL | #[macro_export(local_inner_macros = 5)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -267,7 +285,7 @@ LL | #[macro_export(local_inner_macros = 5)]
    = note: `#[deny(invalid_macro_export_arguments)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
-  --> $DIR/args-checked.rs:33:1
+  --> $DIR/args-checked.rs:39:1
    |
 LL | #[macro_export(local_inner_macros(x, y, z))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -275,13 +293,13 @@ LL | #[macro_export(local_inner_macros(x, y, z))]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
-error: aborting due to 20 previous errors
+error: aborting due to 22 previous errors
 
 Some errors have detailed explanations: E0539, E0565.
 For more information about an error, try `rustc --explain E0539`.
 Future incompatibility report: Future breakage diagnostic:
 error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
-  --> $DIR/args-checked.rs:30:1
+  --> $DIR/args-checked.rs:36:1
    |
 LL | #[macro_export(local_inner_macros = 5)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -292,7 +310,7 @@ LL | #[macro_export(local_inner_macros = 5)]
 
 Future breakage diagnostic:
 error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
-  --> $DIR/args-checked.rs:33:1
+  --> $DIR/args-checked.rs:39:1
    |
 LL | #[macro_export(local_inner_macros(x, y, z))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
