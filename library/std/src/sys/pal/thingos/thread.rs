@@ -63,6 +63,7 @@ const SYS_GET_TID: u32 = 0x1001;
 const SYS_SPAWN_THREAD: u32 = 0x1004;
 const SYS_TASK_WAIT: u32 = 0x1007;
 const SYS_YIELD: u32 = 0x100B;
+const SYS_AVAILABLE_PARALLELISM: u32 = 0x1012;
 const SYS_SLEEP_NS: u32 = 0x1200;
 const SYS_AUXV_GET: u32 = 0x1105;
 const SYS_VM_MAP: u32 = 0x2001;
@@ -288,10 +289,20 @@ pub fn sleep(dur: Duration) {
 
 /// Return the number of hardware threads available.
 ///
-/// Currently returns 1 until the scheduler exposes a CPU-count syscall.
+/// Uses `SYS_AVAILABLE_PARALLELISM` to request the kernel's effective
+/// CPU parallelism for the current thread.
+///
+/// Fallback behavior:
+/// - If the syscall is missing (`ENOSYS`) or fails, return 1.
+/// - If the kernel returns 0 or a negative value, return 1.
+///
+/// This keeps `available_parallelism()` usable during bring-up or against
+/// older kernels while still reporting real multi-core values when supported.
 pub fn available_parallelism() -> crate::io::Result<NonZero<usize>> {
-    // SAFETY: 1 is non-zero.
-    Ok(unsafe { NonZero::new_unchecked(1) })
+    let ret = unsafe { raw_syscall6(SYS_AVAILABLE_PARALLELISM, 0, 0, 0, 0, 0, 0) };
+    let cpus = if ret > 0 { ret as usize } else { 1 };
+    // SAFETY: cpus is clamped to at least 1.
+    Ok(unsafe { NonZero::new_unchecked(cpus) })
 }
 
 /// Return the OS-level thread identifier of the calling thread.
