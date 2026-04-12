@@ -197,7 +197,12 @@ fn test_accept_connect() {
 
     // Spawn the server thread.
     let server_thread = thread::spawn(move || {
-        net::accept_ipv4(server_sockfd).unwrap();
+        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+        let flags = unsafe { errno_result(libc::fcntl(peerfd, libc::F_GETFL, 0)).unwrap() };
+
+        // Ensure that peer socket is blocking.
+        assert_eq!(flags & libc::O_NONBLOCK, 0);
 
         // Yield back to the client thread to test whether calling `connect` first also
         // works.

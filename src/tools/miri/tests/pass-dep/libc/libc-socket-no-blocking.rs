@@ -19,6 +19,7 @@ const TEST_BYTES: &[u8] = b"these are some test bytes!";
 
 fn main() {
     test_accept_nonblock();
+    test_accept4_sock_nonblock_opt();
     test_send_recv_nonblock();
     test_send_recv_dontwait();
     test_write_read_nonblock();
@@ -42,7 +43,8 @@ fn test_accept_nonblock() {
     // Assert that either EAGAIN or EWOULDBLOCK was returned.
     assert_eq!(err.kind(), ErrorKind::WouldBlock);
 
-    let t1 = thread::spawn(move || {
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
         // Instantly yield to main thread to ensure that the `connect` syscall
         // was called before we call the `accept` on the server.
         thread::sleep(Duration::from_millis(10));
@@ -52,7 +54,40 @@ fn test_accept_nonblock() {
 
     net::connect_ipv4(client_sockfd, addr).unwrap();
 
-    t1.join().unwrap();
+    server_thread.join().unwrap();
+}
+
+/// Test that calling `accept4` with the SOCK_NONBLOCK flag produces
+/// a non-blocking peer socket.
+fn test_accept4_sock_nonblock_opt() {
+    let (server_sockfd, addr) = net::make_listener_ipv4(0).unwrap();
+    let client_sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    // Spawn the server thread.
+    let server_thread = thread::spawn(move || {
+        let (peerfd, _) = net::sockname_ipv4(|storage, len| unsafe {
+            libc::accept4(server_sockfd, storage, len, libc::SOCK_NONBLOCK)
+        })
+        .unwrap();
+
+        let flags = unsafe { errno_result(libc::fcntl(peerfd, libc::F_GETFL, 0)).unwrap() };
+
+        // Ensure that peer socket is non-blocking.
+        assert_eq!(flags & libc::O_NONBLOCK, libc::O_NONBLOCK);
+
+        let mut buffer = [0u8; 8];
+        // Reading from a socket should return EWOULDBLOCK when there is no
+        // data written into it.
+        let err = unsafe {
+            errno_result(libc::read(peerfd, buffer.as_mut_ptr().cast(), buffer.len())).unwrap_err()
+        };
+        assert_eq!(err.kind(), ErrorKind::WouldBlock);
+    });
+
+    net::connect_ipv4(client_sockfd, addr).unwrap();
+
+    server_thread.join().unwrap();
 }
 
 /// Test sending bytes into and receiving bytes from a connected stream without blocking.
