@@ -1,0 +1,76 @@
+error[E0277]: `&impl Future<Output = ()>` is not a future
+  --> $DIR/await-ref-future.rs:10:9
+   |
+LL |     fut.await;
+   |         ^^^^^ `&impl Future<Output = ()>` is not a future
+   |
+   = help: the trait `Future` is not implemented for `&impl Future<Output = ()>`
+   = note: &impl Future<Output = ()> must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `&impl Future<Output = ()>` to implement `IntoFuture`
+help: consider removing the leading `&`-reference
+   |
+LL -     let fut = &my_async_fn();
+LL +     let fut = my_async_fn();
+   |
+
+error[E0277]: `&impl Future<Output = ()>` is not a future
+  --> $DIR/await-ref-future.rs:14:22
+   |
+LL |     (&my_async_fn()).await;
+   |                      ^^^^^ `&impl Future<Output = ()>` is not a future
+   |
+   = help: the trait `Future` is not implemented for `&impl Future<Output = ()>`
+   = note: &impl Future<Output = ()> must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `&impl Future<Output = ()>` to implement `IntoFuture`
+help: consider removing the leading `&`-reference
+   |
+LL -     (&my_async_fn()).await;
+LL +     my_async_fn().await;
+   |
+
+error[E0277]: `&impl std::future::Future<Output = ()>` is not a future
+  --> $DIR/await-ref-future.rs:18:9
+   |
+LL |     fut.await;
+   |         ^^^^^ `&impl std::future::Future<Output = ()>` is not a future
+   |
+   = help: the trait `Future` is not implemented for `&impl std::future::Future<Output = ()>`
+   = note: &impl std::future::Future<Output = ()> must be a future or must implement `IntoFuture` to be awaited
+help: the trait `Future` is implemented for `&mut F`
+  --> $SRC_DIR/core/src/future/future.rs:LL:COL
+   = note: required for `&impl std::future::Future<Output = ()>` to implement `IntoFuture`
+help: consider removing the `&` from the parameter type
+   |
+LL - async fn bar(fut: &impl std::future::Future<Output = ()>) {
+LL + async fn bar(fut: impl std::future::Future<Output = ()>) {
+   |
+
+error[E0277]: `&dyn Future<Output = ()>` is not a future
+  --> $DIR/await-ref-future.rs:22:9
+   |
+LL |     fut.await;
+   |         ^^^^^ `&dyn Future<Output = ()>` is not a future
+   |
+   = help: the trait `Future` is not implemented for `&dyn Future<Output = ()>`
+   = note: &dyn Future<Output = ()> must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `&dyn Future<Output = ()>` to implement `IntoFuture`
+help: remove the `.await`
+   |
+LL -     fut.await;
+LL +     fut;
+   |
+
+error[E0277]: `&impl Future<Output = ()>` is not a future
+  --> $DIR/await-ref-future.rs:27:9
+   |
+LL |     fut.await;
+   |         ^^^^^ `&impl Future<Output = ()>` is not a future
+   |
+   = help: the trait `Future` is not implemented for `&impl Future<Output = ()>`
+   = note: &impl Future<Output = ()> must be a future or must implement `IntoFuture` to be awaited
+   = help: a reference to a future is not a future; consider removing the leading `&`-reference
+   = note: required for `&impl Future<Output = ()>` to implement `IntoFuture`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
