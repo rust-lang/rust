@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
 use rustc_abi::FieldIdx;
-use rustc_middle::mir::*;
+use rustc_middle::mir::{Pinnedness, Place, PlaceElem, ProjectionElem};
 use rustc_middle::span_bug;
-use rustc_middle::thir::*;
+use rustc_middle::thir::{Ascription, DerefPatBorrowMode, FieldPat, Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_span::Span;
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
@@ -12,89 +13,200 @@ use crate::builder::matches::{
     FlatPat, MatchPairTree, PatConstKind, PatternExtraData, SliceLenOp, TestableCase,
 };
 
-impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// Builds and pushes [`MatchPairTree`] subtrees, one for each pattern in
-    /// `subpatterns`, representing the fields of a [`PatKind::Variant`] or
-    /// [`PatKind::Leaf`].
-    ///
-    /// Used internally by [`MatchPairTree::for_pattern`].
-    fn field_match_pairs(
-        &mut self,
-        match_pairs: &mut Vec<MatchPairTree<'tcx>>,
-        extra_data: &mut PatternExtraData<'tcx>,
-        place: PlaceBuilder<'tcx>,
-        subpatterns: &[FieldPat<'tcx>],
-    ) {
-        for fieldpat in subpatterns {
-            let place = place.clone_project(PlaceElem::Field(fieldpat.field, fieldpat.pattern.ty));
-            MatchPairTree::for_pattern(place, &fieldpat.pattern, self, match_pairs, extra_data);
-        }
+/// For an array or slice pattern's subpatterns (prefix/slice/suffix), returns a list
+/// of those subpatterns, each paired with a suitably-projected [`PlaceBuilder`].
+fn prefix_slice_suffix<'a, 'tcx>(
+    place: &PlaceBuilder<'tcx>,
+    array_len: Option<u64>, // Some for array patterns; None for slice patterns
+    prefix: &'a [Pat<'tcx>],
+    opt_slice: &'a Option<Box<Pat<'tcx>>>,
+    suffix: &'a [Pat<'tcx>],
+) -> Vec<(PlaceBuilder<'tcx>, &'a Pat<'tcx>)> {
+    let prefix_len = u64::try_from(prefix.len()).unwrap();
+    let suffix_len = u64::try_from(suffix.len()).unwrap();
+
+    let mut output_pairs =
+        Vec::with_capacity(prefix.len() + usize::from(opt_slice.is_some()) + suffix.len());
+
+    // For slice patterns with a `..` followed by 0 or more suffix subpatterns,
+    // the actual slice index of those subpatterns isn't statically known, so
+    // we have to index them relative to the end of the slice.
+    //
+    // For array patterns, all subpatterns are indexed relative to the start.
+    let (min_length, is_array) = match array_len {
+        Some(len) => (len, true),
+        None => (prefix_len + suffix_len, false),
+    };
+
+    for (offset, prefix_subpat) in (0u64..).zip(prefix) {
+        let elem = ProjectionElem::ConstantIndex { offset, min_length, from_end: false };
+        let subplace = place.clone_project(elem);
+        output_pairs.push((subplace, prefix_subpat));
     }
 
-    /// Builds [`MatchPairTree`] subtrees for the prefix/middle/suffix parts of an
-    /// array pattern or slice pattern, and adds those trees to `match_pairs`.
-    ///
-    /// Used internally by [`MatchPairTree::for_pattern`].
-    fn prefix_slice_suffix(
-        &mut self,
-        match_pairs: &mut Vec<MatchPairTree<'tcx>>,
-        extra_data: &mut PatternExtraData<'tcx>,
-        place: &PlaceBuilder<'tcx>,
-        array_len: Option<u64>,
-        prefix: &[Pat<'tcx>],
-        opt_slice: &Option<Box<Pat<'tcx>>>,
-        suffix: &[Pat<'tcx>],
-    ) {
-        let prefix_len = u64::try_from(prefix.len()).unwrap();
-        let suffix_len = u64::try_from(suffix.len()).unwrap();
-
-        // For slice patterns with a `..` followed by 0 or more suffix subpatterns,
-        // the actual slice index of those subpatterns isn't statically known, so
-        // we have to index them relative to the end of the slice.
-        //
-        // For array patterns, all subpatterns are indexed relative to the start.
-        let (min_length, is_array) = match array_len {
-            Some(len) => (len, true),
-            None => (prefix_len + suffix_len, false),
+    if let Some(slice_subpat) = opt_slice {
+        let elem = PlaceElem::Subslice {
+            from: prefix_len,
+            to: if is_array { min_length - suffix_len } else { suffix_len },
+            from_end: !is_array,
         };
+        let subplace = place.clone_project(elem);
+        output_pairs.push((subplace, slice_subpat));
+    }
 
-        for (offset, subpattern) in (0u64..).zip(prefix) {
-            let elem = ProjectionElem::ConstantIndex { offset, min_length, from_end: false };
-            let place = place.clone_project(elem);
-            MatchPairTree::for_pattern(place, subpattern, self, match_pairs, extra_data)
-        }
+    for (offset_from_end, suffix_subpat) in (1u64..).zip(suffix.iter().rev()) {
+        let elem = ProjectionElem::ConstantIndex {
+            offset: if is_array { min_length - offset_from_end } else { offset_from_end },
+            min_length,
+            from_end: !is_array,
+        };
+        let subplace = place.clone_project(elem);
+        output_pairs.push((subplace, suffix_subpat));
+    }
 
-        if let Some(subslice_pat) = opt_slice {
-            let subslice = place.clone_project(PlaceElem::Subslice {
-                from: prefix_len,
-                to: if is_array { min_length - suffix_len } else { suffix_len },
-                from_end: !is_array,
-            });
-            MatchPairTree::for_pattern(subslice, subslice_pat, self, match_pairs, extra_data);
-        }
+    output_pairs
+}
 
-        for (end_offset, subpattern) in (1u64..).zip(suffix.iter().rev()) {
-            let elem = ProjectionElem::ConstantIndex {
-                offset: if is_array { min_length - end_offset } else { end_offset },
-                min_length,
-                from_end: !is_array,
-            };
-            let place = place.clone_project(elem);
-            MatchPairTree::for_pattern(place, subpattern, self, match_pairs, extra_data)
-        }
+impl<'tcx> FlatPat<'tcx> {
+    /// Creates a `FlatPat` containing a simplified [`MatchPairTree`] list/forest
+    /// for the given pattern.
+    pub(crate) fn new(
+        place: PlaceBuilder<'tcx>,
+        pattern: &Pat<'tcx>,
+        cx: &mut Builder<'_, 'tcx>,
+    ) -> Self {
+        // Recursively lower the THIR pattern into an intermediate form,
+        // then flatten into a `FlatPat`.
+        let inter_pat = InterPat::lower_thir_pat(cx, place, pattern);
+        FlatPat::from_inter_pat(cx, inter_pat)
+    }
+
+    fn from_inter_pat(cx: &mut Builder<'_, 'tcx>, inter_pat: InterPat<'tcx>) -> Self {
+        let mut match_pairs = vec![];
+        let mut extra_data = PatternExtraData {
+            span: inter_pat.pattern_span,
+            bindings: vec![],
+            ascriptions: vec![],
+            is_never: inter_pat.is_never,
+        };
+        MatchPairTree::squash_inter_pat(cx, inter_pat, &mut match_pairs, &mut extra_data);
+
+        FlatPat { match_pairs, extra_data }
     }
 }
 
 impl<'tcx> MatchPairTree<'tcx> {
-    /// Recursively builds a match pair tree for the given pattern and its
-    /// subpatterns.
-    pub(super) fn for_pattern(
-        mut place_builder: PlaceBuilder<'tcx>,
-        pattern: &Pat<'tcx>,
+    /// Squashes an [`InterPat`] into a forest of refutable [`MatchPairTree`] nodes,
+    /// while accumulating ascriptions and bindings.
+    fn squash_inter_pat(
         cx: &mut Builder<'_, 'tcx>,
+        inter_pat: InterPat<'tcx>,
         match_pairs: &mut Vec<Self>, // Newly-created nodes are added to this vector
         extra_data: &mut PatternExtraData<'tcx>, // Bindings/ascriptions are added here
     ) {
+        extra_data.ascriptions.extend(inter_pat.ascriptions);
+
+        if let Some(or_subpats) = inter_pat.or_subpats {
+            assert!(inter_pat.testable_case.is_none());
+            assert!(inter_pat.subpats.is_empty());
+            assert!(inter_pat.binding.is_none());
+
+            let or_subpats = or_subpats
+                .into_iter()
+                .map(|subpat| FlatPat::from_inter_pat(cx, subpat))
+                .collect::<Box<[_]>>();
+
+            if !or_subpats[0].extra_data.bindings.is_empty() {
+                // Hold a place for any bindings established in (possibly-nested) or-patterns.
+                // By only holding a place when bindings are present, we skip over any
+                // or-patterns that will be simplified by `merge_trivial_subcandidates`. In
+                // other words, we can assume this expands into subcandidates.
+                // FIXME(@dianne): this needs updating/removing if we always merge or-patterns
+                extra_data.bindings.push(super::SubpatternBindings::FromOrPattern);
+            }
+
+            match_pairs.push(MatchPairTree {
+                // Or-patterns never need a place during MIR building.
+                place: None,
+                testable_case: TestableCase::Or { pats: or_subpats },
+                subpairs: vec![],
+                pattern_span: inter_pat.pattern_span,
+            });
+        }
+
+        // Recursively squash any subpatterns into refutable `MatchPairTree` forests.
+        let mut subpairs = vec![];
+        for subpat in inter_pat.subpats {
+            MatchPairTree::squash_inter_pat(cx, subpat, &mut subpairs, extra_data);
+        }
+
+        if let Some(testable_case) = inter_pat.testable_case {
+            // This pattern is refutable, so push a new match-pair node.
+            //
+            // If this match is inside a closure, it's essential that the place
+            // we're testing was actually captured! Be sure to keep `ExprUseVisitor`
+            // in sync with the refutability checks in this module.
+            assert!(inter_pat.place.is_some());
+            assert!(!matches!(testable_case, TestableCase::Or { .. }));
+            match_pairs.push(MatchPairTree {
+                place: inter_pat.place,
+                testable_case,
+                subpairs,
+                pattern_span: inter_pat.pattern_span,
+            });
+        } else {
+            // This pattern is irrefutable, so it doesn't need its own match-pair node.
+            // Just push its refutable subpatterns instead, if any.
+            match_pairs.extend(subpairs);
+        }
+
+        // If present, the binding must be pushed _after_ traversing subpatterns.
+        // This is so that when lowering something like `x @ NonCopy { copy_field }`,
+        // the binding to `copy_field` will occur before the binding for `x`.
+        // See <https://github.com/rust-lang/rust/issues/69971> for more background.
+        if let Some(binding) = inter_pat.binding {
+            extra_data.bindings.push(super::SubpatternBindings::One(binding));
+        }
+    }
+}
+
+/// "Intermediate pattern", a partly-lowered THIR [`Pat`] that has not yet been
+/// squashed into a forest of refutable [`MatchPairTree`] nodes.
+struct InterPat<'tcx> {
+    /// Place that this pattern node will test.
+    ///
+    /// If `None`, we're in a closure that didn't capture the relevant place,
+    /// because it won't actually be tested.
+    place: Option<Place<'tcx>>,
+    /// Testable condition to compare the place to (e.g. "is 3" or "is Some").
+    ///
+    /// If `None`, this pattern node is irrefutable (or an or-pattern),
+    /// though it might have refutable descendants.
+    testable_case: Option<TestableCase<'tcx>>,
+
+    /// Immediate subpatterns of a non or-pattern node.
+    subpats: Vec<InterPat<'tcx>>,
+    /// Immediate subpatterns of an or-pattern node.
+    ///
+    /// Invariant: If this is Some, then `subpats` and `testable_case` must be empty.
+    or_subpats: Option<Box<[InterPat<'tcx>]>>,
+
+    ascriptions: Vec<super::Ascription<'tcx>>,
+    /// Binding to establish for a [`PatKind::Binding`] node.
+    binding: Option<super::Binding<'tcx>>,
+
+    /// Span field of the THIR pattern this node was created from.
+    pattern_span: Span,
+    /// True if this pattern can never match, because it contains a never pattern.
+    is_never: bool,
+}
+
+impl<'tcx> InterPat<'tcx> {
+    fn lower_thir_pat(
+        cx: &mut Builder<'_, 'tcx>,
+        mut place_builder: PlaceBuilder<'tcx>,
+        pattern: &Pat<'tcx>,
+    ) -> Self {
         // Force the place type to the pattern's type.
         // FIXME(oli-obk): can we use this to simplify slice/array pattern hacks?
         if let Some(resolved) = place_builder.resolve_upvar(cx) {
@@ -118,14 +230,19 @@ impl<'tcx> MatchPairTree<'tcx> {
             }
         }
 
+        // Variables that will become `InterPat` fields:
         let place = place_builder.try_to_place(cx);
+        let mut subpats = vec![];
+        let mut or_subpats = None;
+        let mut ascriptions = vec![];
+        let mut binding = None;
 
         // Apply any type ascriptions to the value at `match_pair.place`.
         if let Some(place) = place
             && let Some(extra) = &pattern.extra
         {
             for &Ascription { ref annotation, variance } in &extra.ascriptions {
-                extra_data.ascriptions.push(super::Ascription {
+                ascriptions.push(super::Ascription {
                     source: place,
                     annotation: annotation.clone(),
                     variance,
@@ -133,22 +250,16 @@ impl<'tcx> MatchPairTree<'tcx> {
             }
         }
 
-        let mut subpairs = Vec::new();
         let testable_case = match pattern.kind {
             PatKind::Missing | PatKind::Wild | PatKind::Error(_) => None,
 
             PatKind::Or { ref pats } => {
-                let pats: Box<[FlatPat<'tcx>]> =
-                    pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect();
-                if !pats[0].extra_data.bindings.is_empty() {
-                    // Hold a place for any bindings established in (possibly-nested) or-patterns.
-                    // By only holding a place when bindings are present, we skip over any
-                    // or-patterns that will be simplified by `merge_trivial_subcandidates`. In
-                    // other words, we can assume this expands into subcandidates.
-                    // FIXME(@dianne): this needs updating/removing if we always merge or-patterns
-                    extra_data.bindings.push(super::SubpatternBindings::FromOrPattern);
-                }
-                Some(TestableCase::Or { pats })
+                or_subpats = Some(
+                    pats.iter()
+                        .map(|subpat| InterPat::lower_thir_pat(cx, place_builder.clone(), subpat))
+                        .collect::<Box<[_]>>(),
+                );
+                None
             }
 
             PatKind::Range(ref range) => {
@@ -184,48 +295,22 @@ impl<'tcx> MatchPairTree<'tcx> {
             }
 
             PatKind::Binding { mode, var, is_shorthand, ref subpattern, .. } => {
-                // In order to please the borrow checker, when lowering a pattern
-                // like `x @ subpat` we must establish any bindings in `subpat`
-                // before establishing the binding for `x`.
-                //
-                // For example (from #69971):
-                //
-                // ```ignore (illustrative)
-                // struct NonCopyStruct {
-                //     copy_field: u32,
-                // }
-                //
-                // fn foo1(x: NonCopyStruct) {
-                //     let y @ NonCopyStruct { copy_field: z } = x;
-                //     // the above should turn into
-                //     let z = x.copy_field;
-                //     let y = x;
-                // }
-                // ```
-
                 // First, recurse into the subpattern, if any.
                 if let Some(subpattern) = subpattern.as_ref() {
                     // this is the `x @ P` case; have to keep matching against `P` now
-                    MatchPairTree::for_pattern(
-                        place_builder,
-                        subpattern,
-                        cx,
-                        &mut subpairs,
-                        extra_data,
-                    );
+                    subpats.push(InterPat::lower_thir_pat(cx, place_builder, subpattern));
                 }
 
                 // Then push this binding, after any bindings in the subpattern.
-                if let Some(source) = place {
-                    extra_data.bindings.push(super::SubpatternBindings::One(super::Binding {
+                if let Some(place) = place {
+                    binding = Some(super::Binding {
                         span: pattern.span,
-                        source,
+                        source: place,
                         var_id: var,
                         binding_mode: mode,
                         is_shorthand,
-                    }));
+                    });
                 }
-
                 None
             }
 
@@ -239,15 +324,11 @@ impl<'tcx> MatchPairTree<'tcx> {
                     _ => None,
                 };
                 if let Some(array_len) = array_len {
-                    cx.prefix_slice_suffix(
-                        &mut subpairs,
-                        extra_data,
-                        &place_builder,
-                        Some(array_len),
-                        prefix,
-                        slice,
-                        suffix,
-                    );
+                    for (subplace, subpat) in
+                        prefix_slice_suffix(&place_builder, Some(array_len), prefix, slice, suffix)
+                    {
+                        subpats.push(InterPat::lower_thir_pat(cx, subplace, subpat));
+                    }
                 } else {
                     // If the array length couldn't be determined, ignore the
                     // subpatterns and delayed-assert that compilation will fail.
@@ -263,19 +344,15 @@ impl<'tcx> MatchPairTree<'tcx> {
                 None
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                cx.prefix_slice_suffix(
-                    &mut subpairs,
-                    extra_data,
-                    &place_builder,
-                    None,
-                    prefix,
-                    slice,
-                    suffix,
-                );
+                for (subplace, subpat) in
+                    prefix_slice_suffix(&place_builder, None, prefix, slice, suffix)
+                {
+                    subpats.push(InterPat::lower_thir_pat(cx, subplace, subpat));
+                }
 
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
-                    // This pattern is shaped like `[..]`. It can match a slice
-                    // of any length, so no length test is needed.
+                    // A slice pattern shaped like `[..]` is irrefutable.
+                    // It can match a slice of any length, so no length test is needed.
                     None
                 } else {
                     // Any other shape of slice pattern requires a length test.
@@ -294,7 +371,10 @@ impl<'tcx> MatchPairTree<'tcx> {
 
             PatKind::Variant { adt_def, variant_index, args: _, ref subpatterns } => {
                 let downcast_place = place_builder.downcast(adt_def, variant_index); // `(x as Variant)`
-                cx.field_match_pairs(&mut subpairs, extra_data, downcast_place, subpatterns);
+                for &FieldPat { field, pattern: ref subpat } in subpatterns {
+                    let subplace = downcast_place.clone_project(PlaceElem::Field(field, subpat.ty));
+                    subpats.push(InterPat::lower_thir_pat(cx, subplace, subpat));
+                }
 
                 // We treat non-exhaustive enums the same independent of the crate they are
                 // defined in, to avoid differences in the operational semantics between crates.
@@ -308,7 +388,10 @@ impl<'tcx> MatchPairTree<'tcx> {
             }
 
             PatKind::Leaf { ref subpatterns } => {
-                cx.field_match_pairs(&mut subpairs, extra_data, place_builder, subpatterns);
+                for &FieldPat { field, pattern: ref subpat } in subpatterns {
+                    let subplace = place_builder.clone_project(PlaceElem::Field(field, subpat.ty));
+                    subpats.push(InterPat::lower_thir_pat(cx, subplace, subpat));
+                }
                 None
             }
 
@@ -317,27 +400,19 @@ impl<'tcx> MatchPairTree<'tcx> {
                     Some(p_ty) if p_ty.is_ref() => p_ty,
                     _ => span_bug!(pattern.span, "bad type for pinned deref: {:?}", pattern.ty),
                 };
-                MatchPairTree::for_pattern(
+                subpats.push(InterPat::lower_thir_pat(
+                    cx,
                     // Project into the `Pin(_)` struct, then deref the inner `&` or `&mut`.
                     place_builder.field(FieldIdx::ZERO, pinned_ref_ty).deref(),
                     subpattern,
-                    cx,
-                    &mut subpairs,
-                    extra_data,
-                );
+                ));
 
                 None
             }
 
             PatKind::Deref { pin: Pinnedness::Not, ref subpattern }
             | PatKind::DerefPattern { ref subpattern, borrow: DerefPatBorrowMode::Box } => {
-                MatchPairTree::for_pattern(
-                    place_builder.deref(),
-                    subpattern,
-                    cx,
-                    &mut subpairs,
-                    extra_data,
-                );
+                subpats.push(InterPat::lower_thir_pat(cx, place_builder.deref(), subpattern));
                 None
             }
 
@@ -351,13 +426,11 @@ impl<'tcx> MatchPairTree<'tcx> {
                     Ty::new_ref(cx.tcx, cx.tcx.lifetimes.re_erased, subpattern.ty, mutability),
                     pattern.span,
                 );
-                MatchPairTree::for_pattern(
+                subpats.push(InterPat::lower_thir_pat(
+                    cx,
                     PlaceBuilder::from(temp).deref(),
                     subpattern,
-                    cx,
-                    &mut subpairs,
-                    extra_data,
-                );
+                ));
                 Some(TestableCase::Deref { temp, mutability })
             }
 
@@ -369,24 +442,21 @@ impl<'tcx> MatchPairTree<'tcx> {
             PatKind::Never => Some(TestableCase::Never),
         };
 
-        if let Some(testable_case) = testable_case {
-            // This pattern is refutable, so push a new match-pair node.
-            //
-            // Note: unless test_case is TestCase::Or, place must not be None.
-            // This means that the closure capture analysis in
-            // rustc_hir_typeck::upvar, and in particular the pattern handling
-            // code of ExprUseVisitor, must capture all of the places we'll use.
-            // Make sure to keep these two parts in sync!
-            match_pairs.push(MatchPairTree {
-                place,
-                testable_case,
-                subpairs,
-                pattern_span: pattern.span,
-            })
-        } else {
-            // This pattern is irrefutable, so it doesn't need its own match-pair node.
-            // Just push its refutable subpatterns instead, if any.
-            match_pairs.extend(subpairs);
+        let is_never = matches!(pattern.kind, PatKind::Never)
+            || subpats.iter().any(|subpat| subpat.is_never)
+            || or_subpats
+                .as_ref()
+                .is_some_and(|or_subpats| or_subpats.iter().all(|subpat| subpat.is_never));
+
+        InterPat {
+            place,
+            testable_case,
+            subpats,
+            or_subpats,
+            ascriptions,
+            binding,
+            pattern_span: pattern.span,
+            is_never,
         }
     }
 }
