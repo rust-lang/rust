@@ -699,17 +699,30 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         // We are trying to avoid reporting this error if other related errors were reported.
         if res != Res::Err && inner_attr && !self.tcx.features().custom_inner_attributes() {
-            let is_macro = match res {
-                Res::Def(..) => true,
-                Res::NonMacroAttr(..) => false,
+            match res {
+                Res::Def(..) => {
+                    feature_err(
+                        &self.tcx.sess,
+                        sym::custom_inner_attributes,
+                        path.span,
+                        "inner macro attributes are unstable",
+                    )
+                    .emit();
+                }
+                Res::NonMacroAttr(NonMacroAttrKind::Tool) => {
+                    // Permit "tool" inner attributes, such as #![rustfmt::skip]
+                }
+                Res::NonMacroAttr(..) => {
+                    feature_err(
+                        &self.tcx.sess,
+                        sym::custom_inner_attributes,
+                        path.span,
+                        "custom inner attributes are unstable",
+                    )
+                    .emit();
+                }
                 _ => unreachable!(),
             };
-            let msg = if is_macro {
-                "inner macro attributes are unstable"
-            } else {
-                "custom inner attributes are unstable"
-            };
-            feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
         }
 
         let diagnostic_attributes: &[(Symbol, bool)] = &[
