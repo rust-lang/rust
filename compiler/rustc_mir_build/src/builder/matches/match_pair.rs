@@ -4,7 +4,8 @@ use rustc_abi::FieldIdx;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_span::sym;
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
@@ -12,7 +13,47 @@ use crate::builder::matches::{
     FlatPat, MatchPairTree, PatConstKind, PatternExtraData, SliceLenOp, TestableCase,
 };
 
+/// Checks whether every pattern in `elements` is a `PatKind::Constant` and,
+/// if so, reconstructs a single aggregate `ty::Value` that represents the whole
+/// array or slice. Returns `None` when any element is not a constant or the
+/// sequence is too short to benefit from an aggregate comparison.
+fn try_reconstruct_aggregate_constant<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    aggregate_ty: Ty<'tcx>,
+    elements: &[Pat<'tcx>],
+) -> Option<ty::Value<'tcx>> {
+    // A single element (or empty array) is not worth an aggregate comparison.
+    if elements.len() <= 1 {
+        return None;
+    }
+    let branches = elements
+        .iter()
+        .map(|pat| {
+            if let PatKind::Constant { value } = pat.kind {
+                Some(ty::Const::new_value(tcx, value.valtree, value.ty))
+            } else {
+                None
+            }
+        })
+        .collect::<Option<Vec<_>>>()?;
+    let valtree = ty::ValTree::from_branches(tcx, branches);
+    Some(ty::Value { ty: aggregate_ty, valtree })
+}
+
 impl<'a, 'tcx> Builder<'a, 'tcx> {
+    /// Check if we can use aggregate `PartialEq::eq` comparisons for constant array/slice patterns.
+    /// This is not possible in const contexts unless `#![feature(const_cmp, const_trait_impl)]` are enabled,
+    /// because`PartialEq` is not const-stable.
+    fn can_use_aggregate_eq(&self) -> bool {
+        let const_partial_eq_enabled = {
+            let features = self.tcx.features();
+            features.enabled(sym::const_trait_impl) && features.enabled(sym::const_cmp)
+        };
+        let in_const_context = self.tcx.is_const_fn(self.def_id.to_def_id())
+            || !self.tcx.hir_body_owner_kind(self.def_id).is_fn_or_closure();
+        !in_const_context || const_partial_eq_enabled
+    }
+
     /// Builds and pushes [`MatchPairTree`] subtrees, one for each pattern in
     /// `subpatterns`, representing the fields of a [`PatKind::Variant`] or
     /// [`PatKind::Leaf`].
@@ -239,15 +280,31 @@ impl<'tcx> MatchPairTree<'tcx> {
                     _ => None,
                 };
                 if let Some(array_len) = array_len {
-                    cx.prefix_slice_suffix(
-                        &mut subpairs,
-                        extra_data,
-                        &place_builder,
-                        Some(array_len),
-                        prefix,
-                        slice,
-                        suffix,
-                    );
+                    // When all elements are constants and there is no `..`
+                    // subpattern, compare the whole array at once via
+                    // `PartialEq::eq` rather than element by element.
+                    if slice.is_none()
+                        && suffix.is_empty()
+                        && cx.can_use_aggregate_eq()
+                        && let Some(aggregate_value) =
+                            try_reconstruct_aggregate_constant(cx.tcx, pattern.ty, prefix)
+                    {
+                        Some(TestableCase::Constant {
+                            value: aggregate_value,
+                            kind: PatConstKind::Aggregate,
+                        })
+                    } else {
+                        cx.prefix_slice_suffix(
+                            &mut subpairs,
+                            extra_data,
+                            &place_builder,
+                            Some(array_len),
+                            prefix,
+                            slice,
+                            suffix,
+                        );
+                        None
+                    }
                 } else {
                     // If the array length couldn't be determined, ignore the
                     // subpatterns and delayed-assert that compilation will fail.
@@ -258,37 +315,61 @@ impl<'tcx> MatchPairTree<'tcx> {
                             pattern.ty
                         ),
                     );
+                    None
                 }
-
-                None
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
-                cx.prefix_slice_suffix(
-                    &mut subpairs,
-                    extra_data,
-                    &place_builder,
-                    None,
-                    prefix,
-                    slice,
-                    suffix,
-                );
-
-                if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
-                    // This pattern is shaped like `[..]`. It can match a slice
-                    // of any length, so no length test is needed.
-                    None
-                } else {
-                    // Any other shape of slice pattern requires a length test.
-                    // Slice patterns with a `..` subpattern require a minimum
-                    // length; those without `..` require an exact length.
-                    Some(TestableCase::Slice {
-                        len: u64::try_from(prefix.len() + suffix.len()).unwrap(),
-                        op: if slice.is_some() {
-                            SliceLenOp::GreaterOrEqual
-                        } else {
-                            SliceLenOp::Equal
+                // When there is no `..`, all elements are constants, and
+                // there are at least two of them, collapse the individual
+                // element subpairs into a single aggregate comparison that
+                // is performed after the length check.
+                if slice.is_none()
+                    && suffix.is_empty()
+                    && cx.can_use_aggregate_eq()
+                    && let Some(aggregate_value) =
+                        try_reconstruct_aggregate_constant(cx.tcx, pattern.ty, prefix)
+                {
+                    subpairs.push(MatchPairTree {
+                        place,
+                        testable_case: TestableCase::Constant {
+                            value: aggregate_value,
+                            kind: PatConstKind::Aggregate,
                         },
+                        subpairs: Vec::new(),
+                        pattern_span: pattern.span,
+                    });
+                    Some(TestableCase::Slice {
+                        len: u64::try_from(prefix.len()).unwrap(),
+                        op: SliceLenOp::Equal,
                     })
+                } else {
+                    cx.prefix_slice_suffix(
+                        &mut subpairs,
+                        extra_data,
+                        &place_builder,
+                        None,
+                        prefix,
+                        slice,
+                        suffix,
+                    );
+
+                    if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
+                        // This pattern is shaped like `[..]`. It can match
+                        // a slice of any length, so no length test is needed.
+                        None
+                    } else {
+                        // Any other shape of slice pattern requires a length test.
+                        // Slice patterns with a `..` subpattern require a minimum
+                        // length; those without `..` require an exact length.
+                        Some(TestableCase::Slice {
+                            len: u64::try_from(prefix.len() + suffix.len()).unwrap(),
+                            op: if slice.is_some() {
+                                SliceLenOp::GreaterOrEqual
+                            } else {
+                                SliceLenOp::Equal
+                            },
+                        })
+                    }
                 }
             }
 
