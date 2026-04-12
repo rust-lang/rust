@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-5100.rs:9:9
+  --> $DIR/pattern-mismatched-types-diagnostics.rs:10:9
    |
 LL |     match (true, false) {
    |           ------------- this expression has type `(bool, bool)`
@@ -10,7 +10,7 @@ LL |         A::B => (),
                found enum `A`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-5100.rs:18:9
+  --> $DIR/pattern-mismatched-types-diagnostics.rs:19:9
    |
 LL |     match (true, false) {
    |           ------------- this expression has type `(bool, bool)`
@@ -21,7 +21,7 @@ LL |         (true, false, false) => ()
               found tuple `(_, _, _)`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-5100.rs:26:9
+  --> $DIR/pattern-mismatched-types-diagnostics.rs:27:9
    |
 LL |     match (true, false) {
    |           ------------- this expression has type `(bool, bool)`
@@ -32,7 +32,7 @@ LL |         (true, false, false) => ()
               found tuple `(_, _, _)`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-5100.rs:34:9
+  --> $DIR/pattern-mismatched-types-diagnostics.rs:35:9
    |
 LL |     match (true, false) {
    |           ------------- this expression has type `(bool, bool)`
@@ -43,7 +43,7 @@ LL |         box (true, false) => ()
              found struct `Box<_>`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-5100.rs:41:9
+  --> $DIR/pattern-mismatched-types-diagnostics.rs:42:9
    |
 LL |     match (true, false) {
    |           ------------- this expression has type `(bool, bool)`
@@ -54,13 +54,13 @@ LL |         &(true, false) => ()
            found reference `&_`
 
 error[E0618]: expected function, found `(char, char)`
-  --> $DIR/issue-5100.rs:49:14
+  --> $DIR/pattern-mismatched-types-diagnostics.rs:50:14
    |
 LL |     let v = [('a', 'b')
    |              ^^^^^^^^^^- help: consider separating array elements with a comma: `,`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-5100.rs:56:19
+  --> $DIR/pattern-mismatched-types-diagnostics.rs:57:19
    |
 LL |     let x: char = true;
    |            ----   ^^^^ expected `char`, found `bool`

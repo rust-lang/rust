@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/2150
+
 #![deny(unreachable_code)]
 #![allow(unused_variables)]
 #![allow(dead_code)]

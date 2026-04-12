@@ -1,3 +1,5 @@
+// https://github.com/rust-lang/rust/issues/2590
+
 struct Parser {
     tokens: Vec<isize> ,
 }
