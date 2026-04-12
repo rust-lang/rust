@@ -40,6 +40,7 @@ Thumbs.db
 
 # ML models
 *.joblib
+*.pt
 
 # Logs
 logs/

@@ -1,4 +1,4 @@
-.PHONY: install install-deep test run-synthetic test-python test-plugin build-plugin clean train train-deep
+.PHONY: install install-deep install-plugin test run-synthetic test-python test-plugin build-plugin clean train train-deep
 
 # Python signal processor
 install:
@@ -17,8 +17,11 @@ run-synthetic:
 build-plugin:
 	cd openclaw-plugin && npm run build
 
+install-plugin:
+	cd openclaw-plugin && npm install
+
 test-plugin:
-	cd openclaw-plugin && npm test
+	cd openclaw-plugin && npm install && npm test
 
 # All tests
 test: test-python test-plugin

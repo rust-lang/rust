@@ -7,6 +7,10 @@ name = "bci-signal-processor"
 version = "0.1.0"
 description = "BCI Signal Processor + State Server for OpenClaw integration"
 requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "BCI-OpenClaw Contributors"},
+]
 dependencies = [
     "brainflow>=5.10.0",
     "fastapi>=0.110.0",
@@ -26,6 +30,8 @@ deep = [
 dev = [
     "pytest>=8.0.0",
     "httpx>=0.27.0",
+    "scikit-learn>=1.4.0",
+    "joblib>=1.3.0",
 ]
 
 [project.scripts]
