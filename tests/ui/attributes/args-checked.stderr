@@ -40,6 +40,28 @@ LL - #[inline(always(x, y, z))]
 LL + #[inline]
    |
 
-error: aborting due to 2 previous errors
+error[E0539]: malformed `instruction_set` attribute input
+  --> $DIR/args-checked.rs:5:1
+   |
+LL | #[instruction_set(arm::a32 = 5)]
+   | ^^^^^^^^^^^^^^^^^^------------^^
+   | |                 |
+   | |                 valid arguments are `arm::a32` or `arm::t32`
+   | help: must be of the form: `#[instruction_set(set)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
+
+error[E0539]: malformed `instruction_set` attribute input
+  --> $DIR/args-checked.rs:7:1
+   |
+LL | #[instruction_set(arm::a32(x, y, z))]
+   | ^^^^^^^^^^^^^^^^^^-----------------^^
+   | |                 |
+   | |                 valid arguments are `arm::a32` or `arm::t32`
+   | help: must be of the form: `#[instruction_set(set)]`
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0539`.

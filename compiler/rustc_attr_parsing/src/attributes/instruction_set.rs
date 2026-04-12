@@ -22,7 +22,7 @@ impl<S: Stage> SingleAttributeParser<S> for InstructionSetParser {
         const POSSIBLE_ARM_SYMBOLS: &[Symbol] = &[sym::a32, sym::t32];
         let maybe_meta_item = cx.single_element_list(args, cx.attr_span)?;
 
-        let Some(meta_item) = maybe_meta_item.meta_item() else {
+        let Some(meta_item) = maybe_meta_item.meta_item_no_args() else {
             cx.adcx().expected_specific_argument(maybe_meta_item.span(), POSSIBLE_SYMBOLS);
             return None;
         };
