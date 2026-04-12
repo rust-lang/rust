@@ -1,0 +1,15 @@
+error: the constant `"this isn't a usize"` is not of type `usize`
+  --> $DIR/type-const-free-value-type-mismatch.rs:7:1
+   |
+LL | type const N: usize = "this isn't a usize";
+   | ^^^^^^^^^^^^^^^^^^^ expected `usize`, found `&'static str`
+
+error[E0080]: transmuting from $BYTE-byte type to $BYTE-byte type: `&str` -> `usize`
+  --> $DIR/type-const-free-value-type-mismatch.rs:10:24
+   |
+LL | fn f() -> [u8; const { N }] {}
+   |                        ^ evaluation of `f::{constant#0}` failed here
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.
