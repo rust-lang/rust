@@ -44,3 +44,11 @@ const fn g() {}
 #[used(always(x, y, z))]
 //~^ ERROR malformed
 static H: u64 = 5;
+
+#[rustc_must_implement_one_of(eq = 5, neq)]
+//~^ ERROR malformed
+#[rustc_must_implement_one_of(eq(x, y, z), neq)]
+//~^ ERROR malformed
+trait T {
+
+}
