@@ -149,6 +149,7 @@ struct LoweringContext<'a, 'hir, R> {
     allow_async_fn_traits: Arc<[Symbol]>,
 
     delayed_lints: Vec<DelayedLint>,
+    move_expr_bindings: Vec<NodeMap<(Ident, HirId)>>,
 
     attribute_parser: AttributeParser<'hir>,
 }
@@ -206,6 +207,7 @@ impl<'a, 'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'a, 'hir, R> {
             // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
 
+            move_expr_bindings: Vec::new(),
             attribute_parser: AttributeParser::new(
                 tcx.sess,
                 tcx.features(),

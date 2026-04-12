@@ -352,6 +352,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
                 _ => (),
             },
+            ast::ExprKind::Move(_, move_kw_span) => {
+                gate!(&self, move_expr, move_kw_span, "`move(expr)` syntax is experimental");
+            }
             _ => {}
         }
         visit::walk_expr(self, e)
