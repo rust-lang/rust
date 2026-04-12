@@ -14,6 +14,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 
 from . import config
 from .brainflow_reader import BCIReader
@@ -75,20 +76,32 @@ def create_app(
     _ws_manager = WebSocketManager()
     _pause_detector = PauseDetector()
 
+    # Will hold a reference to the asyncio event loop once the lifespan starts.
+    # This is needed because _on_state_update is called from the BrainFlow
+    # background thread, which has no asyncio event loop.
+    _event_loop: asyncio.AbstractEventLoop | None = None
+
     def _on_state_change(old_state, new_state):
         _webhook_manager.check_and_fire(old_state, new_state)
 
     def _on_state_update(state):
-        """Broadcast every state update to WebSocket clients."""
-        if _ws_manager is not None and _ws_manager.connection_count > 0:
-            try:
-                loop = asyncio.get_running_loop()
-                loop.create_task(_ws_manager.broadcast(state))
-            except RuntimeError:
-                # No running event loop (e.g. called from a non-async thread).
-                # Schedule on a new loop if needed -- but in practice the
-                # FastAPI server loop will be running.
-                pass
+        """Broadcast every state update to WebSocket clients.
+
+        This is called from the BrainFlow background thread (not async),
+        so we use loop.call_soon_threadsafe to schedule the broadcast
+        on the FastAPI event loop.
+        """
+        nonlocal _event_loop
+        if _ws_manager is None or _ws_manager.connection_count == 0:
+            return
+        if _event_loop is None or _event_loop.is_closed():
+            return
+        try:
+            _event_loop.call_soon_threadsafe(
+                asyncio.ensure_future, _ws_manager.broadcast(state)
+            )
+        except RuntimeError:
+            pass  # loop is shutting down
 
     if state_manager is not None:
         _state_manager = state_manager
@@ -116,7 +129,9 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
+        nonlocal _event_loop
         global _start_time
+        _event_loop = asyncio.get_running_loop()
         _start_time = time.time()
         logger.info("Starting BCI Signal Processor...")
         if _recorder is not None:
@@ -140,6 +155,14 @@ def create_app(
         title="BCI State Server",
         version="0.1.0",
         lifespan=lifespan,
+    )
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=config.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     @app.get("/state", response_model=StateResponse)

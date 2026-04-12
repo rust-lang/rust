@@ -40,3 +40,7 @@ WEBHOOK_TIMEOUT_S: int = int(os.environ.get("BCI_WEBHOOK_TIMEOUT_S", "5"))
 
 # WebSocket
 WS_HEARTBEAT_INTERVAL_S: int = int(os.environ.get("BCI_WS_HEARTBEAT_INTERVAL_S", "30"))
+
+# CORS
+_cors_raw = os.environ.get("BCI_CORS_ORIGINS", "*")
+CORS_ORIGINS: list[str] = [o.strip() for o in _cors_raw.split(",")]

@@ -38,6 +38,18 @@ class StateManager:
 
         with self._lock:
             old_primary = self._previous_primary
+
+            # Capture old state BEFORE overwriting so callbacks get actual old data
+            if self._state is not None:
+                old_state_copy = dict(self._state)
+                # Deep copy nested dicts to avoid shared references
+                if "state" in old_state_copy:
+                    old_state_copy["state"] = dict(old_state_copy["state"])
+                if "scores" in old_state_copy:
+                    old_state_copy["scores"] = dict(old_state_copy["scores"])
+                if "band_powers" in old_state_copy and old_state_copy["band_powers"]:
+                    old_state_copy["band_powers"] = dict(old_state_copy["band_powers"])
+
             new_primary = state.get("state", {}).get("primary")
             self._state = state
             self._last_update_ms = int(time.time() * 1000)
@@ -51,9 +63,6 @@ class StateManager:
                 and self._on_state_change is not None
             ):
                 fire_callback = True
-                old_state_copy = dict(self._state)
-                old_state_copy["state"] = dict(old_state_copy.get("state", {}))
-                old_state_copy["state"]["primary"] = old_primary
                 new_state_copy = dict(state)
 
         # Fire callback outside lock to avoid deadlocks

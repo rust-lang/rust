@@ -1,10 +1,11 @@
 """Tests for the BCI State Server HTTP endpoints.
 
-Uses FastAPI TestClient to test /state and /health without starting
-BrainFlow or a real HTTP server.
+Uses FastAPI TestClient with the real create_app() function,
+injecting a pre-built StateManager to avoid starting BrainFlow.
 """
 
 import time
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,77 +14,17 @@ from src.server import create_app
 from src.state_manager import StateManager
 
 
-def _make_test_app():
-    """Create app and return (client, state_manager) for testing.
-
-    We bypass BrainFlow by directly manipulating the state manager.
-    """
-    import src.server as server_module
-
-    sm = StateManager()
-    sm.device_connected = True
-
-    # Patch module-level refs to avoid starting BrainFlow
-    server_module._state_manager = sm
-    server_module._reader = None
-    server_module._start_time = time.time()
-
-    from fastapi import FastAPI
-    from src.models import BCIStateModel, HealthResponse, StateResponse
-
-    app = FastAPI()
-
-    @app.get("/state", response_model=StateResponse)
-    def get_state():
-        now_ms = int(time.time() * 1000)
-        state = sm.get_state()
-        if state is None:
-            return StateResponse(
-                available=False,
-                timestamp_unix_ms=now_ms,
-                error="No BCI data received yet",
-            )
-        return StateResponse(
-            available=True,
-            timestamp_unix_ms=now_ms,
-            bci_state=BCIStateModel(**state),
-        )
-
-    @app.get("/health", response_model=HealthResponse)
-    def get_health():
-        now = time.time()
-        uptime = now - server_module._start_time
-        last_update = sm.last_update_ms
-        if not sm.device_connected or last_update is None:
-            status = "no_signal"
-        else:
-            staleness_ms = int(now * 1000) - last_update
-            state = sm.get_state()
-            sq = state.get("signal_quality", 0) if state else 0
-            if staleness_ms > 5000 or sq < 0.3:
-                status = "degraded"
-            else:
-                status = "ok"
-        return HealthResponse(
-            status=status,
-            uptime_seconds=round(uptime, 1),
-            device_connected=sm.device_connected,
-            session_id=sm.session_id,
-            last_update_unix_ms=last_update,
-        )
-
-    client = TestClient(app)
-    return client, sm
-
-
-def _sample_bci_state() -> dict:
+def _sample_bci_state(
+    primary: str = "focused",
+    signal_quality: float = 0.92,
+) -> dict[str, Any]:
     """Return a valid BCIState dict."""
     return {
         "timestamp_unix_ms": int(time.time() * 1000),
         "session_id": "test-session-001",
         "device_id": "synthetic-board-1",
         "state": {
-            "primary": "focused",
+            "primary": primary,
             "confidence": 0.85,
             "secondary": [
                 {"state": "active", "confidence": 0.4},
@@ -101,15 +42,28 @@ def _sample_bci_state() -> dict:
             "beta": 8.7,
             "gamma": 1.2,
         },
-        "signal_quality": 0.92,
+        "signal_quality": signal_quality,
         "artifact_probability": 0.05,
         "staleness_ms": 0,
         "natural_language_summary": (
-            "User brain state: FOCUSED (confidence: 0.85, "
+            f"User brain state: {primary.upper()} (confidence: 0.85, "
             "attention: 0.79, relaxation: 0.23, cognitive_load: 0.45, "
             "signal quality: good)"
         ),
+        "classification_source": "heuristic",
     }
+
+
+def _make_test_app():
+    """Create app via create_app with a pre-built StateManager.
+
+    Uses the real server.py handlers (not reimplemented ones).
+    """
+    sm = StateManager()
+    sm.device_connected = True
+    app = create_app(synthetic=True, state_manager=sm)
+    client = TestClient(app)
+    return client, sm
 
 
 class TestGetState:
@@ -171,6 +125,32 @@ class TestGetState:
         staleness = resp.json()["bci_state"]["staleness_ms"]
         assert staleness >= 40  # at least ~40ms elapsed
 
+    def test_stale_data_overridden_to_unknown(self):
+        """Stale data (>2s) should be overridden to state=unknown, signal_quality=0."""
+        client, sm = _make_test_app()
+        state = _sample_bci_state()
+        sm.update_state(state)
+
+        # Hack: set last_update far in the past to simulate staleness
+        with sm._lock:
+            sm._last_update_ms = int(time.time() * 1000) - 5000
+
+        resp = client.get("/state")
+        data = resp.json()
+        assert data["available"] is True
+        bci = data["bci_state"]
+        assert bci["state"]["primary"] == "unknown"
+        assert bci["signal_quality"] == 0.0
+        assert "stale" in bci["natural_language_summary"].lower()
+
+    def test_classification_source_present(self):
+        client, sm = _make_test_app()
+        sm.update_state(_sample_bci_state())
+
+        resp = client.get("/state")
+        bci = resp.json()["bci_state"]
+        assert bci["classification_source"] == "heuristic"
+
 
 class TestGetHealth:
     """Tests for GET /health endpoint."""
@@ -198,8 +178,7 @@ class TestGetHealth:
 
     def test_degraded_with_low_signal_quality(self):
         client, sm = _make_test_app()
-        state = _sample_bci_state()
-        state["signal_quality"] = 0.1  # Below 0.3 threshold
+        state = _sample_bci_state(signal_quality=0.1)
         sm.update_state(state)
 
         resp = client.get("/health")

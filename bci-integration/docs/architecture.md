@@ -7,48 +7,52 @@ This system connects a Galea BCI headset (via BrainFlow SDK) to the OpenClaw AI 
 ## 2. Component Diagram
 
 ```
-+---------------------------------------------+
-|           BCI Signal Processor + State Server |
-|           (Python, single process)            |
-|                                               |
-|  +---------------+     +-----------------+    |
-|  | BrainFlow SDK |---->| DSP Pipeline    |    |
-|  | (synthetic or |     | (Welch's method,|    |
-|  |  Galea board) |     |  band powers,   |    |
-|  +---------------+     |  heuristic      |    |
-|    250 Hz EEG          |  classifier)    |    |
-|                        +-----------------+    |
-|                              |                |
-|                              v                |
-|                        +-----------------+    |
-|                        | HTTP Server     |    |
-|                        | GET /state      |    |
-|                        | GET /health     |    |
-|                        | port 7680       |    |
-|                        +-----------------+    |
-+---------------------------------------------+
-                               |
-                               | HTTP GET /state
-                               v
-+---------------------------------------------+
-|           OpenClaw BCI Plugin (TypeScript)     |
-|                                               |
-|  api.on("before_prompt_build", async () => {  |
-|    const state = await fetch("/state");       |
-|    return { prependSystemContext: summary };   |
-|  })                                           |
-+---------------------------------------------+
-                               |
-                               | prependSystemContext
-                               v
-+---------------------------------------------+
-|           OpenClaw Gateway (already exists)    |
-|           port 18789                          |
-|                                               |
-|  - Routes to LLM (Claude, GPT, Ollama, etc.) |
-|  - Loads BCI SKILL.md for interpretation      |
-|  - Normal message flow, memory, sessions      |
-+---------------------------------------------+
++------------------------------------------------------------------+
+|           BCI Signal Processor + State Server                     |
+|           (Python, single process)                                |
+|                                                                   |
+|  +---------------+     +-----------------+     +---------------+  |
+|  | BrainFlow SDK |---->| DSP Pipeline    |---->| Classifier    |  |
+|  | (synthetic or |     | (Welch's method,|     | (heuristic,   |  |
+|  |  Galea board) |     |  band powers)   |     |  ML/sklearn,  |  |
+|  +---------------+     +-----------------+     |  or EEGNet)   |  |
+|    250 Hz EEG                |                 +---------------+  |
+|                              v                        |           |
+|                     +------------------+              v           |
+|                     | Pause Detector   |     +-----------------+  |
+|                     | (clench, drowsy, |     | State Manager   |  |
+|                     |  headset off)    |     +-----------------+  |
+|                     +------------------+         |    |    |      |
+|                                                  v    v    v      |
+|  +-------------------+ +------------------+ +-----------------+  |
+|  | Session Recorder/ | | Webhook Manager  | | HTTP + WS Server|  |
+|  | Replayer (JSONL)  | | (state-change    | | port 7680       |  |
+|  +-------------------+ |  notifications)  | | CORS middleware |  |
+|                        +------------------+ +-----------------+  |
++------------------------------------------------------------------+
+          |                       |                     |
+          |  HTTP POST callbacks  | HTTP GET /state     | WS /ws
+          v                       v                     v
+  +--------------+    +------------------------------+
+  | External     |    | OpenClaw BCI Plugin (TS)     |
+  | Webhook      |    |                              |
+  | Consumers    |    |  api.on("before_prompt_build",|
+  +--------------+    |    async () => {              |
+                      |      fetch("/state");        |
+                      |      return { prepend... };  |
+                      |  })                          |
+                      +------------------------------+
+                                    |
+                                    | prependSystemContext
+                                    v
+                      +------------------------------+
+                      | OpenClaw Gateway (exists)    |
+                      | port 18789                   |
+                      |                              |
+                      | - Routes to LLM             |
+                      | - Loads BCI SKILL.md        |
+                      | - Message flow, memory      |
+                      +------------------------------+
 ```
 
 ## 3. Component Descriptions
@@ -109,14 +113,17 @@ Step  What                              Where
 | **Python** (Signal Processor + State Server) | BrainFlow's primary SDK; NumPy/SciPy for DSP; boring, well-known |
 | **FastAPI** (HTTP server) | Async, fast, auto-generates OpenAPI docs, minimal boilerplate |
 | **TypeScript** (OpenClaw plugin) | Required by OpenClaw plugin SDK; plugins loaded via jiti |
-| **HTTP/JSON** (plugin -> state server) | Simplest possible transport. No WebSocket, no ZMQ, no streaming needed since the plugin only reads on AI turns |
+| **HTTP/JSON** (plugin -> state server) | Simplest transport for request/response. Plugin only reads on AI turns |
+| **WebSocket** (real-time streaming) | For external dashboards or UIs that need continuous state updates |
 | **BrainFlow** (BCI SDK) | Supports Galea + 200 other boards; synthetic mode for dev |
-| **Heuristic classifier** (brain state) | No training data needed; transparent logic; good enough for prototype |
+| **Heuristic classifier** (default) | No training data needed; transparent logic; always available |
+| **scikit-learn** (ML classifier) | Optional Random Forest classifier trained via `train_model.py`; loaded from joblib model file at `BCI_MODEL_PATH`; falls back to heuristic if model missing |
+| **braindecode + torch** (deep classifier) | Optional EEGNet classifier trained via `train_eegnet.py`; operates on raw EEG; install via `pip install .[deep]` |
+| **CORS middleware** | FastAPI CORSMiddleware; origins configurable via `BCI_CORS_ORIGINS` env var (default `*`) |
 
 **What we're NOT using:**
 - ~~ZeroMQ~~ (HTTP is simpler for request/response)
 - ~~Flask~~ (FastAPI is equally simple and async-native)
-- ~~scikit-learn~~ (heuristic is simpler than ML for prototype)
 - ~~rich terminal UI~~ (the LLM is the consumer, not a human terminal)
 
 ## 6. Interface Contracts
@@ -127,8 +134,16 @@ Step  What                              Where
 |---|---|---|---|
 | `/state` | GET | `state_server_api.schema.json#/definitions/state_response` | Current brain state |
 | `/health` | GET | `state_server_api.schema.json#/definitions/health_response` | Server health |
+| `/pause` | GET | `{ paused, reason, since_ms }` | Pause detection state (clench, drowsiness, headset removed) |
+| `/webhooks` | POST | `{ id, registered }` | Register a webhook for state-change notifications |
+| `/webhooks` | GET | `list[WebhookInfo]` | List all registered webhooks |
+| `/webhooks/{webhook_id}` | DELETE | `{ deleted }` | Unregister a webhook by ID |
+| `/ws` | WebSocket | Streams `BCIState` JSON frames | Real-time BCI state streaming; sends current state on connect |
+| `/ws/info` | GET | `{ connections }` | WebSocket connection count for monitoring |
 
 **Base URL:** `http://127.0.0.1:7680`
+
+**CORS:** All endpoints are served behind `CORSMiddleware`. Allowed origins are configurable via the `BCI_CORS_ORIGINS` environment variable (comma-separated, default `*`).
 
 ### OpenClaw Plugin -> Gateway
 
@@ -159,30 +174,55 @@ Loaded on-demand when agent determines BCI context is relevant. Provides interpr
 ```
 bci-integration/
 ├── README.md
+├── .env.example
+├── .gitignore
+├── Makefile
 ├── docs/
 │   ├── architecture.md          (this document)
 │   ├── high-level-changes.md
-│   └── task-breakdown.md        (updated)
+│   └── task-breakdown.md
 ├── schemas/
 │   ├── bci_stream.schema.json
 │   ├── processed_features.schema.json
 │   ├── bci_state.schema.json
 │   └── state_server_api.schema.json
+├── scripts/
+│   └── demo.sh                  # Demo launcher script
 ├── signal-processor/            # Python: BrainFlow + DSP + HTTP server
 │   ├── pyproject.toml
+│   ├── models/                  # Trained model files (.gitkeep)
+│   │   └── .gitkeep
 │   ├── src/
 │   │   ├── __init__.py
 │   │   ├── __main__.py          # Entry point
-│   │   ├── config.py            # Port, sample rate, window size constants
+│   │   ├── config.py            # All configuration (env vars with defaults)
 │   │   ├── brainflow_reader.py  # BrainFlow connection + data acquisition
 │   │   ├── dsp.py               # Pure DSP functions (band powers, scores)
-│   │   ├── classifier.py        # Heuristic brain state classifier
+│   │   ├── classifier.py        # Heuristic + ML (sklearn) classifiers
+│   │   ├── deep_classifier.py   # EEGNet classifier (braindecode/torch)
+│   │   ├── data_loader.py       # Training data loader utilities
+│   │   ├── train_model.py       # Train sklearn Random Forest model
+│   │   ├── train_eegnet.py      # Train EEGNet deep learning model
+│   │   ├── models.py            # Pydantic models (BCIState, responses, etc.)
 │   │   ├── state_manager.py     # Thread-safe current state storage
-│   │   └── server.py            # FastAPI app (GET /state, GET /health)
+│   │   ├── pause_detector.py    # Pause detection (clench, drowsy, headset off)
+│   │   ├── recorder.py          # Session recording to JSONL
+│   │   ├── replayer.py          # Session replay from JSONL
+│   │   ├── webhook_manager.py   # Webhook registration + state-change firing
+│   │   ├── ws_manager.py        # WebSocket connection manager + broadcast
+│   │   └── server.py            # FastAPI app (9 endpoints, CORS, lifespan)
 │   └── tests/
+│       ├── __init__.py
+│       ├── fixtures/
+│       │   └── sample_session.jsonl
 │       ├── test_dsp.py
 │       ├── test_classifier.py
-│       └── test_server.py
+│       ├── test_deep_classifier.py
+│       ├── test_server.py
+│       ├── test_pause_detector.py
+│       ├── test_replay.py
+│       ├── test_webhooks.py
+│       └── test_websocket.py
 ├── openclaw-plugin/             # TypeScript: OpenClaw plugin
 │   ├── package.json
 │   ├── tsconfig.json
@@ -220,11 +260,17 @@ disable-model-invocation: false
 
 ## 10. Scope
 
-### Prototype (In Scope)
+### Implemented
 - Signal Processor with BrainFlow synthetic board (no hardware needed)
 - DSP: Welch's method band powers, simple derived scores
-- Heuristic classifier (threshold-based, no ML)
-- FastAPI state server (GET /state, GET /health)
+- Heuristic classifier (threshold-based, always available as default/fallback)
+- ML classifier: scikit-learn Random Forest trained via `train_model.py`, loaded from `BCI_MODEL_PATH`
+- Deep classifier: EEGNet (braindecode + torch) trained via `train_eegnet.py`, loaded from `BCI_DEEP_MODEL_PATH`; install via `pip install .[deep]`
+- FastAPI state server with 9 endpoints (GET /state, GET /health, GET /pause, POST /webhooks, GET /webhooks, DELETE /webhooks/{id}, WS /ws, GET /ws/info) and CORS middleware
+- WebSocket streaming for real-time UI dashboards (`/ws` endpoint, broadcasts every state update)
+- Webhook integration for event-driven state-change notifications (`/webhooks` CRUD endpoints, configurable cooldown and timeout)
+- Pause detection (jaw clench, drowsiness, headset removed) via `pause_detector.py` and `GET /pause`
+- Session recording to JSONL and replay from JSONL (`recorder.py`, `replayer.py`)
 - OpenClaw plugin with before_prompt_build hook
 - BCI SKILL.md for agent interpretation
 - Schema validation at State Server boundary
@@ -232,13 +278,9 @@ disable-model-invocation: false
 
 ### Future Work (Out of Scope)
 - Real Galea hardware support (just change board ID)
-- Trained ML classifier (replace heuristic)
 - EMG/EOG/EDA/PPG feature extraction (prototype = EEG only)
 - Artifact rejection (ICA, ASR)
-- Session recording/replay
-- WebSocket streaming (for real-time UI dashboards)
 - Custom OpenClaw Node registration (for node.invoke pattern)
-- Webhook integration (for event-driven state change alerts)
 - Multi-user / multi-device
 - Auth/TLS on state server
 - Persistent storage / time-series DB
