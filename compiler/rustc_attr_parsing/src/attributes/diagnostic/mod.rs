@@ -40,6 +40,18 @@ pub(crate) enum Mode {
     DiagnosticOnUnknown,
 }
 
+impl Mode {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::RustcOnUnimplemented => "rustc_on_unimplemented",
+            Self::DiagnosticOnUnimplemented => "diagnostic::on_unimplemented",
+            Self::DiagnosticOnConst => "diagnostic::on_const",
+            Self::DiagnosticOnMove => "diagnostic::on_move",
+            Self::DiagnosticOnUnknown => "diagnostic::on_unknown",
+        }
+    }
+}
+
 fn merge_directives<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     first: &mut Option<(Span, Directive)>,
@@ -83,6 +95,44 @@ fn merge<T, S: Stage>(
     }
 }
 
+fn parse_list<'p, S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    args: &'p ArgParser,
+    mode: Mode,
+) -> Option<&'p MetaItemListParser> {
+    let span = cx.attr_span;
+    match args {
+        ArgParser::List(items) if items.len() != 0 => return Some(items),
+        ArgParser::List(list) => {
+            // We're dealing with `#[diagnostic::attr()]`.
+            // This can be because that is what the user typed, but that's also what we'd see
+            // if the user used non-metaitem syntax. See `ArgParser::from_attr_args`.
+            cx.emit_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                AttributeLintKind::NonMetaItemDiagnosticAttribute,
+                list.span,
+            );
+        }
+        ArgParser::NoArgs => {
+            cx.emit_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                AttributeLintKind::MissingOptionsForDiagnosticAttribute {
+                    attribute: mode.as_str(),
+                },
+                span,
+            );
+        }
+        ArgParser::NameValue(_) => {
+            cx.emit_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                AttributeLintKind::MalFormedDiagnosticAttribute { attribute: mode.as_str(), span },
+                span,
+            );
+        }
+    }
+    None
+}
+
 fn parse_directive_items<'p, S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     mode: Mode,
@@ -100,38 +150,17 @@ fn parse_directive_items<'p, S: Stage>(
         let span = item.span();
 
         macro malformed() {{
-            match mode {
-                Mode::RustcOnUnimplemented => {
-                    cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
-                }
-                Mode::DiagnosticOnUnimplemented => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnUnimplementedAttr { span },
+            if matches!(mode, Mode::RustcOnUnimplemented) {
+                cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
+            } else {
+                cx.emit_lint(
+                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                    AttributeLintKind::MalFormedDiagnosticAttribute {
+                        attribute: mode.as_str(),
                         span,
-                    );
-                }
-                Mode::DiagnosticOnConst => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnConstAttr { span },
-                        span,
-                    );
-                }
-                Mode::DiagnosticOnMove => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnMoveAttr { span },
-                        span,
-                    );
-                }
-                Mode::DiagnosticOnUnknown => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnUnknownAttr { span },
-                        span,
-                    );
-                }
+                    },
+                    span,
+                );
             }
             continue;
         }}
@@ -146,21 +175,18 @@ fn parse_directive_items<'p, S: Stage>(
         }}
 
         macro duplicate($name: ident, $($first_span:tt)*) {{
-            match mode {
-                Mode::RustcOnUnimplemented => {
-                    cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
-                }
-                Mode::DiagnosticOnUnimplemented |Mode::DiagnosticOnConst | Mode::DiagnosticOnMove | Mode::DiagnosticOnUnknown => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::IgnoredDiagnosticOption {
-                            first_span: $($first_span)*,
-                            later_span: span,
-                            option_name: $name,
-                        },
-                        span,
-                    );
-                }
+            if matches!(mode, Mode::RustcOnUnimplemented) {
+                cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
+            } else {
+                cx.emit_lint(
+                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                    AttributeLintKind::IgnoredDiagnosticOption {
+                        first_span: $($first_span)*,
+                        later_span: span,
+                        option_name: $name,
+                    },
+                    span,
+                );
             }
         }}
 

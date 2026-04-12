@@ -13,7 +13,7 @@ trait MyFromIterator<A> {
 }
 
 #[rustc_on_unimplemented]
-//~^ WARN missing options for `on_unimplemented` attribute
+//~^ WARN missing options for `rustc_on_unimplemented` attribute
 //~| NOTE part of
 trait NoContent {}
 

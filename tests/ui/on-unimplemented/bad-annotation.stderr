@@ -126,7 +126,7 @@ warning: there is no parameter `abc` on trait `InvalidName2`
 LL | #[rustc_on_unimplemented(on(abc = "y", message = "y"))]
    |                             ^^^^^^^^^
 
-warning: missing options for `on_unimplemented` attribute
+warning: missing options for `rustc_on_unimplemented` attribute
   --> $DIR/bad-annotation.rs:15:1
    |
 LL | #[rustc_on_unimplemented]
