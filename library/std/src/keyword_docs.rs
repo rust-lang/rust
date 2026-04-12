@@ -2053,7 +2053,7 @@ mod type_keyword {}
 /// old editions, treated like an unsafe block, which means that this use of `unsafe` both declares
 /// the existence of a contract to call the current function, and declares that the contracts of the
 /// unsafe operations inside this function are being upheld. The `unsafe_op_in_unsafe_fn` lint can
-/// be enabled to change that and make `unsafe fn` only play the former rule. That lint is enabled
+/// be enabled to change that and make `unsafe fn` only play the former role. That lint is enabled
 /// by default since edition 2024.
 ///
 /// # Unsafe abilities
