@@ -46,6 +46,11 @@
 //! limitation; a future port with `panic = "unwind"` should capture the panic
 //! payload and propagate it through the join handle in the usual way.
 
+#[cfg(panic = "unwind")]
+compile_error!(
+    "ThingOS std thread PAL is abort-only: panic=unwind is not supported for target_os=thingos"
+);
+
 use crate::ffi::CStr;
 use crate::num::NonZero;
 use crate::thread::ThreadInit;
@@ -122,9 +127,9 @@ struct VmMapReqAnon {
     prot: u32,
     flags: u32,
     // VmBacking::Anonymous { zeroed }
-    backing_tag: u32,        // discriminant = 0 (Anonymous)
-    _backing_pad: u32,       // padding before union body
-    backing_zeroed: u8,      // zeroed = true (1) or false (0)
+    backing_tag: u32,            // discriminant = 0 (Anonymous)
+    _backing_pad: u32,           // padding before union body
+    backing_zeroed: u8,          // zeroed = true (1) or false (0)
     _backing_body_pad: [u8; 15], // pad union body to 16 bytes (size of File variant)
 }
 
@@ -150,8 +155,8 @@ const MAP_PRIVATE: u32 = 1 << 2;
 
 const PAGE_SIZE: usize = 4096;
 const DEFAULT_RESERVE: usize = 2 * 1024 * 1024; // 2 MiB virtual reserve
-const INITIAL_COMMIT: usize = 64 * 1024;         // 64 KiB initially committed
-const GROW_CHUNK: usize = 64 * 1024;             // 64 KiB per growth step
+const INITIAL_COMMIT: usize = 64 * 1024; // 64 KiB initially committed
+const GROW_CHUNK: usize = 64 * 1024; // 64 KiB per growth step
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = DEFAULT_RESERVE;
 
@@ -201,11 +206,7 @@ impl Thread {
         };
 
         let ret = unsafe {
-            raw_syscall6(
-                SYS_SPAWN_THREAD,
-                &req as *const SpawnThreadReq as usize,
-                0, 0, 0, 0, 0,
-            )
+            raw_syscall6(SYS_SPAWN_THREAD, &req as *const SpawnThreadReq as usize, 0, 0, 0, 0, 0)
         };
 
         if ret < 0 {
@@ -235,7 +236,8 @@ impl Thread {
 extern "C" fn thread_start(data: usize) -> ! {
     // Reconstruct the ThreadInit box that was leaked in Thread::new.
     // SAFETY: `data` is the pointer returned by Box::into_raw in Thread::new.
-    let init = unsafe { Box::from_raw(crate::ptr::with_exposed_provenance_mut::<ThreadInit>(data)) };
+    let init =
+        unsafe { Box::from_raw(crate::ptr::with_exposed_provenance_mut::<ThreadInit>(data)) };
 
     // Initialize the thread-current handle and retrieve the Rust entry closure.
     let rust_start = init.init();
@@ -338,7 +340,10 @@ unsafe fn allocate_stack(reserve_bytes: usize) -> crate::io::Result<(usize, Stac
             SYS_VM_MAP,
             &mut guard_req as *mut VmMapReqAnon as usize,
             &mut resp as *mut VmMapResp as usize,
-            0, 0, 0, 0,
+            0,
+            0,
+            0,
+            0,
         )
     };
     if ret < 0 {
@@ -370,7 +375,10 @@ unsafe fn allocate_stack(reserve_bytes: usize) -> crate::io::Result<(usize, Stac
             SYS_VM_MAP,
             &mut commit_req as *mut VmMapReqAnon as usize,
             &mut commit_resp as *mut VmMapResp as usize,
-            0, 0, 0, 0,
+            0,
+            0,
+            0,
+            0,
         )
     };
     if ret < 0 {
@@ -436,7 +444,10 @@ fn allocate_tls_block() -> usize {
             SYS_VM_MAP,
             &mut req as *mut VmMapReqAnon as usize,
             &mut resp as *mut VmMapResp as usize,
-            0, 0, 0, 0,
+            0,
+            0,
+            0,
+            0,
         )
     };
     if ret < 0 || resp.addr == 0 {
@@ -501,9 +512,8 @@ fn read_tls_info() -> Option<TlsInfo> {
 
     // Phase 2: fill the buffer.
     let mut buf = crate::vec![0u8; needed];
-    let ret = unsafe {
-        raw_syscall6(SYS_AUXV_GET, buf.as_mut_ptr() as usize, buf.len(), 0, 0, 0, 0)
-    };
+    let ret =
+        unsafe { raw_syscall6(SYS_AUXV_GET, buf.as_mut_ptr() as usize, buf.len(), 0, 0, 0, 0) };
     if ret < 0 || buf.len() < 4 {
         return None;
     }
