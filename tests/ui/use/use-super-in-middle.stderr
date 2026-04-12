@@ -4,11 +4,11 @@ error[E0433]: `super` in paths can only be used in start position
 LL |     pub use crate::x::super::{self as crate1};
    |                       ^^^^^ can only be used in path start position
 
-error[E0433]: `self` in paths can only be used in start position
+error[E0433]: `self` in paths can only be used in start position or last position
   --> $DIR/use-super-in-middle.rs:3:23
    |
 LL |     pub use crate::x::self::super::{self as crate2};
-   |                       ^^^^ can only be used in path start position
+   |                       ^^^^ can only be used in path start position or last position
 
 error[E0433]: `super` in paths can only be used in start position
   --> $DIR/use-super-in-middle.rs:12:15
@@ -16,11 +16,11 @@ error[E0433]: `super` in paths can only be used in start position
 LL |     crate::x::super::x::foo();
    |               ^^^^^ can only be used in path start position
 
-error[E0433]: `self` in paths can only be used in start position
+error[E0433]: `self` in paths can only be used in start position or last position
   --> $DIR/use-super-in-middle.rs:13:15
    |
 LL |     crate::x::self::super::x::foo();
-   |               ^^^^ can only be used in path start position
+   |               ^^^^ can only be used in path start position or last position
 
 error: aborting due to 4 previous errors
 

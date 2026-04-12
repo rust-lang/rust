@@ -1872,8 +1872,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             }
 
+            // Support `...::self`, but deny `::self` after edition 2018
+            let allow_trailing_self = is_last
+                && name == kw::SelfLower
+                && segment_idx > 0
+                && (path[segment_idx - 1].ident.name != kw::PathRoot
+                    || self.path_root_is_crate_root(path[segment_idx - 1].ident));
+
             // Report special messages for path segment keywords in wrong positions.
-            if ident.is_path_segment_keyword() && segment_idx != 0 {
+            if ident.is_path_segment_keyword() && segment_idx != 0 && !allow_trailing_self {
                 return PathResult::failed(
                     ident,
                     false,
@@ -1892,6 +1899,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             (
                                 format!("global paths cannot start with {name_str}"),
                                 "cannot start with this".to_string(),
+                            )
+                        } else if name == kw::SelfLower {
+                            (
+                                format!(
+                                    "`self` in paths can only be used in start position or last position"
+                                ),
+                                "can only be used in path start position or last position"
+                                    .to_string(),
                             )
                         } else {
                             (

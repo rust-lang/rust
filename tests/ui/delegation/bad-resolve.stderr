@@ -82,6 +82,12 @@ LL -     reuse Trait::foo2 { self.0 }
 LL +     reuse Trait::foo { self.0 }
    |
 
+error[E0423]: expected function, found module `prefix::self`
+  --> $DIR/bad-resolve.rs:44:7
+   |
+LL | reuse prefix::{self, super, crate};
+   |       ^^^^^^ not a function
+
 error[E0046]: not all trait items implemented, missing: `Type`
   --> $DIR/bad-resolve.rs:22:1
    |
@@ -105,7 +111,7 @@ error[E0433]: `crate` in paths can only be used in start position
 LL | reuse prefix::{self, super, crate};
    |                             ^^^^^ can only be used in path start position
 
-error: aborting due to 12 previous errors
+error: aborting due to 13 previous errors
 
 Some errors have detailed explanations: E0046, E0324, E0407, E0423, E0425, E0433, E0575, E0576.
 For more information about an error, try `rustc --explain E0046`.
