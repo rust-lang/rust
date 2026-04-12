@@ -1156,11 +1156,10 @@ impl Step for Rustc {
         let (modified_path, original_content) = setup_rustc_driver_for_target(builder, target);
         let _cargo_toml_guard = RevertCargoToml::new(modified_path, original_content);
 
-        // Set environment variable for rustc_driver's build script to detect static-only mode
+        // Set environment variable for rustc_driver's build script to detect static-only mode.
+        // The target spec's "dynamic-linking": false prevents dylib creation automatically.
         if !target_supports_dylib(builder, target) {
             cargo.env("RUSTC_DRIVER_FORCE_STATIC", "1");
-            // Also forbid dynamic linking in any rustc code that might try to use it
-            cargo.rustflag("-Cdynamic-linking=no");
         }
 
         // NB: all RUSTFLAGS should be added to `rustc_cargo()` so they will be
