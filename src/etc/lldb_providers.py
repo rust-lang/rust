@@ -1027,7 +1027,7 @@ def StdSliceSummaryProvider(valobj, dict):
 class StdVecDequeSyntheticProvider:
     """Pretty-printer for alloc::collections::vec_deque::VecDeque<T>
 
-    struct VecDeque<T> { head: usize, len: usize, buf: RawVec<T> }
+    struct VecDeque<T> { head: BufferIndex, len: usize, buf: RawVec<T> }
     """
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
@@ -1056,7 +1056,11 @@ class StdVecDequeSyntheticProvider:
         return element
 
     def update(self):
-        self.head = self.valobj.GetChildMemberWithName("head").GetValueAsUnsigned()
+        head = self.valobj.GetChildMemberWithName("head")
+        # BACKCOMPAT: rust 1.95
+        if head.GetType().num_fields == 1:
+            head = head.GetChildAtIndex(0)
+        self.head = head.GetValueAsUnsigned()
         self.size = self.valobj.GetChildMemberWithName("len").GetValueAsUnsigned()
         self.buf = self.valobj.GetChildMemberWithName("buf").GetChildMemberWithName(
             "inner"
