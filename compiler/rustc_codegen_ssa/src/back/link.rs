@@ -692,6 +692,15 @@ fn is_windows_gnu_ld(sess: &Session) -> bool {
     sess.target.is_like_windows
         && !sess.target.is_like_msvc
         && matches!(flavor, LinkerFlavor::Gnu(_, Lld::No))
+        && sess.target.options.cfg_abi != CfgAbi::Llvm
+}
+
+fn is_windows_gnu_clang(sess: &Session) -> bool {
+    let (_, flavor) = linker_and_flavor(sess);
+    sess.target.is_like_windows
+        && !sess.target.is_like_msvc
+        && matches!(flavor, LinkerFlavor::Gnu(Cc::Yes, Lld::No))
+        && sess.target.options.cfg_abi == CfgAbi::Llvm
 }
 
 fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8], stderr: &[u8]) {
@@ -781,7 +790,18 @@ fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8]
                 *output += "\n"
             }
         });
-    }
+    } else if is_windows_gnu_clang(sess) {
+        info!("inferred Windows Clang (GNU ABI)");
+        escaped_stderr = for_each(&stderr, |line, output| {
+            if line.contains("argument unused during compilation: '-nolibc'") {
+                linker_info += line;
+                linker_info += "\n";
+            } else {
+                *output += line;
+                *output += "\n"
+            }
+        });
+    };
 
     let lint_msg = |msg| {
         emit_lint_base(
@@ -805,10 +825,10 @@ fn report_linker_output(sess: &Session, levels: CodegenLintLevels, stdout: &[u8]
             .strip_prefix("Warning: ")
             .unwrap_or(&escaped_stderr)
             .replace(": warning: ", ": ");
-        lint_msg(format!("linker stderr: {escaped_stderr}"));
+        lint_msg(format!("linker stderr: {}", escaped_stderr.trim_end()));
     }
     if !escaped_stdout.is_empty() {
-        lint_msg(format!("linker stdout: {}", escaped_stdout))
+        lint_msg(format!("linker stdout: {}", escaped_stdout.trim_end()))
     }
     if !linker_info.is_empty() {
         lint_info(linker_info);
