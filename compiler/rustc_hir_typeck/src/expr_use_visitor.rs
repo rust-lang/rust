@@ -912,7 +912,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         _ => {
                             // Otherwise, this is a struct/enum variant, and so it's
                             // only a read if we need to read the discriminant.
-                            if self.is_multivariant_adt(place.place.ty(), *span) {
+                            if self.is_enum(place.place.ty(), *span) {
                                 read_discriminant();
                             }
                         }
@@ -931,7 +931,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     read_discriminant();
                 }
                 PatKind::Struct(..) | PatKind::TupleStruct(..) => {
-                    if self.is_multivariant_adt(place.place.ty(), pat.span) {
+                    if self.is_enum(place.place.ty(), pat.span) {
                         read_discriminant();
                     }
                 }
@@ -1842,14 +1842,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
     }
 
-    /// Checks whether a type has multiple variants, and therefore, whether a
-    /// read of the discriminant might be necessary.
     #[instrument(skip(self, span), level = "debug")]
-    fn is_multivariant_adt(&self, ty: Ty<'tcx>, span: Span) -> bool {
+    fn is_enum(&self, ty: Ty<'tcx>, span: Span) -> bool {
         if let ty::Adt(def, _) = self.cx.structurally_resolve_type(span, ty).kind() {
-            // We treat non-exhaustive enums the same independent of the crate they are
-            // defined in, to avoid differences in the operational semantics between crates.
-            def.variants().len() > 1 || def.is_variant_list_non_exhaustive()
+            def.is_enum()
         } else {
             false
         }

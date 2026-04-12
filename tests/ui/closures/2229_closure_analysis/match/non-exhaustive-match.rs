@@ -36,21 +36,24 @@ fn main() {
     //~^ ERROR: non-exhaustive patterns: `_` not covered [E0004]
     let _f = || { match e2 { E2::A => (), E2::B => (), _ => () }  };
 
-    // non-exhaustive enums should always be captured, regardless if they
-    // are defined in the current crate:
+    // Matching on an enum should always cause the value to be captured, regardless of the enum
+    // being being non-exhaustive, single-variant, or defined in this crate. This used to vary!
+
+    // non-exhaustive SingleVariant defined in this crate:
     let _c = || { match l2 { L2::C => (), _ => () }  };
     let mut mut_l2 = l2;
     //~^ ERROR: cannot move out of `l2` because it is borrowed
     _c();
 
-    // ...or in another crate:
+    // non-exhaustive SingleVariant defined in another crate:
     let _g = || { match e3 { E3::C => (), _ => () }  };
     let mut mut_e3 = e3;
     //~^ ERROR: cannot move out of `e3` because it is borrowed
     _g();
 
-    // e4 should not be captured as it is a SingleVariant
+    // exhaustive SingleVariant (defined in another crate)
     let _h = || { match e4 { E4::D => (), _ => () }  };
     let mut mut_e4 = e4;
+    //~^ ERROR: cannot move out of `e4` because it is borrowed
     _h();
 }
