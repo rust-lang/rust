@@ -1,0 +1,14 @@
+error[E0606]: casting `&Priority` as `u8` is invalid
+  --> $DIR/cast-enum-to-int-issue-151116.rs:10:20
+   |
+LL |     let priority = priority as u8;
+   |                    ^^^^^^^^^^^^^^
+   |
+help: dereference the expression
+   |
+LL |     let priority = *priority as u8;
+   |                    +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0606`.
