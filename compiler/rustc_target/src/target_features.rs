@@ -759,7 +759,7 @@ static WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("bulk-memory", Stable, &[]),
     ("exception-handling", Unstable(sym::wasm_target_feature), &[]),
     ("extended-const", Stable, &[]),
-    ("gc", Unstable(sym::wasm_target_feature), &["reference-types"]),
+    ("gc", Stable, &["reference-types"]),
     ("multivalue", Stable, &[]),
     ("mutable-globals", Stable, &[]),
     ("nontrapping-fptoint", Stable, &[]),
