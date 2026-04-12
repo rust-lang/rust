@@ -38,33 +38,7 @@ fn resolve_instance_raw<'tcx>(
         } else if tcx.is_lang_item(def_id, LangItem::DropInPlace) {
             let ty = args.type_at(0);
 
-            if ty.needs_drop(tcx, typing_env) {
-                debug!(" => nontrivial drop glue");
-                match *ty.kind() {
-                    ty::Coroutine(coroutine_def_id, ..) => {
-                        // FIXME: sync drop of coroutine with async drop (generate both versions?)
-                        // Currently just ignored
-                        if tcx.optimized_mir(coroutine_def_id).coroutine_drop_async().is_some() {
-                            ty::InstanceKind::DropGlue(def_id, None)
-                        } else {
-                            ty::InstanceKind::DropGlue(def_id, Some(ty))
-                        }
-                    }
-                    ty::Closure(..)
-                    | ty::CoroutineClosure(..)
-                    | ty::Tuple(..)
-                    | ty::Adt(..)
-                    | ty::Dynamic(..)
-                    | ty::Array(..)
-                    | ty::Slice(..)
-                    | ty::UnsafeBinder(..) => ty::InstanceKind::DropGlue(def_id, Some(ty)),
-                    // Drop shims can only be built from ADTs.
-                    _ => return Ok(None),
-                }
-            } else {
-                debug!(" => trivial drop glue");
-                ty::InstanceKind::DropGlue(def_id, None)
-            }
+            return ty::Instance::try_resolve_drop_in_place(tcx, typing_env, ty);
         } else if tcx.is_lang_item(def_id, LangItem::AsyncDropInPlace) {
             let ty = args.type_at(0);
 
@@ -165,6 +139,20 @@ fn resolve_associated_item<'tcx>(
             };
             if !eligible {
                 return Ok(None);
+            }
+            if tcx.is_lang_item(trait_ref.def_id, LangItem::Destruct) {
+                if !tcx.is_lang_item(trait_item_id, LangItem::DestructDropInPlace) {
+                    bug!(
+                        "unexpected associated item for built-in `{trait_ref}`: {}",
+                        tcx.item_name(trait_item_id)
+                    );
+                }
+
+                debug!("Got user Destruct impl");
+                return Ok(Some(Instance {
+                    def: ty::InstanceKind::Item(leaf_def.item.def_id),
+                    args: rcvr_args,
+                }));
             }
 
             let typing_env = typing_env.with_post_analysis_normalized(tcx);
@@ -403,6 +391,46 @@ fn resolve_associated_item<'tcx>(
                 } else {
                     bug!("unexpected associated associated item")
                 }
+            } else if tcx.is_lang_item(trait_ref.def_id, LangItem::Destruct) {
+                debug!(
+                    "resolving Destruct for ImplSource::Builtin: {:?}, {:?}, {:?}",
+                    typing_env, trait_item_id, rcvr_args
+                );
+                if !tcx.is_lang_item(trait_item_id, LangItem::DestructDropInPlace) {
+                    bug!(
+                        "unexpected associated item for built-in `{trait_ref}`: {}",
+                        tcx.item_name(trait_item_id)
+                    );
+                }
+
+                let self_ty = trait_ref.self_ty();
+
+                let def = if self_ty.needs_drop(tcx, typing_env) {
+                    match *self_ty.kind() {
+                        ty::Coroutine(coroutine_def_id, ..) => {
+                            if tcx.optimized_mir(coroutine_def_id).coroutine_drop_async().is_some()
+                            {
+                                ty::InstanceKind::DropGlue(trait_item_id, None)
+                            } else {
+                                ty::InstanceKind::DropGlue(trait_item_id, Some(self_ty))
+                            }
+                        }
+                        ty::Closure(..)
+                        | ty::CoroutineClosure(..)
+                        | ty::Tuple(..)
+                        | ty::Adt(..)
+                        | ty::Dynamic(..)
+                        | ty::Array(..)
+                        | ty::Slice(..)
+                        | ty::UnsafeBinder(..) => {
+                            ty::InstanceKind::DropGlue(trait_item_id, Some(self_ty))
+                        }
+                        _ => return Ok(None),
+                    }
+                } else {
+                    ty::InstanceKind::DropGlue(trait_item_id, None)
+                };
+                Some(ty::Instance { def, args: rcvr_args })
             } else {
                 Instance::try_resolve_item_for_coroutine(tcx, trait_item_id, trait_id, rcvr_args)
             }

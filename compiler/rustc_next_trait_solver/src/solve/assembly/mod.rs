@@ -454,34 +454,47 @@ where
 
         match assemble_from {
             AssembleCandidatesFrom::All => {
-                self.assemble_builtin_impl_candidates(goal, &mut candidates);
-                // For performance we only assemble impls if there are no candidates
-                // which would shadow them. This is necessary to avoid hangs in rayon,
-                // see trait-system-refactor-initiative#109 for more details.
-                //
-                // We always assemble builtin impls as trivial builtin impls have a higher
-                // priority than where-clauses.
-                //
-                // We only do this if any such candidate applies without any constraints
-                // as we may want to weaken inference guidance in the future and don't want
-                // to worry about causing major performance regressions when doing so.
-                // See trait-system-refactor-initiative#226 for some ideas here.
-                let assemble_impls = match self.typing_mode() {
-                    TypingMode::Coherence => true,
-                    TypingMode::Analysis { .. }
-                    | TypingMode::Borrowck { .. }
-                    | TypingMode::PostBorrowckAnalysis { .. }
-                    | TypingMode::PostAnalysis => !candidates.iter().any(|c| {
-                        matches!(
-                            c.source,
-                            CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)
-                                | CandidateSource::AliasBound(_)
-                        ) && has_no_inference_or_external_constraints(c.result)
-                    }),
-                };
-                if assemble_impls {
+                let trait_def_id = goal.predicate.trait_def_id(self.cx());
+                // Check if there are any user defined impls for Destruct. If there are,
+                // use those, and fallback to builtin drop glue impl if none are present
+                if self.cx().is_trait_lang_item(trait_def_id, SolverTraitLangItem::Destruct) {
                     self.assemble_impl_candidates(goal, &mut candidates);
+                    let has_impl_candidate =
+                        candidates.iter().any(|c| matches!(c.source, CandidateSource::Impl(_)));
+                    if !has_impl_candidate {
+                        self.assemble_builtin_impl_candidates(goal, &mut candidates);
+                    }
                     self.assemble_object_bound_candidates(goal, &mut candidates);
+                } else {
+                    self.assemble_builtin_impl_candidates(goal, &mut candidates);
+                    // For performance we only assemble impls if there are no candidates
+                    // which would shadow them. This is necessary to avoid hangs in rayon,
+                    // see trait-system-refactor-initiative#109 for more details.
+                    //
+                    // We always assemble builtin impls as trivial builtin impls have a higher
+                    // priority than where-clauses.
+                    //
+                    // We only do this if any such candidate applies without any constraints
+                    // as we may want to weaken inference guidance in the future and don't want
+                    // to worry about causing major performance regressions when doing so.
+                    // See trait-system-refactor-initiative#226 for some ideas here.
+                    let assemble_impls = match self.typing_mode() {
+                        TypingMode::Coherence => true,
+                        TypingMode::Analysis { .. }
+                        | TypingMode::Borrowck { .. }
+                        | TypingMode::PostBorrowckAnalysis { .. }
+                        | TypingMode::PostAnalysis => !candidates.iter().any(|c| {
+                            matches!(
+                                c.source,
+                                CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)
+                                    | CandidateSource::AliasBound(_)
+                            ) && has_no_inference_or_external_constraints(c.result)
+                        }),
+                    };
+                    if assemble_impls {
+                        self.assemble_impl_candidates(goal, &mut candidates);
+                        self.assemble_object_bound_candidates(goal, &mut candidates);
+                    }
                 }
             }
             AssembleCandidatesFrom::EnvAndBounds => {

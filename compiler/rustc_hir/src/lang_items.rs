@@ -183,6 +183,7 @@ language_item_table! {
 
     Drop,                    sym::drop,                drop_trait,                 Target::Trait,          GenericRequirement::None;
     Destruct,                sym::destruct,            destruct_trait,             Target::Trait,          GenericRequirement::None;
+    DestructDropInPlace,      sym::destruct_drop_in_place, destruct_drop_in_place,  Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
     AsyncDrop,               sym::async_drop,          async_drop_trait,           Target::Trait,          GenericRequirement::None;
     AsyncDropInPlace,        sym::async_drop_in_place, async_drop_in_place_fn,     Target::Fn,             GenericRequirement::Exact(1);
 
