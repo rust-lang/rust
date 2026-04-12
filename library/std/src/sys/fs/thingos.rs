@@ -4,17 +4,16 @@
 //! `sys/pal/thingos/common.rs`.
 
 use crate::ffi::OsString;
-use crate::hash::Hash;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
+use crate::os::fd::AsRawFd;
 use crate::path::{Path, PathBuf};
 use crate::sys::fd::FileDesc;
 pub use crate::sys::fs::common::{Dir, exists};
 use crate::sys::pal::common::{
     DT_DIR, DT_LNK, DT_REG, O_APPEND, O_CLOEXEC, O_CREAT, O_EXCL, O_RDONLY, O_RDWR, O_TRUNC,
-    O_WRONLY, SEEK_CUR, SEEK_END, SEEK_SET, SYS_CHMOD, SYS_CLOSE, SYS_FCHMOD, SYS_FSTAT,
-    SYS_FSYNC, SYS_FTRUNCATE, SYS_GETDENTS, SYS_LSTAT, SYS_MKDIR, SYS_OPEN, SYS_READLINK,
-    SYS_READ, SYS_RENAME, SYS_RMDIR, SYS_STAT, SYS_SYMLINK, SYS_UNLINK, SYS_WRITE, Stat,
-    cvt, raw_syscall6, syscall3,
+    O_WRONLY, SEEK_CUR, SEEK_END, SEEK_SET, SYS_CHMOD, SYS_FCHMOD, SYS_FSTAT, SYS_FSYNC,
+    SYS_FTRUNCATE, SYS_GETDENTS, SYS_LSTAT, SYS_MKDIR, SYS_OPEN, SYS_READLINK, SYS_RENAME,
+    SYS_RMDIR, SYS_STAT, SYS_SYMLINK, SYS_UNLINK, Stat, cvt, raw_syscall6,
 };
 use crate::sys::time::SystemTime;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -218,7 +217,7 @@ impl File {
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
-        let mut stat = Stat { size: 0, file_type: 0, perm: 0, _pad: [0; 6], modified: 0, accessed: 0, created: 0 };
+        let mut stat = Stat::default();
         cvt(unsafe {
             raw_syscall6(
                 SYS_FSTAT,
@@ -366,13 +365,11 @@ impl crate::fmt::Debug for File {
     }
 }
 
-use crate::os::fd::AsRawFd;
-
 // ── Directory operations ──────────────────────────────────────────────────────
 
 pub fn stat(path: &Path) -> io::Result<FileAttr> {
     let path_bytes = path_to_bytes(path)?;
-    let mut s = Stat { size: 0, file_type: 0, perm: 0, _pad: [0; 6], modified: 0, accessed: 0, created: 0 };
+    let mut s = Stat::default();
     cvt(unsafe {
         raw_syscall6(SYS_STAT, path_bytes.as_ptr() as u64, path_bytes.len() as u64, &raw mut s as u64, 0, 0, 0)
     })?;
@@ -381,7 +378,7 @@ pub fn stat(path: &Path) -> io::Result<FileAttr> {
 
 pub fn lstat(path: &Path) -> io::Result<FileAttr> {
     let path_bytes = path_to_bytes(path)?;
-    let mut s = Stat { size: 0, file_type: 0, perm: 0, _pad: [0; 6], modified: 0, accessed: 0, created: 0 };
+    let mut s = Stat::default();
     cvt(unsafe {
         raw_syscall6(SYS_LSTAT, path_bytes.as_ptr() as u64, path_bytes.len() as u64, &raw mut s as u64, 0, 0, 0)
     })?;
@@ -489,8 +486,10 @@ pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
 }
 
 pub fn canonicalize(path: &Path) -> io::Result<PathBuf> {
-    // Simple implementation: open the path and use the kernel's path resolution.
-    // For a real implementation, use a realpath-like syscall.
+    // TODO: Implement a real path canonicalization (resolve symlinks, remove ../).
+    // Currently returns the path unchanged as a placeholder. This is incorrect
+    // for paths containing symlinks or relative components, but is safe to use
+    // for simple absolute paths until a SYS_REALPATH syscall is available.
     Ok(path.to_path_buf())
 }
 

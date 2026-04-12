@@ -93,7 +93,8 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
         // SYS_CPUS not yet implemented in the kernel; return 1 as a safe default.
         Ok(NonZeroUsize::new(1).unwrap())
     } else {
-        Ok(NonZeroUsize::new(n as usize).unwrap_or(NonZeroUsize::new(1).unwrap()))
+        // SAFETY: n > 0 is guaranteed by the branch above.
+        Ok(unsafe { NonZeroUsize::new_unchecked(n as usize) })
     }
 }
 

@@ -6,17 +6,16 @@
 
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
-use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+use crate::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use crate::sys::fd::FileDesc;
 use crate::sys::pal::common::{
-    AF_INET, AF_INET6, EAFNOSUPPORT, F_GETFL, F_SETFL, IPPROTO_IP, IPPROTO_IPV6, IPPROTO_TCP,
-    IP_TTL, IPV6_UNICAST_HOPS, O_NONBLOCK, SHUT_RD, SHUT_RDWR, SHUT_WR, SOCK_DGRAM, SOCK_STREAM,
-    SO_ERROR, SO_KEEPALIVE, SO_RCVTIMEO, SO_SNDTIMEO, SOL_SOCKET, SYS_ACCEPT, SYS_BIND,
-    SYS_CONNECT, SYS_DUP, SYS_FCNTL, SYS_GETPEERNAME, SYS_GETSOCKNAME, SYS_GETSOCKOPT,
-    SYS_LISTEN, SYS_RECV, SYS_SEND, SYS_SETSOCKOPT, SYS_SHUTDOWN, SYS_SOCKET, SYS_SET_SOCKET_TIMEOUT,
-    TCP_NODELAY, SockaddrIn, SockaddrIn6, cvt, raw_syscall6, syscall3,
+    AF_INET, AF_INET6, EAFNOSUPPORT, IPPROTO_IP, IPPROTO_TCP, IP_TTL, SHUT_RD, SHUT_RDWR, SHUT_WR,
+    SOCK_DGRAM, SOCK_STREAM, SO_ERROR, SO_RCVTIMEO, SO_SNDTIMEO, SOL_SOCKET, SYS_ACCEPT, SYS_BIND,
+    SYS_CONNECT, SYS_DUP, SYS_GETPEERNAME, SYS_GETSOCKNAME, SYS_GETSOCKOPT, SYS_LISTEN, SYS_RECV,
+    SYS_SEND, SYS_SETSOCKOPT, SYS_SHUTDOWN, SYS_SOCKET, SYS_SET_SOCKET_TIMEOUT, TCP_NODELAY,
+    SockaddrIn, cvt, raw_syscall6,
 };
-use crate::sys::{AsInner, FromInner, IntoInner};
+use crate::sys::FromInner;
 use crate::time::Duration;
 use crate::{fmt, mem};
 
@@ -55,9 +54,10 @@ impl Socket {
         Ok(())
     }
 
-    fn get_timeout(&self, which: u32) -> io::Result<Option<Duration>> {
-        // For a full implementation, use SYS_GETSOCKOPT with SO_RCVTIMEO/SO_SNDTIMEO.
-        // Simplified: return None.
+    fn get_timeout(&self, _which: u32) -> io::Result<Option<Duration>> {
+        // TODO: Implement via SYS_GETSOCKOPT once the kernel ABI stabilises.
+        // Currently timeouts set via set_timeout() are honoured by the kernel
+        // but cannot be read back from this side.
         Ok(None)
     }
 
@@ -229,6 +229,9 @@ impl TcpStream {
     }
 
     pub fn connect_timeout(addr: &SocketAddr, _timeout: Duration) -> io::Result<TcpStream> {
+        // TODO: Honour _timeout via a non-blocking connect + SYS_POLL once
+        // I/O multiplexing is available (tracking issue #6).
+        // Currently performs a blocking connect regardless of the timeout value.
         if addr.is_ipv6() {
             return Err(ipv6_unsupported());
         }
@@ -500,7 +503,7 @@ impl UdpSocket {
         let mut addr_len: u32 = mem::size_of::<SockaddrIn>() as u32;
         let n = cvt(unsafe {
             raw_syscall6(
-                crate::sys::pal::common::SYS_RECV,
+                SYS_RECV,
                 self.inner.raw_fd() as u64,
                 buf.as_mut_ptr() as u64,
                 buf.len() as u64,
@@ -517,7 +520,7 @@ impl UdpSocket {
         let mut addr_len: u32 = mem::size_of::<SockaddrIn>() as u32;
         let n = cvt(unsafe {
             raw_syscall6(
-                crate::sys::pal::common::SYS_RECV,
+                SYS_RECV,
                 self.inner.raw_fd() as u64,
                 buf.as_mut_ptr() as u64,
                 buf.len() as u64,
@@ -538,7 +541,7 @@ impl UdpSocket {
         let (sa, sa_len) = socket_addr_to_sockaddr_in(&addr);
         cvt(unsafe {
             raw_syscall6(
-                crate::sys::pal::common::SYS_SEND,
+                SYS_SEND,
                 self.inner.raw_fd() as u64,
                 buf.as_ptr() as u64,
                 buf.len() as u64,

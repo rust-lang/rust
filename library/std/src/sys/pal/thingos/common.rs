@@ -182,6 +182,12 @@ pub struct Stat {
     pub created: u64,
 }
 
+impl Default for Stat {
+    fn default() -> Self {
+        Self { size: 0, file_type: 0, perm: 0, _pad: [0; 6], modified: 0, accessed: 0, created: 0 }
+    }
+}
+
 // ── Directory entry ───────────────────────────────────────────────────────────
 #[repr(C)]
 pub struct Dirent {

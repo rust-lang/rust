@@ -21,7 +21,7 @@ unsafe impl GlobalAlloc for System {
                 0,
             )
         };
-        if ret <= 0 { core::ptr::null_mut() } else { ret as usize as *mut u8 }
+        if ret < 0 { core::ptr::null_mut() } else { ret as usize as *mut u8 }
     }
 
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {

@@ -4,7 +4,7 @@
 //! and `SYS_KILL` system calls.
 
 use super::env::CommandEnv;
-pub use super::env::CommandEnvs;
+use super::CommandEnvs;
 use crate::ffi::{OsStr, OsString};
 use crate::path::Path;
 use crate::process::StdioPipes;
