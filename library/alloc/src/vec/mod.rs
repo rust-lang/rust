@@ -4255,12 +4255,15 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for Vec<T, A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_default", issue = "143894")]
-impl<T> const Default for Vec<T> {
-    /// Creates an empty `Vec<T>`.
+impl<T, A> const Default for Vec<T, A>
+where
+    A: Allocator + [const] Default,
+{
+    /// Creates an empty `Vec<T>` in the allocator `A`.
     ///
     /// The vector will not allocate until elements are pushed onto it.
-    fn default() -> Vec<T> {
-        Vec::new()
+    fn default() -> Self {
+        Vec::new_in(A::default())
     }
 }
 
