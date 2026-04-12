@@ -10,19 +10,22 @@ use rustc_const_eval::interpret::{
     ImmTy, InterpCx, InterpResult, Projectable, Scalar, format_interp_error, interp_ok,
 };
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::HirId;
 use rustc_hir::def::DefKind;
+use rustc_hir::{HirId, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::{self, ConstInt, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, ConstInt, GenericArgKind, GenericParamDefKind, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
+};
+use rustc_session::lint::builtin::UNCONDITIONAL_PANIC;
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
-use crate::errors::{AssertLint, AssertLintKind};
+use crate::errors::{AssertLint, AssertLintKind, ConstNIsZero};
 
 pub(super) struct KnownPanicsLint;
 
@@ -765,6 +768,35 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 }
                 // We failed to evaluate the discriminant, fallback to visiting all successors.
             }
+            TerminatorKind::Call { func, args: _, .. } => {
+                if let Some((def_id, generic_args)) = func.const_fn_def() {
+                    for (index, arg) in generic_args.iter().enumerate() {
+                        if let GenericArgKind::Const(ct) = arg.kind() {
+                            let generics = self.tcx.generics_of(def_id);
+                            let param_def = generics.param_at(index, self.tcx);
+
+                            if let GenericParamDefKind::Const { .. } = param_def.kind
+                                && find_attr!(self.tcx, param_def.def_id, RustcPanicsWhenZero)
+                                && let Some(0) = ct.try_to_target_usize(self.tcx)
+                            {
+                                // We managed to figure-out that the value of a
+                                // `#[rustc_panics_when_zero]` const-generic parameter is zero.
+                                //
+                                // Let's report it as an unconditional panic.
+                                let source_info = self.body.source_info(location);
+                                if let Some(lint_root) = self.lint_root(*source_info) {
+                                    self.tcx.emit_node_span_lint(
+                                        UNCONDITIONAL_PANIC,
+                                        lint_root,
+                                        source_info.span,
+                                        ConstNIsZero { const_param: source_info.span },
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             // None of these have Operands to const-propagate.
             TerminatorKind::Goto { .. }
             | TerminatorKind::UnwindResume
@@ -777,7 +809,6 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             | TerminatorKind::CoroutineDrop
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::Call { .. }
             | TerminatorKind::InlineAsm { .. } => {}
         }
 
