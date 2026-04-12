@@ -2036,6 +2036,9 @@ impl<'tcx> ContainerTy<'_, 'tcx> {
         match self {
             Self::Ref(region) => ObjectLifetimeDefault::Arg(region),
             Self::Regular { ty: container, args, arg: index } => {
+                // FIXME(fmease): Since #129543 assoc tys can now also induce trait object
+                //                lifetime defaults. Re-elide these, too!
+
                 let (DefKind::Struct
                 | DefKind::Union
                 | DefKind::Enum

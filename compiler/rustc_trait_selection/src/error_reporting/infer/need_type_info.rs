@@ -1371,7 +1371,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
                             && let Some(idx) =
                                 argument_index.checked_sub(generics.own_counts().lifetimes)
                             && let Some(arg) =
-                                hir_args.args.get(hir_args.num_lifetime_params() + idx) =>
+                                hir_args.args.get(hir_args.num_lifetime_args() + idx) =>
                     {
                         arg.span()
                     }
