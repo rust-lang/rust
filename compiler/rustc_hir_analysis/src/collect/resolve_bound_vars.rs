@@ -168,6 +168,29 @@ enum Scope<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Scope<'a, 'tcx> {
+    // FIXME(fmease): This is called in a bunch of places that are probably relatively hot.
+    //                Consider tracking this flag as a field in `BoundVarContext` (to be
+    //                updated in `visit_nested_body` but that's a bit ewww)
+    fn in_body(&self) -> bool {
+        let mut scope = self;
+        loop {
+            match *scope {
+                Scope::Root { .. } => return false,
+
+                Scope::Body { .. } => return true,
+
+                Scope::Binder { s, .. }
+                | Scope::ObjectLifetimeDefault { s, .. }
+                | Scope::Opaque { s, .. }
+                | Scope::Supertrait { s, .. }
+                | Scope::TraitRefBoundary { s, .. }
+                | Scope::LateBoundary { s, .. } => {
+                    scope = s;
+                }
+            }
+        }
+    }
+
     // A helper for debugging scopes without printing parent scopes
     fn debug_truncated(&self) -> impl fmt::Debug {
         fmt::from_fn(move |f| match self {
@@ -809,11 +832,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             }
             hir::TyKind::Ref(lifetime_ref, ref mt) => {
                 self.visit_lifetime(lifetime_ref);
-                let scope = Scope::ObjectLifetimeDefault {
-                    lifetime: self.rbv.defs.get(&lifetime_ref.hir_id.local_id).cloned(),
-                    s: self.scope,
-                };
-                self.with(scope, |this| this.visit_ty_unambig(mt.ty));
+
+                // NOTE(fmease): Likely hot.
+                self.maybe_with_object_lifetime_default(
+                    |this| this.rbv.defs.get(&lifetime_ref.hir_id.local_id).cloned(),
+                    |this| this.visit_ty_unambig(mt.ty),
+                );
             }
             hir::TyKind::TraitAscription(bounds) => {
                 let scope = Scope::TraitRefBoundary { s: self.scope };
@@ -1119,6 +1143,21 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             f(&mut this);
         }
         *self.opaque_capture_errors.borrow_mut() = this.opaque_capture_errors.into_inner();
+    }
+
+    // FIXME(fmease): Temporary.
+    fn maybe_with_object_lifetime_default<L, F>(&mut self, lifetime: L, f: F)
+    where
+        L: FnOnce(&mut Self) -> Option<ResolvedArg>,
+        F: for<'b> FnOnce(&mut BoundVarContext<'b, 'tcx>),
+    {
+        if !self.scope.in_body() {
+            let lifetime = lifetime(self);
+            let scope = Scope::ObjectLifetimeDefault { lifetime, s: self.scope };
+            self.with(scope, f)
+        } else {
+            f(self);
+        }
     }
 
     fn record_late_bound_vars(&mut self, hir_id: HirId, binder: Vec<ty::BoundVariableKind<'tcx>>) {
@@ -1722,25 +1761,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         // vector like `['x, 'static]`. Note that the vector only
         // includes type parameters.
         let object_lifetime_defaults = type_def_id.map_or_else(Vec::new, |def_id| {
-            let in_body = {
-                let mut scope = self.scope;
-                loop {
-                    match *scope {
-                        Scope::Root { .. } => break false,
-
-                        Scope::Body { .. } => break true,
-
-                        Scope::Binder { s, .. }
-                        | Scope::ObjectLifetimeDefault { s, .. }
-                        | Scope::Opaque { s, .. }
-                        | Scope::Supertrait { s, .. }
-                        | Scope::TraitRefBoundary { s, .. }
-                        | Scope::LateBoundary { s, .. } => {
-                            scope = s;
-                        }
-                    }
-                }
-            };
+            if self.scope.in_body() {
+                return Vec::new();
+            }
 
             let rbv = &self.rbv;
             let generics = self.tcx.generics_of(def_id);
@@ -1749,14 +1772,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             debug_assert_eq!(generics.parent_count, 0);
 
             let set_to_region = |set: ObjectLifetimeDefault| match set {
-                ObjectLifetimeDefault::Empty => {
-                    if in_body {
-                        None
-                    } else {
-                        Some(ResolvedArg::StaticLifetime)
-                    }
+                ObjectLifetimeDefault::Empty | ObjectLifetimeDefault::Static => {
+                    Some(ResolvedArg::StaticLifetime)
                 }
-                ObjectLifetimeDefault::Static => Some(ResolvedArg::StaticLifetime),
                 ObjectLifetimeDefault::Param(param_def_id) => {
                     // This index can be used with `generic_args` since `parent_count == 0`.
                     let index = generics.param_def_id_to_index[&param_def_id] as usize;
@@ -1844,13 +1862,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         // Resolve lifetimes found in the bindings, so either in the type `XX` in `Item = XX` or
         // in the trait ref `YY<...>` in `Item: YY<...>`.
         for constraint in generic_args.constraints {
-            let scope = Scope::ObjectLifetimeDefault {
-                lifetime: if has_lifetime_parameter {
-                    None
-                } else {
-                    Some(ResolvedArg::StaticLifetime)
-                },
-                s: self.scope,
+            let lifetime = |_: &mut _| {
+                if has_lifetime_parameter { None } else { Some(ResolvedArg::StaticLifetime) }
             };
             // If the args are parenthesized, then this must be `feature(return_type_notation)`.
             // In that case, introduce a binder over all of the function's early and late bound vars.
@@ -1892,7 +1905,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         .span_delayed_bug(constraint.ident.span, "bad return type notation here");
                     vec![]
                 };
-                self.with(scope, |this| {
+                self.maybe_with_object_lifetime_default(lifetime, |this| {
                     let scope = Scope::Supertrait { bound_vars, s: this.scope };
                     this.with(scope, |this| {
                         let (bound_vars, _) = this.poly_trait_ref_binder_info();
@@ -1908,7 +1921,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     ty::AssocTag::Type,
                 )
                 .map(|(bound_vars, _)| bound_vars);
-                self.with(scope, |this| {
+                self.maybe_with_object_lifetime_default(lifetime, |this| {
                     let scope = Scope::Supertrait {
                         bound_vars: bound_vars.unwrap_or_default(),
                         s: this.scope,
@@ -1916,7 +1929,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     this.with(scope, |this| this.visit_assoc_item_constraint(constraint));
                 });
             } else {
-                self.with(scope, |this| this.visit_assoc_item_constraint(constraint));
+                self.maybe_with_object_lifetime_default(lifetime, |this| {
+                    this.visit_assoc_item_constraint(constraint)
+                });
             }
         }
     }
@@ -1995,11 +2010,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         output: Option<&'tcx hir::Ty<'tcx>>,
         in_closure: bool,
     ) {
-        self.with(
-            Scope::ObjectLifetimeDefault {
-                lifetime: Some(ResolvedArg::StaticLifetime),
-                s: self.scope,
-            },
+        self.maybe_with_object_lifetime_default(
+            |_| Some(ResolvedArg::StaticLifetime),
             |this| {
                 for input in inputs {
                     this.visit_ty_unambig(input);
@@ -2009,6 +2021,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 }
             },
         );
+
         if in_closure && let Some(output) = output {
             self.visit_ty_unambig(output);
         }
