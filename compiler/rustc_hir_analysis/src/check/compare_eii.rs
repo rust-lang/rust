@@ -15,7 +15,7 @@ use rustc_hir::{self as hir, FnSig, HirId, ItemKind, find_attr};
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -26,7 +26,10 @@ use super::potentially_plural_count;
 use crate::check::compare_impl_item::{
     CheckNumberOfEarlyBoundRegionsError, check_number_of_early_bound_regions,
 };
-use crate::errors::{EiiWithGenerics, LifetimesOrBoundsMismatchOnEii};
+use crate::errors::{
+    EiiDefkindMismatch, EiiDefkindMismatchStaticMutability, EiiDefkindMismatchStaticSafety,
+    EiiWithGenerics, LifetimesOrBoundsMismatchOnEii,
+};
 
 /// Checks whether the signature of some `external_impl`, matches
 /// the signature of `declaration`, which it is supposed to be compatible
@@ -38,14 +41,7 @@ pub(crate) fn compare_eii_function_types<'tcx>(
     eii_name: Symbol,
     eii_attr_span: Span,
 ) -> Result<(), ErrorGuaranteed> {
-    // Error recovery can resolve the EII target to another value item with the same name,
-    // such as a tuple-struct constructor. Skip the comparison in that case and rely on the
-    // earlier name-resolution error instead of ICEing while building EII diagnostics.
-    // See <https://github.com/rust-lang/rust/issues/153502>.
-    if !is_foreign_function(tcx, foreign_item) {
-        return Ok(());
-    }
-
+    check_eii_target(tcx, external_impl, foreign_item, eii_name, eii_attr_span)?;
     check_is_structurally_compatible(tcx, external_impl, foreign_item, eii_name, eii_attr_span)?;
 
     let external_impl_span = tcx.def_span(external_impl);
@@ -150,6 +146,118 @@ pub(crate) fn compare_eii_function_types<'tcx>(
     }
 
     Ok(())
+}
+
+pub(crate) fn compare_eii_statics<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    external_impl: LocalDefId,
+    external_impl_ty: Ty<'tcx>,
+    foreign_item: DefId,
+    eii_name: Symbol,
+    eii_attr_span: Span,
+) -> Result<(), ErrorGuaranteed> {
+    check_eii_target(tcx, external_impl, foreign_item, eii_name, eii_attr_span)?;
+
+    let external_impl_span = tcx.def_span(external_impl);
+    let cause = ObligationCause::new(
+        external_impl_span,
+        external_impl,
+        ObligationCauseCode::CompareEii { external_impl, declaration: foreign_item },
+    );
+
+    let param_env = ParamEnv::empty();
+
+    let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
+
+    let declaration_ty = tcx.type_of(foreign_item).instantiate_identity();
+    debug!(?declaration_ty);
+
+    // FIXME: Copied over from compare impl items, same issue:
+    // We'd want to keep more accurate spans than "the method signature" when
+    // processing the comparison between the trait and impl fn, but we sadly lose them
+    // and point at the whole signature when a trait bound or specific input or output
+    // type would be more appropriate. In other places we have a `Vec<Span>`
+    // corresponding to their `Vec<Predicate>`, but we don't have that here.
+    // Fixing this would improve the output of test `issue-83765.rs`.
+    let result = ocx.sup(&cause, param_env, declaration_ty, external_impl_ty);
+
+    if let Err(terr) = result {
+        debug!(?external_impl_ty, ?declaration_ty, ?terr, "sub_types failed");
+
+        let mut diag = struct_span_code_err!(
+            tcx.dcx(),
+            cause.span,
+            E0806,
+            "static `{}` has a type that is incompatible with the declaration of `#[{eii_name}]`",
+            tcx.item_name(external_impl)
+        );
+        diag.span_note(eii_attr_span, "expected this because of this attribute");
+
+        return Err(diag.emit());
+    }
+
+    // Check that all obligations are satisfied by the implementation's
+    // version.
+    let errors = ocx.evaluate_obligations_error_on_ambiguity();
+    if !errors.is_empty() {
+        let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
+        return Err(reported);
+    }
+
+    // Finally, resolve all regions. This catches wily misuses of
+    // lifetime parameters.
+    let errors = infcx.resolve_regions(external_impl, param_env, []);
+    if !errors.is_empty() {
+        return Err(infcx
+            .tainted_by_errors()
+            .unwrap_or_else(|| infcx.err_ctxt().report_region_errors(external_impl, &errors)));
+    }
+
+    Ok(())
+}
+
+fn check_eii_target(
+    tcx: TyCtxt<'_>,
+    external_impl: LocalDefId,
+    foreign_item: DefId,
+    eii_name: Symbol,
+    eii_attr_span: Span,
+) -> Result<(), ErrorGuaranteed> {
+    // Error recovery can resolve the EII target to another value item with the same name,
+    // such as a tuple-struct constructor. Skip the comparison in that case and rely on the
+    // earlier name-resolution error instead of ICEing while building EII diagnostics.
+    // See <https://github.com/rust-lang/rust/issues/153502>.
+    if !tcx.is_foreign_item(foreign_item) {
+        return Err(tcx.dcx().delayed_bug("EII is a foreign item"));
+    }
+    let expected_kind = tcx.def_kind(foreign_item);
+    let actual_kind = tcx.def_kind(external_impl);
+
+    match expected_kind {
+        // Correct target
+        _ if expected_kind == actual_kind => Ok(()),
+        DefKind::Static { mutability: m1, safety: s1, .. }
+            if let DefKind::Static { mutability: m2, safety: s2, .. } = actual_kind =>
+        {
+            Err(if s1 != s2 {
+                tcx.dcx().emit_err(EiiDefkindMismatchStaticSafety { span: eii_attr_span, eii_name })
+            } else if m1 != m2 {
+                tcx.dcx()
+                    .emit_err(EiiDefkindMismatchStaticMutability { span: eii_attr_span, eii_name })
+            } else {
+                unreachable!()
+            })
+        }
+        // Not checked by attr target checking
+        DefKind::Fn | DefKind::Static { .. } => Err(tcx.dcx().emit_err(EiiDefkindMismatch {
+            span: eii_attr_span,
+            eii_name,
+            expected_kind: expected_kind.descr(foreign_item),
+        })),
+        // Checked by attr target checking
+        _ => Err(tcx.dcx().delayed_bug("Attribute should not be allowed by target checking")),
+    }
 }
 
 /// Checks a bunch of different properties of the impl/trait methods for
@@ -450,8 +558,4 @@ fn extract_spans_for_error_reporting<'tcx>(
 fn get_declaration_sig<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Option<&'tcx FnSig<'tcx>> {
     let hir_id: HirId = tcx.local_def_id_to_hir_id(def_id);
     tcx.hir_fn_sig_by_hir_id(hir_id)
-}
-
-fn is_foreign_function(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    tcx.is_foreign_item(def_id) && matches!(tcx.def_kind(def_id), DefKind::Fn)
 }
