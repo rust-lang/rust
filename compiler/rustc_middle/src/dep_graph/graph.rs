@@ -1,16 +1,15 @@
-use std::assert_matches;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::{assert_matches, env};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::outline;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{AtomicU64, Lock, is_dyn_thread_safe};
+use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
 use rustc_index::IndexVec;
@@ -19,9 +18,8 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
 use rustc_span::Symbol;
 use tracing::instrument;
-#[cfg(debug_assertions)]
-use {super::debug::EdgeFilter, std::env};
 
+use super::debug::EdgeFilter;
 use super::retained::RetainedDepGraph;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
 use super::{DepKind, DepNode, WorkProductId, read_deps, with_deps};
@@ -649,11 +647,6 @@ impl DepGraphData {
             if !ok {
                 panic!("{}", msg())
             }
-        } else if let Some(nodes_in_current_session) = &self.current.nodes_in_current_session {
-            outline(|| {
-                let seen = nodes_in_current_session.lock().contains_key(dep_node);
-                assert!(!seen, "{}", msg());
-            });
         }
     }
 
@@ -789,7 +782,7 @@ impl DepGraphData {
                 is_green,
             );
 
-            self.current.record_node(dep_node_index, key, value_fingerprint);
+            self.current.record_edge(dep_node_index, key, value_fingerprint);
 
             dep_node_index
         } else {
@@ -801,8 +794,6 @@ impl DepGraphData {
         &self,
         prev_index: SerializedDepNodeIndex,
     ) -> Option<DepNodeIndex> {
-        self.current.debug_assert_not_in_new_nodes(&self.previous, prev_index);
-
         let dep_node_index = self.current.encoder.send_promoted(prev_index, &self.colors);
 
         #[cfg(debug_assertions)]
@@ -1118,21 +1109,12 @@ pub(super) struct CurrentDepGraph {
     anon_node_to_index: ShardedHashMap<DepNode, DepNodeIndex>,
 
     /// This is used to verify that value fingerprints do not change between the
-    /// creation of a node and its recomputation.
-    #[cfg(debug_assertions)]
+    /// creation of a node and its recomputation. Only active with `debug_assertions`.
     value_fingerprints: Lock<IndexVec<DepNodeIndex, Option<Fingerprint>>>,
 
     /// Used to trap when a specific edge is added to the graph.
     /// This is used for debug purposes and is only active with `debug_assertions`.
-    #[cfg(debug_assertions)]
     forbidden_edge: Option<EdgeFilter>,
-
-    /// Used to verify the absence of hash collisions among DepNodes.
-    /// This field is only `Some` if the `-Z incremental_verify_ich` option is present
-    /// or if `debug_assertions` are enabled.
-    ///
-    /// The map contains all DepNodes that have been allocated in the current session so far.
-    nodes_in_current_session: Option<Lock<FxHashMap<DepNode, DepNodeIndex>>>,
 
     /// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
     /// their edges. This has the beneficial side-effect that multiple anonymous
@@ -1163,19 +1145,19 @@ impl CurrentDepGraph {
         previous.session_count().hash(&mut stable_hasher);
         let anon_id_seed = stable_hasher.finish();
 
-        #[cfg(debug_assertions)]
-        let forbidden_edge = match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
-            Ok(s) => match EdgeFilter::new(&s) {
-                Ok(f) => Some(f),
-                Err(err) => panic!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
-            },
-            Err(_) => None,
+        let forbidden_edge = if cfg!(debug_assertions) {
+            match env::var("RUST_FORBID_DEP_GRAPH_EDGE") {
+                Ok(s) => match EdgeFilter::new(&s) {
+                    Ok(f) => Some(f),
+                    Err(err) => panic!("RUST_FORBID_DEP_GRAPH_EDGE invalid: {}", err),
+                },
+                Err(_) => None,
+            }
+        } else {
+            None
         };
 
         let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
-
-        let new_node_dbg =
-            session.opts.unstable_opts.incremental_verify_ich || cfg!(debug_assertions);
 
         CurrentDepGraph {
             encoder: GraphEncoder::new(session, encoder, prev_graph_node_count, previous),
@@ -1184,54 +1166,35 @@ impl CurrentDepGraph {
                 new_node_count_estimate / sharded::shards(),
             ),
             anon_id_seed,
-            #[cfg(debug_assertions)]
             forbidden_edge,
-            #[cfg(debug_assertions)]
-            value_fingerprints: Lock::new(IndexVec::from_elem_n(None, new_node_count_estimate)),
-            nodes_in_current_session: new_node_dbg.then(|| {
-                Lock::new(FxHashMap::with_capacity_and_hasher(
-                    new_node_count_estimate,
-                    Default::default(),
-                ))
+            value_fingerprints: Lock::new(if cfg!(debug_assertions) {
+                IndexVec::from_elem_n(None, new_node_count_estimate)
+            } else {
+                IndexVec::new()
             }),
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
         }
     }
 
-    #[cfg(debug_assertions)]
     fn record_edge(
         &self,
         dep_node_index: DepNodeIndex,
         key: DepNode,
         value_fingerprint: Fingerprint,
     ) {
-        if let Some(forbidden_edge) = &self.forbidden_edge {
-            forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
-        }
-        let prior_value_fingerprint = *self
-            .value_fingerprints
-            .lock()
-            .get_or_insert_with(dep_node_index, || value_fingerprint);
-        assert_eq!(prior_value_fingerprint, value_fingerprint, "Unstable fingerprints for {key:?}");
-    }
-
-    #[inline(always)]
-    fn record_node(
-        &self,
-        dep_node_index: DepNodeIndex,
-        key: DepNode,
-        _value_fingerprint: Fingerprint,
-    ) {
-        #[cfg(debug_assertions)]
-        self.record_edge(dep_node_index, key, _value_fingerprint);
-
-        if let Some(ref nodes_in_current_session) = self.nodes_in_current_session {
-            outline(|| {
-                if nodes_in_current_session.lock().insert(key, dep_node_index).is_some() {
-                    panic!("Found duplicate dep-node {key:?}");
-                }
-            });
+        if cfg!(debug_assertions) {
+            if let Some(forbidden_edge) = &self.forbidden_edge {
+                forbidden_edge.index_to_node.lock().insert(dep_node_index, key);
+            }
+            let prior_value_fingerprint = *self
+                .value_fingerprints
+                .lock()
+                .get_or_insert_with(dep_node_index, || value_fingerprint);
+            assert_eq!(
+                prior_value_fingerprint, value_fingerprint,
+                "Unstable fingerprints for {key:?}"
+            );
         }
     }
 
@@ -1246,27 +1209,9 @@ impl CurrentDepGraph {
     ) -> DepNodeIndex {
         let dep_node_index = self.encoder.send_new(key, value_fingerprint, edges);
 
-        self.record_node(dep_node_index, key, value_fingerprint);
+        self.record_edge(dep_node_index, key, value_fingerprint);
 
         dep_node_index
-    }
-
-    #[inline]
-    fn debug_assert_not_in_new_nodes(
-        &self,
-        prev_graph: &SerializedDepGraph,
-        prev_index: SerializedDepNodeIndex,
-    ) {
-        if !is_dyn_thread_safe()
-            && let Some(ref nodes_in_current_session) = self.nodes_in_current_session
-        {
-            debug_assert!(
-                !nodes_in_current_session
-                    .lock()
-                    .contains_key(&prev_graph.index_to_node(prev_index)),
-                "node from previous graph present in new node collection"
-            );
-        }
     }
 }
 
@@ -1441,17 +1386,6 @@ fn panic_on_forbidden_read(data: &DepGraphData, dep_node_index: DepNodeIndex) ->
         if data.colors.current(prev_index) == Some(dep_node_index) {
             dep_node = Some(*data.previous.index_to_node(prev_index));
             break;
-        }
-    }
-
-    if dep_node.is_none()
-        && let Some(nodes) = &data.current.nodes_in_current_session
-    {
-        // Try to find it among the nodes allocated so far in this session
-        // This is OK, there's only ever one node result possible so this is deterministic.
-        #[allow(rustc::potential_query_instability)]
-        if let Some((node, _)) = nodes.lock().iter().find(|&(_, index)| *index == dep_node_index) {
-            dep_node = Some(*node);
         }
     }
 
