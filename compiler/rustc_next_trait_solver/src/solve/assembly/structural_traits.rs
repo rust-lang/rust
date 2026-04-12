@@ -4,7 +4,7 @@
 use derive_where::derive_where;
 use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::lang_items::{SolverLangItem, SolverTraitLangItem};
+use rustc_type_ir::lang_items::{SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{
@@ -102,7 +102,7 @@ where
             // We can resolve the `impl Trait` to its concrete type,
             // which enforces a DAG between the functions requiring
             // the auto trait bounds in question.
-            Ok(ty::Binder::dummy(vec![cx.type_of(def_id).instantiate(cx, args)]))
+            Ok(ty::Binder::dummy(vec![cx.type_of(def_id.into()).instantiate(cx, args)]))
         }
     }
 }
@@ -535,7 +535,8 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
                 );
             }
 
-            let future_output_def_id = cx.require_lang_item(SolverLangItem::FutureOutput);
+            let future_output_def_id =
+                cx.require_projection_lang_item(SolverProjectionLangItem::FutureOutput);
             let future_output_ty = Ty::new_projection(cx, future_output_def_id, [sig.output()]);
             Ok((
                 bound_sig.rebind(AsyncCallableRelevantTypes {
@@ -590,7 +591,8 @@ fn fn_item_to_async_callable<I: Interner>(
     let nested = vec![
         bound_sig.rebind(ty::TraitRef::new(cx, future_trait_def_id, [sig.output()])).upcast(cx),
     ];
-    let future_output_def_id = cx.require_lang_item(SolverLangItem::FutureOutput);
+    let future_output_def_id =
+        cx.require_projection_lang_item(SolverProjectionLangItem::FutureOutput);
     let future_output_ty = Ty::new_projection(cx, future_output_def_id, [sig.output()]);
     Ok((
         bound_sig.rebind(AsyncCallableRelevantTypes {
@@ -636,7 +638,8 @@ fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
     args: ty::CoroutineClosureArgs<I>,
     sig: ty::CoroutineClosureSignature<I>,
 ) -> I::Ty {
-    let upvars_projection_def_id = cx.require_lang_item(SolverLangItem::AsyncFnKindUpvars);
+    let upvars_projection_def_id =
+        cx.require_projection_lang_item(SolverProjectionLangItem::AsyncFnKindUpvars);
     let tupled_upvars_ty = Ty::new_projection(
         cx,
         upvars_projection_def_id,
@@ -908,7 +911,10 @@ where
             // show up in the bounds, but just ones that come from substituting
             // `Self` with the dyn type.
             let proj = proj.with_self_ty(cx, trait_ref.self_ty());
-            replace_projection_with.entry(proj.def_id()).or_default().push(bound.rebind(proj));
+            replace_projection_with
+                .entry(proj.def_id().into())
+                .or_default()
+                .push(bound.rebind(proj));
         }
     }
 

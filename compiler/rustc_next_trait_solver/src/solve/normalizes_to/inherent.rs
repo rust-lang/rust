@@ -22,14 +22,14 @@ where
         let cx = self.cx();
         let inherent = goal.predicate.alias;
 
-        let impl_def_id = cx.parent(inherent.def_id);
-        let impl_args = self.fresh_args_for_item(impl_def_id);
+        let impl_def_id = cx.impl_ty_alias_parent(inherent.def_id.try_into().unwrap());
+        let impl_args = self.fresh_args_for_item(impl_def_id.into());
 
         // Equate impl header and add impl where clauses
         self.eq(
             goal.param_env,
             inherent.self_ty(),
-            cx.type_of(impl_def_id).instantiate(cx, impl_args),
+            cx.type_of(impl_def_id.into()).instantiate(cx, impl_args),
         )?;
 
         // Equate IAT with the RHS of the project goal

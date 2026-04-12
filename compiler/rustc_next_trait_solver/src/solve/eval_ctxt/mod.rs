@@ -1124,9 +1124,9 @@ where
     pub(super) fn fetch_eligible_assoc_item(
         &self,
         goal_trait_ref: ty::TraitRef<I>,
-        trait_assoc_def_id: I::DefId,
+        trait_assoc_def_id: I::ProjectionId,
         impl_def_id: I::ImplId,
-    ) -> Result<Option<I::DefId>, I::ErrorGuaranteed> {
+    ) -> Result<Option<I::ImplTyAliasId>, I::ErrorGuaranteed> {
         self.delegate.fetch_eligible_assoc_item(goal_trait_ref, trait_assoc_def_id, impl_def_id)
     }
 

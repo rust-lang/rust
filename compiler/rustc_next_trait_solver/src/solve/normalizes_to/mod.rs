@@ -5,7 +5,7 @@ mod opaque_types;
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
+use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Upcast as _};
 use tracing::instrument;
@@ -273,7 +273,7 @@ where
 
             let target_item_def_id = match ecx.fetch_eligible_assoc_item(
                 goal_trait_ref,
-                goal.predicate.def_id(),
+                goal.predicate.def_id().try_into().unwrap(),
                 impl_def_id,
             ) {
                 Ok(Some(target_item_def_id)) => target_item_def_id,
@@ -350,7 +350,7 @@ where
                 }
             }
 
-            let target_container_def_id = cx.parent(target_item_def_id);
+            let target_container_def_id = cx.impl_ty_alias_parent(target_item_def_id);
 
             // Getting the right args here is complex, e.g. given:
             // - a goal `<Vec<u32> as Trait<i32>>::Assoc<u64>`
@@ -367,10 +367,10 @@ where
                 impl_def_id,
                 impl_args,
                 impl_trait_ref,
-                target_container_def_id,
+                target_container_def_id.into(),
             )?;
 
-            if !cx.check_args_compatible(target_item_def_id, target_args) {
+            if !cx.check_args_compatible(target_item_def_id.into(), target_args) {
                 return error_response(
                     ecx,
                     cx.delay_bug("associated item has mismatched arguments"),
@@ -380,10 +380,10 @@ where
             // Finally we construct the actual value of the associated type.
             let term = match goal.predicate.alias.kind(cx) {
                 ty::AliasTermKind::ProjectionTy => {
-                    cx.type_of(target_item_def_id).map_bound(|ty| ty.into())
+                    cx.type_of(target_item_def_id.into()).map_bound(|ty| ty.into())
                 }
                 ty::AliasTermKind::ProjectionConst => {
-                    cx.const_of_item(target_item_def_id).map_bound(|ct| ct.into())
+                    cx.const_of_item(target_item_def_id.into()).map_bound(|ct| ct.into())
                 }
                 kind => panic!("expected projection, found {kind:?}"),
             };
@@ -486,6 +486,7 @@ where
         goal_kind: ty::ClosureKind,
     ) -> Result<Candidate<I>, NoSolution> {
         let cx = ecx.cx();
+        let def_id = goal.predicate.def_id().try_into().unwrap();
 
         let env_region = match goal_kind {
             ty::ClosureKind::Fn | ty::ClosureKind::FnMut => goal.predicate.alias.args.region_at(2),
@@ -513,41 +514,42 @@ where
             [output_coroutine_ty],
         );
 
-        let (projection_term, term) =
-            if cx.is_lang_item(goal.predicate.def_id(), SolverLangItem::CallOnceFuture) {
-                (
-                    ty::AliasTerm::new(
-                        cx,
-                        goal.predicate.def_id(),
-                        [goal.predicate.self_ty(), tupled_inputs_ty],
-                    ),
-                    output_coroutine_ty.into(),
-                )
-            } else if cx.is_lang_item(goal.predicate.def_id(), SolverLangItem::CallRefFuture) {
-                (
-                    ty::AliasTerm::new(
-                        cx,
-                        goal.predicate.def_id(),
-                        [
-                            I::GenericArg::from(goal.predicate.self_ty()),
-                            tupled_inputs_ty.into(),
-                            env_region.into(),
-                        ],
-                    ),
-                    output_coroutine_ty.into(),
-                )
-            } else if cx.is_lang_item(goal.predicate.def_id(), SolverLangItem::AsyncFnOnceOutput) {
-                (
-                    ty::AliasTerm::new(
-                        cx,
-                        goal.predicate.def_id(),
-                        [goal.predicate.self_ty(), tupled_inputs_ty],
-                    ),
-                    coroutine_return_ty.into(),
-                )
-            } else {
-                panic!("no such associated type in `AsyncFn*`: {:?}", goal.predicate.def_id())
-            };
+        let (projection_term, term) = if cx
+            .is_projection_lang_item(def_id, SolverProjectionLangItem::CallOnceFuture)
+        {
+            (
+                ty::AliasTerm::new(
+                    cx,
+                    goal.predicate.def_id(),
+                    [goal.predicate.self_ty(), tupled_inputs_ty],
+                ),
+                output_coroutine_ty.into(),
+            )
+        } else if cx.is_projection_lang_item(def_id, SolverProjectionLangItem::CallRefFuture) {
+            (
+                ty::AliasTerm::new(
+                    cx,
+                    goal.predicate.def_id(),
+                    [
+                        I::GenericArg::from(goal.predicate.self_ty()),
+                        tupled_inputs_ty.into(),
+                        env_region.into(),
+                    ],
+                ),
+                output_coroutine_ty.into(),
+            )
+        } else if cx.is_projection_lang_item(def_id, SolverProjectionLangItem::AsyncFnOnceOutput) {
+            (
+                ty::AliasTerm::new(
+                    cx,
+                    goal.predicate.def_id(),
+                    [goal.predicate.self_ty(), tupled_inputs_ty],
+                ),
+                coroutine_return_ty.into(),
+            )
+        } else {
+            panic!("no such associated type in `AsyncFn*`: {:?}", goal.predicate.def_id())
+        };
         let pred = ty::ProjectionPredicate { projection_term, term }.upcast(cx);
 
         Self::probe_and_consider_implied_clause(
@@ -621,8 +623,8 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
         let cx = ecx.cx();
-        let metadata_def_id = cx.require_lang_item(SolverLangItem::Metadata);
-        assert_eq!(metadata_def_id, goal.predicate.def_id());
+        let metadata_def_id = cx.require_projection_lang_item(SolverProjectionLangItem::Metadata);
+        assert_eq!(Into::<I::DefId>::into(metadata_def_id), goal.predicate.def_id());
         let metadata_ty = match goal.predicate.self_ty().kind() {
             ty::Bool
             | ty::Char
@@ -648,8 +650,9 @@ where
             ty::Str | ty::Slice(_) => Ty::new_usize(cx),
 
             ty::Dynamic(_, _) => {
-                let dyn_metadata = cx.require_lang_item(SolverLangItem::DynMetadata);
-                cx.type_of(dyn_metadata)
+                let dyn_metadata =
+                    cx.require_projection_lang_item(SolverProjectionLangItem::DynMetadata);
+                cx.type_of(dyn_metadata.into())
                     .instantiate(cx, &[I::GenericArg::from(goal.predicate.self_ty())])
             }
 
@@ -836,10 +839,12 @@ where
         }
 
         let coroutine = args.as_coroutine();
+        let def_id = goal.predicate.def_id().try_into().unwrap();
 
-        let term = if cx.is_lang_item(goal.predicate.def_id(), SolverLangItem::CoroutineReturn) {
+        let term = if cx.is_projection_lang_item(def_id, SolverProjectionLangItem::CoroutineReturn)
+        {
             coroutine.return_ty().into()
-        } else if cx.is_lang_item(goal.predicate.def_id(), SolverLangItem::CoroutineYield) {
+        } else if cx.is_projection_lang_item(def_id, SolverProjectionLangItem::CoroutineYield) {
             coroutine.yield_ty().into()
         } else {
             panic!("unexpected associated item `{:?}` for `{self_ty:?}`", goal.predicate.def_id())
@@ -963,9 +968,10 @@ where
         else {
             return Err(NoSolution);
         };
-        let ty = match ecx.cx().as_lang_item(goal.predicate.def_id()) {
-            Some(SolverLangItem::FieldBase) => base,
-            Some(SolverLangItem::FieldType) => ty,
+        let ty = match ecx.cx().as_projection_lang_item(goal.predicate.def_id().try_into().unwrap())
+        {
+            Some(SolverProjectionLangItem::FieldBase) => base,
+            Some(SolverProjectionLangItem::FieldType) => ty,
             _ => panic!("unexpected associated type {:?} in `Field`", goal.predicate),
         };
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {

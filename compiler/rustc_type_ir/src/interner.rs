@@ -9,7 +9,7 @@ use rustc_index::bit_set::DenseBitSet;
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::ir_print::IrPrint;
-use crate::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
+use crate::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
 use crate::solve::{CanonicalInput, Certainty, ExternalConstraintsData, QueryResult, inspect};
 use crate::visit::{Flags, TypeVisitable};
@@ -54,6 +54,11 @@ pub trait Interner:
     type AdtId: SpecificDefId<Self>;
     type ImplId: SpecificDefId<Self>;
     type UnevaluatedConstId: SpecificDefId<Self>;
+    type ProjectionTyId: SpecificDefId<Self> + Into<Self::ProjectionId>;
+    type ProjectionId: SpecificDefId<Self>;
+    type OpaqueId: SpecificDefId<Self>;
+    type FreeAliasId: SpecificDefId<Self>;
+    type ImplTyAliasId: SpecificDefId<Self>;
     type Span: Span<Self>;
 
     type GenericArgs: GenericArgs<Self>;
@@ -218,7 +223,7 @@ pub trait Interner:
 
     fn trait_ref_and_own_args_for_alias(
         self,
-        def_id: Self::DefId,
+        def_id: Self::ProjectionId,
         args: Self::GenericArgs,
     ) -> (ty::TraitRef<Self>, Self::GenericArgsSlice);
 
@@ -242,7 +247,9 @@ pub trait Interner:
         I: Iterator<Item = T>,
         T: CollectAndApply<Self::Ty, Self::Tys>;
 
-    fn parent(self, def_id: Self::DefId) -> Self::DefId;
+    fn projection_parent(self, def_id: Self::ProjectionId) -> Self::TraitId;
+
+    fn impl_ty_alias_parent(self, def_id: Self::ImplTyAliasId) -> Self::ImplId;
 
     fn recursion_limit(self) -> usize;
 
@@ -324,13 +331,20 @@ pub trait Interner:
 
     fn has_target_features(self, def_id: Self::FunctionId) -> bool;
 
-    fn require_lang_item(self, lang_item: SolverLangItem) -> Self::DefId;
+    fn require_projection_lang_item(
+        self,
+        lang_item: SolverProjectionLangItem,
+    ) -> Self::ProjectionTyId;
 
     fn require_trait_lang_item(self, lang_item: SolverTraitLangItem) -> Self::TraitId;
 
     fn require_adt_lang_item(self, lang_item: SolverAdtLangItem) -> Self::AdtId;
 
-    fn is_lang_item(self, def_id: Self::DefId, lang_item: SolverLangItem) -> bool;
+    fn is_projection_lang_item(
+        self,
+        def_id: Self::ProjectionTyId,
+        lang_item: SolverProjectionLangItem,
+    ) -> bool;
 
     fn is_trait_lang_item(self, def_id: Self::TraitId, lang_item: SolverTraitLangItem) -> bool;
 
@@ -340,7 +354,10 @@ pub trait Interner:
 
     fn is_sizedness_trait(self, def_id: Self::TraitId) -> bool;
 
-    fn as_lang_item(self, def_id: Self::DefId) -> Option<SolverLangItem>;
+    fn as_projection_lang_item(
+        self,
+        def_id: Self::ProjectionTyId,
+    ) -> Option<SolverProjectionLangItem>;
 
     fn as_trait_lang_item(self, def_id: Self::TraitId) -> Option<SolverTraitLangItem>;
 
@@ -359,7 +376,7 @@ pub trait Interner:
     );
     fn for_each_blanket_impl(self, trait_def_id: Self::TraitId, f: impl FnMut(Self::ImplId));
 
-    fn has_item_definition(self, def_id: Self::DefId) -> bool;
+    fn has_item_definition(self, def_id: Self::ImplTyAliasId) -> bool;
 
     fn impl_specializes(self, impl_def_id: Self::ImplId, victim_def_id: Self::ImplId) -> bool;
 

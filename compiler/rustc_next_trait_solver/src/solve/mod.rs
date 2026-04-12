@@ -365,7 +365,7 @@ where
         }
     }
 
-    fn opaque_type_is_rigid(&self, def_id: I::DefId) -> bool {
+    fn opaque_type_is_rigid(&self, def_id: I::OpaqueId) -> bool {
         match self.typing_mode() {
             // Opaques are never rigid outside of analysis mode.
             TypingMode::Coherence | TypingMode::PostAnalysis => false,

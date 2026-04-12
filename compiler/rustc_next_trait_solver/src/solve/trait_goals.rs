@@ -234,7 +234,7 @@ where
             goal.predicate.self_ty().kind()
         {
             debug_assert!(ecx.opaque_type_is_rigid(def_id));
-            for item_bound in cx.item_self_bounds(def_id).skip_binder() {
+            for item_bound in cx.item_self_bounds(def_id.into()).skip_binder() {
                 if item_bound
                     .as_trait_clause()
                     .is_some_and(|b| b.def_id() == goal.predicate.def_id())

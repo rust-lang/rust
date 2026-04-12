@@ -54,7 +54,11 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_alias(interner: I, alias_ty: ty::AliasTy<I>) -> Self;
 
-    fn new_projection_from_args(interner: I, def_id: I::DefId, args: I::GenericArgs) -> Self {
+    fn new_projection_from_args(
+        interner: I,
+        def_id: I::ProjectionTyId,
+        args: I::GenericArgs,
+    ) -> Self {
         Self::new_alias(
             interner,
             ty::AliasTy::new_from_args(interner, ty::AliasTyKind::Projection { def_id }, args),
@@ -63,7 +67,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_projection(
         interner: I,
-        def_id: I::DefId,
+        def_id: I::ProjectionTyId,
         args: impl IntoIterator<Item: Into<I::GenericArg>>,
     ) -> Self {
         Self::new_alias(
