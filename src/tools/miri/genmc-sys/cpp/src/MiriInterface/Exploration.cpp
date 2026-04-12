@@ -388,36 +388,27 @@ auto MiriGenmcShim::handle_malloc(ThreadId thread_id, uint64_t size, uint64_t al
         overloaded {
             [](const VerificationError& err) { return MallocResultExt::from_error(format_error(err)); },
             [](const SVal& addr) { return MallocResultExt::ok(addr); },
-            [](const Invalid&) {
-                UNREACHABLE();
-                return MallocResultExt::from_error(nullptr);
-            },
+            [](const Invalid&) { return MallocResultExt::from_invalid(); },
             [](const Reset&) {
                 UNREACHABLE();
-                return MallocResultExt::from_error(nullptr);
+                return MallocResultExt::from_invalid();
             },
         },
         ret.result
     );
 }
 
-auto MiriGenmcShim::handle_free(ThreadId thread_id, uint64_t address)
-    -> std::unique_ptr<std::string> {
+auto MiriGenmcShim::handle_free(ThreadId thread_id, uint64_t address) -> FreeResult {
     auto ret = GenMCDriver::handleFree(nullptr, curr_pos(thread_id), SAddr(address), EventDeps());
     inc_pos(thread_id, ret.count);
     return std::visit(
         overloaded {
-            [](const VerificationError& err) -> std::unique_ptr<std::string> {
-                return format_error(err);
-            },
-            [](const std::monostate&) -> std::unique_ptr<std::string> { return nullptr; },
-            [](const Invalid&) -> std::unique_ptr<std::string> {
+            [](const VerificationError& err) { return FreeResultExt::from_error(format_error(err)); },
+            [](const std::monostate&) { return FreeResultExt::ok(); },
+            [](const Invalid&) { return FreeResultExt::from_invalid(); },
+            [](const Reset&) {
                 UNREACHABLE();
-                return nullptr;
-            },
-            [](const Reset&) -> std::unique_ptr<std::string> {
-                UNREACHABLE();
-                return nullptr;
+                return FreeResultExt::from_invalid();
             },
         },
         ret.result

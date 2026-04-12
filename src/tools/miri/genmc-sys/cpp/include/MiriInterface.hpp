@@ -38,6 +38,7 @@ struct ReadModifyWriteResult;
 struct CompareExchangeResult;
 struct MutexLockResult;
 struct MallocResult;
+struct FreeResult;
 
 // GenMC uses `int` for its thread IDs.
 using ThreadId = int;
@@ -135,7 +136,7 @@ struct MiriGenmcShim : private GenMCDriver {
     auto handle_malloc(ThreadId thread_id, uint64_t size, uint64_t alignment) -> MallocResult;
 
     /** Returns null on success, or an error string if an error occurs. */
-    auto handle_free(ThreadId thread_id, uint64_t address) -> std::unique_ptr<std::string>;
+    auto handle_free(ThreadId thread_id, uint64_t address) -> FreeResult;
 
     /**** Thread management ****/
     void handle_thread_create(ThreadId thread_id, ThreadId parent_id);
@@ -241,8 +242,8 @@ constexpr auto get_global_alloc_static_mask() -> uint64_t {
 }
 
 // CXX.rs generated headers:
-// NOTE: this must be included *after* `MiriGenmcShim` and all the other types we use are defined,
-// otherwise there will be compilation errors due to missing definitions.
+// NOTE: this must be included *after* `MiriGenmcShim` and all the other types we use are
+// defined, otherwise there will be compilation errors due to missing definitions.
 #include "genmc-sys/src/lib.rs.h"
 
 /**** Result handling ****/
@@ -415,12 +416,32 @@ inline MutexLockResult from_invalid() {
 
 namespace MallocResultExt {
 inline MallocResult ok(SVal addr) {
-    return MallocResult { .error = nullptr, .address = addr.get() };
+    return MallocResult { .status = OperationStatus::Ok, .error = nullptr, .address = addr.get() };
 }
 
 inline MallocResult from_error(std::unique_ptr<std::string> error) {
-    return MallocResult { .error = std::move(error), .address = 0UL };
+    return MallocResult { .status = OperationStatus::Error,
+                          .error = std::move(error),
+                          .address = 0UL };
+}
+
+inline MallocResult from_invalid() {
+    return MallocResult { .status = OperationStatus::Invalid, .error = nullptr, .address = 0UL };
 }
 } // namespace MallocResultExt
+
+namespace FreeResultExt {
+inline FreeResult ok() {
+    return FreeResult { .status = OperationStatus::Ok, .error = nullptr };
+}
+
+inline FreeResult from_error(std::unique_ptr<std::string> error) {
+    return FreeResult { .status = OperationStatus::Error, .error = std::move(error) };
+}
+
+inline FreeResult from_invalid() {
+    return FreeResult { .status = OperationStatus::Invalid, .error = nullptr };
+}
+} // namespace FreeResultExt
 
 #endif /* GENMC_MIRI_INTERFACE_HPP */

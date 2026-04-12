@@ -2,8 +2,8 @@ use std::cell::{Cell, RefCell};
 use std::sync::Arc;
 
 use genmc_sys::{
-    CasStatus, EstimationResult, GENMC_GLOBAL_ADDRESSES_MASK, GenmcScalar, MemOrdering,
-    MiriGenmcShim, OperationStatus, RMWBinOp, UniquePtr, create_genmc_driver_handle,
+    CasOutcome, EstimationResult, GENMC_GLOBAL_ADDRESSES_MASK, GenmcHandlerResult, GenmcScalar,
+    MemOrdering, MiriGenmcShim, RMWBinOp, RmwOutcome, UniquePtr, create_genmc_driver_handle,
 };
 use rustc_abi::{Align, Size};
 use rustc_const_eval::interpret::{AllocId, InterpCx, InterpResult, interp_ok};
@@ -14,8 +14,8 @@ use tracing::debug;
 
 use self::global_allocations::{EvalContextExt as _, GlobalAllocationHandler};
 use self::helper::{
-    MAX_ACCESS_SIZE, genmc_scalar_to_scalar, maybe_upgrade_compare_exchange_success_orderings,
-    scalar_to_genmc_scalar, to_genmc_rmw_op,
+    MAX_ACCESS_SIZE, genmc_scalar_to_scalar, get_outcome,
+    maybe_upgrade_compare_exchange_success_orderings, scalar_to_genmc_scalar, to_genmc_rmw_op,
 };
 use self::run::GenmcMode;
 use self::thread_id_map::ThreadIdMap;
@@ -451,28 +451,20 @@ impl GenmcCtx {
             can_fail_spuriously,
         );
 
-        let is_success = match cas_result.status {
-            CasStatus::Invalid => throw_machine_stop!(TerminationInfo::GenmcSkip),
-            CasStatus::Error =>
-                // FIXME(genmc): error handling
-                throw_ub_format!(
-                    "{}",
-                    cas_result.error.as_ref().unwrap().to_string_lossy()
-                ),
-            CasStatus::Succeeded => true,
-            CasStatus::Failed => false,
-            status => unreachable!("unexpected CasStatus: {status:?}"),
-        };
+        let (old_value, is_success, is_coherence_order_maximal_write) =
+            match get_outcome(cas_result.into_genmc_result())? {
+                CasOutcome::Failure { old_value } => (old_value, false, false),
+                CasOutcome::Success { old_value, is_coherence_order_maximal_write } =>
+                    (old_value, true, is_coherence_order_maximal_write),
+            };
 
-        let return_scalar = genmc_scalar_to_scalar(ecx, self, cas_result.old_value, size)?;
+        let return_scalar = genmc_scalar_to_scalar(ecx, self, old_value, size)?;
         debug!(
-            "GenMC: atomic_compare_exchange: result: {cas_result:?}, returning scalar: {return_scalar:?}"
+            "GenMC: atomic_compare_exchange: returning scalar: {return_scalar:?}, success: {is_success}"
         );
-        // The write can only be a co-maximal write if the CAS succeeded.
-        assert!(is_success || !cas_result.is_coherence_order_maximal_write);
         interp_ok((
             return_scalar,
-            cas_result.is_coherence_order_maximal_write.then_some(new_value),
+            is_coherence_order_maximal_write.then_some(new_value),
             is_success,
         ))
     }
@@ -558,10 +550,11 @@ impl GenmcCtx {
             genmc_size,
             alignment.bytes(),
         );
-        if let Some(_error) = malloc_result.error.as_ref() {
-            throw_exhaust!(AddressSpaceFull);
-        }
-        let chosen_address = malloc_result.address;
+        let chosen_address = match malloc_result.into_genmc_result() {
+            GenmcHandlerResult::Invalid => throw_machine_stop!(TerminationInfo::GenmcInvalid),
+            GenmcHandlerResult::Error(_e) => throw_exhaust!(AddressSpaceFull),
+            GenmcHandlerResult::Ok(a) => a,
+        };
 
         // Non-global addresses should not be in the global address space.
         assert_eq!(0, chosen_address & GENMC_GLOBAL_ADDRESSES_MASK);
@@ -596,11 +589,8 @@ impl GenmcCtx {
             .borrow_mut()
             .pin_mut()
             .handle_free(self.active_thread_genmc_tid(machine), address.bytes());
-        if let Some(error) = free_result.as_ref() {
-            // FIXME(genmc): improve error handling.
-            throw_ub_format!("{}", error.to_string_lossy());
-        }
 
+        get_outcome(free_result.into_genmc_result())?;
         interp_ok(())
     }
 
@@ -721,20 +711,9 @@ impl GenmcCtx {
             genmc_old_value,
         );
 
-        match load_result.status {
-            OperationStatus::Invalid => throw_machine_stop!(TerminationInfo::GenmcSkip),
-            OperationStatus::Error =>
-                // FIXME(genmc): error handling
-                throw_ub_format!(
-                    "{}",
-                    load_result.error.as_ref().unwrap().to_string_lossy()
-                ),
-            OperationStatus::Ok => {}
-            status => unreachable!("unexpected OperationStatus: {status:?}"),
-        }
-
-        debug!("GenMC: load returned value: {:?}", load_result.read_value);
-        interp_ok(load_result.read_value)
+        let read_value = get_outcome(load_result.into_genmc_result())?;
+        debug!("GenMC: load returned value: {:?}", read_value);
+        interp_ok(read_value)
     }
 
     /// Inform GenMC about a non-atomic load.
@@ -755,17 +734,7 @@ impl GenmcCtx {
             size.bytes(),
         );
 
-        match load_result.status {
-            OperationStatus::Invalid => throw_machine_stop!(TerminationInfo::GenmcSkip),
-            OperationStatus::Error =>
-                // FIXME(genmc): error handling
-                throw_ub_format!(
-                    "{}",
-                    load_result.error.as_ref().unwrap().to_string_lossy()
-                ),
-            OperationStatus::Ok => {}
-            status => unreachable!("unexpected OperationStatus: {status:?}"),
-        }
+        get_outcome(load_result.into_genmc_result())?;
         // `load_result.read_value` is just a dummy for non-atomic loads. And anyway Miri doesn't
         // give us a chance to change the value here, it'll always use the one from its memory.
         interp_ok(())
@@ -804,19 +773,8 @@ impl GenmcCtx {
             memory_ordering,
         );
 
-        match store_result.status {
-            OperationStatus::Invalid => throw_machine_stop!(TerminationInfo::GenmcSkip),
-            OperationStatus::Error =>
-                // FIXME(genmc): error handling
-                throw_ub_format!(
-                    "{}",
-                    store_result.error.as_ref().unwrap().to_string_lossy()
-                ),
-            OperationStatus::Ok => {}
-            status => unreachable!("unexpected OperationStatus: {status:?}"),
-        }
-
-        interp_ok(store_result.is_coherence_order_maximal_write)
+        let is_co_max = get_outcome(store_result.into_genmc_result())?;
+        interp_ok(is_co_max)
     }
 
     /// Inform GenMC about a non-atomic store.
@@ -837,17 +795,7 @@ impl GenmcCtx {
             size.bytes(),
         );
 
-        match store_result.status {
-            OperationStatus::Invalid => throw_machine_stop!(TerminationInfo::GenmcSkip),
-            OperationStatus::Error =>
-                // FIXME(genmc): error handling
-                throw_ub_format!(
-                    "{}",
-                    store_result.error.as_ref().unwrap().to_string_lossy()
-                ),
-            OperationStatus::Ok => {}
-            status => unreachable!("unexpected OperationStatus: {status:?}"),
-        }
+        get_outcome(store_result.into_genmc_result())?;
         interp_ok(())
     }
 
@@ -889,22 +837,11 @@ impl GenmcCtx {
             genmc_old_value,
         );
 
-        match rmw_result.status {
-            OperationStatus::Invalid => throw_machine_stop!(TerminationInfo::GenmcSkip),
-            OperationStatus::Error =>
-                // FIXME(genmc): error handling
-                throw_ub_format!(
-                    "{}",
-                    rmw_result.error.as_ref().unwrap().to_string_lossy()
-                ),
-            OperationStatus::Ok => {}
-            status => unreachable!("unexpected OperationStatus: {status:?}"),
-        }
-
-        let old_value_scalar = genmc_scalar_to_scalar(ecx, self, rmw_result.old_value, size)?;
-
-        let new_value_scalar = if rmw_result.is_coherence_order_maximal_write {
-            Some(genmc_scalar_to_scalar(ecx, self, rmw_result.new_value, size)?)
+        let RmwOutcome { old_value, new_value, is_coherence_order_maximal_write } =
+            get_outcome(rmw_result.into_genmc_result())?;
+        let old_value_scalar = genmc_scalar_to_scalar(ecx, self, old_value, size)?;
+        let new_value_scalar = if is_coherence_order_maximal_write {
+            Some(genmc_scalar_to_scalar(ecx, self, new_value, size)?)
         } else {
             None
         };
