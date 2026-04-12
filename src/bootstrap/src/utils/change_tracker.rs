@@ -621,4 +621,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "`x.py` stopped accepting partial argument names. Use full names to avoid errors.",
     },
+    ChangeInfo {
+        change_id: 124439,
+        severity: ChangeSeverity::Info,
+        summary: "Default for `rust.deny-warnings` on `compiler`, `library` and `tools` profiles changed to `false`",
+    },
 ];
