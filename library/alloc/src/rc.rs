@@ -3507,7 +3507,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// 
     /// 2. This `Weak` does not point to an allocation.
     /// 
-    /// 3. The owning reference this `Weak` is assosiated with is either not fully-constructed or does not allow an upgrade.
+    /// 3. The owning reference this `Weak` is associated with is either not fully-constructed or does not allow an upgrade.
     ///
     /// # Examples
     ///
