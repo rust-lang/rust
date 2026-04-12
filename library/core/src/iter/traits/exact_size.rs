@@ -83,7 +83,8 @@
 /// assert_eq!(4, counter.len());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait ExactSizeIterator: Iterator {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+pub const trait ExactSizeIterator: [const] Iterator {
     /// Returns the exact remaining length of the iterator.
     ///
     /// The implementation ensures that the iterator will return exactly `len()`
@@ -119,7 +120,11 @@ pub trait ExactSizeIterator: Iterator {
         // guaranteed by the trait. If this trait were rust-internal,
         // we could use debug_assert!; assert_eq! will check all Rust user
         // implementations too.
-        assert_eq!(upper, Some(lower));
+        //assert_eq!(upper, Some(lower));
+        //FIXME(review) assert_eq! is not const, what to put here?
+        if upper != Some(lower) {
+            panic!()
+        }
         lower
     }
 

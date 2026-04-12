@@ -1,5 +1,6 @@
 use crate::fmt;
 use crate::iter::{FusedIterator, TrustedLen, UncheckedIterator};
+use crate::marker::Destruct;
 use crate::num::NonZero;
 use crate::ops::Try;
 
@@ -85,9 +86,18 @@ pub struct RepeatN<A> {
 
 impl<A> RepeatN<A> {
     /// If we haven't already dropped the element, return it in an option.
+    #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
     #[inline]
-    fn take_element(&mut self) -> Option<A> {
-        self.inner.take().map(|inner| inner.element)
+    const fn take_element(&mut self) -> Option<A>
+    where
+        A: [const] Destruct,
+    {
+        //FIXME(const-hack): revert this to a const closure when they are fine to use
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+        const fn inner_element<T: [const] Destruct>(inner: RepeatNInner<T>) -> T {
+            inner.element
+        }
+        self.inner.take().map(inner_element)
     }
 }
 
@@ -103,7 +113,8 @@ impl<A: fmt::Debug> fmt::Debug for RepeatN<A> {
 }
 
 #[stable(feature = "iter_repeat_n", since = "1.82.0")]
-impl<A: Clone> Iterator for RepeatN<A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<A: [const] Clone + [const] Destruct> const Iterator for RepeatN<A> {
     type Item = A;
 
     #[inline]
@@ -156,14 +167,21 @@ impl<A: Clone> Iterator for RepeatN<A> {
 }
 
 #[stable(feature = "iter_repeat_n", since = "1.82.0")]
-impl<A: Clone> ExactSizeIterator for RepeatN<A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<A: [const] Clone + [const] Destruct> const ExactSizeIterator for RepeatN<A> {
     fn len(&self) -> usize {
-        self.inner.as_ref().map(|inner| inner.count.get()).unwrap_or(0)
+        //FIXME(const-hack): revert this to a const closure when they are fine to use
+        #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+        const fn inner_count<T>(inner: &RepeatNInner<T>) -> usize {
+            inner.count.get()
+        }
+        self.inner.as_ref().map(inner_count).unwrap_or(0)
     }
 }
 
 #[stable(feature = "iter_repeat_n", since = "1.82.0")]
-impl<A: Clone> DoubleEndedIterator for RepeatN<A> {
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<A: [const] Clone + [const] Destruct> const DoubleEndedIterator for RepeatN<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         self.next()
@@ -182,8 +200,8 @@ impl<A: Clone> DoubleEndedIterator for RepeatN<A> {
     #[inline]
     fn try_rfold<B, F, R>(&mut self, init: B, f: F) -> R
     where
-        F: FnMut(B, A) -> R,
-        R: Try<Output = B>,
+        F: [const] FnMut(B, A) -> R + [const] Destruct,
+        R: [const] Try<Output = B>,
     {
         self.try_fold(init, f)
     }
@@ -191,7 +209,7 @@ impl<A: Clone> DoubleEndedIterator for RepeatN<A> {
     #[inline]
     fn rfold<B, F>(self, init: B, f: F) -> B
     where
-        F: FnMut(B, A) -> B,
+        F: [const] FnMut(B, A) -> B + [const] Destruct,
     {
         self.fold(init, f)
     }
