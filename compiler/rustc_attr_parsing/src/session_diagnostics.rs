@@ -1133,3 +1133,22 @@ pub(crate) struct UnstableAttrForAlreadyStableFeature {
     #[label("the stability attribute annotates this item")]
     pub item_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("invalid Mach-O section specifier")]
+pub(crate) struct InvalidMachoSection {
+    #[primary_span]
+    #[label("not a valid Mach-O section specifier")]
+    pub name_span: Span,
+    #[subdiagnostic]
+    pub reason: InvalidMachoSectionReason,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum InvalidMachoSectionReason {
+    #[note("a Mach-O section specifier requires a segment and a section, separated by a comma")]
+    #[help("an example of a valid Mach-O section specifier is `__TEXT,__cstring`")]
+    MissingSection,
+    #[note("section name `{$section}` is longer than 16 bytes")]
+    SectionTooLong { section: String },
+}
