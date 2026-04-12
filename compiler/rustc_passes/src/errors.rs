@@ -302,6 +302,8 @@ pub(crate) enum UnusedNote {
         "the `linker_messages` and `linker_info` lints can only be controlled at the root of a crate that needs to be linked"
     )]
     LinkerMessagesBinaryCrateOnly,
+    #[note("the `unused_pub_items_in_binary` lint has no effect in library crates")]
+    NoEffectUnusedPubItemsInBinary,
 }
 
 #[derive(Diagnostic)]
@@ -934,6 +936,8 @@ pub(crate) enum MultipleDeadCodes<'tcx> {
         participle: &'tcx str,
         name_list: DiagSymbolList,
         #[subdiagnostic]
+        unused_pub_items_in_binary_note: Option<UnusedPubItemsInBinaryNote>,
+        #[subdiagnostic]
         // only on DeadCodes since it's never a problem for tuple struct fields
         enum_variants_with_same_name: Vec<EnumVariantSameName<'tcx>>,
         #[subdiagnostic]
@@ -957,6 +961,8 @@ pub(crate) enum MultipleDeadCodes<'tcx> {
         participle: &'tcx str,
         name_list: DiagSymbolList,
         #[subdiagnostic]
+        unused_pub_items_in_binary_note: Option<UnusedPubItemsInBinaryNote>,
+        #[subdiagnostic]
         change_fields_suggestion: ChangeFields,
         #[subdiagnostic]
         parent_info: Option<ParentInfo<'tcx>>,
@@ -964,6 +970,12 @@ pub(crate) enum MultipleDeadCodes<'tcx> {
         ignored_derived_impls: Option<IgnoredDerivedImpls>,
     },
 }
+
+#[derive(Subdiagnostic)]
+#[note(
+    "in libraries, `pub` items can be used by dependent crates; in binaries, they cannot, so this `pub` item is unused"
+)]
+pub(crate) struct UnusedPubItemsInBinaryNote;
 
 #[derive(Subdiagnostic)]
 #[note(

@@ -13,18 +13,21 @@ use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, Node, PatKind, QPath, find_attr};
+use rustc_hir::{self as hir, ForeignItemId, ItemId, Node, PatKind, QPath, find_attr};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::middle::dead_code::{DeadCodeLivenessSnapshot, DeadCodeLivenessSummary};
 use rustc_middle::middle::privacy::Level;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_session::lint::builtin::DEAD_CODE;
-use rustc_session::lint::{self, LintExpectationId};
+use rustc_session::config::CrateType;
+use rustc_session::lint::builtin::{DEAD_CODE, UNUSED_PUB_ITEMS_IN_BINARY};
+use rustc_session::lint::{self, Lint, LintExpectationId};
 use rustc_span::{Symbol, kw};
 
 use crate::errors::{
-    ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UselessAssignment,
+    ChangeFields, IgnoredDerivedImpls, MultipleDeadCodes, ParentInfo, UnusedPubItemsInBinaryNote,
+    UselessAssignment,
 };
 
 /// Any local definition that may call something in its body block should be explored. For example,
@@ -750,23 +753,21 @@ fn has_allow_dead_code_or_lang_attr(
 fn maybe_record_as_seed<'tcx>(
     tcx: TyCtxt<'tcx>,
     owner_id: hir::OwnerId,
-    worklist: &mut Vec<(LocalDefId, ComesFromAllowExpect)>,
+    push_into_worklist: &mut impl FnMut(LocalDefId, ComesFromAllowExpect),
     unsolved_items: &mut Vec<LocalDefId>,
 ) {
     let allow_dead_code = has_allow_dead_code_or_lang_attr(tcx, owner_id.def_id);
     if let Some(comes_from_allow) = allow_dead_code {
-        worklist.push((owner_id.def_id, comes_from_allow));
+        push_into_worklist(owner_id.def_id, comes_from_allow);
     }
 
     match tcx.def_kind(owner_id) {
         DefKind::Enum => {
             if let Some(comes_from_allow) = allow_dead_code {
                 let adt = tcx.adt_def(owner_id);
-                worklist.extend(
-                    adt.variants()
-                        .iter()
-                        .map(|variant| (variant.def_id.expect_local(), comes_from_allow)),
-                );
+                for variant in adt.variants().iter() {
+                    push_into_worklist(variant.def_id.expect_local(), comes_from_allow);
+                }
             }
         }
         DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::AssocTy => {
@@ -781,7 +782,7 @@ fn maybe_record_as_seed<'tcx>(
                             && let Some(comes_from_allow) =
                                 has_allow_dead_code_or_lang_attr(tcx, trait_item_local_def_id)
                         {
-                            worklist.push((owner_id.def_id, comes_from_allow));
+                            push_into_worklist(owner_id.def_id, comes_from_allow);
                         }
 
                         // We only care about associated items of traits,
@@ -802,7 +803,7 @@ fn maybe_record_as_seed<'tcx>(
                     && let Some(comes_from_allow) =
                         has_allow_dead_code_or_lang_attr(tcx, trait_def_id)
                 {
-                    worklist.push((owner_id.def_id, comes_from_allow));
+                    push_into_worklist(owner_id.def_id, comes_from_allow);
                 }
 
                 unsolved_items.push(owner_id.def_id);
@@ -810,53 +811,61 @@ fn maybe_record_as_seed<'tcx>(
         }
         DefKind::GlobalAsm => {
             // global_asm! is always live.
-            worklist.push((owner_id.def_id, ComesFromAllowExpect::No));
+            push_into_worklist(owner_id.def_id, ComesFromAllowExpect::No);
         }
         DefKind::Const { .. } => {
             if tcx.item_name(owner_id.def_id) == kw::Underscore {
                 // `const _` is always live, as that syntax only exists for the side effects
                 // of type checking and evaluating the constant expression, and marking them
                 // as dead code would defeat that purpose.
-                worklist.push((owner_id.def_id, ComesFromAllowExpect::No));
+                push_into_worklist(owner_id.def_id, ComesFromAllowExpect::No);
             }
         }
         _ => {}
     }
 }
 
-fn create_and_seed_worklist(
-    tcx: TyCtxt<'_>,
-) -> (Vec<(LocalDefId, ComesFromAllowExpect)>, Vec<LocalDefId>) {
-    let effective_visibilities = &tcx.effective_visibilities(());
-    let mut unsolved_impl_item = Vec::new();
-    let mut worklist = effective_visibilities
-        .iter()
-        .filter_map(|(&id, effective_vis)| {
-            effective_vis
-                .is_public_at_level(Level::Reachable)
-                .then_some(id)
-                .map(|id| (id, ComesFromAllowExpect::No))
-        })
-        // Seed entry point
-        .chain(
-            tcx.entry_fn(())
-                .and_then(|(def_id, _)| def_id.as_local().map(|id| (id, ComesFromAllowExpect::No))),
-        )
-        .collect::<Vec<_>>();
+struct SeedWorklists {
+    worklist: Vec<(LocalDefId, ComesFromAllowExpect)>,
+    deferred_seeds: Vec<(LocalDefId, ComesFromAllowExpect)>,
+    unsolved_items: Vec<LocalDefId>,
+}
 
-    let crate_items = tcx.hir_crate_items(());
-    for id in crate_items.owners() {
-        maybe_record_as_seed(tcx, id, &mut worklist, &mut unsolved_impl_item);
+fn create_and_seed_worklist(tcx: TyCtxt<'_>) -> SeedWorklists {
+    let mut unsolved_items = Vec::new();
+    let mut deferred_seeds = Vec::new();
+    let mut worklist = Vec::new();
+
+    if let Some((def_id, _)) = tcx.entry_fn(())
+        && let Some(local_def_id) = def_id.as_local()
+    {
+        worklist.push((local_def_id, ComesFromAllowExpect::No));
     }
 
-    (worklist, unsolved_impl_item)
+    for (id, effective_vis) in tcx.effective_visibilities(()).iter() {
+        if effective_vis.is_public_at_level(Level::Reachable) {
+            deferred_seeds.push((*id, ComesFromAllowExpect::No));
+        }
+    }
+
+    let mut push_into_worklist = |def_id, comes_from_allow| match comes_from_allow {
+        ComesFromAllowExpect::Yes => deferred_seeds.push((def_id, ComesFromAllowExpect::Yes)),
+        ComesFromAllowExpect::No => worklist.push((def_id, ComesFromAllowExpect::No)),
+    };
+    let crate_items = tcx.hir_crate_items(());
+    for id in crate_items.owners() {
+        maybe_record_as_seed(tcx, id, &mut push_into_worklist, &mut unsolved_items);
+    }
+
+    SeedWorklists { worklist, deferred_seeds, unsolved_items }
 }
 
 fn live_symbols_and_ignored_derived_traits(
     tcx: TyCtxt<'_>,
     (): (),
-) -> Result<(LocalDefIdSet, LocalDefIdMap<FxIndexSet<DefId>>), ErrorGuaranteed> {
-    let (worklist, mut unsolved_items) = create_and_seed_worklist(tcx);
+) -> Result<DeadCodeLivenessSummary, ErrorGuaranteed> {
+    let SeedWorklists { worklist, deferred_seeds, mut unsolved_items } =
+        create_and_seed_worklist(tcx);
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
         tcx,
@@ -869,6 +878,28 @@ fn live_symbols_and_ignored_derived_traits(
         ignore_variant_stack: vec![],
         ignored_derived_traits: Default::default(),
     };
+    mark_live_symbols_and_ignored_derived_traits(&mut symbol_visitor, &mut unsolved_items)?;
+    let pre_deferred_seeding = DeadCodeLivenessSnapshot {
+        live_symbols: symbol_visitor.live_symbols.clone(),
+        ignored_derived_traits: symbol_visitor.ignored_derived_traits.clone(),
+    };
+
+    symbol_visitor.worklist.extend(deferred_seeds);
+    mark_live_symbols_and_ignored_derived_traits(&mut symbol_visitor, &mut unsolved_items)?;
+
+    Ok(DeadCodeLivenessSummary {
+        pre_deferred_seeding,
+        final_result: DeadCodeLivenessSnapshot {
+            live_symbols: symbol_visitor.live_symbols,
+            ignored_derived_traits: symbol_visitor.ignored_derived_traits,
+        },
+    })
+}
+
+fn mark_live_symbols_and_ignored_derived_traits(
+    symbol_visitor: &mut MarkSymbolVisitor<'_>,
+    unsolved_items: &mut Vec<LocalDefId>,
+) -> Result<(), ErrorGuaranteed> {
     if let ControlFlow::Break(guar) = symbol_visitor.mark_live_symbols() {
         return Err(guar);
     }
@@ -894,7 +925,7 @@ fn live_symbols_and_ignored_derived_traits(
         }));
     }
 
-    Ok((symbol_visitor.live_symbols, symbol_visitor.ignored_derived_traits))
+    Ok(())
 }
 
 struct DeadItem {
@@ -905,6 +936,7 @@ struct DeadItem {
 
 struct DeadVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
+    target_lint: &'static Lint,
     live_symbols: &'tcx LocalDefIdSet,
     ignored_derived_traits: &'tcx LocalDefIdMap<FxIndexSet<DefId>>,
 }
@@ -948,8 +980,15 @@ impl<'tcx> DeadVisitor<'tcx> {
 
     fn def_lint_level(&self, id: LocalDefId) -> (lint::Level, Option<LintExpectationId>) {
         let hir_id = self.tcx.local_def_id_to_hir_id(id);
-        let level = self.tcx.lint_level_at_node(DEAD_CODE, hir_id);
+        let level = self.tcx.lint_level_at_node(self.target_lint, hir_id);
         (level.level, level.lint_id)
+    }
+
+    fn unused_pub_items_in_binary_note(&self) -> Option<UnusedPubItemsInBinaryNote> {
+        self.target_lint
+            .name
+            .eq(UNUSED_PUB_ITEMS_IN_BINARY.name)
+            .then_some(UnusedPubItemsInBinaryNote)
     }
 
     // # Panics
@@ -1063,6 +1102,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                     descr,
                     participle,
                     name_list,
+                    unused_pub_items_in_binary_note: self.unused_pub_items_in_binary_note(),
                     change_fields_suggestion: fields_suggestion,
                     parent_info,
                     ignored_derived_impls,
@@ -1099,6 +1139,7 @@ impl<'tcx> DeadVisitor<'tcx> {
                     descr,
                     participle,
                     name_list,
+                    unused_pub_items_in_binary_note: self.unused_pub_items_in_binary_note(),
                     parent_info,
                     ignored_derived_impls,
                     enum_variants_with_same_name,
@@ -1107,7 +1148,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         };
 
         let hir_id = tcx.local_def_id_to_hir_id(first_item.def_id);
-        self.tcx.emit_node_span_lint(DEAD_CODE, hir_id, MultiSpan::from_spans(spans), diag);
+        self.tcx.emit_node_span_lint(self.target_lint, hir_id, MultiSpan::from_spans(spans), diag);
     }
 
     fn warn_multiple(
@@ -1174,17 +1215,55 @@ impl<'tcx> DeadVisitor<'tcx> {
 }
 
 fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
-    let Ok((live_symbols, ignored_derived_traits)) =
+    let Ok(DeadCodeLivenessSummary { pre_deferred_seeding, final_result }) =
         tcx.live_symbols_and_ignored_derived_traits(()).as_ref()
     else {
         return;
     };
 
-    let mut visitor = DeadVisitor { tcx, live_symbols, ignored_derived_traits };
-
     let module_items = tcx.hir_module_items(module);
 
-    for item in module_items.free_items() {
+    if tcx.crate_types().contains(&CrateType::Executable) {
+        let is_unused_pub = |def_id: LocalDefId| {
+            tcx.effective_visibilities(()).is_public_at_level(def_id, Level::Reachable)
+                && !pre_deferred_seeding.live_symbols.contains(&def_id)
+        };
+
+        lint_dead_code_or_unused_pub_items_in_binary(
+            tcx,
+            UNUSED_PUB_ITEMS_IN_BINARY,
+            module,
+            &pre_deferred_seeding.live_symbols,
+            &pre_deferred_seeding.ignored_derived_traits,
+            module_items.free_items().filter(|free_item| is_unused_pub(free_item.owner_id.def_id)),
+            module_items
+                .foreign_items()
+                .filter(|foreign_item| is_unused_pub(foreign_item.owner_id.def_id)),
+        );
+    }
+
+    lint_dead_code_or_unused_pub_items_in_binary(
+        tcx,
+        DEAD_CODE,
+        module,
+        &final_result.live_symbols,
+        &final_result.ignored_derived_traits,
+        module_items.free_items(),
+        module_items.foreign_items(),
+    );
+}
+
+fn lint_dead_code_or_unused_pub_items_in_binary<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    target_lint: &'static Lint,
+    module: LocalModDefId,
+    live_symbols: &'tcx LocalDefIdSet,
+    ignored_derived_traits: &'tcx LocalDefIdMap<FxIndexSet<DefId>>,
+    free_items: impl Iterator<Item = ItemId>,
+    foreign_items: impl Iterator<Item = ForeignItemId>,
+) {
+    let mut visitor = DeadVisitor { tcx, target_lint, live_symbols, ignored_derived_traits };
+    for item in free_items {
         let def_kind = tcx.def_kind(item.owner_id);
 
         let mut dead_codes = Vec::new();
@@ -1263,7 +1342,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModDefId) {
         }
     }
 
-    for foreign_item in module_items.foreign_items() {
+    for foreign_item in foreign_items {
         visitor.check_definition(foreign_item.owner_id.def_id);
     }
 }
