@@ -5,17 +5,16 @@
 #![allow(unused)]
 #![warn(clippy::pub_underscore_fields)]
 
-use std::marker::PhantomData;
 
 pub mod inner {
-    use std::marker;
 
     pub struct PubSuper {
         pub(super) a: usize,
         pub _b: u8,
         //~^ pub_underscore_fields
         _c: i32,
-        pub _mark: marker::PhantomData<u8>,
+        pub _mark_pinned: std::marker::PhantomPinned, 
+        pub _mark_data: std::marker::PhantomData<u8>,
     }
 
     mod inner2 {
@@ -68,7 +67,8 @@ fn main() {
     pub struct NamedPub {
         r#pub: bool,
         _pub: String,
-        pub(crate) _mark: PhantomData<u8>,
+        pub _mark_pinned: std::marker::PhantomPinned, 
+        pub _mark_data: std::marker::PhantomData<u8>,
     }
 
     // shouldn't warn when `#[allow]` is used on field level

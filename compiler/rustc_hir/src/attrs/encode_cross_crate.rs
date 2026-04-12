@@ -156,6 +156,7 @@ impl AttributeKind {
             RustcLintUntrackedQueryInformation => Yes,
             RustcMacroTransparency(..) => Yes,
             RustcMain => No,
+            RustcMarkerType(..) => Yes,
             RustcMir(..) => Yes,
             RustcMustImplementOneOf { .. } => No,
             RustcMustMatchExhaustively(..) => Yes,

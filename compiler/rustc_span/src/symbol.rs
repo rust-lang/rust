@@ -1761,6 +1761,7 @@ symbols! {
         rustc_lint_untracked_query_information,
         rustc_macro_transparency,
         rustc_main,
+        rustc_marker_type,
         rustc_mir,
         rustc_must_implement_one_of,
         rustc_must_match_exhaustively,

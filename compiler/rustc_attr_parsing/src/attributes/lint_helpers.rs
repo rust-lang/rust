@@ -14,6 +14,15 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcAsPtrParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcAsPtr;
 }
 
+pub(crate) struct RustcMarkerTypeParser;
+impl<S: Stage> NoArgsAttributeParser<S> for RustcMarkerTypeParser {
+    const PATH: &[Symbol] = &[sym::rustc_marker_type];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
+    const CREATE: fn(Span) -> AttributeKind =
+        |span| AttributeKind::RustcMarkerType(sym::rustc_marker_type, span);
+}
+
 pub(crate) struct RustcPubTransparentParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcPubTransparentParser {
     const PATH: &[Symbol] = &[sym::rustc_pub_transparent];

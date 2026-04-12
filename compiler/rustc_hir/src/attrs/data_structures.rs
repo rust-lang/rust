@@ -1473,6 +1473,9 @@ pub enum AttributeKind {
     /// Represents `#[rustc_main]`.
     RustcMain,
 
+    /// Represents `#[rustc_marker_type]`
+    RustcMarkerType(Symbol, Span),
+
     /// Represents `#[rustc_mir]`.
     RustcMir(ThinVec<RustcMirKind>),
 

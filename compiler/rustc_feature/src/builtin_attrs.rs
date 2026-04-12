@@ -1419,6 +1419,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_must_match_exhaustively, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
         "enums with `#[rustc_must_match_exhaustively]` must be matched on with a match block that mentions all variants explicitly"
     ),
+    rustc_attr!(
+        rustc_marker_type, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes,
+        "the `#[rustc_marker_type]` attribute is used by the standard library to mark certain marker types \
+        that do not need dead code warnings"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:
