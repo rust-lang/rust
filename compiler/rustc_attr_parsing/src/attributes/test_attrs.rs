@@ -157,7 +157,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAbiParser {
         let mut fail_incorrect_argument =
             |span| cx.adcx().expected_specific_argument(span, &[sym::assert_eq, sym::debug]);
 
-        let Some(arg) = arg.meta_item() else {
+        let Some(arg) = arg.meta_item_no_args() else {
             fail_incorrect_argument(args.span);
             return None;
         };
