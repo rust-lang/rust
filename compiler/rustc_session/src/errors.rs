@@ -150,6 +150,12 @@ pub(crate) struct CannotMixAndMatchSanitizers {
 pub(crate) struct CannotEnableCrtStaticLinux;
 
 #[derive(Diagnostic)]
+#[diag(
+    "pauthtest ABI is incompatible with statically linked libc, disable it using `-C target-feature=-crt-static`"
+)]
+pub(crate) struct CannotEnableCrtStaticPauthtest;
+
+#[derive(Diagnostic)]
 #[diag("`-Zsanitizer=cfi` requires `-Clto` or `-Clinker-plugin-lto`")]
 pub(crate) struct SanitizerCfiRequiresLto;
 

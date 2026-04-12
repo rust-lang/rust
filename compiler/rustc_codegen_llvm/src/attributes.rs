@@ -9,9 +9,10 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::config::{BranchProtection, FunctionReturn, OptLevel, PAuthKey, PacRet};
 use rustc_span::sym;
 use rustc_symbol_mangling::mangle_internal_symbol;
-use rustc_target::spec::{Arch, FramePointer, SanitizerSet, StackProbeType, StackProtector};
+use rustc_target::spec::{Arch, Env, FramePointer, SanitizerSet, StackProbeType, StackProtector};
 use smallvec::SmallVec;
 
+use crate::common::pauth_fn_attrs;
 use crate::context::SimpleCx;
 use crate::errors::{PackedStackBackchainNeedsSoftfloat, SanitizerMemtagRequiresMte};
 use crate::llvm::AttributePlace::Function;
@@ -602,6 +603,12 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
                 codegen_fn_attrs.symbol_name.unwrap_or_else(|| tcx.item_name(instance.def_id()));
             let name = name.as_str();
             to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-name", name));
+        }
+    }
+
+    if sess.target.env == Env::Pauthtest {
+        for &ptrauth_attr in pauth_fn_attrs() {
+            to_add.push(llvm::CreateAttrString(cx.llcx, ptrauth_attr));
         }
     }
 

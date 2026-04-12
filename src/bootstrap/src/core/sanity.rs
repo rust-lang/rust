@@ -21,7 +21,7 @@ use crate::builder::Kind;
 use crate::core::build_steps::tool;
 use crate::core::config::{CompilerBuiltins, Target};
 use crate::utils::exec::command;
-use crate::{Build, Subcommand};
+use crate::{Build, Subcommand, t};
 
 pub struct Finder {
     cache: HashMap<OsString, Option<PathBuf>>,
@@ -39,6 +39,7 @@ const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
     "x86_64-unknown-linux-gnumsan",
     "x86_64-unknown-linux-gnutsan",
+    "aarch64-unknown-linux-pauthtest", // Stage 0 compiler is not guaranteed to see pauthtest yet.
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
@@ -412,6 +413,52 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
             && !build.tool_enabled("wasm-component-ld")
         {
             cmd_finder.must_have("wasm-component-ld");
+        }
+
+        // aarch64-unknown-linux-pauthtest must use clang
+        if !skip_tools_checks && target.is_pauthtest() {
+            let cc_tool = build.cc_tool(*target);
+            let linker_path = build
+                .linker(*target)
+                .expect("aarch64-unknown-linux-pauthtest requires an explicit clang linker");
+
+            if !cc_tool.is_like_clang() {
+                panic!(
+                    "Clang is required to build C code for {} target, got:\n\
+                     cc tool: `{}`,\n\
+                     linker: `{}`\n",
+                    target.triple,
+                    cc_tool.path().display(),
+                    linker_path.display(),
+                );
+            }
+            let cc_canon = t!(fs::canonicalize(cc_tool.path()));
+            let linker_canon = t!(fs::canonicalize(&linker_path));
+            if cc_canon != linker_canon {
+                panic!(
+                    "CC and Linker are expected to be the same for {} target, got:\n\
+                     CC: `{}`,\n\
+                     Linker: `{}`\n",
+                    target.triple,
+                    cc_canon.display(),
+                    linker_canon.display(),
+                );
+            }
+
+            let output =
+                command(cc_tool.path()).arg("-dumpversion").run_capture_stdout(&build).stdout();
+            let version_str = output.trim();
+            let mut parts = version_str.split('.').map(|s| s.parse::<u32>().unwrap_or(0));
+            let major = parts.next().unwrap_or(0);
+            let minor = parts.next().unwrap_or(0);
+            let patch = parts.next().unwrap_or(0);
+            if (major, minor, patch) < (22, 1, 0) {
+                panic!(
+                    "clang version too old: {} (aarch64-unknown-linux-pauthtest target trequires >= 22.1.0), path: {}",
+                    version_str,
+                    cc_tool.path().display()
+                );
+            }
         }
     }
 
