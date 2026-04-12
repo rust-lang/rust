@@ -370,6 +370,8 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> Box<ast::Expr> {
     let ecx = &cx.ext_cx;
 
     let mut tests = cx.test_cases.clone();
+    // Note that this sort is load-bearing: the libtest harness uses binary search to find tests by
+    // name.
     tests.sort_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
 
     ecx.expr_array_ref(
