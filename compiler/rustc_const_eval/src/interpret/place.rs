@@ -6,7 +6,9 @@ use std::assert_matches;
 
 use either::{Either, Left, Right};
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
-use rustc_middle::ty::layout::TyAndLayout;
+use rustc_hir::def::DefKind;
+use rustc_middle::mir::interpret::GlobalAlloc;
+use rustc_middle::ty::layout::{LayoutError, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use tracing::field::Empty;
@@ -15,7 +17,7 @@ use tracing::{instrument, trace};
 use super::{
     AllocInit, AllocRef, AllocRefMut, CheckAlignMsg, CtfeProvenance, ImmTy, Immediate, InterpCx,
     InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy, Operand, Pointer,
-    Projectable, Provenance, Scalar, alloc_range, interp_ok, mir_assign_valid_types,
+    Projectable, Provenance, Scalar, alloc_range, interp_ok, mir_assign_valid_types, throw_inval,
 };
 use crate::enter_trace_span;
 
@@ -435,6 +437,30 @@ where
         // `imm_ptr_to_mplace` is called on raw pointers even if they don't actually get dereferenced;
         // we hence can't call `size_and_align_of` since that asserts more validity than we want.
         let ptr = ptr.to_pointer(self)?;
+
+        // Unsized types normally require metadata (e.g. slice length or trait object vtable).
+        // However, during error recovery we can end up with a thin pointer to an unsized
+        // static whose layout could not be determined. In that case, querying the layout
+        // during CTFE would previously trigger an ICE.
+        if !layout.is_sized() && !meta.has_meta() {
+            if let Ok((alloc_id, _, _)) = self.ptr_try_get_alloc_id(ptr, 0)
+                && let Some(GlobalAlloc::Static(def_id)) = self.tcx.try_get_global_alloc(alloc_id)
+                && matches!(self.tcx.def_kind(def_id), DefKind::Static { nested: false, .. })
+            {
+                let ty = self
+                    .tcx
+                    .type_of(def_id)
+                    .no_bound_vars()
+                    .expect("statics should not have generic parameters");
+                match self.tcx.layout_of(self.typing_env.as_query_input(ty)) {
+                    Ok(static_layout) if !static_layout.is_sized() => {
+                        throw_inval!(Layout(LayoutError::Unknown(static_layout.ty)));
+                    }
+                    Err(err) => throw_inval!(Layout(*err)),
+                    Ok(_) => {}
+                }
+            }
+        }
         interp_ok(self.ptr_with_meta_to_mplace(ptr, meta, layout, /*unaligned*/ false))
     }
 
