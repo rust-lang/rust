@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BCI Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace; background: #0a0a0f; color: #e0e0e0; min-height: 100vh; padding: 20px; }
+  h1 { font-size: 18px; color: #888; margin-bottom: 16px; font-weight: 400; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 900px; }
+  .card { background: #14141f; border: 1px solid #2a2a3a; border-radius: 8px; padding: 20px; }
+  .card-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 12px; }
+  .full-width { grid-column: 1 / -1; }
+
+  /* State display */
+  .state-primary { font-size: 36px; font-weight: 700; margin-bottom: 4px; }
+  .state-confidence { font-size: 14px; color: #888; }
+  .state-source { font-size: 11px; color: #555; margin-top: 4px; }
+
+  /* Scores */
+  .score-row { display: flex; align-items: center; margin-bottom: 8px; }
+  .score-label { width: 110px; font-size: 13px; color: #999; }
+  .score-bar-bg { flex: 1; height: 20px; background: #1a1a2a; border-radius: 4px; overflow: hidden; }
+  .score-bar { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+  .score-value { width: 50px; text-align: right; font-size: 13px; font-variant-numeric: tabular-nums; }
+
+  /* Band powers */
+  .band-row { display: flex; align-items: center; margin-bottom: 6px; }
+  .band-label { width: 60px; font-size: 12px; color: #999; }
+  .band-bar-bg { flex: 1; height: 14px; background: #1a1a2a; border-radius: 3px; overflow: hidden; }
+  .band-bar { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+  .band-value { width: 60px; text-align: right; font-size: 11px; font-variant-numeric: tabular-nums; color: #888; }
+
+  /* Signal quality */
+  .quality-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+  .quality-text { font-size: 14px; }
+
+  /* Connection status */
+  .status-line { font-size: 12px; color: #555; display: flex; align-items: center; gap: 6px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .status-dot.connected { background: #4ade80; }
+  .status-dot.disconnected { background: #ef4444; }
+
+  /* Pause banner */
+  .pause-banner { display: none; background: #7c2d12; border: 1px solid #c2410c; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .pause-banner.active { display: block; }
+  .pause-banner .title { font-weight: 700; font-size: 16px; color: #fed7aa; }
+  .pause-banner .detail { font-size: 13px; color: #fdba74; margin-top: 4px; }
+
+  /* State log */
+  .log { max-height: 160px; overflow-y: auto; font-size: 12px; font-family: monospace; }
+  .log-entry { padding: 3px 0; border-bottom: 1px solid #1a1a2a; color: #888; }
+  .log-entry .time { color: #555; }
+
+  /* NL summary */
+  .nl-summary { font-size: 13px; color: #a0a0b0; background: #1a1a2a; padding: 12px; border-radius: 6px; line-height: 1.5; }
+
+  /* State colors */
+  .state-focused { color: #60a5fa; }
+  .state-relaxed { color: #4ade80; }
+  .state-stressed { color: #f87171; }
+  .state-drowsy { color: #fbbf24; }
+  .state-meditative { color: #a78bfa; }
+  .state-active { color: #2dd4bf; }
+  .state-unknown { color: #666; }
+</style>
+</head>
+<body>
+
+<h1>BCI Dashboard</h1>
+
+<div class="pause-banner" id="pauseBanner">
+  <div class="title" id="pauseTitle">PAUSED</div>
+  <div class="detail" id="pauseDetail"></div>
+</div>
+
+<div class="grid">
+  <!-- Brain State -->
+  <div class="card">
+    <div class="card-title">Brain State</div>
+    <div class="state-primary state-unknown" id="stateLabel">--</div>
+    <div class="state-confidence" id="stateConfidence">confidence: --</div>
+    <div class="state-source" id="stateSource">source: --</div>
+  </div>
+
+  <!-- Signal Quality -->
+  <div class="card">
+    <div class="card-title">Signal</div>
+    <div style="display:flex;align-items:center;margin-bottom:12px;">
+      <span class="quality-dot" id="qualityDot" style="background:#666;"></span>
+      <span class="quality-text" id="qualityText">--</span>
+    </div>
+    <div class="status-line">
+      <span class="status-dot disconnected" id="wsDot"></span>
+      <span id="wsStatus">Disconnected</span>
+    </div>
+    <div class="status-line" style="margin-top:6px;">
+      <span id="latencyText">Latency: --</span>
+    </div>
+    <div class="status-line" style="margin-top:6px;">
+      <span id="updateRate">Updates: --/s</span>
+    </div>
+  </div>
+
+  <!-- Scores -->
+  <div class="card">
+    <div class="card-title">Cognitive Scores</div>
+    <div class="score-row">
+      <span class="score-label">Attention</span>
+      <div class="score-bar-bg"><div class="score-bar" id="attentionBar" style="width:0;background:#60a5fa;"></div></div>
+      <span class="score-value" id="attentionVal">--</span>
+    </div>
+    <div class="score-row">
+      <span class="score-label">Relaxation</span>
+      <div class="score-bar-bg"><div class="score-bar" id="relaxationBar" style="width:0;background:#4ade80;"></div></div>
+      <span class="score-value" id="relaxationVal">--</span>
+    </div>
+    <div class="score-row">
+      <span class="score-label">Cognitive Load</span>
+      <div class="score-bar-bg"><div class="score-bar" id="cogloadBar" style="width:0;background:#f87171;"></div></div>
+      <span class="score-value" id="cogloadVal">--</span>
+    </div>
+  </div>
+
+  <!-- Band Powers -->
+  <div class="card">
+    <div class="card-title">Band Powers</div>
+    <div class="band-row">
+      <span class="band-label">Delta</span>
+      <div class="band-bar-bg"><div class="band-bar" id="deltaBar" style="width:0;background:#a78bfa;"></div></div>
+      <span class="band-value" id="deltaVal">--</span>
+    </div>
+    <div class="band-row">
+      <span class="band-label">Theta</span>
+      <div class="band-bar-bg"><div class="band-bar" id="thetaBar" style="width:0;background:#fbbf24;"></div></div>
+      <span class="band-value" id="thetaVal">--</span>
+    </div>
+    <div class="band-row">
+      <span class="band-label">Alpha</span>
+      <div class="band-bar-bg"><div class="band-bar" id="alphaBar" style="width:0;background:#4ade80;"></div></div>
+      <span class="band-value" id="alphaVal">--</span>
+    </div>
+    <div class="band-row">
+      <span class="band-label">Beta</span>
+      <div class="band-bar-bg"><div class="band-bar" id="betaBar" style="width:0;background:#60a5fa;"></div></div>
+      <span class="band-value" id="betaVal">--</span>
+    </div>
+    <div class="band-row">
+      <span class="band-label">Gamma</span>
+      <div class="band-bar-bg"><div class="band-bar" id="gammaBar" style="width:0;background:#f472b6;"></div></div>
+      <span class="band-value" id="gammaVal">--</span>
+    </div>
+  </div>
+
+  <!-- LLM Context -->
+  <div class="card full-width">
+    <div class="card-title">LLM Context (what the AI sees)</div>
+    <div class="nl-summary" id="nlSummary">Waiting for data...</div>
+  </div>
+
+  <!-- State Log -->
+  <div class="card full-width">
+    <div class="card-title">State Transitions</div>
+    <div class="log" id="stateLog"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const WS_URL = `ws://${location.host}/ws`;
+  const MAX_LOG = 20;
+
+  let ws = null;
+  let lastState = null;
+  let updateCount = 0;
+  let lastCountReset = Date.now();
+
+  function $(id) { return document.getElementById(id); }
+
+  function stateColor(state) {
+    const map = { focused:'#60a5fa', relaxed:'#4ade80', stressed:'#f87171', drowsy:'#fbbf24', meditative:'#a78bfa', active:'#2dd4bf' };
+    return map[state] || '#666';
+  }
+
+  function qualityColor(q) {
+    if (q >= 0.7) return '#4ade80';
+    if (q >= 0.3) return '#fbbf24';
+    return '#ef4444';
+  }
+
+  function qualityLabel(q) {
+    if (q >= 0.7) return `Good (${(q*100).toFixed(0)}%)`;
+    if (q >= 0.3) return `Fair (${(q*100).toFixed(0)}%)`;
+    return `Poor (${(q*100).toFixed(0)}%)`;
+  }
+
+  function setBar(barId, valId, value, max) {
+    const pct = Math.min(100, (value / max) * 100);
+    $(barId).style.width = pct + '%';
+    $(valId).textContent = value.toFixed(2);
+  }
+
+  function addLog(msg) {
+    const log = $('stateLog');
+    const now = new Date().toLocaleTimeString();
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.innerHTML = `<span class="time">${now}</span> ${msg}`;
+    log.prepend(div);
+    while (log.children.length > MAX_LOG) log.removeChild(log.lastChild);
+  }
+
+  function update(data) {
+    updateCount++;
+    const now = Date.now();
+    if (now - lastCountReset >= 1000) {
+      $('updateRate').textContent = `Updates: ${updateCount}/s`;
+      updateCount = 0;
+      lastCountReset = now;
+    }
+
+    // Latency
+    if (data.timestamp_unix_ms) {
+      const lat = now - data.timestamp_unix_ms;
+      $('latencyText').textContent = `Latency: ${lat}ms`;
+    }
+
+    // State
+    const primary = data.state?.primary || 'unknown';
+    const confidence = data.state?.confidence || 0;
+    const el = $('stateLabel');
+    el.textContent = primary.toUpperCase();
+    el.className = 'state-primary state-' + primary;
+    $('stateConfidence').textContent = `confidence: ${(confidence * 100).toFixed(0)}%`;
+    $('stateSource').textContent = `source: ${data.classification_source || 'heuristic'}`;
+
+    // Log state transitions
+    if (lastState && lastState !== primary) {
+      addLog(`<span style="color:${stateColor(lastState)}">${lastState}</span> &rarr; <span style="color:${stateColor(primary)}">${primary}</span>`);
+    }
+    lastState = primary;
+
+    // Signal quality
+    const sq = data.signal_quality ?? 0;
+    $('qualityDot').style.background = qualityColor(sq);
+    $('qualityText').textContent = qualityLabel(sq);
+
+    // Scores
+    const scores = data.scores || {};
+    setBar('attentionBar', 'attentionVal', scores.attention ?? 0, 1);
+    setBar('relaxationBar', 'relaxationVal', scores.relaxation ?? 0, 1);
+    setBar('cogloadBar', 'cogloadVal', scores.cognitive_load ?? 0, 1);
+
+    // Band powers (normalize to max of current values for relative display)
+    const bp = data.band_powers || {};
+    const bands = ['delta','theta','alpha','beta','gamma'];
+    const vals = bands.map(b => bp[b] ?? 0);
+    const maxBp = Math.max(...vals, 1);
+    bands.forEach((b, i) => {
+      setBar(b + 'Bar', b + 'Val', vals[i], maxBp);
+    });
+
+    // NL summary
+    $('nlSummary').textContent = data.natural_language_summary || 'No data';
+
+    // Pause banner
+    const banner = $('pauseBanner');
+    if (data.pause_event) {
+      banner.classList.add('active');
+      const pe = data.pause_event;
+      if (pe.pause_type === 'deliberate') {
+        $('pauseTitle').textContent = 'PAUSED (jaw clench)';
+        $('pauseDetail').textContent = 'User deliberately paused. Waiting for resume...';
+      } else {
+        $('pauseTitle').textContent = pe.trigger === 'drowsiness' ? 'DROWSY' : 'HEADSET REMOVED';
+        $('pauseDetail').textContent = pe.trigger === 'drowsiness' ? 'User appears drowsy.' : 'BCI headset was removed.';
+      }
+    } else if (data.resume_event) {
+      banner.classList.remove('active');
+      addLog('Resumed: ' + (data.resume_event.reason || 'alert state'));
+    } else {
+      banner.classList.remove('active');
+    }
+  }
+
+  function connect() {
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = function() {
+      $('wsDot').className = 'status-dot connected';
+      $('wsStatus').textContent = 'Connected';
+      addLog('WebSocket connected');
+    };
+
+    ws.onmessage = function(e) {
+      try { update(JSON.parse(e.data)); } catch(err) { console.error(err); }
+    };
+
+    ws.onclose = function() {
+      $('wsDot').className = 'status-dot disconnected';
+      $('wsStatus').textContent = 'Disconnected (reconnecting...)';
+      addLog('WebSocket disconnected');
+      setTimeout(connect, 2000);
+    };
+
+    ws.onerror = function() {
+      try { ws.close(); } catch(e) {}
+    };
+  }
+
+  connect();
+})();
+</script>
+</body>
+</html>

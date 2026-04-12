@@ -11,10 +11,13 @@ import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from . import config
 from .brainflow_reader import BCIReader
@@ -164,6 +167,16 @@ def create_app(
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Dashboard: serve static/dashboard.html at /dashboard
+    _static_dir = Path(__file__).parent.parent / "static"
+    if _static_dir.is_dir():
+        @app.get("/dashboard")
+        def dashboard():
+            """Serve the real-time BCI dashboard."""
+            return FileResponse(str(_static_dir / "dashboard.html"))
+
+        app.mount("/static", StaticFiles(directory=str(_static_dir)), name="static")
 
     @app.get("/state", response_model=StateResponse)
     def get_state() -> StateResponse:
