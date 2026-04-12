@@ -1,5 +1,6 @@
 #![feature(rustc_attrs)]
 #![feature(optimize_attribute)]
+#![feature(coverage_attribute)]
 #![allow(unused_attributes)]
 
 #[inline(always = 5)]
@@ -13,6 +14,10 @@
 #[optimize(size = 5)]
 //~^ ERROR malformed
 #[optimize(size(x, y, z))]
+//~^ ERROR malformed
+#[coverage(off = 5)]
+//~^ ERROR malformed
+#[coverage(off(x, y, z))]
 //~^ ERROR malformed
 fn main() {
 
