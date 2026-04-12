@@ -66,7 +66,7 @@ impl<'tcx> ExportedSymbol<'tcx> {
                 tcx.symbol_name(ty::Instance::new_raw(def_id, args))
             }
             ExportedSymbol::DropGlue(ty) => {
-                tcx.symbol_name(ty::Instance::resolve_drop_in_place(tcx, ty))
+                tcx.symbol_name(ty::Instance::resolve_drop_glue(tcx, ty))
             }
             ExportedSymbol::AsyncDropGlueCtorShim(ty) => {
                 tcx.symbol_name(ty::Instance::resolve_async_drop_in_place(tcx, ty))

@@ -16,7 +16,7 @@ pub fn f() {
 
 struct A(String, String);
 
-// CHECK:      ; core::ptr::drop_in_place::<inline_hint::A>
+// CHECK:      ; core::ptr::drop_glue::<inline_hint::A>
 // CHECK-NEXT: ; Function Attrs:
 // CHECK-NOT:  inlinehint
 // CHECK-SAME: {{$}}

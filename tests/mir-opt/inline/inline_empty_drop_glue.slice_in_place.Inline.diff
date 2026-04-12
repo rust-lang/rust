@@ -5,7 +5,10 @@
       debug ptr => _1;
       let mut _0: ();
       let mut _2: *mut [char];
-+     scope 1 (inlined drop_in_place::<[char]> - shim(None)) {
++     scope 1 (inlined drop_in_place::<[char]>) {
++         let mut _3: &mut [char];
++         scope 2 (inlined std::ptr::drop_glue::<[char]> - shim(None)) {
++         }
 +     }
   
       bb0: {

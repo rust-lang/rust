@@ -655,7 +655,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
 
     /// Resolve an instance for drop_in_place for the given type.
     pub fn resolve_drop_in_place(&self, internal_ty: Ty<'tcx>) -> Instance<'tcx> {
-        let instance = Instance::resolve_drop_in_place(self.tcx, internal_ty);
+        let instance = Instance::resolve_drop_glue(self.tcx, internal_ty);
         instance
     }
 

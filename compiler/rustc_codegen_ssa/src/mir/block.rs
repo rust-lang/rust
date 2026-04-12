@@ -604,7 +604,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> MergingSucc {
         let ty = location.ty(self.mir, bx.tcx()).ty;
         let ty = self.monomorphize(ty);
-        let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
+        let drop_fn = Instance::resolve_drop_glue(bx.tcx(), ty);
 
         if let ty::InstanceKind::DropGlue(_, None) = drop_fn.def {
             // we don't actually need to drop anything.
@@ -622,7 +622,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
         let (maybe_null, drop_fn, fn_abi, drop_instance) = match ty.kind() {
             // FIXME(eddyb) perhaps move some of this logic into
-            // `Instance::resolve_drop_in_place`?
+            // `Instance::resolve_drop_glue`?
             ty::Dynamic(_, _) => {
                 // IN THIS ARM, WE HAVE:
                 // ty = *mut (dyn Trait)

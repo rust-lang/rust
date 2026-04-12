@@ -307,7 +307,7 @@ pub(crate) fn transform_instance<'tcx>(
 ) -> Instance<'tcx> {
     // FIXME: account for async-drop-glue
     if (matches!(instance.def, ty::InstanceKind::Virtual(..))
-        && tcx.is_lang_item(instance.def_id(), LangItem::DropInPlace))
+        && tcx.is_lang_item(instance.def_id(), LangItem::DropGlue))
         || matches!(instance.def, ty::InstanceKind::DropGlue(..))
     {
         // Adjust the type ids of DropGlues

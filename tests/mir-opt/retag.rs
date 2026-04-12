@@ -20,7 +20,7 @@ impl Test {
     }
 }
 
-// EMIT_MIR core.ptr-drop_in_place.Test.SimplifyCfg-make_shim.after.mir
+// EMIT_MIR core.ptr-drop_glue.Test.SimplifyCfg-make_shim.after.mir
 
 impl Drop for Test {
     fn drop(&mut self) {}

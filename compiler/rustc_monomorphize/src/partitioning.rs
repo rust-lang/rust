@@ -662,9 +662,8 @@ fn characteristic_def_id_of_mono_item<'tcx>(
                     && tcx.sess.opts.incremental.is_some()
                     && tcx.is_lang_item(tcx.impl_trait_id(impl_def_id), LangItem::Drop)
                 {
-                    // Put `Drop::drop` into the same cgu as `drop_in_place`
-                    // since `drop_in_place` is the only thing that can
-                    // call it.
+                    // Put `Drop::drop` into the same cgu as `drop_glue`
+                    // since `drop_glue` is the only thing that can call it.
                     return None;
                 }
 

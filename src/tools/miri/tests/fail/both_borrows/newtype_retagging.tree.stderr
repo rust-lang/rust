@@ -28,7 +28,7 @@ LL |             || drop(Box::from_raw(ptr)),
    = note: stack backtrace:
            0: <std::boxed::Box<i32> as std::ops::Drop>::drop
                at RUSTLIB/alloc/src/boxed.rs:LL:CC
-           1: std::ptr::drop_in_place))
+           1: std::ptr::drop_glue))
                at RUSTLIB/core/src/ptr/mod.rs:LL:CC
            2: std::mem::drop
                at RUSTLIB/core/src/mem/mod.rs:LL:CC

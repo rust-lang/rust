@@ -43,8 +43,8 @@ fn assigned_to_variable_executed_directly() {
 //~ MONO_ITEM fn with_drop @@ non_generic_closures-cgu.0[External]
 fn with_drop(v: PresentDrop) {
     //~ MONO_ITEM fn with_drop::{closure#0} @@ non_generic_closures-cgu.0[External]
-    //~ MONO_ITEM fn std::ptr::drop_in_place::<PresentDrop> - shim(Some(PresentDrop)) @@ non_generic_closures-cgu.0[Internal]
-    //~ MONO_ITEM fn std::ptr::drop_in_place::<{closure@TEST_PATH:49:14: 49:24}> - shim(Some({closure@TEST_PATH:49:14: 49:24})) @@ non_generic_closures-cgu.0[Internal]
+    //~ MONO_ITEM fn std::ptr::drop_glue::<PresentDrop> - shim(Some(PresentDrop)) @@ non_generic_closures-cgu.0[Internal]
+    //~ MONO_ITEM fn std::ptr::drop_glue::<{closure@TEST_PATH:49:14: 49:24}> - shim(Some({closure@TEST_PATH:49:14: 49:24})) @@ non_generic_closures-cgu.0[Internal]
 
     let _f = |a: usize| {
         let _ = a + 2;

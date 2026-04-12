@@ -193,7 +193,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
             // one (for the RHS/index), unary operations have none, the closure
             // traits have one for the argument list, coroutines have one for the
             // resume argument, and ordering/equality relations have one for the RHS
-            // Some other types like Box and various functions like drop_in_place
+            // Some other types like Box and various unsizing-related traits
             // have minimum requirements.
 
             // FIXME: This still doesn't count, e.g., elided lifetimes and APITs.
