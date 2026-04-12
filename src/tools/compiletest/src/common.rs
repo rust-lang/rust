@@ -235,7 +235,7 @@ impl CodegenBackend {
 /// FIXME: audit these options to make sure we are not hashing less than necessary for build stamp
 /// (for changed test detection).
 #[derive(Debug, Clone)]
-pub(crate) struct Config {
+pub struct Config {
     /// Some [`TestMode`]s support [snapshot testing], where a *reference snapshot* of outputs (of
     /// `stdout`, `stderr`, or other form of artifacts) can be compared to the *actual output*.
     ///
@@ -1170,7 +1170,7 @@ pub(crate) fn query_rustc_output(
 
 /// Path information for a single test file.
 #[derive(Debug, Clone)]
-pub(crate) struct TestPaths {
+pub struct TestPaths {
     /// Full path to the test file.
     ///
     /// For example:
@@ -1183,7 +1183,7 @@ pub(crate) struct TestPaths {
     ///
     /// For example:
     /// - `/home/ferris/rust/tests/run-make/emit`
-    pub(crate) file: Utf8PathBuf,
+    pub file: Utf8PathBuf,
 
     /// Subset of the full path that excludes the suite directory and the
     /// test filename. For tests in the root of their test suite directory,
@@ -1192,7 +1192,7 @@ pub(crate) struct TestPaths {
     /// For example:
     /// - `file`: `/home/ferris/rust/tests/ui/warnings/hello-world.rs`
     /// - `relative_dir`: `warnings`
-    pub(crate) relative_dir: Utf8PathBuf,
+    pub relative_dir: Utf8PathBuf,
 }
 
 /// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
