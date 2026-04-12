@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/21033>
 //@ run-pass
 #![allow(unused_mut)]
 #![allow(unused_variables)]

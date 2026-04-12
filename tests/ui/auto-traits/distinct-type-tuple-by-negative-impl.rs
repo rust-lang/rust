@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/29516>
 //@ check-pass
 #![feature(auto_traits)]
 #![feature(negative_impls)]
