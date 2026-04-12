@@ -9,3 +9,13 @@
 fn main() {
 
 }
+
+#[macro_export(local_inner_macros = 5)]
+//~^ ERROR valid forms for the attribute are
+//~| WARN previously accepted
+#[macro_export(local_inner_macros(x, y, z))]
+//~^ ERROR valid forms for the attribute are
+//~| WARN previously accepted
+macro_rules! m {
+    () => {};
+}
