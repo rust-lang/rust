@@ -848,6 +848,33 @@ pub(crate) enum UseLetUnderscoreIgnoreSuggestion {
     },
 }
 
+// runtime_symbols.rs
+#[derive(Diagnostic)]
+pub(crate) enum RedefiningRuntimeSymbolsDiag<'tcx> {
+    #[diag(
+        "invalid definition of the runtime `{$symbol_name}` symbol used by the standard library"
+    )]
+    #[note(
+        "expected `{$expected_fn_sig}`
+    found    `{$found_fn_sig}`"
+    )]
+    #[help(
+        "either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = \"{$symbol_name}\")]`, or `#[link_name = \"{$symbol_name}\"]`"
+    )]
+    FnDef { symbol_name: String, expected_fn_sig: Ty<'tcx>, found_fn_sig: Ty<'tcx> },
+    #[diag(
+        "invalid definition of the runtime `{$symbol_name}` symbol used by the standard library"
+    )]
+    #[note(
+        "expected `{$expected_fn_sig}`
+    found    `static {$symbol_name}: {$static_ty}`"
+    )]
+    #[help(
+        "either fix the signature or remove any attributes `#[unsafe(no_mangle)]` or `#[unsafe(export_name = \"{$symbol_name}\")]`"
+    )]
+    Static { symbol_name: String, static_ty: Ty<'tcx>, expected_fn_sig: Ty<'tcx> },
+}
+
 // drop_forget_useless.rs
 #[derive(Diagnostic)]
 #[diag("calls to `std::mem::drop` with a reference instead of an owned value does nothing")]
