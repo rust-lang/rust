@@ -1,0 +1,44 @@
+warning: invalid format specifier
+  --> $DIR/report_warning_on_invalid_formats.rs:3:61
+   |
+LL | #[diagnostic::on_type_error(note = "invalid format {Expected:123}")]
+   |                                                             ^^^^
+   |
+   = help: no format specifier are supported in this position
+   = note: `#[warn(malformed_diagnostic_format_literals)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: invalid format specifier
+  --> $DIR/report_warning_on_invalid_formats.rs:7:61
+   |
+LL | #[diagnostic::on_type_error(note = "invalid format {Expected:!}")]
+   |                                                             ^^
+   |
+   = help: no format specifier are supported in this position
+
+error[E0308]: mismatched types
+  --> $DIR/report_warning_on_invalid_formats.rs:13:34
+   |
+LL |     let _: InvalidFormat1<i32> = InvalidFormat2("");
+   |            -------------------   ^^^^^^^^^^^^^^^^^^ expected `InvalidFormat1<i32>`, found `InvalidFormat2<&str>`
+   |            |
+   |            expected due to this
+   |
+   = note: invalid format InvalidFormat1<i32>
+   = note: expected struct `InvalidFormat1<i32>`
+              found struct `InvalidFormat2<&str>`
+
+error[E0308]: mismatched types
+  --> $DIR/report_warning_on_invalid_formats.rs:15:34
+   |
+LL |     let _: InvalidFormat2<i32> = InvalidFormat1(3.14);
+   |            -------------------   ^^^^^^^^^^^^^^^^^^^^ expected `InvalidFormat2<i32>`, found `InvalidFormat1<{float}>`
+   |            |
+   |            expected due to this
+   |
+   = note: invalid format InvalidFormat2<i32>
+   = note: expected struct `InvalidFormat2<i32>`
+              found struct `InvalidFormat1<{float}>`
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0308`.

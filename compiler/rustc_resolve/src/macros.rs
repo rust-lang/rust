@@ -718,6 +718,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             (sym::on_move, Some(sym::diagnostic_on_move)),
             (sym::on_const, Some(sym::diagnostic_on_const)),
             (sym::on_unknown, Some(sym::diagnostic_on_unknown)),
+            (sym::on_type_error, Some(sym::diagnostic_on_type_error)),
         ];
 
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)

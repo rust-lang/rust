@@ -1,0 +1,74 @@
+warning: unknown diagnostic attribute
+  --> $DIR/feature-gate-diagnostic-on-type-error.rs:5:15
+   |
+LL | #[diagnostic::on_type_error(note = "expected `{Expected}`, found `{Found}`")]
+   |               ^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(diagnostic_on_type_error)]` to the crate attributes to enable
+   = note: `#[warn(unknown_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-diagnostic-on-type-error.rs:13:32
+   |
+LL |     let foo: Foo<String> = Foo(42);
+   |                            --- ^^ expected `String`, found integer
+   |                            |
+   |                            arguments to this struct are incorrect
+   |
+help: the type constructed contains `{integer}` due to the type of the argument passed
+  --> $DIR/feature-gate-diagnostic-on-type-error.rs:13:28
+   |
+LL |     let foo: Foo<String> = Foo(42);
+   |                            ^^^^--^
+   |                                |
+   |                                this argument influences the type of `Foo`
+note: tuple struct defined here
+  --> $DIR/feature-gate-diagnostic-on-type-error.rs:8:8
+   |
+LL | struct Foo<T>(T);
+   |        ^^^
+help: try using a conversion method
+   |
+LL |     let foo: Foo<String> = Foo(42.to_string());
+   |                                  ++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-diagnostic-on-type-error.rs:15:15
+   |
+LL |     takes_foo(foo);
+   |     --------- ^^^ expected `Foo<i32>`, found `Foo<String>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected struct `Foo<i32>`
+              found struct `Foo<String>`
+note: function defined here
+  --> $DIR/feature-gate-diagnostic-on-type-error.rs:10:4
+   |
+LL | fn takes_foo(_: Foo<i32>) {}
+   |    ^^^^^^^^^ -----------
+
+error[E0308]: mismatched types
+  --> $DIR/feature-gate-diagnostic-on-type-error.rs:17:29
+   |
+LL |     let bar: Foo<i32> = Foo("");
+   |                         --- ^^ expected `i32`, found `&str`
+   |                         |
+   |                         arguments to this struct are incorrect
+   |
+help: the type constructed contains `&'static str` due to the type of the argument passed
+  --> $DIR/feature-gate-diagnostic-on-type-error.rs:17:25
+   |
+LL |     let bar: Foo<i32> = Foo("");
+   |                         ^^^^--^
+   |                             |
+   |                             this argument influences the type of `Foo`
+note: tuple struct defined here
+  --> $DIR/feature-gate-diagnostic-on-type-error.rs:8:8
+   |
+LL | struct Foo<T>(T);
+   |        ^^^
+
+error: aborting due to 3 previous errors; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,61 @@
+warning: malformed `diagnostic::on_type_error` attribute
+  --> $DIR/report_warning_on_unknown_options.rs:3:29
+   |
+LL | #[diagnostic::on_type_error(unknown = "option")]
+   |                             ^^^^^^^^^^^^^^^^^^ invalid option found here
+   |
+   = help: only `note` is allowed as option for `diagnostic::on_type_error`
+   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: malformed `diagnostic::on_type_error` attribute
+  --> $DIR/report_warning_on_unknown_options.rs:7:29
+   |
+LL | #[diagnostic::on_type_error(message = "not allowed")]
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^ invalid option found here
+   |
+   = help: only `note` is allowed as option for `diagnostic::on_type_error`
+
+warning: malformed `diagnostic::on_type_error` attribute
+  --> $DIR/report_warning_on_unknown_options.rs:11:29
+   |
+LL | #[diagnostic::on_type_error(label = "not allowed")]
+   |                             ^^^^^^^^^^^^^^^^^^^^^ invalid option found here
+   |
+   = help: only `note` is allowed as option for `diagnostic::on_type_error`
+
+error[E0308]: mismatched types
+  --> $DIR/report_warning_on_unknown_options.rs:17:33
+   |
+LL |     let _: UnknownOption<i32> = MessageOption(43);
+   |            ------------------   ^^^^^^^^^^^^^^^^^ expected `UnknownOption<i32>`, found `MessageOption<{integer}>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `UnknownOption<i32>`
+              found struct `MessageOption<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/report_warning_on_unknown_options.rs:19:33
+   |
+LL |     let _: MessageOption<i32> = UnknownOption(32);
+   |            ------------------   ^^^^^^^^^^^^^^^^^ expected `MessageOption<i32>`, found `UnknownOption<{integer}>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `MessageOption<i32>`
+              found struct `UnknownOption<{integer}>`
+
+error[E0308]: mismatched types
+  --> $DIR/report_warning_on_unknown_options.rs:21:31
+   |
+LL |     let _: LabelOption<i32> = UnknownOption(32);
+   |            ----------------   ^^^^^^^^^^^^^^^^^ expected `LabelOption<i32>`, found `UnknownOption<{integer}>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `LabelOption<i32>`
+              found struct `UnknownOption<{integer}>`
+
+error: aborting due to 3 previous errors; 3 warnings emitted
+
+For more information about this error, try `rustc --explain E0308`.

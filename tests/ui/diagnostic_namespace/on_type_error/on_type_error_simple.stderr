@@ -1,0 +1,43 @@
+error[E0308]: mismatched types
+  --> $DIR/on_type_error_simple.rs:8:23
+   |
+LL |     let s: S<i32> = S(String::new());
+   |                     - ^^^^^^^^^^^^^ expected `i32`, found `String`
+   |                     |
+   |                     arguments to this struct are incorrect
+   |
+help: the type constructed contains `String` due to the type of the argument passed
+  --> $DIR/on_type_error_simple.rs:8:21
+   |
+LL |     let s: S<i32> = S(String::new());
+   |                     ^^-------------^
+   |                       |
+   |                       this argument influences the type of `S`
+note: tuple struct defined here
+  --> $DIR/on_type_error_simple.rs:3:8
+   |
+LL | struct S<T>(T);
+   |        ^
+
+error[E0308]: mismatched types
+  --> $DIR/on_type_error_simple.rs:10:30
+   |
+LL |     let k: K<i32> = K { foo: "" };
+   |                              ^^ expected `i32`, found `&str`
+
+error[E0308]: mismatched types
+  --> $DIR/on_type_error_simple.rs:12:21
+   |
+LL |     let _: S<i32> = k;
+   |            ------   ^ expected `S<i32>`, found `K<i32>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `S<i32>`
+            found struct `K<i32>`
+   = note: expected struct `S<i32>`
+              found struct `K<i32>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -81,6 +81,7 @@ declare_lint_pass! {
         NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
         NON_CONTIGUOUS_RANGE_ENDPOINTS,
         NON_EXHAUSTIVE_OMITTED_PATTERNS,
+        ON_TYPE_ERROR_MULTIPLE_GENERICS,
         OUT_OF_SCOPE_MACRO_CALLS,
         OVERLAPPING_RANGE_ENDPOINTS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
@@ -4574,6 +4575,43 @@ declare_lint! {
     Warn,
     "detects diagnostic attribute with malformed diagnostic format literals",
 }
+
+declare_lint! {
+    /// The `on_type_error_multiple_generics` lint detects when
+    /// `#[diagnostic::on_type_error]` is used on items with more than one generic parameter.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (requires nightly feature)
+    /// #![feature(diagnostic_on_type_error)]
+    /// #[diagnostic::on_type_error(note = "too many generics")]
+    /// struct TooMany<T, U>(T, U);
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: `#[diagnostic::on_type_error]` only supports one ADT generic parameter, but found `2`
+    ///  --> lint_example.rs:3:15
+    ///   |
+    /// 3 | struct TooMany<T, U>(T, U);
+    ///   |               ^^^^^^
+    ///   |
+    ///   = note: `#[warn(on_type_error_multiple_generics)]` on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// The `#[diagnostic::on_type_error]` attribute currently only supports items
+    /// with a single generic parameter. Using it on an item with multiple generic
+    /// parameters will cause the attribute to be ignored.
+    ///
+    /// [reference]: https://doc.rust-lang.org/nightly/reference/attributes/diagnostics.html#the-diagnostic-tool-attribute-namespace
+    pub ON_TYPE_ERROR_MULTIPLE_GENERICS,
+    Warn,
+    "detects use of #[diagnostic::on_type_error] with multiple generic parameters",
+}
+
 declare_lint! {
     /// The `ambiguous_glob_imports` lint detects glob imports that should report ambiguity
     /// errors, but previously didn't do that due to rustc bugs.
