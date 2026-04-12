@@ -1202,6 +1202,9 @@ impl str {
     ///
     /// This uses the same definition as [`char::is_ascii_whitespace`].
     /// To split by Unicode `Whitespace` instead, use [`split_whitespace`].
+    /// Note that because of this difference in definition, even if `s.is_ascii()`
+    /// is `true`, `s.split_ascii_whitespace()` behavior will differ from `s.split_whitespace()`
+    /// if `s` contains U+000B VERTICAL TAB.
     ///
     /// [`split_whitespace`]: str::split_whitespace
     ///
@@ -2896,7 +2899,9 @@ impl str {
     /// Returns a string slice with leading ASCII whitespace removed.
     ///
     /// 'Whitespace' refers to the definition used by
-    /// [`u8::is_ascii_whitespace`].
+    /// [`u8::is_ascii_whitespace`]. Importantly, this definition excludes
+    /// the U+000B code point even though it has the unicode WhiteSpace property
+    /// and is removed by [`str::trim_start`].
     ///
     /// [`u8::is_ascii_whitespace`]: u8::is_ascii_whitespace
     ///
@@ -2921,7 +2926,9 @@ impl str {
     /// Returns a string slice with trailing ASCII whitespace removed.
     ///
     /// 'Whitespace' refers to the definition used by
-    /// [`u8::is_ascii_whitespace`].
+    /// [`u8::is_ascii_whitespace`]. Importantly, this definition excludes
+    /// the U+000B code point even though it has the unicode WhiteSpace property
+    /// and is removed by [`str::trim_end`].
     ///
     /// [`u8::is_ascii_whitespace`]: u8::is_ascii_whitespace
     ///
@@ -2947,7 +2954,9 @@ impl str {
     /// removed.
     ///
     /// 'Whitespace' refers to the definition used by
-    /// [`u8::is_ascii_whitespace`].
+    /// [`u8::is_ascii_whitespace`]. Importantly, this definition excludes
+    /// the U+000B code point even though it has the unicode WhiteSpace property
+    /// and is removed by [`str::trim`].
     ///
     /// [`u8::is_ascii_whitespace`]: u8::is_ascii_whitespace
     ///
