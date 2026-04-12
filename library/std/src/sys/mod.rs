@@ -30,6 +30,7 @@ pub mod thread_local;
 // FIXME(117276): remove this, move feature implementations into individual
 //                submodules.
 pub use pal::*;
+#[allow(unused_imports)]
 pub use random::fill_bytes;
 
 /// A trait for viewing representations from std types.

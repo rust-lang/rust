@@ -46,6 +46,7 @@ cfg_select! {
         pub use zkvm::*;
     }
     target_os = "thingos" => {
+        #[path = "../pal/thingos/stdio.rs"]
         mod thingos;
         pub use thingos::*;
     }

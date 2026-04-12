@@ -11,6 +11,7 @@
     target_os = "uefi",
     target_os = "wasi",
     target_os = "xous",
+    target_os = "thingos",
 ))]
 mod common;
 
@@ -50,6 +51,11 @@ cfg_select! {
     target_os = "xous" => {
         mod xous;
         pub use xous::*;
+    }
+    target_os = "thingos" => {
+        #[path = "../pal/thingos/env.rs"]
+        mod thingos;
+        pub use thingos::*;
     }
     target_os = "zkvm" => {
         mod zkvm;

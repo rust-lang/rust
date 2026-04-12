@@ -47,7 +47,6 @@
 //! payload and propagate it through the join handle in the usual way.
 
 use crate::ffi::CStr;
-use crate::io;
 use crate::num::NonZero;
 use crate::thread::ThreadInit;
 use crate::time::Duration;
@@ -192,7 +191,7 @@ impl Thread {
         let tls_base = allocate_tls_block();
 
         let req = SpawnThreadReq {
-            entry: thread_start as usize,
+            entry: thread_start as *const () as usize,
             sp,
             arg: data as usize,
             stack: stack_info,
@@ -236,7 +235,7 @@ impl Thread {
 extern "C" fn thread_start(data: usize) -> ! {
     // Reconstruct the ThreadInit box that was leaked in Thread::new.
     // SAFETY: `data` is the pointer returned by Box::into_raw in Thread::new.
-    let init = unsafe { Box::from_raw(data as *mut ThreadInit) };
+    let init = unsafe { Box::from_raw(crate::ptr::with_exposed_provenance_mut::<ThreadInit>(data)) };
 
     // Initialize the thread-current handle and retrieve the Rust entry closure.
     let rust_start = init.init();
@@ -453,8 +452,8 @@ fn allocate_tls_block() -> usize {
         let copy_len = info.filesz.min(info.memsz);
         unsafe {
             core::ptr::copy_nonoverlapping(
-                info.template_va as *const u8,
-                block_addr as *mut u8,
+                crate::ptr::with_exposed_provenance::<u8>(info.template_va),
+                crate::ptr::with_exposed_provenance_mut::<u8>(block_addr),
                 copy_len,
             );
         }
@@ -463,7 +462,7 @@ fn allocate_tls_block() -> usize {
     // Write the ELF Variant II self-pointer: the first word of the TCB must
     // contain the TP itself so that `mov rax, fs:0` returns the TP value.
     unsafe {
-        core::ptr::write(tp as *mut usize, tp);
+        core::ptr::write(crate::ptr::with_exposed_provenance_mut::<usize>(tp), tp);
     }
 
     tp

@@ -12,7 +12,7 @@
 //! `SYS_FS_CLOSE` (0x4001).
 
 use crate::fmt;
-use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
+use crate::io::{BorrowedCursor, IoSlice, IoSliceMut};
 use crate::sys::pal::raw_syscall6;
 
 // Syscall numbers (abi/src/numbers.rs)
@@ -63,6 +63,7 @@ impl Pipe {
     }
 
     /// Return the raw fd without closing it.
+    #[allow(dead_code)]
     pub(crate) fn into_raw_fd(self) -> u32 {
         let fd = self.0;
         crate::mem::forget(self);
@@ -114,7 +115,7 @@ impl Pipe {
                     buf.extend_from_slice(&tmp[..n]);
                     total += n;
                 }
-                Err(e) => return Err(e), _ => core::todo!(),
+                Err(e) => return Err(e),
             }
         }
     }
@@ -140,6 +141,7 @@ impl Pipe {
         false
     }
 
+    #[allow(dead_code)]
     pub fn diverge(&self) -> ! {
         panic!("Pipe::diverge called on a live ThingOS pipe")
     }

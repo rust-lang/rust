@@ -605,7 +605,7 @@ impl TcpListener {
                     sleep_ns(IO_POLL_NS);
                     thread::yield_now();
                 }
-                Err(e) => return Err(e), _ => core::todo!(),
+                Err(e) => return Err(e),
             }
         }
     }
@@ -750,7 +750,7 @@ impl UdpSocket {
                     sleep_ns(IO_POLL_NS);
                     thread::yield_now();
                 }
-                Err(e) => return Err(e), _ => core::todo!(),
+                Err(e) => return Err(e),
             }
         }
     }
@@ -961,7 +961,14 @@ pub fn lookup_host(host: &str, port: u16) -> crate::io::Result<LookupHost> {
             }
             // Ok(0) means the result is not ready yet (netd is still resolving);
             // treat it the same as EAGAIN and retry after a short sleep.
-            Ok(_) | Err(ref e) if e.raw_os_error() == Some(EAGAIN) => {
+            Ok(_) => {
+                if monotonic_ns() >= deadline {
+                    let _ = vfs_close(lookup_fd);
+                    return Err(crate::io::Error::from_raw_os_error(ETIMEDOUT));
+                }
+                sleep_ns(CONNECT_POLL_NS);
+            }
+            Err(ref e) if e.raw_os_error() == Some(EAGAIN) => {
                 if monotonic_ns() >= deadline {
                     let _ = vfs_close(lookup_fd);
                     return Err(crate::io::Error::from_raw_os_error(ETIMEDOUT));
@@ -1114,4 +1121,3 @@ fn decode_ret(ret: isize) -> crate::io::Result<usize> {
         Ok(ret as usize)
     }
 }
-

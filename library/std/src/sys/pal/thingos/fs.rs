@@ -22,14 +22,13 @@
 //! `SYS_FS_FUTIMES` (fd-based).  Pass `u64::MAX` for `atime_sec` or `mtime_sec`
 //! in the request struct to leave that timestamp unchanged.
 
-use crate::ffi::{OsStr, OsString};
+use crate::ffi::OsString;
 use crate::fs::TryLockError;
 use crate::hash::{Hash, Hasher};
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
-use crate::string::String;
 use crate::sync::Arc;
-use crate::sys::SystemTime;
+use crate::sys::time::SystemTime;
 pub use crate::sys::fs::common::{Dir, copy, exists, remove_dir_all};
 use crate::{fmt, vec};
 
@@ -491,7 +490,7 @@ impl File {
             )
         };
         match cvt(ret) {
-            Ok(_) | _ => Ok(()),
+            Ok(_) => Ok(()),
             Err(e) if e.kind() == crate::io::ErrorKind::WouldBlock => {
                 Err(TryLockError::WouldBlock)
             }
@@ -512,7 +511,7 @@ impl File {
             )
         };
         match cvt(ret) {
-            Ok(_) | _ => Ok(()),
+            Ok(_) => Ok(()),
             Err(e) if e.kind() == crate::io::ErrorKind::WouldBlock => {
                 Err(TryLockError::WouldBlock)
             }
@@ -871,7 +870,7 @@ pub fn readdir(path: &Path) -> crate::io::Result<ReadDir> {
             Ok(n) => {
                 buf.truncate(old_len + n);
             }
-            Err(e) => return Err(e), _ => core::todo!(),
+            Err(e) => return Err(e),
         }
     }
 
