@@ -3604,43 +3604,9 @@ pub(crate) struct MissingOptionsForOnConstAttr;
 pub(crate) struct MissingOptionsForOnMoveAttr;
 
 #[derive(Diagnostic)]
-#[diag("malformed `on_unimplemented` attribute")]
-#[help("only `message`, `note` and `label` are allowed as options")]
-pub(crate) struct MalformedOnUnimplementedAttrLint {
-    #[label("invalid option found here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("malformed `on_unknown` attribute")]
-#[help("only `message`, `note` and `label` are allowed as options")]
-pub(crate) struct MalformedOnUnknownAttrLint {
-    #[label("invalid option found here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("malformed `on_const` attribute")]
-#[help("only `message`, `note` and `label` are allowed as options")]
-pub(crate) struct MalformedOnConstAttrLint {
-    #[label("invalid option found here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`Eq::assert_receiver_is_total_eq` should never be implemented by hand")]
 #[note("this method was used to add checks to the `Eq` derive macro")]
 pub(crate) struct EqInternalMethodImplemented;
-
-#[derive(Diagnostic)]
-#[diag("unknown or malformed `on_move` attribute")]
-#[help(
-    "only `message`, `note` and `label` are allowed as options. Their values must be string literals"
-)]
-pub(crate) struct MalformedOnMoveAttrLint {
-    #[label("invalid option found here")]
-    pub span: Span,
-}
 
 #[derive(Diagnostic)]
 #[diag("unknown parameter `{$name}`")]
@@ -3655,3 +3621,12 @@ pub(crate) struct OnMoveMalformedFormatLiterals {
     "only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma"
 )]
 pub(crate) struct OnMoveMalformedAttrExpectedLiteralOrDelimiter;
+
+#[derive(Diagnostic)]
+#[diag("malformed `{$attribute}` attribute")]
+#[help("only `message`, `note` and `label` are allowed as options")]
+pub(crate) struct MalFormedDiagnosticAttributeLint {
+    pub attribute: &'static str,
+    #[label("invalid option found here")]
+    pub span: Span,
+}

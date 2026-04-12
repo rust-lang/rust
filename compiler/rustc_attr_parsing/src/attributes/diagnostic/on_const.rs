@@ -22,6 +22,7 @@ impl<S: Stage> AttributeParser<S> for OnConstParser {
 
             let span = cx.attr_span;
             this.span = Some(span);
+            let mode = Mode::DiagnosticOnConst;
 
             let items = match args {
                 ArgParser::List(items) if items.len() != 0 => items,
@@ -36,16 +37,17 @@ impl<S: Stage> AttributeParser<S> for OnConstParser {
                 ArgParser::NameValue(_) => {
                     cx.emit_lint(
                         MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnConstAttr { span },
+                        AttributeLintKind::MalFormedDiagnosticAttribute {
+                            attribute: mode.as_str(),
+                            span,
+                        },
                         span,
                     );
                     return;
                 }
             };
 
-            let Some(directive) =
-                parse_directive_items(cx, Mode::DiagnosticOnConst, items.mixed(), true)
-            else {
+            let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) else {
                 return;
             };
             merge_directives(cx, &mut this.directive, (span, directive));

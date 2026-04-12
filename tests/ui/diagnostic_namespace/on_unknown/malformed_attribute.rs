@@ -4,7 +4,7 @@
 use std::str::FromStr;
 
 #[diagnostic::on_unknown(foo = "bar", message = "foo")]
-//~^WARN malformed `on_unknown` attribute
+//~^WARN malformed `diagnostic::on_unknown` attribute
 use std::str::Bytes;
 
 #[diagnostic::on_unknown(label = "foo", label = "bar")]

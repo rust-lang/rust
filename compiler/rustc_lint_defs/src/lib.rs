@@ -733,16 +733,8 @@ pub enum AttributeLintKind {
     MalformedDoc,
     ExpectedNoArgs,
     ExpectedNameValue,
-    MalformedOnUnimplementedAttr {
-        span: Span,
-    },
-    MalformedOnUnknownAttr {
-        span: Span,
-    },
-    MalformedOnConstAttr {
-        span: Span,
-    },
-    MalformedOnMoveAttr {
+    MalFormedDiagnosticAttribute {
+        attribute: &'static str,
         span: Span,
     },
     MalformedDiagnosticFormat {

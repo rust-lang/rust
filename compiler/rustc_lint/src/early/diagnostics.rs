@@ -176,15 +176,10 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::ExpectedNoArgs => lints::ExpectedNoArgs.into_diag(dcx, level),
 
             &AttributeLintKind::ExpectedNameValue => lints::ExpectedNameValue.into_diag(dcx, level),
-            &AttributeLintKind::MalformedOnUnimplementedAttr { span } => {
-                lints::MalformedOnUnimplementedAttrLint { span }.into_diag(dcx, level)
+            &AttributeLintKind::MalFormedDiagnosticAttribute { attribute, span } => {
+                lints::MalFormedDiagnosticAttributeLint { attribute, span }.into_diag(dcx, level)
             }
-            &AttributeLintKind::MalformedOnUnknownAttr { span } => {
-                lints::MalformedOnUnknownAttrLint { span }.into_diag(dcx, level)
-            }
-            &AttributeLintKind::MalformedOnConstAttr { span } => {
-                lints::MalformedOnConstAttrLint { span }.into_diag(dcx, level)
-            }
+
             AttributeLintKind::MalformedDiagnosticFormat { warning } => match warning {
                 FormatWarning::PositionalArgument { .. } => {
                     lints::DisallowedPositionalArgument.into_diag(dcx, level)
@@ -208,9 +203,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             }
             &AttributeLintKind::MissingOptionsForOnConst => {
                 lints::MissingOptionsForOnConstAttr.into_diag(dcx, level)
-            }
-            &AttributeLintKind::MalformedOnMoveAttr { span } => {
-                lints::MalformedOnMoveAttrLint { span }.into_diag(dcx, level)
             }
             &AttributeLintKind::OnMoveMalformedFormatLiterals { name } => {
                 lints::OnMoveMalformedFormatLiterals { name }.into_diag(dcx, level)

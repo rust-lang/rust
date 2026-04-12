@@ -42,7 +42,10 @@ impl OnUnimplementedParser {
             ArgParser::NameValue(_) => {
                 cx.emit_lint(
                     MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    AttributeLintKind::MalformedOnUnimplementedAttr { span },
+                    AttributeLintKind::MalFormedDiagnosticAttribute {
+                        attribute: mode.as_str(),
+                        span,
+                    },
                     span,
                 );
                 return;

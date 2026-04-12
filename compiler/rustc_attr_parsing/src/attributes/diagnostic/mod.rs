@@ -40,6 +40,18 @@ pub(crate) enum Mode {
     DiagnosticOnUnknown,
 }
 
+impl Mode {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::RustcOnUnimplemented => "rustc_on_unimplemented",
+            Self::DiagnosticOnUnimplemented => "diagnostic::on_unimplemented",
+            Self::DiagnosticOnConst => "diagnostic::on_const",
+            Self::DiagnosticOnMove => "diagnostic::on_move",
+            Self::DiagnosticOnUnknown => "diagnostic::on_unknown",
+        }
+    }
+}
+
 fn merge_directives<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     first: &mut Option<(Span, Directive)>,
@@ -100,38 +112,17 @@ fn parse_directive_items<'p, S: Stage>(
         let span = item.span();
 
         macro malformed() {{
-            match mode {
-                Mode::RustcOnUnimplemented => {
-                    cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
-                }
-                Mode::DiagnosticOnUnimplemented => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnUnimplementedAttr { span },
+            if matches!(mode, Mode::RustcOnUnimplemented) {
+                cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
+            } else {
+                cx.emit_lint(
+                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                    AttributeLintKind::MalFormedDiagnosticAttribute {
+                        attribute: mode.as_str(),
                         span,
-                    );
-                }
-                Mode::DiagnosticOnConst => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnConstAttr { span },
-                        span,
-                    );
-                }
-                Mode::DiagnosticOnMove => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnMoveAttr { span },
-                        span,
-                    );
-                }
-                Mode::DiagnosticOnUnknown => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnUnknownAttr { span },
-                        span,
-                    );
-                }
+                    },
+                    span,
+                );
             }
             continue;
         }}
@@ -146,12 +137,10 @@ fn parse_directive_items<'p, S: Stage>(
         }}
 
         macro duplicate($name: ident, $($first_span:tt)*) {{
-            match mode {
-                Mode::RustcOnUnimplemented => {
-                    cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
-                }
-                Mode::DiagnosticOnUnimplemented |Mode::DiagnosticOnConst | Mode::DiagnosticOnMove | Mode::DiagnosticOnUnknown => {
-                    cx.emit_lint(
+            if matches!(mode, Mode::RustcOnUnimplemented) {
+                cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
+            }else{
+                cx.emit_lint(
                         MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                         AttributeLintKind::IgnoredDiagnosticOption {
                             first_span: $($first_span)*,
@@ -160,7 +149,6 @@ fn parse_directive_items<'p, S: Stage>(
                         },
                         span,
                     );
-                }
             }
         }}
 
