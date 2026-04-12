@@ -4451,6 +4451,7 @@ declare_lint! {
     Warn,
     "detects diagnostic attribute with malformed diagnostic format literals",
 }
+
 declare_lint! {
     /// The `ambiguous_glob_imports` lint detects glob imports that should report ambiguity
     /// errors, but previously didn't do that due to rustc bugs.

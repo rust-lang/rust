@@ -306,6 +306,10 @@ pub(crate) struct DiagnosticOnUnknownOnlyForImports {
 pub(crate) struct DiagnosticOnUnmatchArgsOnlyForMacros;
 
 #[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_type_error]` can only be applied to enums, structs or unions")]
+pub(crate) struct DiagnosticOnTypeErrorOnlyForAdt;
+
+#[derive(Diagnostic)]
 #[diag("`#[diagnostic::do_not_recommend]` can only be placed on trait implementations")]
 pub(crate) struct IncorrectDoNotRecommendLocation {
     #[label("not a trait implementation")]
