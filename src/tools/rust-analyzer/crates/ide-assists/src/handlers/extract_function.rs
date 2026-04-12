@@ -2088,7 +2088,11 @@ fn fix_param_usages(
     for (param, usages) in usages_for_param {
         for usage in usages {
             match usage.syntax().ancestors().skip(1).find_map(ast::Expr::cast) {
-                Some(ast::Expr::MethodCallExpr(_) | ast::Expr::FieldExpr(_)) => {
+                Some(
+                    ast::Expr::MethodCallExpr(_)
+                    | ast::Expr::FieldExpr(_)
+                    | ast::Expr::IndexExpr(_),
+                ) => {
                     // do nothing
                 }
                 Some(ast::Expr::RefExpr(node))
@@ -3206,6 +3210,32 @@ fn foo() {
 
 fn $0fun_name(n: &mut i32) {
     *n += 1;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn mut_index_from_outer_scope() {
+        check_assist(
+            extract_function,
+            r#"
+//- minicore: index
+fn foo() {
+    let mut arr = [1i32];
+    $0arr[0] = 3;$0
+    let _ = arr;
+}
+"#,
+            r#"
+fn foo() {
+    let mut arr = [1i32];
+    fun_name(&mut arr);
+    let _ = arr;
+}
+
+fn $0fun_name(arr: &mut [i32; 1]) {
+    arr[0] = 3;
 }
 "#,
         );
