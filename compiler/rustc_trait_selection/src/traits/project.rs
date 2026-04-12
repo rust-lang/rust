@@ -813,6 +813,12 @@ fn assemble_candidates_from_object_ty<'cx, 'tcx>(
         }
         _ => return,
     };
+
+    // Projecting `dyn Trait` is only valid when `Trait` is dyn-compatible.
+    if data.principal_def_id().is_some_and(|def_id| !tcx.is_dyn_compatible(def_id)) {
+        return;
+    }
+
     let env_predicates = data
         .projection_bounds()
         .filter(|bound| bound.item_def_id() == obligation.predicate.def_id)
