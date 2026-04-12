@@ -485,6 +485,27 @@ impl TcpStream {
         Ok(raw as u32)
     }
 
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+    pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
+        unsafe { setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int) }
+    }
+
+    #[cfg(all(target_os = "wasi", any(target_env = "p2", target_env = "p3")))]
+    pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
+    }
+
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)? };
+        Ok(raw as u8)
+    }
+
+    #[cfg(all(target_os = "wasi", any(target_env = "p2", target_env = "p3")))]
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
+    }
+
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         self.inner.take_error()
     }
@@ -611,6 +632,27 @@ impl TcpListener {
     pub fn ttl(&self) -> io::Result<u32> {
         let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)? };
         Ok(raw as u32)
+    }
+
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+    pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
+        unsafe { setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int) }
+    }
+
+    #[cfg(all(target_os = "wasi", any(target_env = "p2", target_env = "p3")))]
+    pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
+    }
+
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)? };
+        Ok(raw as u8)
+    }
+
+    #[cfg(all(target_os = "wasi", any(target_env = "p2", target_env = "p3")))]
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
     }
 
     pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
@@ -831,6 +873,49 @@ impl UdpSocket {
     pub fn ttl(&self) -> io::Result<u32> {
         let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL)? };
         Ok(raw as u32)
+    }
+
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+    pub fn set_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
+        unsafe { setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS, limit as c_int) }
+    }
+
+    #[cfg(all(target_os = "wasi", any(target_env = "p2", target_env = "p3")))]
+    pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
+    }
+
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        let raw: c_int = unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_UNICAST_HOPS)? };
+        Ok(raw as u8)
+    }
+
+    #[cfg(all(target_os = "wasi", any(target_env = "p2", target_env = "p3")))]
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
+    }
+
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+    pub fn set_multicast_hop_limit_v6(&self, limit: u8) -> io::Result<()> {
+        unsafe { setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS, limit as c_int) }
+    }
+
+    #[cfg(all(target_os = "wasi", any(target_env = "p2", target_env = "p3")))]
+    pub fn set_multicast_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
+    }
+
+    #[cfg(not(all(target_os = "wasi", any(target_env = "p2", target_env = "p3"))))]
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u8> {
+        let raw: c_int =
+            unsafe { getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_HOPS)? };
+        Ok(raw as u8)
+    }
+
+    #[cfg(all(target_os = "wasi", any(target_env = "p2", target_env = "p3")))]
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u8> {
+        Err(io::Error::new(ErrorKind::Unsupported, "not supported on this platform"))
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
