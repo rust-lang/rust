@@ -133,7 +133,8 @@ pub(crate) fn import_on_the_fly_path(
     let potential_import_name = import_name(ctx);
     let qualifier = match qualified {
         Qualified::With { path, .. } => Some(path.clone()),
-        _ => None,
+        Qualified::TypeAnchor { .. } => return None,
+        Qualified::No | Qualified::Absolute => None,
     };
     let import_assets = import_assets_for_path(
         ctx,
