@@ -1440,13 +1440,38 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
     }
 }
 
-/// Creates debug information for the given global variable.
+/// Creates debug information for the given global variable (definition).
 ///
 /// Adds the created debuginfo nodes directly to the crate's IR.
 pub(crate) fn build_global_var_di_node<'ll>(
     cx: &CodegenCx<'ll, '_>,
     def_id: DefId,
     global: &'ll Value,
+) {
+    let DefKind::Static { nested, .. } = cx.tcx.def_kind(def_id) else { bug!() };
+    if nested {
+        return;
+    }
+
+    let is_local_to_unit = is_node_local_to_unit(cx, def_id);
+    build_static_var_di_node_inner(cx, def_id, global, is_local_to_unit, true);
+}
+
+/// Creates debug information for a foreign static (declaration, not definition).
+pub(crate) fn build_extern_static_di_node<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    def_id: DefId,
+    global: &'ll Value,
+) {
+    build_static_var_di_node_inner(cx, def_id, global, false, false);
+}
+
+fn build_static_var_di_node_inner<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    def_id: DefId,
+    global: &'ll Value,
+    is_local_to_unit: bool,
+    is_definition: bool,
 ) {
     if cx.dbg_cx.is_none() {
         return;
@@ -1464,12 +1489,6 @@ pub(crate) fn build_global_var_di_node<'ll>(
     let var_scope = get_namespace_for_item(cx, def_id);
     let (file_metadata, line_number) = file_metadata_from_def_id(cx, Some(def_id));
 
-    let is_local_to_unit = is_node_local_to_unit(cx, def_id);
-
-    let DefKind::Static { nested, .. } = cx.tcx.def_kind(def_id) else { bug!() };
-    if nested {
-        return;
-    }
     let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, cx.typing_env());
     let type_di_node = type_di_node(cx, variable_type);
     let var_name = tcx.item_name(def_id);
@@ -1489,6 +1508,7 @@ pub(crate) fn build_global_var_di_node<'ll>(
         line_number,
         type_di_node,
         is_local_to_unit,
+        is_definition,
         global, // (value)
         None,   // (decl)
         Some(global_align),
@@ -1767,6 +1787,7 @@ pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
         UNKNOWN_LINE_NUMBER,
         vtable_type_di_node,
         true,   // (is_local_to_unit)
+        true,   // (is_definition)
         vtable, // (value)
         None,   // (decl)
         None::<Align>,
