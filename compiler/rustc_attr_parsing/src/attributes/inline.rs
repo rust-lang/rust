@@ -42,7 +42,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
                     return None;
                 };
 
-                match l.meta_item().and_then(|i| i.path().word_sym()) {
+                match l.meta_item_no_args().and_then(|i| i.path().word_sym()) {
                     Some(sym::always) => {
                         Some(AttributeKind::Inline(InlineAttr::Always, cx.attr_span))
                     }
