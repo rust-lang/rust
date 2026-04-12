@@ -510,8 +510,6 @@ pub enum WherePredicateKind {
     BoundPredicate(WhereBoundPredicate),
     /// A lifetime predicate (e.g., `'a: 'b + 'c`).
     RegionPredicate(WhereRegionPredicate),
-    /// An equality predicate (unsupported).
-    EqPredicate(WhereEqPredicate),
 }
 
 /// A type bound.

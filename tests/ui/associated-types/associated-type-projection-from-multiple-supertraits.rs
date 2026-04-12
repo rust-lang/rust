@@ -31,7 +31,7 @@ fn paint<C:BoxCar>(c: C, d: C::Color) {
 
 fn dent_object_2<COLOR>(c: &dyn BoxCar) where <dyn BoxCar as Vehicle>::Color = COLOR {
     //~^ ERROR the value of the associated types
-    //~| ERROR equality constraints are not yet supported in `where` clauses
+    //~| ERROR equality constraints are not supported in where-clauses
 }
 
 fn dent_object_3<X, COLOR>(c: X)

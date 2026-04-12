@@ -880,49 +880,6 @@ pub(crate) struct PatternInBodiless {
 }
 
 #[derive(Diagnostic)]
-#[diag("equality constraints are not yet supported in `where` clauses")]
-#[note("see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information")]
-pub(crate) struct EqualityInWhere {
-    #[primary_span]
-    #[label("not supported")]
-    pub span: Span,
-    #[subdiagnostic]
-    pub assoc: Option<AssociatedSuggestion>,
-    #[subdiagnostic]
-    pub assoc2: Option<AssociatedSuggestion2>,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(
-    "if `{$ident}` is an associated type you're trying to set, use the associated type binding syntax",
-    code = "{param}: {path}",
-    style = "verbose",
-    applicability = "maybe-incorrect"
-)]
-pub(crate) struct AssociatedSuggestion {
-    #[primary_span]
-    pub span: Span,
-    pub ident: Ident,
-    pub param: Ident,
-    pub path: String,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    "if `{$trait_segment}::{$potential_assoc}` is an associated type you're trying to set, use the associated type binding syntax",
-    applicability = "maybe-incorrect"
-)]
-pub(crate) struct AssociatedSuggestion2 {
-    #[suggestion_part(code = "{args}")]
-    pub span: Span,
-    pub args: String,
-    #[suggestion_part(code = "")]
-    pub predicate: Span,
-    pub trait_segment: Ident,
-    pub potential_assoc: Ident,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#![feature]` may not be used on the {$channel} release channel", code = E0554)]
 pub(crate) struct FeatureOnNonNightly {
     #[primary_span]

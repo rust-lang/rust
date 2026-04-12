@@ -1195,7 +1195,6 @@ pub(super) fn check_number_of_early_bound_regions<'tcx>(
                         }
                     }
                 }
-                _ => {}
             }
         }
         if let Some(impl_node) = tcx.hir_get_if_local(impl_def_id.into())
@@ -1218,7 +1217,6 @@ pub(super) fn check_number_of_early_bound_regions<'tcx>(
                             }
                         }
                     }
-                    _ => {}
                 }
             }
             if impl_bounds == bounds_span.len() {

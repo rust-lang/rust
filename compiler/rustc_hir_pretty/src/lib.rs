@@ -2529,14 +2529,6 @@ impl<'a> State<'a> {
                     }
                 }
             }
-            hir::WherePredicateKind::EqPredicate(hir::WhereEqPredicate {
-                lhs_ty, rhs_ty, ..
-            }) => {
-                self.print_type(lhs_ty);
-                self.space();
-                self.word_space("=");
-                self.print_type(rhs_ty);
-            }
         }
     }
 

@@ -781,7 +781,6 @@ pub fn eq_where_predicate(l: &WherePredicate, r: &WherePredicate) -> bool {
             (RegionPredicate(l), RegionPredicate(r)) => {
                 eq_id(l.lifetime.ident, r.lifetime.ident) && over(&l.bounds, &r.bounds, eq_generic_bound)
             },
-            (EqPredicate(l), EqPredicate(r)) => eq_ty(&l.lhs_ty, &r.lhs_ty) && eq_ty(&l.rhs_ty, &r.rhs_ty),
             _ => false,
         }
 }

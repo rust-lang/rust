@@ -315,10 +315,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     (pred, span)
                 }))
             }
-
-            hir::WherePredicateKind::EqPredicate(..) => {
-                // FIXME(#20041)
-            }
         }
     }
 

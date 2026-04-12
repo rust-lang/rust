@@ -40,7 +40,7 @@ pub(crate) fn where_clauses(tcx: TyCtxt<'_>, clauses: ThinVec<WP>) -> ThinVec<WP
             WP::RegionPredicate { lifetime, bounds } => {
                 lifetimes.push((lifetime, bounds));
             }
-            WP::EqPredicate { lhs, rhs } => equalities.push((lhs, rhs)),
+            WP::ProjectionPredicate { lhs, rhs } => equalities.push((lhs, rhs)),
         }
     }
 
@@ -61,7 +61,7 @@ pub(crate) fn where_clauses(tcx: TyCtxt<'_>, clauses: ThinVec<WP>) -> ThinVec<WP
         bounds,
         bound_params,
     }));
-    clauses.extend(equalities.into_iter().map(|(lhs, rhs)| WP::EqPredicate { lhs, rhs }));
+    clauses.extend(equalities.into_iter().map(|(lhs, rhs)| WP::ProjectionPredicate { lhs, rhs }));
     clauses
 }
 
