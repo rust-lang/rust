@@ -112,6 +112,14 @@ impl TcpStream {
         unsupported()
     }
 
+    pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
+        unsupported()
+    }
+
     pub fn set_nodelay(&self, _: bool) -> io::Result<()> {
         unsupported()
     }

@@ -846,6 +846,22 @@ fn linger() {
 
 #[test]
 #[cfg_attr(target_env = "sgx", ignore)]
+#[cfg_attr(target_os = "wasi", ignore)]
+fn keepalive() {
+    let addr = next_test_ip4();
+    let _listener = t!(TcpListener::bind(&addr));
+
+    let stream = t!(TcpStream::connect(&("localhost", addr.port())));
+
+    assert_eq!(false, t!(stream.keepalive()));
+    t!(stream.set_keepalive(true));
+    assert_eq!(true, t!(stream.keepalive()));
+    t!(stream.set_keepalive(false));
+    assert_eq!(false, t!(stream.keepalive()));
+}
+
+#[test]
+#[cfg_attr(target_env = "sgx", ignore)]
 fn nodelay() {
     let addr = next_test_ip4();
     let _listener = t!(TcpListener::bind(&addr));

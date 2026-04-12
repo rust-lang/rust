@@ -5,7 +5,7 @@ use crate::net::SocketAddr::{V4, V6};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
-use crate::sys::{AsInner, FromInner, IntoInner, map_motor_error};
+use crate::sys::{AsInner, FromInner, IntoInner, map_motor_error, unsupported};
 use crate::time::Duration;
 
 // We want to re-use as much of Rust's stdlib code as possible,
@@ -125,6 +125,14 @@ impl TcpStream {
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
         moto_rt::net::linger(self.inner.as_raw_fd()).map_err(map_motor_error)
+    }
+
+    pub fn set_keepalive(&self, _: bool) -> io::Result<()> {
+        unsupported()
+    }
+
+    pub fn keepalive(&self) -> io::Result<bool> {
+        unsupported()
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
