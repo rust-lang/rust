@@ -24,6 +24,7 @@ impl OnMoveParser {
         mode: Mode,
     ) {
         if !cx.features().diagnostic_on_move() {
+            // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
             return;
         }
 
