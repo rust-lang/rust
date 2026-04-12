@@ -8,4 +8,4 @@
 
 fn main() {}
 
-//~? ERROR error loading target specification: could not find specification for target "x86_64_unknown-linux-musl"
+//~? ERROR error loading target specification: could not find specification for target "x86_64_unknown-linux-musl". Did you mean `x86_64-unknown-linux-musl`?

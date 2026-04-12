@@ -1,4 +1,4 @@
-error: error loading target specification: could not find specification for target "x86_64_unknown-linux-musl"
+error: error loading target specification: could not find specification for target "x86_64_unknown-linux-musl". Did you mean `x86_64-unknown-linux-musl`?
   |
   = help: run `rustc --print target-list` for a list of built-in targets
   = help: did you mean `x86_64-unknown-linux-musl`?
