@@ -697,7 +697,11 @@ fn configure_cmake(
         } else if target.contains("watchos") {
             cfg.define("CMAKE_SYSTEM_NAME", "watchOS");
         } else if target.contains("thingos") {
-            cfg.define("CMAKE_SYSTEM_NAME", "Generic");
+            // ThingOS is Unix-like enough for LLVM's Unix support layer, but
+            // CMake does not recognize it as a built-in UNIX platform.
+            // Using a distinct system name lets LLVM's own CMake logic select
+            // the Unix support path instead of falling back to Generic.
+            cfg.define("CMAKE_SYSTEM_NAME", "ThingOS");
             cfg.define("LLVM_ON_UNIX", "ON");
             cfg.define("LLVM_HAVE_LINK_VERSION_SCRIPT", "ON");
         } else if target.contains("none") {
