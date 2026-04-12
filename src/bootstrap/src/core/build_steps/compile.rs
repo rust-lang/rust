@@ -828,6 +828,21 @@ impl Step for StdLink {
             }
 
             builder.cp_link_r(&builder.initial_sysroot.join("lib"), &sysroot.join("lib"));
+
+            // When doing a local-rebuild cross-compilation, the stage0 std for the
+            // cross-target (e.g. x86_64-unknown-thingos) has just been compiled above
+            // in Std::run(), but it is NOT part of the initial sysroot that was just
+            // copied. We must explicitly add those freshly-built artifacts to the
+            // stage0-sysroot so that subsequent cargo invocations targeting this
+            // triple (e.g. building stage-1 compiler artifacts) can find core/std.
+            if builder.local_rebuild && target != compiler.host {
+                add_to_sysroot(
+                    builder,
+                    &libdir,
+                    &hostdir,
+                    &build_stamp::libstd_stamp(builder, target_compiler, target),
+                );
+            }
         } else {
             if builder.download_rustc() {
                 // Ensure there are no CI-rustc std artifacts.
