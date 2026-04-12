@@ -16,7 +16,7 @@ impl GenmcCtx {
         assume_type: AssumeType,
     ) -> InterpResult<'tcx> {
         debug!("GenMC: assume statement, blocking active thread.");
-        self.handle
+        self.genmc
             .borrow_mut()
             .pin_mut()
             .handle_assume_block(self.active_thread_genmc_tid(machine), assume_type);
@@ -80,7 +80,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             size <= MAX_ACCESS_SIZE,
             "Mutex is larger than maximal size of a memory access supported by GenMC ({size} > {MAX_ACCESS_SIZE})"
         );
-        let result = genmc_ctx.handle.borrow_mut().pin_mut().handle_mutex_lock(
+        let result = genmc_ctx.genmc.borrow_mut().pin_mut().handle_mutex_lock(
             genmc_ctx.active_thread_genmc_tid(&this.machine),
             mutex.ptr().addr().bytes(),
             size,
@@ -145,7 +145,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             size <= MAX_ACCESS_SIZE,
             "Mutex is larger than maximal size of a memory access supported by GenMC ({size} > {MAX_ACCESS_SIZE})"
         );
-        let result = genmc_ctx.handle.borrow_mut().pin_mut().handle_mutex_try_lock(
+        let result = genmc_ctx.genmc.borrow_mut().pin_mut().handle_mutex_try_lock(
             genmc_ctx.active_thread_genmc_tid(&this.machine),
             mutex.ptr().addr().bytes(),
             size,
@@ -166,7 +166,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
         debug!("GenMC: handling Mutex::unlock()");
         let this = self.eval_context_ref();
         let genmc_ctx = this.machine.data_race.as_genmc_ref().unwrap();
-        let result = genmc_ctx.handle.borrow_mut().pin_mut().handle_mutex_unlock(
+        let result = genmc_ctx.genmc.borrow_mut().pin_mut().handle_mutex_unlock(
             genmc_ctx.active_thread_genmc_tid(&this.machine),
             mutex.ptr().addr().bytes(),
             mutex.layout.size.bytes(),

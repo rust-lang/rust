@@ -54,26 +54,26 @@ using ThreadId = int;
 /// Never calling this function is safe, GenMC will fall back to its default log level.
 /* unsafe */ void set_log_level_raw(LogLevel log_level);
 
-struct MiriGenmcShim : private GenMCDriver {
+struct MiriGenmcInterface : private GenMCDriver {
 
   public:
-    MiriGenmcShim(std::shared_ptr<const Config> conf, Mode mode /* = VerificationMode{} */)
+    MiriGenmcInterface(std::shared_ptr<const Config> conf, Mode mode /* = VerificationMode{} */)
         : GenMCDriver(std::move(conf), nullptr, mode) {}
 
-    /// Create a new `MiriGenmcShim`, which wraps a `GenMCDriver`.
+    /// Create a new `MiriGenmcInterface`, which wraps a `GenMCDriver`.
     ///
     /// # Safety
     ///
     /// This function is marked as unsafe since the `logLevel` global variable is non-atomic.
     /// This function should not be called in an unsynchronized way with `set_log_level_raw`,
-    /// since this function and any methods on the returned `MiriGenmcShim` may read the
+    /// since this function and any methods on the returned `MiriGenmcInterface` may read the
     /// `logLevel`, causing a data race. The safest way to use these functions is to call
     /// `set_log_level_raw` once, and only then start creating handles. There should not be any
-    /// other (safe) way to create a `MiriGenmcShim`.
+    /// other (safe) way to create a `MiriGenmcInterface`.
     /* unsafe */ static auto create_handle(const GenmcParams& params, bool estimation_mode)
-        -> std::unique_ptr<MiriGenmcShim>;
+        -> std::unique_ptr<MiriGenmcInterface>;
 
-    virtual ~MiriGenmcShim() {}
+    virtual ~MiriGenmcInterface() {}
 
     /**** Execution start/end handling ****/
 
@@ -242,7 +242,7 @@ constexpr auto get_global_alloc_static_mask() -> uint64_t {
 }
 
 // CXX.rs generated headers:
-// NOTE: this must be included *after* `MiriGenmcShim` and all the other types we use are
+// NOTE: this must be included *after* `MiriGenmcInterface` and all the other types we use are
 // defined, otherwise there will be compilation errors due to missing definitions.
 #include "genmc-sys/src/lib.rs.h"
 

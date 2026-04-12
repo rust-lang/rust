@@ -34,7 +34,7 @@
 
 /** Scheduling */
 
-auto MiriGenmcShim::schedule_next(
+auto MiriGenmcInterface::schedule_next(
     const int curr_thread_id,
     const ActionKind curr_thread_next_instr_kind
 ) -> SchedulingResult {
@@ -61,27 +61,27 @@ auto MiriGenmcShim::schedule_next(
     );
 }
 
-void MiriGenmcShim::handle_execution_start() {
+void MiriGenmcInterface::handle_execution_start() {
     threads_action_.clear();
     threads_action_.push_back(Action(ActionKind::Load, Event::getInit()));
     GenMCDriver::handleExecutionStart();
 }
 
-auto MiriGenmcShim::handle_execution_end() -> std::unique_ptr<std::string> {
+auto MiriGenmcInterface::handle_execution_end() -> std::unique_ptr<std::string> {
     auto ret = GenMCDriver::handleExecutionEnd();
     return ret.has_value() ? format_error(*ret) : nullptr;
 }
 
 /**** Blocking instructions ****/
 
-void MiriGenmcShim::handle_assume_block(ThreadId thread_id, AssumeType assume_type) {
+void MiriGenmcInterface::handle_assume_block(ThreadId thread_id, AssumeType assume_type) {
     auto ret = GenMCDriver::handleAssume(nullptr, curr_pos(thread_id), assume_type);
     inc_pos(thread_id, ret.count);
 }
 
 /**** Memory access handling ****/
 
-[[nodiscard]] auto MiriGenmcShim::handle_atomic_load(
+[[nodiscard]] auto MiriGenmcInterface::handle_atomic_load(
     ThreadId thread_id,
     uint64_t address,
     uint64_t size,
@@ -116,7 +116,7 @@ void MiriGenmcShim::handle_assume_block(ThreadId thread_id, AssumeType assume_ty
 }
 
 [[nodiscard]] auto
-MiriGenmcShim::handle_non_atomic_load(ThreadId thread_id, uint64_t address, uint64_t size)
+MiriGenmcInterface::handle_non_atomic_load(ThreadId thread_id, uint64_t address, uint64_t size)
     -> NonAtomicResult {
     const auto ret = GenMCDriver::handleNALoad(
         nullptr,
@@ -143,7 +143,7 @@ MiriGenmcShim::handle_non_atomic_load(ThreadId thread_id, uint64_t address, uint
     );
 }
 
-[[nodiscard]] auto MiriGenmcShim::handle_atomic_store(
+[[nodiscard]] auto MiriGenmcInterface::handle_atomic_store(
     ThreadId thread_id,
     uint64_t address,
     uint64_t size,
@@ -180,7 +180,7 @@ MiriGenmcShim::handle_non_atomic_load(ThreadId thread_id, uint64_t address, uint
 }
 
 [[nodiscard]] auto
-MiriGenmcShim::handle_non_atomic_store(ThreadId thread_id, uint64_t address, uint64_t size)
+MiriGenmcInterface::handle_non_atomic_store(ThreadId thread_id, uint64_t address, uint64_t size)
     -> NonAtomicResult {
     const auto ret = GenMCDriver::handleNAStore(
         nullptr,
@@ -207,12 +207,12 @@ MiriGenmcShim::handle_non_atomic_store(ThreadId thread_id, uint64_t address, uin
     );
 }
 
-void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
+void MiriGenmcInterface::handle_fence(ThreadId thread_id, MemOrdering ord) {
     auto ret = GenMCDriver::handleFence(nullptr, curr_pos(thread_id), ord, EventDeps());
     inc_pos(thread_id, ret.count);
 }
 
-[[nodiscard]] auto MiriGenmcShim::handle_read_modify_write(
+[[nodiscard]] auto MiriGenmcInterface::handle_read_modify_write(
     ThreadId thread_id,
     uint64_t address,
     uint64_t size,
@@ -283,7 +283,7 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
     );
 }
 
-[[nodiscard]] auto MiriGenmcShim::handle_compare_exchange(
+[[nodiscard]] auto MiriGenmcInterface::handle_compare_exchange(
     ThreadId thread_id,
     uint64_t address,
     uint64_t size,
@@ -363,7 +363,7 @@ void MiriGenmcShim::handle_fence(ThreadId thread_id, MemOrdering ord) {
 
 /**** Memory (de)allocation ****/
 
-auto MiriGenmcShim::handle_malloc(ThreadId thread_id, uint64_t size, uint64_t alignment)
+auto MiriGenmcInterface::handle_malloc(ThreadId thread_id, uint64_t size, uint64_t alignment)
     -> MallocResult {
     // These are only used for printing and features Miri-GenMC doesn't support (yet).
     const auto storage_duration = StorageDuration::SD_Heap;
@@ -398,7 +398,7 @@ auto MiriGenmcShim::handle_malloc(ThreadId thread_id, uint64_t size, uint64_t al
     );
 }
 
-auto MiriGenmcShim::handle_free(ThreadId thread_id, uint64_t address) -> FreeResult {
+auto MiriGenmcInterface::handle_free(ThreadId thread_id, uint64_t address) -> FreeResult {
     auto ret = GenMCDriver::handleFree(nullptr, curr_pos(thread_id), SAddr(address), EventDeps());
     inc_pos(thread_id, ret.count);
     return std::visit(
@@ -417,7 +417,7 @@ auto MiriGenmcShim::handle_free(ThreadId thread_id, uint64_t address) -> FreeRes
 
 /**** Estimation mode result ****/
 
-auto MiriGenmcShim::get_estimation_results() const -> EstimationResult {
+auto MiriGenmcInterface::get_estimation_results() const -> EstimationResult {
     const auto& res = getResult();
     return EstimationResult {
         .mean = static_cast<double>(res.estimationMean),
@@ -438,7 +438,7 @@ struct MutexState {
     }
 };
 
-auto MiriGenmcShim::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint64_t size)
+auto MiriGenmcInterface::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint64_t size)
     -> MutexLockResult {
     // This annotation informs GenMC about the condition required to make this lock call succeed.
     // It stands for `value_read_by_load != MUTEX_LOCKED`.
@@ -518,7 +518,7 @@ auto MiriGenmcShim::handle_mutex_lock(ThreadId thread_id, uint64_t address, uint
     );
 }
 
-auto MiriGenmcShim::handle_mutex_try_lock(ThreadId thread_id, uint64_t address, uint64_t size)
+auto MiriGenmcInterface::handle_mutex_try_lock(ThreadId thread_id, uint64_t address, uint64_t size)
     -> MutexLockResult {
     // As usual, we need to tell GenMC which value was stored at this location before this atomic
     // access, if there previously was a non-atomic initializing access. We set the initial state of
@@ -571,7 +571,7 @@ auto MiriGenmcShim::handle_mutex_try_lock(ThreadId thread_id, uint64_t address, 
     );
 }
 
-auto MiriGenmcShim::handle_mutex_unlock(ThreadId thread_id, uint64_t address, uint64_t size)
+auto MiriGenmcInterface::handle_mutex_unlock(ThreadId thread_id, uint64_t address, uint64_t size)
     -> StoreResult {
     const auto ret = GenMCDriver::handleUnlockWrite(
         nullptr,
@@ -604,7 +604,7 @@ auto MiriGenmcShim::handle_mutex_unlock(ThreadId thread_id, uint64_t address, ui
 
 /** Thread creation/joining */
 
-void MiriGenmcShim::handle_thread_create(ThreadId thread_id, ThreadId parent_id) {
+void MiriGenmcInterface::handle_thread_create(ThreadId thread_id, ThreadId parent_id) {
     // FIXME(genmc): for supporting symmetry reduction, these will need to be properly set:
     const unsigned fun_id = 0;
     const SVal arg = SVal(0);
@@ -626,7 +626,7 @@ void MiriGenmcShim::handle_thread_create(ThreadId thread_id, ThreadId parent_id)
     threads_action_.push_back(Action(ActionKind::Load, Event(child_tid, 0)));
 }
 
-void MiriGenmcShim::handle_thread_join(ThreadId thread_id, ThreadId child_id) {
+void MiriGenmcInterface::handle_thread_join(ThreadId thread_id, ThreadId child_id) {
     // The thread join event happens in the parent.
     const auto ret =
         GenMCDriver::handleThreadJoin(nullptr, curr_pos(thread_id), child_id, EventDeps());
@@ -647,7 +647,7 @@ void MiriGenmcShim::handle_thread_join(ThreadId thread_id, ThreadId child_id) {
     // NOTE: Thread return value is ignored, since Miri doesn't need it.
 }
 
-void MiriGenmcShim::handle_thread_finish(ThreadId thread_id, uint64_t ret_val) {
+void MiriGenmcInterface::handle_thread_finish(ThreadId thread_id, uint64_t ret_val) {
     auto ret = GenMCDriver::handleThreadFinish(nullptr, curr_pos(thread_id), SVal(ret_val));
     inc_pos(thread_id, ret.count);
     ERROR_ON(
@@ -656,7 +656,7 @@ void MiriGenmcShim::handle_thread_finish(ThreadId thread_id, uint64_t ret_val) {
     );
 }
 
-void MiriGenmcShim::handle_thread_kill(ThreadId thread_id) {
+void MiriGenmcInterface::handle_thread_kill(ThreadId thread_id) {
     auto ret = GenMCDriver::handleThreadKill(nullptr, curr_pos(thread_id));
     inc_pos(thread_id, ret.count);
     ERROR_ON(
