@@ -1925,7 +1925,6 @@ ui/parser/issues/issue-15914.rs
 ui/parser/issues/issue-15980.rs
 ui/parser/issues/issue-1655.rs
 ui/parser/issues/issue-17718-const-mut.rs
-ui/parser/issues/issue-17718-parse-const.rs
 ui/parser/issues/issue-17904-2.rs
 ui/parser/issues/issue-17904.rs
 ui/parser/issues/issue-1802-1.rs
