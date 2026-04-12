@@ -314,6 +314,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcNoImplicitAutorefsParser>>,
         Single<WithoutArgs<RustcNoImplicitBoundsParser>>,
         Single<WithoutArgs<RustcNoMirInlineParser>>,
+        Single<WithoutArgs<RustcNoWritableParser>>,
         Single<WithoutArgs<RustcNonConstTraitMethodParser>>,
         Single<WithoutArgs<RustcNonnullOptimizationGuaranteedParser>>,
         Single<WithoutArgs<RustcNounwindParser>>,
