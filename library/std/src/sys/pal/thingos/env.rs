@@ -16,7 +16,7 @@
 
 pub use super::common::Env;
 use crate::ffi::{OsStr, OsString};
-/* use crate::io; */
+use crate::io;
 
 const SYS_ENV_GET: u32 = 0x1101;
 const SYS_ENV_SET: u32 = 0x1102;

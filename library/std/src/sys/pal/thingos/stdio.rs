@@ -10,7 +10,7 @@
 //! `STDIN_BUF_SIZE` is set to 1 so that line-buffered reads behave correctly
 //! on a serial/console input that delivers bytes one at a time.
 
-/* use crate::io; */
+use crate::io;
 
 // Syscall numbers (abi/src/numbers.rs)
 const SYS_READ: u32 = 0x1400;
