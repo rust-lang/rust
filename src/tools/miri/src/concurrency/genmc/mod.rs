@@ -760,7 +760,6 @@ impl GenmcCtx {
     }
 
     /// Inform GenMC about a non-atomic load.
-    /// We ignore the value the C++ code returns and use the one from Miri's memory instead.
     fn handle_non_atomic_load<'tcx>(
         &self,
         machine: &MiriMachine<'tcx>,
@@ -785,6 +784,8 @@ impl GenmcCtx {
             // FIXME(genmc): error handling
             throw_ub_format!("{}", error.to_string_lossy());
         }
+        // `load_result.read_value` is just a dummy for non-atomic loads. And anyway Miri doesn't
+        // give us a chance to change the value here, it'll always use the one from its memory.
         interp_ok(())
     }
 
@@ -833,8 +834,6 @@ impl GenmcCtx {
     }
 
     /// Inform GenMC about a non-atomic store.
-    /// The C++ code returns whether the value should be written to Miri's memory.
-    /// We ignore this information here.
     fn handle_non_atomic_store<'tcx>(
         &self,
         machine: &MiriMachine<'tcx>,
@@ -859,6 +858,7 @@ impl GenmcCtx {
             // FIXME(genmc): error handling
             throw_ub_format!("{}", error.to_string_lossy());
         }
+        // Miri will always write non-atomic stores to memory. Make sure GenMC agrees with that.
         assert!(store_result.is_coherence_order_maximal_write);
         interp_ok(())
     }
