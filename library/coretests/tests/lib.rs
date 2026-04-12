@@ -10,6 +10,7 @@
 #![feature(bool_to_result)]
 #![feature(borrowed_buf_init)]
 #![feature(bstr)]
+#![feature(casefold)]
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(char_internals)]
 #![feature(char_max_len)]
