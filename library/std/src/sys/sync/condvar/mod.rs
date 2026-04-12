@@ -8,6 +8,7 @@ cfg_select! {
         target_os = "dragonfly",
         target_os = "motor",
         target_os = "fuchsia",
+        target_os = "thingos",
         all(target_family = "wasm", target_feature = "atomics"),
         target_os = "hermit",
     ) => {
