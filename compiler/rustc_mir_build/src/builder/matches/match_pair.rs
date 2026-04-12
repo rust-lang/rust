@@ -5,7 +5,7 @@ use rustc_middle::mir::{Pinnedness, Place, PlaceElem, ProjectionElem};
 use rustc_middle::span_bug;
 use rustc_middle::thir::{Ascription, DerefPatBorrowMode, FieldPat, Pat, PatKind};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::Span;
+use rustc_span::{Span, sym};
 
 use crate::builder::Builder;
 use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
@@ -38,6 +38,21 @@ fn try_reconstruct_aggregate_constant<'tcx>(
         .collect::<Option<Vec<_>>>()?;
     let valtree = ty::ValTree::from_branches(tcx, branches);
     Some(ty::Value { ty: aggregate_ty, valtree })
+}
+
+impl<'a, 'tcx> Builder<'a, 'tcx> {
+    /// Check if we can use aggregate `PartialEq::eq` comparisons for constant array/slice patterns.
+    /// This is not possible in const contexts unless `#![feature(const_cmp, const_trait_impl)]` are enabled,
+    /// because`PartialEq` is not const-stable.
+    fn can_use_aggregate_eq(&self) -> bool {
+        let const_partial_eq_enabled = {
+            let features = self.tcx.features();
+            features.enabled(sym::const_trait_impl) && features.enabled(sym::const_cmp)
+        };
+        let in_const_context = self.tcx.is_const_fn(self.def_id.to_def_id())
+            || !self.tcx.hir_body_owner_kind(self.def_id).is_fn_or_closure();
+        !in_const_context || const_partial_eq_enabled
+    }
 }
 
 /// For an array or slice pattern's subpatterns (prefix/slice/suffix), returns a list
@@ -376,6 +391,7 @@ impl<'tcx> InterPat<'tcx> {
                     // `PartialEq::eq` rather than element by element.
                     if slice.is_none()
                         && suffix.is_empty()
+                        && cx.can_use_aggregate_eq()
                         && let Some(aggregate_value) =
                             try_reconstruct_aggregate_constant(cx.tcx, pattern.ty, prefix)
                     {
@@ -415,6 +431,7 @@ impl<'tcx> InterPat<'tcx> {
                 // is performed after the length check.
                 if slice.is_none()
                     && suffix.is_empty()
+                    && cx.can_use_aggregate_eq()
                     && let Some(aggregate_value) =
                         try_reconstruct_aggregate_constant(cx.tcx, pattern.ty, prefix)
                 {

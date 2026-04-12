@@ -664,6 +664,7 @@ symbols! {
         const_block_items,
         const_c_variadic,
         const_closures,
+        const_cmp,
         const_compare_raw_pointers,
         const_constructor,
         const_continue,
