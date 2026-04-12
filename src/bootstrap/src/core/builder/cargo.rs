@@ -769,6 +769,8 @@ impl Builder<'_> {
                 if target != compiler.host && cmd_kind != Kind::Check {
                     let error = self
                         .rustc_cmd(compiler)
+                        .env("RUSTC_BOOTSTRAP", "1")
+                        .arg("-Zunstable-options")
                         .arg("--target")
                         .arg(target.rustc_target_arg())
                         .arg("--print=file-names")

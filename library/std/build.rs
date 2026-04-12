@@ -52,6 +52,7 @@ fn main() {
         || target_os == "hurd"
         || target_os == "uefi"
         || target_os == "teeos"
+        || target_os == "thingos"
         || target_os == "zkvm"
         || target_os == "rtems"
         || target_os == "nuttx"
