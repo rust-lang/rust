@@ -666,7 +666,7 @@ impl dyn Any + Send + Sync {
 ///
 /// The following is an example program that tries to use `TypeId::of` to
 /// implement a generic type `Unique<T>` that guarantees unique instances for each `Unique<T>`,
-/// that is, and for each type `T` there can be at most one value of type `Unique<T>` at any time.
+/// that is, for each type `T` there can be at most one value of type `Unique<T>` at any time.
 ///
 /// ```
 /// mod unique {
