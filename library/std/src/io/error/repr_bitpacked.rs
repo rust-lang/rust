@@ -253,7 +253,7 @@ where
         }
         TAG_SIMPLE => {
             let kind_bits = (bits >> 32) as u32;
-            let kind = ErrorKind::_from_prim(kind_bits).unwrap_or_else(|| {
+            let kind = ErrorKind::from_prim(kind_bits).unwrap_or_else(|| {
                 debug_assert!(false, "Invalid io::error::Repr bits: `Repr({:#018x})`", bits);
                 // This means the `ptr` passed in was not valid, which violates
                 // the unsafe contract of `decode_repr`.

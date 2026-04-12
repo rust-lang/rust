@@ -307,7 +307,7 @@ impl ErrorKind {
         issue = "none"
     )]
     #[doc(hidden)]
-    pub const fn _from_prim(ek: u32) -> Option<Self> {
+    pub const fn from_prim(ek: u32) -> Option<Self> {
         macro_rules! from_prim {
             ($prim:expr => $Enum:ident { $($Variant:ident),* $(,)? }) => {{
                 // Force a compile error if the list gets out of date.
