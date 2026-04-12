@@ -1,5 +1,5 @@
 error[E0539]: malformed `inline` attribute input
-  --> $DIR/args-checked.rs:1:1
+  --> $DIR/args-checked.rs:3:1
    |
 LL | #[inline(always = 5)]
    | ^^^^^^^^^----------^^
@@ -20,7 +20,7 @@ LL + #[inline]
    |
 
 error[E0539]: malformed `inline` attribute input
-  --> $DIR/args-checked.rs:3:1
+  --> $DIR/args-checked.rs:5:1
    |
 LL | #[inline(always(x, y, z))]
    | ^^^^^^^^^---------------^^
@@ -41,7 +41,7 @@ LL + #[inline]
    |
 
 error[E0539]: malformed `instruction_set` attribute input
-  --> $DIR/args-checked.rs:5:1
+  --> $DIR/args-checked.rs:7:1
    |
 LL | #[instruction_set(arm::a32 = 5)]
    | ^^^^^^^^^^^^^^^^^^------------^^
@@ -52,7 +52,7 @@ LL | #[instruction_set(arm::a32 = 5)]
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
 
 error[E0539]: malformed `instruction_set` attribute input
-  --> $DIR/args-checked.rs:7:1
+  --> $DIR/args-checked.rs:9:1
    |
 LL | #[instruction_set(arm::a32(x, y, z))]
    | ^^^^^^^^^^^^^^^^^^-----------------^^
@@ -62,8 +62,20 @@ LL | #[instruction_set(arm::a32(x, y, z))]
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
 
+error: `rustc_allow_const_fn_unstable` expects feature names
+  --> $DIR/args-checked.rs:25:33
+   |
+LL | #[rustc_allow_const_fn_unstable(x = 5)]
+   |                                 ^^^^^
+
+error: `rustc_allow_const_fn_unstable` expects feature names
+  --> $DIR/args-checked.rs:27:33
+   |
+LL | #[rustc_allow_const_fn_unstable(x(x, y, z))]
+   |                                 ^^^^^^^^^^
+
 error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
-  --> $DIR/args-checked.rs:13:1
+  --> $DIR/args-checked.rs:15:1
    |
 LL | #[macro_export(local_inner_macros = 5)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +85,7 @@ LL | #[macro_export(local_inner_macros = 5)]
    = note: `#[deny(invalid_macro_export_arguments)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
-  --> $DIR/args-checked.rs:16:1
+  --> $DIR/args-checked.rs:18:1
    |
 LL | #[macro_export(local_inner_macros(x, y, z))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -81,12 +93,12 @@ LL | #[macro_export(local_inner_macros(x, y, z))]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
-error: aborting due to 6 previous errors
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0539`.
 Future incompatibility report: Future breakage diagnostic:
 error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
-  --> $DIR/args-checked.rs:13:1
+  --> $DIR/args-checked.rs:15:1
    |
 LL | #[macro_export(local_inner_macros = 5)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +109,7 @@ LL | #[macro_export(local_inner_macros = 5)]
 
 Future breakage diagnostic:
 error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
-  --> $DIR/args-checked.rs:16:1
+  --> $DIR/args-checked.rs:18:1
    |
 LL | #[macro_export(local_inner_macros(x, y, z))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
