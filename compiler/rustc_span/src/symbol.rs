@@ -1032,6 +1032,7 @@ symbols! {
         global_asm,
         global_registration,
         globs,
+        gpu_launch_sized_workgroup_mem,
         gt,
         guard,
         guard_patterns,
