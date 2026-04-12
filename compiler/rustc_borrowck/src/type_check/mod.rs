@@ -2503,6 +2503,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             DefKind::InlineConst => args.as_inline_const().parent_args(),
             other => bug!("unexpected item {:?}", other),
         };
+
         let parent_args = tcx.mk_args(parent_args);
 
         assert_eq!(typeck_root_args.len(), parent_args.len());
@@ -2520,6 +2521,23 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 parent_args
             );
         }
+
+        // Closures assume that their argument types are well-formed. However, this
+        // is not guaranteed: a closure can be defined with non–well-formed arguments.
+        // In most cases this is harmless, as callers checks the well-formedness when
+        // calling the closure. However, if the closure is never called within the
+        // body that defines it, these checks may be bypassed, potentially leading to
+        // unsoundness. To avoid this, we explicitly check the well-formedness of the
+        // closure's arguments here.
+        // See #153027.
+        self.prove_predicates(
+            args.iter().skip(parent_args.len()).filter_map(|arg| {
+                let term = arg.as_term()?;
+                Some(ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term))))
+            }),
+            location.to_locations(),
+            ConstraintCategory::Boring,
+        );
 
         tcx.predicates_of(def_id).instantiate(tcx, args)
     }
