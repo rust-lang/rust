@@ -505,6 +505,9 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.opt_ast_lowering_delayed_lints =
         |tcx, id| tcx.hir_crate(()).owner(tcx, id.def_id).as_owner().map(|o| &o.delayed_lints);
+    // WARNING: this provider is used in `create_query_cycle` to detect the span where a cycle
+    // occurred. You *must* update `rustc_middle::query::plumbing::TaggedQueryKey::default_span` if
+    // you update this implementation to use additional queries.
     providers.def_span = |tcx, def_id| tcx.hir_span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);

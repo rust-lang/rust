@@ -201,6 +201,8 @@ fn find_and_handle_cycle<'tcx, C: QueryCache>(
     try_execute: QueryJobId,
     span: Span,
 ) -> (C::Value, Option<DepNodeIndex>) {
+    tracing::info!("hit a query cycle evaluating {}!", query.name);
+
     // Ensure there were no errors collecting all active jobs.
     // We need the complete map to ensure we find a cycle to break.
     let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::FullNoContention);
@@ -256,6 +258,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
 
 /// Shared main part of both [`execute_query_incr_inner`] and [`execute_query_non_incr_inner`].
 #[inline(never)]
+#[tracing::instrument(level = "debug", skip_all, fields(query = query.name, key))]
 fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
