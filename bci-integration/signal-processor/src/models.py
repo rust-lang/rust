@@ -56,6 +56,7 @@ class BCIStateModel(BaseModel):
     natural_language_summary: str = Field(max_length=512)
     pause_event: PauseEventModel | None = None
     resume_event: ResumeEventModel | None = None
+    classification_source: str = "heuristic"  # "heuristic" | "deep"
 
 
 class WebhookFilter(BaseModel):

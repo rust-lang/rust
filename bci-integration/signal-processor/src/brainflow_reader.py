@@ -170,6 +170,23 @@ class BCIReader:
                     cognitive_load=cog_load,
                     signal_quality=signal_quality,
                 )
+                classification_source = "heuristic"
+
+                # Deep classifier override: runs on raw EEG, replaces state/confidence
+                # but keeps heuristic scores (attention/relaxation/cognitive_load).
+                if self._raw_classifier is not None:
+                    try:
+                        deep_result = self._raw_classifier.classify_raw(
+                            eeg_data=eeg_data,
+                            sample_rate=config.SAMPLE_RATE,
+                        )
+                        result = deep_result
+                        classification_source = "deep"
+                    except Exception:
+                        logger.warning(
+                            "Deep classifier failed, falling back to heuristic",
+                            exc_info=True,
+                        )
 
                 # Generate NL summary
                 nl_summary = _generate_nl_summary(
@@ -202,6 +219,7 @@ class BCIReader:
                     "artifact_probability": round(artifact_prob, 3),
                     "staleness_ms": 0,
                     "natural_language_summary": nl_summary,
+                    "classification_source": classification_source,
                 }
 
                 # Pause detection

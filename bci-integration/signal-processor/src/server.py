@@ -18,6 +18,7 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from . import config
 from .brainflow_reader import BCIReader
 from .classifier import Classifier
+from .deep_classifier import RawClassifier
 from .models import (
     BCIStateModel,
     HealthResponse,
@@ -51,6 +52,7 @@ def create_app(
     replayer: SessionReplayer | None = None,
     state_manager: StateManager | None = None,
     classifier: Classifier | None = None,
+    raw_classifier: RawClassifier | None = None,
 ) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -60,6 +62,9 @@ def create_app(
         replayer: Optional replayer to use instead of BrainFlow.
         state_manager: Optional pre-created StateManager (used by replayer).
         classifier: Optional classifier override. Defaults to HeuristicClassifier.
+        raw_classifier: Optional deep classifier (EEGNet) that operates on
+            raw EEG data. When provided, overrides state/confidence while the
+            heuristic still provides attention/relaxation/cognitive_load scores.
 
     Returns:
         Configured FastAPI app instance.
@@ -106,6 +111,7 @@ def create_app(
         _reader = BCIReader(
             state_manager=_state_manager, synthetic=synthetic, recorder=recorder,
             classifier=classifier, pause_detector=_pause_detector,
+            raw_classifier=raw_classifier,
         )
 
     @asynccontextmanager

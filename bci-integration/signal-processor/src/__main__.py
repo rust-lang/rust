@@ -49,11 +49,21 @@ def main() -> None:
         default=None,
         help="Path to a trained ML model (.joblib) for brain state classification",
     )
+    parser.add_argument(
+        "--deep-model",
+        type=str,
+        metavar="PATH",
+        default=None,
+        help="Path to a trained EEGNet model (.pt) for deep learning brain state classification",
+    )
     args = parser.parse_args()
 
     # Validate mutually exclusive options
     if args.record and args.replay:
         parser.error("--record and --replay are mutually exclusive")
+
+    if args.model and args.deep_model:
+        parser.error("--model (RF) and --deep-model (EEGNet) are mutually exclusive")
 
     if args.replay and args.synthetic is not True:
         # --no-synthetic was explicitly passed alongside --replay
@@ -79,6 +89,22 @@ def main() -> None:
     model_path = args.model or config.MODEL_PATH
     classifier = create_classifier(model_path) if model_path else None
 
+    # Resolve deep model path: CLI flag > env var > None
+    deep_model_path = args.deep_model or config.DEEP_MODEL_PATH
+    raw_classifier = None
+    if deep_model_path:
+        from .deep_classifier import DeepClassifier
+        try:
+            raw_classifier = DeepClassifier(model_path=deep_model_path)
+            logging.getLogger(__name__).info(
+                "Deep classifier loaded from %s", deep_model_path
+            )
+        except Exception as exc:
+            logging.getLogger(__name__).error(
+                "Failed to load deep classifier from %s: %s", deep_model_path, exc
+            )
+            raw_classifier = None
+
     if args.record:
         recorder = SessionRecorder(file_path=args.record)
 
@@ -88,7 +114,12 @@ def main() -> None:
         replayer = SessionReplayer(file_path=args.replay, state_manager=state_mgr)
         app = create_app(synthetic=True, replayer=replayer, state_manager=state_mgr)
     else:
-        app = create_app(synthetic=args.synthetic, recorder=recorder, classifier=classifier)
+        app = create_app(
+            synthetic=args.synthetic,
+            recorder=recorder,
+            classifier=classifier,
+            raw_classifier=raw_classifier,
+        )
 
     # Graceful shutdown on SIGINT/SIGTERM
     def handle_signal(signum, frame):
