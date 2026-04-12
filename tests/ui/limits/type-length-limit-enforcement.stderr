@@ -8,7 +8,8 @@ LL |     drop::<Option<A>>(None);
    = note: the full name for the type has been written to '$TEST_BUILD_DIR/type-length-limit-enforcement.long-type-$LONG_TYPE_HASH.txt'
    = note: consider using `--verbose` to print the full type name to the console
 
-error: reached the type-length limit while instantiating `<{closure@...} as FnMut<()>>::call_mut`
+error: reached the type-length limit while instantiating `<{closure@...} as FnOnce<()>>::call_once`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
    = help: consider adding a `#![type_length_limit="10"]` attribute to your crate
    = note: the full name for the type has been written to '$TEST_BUILD_DIR/type-length-limit-enforcement.long-type-$LONG_TYPE_HASH.txt'
