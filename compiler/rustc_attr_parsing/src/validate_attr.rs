@@ -8,8 +8,8 @@ use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{
     self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, Safety,
 };
-use rustc_errors::{Applicability, FatalError, PResult};
-use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
+use rustc_errors::{Applicability, PResult};
+use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, template};
 use rustc_hir::AttrPath;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_parse::parse_in;
@@ -31,14 +31,22 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
     // Check input tokens for built-in and key-value attributes.
     match builtin_attr_info {
         // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
-        Some(BuiltinAttribute { name, template, .. }) => {
+        Some(BuiltinAttribute { name, .. }) => {
             if AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(&name)) {
                 return;
             }
             match parse_meta(psess, attr) {
                 // Don't check safety again, we just did that
                 Ok(meta) => {
-                    check_builtin_meta_item(psess, &meta, attr.style, *name, *template, false)
+                    // FIXME The only unparsed builtin attributes that are left are the lint attributes, so we can hardcode the template here
+                    let lint_attrs = [sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
+                    assert!(lint_attrs.contains(name));
+
+                    let template = template!(
+                        List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#],
+                        "https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes"
+                    );
+                    check_builtin_meta_item(psess, &meta, attr.style, *name, template, false)
                 }
                 Err(err) => {
                     err.emit();
@@ -169,7 +177,7 @@ pub fn check_builtin_meta_item(
     }
 }
 
-fn emit_malformed_attribute(
+pub fn emit_malformed_attribute(
     psess: &ParseSess,
     style: ast::AttrStyle,
     span: Span,
@@ -230,16 +238,4 @@ fn emit_malformed_attribute(
         }
         err.emit();
     }
-}
-
-pub fn emit_fatal_malformed_builtin_attribute(
-    psess: &ParseSess,
-    attr: &Attribute,
-    name: Symbol,
-) -> ! {
-    let template = BUILTIN_ATTRIBUTE_MAP.get(&name).expect("builtin attr defined").template;
-    emit_malformed_attribute(psess, attr.style, attr.span, name, template);
-    // This is fatal, otherwise it will likely cause a cascade of other errors
-    // (and an error here is expected to be very rare).
-    FatalError.raise()
 }

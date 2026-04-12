@@ -10,7 +10,6 @@ use rustc_data_structures::memmap::{Mmap, MmapMut};
 use rustc_data_structures::sync::{par_for_each_in, par_join};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_data_structures::thousands::usize_with_underscores;
-use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, EncodeCrossCrate};
 use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, LocalDefIdSet};
@@ -842,10 +841,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     }
 }
 
-struct AnalyzeAttrState<'a> {
+struct AnalyzeAttrState {
     is_exported: bool,
     is_doc_hidden: bool,
-    features: &'a Features,
 }
 
 /// Returns whether an attribute needs to be recorded in metadata, that is, if it's usable and
@@ -858,16 +856,17 @@ struct AnalyzeAttrState<'a> {
 /// visibility: this is a piece of data that can be computed once per defid, and not once per
 /// attribute. Some attributes would only be usable downstream if they are public.
 #[inline]
-fn analyze_attr(attr: &hir::Attribute, state: &mut AnalyzeAttrState<'_>) -> bool {
+fn analyze_attr(attr: &hir::Attribute, state: &mut AnalyzeAttrState) -> bool {
     let mut should_encode = false;
     if let hir::Attribute::Parsed(p) = attr
         && p.encode_cross_crate() == EncodeCrossCrate::No
     {
         // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
     } else if let Some(name) = attr.name()
-        && !rustc_feature::encode_cross_crate(name)
+        && [sym::warn, sym::allow, sym::expect, sym::forbid, sym::deny].contains(&name)
     {
-        // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
+        // Lint attributes don't need to be encoded for downstream crates.
+        // FIXME remove this when #152369 is re-merged
     } else if let hir::Attribute::Parsed(AttributeKind::DocComment { .. }) = attr {
         // We keep all doc comments reachable to rustdoc because they might be "imported" into
         // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
@@ -880,8 +879,6 @@ fn analyze_attr(attr: &hir::Attribute, state: &mut AnalyzeAttrState<'_>) -> bool
         if d.hidden.is_some() {
             state.is_doc_hidden = true;
         }
-    } else if let &[sym::diagnostic, seg] = &*attr.path() {
-        should_encode = rustc_feature::is_stable_diagnostic_attribute(seg, state.features);
     } else {
         should_encode = true;
     }
@@ -1397,7 +1394,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let mut state = AnalyzeAttrState {
             is_exported: tcx.effective_visibilities(()).is_exported(def_id),
             is_doc_hidden: false,
-            features: &tcx.features(),
         };
         let attr_iter = tcx
             .hir_attrs(tcx.local_def_id_to_hir_id(def_id))
