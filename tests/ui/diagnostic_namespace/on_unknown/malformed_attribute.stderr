@@ -6,7 +6,7 @@ LL | use std::str::NotExisting;
    |
    = note: unresolved import `std::str::NotExisting`
 
-warning: missing options for `on_unknown` attribute
+warning: missing options for `diagnostic::on_unknown` attribute
   --> $DIR/malformed_attribute.rs:2:1
    |
 LL | #[diagnostic::on_unknown]

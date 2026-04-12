@@ -28,7 +28,9 @@ impl OnUnknownParser {
             ArgParser::NoArgs | ArgParser::List(_) => {
                 cx.emit_lint(
                     MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    AttributeLintKind::MissingOptionsForOnUnknown,
+                    AttributeLintKind::MissingOptionsForDiagnosticAttribute {
+                        attribute: mode.as_str(),
+                    },
                     span,
                 );
                 return;

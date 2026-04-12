@@ -3584,24 +3584,11 @@ pub(crate) struct IgnoredDiagnosticOption {
 }
 
 #[derive(Diagnostic)]
-#[diag("missing options for `on_unimplemented` attribute")]
+#[diag("missing options for `{$attribute}` attribute")]
 #[help("at least one of the `message`, `note` and `label` options are expected")]
-pub(crate) struct MissingOptionsForOnUnimplementedAttr;
-
-#[derive(Diagnostic)]
-#[diag("missing options for `on_unknown` attribute")]
-#[help("at least one of the `message`, `note` and `label` options are expected")]
-pub(crate) struct MissingOptionsForOnUnknownAttr;
-
-#[derive(Diagnostic)]
-#[diag("missing options for `on_const` attribute")]
-#[help("at least one of the `message`, `note` and `label` options are expected")]
-pub(crate) struct MissingOptionsForOnConstAttr;
-
-#[derive(Diagnostic)]
-#[diag("missing options for `on_move` attribute")]
-#[help("at least one of the `message`, `note` and `label` options are expected")]
-pub(crate) struct MissingOptionsForOnMoveAttr;
+pub(crate) struct MissingOptionsForDiagnosticAttribute {
+    pub attribute: &'static str,
+}
 
 #[derive(Diagnostic)]
 #[diag("`Eq::assert_receiver_is_total_eq` should never be implemented by hand")]

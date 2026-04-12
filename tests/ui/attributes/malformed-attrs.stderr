@@ -793,7 +793,7 @@ LL | #[no_implicit_prelude = 23]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = help: `#[no_implicit_prelude]` can be applied to crates and modules
 
-warning: missing options for `on_unimplemented` attribute
+warning: missing options for `diagnostic::on_unimplemented` attribute
   --> $DIR/malformed-attrs.rs:142:1
    |
 LL | #[diagnostic::on_unimplemented]

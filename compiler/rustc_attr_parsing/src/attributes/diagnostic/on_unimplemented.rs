@@ -34,7 +34,9 @@ impl OnUnimplementedParser {
             ArgParser::NoArgs | ArgParser::List(_) => {
                 cx.emit_lint(
                     MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    AttributeLintKind::MissingOptionsForOnUnimplemented,
+                    AttributeLintKind::MissingOptionsForDiagnosticAttribute {
+                        attribute: mode.as_str(),
+                    },
                     span,
                 );
                 return;

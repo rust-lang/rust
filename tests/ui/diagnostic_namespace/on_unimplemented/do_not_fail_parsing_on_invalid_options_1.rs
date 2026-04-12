@@ -25,7 +25,7 @@ trait _Self {}
 trait Doom {}
 
 #[diagnostic::on_unimplemented]
-//~^WARN missing options for `on_unimplemented` attribute
+//~^WARN missing options for `diagnostic::on_unimplemented` attribute
 trait Whatever {}
 
 #[diagnostic::on_unimplemented(message = "{DoesNotExist}")]

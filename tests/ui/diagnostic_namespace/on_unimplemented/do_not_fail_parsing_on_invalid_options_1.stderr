@@ -56,7 +56,7 @@ LL | #[diagnostic::on_unimplemented = "boom"]
    |
    = help: only `message`, `note` and `label` are allowed as options
 
-warning: missing options for `on_unimplemented` attribute
+warning: missing options for `diagnostic::on_unimplemented` attribute
   --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:27:1
    |
 LL | #[diagnostic::on_unimplemented]

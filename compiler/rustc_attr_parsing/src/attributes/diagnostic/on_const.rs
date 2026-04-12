@@ -29,7 +29,9 @@ impl<S: Stage> AttributeParser<S> for OnConstParser {
                 ArgParser::NoArgs | ArgParser::List(_) => {
                     cx.emit_lint(
                         MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MissingOptionsForOnConst,
+                        AttributeLintKind::MissingOptionsForDiagnosticAttribute {
+                            attribute: mode.as_str(),
+                        },
                         span,
                     );
                     return;

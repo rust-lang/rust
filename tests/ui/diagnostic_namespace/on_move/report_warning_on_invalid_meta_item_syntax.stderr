@@ -1,4 +1,4 @@
-warning: missing options for `on_move` attribute
+warning: missing options for `diagnostic::on_move` attribute
   --> $DIR/report_warning_on_invalid_meta_item_syntax.rs:3:1
    |
 LL | #[diagnostic::on_move = "foo"]

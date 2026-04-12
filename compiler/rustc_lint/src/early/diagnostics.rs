@@ -198,23 +198,14 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                 lints::IgnoredDiagnosticOption { option_name, first_span, later_span }
                     .into_diag(dcx, level)
             }
-            &AttributeLintKind::MissingOptionsForOnUnimplemented => {
-                lints::MissingOptionsForOnUnimplementedAttr.into_diag(dcx, level)
-            }
-            &AttributeLintKind::MissingOptionsForOnConst => {
-                lints::MissingOptionsForOnConstAttr.into_diag(dcx, level)
+            &AttributeLintKind::MissingOptionsForDiagnosticAttribute { attribute } => {
+                lints::MissingOptionsForDiagnosticAttribute { attribute }.into_diag(dcx, level)
             }
             &AttributeLintKind::OnMoveMalformedFormatLiterals { name } => {
                 lints::OnMoveMalformedFormatLiterals { name }.into_diag(dcx, level)
             }
             &AttributeLintKind::OnMoveMalformedAttrExpectedLiteralOrDelimiter => {
                 lints::OnMoveMalformedAttrExpectedLiteralOrDelimiter.into_diag(dcx, level)
-            }
-            &AttributeLintKind::MissingOptionsForOnMove => {
-                lints::MissingOptionsForOnMoveAttr.into_diag(dcx, level)
-            }
-            &AttributeLintKind::MissingOptionsForOnUnknown => {
-                lints::MissingOptionsForOnUnknownAttr.into_diag(dcx, level)
             }
         }
     }

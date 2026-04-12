@@ -750,10 +750,9 @@ pub enum AttributeLintKind {
         first_span: Span,
         later_span: Span,
     },
-    MissingOptionsForOnUnimplemented,
-    MissingOptionsForOnConst,
-    MissingOptionsForOnUnknown,
-    MissingOptionsForOnMove,
+    MissingOptionsForDiagnosticAttribute {
+        attribute: &'static str,
+    },
     OnMoveMalformedFormatLiterals {
         name: Symbol,
     },

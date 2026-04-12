@@ -32,7 +32,9 @@ impl OnMoveParser {
         let Some(list) = args.list() else {
             cx.emit_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                AttributeLintKind::MissingOptionsForOnMove,
+                AttributeLintKind::MissingOptionsForDiagnosticAttribute {
+                    attribute: mode.as_str(),
+                },
                 span,
             );
             return;
