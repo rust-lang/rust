@@ -361,6 +361,32 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn cond_br_with_weight(
+        &mut self,
+        cond: Self::Value,
+        then_llbb: Self::BasicBlock,
+        else_llbb: Self::BasicBlock,
+        then_cold: bool,
+    ) {
+        if self.cx.sess().opts.optimize == rustc_session::config::OptLevel::No {
+            self.cond_br(cond, then_llbb, else_llbb);
+            return;
+        }
+
+        let id = self.cx.create_metadata(b"branch_weights");
+
+        let cold_weight = llvm::LLVMValueAsMetadata(self.cx.const_u32(1));
+        let hot_weight = llvm::LLVMValueAsMetadata(self.cx.const_u32(2000));
+        let (then_weight, else_weight) =
+            if then_cold { (cold_weight, hot_weight) } else { (hot_weight, cold_weight) };
+
+        let md: SmallVec<[&Metadata; 3]> = SmallVec::from_buf([id, then_weight, else_weight]);
+
+        let branch = unsafe { llvm::LLVMBuildCondBr(self.llbuilder, cond, then_llbb, else_llbb) };
+
+        self.cx.set_metadata_node(branch, llvm::MD_prof, &md);
+    }
+
     fn switch_with_weights(
         &mut self,
         v: Self::Value,
