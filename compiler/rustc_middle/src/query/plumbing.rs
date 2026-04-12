@@ -61,18 +61,8 @@ pub struct Cycle<'tcx> {
 pub enum QueryMode {
     /// This is a normal query call to `tcx.$query(..)` or `tcx.at(span).$query(..)`.
     Get,
-    /// This is a call to `tcx.ensure_ok().$query(..)` or `tcx.ensure_done().$query(..)`.
-    Ensure { ensure_mode: EnsureMode },
-}
-
-/// Distinguishes between `tcx.ensure_ok()` and `tcx.ensure_done()` in shared
-/// code paths that handle both modes.
-#[derive(Debug)]
-pub enum EnsureMode {
-    /// Corresponds to [`TyCtxt::ensure_ok`].
-    Ok,
-    /// Corresponds to [`TyCtxt::ensure_done`].
-    Done,
+    /// This is a call to `tcx.ensure_ok().$query(..)`.
+    EnsureOk,
 }
 
 /// Stores data and metadata (e.g. function pointers) for a particular query.
@@ -259,20 +249,13 @@ impl<'tcx> TyCtxt<'tcx> {
         TyCtxtEnsureResult { tcx: self }
     }
 
-    /// Wrapper that calls queries in a special "ensure done" mode, for callers
-    /// that don't need the return value and just want to guarantee that the
-    /// query won't be executed in the future, by executing it now if necessary.
+    /// Wrapper that calls queries where callers don't need the return value and
+    /// just want to guarantee that the query won't be executed in the future.
     ///
     /// This is useful for queries that read from a [`Steal`] value, to ensure
     /// that they are executed before the query that will steal the value.
     ///
-    /// Unlike [`Self::ensure_ok`], a query with all-green inputs will only be
-    /// skipped if its return value is stored in the disk-cache. This is still
-    /// more efficient than a regular query, because in that situation the
-    /// return value doesn't necessarily need to be decoded.
-    ///
-    /// (As with all query calls, execution is also skipped if the query result
-    /// is already cached in memory.)
+    /// Currently this causes the query to be executed normally, but this behavior may change.
     ///
     /// [`Steal`]: rustc_data_structures::steal::Steal
     #[inline(always)]
@@ -574,11 +557,10 @@ macro_rules! define_callbacks {
                 $(#[$attr])*
                 #[inline(always)]
                 pub fn $name(self, key: maybe_into_query_key!($($K)*)) {
-                    $crate::query::inner::query_ensure_ok_or_done(
+                    $crate::query::inner::query_ensure_ok(
                         self.tcx,
                         &self.tcx.query_system.query_vtables.$name,
                         $crate::query::IntoQueryKey::into_query_key(key),
-                        $crate::query::EnsureMode::Ok,
                     )
                 }
             )*
@@ -608,12 +590,9 @@ macro_rules! define_callbacks {
                 $(#[$attr])*
                 #[inline(always)]
                 pub fn $name(self, key: maybe_into_query_key!($($K)*)) {
-                    $crate::query::inner::query_ensure_ok_or_done(
-                        self.tcx,
-                        &self.tcx.query_system.query_vtables.$name,
-                        $crate::query::IntoQueryKey::into_query_key(key),
-                        $crate::query::EnsureMode::Done,
-                    );
+                    // This has the same implementation as `tcx.$query(..)` as it isn't currently
+                    // beneficial to have an optimized variant due to how promotion works.
+                    let _ = self.tcx.$name(key);
                 }
             )*
         }
