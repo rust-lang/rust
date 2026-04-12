@@ -209,69 +209,111 @@ mod ffi {
         blocked_execs: u64,
     }
 
+    /// Status tag shared by operations with a single success mode
+    /// (atomic loads/stores, non-atomic loads/stores, and FAIs).
+    /// For operations with multiple success modes, see [`CasStatus`] and [`MutexLockStatus`].
+    #[derive(Debug, Clone, Copy)]
+    enum OperationStatus {
+        /// This execution should be dropped.
+        Invalid,
+        /// A verification error occurred; the `error` field is valid.
+        Error,
+        /// The operation completed; check the result struct's payload fields.
+        Ok,
+    }
+
+    /// Status tag for [`CompareExchangeResult`]: CAS has two distinct success modes.
+    #[derive(Debug, Clone, Copy)]
+    enum CasStatus {
+        /// This execution should be dropped.
+        Invalid,
+        /// A verification error occurred; the `error` field is valid.
+        Error,
+        /// CAS failed: `old_value` was read but did not equal expected; no write should occur.
+        Failed,
+        /// CAS succeeded: `old_value` equals expected; the write should occur,
+        /// `is_coherence_order_maximal_write` is valid.
+        Succeeded,
+    }
+
+    /// Status tag for [`MutexLockResult`]: mutex lock has three distinct success modes.
+    #[derive(Debug, Clone, Copy)]
+    enum MutexLockStatus {
+        /// This execution should be dropped.
+        Invalid,
+        /// A verification error occurred; the `error` field is valid.
+        Error,
+        /// GenMC wants Miri to retry the lock once this thread is rescheduled.
+        Reset,
+        /// The lock was successfully acquired by this thread.
+        Acquired,
+        /// The lock is already held; this thread has been blocked on the GenMC side.
+        NotAcquired,
+    }
+
+    /// Result from an atomic load.
     #[must_use]
     #[derive(Debug)]
     struct LoadResult {
-        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
-        invalid: bool,
-        /// If not null, contains the error encountered during the handling of the load.
+        status: OperationStatus,
+        /// Valid when `status == Error`.
         error: UniquePtr<CxxString>,
-        /// The value that was read. Should not be used if `has_value` is `false`.
+        /// Valid when `status == Ok`.
         read_value: GenmcScalar,
     }
 
     #[must_use]
     #[derive(Debug)]
     struct StoreResult {
-        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
-        invalid: bool,
-        /// If not null, contains the error encountered during the handling of the store.
+        status: OperationStatus,
+        /// Valid when `status == Error`.
         error: UniquePtr<CxxString>,
-        /// `true` if the write should also be reflected in Miri's memory representation.
+        /// Valid when `status == Ok`. `true` if the write should be reflected in Miri's memory.
         is_coherence_order_maximal_write: bool,
+    }
+
+    /// Result from a non-atomic load or store. GenMC uses these only for data-race detection;
+    /// no value is communicated back to Miri. When `status == Ok` there is no payload.
+    #[must_use]
+    #[derive(Debug)]
+    struct NonAtomicResult {
+        status: OperationStatus,
+        /// Valid when `status == Error`.
+        error: UniquePtr<CxxString>,
     }
 
     #[must_use]
     #[derive(Debug)]
     struct ReadModifyWriteResult {
-        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
-        invalid: bool,
-        /// If there was an error, it will be stored in `error`, otherwise it is `None`.
+        status: OperationStatus,
+        /// Valid when `status == Error`.
         error: UniquePtr<CxxString>,
-        /// The value that was read by the RMW operation as the left operand.
+        /// Valid when `status == Ok`. The value read by the RMW.
         old_value: GenmcScalar,
-        /// The value that was produced by the RMW operation.
+        /// Valid when `status == Ok`. The value written by the RMW.
         new_value: GenmcScalar,
-        /// `true` if the write should also be reflected in Miri's memory representation.
+        /// Valid when `status == Ok`. `true` if the write should be reflected in Miri's memory.
         is_coherence_order_maximal_write: bool,
     }
 
     #[must_use]
     #[derive(Debug)]
     struct CompareExchangeResult {
-        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
-        invalid: bool,
-        /// If there was an error, it will be stored in `error`, otherwise it is `None`.
+        status: CasStatus,
+        /// Valid when `status == Error`.
         error: UniquePtr<CxxString>,
-        /// The value that was read by the compare-exchange.
+        /// Valid when `status == Failed` or `status == Succeeded`.
         old_value: GenmcScalar,
-        /// `true` if compare_exchange op was successful.
-        is_success: bool,
-        /// `true` if the write should also be reflected in Miri's memory representation.
+        /// Valid when `status == Succeeded`. `true` if the write should be reflected in Miri's memory.
         is_coherence_order_maximal_write: bool,
     }
 
     #[must_use]
     #[derive(Debug)]
     struct MutexLockResult {
-        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
-        invalid: bool,
-        /// If there was an error, it will be stored in `error`, otherwise it is `None`.
+        status: MutexLockStatus,
+        /// Valid when `status == Error`.
         error: UniquePtr<CxxString>,
-        /// If true, GenMC determined that we should retry the mutex lock operation once the thread attempting to lock is scheduled again.
-        is_reset: bool,
-        /// Indicate whether the lock was acquired by this thread.
-        is_lock_acquired: bool,
     }
 
     #[must_use]
@@ -415,7 +457,7 @@ mod ffi {
             thread_id: i32,
             address: u64,
             size: u64,
-        ) -> LoadResult;
+        ) -> NonAtomicResult;
         fn handle_read_modify_write(
             self: Pin<&mut MiriGenmcShim>,
             thread_id: i32,
@@ -452,7 +494,7 @@ mod ffi {
             thread_id: i32,
             address: u64,
             size: u64,
-        ) -> StoreResult;
+        ) -> NonAtomicResult;
         fn handle_fence(
             self: Pin<&mut MiriGenmcShim>,
             thread_id: i32,
