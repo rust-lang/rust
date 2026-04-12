@@ -1,6 +1,5 @@
 use std::sync::LazyLock as Lazy;
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::LintStore;
 use rustc_lint_defs::{Lint, LintId, declare_tool_lint};
 use rustc_session::{Session, lint};
@@ -14,14 +13,12 @@ use rustc_session::{Session, lint};
 /// through the "WARNINGS" lint. To prevent this to happen, we set it back to its "normal" level
 /// inside this function.
 ///
-/// It returns a tuple containing:
-///  * Vector of tuples of lints' name and their associated "max" level
-///  * HashMap of lint id with their associated "max" level
+/// It returns a vector of tuples of lints' name and their associated "max" level
 pub(crate) fn init_lints<F>(
     mut allowed_lints: Vec<String>,
     lint_opts: Vec<(String, lint::Level)>,
     filter_call: F,
-) -> (Vec<(String, lint::Level)>, FxHashMap<lint::LintId, lint::Level>)
+) -> Vec<(String, lint::Level)>
 where
     F: Fn(&lint::Lint) -> Option<(String, lint::Level)>,
 {
@@ -36,7 +33,7 @@ where
             .chain(rustc_lint::SoftLints::lint_vec())
     };
 
-    let lint_opts = lints()
+    lints()
         .filter_map(|lint| {
             // Permit feature-gated lints to avoid feature errors when trying to
             // allow all lints.
@@ -47,20 +44,7 @@ where
             }
         })
         .chain(lint_opts)
-        .collect::<Vec<_>>();
-
-    let lint_caps = lints()
-        .filter_map(|lint| {
-            // We don't want to allow *all* lints so let's ignore
-            // those ones.
-            if allowed_lints.iter().any(|l| lint.name == l) {
-                None
-            } else {
-                Some((lint::LintId::of(lint), lint::Allow))
-            }
-        })
-        .collect();
-    (lint_opts, lint_caps)
+        .collect::<Vec<_>>()
 }
 
 macro_rules! declare_rustdoc_lint {

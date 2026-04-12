@@ -212,7 +212,6 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         output_dir: odir,
         ice_file,
         file_loader: None,
-        lint_caps: Default::default(),
         psess_created: None,
         track_state: None,
         register_lints: None,

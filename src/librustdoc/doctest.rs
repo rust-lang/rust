@@ -144,7 +144,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         lint::builtin::RENAMED_AND_REMOVED_LINTS.name.to_owned(),
     ];
 
-    let (lint_opts, lint_caps) = init_lints(allowed_lints, options.lint_opts.clone(), |lint| {
+    let lint_opts = init_lints(allowed_lints, options.lint_opts.clone(), |lint| {
         if lint.name == invalid_codeblock_attributes_name {
             None
         } else {
@@ -162,7 +162,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         search_paths: options.libs.clone(),
         crate_types,
         lint_opts,
-        lint_cap: Some(options.lint_cap.unwrap_or(lint::Forbid)),
+        lint_cap: None,
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
         unstable_features: options.unstable_features,
@@ -188,7 +188,6 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         output_file: None,
         output_dir: None,
         file_loader: None,
-        lint_caps,
         psess_created: None,
         track_state: None,
         register_lints: Some(Box::new(crate::lint::register_lints)),
