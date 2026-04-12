@@ -596,33 +596,6 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
             "path to function call information (for displaying examples in the documentation)",
         ),
-        opt(
-            Unstable,
-            Opt,
-            "",
-            "merge",
-            "Controls how rustdoc handles files from previously documented crates in the doc root\n\
-                none = Do not write cross-crate information to the --out-dir\n\
-                shared = Append current crate's info to files found in the --out-dir\n\
-                finalize = Write current crate's info and --include-parts-dir info to the --out-dir, overwriting conflicting files",
-            "none|shared|finalize",
-        ),
-        opt(
-            Unstable,
-            Opt,
-            "",
-            "parts-out-dir",
-            "Writes trait implementations and other info for the current crate to provided path. Only use with --merge=none",
-            "path/to/doc.parts/<crate-name>",
-        ),
-        opt(
-            Unstable,
-            Multi,
-            "",
-            "include-parts-dir",
-            "Includes trait implementations and other crate info from provided path. Only use with --merge=finalize",
-            "path/to/doc.parts/<crate-name>",
-        ),
         opt(Unstable, Flag, "", "html-no-source", "Disable HTML source code pages generation", ""),
         opt(
             Unstable,
@@ -688,6 +661,33 @@ fn opts() -> Vec<RustcOptGroup> {
             "input-format",
             "removed, see issue #44136 <https://github.com/rust-lang/rust/issues/44136> for more information",
             "[rust]",
+        ),
+        opt(
+            Stable,
+            Opt,
+            "",
+            "merge",
+            "Controls how rustdoc handles files from previously documented crates in the doc root\n\
+                none = Do not write cross-crate information to the --out-dir\n\
+                shared = Append current crate's info to files found in the --out-dir\n\
+                finalize = Write current crate's info and --include-parts-dir info to the --out-dir, overwriting conflicting files",
+            "none|shared|finalize",
+        ),
+        opt(
+            Stable,
+            Opt,
+            "",
+            "parts-out-dir",
+            "Writes trait implementations and other info for the current crate to provided path. Only use with --merge=none",
+            "path/to/doc.parts/<crate-name>",
+        ),
+        opt(
+            Stable,
+            Multi,
+            "",
+            "include-parts-dir",
+            "Includes trait implementations and other crate info from provided path. Only use with --merge=finalize",
+            "path/to/doc.parts/<crate-name>",
         ),
     ]
 }
