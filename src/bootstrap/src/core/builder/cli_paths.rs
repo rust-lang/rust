@@ -3,8 +3,9 @@
 //! large and hard to navigate.
 
 use std::fmt::{self, Debug};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
+use crate::core::build_steps::test::failed_tests::IsForRerunningTests;
 use crate::core::builder::{Builder, Kind, PathSet, ShouldRun, StepDescription};
 
 #[cfg(test)]
@@ -109,6 +110,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     builder: &Builder<'_>,
     step_descs: &[StepDescription],
     paths: &[PathBuf],
+    previously_failed_test_paths: &[PathBuf],
 ) {
     // Obtain `ShouldRun` information for each step, so that we know which
     // paths to match it against.
@@ -135,59 +137,76 @@ pub(crate) fn match_paths_to_steps_and_run(
         assert!(!should_run.paths.is_empty(), "{:?} should have at least one pathset", desc.name);
     }
 
-    if paths.is_empty() || builder.config.include_default_paths {
+    if (paths.is_empty() && previously_failed_test_paths.is_empty())
+        || builder.config.include_default_paths
+    {
         for StepExtra { desc, should_run } in &steps {
             if (desc.is_default_step_fn)(builder) {
-                desc.maybe_run(builder, should_run.paths.iter().cloned().collect());
+                desc.maybe_run(
+                    builder,
+                    should_run.paths.iter().cloned().collect(),
+                    IsForRerunningTests::DontCare,
+                );
             }
         }
     }
 
     // Attempt to resolve paths to be relative to the builder source directory.
-    let mut paths: Vec<PathBuf> = paths
-        .iter()
-        .map(|original_path| {
-            let mut path = original_path.clone();
+    let remap_paths = |paths: &[PathBuf]| {
+        let mut paths = paths
+            .iter()
+            .map(|original_path| {
+                let mut path = original_path.clone();
 
-            // Someone could run `x <cmd> <path>` from a different repository than the source
-            // directory.
-            // In that case, we should not try to resolve the paths relative to the working
-            // directory, but rather relative to the source directory.
-            // So we forcefully "relocate" the path to the source directory here.
-            if !path.is_absolute() {
-                path = builder.src.join(path);
-            }
-
-            // If the path does not exist, it may represent the name of a Step, such as `tidy` in `x test tidy`
-            if !path.exists() {
-                // Use the original path here
-                return original_path.clone();
-            }
-
-            // Make the path absolute, strip the prefix, and convert to a PathBuf.
-            match std::path::absolute(&path) {
-                Ok(p) => p.strip_prefix(&builder.src).unwrap_or(&p).to_path_buf(),
-                Err(e) => {
-                    eprintln!("ERROR: {e:?}");
-                    panic!("Due to the above error, failed to resolve path: {path:?}");
+                // Someone could run `x <cmd> <path>` from a different repository than the source
+                // directory.
+                // In that case, we should not try to resolve the paths relative to the working
+                // directory, but rather relative to the source directory.
+                // So we forcefully "relocate" the path to the source directory here.
+                if !path.is_absolute() {
+                    path = builder.src.join(path);
                 }
-            }
-        })
-        .collect();
 
-    remap_paths(&mut paths);
+                // If the path does not exist, it may represent the name of a Step, such as `tidy` in `x test tidy`
+                if !path.exists() {
+                    // Use the original path here
+                    return original_path.clone();
+                }
+
+                // Make the path absolute, strip the prefix, and convert to a PathBuf.
+                match std::path::absolute(&path) {
+                    Ok(p) => p.strip_prefix(&builder.src).unwrap_or(&p).to_path_buf(),
+                    Err(e) => {
+                        eprintln!("ERROR: {e:?}");
+                        panic!("Due to the above error, failed to resolve path: {path:?}");
+                    }
+                }
+            })
+            .collect();
+        remap_paths(&mut paths);
+        paths
+    };
+
+    let mut paths = remap_paths(paths);
+    let previously_failed_test_paths = remap_paths(previously_failed_test_paths);
 
     // Handle all test suite paths.
     // (This is separate from the loop below to avoid having to handle multiple paths in `is_suite_path` somehow.)
-    paths.retain(|path| {
-        for StepExtra { desc, should_run } in &steps {
-            if let Some(suite) = should_run.is_suite_path(path) {
-                desc.maybe_run(builder, vec![suite.clone()]);
-                return false;
+    {
+        let run_test_path = |path: &Path, is_for_rerunning_tests| {
+            for StepExtra { desc, should_run } in &steps {
+                if let Some(suite) = should_run.is_suite_path(path) {
+                    desc.maybe_run(builder, vec![suite.clone()], is_for_rerunning_tests);
+                    return false;
+                }
             }
+            true
+        };
+        for path in previously_failed_test_paths {
+            run_test_path(&path, IsForRerunningTests::Yes);
         }
-        true
-    });
+        paths.retain(|path| run_test_path(path, IsForRerunningTests::No));
+    }
 
     if paths.is_empty() {
         return;
@@ -229,7 +248,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     // Handle all PathSets.
     for StepToRun { sort_index: _, desc, pathsets } in steps_to_run {
         if !pathsets.is_empty() {
-            desc.maybe_run(builder, pathsets);
+            desc.maybe_run(builder, pathsets, IsForRerunningTests::DontCare);
         }
     }
 

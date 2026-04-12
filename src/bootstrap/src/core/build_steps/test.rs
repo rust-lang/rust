@@ -21,6 +21,9 @@ use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::run::{get_completion_paths, get_help_path};
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::test::compiletest::CompiletestMode;
+use crate::core::build_steps::test::failed_tests::{
+    IsForRerunningTests, RecordFailedTests, SetupFailedTestsFile,
+};
 use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, SourceType, TEST_FLOAT_PARSE_ALLOW_FEATURES, Tool,
     ToolTargetBuildMode, get_tool_target_compiler,
@@ -45,12 +48,14 @@ use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{CLang, CodegenBackendKind, GitRepo, Mode, PathSet, TestTarget, envify};
 
 mod compiletest;
+pub mod failed_tests;
 
 /// Runs `cargo test` on various internal tools used by bootstrap.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateBootstrap {
     path: PathBuf,
     host: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for CrateBootstrap {
@@ -79,13 +84,18 @@ impl Step for CrateBootstrap {
         // that was selected on the command-line (or selected by default).
         for path in run.paths {
             let path = path.assert_single_path().path.clone();
-            run.builder.ensure(CrateBootstrap { host: run.target, path });
+            run.builder.ensure(CrateBootstrap {
+                host: run.target,
+                path,
+                is_for_rerunning_tests: run.is_for_rerunning_tests,
+            });
         }
     }
 
     fn run(self, builder: &Builder<'_>) {
         let bootstrap_host = builder.config.host_target;
         let compiler = builder.compiler(0, bootstrap_host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
         let mut path = self.path.to_str().unwrap();
 
         // Map alias `tidyselftest` back to the actual crate path of tidy.
@@ -105,7 +115,7 @@ impl Step for CrateBootstrap {
         );
 
         let crate_name = path.rsplit_once('/').unwrap().1;
-        run_cargo_test(cargo, &[], &[], crate_name, bootstrap_host, builder);
+        run_cargo_test(cargo, &[], &[], crate_name, bootstrap_host, builder, record_failed_tests);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -119,6 +129,7 @@ impl Step for CrateBootstrap {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Linkcheck {
     host: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for Linkcheck {
@@ -134,7 +145,10 @@ impl Step for Linkcheck {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Linkcheck { host: run.target });
+        run.builder.ensure(Linkcheck {
+            host: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     /// Runs the `linkchecker` tool as compiled in `stage` by the `host` compiler.
@@ -162,6 +176,7 @@ You can skip linkcheck with --skip src/tools/linkchecker"
         // Test the linkchecker itself.
         let bootstrap_host = builder.config.host_target;
         let compiler = builder.compiler(0, bootstrap_host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let cargo = tool::prepare_tool_cargo(
             builder,
@@ -173,7 +188,15 @@ You can skip linkcheck with --skip src/tools/linkchecker"
             SourceType::InTree,
             &[],
         );
-        run_cargo_test(cargo, &[], &[], "linkchecker self tests", bootstrap_host, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "linkchecker self tests",
+            bootstrap_host,
+            builder,
+            record_failed_tests,
+        );
 
         if !builder.test_target.runs_doctests() {
             return;
@@ -209,6 +232,7 @@ fn check_if_tidy_is_installed(builder: &Builder<'_>) -> bool {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HtmlCheck {
     target: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for HtmlCheck {
@@ -224,7 +248,10 @@ impl Step for HtmlCheck {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(HtmlCheck { target: run.target });
+        run.builder.ensure(HtmlCheck {
+            target: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -262,6 +289,7 @@ impl Step for HtmlCheck {
 pub struct Cargotest {
     build_compiler: Compiler,
     host: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for Cargotest {
@@ -285,6 +313,7 @@ impl Step for Cargotest {
         run.builder.ensure(Cargotest {
             build_compiler: run.builder.compiler(run.builder.top_stage - 1, run.target),
             host: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
         });
     }
 
@@ -335,6 +364,7 @@ impl Step for Cargotest {
 pub struct Cargo {
     build_compiler: Compiler,
     host: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Cargo {
@@ -356,6 +386,7 @@ impl Step for Cargo {
                 ToolTargetBuildMode::Build(run.target),
             ),
             host: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
         });
     }
 
@@ -365,6 +396,7 @@ impl Step for Cargo {
         // using stage 1 cargo. So we actually build cargo using the stage 0 compiler, and then
         // run its tests against the stage 1 compiler (called `tested_compiler` below).
         builder.ensure(tool::Cargo::from_build_compiler(self.build_compiler, self.host));
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let tested_compiler = builder.compiler(self.build_compiler.stage + 1, self.host);
         builder.std(tested_compiler, self.host);
@@ -429,7 +461,7 @@ impl Step for Cargo {
         );
 
         let _time = helpers::timeit(builder);
-        add_flags_and_try_run_tests(builder, &mut cargo);
+        add_flags_and_try_run_tests(builder, &mut cargo, record_failed_tests);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -440,6 +472,7 @@ impl Step for Cargo {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RustAnalyzer {
     compilers: RustcPrivateCompilers,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for RustAnalyzer {
@@ -461,6 +494,7 @@ impl Step for RustAnalyzer {
                 run.builder.top_stage,
                 run.builder.host_target,
             ),
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
         });
     }
 
@@ -468,6 +502,7 @@ impl Step for RustAnalyzer {
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.compilers.build_compiler();
         let target = self.compilers.target();
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         // NOTE: rust-analyzer repo currently (as of 2025-12-11) does not run tests against 32-bit
         // targets, so we also don't run them in rust-lang/rust CI (because that will just mean that
@@ -482,13 +517,14 @@ impl Step for RustAnalyzer {
             return;
         }
 
+        let suite = "src/tools/rust-analyzer";
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             build_compiler,
             Mode::ToolRustcPrivate,
             target,
             Kind::Test,
-            "src/tools/rust-analyzer",
+            suite,
             SourceType::InTree,
             &["in-rust-tree".to_owned()],
         );
@@ -539,7 +575,15 @@ impl Step for RustAnalyzer {
         let skip_tests = skip_tests.iter().map(|s| s.as_str()).collect::<Vec<_>>();
 
         cargo.add_rustc_lib_path(builder);
-        run_cargo_test(cargo, skip_tests.as_slice(), &[], "rust-analyzer", target, builder);
+        run_cargo_test(
+            cargo,
+            skip_tests.as_slice(),
+            &[],
+            "rust-analyzer",
+            target,
+            builder,
+            record_failed_tests,
+        );
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -554,6 +598,7 @@ impl Step for RustAnalyzer {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustfmt {
     compilers: RustcPrivateCompilers,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for Rustfmt {
@@ -571,6 +616,7 @@ impl Step for Rustfmt {
                 run.builder.top_stage,
                 run.builder.host_target,
             ),
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
         });
     }
 
@@ -578,6 +624,7 @@ impl Step for Rustfmt {
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.compilers.build_compiler();
         let target = self.compilers.target();
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -596,7 +643,7 @@ impl Step for Rustfmt {
 
         cargo.add_rustc_lib_path(builder);
 
-        run_cargo_test(cargo, &[], &[], "rustfmt", target, builder);
+        run_cargo_test(cargo, &[], &[], "rustfmt", target, builder, record_failed_tests);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -610,6 +657,7 @@ impl Step for Rustfmt {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Miri {
     target: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Miri {
@@ -663,7 +711,10 @@ impl Step for Miri {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Miri { target: run.target });
+        run.builder.ensure(Miri {
+            target: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     /// Runs `cargo test` for miri.
@@ -771,6 +822,7 @@ impl Step for Miri {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CargoMiri {
     target: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for CargoMiri {
@@ -781,7 +833,10 @@ impl Step for CargoMiri {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CargoMiri { target: run.target });
+        run.builder.ensure(CargoMiri {
+            target: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     /// Tests `cargo miri test`.
@@ -851,6 +906,7 @@ impl Step for CargoMiri {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CompiletestTest {
     host: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for CompiletestTest {
@@ -861,12 +917,16 @@ impl Step for CompiletestTest {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CompiletestTest { host: run.target });
+        run.builder.ensure(CompiletestTest {
+            host: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     /// Runs `cargo test` for compiletest.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         // Now that compiletest uses only stable Rust, building it always uses
         // the stage 0 compiler. However, some of its unit tests need to be able
@@ -900,13 +960,22 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // format, namely that of the staged compiler.
         cargo.env("TEST_RUSTC", builder.rustc(staged_compiler));
 
-        run_cargo_test(cargo, &[], &[], "compiletest self test", host, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "compiletest self test",
+            host,
+            builder,
+            record_failed_tests,
+        );
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Clippy {
     compilers: RustcPrivateCompilers,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for Clippy {
@@ -928,6 +997,7 @@ impl Step for Clippy {
                 run.builder.top_stage,
                 run.builder.host_target,
             ),
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
         });
     }
 
@@ -967,7 +1037,7 @@ impl Step for Clippy {
 
         // Collect paths of tests to run
         'partially_test: {
-            let paths = &builder.config.paths[..];
+            let paths = builder.paths(self.is_for_rerunning_tests);
             let mut test_names = Vec::new();
             for path in paths {
                 match helpers::is_valid_test_suite_arg(path, "src/tools/clippy/tests", builder) {
@@ -1019,6 +1089,7 @@ fn bin_path_for_cargo(builder: &Builder<'_>, compiler: Compiler) -> OsString {
 pub struct RustdocTheme {
     /// The compiler (more accurately, its rustdoc) that we test.
     test_compiler: Compiler,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for RustdocTheme {
@@ -1036,7 +1107,10 @@ impl Step for RustdocTheme {
     fn make_run(run: RunConfig<'_>) {
         let test_compiler = run.builder.compiler(run.builder.top_stage, run.target);
 
-        run.builder.ensure(RustdocTheme { test_compiler });
+        run.builder.ensure(RustdocTheme {
+            test_compiler,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -1072,6 +1146,7 @@ pub struct RustdocJSStd {
     /// Compiler that will build the standary library.
     build_compiler: Compiler,
     target: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for RustdocJSStd {
@@ -1090,6 +1165,7 @@ impl Step for RustdocJSStd {
         run.builder.ensure(RustdocJSStd {
             build_compiler: run.builder.compiler(run.builder.top_stage, run.builder.host_target),
             target: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
         });
     }
 
@@ -1108,7 +1184,7 @@ impl Step for RustdocJSStd {
             .arg("--test-folder")
             .arg(builder.src.join("tests/rustdoc-js-std"));
 
-        let full_suite = builder.paths.iter().any(|path| {
+        let full_suite = builder.paths(self.is_for_rerunning_tests).iter().any(|path| {
             matches!(
                 helpers::is_valid_test_suite_arg(path, "tests/rustdoc-js-std", builder),
                 TestFilterCategory::Fullsuite
@@ -1118,7 +1194,7 @@ impl Step for RustdocJSStd {
         // If we have to also run the full suite, don't worry about the individual arguments.
         // They will be covered by running the entire suite
         if !full_suite {
-            for path in &builder.paths {
+            for path in builder.paths(self.is_for_rerunning_tests) {
                 if let TestFilterCategory::Arg(p) =
                     helpers::is_valid_test_suite_arg(path, "tests/rustdoc-js-std", builder)
                 {
@@ -1149,6 +1225,7 @@ impl Step for RustdocJSStd {
 pub struct RustdocJSNotStd {
     pub target: TargetSelection,
     pub compiler: Compiler,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for RustdocJSNotStd {
@@ -1165,7 +1242,11 @@ impl Step for RustdocJSNotStd {
 
     fn make_run(run: RunConfig<'_>) {
         let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-        run.builder.ensure(RustdocJSNotStd { target: run.target, compiler });
+        run.builder.ensure(RustdocJSNotStd {
+            target: run.target,
+            compiler,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -1176,6 +1257,7 @@ impl Step for RustdocJSNotStd {
             suite: "rustdoc-js",
             path: "tests/rustdoc-js",
             compare_mode: None,
+            is_for_rerunning_tests: self.is_for_rerunning_tests,
         });
     }
 }
@@ -1217,6 +1299,7 @@ pub struct RustdocGUI {
     /// The compiler whose rustdoc we are testing.
     test_compiler: Compiler,
     target: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for RustdocGUI {
@@ -1235,11 +1318,16 @@ impl Step for RustdocGUI {
 
     fn make_run(run: RunConfig<'_>) {
         let test_compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-        run.builder.ensure(RustdocGUI { test_compiler, target: run.target });
+        run.builder.ensure(RustdocGUI {
+            test_compiler,
+            target: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
         builder.std(self.test_compiler, self.target);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let mut cmd = builder.tool_cmd(Tool::RustdocGUITest);
 
@@ -1269,7 +1357,7 @@ impl Step for RustdocGUI {
 
         add_rustdoc_cargo_linker_args(&mut cmd, builder, self.test_compiler.host, LldThreads::No);
 
-        let full_suite = builder.paths.iter().any(|path| {
+        let full_suite = builder.paths(self.is_for_rerunning_tests).iter().any(|path| {
             matches!(
                 helpers::is_valid_test_suite_arg(path, "tests/rustdoc-js-std", builder),
                 TestFilterCategory::Fullsuite
@@ -1279,7 +1367,7 @@ impl Step for RustdocGUI {
         // If we have to also run the full suite, don't worry about the individual arguments.
         // They will be covered by running the entire suite
         if !full_suite {
-            for path in &builder.paths {
+            for path in builder.paths(self.is_for_rerunning_tests) {
                 if let TestFilterCategory::Arg(p) =
                     helpers::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder)
                 {
@@ -1308,7 +1396,7 @@ impl Step for RustdocGUI {
 
         let _time = helpers::timeit(builder);
         let _guard = builder.msg_test("rustdoc-gui", self.target, self.test_compiler.stage);
-        try_run_tests(builder, &mut cmd, true);
+        try_run_tests(builder, &mut cmd, true, record_failed_tests);
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
@@ -1321,7 +1409,9 @@ impl Step for RustdocGUI {
 ///
 /// (To run the tidy tool's internal tests, use the alias "tidyselftest" instead.)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Tidy;
+pub struct Tidy {
+    pub is_for_rerunning_tests: IsForRerunningTests,
+}
 
 impl Step for Tidy {
     type Output = ();
@@ -1336,7 +1426,7 @@ impl Step for Tidy {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Tidy);
+        run.builder.ensure(Tidy { is_for_rerunning_tests: run.is_for_rerunning_tests });
     }
 
     /// Runs the `tidy` tool.
@@ -1458,6 +1548,7 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateRunMakeSupport {
     host: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for CrateRunMakeSupport {
@@ -1469,13 +1560,17 @@ impl Step for CrateRunMakeSupport {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CrateRunMakeSupport { host: run.target });
+        run.builder.ensure(CrateRunMakeSupport {
+            host: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     /// Runs `cargo test` for run-make-support.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
         let compiler = builder.compiler(0, host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -1488,13 +1583,22 @@ impl Step for CrateRunMakeSupport {
             &[],
         );
         cargo.allow_features("test");
-        run_cargo_test(cargo, &[], &[], "run-make-support self test", host, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "run-make-support self test",
+            host,
+            builder,
+            record_failed_tests,
+        );
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateBuildHelper {
     host: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for CrateBuildHelper {
@@ -1506,13 +1610,17 @@ impl Step for CrateBuildHelper {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CrateBuildHelper { host: run.target });
+        run.builder.ensure(CrateBuildHelper {
+            host: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     /// Runs `cargo test` for build_helper.
     fn run(self, builder: &Builder<'_>) {
         let host = self.host;
         let compiler = builder.compiler(0, host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -1525,7 +1633,15 @@ impl Step for CrateBuildHelper {
             &[],
         );
         cargo.allow_features("test");
-        run_cargo_test(cargo, &[], &[], "build_helper self test", host, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "build_helper self test",
+            host,
+            builder,
+            record_failed_tests,
+        );
     }
 }
 
@@ -1552,6 +1668,7 @@ macro_rules! test {
         pub struct $name {
             test_compiler: Compiler,
             target: TargetSelection,
+            is_for_rerunning_tests: IsForRerunningTests,
         }
 
         impl Step for $name {
@@ -1574,7 +1691,11 @@ macro_rules! test {
             fn make_run(run: RunConfig<'_>) {
                 let test_compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
 
-                run.builder.ensure($name { test_compiler, target: run.target });
+                run.builder.ensure($name {
+                    test_compiler,
+                    target: run.target,
+                    is_for_rerunning_tests: run.is_for_rerunning_tests,
+                });
             }
 
             fn run(self, builder: &Builder<'_>) {
@@ -1590,6 +1711,7 @@ macro_rules! test {
                         $( value = $compare_mode; )?
                         value
                     }),
+                    is_for_rerunning_tests: self.is_for_rerunning_tests,
                 })
             }
         }
@@ -1706,6 +1828,7 @@ pub struct Coverage {
     pub compiler: Compiler,
     pub target: TargetSelection,
     pub(crate) mode: CompiletestMode,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Coverage {
@@ -1779,12 +1902,17 @@ impl Step for Coverage {
         // suite should also skip the `coverage-map` and `coverage-run` aliases.
 
         for mode in modes {
-            run.builder.ensure(Coverage { compiler, target, mode });
+            run.builder.ensure(Coverage {
+                compiler,
+                target,
+                mode,
+                is_for_rerunning_tests: run.is_for_rerunning_tests,
+            });
         }
     }
 
     fn run(self, builder: &Builder<'_>) {
-        let Self { compiler, target, mode } = self;
+        let Self { compiler, target, mode, is_for_rerunning_tests } = self;
         // Like other compiletest suite test steps, delegate to an internal
         // compiletest task to actually run the tests.
         builder.ensure(Compiletest {
@@ -1794,6 +1922,7 @@ impl Step for Coverage {
             suite: Self::SUITE,
             path: Self::PATH,
             compare_mode: None,
+            is_for_rerunning_tests,
         });
     }
 }
@@ -1811,6 +1940,7 @@ test!(CoverageRunRustdoc {
 pub struct MirOpt {
     pub compiler: Compiler,
     pub target: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for MirOpt {
@@ -1826,7 +1956,11 @@ impl Step for MirOpt {
 
     fn make_run(run: RunConfig<'_>) {
         let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-        run.builder.ensure(MirOpt { compiler, target: run.target });
+        run.builder.ensure(MirOpt {
+            compiler,
+            target: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -1838,6 +1972,7 @@ impl Step for MirOpt {
                 suite: "mir-opt",
                 path: "tests/mir-opt",
                 compare_mode: None,
+                is_for_rerunning_tests: self.is_for_rerunning_tests,
             })
         };
 
@@ -1881,6 +2016,7 @@ struct Compiletest {
     suite: &'static str,
     path: &'static str,
     compare_mode: Option<&'static str>,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for Compiletest {
@@ -1908,6 +2044,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         let target = self.target;
         let mode = self.mode;
         let suite = self.suite;
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         // Path for test suite
         let suite_path = self.path;
@@ -2221,8 +2358,14 @@ Please disable assertions with `rust.debug-assertions = false`.
 
         // Provide `rust_test_helpers` for both host and target.
         if suite == "ui" || suite == "incremental" {
-            builder.ensure(TestHelpers { target: test_compiler.host });
-            builder.ensure(TestHelpers { target });
+            builder.ensure(TestHelpers {
+                target: test_compiler.host,
+                is_for_rerunning_tests: self.is_for_rerunning_tests,
+            });
+            builder.ensure(TestHelpers {
+                target,
+                is_for_rerunning_tests: self.is_for_rerunning_tests,
+            });
             hostflags.push(format!(
                 "-Lnative={}",
                 builder.test_helpers_out(test_compiler.host).display()
@@ -2282,7 +2425,7 @@ Please disable assertions with `rust.debug-assertions = false`.
 
         // Get paths from cmd args
         let mut paths = match &builder.config.cmd {
-            Subcommand::Test { .. } => &builder.config.paths[..],
+            Subcommand::Test { .. } => builder.paths(self.is_for_rerunning_tests),
             _ => &[],
         };
 
@@ -2552,7 +2695,7 @@ Please disable assertions with `rust.debug-assertions = false`.
             target,
             test_compiler.stage,
         );
-        try_run_tests(builder, &mut cmd, false);
+        try_run_tests(builder, &mut cmd, false, record_failed_tests.clone());
 
         if let Some(compare_mode) = compare_mode {
             cmd.arg("--compare-mode").arg(compare_mode);
@@ -2575,7 +2718,7 @@ Please disable assertions with `rust.debug-assertions = false`.
                 suite, mode, compare_mode, &test_compiler.host, target
             ));
             let _time = helpers::timeit(builder);
-            try_run_tests(builder, &mut cmd, false);
+            try_run_tests(builder, &mut cmd, false, record_failed_tests);
         }
     }
 
@@ -2760,6 +2903,7 @@ macro_rules! test_book {
             #[derive(Debug, Clone, PartialEq, Eq, Hash)]
             pub struct $name {
                 test_compiler: Compiler,
+                is_for_rerunning_tests: IsForRerunningTests,
             }
 
             impl Step for $name {
@@ -2777,6 +2921,7 @@ macro_rules! test_book {
                 fn make_run(run: RunConfig<'_>) {
                     run.builder.ensure($name {
                         test_compiler: run.builder.compiler(run.builder.top_stage, run.target),
+                        is_for_rerunning_tests: run.is_for_rerunning_tests,
                     });
                 }
 
@@ -2823,6 +2968,7 @@ test_book!(
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ErrorIndex {
     compilers: RustcPrivateCompilers,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for ErrorIndex {
@@ -2848,7 +2994,8 @@ impl Step for ErrorIndex {
             run.builder.top_stage,
             run.builder.config.host_target,
         );
-        run.builder.ensure(ErrorIndex { compilers });
+        run.builder
+            .ensure(ErrorIndex { compilers, is_for_rerunning_tests: run.is_for_rerunning_tests });
     }
 
     /// Runs the error index generator tool to execute the tests located in the error
@@ -2917,6 +3064,7 @@ pub struct CrateLibrustc {
     build_compiler: Compiler,
     target: TargetSelection,
     crates: Vec<String>,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for CrateLibrustc {
@@ -2937,7 +3085,12 @@ impl Step for CrateLibrustc {
         let build_compiler = builder.compiler(builder.top_stage - 1, host);
         let crates = run.make_run_crates(Alias::Compiler);
 
-        builder.ensure(CrateLibrustc { build_compiler, target: run.target, crates });
+        builder.ensure(CrateLibrustc {
+            build_compiler,
+            target: run.target,
+            crates,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -2949,6 +3102,7 @@ impl Step for CrateLibrustc {
             target: self.target,
             mode: Mode::Rustc,
             crates: self.crates,
+            is_for_rerunning_tests: self.is_for_rerunning_tests,
         });
     }
 
@@ -2967,6 +3121,7 @@ fn run_cargo_test<'a>(
     description: impl Into<Option<&'a str>>,
     target: TargetSelection,
     builder: &Builder<'_>,
+    record_failed_tests: RecordFailedTests,
 ) -> bool {
     let compiler = cargo.compiler();
     let stage = match cargo.mode() {
@@ -2989,7 +3144,7 @@ fn run_cargo_test<'a>(
         },
         builder,
     );
-    add_flags_and_try_run_tests(builder, &mut cargo)
+    add_flags_and_try_run_tests(builder, &mut cargo, record_failed_tests)
 }
 
 /// Given a `cargo test` subcommand, pass it the appropriate test flags given a `builder`.
@@ -3077,6 +3232,7 @@ pub struct Crate {
     target: TargetSelection,
     mode: Mode,
     crates: Vec<String>,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for Crate {
@@ -3100,7 +3256,13 @@ impl Step for Crate {
             .map(|p| builder.crate_paths[&p.assert_single_path().path].clone())
             .collect();
 
-        builder.ensure(Crate { build_compiler, target: run.target, mode: Mode::Std, crates });
+        builder.ensure(Crate {
+            build_compiler,
+            target: run.target,
+            mode: Mode::Std,
+            crates,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     /// Runs all unit tests plus documentation tests for a given crate defined
@@ -3119,6 +3281,7 @@ impl Step for Crate {
         // Prepare sysroot
         // See [field@compile::Std::force_recompile].
         builder.ensure(Std::new(build_compiler, build_compiler.host).force_recompile(true));
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let mut cargo = if builder.kind == Kind::Miri {
             if builder.top_stage == 0 {
@@ -3213,9 +3376,9 @@ impl Step for Crate {
         }
         if crates.iter().any(|crate_| crate_ == "alloc") {
             crates.push("alloctests".to_owned());
-        }
-
-        run_cargo_test(cargo, &[], &crates, &*crate_description(&self.crates), target, builder);
+        };
+        let description = crate_description(&self.crates);
+        run_cargo_test(cargo, &[], &crates, &*description, target, builder, record_failed_tests);
     }
 }
 
@@ -3224,6 +3387,7 @@ impl Step for Crate {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct CrateRustdoc {
     host: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for CrateRustdoc {
@@ -3241,11 +3405,15 @@ impl Step for CrateRustdoc {
     fn make_run(run: RunConfig<'_>) {
         let builder = run.builder;
 
-        builder.ensure(CrateRustdoc { host: run.target });
+        builder.ensure(CrateRustdoc {
+            host: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
         let target = self.host;
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let compiler = if builder.download_rustc() {
             builder.compiler(builder.top_stage, target)
@@ -3312,7 +3480,15 @@ impl Step for CrateRustdoc {
         dylib_path.insert(0, PathBuf::from(&*libdir));
         cargo.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
-        run_cargo_test(cargo, &[], &["rustdoc:0.0.0".to_string()], "rustdoc", target, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &["rustdoc:0.0.0".to_string()],
+            "rustdoc",
+            target,
+            builder,
+            record_failed_tests,
+        );
     }
 }
 
@@ -3320,6 +3496,7 @@ impl Step for CrateRustdoc {
 pub struct CrateRustdocJsonTypes {
     build_compiler: Compiler,
     target: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for CrateRustdocJsonTypes {
@@ -3343,11 +3520,13 @@ impl Step for CrateRustdocJsonTypes {
                 ToolTargetBuildMode::Build(run.target),
             ),
             target: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
         });
     }
 
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let cargo = tool::prepare_tool_cargo(
             builder,
@@ -3374,6 +3553,7 @@ impl Step for CrateRustdocJsonTypes {
             "rustdoc-json-types",
             target,
             builder,
+            record_failed_tests,
         );
     }
 }
@@ -3436,7 +3616,9 @@ impl Step for RemoteCopyLibs {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Distcheck;
+pub struct Distcheck {
+    is_for_rerunning_tests: IsForRerunningTests,
+}
 
 impl Step for Distcheck {
     type Output = ();
@@ -3446,7 +3628,7 @@ impl Step for Distcheck {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Distcheck);
+        run.builder.ensure(Distcheck { is_for_rerunning_tests: run.is_for_rerunning_tests });
     }
 
     /// Runs `distcheck`, which is a collection of smoke tests:
@@ -3560,7 +3742,9 @@ fn distcheck_rustc_dev(builder: &Builder<'_>, dir: &Path) {
 
 /// Runs unit tests in `bootstrap_test.py`, which test the Python parts of bootstrap.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct BootstrapPy;
+pub(crate) struct BootstrapPy {
+    is_for_rerunning_tests: IsForRerunningTests,
+}
 
 impl Step for BootstrapPy {
     type Output = ();
@@ -3578,7 +3762,7 @@ impl Step for BootstrapPy {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(BootstrapPy)
+        run.builder.ensure(BootstrapPy { is_for_rerunning_tests: run.is_for_rerunning_tests })
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
@@ -3599,7 +3783,9 @@ impl Step for BootstrapPy {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Bootstrap;
+pub struct Bootstrap {
+    is_for_rerunning_tests: IsForRerunningTests,
+}
 
 impl Step for Bootstrap {
     type Output = ();
@@ -3620,6 +3806,7 @@ impl Step for Bootstrap {
     fn run(self, builder: &Builder<'_>) {
         let host = builder.config.host_target;
         let build_compiler = builder.compiler(0, host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         // Some tests require cargo submodule to be present.
         builder.build.require_submodule("src/tools/cargo", None);
@@ -3651,11 +3838,11 @@ impl Step for Bootstrap {
             cargo.env("INSTA_UPDATE", "always");
         }
 
-        run_cargo_test(cargo, &[], &[], None, host, builder);
+        run_cargo_test(cargo, &[], &[], None, host, builder, record_failed_tests);
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Bootstrap);
+        run.builder.ensure(Bootstrap { is_for_rerunning_tests: run.is_for_rerunning_tests });
     }
 }
 
@@ -3668,6 +3855,7 @@ fn get_compiler_to_test(builder: &Builder<'_>, target: TargetSelection) -> Compi
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TierCheck {
     test_compiler: Compiler,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for TierCheck {
@@ -3683,8 +3871,10 @@ impl Step for TierCheck {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder
-            .ensure(TierCheck { test_compiler: get_compiler_to_test(run.builder, run.target) });
+        run.builder.ensure(TierCheck {
+            test_compiler: get_compiler_to_test(run.builder, run.target),
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -3720,6 +3910,7 @@ impl Step for TierCheck {
 pub struct LintDocs {
     build_compiler: Compiler,
     target: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for LintDocs {
@@ -3748,6 +3939,7 @@ impl Step for LintDocs {
                 run.builder.top_stage,
             ),
             target: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
         });
     }
 
@@ -3766,7 +3958,9 @@ impl Step for LintDocs {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RustInstaller;
+pub struct RustInstaller {
+    is_for_rerunning_tests: IsForRerunningTests,
+}
 
 impl Step for RustInstaller {
     type Output = ();
@@ -3781,13 +3975,14 @@ impl Step for RustInstaller {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Self);
+        run.builder.ensure(Self { is_for_rerunning_tests: run.is_for_rerunning_tests });
     }
 
     /// Ensure the version placeholder replacement tool builds
     fn run(self, builder: &Builder<'_>) {
         let bootstrap_host = builder.config.host_target;
         let build_compiler = builder.compiler(0, bootstrap_host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
         let cargo = tool::prepare_tool_cargo(
             builder,
             build_compiler,
@@ -3800,7 +3995,7 @@ impl Step for RustInstaller {
         );
 
         let _guard = builder.msg_test("rust-installer", bootstrap_host, 1);
-        run_cargo_test(cargo, &[], &[], None, bootstrap_host, builder);
+        run_cargo_test(cargo, &[], &[], None, bootstrap_host, builder, record_failed_tests);
 
         // We currently don't support running the test.sh script outside linux(?) environments.
         // Eventually this should likely migrate to #[test]s in rust-installer proper rather than a
@@ -3825,6 +4020,7 @@ impl Step for RustInstaller {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TestHelpers {
     pub target: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for TestHelpers {
@@ -3835,7 +4031,10 @@ impl Step for TestHelpers {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(TestHelpers { target: run.target })
+        run.builder.ensure(TestHelpers {
+            target: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        })
     }
 
     /// Compiles the `rust_test_helpers.c` library which we used in various
@@ -3887,6 +4086,7 @@ impl Step for TestHelpers {
 pub struct CodegenCranelift {
     compilers: RustcPrivateCompilers,
     target: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for CodegenCranelift {
@@ -3934,7 +4134,11 @@ impl Step for CodegenCranelift {
             return;
         }
 
-        builder.ensure(CodegenCranelift { compilers, target: run.target });
+        builder.ensure(CodegenCranelift {
+            compilers,
+            target: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -4008,6 +4212,7 @@ impl Step for CodegenCranelift {
 pub struct CodegenGCC {
     compilers: RustcPrivateCompilers,
     target: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for CodegenGCC {
@@ -4054,7 +4259,11 @@ impl Step for CodegenGCC {
             return;
         }
 
-        builder.ensure(CodegenGCC { compilers, target: run.target });
+        builder.ensure(CodegenGCC {
+            compilers,
+            target: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
+        });
     }
 
     fn run(self, builder: &Builder<'_>) {
@@ -4139,6 +4348,7 @@ pub struct TestFloatParse {
     build_compiler: Compiler,
     /// Target for which we build std and test that std.
     target: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for TestFloatParse {
@@ -4157,6 +4367,7 @@ impl Step for TestFloatParse {
         run.builder.ensure(Self {
             build_compiler: get_compiler_to_test(run.builder, run.target),
             target: run.target,
+            is_for_rerunning_tests: run.is_for_rerunning_tests,
         });
     }
 
@@ -4167,6 +4378,7 @@ impl Step for TestFloatParse {
         // Build the standard library that will be tested, and a stdlib for host code
         builder.std(build_compiler, target);
         builder.std(build_compiler, builder.host_target);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         // Run any unit tests in the crate
         let mut cargo_test = tool::prepare_tool_cargo(
@@ -4181,7 +4393,15 @@ impl Step for TestFloatParse {
         );
         cargo_test.allow_features(TEST_FLOAT_PARSE_ALLOW_FEATURES);
 
-        run_cargo_test(cargo_test, &[], &[], "test-float-parse", target, builder);
+        run_cargo_test(
+            cargo_test,
+            &[],
+            &[],
+            "test-float-parse",
+            target,
+            builder,
+            record_failed_tests,
+        );
 
         // Run the actual parse tests.
         let mut cargo_run = tool::prepare_tool_cargo(
@@ -4208,7 +4428,9 @@ impl Step for TestFloatParse {
 /// which verifies that `license-metadata.json` is up-to-date and therefore
 /// running the tool normally would not update anything.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct CollectLicenseMetadata;
+pub struct CollectLicenseMetadata {
+    is_for_rerunning_tests: IsForRerunningTests,
+}
 
 impl Step for CollectLicenseMetadata {
     type Output = PathBuf;
@@ -4219,7 +4441,8 @@ impl Step for CollectLicenseMetadata {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(CollectLicenseMetadata);
+        run.builder
+            .ensure(CollectLicenseMetadata { is_for_rerunning_tests: run.is_for_rerunning_tests });
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
@@ -4242,6 +4465,7 @@ impl Step for CollectLicenseMetadata {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RemoteTestClientTests {
     host: TargetSelection,
+    is_for_rerunning_tests: IsForRerunningTests,
 }
 
 impl Step for RemoteTestClientTests {
@@ -4257,12 +4481,14 @@ impl Step for RemoteTestClientTests {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Self { host: run.target });
+        run.builder
+            .ensure(Self { host: run.target, is_for_rerunning_tests: run.is_for_rerunning_tests });
     }
 
     fn run(self, builder: &Builder<'_>) {
         let bootstrap_host = builder.config.host_target;
         let compiler = builder.compiler(0, bootstrap_host);
+        let record_failed_tests = builder.ensure(SetupFailedTestsFile);
 
         let cargo = tool::prepare_tool_cargo(
             builder,
@@ -4275,6 +4501,14 @@ impl Step for RemoteTestClientTests {
             &[],
         );
 
-        run_cargo_test(cargo, &[], &[], "remote-test-client", bootstrap_host, builder);
+        run_cargo_test(
+            cargo,
+            &[],
+            &[],
+            "remote-test-client",
+            bootstrap_host,
+            builder,
+            record_failed_tests,
+        );
     }
 }
