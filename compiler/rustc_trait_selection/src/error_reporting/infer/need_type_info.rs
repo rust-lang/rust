@@ -648,11 +648,27 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 };
 
                 if !have_turbofish {
-                    infer_subdiags.push(SourceKindSubdiag::GenericSuggestion {
-                        span: insert_span,
-                        arg_count: generic_args.len(),
-                        args,
-                    });
+                    if generic_args.len() == 1
+                        && args.chars().all(|c| c.is_alphanumeric() || c == '_')
+                    {
+                        if is_type {
+                            infer_subdiags.push(SourceKindSubdiag::GenericTypeSuggestion {
+                                span: insert_span,
+                                arg: args,
+                            });
+                        } else {
+                            infer_subdiags.push(SourceKindSubdiag::ConstGenericSuggestion {
+                                span: insert_span,
+                                arg: args,
+                            });
+                        }
+                    } else {
+                        infer_subdiags.push(SourceKindSubdiag::GenericSuggestion {
+                            span: insert_span,
+                            arg_count: generic_args.len(),
+                            args,
+                        });
+                    }
                 }
             }
             InferSourceKind::FullyQualifiedMethodCall { receiver, successor, args, def_id } => {
