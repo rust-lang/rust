@@ -1,5 +1,5 @@
 error[E0621]: explicit lifetime required in the type of `x`
-  --> $DIR/issue-3154.rs:6:5
+  --> $DIR/missing-lifetime-in-return.rs:8:5
    |
 LL |     Thing { x: x }
    |     ^^^^^^^^^^^^^^ lifetime `'a` required
