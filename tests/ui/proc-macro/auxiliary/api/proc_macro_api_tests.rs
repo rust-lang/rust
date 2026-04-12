@@ -1,6 +1,7 @@
 //@ edition: 2021
 
 #![feature(proc_macro_span)]
+#![feature(proc_macro_value)]
 #![deny(dead_code)] // catch if a test function is never called
 
 extern crate proc_macro;
