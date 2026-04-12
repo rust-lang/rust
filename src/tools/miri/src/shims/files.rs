@@ -19,6 +19,17 @@ use crate::*;
 #[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd)]
 pub struct FdId(usize);
 
+impl FdId {
+    pub fn to_usize(self) -> usize {
+        self.0
+    }
+
+    /// Create a new fd id from a `usize` without checking if this fd exists.
+    pub fn new_unchecked(id: usize) -> Self {
+        Self(id)
+    }
+}
+
 #[derive(Debug, Clone)]
 struct FdIdWith<T: ?Sized> {
     id: FdId,

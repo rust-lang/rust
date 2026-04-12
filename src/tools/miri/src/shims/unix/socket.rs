@@ -1388,7 +1388,7 @@ impl VisitProvenance for FileDescriptionRef<Socket> {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
 }
 
-impl WithSource for FileDescriptionRef<Socket> {
+impl WithSource for Socket {
     fn with_source(&self, f: &mut dyn FnMut(&mut dyn Source) -> io::Result<()>) -> io::Result<()> {
         let mut state = self.state.borrow_mut();
         match &mut *state {
