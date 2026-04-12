@@ -9,6 +9,13 @@ LL | static A: u64;
    |
    = note: `A` must be defined only once in the value namespace of this module
 
-error: aborting due to 1 previous error
+error[E0423]: expected function or static, found constant `A`
+  --> $DIR/multiple_decls.rs:5:8
+   |
+LL | static A: u64;
+   |        ^ not a function or static
 
-For more information about this error, try `rustc --explain E0428`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0423, E0428.
+For more information about an error, try `rustc --explain E0423`.

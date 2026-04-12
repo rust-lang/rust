@@ -530,9 +530,8 @@ impl PathSource<'_, '_, '_> {
                 },
                 _ => "value",
             },
-            PathSource::ReturnTypeNotation
-            | PathSource::Delegation
-            | PathSource::ExternItemImpl => "function",
+            PathSource::ReturnTypeNotation | PathSource::Delegation => "function",
+            PathSource::ExternItemImpl => "function or static",
             PathSource::PreciseCapturingArg(..) => "type or const parameter",
             PathSource::Macro => "macro",
             PathSource::Module => "module",
@@ -625,7 +624,13 @@ impl PathSource<'_, '_, '_> {
             },
             PathSource::Delegation => matches!(res, Res::Def(DefKind::Fn | DefKind::AssocFn, _)),
             PathSource::ExternItemImpl => {
-                matches!(res, Res::Def(DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..), _))
+                matches!(
+                    res,
+                    Res::Def(
+                        DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) | DefKind::Static { .. },
+                        _
+                    )
+                )
             }
             PathSource::PreciseCapturingArg(ValueNS) => {
                 matches!(res, Res::Def(DefKind::ConstParam, _))
@@ -5500,7 +5505,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     *node_id,
                     &None,
                     &target.foreign_item,
-                    PathSource::ExternItemImpl
+                    PathSource::ExternItemImpl,
                 );
             } else {
                 self.smart_resolve_path(*node_id, &None, &eii_macro_path, PathSource::Macro);
