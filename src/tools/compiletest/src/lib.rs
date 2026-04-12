@@ -701,13 +701,15 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         "src/etc/lldb_batchmode.py",
         "src/etc/lldb_lookup.py",
         "src/etc/lldb_providers.py",
+        "library/core/core.natvis",
+        "library/core/intrinsic.natvis",
+        "library/alloc/alloc.natvis",
+        "library/std/std.natvis",
     ];
     for file in &pretty_printer_files {
         let path = src_root.join(file);
         stamp.add_path(&path);
     }
-
-    stamp.add_dir(&src_root.join("src/etc/natvis"));
 
     stamp.add_dir(&config.target_run_lib_path);
 
