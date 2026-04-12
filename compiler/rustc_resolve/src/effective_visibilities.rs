@@ -182,6 +182,10 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
             parent_id.level(),
             tcx,
         );
+        if let Some(max_vis_decl) = decl.ambiguity_vis_max.get() {
+            // Avoid the most visible import in an ambiguous glob set being reported as unused.
+            self.update_import(max_vis_decl, parent_id);
+        }
     }
 
     fn update_def(

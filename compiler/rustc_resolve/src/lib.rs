@@ -860,7 +860,13 @@ struct DeclData<'ra> {
     warn_ambiguity: CmCell<bool>,
     expansion: LocalExpnId,
     span: Span,
-    vis: CmCell<Visibility<DefId>>,
+    initial_vis: Visibility<DefId>,
+    /// If the declaration refers to an ambiguous glob set, then this is the most visible binding
+    /// from the set, if its visibility is different from `initial_vis`.
+    ambiguity_vis_max: CmCell<Option<Decl<'ra>>>,
+    /// If the declaration refers to an ambiguous glob set, then this is the least visible binding
+    /// from the set, if its visibility is different from `initial_vis`.
+    ambiguity_vis_min: CmCell<Option<Decl<'ra>>>,
     parent_module: Option<Module<'ra>>,
 }
 
@@ -980,7 +986,13 @@ struct AmbiguityError<'ra> {
 
 impl<'ra> DeclData<'ra> {
     fn vis(&self) -> Visibility<DefId> {
-        self.vis.get()
+        // Select the maximum visibility if there are multiple ambiguous glob imports.
+        self.ambiguity_vis_max.get().map(|d| d.vis()).unwrap_or_else(|| self.initial_vis)
+    }
+
+    fn min_vis(&self) -> Visibility<DefId> {
+        // Select the minimum visibility if there are multiple ambiguous glob imports.
+        self.ambiguity_vis_min.get().map(|d| d.vis()).unwrap_or_else(|| self.initial_vis)
     }
 
     fn res(&self) -> Res {
@@ -1439,7 +1451,9 @@ impl<'ra> ResolverArenas<'ra> {
             kind: DeclKind::Def(res),
             ambiguity: CmCell::new(None),
             warn_ambiguity: CmCell::new(false),
-            vis: CmCell::new(vis),
+            initial_vis: vis,
+            ambiguity_vis_max: CmCell::new(None),
+            ambiguity_vis_min: CmCell::new(None),
             span,
             expansion,
             parent_module,
@@ -2639,6 +2653,16 @@ enum Stage {
     Late,
 }
 
+/// Parts of import data required for finalizing import resolution.
+/// Does not carry a lifetime, so it can be stored in `Finalize`.
+#[derive(Copy, Clone, Debug)]
+struct ImportSummary {
+    vis: Visibility,
+    nearest_parent_mod: LocalDefId,
+    is_single: bool,
+    is_priv_macro_use: bool,
+}
+
 /// Invariant: if `Finalize` is used, expansion and import resolution must be complete.
 #[derive(Copy, Clone, Debug)]
 struct Finalize {
@@ -2658,7 +2682,7 @@ struct Finalize {
     /// Finalizing early or late resolution.
     stage: Stage = Stage::Early,
     /// Nominal visibility of the import item, in case we are resolving an import's final segment.
-    import_vis: Option<Visibility> = None,
+    import_vis: Option<ImportSummary> = None,
 }
 
 impl Finalize {
