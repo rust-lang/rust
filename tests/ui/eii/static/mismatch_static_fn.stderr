@@ -1,0 +1,8 @@
+error: `#[hello]` must be used on a static
+  --> $DIR/mismatch_static_fn.rs:10:1
+   |
+LL | #[hello]
+   | ^^^^^^^^
+
+error: aborting due to 1 previous error
+
