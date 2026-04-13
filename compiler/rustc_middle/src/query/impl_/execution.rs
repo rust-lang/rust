@@ -530,23 +530,25 @@ where
     if verify {
         assert_previous_green(tcx, dep_graph_data, prev_index);
 
-        // Verify that re-running the query produced a result with the expected hash.
-        // This catches bugs in query implementations, turning them into ICEs.
-        // For example, a query might sort its result by `DefId` - since `DefId`s are
-        // not stable across compilation sessions, the result could get up getting sorted
-        // in a different order when the query is re-run, even though all of the inputs
-        // (e.g. `DefPathHash` values) were green.
-        //
-        // See issue #82920 for an example of a miscompilation that would get turned into
-        // an ICE by this check
-        incremental_verify_ich_green(
-            tcx,
-            dep_graph_data,
-            &value,
-            prev_index,
-            H::hash_value_fn,
-            H::format_value,
-        );
+        if !H::NO_HASH {
+            // Verify that re-running the query produced a result with the expected hash.
+            // This catches bugs in query implementations, turning them into ICEs.
+            // For example, a query might sort its result by `DefId` - since `DefId`s are
+            // not stable across compilation sessions, the result could get up getting sorted
+            // in a different order when the query is re-run, even though all of the inputs
+            // (e.g. `DefPathHash` values) were green.
+            //
+            // See issue #82920 for an example of a miscompilation that would get turned into
+            // an ICE by this check
+            incremental_verify_ich_green(
+                tcx,
+                dep_graph_data,
+                &value,
+                prev_index,
+                H::hash_value_fn,
+                H::format_value,
+            );
+        }
     }
 
     value
