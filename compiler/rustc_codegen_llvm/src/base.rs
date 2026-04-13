@@ -77,7 +77,7 @@ pub(crate) fn compile_codegen_unit(
             dep_graph::hash_result(hcx, result)
         }
 
-        fn format_value(value: &ModuleCodegen<ModuleLlvm>) -> String {
+        fn format_value(_: &ModuleCodegen<ModuleLlvm>) -> String {
             unimplemented!()
         }
     }
