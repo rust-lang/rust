@@ -22,9 +22,9 @@ mod search_graph;
 mod trait_goals;
 
 use derive_where::derive_where;
-use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
 use rustc_type_ir::{self as ty, Interner, TyVid, TypingMode};
+use rustc_type_ir::{MayBeErased, inherent::*};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -376,7 +376,7 @@ where
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: non_rigid_opaques } => {
                 !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id))
             }
-            TypingMode::ErasedNotCoherence => todo!(),
+            TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
         }
     }
 }

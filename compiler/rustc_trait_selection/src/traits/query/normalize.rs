@@ -213,7 +213,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
         let res = match data.kind {
             ty::Opaque { .. } => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
-                match self.infcx.typing_mode() {
+                match self.infcx.typing_mode_raw().assert_not_erased() {
                     TypingMode::Coherence
                     | TypingMode::Analysis { .. }
                     | TypingMode::Borrowck { .. }
@@ -250,7 +250,6 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                         self.anon_depth -= 1;
                         folded_ty?
                     }
-                    TypingMode::ErasedNotCoherence => todo!(),
                 }
             }
 

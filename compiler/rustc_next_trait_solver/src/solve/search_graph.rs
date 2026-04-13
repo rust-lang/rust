@@ -6,7 +6,7 @@ use rustc_type_ir::search_graph::{self, PathKind};
 use rustc_type_ir::solve::{
     AccessedOpaques, AccessedOpaquesInfo, CanonicalInput, Certainty, NoSolution, QueryResult,
 };
-use rustc_type_ir::{Interner, TypingMode};
+use rustc_type_ir::{Interner, MayBeErased, TypingMode};
 
 use crate::canonical::response_no_constraints_raw;
 use crate::delegate::SolverDelegate;
@@ -72,7 +72,7 @@ where
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis => (Err(NoSolution), AccessedOpaques::default()),
-                TypingMode::ErasedNotCoherence => todo!(),
+                TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
             },
         }
     }

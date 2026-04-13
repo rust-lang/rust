@@ -9,8 +9,8 @@ use rustc_middle::ty::layout::{
     LayoutOfHelpers, TyAndLayout,
 };
 use rustc_middle::ty::{
-    self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv, TypingMode,
-    Variance,
+    self, GenericArgsRef, MayBeErased, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingEnv,
+    TypingMode, Variance,
 };
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::Span;
@@ -251,7 +251,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 | TypingMode::PostBorrowckAnalysis { .. } => {
                     bug!("Const eval should always happens in PostAnalysis mode.");
                 }
-                TypingMode::ErasedNotCoherence => todo!(),
+                TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
             }
         }
 

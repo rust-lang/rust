@@ -2,11 +2,11 @@
 //! `T: const Trait` or `T: [const] Trait`.
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
-use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
 use rustc_type_ir::{self as ty, Interner, TypingMode, elaborate};
+use rustc_type_ir::{MayBeErased, inherent::*};
 use tracing::instrument;
 
 use super::assembly::{Candidate, structural_traits};
@@ -144,7 +144,7 @@ where
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis => return Err(NoSolution),
-                TypingMode::ErasedNotCoherence => todo!(),
+                TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
             },
             ty::ImplPolarity::Positive => Certainty::Yes,
         };

@@ -8,7 +8,7 @@ use rustc_middle::mir::{self, ConstAlloc, ConstValue};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, MayBeErased, Ty, TyCtxt};
 use rustc_middle::{bug, throw_inval};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -383,7 +383,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
                     "Const eval should always happens in PostAnalysis mode. See the comment in `InterpCx::new` for more details."
                 )
             }
-            ty::TypingMode::ErasedNotCoherence => todo!(),
+            ty::TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
         }
 
         // Make sure we format the instance even if we do not print it.

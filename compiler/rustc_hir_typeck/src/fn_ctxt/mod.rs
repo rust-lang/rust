@@ -17,7 +17,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 };
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_infer::traits::{DynCompatibilityViolation, Obligation};
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, CantBeErased, Const, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_session::Session;
 use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
@@ -159,6 +159,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             trait_ascriptions: Default::default(),
             has_rustc_attrs: root_ctxt.tcx.features().rustc_attrs(),
         }
+    }
+
+    pub(crate) fn typing_mode(&self) -> TypingMode<'tcx, CantBeErased> {
+        // `FnCtxt` is never constructed in the trait solver, so we can safely use
+        // `assert_not_erased`.
+        self.infcx.typing_mode_raw().assert_not_erased()
     }
 
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'a> {

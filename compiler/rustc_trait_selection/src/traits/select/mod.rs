@@ -26,9 +26,9 @@ use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, CandidatePreferenceMode, DeepRejectCtxt, GenericArgsRef, PolyProjectionPredicate,
-    SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Upcast, elaborate,
-    may_use_unstable_feature,
+    self, CandidatePreferenceMode, CantBeErased, DeepRejectCtxt, GenericArgsRef,
+    PolyProjectionPredicate, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
+    TypingMode, Upcast, elaborate, may_use_unstable_feature,
 };
 use rustc_next_trait_solver::solve::AliasBoundKind;
 use rustc_span::Symbol;
@@ -199,6 +199,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    pub fn typing_mode(&self) -> TypingMode<'tcx, CantBeErased> {
+        self.infcx.typing_mode_raw().assert_not_erased()
+    }
+
     pub fn with_query_mode(
         infcx: &'cx InferCtxt<'tcx>,
         query_mode: TraitQueryMode,
@@ -210,7 +214,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Enables tracking of intercrate ambiguity causes. See
     /// the documentation of [`Self::intercrate_ambiguity_causes`] for more.
     pub fn enable_tracking_intercrate_ambiguity_causes(&mut self) {
-        assert!(self.infcx.typing_mode().is_coherence());
+        assert!(self.typing_mode().is_coherence());
         assert!(self.intercrate_ambiguity_causes.is_none());
 
         self.intercrate_ambiguity_causes = Some(FxIndexSet::default());
@@ -223,7 +227,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn take_intercrate_ambiguity_causes(
         &mut self,
     ) -> FxIndexSet<IntercrateAmbiguityCause<'tcx>> {
-        assert!(self.infcx.typing_mode().is_coherence());
+        assert!(self.typing_mode().is_coherence());
 
         self.intercrate_ambiguity_causes.take().unwrap_or_default()
     }
@@ -1018,7 +1022,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         mut obligation: PolyTraitObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        if !self.infcx.typing_mode().is_coherence()
+        if !self.typing_mode().is_coherence()
             && obligation.is_global()
             && obligation.param_env.caller_bounds().iter().all(|bound| bound.has_param())
         {
@@ -1467,13 +1471,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn is_knowable<'o>(&mut self, stack: &TraitObligationStack<'o, 'tcx>) -> Result<(), Conflict> {
         let obligation = &stack.obligation;
-        match self.infcx.typing_mode() {
+        match self.typing_mode() {
             TypingMode::Coherence => {}
             TypingMode::Analysis { .. }
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => return Ok(()),
-            TypingMode::ErasedNotCoherence => todo!(),
         }
 
         debug!("is_knowable()");
@@ -1501,7 +1504,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return false;
         }
 
-        match self.infcx.typing_mode() {
+        match self.typing_mode() {
             // Avoid using the global cache during coherence and just rely
             // on the local cache. It is really just a simplification to
             // avoid us having to fear that coherence results "pollute"
@@ -1533,7 +1536,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // FIXME(#132279): This is still incorrect as we treat opaque types
             // and default associated items differently between these two modes.
             TypingMode::PostAnalysis => true,
-            TypingMode::ErasedNotCoherence => todo!(),
         }
     }
 
@@ -2552,7 +2554,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         nested_obligations.extend(obligations);
 
         if impl_trait_header.polarity == ty::ImplPolarity::Reservation
-            && !self.infcx.typing_mode().is_coherence()
+            && !self.typing_mode().is_coherence()
         {
             debug!("reservation impls only apply in intercrate mode");
             return Err(());
@@ -2887,7 +2889,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     }
 
     pub(super) fn should_stall_coroutine(&self, def_id: DefId) -> bool {
-        match self.infcx.typing_mode() {
+        match self.typing_mode() {
             TypingMode::Analysis { defining_opaque_types_and_generators: stalled_generators } => {
                 def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
             }
@@ -2895,7 +2897,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | TypingMode::PostAnalysis
             | TypingMode::Borrowck { defining_opaque_types: _ }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => false,
-            TypingMode::ErasedNotCoherence => todo!(),
         }
     }
 }

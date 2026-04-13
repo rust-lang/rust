@@ -2,7 +2,6 @@
 
 use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
-use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::solve::{
     AliasBoundKind, CandidatePreferenceMode, CanonicalResponse, SizedTraitKind,
@@ -11,6 +10,7 @@ use rustc_type_ir::{
     self as ty, FieldInfo, Interner, Movability, PredicatePolarity, TraitPredicate, TraitRef,
     TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
 };
+use rustc_type_ir::{MayBeErased, inherent::*};
 use tracing::{debug, instrument, trace};
 
 use crate::delegate::SolverDelegate;
@@ -80,7 +80,7 @@ where
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis => return Err(NoSolution),
-                TypingMode::ErasedNotCoherence => todo!(),
+                TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
             },
 
             // Impl matches polarity
@@ -1393,7 +1393,7 @@ where
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => {}
-            TypingMode::ErasedNotCoherence => todo!(),
+            TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
         }
 
         if candidates
@@ -1568,7 +1568,7 @@ where
                 | TypingMode::PostAnalysis
                 | TypingMode::Borrowck { defining_opaque_types: _ }
                 | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => {}
-                TypingMode::ErasedNotCoherence => todo!(),
+                TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
             }
         }
 

@@ -3,7 +3,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ValTreeCreationError};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, MayBeErased, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, instrument, trace};
@@ -247,7 +247,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
                     "Const eval should always happens in PostAnalysis mode. See the comment in `InterpCx::new` for more details."
                 )
             }
-            ty::TypingMode::ErasedNotCoherence => todo!(),
+            ty::TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
         }
     }
     let const_alloc = tcx.eval_to_allocation_raw(typing_env.as_query_input(cid))?;

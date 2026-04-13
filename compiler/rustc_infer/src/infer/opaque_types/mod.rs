@@ -89,7 +89,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 if def_id.is_local() =>
             {
                 let def_id = def_id.expect_local();
-                if self.typing_mode().is_coherence() {
+                if self.typing_mode_raw().is_coherence() {
                     // See comment on `insert_hidden_type` for why this is sufficient in coherence
                     return Some(self.register_hidden_type(
                         OpaqueTypeKey { def_id, args },
@@ -229,7 +229,9 @@ impl<'tcx> InferCtxt<'tcx> {
         // value being folded. In simple cases like `-> impl Foo`,
         // these are the same span, but not in cases like `-> (impl
         // Foo, impl Bar)`.
-        match self.typing_mode() {
+        //
+        // Note: we don't use this function in the next solver so we can safely call `assert_not_erased`
+        match self.typing_mode_raw().assert_not_erased() {
             ty::TypingMode::Coherence => {
                 // During intercrate we do not define opaque types but instead always
                 // force ambiguity unless the hidden type is known to not implement
@@ -283,7 +285,6 @@ impl<'tcx> InferCtxt<'tcx> {
             mode @ (ty::TypingMode::PostBorrowckAnalysis { .. } | ty::TypingMode::PostAnalysis) => {
                 bug!("insert hidden type in {mode:?}")
             }
-            ty::TypingMode::ErasedNotCoherence => todo!(),
         }
 
         Ok(())

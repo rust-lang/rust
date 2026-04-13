@@ -6,7 +6,8 @@ use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
 use rustc_middle::ty::{
-    self, ClosureKind, GenericArgsRef, Instance, PseudoCanonicalInput, TyCtxt, TypeVisitableExt,
+    self, ClosureKind, GenericArgsRef, Instance, MayBeErased, PseudoCanonicalInput, TyCtxt,
+    TypeVisitableExt,
 };
 use rustc_span::sym;
 use rustc_trait_selection::traits;
@@ -160,7 +161,7 @@ fn resolve_associated_item<'tcx>(
                     | ty::TypingMode::Borrowck { .. }
                     | ty::TypingMode::PostBorrowckAnalysis { .. } => false,
                     ty::TypingMode::PostAnalysis => !trait_ref.still_further_specializable(),
-                    ty::TypingMode::ErasedNotCoherence => todo!(),
+                    ty::TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
                 }
             };
             if !eligible {

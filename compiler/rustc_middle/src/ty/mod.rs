@@ -1015,7 +1015,7 @@ impl<'tcx> TypingEnv<'tcx> {
         def_id: impl IntoQueryKey<DefId>,
     ) -> TypingEnv<'tcx> {
         let def_id = def_id.into_query_key();
-        Self::new(tcx.param_env(def_id), TypingMode::non_body_analysis())
+        Self::new(tcx.param_env(def_id), TypingMode::non_body_analysis().into())
     }
 
     pub fn post_analysis(tcx: TyCtxt<'tcx>, def_id: impl IntoQueryKey<DefId>) -> TypingEnv<'tcx> {
@@ -1033,7 +1033,7 @@ impl<'tcx> TypingEnv<'tcx> {
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. } => {}
             TypingMode::PostAnalysis => return self,
-            TypingMode::ErasedNotCoherence => todo!(),
+            TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
         }
 
         // No need to reveal opaques with the new solver enabled,

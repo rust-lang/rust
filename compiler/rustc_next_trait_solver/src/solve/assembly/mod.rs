@@ -6,7 +6,6 @@ use std::cell::Cell;
 use std::ops::ControlFlow;
 
 use derive_where::derive_where;
-use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
@@ -15,6 +14,7 @@ use rustc_type_ir::{
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
     elaborate,
 };
+use rustc_type_ir::{MayBeErased, inherent::*};
 use tracing::{debug, instrument};
 
 use super::trait_goals::TraitGoalProvenVia;
@@ -478,7 +478,7 @@ where
                                 | CandidateSource::AliasBound(_)
                         ) && has_no_inference_or_external_constraints(c.result)
                     }),
-                    TypingMode::ErasedNotCoherence => todo!(),
+                    TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
                 };
                 if assemble_impls {
                     self.assemble_impl_candidates(goal, &mut candidates);
@@ -968,7 +968,7 @@ where
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => {}
-            TypingMode::ErasedNotCoherence => todo!(),
+            TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
         }
 
         let mut i = 0;
@@ -1032,7 +1032,7 @@ where
             | TypingMode::Borrowck { .. }
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => vec![],
-            TypingMode::ErasedNotCoherence => todo!(),
+            TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
         };
 
         if opaque_types.is_empty() {

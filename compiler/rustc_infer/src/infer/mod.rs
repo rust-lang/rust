@@ -33,6 +33,7 @@ use rustc_middle::ty::{
     TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
 };
 use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_type_ir::MayBeErased;
 use snapshot::undo_log::InferCtxtUndoLogs;
 use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
@@ -632,8 +633,28 @@ impl<'tcx> InferCtxt<'tcx> {
         self.next_trait_solver
     }
 
+    /// This method is deliberately called `..._raw`,
+    /// since the output may possibly include [`TypingMode::ErasedNotCoherence`](TypingMode::ErasedNotCoherence).
+    /// `ErasedNotCoherence` is an implementation detail of the next trait solver, see its docs for
+    /// more information.
+    ///
+    /// `InferCtxt` has two uses: the trait solver calls some methods on it, because the `InferCtxt`
+    /// works as a kind of store for for example type unification information.
+    /// `InferCtxt` is also often used outside the trait solver during typeck.
+    /// There, we don't care about the `ErasedNotCoherence` case and should never encounter it.
+    /// To make sure these two uses are never confused, we want to statically encode this information.
+    ///
+    /// The `FnCtxt`, for example, is only used in the outside-trait-solver case. It has a non-raw
+    /// version of the `typing_mode` method available that asserts `ErasedNotCoherence` is
+    /// impossible, and returns a `TypingMode` where `ErasedNotCoherence` is made uninhabited using
+    /// the [`CantBeErased`](rustc_type_ir::CantBeErased) enum. That way you don't even have to
+    /// match on the variant and can safely ignore it.
+    ///
+    /// Prefer non-raw apis if available. e.g.,
+    /// - On the `FnCtxt`
+    /// - on the `SelectionCtxt`
     #[inline(always)]
-    pub fn typing_mode(&self) -> TypingMode<'tcx> {
+    pub fn typing_mode_raw(&self) -> TypingMode<'tcx> {
         self.typing_mode
     }
 
@@ -1036,7 +1057,7 @@ impl<'tcx> InferCtxt<'tcx> {
     #[inline(always)]
     pub fn can_define_opaque_ty(&self, id: impl Into<DefId>) -> bool {
         debug_assert!(!self.next_trait_solver());
-        match self.typing_mode() {
+        match self.typing_mode_raw() {
             TypingMode::Analysis {
                 defining_opaque_types_and_generators: defining_opaque_types,
             }
@@ -1049,7 +1070,7 @@ impl<'tcx> InferCtxt<'tcx> {
             TypingMode::Coherence
             | TypingMode::PostBorrowckAnalysis { .. }
             | TypingMode::PostAnalysis => false,
-            TypingMode::ErasedNotCoherence => todo!(),
+            TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
         }
     }
 
@@ -1364,7 +1385,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// which contains the necessary information to use the trait system without
     /// using canonicalization or carrying this inference context around.
     pub fn typing_env(&self, param_env: ty::ParamEnv<'tcx>) -> ty::TypingEnv<'tcx> {
-        let typing_mode = match self.typing_mode() {
+        let typing_mode = match self.typing_mode_raw() {
             // FIXME(#132279): This erases the `defining_opaque_types` as it isn't possible
             // to handle them without proper canonicalization. This means we may cause cycle
             // errors and fail to reveal opaques while inside of bodies. We should rename this
@@ -1376,7 +1397,7 @@ impl<'tcx> InferCtxt<'tcx> {
             mode @ (ty::TypingMode::Coherence
             | ty::TypingMode::PostBorrowckAnalysis { .. }
             | ty::TypingMode::PostAnalysis) => mode,
-            ty::TypingMode::ErasedNotCoherence => todo!(),
+            ty::TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
         };
         ty::TypingEnv::new(param_env, typing_mode)
     }

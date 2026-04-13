@@ -4,10 +4,10 @@ mod inherent;
 mod opaque_types;
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
-use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::{self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Upcast as _};
+use rustc_type_ir::{MayBeErased, inherent::*};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
@@ -307,7 +307,7 @@ where
                             return ecx
                                 .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                         }
-                        ty::TypingMode::ErasedNotCoherence => todo!(),
+                        ty::TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
                     };
                 }
                 Err(guar) => return error_response(ecx, guar),
@@ -345,7 +345,7 @@ where
                             );
                             return then(ecx, Certainty::Yes);
                         }
-                        ty::TypingMode::ErasedNotCoherence => todo!(),
+                        ty::TypingMode::ErasedNotCoherence(MayBeErased) => todo!(),
                     }
                 } else {
                     return error_response(ecx, cx.delay_bug("missing item"));

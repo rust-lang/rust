@@ -4,7 +4,6 @@ use std::ops::ControlFlow;
 #[cfg(feature = "nightly")]
 use rustc_macros::HashStable_NoContext;
 use rustc_type_ir::data_structures::{HashMap, HashSet};
-use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, PathKind};
@@ -14,6 +13,7 @@ use rustc_type_ir::{
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     TypingMode,
 };
+use rustc_type_ir::{CantBeErased, inherent::*};
 use tracing::{Level, debug, instrument, trace, warn};
 
 use super::has_only_region_constraints;
@@ -267,7 +267,7 @@ where
     I: Interner,
 {
     pub(super) fn typing_mode(&self) -> TypingMode<I> {
-        self.delegate.typing_mode()
+        self.delegate.typing_mode_raw()
     }
 
     /// Computes the `PathKind` for the step from the current goal to the
