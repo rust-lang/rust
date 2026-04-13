@@ -423,20 +423,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Instantiates and normalizes the bounds for a given item
-    pub(crate) fn instantiate_bounds(
-        &self,
-        span: Span,
-        def_id: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> ty::InstantiatedPredicates<'tcx> {
-        let bounds = self.tcx.predicates_of(def_id);
-        let result = bounds.instantiate(self.tcx, args);
-        let result = self.normalize(span, result);
-        debug!("instantiate_bounds(bounds={:?}, args={:?}) = {:?}", bounds, args, result);
-        result
-    }
-
     pub(crate) fn normalize<T>(&self, span: Span, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -1426,10 +1412,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let param_env = self.param_env;
 
-        let bounds = self.instantiate_bounds(span, def_id, args);
+        let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, args);
 
         for obligation in traits::predicates_for_generics(
             |idx, predicate_span| self.cause(span, code(idx, predicate_span)),
+            |pred| self.normalize(span, pred),
             param_env,
             bounds,
         ) {

@@ -339,9 +339,9 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 
             // Check whether the impl imposes obligations we have to worry about.
             let impl_bounds = tcx.predicates_of(impl_).instantiate(tcx, impl_args);
-            let impl_bounds = ocx.normalize(&ObligationCause::dummy(), self.param_env, impl_bounds);
             let impl_obligations = traits::predicates_for_generics(
                 |_, _| ObligationCause::dummy(),
+                |pred| ocx.normalize(&ObligationCause::dummy(), self.param_env, pred),
                 self.param_env,
                 impl_bounds,
             );
