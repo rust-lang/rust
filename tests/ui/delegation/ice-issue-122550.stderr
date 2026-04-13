@@ -1,3 +1,9 @@
+error[E0308]: mismatched types
+  --> $DIR/ice-issue-122550.rs:5:35
+   |
+LL |     fn description(&self) -> &str {}
+   |                                   ^^ expected `&str`, found `()`
+
 error[E0277]: the trait bound `S: Trait` is not satisfied
   --> $DIR/ice-issue-122550.rs:13:12
    |
@@ -30,12 +36,6 @@ note: method defined here
    |
 LL |     fn description(&self) -> &str {}
    |        ^^^^^^^^^^^ -----
-
-error[E0308]: mismatched types
-  --> $DIR/ice-issue-122550.rs:5:35
-   |
-LL |     fn description(&self) -> &str {}
-   |                                   ^^ expected `&str`, found `()`
 
 error: aborting due to 3 previous errors
 

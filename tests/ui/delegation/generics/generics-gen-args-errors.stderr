@@ -621,23 +621,6 @@ note: method defined here, with 2 generic parameters: `U`, `M`
 LL |         fn foo<'d: 'd, U, const M: bool>(self) {}
    |            ^^^         -  -------------
 
-error[E0747]: unresolved item provided when a constant was expected
-  --> $DIR/generics-gen-args-errors.rs:34:27
-   |
-LL |         reuse foo::<A, B, C> as xd;
-   |                           ^
-   |
-help: if this generic argument was intended as a const parameter, surround it with braces
-   |
-LL |         reuse foo::<A, B, { C }> as xd;
-   |                           +   +
-
-error[E0747]: constant provided when a type was expected
-  --> $DIR/generics-gen-args-errors.rs:75:17
-   |
-LL |     reuse foo::<{}, {}, {}> as bar8;
-   |                 ^^
-
 error[E0107]: function takes 3 generic arguments but 6 generic arguments were supplied
   --> $DIR/generics-gen-args-errors.rs:11:9
    |
@@ -696,6 +679,23 @@ help: if this generic argument was intended as a const parameter, surround it wi
    |
 LL |         bar::<asd, asd, { asd }>();
    |                         +     +
+
+error[E0747]: unresolved item provided when a constant was expected
+  --> $DIR/generics-gen-args-errors.rs:34:27
+   |
+LL |         reuse foo::<A, B, C> as xd;
+   |                           ^
+   |
+help: if this generic argument was intended as a const parameter, surround it with braces
+   |
+LL |         reuse foo::<A, B, { C }> as xd;
+   |                           +   +
+
+error[E0747]: constant provided when a type was expected
+  --> $DIR/generics-gen-args-errors.rs:75:17
+   |
+LL |     reuse foo::<{}, {}, {}> as bar8;
+   |                 ^^
 
 error: aborting due to 58 previous errors
 
