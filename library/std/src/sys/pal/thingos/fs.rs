@@ -417,6 +417,10 @@ impl OpenOptions {
 // ── File ──────────────────────────────────────────────────────────────────────
 
 impl File {
+    pub fn as_raw_fd(&self) -> u32 {
+        self.0.raw()
+    }
+
     pub fn open(path: &Path, opts: &OpenOptions) -> crate::io::Result<File> {
         let path_str = path_to_str(path)?;
         let mut flags = opts.get_access_mode()?;

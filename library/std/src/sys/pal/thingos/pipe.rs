@@ -62,6 +62,11 @@ impl Pipe {
         Pipe(fd)
     }
 
+    /// Return the raw file descriptor.
+    pub fn as_raw_fd(&self) -> u32 {
+        self.0
+    }
+
     /// Return the raw fd without closing it.
     #[allow(dead_code)]
     pub(crate) fn into_raw_fd(self) -> u32 {

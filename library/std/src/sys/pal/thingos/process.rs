@@ -266,11 +266,10 @@ impl Command {
             let s = stdio.unwrap_or(&default);
             match s {
                 Stdio::InheritPipe(p) => {
-                    fd_remaps.push(FdRemap { src_fd: p.0 as u64, dst_fd: dst_fd as u64 });
+                    fd_remaps.push(FdRemap { src_fd: p.as_raw_fd() as u64, dst_fd: dst_fd as u64 });
                     stdio_mode::INHERIT
                 }
                 Stdio::InheritFile(f) => {
-                    use crate::sys::pal::unix::abi::AsRawFd;
                     fd_remaps.push(FdRemap { src_fd: f.as_raw_fd() as u64, dst_fd: dst_fd as u64 });
                     stdio_mode::INHERIT
                 }
@@ -504,8 +503,8 @@ pub fn read_output(
     err: ChildPipe,
     stderr: &mut crate::vec::Vec<u8>,
 ) -> crate::io::Result<()> {
-    let out_fd = out.0 as i32;
-    let err_fd = err.0 as i32;
+    let out_fd = out.as_raw_fd() as i32;
+    let err_fd = err.as_raw_fd() as i32;
 
     // Set non-blocking mode on both pipes so we can drain them concurrently
     // without one blocking the other's progress.
