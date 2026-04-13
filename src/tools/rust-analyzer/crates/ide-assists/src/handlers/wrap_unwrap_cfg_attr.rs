@@ -19,7 +19,7 @@ use crate::{AssistContext, AssistId, Assists};
 // ```
 // ->
 // ```
-// #[cfg_attr($0, derive(Debug))]
+// #[cfg_attr(${0:cfg}, derive(Debug))]
 // struct S {
 //    field: i32
 // }
@@ -147,12 +147,15 @@ pub(crate) fn wrap_unwrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>) -
         }
     }?;
     match option {
-        WrapUnwrapOption::WrapAttr(attrs) => match &attrs[..] {
-            [attr] if attr.simple_name().as_deref() == Some("cfg_attr") => {
-                unwrap_cfg_attr(acc, attrs.into_iter().next().unwrap())
+        WrapUnwrapOption::WrapAttr(attrs) => {
+            if let [attr] = &attrs[..]
+                && let Some(ast::Meta::CfgAttrMeta(meta)) = attr.meta()
+            {
+                unwrap_cfg_attr(acc, meta)
+            } else {
+                wrap_cfg_attrs(acc, ctx, attrs)
             }
-            _ => wrap_cfg_attrs(acc, ctx, attrs),
-        },
+        }
         WrapUnwrapOption::WrapDerive { derive, attr } => wrap_derive(acc, ctx, attr, derive),
     }
 }
@@ -164,7 +167,8 @@ fn wrap_derive(
     derive_element: TextRange,
 ) -> Option<()> {
     let range = attr.syntax().text_range();
-    let token_tree = attr.token_tree()?;
+    let ast::Meta::TokenTreeMeta(meta) = attr.meta()? else { return None };
+    let token_tree = meta.token_tree()?;
     let mut path_text = String::new();
 
     let mut cfg_derive_tokens = Vec::new();
@@ -193,20 +197,15 @@ fn wrap_derive(
         let new_derive = make.attr_outer(
             make.meta_token_tree(make.ident_path("derive"), make.token_tree(T!['('], new_derive)),
         );
-        let meta = make.meta_token_tree(
-            make.ident_path("cfg_attr"),
-            make.token_tree(
-                T!['('],
-                vec![
-                    NodeOrToken::Token(make.token(T![,])),
-                    NodeOrToken::Token(make.whitespace(" ")),
-                    NodeOrToken::Token(make.ident("derive")),
-                    NodeOrToken::Node(make.token_tree(T!['('], cfg_derive_tokens)),
-                ],
-            ),
+        let meta = make.cfg_attr_meta(
+            make.cfg_flag("cfg"),
+            [make.meta_token_tree(
+                make.ident_path("derive"),
+                make.token_tree(T!['('], cfg_derive_tokens),
+            )],
         );
 
-        let cfg_attr = make.attr_outer(meta);
+        let cfg_attr = make.attr_outer(meta.clone().into());
         editor.replace_with_many(
             attr.syntax(),
             vec![
@@ -217,11 +216,10 @@ fn wrap_derive(
         );
 
         if let Some(snippet_cap) = ctx.config.snippet_cap
-            && let Some(first_meta) =
-                cfg_attr.meta().and_then(|meta| meta.token_tree()).and_then(|tt| tt.l_paren_token())
+            && let Some(cfg_predicate) = meta.cfg_predicate()
         {
-            let tabstop = edit.make_tabstop_after(snippet_cap);
-            editor.add_annotation(first_meta, tabstop);
+            let tabstop = edit.make_placeholder_snippet(snippet_cap);
+            editor.add_annotation(cfg_predicate.syntax(), tabstop);
         }
 
         editor.add_mappings(make.finish_with_mappings());
@@ -236,58 +234,29 @@ fn wrap_derive(
     );
     Some(())
 }
+
 fn wrap_cfg_attrs(acc: &mut Assists, ctx: &AssistContext<'_>, attrs: Vec<ast::Attr>) -> Option<()> {
     let (first_attr, last_attr) = (attrs.first()?, attrs.last()?);
     let range = first_attr.syntax().text_range().cover(last_attr.syntax().text_range());
-    let path_attrs =
-        attrs.iter().map(|attr| Some((attr.path()?, attr.clone()))).collect::<Option<Vec<_>>>()?;
     let handle_source_change = |edit: &mut SourceChangeBuilder| {
         let make = SyntaxFactory::with_mappings();
         let mut editor = edit.make_editor(first_attr.syntax());
-        let mut raw_tokens = vec![];
-        for (path, attr) in path_attrs {
-            raw_tokens.extend([
-                NodeOrToken::Token(make.token(T![,])),
-                NodeOrToken::Token(make.whitespace(" ")),
-            ]);
-            path.syntax().descendants_with_tokens().for_each(|it| {
-                if let NodeOrToken::Token(token) = it {
-                    raw_tokens.push(NodeOrToken::Token(token));
-                }
-            });
-            if let Some(meta) = attr.meta() {
-                if let (Some(eq), Some(expr)) = (meta.eq_token(), meta.expr()) {
-                    raw_tokens.push(NodeOrToken::Token(make.whitespace(" ")));
-                    raw_tokens.push(NodeOrToken::Token(eq));
-                    raw_tokens.push(NodeOrToken::Token(make.whitespace(" ")));
-
-                    expr.syntax().descendants_with_tokens().for_each(|it| {
-                        if let NodeOrToken::Token(token) = it {
-                            raw_tokens.push(NodeOrToken::Token(token));
-                        }
-                    });
-                } else if let Some(tt) = meta.token_tree() {
-                    raw_tokens.extend(tt.token_trees_and_tokens());
-                }
-            }
-        }
         let meta =
-            make.meta_token_tree(make.ident_path("cfg_attr"), make.token_tree(T!['('], raw_tokens));
+            make.cfg_attr_meta(make.cfg_flag("cfg"), attrs.iter().filter_map(|attr| attr.meta()));
         let cfg_attr = if first_attr.excl_token().is_some() {
-            make.attr_inner(meta)
+            make.attr_inner(meta.clone().into())
         } else {
-            make.attr_outer(meta)
+            make.attr_outer(meta.clone().into())
         };
 
         let syntax_range = first_attr.syntax().clone().into()..=last_attr.syntax().clone().into();
         editor.replace_all(syntax_range, vec![cfg_attr.syntax().clone().into()]);
 
         if let Some(snippet_cap) = ctx.config.snippet_cap
-            && let Some(first_meta) =
-                cfg_attr.meta().and_then(|meta| meta.token_tree()).and_then(|tt| tt.l_paren_token())
+            && let Some(cfg_flag) = meta.cfg_predicate()
         {
-            let tabstop = edit.make_tabstop_after(snippet_cap);
-            editor.add_annotation(first_meta, tabstop);
+            let tabstop = edit.make_placeholder_snippet(snippet_cap);
+            editor.add_annotation(cfg_flag.syntax(), tabstop);
         }
 
         editor.add_mappings(make.finish_with_mappings());
@@ -301,66 +270,28 @@ fn wrap_cfg_attrs(acc: &mut Assists, ctx: &AssistContext<'_>, attrs: Vec<ast::At
     );
     Some(())
 }
-fn unwrap_cfg_attr(acc: &mut Assists, attr: ast::Attr) -> Option<()> {
-    let range = attr.syntax().text_range();
-    let meta = attr.meta()?;
-    let meta_tt = meta.token_tree()?;
-    let mut inner_attrs = Vec::with_capacity(1);
-    let mut found_comma = false;
-    let mut iter = meta_tt.token_trees_and_tokens().skip(1).peekable();
-    while let Some(tt) = iter.next() {
-        if let NodeOrToken::Token(token) = &tt {
-            if token.kind() == T![')'] {
-                break;
+
+fn unwrap_cfg_attr(acc: &mut Assists, meta: ast::CfgAttrMeta) -> Option<()> {
+    let top_attr = ast::Meta::from(meta.clone()).parent_attr()?;
+    let range = top_attr.syntax().text_range();
+    let inner_attrs = meta
+        .metas()
+        .map(|meta| {
+            if top_attr.excl_token().is_some() {
+                make::attr_inner(meta)
+            } else {
+                make::attr_outer(meta)
             }
-            if token.kind() == T![,] {
-                found_comma = true;
-                continue;
-            }
-        }
-        if !found_comma {
-            continue;
-        }
-        let Some(attr_name) = tt.into_token().and_then(|token| {
-            if token.kind() == T![ident] { Some(make::ext::ident_path(token.text())) } else { None }
-        }) else {
-            continue;
-        };
-        let next_tt = iter.next()?;
-        let meta = match next_tt {
-            NodeOrToken::Node(tt) => make::meta_token_tree(attr_name, tt),
-            NodeOrToken::Token(token) if token.kind() == T![,] || token.kind() == T![')'] => {
-                make::meta_path(attr_name)
-            }
-            NodeOrToken::Token(token) => {
-                let equals = algo::skip_trivia_token(token, syntax::Direction::Next)?;
-                if equals.kind() != T![=] {
-                    return None;
-                }
-                let expr_token =
-                    algo::skip_trivia_token(equals.next_token()?, syntax::Direction::Next)
-                        .and_then(|it| {
-                            if it.kind().is_literal() {
-                                Some(make::expr_literal(it.text()))
-                            } else {
-                                None
-                            }
-                        })?;
-                make::meta_expr(attr_name, ast::Expr::Literal(expr_token))
-            }
-        };
-        if attr.excl_token().is_some() {
-            inner_attrs.push(make::attr_inner(meta));
-        } else {
-            inner_attrs.push(make::attr_outer(meta));
-        }
-    }
+        })
+        .collect::<Vec<_>>();
     if inner_attrs.is_empty() {
         return None;
     }
     let handle_source_change = |f: &mut SourceChangeBuilder| {
-        let inner_attrs =
-            inner_attrs.iter().map(|it| it.to_string()).join(&format!("\n{}", attr.indent_level()));
+        let inner_attrs = inner_attrs
+            .iter()
+            .map(|it| it.to_string())
+            .join(&format!("\n{}", top_attr.indent_level()));
         f.replace(range, inner_attrs);
     };
     acc.add(
@@ -388,7 +319,7 @@ mod tests {
             }
             "#,
             r#"
-            #[cfg_attr($0, derive(Debug))]
+            #[cfg_attr(${0:cfg}, derive(Debug))]
             pub struct Test {
                 test: u32,
             }
@@ -422,7 +353,7 @@ mod tests {
             "#,
             r#"
             pub struct Test {
-                #[cfg_attr($0, foo)]
+                #[cfg_attr(${0:cfg}, foo)]
                 test: u32,
             }
             "#,
@@ -456,7 +387,7 @@ mod tests {
             r#"
             pub struct Test {
                 #[other_attr]
-                #[cfg_attr($0, foo, bar)]
+                #[cfg_attr(${0:cfg}, foo, bar)]
                 #[other_attr]
                 test: u32,
             }
@@ -491,7 +422,7 @@ mod tests {
             "#,
             r#"
             pub struct Test {
-                #[cfg_attr($0, foo = "bar")]
+                #[cfg_attr(${0:cfg}, foo = "bar")]
                 test: u32,
             }
             "#,
@@ -520,7 +451,7 @@ mod tests {
             #![no_std$0]
             "#,
             r#"
-            #![cfg_attr($0, no_std)]
+            #![cfg_attr(${0:cfg}, no_std)]
             "#,
         );
         check_assist(
@@ -545,7 +476,7 @@ mod tests {
             "#,
             r#"
             #[derive( Clone, Copy)]
-            #[cfg_attr($0, derive(Debug))]
+            #[cfg_attr(${0:cfg}, derive(Debug))]
             pub struct Test {
                 test: u32,
             }
@@ -561,7 +492,7 @@ mod tests {
             "#,
             r#"
             #[derive(Clone,  Copy)]
-            #[cfg_attr($0, derive(Debug))]
+            #[cfg_attr(${0:cfg}, derive(Debug))]
             pub struct Test {
                 test: u32,
             }
@@ -580,7 +511,7 @@ mod tests {
             "#,
             r#"
             #[derive( Clone, Copy)]
-            #[cfg_attr($0, derive(std::fmt::Debug))]
+            #[cfg_attr(${0:cfg}, derive(std::fmt::Debug))]
             pub struct Test {
                 test: u32,
             }
@@ -596,7 +527,7 @@ mod tests {
             "#,
             r#"
             #[derive(Clone, Copy)]
-            #[cfg_attr($0, derive(std::fmt::Debug))]
+            #[cfg_attr(${0:cfg}, derive(std::fmt::Debug))]
             pub struct Test {
                 test: u32,
             }
@@ -615,7 +546,7 @@ mod tests {
             "#,
             r#"
             #[derive(std::fmt::Debug, Clone)]
-            #[cfg_attr($0, derive(Copy))]
+            #[cfg_attr(${0:cfg}, derive(Copy))]
             pub struct Test {
                 test: u32,
             }
@@ -631,7 +562,7 @@ mod tests {
             "#,
             r#"
             #[derive(Clone, Copy)]
-            #[cfg_attr($0, derive(std::fmt::Debug))]
+            #[cfg_attr(${0:cfg}, derive(std::fmt::Debug))]
             pub struct Test {
                 test: u32,
             }

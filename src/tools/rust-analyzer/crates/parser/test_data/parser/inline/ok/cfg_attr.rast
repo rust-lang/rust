@@ -1,0 +1,63 @@
+SOURCE_FILE
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    CFG_ATTR_META
+      CFG_ATTR_KW "cfg_attr"
+      L_PAREN "("
+      CFG_COMPOSITE
+        IDENT "not"
+        L_PAREN "("
+        CFG_ATOM
+          IDENT "foo"
+        R_PAREN ")"
+      COMMA ","
+      WHITESPACE " "
+      UNSAFE_META
+        UNSAFE_KW "unsafe"
+        L_PAREN "("
+        TOKEN_TREE_META
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "bar"
+          TOKEN_TREE
+            L_PAREN "("
+            R_PAREN ")"
+        R_PAREN ")"
+      COMMA ","
+      WHITESPACE " "
+      CFG_ATTR_META
+        CFG_ATTR_KW "cfg_attr"
+        L_PAREN "("
+        CFG_COMPOSITE
+          IDENT "all"
+          L_PAREN "("
+          CFG_ATOM
+            TRUE_KW "true"
+          COMMA ","
+          WHITESPACE " "
+          CFG_ATOM
+            IDENT "foo"
+            WHITESPACE " "
+            EQ "="
+            WHITESPACE " "
+            STRING "\"bar\""
+          R_PAREN ")"
+        COMMA ","
+        WHITESPACE " "
+        KEY_VALUE_META
+          PATH
+            PATH_SEGMENT
+              NAME_REF
+                IDENT "baz"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            STRING "\"baz\""
+        R_PAREN ")"
+      R_PAREN ")"
+    R_BRACK "]"
+  WHITESPACE "\n"

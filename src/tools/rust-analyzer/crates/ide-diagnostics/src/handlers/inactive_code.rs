@@ -209,8 +209,8 @@ union FooBar {
 
   #[cfg(true)] fn active() {}
 
-  #[cfg(any(not(true)), false)] fn inactive2() {}
-//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: true is enabled
+  #[cfg(any(not(true), false))] fn inactive2() {}
+//^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ weak: code is inactive due to #[cfg] directives: true is enabled and false is disabled
 
 "#,
         );

@@ -1,10 +1,7 @@
 use arbitrary::{Arbitrary, Unstructured};
 use expect_test::{Expect, expect};
 use intern::Symbol;
-use syntax::{
-    AstNode, Edition,
-    ast::{self, TokenTreeChildren},
-};
+use syntax::{AstNode, Edition, ast};
 use syntax_bridge::{
     DocCommentDesugarMode,
     dummy_test_span_utils::{DUMMY, DummyTestSpanMap},
@@ -14,32 +11,32 @@ use syntax_bridge::{
 use crate::{CfgAtom, CfgExpr, CfgOptions, DnfExpr};
 
 #[track_caller]
-fn parse_ast_cfg(tt: &ast::TokenTree) -> CfgExpr {
-    CfgExpr::parse_from_ast(&mut TokenTreeChildren::new(tt).peekable())
+fn parse_ast_cfg(pred: ast::CfgPredicate) -> CfgExpr {
+    CfgExpr::parse_from_ast(pred)
 }
 
 #[track_caller]
 fn assert_parse_result(input: &str, expected: CfgExpr) {
-    let source_file = ast::SourceFile::parse(input, Edition::CURRENT).ok().unwrap();
-    let tt_ast = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
+    let source_file = ast::SourceFile::parse(input, Edition::CURRENT).syntax_node();
+    let pred_ast = source_file.descendants().find_map(ast::CfgPredicate::cast).unwrap();
     let tt = syntax_node_to_token_tree(
-        tt_ast.syntax(),
+        pred_ast.syntax(),
         DummyTestSpanMap,
         DUMMY,
         DocCommentDesugarMode::ProcMacro,
     );
     let cfg = CfgExpr::parse(&tt);
     assert_eq!(cfg, expected);
-    let cfg = parse_ast_cfg(&tt_ast);
+    let cfg = parse_ast_cfg(pred_ast);
     assert_eq!(cfg, expected);
 }
 
 #[track_caller]
 fn check_dnf(input: &str, expect: Expect) {
     let source_file = ast::SourceFile::parse(input, Edition::CURRENT).ok().unwrap();
-    let tt_ast = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
+    let pred_ast = source_file.syntax().descendants().find_map(ast::CfgPredicate::cast).unwrap();
     let tt = syntax_node_to_token_tree(
-        tt_ast.syntax(),
+        pred_ast.syntax(),
         DummyTestSpanMap,
         DUMMY,
         DocCommentDesugarMode::ProcMacro,
@@ -47,7 +44,7 @@ fn check_dnf(input: &str, expect: Expect) {
     let cfg = CfgExpr::parse(&tt);
     let actual = format!("#![cfg({})]", DnfExpr::new(&cfg));
     expect.assert_eq(&actual);
-    let cfg = parse_ast_cfg(&tt_ast);
+    let cfg = parse_ast_cfg(pred_ast);
     let actual = format!("#![cfg({})]", DnfExpr::new(&cfg));
     expect.assert_eq(&actual);
 }
@@ -55,9 +52,9 @@ fn check_dnf(input: &str, expect: Expect) {
 #[track_caller]
 fn check_why_inactive(input: &str, opts: &CfgOptions, expect: Expect) {
     let source_file = ast::SourceFile::parse(input, Edition::CURRENT).ok().unwrap();
-    let tt_ast = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
+    let pred_ast = source_file.syntax().descendants().find_map(ast::CfgPredicate::cast).unwrap();
     let tt = syntax_node_to_token_tree(
-        tt_ast.syntax(),
+        pred_ast.syntax(),
         DummyTestSpanMap,
         DUMMY,
         DocCommentDesugarMode::ProcMacro,
@@ -66,7 +63,7 @@ fn check_why_inactive(input: &str, opts: &CfgOptions, expect: Expect) {
     let dnf = DnfExpr::new(&cfg);
     let why_inactive = dnf.why_inactive(opts).unwrap().to_string();
     expect.assert_eq(&why_inactive);
-    let cfg = parse_ast_cfg(&tt_ast);
+    let cfg = parse_ast_cfg(pred_ast);
     let dnf = DnfExpr::new(&cfg);
     let why_inactive = dnf.why_inactive(opts).unwrap().to_string();
     expect.assert_eq(&why_inactive);
@@ -75,9 +72,9 @@ fn check_why_inactive(input: &str, opts: &CfgOptions, expect: Expect) {
 #[track_caller]
 fn check_enable_hints(input: &str, opts: &CfgOptions, expected_hints: &[&str]) {
     let source_file = ast::SourceFile::parse(input, Edition::CURRENT).ok().unwrap();
-    let tt_ast = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
+    let pred_ast = source_file.syntax().descendants().find_map(ast::CfgPredicate::cast).unwrap();
     let tt = syntax_node_to_token_tree(
-        tt_ast.syntax(),
+        pred_ast.syntax(),
         DummyTestSpanMap,
         DUMMY,
         DocCommentDesugarMode::ProcMacro,
@@ -86,7 +83,7 @@ fn check_enable_hints(input: &str, opts: &CfgOptions, expected_hints: &[&str]) {
     let dnf = DnfExpr::new(&cfg);
     let hints = dnf.compute_enable_hints(opts).map(|diff| diff.to_string()).collect::<Vec<_>>();
     assert_eq!(hints, expected_hints);
-    let cfg = parse_ast_cfg(&tt_ast);
+    let cfg = parse_ast_cfg(pred_ast);
     let dnf = DnfExpr::new(&cfg);
     let hints = dnf.compute_enable_hints(opts).map(|diff| diff.to_string()).collect::<Vec<_>>();
     assert_eq!(hints, expected_hints);
@@ -113,20 +110,6 @@ fn test_cfg_expr_parser() {
         CfgExpr::All(
             vec![
                 CfgAtom::Flag(Symbol::intern("foo")).into(),
-                CfgAtom::KeyValue { key: Symbol::intern("bar"), value: Symbol::intern("baz") }
-                    .into(),
-            ]
-            .into_boxed_slice(),
-        ),
-    );
-
-    assert_parse_result(
-        r#"#![cfg(any(not(), all(), , bar = "baz",))]"#,
-        CfgExpr::Any(
-            vec![
-                CfgExpr::Not(Box::new(CfgExpr::Invalid)),
-                CfgExpr::All(Box::new([])),
-                CfgExpr::Invalid,
                 CfgAtom::KeyValue { key: Symbol::intern("bar"), value: Symbol::intern("baz") }
                     .into(),
             ]

@@ -398,7 +398,7 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn attr_to_derive_macro_call(
         &mut self,
         item: InFile<&ast::Adt>,
-        src: InFile<ast::Attr>,
+        src: InFile<ast::Meta>,
     ) -> Option<(AttrId, MacroCallId, &[Option<Either<MacroCallId, BuiltinDeriveImplId>>])> {
         let map = self.dyn_map(item)?;
         map[keys::DERIVE_MACRO_CALL]
@@ -423,6 +423,7 @@ impl SourceToDefCtx<'_, '_> {
             let dyn_map = &map[keys::DERIVE_MACRO_CALL];
             adt.value
                 .attrs()
+                .flat_map(|attr| attr.skip_cfg_attrs())
                 .filter_map(move |attr| dyn_map.get(&AstPtr::new(&attr)))
                 .map(|&(attr_id, call_id, ref ids)| (attr_id, call_id, &**ids))
         })

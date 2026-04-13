@@ -1239,11 +1239,15 @@ fn emit_def_diagnostic_<'db>(
             );
         }
         DefDiagnosticKind::InvalidDeriveTarget { ast, id } => {
-            let derive = id.find_attr_range(db, krate, *ast).3.path_range();
+            let (_, attr) = id.find_attr_range(db, krate, *ast);
+            let derive = attr
+                .path()
+                .map(|path| path.syntax().text_range())
+                .unwrap_or_else(|| attr.syntax().text_range());
             acc.push(InvalidDeriveTarget { range: ast.with_value(derive) }.into());
         }
         DefDiagnosticKind::MalformedDerive { ast, id } => {
-            let derive = id.find_attr_range(db, krate, *ast).2;
+            let derive = id.find_attr_range(db, krate, *ast).1.syntax().text_range();
             acc.push(MalformedDerive { range: ast.with_value(derive) }.into());
         }
         DefDiagnosticKind::MacroDefError { ast, message } => {
@@ -1283,7 +1287,8 @@ fn precise_macro_call_location(
             ast_id.with_value(range)
         }
         MacroCallKind::Attr { ast_id, censored_attr_ids: attr_ids, .. } => {
-            let attr_range = attr_ids.invoc_attr().find_attr_range(db, krate, *ast_id).2;
+            let attr_range =
+                attr_ids.invoc_attr().find_attr_range(db, krate, *ast_id).1.syntax().text_range();
             ast_id.with_value(attr_range)
         }
     }

@@ -1198,7 +1198,7 @@ m! { hello::world }
 macro_rules! m {
     ($m:meta) => ( #[$m] fn bar() {} )
 }
-#[cfg(target_os = "windows")] fn bar() {}
+#[cfg (target_os = "windows")] fn bar() {}
 #[hello::world] fn bar() {}
 "#]],
     );

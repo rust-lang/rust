@@ -3852,7 +3852,7 @@ struct S {
 }
 "#####,
         r#####"
-#[cfg_attr($0, derive(Debug))]
+#[cfg_attr(${0:cfg}, derive(Debug))]
 struct S {
    field: i32
 }

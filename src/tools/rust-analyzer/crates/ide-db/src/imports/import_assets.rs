@@ -117,7 +117,9 @@ impl PathDefinitionKinds {
             // validate that the following segment resolve.
             SyntaxKind::PATH => Self { modules: true, type_namespace: true, ..Self::ALL_DISABLED },
             SyntaxKind::MACRO_CALL => Self { bang_macros: true, ..Self::ALL_DISABLED },
-            SyntaxKind::META => Self { attr_macros: true, ..Self::ALL_DISABLED },
+            SyntaxKind::PATH_META | SyntaxKind::KEY_VALUE_META | SyntaxKind::TOKEN_TREE_META => {
+                Self { attr_macros: true, ..Self::ALL_DISABLED }
+            }
             SyntaxKind::USE_TREE => {
                 if ast::UseTree::cast(parent).unwrap().use_tree_list().is_some() {
                     Self { modules: true, ..Self::ALL_DISABLED }
