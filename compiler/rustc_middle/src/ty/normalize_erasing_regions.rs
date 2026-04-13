@@ -13,7 +13,7 @@ use tracing::{debug, instrument};
 use crate::traits::query::NoSolution;
 use crate::ty::{
     self, EarlyBinder, FallibleTypeFolder, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeVisitableExt,
+    TypeVisitableExt, Unnormalized,
 };
 
 #[derive(Debug, Copy, Clone, HashStable, TyEncodable, TyDecodable)]
@@ -38,7 +38,11 @@ impl<'tcx> TyCtxt<'tcx> {
     /// This should only be used outside of type inference. For example,
     /// it assumes that normalization will succeed.
     #[tracing::instrument(level = "debug", skip(self, typing_env), ret)]
-    pub fn normalize_erasing_regions<T>(self, typing_env: ty::TypingEnv<'tcx>, value: T) -> T
+    pub fn normalize_erasing_regions<T>(
+        self,
+        typing_env: ty::TypingEnv<'tcx>,
+        value: Unnormalized<'tcx, T>,
+    ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -69,7 +73,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn try_normalize_erasing_regions<T>(
         self,
         typing_env: ty::TypingEnv<'tcx>,
-        value: T,
+        value: Unnormalized<'tcx, T>,
     ) -> Result<T, NormalizationError<'tcx>>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,

@@ -180,7 +180,7 @@ pub enum TraitQueryMode {
 #[instrument(level = "debug", skip(cause, param_env, normalize_predicate))]
 pub fn predicates_for_generics<'tcx>(
     cause: impl Fn(usize, Span) -> ObligationCause<'tcx>,
-    mut normalize_predicate: impl FnMut(Clause<'tcx>) -> Clause<'tcx>,
+    mut normalize_predicate: impl FnMut(Unnormalized<'tcx, Clause<'tcx>>) -> Clause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     generic_bounds: ty::InstantiatedPredicates<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {

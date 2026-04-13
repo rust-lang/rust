@@ -1,7 +1,7 @@
 use rustc_hir::limit::Limit;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::PredicateObligations;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::def_id::{LOCAL_CRATE, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits::ObligationCtxt;
@@ -187,7 +187,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     pub fn structurally_normalize_ty(
         &self,
-        ty: Ty<'tcx>,
+        ty: Unnormalized<'tcx, Ty<'tcx>>,
     ) -> Option<(Ty<'tcx>, PredicateObligations<'tcx>)> {
         let ocx = ObligationCtxt::new(self.infcx);
         let Ok(normalized_ty) = ocx.structurally_normalize_ty(

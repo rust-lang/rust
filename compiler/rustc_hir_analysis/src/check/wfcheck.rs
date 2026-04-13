@@ -66,7 +66,12 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     // Convenience function to normalize during wfcheck. This performs
     // `ObligationCtxt::normalize`, but provides a nice `ObligationCauseCode`.
-    fn normalize<T>(&self, span: Span, loc: Option<WellFormedLoc>, value: T) -> T
+    fn normalize<T>(
+        &self,
+        span: Span,
+        loc: Option<WellFormedLoc>,
+        value: Unnormalized<'tcx, T>,
+    ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -86,7 +91,12 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     /// signature types for implied bounds when checking regions.
     // FIXME(-Znext-solver): This should be removed when we compute implied outlives
     // bounds using the unnormalized signature of the function we're checking.
-    pub(super) fn deeply_normalize<T>(&self, span: Span, loc: Option<WellFormedLoc>, value: T) -> T
+    pub(super) fn deeply_normalize<T>(
+        &self,
+        span: Span,
+        loc: Option<WellFormedLoc>,
+        value: Unnormalized<'tcx, T>,
+    ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {

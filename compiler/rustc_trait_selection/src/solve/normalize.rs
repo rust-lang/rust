@@ -8,7 +8,7 @@ use rustc_infer::traits::{FromSolverError, Obligation, TraitEngine};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
     self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, UniverseIndex,
+    TypeVisitableExt, UniverseIndex, Unnormalized,
 };
 use tracing::instrument;
 
@@ -19,7 +19,10 @@ use crate::traits::{BoundVarReplacer, PlaceholderReplacer, ScrubbedTraitError};
 
 /// Deeply normalize all aliases in `value`. This does not handle inference and expects
 /// its input to be already fully resolved.
-pub fn deeply_normalize<'tcx, T, E>(at: At<'_, 'tcx>, value: T) -> Result<T, Vec<E>>
+pub fn deeply_normalize<'tcx, T, E>(
+    at: At<'_, 'tcx>,
+    value: Unnormalized<'tcx, T>,
+) -> Result<T, Vec<E>>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
@@ -36,7 +39,7 @@ where
 /// `normalize_erasing_regions`, which skips binders as it walks through a type.
 pub fn deeply_normalize_with_skipped_universes<'tcx, T, E>(
     at: At<'_, 'tcx>,
-    value: T,
+    value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
 ) -> Result<T, Vec<E>>
 where
@@ -63,7 +66,7 @@ where
 /// the underlying infcx has any stalled coroutine def ids.
 pub fn deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals<'tcx, T, E>(
     at: At<'_, 'tcx>,
-    value: T,
+    value: Unnormalized<'tcx, T>,
     universes: Vec<Option<UniverseIndex>>,
 ) -> Result<(T, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), Vec<E>>
 where

@@ -207,7 +207,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub(super) fn normalize_with_category<T>(
         &mut self,
-        value: T,
+        value: Unnormalized<'tcx, T>,
         location: impl NormalizeLocation,
         category: ConstraintCategory<'tcx>,
     ) -> T

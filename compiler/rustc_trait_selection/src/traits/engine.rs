@@ -15,7 +15,7 @@ use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::Relate;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Upcast, Variance};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Unnormalized, Upcast, Variance};
 
 use super::{FromSolverError, FulfillmentContext, ScrubbedTraitError, TraitEngine};
 use crate::error_reporting::InferCtxtErrorExt;
@@ -113,7 +113,7 @@ where
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: T,
+        value: Unnormalized<'tcx, T>,
     ) -> T {
         let infer_ok = self.infcx.at(cause, param_env).normalize(value);
         self.register_infer_ok_obligations(infer_ok)
@@ -346,7 +346,7 @@ where
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: T,
+        value: Unnormalized<'tcx, T>,
     ) -> Result<T, Vec<E>> {
         self.infcx.at(cause, param_env).deeply_normalize(value, &mut **self.engine.borrow_mut())
     }
@@ -355,7 +355,7 @@ where
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: Ty<'tcx>,
+        value: Unnormalized<'tcx, Ty<'tcx>>,
     ) -> Result<Ty<'tcx>, Vec<E>> {
         self.infcx
             .at(cause, param_env)
@@ -366,7 +366,7 @@ where
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: ty::Const<'tcx>,
+        value: Unnormalized<'tcx, ty::Const<'tcx>>,
     ) -> Result<ty::Const<'tcx>, Vec<E>> {
         self.infcx
             .at(cause, param_env)
@@ -377,7 +377,7 @@ where
         &self,
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        value: ty::Term<'tcx>,
+        value: Unnormalized<'tcx, ty::Term<'tcx>>,
     ) -> Result<ty::Term<'tcx>, Vec<E>> {
         self.infcx
             .at(cause, param_env)

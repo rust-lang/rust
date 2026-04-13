@@ -28,7 +28,10 @@ impl<'tcx> At<'_, 'tcx> {
     ///
     /// This normalization should be used when the type contains inference variables or the
     /// projection may be fallible.
-    fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> InferOk<'tcx, T> {
+    fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &self,
+        value: Unnormalized<'tcx, T>,
+    ) -> InferOk<'tcx, T> {
         if self.infcx.next_trait_solver() {
             InferOk { value, obligations: PredicateObligations::new() }
         } else {
@@ -53,7 +56,7 @@ impl<'tcx> At<'_, 'tcx> {
     /// can remove the `fulfill_cx` parameter on this function.
     fn deeply_normalize<T, E>(
         self,
-        value: T,
+        value: Unnormalized<'tcx, T>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
     ) -> Result<T, Vec<E>>
     where
