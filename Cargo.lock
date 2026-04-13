@@ -3802,6 +3802,7 @@ name = "rustc_data_structures"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
+ "backtrace",
  "bitflags",
  "either",
  "elsa",
