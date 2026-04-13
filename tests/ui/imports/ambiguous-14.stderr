@@ -6,15 +6,15 @@ LL |     g::foo();
    |
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `foo` could refer to the function imported here
-  --> $DIR/ambiguous-14.rs:18:13
+  --> $DIR/ambiguous-14.rs:13:13
    |
 LL |     pub use a::*;
    |             ^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 note: `foo` could also refer to the function imported here
-  --> $DIR/ambiguous-14.rs:19:13
+  --> $DIR/ambiguous-14.rs:14:13
    |
-LL |     pub use f::*;
+LL |     pub use b::*;
    |             ^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
@@ -32,15 +32,15 @@ LL |     g::foo();
    |
    = note: ambiguous because of multiple glob imports of a name in the same module
 note: `foo` could refer to the function imported here
-  --> $DIR/ambiguous-14.rs:18:13
+  --> $DIR/ambiguous-14.rs:13:13
    |
 LL |     pub use a::*;
    |             ^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
 note: `foo` could also refer to the function imported here
-  --> $DIR/ambiguous-14.rs:19:13
+  --> $DIR/ambiguous-14.rs:14:13
    |
-LL |     pub use f::*;
+LL |     pub use b::*;
    |             ^^^^
    = help: consider adding an explicit import of `foo` to disambiguate
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
