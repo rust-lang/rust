@@ -22,11 +22,7 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
     const TEMPLATE: AttributeTemplate = template!(List: &[r#"dialect = "...", phase = "...""#]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(list) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return None;
-        };
+        let list = cx.expect_list(args, cx.attr_span)?;
 
         let mut dialect = None;
         let mut phase = None;

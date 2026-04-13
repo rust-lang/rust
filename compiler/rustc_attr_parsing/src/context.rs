@@ -61,7 +61,7 @@ use crate::attributes::test_attrs::*;
 use crate::attributes::traits::*;
 use crate::attributes::transparency::*;
 use crate::attributes::{AttributeParser as _, AttributeSafety, Combine, Single, WithoutArgs};
-use crate::parser::{ArgParser, MetaItemOrLitParser, RefPathParser};
+use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, RefPathParser};
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
     ParsedDescription,
@@ -554,7 +554,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     ///
     /// The provided span is used as a fallback for diagnostic generation in case `arg` does not
     /// contain any. It should be the span of the node that contains `arg`.
-    pub(crate) fn single_element_list<'arg>(
+    pub(crate) fn expect_single_element_list<'arg>(
         &mut self,
         arg: &'arg ArgParser,
         span: Span,
@@ -564,12 +564,35 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             return None;
         };
 
-        let Some(single) = l.single() else {
+        let Some(single) = l.as_single() else {
             self.adcx().expected_single_argument(l.span, l.len());
             return None;
         };
 
         Some(single)
+    }
+
+    pub(crate) fn expect_list<'arg>(
+        &mut self,
+        args: &'arg ArgParser,
+        span: Span,
+    ) -> Option<&'arg MetaItemListParser> {
+        let list = args.as_list();
+        if list.is_none() {
+            self.adcx().expected_list(span, args);
+        }
+        list
+    }
+
+    pub(crate) fn expect_single<'arg>(
+        &mut self,
+        list: &'arg MetaItemListParser,
+    ) -> Option<&'arg MetaItemOrLitParser> {
+        let single = list.as_single();
+        if single.is_none() {
+            self.adcx().expected_single_argument(list.span, list.len());
+        }
+        single
     }
 }
 

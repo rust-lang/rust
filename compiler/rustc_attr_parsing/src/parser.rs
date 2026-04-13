@@ -176,7 +176,7 @@ impl ArgParser {
     ///
     /// - `#[allow(clippy::complexity)]`: `(clippy::complexity)` is a list
     /// - `#[rustfmt::skip::macros(target_macro_name)]`: `(target_macro_name)` is a list
-    pub fn list(&self) -> Option<&MetaItemListParser> {
+    pub fn as_list(&self) -> Option<&MetaItemListParser> {
         match self {
             Self::List(l) => Some(l),
             Self::NameValue(_) | Self::NoArgs => None,
@@ -694,7 +694,7 @@ impl MetaItemListParser {
     /// Returns Some if the list contains only a single element.
     ///
     /// Inside the Some is the parser to parse this single element.
-    pub fn single(&self) -> Option<&MetaItemOrLitParser> {
+    pub fn as_single(&self) -> Option<&MetaItemOrLitParser> {
         let mut iter = self.mixed();
         iter.next().filter(|_| iter.next().is_none())
     }

@@ -304,7 +304,7 @@ fn parse_directive_items<'p, S: Stage>(
             }
             (Mode::RustcOnUnimplemented, sym::on) => {
                 if is_root {
-                    let items = or_malformed!(item.args().list()?);
+                    let items = or_malformed!(item.args().as_list()?);
                     let mut iter = items.mixed();
                     let condition: &MetaItemOrLitParser = match iter.next() {
                         Some(c) => c,
@@ -478,7 +478,7 @@ fn parse_predicate(input: &MetaItemOrLitParser) -> Result<Predicate, InvalidOnCl
             sym::any => Ok(Predicate::Any(parse_predicate_sequence(mis)?)),
             sym::all => Ok(Predicate::All(parse_predicate_sequence(mis)?)),
             sym::not => {
-                if let Some(single) = mis.single() {
+                if let Some(single) = mis.as_single() {
                     Ok(Predicate::Not(Box::new(parse_predicate(single)?)))
                 } else {
                     Err(InvalidOnClause::ExpectedOnePredInNot { span: mis.span })

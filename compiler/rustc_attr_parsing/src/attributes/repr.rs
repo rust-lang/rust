@@ -32,9 +32,7 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
     ) -> impl IntoIterator<Item = Self::Item> {
         let mut reprs = Vec::new();
 
-        let Some(list) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
+        let Some(list) = cx.expect_list(args, cx.attr_span) else {
             return reprs;
         };
 
@@ -197,7 +195,7 @@ fn parse_repr_align<S: Stage>(
 ) -> Option<ReprAttr> {
     use AlignKind::*;
 
-    let Some(align) = list.single() else {
+    let Some(align) = list.as_single() else {
         match align_kind {
             Packed => {
                 cx.emit_err(session_diagnostics::IncorrectReprFormatPackedOneOrZeroArg {
@@ -296,8 +294,7 @@ impl RustcAlignParser {
                 cx.adcx().expected_list(attr_span, args);
             }
             ArgParser::List(list) => {
-                let Some(align) = list.single() else {
-                    cx.adcx().expected_single_argument(list.span, list.len());
+                let Some(align) = cx.expect_single(list) else {
                     return;
                 };
 

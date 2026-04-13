@@ -199,7 +199,7 @@ impl DocParser {
                 self.attribute.no_crate_inject = Some(path.span())
             }
             Some(sym::attr) => {
-                let Some(list) = args.list() else {
+                let Some(list) = args.as_list() else {
                     // FIXME: remove this method once merged and uncomment the line below instead.
                     // cx.expected_list(cx.attr_span, args);
                     let span = cx.attr_span;
@@ -587,7 +587,7 @@ impl DocParser {
             }),
             Some(sym::auto_cfg) => self.parse_auto_cfg(cx, path, args),
             Some(sym::test) => {
-                let Some(list) = args.list() else {
+                let Some(list) = args.as_list() else {
                     cx.emit_dyn_lint(
                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
                         |dcx, level| DocTestTakesList.into_diag(dcx, level),
