@@ -346,7 +346,7 @@ impl From<OwnedFd> for fs::File {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl AsFd for crate::net::TcpStream {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -355,7 +355,7 @@ impl AsFd for crate::net::TcpStream {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl From<crate::net::TcpStream> for OwnedFd {
     /// Takes ownership of a [`TcpStream`](crate::net::TcpStream)'s socket file descriptor.
     #[inline]
@@ -365,7 +365,7 @@ impl From<crate::net::TcpStream> for OwnedFd {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl From<OwnedFd> for crate::net::TcpStream {
     #[inline]
     fn from(owned_fd: OwnedFd) -> Self {
@@ -376,7 +376,7 @@ impl From<OwnedFd> for crate::net::TcpStream {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl AsFd for crate::net::TcpListener {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -385,7 +385,7 @@ impl AsFd for crate::net::TcpListener {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl From<crate::net::TcpListener> for OwnedFd {
     /// Takes ownership of a [`TcpListener`](crate::net::TcpListener)'s socket file descriptor.
     #[inline]
@@ -395,7 +395,7 @@ impl From<crate::net::TcpListener> for OwnedFd {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl From<OwnedFd> for crate::net::TcpListener {
     #[inline]
     fn from(owned_fd: OwnedFd) -> Self {
@@ -406,7 +406,7 @@ impl From<OwnedFd> for crate::net::TcpListener {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl AsFd for crate::net::UdpSocket {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -415,7 +415,7 @@ impl AsFd for crate::net::UdpSocket {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl From<crate::net::UdpSocket> for OwnedFd {
     /// Takes ownership of a [`UdpSocket`](crate::net::UdpSocket)'s file descriptor.
     #[inline]
@@ -425,7 +425,7 @@ impl From<crate::net::UdpSocket> for OwnedFd {
 }
 
 #[stable(feature = "io_safety", since = "1.63.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl From<OwnedFd> for crate::net::UdpSocket {
     #[inline]
     fn from(owned_fd: OwnedFd) -> Self {
@@ -534,7 +534,7 @@ impl<'a> AsFd for io::StderrLock<'a> {
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl AsFd for io::PipeReader {
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.0.as_fd()
@@ -542,7 +542,7 @@ impl AsFd for io::PipeReader {
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl From<io::PipeReader> for OwnedFd {
     fn from(pipe: io::PipeReader) -> Self {
         pipe.0.into_inner()
@@ -550,7 +550,7 @@ impl From<io::PipeReader> for OwnedFd {
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl AsFd for io::PipeWriter {
     fn as_fd(&self) -> BorrowedFd<'_> {
         self.0.as_fd()
@@ -558,7 +558,7 @@ impl AsFd for io::PipeWriter {
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl From<io::PipeWriter> for OwnedFd {
     fn from(pipe: io::PipeWriter) -> Self {
         pipe.0.into_inner()
@@ -566,7 +566,7 @@ impl From<io::PipeWriter> for OwnedFd {
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl From<OwnedFd> for io::PipeReader {
     fn from(owned_fd: OwnedFd) -> Self {
         Self(FromInner::from_inner(owned_fd))
@@ -574,7 +574,7 @@ impl From<OwnedFd> for io::PipeReader {
 }
 
 #[stable(feature = "anonymous_pipe", since = "1.87.0")]
-#[cfg(not(target_os = "trusty"))]
+#[cfg(not(any(target_os = "trusty", target_os = "qurt")))]
 impl From<OwnedFd> for io::PipeWriter {
     fn from(owned_fd: OwnedFd) -> Self {
         Self(FromInner::from_inner(owned_fd))
