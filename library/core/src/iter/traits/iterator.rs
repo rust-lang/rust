@@ -3058,9 +3058,7 @@ pub const trait Iterator {
         R: Try<Output = bool, Residual: Residual<Option<Self::Item>>>,
     {
         #[inline]
-        fn check<I, V, R>(
-            mut f: impl FnMut(&I) -> V,
-        ) -> impl FnMut((), I) -> ControlFlow<R::Try>
+        fn check<I, V, R>(mut f: impl FnMut(&I) -> V) -> impl FnMut((), I) -> ControlFlow<R::Try>
         where
             V: Try<Output = bool, Residual = R>,
             R: Residual<Option<I>>,

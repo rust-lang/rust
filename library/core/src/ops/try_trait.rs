@@ -378,9 +378,7 @@ pub const trait Residual<O>: Sized {
 #[expect(unreachable_pub)]
 #[inline] // FIXME: force would be nice, but fails -- see #148915
 #[lang = "into_try"]
-pub const fn residual_into_try<R: [const] Residual<O>, O>(
-    r: R,
-) -> <R as Residual<O>>::Try {
+pub const fn residual_into_try<R: [const] Residual<O>, O>(r: R) -> <R as Residual<O>>::Try {
     FromResidual::from_residual(r)
 }
 
