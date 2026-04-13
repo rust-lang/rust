@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/5100>
 //@ dont-require-annotations: NOTE
 
 #![feature(box_patterns)]

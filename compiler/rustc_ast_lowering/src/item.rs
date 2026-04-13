@@ -213,8 +213,14 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         i: &ItemKind,
     ) -> Vec<hir::Attribute> {
         match i {
-            ItemKind::Fn(box Fn { eii_impls, .. }) if eii_impls.is_empty() => Vec::new(),
-            ItemKind::Fn(box Fn { eii_impls, .. }) => {
+            ItemKind::Fn(box Fn { eii_impls, .. })
+            | ItemKind::Static(box StaticItem { eii_impls, .. })
+                if eii_impls.is_empty() =>
+            {
+                Vec::new()
+            }
+            ItemKind::Fn(box Fn { eii_impls, .. })
+            | ItemKind::Static(box StaticItem { eii_impls, .. }) => {
                 vec![hir::Attribute::Parsed(AttributeKind::EiiImpls(
                     eii_impls.iter().map(|i| self.lower_eii_impl(i)).collect(),
                 ))]
@@ -226,7 +232,6 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
             ItemKind::ExternCrate(..)
             | ItemKind::Use(..)
-            | ItemKind::Static(..)
             | ItemKind::Const(..)
             | ItemKind::ConstBlock(..)
             | ItemKind::Mod(..)
@@ -302,6 +307,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 mutability: m,
                 expr: e,
                 define_opaque,
+                eii_impls: _,
             }) => {
                 let ident = self.lower_ident(*ident);
                 let ty = self
@@ -826,6 +832,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 expr: _,
                 safety,
                 define_opaque,
+                eii_impls: _,
             }) => {
                 let ty = self
                     .lower_ty_alloc(ty, ImplTraitContext::Disallowed(ImplTraitPosition::StaticTy));
