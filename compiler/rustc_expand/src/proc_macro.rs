@@ -49,9 +49,7 @@ impl base::BangProcMacro for BangProcMacro {
         self.client.run(&strategy, server, input, proc_macro_backtrace).map_err(|e| {
             ecx.dcx().emit_err(errors::ProcMacroPanicked {
                 span,
-                message: e
-                    .as_str()
-                    .map(|message| errors::ProcMacroPanickedHelp { message: message.into() }),
+                message: e.into_string().map(|message| errors::ProcMacroPanickedHelp { message }),
             })
         })
     }
@@ -78,9 +76,9 @@ impl base::AttrProcMacro for AttrProcMacro {
             |e| {
                 ecx.dcx().emit_err(errors::CustomAttributePanicked {
                     span,
-                    message: e.as_str().map(|message| errors::CustomAttributePanickedHelp {
-                        message: message.into(),
-                    }),
+                    message: e
+                        .into_string()
+                        .map(|message| errors::CustomAttributePanickedHelp { message }),
                 })
             },
         )
@@ -206,9 +204,9 @@ fn expand_derive_macro(
             ecx.dcx().emit_err({
                 errors::ProcMacroDerivePanicked {
                     span,
-                    message: e.as_str().map(|message| errors::ProcMacroDerivePanickedHelp {
-                        message: message.into(),
-                    }),
+                    message: e
+                        .into_string()
+                        .map(|message| errors::ProcMacroDerivePanickedHelp { message }),
                 }
             });
             Err(())
