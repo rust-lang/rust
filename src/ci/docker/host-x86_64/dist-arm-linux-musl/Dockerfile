@@ -6,6 +6,8 @@ RUN sh /scripts/cross-apt-packages.sh
 WORKDIR /build
 
 COPY scripts/musl-toolchain.sh /build/
+COPY scripts/musl-cve-2026-6042.diff /build/
+COPY scripts/musl-cve-2026-40200.diff /build/
 # We need to mitigate rust-lang/rust#34978 when compiling musl itself as well
 RUN CFLAGS="-Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \
     CXXFLAGS="-Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \
