@@ -746,6 +746,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_no_writable,
         "`#[rustc_no_writable]` stops the compiler from considering mutable reference arguments of this function as implicitly writable"
     ),
+    rustc_attr!(
+        rustc_no_dead_code_warning,
+        "`#[rustc_no_dead_code_warning]` attribute is used to mark certain types that do not need \
+        to propagate dead code warnings as field members in other types"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:

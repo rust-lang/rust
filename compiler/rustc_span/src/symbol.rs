@@ -1766,6 +1766,7 @@ symbols! {
         rustc_must_match_exhaustively,
         rustc_never_returns_null_ptr,
         rustc_never_type_options,
+        rustc_no_dead_code_warning,
         rustc_no_implicit_autorefs,
         rustc_no_implicit_bounds,
         rustc_no_mir_inline,

@@ -1497,6 +1497,9 @@ pub enum AttributeKind {
         diverging_block_default: Option<DivergingBlockBehavior>,
     },
 
+    /// Represents `#[rustc_no_dead_code_warning]`
+    RustcNoDeadCodeWarning,
+
     /// Represents `#[rustc_no_implicit_autorefs]`
     RustcNoImplicitAutorefs,
 

@@ -14,6 +14,18 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcAsPtrParser {
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcAsPtr;
 }
 
+pub(crate) struct RustcNoDeadCodeWarningParser;
+impl<S: Stage> NoArgsAttributeParser<S> for RustcNoDeadCodeWarningParser {
+    const PATH: &[Symbol] = &[sym::rustc_no_dead_code_warning];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
+        Allow(Target::Struct),
+        Allow(Target::Enum),
+        Allow(Target::TyAlias),
+    ]);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoDeadCodeWarning;
+}
+
 pub(crate) struct RustcPubTransparentParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcPubTransparentParser {
     const PATH: &[Symbol] = &[sym::rustc_pub_transparent];

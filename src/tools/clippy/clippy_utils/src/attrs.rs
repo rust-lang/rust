@@ -4,6 +4,7 @@ use crate::source::SpanRangeExt;
 use crate::{sym, tokenize_with_text};
 use rustc_ast::attr::AttributeExt;
 use rustc_errors::Applicability;
+use rustc_hir::def::Res;
 use rustc_hir::find_attr;
 use rustc_lexer::TokenKind;
 use rustc_lint::LateContext;
@@ -89,6 +90,11 @@ pub fn is_proc_macro(attrs: &[impl AttributeExt]) -> bool {
 /// Checks whether `attrs` contain `#[doc(hidden)]`
 pub fn is_doc_hidden(attrs: &[impl AttributeExt]) -> bool {
     attrs.iter().any(AttributeExt::is_doc_hidden)
+}
+
+/// Checks whether the original type is marked as `#[rustc_no_dead_code_warning]`
+pub fn is_rustc_no_dead_code_warning_attr(tcx: TyCtxt<'_>, res: &Res) -> bool {
+    res.opt_def_id().map(|def_id| find_attr!(tcx, def_id, RustcNoDeadCodeWarning)).unwrap_or(false)
 }
 
 /// Checks whether the given ADT, or any of its fields/variants, are marked as `#[non_exhaustive]`

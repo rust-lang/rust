@@ -347,6 +347,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::RustcMustMatchExhaustively(..)
                     | AttributeKind::RustcNeverReturnsNullPtr
                     | AttributeKind::RustcNeverTypeOptions {..}
+                    | AttributeKind::RustcNoDeadCodeWarning
                     | AttributeKind::RustcNoImplicitAutorefs
                     | AttributeKind::RustcNoImplicitBounds
                     | AttributeKind::RustcNoMirInline
