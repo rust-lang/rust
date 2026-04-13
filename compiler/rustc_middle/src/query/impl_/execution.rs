@@ -12,7 +12,7 @@ use rustc_middle::query::{
     QueryLatch, QueryMode, QueryState, QueryVTable,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::verify_ich::incremental_verify_ich;
+use rustc_middle::verify_ich::incremental_verify_ich_green;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::warn;
 
@@ -24,6 +24,7 @@ use crate::query::impl_::plumbing::{
     current_query_job, loadable_from_disk, next_job_id, start_query,
 };
 use crate::query::impl_::query_impl::for_each_query_vtable;
+use crate::verify_ich::assert_previous_green;
 
 #[inline]
 fn equivalent_key<K: Eq, V>(k: K) -> impl Fn(&(K, V)) -> bool {
@@ -422,13 +423,17 @@ fn execute_job_non_incr<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Val
 }
 
 #[inline(always)]
-fn execute_job_incr<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
+fn execute_job_incr<'tcx, C, H>(
     query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
     dep_node: DepNode,
     job_id: QueryJobId,
-) -> (C::Value, DepNodeIndex) {
+) -> (C::Value, DepNodeIndex)
+where
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
     let dep_graph_data =
         tcx.dep_graph.data().expect("should always be present in incremental mode");
 
@@ -456,13 +461,7 @@ fn execute_job_incr<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>
 
     let (result, dep_node_index) = start_query(job_id, query.depth_limit, || {
         // Call the query provider.
-        dep_graph_data.with_task(
-            dep_node,
-            tcx,
-            key,
-            |tcx, key| H::invoke_provider_fn(tcx, key),
-            (!H::NO_HASH).then_some(H::hash_value_fn),
-        )
+        dep_graph_data.with_task::<_, _, H>(dep_node, tcx, key)
     });
 
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
@@ -474,11 +473,7 @@ fn execute_job_incr<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>
 /// by loading one from disk if possible, or by invoking its query provider if
 /// necessary.
 #[inline(always)]
-fn load_from_disk_or_invoke_provider_green<
-    'tcx,
-    C: QueryCache,
-    H: QueryHelper<'tcx, C::Key, C::Value>,
->(
+fn load_from_disk_or_invoke_provider_green<'tcx, C, H>(
     tcx: TyCtxt<'tcx>,
     dep_graph_data: &DepGraphData,
     query: &'tcx QueryVTable<'tcx, C, H>,
@@ -486,7 +481,11 @@ fn load_from_disk_or_invoke_provider_green<
     dep_node: &DepNode,
     prev_index: SerializedDepNodeIndex,
     dep_node_index: DepNodeIndex,
-) -> C::Value {
+) -> C::Value
+where
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
     // Note this function can be called concurrently from the same query
     // We must ensure that this is handled correctly.
 
@@ -532,6 +531,8 @@ fn load_from_disk_or_invoke_provider_green<
     };
 
     if verify {
+        assert_previous_green(tcx, dep_graph_data, prev_index);
+
         // Verify that re-running the query produced a result with the expected hash.
         // This catches bugs in query implementations, turning them into ICEs.
         // For example, a query might sort its result by `DefId` - since `DefId`s are
@@ -541,12 +542,12 @@ fn load_from_disk_or_invoke_provider_green<
         //
         // See issue #82920 for an example of a miscompilation that would get turned into
         // an ICE by this check
-        incremental_verify_ich(
+        incremental_verify_ich_green(
             tcx,
             dep_graph_data,
             &value,
             prev_index,
-            (!H::NO_HASH).then_some(H::hash_value_fn),
+            H::hash_value_fn,
             query.format_value,
         );
     }

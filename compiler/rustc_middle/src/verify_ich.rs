@@ -9,26 +9,33 @@ use crate::ty::TyCtxt;
 
 #[inline]
 #[instrument(skip(tcx, dep_graph_data, result, hash_result, format_value), level = "debug")]
-pub fn incremental_verify_ich<'tcx, V>(
+pub fn incremental_verify_ich_green<'tcx, V, F>(
     tcx: TyCtxt<'tcx>,
     dep_graph_data: &DepGraphData,
     result: &V,
     prev_index: SerializedDepNodeIndex,
-    hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
+    hash_result: F,
     format_value: fn(&V) -> String,
-) {
-    if !dep_graph_data.is_index_green(prev_index) {
-        incremental_verify_ich_not_green(tcx, prev_index)
-    }
-
-    let new_hash = hash_result.map_or(Fingerprint::ZERO, |f| {
-        tcx.with_stable_hashing_context(|mut hcx| f(&mut hcx, result))
-    });
+) where
+    F: Fn(&mut StableHashingContext<'_>, &V) -> Fingerprint,
+{
+    let new_hash = tcx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result));
 
     let old_hash = dep_graph_data.prev_value_fingerprint_of(prev_index);
 
     if new_hash != old_hash {
         incremental_verify_ich_failed(tcx, prev_index, &|| format_value(result));
+    }
+}
+
+#[inline(always)]
+pub fn assert_previous_green<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    dep_graph_data: &DepGraphData,
+    prev_index: SerializedDepNodeIndex,
+) {
+    if !dep_graph_data.is_index_green(prev_index) {
+        incremental_verify_ich_not_green(tcx, prev_index)
     }
 }
 

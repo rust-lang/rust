@@ -27,8 +27,9 @@ use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex
 use super::{DepKind, DepNode, WorkProductId, read_deps, with_deps};
 use crate::dep_graph::edges::EdgesVec;
 use crate::ich::StableHashingContext;
+use crate::query::QueryHelper;
 use crate::ty::TyCtxt;
-use crate::verify_ich::incremental_verify_ich;
+use crate::verify_ich::incremental_verify_ich_green;
 
 /// Tracks 'side effects' for a particular query.
 /// This struct is saved to disk along with the query result,
@@ -274,17 +275,19 @@ impl DepGraph {
     }
 
     #[inline(always)]
-    pub fn with_task<'tcx, A: Debug, R>(
+    pub fn with_task<'tcx, A, R, H>(
         &self,
         dep_node: DepNode,
         tcx: TyCtxt<'tcx>,
-        task_arg: A,
-        task_fn: fn(tcx: TyCtxt<'tcx>, task_arg: A) -> R,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
-    ) -> (R, DepNodeIndex) {
+        key: A,
+    ) -> (R, DepNodeIndex)
+    where
+        H: QueryHelper<'tcx, A, R>,
+        A: Debug,
+    {
         match self.data() {
-            Some(data) => data.with_task(dep_node, tcx, task_arg, task_fn, hash_result),
-            None => (task_fn(tcx, task_arg), self.next_virtual_depnode_index()),
+            Some(data) => data.with_task::<_, _, H>(dep_node, tcx, key),
+            None => (H::invoke_provider_fn(tcx, key), self.next_virtual_depnode_index()),
         }
     }
 
@@ -325,14 +328,16 @@ impl DepGraphData {
     ///
     /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html
     #[inline(always)]
-    pub fn with_task<'tcx, A: Debug, R>(
+    pub fn with_task<'tcx, K, V, H>(
         &self,
         dep_node: DepNode,
         tcx: TyCtxt<'tcx>,
-        task_arg: A,
-        task_fn: fn(tcx: TyCtxt<'tcx>, task_arg: A) -> R,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
-    ) -> (R, DepNodeIndex) {
+        key: K,
+    ) -> (V, DepNodeIndex)
+    where
+        K: Debug,
+        H: QueryHelper<'tcx, K, V>,
+    {
         // If the following assertion triggers, it can have two reasons:
         // 1. Something is wrong with DepNode creation, either here or
         //    in `DepGraph::try_mark_green()`.
@@ -341,12 +346,12 @@ impl DepGraphData {
         self.assert_dep_node_not_yet_allocated_in_current_session(tcx.sess, &dep_node, || {
             format!(
                 "forcing query with already existing `DepNode`\n\
-                 - query-key: {task_arg:?}\n\
+                 - query-key: {key:?}\n\
                  - dep-node: {dep_node:?}"
             )
         });
 
-        let with_deps = |task_deps| with_deps(task_deps, || task_fn(tcx, task_arg));
+        let with_deps = |task_deps| with_deps(task_deps, || H::invoke_provider_fn(tcx, key));
         let (result, edges) = if tcx.is_eval_always(dep_node.kind) {
             (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
         } else {
@@ -358,8 +363,11 @@ impl DepGraphData {
             (with_deps(TaskDepsRef::Allow(&task_deps)), task_deps.into_inner().reads)
         };
 
-        let dep_node_index =
-            self.hash_result_and_alloc_node(tcx, dep_node, edges, &result, hash_result);
+        let dep_node_index = if H::NO_HASH {
+            self.alloc_and_color_node(dep_node, edges, None)
+        } else {
+            self.hash_result_and_alloc_node(tcx, dep_node, edges, &result, H::hash_value_fn)
+        };
 
         (result, dep_node_index)
     }
@@ -443,19 +451,21 @@ impl DepGraphData {
     }
 
     /// Intern the new `DepNode` with the dependencies up-to-now.
-    fn hash_result_and_alloc_node<'tcx, R>(
+    fn hash_result_and_alloc_node<'tcx, R, F>(
         &self,
         tcx: TyCtxt<'tcx>,
         node: DepNode,
         edges: EdgesVec,
         result: &R,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
-    ) -> DepNodeIndex {
+        hash_result: F,
+    ) -> DepNodeIndex
+    where
+        F: Fn(&mut StableHashingContext<'_>, &R) -> Fingerprint,
+    {
         let hashing_timer = tcx.prof.incr_result_hashing();
-        let current_fingerprint = hash_result.map(|hash_result| {
-            tcx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result))
-        });
-        let dep_node_index = self.alloc_and_color_node(node, edges, current_fingerprint);
+        let current_fingerprint =
+            tcx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result));
+        let dep_node_index = self.alloc_and_color_node(node, edges, Some(current_fingerprint));
         hashing_timer.finish_with_query_invocation_id(dep_node_index.into());
         dep_node_index
     }
@@ -569,14 +579,17 @@ impl DepGraph {
     /// FIXME: If the code is changed enough for this node to be marked before requiring the
     /// caller's node, we suppose that those changes will be enough to mark this node red and
     /// force a recomputation using the "normal" way.
-    pub fn with_feed_task<'tcx, R>(
+    pub fn with_feed_task<'tcx, R, F>(
         &self,
         node: DepNode,
         tcx: TyCtxt<'tcx>,
         result: &R,
-        hash_result: fn(&mut StableHashingContext<'_>, &R) -> Fingerprint,
+        hash_result: F,
         format_value_fn: fn(&R) -> String,
-    ) -> DepNodeIndex {
+    ) -> DepNodeIndex
+    where
+        F: Fn(&mut StableHashingContext<'_>, &R) -> Fingerprint,
+    {
         if let Some(data) = self.data.as_ref() {
             // The caller query has more dependencies than the node we are creating. We may
             // encounter a case where this created node is marked as green, but the caller query is
@@ -587,12 +600,12 @@ impl DepGraph {
             if let Some(prev_index) = data.previous.node_to_index_opt(&node) {
                 let dep_node_index = data.colors.current(prev_index);
                 if let Some(dep_node_index) = dep_node_index {
-                    incremental_verify_ich(
+                    incremental_verify_ich_green(
                         tcx,
                         data,
                         result,
                         prev_index,
-                        Some(hash_result),
+                        hash_result,
                         format_value_fn,
                     );
 
@@ -619,7 +632,7 @@ impl DepGraph {
                 }
             });
 
-            data.hash_result_and_alloc_node(tcx, node, edges, result, Some(hash_result))
+            data.hash_result_and_alloc_node(tcx, node, edges, result, hash_result)
         } else {
             // Incremental compilation is turned off. We just execute the task
             // without tracking. We still provide a dep-node index that uniquely
