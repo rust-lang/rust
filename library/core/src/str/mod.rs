@@ -2900,10 +2900,11 @@ impl str {
     ///
     /// 'Whitespace' refers to the definition used by
     /// [`u8::is_ascii_whitespace`]. Importantly, this definition excludes
-    /// the U+000B code point even though it has the unicode WhiteSpace property
+    /// the U+000B code point even though it has the Unicode [`White_Space`] property
     /// and is removed by [`str::trim_start`].
     ///
     /// [`u8::is_ascii_whitespace`]: u8::is_ascii_whitespace
+    /// [`White_Space`]: https://www.unicode.org/reports/tr44/#White_Space
     ///
     /// # Examples
     ///
@@ -2927,10 +2928,11 @@ impl str {
     ///
     /// 'Whitespace' refers to the definition used by
     /// [`u8::is_ascii_whitespace`]. Importantly, this definition excludes
-    /// the U+000B code point even though it has the unicode WhiteSpace property
+    /// the U+000B code point even though it has the Unicode [`White_Space`] property
     /// and is removed by [`str::trim_end`].
     ///
     /// [`u8::is_ascii_whitespace`]: u8::is_ascii_whitespace
+    /// [`White_Space`]: https://www.unicode.org/reports/tr44/#White_Space
     ///
     /// # Examples
     ///
@@ -2955,10 +2957,11 @@ impl str {
     ///
     /// 'Whitespace' refers to the definition used by
     /// [`u8::is_ascii_whitespace`]. Importantly, this definition excludes
-    /// the U+000B code point even though it has the unicode WhiteSpace property
+    /// the U+000B code point even though it has the Unicode [`White_Space`] property
     /// and is removed by [`str::trim`].
     ///
     /// [`u8::is_ascii_whitespace`]: u8::is_ascii_whitespace
+    /// [`White_Space`]: https://www.unicode.org/reports/tr44/#White_Space
     ///
     /// # Examples
     ///
