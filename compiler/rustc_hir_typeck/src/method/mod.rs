@@ -442,17 +442,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // any late-bound regions appearing in its bounds.
         let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, args);
 
-        let InferOk { value: bounds, obligations: o } =
-            self.at(&obligation.cause, self.param_env).normalize(bounds);
-        obligations.extend(o);
-        assert!(!bounds.has_escaping_bound_vars());
-
         let predicates_cause = obligation.cause.clone();
+        let mut normalization_obligations = PredicateObligations::new();
         obligations.extend(traits::predicates_for_generics(
             move |_, _| predicates_cause.clone(),
+            |pred| {
+                let InferOk { value: pred, obligations: o } =
+                    self.at(&obligation.cause, self.param_env).normalize(pred);
+                normalization_obligations.extend(o);
+                assert!(!pred.has_escaping_bound_vars());
+                pred
+            },
             self.param_env,
             bounds,
         ));
+        obligations.extend(normalization_obligations);
 
         // Also add an obligation for the method type being well-formed.
         debug!(
