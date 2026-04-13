@@ -44,7 +44,7 @@ pub mod x {
 
         type F = ::self;
         //[e2015]~^ ERROR expected type, found module `::self`
-        //[e2018]~^^ ERROR global paths cannot start with `self`
+        //[e2018]~^^ ERROR cannot find crate `self` in the list of imported crates
         pub use ::self;
         //[e2015]~^ ERROR imports need to be explicitly named
         //[e2018]~^^ ERROR extern prelude cannot be imported

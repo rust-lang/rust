@@ -266,6 +266,12 @@ error[E0573]: expected type, found module `crate::x::self`
 LL |         type E = crate::x::self;
    |                  ^^^^^^^^^^^^^^ not a type
 
+error[E0425]: cannot find crate `self` in the list of imported crates
+  --> $DIR/use-self-at-end.rs:45:20
+   |
+LL |         type F = ::self;
+   |                    ^^^^ not found in the list of imported crates
+
 error[E0223]: ambiguous associated type
   --> $DIR/use-self-at-end.rs:62:18
    |
@@ -292,13 +298,7 @@ help: if this is a dyn-compatible trait, use `dyn`
 LL |         type J = dyn super::Trait::self;
    |                  +++
 
-error[E0433]: global paths cannot start with `self`
-  --> $DIR/use-self-at-end.rs:45:20
-   |
-LL |         type F = ::self;
-   |                    ^^^^ cannot start with this
-
 error: aborting due to 36 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0223, E0252, E0432, E0433, E0573.
+Some errors have detailed explanations: E0223, E0252, E0425, E0432, E0433, E0573.
 For more information about an error, try `rustc --explain E0223`.

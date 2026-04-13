@@ -1837,12 +1837,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             }
 
-            // Support `...::self`, but deny `::self` after edition 2018
-            let allow_trailing_self = is_last
-                && name == kw::SelfLower
-                && segment_idx > 0
-                && (path[segment_idx - 1].ident.name != kw::PathRoot
-                    || self.path_root_is_crate_root(path[segment_idx - 1].ident));
+            let allow_trailing_self = is_last && name == kw::SelfLower;
 
             // Report special messages for path segment keywords in wrong positions.
             if ident.is_path_segment_keyword() && segment_idx != 0 && !allow_trailing_self {

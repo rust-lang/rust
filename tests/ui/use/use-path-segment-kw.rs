@@ -174,7 +174,7 @@ pub mod foo {
 
         type D2 = ::self;
         //[e2015]~^ ERROR expected type, found module `::self`
-        //[e2018]~^^ ERROR global paths cannot start with `self`
+        //[e2018]~^^ ERROR cannot find crate `self` in the list of imported crates
         use ::self; //[e2018]~ ERROR extern prelude cannot be imported
         //[e2015]~^ ERROR imports need to be explicitly named
         use ::self as _self2; //[e2018]~ ERROR extern prelude cannot be imported
