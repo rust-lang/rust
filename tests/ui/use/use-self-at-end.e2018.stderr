@@ -194,6 +194,30 @@ error[E0432]: unresolved import `super::Struct`
 LL |         pub use super::Struct::{self};
    |                        ^^^^^^ `Struct` is a struct, not a module
 
+error[E0433]: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:83:24
+   |
+LL |         pub use super::self::y::z;
+   |                        ^^^^ can only be used in path start position or last position
+
+error[E0433]: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:84:24
+   |
+LL |         pub use super::self::y::z as z3;
+   |                        ^^^^ can only be used in path start position or last position
+
+error[E0433]: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:85:24
+   |
+LL |         pub use super::self::y::{z};
+   |                        ^^^^ can only be used in path start position or last position
+
+error[E0433]: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:86:24
+   |
+LL |         pub use super::self::y::{z as z4};
+   |                        ^^^^ can only be used in path start position or last position
+
 error[E0432]: unresolved import `super::Struct`
   --> $DIR/use-self-at-end.rs:66:24
    |
@@ -205,6 +229,12 @@ error[E0433]: `self` in paths can only be used in start position or last positio
    |
 LL |         type G = z::self::self;
    |                     ^^^^ can only be used in path start position or last position
+
+error[E0433]: `self` in paths can only be used in start position or last position
+  --> $DIR/use-self-at-end.rs:82:25
+   |
+LL |         type K = super::self::y::z;
+   |                         ^^^^ can only be used in path start position or last position
 
 error[E0573]: expected type, found module `crate::self`
   --> $DIR/use-self-at-end.rs:13:18
@@ -268,7 +298,7 @@ error[E0433]: global paths cannot start with `self`
 LL |         type F = ::self;
    |                    ^^^^ cannot start with this
 
-error: aborting due to 31 previous errors; 1 warning emitted
+error: aborting due to 36 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0223, E0252, E0432, E0433, E0573.
 For more information about an error, try `rustc --explain E0223`.

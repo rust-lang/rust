@@ -78,6 +78,12 @@ pub mod x {
         pub use super::Trait::self as Trait1;
         pub use super::Trait::{self}; //~ ERROR the name `Trait` is defined multiple times
         pub use super::Trait::{self as Trait2};
+
+        type K = super::self::y::z; //~ ERROR `self` in paths can only be used in start position or last position
+        pub use super::self::y::z; //~ ERROR `self` in paths can only be used in start position or last position
+        pub use super::self::y::z as z3; //~ ERROR `self` in paths can only be used in start position or last position
+        pub use super::self::y::{z}; //~ ERROR `self` in paths can only be used in start position or last position
+        pub use super::self::y::{z as z4}; //~ ERROR `self` in paths can only be used in start position or last position
     }
 }
 
