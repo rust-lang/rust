@@ -8,6 +8,7 @@ mod tests;
     target_os = "l4re",
     target_os = "android",
     target_os = "hurd",
+    target_os = "qurt",
 )))]
 use libc::off_t as off64_t;
 #[cfg(any(
@@ -46,6 +47,8 @@ cfg_select! {
         // #[cfg(gnu_file_offset_bits64)].
         use libc::{pread64, pwrite64};
     }
+    // QuRT lacks pread/pwrite; handled below.
+    target_os = "qurt" => {}
     _ => {
         use libc::{pread as pread64, pwrite as pwrite64};
     }
@@ -121,6 +124,7 @@ const fn max_iov() -> usize {
     target_os = "openbsd",
     target_os = "horizon",
     target_os = "vita",
+    target_os = "qurt",
     target_vendor = "apple",
     target_os = "cygwin",
 )))]
@@ -148,6 +152,7 @@ impl FileDesc {
     #[cfg(not(any(
         target_os = "espidf",
         target_os = "horizon",
+        target_os = "qurt",
         target_os = "vita",
         target_os = "nuttx"
     )))]
@@ -165,6 +170,7 @@ impl FileDesc {
     #[cfg(any(
         target_os = "espidf",
         target_os = "horizon",
+        target_os = "qurt",
         target_os = "vita",
         target_os = "nuttx"
     ))]
@@ -177,6 +183,7 @@ impl FileDesc {
         cfg!(not(any(
             target_os = "espidf",
             target_os = "horizon",
+            target_os = "qurt",
             target_os = "vita",
             target_os = "nuttx",
             target_os = "wasi",
@@ -188,6 +195,7 @@ impl FileDesc {
         (&mut me).read_to_end(buf)
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
         cvt(unsafe {
             pread64(
@@ -198,6 +206,11 @@ impl FileDesc {
             )
         })
         .map(|n| n as usize)
+    }
+
+    #[cfg(target_os = "qurt")]
+    pub fn read_at(&self, _buf: &mut [u8], _offset: u64) -> io::Result<usize> {
+        Err(io::const_error!(io::ErrorKind::Unsupported, "pread not supported on QuRT"))
     }
 
     pub fn read_buf(&self, mut cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
@@ -217,6 +230,7 @@ impl FileDesc {
         Ok(())
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn read_buf_at(&self, mut cursor: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
         // SAFETY: `cursor.as_mut()` starts with `cursor.capacity()` writable bytes
         let ret = cvt(unsafe {
@@ -233,6 +247,11 @@ impl FileDesc {
             cursor.advance(ret as usize);
         }
         Ok(())
+    }
+
+    #[cfg(target_os = "qurt")]
+    pub fn read_buf_at(&self, _cursor: BorrowedCursor<'_, u8>, _offset: u64) -> io::Result<()> {
+        Err(io::const_error!(io::ErrorKind::Unsupported, "pread not supported on QuRT"))
     }
 
     #[cfg(any(
@@ -384,6 +403,7 @@ impl FileDesc {
     #[cfg(not(any(
         target_os = "espidf",
         target_os = "horizon",
+        target_os = "qurt",
         target_os = "vita",
         target_os = "nuttx"
     )))]
@@ -401,6 +421,7 @@ impl FileDesc {
     #[cfg(any(
         target_os = "espidf",
         target_os = "horizon",
+        target_os = "qurt",
         target_os = "vita",
         target_os = "nuttx"
     ))]
@@ -413,12 +434,14 @@ impl FileDesc {
         cfg!(not(any(
             target_os = "espidf",
             target_os = "horizon",
+            target_os = "qurt",
             target_os = "vita",
             target_os = "nuttx",
             target_os = "wasi",
         )))
     }
 
+    #[cfg(not(target_os = "qurt"))]
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
         unsafe {
             cvt(pwrite64(
@@ -429,6 +452,11 @@ impl FileDesc {
             ))
             .map(|n| n as usize)
         }
+    }
+
+    #[cfg(target_os = "qurt")]
+    pub fn write_at(&self, _buf: &[u8], _offset: u64) -> io::Result<usize> {
+        Err(io::const_error!(io::ErrorKind::Unsupported, "pwrite not supported on QuRT"))
     }
 
     #[cfg(any(
@@ -581,6 +609,10 @@ impl FileDesc {
         target_os = "nto",
         target_os = "qnx",
         target_os = "wasi",
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "qurt",
     )))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
@@ -617,9 +649,14 @@ impl FileDesc {
             Ok(())
         }
     }
-    #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
+    #[cfg(any(
+        target_os = "espidf",
+        target_os = "horizon",
+        target_os = "vita",
+        target_os = "qurt"
+    ))]
     pub fn set_cloexec(&self) -> io::Result<()> {
-        // FD_CLOEXEC is not supported in ESP-IDF, Horizon OS and Vita but there's no need to,
+        // FD_CLOEXEC is not supported in ESP-IDF, Horizon OS, Vita, and QuRT but there's no need to,
         // because none of them supports spawning processes.
         Ok(())
     }

@@ -4,7 +4,7 @@ mod error;
 
 mod is_terminal {
     cfg_select! {
-        any(target_family = "unix", target_os = "wasi") => {
+        any(target_family = "unix", target_os = "wasi", target_os = "qurt") => {
             mod isatty;
             pub use isatty::*;
         }
