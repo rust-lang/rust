@@ -61,6 +61,24 @@ fn cvt(ret: isize) -> crate::io::Result<usize> {
     if ret < 0 { Err(crate::io::Error::from_raw_os_error((-ret) as i32)) } else { Ok(ret as usize) }
 }
 
+const SYS_FS_POLL: u32 = 0x400B;
+const SYS_FS_FCNTL: u32 = 0x4018;
+
+const F_GETFL: u32 = 3;
+const F_SETFL: u32 = 4;
+const O_NONBLOCK: u32 = 0x0800;
+
+const POLLIN: u16 = 0x0001;
+const POLLERR: u16 = 0x0008;
+const POLLHUP: u16 = 0x0010;
+
+#[repr(C)]
+struct PollFd {
+    fd: i32,
+    events: u16,
+    revents: u16,
+}
+
 // ── ABI structs (must match abi/src/types/system.rs) ─────────────────────────
 
 #[repr(C)]
@@ -446,18 +464,99 @@ impl Process {
 /// A pipe end held by the parent for child stdio I/O.
 pub type ChildPipe = crate::sys::pipe::Pipe;
 
-/// Drain stdout then stderr to completion (sequential drain).
+/// Drain stdout and stderr concurrently (multiplexed drain).
 ///
-/// Safe for outputs well below the kernel pipe buffer.  For large outputs
-/// use concurrent draining (e.g. two threads).
+/// This prevents deadlocks where the child blocks writing to stderr
+/// because the parent is blocked reading from stdout, or vice versa.
 pub fn read_output(
     out: ChildPipe,
     stdout: &mut crate::vec::Vec<u8>,
     err: ChildPipe,
     stderr: &mut crate::vec::Vec<u8>,
 ) -> crate::io::Result<()> {
-    out.read_to_end(stdout)?;
-    err.read_to_end(stderr)?;
+    let out_fd = out.0 as i32;
+    let err_fd = err.0 as i32;
+
+    // Set non-blocking mode on both pipes so we can drain them concurrently
+    // without one blocking the other's progress.
+    for fd in &[out_fd, err_fd] {
+        let fl = unsafe { raw_syscall6(SYS_FS_FCNTL, *fd as usize, F_GETFL as usize, 0, 0, 0, 0) };
+        if fl < 0 {
+            return Err(crate::io::Error::from_raw_os_error(-fl as i32));
+        }
+        let ret = unsafe {
+            raw_syscall6(
+                SYS_FS_FCNTL,
+                *fd as usize,
+                F_SETFL as usize,
+                (fl as usize) | O_NONBLOCK as usize,
+                0,
+                0,
+                0,
+            )
+        };
+        if ret < 0 {
+            return Err(crate::io::Error::from_raw_os_error(-ret as i32));
+        }
+    }
+
+    let mut out_done = false;
+    let mut err_done = false;
+    let mut tmp = [0u8; 4096];
+
+    while !out_done || !err_done {
+        let mut pfds = [
+            PollFd { fd: out_fd, events: if out_done { 0 } else { POLLIN }, revents: 0 },
+            PollFd { fd: err_fd, events: if err_done { 0 } else { POLLIN }, revents: 0 },
+        ];
+
+        // Wait for data or hangup on either pipe.
+        let ret = unsafe {
+            raw_syscall6(SYS_FS_POLL, pfds.as_mut_ptr() as usize, 2, usize::MAX, 0, 0, 0)
+        };
+        if ret < 0 {
+            let err = -ret as i32;
+            if err == 4 {
+                continue;
+            } // EINTR
+            return Err(crate::io::Error::from_raw_os_error(err));
+        }
+
+        // Drain stdout if there's activity.
+        if !out_done && (pfds[0].revents & (POLLIN | POLLERR | POLLHUP) != 0) {
+            loop {
+                match out.read(&mut tmp) {
+                    Ok(0) => {
+                        out_done = true;
+                        break;
+                    }
+                    Ok(n) => {
+                        stdout.extend_from_slice(&tmp[..n]);
+                    }
+                    Err(e) if e.raw_os_error() == Some(11) => break, // EAGAIN
+                    Err(e) => return Err(e),
+                }
+            }
+        }
+
+        // Drain stderr if there's activity.
+        if !err_done && (pfds[1].revents & (POLLIN | POLLERR | POLLHUP) != 0) {
+            loop {
+                match err.read(&mut tmp) {
+                    Ok(0) => {
+                        err_done = true;
+                        break;
+                    }
+                    Ok(n) => {
+                        stderr.extend_from_slice(&tmp[..n]);
+                    }
+                    Err(e) if e.raw_os_error() == Some(11) => break, // EAGAIN
+                    Err(e) => return Err(e),
+                }
+            }
+        }
+    }
+
     Ok(())
 }
 
