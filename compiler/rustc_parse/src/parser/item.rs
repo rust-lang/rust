@@ -1237,6 +1237,7 @@ impl<'a> Parser<'a> {
                             mutability: _,
                             expr,
                             define_opaque,
+                            eii_impls: _,
                         }) => {
                             self.dcx().emit_err(errors::AssociatedStaticItemNotAllowed { span });
                             AssocItemKind::Const(Box::new(ConstItem {
@@ -1505,6 +1506,7 @@ impl<'a> Parser<'a> {
                                 },
                                 safety: Safety::Default,
                                 define_opaque: None,
+                                eii_impls: ThinVec::default(),
                             }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
@@ -1641,7 +1643,15 @@ impl<'a> Parser<'a> {
 
         self.expect_semi()?;
 
-        let item = StaticItem { ident, ty, safety, mutability, expr, define_opaque: None };
+        let item = StaticItem {
+            ident,
+            ty,
+            safety,
+            mutability,
+            expr,
+            define_opaque: None,
+            eii_impls: ThinVec::default(),
+        };
         Ok(ItemKind::Static(Box::new(item)))
     }
 
