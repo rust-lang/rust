@@ -1,20 +1,20 @@
 error[E0034]: multiple applicable items in scope
-  --> $DIR/unstable.rs:25:8
+  --> $DIR/unstable.rs:30:19
    |
-LL |     ().hello();
-   |        ^^^^^ multiple `hello` found
+LL |     assert_eq!(().hello(), "B");
+   |                   ^^^^^ multiple `hello` found
    |
    = note: candidate #1 is defined in an impl of the trait `shadowed_stability::A` for the type `T`
    = note: candidate #2 is defined in an impl of the trait `shadowed_stability::B` for the type `T`
 help: disambiguate the method for candidate #1
    |
-LL -     ().hello();
-LL +     shadowed_stability::A::hello(&());
+LL -     assert_eq!(().hello(), "B");
+LL +     assert_eq!(shadowed_stability::A::hello(&()), "B");
    |
 help: disambiguate the method for candidate #2
    |
-LL -     ().hello();
-LL +     shadowed_stability::B::hello(&());
+LL -     assert_eq!(().hello(), "B");
+LL +     assert_eq!(shadowed_stability::B::hello(&()), "B");
    |
 
 error: aborting due to 1 previous error

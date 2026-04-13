@@ -22,8 +22,11 @@ extern crate shadowed_stability;
 use shadowed_stability::*;
 
 fn main() {
-    ().hello();
+    #[cfg(any(off_normal, off_shadowing))]
+    assert_eq!(().hello(), "A");
     //[off_normal,off_shadowing]~^ WARN a method with this name may be added
     //[off_normal,off_shadowing]~| WARN once this associated item is added
-    //[on_normal]~^^^ ERROR multiple applicable items in scope
+    #[cfg(any(on_normal, on_shadowing))]
+    assert_eq!(().hello(), "B");
+    //[on_normal]~^ ERROR multiple applicable items in scope
 }

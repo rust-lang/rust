@@ -1,5 +1,4 @@
 //@ run-pass
-//@ check-run-results
 
 // Make sure we don't prefer a subtrait that we would've otherwise eliminated
 // in `consider_probe` during method probing.
@@ -9,15 +8,15 @@
 struct W<T>(T);
 
 trait Upstream {
-    fn hello(&self) {
-        println!("upstream");
+    fn hello(&self) -> &'static str {
+        "upstream"
     }
 }
 impl<T> Upstream for T {}
 
 trait Downstream: Upstream {
-    fn hello(&self) {
-        println!("downstream");
+    fn hello(&self) -> &'static str {
+        "downstream"
     }
 }
 impl<T> Downstream for W<T> where T: Foo {}
@@ -26,5 +25,5 @@ trait Foo {}
 
 fn main() {
     let x = W(1i32);
-    x.hello();
+    assert_eq!(x.hello(), "upstream");
 }

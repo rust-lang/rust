@@ -1,8 +1,8 @@
 warning: a method with this name may be added to the standard library in the future
-  --> $DIR/unstable.rs:25:8
+  --> $DIR/unstable.rs:26:19
    |
-LL |     ().hello();
-   |        ^^^^^
+LL |     assert_eq!(().hello(), "A");
+   |                   ^^^^^
    |
    = help: call with fully qualified syntax `shadowed_stability::A::hello(...)` to keep using the current method
    = warning: once this associated item is added to the standard library, the ambiguity may cause an error or change in behavior!
