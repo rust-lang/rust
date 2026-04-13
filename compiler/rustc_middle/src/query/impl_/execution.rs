@@ -490,7 +490,7 @@ fn load_from_disk_or_invoke_provider_green<
     debug_assert!(dep_graph_data.is_index_green(prev_index));
 
     // First try to load the result from the on-disk cache. Some things are never cached on disk.
-    let try_value = if (query.will_cache_on_disk_for_key_fn)(key) {
+    let try_value = if H::will_cache_on_disk_for_key(key) {
         let prof_timer = tcx.prof.incr_cache_loading();
         let value = H::try_load_from_disk_fn(tcx, prev_index);
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
@@ -558,13 +558,17 @@ fn load_from_disk_or_invoke_provider_green<
 /// on having the dependency graph (and in some cases a disk-cached value)
 /// from the previous incr-comp session.
 #[inline(never)]
-fn ensure_can_skip_execution<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
+fn ensure_can_skip_execution<'tcx, C, H>(
     query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
     key: C::Key,
     dep_node: DepNode,
     ensure_mode: EnsureMode,
-) -> bool {
+) -> bool
+where
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
     // Queries with `eval_always` should never skip execution.
     if query.eval_always {
         return false;
@@ -595,7 +599,7 @@ fn ensure_can_skip_execution<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C
                 // needed, which guarantees the query provider will never run
                 // for this key.
                 EnsureMode::Done => {
-                    (query.will_cache_on_disk_for_key_fn)(key)
+                    H::will_cache_on_disk_for_key(key)
                         && loadable_from_disk(tcx, serialized_dep_node_index)
                 }
             }

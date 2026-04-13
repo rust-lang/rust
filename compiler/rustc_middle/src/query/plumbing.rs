@@ -98,8 +98,6 @@ pub struct QueryVTable<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Valu
     /// This should be the only code that calls the provider function.
     pub invoke_provider_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
 
-    pub will_cache_on_disk_for_key_fn: fn(key: C::Key) -> bool,
-
     pub helper: H,
 
     /// Function pointer that hashes this query's result values.
@@ -132,6 +130,8 @@ pub struct QueryVTable<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Valu
 
 pub trait QueryHelper<'tcx, K, V>: Default + 'static {
     fn try_load_from_disk_fn(tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) -> Option<V>;
+
+    fn will_cache_on_disk_for_key(key: K) -> bool;
 }
 
 impl<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>> fmt::Debug
@@ -366,6 +366,22 @@ macro_rules! define_callbacks {
                     ) -> Option<Erased<Value<'tcx>>> {
                         None
                     }
+                    #[cfg_attr(all($cache_on_disk, $separate_provide_extern), inline)]
+                    #[cfg_attr(not(all($cache_on_disk, $separate_provide_extern)), inline(always))]
+                    fn will_cache_on_disk_for_key(
+                        _key: rustc_middle::queries::$name::Key<'tcx>,
+                    ) -> bool {
+                        cfg_select! {
+                            // If a query has both `cache_on_disk` and `separate_provide_extern`, only
+                            // disk-cache values for "local" keys, i.e. things in the current crate.
+                            all($cache_on_disk, $separate_provide_extern) => {
+                                crate::query::AsLocalQueryKey::as_local_key(&_key).is_some()
+                            }
+                            all($cache_on_disk, not($separate_provide_extern)) => true,
+                            not($cache_on_disk) => false,
+                        }
+                    }
+
                 }
 
                 pub type Cache<'tcx> =
