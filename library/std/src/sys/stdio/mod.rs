@@ -1,7 +1,7 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
 cfg_select! {
-    any(target_family = "unix", target_os = "hermit", target_os = "wasi") => {
+    any(target_family = "unix", target_os = "hermit", target_os = "wasi", target_os = "qurt",) => {
         mod unix;
         pub use unix::*;
     }

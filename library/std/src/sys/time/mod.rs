@@ -14,7 +14,13 @@ cfg_select! {
         mod uefi;
         use uefi as imp;
     }
-    any(target_os = "hermit", target_os = "teeos", target_family = "unix", target_os = "wasi") => {
+    any(
+        target_os = "hermit",
+        target_os = "teeos",
+        target_family = "unix",
+        target_os = "qurt",
+        target_os = "wasi"
+    ) => {
         mod unix;
         use unix as imp;
     }
