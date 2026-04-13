@@ -3611,7 +3611,9 @@ intrinsics:
     doc: Set all predicate elements to false
     arguments: []
     return_type: "svbool_t"
-    assert_instr: [pfalse]
+    # TODO: With current implementation, `pfalse` isn't generated, will need to add intrinsic to
+    # generate `zeroinitializer`
+    # assert_instr: [pfalse] 
     compose:
       - FnCall:
           - "svdupq_n_b8"

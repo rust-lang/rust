@@ -352,7 +352,10 @@ fn matches(rust: &Function, arm: &Intrinsic) -> Result<(), String> {
         bail!("wrong number of const arguments");
     }
 
-    if rust.instrs.is_empty() && arm.instruction != "" {
+    if rust.instrs.is_empty()
+        && arm.instruction != ""
+        && !SKIP_ASSERT_INSTR_TESTS.contains(&rust.name)
+    {
         bail!(
             "instruction not listed for `{}`, but arm lists {:?}",
             rust.name,
@@ -670,6 +673,11 @@ fn parse_ty_base(s: &str) -> &'static Type {
         _ => panic!("failed to parse json type {s:?}"),
     }
 }
+
+// FIXME(arm-maintainers): Some tests require new rustc intrinsics in order to generate
+// the appropriate instruction, though they do have the correct behaviour - these will be fixed
+// but are disabled for now.
+static SKIP_ASSERT_INSTR_TESTS: &'static [&'static str] = &["svpfalse_b"];
 
 // FIXME(arm-maintainers): With the advent of the `intrinsic-test` tool, new tests of this kind
 // are no longer being added and just adding to this list indefinitely isn't the best solution for

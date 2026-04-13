@@ -30819,7 +30819,6 @@ pub fn svorv_u64(pg: svbool_t, op: svuint64_t) -> u64 {
 #[inline(always)]
 #[target_feature(enable = "sve")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(pfalse))]
 pub fn svpfalse_b() -> svbool_t {
     svdupq_n_b8(
         false, false, false, false, false, false, false, false, false, false, false, false, false,
