@@ -10,7 +10,7 @@ pub(crate) mod type_alias;
 pub(crate) mod union_literal;
 pub(crate) mod variant;
 
-use hir::{AsAssocItem, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type};
+use hir::{AsAssocItem, HasAttrs, HirDisplay, Impl, ModuleDef, ScopeDef, Type};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     RootDatabase, SnippetCap, SymbolKind,
@@ -23,7 +23,9 @@ use syntax::{AstNode, SmolStr, SyntaxKind, TextRange, ToSmolStr, ast, format_smo
 use crate::{
     CompletionContext, CompletionItem, CompletionItemKind, CompletionItemRefMode,
     CompletionRelevance,
-    context::{DotAccess, DotAccessKind, PathCompletionCtx, PathKind, PatternContext},
+    context::{
+        DotAccess, DotAccessKind, PathCompletionCtx, PathKind, PatternContext, TypeLocation,
+    },
     item::{Builder, CompletionRelevanceTypeMatch},
     render::{
         function::render_fn,
@@ -422,6 +424,7 @@ fn render_resolution_path(
     }
 
     let completion = ctx.completion;
+    let module = completion.module;
     let cap = ctx.snippet_cap();
     let db = completion.db;
     let config = completion.config;
@@ -466,6 +469,7 @@ fn render_resolution_path(
             exact_name_match: compute_exact_name_match(completion, &name),
             is_local: matches!(resolution, ScopeDef::Local(_)),
             requires_import,
+            has_local_inherent_impl: compute_has_local_inherent_impl(db, path_ctx, &ty, module),
             ..CompletionRelevance::default()
         });
 
@@ -660,6 +664,18 @@ fn compute_type_match(
     match_types(ctx, expected_type, completion_ty)
 }
 
+fn compute_has_local_inherent_impl(
+    db: &RootDatabase,
+    path_ctx: &PathCompletionCtx<'_>,
+    completion_ty: &hir::Type<'_>,
+    curr_module: hir::Module,
+) -> bool {
+    matches!(path_ctx.kind, PathKind::Type { location: TypeLocation::ImplTarget })
+        && Impl::all_for_type(db, completion_ty.clone())
+            .iter()
+            .any(|imp| imp.trait_(db).is_none() && imp.module(db) == curr_module)
+}
+
 fn compute_exact_name_match(ctx: &CompletionContext<'_>, completion_name: &str) -> bool {
     ctx.expected_name.as_ref().is_some_and(|name| name.text() == completion_name)
 }
@@ -832,6 +848,7 @@ mod tests {
                 ),
                 (relevance.trait_.is_some_and(|it| it.is_op_method), "op_method"),
                 (relevance.requires_import, "requires_import"),
+                (relevance.has_local_inherent_impl, "has_local_inherent_impl"),
             ]
             .into_iter()
             .filter_map(|(cond, desc)| if cond { Some(desc) } else { None })
@@ -1214,6 +1231,7 @@ fn main() { Foo::Fo$0 }
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1264,6 +1282,7 @@ fn main() { Foo::Fo$0 }
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1407,6 +1426,7 @@ fn main() { Foo::Fo$0 }
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1490,6 +1510,7 @@ fn main() { let _: m::Spam = S$0 }
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1526,6 +1547,7 @@ fn main() { let _: m::Spam = S$0 }
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1616,6 +1638,7 @@ fn foo() { A { the$0 } }
                             postfix_match: None,
                             function: None,
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                     },
                 ]
@@ -1675,6 +1698,7 @@ impl S {
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                     },
                     CompletionItem {
@@ -1766,6 +1790,7 @@ use self::E::*;
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1836,6 +1861,7 @@ fn foo(s: S) { s.$0 }
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                     },
                 ]
@@ -2048,6 +2074,7 @@ fn f() -> i32 {
                             postfix_match: None,
                             function: None,
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                     },
                 ]
@@ -2189,6 +2216,48 @@ fn f() {
 "#,
             expect![[r#"
                 me aaa() fn(&self) -> u64 [name]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn score_has_local_inherent_impl() {
+        check_relevance(
+            r#"
+trait Foob {}
+struct Fooa {}
+impl Fooa {}
+
+impl Foo$0
+"#,
+            expect![[r#"
+                tt Foob  []
+                st Fooa Fooa [has_local_inherent_impl]
+            "#]],
+        );
+
+        // inherent impl in different modules, not trigger `has_local_inherent_impl`
+        check_relevance(
+            r#"
+trait Foob {}
+struct Fooa {}
+
+mod a {
+    use super::*;
+    impl Fooa {}
+}
+
+mod b {
+    use super::*;
+    impl Foo$0
+}
+
+"#,
+            expect![[r#"
+                st Fooa Fooa []
+                tt Foob  []
+                md a  []
+                md b  []
             "#]],
         );
     }
@@ -2861,6 +2930,7 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         ref_match: "&@107",
                     },
@@ -2948,6 +3018,7 @@ fn foo() {
                             postfix_match: None,
                             function: None,
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                     },
                 ]
@@ -3006,6 +3077,7 @@ fn main() {
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         ref_match: "&@92",
                     },
@@ -3476,6 +3548,7 @@ fn main() {
                             postfix_match: None,
                             function: None,
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                     },
                     CompletionItem {
@@ -3510,6 +3583,7 @@ fn main() {
                             postfix_match: None,
                             function: None,
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                     },
                 ]

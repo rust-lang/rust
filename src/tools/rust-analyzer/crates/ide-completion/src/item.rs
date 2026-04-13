@@ -184,6 +184,8 @@ pub struct CompletionRelevance {
     pub function: Option<CompletionRelevanceFn>,
     /// true when there is an `await.method()` or `iter().method()` completion.
     pub is_skipping_completion: bool,
+    /// if inherent impl already exists in current module, user may not want to implement it again.
+    pub has_local_inherent_impl: bool,
 }
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CompletionRelevanceTraitInfo {
@@ -275,6 +277,7 @@ impl CompletionRelevance {
             trait_,
             function,
             is_skipping_completion,
+            has_local_inherent_impl,
         } = self;
 
         // only applicable for completions within use items
@@ -346,6 +349,10 @@ impl CompletionRelevance {
 
             score += fn_score;
         };
+
+        if has_local_inherent_impl {
+            score -= 5;
+        }
 
         score
     }
