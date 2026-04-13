@@ -114,7 +114,7 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     fn set_bindings_effective_visibilities(&mut self, module_id: LocalDefId) {
         let module = self.r.expect_module(module_id.to_def_id());
         for (_, name_resolution) in self.r.resolutions(module).borrow().iter() {
-            let Some(mut decl) = name_resolution.borrow().binding() else {
+            let Some(mut decl) = name_resolution.borrow().best_decl() else {
                 continue;
             };
             // Set the given effective visibility level to `Level::Direct` and
