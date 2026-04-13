@@ -2,24 +2,23 @@ use std::num::NonZero;
 
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::limit::Limit;
-use rustc_middle::bug;
 #[expect(unused_imports, reason = "used by doc comments")]
 use rustc_middle::dep_graph::DepKindVTable;
 use rustc_middle::dep_graph::{DepNode, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::erase::{Erasable, Erased};
-use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder};
-use rustc_middle::query::{QueryCache, QueryJobId, QueryMode, QueryVTable, erase};
+use rustc_middle::query::on_disk_cache::CacheEncoder;
+use rustc_middle::query::{QueryCache, QueryHelper, QueryJobId, QueryMode, QueryVTable, erase};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::Encodable;
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::LOCAL_CRATE;
 
-use crate::error::{QueryOverflow, QueryOverflowNote};
-use crate::execution::all_inactive;
-use crate::job::find_dep_kind_root;
-use crate::query_impl::for_each_query_vtable;
-use crate::{CollectActiveJobsKind, collect_active_query_jobs};
+use crate::query::impl_::error::{QueryOverflow, QueryOverflowNote};
+use crate::query::impl_::execution::all_inactive;
+use crate::query::impl_::job::find_dep_kind_root;
+use crate::query::impl_::query_impl::for_each_query_vtable;
+use crate::query::impl_::{CollectActiveJobsKind, collect_active_query_jobs};
 
 fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {
     let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::Full);
@@ -81,19 +80,20 @@ pub(crate) fn encode_query_values<'tcx>(tcx: TyCtxt<'tcx>, encoder: &mut CacheEn
     });
 }
 
-fn encode_query_values_inner<'a, 'tcx, C, V>(
+fn encode_query_values_inner<'a, 'tcx, C, V, H>(
     tcx: TyCtxt<'tcx>,
-    query: &'tcx QueryVTable<'tcx, C>,
+    query: &'tcx QueryVTable<'tcx, C, H>,
     encoder: &mut CacheEncoder<'a, 'tcx>,
 ) where
     C: QueryCache<Value = Erased<V>>,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
     V: Erasable + Encodable<CacheEncoder<'a, 'tcx>>,
 {
     let _timer = tcx.prof.generic_activity_with_arg("encode_query_results_for", query.name);
 
     assert!(all_inactive(&query.state));
     query.cache.for_each(&mut |key, value, dep_node| {
-        if (query.will_cache_on_disk_for_key_fn)(*key) {
+        if H::will_cache_on_disk_for_key(*key) {
             encoder.encode_query_value::<V>(dep_node, &erase::restore_val::<V>(*value));
         }
     });
@@ -109,8 +109,8 @@ pub(crate) fn verify_query_key_hashes<'tcx>(tcx: TyCtxt<'tcx>) {
     }
 }
 
-fn verify_query_key_hashes_inner<'tcx, C: QueryCache>(
-    query: &'tcx QueryVTable<'tcx, C>,
+fn verify_query_key_hashes_inner<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
+    query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
 ) {
     let _timer = tcx.prof.generic_activity_with_arg("query_key_hash_verify_for", query.name);
@@ -136,11 +136,13 @@ fn verify_query_key_hashes_inner<'tcx, C: QueryCache>(
 }
 
 /// Inner implementation of [`DepKindVTable::promote_from_disk_fn`] for queries.
-pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
+pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache, H>(
     tcx: TyCtxt<'tcx>,
-    query: &'tcx QueryVTable<'tcx, C>,
+    query: &'tcx QueryVTable<'tcx, C, H>,
     dep_node: DepNode,
-) {
+) where
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
     debug_assert!(tcx.dep_graph.is_green(&dep_node));
 
     let key = C::Key::try_recover_key(tcx, &dep_node).unwrap_or_else(|| {
@@ -152,7 +154,7 @@ pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
 
     // If the recovered key isn't eligible for cache-on-disk, then there's no
     // value on disk to promote.
-    if !(query.will_cache_on_disk_for_key_fn)(key) {
+    if !H::will_cache_on_disk_for_key(key) {
         return;
     }
 
@@ -168,7 +170,7 @@ pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
         // FIXME(Zalathar): Is there a reasonable way to skip more of the
         // query bookkeeping when doing this?
         None => {
-            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Get);
+            query.execute_query_fn(tcx, DUMMY_SP, key, QueryMode::Get);
         }
     }
 }
@@ -179,19 +181,4 @@ pub(crate) fn loadable_from_disk<'tcx>(tcx: TyCtxt<'tcx>, id: SerializedDepNodeI
     } else {
         false
     }
-}
-
-pub(crate) fn try_load_from_disk<'tcx, V>(
-    tcx: TyCtxt<'tcx>,
-    prev_index: SerializedDepNodeIndex,
-) -> Option<V>
-where
-    V: for<'a> Decodable<CacheDecoder<'a, 'tcx>>,
-{
-    let on_disk_cache = tcx.query_system.on_disk_cache.as_ref()?;
-
-    // The call to `with_query_deserialization` enforces that no new `DepNodes`
-    // are created during deserialization. See the docs of that method for more
-    // details.
-    tcx.dep_graph.with_query_deserialization(|| on_disk_cache.try_load_query_value(tcx, prev_index))
 }

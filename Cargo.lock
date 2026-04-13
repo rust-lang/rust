@@ -4169,7 +4169,6 @@ dependencies = [
  "rustc_parse",
  "rustc_passes",
  "rustc_privacy",
- "rustc_query_impl",
  "rustc_resolve",
  "rustc_session",
  "rustc_span",
@@ -4303,6 +4302,7 @@ dependencies = [
  "bitflags",
  "either",
  "gsgdt",
+ "measureme",
  "parking_lot",
  "polonius-engine",
  "rustc_abi",
@@ -4562,23 +4562,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
-]
-
-[[package]]
-name = "rustc_query_impl"
-version = "0.0.0"
-dependencies = [
- "measureme",
- "rustc_abi",
- "rustc_data_structures",
- "rustc_errors",
- "rustc_hir",
- "rustc_macros",
- "rustc_middle",
- "rustc_serialize",
- "rustc_span",
- "rustc_thread_pool",
- "tracing",
 ]
 
 [[package]]

@@ -35,7 +35,6 @@ macro_rules! arena_types {
                 rustc_middle::ty::ResolverAstLowering<'tcx>,
                 std::sync::Arc<rustc_ast::Crate>,
             )>,
-            [] crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
             [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,
             [] const_allocs: rustc_middle::mir::interpret::Allocation,
             [] region_scope_tree: rustc_middle::middle::region::ScopeTree,

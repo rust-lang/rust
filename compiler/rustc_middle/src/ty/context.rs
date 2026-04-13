@@ -837,6 +837,8 @@ pub struct GlobalCtxt<'tcx> {
 
     /// A jobserver reference used to release then acquire a token while waiting on a query.
     pub jobserver_proxy: Arc<Proxy>,
+
+    pub crate_for_resolver: Lock<Option<(ast::Crate, ast::AttrVec)>>,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -1062,6 +1064,7 @@ impl<'tcx> TyCtxt<'tcx> {
             alloc_map: interpret::AllocMap::new(),
             current_gcx,
             jobserver_proxy,
+            crate_for_resolver: Default::default(),
         });
 
         // This is a separate function to work around a crash with parallel rustc (#135870)
@@ -1220,7 +1223,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn needs_crate_hash(self) -> bool {
         // Why is the crate hash needed for these configurations?
         // - debug_assertions: for the "fingerprint the result" check in
-        //   `rustc_query_impl::execution::execute_job`.
+        //   `rustc_middle::query::impl_::execution::execute_job`.
         // - incremental: for query lookups.
         // - needs_metadata: for putting into crate metadata.
         // - instrument_coverage: for putting into coverage data (see

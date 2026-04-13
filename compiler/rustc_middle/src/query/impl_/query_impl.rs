@@ -1,10 +1,10 @@
 use rustc_middle::queries::TaggedQueryKey;
-use rustc_middle::query::erase::{self, Erased};
-use rustc_middle::query::{AsLocalQueryKey, QueryMode, QueryVTable};
+use rustc_middle::query::erase::Erased;
+use rustc_middle::query::{QueryMode, QueryVTable};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
-use crate::GetQueryVTable;
+use crate::query::impl_::GetQueryVTable;
 
 macro_rules! define_queries {
     (
@@ -33,7 +33,7 @@ macro_rules! define_queries {
         // Non-queries are unused here.
         non_queries { $($_:tt)* }
     ) => {
-        // This macro expects to be expanded into `crate::query_impl`, which is this file.
+        // This macro expects to be expanded into `crate::query::impl_::query_impl`, which is this file.
         $(
             pub(crate) mod $name {
                 use super::*;
@@ -58,7 +58,7 @@ macro_rules! define_queries {
                     ) -> Option<Erased<Value<'tcx>>> {
                         #[cfg(debug_assertions)]
                         let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
-                        crate::execution::execute_query_incr_inner(
+                        crate::query::impl_::execution::execute_query_incr_inner(
                             &tcx.query_system.query_vtables.$name,
                             tcx,
                             span,
@@ -79,7 +79,7 @@ macro_rules! define_queries {
                         key: Key<'tcx>,
                         __mode: QueryMode,
                     ) -> Option<Erased<Value<'tcx>>> {
-                        Some(crate::execution::execute_query_non_incr_inner(
+                        Some(crate::query::impl_::execution::execute_query_non_incr_inner(
                             &tcx.query_system.query_vtables.$name,
                             tcx,
                             span,
@@ -88,63 +88,9 @@ macro_rules! define_queries {
                     }
                 }
 
-                /// Defines an `invoke_provider` function that calls the query's provider,
-                /// to be used as a function pointer in the query's vtable.
-                ///
-                /// To mark a short-backtrace boundary, the function's actual name
-                /// (after demangling) must be `__rust_begin_short_backtrace`.
-                mod invoke_provider_fn {
-                    use super::*;
-                    use rustc_middle::queries::$name::{Key, Value, provided_to_erased};
-
-                    #[inline(never)]
-                    pub(crate) fn __rust_begin_short_backtrace<'tcx>(
-                        tcx: TyCtxt<'tcx>,
-                        key: Key<'tcx>,
-                    ) -> Erased<Value<'tcx>> {
-                        #[cfg(debug_assertions)]
-                        let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
-
-                        // Call the actual provider function for this query.
-
-                        #[cfg($separate_provide_extern)]
-                        let provided_value = if let Some(local_key) = key.as_local_key() {
-                            (tcx.query_system.local_providers.$name)(tcx, local_key)
-                        } else {
-                            (tcx.query_system.extern_providers.$name)(tcx, key)
-                        };
-
-                        #[cfg(not($separate_provide_extern))]
-                        let provided_value = (tcx.query_system.local_providers.$name)(tcx, key);
-
-                        rustc_middle::ty::print::with_reduced_queries!({
-                            tracing::trace!(?provided_value);
-                        });
-
-                        // Erase the returned value, because `QueryVTable` uses erased values.
-                        // For queries with `arena_cache`, this also arena-allocates the value.
-                        provided_to_erased(tcx, provided_value)
-                    }
-                }
-
-                fn will_cache_on_disk_for_key<'tcx>(
-                    _key: rustc_middle::queries::$name::Key<'tcx>,
-                ) -> bool {
-                    cfg_select! {
-                        // If a query has both `cache_on_disk` and `separate_provide_extern`, only
-                        // disk-cache values for "local" keys, i.e. things in the current crate.
-                        all($cache_on_disk, $separate_provide_extern) => {
-                            AsLocalQueryKey::as_local_key(&_key).is_some()
-                        }
-                        all($cache_on_disk, not($separate_provide_extern)) => true,
-                        not($cache_on_disk) => false,
-                    }
-                }
-
-                pub(crate) fn make_query_vtable<'tcx>(incremental: bool)
-                    -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>>
+                pub(crate) fn make_query_vtable<'tcx>()
+                    -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>, rustc_middle::queries::$name::Helper>
                 {
-                    use rustc_middle::queries::$name::Value;
                     QueryVTable {
                         name: stringify!($name),
                         eval_always: $eval_always,
@@ -154,52 +100,20 @@ macro_rules! define_queries {
                         state: Default::default(),
                         cache: Default::default(),
 
-                        invoke_provider_fn: self::invoke_provider_fn::__rust_begin_short_backtrace,
-
-                        will_cache_on_disk_for_key_fn:
-                            $crate::query_impl::$name::will_cache_on_disk_for_key,
-
-                        #[cfg($cache_on_disk)]
-                        try_load_from_disk_fn: |tcx, prev_index| {
-                            use rustc_middle::queries::$name::{ProvidedValue, provided_to_erased};
-
-                            let loaded_value: ProvidedValue<'tcx> =
-                                $crate::plumbing::try_load_from_disk(tcx, prev_index)?;
-
-                            // Arena-alloc the value if appropriate, and erase it.
-                            Some(provided_to_erased(tcx, loaded_value))
-                        },
-                        #[cfg(not($cache_on_disk))]
-                        try_load_from_disk_fn: |_tcx, _prev_index| None,
+                        helper: Default::default(),
 
                         #[cfg($handle_cycle_error)]
                         handle_cycle_error_fn: |tcx, key, cycle, err| {
                             use rustc_middle::query::erase::erase_val;
 
-                            erase_val($crate::handle_cycle_error::$name(tcx, key, cycle, err))
+                            erase_val($crate::query::impl_::handle_cycle_error::$name(tcx, key, cycle, err))
                         },
                         #[cfg(not($handle_cycle_error))]
                         handle_cycle_error_fn: |_tcx, _key, _cycle, err| {
-                            $crate::handle_cycle_error::default(err)
+                            $crate::query::impl_::handle_cycle_error::default(err)
                         },
 
-                        #[cfg($no_hash)]
-                        hash_value_fn: None,
-                        #[cfg(not($no_hash))]
-                        hash_value_fn: Some(|hcx, erased_value: &erase::Erased<Value<'tcx>>| {
-                            let value = erase::restore_val(*erased_value);
-                            rustc_middle::dep_graph::hash_result(hcx, &value)
-                        }),
-
-                        format_value: |erased_value: &erase::Erased<Value<'tcx>>| {
-                            format!("{:?}", erase::restore_val(*erased_value))
-                        },
                         create_tagged_key: TaggedQueryKey::$name,
-                        execute_query_fn: if incremental {
-                            crate::query_impl::$name::execute_query_incr::__rust_end_short_backtrace
-                        } else {
-                            crate::query_impl::$name::execute_query_non_incr::__rust_end_short_backtrace
-                        },
                     }
                 }
 
@@ -208,21 +122,22 @@ macro_rules! define_queries {
 
                 impl<'tcx> GetQueryVTable<'tcx> for VTableGetter {
                     type Cache = rustc_middle::queries::$name::Cache<'tcx>;
+                    type Helper = rustc_middle::queries::$name::Helper;
 
                     #[inline(always)]
-                    fn query_vtable(tcx: TyCtxt<'tcx>) -> &'tcx QueryVTable<'tcx, Self::Cache> {
+                    fn query_vtable(tcx: TyCtxt<'tcx>) -> &'tcx QueryVTable<'tcx, Self::Cache, Self::Helper> {
                         &tcx.query_system.query_vtables.$name
                     }
                 }
             }
         )*
 
-        pub(crate) fn make_query_vtables<'tcx>(incremental: bool)
+        pub(crate) fn make_query_vtables<'tcx>()
             -> rustc_middle::queries::QueryVTables<'tcx>
         {
             rustc_middle::queries::QueryVTables {
                 $(
-                    $name: crate::query_impl::$name::make_query_vtable(incremental),
+                    $name: crate::query::impl_::query_impl::$name::make_query_vtable(),
                 )*
             }
         }
@@ -246,7 +161,7 @@ macro_rules! define_queries {
             (ALL, $tcx:expr, $closure:expr) => {{
                 let tcx: rustc_middle::ty::TyCtxt<'_> = $tcx;
                 $(
-                    let query: &rustc_middle::query::QueryVTable<'_, _> =
+                    let query: &rustc_middle::query::QueryVTable<'_, _, _> =
                         &tcx.query_system.query_vtables.$name;
                     $closure(query);
                 )*
@@ -261,7 +176,7 @@ macro_rules! define_queries {
                 $(
                     #[cfg($cache_on_disk)]
                     {
-                        let query: &rustc_middle::query::QueryVTable<'_, _> =
+                        let query: &rustc_middle::query::QueryVTable<'_, _, _> =
                             &tcx.query_system.query_vtables.$name;
                         $closure(query);
                     }

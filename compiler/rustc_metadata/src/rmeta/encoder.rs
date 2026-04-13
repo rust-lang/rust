@@ -20,7 +20,7 @@ use rustc_hir_pretty::id_to_string;
 use rustc_middle::dep_graph::WorkProductId;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
-use rustc_middle::query::Providers;
+use rustc_middle::query::{Providers, QueryHashHelper, QueryHelper};
 use rustc_middle::traits::specialization_graph;
 use rustc_middle::ty::AssocContainer;
 use rustc_middle::ty::codec::TyEncoder;
@@ -2472,14 +2472,38 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         );
     }
 
-    // Perform metadata encoding inside a task, so the dep-graph can check if any encoded
-    // information changes, and maybe reuse the work product.
-    tcx.dep_graph.with_task(
-        dep_node,
-        tcx,
-        path,
-        |tcx, path| {
-            with_encode_metadata_header(tcx, path, |ecx| {
+    #[derive(Default)]
+    struct EncodeMetadataHelper;
+
+    impl QueryHashHelper<()> for EncodeMetadataHelper {
+        const NO_HASH: bool = true;
+
+        fn hash_value_fn(
+            _: &mut rustc_middle::ich::StableHashingContext<'_>,
+            _: &(),
+        ) -> rustc_data_structures::fingerprint::Fingerprint {
+            unimplemented!()
+        }
+
+        fn format_value((): &()) -> String {
+            "()".to_string()
+        }
+    }
+
+    impl<'tcx> QueryHelper<'tcx, &Path, ()> for EncodeMetadataHelper {
+        fn try_load_from_disk_fn(
+            _: TyCtxt<'tcx>,
+            _: rustc_middle::dep_graph::SerializedDepNodeIndex,
+        ) -> Option<()> {
+            unimplemented!()
+        }
+
+        fn will_cache_on_disk_for_key(_: &Path) -> bool {
+            unimplemented!()
+        }
+
+        fn invoke_provider_fn(tcx: TyCtxt<'tcx>, key: &Path) {
+            with_encode_metadata_header(tcx, key, |ecx| {
                 // Encode all the entries and extra information in the crate,
                 // culminating in the `CrateRoot` which points to all of it.
                 let root = ecx.encode_crate_root();
@@ -2495,9 +2519,12 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
 
                 root.position.get()
             })
-        },
-        None,
-    );
+        }
+    }
+
+    // Perform metadata encoding inside a task, so the dep-graph can check if any encoded
+    // information changes, and maybe reuse the work product.
+    tcx.dep_graph.with_task::<_, _, EncodeMetadataHelper>(dep_node, tcx, path);
 }
 
 fn with_encode_metadata_header(

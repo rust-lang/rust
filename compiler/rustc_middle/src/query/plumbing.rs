@@ -8,12 +8,13 @@ use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_errors::Diag;
 use rustc_hir::def_id::LocalDefId;
+use rustc_serialize::Decodable;
 use rustc_span::Span;
 
 use crate::dep_graph::{DepKind, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::queries::{ExternProviders, Providers, QueryArenas, QueryVTables, TaggedQueryKey};
-use crate::query::on_disk_cache::OnDiskCache;
+use crate::query::on_disk_cache::{CacheDecoder, OnDiskCache};
 use crate::query::{IntoQueryKey, QueryCache, QueryJob, QueryStackFrame};
 use crate::ty::{self, TyCtxt};
 
@@ -76,7 +77,11 @@ pub enum EnsureMode {
 }
 
 /// Stores data and metadata (e.g. function pointers) for a particular query.
-pub struct QueryVTable<'tcx, C: QueryCache> {
+pub struct QueryVTable<'tcx, C, H>
+where
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
     pub name: &'static str,
 
     /// True if this query has the `eval_always` modifier.
@@ -90,25 +95,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub state: QueryState<'tcx, C::Key>,
     pub cache: C,
 
-    /// Function pointer that actually calls this query's provider.
-    /// Also performs some associated secondary tasks; see the macro-defined
-    /// implementation in `mod invoke_provider_fn` for more details.
-    ///
-    /// This should be the only code that calls the provider function.
-    pub invoke_provider_fn: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
-
-    pub will_cache_on_disk_for_key_fn: fn(key: C::Key) -> bool,
-
-    /// Function pointer that tries to load a query value from disk.
-    ///
-    /// This should only be called after a successful check of `will_cache_on_disk_for_key_fn`.
-    pub try_load_from_disk_fn:
-        fn(tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) -> Option<C::Value>,
-
-    /// Function pointer that hashes this query's result values.
-    ///
-    /// For `no_hash` queries, this function pointer is None.
-    pub hash_value_fn: Option<fn(&mut StableHashingContext<'_>, &C::Value) -> Fingerprint>,
+    pub helper: H,
 
     /// Function pointer that handles a cycle error. `error` must be consumed, e.g. with `emit` (if
     /// it should be emitted) or `delay_as_bug` (if it need not be emitted because an alternative
@@ -117,10 +104,14 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     pub handle_cycle_error_fn:
         fn(tcx: TyCtxt<'tcx>, key: C::Key, cycle: Cycle<'tcx>, error: Diag<'_>) -> C::Value,
 
-    pub format_value: fn(&C::Value) -> String,
-
     pub create_tagged_key: fn(C::Key) -> TaggedQueryKey<'tcx>,
+}
 
+impl<'tcx, C, H> QueryVTable<'tcx, C, H>
+where
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
     /// Function pointer that is called by the query methods on [`TyCtxt`] and
     /// friends[^1], after they have checked the in-memory cache and found no
     /// existing value for this key.
@@ -130,10 +121,49 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// and putting the obtained value into the in-memory cache.
     ///
     /// [^1]: [`TyCtxt`], [`TyCtxtAt`], [`TyCtxtEnsureOk`], [`TyCtxtEnsureDone`]
-    pub execute_query_fn: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
+    pub(crate) fn execute_query_fn(
+        &'tcx self,
+        tcx: TyCtxt<'tcx>,
+        span: Span,
+        key: C::Key,
+        mode: QueryMode,
+    ) -> Option<C::Value> {
+        // FIXME: Figure out likely or unlikely
+        if tcx.dep_graph.is_fully_enabled() {
+            crate::query::impl_::execution::execute_query_incr_inner(self, tcx, span, key, mode)
+        } else {
+            Some(crate::query::impl_::execution::execute_query_non_incr_inner(self, tcx, span, key))
+        }
+    }
 }
 
-impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
+pub trait QueryHelper<'tcx, K, V>: QueryHashHelper<V> + Default + 'static {
+    fn try_load_from_disk_fn(tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) -> Option<V>;
+
+    fn will_cache_on_disk_for_key(key: K) -> bool;
+
+    /// Function pointer that actually calls this query's provider.
+    /// Also performs some associated secondary tasks; see the macro-defined
+    /// implementation in `mod invoke_provider_fn` for more details.
+    ///
+    /// This should be the only code that calls the provider function.
+    fn invoke_provider_fn(tcx: TyCtxt<'tcx>, key: K) -> V;
+}
+
+pub trait QueryHashHelper<V>: Default + 'static {
+    const NO_HASH: bool;
+
+    /// Function that hashes query's result values.
+    ///
+    /// For `no_hash` queries, this function pointer is None.
+    fn hash_value_fn(hcx: &mut StableHashingContext<'_>, value: &V) -> Fingerprint;
+
+    fn format_value(value: &V) -> String;
+}
+
+impl<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>> fmt::Debug
+    for QueryVTable<'tcx, C, H>
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // When debug-printing a query vtable (e.g. for ICE or tracing),
         // just print the query name to know what query we're dealing with.
@@ -339,6 +369,112 @@ macro_rules! define_callbacks {
                 #[cfg(not($arena_cache))]
                 pub type ProvidedValue<'tcx> = Value<'tcx>;
 
+                #[derive(Default)]
+                pub struct Helper;
+
+                impl<'tcx> crate::query::QueryHelper<'tcx, Key<'tcx>, Erased<Value<'tcx>>> for Helper {
+                    #[cfg($cache_on_disk)]
+                    #[inline]
+                    fn try_load_from_disk_fn(
+                        tcx: TyCtxt<'tcx>,
+                        prev_index: crate::dep_graph::SerializedDepNodeIndex,
+                    ) -> Option<Erased<Value<'tcx>>> {
+                        let loaded_value: ProvidedValue<'tcx> =
+                            rustc_middle::query::plumbing::try_load_from_disk(tcx, prev_index)?;
+
+                        // Arena-alloc the value if appropriate, and erase it.
+                        Some(provided_to_erased(tcx, loaded_value))
+                    }
+                    #[cfg(not($cache_on_disk))]
+                    #[inline(always)]
+                    fn try_load_from_disk_fn(
+                        _tcx: TyCtxt<'tcx>,
+                        _prev_index: crate::dep_graph::SerializedDepNodeIndex,
+                    ) -> Option<Erased<Value<'tcx>>> {
+                        None
+                    }
+                    #[cfg_attr(all($cache_on_disk, $separate_provide_extern), inline)]
+                    #[cfg_attr(not(all($cache_on_disk, $separate_provide_extern)), inline(always))]
+                    fn will_cache_on_disk_for_key(
+                        _key: rustc_middle::queries::$name::Key<'tcx>,
+                    ) -> bool {
+                        cfg_select! {
+                            // If a query has both `cache_on_disk` and `separate_provide_extern`, only
+                            // disk-cache values for "local" keys, i.e. things in the current crate.
+                            all($cache_on_disk, $separate_provide_extern) => {
+                                crate::query::AsLocalQueryKey::as_local_key(&_key).is_some()
+                            }
+                            all($cache_on_disk, not($separate_provide_extern)) => true,
+                            not($cache_on_disk) => false,
+                        }
+                    }
+
+                    #[inline(always)]
+                    fn invoke_provider_fn(tcx: TyCtxt<'tcx>, key: Key<'tcx>) -> Erased<Value<'tcx>> {
+                        invoke_provider_fn::__rust_begin_short_backtrace(tcx, key)
+                    }
+                }
+
+                impl<'tcx> crate::query::QueryHashHelper<Erased<Value<'tcx>>> for Helper {
+                    const NO_HASH: bool = $no_hash;
+
+                    #[cfg($no_hash)]
+                    #[cold]
+                    fn hash_value_fn(_: &mut crate::ich::StableHashingContext<'_>, _: &Erased<Value<'tcx>>) -> rustc_data_structures::fingerprint::Fingerprint {
+                        panic!("Tried to hash value for no_hash query. `no_hash` query modifier is unsupported with `feedable` modifier enabled")
+                    }
+
+                    #[cfg(not($no_hash))]
+                    #[inline]
+                    fn hash_value_fn(hcx: &mut crate::ich::StableHashingContext<'_>, value: &Erased<Value<'tcx>>) -> rustc_data_structures::fingerprint::Fingerprint {
+                        let value = erase::restore_val(*value);
+                        rustc_middle::dep_graph::hash_result(hcx, &value)
+                    }
+
+                    #[inline]
+                    fn format_value(erased_value: &erase::Erased<Value<'tcx>>) -> String {
+                        format!("{:?}", erase::restore_val(*erased_value))
+                    }
+                }
+
+                /// Defines an `invoke_provider` function that calls the query's provider,
+                /// to be used as a function pointer in the query's vtable.
+                ///
+                /// To mark a short-backtrace boundary, the function's actual name
+                /// (after demangling) must be `__rust_begin_short_backtrace`.
+                mod invoke_provider_fn {
+                    use super::*;
+
+                    #[inline(never)]
+                    pub(crate) fn __rust_begin_short_backtrace<'tcx>(
+                        tcx: TyCtxt<'tcx>,
+                        key: Key<'tcx>,
+                    ) -> Erased<Value<'tcx>> {
+                        #[cfg(debug_assertions)]
+                        let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
+
+                        // Call the actual provider function for this query.
+
+                        #[cfg($separate_provide_extern)]
+                        let provided_value = if let Some(local_key) = crate::query::AsLocalQueryKey::as_local_key(&key) {
+                            (tcx.query_system.local_providers.$name)(tcx, local_key)
+                        } else {
+                            (tcx.query_system.extern_providers.$name)(tcx, key)
+                        };
+
+                        #[cfg(not($separate_provide_extern))]
+                        let provided_value = (tcx.query_system.local_providers.$name)(tcx, key);
+
+                        rustc_middle::ty::print::with_reduced_queries!({
+                            tracing::trace!(?provided_value);
+                        });
+
+                        // Erase the returned value, because `QueryVTable` uses erased values.
+                        // For queries with `arena_cache`, this also arena-allocates the value.
+                        provided_to_erased(tcx, provided_value)
+                    }
+                }
+
                 pub type Cache<'tcx> =
                     <Key<'tcx> as $crate::query::QueryKey>::Cache<Erased<Value<'tcx>>>;
 
@@ -468,7 +604,7 @@ macro_rules! define_callbacks {
         /// Holds a `QueryVTable` for each query.
         pub struct QueryVTables<'tcx> {
             $(
-                pub $name: $crate::query::QueryVTable<'tcx, $name::Cache<'tcx>>,
+                pub $name: $crate::query::QueryVTable<'tcx, $name::Cache<'tcx>, $name::Helper>,
             )*
         }
 
@@ -659,4 +795,19 @@ pub(crate) fn default_extern_query(name: &str, key: &dyn std::fmt::Debug) -> ! {
         "`tcx.{name}({key:?})` unsupported by its crate; \
          perhaps the `{name}` query was never assigned a provider function",
     )
+}
+
+pub(crate) fn try_load_from_disk<'tcx, V>(
+    tcx: TyCtxt<'tcx>,
+    prev_index: SerializedDepNodeIndex,
+) -> Option<V>
+where
+    V: for<'a> Decodable<CacheDecoder<'a, 'tcx>>,
+{
+    let on_disk_cache = tcx.query_system.on_disk_cache.as_ref()?;
+
+    // The call to `with_query_deserialization` enforces that no new `DepNodes`
+    // are created during deserialization. See the docs of that method for more
+    // details.
+    tcx.dep_graph.with_query_deserialization(|| on_disk_cache.try_load_query_value(tcx, prev_index))
 }

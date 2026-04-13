@@ -62,7 +62,6 @@ expression: check
     - Set({check::compiler/rustc_proc_macro})
     - Set({check::compiler/rustc_public})
     - Set({check::compiler/rustc_public_bridge})
-    - Set({check::compiler/rustc_query_impl})
     - Set({check::compiler/rustc_resolve})
     - Set({check::compiler/rustc_sanitizers})
     - Set({check::compiler/rustc_serialize})

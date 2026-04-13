@@ -787,7 +787,7 @@ fn resolver_for_lowering_raw<'tcx>(
 ) -> (&'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
-    let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
+    let (krate, pre_configured_attrs) = tcx.crate_for_resolver.borrow_mut().take().unwrap();
     let mut resolver = Resolver::new(
         tcx,
         &pre_configured_attrs,
@@ -901,7 +901,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_mir_transform::provide(providers);
     rustc_monomorphize::provide(providers);
     rustc_privacy::provide(&mut providers.queries);
-    rustc_query_impl::provide(providers);
+    rustc_middle::query::impl_::provide(providers);
     rustc_resolve::provide(&mut providers.queries);
     rustc_hir_analysis::provide(&mut providers.queries);
     rustc_hir_typeck::provide(&mut providers.queries);
@@ -969,8 +969,6 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         callback(sess, &mut providers);
     }
 
-    let incremental = dep_graph.is_fully_enabled();
-
     // Note: this function body is the origin point of the widely-used 'tcx lifetime.
     //
     // `gcx_cell` is defined here and `&gcx_cell` is passed to `create_global_ctxt`, which then
@@ -995,12 +993,11 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         &hir_arena,
         untracked,
         dep_graph,
-        rustc_query_impl::make_dep_kind_vtables(&arena),
-        rustc_query_impl::query_system(
+        rustc_middle::query::impl_::make_dep_kind_vtables(&arena),
+        rustc_middle::query::impl_::query_system(
             providers.queries,
             providers.extern_queries,
             query_result_on_disk_cache,
-            incremental,
         ),
         providers.hooks,
         compiler.current_gcx.clone(),
@@ -1016,8 +1013,8 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
                 &pre_configured_attrs,
                 crate_name,
             )));
-            feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
             feed.output_filenames(Arc::new(outputs));
+            *tcx.crate_for_resolver.borrow_mut() = Some((krate, pre_configured_attrs));
 
             let res = f(tcx);
             // FIXME maybe run finish even when a fatal error occurred? or at least

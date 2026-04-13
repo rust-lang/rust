@@ -17,8 +17,8 @@ use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::sync;
 use rustc_metadata::{DylibError, EncodedMetadata, load_symbol_from_dylib};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
+use rustc_middle::query::impl_::{CollectActiveJobsKind, collect_active_query_jobs};
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
-use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 use rustc_session::config::{
     Cfg, CrateType, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
 };
@@ -183,8 +183,8 @@ pub(crate) fn run_in_thread_pool_with_globals<
     use std::process;
 
     use rustc_data_structures::defer;
+    use rustc_middle::query::impl_::break_query_cycle;
     use rustc_middle::ty::tls;
-    use rustc_query_impl::break_query_cycle;
 
     let thread_stack_size = init_stack_size(thread_builder_diag);
 
