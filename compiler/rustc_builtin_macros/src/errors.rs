@@ -1117,8 +1117,42 @@ pub(crate) struct EiiExternTargetExpectedUnsafe {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[{$name}]` is only valid on functions")]
-pub(crate) struct EiiSharedMacroExpectedFunction {
+#[diag("`#[{$name}]` is only valid on functions and statics")]
+pub(crate) struct EiiSharedMacroTarget {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("static cannot implement multiple EIIs")]
+#[note(
+    "this is not allowed because multiple externally implementable statics that alias may be unintuitive"
+)]
+pub(crate) struct EiiStaticMultipleImplementations {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[{$name}]` cannot be used on statics with a value")]
+pub(crate) struct EiiStaticDefault {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[{$name}]` requires the name as an explicit argument when used on a static")]
+pub(crate) struct EiiStaticArgumentRequired {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[{$name}]` cannot be used on mutable statics")]
+pub(crate) struct EiiStaticMutable {
     #[primary_span]
     pub span: Span,
     pub name: String,

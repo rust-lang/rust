@@ -9,17 +9,17 @@ LL | fn A() {}
    |
    = note: `A` must be defined only once in the value namespace of this module
 
-error[E0423]: expected function, found constant `self::A`
+error[E0423]: expected function or static, found constant `self::A`
   --> $DIR/eii-declaration-not-fn-issue-152337.rs:8:4
    |
 LL | fn A() {}
-   |    ^ not a function
+   |    ^ not a function or static
 
-error[E0423]: expected function, found constant `A`
+error[E0423]: expected function or static, found constant `A`
   --> $DIR/eii-declaration-not-fn-issue-152337.rs:8:4
    |
 LL | fn A() {}
-   |    ^ not a function
+   |    ^ not a function or static
 
 error: aborting due to 3 previous errors
 
