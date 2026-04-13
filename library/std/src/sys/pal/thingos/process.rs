@@ -18,18 +18,17 @@
 //!  - stdout_pipe : parent READ fd when mode==pipe (else 0)
 //!  - stderr_pipe : parent READ fd when mode==pipe (else 0)
 //!
-//! ## cwd override
-//!
 //! When `Command::current_dir()` is set, the cwd bytes are forwarded via the
 //! `cwd_ptr`/`cwd_len` fields of `SpawnProcessExReq`.  The kernel sets the
 //! child's working directory atomically at spawn time.  If cwd is not set,
 //! the child inherits the parent's cwd.
 //!
-//! ## From<ChildPipe> for Stdio
+//! ## FD Remapping
 //!
-//! Passing an existing io::PipeReader/PipeWriter as child stdio is not
-//! supported (no per-fd remapping in the ThingOS spawn ABI).  Falls back
-//! to Stdio::Inherit.  Use Stdio::piped() for pipe-based capture.
+//! When passing an existing `ChildPipe` (from a previous child's stdout/stderr)
+//! to a new process's stdin/stdout/stderr, the FD is passed via the `fd_remap`
+//! table. The kernel applies `dup2` from the parent's FD to the child's
+//! target FD during spawn.
 
 use super::env::{CommandEnv, CommandEnvs};
 pub use crate::ffi::OsString as EnvKey;
@@ -107,6 +106,18 @@ struct SpawnProcessExReq {
     /// Length of the cwd bytes (0 = inherit parent cwd).
     cwd_len: u32,
     _pad4: u32,
+    /// Pointer to array of FdRemap structs.
+    fd_remap_ptr: u64,
+    /// Number of entries in the fd_remap array.
+    fd_remap_len: u32,
+    _pad5: u32,
+}
+
+#[repr(C)]
+#[derive(Default, Clone, Copy)]
+struct FdRemap {
+    src_fd: u64,
+    dst_fd: u64,
 }
 
 #[repr(C)]
@@ -156,8 +167,8 @@ pub enum Stdio {
     MakePipe,
     ParentStdout,
     ParentStderr,
-    #[allow(dead_code)]
     InheritFile(File),
+    InheritPipe(ChildPipe),
 }
 
 impl Stdio {
@@ -166,7 +177,8 @@ impl Stdio {
             Stdio::Inherit
             | Stdio::ParentStdout
             | Stdio::ParentStderr
-            | Stdio::InheritFile(_) => stdio_mode::INHERIT,
+            | Stdio::InheritFile(_)
+            | Stdio::InheritPipe(_) => stdio_mode::INHERIT,
             Stdio::Null => stdio_mode::NULL,
             Stdio::MakePipe => stdio_mode::PIPE,
         }
@@ -175,9 +187,7 @@ impl Stdio {
 
 impl From<ChildPipe> for Stdio {
     fn from(pipe: ChildPipe) -> Stdio {
-        // ThingOS spawn ABI has no per-fd remapping; fall back to inherit.
-        drop(pipe);
-        Stdio::Inherit
+        Stdio::InheritPipe(pipe)
     }
 }
 
@@ -250,9 +260,27 @@ impl Command {
         default: Stdio,
         _needs_stdin: bool,
     ) -> crate::io::Result<(Process, StdioPipes)> {
-        let stdin_mode = self.stdin.as_ref().unwrap_or(&default).mode();
-        let stdout_mode = self.stdout.as_ref().unwrap_or(&default).mode();
-        let stderr_mode = self.stderr.as_ref().unwrap_or(&default).mode();
+        let mut fd_remaps = crate::vec::Vec::new();
+
+        let mut resolve_mode = |stdio: Option<&Stdio>, dst_fd: u32| -> u32 {
+            let s = stdio.unwrap_or(&default);
+            match s {
+                Stdio::InheritPipe(p) => {
+                    fd_remaps.push(FdRemap { src_fd: p.0 as u64, dst_fd: dst_fd as u64 });
+                    stdio_mode::INHERIT
+                }
+                Stdio::InheritFile(f) => {
+                    use crate::sys::pal::unix::abi::AsRawFd;
+                    fd_remaps.push(FdRemap { src_fd: f.as_raw_fd() as u64, dst_fd: dst_fd as u64 });
+                    stdio_mode::INHERIT
+                }
+                _ => s.mode(),
+            }
+        };
+
+        let stdin_mode = resolve_mode(self.stdin.as_ref(), 0);
+        let stdout_mode = resolve_mode(self.stdout.as_ref(), 1);
+        let stderr_mode = resolve_mode(self.stderr.as_ref(), 2);
 
         let argv_blob = serialize_argv(&self.args);
         // Resolve the full child environment (current env + any overrides).
@@ -275,6 +303,8 @@ impl Command {
             stderr_mode,
             cwd_ptr: cwd_bytes.map_or(0, |b| b.as_ptr() as u64),
             cwd_len: cwd_bytes.map_or(0, |b| b.len() as u32),
+            fd_remap_ptr: if fd_remaps.is_empty() { 0 } else { fd_remaps.as_ptr() as u64 },
+            fd_remap_len: fd_remaps.len() as u32,
             ..Default::default()
         };
 
