@@ -263,6 +263,7 @@ pub fn completions(
                     extern_crate.as_ref(),
                 );
             }
+            CompletionAnalysis::CfgPredicate => completions::attribute::complete_cfg(acc, ctx),
             CompletionAnalysis::MacroSegment => {
                 completions::macro_def::complete_macro_segment(acc, ctx);
             }

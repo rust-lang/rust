@@ -11,10 +11,10 @@
 
 // Testing lifetimes + types/consts OR types/consts OR none in delegation parent,
 // lifetimes + types/consts in child reuse,
-// with(out) user-specified args
+// with(out) user-specified args, with impl traits
 mod test_1 {
     mod to_reuse {
-        pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>() {}
+        pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>(_f: impl FnOnce(A, B) -> B) {}
     }
 
     #[allow(dead_code)] // Fields are used instead of phantom data for generics use
@@ -39,14 +39,14 @@ mod test_1 {
 
     pub fn check() {
         X1::<'static, 'static, i32, i32, 1>
-            ::foo::<'static, 'static, String, String, 123>();
-        X1::<'static, 'static, i32, i32, 1>::bar();
+            ::foo::<'static, 'static, String, String, 123>(|_, y| y);
+        X1::<'static, 'static, i32, i32, 1>::bar(|_, y| y);
 
-        X2::<i32, i32, 1>::foo::<'static, 'static, String, String, 123>();
-        X2::<i32, i32, 1>::bar();
+        X2::<i32, i32, 1>::foo::<'static, 'static, String, String, 123>(|_, y| y);
+        X2::<i32, i32, 1>::bar(|_, y| y);
 
-        X3::foo::<'static, 'static, String, String, 123>();
-        X3::bar();
+        X3::foo::<'static, 'static, String, String, 123>(|_, y| y);
+        X3::bar(|_, y| y);
     }
 }
 

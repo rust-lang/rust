@@ -14,7 +14,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{DynSend, DynSync, spawn, try_par_for_each_in};
+use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lints::DelayedLint;
@@ -64,8 +64,7 @@ impl<'hir> Crate<'hir> {
         // which is greater than delayed LocalDefId, we use IndexVec for owners,
         // so we will call ensure_contains_elem which will grow it.
         if let Some(owner) = self.owners.get(def_id)
-            && (self.delayed_ids.is_empty()
-                || !matches!(owner, MaybeOwner::Phantom | MaybeOwner::Delayed(_)))
+            && (self.delayed_ids.is_empty() || !matches!(owner, MaybeOwner::Phantom))
         {
             return *owner;
         }
@@ -208,24 +207,6 @@ impl ModuleItems {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn force_delayed_owners_lowering(self) {
-        let krate = self.hir_crate(());
-        self.ensure_done().hir_crate_items(());
-
-        for &id in &krate.delayed_ids {
-            self.ensure_done().lower_delayed_owner(id);
-        }
-
-        let (_, krate) = krate.delayed_resolver.steal();
-        let prof = self.sess.prof.clone();
-
-        // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.
-        spawn(move || {
-            let _timer = prof.verbose_generic_activity("drop_ast");
-            drop(krate);
-        });
-    }
-
     pub fn parent_module(self, id: HirId) -> LocalModDefId {
         if !id.is_owner() && self.def_kind(id.owner) == DefKind::Mod {
             LocalModDefId::new_unchecked(id.owner.def_id)
@@ -494,8 +475,7 @@ pub fn provide(providers: &mut Providers) {
     providers.local_def_id_to_hir_id = |tcx, def_id| match tcx.hir_crate(()).owner(tcx, def_id) {
         MaybeOwner::Owner(_) => HirId::make_owner(def_id),
         MaybeOwner::NonOwner(hir_id) => hir_id,
-        MaybeOwner::Phantom => bug!("no HirId for {:?}", def_id),
-        MaybeOwner::Delayed(_) => bug!("delayed owner should be lowered {:?}", def_id),
+        MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
     };
     providers.opt_hir_owner_nodes =
         |tcx, id| tcx.hir_crate(()).owner(tcx, id).as_owner().map(|i| &i.nodes);

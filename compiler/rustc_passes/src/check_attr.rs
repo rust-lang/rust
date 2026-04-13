@@ -385,6 +385,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ThreadLocal
                     | AttributeKind::TypeLengthLimit { .. }
                     | AttributeKind::UnstableFeatureBound(..)
+                    | AttributeKind::UnstableRemoved(..)
                     | AttributeKind::Used { .. }
                     | AttributeKind::WindowsSubsystem(..)
                     // tidy-alphabetical-end
@@ -551,9 +552,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_eii_impl(&self, impls: &[EiiImpl], target: Target) {
         for EiiImpl { span, inner_span, resolution, impl_marked_unsafe, is_default: _ } in impls {
             match target {
-                Target::Fn => {}
+                Target::Fn | Target::Static => {}
                 _ => {
-                    self.dcx().emit_err(errors::EiiImplNotFunction { span: *span });
+                    self.dcx().emit_err(errors::EiiImplTarget { span: *span });
                 }
             }
 

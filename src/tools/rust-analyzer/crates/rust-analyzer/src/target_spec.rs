@@ -381,23 +381,13 @@ mod tests {
         SmolStr,
         ast::{self, AstNode},
     };
-    use syntax_bridge::{
-        DocCommentDesugarMode,
-        dummy_test_span_utils::{DUMMY, DummyTestSpanMap},
-        syntax_node_to_token_tree,
-    };
 
     fn check(cfg: &str, expected_features: &[&str]) {
         let cfg_expr = {
             let source_file = ast::SourceFile::parse(cfg, Edition::CURRENT).ok().unwrap();
-            let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-            let tt = syntax_node_to_token_tree(
-                tt.syntax(),
-                &DummyTestSpanMap,
-                DUMMY,
-                DocCommentDesugarMode::Mbe,
-            );
-            CfgExpr::parse(&tt)
+            let cfg_predicate =
+                source_file.syntax().descendants().find_map(ast::CfgPredicate::cast).unwrap();
+            CfgExpr::parse_from_ast(cfg_predicate)
         };
 
         let mut features = vec![];

@@ -1989,7 +1989,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     let impl_def_id = probe.item.container_id(self.tcx);
                     let impl_bounds =
                         self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_args);
-                    let impl_bounds = ocx.normalize(cause, self.param_env, impl_bounds);
                     // Convert the bounds into obligations.
                     ocx.register_obligations(traits::predicates_for_generics(
                         |idx, span| {
@@ -2001,6 +2000,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                             );
                             self.cause(self.span, code)
                         },
+                        |pred| ocx.normalize(cause, self.param_env, pred),
                         self.param_env,
                         impl_bounds,
                     ));

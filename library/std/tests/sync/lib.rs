@@ -1,3 +1,5 @@
+#![feature(const_default)]
+#![feature(const_trait_impl)]
 #![feature(mapped_lock_guards)]
 #![feature(mpmc_channel)]
 #![feature(oneshot_channel)]

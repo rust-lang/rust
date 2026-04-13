@@ -54,8 +54,9 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
         let InFile { file_id, value: tokens } =
             hir::InMacroFile::new(macro_file, descended).upmap_once(db);
         let token = sema.parse_or_expand(file_id).covering_element(tokens[0]).into_token()?;
-        let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
+        let attr = token.parent_ancestors().find_map(ast::Meta::cast)?;
         let expansions = sema.expand_derive_macro(&attr)?;
+        let ast::Meta::TokenTreeMeta(attr) = attr else { return None };
         let idx = attr
             .token_tree()?
             .token_trees_and_tokens()

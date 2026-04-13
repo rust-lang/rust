@@ -929,6 +929,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         DuplicatesOk, EncodeCrossCrate::No,
     ),
     ungated!(
+        unstable_removed, CrateLevel,
+        template!(List: &[r#"feature = "name", reason = "...", link = "...", since = "version""#]),
+        DuplicatesOk, EncodeCrossCrate::Yes
+    ),
+    ungated!(
         rustc_const_unstable, Normal, template!(List: &[r#"feature = "name""#]),
         DuplicatesOk, EncodeCrossCrate::Yes
     ),

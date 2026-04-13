@@ -34,8 +34,8 @@ use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode, Upcast,
+    self, Clause, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode, Upcast,
 };
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
@@ -177,9 +177,10 @@ pub enum TraitQueryMode {
 }
 
 /// Creates predicate obligations from the generic bounds.
-#[instrument(level = "debug", skip(cause, param_env))]
+#[instrument(level = "debug", skip(cause, param_env, normalize_predicate))]
 pub fn predicates_for_generics<'tcx>(
     cause: impl Fn(usize, Span) -> ObligationCause<'tcx>,
+    mut normalize_predicate: impl FnMut(Clause<'tcx>) -> Clause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     generic_bounds: ty::InstantiatedPredicates<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
@@ -187,7 +188,7 @@ pub fn predicates_for_generics<'tcx>(
         cause: cause(idx, span),
         recursion_depth: 0,
         param_env,
-        predicate: clause.as_predicate(),
+        predicate: normalize_predicate(clause).as_predicate(),
     })
 }
 

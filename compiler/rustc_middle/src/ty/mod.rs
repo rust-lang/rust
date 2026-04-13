@@ -689,7 +689,7 @@ impl<'tcx> TermKind<'tcx> {
 /// `[[], [U:Bar<T>]]`. Now if there were some particular reference
 /// like `Foo<isize,usize>`, then the `InstantiatedPredicates` would be `[[],
 /// [usize:Bar<isize>]]`.
-#[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
+#[derive(Clone, Debug)]
 pub struct InstantiatedPredicates<'tcx> {
     pub predicates: Vec<Clause<'tcx>>,
     pub spans: Vec<Span>,

@@ -1848,7 +1848,36 @@ impl SyntaxFactory {
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
             builder.map_node(path.syntax().clone(), ast.path().unwrap().syntax().clone());
-            builder.map_node(tt.syntax().clone(), ast.token_tree().unwrap().syntax().clone());
+            let ast::Meta::TokenTreeMeta(meta) = &ast else { unreachable!() };
+            builder.map_node(tt.syntax().clone(), meta.token_tree().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn cfg_flag(&self, flag: &str) -> ast::CfgPredicate {
+        make::cfg_flag(flag).clone_for_update()
+    }
+
+    pub fn cfg_attr_meta(
+        &self,
+        predicate: ast::CfgPredicate,
+        inner: impl IntoIterator<Item = ast::Meta>,
+    ) -> ast::CfgAttrMeta {
+        let inner = Vec::from_iter(inner);
+        let ast = make::cfg_attr_meta(predicate.clone(), inner.iter().cloned()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(
+                predicate.syntax().clone(),
+                ast.cfg_predicate().unwrap().syntax().clone(),
+            );
+            builder.map_children(
+                inner.iter().map(|it| it.syntax().clone()),
+                ast.metas().map(|it| it.syntax().clone()),
+            );
             builder.finish(&mut mapping);
         }
 

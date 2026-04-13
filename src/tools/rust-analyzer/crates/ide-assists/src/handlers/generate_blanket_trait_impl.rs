@@ -279,7 +279,7 @@ fn todo_fn(f: &ast::Fn, config: &AssistConfig) -> ast::Fn {
 }
 
 fn cfg_attrs(node: &impl HasAttrs) -> impl Iterator<Item = ast::Attr> {
-    node.attrs().filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"))
+    node.attrs().filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))))
 }
 
 #[cfg(test)]

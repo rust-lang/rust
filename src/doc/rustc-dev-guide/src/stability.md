@@ -23,6 +23,9 @@ The `unstable` attribute infects all sub-items, where the attribute doesn't
 have to be reapplied. So if you apply this to a module, all items in the module
 will be unstable.
 
+If you rename a feature, you can add `old_name = "old_name"` to produce a 
+useful error message.
+
 You can make specific sub-items stable by using the `#[stable]` attribute on
 them. The stability scheme works similarly to how `pub` works. You can have
 public functions of nonpublic modules and you can have stable functions in
@@ -188,5 +191,12 @@ Currently, the items that can be annotated with `#[unstable_feature_bound]` are:
 - `impl`
 - free function
 - trait
+
+## renamed and removed features
+Unstable features can get renamed and removed. If you rename a feature, you can add `old_name = "old_name"` to the `#[unstable]` attribute.
+If you remove a feature, the `#!unstable_removed(feature = "foo", reason = "brief description", link = "link", since = "1.90.0")`
+attribute should be used to produce a good error message for users of the removed feature.
+
+The `link` field can be used to link to the most relevant information on the removal of the feature such as a GitHub issue, comment or PR.
 
 [blog]: https://www.ralfj.de/blog/2018/07/19/const.html
