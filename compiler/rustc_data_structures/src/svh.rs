@@ -23,7 +23,7 @@ use crate::fingerprint::Fingerprint;
     HashStable_NoContext
 )]
 pub struct Svh {
-    hash: Fingerprint,
+    pub hash: Fingerprint,
 }
 
 impl Svh {

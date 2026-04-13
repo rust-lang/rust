@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 use std::num::NonZero;
 
-use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use decoder::LazyDecoder;
 pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob, TargetModifiers};
 use def_path_hash_map::DefPathHashMapRef;
@@ -36,6 +35,7 @@ use rustc_middle::mir::ConstValue;
 use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::Providers;
+use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;

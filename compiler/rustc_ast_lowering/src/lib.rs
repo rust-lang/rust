@@ -41,10 +41,10 @@ use std::sync::Arc;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, *};
 use rustc_attr_parsing::{AttributeParser, Late, OmitDoc};
-use rustc_data_structures::fingerprint::Fingerprint;
+//use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+//use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
@@ -56,7 +56,7 @@ use rustc_hir::{
     self as hir, AngleBrackets, ConstArg, GenericArg, HirId, ItemLocalMap, LifetimeSource,
     LifetimeSyntax, ParamName, Target, TraitCandidate, find_attr,
 };
-use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_macros::extension;
 use rustc_middle::hir::{self as mid_hir};
 use rustc_middle::span_bug;
@@ -588,7 +588,7 @@ fn index_crate<'a, 'b>(
 
 /// Compute the hash for the HIR of the full crate.
 /// This hash will then be part of the crate_hash which is stored in the metadata.
-fn compute_hir_hash(
+/*fn compute_hir_hash(
     tcx: TyCtxt<'_>,
     owners: &IndexSlice<LocalDefId, hir::MaybeOwner<'_>>,
 ) -> Fingerprint {
@@ -607,7 +607,7 @@ fn compute_hir_hash(
         hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
         stable_hasher.finish()
     })
-}
+}*/
 
 pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
     // Queries that borrow `resolver_for_lowering`.
@@ -643,11 +643,11 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
     }
 
     // Don't hash unless necessary, because it's expensive.
-    let opt_hir_hash =
-        if tcx.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
+    //    let opt_hir_hash =
+    //      if tcx.needs_crate_hash() { Some(tcx.crate_hash(LOCAL_CRATE)) } else { None };
 
     let delayed_resolver = Steal::new((resolver, krate));
-    mid_hir::Crate::new(owners, delayed_ids, delayed_resolver, opt_hir_hash)
+    mid_hir::Crate::new(owners, delayed_ids, delayed_resolver, None)
 }
 
 /// Lowers an AST owner corresponding to `def_id`, now only delegations are lowered this way.

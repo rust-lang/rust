@@ -4,7 +4,7 @@
 
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
-use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in, spawn};
+use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, spawn, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};

@@ -1,3 +1,4 @@
+//use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::erase::{self, Erased};
 use rustc_middle::query::{AsLocalQueryKey, QueryMode, QueryVTable};
@@ -189,6 +190,7 @@ macro_rules! define_queries {
                         hash_value_fn: Some(|hcx, erased_value: &erase::Erased<Value<'tcx>>| {
                             let value = erase::restore_val(*erased_value);
                             rustc_middle::dep_graph::hash_result(hcx, &value)
+                            //Fingerprint::new(0, 0)
                         }),
 
                         format_value: |erased_value: &erase::Erased<Value<'tcx>>| {
