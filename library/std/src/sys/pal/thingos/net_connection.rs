@@ -47,6 +47,7 @@ const ETIMEDOUT: i32 = 110;
 const ECONNREFUSED: i32 = 111;
 const ENOTSUP: i32 = 95;
 const ENOTCONN: i32 = 107;
+const MAX_UDP_DATAGRAM_SIZE: usize = 65_535;
 
 const CONNECT_POLL_NS: u64 = 5_000_000;
 const IO_POLL_NS: u64 = 1_000_000;
@@ -79,6 +80,17 @@ impl Default for StatusInfo {
     fn default() -> Self {
         Self { state: TcpState::Other, local: None, remote: None }
     }
+}
+
+#[derive(Debug, Clone)]
+struct PeekedUdpDatagram {
+    src: SocketAddr,
+    payload: vec::Vec<u8>,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+struct UdpStatusInfo {
+    broadcast: Option<bool>,
 }
 
 pub struct TcpStream {
@@ -396,8 +408,10 @@ impl TcpStream {
 
     pub fn shutdown(&self, how: Shutdown) -> crate::io::Result<()> {
         match how {
-            Shutdown::Both => vfs_write(self.ctl_fd, b"close").map(|_| ()),
-            Shutdown::Read | Shutdown::Write => Err(crate::io::Error::from_raw_os_error(ENOTSUP)),
+            // netd only exposes a full stream close today; treat write/both as FIN+close.
+            Shutdown::Write | Shutdown::Both => vfs_write(self.ctl_fd, b"close").map(|_| ()),
+            // TODO(thingos-net): add a VFS half-close control path for read shutdown.
+            Shutdown::Read => Err(crate::io::Error::from_raw_os_error(ENOSYS)),
         }
     }
 
@@ -429,11 +443,13 @@ impl TcpStream {
     }
 
     pub fn set_linger(&self, _: Option<Duration>) -> crate::io::Result<()> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): plumb SO_LINGER through netd control/status files.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn linger(&self) -> crate::io::Result<Option<Duration>> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): plumb SO_LINGER through netd control/status files.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn set_nodelay(&self, _: bool) -> crate::io::Result<()> {
@@ -445,11 +461,13 @@ impl TcpStream {
     }
 
     pub fn set_ttl(&self, _: u32) -> crate::io::Result<()> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): add TCP TTL control in the netd VFS protocol.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn ttl(&self) -> crate::io::Result<u32> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): add TCP TTL control in the netd VFS protocol.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn take_error(&self) -> crate::io::Result<Option<crate::io::Error>> {
@@ -610,23 +628,32 @@ impl TcpListener {
     }
 
     pub fn duplicate(&self) -> crate::io::Result<TcpListener> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        Ok(TcpListener {
+            id: self.id,
+            ctl_fd: dup_fd(self.ctl_fd)?,
+            accept_fd: dup_fd(self.accept_fd)?,
+            nonblocking: Arc::new(Mutex::new(*self.nonblocking.lock().unwrap())),
+        })
     }
 
     pub fn set_ttl(&self, _: u32) -> crate::io::Result<()> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): add listener TTL control in the netd VFS protocol.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn ttl(&self) -> crate::io::Result<u32> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): add listener TTL control in the netd VFS protocol.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn set_only_v6(&self, _: bool) -> crate::io::Result<()> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): IPv6 support is tracked separately; dual-stack toggles are unavailable.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn only_v6(&self) -> crate::io::Result<bool> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): IPv6 support is tracked separately; dual-stack toggles are unavailable.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn take_error(&self) -> crate::io::Result<Option<crate::io::Error>> {
@@ -662,6 +689,7 @@ pub struct UdpSocket {
     write_timeout: Arc<Mutex<Option<Duration>>>,
     nonblocking: Arc<Mutex<bool>>,
     connected_remote: Arc<Mutex<Option<SocketAddr>>>,
+    peeked_datagram: Arc<Mutex<Option<PeekedUdpDatagram>>>,
 }
 
 impl UdpSocket {
@@ -704,6 +732,7 @@ impl UdpSocket {
             write_timeout: Arc::new(Mutex::new(None)),
             nonblocking: Arc::new(Mutex::new(false)),
             connected_remote: Arc::new(Mutex::new(None)),
+            peeked_datagram: Arc::new(Mutex::new(None)),
         })
     }
 
