@@ -2008,12 +2008,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub(super) fn report_similar_impl_candidates(
         &self,
         impl_candidates: &[ImplCandidate<'tcx>],
+        obligation: &PredicateObligation<'tcx>,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         body_def_id: LocalDefId,
         err: &mut Diag<'_>,
         other: bool,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
+        if !self.where_clause_expr_matches_failed_self_ty(
+            obligation,
+            self.tcx.instantiate_bound_regions_with_erased(trait_pred.self_ty()),
+        ) {
+            return true;
+        }
+
         let parent_map = self.tcx.visible_parent_map(());
         let alternative_candidates = |def_id: DefId| {
             let mut impl_candidates: Vec<_> = self
@@ -2491,6 +2499,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let impl_candidates = self.find_similar_impl_candidates(trait_pred);
             self.report_similar_impl_candidates(
                 &impl_candidates,
+                obligation,
                 trait_pred,
                 body_def_id,
                 err,
@@ -3165,6 +3174,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let impl_candidates = self.find_similar_impl_candidates(trait_predicate);
             if !self.report_similar_impl_candidates(
                 &impl_candidates,
+                obligation,
                 trait_predicate,
                 body_def_id,
                 err,
