@@ -26,6 +26,7 @@
 #![feature(panic_can_unwind)]
 #![cfg_attr(test, feature(test))]
 #![feature(thread_spawn_hook)]
+#![cfg_attr(target_os = "qurt", feature(restricted_std))]
 #![allow(internal_features)]
 #![warn(rustdoc::unescaped_backticks)]
 #![warn(unreachable_pub)]
