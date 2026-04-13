@@ -303,6 +303,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandValue::Immediate(bx.bitcast(imm, to_backend_ty))
             }
             (
+                OperandValue::Immediate(imm),
+                abi::BackendRepr::SimdScalableVector { element: from_scalar, .. },
+                abi::BackendRepr::SimdScalableVector { element: to_scalar, .. },
+            ) if vector_can_bitcast(from_scalar) && vector_can_bitcast(to_scalar) => {
+                let to_backend_ty = bx.cx().immediate_backend_type(cast);
+                OperandValue::Immediate(bx.bitcast(imm, to_backend_ty))
+            }
+            (
                 OperandValue::Pair(imm_a, imm_b),
                 abi::BackendRepr::ScalarPair(in_a, in_b),
                 abi::BackendRepr::ScalarPair(out_a, out_b),

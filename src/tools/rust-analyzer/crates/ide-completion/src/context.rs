@@ -408,9 +408,11 @@ pub(crate) enum CompletionAnalysis<'db> {
     /// Set if we are currently completing in an unexpanded attribute, this usually implies a builtin attribute like `allow($0)`
     UnexpandedAttrTT {
         colon_prefix: bool,
-        fake_attribute_under_caret: Option<ast::Attr>,
+        fake_attribute_under_caret: Option<ast::TokenTreeMeta>,
         extern_crate: Option<ast::ExternCrate>,
     },
+    /// Set if we are inside the predicate of a #[cfg] or #[cfg_attr].
+    CfgPredicate,
     MacroSegment,
 }
 

@@ -422,6 +422,10 @@ pub enum Subcommand {
         #[arg(long)]
         /// don't capture stdout/stderr of tests
         no_capture: bool,
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set, default_missing_value = "true", num_args = 0..=1, require_equals = true)]
+        /// whether to show verbose subprocess output for run-make tests;
+        /// set to false to suppress output for passing tests (e.g. for cg_clif with --no-capture)
+        verbose_run_make_subprocess_output: bool,
         #[arg(long)]
         /// Use a different codegen backend when running tests.
         test_codegen_backend: Option<CodegenBackendKind>,
@@ -628,6 +632,15 @@ impl Subcommand {
         match *self {
             Subcommand::Test { no_capture, .. } => no_capture,
             _ => false,
+        }
+    }
+
+    pub fn verbose_run_make_subprocess_output(&self) -> bool {
+        match *self {
+            Subcommand::Test { verbose_run_make_subprocess_output, .. } => {
+                verbose_run_make_subprocess_output
+            }
+            _ => true,
         }
     }
 

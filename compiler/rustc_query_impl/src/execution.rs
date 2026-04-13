@@ -4,7 +4,7 @@ use std::mem::ManuallyDrop;
 use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::{DynSend, DynSync};
-use rustc_data_structures::{outline, sharded, sync};
+use rustc_data_structures::{defer, outline, sharded, sync};
 use rustc_errors::FatalError;
 use rustc_middle::dep_graph::{DepGraphData, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::{
@@ -17,6 +17,7 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::warn;
 
 use crate::dep_graph::{DepNode, DepNodeIndex};
+use crate::handle_cycle_error;
 use crate::job::{QueryJobInfo, QueryJobMap, create_cycle_error, find_cycle_in_stack};
 use crate::plumbing::{current_query_job, loadable_from_disk, next_job_id, start_query};
 use crate::query_impl::for_each_query_vtable;
@@ -114,8 +115,29 @@ fn handle_cycle<'tcx, C: QueryCache>(
     key: C::Key,
     cycle: Cycle<'tcx>,
 ) -> C::Value {
-    let error = create_cycle_error(tcx, &cycle);
-    (query.handle_cycle_error_fn)(tcx, key, cycle, error)
+    let nested;
+    {
+        let mut nesting = tcx.query_system.cycle_handler_nesting.lock();
+        nested = match *nesting {
+            0 => false,
+            1 => true,
+            _ => {
+                // Don't print further nested errors to avoid cases of infinite recursion
+                tcx.dcx().delayed_bug("doubly nested cycle error").raise_fatal()
+            }
+        };
+        *nesting += 1;
+    }
+    let _guard = defer(|| *tcx.query_system.cycle_handler_nesting.lock() -= 1);
+
+    let error = create_cycle_error(tcx, &cycle, nested);
+
+    if nested {
+        // Avoid custom handlers and only use the robust `create_cycle_error` for nested cycle errors
+        handle_cycle_error::default(error)
+    } else {
+        (query.handle_cycle_error_fn)(tcx, key, cycle, error)
+    }
 }
 
 /// Guard object representing the responsibility to execute a query job and
@@ -447,8 +469,7 @@ fn execute_job_incr<'tcx, C: QueryCache>(
         dep_graph_data.with_task(
             dep_node,
             tcx,
-            (query, key),
-            |tcx, (query, key)| (query.invoke_provider_fn)(tcx, key),
+            || (query.invoke_provider_fn)(tcx, key),
             query.hash_value_fn,
         )
     });

@@ -179,6 +179,7 @@ attribute_parsers!(
         Combine<RustcThenThisWouldNeedParser>,
         Combine<TargetFeatureParser>,
         Combine<UnstableFeatureBoundParser>,
+        Combine<UnstableRemovedParser>,
         // tidy-alphabetical-end
 
         // tidy-alphabetical-start
@@ -774,6 +775,11 @@ where
         name: Option<Symbol>,
     ) -> ErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNameValue(name))
+    }
+
+    /// Emit an error that a `name = value` argument is missing in a list of name-value pairs.
+    pub(crate) fn missing_name_value(&mut self, span: Span, name: Symbol) -> ErrorGuaranteed {
+        self.emit_parse_error(span, AttributeParseErrorReason::MissingNameValue(name))
     }
 
     /// Emit an error that a `name = value` pair was found where that name was already seen.

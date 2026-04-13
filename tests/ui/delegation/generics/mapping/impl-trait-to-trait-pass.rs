@@ -12,12 +12,12 @@
 
 // Testing types in parent, types in child reuse,
 // testing predicates inheritance,
-// with additional generic params in delegation parent
+// with additional generic params in delegation parent, with impl traits
 mod test_1 {
     trait Trait0 {}
 
     trait Trait1<T> {
-        fn foo<U>(&self)
+        fn foo<U>(&self, _f: impl FnOnce(T, U) -> (U, T))
         where
             T: Trait0,
             U: Trait0,
@@ -39,7 +39,7 @@ mod test_1 {
 
     pub fn check() {
         let s = S(F, &123, &123, &123);
-        <S::<'static, 'static, 'static, i32, i32> as Trait1<u16>>::foo::<u16>(&s);
+        <S::<'static, 'static, 'static, i32, i32> as Trait1<u16>>::foo::<u16>(&s, |x, y| (y, x));
     }
 }
 

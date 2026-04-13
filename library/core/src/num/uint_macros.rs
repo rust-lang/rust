@@ -232,14 +232,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(uint_bit_width)]
-        ///
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".bit_width(), 0);")]
         #[doc = concat!("assert_eq!(0b111_", stringify!($SelfT), ".bit_width(), 3);")]
         #[doc = concat!("assert_eq!(0b1110_", stringify!($SelfT), ".bit_width(), 4);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.bit_width(), ", stringify!($BITS), ");")]
         /// ```
-        #[unstable(feature = "uint_bit_width", issue = "142326")]
+        #[stable(feature = "uint_bit_width", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "uint_bit_width", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -293,14 +292,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_lowest_highest_one)]
-        ///
         #[doc = concat!("assert_eq!(0b0_", stringify!($SelfT), ".highest_one(), None);")]
         #[doc = concat!("assert_eq!(0b1_", stringify!($SelfT), ".highest_one(), Some(0));")]
         #[doc = concat!("assert_eq!(0b1_0000_", stringify!($SelfT), ".highest_one(), Some(4));")]
         #[doc = concat!("assert_eq!(0b1_1111_", stringify!($SelfT), ".highest_one(), Some(4));")]
         /// ```
-        #[unstable(feature = "int_lowest_highest_one", issue = "145203")]
+        #[stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -317,14 +315,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_lowest_highest_one)]
-        ///
         #[doc = concat!("assert_eq!(0b0_", stringify!($SelfT), ".lowest_one(), None);")]
         #[doc = concat!("assert_eq!(0b1_", stringify!($SelfT), ".lowest_one(), Some(0));")]
         #[doc = concat!("assert_eq!(0b1_0000_", stringify!($SelfT), ".lowest_one(), Some(4));")]
         #[doc = concat!("assert_eq!(0b1_1111_", stringify!($SelfT), ".lowest_one(), Some(0));")]
         /// ```
-        #[unstable(feature = "int_lowest_highest_one", issue = "145203")]
+        #[stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]

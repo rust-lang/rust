@@ -598,9 +598,7 @@ fn generate_impl_text_inner(
 
     // Copy any cfg attrs from the original adt
     buf.push_str("\n\n");
-    let cfg_attrs = adt
-        .attrs()
-        .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false));
+    let cfg_attrs = adt.attrs().filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))));
     cfg_attrs.for_each(|attr| buf.push_str(&format!("{attr}\n")));
 
     // `impl{generic_params} {trait_text} for {name}{generic_params.to_generic_args()}`
@@ -740,8 +738,7 @@ fn generate_impl_inner(
 
     let ty = make::ty_path(make::ext::ident_path(&adt.name().unwrap().text()));
 
-    let cfg_attrs =
-        adt.attrs().filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
+    let cfg_attrs = adt.attrs().filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))));
     match trait_ {
         Some(trait_) => make::impl_trait(
             cfg_attrs,
@@ -811,8 +808,7 @@ fn generate_impl_inner_with_factory(
 
     let ty: ast::Type = make.ty_path(make.ident_path(&adt.name().unwrap().text())).into();
 
-    let cfg_attrs =
-        adt.attrs().filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
+    let cfg_attrs = adt.attrs().filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))));
     match trait_ {
         Some(trait_) => make.impl_trait(
             cfg_attrs,

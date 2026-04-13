@@ -234,7 +234,6 @@ dependencies = [
  "intern",
  "oorandom",
  "rustc-hash 2.1.1",
- "span",
  "syntax",
  "syntax-bridge",
  "tracing",
@@ -846,7 +845,6 @@ dependencies = [
 name = "hir-expand"
 version = "0.0.0"
 dependencies = [
- "arrayvec",
  "base-db",
  "cfg",
  "cov-mark",
@@ -2733,6 +2731,7 @@ dependencies = [
  "rustc-hash 2.1.1",
  "rustc-literal-escaper 0.0.4",
  "rustc_apfloat",
+ "smallvec",
  "smol_str 0.3.2",
  "stdx",
  "test-utils",
