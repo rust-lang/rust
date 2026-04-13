@@ -414,7 +414,18 @@ fn layout_of_uncached<'tcx>(
             }
 
             if pointee.is_sized(tcx, cx.typing_env) {
-                return Ok(tcx.mk_layout(LayoutData::scalar(cx, data_ptr)));
+                // Guard against bogus `impl Sized` declarations (e.g.,
+                // `impl<T: ?Sized> Sized for T {}`), which are rejected with E0322
+                // but can still be processed by the trait solver in erroneous code.
+                // Such impls can make DSTs like `[T]`, `str`, and `dyn Trait` appear
+                // sized, causing pointer layout to be incorrectly computed as a thin
+                // pointer (Scalar) instead of a fat pointer (ScalarPair). We guard
+                // against this by checking the type kind directly (O(1), no recursion).
+                if !matches!(pointee.kind(), ty::Slice(_) | ty::Str | ty::Dynamic(..)) {
+                    return Ok(tcx.mk_layout(LayoutData::scalar(cx, data_ptr)));
+                }
+                // The pointee is structurally a DST — `is_sized` is unreliable here.
+                // Fall through to compute the correct fat-pointer layout below.
             }
 
             let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
