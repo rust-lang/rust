@@ -3,7 +3,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::{Analysis, GenKill};
 
-// use super::simplify::simplify_cfg;
+use super::simplify::simplify_cfg;
 
 pub(crate) struct RemoveDeadDrops;
 
@@ -111,7 +111,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveDeadDrops {
             }
 
             // Removing drop terminators may simplify the CFG, so run cleanup.
-            // simplify_cfg(tcx, body);
+            simplify_cfg(tcx, body);
         }
     }
 }
