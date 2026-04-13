@@ -111,6 +111,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `float7e60`
 `floate1`
 `fma`
+`fma4`
 `fp-armv8`
 `fp16`
 `fp64`
