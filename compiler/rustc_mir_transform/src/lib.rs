@@ -476,7 +476,7 @@ fn mir_promoted(
     pm::run_passes(
         tcx,
         &mut body,
-        &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage],
+        &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage, &remove_dead_drops::RemoveDeadDrops],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
         pm::Optimizations::Allowed,
     );
@@ -489,7 +489,7 @@ fn mir_promoted(
 
 fn mir_post_borrowck_cleanup(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
     let (body, _) = tcx.mir_promoted(def);
-    let mut body = body.borrow().clone();
+    let mut body = body.steal();
     pm::run_passes(
         tcx,
         &mut body,
@@ -558,7 +558,7 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
 
     tcx.ensure_done().check_liveness(def);
 
-    let body = tcx.mir_post_borrowck_cleanup(def);
+    let (body, _) = tcx.mir_promoted(def);
     let mut body = body.steal();
 
     if let Some(error_reported) = tainted_by_errors {
