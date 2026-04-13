@@ -606,6 +606,9 @@ impl<T> Trait<T> for X {
         ty: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
+        if !matches!(proj_ty.kind, ty::AliasTyKind::Projection { .. }) {
+            return false;
+        }
         let Some(body_owner_def_id) = body_owner_def_id else {
             return false;
         };
