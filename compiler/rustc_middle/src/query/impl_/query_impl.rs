@@ -1,6 +1,6 @@
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::erase::{self, Erased};
-use rustc_middle::query::{AsLocalQueryKey, QueryMode, QueryVTable};
+use rustc_middle::query::{QueryMode, QueryVTable};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
@@ -88,45 +88,6 @@ macro_rules! define_queries {
                     }
                 }
 
-                /// Defines an `invoke_provider` function that calls the query's provider,
-                /// to be used as a function pointer in the query's vtable.
-                ///
-                /// To mark a short-backtrace boundary, the function's actual name
-                /// (after demangling) must be `__rust_begin_short_backtrace`.
-                mod invoke_provider_fn {
-                    use super::*;
-                    use rustc_middle::queries::$name::{Key, Value, provided_to_erased};
-
-                    #[inline(never)]
-                    pub(crate) fn __rust_begin_short_backtrace<'tcx>(
-                        tcx: TyCtxt<'tcx>,
-                        key: Key<'tcx>,
-                    ) -> Erased<Value<'tcx>> {
-                        #[cfg(debug_assertions)]
-                        let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
-
-                        // Call the actual provider function for this query.
-
-                        #[cfg($separate_provide_extern)]
-                        let provided_value = if let Some(local_key) = key.as_local_key() {
-                            (tcx.query_system.local_providers.$name)(tcx, local_key)
-                        } else {
-                            (tcx.query_system.extern_providers.$name)(tcx, key)
-                        };
-
-                        #[cfg(not($separate_provide_extern))]
-                        let provided_value = (tcx.query_system.local_providers.$name)(tcx, key);
-
-                        rustc_middle::ty::print::with_reduced_queries!({
-                            tracing::trace!(?provided_value);
-                        });
-
-                        // Erase the returned value, because `QueryVTable` uses erased values.
-                        // For queries with `arena_cache`, this also arena-allocates the value.
-                        provided_to_erased(tcx, provided_value)
-                    }
-                }
-
                 pub(crate) fn make_query_vtable<'tcx>(incremental: bool)
                     -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>, rustc_middle::queries::$name::Helper>
                 {
@@ -139,8 +100,6 @@ macro_rules! define_queries {
                         dep_kind: rustc_middle::dep_graph::DepKind::$name,
                         state: Default::default(),
                         cache: Default::default(),
-
-                        invoke_provider_fn: self::invoke_provider_fn::__rust_begin_short_backtrace,
 
                         helper: Default::default(),
 

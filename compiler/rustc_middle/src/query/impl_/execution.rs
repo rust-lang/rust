@@ -401,7 +401,7 @@ fn execute_job_non_incr<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Val
 
     let prof_timer = tcx.prof.query_provider();
     // Call the query provider.
-    let value = start_query(job_id, query.depth_limit, || (query.invoke_provider_fn)(tcx, key));
+    let value = start_query(job_id, query.depth_limit, || H::invoke_provider_fn(tcx, key));
     let dep_node_index = tcx.dep_graph.next_virtual_depnode_index();
     prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
@@ -456,8 +456,8 @@ fn execute_job_incr<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>
         dep_graph_data.with_task(
             dep_node,
             tcx,
-            (query, key),
-            |tcx, (query, key)| (query.invoke_provider_fn)(tcx, key),
+            key,
+            |tcx, key| H::invoke_provider_fn(tcx, key),
             query.hash_value_fn,
         )
     });
@@ -521,7 +521,7 @@ fn load_from_disk_or_invoke_provider_green<
             // We could not load a result from the on-disk cache, so recompute. The dep-graph for
             // this computation is already in-place, so we can just call the query provider.
             let prof_timer = tcx.prof.query_provider();
-            let value = tcx.dep_graph.with_ignore(|| (query.invoke_provider_fn)(tcx, key));
+            let value = tcx.dep_graph.with_ignore(|| H::invoke_provider_fn(tcx, key));
             prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
             (value, true)
