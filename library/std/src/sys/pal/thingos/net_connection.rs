@@ -45,7 +45,6 @@ const EPIPE: i32 = 32;
 const EAFNOSUPPORT: i32 = 97;
 const ETIMEDOUT: i32 = 110;
 const ECONNREFUSED: i32 = 111;
-const ENOTSUP: i32 = 95;
 const ENOTCONN: i32 = 107;
 const MAX_UDP_DATAGRAM_SIZE: usize = 65_535;
 
@@ -628,10 +627,18 @@ impl TcpListener {
     }
 
     pub fn duplicate(&self) -> crate::io::Result<TcpListener> {
+        let ctl_fd = dup_fd(self.ctl_fd)?;
+        let accept_fd = match dup_fd(self.accept_fd) {
+            Ok(fd) => fd,
+            Err(err) => {
+                let _ = vfs_close(ctl_fd);
+                return Err(err);
+            }
+        };
         Ok(TcpListener {
             id: self.id,
-            ctl_fd: dup_fd(self.ctl_fd)?,
-            accept_fd: dup_fd(self.accept_fd)?,
+            ctl_fd,
+            accept_fd,
             nonblocking: Arc::new(Mutex::new(*self.nonblocking.lock().unwrap())),
         })
     }
@@ -748,40 +755,19 @@ impl UdpSocket {
     }
 
     pub fn recv_from(&self, buf: &mut [u8]) -> crate::io::Result<(usize, SocketAddr)> {
-        let nonblocking = *self.nonblocking.lock().unwrap();
-        let timeout = *self.read_timeout.lock().unwrap();
-        let deadline = timeout.map(|dur| monotonic_ns().saturating_add(duration_to_ns(dur)));
-        // Wire format on read: [4: src_ipv4][2: src_port_le][4: len_le][payload]
-        let header_len: usize = 10;
-        let mut raw = vec![0u8; header_len + buf.len()];
-        loop {
-            match vfs_read(self.data_fd, &mut raw) {
-                Ok(n) if n >= header_len => {
-                    let src_ip: [u8; 4] = raw[..4].try_into().unwrap();
-                    let src_port = u16::from_le_bytes([raw[4], raw[5]]);
-                    let payload_len = u32::from_le_bytes([raw[6], raw[7], raw[8], raw[9]]) as usize;
-                    let copy_len = payload_len.min(buf.len()).min(n - header_len);
-                    buf[..copy_len].copy_from_slice(&raw[header_len..header_len + copy_len]);
-                    let src_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::from(src_ip)), src_port);
-                    return Ok((copy_len, src_addr));
-                }
-                Ok(_) => return Err(crate::io::Error::from_raw_os_error(EINVAL)),
-                Err(ref e) if e.raw_os_error() == Some(EAGAIN) && nonblocking => {
-                    return Err(crate::io::Error::from_raw_os_error(EAGAIN));
-                }
-                Err(ref e) if e.raw_os_error() == Some(EAGAIN) => {
-                    if deadline_expired(deadline) {
-                        return Err(crate::io::Error::from_raw_os_error(ETIMEDOUT));
-                    }
-                    wait_fd_or_sleep(self.data_fd, POLLIN, deadline)?;
-                }
-                Err(e) => return Err(e),
-            }
+        if let Some(staged) = self.peeked_datagram.lock().unwrap().take() {
+            return Ok(copy_udp_payload(buf, &staged));
         }
+        let datagram = self.read_udp_datagram()?;
+        Ok(copy_udp_payload(buf, &datagram))
     }
 
-    pub fn peek_from(&self, _: &mut [u8]) -> crate::io::Result<(usize, SocketAddr)> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+    pub fn peek_from(&self, buf: &mut [u8]) -> crate::io::Result<(usize, SocketAddr)> {
+        let mut peeked = self.peeked_datagram.lock().unwrap();
+        if peeked.is_none() {
+            *peeked = Some(self.read_udp_datagram()?);
+        }
+        Ok(copy_udp_payload(buf, peeked.as_ref().unwrap()))
     }
 
     pub fn send_to(&self, data: &[u8], addr: &SocketAddr) -> crate::io::Result<usize> {
@@ -802,7 +788,25 @@ impl UdpSocket {
     }
 
     pub fn duplicate(&self) -> crate::io::Result<UdpSocket> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        let data_fd = dup_fd(self.data_fd)?;
+        let ctl_fd = match dup_fd(self.ctl_fd) {
+            Ok(fd) => fd,
+            Err(err) => {
+                let _ = vfs_close(data_fd);
+                return Err(err);
+            }
+        };
+        Ok(UdpSocket {
+            id: self.id,
+            data_fd,
+            ctl_fd,
+            local_addr: self.local_addr,
+            read_timeout: Arc::new(Mutex::new(*self.read_timeout.lock().unwrap())),
+            write_timeout: Arc::new(Mutex::new(*self.write_timeout.lock().unwrap())),
+            nonblocking: Arc::new(Mutex::new(*self.nonblocking.lock().unwrap())),
+            connected_remote: Arc::new(Mutex::new(*self.connected_remote.lock().unwrap())),
+            peeked_datagram: Arc::new(Mutex::new(None)),
+        })
     }
 
     pub fn set_read_timeout(&self, t: Option<Duration>) -> crate::io::Result<()> {
@@ -823,60 +827,74 @@ impl UdpSocket {
         Ok(*self.write_timeout.lock().unwrap())
     }
 
-    pub fn set_broadcast(&self, _: bool) -> crate::io::Result<()> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+    pub fn set_broadcast(&self, enabled: bool) -> crate::io::Result<()> {
+        let value = if enabled { "1" } else { "0" };
+        let cmd = format!("broadcast {value}");
+        vfs_write(self.ctl_fd, cmd.as_bytes()).map(|_| ())
     }
 
     pub fn broadcast(&self) -> crate::io::Result<bool> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        Ok(read_udp_status(self.id)?.broadcast.unwrap_or(false))
     }
 
     pub fn set_multicast_loop_v4(&self, _: bool) -> crate::io::Result<()> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): add IPv4 multicast loopback control in netd.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn multicast_loop_v4(&self) -> crate::io::Result<bool> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): add IPv4 multicast loopback control in netd.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn set_multicast_ttl_v4(&self, _: u32) -> crate::io::Result<()> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): add IPv4 multicast TTL control in netd.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn multicast_ttl_v4(&self) -> crate::io::Result<u32> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): add IPv4 multicast TTL control in netd.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn set_multicast_loop_v6(&self, _: bool) -> crate::io::Result<()> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): IPv6 multicast support is tracked separately.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn multicast_loop_v6(&self) -> crate::io::Result<bool> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): IPv6 multicast support is tracked separately.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn join_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr) -> crate::io::Result<()> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): add IPv4 multicast group membership control in netd.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn join_multicast_v6(&self, _: &Ipv6Addr, _: u32) -> crate::io::Result<()> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): IPv6 multicast support is tracked separately.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn leave_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr) -> crate::io::Result<()> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): add IPv4 multicast group membership control in netd.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn leave_multicast_v6(&self, _: &Ipv6Addr, _: u32) -> crate::io::Result<()> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): IPv6 multicast support is tracked separately.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn set_ttl(&self, _: u32) -> crate::io::Result<()> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): add UDP TTL control in the netd VFS protocol.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn ttl(&self) -> crate::io::Result<u32> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+        // TODO(thingos-net): add UDP TTL control in the netd VFS protocol.
+        Err(crate::io::Error::from_raw_os_error(ENOSYS))
     }
 
     pub fn take_error(&self) -> crate::io::Result<Option<crate::io::Error>> {
@@ -896,8 +914,12 @@ impl UdpSocket {
         Ok(n)
     }
 
-    pub fn peek(&self, _: &mut [u8]) -> crate::io::Result<usize> {
-        Err(crate::io::Error::from_raw_os_error(ENOTSUP))
+    pub fn peek(&self, buf: &mut [u8]) -> crate::io::Result<usize> {
+        if self.connected_remote.lock().unwrap().is_none() {
+            return Err(crate::io::Error::from_raw_os_error(ENOTCONN));
+        }
+        let (n, _) = self.peek_from(buf)?;
+        Ok(n)
     }
 
     pub fn send(&self, data: &[u8]) -> crate::io::Result<usize> {
@@ -920,6 +942,41 @@ impl UdpSocket {
             *self.connected_remote.lock().unwrap() = Some(*a);
             Ok(())
         })
+    }
+
+    fn read_udp_datagram(&self) -> crate::io::Result<PeekedUdpDatagram> {
+        let nonblocking = *self.nonblocking.lock().unwrap();
+        let timeout = *self.read_timeout.lock().unwrap();
+        let deadline = timeout.map(|dur| monotonic_ns().saturating_add(duration_to_ns(dur)));
+        let header_len: usize = 10;
+        let mut raw = vec![0u8; header_len + MAX_UDP_DATAGRAM_SIZE];
+        loop {
+            match vfs_read(self.data_fd, &mut raw) {
+                Ok(n) if n >= header_len => {
+                    let src_ip: [u8; 4] = raw[..4].try_into().unwrap();
+                    let src_port = u16::from_le_bytes([raw[4], raw[5]]);
+                    let payload_len = u32::from_le_bytes([raw[6], raw[7], raw[8], raw[9]]) as usize;
+                    let available = n.saturating_sub(header_len);
+                    let copy_len = payload_len.min(available);
+                    let src = SocketAddr::new(IpAddr::V4(Ipv4Addr::from(src_ip)), src_port);
+                    return Ok(PeekedUdpDatagram {
+                        src,
+                        payload: raw[header_len..header_len + copy_len].to_vec(),
+                    });
+                }
+                Ok(_) => return Err(crate::io::Error::from_raw_os_error(EINVAL)),
+                Err(ref e) if e.raw_os_error() == Some(EAGAIN) && nonblocking => {
+                    return Err(crate::io::Error::from_raw_os_error(EAGAIN));
+                }
+                Err(ref e) if e.raw_os_error() == Some(EAGAIN) => {
+                    if deadline_expired(deadline) {
+                        return Err(crate::io::Error::from_raw_os_error(ETIMEDOUT));
+                    }
+                    wait_fd_or_sleep(self.data_fd, POLLIN, deadline)?;
+                }
+                Err(e) => return Err(e),
+            }
+        }
     }
 }
 
@@ -1038,6 +1095,29 @@ fn udp_socket_path(id: u32, subpath: &str) -> String {
     format!("/net/udp/{id}/{subpath}")
 }
 
+fn read_udp_status(id: u32) -> crate::io::Result<UdpStatusInfo> {
+    let path = udp_socket_path(id, "status");
+    let fd = vfs_open(&path, O_RDONLY)?;
+    let mut buf = [0u8; 256];
+    let n = vfs_read(fd, &mut buf)?;
+    vfs_close(fd)?;
+
+    let text = crate::str::from_utf8(&buf[..n])
+        .map_err(|_| crate::io::Error::from_raw_os_error(EINVAL))?;
+
+    let mut out = UdpStatusInfo::default();
+    for line in text.lines() {
+        if let Some(broadcast) = line.strip_prefix("broadcast: ") {
+            out.broadcast = match broadcast.trim() {
+                "true" => Some(true),
+                "false" => Some(false),
+                _ => None,
+            };
+        }
+    }
+    Ok(out)
+}
+
 fn read_status(id: u32) -> crate::io::Result<StatusInfo> {
     let path = socket_path(id, "status");
     let fd = vfs_open(&path, O_RDONLY)?;
@@ -1074,6 +1154,12 @@ fn parse_socket_addr(text: &str) -> Option<SocketAddr> {
     let port = port.parse::<u16>().ok()?;
     let ip = ip.parse::<Ipv4Addr>().ok()?;
     Some(SocketAddr::V4(SocketAddrV4::new(ip, port)))
+}
+
+fn copy_udp_payload(buf: &mut [u8], datagram: &PeekedUdpDatagram) -> (usize, SocketAddr) {
+    let copy_len = buf.len().min(datagram.payload.len());
+    buf[..copy_len].copy_from_slice(&datagram.payload[..copy_len]);
+    (copy_len, datagram.src)
 }
 
 /// Parse an accept-response line: `"<conn_id> <a>.<b>.<c>.<d> <port>"`.
@@ -1195,6 +1281,11 @@ fn vfs_write(fd: i32, buf: &[u8]) -> crate::io::Result<usize> {
         raw_syscall6(SYS_VFS_WRITE, fd as usize, buf.as_ptr() as usize, buf.len(), 0, 0, 0)
     };
     decode_ret(ret)
+}
+
+fn dup_fd(fd: i32) -> crate::io::Result<i32> {
+    let ret = unsafe { raw_syscall6(SYS_FS_DUP, fd as usize, 0, 0, 0, 0, 0) };
+    decode_ret(ret).map(|new_fd| new_fd as i32)
 }
 
 fn decode_ret(ret: isize) -> crate::io::Result<usize> {
