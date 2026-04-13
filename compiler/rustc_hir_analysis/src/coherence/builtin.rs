@@ -190,7 +190,7 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
                 let struct_vis = tcx.visibility(adt.did());
                 for variant in adt.variants() {
                     for field in &variant.fields {
-                        if !field.vis.is_at_least(struct_vis, tcx) {
+                        if struct_vis.greater_than(field.vis, tcx) {
                             let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
                             return Err(tcx
                                 .dcx()

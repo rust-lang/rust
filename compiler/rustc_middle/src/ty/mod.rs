@@ -11,6 +11,7 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
+use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -379,18 +380,46 @@ impl<Id: Into<DefId>> Visibility<Id> {
         }
     }
 
-    /// Returns `true` if this visibility is at least as accessible as the given visibility
-    pub fn is_at_least(self, vis: Visibility<impl Into<DefId>>, tcx: TyCtxt<'_>) -> bool {
-        match vis {
-            Visibility::Public => self.is_public(),
-            Visibility::Restricted(id) => self.is_accessible_from(id, tcx),
+    pub fn partial_cmp(
+        self,
+        vis: Visibility<impl Into<DefId>>,
+        tcx: TyCtxt<'_>,
+    ) -> Option<Ordering> {
+        match (self, vis) {
+            (Visibility::Public, Visibility::Public) => Some(Ordering::Equal),
+            (Visibility::Public, Visibility::Restricted(_)) => Some(Ordering::Greater),
+            (Visibility::Restricted(_), Visibility::Public) => Some(Ordering::Less),
+            (Visibility::Restricted(lhs_id), Visibility::Restricted(rhs_id)) => {
+                let (lhs_id, rhs_id) = (lhs_id.into(), rhs_id.into());
+                if lhs_id == rhs_id {
+                    Some(Ordering::Equal)
+                } else if tcx.is_descendant_of(rhs_id, lhs_id) {
+                    Some(Ordering::Greater)
+                } else if tcx.is_descendant_of(lhs_id, rhs_id) {
+                    Some(Ordering::Less)
+                } else {
+                    None
+                }
+            }
         }
     }
 }
 
-impl<Id: Into<DefId> + Copy> Visibility<Id> {
-    pub fn min(self, vis: Visibility<Id>, tcx: TyCtxt<'_>) -> Visibility<Id> {
-        if self.is_at_least(vis, tcx) { vis } else { self }
+impl<Id: Into<DefId> + Debug + Copy> Visibility<Id> {
+    /// Returns `true` if this visibility is strictly larger than the given visibility.
+    #[track_caller]
+    pub fn greater_than(
+        self,
+        vis: Visibility<impl Into<DefId> + Debug + Copy>,
+        tcx: TyCtxt<'_>,
+    ) -> bool {
+        match self.partial_cmp(vis, tcx) {
+            Some(ord) => ord.is_gt(),
+            None => {
+                tcx.dcx().delayed_bug(format!("unordered visibilities: {self:?} and {vis:?}"));
+                false
+            }
+        }
     }
 }
 

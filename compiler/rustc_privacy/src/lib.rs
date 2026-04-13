@@ -337,7 +337,7 @@ fn assoc_has_type_of(tcx: TyCtxt<'_>, item: &ty::AssocItem) -> bool {
 }
 
 fn min(vis1: ty::Visibility, vis2: ty::Visibility, tcx: TyCtxt<'_>) -> ty::Visibility {
-    if vis1.is_at_least(vis2, tcx) { vis2 } else { vis1 }
+    if vis1.greater_than(vis2, tcx) { vis2 } else { vis1 }
 }
 
 /// Visitor used to determine impl visibility and reachability.
@@ -1465,7 +1465,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         };
 
         let vis = self.tcx.local_visibility(local_def_id);
-        if self.hard_error && !vis.is_at_least(self.required_visibility, self.tcx) {
+        if self.hard_error && self.required_visibility.greater_than(vis, self.tcx) {
             let vis_descr = match vis {
                 ty::Visibility::Public => "public",
                 ty::Visibility::Restricted(vis_def_id) => {
@@ -1499,7 +1499,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
 
         let reachable_at_vis = *effective_vis.at_level(Level::Reachable);
 
-        if !vis.is_at_least(reachable_at_vis, self.tcx) {
+        if reachable_at_vis.greater_than(vis, self.tcx) {
             let lint = if self.in_primary_interface {
                 lint::builtin::PRIVATE_INTERFACES
             } else {
