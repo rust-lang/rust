@@ -5818,6 +5818,18 @@ impl<'db> Type<'db> {
         matches!(self.ty.kind(), TyKind::RawPtr(..))
     }
 
+    pub fn is_mutable_raw_ptr(&self) -> bool {
+        // Used outside of rust-analyzer (e.g. by `ra_ap_hir` consumers).
+        matches!(self.ty.kind(), TyKind::RawPtr(.., hir_ty::next_solver::Mutability::Mut))
+    }
+
+    pub fn as_raw_ptr(&self) -> Option<(Type<'db>, Mutability)> {
+        // Used outside of rust-analyzer (e.g. by `ra_ap_hir` consumers).
+        let TyKind::RawPtr(ty, m) = self.ty.kind() else { return None };
+        let m = Mutability::from_mutable(matches!(m, hir_ty::next_solver::Mutability::Mut));
+        Some((self.derived(ty), m))
+    }
+
     pub fn remove_raw_ptr(&self) -> Option<Type<'db>> {
         if let TyKind::RawPtr(ty, _) = self.ty.kind() { Some(self.derived(ty)) } else { None }
     }
