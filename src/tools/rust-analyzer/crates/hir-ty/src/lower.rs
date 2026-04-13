@@ -1869,10 +1869,14 @@ fn resolve_type_param_assoc_type_shorthand(
                 .skip_binder();
             let args = EarlyBinder::bind(args).instantiate(interner, bounded_trait_ref.args);
             let current_result = StoredEarlyBinder::bind((assoc_type, args.store()));
-            if let Some(this_trait_resolution) = this_trait_resolution {
-                return AssocTypeShorthandResolution::Ambiguous {
-                    sub_trait_resolution: Some(this_trait_resolution),
-                };
+            if let Some(this_trait_resolution) = &this_trait_resolution {
+                if *this_trait_resolution == current_result {
+                    continue;
+                } else {
+                    return AssocTypeShorthandResolution::Ambiguous {
+                        sub_trait_resolution: Some(this_trait_resolution.clone()),
+                    };
+                }
             } else if let Some(prev_resolution) = &supertraits_resolution {
                 if let AssocTypeShorthandResolution::Ambiguous {
                     sub_trait_resolution: Some(prev_resolution),
