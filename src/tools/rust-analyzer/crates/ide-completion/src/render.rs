@@ -733,7 +733,7 @@ fn path_ref_match(
         // FIXME: This might create inconsistent completions where we show a ref match in macro inputs
         // as long as nothing was typed yet
         if let Some(ref_mode) = compute_ref_match(completion, ty) {
-            item.ref_match(ref_mode, completion.position.offset);
+            item.ref_match(ref_mode, completion.source_range().start());
         }
     }
 }
@@ -2138,6 +2138,53 @@ fn go(world: &WorldSnapshot) { go(w$0) }
             expect![[r#"
                 lc r &mut i32 [type+local]
                 fn foo(…) fn(&mut i32) -> &i32 [type]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_ref_match_after_keyword_prefix() {
+        // About https://github.com/rust-lang/rust-analyzer/issues/15139
+        check_kinds(
+            r#"
+fn foo(data: &i32) {}
+fn main() {
+    let indent = 2i32;
+    foo(in$0)
+}
+"#,
+            &[CompletionItemKind::SymbolKind(SymbolKind::Local)],
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "indent",
+                        detail_left: None,
+                        detail_right: Some(
+                            "i32",
+                        ),
+                        source_range: 65..67,
+                        delete: 65..67,
+                        insert: "indent",
+                        kind: SymbolKind(
+                            Local,
+                        ),
+                        detail: "i32",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: true,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: None,
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                        },
+                        ref_match: "&@65",
+                    },
+                ]
             "#]],
         );
     }
