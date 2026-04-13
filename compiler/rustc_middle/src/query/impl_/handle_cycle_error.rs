@@ -8,14 +8,13 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_middle::bug;
 use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::Cycle;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
 
-use crate::job::create_cycle_error;
+use crate::query::impl_::job::create_cycle_error;
 
 // Default cycle handler used for all queries that don't use the `handle_cycle_error` query
 // modifier.

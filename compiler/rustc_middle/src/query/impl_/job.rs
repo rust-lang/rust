@@ -11,7 +11,7 @@ use rustc_middle::query::{Cycle, QueryJob, QueryJobId, QueryLatch, QueryStackFra
 use rustc_middle::ty::TyCtxt;
 use rustc_span::{DUMMY_SP, Span};
 
-use crate::{CollectActiveJobsKind, collect_active_query_jobs};
+use crate::query::impl_::{CollectActiveJobsKind, collect_active_query_jobs};
 
 /// Map from query job IDs to job information collected by
 /// `collect_active_query_jobs`.
@@ -420,7 +420,7 @@ pub(crate) fn create_cycle_error<'tcx>(
 
     let mut cycle_stack = Vec::new();
 
-    use crate::error::StackCount;
+    use crate::query::impl_::error::StackCount;
     let stack_bottom = frames[0].tagged_key.description(tcx);
     let stack_count = if frames.len() == 1 {
         StackCount::Single { stack_bottom: stack_bottom.clone() }
@@ -431,11 +431,13 @@ pub(crate) fn create_cycle_error<'tcx>(
     for i in 1..frames.len() {
         let frame = &frames[i];
         let span = frame.tagged_key.default_span(tcx, frames[(i + 1) % frames.len()].span);
-        cycle_stack
-            .push(crate::error::CycleStack { span, desc: frame.tagged_key.description(tcx) });
+        cycle_stack.push(crate::query::impl_::error::CycleStack {
+            span,
+            desc: frame.tagged_key.description(tcx),
+        });
     }
 
-    let cycle_usage = usage.as_ref().map(|usage| crate::error::CycleUsage {
+    let cycle_usage = usage.as_ref().map(|usage| crate::query::impl_::error::CycleUsage {
         span: usage.tagged_key.default_span(tcx, usage.span),
         usage: usage.tagged_key.description(tcx),
     });
@@ -455,14 +457,14 @@ pub(crate) fn create_cycle_error<'tcx>(
     };
 
     let alias = if is_all_def_kind(DefKind::TyAlias) {
-        Some(crate::error::Alias::Ty)
+        Some(crate::query::impl_::error::Alias::Ty)
     } else if is_all_def_kind(DefKind::TraitAlias) {
-        Some(crate::error::Alias::Trait)
+        Some(crate::query::impl_::error::Alias::Trait)
     } else {
         None
     };
 
-    let cycle_diag = crate::error::Cycle {
+    let cycle_diag = crate::query::impl_::error::Cycle {
         span,
         cycle_stack,
         stack_bottom,

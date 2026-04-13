@@ -16,10 +16,14 @@ use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::warn;
 
-use crate::dep_graph::{DepNode, DepNodeIndex};
-use crate::job::{QueryJobInfo, QueryJobMap, create_cycle_error, find_cycle_in_stack};
-use crate::plumbing::{current_query_job, loadable_from_disk, next_job_id, start_query};
-use crate::query_impl::for_each_query_vtable;
+use crate::query::impl_::dep_graph::{DepNode, DepNodeIndex};
+use crate::query::impl_::job::{
+    QueryJobInfo, QueryJobMap, create_cycle_error, find_cycle_in_stack,
+};
+use crate::query::impl_::plumbing::{
+    current_query_job, loadable_from_disk, next_job_id, start_query,
+};
+use crate::query::impl_::query_impl::for_each_query_vtable;
 
 #[inline]
 fn equivalent_key<K: Eq, V>(k: K) -> impl Fn(&(K, V)) -> bool {

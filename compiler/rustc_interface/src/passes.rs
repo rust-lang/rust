@@ -901,7 +901,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     rustc_mir_transform::provide(providers);
     rustc_monomorphize::provide(providers);
     rustc_privacy::provide(&mut providers.queries);
-    rustc_query_impl::provide(providers);
+    rustc_middle::query::impl_::provide(providers);
     rustc_resolve::provide(&mut providers.queries);
     rustc_hir_analysis::provide(&mut providers.queries);
     rustc_hir_typeck::provide(&mut providers.queries);
@@ -995,8 +995,8 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         &hir_arena,
         untracked,
         dep_graph,
-        rustc_query_impl::make_dep_kind_vtables(&arena),
-        rustc_query_impl::query_system(
+        rustc_middle::query::impl_::make_dep_kind_vtables(&arena),
+        rustc_middle::query::impl_::query_system(
             providers.queries,
             providers.extern_queries,
             query_result_on_disk_cache,

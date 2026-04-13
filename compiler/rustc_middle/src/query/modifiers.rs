@@ -62,7 +62,7 @@ pub(crate) struct feedable;
 ///
 /// The default behaviour for a query cycle is to emit a cycle error and halt
 /// compilation. Queries with this modifier will instead use a custom handler,
-/// which must be provided at `rustc_query_impl::handle_cycle_error::$name`,
+/// which must be provided at `rustc_middle::query::impl_::handle_cycle_error::$name`,
 /// where `$name` is the query name.
 pub(crate) struct handle_cycle_error;
 

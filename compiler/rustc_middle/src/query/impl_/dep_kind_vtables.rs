@@ -1,10 +1,9 @@
 use rustc_middle::arena::Arena;
-use rustc_middle::bug;
 use rustc_middle::dep_graph::{DepKindVTable, DepNodeKey, KeyFingerprintStyle};
 use rustc_middle::query::QueryCache;
 
-use crate::GetQueryVTable;
-use crate::plumbing::promote_from_disk_inner;
+use crate::query::impl_::GetQueryVTable;
+use crate::query::impl_::plumbing::promote_from_disk_inner;
 
 /// [`DepKindVTable`] constructors for special dep kinds that aren't queries.
 #[expect(non_snake_case, reason = "use non-snake case to avoid collision with query names")]
@@ -114,7 +113,7 @@ where
         force_from_dep_node_fn: (can_recover && !is_no_force).then_some(
             |tcx, dep_node, _prev_index| {
                 let query = Q::query_vtable(tcx);
-                crate::execution::force_query_dep_node(tcx, query, dep_node)
+                crate::query::impl_::execution::force_query_dep_node(tcx, query, dep_node)
             },
         ),
         promote_from_disk_fn: (can_recover && is_cache_on_disk).then_some(|tcx, dep_node| {
@@ -163,8 +162,8 @@ macro_rules! define_dep_kind_vtables {
         // The large number of query vtables.
         let q_vtables: [DepKindVTable<'tcx>; _] = [
             $(
-                $crate::dep_kind_vtables::make_dep_kind_vtable_for_query::<
-                    $crate::query_impl::$name::VTableGetter,
+                $crate::query::impl_::dep_kind_vtables::make_dep_kind_vtable_for_query::<
+                    $crate::query::impl_::query_impl::$name::VTableGetter,
                 >(
                     $cache_on_disk,
                     $eval_always,

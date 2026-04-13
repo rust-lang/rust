@@ -4,7 +4,7 @@ use rustc_middle::query::{AsLocalQueryKey, QueryMode, QueryVTable};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
-use crate::GetQueryVTable;
+use crate::query::impl_::GetQueryVTable;
 
 macro_rules! define_queries {
     (
@@ -33,7 +33,7 @@ macro_rules! define_queries {
         // Non-queries are unused here.
         non_queries { $($_:tt)* }
     ) => {
-        // This macro expects to be expanded into `crate::query_impl`, which is this file.
+        // This macro expects to be expanded into `crate::query::impl_::query_impl`, which is this file.
         $(
             pub(crate) mod $name {
                 use super::*;
@@ -58,7 +58,7 @@ macro_rules! define_queries {
                     ) -> Option<Erased<Value<'tcx>>> {
                         #[cfg(debug_assertions)]
                         let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
-                        crate::execution::execute_query_incr_inner(
+                        crate::query::impl_::execution::execute_query_incr_inner(
                             &tcx.query_system.query_vtables.$name,
                             tcx,
                             span,
@@ -79,7 +79,7 @@ macro_rules! define_queries {
                         key: Key<'tcx>,
                         __mode: QueryMode,
                     ) -> Option<Erased<Value<'tcx>>> {
-                        Some(crate::execution::execute_query_non_incr_inner(
+                        Some(crate::query::impl_::execution::execute_query_non_incr_inner(
                             &tcx.query_system.query_vtables.$name,
                             tcx,
                             span,
@@ -157,7 +157,7 @@ macro_rules! define_queries {
                         invoke_provider_fn: self::invoke_provider_fn::__rust_begin_short_backtrace,
 
                         will_cache_on_disk_for_key_fn:
-                            $crate::query_impl::$name::will_cache_on_disk_for_key,
+                            $crate::query::impl_::query_impl::$name::will_cache_on_disk_for_key,
 
                         helper: Default::default(),
 
@@ -165,11 +165,11 @@ macro_rules! define_queries {
                         handle_cycle_error_fn: |tcx, key, cycle, err| {
                             use rustc_middle::query::erase::erase_val;
 
-                            erase_val($crate::handle_cycle_error::$name(tcx, key, cycle, err))
+                            erase_val($crate::query::impl_::handle_cycle_error::$name(tcx, key, cycle, err))
                         },
                         #[cfg(not($handle_cycle_error))]
                         handle_cycle_error_fn: |_tcx, _key, _cycle, err| {
-                            $crate::handle_cycle_error::default(err)
+                            $crate::query::impl_::handle_cycle_error::default(err)
                         },
 
                         #[cfg($no_hash)]
@@ -185,9 +185,9 @@ macro_rules! define_queries {
                         },
                         create_tagged_key: TaggedQueryKey::$name,
                         execute_query_fn: if incremental {
-                            crate::query_impl::$name::execute_query_incr::__rust_end_short_backtrace
+                            crate::query::impl_::query_impl::$name::execute_query_incr::__rust_end_short_backtrace
                         } else {
-                            crate::query_impl::$name::execute_query_non_incr::__rust_end_short_backtrace
+                            crate::query::impl_::query_impl::$name::execute_query_non_incr::__rust_end_short_backtrace
                         },
                     }
                 }
@@ -212,7 +212,7 @@ macro_rules! define_queries {
         {
             rustc_middle::queries::QueryVTables {
                 $(
-                    $name: crate::query_impl::$name::make_query_vtable(incremental),
+                    $name: crate::query::impl_::query_impl::$name::make_query_vtable(incremental),
                 )*
             }
         }

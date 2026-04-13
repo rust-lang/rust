@@ -2,7 +2,6 @@ use std::num::NonZero;
 
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::limit::Limit;
-use rustc_middle::bug;
 #[expect(unused_imports, reason = "used by doc comments")]
 use rustc_middle::dep_graph::DepKindVTable;
 use rustc_middle::dep_graph::{DepNode, DepNodeKey, SerializedDepNodeIndex};
@@ -15,11 +14,11 @@ use rustc_serialize::Encodable;
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::LOCAL_CRATE;
 
-use crate::error::{QueryOverflow, QueryOverflowNote};
-use crate::execution::all_inactive;
-use crate::job::find_dep_kind_root;
-use crate::query_impl::for_each_query_vtable;
-use crate::{CollectActiveJobsKind, collect_active_query_jobs};
+use crate::query::impl_::error::{QueryOverflow, QueryOverflowNote};
+use crate::query::impl_::execution::all_inactive;
+use crate::query::impl_::job::find_dep_kind_root;
+use crate::query::impl_::query_impl::for_each_query_vtable;
+use crate::query::impl_::{CollectActiveJobsKind, collect_active_query_jobs};
 
 fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {
     let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::Full);
