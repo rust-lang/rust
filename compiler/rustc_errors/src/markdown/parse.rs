@@ -252,7 +252,7 @@ fn parse_heading(buf: &[u8]) -> ParseResult<'_> {
 fn parse_unordered_li(buf: &[u8]) -> Parsed<'_> {
     let (txt, rest) = get_indented_section(&buf[2..]);
     let ctx = Context { .. };
-    let stream = parse_recursive(trim_ascii_start(txt), ctx);
+    let stream = parse_recursive(txt.trim_ascii_start(), ctx);
     (MdTree::UnorderedListItem(stream), rest)
 }
 
@@ -261,7 +261,7 @@ fn parse_ordered_li(buf: &[u8]) -> Parsed<'_> {
     let (num, pos) = ord_list_start(buf).unwrap(); // success tested in caller
     let (txt, rest) = get_indented_section(&buf[pos..]);
     let ctx = Context { .. };
-    let stream = parse_recursive(trim_ascii_start(txt), ctx);
+    let stream = parse_recursive(txt.trim_ascii_start(), ctx);
     (MdTree::OrderedListItem(num, stream), rest)
 }
 
@@ -576,12 +576,6 @@ fn trim_extra_ws(mut txt: &str) -> &str {
         .unwrap_or(txt.len())
         .saturating_sub(1);
     &txt[..txt.len() - end_ws]
-}
-
-/// If there is more than one whitespace char at start, trim the extras
-fn trim_ascii_start(buf: &[u8]) -> &[u8] {
-    let count = buf.iter().take_while(|ch| ch.is_ascii_whitespace()).count();
-    &buf[count..]
 }
 
 #[cfg(test)]
