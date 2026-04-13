@@ -131,22 +131,7 @@ pub(crate) fn query_feed<'tcx, C, H>(
             // The query already has a cached value for this key.
             // That's OK if both values are the same, i.e. they have the same hash,
             // so now we check their hashes.
-            if let Some(hash_value_fn) = query.hash_value_fn {
-                let (old_hash, value_hash) = tcx.with_stable_hashing_context(|ref mut hcx| {
-                    (hash_value_fn(hcx, &old), hash_value_fn(hcx, &value))
-                });
-                if old_hash != value_hash {
-                    // We have an inconsistency. This can happen if one of the two
-                    // results is tainted by errors. In this case, delay a bug to
-                    // ensure compilation is doomed, and keep the `old` value.
-                    tcx.dcx().delayed_bug(format!(
-                        "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
-                        old value: {old}\nnew value: {value}",
-                        old = format_value(&old),
-                        value = format_value(&value),
-                    ));
-                }
-            } else {
+            if H::NO_HASH {
                 // The query is `no_hash`, so we have no way to perform a sanity check.
                 // If feeding the same value multiple times needs to be supported,
                 // the query should not be marked `no_hash`.
@@ -157,6 +142,21 @@ pub(crate) fn query_feed<'tcx, C, H>(
                     value = format_value(&value),
                 )
             }
+
+            let (old_hash, value_hash) = tcx.with_stable_hashing_context(|ref mut hcx| {
+                (H::hash_value_fn(hcx, &old), H::hash_value_fn(hcx, &value))
+            });
+            if old_hash != value_hash {
+                // We have an inconsistency. This can happen if one of the two
+                // results is tainted by errors. In this case, delay a bug to
+                // ensure compilation is doomed, and keep the `old` value.
+                tcx.dcx().delayed_bug(format!(
+                    "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
+                    old value: {old}\nnew value: {value}",
+                    old = format_value(&old),
+                    value = format_value(&value),
+                ));
+            }
         }
         None => {
             // There is no cached value for this key, so feed the query by
@@ -166,7 +166,7 @@ pub(crate) fn query_feed<'tcx, C, H>(
                 dep_node,
                 tcx,
                 &value,
-                query.hash_value_fn,
+                H::hash_value_fn,
                 query.format_value,
             );
             query.cache.complete(key, value, dep_node_index);

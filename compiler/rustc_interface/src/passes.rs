@@ -787,7 +787,7 @@ fn resolver_for_lowering_raw<'tcx>(
 ) -> (&'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
-    let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
+    let (krate, pre_configured_attrs) = tcx.crate_for_resolver.borrow_mut().take().unwrap();
     let mut resolver = Resolver::new(
         tcx,
         &pre_configured_attrs,
@@ -1013,8 +1013,8 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
                 &pre_configured_attrs,
                 crate_name,
             )));
-            feed.crate_for_resolver(tcx.arena.alloc(Steal::new((krate, pre_configured_attrs))));
             feed.output_filenames(Arc::new(outputs));
+            *tcx.crate_for_resolver.borrow_mut() = Some((krate, pre_configured_attrs));
 
             let res = f(tcx);
             // FIXME maybe run finish even when a fatal error occurred? or at least

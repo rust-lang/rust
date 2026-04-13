@@ -124,8 +124,13 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
 }
 
 pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
-    let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
-    registered_tools_ast(tcx.dcx(), pre_configured_attrs, tcx.sess, tcx.features())
+    let crate_for_resolver = tcx.crate_for_resolver.borrow();
+    registered_tools_ast(
+        tcx.dcx(),
+        &crate_for_resolver.as_ref().unwrap().1,
+        tcx.sess,
+        tcx.features(),
+    )
 }
 
 pub fn registered_tools_ast(

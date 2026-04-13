@@ -574,7 +574,7 @@ impl DepGraph {
         node: DepNode,
         tcx: TyCtxt<'tcx>,
         result: &R,
-        hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
+        hash_result: fn(&mut StableHashingContext<'_>, &R) -> Fingerprint,
         format_value_fn: fn(&R) -> String,
     ) -> DepNodeIndex {
         if let Some(data) = self.data.as_ref() {
@@ -592,18 +592,16 @@ impl DepGraph {
                         data,
                         result,
                         prev_index,
-                        hash_result,
+                        Some(hash_result),
                         format_value_fn,
                     );
 
                     #[cfg(debug_assertions)]
-                    if hash_result.is_some() {
-                        data.current.record_edge(
-                            dep_node_index,
-                            node,
-                            data.prev_value_fingerprint_of(prev_index),
-                        );
-                    }
+                    data.current.record_edge(
+                        dep_node_index,
+                        node,
+                        data.prev_value_fingerprint_of(prev_index),
+                    );
 
                     return dep_node_index;
                 }
@@ -621,7 +619,7 @@ impl DepGraph {
                 }
             });
 
-            data.hash_result_and_alloc_node(tcx, node, edges, result, hash_result)
+            data.hash_result_and_alloc_node(tcx, node, edges, result, Some(hash_result))
         } else {
             // Incremental compilation is turned off. We just execute the task
             // without tracking. We still provide a dep-node index that uniquely

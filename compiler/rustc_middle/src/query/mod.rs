@@ -5,8 +5,8 @@ pub use self::into_query_key::IntoQueryKey;
 pub use self::job::{QueryJob, QueryJobId, QueryLatch, QueryWaiter};
 pub use self::keys::{AsLocalQueryKey, LocalCrate, QueryKey};
 pub use self::plumbing::{
-    ActiveKeyStatus, Cycle, EnsureMode, QueryHelper, QueryMode, QueryState, QuerySystem,
-    QueryVTable, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk, TyCtxtEnsureResult,
+    ActiveKeyStatus, Cycle, EnsureMode, QueryHashHelper, QueryHelper, QueryMode, QueryState,
+    QuerySystem, QueryVTable, TyCtxtAt, TyCtxtEnsureDone, TyCtxtEnsureOk, TyCtxtEnsureResult,
 };
 pub use self::stack::QueryStackFrame;
 pub use crate::queries::Providers;

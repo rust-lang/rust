@@ -837,6 +837,8 @@ pub struct GlobalCtxt<'tcx> {
 
     /// A jobserver reference used to release then acquire a token while waiting on a query.
     pub jobserver_proxy: Arc<Proxy>,
+
+    pub crate_for_resolver: Lock<Option<(ast::Crate, ast::AttrVec)>>,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -1062,6 +1064,7 @@ impl<'tcx> TyCtxt<'tcx> {
             alloc_map: interpret::AllocMap::new(),
             current_gcx,
             jobserver_proxy,
+            crate_for_resolver: Default::default(),
         });
 
         // This is a separate function to work around a crash with parallel rustc (#135870)

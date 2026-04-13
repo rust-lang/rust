@@ -154,6 +154,7 @@ rustc_queries! {
 
     /// Collects the list of all tools registered using `#![register_tool]`.
     query registered_tools(_: ()) -> &'tcx ty::RegisteredTools {
+        eval_always
         arena_cache
         desc { "compute registered tools for crate" }
     }
@@ -2600,12 +2601,6 @@ rustc_queries! {
     query features_query(_: ()) -> &'tcx rustc_feature::Features {
         feedable
         desc { "looking up enabled feature gates" }
-    }
-
-    query crate_for_resolver((): ()) -> &'tcx Steal<(rustc_ast::Crate, rustc_ast::AttrVec)> {
-        feedable
-        no_hash
-        desc { "the ast before macro expansion and name resolution" }
     }
 
     /// Attempt to resolve the given `DefId` to an `Instance`, for the

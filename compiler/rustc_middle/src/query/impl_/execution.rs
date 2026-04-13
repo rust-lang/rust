@@ -349,19 +349,22 @@ where
 }
 
 #[inline(always)]
-fn check_feedable_consistency<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
+fn check_feedable_consistency<'tcx, C, H>(
     tcx: TyCtxt<'tcx>,
     query: &'tcx QueryVTable<'tcx, C, H>,
     key: C::Key,
     value: &C::Value,
-) {
+) where
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
     // We should not compute queries that also got a value via feeding.
     // This can't happen, as query feeding adds the very dependencies to the fed query
     // as its feeding query had. So if the fed query is red, so is its feeder, which will
     // get evaluated first, and re-feed the query.
     let Some((cached_value, _)) = query.cache.lookup(&key) else { return };
 
-    let Some(hash_value_fn) = query.hash_value_fn else {
+    if H::NO_HASH {
         panic!(
             "no_hash fed query later has its value computed.\n\
             Remove `no_hash` modifier to allow recomputation.\n\
@@ -371,7 +374,7 @@ fn check_feedable_consistency<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, 
     };
 
     let (old_hash, new_hash) = tcx.with_stable_hashing_context(|mut hcx| {
-        (hash_value_fn(&mut hcx, &cached_value), hash_value_fn(&mut hcx, value))
+        (H::hash_value_fn(&mut hcx, &cached_value), H::hash_value_fn(&mut hcx, value))
     });
     let formatter = query.format_value;
     if old_hash != new_hash {
@@ -408,9 +411,9 @@ fn execute_job_non_incr<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Val
     // Sanity: Fingerprint the key and the result to assert they don't contain anything unhashable.
     if cfg!(debug_assertions) {
         let _ = key.to_fingerprint(tcx);
-        if let Some(hash_value_fn) = query.hash_value_fn {
+        if !H::NO_HASH {
             tcx.with_stable_hashing_context(|mut hcx| {
-                hash_value_fn(&mut hcx, &value);
+                H::hash_value_fn(&mut hcx, &value);
             });
         }
     }
@@ -458,7 +461,7 @@ fn execute_job_incr<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>
             tcx,
             key,
             |tcx, key| H::invoke_provider_fn(tcx, key),
-            query.hash_value_fn,
+            (!H::NO_HASH).then_some(H::hash_value_fn),
         )
     });
 
@@ -543,7 +546,7 @@ fn load_from_disk_or_invoke_provider_green<
             dep_graph_data,
             &value,
             prev_index,
-            query.hash_value_fn,
+            (!H::NO_HASH).then_some(H::hash_value_fn),
             query.format_value,
         );
     }

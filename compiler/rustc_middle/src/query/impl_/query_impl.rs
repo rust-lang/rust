@@ -114,14 +114,6 @@ macro_rules! define_queries {
                             $crate::query::impl_::handle_cycle_error::default(err)
                         },
 
-                        #[cfg($no_hash)]
-                        hash_value_fn: None,
-                        #[cfg(not($no_hash))]
-                        hash_value_fn: Some(|hcx, erased_value: &erase::Erased<Value<'tcx>>| {
-                            let value = erase::restore_val(*erased_value);
-                            rustc_middle::dep_graph::hash_result(hcx, &value)
-                        }),
-
                         format_value: |erased_value: &erase::Erased<Value<'tcx>>| {
                             format!("{:?}", erase::restore_val(*erased_value))
                         },
