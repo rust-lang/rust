@@ -9,6 +9,7 @@ use std::env::VarError;
 use rustc_ast::token::{self, LitKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{ExprKind, GenericArg, Mutability};
+use rustc_ast_pretty::pprust;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::{Ident, Span, Symbol, kw, sym};
@@ -158,13 +159,13 @@ pub(crate) fn expand_env<'cx>(
                         cx.dcx().emit_err(errors::EnvNotDefined::CargoEnvVar {
                             span,
                             var: *symbol,
-                            var_expr: &var_expr,
+                            var_expr: pprust::expr_to_string(&var_expr),
                         })
                     } else {
                         cx.dcx().emit_err(errors::EnvNotDefined::CustomEnvVar {
                             span,
                             var: *symbol,
-                            var_expr: &var_expr,
+                            var_expr: pprust::expr_to_string(&var_expr),
                         })
                     }
                 }

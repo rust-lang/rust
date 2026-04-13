@@ -3853,8 +3853,6 @@ dependencies = [
  "icu_list",
  "icu_locale",
  "intl-memoizer",
- "rustc_ast",
- "rustc_ast_pretty",
  "rustc_baked_icu_data",
  "rustc_data_structures",
  "rustc_macros",

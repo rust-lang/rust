@@ -1,6 +1,7 @@
 use rustc_ast::token::NtExprKind::*;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, NonterminalKind, Token};
+use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
 use rustc_span::{Ident, kw};
 
@@ -176,7 +177,7 @@ impl<'a> Parser<'a> {
                 } else {
                     Err(self.dcx().create_err(UnexpectedNonterminal::Ident {
                         span: self.token.span,
-                        token: self.token,
+                        token: pprust::token_to_string(&self.token),
                     }))
                 }
             }
@@ -198,7 +199,7 @@ impl<'a> Parser<'a> {
                 } else {
                     Err(self.dcx().create_err(UnexpectedNonterminal::Lifetime {
                         span: self.token.span,
-                        token: self.token,
+                        token: pprust::token_to_string(&self.token),
                     }))
                 }
             }

@@ -822,7 +822,7 @@ pub fn generic_simd_intrinsic<'a, 'gcc, 'tcx>(
                 return_error!(InvalidMonomorphization::FloatingPointVector {
                     span,
                     name,
-                    f_ty: *f,
+                    f_ty: f.name_str().to_string(),
                     in_ty
                 });
             }

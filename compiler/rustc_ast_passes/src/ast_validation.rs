@@ -1117,8 +1117,8 @@ fn validate_generic_param_order(dcx: DiagCtxtHandle<'_>, generics: &[GenericPara
             dcx.emit_err(errors::OutOfOrderParams {
                 spans: spans.clone(),
                 sugg_span: span,
-                param_ord,
-                max_param,
+                param_ord: param_ord.to_string(),
+                max_param: max_param.to_string(),
                 ordered_params: &ordered_params,
             });
         }
