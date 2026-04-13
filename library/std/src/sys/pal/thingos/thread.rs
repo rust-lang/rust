@@ -64,6 +64,7 @@ const SYS_SPAWN_THREAD: u32 = 0x1004;
 const SYS_TASK_WAIT: u32 = 0x1007;
 const SYS_YIELD: u32 = 0x100B;
 const SYS_AVAILABLE_PARALLELISM: u32 = 0x1012;
+const SYS_TASK_SET_NAME: u32 = 0x101F;
 const SYS_SLEEP_NS: u32 = 0x1200;
 const SYS_AUXV_GET: u32 = 0x1105;
 const SYS_VM_MAP: u32 = 0x2001;
@@ -311,9 +312,14 @@ pub fn current_os_id() -> Option<u64> {
     if ret < 0 { None } else { Some(ret as u64) }
 }
 
-/// Set the OS-level thread name.  Not yet implemented on ThingOS.
-pub fn set_name(_name: &CStr) {
-    // Thread naming not yet supported by the kernel.
+/// Set the OS-level thread name.
+pub fn set_name(name: &CStr) {
+    let name = name.to_bytes();
+    let ret =
+        unsafe { raw_syscall6(SYS_TASK_SET_NAME, name.as_ptr() as usize, name.len(), 0, 0, 0, 0) };
+    // We have no good way of propagating errors here, but in debug-builds
+    // let's check that this actually worked.
+    debug_assert_eq!(ret, 0);
 }
 
 // ── Stack allocation ──────────────────────────────────────────────────────────
