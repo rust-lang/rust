@@ -16,7 +16,7 @@ use cfg::CfgOptions;
 use either::Either;
 use hir_expand::{
     AstId, ExpandTo, HirFileId, InFile,
-    attrs::{Meta, expand_cfg_attr_with_doc_comments},
+    attrs::{AstPathExt, expand_cfg_attr_with_doc_comments},
     mod_path::ModPath,
     span_map::SpanMap,
 };
@@ -182,8 +182,7 @@ impl Docs {
         self.extend_with_doc_str(doc, comment.syntax().text_range().start() + offset, indent);
     }
 
-    fn extend_with_doc_attr(&mut self, value: syntax::SyntaxToken, indent: &mut usize) {
-        let Some(value) = ast::String::cast(value) else { return };
+    fn extend_with_doc_attr(&mut self, value: ast::String, indent: &mut usize) {
         let Some(value_offset) = value.text_range_between_quotes() else { return };
         let value_offset = value_offset.start();
         let Ok(value) = value.value() else { return };
@@ -423,10 +422,6 @@ fn extend_with_attrs<'a, 'db>(
     // Lazily initialised when we first encounter a `#[doc = macro!()]`.
     let mut expander: Option<(DocMacroExpander<'db>, DocExprSourceCtx<'db>)> = None;
 
-    // FIXME: `#[cfg_attr(..., doc = macro!())]` skips macro expansion because
-    // `top_attr` points to the `cfg_attr` node, not the inner `doc = macro!()`.
-    // Fixing this is difficult as we need an `Expr` that doesn't exist here for
-    // the ast id and for sanely parsing the macro call.
     expand_cfg_attr_with_doc_comments::<_, Infallible>(
         AttrDocCommentIter::from_syntax_node(node).filter(|attr| match attr {
             Either::Left(attr) => attr.kind().is_inner() == expect_inner_attrs,
@@ -439,46 +434,38 @@ fn extend_with_attrs<'a, 'db>(
         |attr| {
             match attr {
                 Either::Right(doc_comment) => result.extend_with_doc_comment(doc_comment, indent),
-                Either::Left((attr, _, _, top_attr)) => match attr {
-                    Meta::NamedKeyValue { name: Some(name), value: Some(value), .. }
-                        if name.text() == "doc" =>
-                    {
-                        result.extend_with_doc_attr(value, indent);
-                    }
-                    Meta::NamedKeyValue { name: Some(name), value: None, .. }
-                        if name.text() == "doc" =>
-                    {
-                        // When the doc attribute comes from inside a `cfg_attr`,
-                        // `top_attr` points to the `cfg_attr(...)` node, not the
-                        // inner `doc = macro!()`.  In that case `top_attr.expr()`
-                        // would not yield the macro expression we need, so skip
-                        // expansion (see FIXME above).
-                        let is_from_cfg_attr =
-                            top_attr.as_simple_call().is_some_and(|(name, _)| name == "cfg_attr");
-                        if !is_from_cfg_attr && let Some(expr) = top_attr.expr() {
-                            let (exp, ctx) = expander.get_or_insert_with(|| {
-                                let resolver = make_resolver();
-                                let def_map = resolver.top_level_def_map();
-                                let recursion_limit = def_map.recursion_limit() as usize;
-                                (
-                                    DocMacroExpander {
-                                        db,
-                                        krate,
-                                        recursion_depth: 0,
-                                        recursion_limit,
-                                    },
-                                    DocExprSourceCtx {
-                                        resolver,
-                                        file_id,
-                                        ast_id_map: db.ast_id_map(file_id),
-                                        span_map: db.span_map(file_id),
-                                    },
-                                )
-                            });
-                            if let Some(expanded) =
-                                expand_doc_expr_via_macro_pipeline(exp, ctx, expr)
+                Either::Left((attr, _)) => match attr {
+                    ast::Meta::KeyValueMeta(attr) if attr.path().is1("doc") => {
+                        if let Some(value) = attr.expr() {
+                            if let ast::Expr::Literal(value) = &value
+                                && let ast::LiteralKind::String(value) = value.kind()
                             {
-                                result.extend_with_unmapped_doc_str(&expanded, indent);
+                                result.extend_with_doc_attr(value, indent);
+                            } else {
+                                let (exp, ctx) = expander.get_or_insert_with(|| {
+                                    let resolver = make_resolver();
+                                    let def_map = resolver.top_level_def_map();
+                                    let recursion_limit = def_map.recursion_limit() as usize;
+                                    (
+                                        DocMacroExpander {
+                                            db,
+                                            krate,
+                                            recursion_depth: 0,
+                                            recursion_limit,
+                                        },
+                                        DocExprSourceCtx {
+                                            resolver,
+                                            file_id,
+                                            ast_id_map: db.ast_id_map(file_id),
+                                            span_map: db.span_map(file_id),
+                                        },
+                                    )
+                                });
+                                if let Some(expanded) =
+                                    expand_doc_expr_via_macro_pipeline(exp, ctx, value)
+                                {
+                                    result.extend_with_unmapped_doc_str(&expanded, indent);
+                                }
                             }
                         }
                     }

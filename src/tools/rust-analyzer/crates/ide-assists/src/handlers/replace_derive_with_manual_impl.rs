@@ -64,9 +64,10 @@ pub(crate) fn replace_derive_with_manual_impl(
         .filter_map(|attr| attr.path())
         .collect::<Vec<_>>();
 
-    let adt = value.parent().and_then(ast::Adt::cast)?;
-    let attr = ast::Attr::cast(value)?;
-    let args = attr.token_tree()?;
+    let attr = ast::Meta::cast(value)?.parent_attr()?;
+    let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
+    let ast::Meta::TokenTreeMeta(meta) = attr.meta()? else { return None };
+    let args = meta.token_tree()?;
 
     let current_module = ctx.sema.scope(adt.syntax())?.module();
     let current_crate = current_module.krate(ctx.db());

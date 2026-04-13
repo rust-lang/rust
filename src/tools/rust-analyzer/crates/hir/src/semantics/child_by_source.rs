@@ -126,8 +126,7 @@ impl ChildBySource for ItemScope {
                 calls.for_each(|(attr_id, call_id, calls)| {
                     // FIXME: Is this the right crate?
                     let krate = call_id.lookup(db).krate;
-                    // FIXME: Fix cfg_attr handling.
-                    let (attr, _, _, _) = attr_id.find_attr_range_with_source(db, krate, &adt);
+                    let (_, attr) = attr_id.find_attr_range_with_source(db, krate, &adt);
                     res[keys::DERIVE_MACRO_CALL]
                         .insert(AstPtr::new(&attr), (attr_id, call_id, calls.into()));
                 });

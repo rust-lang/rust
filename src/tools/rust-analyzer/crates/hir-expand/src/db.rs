@@ -11,7 +11,6 @@ use crate::{
     AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
     EagerExpander, EditionedFileId, ExpandError, ExpandResult, ExpandTo, FileRange, HirFileId,
     MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
-    attrs::Meta,
     builtin::pseudo_derive_attr_expansion,
     cfg_process::attr_macro_input_to_token_tree,
     declarative::DeclarativeMacroExpander,
@@ -239,8 +238,15 @@ pub fn expand_speculative(
         MacroCallKind::Attr { censored_attr_ids: attr_ids, .. } => {
             if loc.def.is_attribute_derive() {
                 // for pseudo-derive expansion we actually pass the attribute itself only
-                ast::Attr::cast(speculative_args.clone()).and_then(|attr| attr.token_tree()).map(
-                    |token_tree| {
+                ast::Attr::cast(speculative_args.clone())
+                    .and_then(|attr| {
+                        if let ast::Meta::TokenTreeMeta(meta) = attr.meta()? {
+                            meta.token_tree()
+                        } else {
+                            None
+                        }
+                    })
+                    .map(|token_tree| {
                         let mut tree = syntax_node_to_token_tree(
                             token_tree.syntax(),
                             span_map,
@@ -250,26 +256,26 @@ pub fn expand_speculative(
                         tree.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
                         tree.set_top_subtree_delimiter_span(tt::DelimSpan::from_single(span));
                         tree
-                    },
-                )
+                    })
             } else {
                 // Attributes may have an input token tree, build the subtree and map for this as well
                 // then try finding a token id for our token if it is inside this input subtree.
                 let item = ast::Item::cast(speculative_args.clone())?;
-                let (_, _, _, meta) =
+                let (_, meta) =
                     attr_ids.invoc_attr().find_attr_range_with_source(db, loc.krate, &item);
-                match meta {
-                    Meta::TokenTree { tt, .. } => {
-                        let mut attr_arg = syntax_bridge::syntax_node_to_token_tree(
-                            tt.syntax(),
-                            span_map,
-                            span,
-                            DocCommentDesugarMode::ProcMacro,
-                        );
-                        attr_arg.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
-                        Some(attr_arg)
-                    }
-                    _ => None,
+                if let ast::Meta::TokenTreeMeta(meta) = meta
+                    && let Some(tt) = meta.token_tree()
+                {
+                    let mut attr_arg = syntax_bridge::syntax_node_to_token_tree(
+                        tt.syntax(),
+                        span_map,
+                        span,
+                        DocCommentDesugarMode::ProcMacro,
+                    );
+                    attr_arg.set_top_subtree_delimiter_kind(tt::DelimiterKind::Invisible);
+                    Some(attr_arg)
+                } else {
+                    None
                 }
             }
         }
@@ -501,11 +507,11 @@ fn macro_arg(db: &dyn ExpandDatabase, id: MacroCallId) -> MacroArgResult {
         }
         MacroCallKind::Attr { ast_id, censored_attr_ids: attr_ids, .. } => {
             let node = ast_id.to_ptr(db).to_node(&root);
-            let range = attr_ids
-                .invoc_attr()
-                .find_attr_range_with_source(db, loc.krate, &node)
-                .3
-                .path_range();
+            let (_, attr) = attr_ids.invoc_attr().find_attr_range_with_source(db, loc.krate, &node);
+            let range = attr
+                .path()
+                .map(|path| path.syntax().text_range())
+                .unwrap_or_else(|| attr.syntax().text_range());
             let span = map.span_for_range(range);
 
             let is_derive = matches!(loc.def.kind, MacroDefKind::BuiltInAttr(_, expander) if expander.is_derive());
