@@ -3060,7 +3060,7 @@ pub const trait Iterator {
         #[inline]
         fn check<I, V, R>(
             mut f: impl FnMut(&I) -> V,
-        ) -> impl FnMut((), I) -> ControlFlow<R::TryType>
+        ) -> impl FnMut((), I) -> ControlFlow<R::Try>
         where
             V: Try<Output = bool, Residual = R>,
             R: Residual<Option<I>>,

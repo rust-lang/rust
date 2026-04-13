@@ -803,7 +803,7 @@ impl<'db> SourceAnalyzer<'db> {
     ) -> Option<Function> {
         let ty = self.ty_of_expr(try_expr.expr()?)?;
 
-        let op_fn = self.lang_items(db).TryTraitBranch?;
+        let op_fn = self.lang_items(db).TryBranch?;
         // HACK: subst for `branch()` coincides with that for `Try` because `branch()` itself
         // doesn't have any generic parameters, so we skip building another subst for `branch()`.
         let substs = GenericArgs::new_from_slice(&[ty.into()]);

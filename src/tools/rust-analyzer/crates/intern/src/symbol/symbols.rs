@@ -286,7 +286,7 @@ define_symbols! {
     Into,
     into_future,
     into_iter,
-    into_try_type,
+    into_try,
     IntoFuture,
     IntoIter,
     IntoIterator,

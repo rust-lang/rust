@@ -1860,7 +1860,7 @@ impl<T> Option<T> {
     pub fn get_or_try_insert_with<'a, R, F>(
         &'a mut self,
         f: F,
-    ) -> <R::Residual as Residual<&'a mut T>>::TryType
+    ) -> <R::Residual as Residual<&'a mut T>>::Try
     where
         F: FnOnce() -> R,
         R: Try<Output = T, Residual: Residual<&'a mut T>>,
@@ -2808,7 +2808,7 @@ impl<T> const ops::FromResidual<ops::Yeet<()>> for Option<T> {
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]
 #[rustc_const_unstable(feature = "const_try", issue = "74935")]
 impl<T> const ops::Residual<T> for Option<convert::Infallible> {
-    type TryType = Option<T>;
+    type Try = Option<T>;
 }
 
 impl<T> Option<Option<T>> {

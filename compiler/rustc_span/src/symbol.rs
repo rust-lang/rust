@@ -1105,7 +1105,7 @@ symbols! {
         into_async_iter_into_iter,
         into_future,
         into_iter,
-        into_try_type,
+        into_try,
         intra_doc_pointers,
         intrinsics,
         irrefutable_let_patterns,

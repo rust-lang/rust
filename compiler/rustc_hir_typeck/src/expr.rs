@@ -576,13 +576,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     Some(ObligationCauseCode::ForLoopIterator)
                 }
-                LangItem::TryTraitFromOutput
+                LangItem::TryFromOutput
                     if expr.span.is_desugaring(DesugaringKind::TryBlock) =>
                 {
                     // FIXME it's a try block, not a question mark
                     Some(ObligationCauseCode::QuestionMark)
                 }
-                LangItem::TryTraitBranch | LangItem::TryTraitFromResidual
+                LangItem::TryBranch | LangItem::TryFromResidual
                     if expr.span.is_desugaring(DesugaringKind::QuestionMark) =>
                 {
                     Some(ObligationCauseCode::QuestionMark)

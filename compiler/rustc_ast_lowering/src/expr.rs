@@ -609,7 +609,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
             // `::std::ops::Try::from_output($tail_expr)`
             block.expr = Some(this.wrap_in_try_constructor(
-                hir::LangItem::TryTraitFromOutput,
+                hir::LangItem::TryFromOutput,
                 try_span,
                 tail_expr,
                 ok_wrapped_span,
@@ -1972,7 +1972,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     ///     ControlFlow::Break(residual) =>
     ///         #[allow(unreachable_code)]
     ///         // If there is an enclosing `try {...}`:
-    ///         break 'catch_target Residual::into_try_type(residual),
+    ///         break 'catch_target Residual::into_try(residual),
     ///         // Otherwise:
     ///         return Try::from_residual(residual),
     /// }
@@ -1997,7 +1997,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
             self.expr_call_lang_item_fn(
                 unstable_span,
-                hir::LangItem::TryTraitBranch,
+                hir::LangItem::TryBranch,
                 arena_vec![self; sub_expr],
             )
         };
@@ -2024,13 +2024,13 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
             let (constructor_item, target_id) = match self.try_block_scope {
                 TryBlockScope::Function => {
-                    (hir::LangItem::TryTraitFromResidual, Err(hir::LoopIdError::OutsideLoopScope))
+                    (hir::LangItem::TryFromResidual, Err(hir::LoopIdError::OutsideLoopScope))
                 }
                 TryBlockScope::Homogeneous(block_id) => {
-                    (hir::LangItem::ResidualIntoTryType, Ok(block_id))
+                    (hir::LangItem::ResidualIntoTry, Ok(block_id))
                 }
                 TryBlockScope::Heterogeneous(block_id) => {
-                    (hir::LangItem::TryTraitFromResidual, Ok(block_id))
+                    (hir::LangItem::TryFromResidual, Ok(block_id))
                 }
             };
             let from_residual_expr = self.wrap_in_try_constructor(
@@ -2088,7 +2088,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         );
 
         let from_yeet_expr = self.wrap_in_try_constructor(
-            hir::LangItem::TryTraitFromYeet,
+            hir::LangItem::TryFromYeet,
             unstable_span,
             yeeted_expr,
             yeeted_span,

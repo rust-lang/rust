@@ -955,7 +955,7 @@ pub mod ops {
             fn from_residual(residual: R) -> Self;
         }
         pub const trait Residual<O>: Sized {
-            type TryType: [const] Try<Output = O, Residual = Self>;
+            type Try: [const] Try<Output = O, Residual = Self>;
         }
         #[lang = "Try"]
         pub trait Try: FromResidual<Self::Residual> {
@@ -966,10 +966,10 @@ pub mod ops {
             #[lang = "branch"]
             fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
         }
-        #[lang = "into_try_type"]
-        pub const fn residual_into_try_type<R: [const] Residual<O>, O>(
+        #[lang = "into_try"]
+        pub const fn residual_into_try<R: [const] Residual<O>, O>(
             r: R,
-        ) -> <R as Residual<O>>::TryType {
+        ) -> <R as Residual<O>>::Try {
             FromResidual::from_residual(r)
         }
 
@@ -997,7 +997,7 @@ pub mod ops {
         }
 
         impl<B, C> Residual<C> for ControlFlow<B, Infallible> {
-            type TryType = ControlFlow<B, C>;
+            type Try = ControlFlow<B, C>;
         }
         // region:option
         impl<T> Try for Option<T> {
@@ -1024,7 +1024,7 @@ pub mod ops {
         }
 
         impl<T> const Residual<T> for Option<Infallible> {
-            type TryType = Option<T>;
+            type Try = Option<T>;
         }
         // endregion:option
         // region:result
@@ -1057,7 +1057,7 @@ pub mod ops {
         }
 
         impl<T, E> const Residual<T> for Result<Infallible, E> {
-            type TryType = Result<T, E>;
+            type Try = Result<T, E>;
         }
         // endregion:from
         // endregion:result

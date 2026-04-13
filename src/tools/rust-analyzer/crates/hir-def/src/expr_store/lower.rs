@@ -1750,7 +1750,7 @@ impl<'db> ExprCollector<'db> {
     /// `try { <stmts>; }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(()) }`
     /// and save the `<new_label>` to use it as a break target for desugaring of the `?` operator.
     fn desugar_try_block(&mut self, e: BlockExpr, result_type: Option<ast::Type>) -> ExprId {
-        let try_from_output = self.lang_path(self.lang_items().TryTraitFromOutput);
+        let try_from_output = self.lang_path(self.lang_items().TryFromOutput);
         let label = self.generate_new_name();
         let label = self.alloc_label_desugared(Label { name: label }, AstPtr::new(&e).wrap_right());
         let try_block_info = match result_type {
@@ -1960,7 +1960,7 @@ impl<'db> ExprCollector<'db> {
     ///     ControlFlow::Continue(val) => val,
     ///     ControlFlow::Break(residual) =>
     ///         // If there is an enclosing `try {...}`:
-    ///         break 'catch_target Residual::into_try_type(residual),
+    ///         break 'catch_target Residual::into_try(residual),
     ///         // If there is an enclosing `try bikeshed Ty {...}`:
     ///         break 'catch_target Try::from_residual(residual),
     ///         // Otherwise:
@@ -1969,7 +1969,7 @@ impl<'db> ExprCollector<'db> {
     /// ```
     fn collect_try_operator(&mut self, syntax_ptr: AstPtr<ast::Expr>, e: ast::TryExpr) -> ExprId {
         let lang_items = self.lang_items();
-        let try_branch = self.lang_path(lang_items.TryTraitBranch);
+        let try_branch = self.lang_path(lang_items.TryBranch);
         let cf_continue = self.lang_path(lang_items.ControlFlowContinue);
         let cf_break = self.lang_path(lang_items.ControlFlowBreak);
         let operand = self.collect_expr_opt(e.expr());
@@ -2010,10 +2010,10 @@ impl<'db> ExprCollector<'db> {
                 let it = self.alloc_expr(Expr::Path(Path::from(break_name)), syntax_ptr);
                 let convert_fn = match self.current_try_block {
                     Some(TryBlock::Homogeneous { .. }) => {
-                        self.lang_path(lang_items.ResidualIntoTryType)
+                        self.lang_path(lang_items.ResidualIntoTry)
                     }
                     Some(TryBlock::Heterogeneous { .. }) | None => {
-                        self.lang_path(lang_items.TryTraitFromResidual)
+                        self.lang_path(lang_items.TryFromResidual)
                     }
                 };
                 let callee =

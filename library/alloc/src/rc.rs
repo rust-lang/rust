@@ -713,7 +713,7 @@ impl<T> Rc<T> {
     pub fn try_map<R>(
         this: Self,
         f: impl FnOnce(&T) -> R,
-    ) -> <R::Residual as Residual<Rc<R::Output>>>::TryType
+    ) -> <R::Residual as Residual<Rc<R::Output>>>::Try
     where
         R: Try,
         R::Residual: Residual<Rc<R::Output>>,
@@ -4265,7 +4265,7 @@ impl<T> UniqueRc<T> {
     pub fn try_map<R>(
         this: Self,
         f: impl FnOnce(T) -> R,
-    ) -> <R::Residual as Residual<UniqueRc<R::Output>>>::TryType
+    ) -> <R::Residual as Residual<UniqueRc<R::Output>>>::Try
     where
         R: Try,
         R::Residual: Residual<UniqueRc<R::Output>>,
