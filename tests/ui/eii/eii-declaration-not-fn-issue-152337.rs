@@ -6,7 +6,7 @@
 const A: () = ();
 #[eii]
 fn A() {} //~ ERROR the name `A` is defined multiple times
-//~^ ERROR expected function, found constant
-//~| ERROR expected function, found constant
+//~^ ERROR expected function or static, found constant
+//~| ERROR expected function or static, found constant
 
 fn main() {}
