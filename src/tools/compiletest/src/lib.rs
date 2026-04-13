@@ -136,6 +136,11 @@ fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "verbose", "run tests verbosely, showing all output")
         .optflag(
             "",
+            "verbose-run-make-subprocess-output",
+            "show verbose subprocess output for successful run-make tests",
+        )
+        .optflag(
+            "",
             "bless",
             "overwrite stderr/stdout files instead of complaining about a mismatch",
         )
@@ -471,6 +476,8 @@ fn parse_config(args: Vec<String>) -> Config {
         adb_test_dir,
         adb_device_status,
         verbose: matches.opt_present("verbose"),
+        verbose_run_make_subprocess_output: matches
+            .opt_present("verbose-run-make-subprocess-output"),
         only_modified: matches.opt_present("only-modified"),
         remote_test_client: matches.opt_str("remote-test-client").map(Utf8PathBuf::from),
         compare_mode,

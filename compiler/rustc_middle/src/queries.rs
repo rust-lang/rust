@@ -1202,7 +1202,7 @@ rustc_queries! {
     /// Return the live symbols in the crate for dead code check.
     ///
     /// The second return value maps from ADTs to ignored derived traits (e.g. Debug and Clone).
-    query live_symbols_and_ignored_derived_traits(_: ()) -> &'tcx Result<(
+    query live_symbols_and_ignored_derived_traits(_: ()) -> Result<&'tcx (
         LocalDefIdSet,
         LocalDefIdMap<FxIndexSet<DefId>>,
     ), ErrorGuaranteed> {
@@ -1292,7 +1292,7 @@ rustc_queries! {
 
     /// Return the set of (transitive) callees that may result in a recursive call to `key`,
     /// if we were able to walk all callees.
-    query mir_callgraph_cyclic(key: LocalDefId) -> &'tcx Option<UnordSet<LocalDefId>> {
+    query mir_callgraph_cyclic(key: LocalDefId) -> Option<&'tcx UnordSet<LocalDefId>> {
         arena_cache
         desc {
             "computing (transitive) callees of `{}` that may recurse",
