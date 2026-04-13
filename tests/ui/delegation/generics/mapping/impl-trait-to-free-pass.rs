@@ -10,19 +10,19 @@
 //! delegation parent if applicable. At some tests predicates are
 //! added. At some tests user-specified args are specified in reuse statement.
 
-// Testing lifetimes + types/consts in child reuses,
+// Testing lifetimes + types/consts in child reuses, with impl traits,
 // with (un)specified user args with additional generic params in delegation parent
 mod test_1 {
     mod to_reuse {
         pub fn foo<'a: 'a, 'b: 'b, A, B, const N: usize>() {}
-        pub fn bar<'a: 'a, 'b: 'b, A, B, const N: usize>(_x: &super::XX) {}
+        pub fn bar<'a: 'a, 'b: 'b, A, B, const N: usize>(_x: &super::XX, _f: impl FnOnce(A) -> B) {}
     }
 
     trait Trait<'a, 'b, 'c, A, B, const N: usize>: Sized {
         fn foo<'x: 'x, 'y: 'y, AA, BB, const NN: usize>() {}
-        fn bar<'x: 'x, 'y: 'y, AA, BB, const NN: usize>(&self) {}
+        fn bar<'x: 'x, 'y: 'y, AA, BB, const NN: usize>(&self, _f: impl FnOnce(AA) -> BB) {}
         fn oof() {}
-        fn rab(&self) {}
+        fn rab(&self, _f: impl FnOnce(A) -> B) {}
     }
 
     #[allow(dead_code)] // Fields are used instead of phantom data for generics use
@@ -44,9 +44,9 @@ mod test_1 {
         <XX as Trait<'static, 'static, 'static, i32, i32, 1>>
             ::foo::<'static, 'static, i8, i16, 123>();
         <XX as Trait<'static, 'static, 'static, i32, i32, 1>>
-            ::bar::<'static, 'static, String, i16, 123>(&x);
+            ::bar::<'static, 'static, String, i16, 123>(&x, |_| 123);
         <XX as Trait<'static, 'static, 'static, i32, i32, 1>>::oof();
-        <XX as Trait<'static, 'static, 'static, i32, String, 1>>::rab(&x);
+        <XX as Trait<'static, 'static, 'static, i32, String, 1>>::rab(&x, |_| 123.to_string());
     }
 }
 
