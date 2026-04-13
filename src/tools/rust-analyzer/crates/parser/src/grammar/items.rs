@@ -167,6 +167,25 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker, is_in_extern: bool) -> Res
         has_mods = true;
     }
 
+    if p.at(T![impl])
+        && p.nth(1) == T!['(']
+        && ((matches!(p.nth(2), T![crate] | T![super] | T![self]) && p.nth(3) == T![')'])
+            || p.nth(2) == T![in])
+    {
+        // test impl_restrictions
+        // pub unsafe impl(crate) trait Foo {}
+        // impl(in super::bar) trait Bar {}
+        // impl () {}
+        // impl (i32) {}
+        let m = p.start();
+        p.bump(T![impl]);
+        if !opt_visibility_inner(p, false) {
+            p.error("expected an impl restriction");
+        }
+        m.complete(p, IMPL_RESTRICTION);
+        has_mods = true;
+    }
+
     // test default_item
     // default impl T for Foo {}
     if p.at_contextual_kw(T![default]) {

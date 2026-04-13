@@ -1592,7 +1592,7 @@ fn classify_name_ref<'db>(
                     kind_macro_call(it)?
                 },
                 ast::Meta(meta) => make_path_kind_attr(meta)?,
-                ast::Visibility(it) => PathKind::Vis { has_in_token: it.in_token().is_some() },
+                ast::VisibilityInner(it) => PathKind::Vis { has_in_token: it.in_token().is_some() },
                 ast::UseTree(_) => PathKind::Use,
                 // completing inside a qualifier
                 ast::Path(parent) => {
@@ -1621,7 +1621,7 @@ fn classify_name_ref<'db>(
                                 kind_macro_call(it)?
                             },
                             ast::Meta(meta) => make_path_kind_attr(meta)?,
-                            ast::Visibility(it) => PathKind::Vis { has_in_token: it.in_token().is_some() },
+                            ast::VisibilityInner(it) => PathKind::Vis { has_in_token: it.in_token().is_some() },
                             ast::UseTree(_) => PathKind::Use,
                             ast::RecordExpr(it) => make_path_kind_expr(it.into()),
                             _ => return None,

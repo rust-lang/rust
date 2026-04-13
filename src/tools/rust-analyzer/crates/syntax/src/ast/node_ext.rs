@@ -948,6 +948,15 @@ pub enum VisibilityKind {
 
 impl ast::Visibility {
     pub fn kind(&self) -> VisibilityKind {
+        match self.visibility_inner() {
+            Some(inner) => inner.kind(),
+            None => VisibilityKind::Pub,
+        }
+    }
+}
+
+impl ast::VisibilityInner {
+    pub fn kind(&self) -> VisibilityKind {
         match self.path() {
             Some(path) => {
                 if let Some(segment) =

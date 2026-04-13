@@ -218,6 +218,7 @@ pub enum SyntaxKind {
     IDENT_PAT,
     IF_EXPR,
     IMPL,
+    IMPL_RESTRICTION,
     IMPL_TRAIT_TYPE,
     INDEX_EXPR,
     INFER_TYPE,
@@ -247,6 +248,7 @@ pub enum SyntaxKind {
     MATCH_GUARD,
     METHOD_CALL_EXPR,
     MODULE,
+    MUT_RESTRICTION,
     NAME,
     NAME_REF,
     NEVER_TYPE,
@@ -318,6 +320,7 @@ pub enum SyntaxKind {
     VARIANT,
     VARIANT_LIST,
     VISIBILITY,
+    VISIBILITY_INNER,
     WHERE_CLAUSE,
     WHERE_PRED,
     WHILE_EXPR,
@@ -399,6 +402,7 @@ impl SyntaxKind {
             | IDENT_PAT
             | IF_EXPR
             | IMPL
+            | IMPL_RESTRICTION
             | IMPL_TRAIT_TYPE
             | INDEX_EXPR
             | INFER_TYPE
@@ -428,6 +432,7 @@ impl SyntaxKind {
             | MATCH_GUARD
             | METHOD_CALL_EXPR
             | MODULE
+            | MUT_RESTRICTION
             | NAME
             | NAME_REF
             | NEVER_TYPE
@@ -499,6 +504,7 @@ impl SyntaxKind {
             | VARIANT
             | VARIANT_LIST
             | VISIBILITY
+            | VISIBILITY_INNER
             | WHERE_CLAUSE
             | WHERE_PRED
             | WHILE_EXPR
