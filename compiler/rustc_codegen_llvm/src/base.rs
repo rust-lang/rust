@@ -76,6 +76,10 @@ pub(crate) fn compile_codegen_unit(
         ) -> rustc_data_structures::fingerprint::Fingerprint {
             dep_graph::hash_result(hcx, result)
         }
+
+        fn format_value(value: &ModuleCodegen<ModuleLlvm>) -> String {
+            unimplemented!()
+        }
     }
 
     impl<'tcx> QueryHelper<'tcx, Symbol, ModuleCodegen<ModuleLlvm>> for CompileCguHashHelper {

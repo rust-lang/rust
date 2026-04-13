@@ -2484,6 +2484,10 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
         ) -> rustc_data_structures::fingerprint::Fingerprint {
             unimplemented!()
         }
+
+        fn format_value((): &()) -> String {
+            "()".to_string()
+        }
     }
 
     impl<'tcx> QueryHelper<'tcx, &Path, ()> for EncodeMetadataHelper {
