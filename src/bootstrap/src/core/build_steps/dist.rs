@@ -24,6 +24,7 @@ use crate::core::build_steps::compile::{
 };
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::gcc::GccTargetPair;
+use crate::core::build_steps::test::failed_tests::IsForRerunningTests;
 use crate::core::build_steps::tool::{
     self, RustcPrivateCompilers, ToolTargetBuildMode, get_tool_target_compiler,
 };
@@ -2650,7 +2651,7 @@ impl Step for LlvmTools {
             // Prepare the image directory
             let src_bindir = builder.llvm_out(target).join("bin");
             let dst_bindir = format!("lib/rustlib/{}/bin", target.triple);
-            for tool in tools_to_install(&builder.paths) {
+            for tool in tools_to_install(builder.paths(IsForRerunningTests::DontCare)) {
                 let exe = src_bindir.join(exe(tool, target));
                 // When using `download-ci-llvm`, some of the tools may not exist, so skip trying to copy them.
                 if !exe.exists() && builder.config.llvm_from_ci {
