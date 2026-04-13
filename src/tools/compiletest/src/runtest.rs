@@ -1347,6 +1347,14 @@ impl<'test> TestCx<'test> {
 
         rustc.envs(self.props.rustc_env.clone());
         self.props.unset_rustc_env.iter().fold(&mut rustc, Command::env_remove);
+
+        // If COMPILETEST_LLVM_PROFILE_DIR is set, inject LLVM_PROFILE_FILE so
+        // an instrumented rustc emits coverage data using %m (one file per
+        // binary, merged atomically across invocations — no file accumulation).
+        if let Ok(profile_dir) = std::env::var("COMPILETEST_LLVM_PROFILE_DIR") {
+            rustc.env("LLVM_PROFILE_FILE", format!("{}/rustc_%m.profraw", profile_dir));
+        }
+
         self.compose_and_run(
             rustc,
             self.config.host_compile_lib_path.as_path(),
