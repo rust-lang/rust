@@ -60,6 +60,7 @@ const SYS_FS_READV: u32 = 0x4021;
 const SYS_FS_WRITEV: u32 = 0x4022;
 const SYS_FS_LINK: u32 = 0x4023;
 const SYS_FS_FLOCK: u32 = 0x4024;
+const SYS_FS_LUTIMES: u32 = 0x4025;
 
 // ── Advisory lock flags (mirror abi::syscall::flock_flags) ───────────────────
 const LOCK_SH: u32 = 1; // shared (read) lock
@@ -658,7 +659,7 @@ impl File {
     }
 
     pub fn size(&self) -> Option<crate::io::Result<u64>> {
-        None
+        Some(self.file_attr().map(|a| a.size()))
     }
 
     pub fn tell(&self) -> crate::io::Result<u64> {
@@ -1022,6 +1023,18 @@ pub fn set_times(path: &Path, times: FileTimes) -> crate::io::Result<()> {
 }
 
 pub fn set_times_nofollow(path: &Path, times: FileTimes) -> crate::io::Result<()> {
-    // ThingOS does not have a dedicated lutimes; use utimes (follows symlinks).
-    set_times(path, times)
+    let path_str = path_to_str(path)?;
+    let req = AbiUtimesRequest::from_file_times(&times);
+    let ret = unsafe {
+        raw_syscall6(
+            SYS_FS_LUTIMES,
+            path_str.as_ptr() as usize,
+            path_str.len(),
+            (&req as *const AbiUtimesRequest) as usize,
+            0,
+            0,
+            0,
+        )
+    };
+    cvt(ret).map(|_| ())
 }
