@@ -979,7 +979,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .source_map()
                     .span_extend_to_prev_str(ident.span, current, true, false);
 
-                let ((with, with_label), without) = match sp {
+                let (with, with_label, without) = match sp {
                     Some(sp) if !self.tcx.sess.source_map().is_multiline(sp) => {
                         let sp = sp
                             .with_lo(BytePos(sp.lo().0 - (current.len() as u32)))
@@ -1000,23 +1000,26 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
                         if is_simple_binding {
                             (
-                            (Some(errs::AttemptToUseNonConstantValueInConstantWithSuggestion {
+                                Some(errs::AttemptToUseNonConstantValueInConstantWithSuggestion {
                                     span: sp,
                                     suggestion,
                                     current,
                                     type_span,
-                                }), Some(errs::AttemptToUseNonConstantValueInConstantLabelWithSuggestion {span})),
+                                }),
+                                Some(errs::AttemptToUseNonConstantValueInConstantLabelWithSuggestion { span }),
                                 None,
                             )
                         } else {
                             (
-                                (None, Some(errs::AttemptToUseNonConstantValueInConstantLabelWithSuggestion {span})),
+                                None,
+                                Some(errs::AttemptToUseNonConstantValueInConstantLabelWithSuggestion { span }),
                                 None,
                             )
                         }
                     }
                     _ => (
-                        (None, None),
+                        None,
+                        None,
                         Some(errs::AttemptToUseNonConstantValueInConstantWithoutSuggestion {
                             ident_span: ident.span,
                             suggestion,
