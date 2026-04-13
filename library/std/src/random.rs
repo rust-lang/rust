@@ -61,7 +61,15 @@ pub struct DefaultRandomSource;
 #[unstable(feature = "random", issue = "130703")]
 impl RandomSource for DefaultRandomSource {
     fn fill_bytes(&mut self, bytes: &mut [u8]) {
-        sys::fill_bytes(bytes)
+        #[cfg(target_os = "thingos")]
+        {
+            sys::fill_bytes(bytes).expect("failed to generate random data");
+        }
+
+        #[cfg(not(target_os = "thingos"))]
+        {
+            sys::fill_bytes(bytes)
+        }
     }
 }
 
