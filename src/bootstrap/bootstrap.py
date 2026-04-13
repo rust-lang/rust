@@ -1262,7 +1262,7 @@ def parse_args(args):
 
     # Pass allow_abbrev=False to remove support for inexact matches (e.g.,
     # `--json` turning on `--json-output`). The argument list here is partial,
-    # most flags are matched in the Rust bootstrap code. This prevents the the
+    # most flags are matched in the Rust bootstrap code. This prevents the
     # default ambiguity checks in argparse from functioning correctly.
     parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("-h", "--help", action="store_true")
