@@ -606,27 +606,6 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 self.pointercast(val, self.type_ptr())
             }
 
-            sym::sve_cast => {
-                let Some((in_cnt, in_elem, in_num_vecs)) =
-                    args[0].layout.ty.scalable_vector_parts(self.cx.tcx)
-                else {
-                    bug!("input parameter to `sve_cast` was not scalable vector");
-                };
-                let out_layout = self.layout_of(fn_args.type_at(1));
-                let Some((out_cnt, out_elem, out_num_vecs)) =
-                    out_layout.ty.scalable_vector_parts(self.cx.tcx)
-                else {
-                    bug!("output parameter to `sve_cast` was not scalable vector");
-                };
-                assert_eq!(in_cnt, out_cnt);
-                assert_eq!(in_num_vecs, out_num_vecs);
-                let out_llty = self.backend_type(out_layout);
-                match simd_cast(self, sym::simd_cast, args, out_llty, in_elem, out_elem) {
-                    Some(val) => val,
-                    _ => bug!("could not cast scalable vectors"),
-                }
-            }
-
             sym::sve_tuple_create2 => {
                 assert_matches!(
                     self.layout_of(fn_args.type_at(0)).backend_repr,
@@ -1668,6 +1647,23 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }};
     }
 
+    macro_rules! require_simd_or_scalable {
+        ($ty: expr, $variant:ident) => {{
+            require!(
+                $ty.is_simd() || $ty.is_scalable_vector(),
+                InvalidMonomorphization::$variant { span, name, ty: $ty }
+            );
+            if $ty.is_simd() {
+                let (len, ty) = $ty.simd_size_and_type(bx.tcx());
+                (len, ty, None)
+            } else {
+                let (count, ty, num_vecs) =
+                    $ty.scalable_vector_parts(bx.tcx()).expect("`is_scalable_vector` was wrong");
+                (count as u64, ty, Some(num_vecs))
+            }
+        }};
+    }
+
     /// Returns the bitwidth of the `$ty` argument if it is an `Int` or `Uint` type.
     macro_rules! require_int_or_uint_ty {
         ($ty: expr, $diag: expr) => {
@@ -1787,8 +1783,19 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(splat);
     }
 
-    // every intrinsic below takes a SIMD vector as its first argument
-    let (in_len, in_elem) = require_simd!(args[0].layout.ty, SimdInput);
+    let supports_scalable = match name {
+        sym::simd_cast | sym::simd_select => true,
+        _ => false,
+    };
+
+    // Every intrinsic below takes a SIMD vector as its first argument. Some intrinsics also accept
+    // scalable vectors. `require_simd_or_scalable` is used regardless as it'll do the right thing
+    // for non-scalable vectors, and an additional check to prohibit scalable vectors for those
+    // intrinsics that do not support them is added.
+    if !supports_scalable {
+        let _ = require_simd!(args[0].layout.ty, SimdInput);
+    }
+    let (in_len, in_elem, in_num_vecs) = require_simd_or_scalable!(args[0].layout.ty, SimdInput);
     let in_ty = args[0].layout.ty;
 
     let comparison = match name {
@@ -1977,7 +1984,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if name == sym::simd_select {
         let m_elem_ty = in_elem;
         let m_len = in_len;
-        let (v_len, _) = require_simd!(args[1].layout.ty, SimdArgument);
+        let (v_len, _, _) = require_simd_or_scalable!(args[1].layout.ty, SimdArgument);
         require!(
             m_len == v_len,
             InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
@@ -2781,7 +2788,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_cast || name == sym::simd_as {
-        let (out_len, out_elem) = require_simd!(ret_ty, SimdReturn);
+        let (out_len, out_elem, out_num_vecs) = require_simd_or_scalable!(ret_ty, SimdReturn);
         require!(
             in_len == out_len,
             InvalidMonomorphization::ReturnLengthInputType {
@@ -2793,9 +2800,99 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 out_len
             }
         );
-        match simd_cast(bx, name, args, llret_ty, in_elem, out_elem) {
-            Some(val) => return Ok(val),
-            None => return_error!(InvalidMonomorphization::UnsupportedCast {
+        require!(
+            in_num_vecs == out_num_vecs,
+            InvalidMonomorphization::ReturnNumVecsInputType {
+                span,
+                name,
+                in_num_vecs: in_num_vecs.unwrap_or(NumScalableVectors(1)),
+                in_ty,
+                ret_ty,
+                out_num_vecs: out_num_vecs.unwrap_or(NumScalableVectors(1))
+            }
+        );
+
+        // Casting cares about nominal type, not just structural type
+        if in_elem == out_elem {
+            return Ok(args[0].immediate());
+        }
+
+        #[derive(Copy, Clone)]
+        enum Sign {
+            Unsigned,
+            Signed,
+        }
+        use Sign::*;
+
+        enum Style {
+            Float,
+            Int(Sign),
+            Unsupported,
+        }
+
+        let (in_style, in_width) = match in_elem.kind() {
+            // vectors of pointer-sized integers should've been
+            // disallowed before here, so this unwrap is safe.
+            ty::Int(i) => (
+                Style::Int(Signed),
+                i.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
+            ),
+            ty::Uint(u) => (
+                Style::Int(Unsigned),
+                u.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
+            ),
+            ty::Float(f) => (Style::Float, f.bit_width()),
+            _ => (Style::Unsupported, 0),
+        };
+        let (out_style, out_width) = match out_elem.kind() {
+            ty::Int(i) => (
+                Style::Int(Signed),
+                i.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
+            ),
+            ty::Uint(u) => (
+                Style::Int(Unsigned),
+                u.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
+            ),
+            ty::Float(f) => (Style::Float, f.bit_width()),
+            _ => (Style::Unsupported, 0),
+        };
+
+        match (in_style, out_style) {
+            (Style::Int(sign), Style::Int(_)) => {
+                return Ok(match in_width.cmp(&out_width) {
+                    Ordering::Greater => bx.trunc(args[0].immediate(), llret_ty),
+                    Ordering::Equal => args[0].immediate(),
+                    Ordering::Less => match sign {
+                        Sign::Signed => bx.sext(args[0].immediate(), llret_ty),
+                        Sign::Unsigned => bx.zext(args[0].immediate(), llret_ty),
+                    },
+                });
+            }
+            (Style::Int(Sign::Signed), Style::Float) => {
+                return Ok(bx.sitofp(args[0].immediate(), llret_ty));
+            }
+            (Style::Int(Sign::Unsigned), Style::Float) => {
+                return Ok(bx.uitofp(args[0].immediate(), llret_ty));
+            }
+            (Style::Float, Style::Int(sign)) => {
+                return Ok(match (sign, name == sym::simd_as) {
+                    (Sign::Unsigned, false) => bx.fptoui(args[0].immediate(), llret_ty),
+                    (Sign::Signed, false) => bx.fptosi(args[0].immediate(), llret_ty),
+                    (_, true) => bx.cast_float_to_int(
+                        matches!(sign, Sign::Signed),
+                        args[0].immediate(),
+                        llret_ty,
+                    ),
+                });
+            }
+            (Style::Float, Style::Float) => {
+                return Ok(match in_width.cmp(&out_width) {
+                    Ordering::Greater => bx.fptrunc(args[0].immediate(), llret_ty),
+                    Ordering::Equal => args[0].immediate(),
+                    Ordering::Less => bx.fpext(args[0].immediate(), llret_ty),
+                });
+            }
+            _ => return_error!(InvalidMonomorphization::UnsupportedCast {
                 span,
                 name,
                 in_ty,
@@ -2976,87 +3073,4 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     span_bug!(span, "unknown SIMD intrinsic");
-}
-
-/// Implementation of `core::intrinsics::simd_cast`, re-used by `core::scalable::sve_cast`.
-fn simd_cast<'ll, 'tcx>(
-    bx: &mut Builder<'_, 'll, 'tcx>,
-    name: Symbol,
-    args: &[OperandRef<'tcx, &'ll Value>],
-    llret_ty: &'ll Type,
-    in_elem: Ty<'tcx>,
-    out_elem: Ty<'tcx>,
-) -> Option<&'ll Value> {
-    // Casting cares about nominal type, not just structural type
-    if in_elem == out_elem {
-        return Some(args[0].immediate());
-    }
-
-    #[derive(Copy, Clone)]
-    enum Sign {
-        Unsigned,
-        Signed,
-    }
-    use Sign::*;
-
-    enum Style {
-        Float,
-        Int(Sign),
-        Unsupported,
-    }
-
-    let (in_style, in_width) = match in_elem.kind() {
-        // vectors of pointer-sized integers should've been
-        // disallowed before here, so this unwrap is safe.
-        ty::Int(i) => (
-            Style::Int(Signed),
-            i.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
-        ),
-        ty::Uint(u) => (
-            Style::Int(Unsigned),
-            u.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
-        ),
-        ty::Float(f) => (Style::Float, f.bit_width()),
-        _ => (Style::Unsupported, 0),
-    };
-    let (out_style, out_width) = match out_elem.kind() {
-        ty::Int(i) => (
-            Style::Int(Signed),
-            i.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
-        ),
-        ty::Uint(u) => (
-            Style::Int(Unsigned),
-            u.normalize(bx.tcx().sess.target.pointer_width).bit_width().unwrap(),
-        ),
-        ty::Float(f) => (Style::Float, f.bit_width()),
-        _ => (Style::Unsupported, 0),
-    };
-
-    match (in_style, out_style) {
-        (Style::Int(sign), Style::Int(_)) => Some(match in_width.cmp(&out_width) {
-            Ordering::Greater => bx.trunc(args[0].immediate(), llret_ty),
-            Ordering::Equal => args[0].immediate(),
-            Ordering::Less => match sign {
-                Sign::Signed => bx.sext(args[0].immediate(), llret_ty),
-                Sign::Unsigned => bx.zext(args[0].immediate(), llret_ty),
-            },
-        }),
-        (Style::Int(Sign::Signed), Style::Float) => Some(bx.sitofp(args[0].immediate(), llret_ty)),
-        (Style::Int(Sign::Unsigned), Style::Float) => {
-            Some(bx.uitofp(args[0].immediate(), llret_ty))
-        }
-        (Style::Float, Style::Int(sign)) => Some(match (sign, name == sym::simd_as) {
-            (Sign::Unsigned, false) => bx.fptoui(args[0].immediate(), llret_ty),
-            (Sign::Signed, false) => bx.fptosi(args[0].immediate(), llret_ty),
-            (_, true) => {
-                bx.cast_float_to_int(matches!(sign, Sign::Signed), args[0].immediate(), llret_ty)
-            }
-        }),
-        (Style::Float, Style::Float) => Some(match in_width.cmp(&out_width) {
-            Ordering::Greater => bx.fptrunc(args[0].immediate(), llret_ty),
-            Ordering::Equal => args[0].immediate(),
-            Ordering::Less => bx.fpext(args[0].immediate(), llret_ty),
-        }),
-        _ => None,
-    }
 }
