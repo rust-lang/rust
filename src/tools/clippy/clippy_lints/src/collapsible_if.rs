@@ -238,7 +238,7 @@ impl CollapsibleIf {
             },
 
             [attr]
-                if matches!(Level::from_attr(attr), Some((Level::Expect, _)))
+                if matches!(Level::from_attr(attr.name(), || attr.id()), Some((Level::Expect, _)))
                     && let Some(metas) = attr.meta_item_list()
                     && let Some(MetaItemInner::MetaItem(meta_item)) = metas.first()
                     && let [tool, lint_name] = meta_item.path.segments.as_slice()
