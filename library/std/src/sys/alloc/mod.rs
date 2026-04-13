@@ -71,6 +71,7 @@ unsafe fn realloc_fallback(
 cfg_select! {
     any(
         target_family = "unix",
+        target_os = "qurt",
         target_os = "wasi",
         target_os = "teeos",
         target_os = "trusty",

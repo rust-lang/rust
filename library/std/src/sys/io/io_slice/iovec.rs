@@ -1,6 +1,11 @@
 #[cfg(target_os = "hermit")]
 use hermit_abi::iovec;
-#[cfg(any(target_family = "unix", target_os = "trusty", target_os = "wasi"))]
+#[cfg(any(
+    target_family = "unix",
+    target_os = "trusty",
+    target_os = "wasi",
+    target_os = "qurt"
+))]
 use libc::iovec;
 
 use crate::ffi::c_void;

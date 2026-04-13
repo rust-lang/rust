@@ -5,6 +5,9 @@
 use libc::{c_char, c_int, c_void};
 
 use crate::ffi::{CStr, OsStr, OsString};
+#[cfg(target_os = "qurt")]
+use crate::os::qurt::prelude::*;
+#[cfg(not(target_os = "qurt"))]
 use crate::os::unix::prelude::*;
 use crate::path::{self, PathBuf};
 use crate::sys::helpers::run_path_with_cstr;
@@ -45,12 +48,12 @@ pub fn getcwd() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(target_os = "espidf")]
+#[cfg(any(target_os = "espidf", target_os = "qurt"))]
 pub fn chdir(_p: &path::Path) -> io::Result<()> {
     crate::sys::pal::unsupported::unsupported()
 }
 
-#[cfg(not(target_os = "espidf"))]
+#[cfg(not(any(target_os = "espidf", target_os = "qurt")))]
 pub fn chdir(p: &path::Path) -> io::Result<()> {
     let result = run_path_with_cstr(p, &|p| unsafe { Ok(libc::chdir(p.as_ptr())) })?;
     if result == 0 { Ok(()) } else { Err(io::Error::last_os_error()) }
@@ -370,7 +373,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     path.canonicalize()
 }
 
-#[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita"))]
+#[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita", target_os = "qurt"))]
 pub fn current_exe() -> io::Result<PathBuf> {
     crate::sys::pal::unsupported::unsupported()
 }
@@ -429,6 +432,7 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "horizon",
         target_os = "vita",
         target_os = "nuttx",
+        target_os = "qurt",
         all(target_vendor = "apple", not(target_os = "macos")),
     ))]
     unsafe fn fallback() -> Option<OsString> {
@@ -443,6 +447,7 @@ pub fn home_dir() -> Option<PathBuf> {
         target_os = "horizon",
         target_os = "vita",
         target_os = "nuttx",
+        target_os = "qurt",
         all(target_vendor = "apple", not(target_os = "macos")),
     )))]
     unsafe fn fallback() -> Option<OsString> {

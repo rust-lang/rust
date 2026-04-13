@@ -7,6 +7,7 @@
 #[allow(unused_imports)]
 use io::{Read, Write};
 
+#[allow(unused_imports)]
 use super::platform::fs::MetadataExt as _;
 // Used for `File::read` on intra-doc links
 use crate::ffi::OsStr;
