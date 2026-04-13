@@ -670,7 +670,7 @@ dependencies = [
  "tempfile",
  "termize",
  "toml 0.9.8",
- "ui_test",
+ "ui_test 0.30.3",
  "walkdir",
 ]
 
@@ -890,6 +890,18 @@ dependencies = [
  "once_cell",
  "unicode-width 0.2.2",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "console"
+version = "0.16.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d64e8af5551369d19cf50138de61f1c42074ab970f74e99be916646777f8fc87"
+dependencies = [
+ "encode_unicode",
+ "libc",
+ "unicode-width 0.2.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1969,10 +1981,23 @@ version = "0.17.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "183b3088984b400f4cfac3620d5e076c84da5364016b4f49473de574b2586235"
 dependencies = [
- "console",
+ "console 0.15.11",
  "number_prefix",
  "portable-atomic",
  "unicode-width 0.2.2",
+ "web-time",
+]
+
+[[package]]
+name = "indicatif"
+version = "0.18.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9375e112e4b463ec1b1c6c011953545c65a30164fbab5b581df32b3abf0dcb88"
+dependencies = [
+ "console 0.16.3",
+ "portable-atomic",
+ "unicode-width 0.2.2",
+ "unit-prefix",
  "web-time",
 ]
 
@@ -2501,7 +2526,7 @@ dependencies = [
  "serde_json",
  "smallvec",
  "tempfile",
- "ui_test",
+ "ui_test 0.30.4",
 ]
 
 [[package]]
@@ -5531,7 +5556,7 @@ checksum = "8f50febec83f5ee1df3015341d8bd429f2d1cc62bcba7ea2076759d315084683"
 name = "test-float-parse"
 version = "0.1.0"
 dependencies = [
- "indicatif",
+ "indicatif 0.17.11",
  "num",
  "rand 0.9.2",
  "rand_chacha 0.9.0",
@@ -5969,7 +5994,32 @@ dependencies = [
  "colored 3.0.0",
  "comma",
  "crossbeam-channel",
- "indicatif",
+ "indicatif 0.17.11",
+ "levenshtein",
+ "prettydiff",
+ "regex",
+ "rustc_version",
+ "rustfix",
+ "serde",
+ "serde_json",
+ "spanned",
+]
+
+[[package]]
+name = "ui_test"
+version = "0.30.4"
+source = "git+https://github.com/saethlin/ui_test?branch=target-in-compile-flags#62e278f072527fa19477aaedcd6b6fcd5ce1a485"
+dependencies = [
+ "annotate-snippets 0.11.5",
+ "anyhow",
+ "bstr",
+ "cargo-platform 0.1.9",
+ "cargo_metadata 0.18.1",
+ "color-eyre",
+ "colored 3.0.0",
+ "comma",
+ "crossbeam-channel",
+ "indicatif 0.18.3",
  "levenshtein",
  "prettydiff",
  "regex",
@@ -6105,6 +6155,12 @@ checksum = "496a3d395ed0c30f411ceace4a91f7d93b148fb5a9b383d5d4cff7850f048d5f"
 dependencies = [
  "diff",
 ]
+
+[[package]]
+name = "unit-prefix"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81e544489bf3d8ef66c953931f56617f423cd4b5494be343d9b9d3dda037b9a3"
 
 [[package]]
 name = "unstable-book-gen"

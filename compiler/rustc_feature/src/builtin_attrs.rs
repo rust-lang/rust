@@ -1324,6 +1324,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`#[rustc_non_const_trait_method]` should only used by the standard library to mark trait methods \
         as non-const to allow large traits an easier transition to const"
     ),
+    rustc_attr!(
+        rustc_panic_entrypoint, AttributeType::Normal, template!(Word),
+        WarnFollowing, EncodeCrossCrate::Yes,
+        "`#[rustc_panic_entrypoint]` makes this function patchable by panic=immediate-abort",
+    ),
 
     BuiltinAttribute {
         name: sym::rustc_diagnostic_item,
