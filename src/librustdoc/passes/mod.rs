@@ -38,6 +38,9 @@ pub(crate) use self::collect_trait_impls::COLLECT_TRAIT_IMPLS;
 mod calculate_doc_coverage;
 pub(crate) use self::calculate_doc_coverage::CALCULATE_DOC_COVERAGE;
 
+pub(crate) mod inject_safety_docs;
+pub(crate) use self::inject_safety_docs::INJECT_SAFETY_DOCS;
+
 mod lint;
 pub(crate) use self::lint::RUN_LINTS;
 
@@ -79,6 +82,7 @@ pub(crate) const PASSES: &[Pass] = &[
     STRIP_PRIVATE,
     STRIP_PRIV_IMPORTS,
     PROPAGATE_STABILITY,
+    INJECT_SAFETY_DOCS,
     COLLECT_INTRA_DOC_LINKS,
     COLLECT_TRAIT_IMPLS,
     CALCULATE_DOC_COVERAGE,
@@ -94,6 +98,7 @@ pub(crate) const DEFAULT_PASSES: &[ConditionalPass] = &[
     ConditionalPass::new(STRIP_HIDDEN, WhenNotDocumentHidden),
     ConditionalPass::new(STRIP_PRIVATE, WhenNotDocumentPrivate),
     ConditionalPass::new(STRIP_PRIV_IMPORTS, WhenDocumentPrivate),
+    ConditionalPass::always(INJECT_SAFETY_DOCS),
     ConditionalPass::always(COLLECT_INTRA_DOC_LINKS),
     ConditionalPass::always(PROPAGATE_STABILITY),
     ConditionalPass::always(RUN_LINTS),

@@ -11,7 +11,7 @@ use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, std
 use rustc_errors::json::JsonEmitter;
 use rustc_feature::UnstableFeatures;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
+use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LOCAL_CRATE, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path};
 use rustc_lint::{MissingDoc, late_lint_mod};
@@ -68,6 +68,8 @@ pub(crate) struct DocContext<'tcx> {
     pub(crate) output_format: OutputFormat,
     /// Used by `strip_private`.
     pub(crate) show_coverage: bool,
+    /// Used by `inject-safety-docs` to transform `#[safety::requires]` into documentation text.
+    pub(crate) safety_spec: Option<Arc<crate::passes::inject_safety_docs::SafetySpec>>,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -359,6 +361,14 @@ pub(crate) fn run_global_ctxt(
     let auto_traits =
         tcx.visible_traits().filter(|&trait_def_id| tcx.trait_is_auto(trait_def_id)).collect();
 
+    let safety_spec = render_options.safety_spec.as_ref().and_then(|path| {
+        crate::passes::inject_safety_docs::load_safety_spec(
+            path,
+            tcx.crate_name(LOCAL_CRATE).as_str(),
+            tcx.dcx(),
+        )
+    });
+
     let mut ctxt = DocContext {
         tcx,
         param_env: ParamEnv::empty(),
@@ -373,6 +383,7 @@ pub(crate) fn run_global_ctxt(
         inlined: FxHashSet::default(),
         output_format,
         show_coverage,
+        safety_spec,
     };
 
     for cnum in tcx.crates(()) {

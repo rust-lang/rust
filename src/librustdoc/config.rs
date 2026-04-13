@@ -312,6 +312,8 @@ pub(crate) struct RenderOptions {
     pub(crate) disable_minification: bool,
     /// If `true`, HTML source pages will generate the possibility to expand macros.
     pub(crate) generate_macro_expansion: bool,
+    /// Optional TOML spec for `inject-safety-docs` (`#[safety::requires]`).
+    pub(crate) safety_spec: Option<PathBuf>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -852,6 +854,8 @@ impl Options {
 
         let disable_minification = matches.opt_present("disable-minification");
 
+        let safety_spec = matches.opt_str("safety-spec").map(PathBuf::from);
+
         let options = Options {
             bin_crate,
             proc_macro_crate,
@@ -930,6 +934,7 @@ impl Options {
             include_parts_dir,
             parts_out_dir,
             disable_minification,
+            safety_spec,
         };
         Some((input, options, render_options, loaded_paths))
     }
