@@ -396,3 +396,53 @@ pub mod simd {
 }
 
 include!("primitive_docs.rs");
+
+// Global metadata markers for the Enzyme autodiff backend.
+// These are not read or written to by Rust code. They are required to survive
+// Link-Time Optimization (LTO) so that Enzyme can correctly identify them
+// as constant metadata variables when computing derivatives.
+#[unstable(feature = "autodiff", issue = "124509")]
+#[allow(non_upper_case_globals)]
+#[allow(missing_docs)]
+#[doc(hidden)]
+pub mod enzyme_globals {
+    #[unsafe(no_mangle)]
+    #[unstable(feature = "autodiff", issue = "124509")]
+    #[doc(hidden)]
+    pub static enzyme_const: u8 = 0;
+
+    #[unsafe(no_mangle)]
+    #[unstable(feature = "autodiff", issue = "124509")]
+    #[doc(hidden)]
+    pub static enzyme_out: u8 = 0;
+
+    #[unsafe(no_mangle)]
+    #[unstable(feature = "autodiff", issue = "124509")]
+    #[doc(hidden)]
+    pub static enzyme_dup: u8 = 0;
+
+    #[unsafe(no_mangle)]
+    #[unstable(feature = "autodiff", issue = "124509")]
+    #[doc(hidden)]
+    pub static enzyme_dupv: u8 = 0;
+
+    #[unsafe(no_mangle)]
+    #[unstable(feature = "autodiff", issue = "124509")]
+    #[doc(hidden)]
+    pub static enzyme_dupnoneed: u8 = 0;
+
+    #[unsafe(no_mangle)]
+    #[unstable(feature = "autodiff", issue = "124509")]
+    #[doc(hidden)]
+    pub static enzyme_dupnoneedv: u8 = 0;
+
+    #[unsafe(no_mangle)]
+    #[unstable(feature = "autodiff", issue = "124509")]
+    #[doc(hidden)]
+    pub static enzyme_primal_return: u8 = 0;
+
+    #[unsafe(no_mangle)]
+    #[unstable(feature = "autodiff", issue = "124509")]
+    #[doc(hidden)]
+    pub static enzyme_width: u8 = 0;
+}
