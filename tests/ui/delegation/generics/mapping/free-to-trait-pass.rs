@@ -11,10 +11,10 @@
 //! added. At some tests user-specified args are specified in reuse statement.
 
 // Testing lifetimes + types + consts in both parent and child, reusing in
-// a function without generic params
+// a function without generic params, with impl traits
 mod test_1 {
     trait Trait<'b, 'c, 'a, T, const N: usize>: Sized {
-        fn foo<'d: 'd, U, const M: bool>(self) {}
+        fn foo<'d: 'd, U, const M: bool>(self, _f: impl FnOnce() -> ()) {}
     }
 
     impl Trait<'static, 'static, 'static, i32, 1> for u8 {}
@@ -22,12 +22,12 @@ mod test_1 {
     pub fn check() {
         fn no_ctx() {
             reuse Trait::foo as bar;
-            bar::<'static, 'static, 'static, 'static, u8, i32, 1, String, true>(123);
+            bar::<'static, 'static, 'static, 'static, u8, i32, 1, String, true>(123, || ());
         }
 
         fn with_ctx<'a, 'b, 'c, A, B, C, const N: usize, const M: bool>() {
             reuse Trait::foo as bar;
-            bar::<'static, 'static, 'static, 'a, u8, i32, 1, A, M>(123);
+            bar::<'static, 'static, 'static, 'a, u8, i32, 1, A, M>(123, || ());
         }
 
         no_ctx();
