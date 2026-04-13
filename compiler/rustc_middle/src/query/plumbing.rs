@@ -374,6 +374,7 @@ macro_rules! define_callbacks {
 
                 impl<'tcx> crate::query::QueryHelper<'tcx, Key<'tcx>, Erased<Value<'tcx>>> for Helper {
                     #[cfg($cache_on_disk)]
+                    #[inline]
                     fn try_load_from_disk_fn(
                         tcx: TyCtxt<'tcx>,
                         prev_index: crate::dep_graph::SerializedDepNodeIndex,
@@ -385,6 +386,7 @@ macro_rules! define_callbacks {
                         Some(provided_to_erased(tcx, loaded_value))
                     }
                     #[cfg(not($cache_on_disk))]
+                    #[inline(always)]
                     fn try_load_from_disk_fn(
                         _tcx: TyCtxt<'tcx>,
                         _prev_index: crate::dep_graph::SerializedDepNodeIndex,
@@ -407,6 +409,7 @@ macro_rules! define_callbacks {
                         }
                     }
 
+                    #[inline(always)]
                     fn invoke_provider_fn(tcx: TyCtxt<'tcx>, key: Key<'tcx>) -> Erased<Value<'tcx>> {
                         invoke_provider_fn::__rust_begin_short_backtrace(tcx, key)
                     }
@@ -416,16 +419,19 @@ macro_rules! define_callbacks {
                     const NO_HASH: bool = $no_hash;
 
                     #[cfg($no_hash)]
+                    #[cold]
                     fn hash_value_fn(_: &mut crate::ich::StableHashingContext<'_>, _: &Erased<Value<'tcx>>) -> rustc_data_structures::fingerprint::Fingerprint {
                         panic!("Tried to hash value for no_hash query. `no_hash` query modifier is unsupported with `feedable` modifier enabled")
                     }
 
                     #[cfg(not($no_hash))]
+                    #[inline]
                     fn hash_value_fn(hcx: &mut crate::ich::StableHashingContext<'_>, value: &Erased<Value<'tcx>>) -> rustc_data_structures::fingerprint::Fingerprint {
                         let value = erase::restore_val(*value);
                         rustc_middle::dep_graph::hash_result(hcx, &value)
                     }
 
+                    #[inline]
                     fn format_value(erased_value: &erase::Erased<Value<'tcx>>) -> String {
                         format!("{:?}", erase::restore_val(*erased_value))
                     }
