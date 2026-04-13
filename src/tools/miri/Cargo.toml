@@ -46,7 +46,7 @@ capstone = { version = "0.14", features = ["arch_x86", "full"], default-features
 genmc-sys = { path = "./genmc-sys/", version = "0.1.0", optional = true }
 
 [dev-dependencies]
-ui_test = "0.30.2"
+ui_test = { git = "https://github.com/saethlin/ui_test", branch = "target-in-compile-flags" }
 colored = "3"
 rustc_version = "0.4"
 regex = "1.5.5"
