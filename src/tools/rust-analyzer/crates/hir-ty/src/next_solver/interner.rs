@@ -2358,6 +2358,21 @@ impl<'db> DbInterner<'db> {
             abi,
         }
     }
+
+    pub fn mk_fn_sig_safe_rust_normal<I>(self, inputs: I, output: Ty<'db>) -> FnSig<'db>
+    where
+        I: IntoIterator<Item = Ty<'db>>,
+    {
+        FnSig {
+            inputs_and_output: Tys::new_from_iter(
+                self,
+                inputs.into_iter().chain(std::iter::once(output)),
+            ),
+            c_variadic: false,
+            safety: Safety::Safe,
+            abi: FnAbi::Rust,
+        }
+    }
 }
 
 fn predicates_of(db: &dyn HirDatabase, def_id: SolverDefId) -> &GenericPredicates {

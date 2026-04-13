@@ -1658,7 +1658,7 @@ fn confirm_closure_candidate<'cx, 'tcx>(
                 tcx.mk_fn_sig(
                     [sig.tupled_inputs_ty],
                     output_ty,
-                    sig.c_variadic,
+                    sig.fn_args_kind,
                     sig.safety,
                     sig.abi,
                 )

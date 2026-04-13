@@ -1,6 +1,5 @@
 use std::ops::Not;
 
-use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::{Node, find_attr};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -152,13 +151,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) -> Result<(), ErrorGuar
         expected_return_type = tcx.types.unit;
     }
 
-    let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
-        [],
-        expected_return_type,
-        false,
-        hir::Safety::Safe,
-        ExternAbi::Rust,
-    ));
+    let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_normal([], expected_return_type));
 
     check_function_signature(
         tcx,

@@ -438,13 +438,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let coroutine_captures_by_ref_ty = Ty::new_fn_ptr(
                 self.tcx,
                 ty::Binder::bind_with_vars(
-                    self.tcx.mk_fn_sig(
-                        [],
-                        tupled_upvars_ty_for_borrow,
-                        false,
-                        hir::Safety::Safe,
-                        rustc_abi::ExternAbi::Rust,
-                    ),
+                    self.tcx.mk_fn_sig_safe_rust_normal([], tupled_upvars_ty_for_borrow),
                     self.tcx.mk_bound_variable_kinds(&[ty::BoundVariableKind::Region(
                         ty::BoundRegionKind::ClosureEnv,
                     )]),

@@ -275,7 +275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx.coroutine_for_closure(def_id),
                         tupled_upvars_ty,
                     ),
-                    coroutine_closure_sig.c_variadic,
+                    coroutine_closure_sig.fn_args_kind,
                     coroutine_closure_sig.safety,
                     coroutine_closure_sig.abi,
                 );
@@ -595,7 +595,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn_sig.output(),
             expected,
             arg_exprs,
-            fn_sig.c_variadic,
+            fn_sig.c_variadic(),
             TupleArgumentsFlag::DontTupleArguments,
             def_id,
         );
@@ -905,7 +905,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn_sig.output(),
             expected,
             arg_exprs,
-            fn_sig.c_variadic,
+            fn_sig.c_variadic(),
             TupleArgumentsFlag::TupleArguments,
             Some(closure_def_id.to_def_id()),
         );
@@ -984,7 +984,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             method.sig.output(),
             expected,
             arg_exprs,
-            method.sig.c_variadic,
+            method.sig.c_variadic(),
             TupleArgumentsFlag::TupleArguments,
             Some(method.def_id),
         );

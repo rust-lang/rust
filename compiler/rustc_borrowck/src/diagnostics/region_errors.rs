@@ -1083,12 +1083,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // Build a new closure where the return type is an owned value, instead of a ref.
         let closure_sig_as_fn_ptr_ty = Ty::new_fn_ptr(
             tcx,
-            ty::Binder::dummy(tcx.mk_fn_sig(
+            ty::Binder::dummy(tcx.mk_fn_sig_safe_rust(
                 liberated_sig.inputs().iter().copied(),
                 peeled_ty,
-                liberated_sig.c_variadic,
-                hir::Safety::Safe,
-                rustc_abi::ExternAbi::Rust,
+                liberated_sig.fn_args_kind,
             )),
         );
         let closure_ty = Ty::new_closure(

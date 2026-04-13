@@ -1085,10 +1085,55 @@ impl PolyFnSig {
     }
 }
 
+/// Is there any special handling for the function arguments?
+/// This is encoded as a `u16` to keep containing structs small.
+// FIXME(splat): use the rest of the u16 for the splatted argument index
+// FIXME(not splat): change this to u8
+#[derive(Copy, Clone, Eq, PartialEq, Serialize)]
+pub struct FnArgsKind(u16);
+
+impl fmt::Debug for FnArgsKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut f = f.debug_tuple("FnArgsKind");
+
+        let f = if self.normal() {
+            f.field(&"Normal")
+        } else if self.c_variadic() {
+            f.field(&"C Variadic")
+        } else {
+            unreachable!()
+        };
+
+        f.finish()
+    }
+}
+
+impl FnArgsKind {
+    // The highest values are reserved for these special cases.
+
+    /// No special handling for the function's arguments.
+    pub const NORMAL: Self = Self(u16::MAX);
+
+    /// The function arguments end with a C-style variadic argument.
+    pub const C_VARIADIC: Self = Self(u16::MAX - 1);
+
+    /// Are the function arguments normal?
+    #[inline]
+    pub fn normal(self) -> bool {
+        self == Self::NORMAL
+    }
+
+    /// Do the function arguments end with a C-style variadic argument?
+    #[inline]
+    pub fn c_variadic(self) -> bool {
+        self == Self::C_VARIADIC
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct FnSig {
     pub inputs_and_output: Vec<Ty>,
-    pub c_variadic: bool,
+    pub fn_args_kind: FnArgsKind,
     pub safety: Safety,
     pub abi: Abi,
 }
@@ -1100,6 +1145,10 @@ impl FnSig {
 
     pub fn inputs(&self) -> &[Ty] {
         &self.inputs_and_output[..self.inputs_and_output.len() - 1]
+    }
+
+    pub fn c_variadic(&self) -> bool {
+        self.fn_args_kind.c_variadic()
     }
 }
 

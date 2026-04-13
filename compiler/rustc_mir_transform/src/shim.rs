@@ -1171,7 +1171,7 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
                 args.as_coroutine_closure().tupled_upvars_ty(),
                 args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
             ),
-            sig.c_variadic,
+            sig.fn_args_kind,
             sig.safety,
             sig.abi,
         )

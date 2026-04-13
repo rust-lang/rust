@@ -570,7 +570,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                     for &ty in sig.inputs() {
                         ty.print(p)?;
                     }
-                    if sig.c_variadic {
+                    if sig.c_variadic() {
                         p.push("v");
                     }
                     p.push("E");

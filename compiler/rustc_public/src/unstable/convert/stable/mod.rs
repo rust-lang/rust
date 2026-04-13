@@ -11,6 +11,17 @@ mod abi;
 mod mir;
 mod ty;
 
+impl<'tcx> Stable<'tcx> for rustc_hir::FnArgsKind {
+    type T = crate::ty::FnArgsKind;
+    fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
+        match *self {
+            rustc_hir::FnArgsKind::NORMAL => crate::ty::FnArgsKind::NORMAL,
+            rustc_hir::FnArgsKind::C_VARIADIC => crate::ty::FnArgsKind::C_VARIADIC,
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl<'tcx> Stable<'tcx> for rustc_hir::Safety {
     type T = crate::mir::Safety;
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {

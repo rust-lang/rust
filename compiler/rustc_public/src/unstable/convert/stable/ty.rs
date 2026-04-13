@@ -267,7 +267,7 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
                 .iter()
                 .map(|ty| ty.stable(tables, cx))
                 .collect(),
-            c_variadic: self.c_variadic,
+            fn_args_kind: self.fn_args_kind.stable(tables, cx),
             safety: self.safety.stable(tables, cx),
             abi: self.abi.stable(tables, cx),
         }

@@ -762,7 +762,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         let fn_decl = self.arena.alloc(hir::FnDecl {
             inputs,
             output,
-            c_variadic: false,
+            fn_args_kind: hir::FnArgsKind::NORMAL,
             implicit_self: hir::ImplicitSelfKind::None,
             lifetime_elision_allowed: false,
         });

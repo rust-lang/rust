@@ -478,7 +478,7 @@ fn fn_sig_suggestion<'tcx>(
                 }
             })
         })
-        .chain(std::iter::once(if sig.c_variadic { Some("...".to_string()) } else { None }))
+        .chain(std::iter::once(if sig.c_variadic() { Some("...".to_string()) } else { None }))
         .flatten()
         .collect::<Vec<String>>()
         .join(", ");

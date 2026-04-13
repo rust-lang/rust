@@ -1,6 +1,5 @@
 //! Type-checking for the `#[rustc_intrinsic]` intrinsics that the compiler exposes.
 
-use rustc_abi::ExternAbi;
 use rustc_errors::DiagMessage;
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
@@ -636,20 +635,10 @@ pub(crate) fn check_intrinsic_type(
 
         sym::catch_unwind => {
             let mut_u8 = Ty::new_mut_ptr(tcx, tcx.types.u8);
-            let try_fn_ty = ty::Binder::dummy(tcx.mk_fn_sig(
-                [mut_u8],
-                tcx.types.unit,
-                false,
-                hir::Safety::Safe,
-                ExternAbi::Rust,
-            ));
-            let catch_fn_ty = ty::Binder::dummy(tcx.mk_fn_sig(
-                [mut_u8, mut_u8],
-                tcx.types.unit,
-                false,
-                hir::Safety::Safe,
-                ExternAbi::Rust,
-            ));
+            let try_fn_ty =
+                ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_normal([mut_u8], tcx.types.unit));
+            let catch_fn_ty =
+                ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_normal([mut_u8, mut_u8], tcx.types.unit));
             (
                 0,
                 0,
@@ -817,7 +806,7 @@ pub(crate) fn check_intrinsic_type(
             return;
         }
     };
-    let sig = tcx.mk_fn_sig(inputs, output, false, safety, ExternAbi::Rust);
+    let sig = tcx.mk_fn_sig_rust_normal(inputs, output, safety);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
     equate_intrinsic_type(tcx, span, intrinsic_id, n_tps, n_lts, n_cts, sig)
 }

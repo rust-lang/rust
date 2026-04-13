@@ -145,6 +145,7 @@ pub trait Interner:
         + Eq
         + TypeVisitable<Self>
         + SliceLike<Item = Self::Pat>;
+    type FnArgsKind: FnArgsKind<Self>;
     type Safety: Safety<Self>;
     type Abi: Abi<Self>;
 

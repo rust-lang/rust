@@ -195,6 +195,7 @@ TrivialLiftImpls! {
     crate::ty::ParamConst,
     rustc_abi::ExternAbi,
     rustc_abi::Size,
+    rustc_hir::FnArgsKind,
     rustc_hir::Safety,
     rustc_middle::mir::ConstValue,
     rustc_type_ir::BoundConstness,

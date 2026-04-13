@@ -2289,7 +2289,7 @@ impl<'a> State<'a> {
             print_arg(s, Some(ty));
             s.end(ib);
         });
-        if decl.c_variadic {
+        if decl.c_variadic() {
             if !decl.inputs.is_empty() {
                 self.word(", ");
             }
