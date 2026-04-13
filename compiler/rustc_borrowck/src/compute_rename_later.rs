@@ -41,9 +41,12 @@ fn compute_outlives_bounds_rename<'tcx>(
 
     let unnormalized_input_output_tys =
         compute_inputs_and_output_non_nll(&infcx, mir_def, defining_ty);
+    debug!("first unnormalized input and output ty is {:?}", unnormalized_input_output_tys);
 
     let unnormalized_input_output_tys = tcx
         .liberate_late_bound_regions(defining_ty_def_id.to_def_id(), unnormalized_input_output_tys);
+
+    debug!("second unnormalized input and output ty is {:?}", unnormalized_input_output_tys);
 
     let span = tcx.def_span(defining_ty_def_id);
     let mut outlives_bounds: Vec<OutlivesBound<'tcx>> = vec![];
@@ -101,13 +104,21 @@ fn compute_outlives_bounds_rename<'tcx>(
                 outlives_bounds.extend(bounds);
             }
         }
+        debug!("normalized ty is {:?}", norm_ty);
 
         // Collect late bound region
-        if let ty::Ref(region, _, _) = ty.kind() {
+        // TODO: we need to collect late bound region recursively for case like Foo<Moo<&'a u8>>
+        tcx.for_each_free_region(&ty, |region| {
+            debug!("free regions are {:?}", region);
             if let RegionKind::ReLateParam(..) = region.kind() {
-                late_bound_region.push(*region);
+                late_bound_region.push(region);
             }
-        }
+        });
+        //if let ty::Ref(region, _, _) = ty.kind() {
+        //    if let RegionKind::ReLateParam(..) = region.kind() {
+        //        late_bound_region.push(*region);
+        //    }
+        //}
 
         norm_sig_tys.push(norm_ty);
     }
@@ -154,6 +165,7 @@ fn compute_outlives_bounds_rename<'tcx>(
     let mut early_bound_region: SmallVec<[GenericArg<'_>; 8]> = Default::default();
     let mut early_bound_non_region: SmallVec<[GenericArg<'_>; 8]> = Default::default();
 
+    debug!("early bound params are {:?}", early_bound_params);
     for param in early_bound_params {
         match param.kind() {
             GenericArgKind::Lifetime(_) => early_bound_region.push(param),
