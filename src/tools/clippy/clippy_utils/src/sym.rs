@@ -439,6 +439,7 @@ generate! {
     next_if_eq,
     next_multiple_of,
     next_tuple,
+    no_dead_code_warning,
     nth,
     ok,
     ok_or,

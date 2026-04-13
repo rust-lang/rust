@@ -2,13 +2,13 @@ use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
-use clippy_utils::sym;
+use clippy_utils::{is_clippy_no_dead_code_warning_attr, sym};
 use clippy_utils::visitors::{Visitable, for_each_expr};
 use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Block, Expr, ExprKind, Impl, Item, ItemKind, LangItem, Node, QPath, TyKind, VariantData};
-use rustc_lint::{LateContext, LateLintPass};
+use rustc_hir::{Block, Expr, ExprKind, Impl, Item, ItemKind, Node, QPath, TyKind, VariantData};
+use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::{Ty, TypeckResults};
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, Symbol};
@@ -184,7 +184,8 @@ fn check_struct<'tcx>(
         .iter()
         .filter_map(|field| {
             if field_accesses.contains(&field.ident.name)
-                || field.ty.basic_res().is_lang_item(cx, LangItem::PhantomData)
+                // We exclude certain types (e.g. PhantomData, PhantomPinned) marked with
+                || is_clippy_no_dead_code_warning_attr(cx.sess(), cx.tcx, field.ty.basic_res())
             {
                 None
             } else {

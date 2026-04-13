@@ -4,6 +4,7 @@ use crate::source::SpanRangeExt;
 use crate::{sym, tokenize_with_text};
 use rustc_ast::attr::AttributeExt;
 use rustc_errors::Applicability;
+use rustc_hir::def::Res;
 use rustc_hir::find_attr;
 use rustc_lexer::TokenKind;
 use rustc_lint::LateContext;
@@ -35,6 +36,7 @@ pub fn get_builtin_attr<'a, A: AttributeExt + 'a>(
                 // The following attributes are for the 3rd party crate authors.
                 // See book/src/attribs.md
                 | sym::has_significant_drop
+                | sym::no_dead_code_warning
                 | sym::format_args => None,
                 _ => {
                     sess.dcx().span_err(path_span, "usage of unknown attribute");
@@ -89,6 +91,16 @@ pub fn is_proc_macro(attrs: &[impl AttributeExt]) -> bool {
 /// Checks whether `attrs` contain `#[doc(hidden)]`
 pub fn is_doc_hidden(attrs: &[impl AttributeExt]) -> bool {
     attrs.iter().any(AttributeExt::is_doc_hidden)
+}
+
+/// Checks whether the original type is marked as `#[rustc_no_dead_code_warning]`
+pub fn is_clippy_no_dead_code_warning_attr<'a>(sess: &'a Session, tcx: TyCtxt<'_>, res: &Res) -> bool {
+    res.opt_def_id().map(|def_id| get_builtin_attr(
+        sess,
+        #[allow(deprecated)]
+        tcx.get_all_attrs(def_id),
+        sym::no_dead_code_warning,
+    ).next().is_some()).unwrap_or(false)
 }
 
 /// Checks whether the given ADT, or any of its fields/variants, are marked as `#[non_exhaustive]`
