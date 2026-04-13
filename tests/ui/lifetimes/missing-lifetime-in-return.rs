@@ -1,3 +1,5 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/3154
+
 struct Thing<'a, Q:'a> {
     x: &'a Q
 }
