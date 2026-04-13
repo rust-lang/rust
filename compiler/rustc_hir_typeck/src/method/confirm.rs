@@ -144,8 +144,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         );
         self.unify_receivers(self_ty, method_sig_rcvr, pick);
 
-        let (method_sig, method_predicates) =
-            self.normalize(self.span, (method_sig, method_predicates));
+        let method_sig = self.normalize(self.span, method_sig);
 
         // Make sure nobody calls `drop()` explicitly.
         self.check_for_illegal_method_calls(pick);
@@ -626,6 +625,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 );
                 self.cause(self.span, code)
             },
+            |pred| self.normalize(self.call_expr.span, pred),
             self.param_env,
             method_predicates,
         ) {
