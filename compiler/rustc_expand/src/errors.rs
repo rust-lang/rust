@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 
-use rustc_ast::ast;
 use rustc_errors::codes::*;
 use rustc_hir::limit::Limit;
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -230,7 +229,7 @@ pub(crate) struct WrongFragmentKind<'a> {
     #[primary_span]
     pub span: Span,
     pub kind: &'a str,
-    pub name: &'a ast::Path,
+    pub name: String,
 }
 
 #[derive(Diagnostic)]
@@ -249,7 +248,7 @@ pub(crate) struct IncompleteParse<'a> {
     pub descr: String,
     #[label("caused by the macro expansion here")]
     pub label_span: Span,
-    pub macro_path: &'a ast::Path,
+    pub macro_path: String,
     pub kind_name: &'a str,
     #[note("macros cannot expand to match arms")]
     pub expands_to_match_arm: bool,

@@ -713,8 +713,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         mac: &ast::MacCall,
         span: Span,
     ) -> ErrorGuaranteed {
-        let guar =
-            self.cx.dcx().emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
+        let name = pprust::path_to_string(&mac.path);
+        let guar = self.cx.dcx().emit_err(WrongFragmentKind { span, kind: kind.name(), name });
         self.cx.macro_error_and_trace_macros_diag();
         guar
     }
@@ -1218,7 +1218,7 @@ pub(crate) fn ensure_complete_parse<'a>(
             span: def_site_span,
             descr,
             label_span: span,
-            macro_path,
+            macro_path: pprust::path_to_string(macro_path),
             kind_name,
             expands_to_match_arm,
             add_semicolon,
