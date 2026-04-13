@@ -1,6 +1,6 @@
 cfg_select! {
     any(
-        all(target_family = "unix", not(target_os = "l4re")),
+        all(target_family = "unix", not(target_os = "l4re"), not(target_os = "qurt")),
         target_os = "windows",
         target_os = "hermit",
         all(target_os = "wasi", any(target_env = "p2", target_env = "p3")),
