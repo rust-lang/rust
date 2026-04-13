@@ -123,8 +123,6 @@ pub(crate) fn query_feed<'tcx, C, H>(
     C::Key: DepNodeKey<'tcx>,
     H: QueryHelper<'tcx, C::Key, C::Value>,
 {
-    let format_value = query.format_value;
-
     // Check whether the in-memory cache already has a value for this key.
     match try_get_cached(tcx, &query.cache, key) {
         Some(old) => {
@@ -138,8 +136,8 @@ pub(crate) fn query_feed<'tcx, C, H>(
                 bug!(
                     "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
                     old value: {old}\nnew value: {value}",
-                    old = format_value(&old),
-                    value = format_value(&value),
+                    old = H::format_value(&old),
+                    value = H::format_value(&value),
                 )
             }
 
@@ -153,8 +151,8 @@ pub(crate) fn query_feed<'tcx, C, H>(
                 tcx.dcx().delayed_bug(format!(
                     "Trying to feed an already recorded value for query {query:?} key={key:?}:\n\
                     old value: {old}\nnew value: {value}",
-                    old = format_value(&old),
-                    value = format_value(&value),
+                    old = H::format_value(&old),
+                    value = H::format_value(&value),
                 ));
             }
         }
@@ -167,7 +165,7 @@ pub(crate) fn query_feed<'tcx, C, H>(
                 tcx,
                 &value,
                 H::hash_value_fn,
-                query.format_value,
+                H::format_value,
             );
             query.cache.complete(key, value, dep_node_index);
         }

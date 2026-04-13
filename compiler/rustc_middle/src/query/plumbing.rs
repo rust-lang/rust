@@ -104,8 +104,6 @@ where
     pub handle_cycle_error_fn:
         fn(tcx: TyCtxt<'tcx>, key: C::Key, cycle: Cycle<'tcx>, error: Diag<'_>) -> C::Value,
 
-    pub format_value: fn(&C::Value) -> String,
-
     pub create_tagged_key: fn(C::Key) -> TaggedQueryKey<'tcx>,
 }
 
@@ -159,6 +157,8 @@ pub trait QueryHashHelper<V>: Default + 'static {
     ///
     /// For `no_hash` queries, this function pointer is None.
     fn hash_value_fn(hcx: &mut StableHashingContext<'_>, value: &V) -> Fingerprint;
+
+    fn format_value(value: &V) -> String;
 }
 
 impl<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>> fmt::Debug
@@ -424,6 +424,10 @@ macro_rules! define_callbacks {
                     fn hash_value_fn(hcx: &mut crate::ich::StableHashingContext<'_>, value: &Erased<Value<'tcx>>) -> rustc_data_structures::fingerprint::Fingerprint {
                         let value = erase::restore_val(*value);
                         rustc_middle::dep_graph::hash_result(hcx, &value)
+                    }
+
+                    fn format_value(erased_value: &erase::Erased<Value<'tcx>>) -> String {
+                        format!("{:?}", erase::restore_val(*erased_value))
                     }
                 }
 

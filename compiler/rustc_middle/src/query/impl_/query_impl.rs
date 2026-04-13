@@ -1,5 +1,5 @@
 use rustc_middle::queries::TaggedQueryKey;
-use rustc_middle::query::erase::{self, Erased};
+use rustc_middle::query::erase::Erased;
 use rustc_middle::query::{QueryMode, QueryVTable};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
@@ -91,7 +91,6 @@ macro_rules! define_queries {
                 pub(crate) fn make_query_vtable<'tcx>()
                     -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>, rustc_middle::queries::$name::Helper>
                 {
-                    use rustc_middle::queries::$name::Value;
                     QueryVTable {
                         name: stringify!($name),
                         eval_always: $eval_always,
@@ -114,9 +113,6 @@ macro_rules! define_queries {
                             $crate::query::impl_::handle_cycle_error::default(err)
                         },
 
-                        format_value: |erased_value: &erase::Erased<Value<'tcx>>| {
-                            format!("{:?}", erase::restore_val(*erased_value))
-                        },
                         create_tagged_key: TaggedQueryKey::$name,
                     }
                 }

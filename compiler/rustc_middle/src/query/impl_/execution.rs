@@ -370,14 +370,13 @@ fn check_feedable_consistency<'tcx, C, H>(
             "no_hash fed query later has its value computed.\n\
             Remove `no_hash` modifier to allow recomputation.\n\
             The already cached value: {}",
-            (query.format_value)(&cached_value)
+            H::format_value(&cached_value)
         );
     };
 
     let (old_hash, new_hash) = tcx.with_stable_hashing_context(|mut hcx| {
         (H::hash_value_fn(&mut hcx, &cached_value), H::hash_value_fn(&mut hcx, value))
     });
-    let formatter = query.format_value;
     if old_hash != new_hash {
         // We have an inconsistency. This can happen if one of the two
         // results is tainted by errors.
@@ -387,8 +386,8 @@ fn check_feedable_consistency<'tcx, C, H>(
                 computed={:#?}\nfed={:#?}",
             query.dep_kind,
             key,
-            formatter(value),
-            formatter(&cached_value),
+            H::format_value(value),
+            H::format_value(&cached_value),
         );
     }
 }
@@ -442,10 +441,9 @@ where
         // `try_mark_green()`, so we can ignore them here.
         if let Some(ret) = start_query(job_id, false, || try {
             let (prev_index, dep_node_index) = dep_graph_data.try_mark_green(tcx, &dep_node)?;
-            let value = load_from_disk_or_invoke_provider_green(
+            let value = load_from_disk_or_invoke_provider_green::<C, H>(
                 tcx,
                 dep_graph_data,
-                query,
                 key,
                 &dep_node,
                 prev_index,
@@ -476,7 +474,6 @@ where
 fn load_from_disk_or_invoke_provider_green<'tcx, C, H>(
     tcx: TyCtxt<'tcx>,
     dep_graph_data: &DepGraphData,
-    query: &'tcx QueryVTable<'tcx, C, H>,
     key: C::Key,
     dep_node: &DepNode,
     prev_index: SerializedDepNodeIndex,
@@ -548,7 +545,7 @@ where
             &value,
             prev_index,
             H::hash_value_fn,
-            query.format_value,
+            H::format_value,
         );
     }
 

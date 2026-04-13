@@ -9,15 +9,16 @@ use crate::ty::TyCtxt;
 
 #[inline]
 #[instrument(skip(tcx, dep_graph_data, result, hash_result, format_value), level = "debug")]
-pub fn incremental_verify_ich_green<'tcx, V, F>(
+pub fn incremental_verify_ich_green<'tcx, V, F, G>(
     tcx: TyCtxt<'tcx>,
     dep_graph_data: &DepGraphData,
     result: &V,
     prev_index: SerializedDepNodeIndex,
     hash_result: F,
-    format_value: fn(&V) -> String,
+    format_value: G,
 ) where
     F: Fn(&mut StableHashingContext<'_>, &V) -> Fingerprint,
+    G: Fn(&V) -> String,
 {
     let new_hash = tcx.with_stable_hashing_context(|mut hcx| hash_result(&mut hcx, result));
 
