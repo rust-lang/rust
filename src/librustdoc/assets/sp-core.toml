@@ -1,0 +1,9 @@
+package.name = "core"
+
+[tag.ValidPtrRead]
+args = [ "p", "T", "len" ]
+desc = "pointer `{p}` must be [valid](crate::ptr#safety) for reading the `sizeof({T})*{len}` memory from it."
+
+[tag.Init]
+args = [ "p", "T" ]
+desc = "`{p}` must point to a properly initialized value of type `{T}`."
