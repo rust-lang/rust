@@ -2211,10 +2211,10 @@ impl<'db> Evaluator<'db> {
                     match size {
                         Some((size, _)) => {
                             let addr_usize = from_bytes!(usize, bytes);
-                            mm.insert(
-                                addr_usize,
-                                this.read_memory(Address::from_usize(addr_usize), size)?.into(),
-                            )
+                            let bytes =
+                                this.read_memory(Address::from_usize(addr_usize), size)?.to_vec();
+                            mm.insert(addr_usize, bytes.clone().into());
+                            rec(this, &bytes, t, locals, mm, stack_depth_limit - 1)?;
                         }
                         None => {
                             let mut check_inner = None;
@@ -2379,9 +2379,20 @@ impl<'db> Evaluator<'db> {
                 match size {
                     Some(_) => {
                         let current = from_bytes!(usize, self.read_memory(addr, my_size)?);
-                        if let Some(it) = patch_map.get(&current) {
-                            self.write_memory(addr, &it.to_le_bytes())?;
-                        }
+                        let patched = match patch_map.get(&current) {
+                            Some(it) => {
+                                self.write_memory(addr, &it.to_le_bytes())?;
+                                *it
+                            }
+                            None => current,
+                        };
+                        self.patch_addresses(
+                            patch_map,
+                            ty_of_bytes,
+                            Address::from_usize(patched),
+                            t,
+                            locals,
+                        )?;
                     }
                     None => {
                         let current = from_bytes!(usize, self.read_memory(addr, my_size / 2)?);
