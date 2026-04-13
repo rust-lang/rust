@@ -29,7 +29,7 @@ pub(crate) fn target() -> Target {
             exe_suffix: ".elf".into(),
             dynamic_linking: true,
             executables: true,
-            families: cvs!["unix"],
+            families: cvs![],
             has_thread_local: true,
             has_rpath: false,
             crt_static_default: false,

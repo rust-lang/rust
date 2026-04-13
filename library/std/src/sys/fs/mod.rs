@@ -6,16 +6,16 @@ use crate::path::{Path, PathBuf};
 pub mod common;
 
 cfg_select! {
-    any(target_family = "unix", target_os = "wasi") => {
+    any(target_family = "unix", target_os = "wasi", target_os = "qurt") => {
         mod unix;
         use unix as imp;
         #[cfg(any(target_os = "linux", target_os = "android"))]
         pub(super) use unix::CachedFileMetadata;
-        #[cfg(not(any(target_os = "fuchsia", target_os = "wasi")))]
+        #[cfg(not(any(target_os = "fuchsia", target_os = "wasi", target_os = "qurt")))]
         pub use unix::chroot;
-        #[cfg(not(target_os = "wasi"))]
+        #[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
         pub(crate) use unix::debug_assert_fd_is_open;
-        #[cfg(not(target_os = "wasi"))]
+        #[cfg(not(any(target_os = "wasi", target_os = "qurt")))]
         pub use unix::{chown, fchown, lchown, mkfifo};
 
         use crate::sys::helpers::run_path_with_cstr as with_native_path;
@@ -54,7 +54,12 @@ cfg_select! {
 }
 
 // FIXME: Replace this with platform-specific path conversion functions.
-#[cfg(not(any(target_family = "unix", target_os = "windows", target_os = "wasi")))]
+#[cfg(not(any(
+    target_family = "unix",
+    target_os = "windows",
+    target_os = "wasi",
+    target_os = "qurt"
+)))]
 #[inline]
 pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> io::Result<T> {
     f(path)

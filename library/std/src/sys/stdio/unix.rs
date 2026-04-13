@@ -1,6 +1,6 @@
 #[cfg(target_os = "hermit")]
 use hermit_abi::{EBADF, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
-#[cfg(any(target_family = "unix", target_os = "wasi"))]
+#[cfg(any(target_family = "unix", target_os = "wasi", target_os = "qurt"))]
 use libc::{EBADF, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO};
 
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
