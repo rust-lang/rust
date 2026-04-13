@@ -3,6 +3,10 @@ use crate::fmt;
 
 pub struct Args {}
 
+pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
+    // No-op for unsupported platforms
+}
+
 pub fn args() -> Args {
     Args {}
 }

@@ -21,6 +21,7 @@ cfg_select! {
     any(
         target_os = "teeos",
         target_family = "unix",
+        target_os = "qurt",
         target_os = "wasi",
     ) => {
         mod unix;

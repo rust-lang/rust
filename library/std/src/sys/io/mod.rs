@@ -4,7 +4,7 @@ mod error;
 
 mod is_terminal {
     cfg_select! {
-        any(target_family = "unix", target_os = "wasi") => {
+        any(target_family = "unix", target_os = "wasi", target_os = "qurt") => {
             mod isatty;
             pub use isatty::*;
         }
@@ -38,6 +38,7 @@ pub use error::errno_location;
 #[cfg_attr(not(target_os = "linux"), allow(unused_imports))]
 #[cfg(any(
     all(target_family = "unix", not(any(target_os = "vxworks", target_os = "rtems"))),
+    target_os = "qurt",
     target_os = "wasi",
 ))]
 pub use error::set_errno;
