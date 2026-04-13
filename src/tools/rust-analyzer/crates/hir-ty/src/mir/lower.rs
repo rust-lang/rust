@@ -276,10 +276,11 @@ impl MirLowerError {
         db: &dyn HirDatabase,
         p: &Path,
         display_target: DisplayTarget,
+        owner: ExpressionStoreOwnerId,
         store: &ExpressionStore,
     ) -> Self {
         Self::UnresolvedName(
-            hir_display_with_store(p, store).display(db, display_target).to_string(),
+            hir_display_with_store(p, owner, store).display(db, display_target).to_string(),
         )
     }
 }
@@ -517,6 +518,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                                     self.db,
                                     p,
                                     DisplayTarget::from_crate(self.db, self.krate()),
+                                    self.owner.expression_store_owner(self.db),
                                     self.store,
                                 )
                             })?;
@@ -884,10 +886,12 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 };
                 let variant_id =
                     self.infer.variant_resolution_for_expr(expr_id).ok_or_else(|| {
-                        MirLowerError::UnresolvedName(
-                            hir_display_with_store(path, self.store)
-                                .display(self.db, self.display_target())
-                                .to_string(),
+                        MirLowerError::unresolved_path(
+                            self.db,
+                            path,
+                            self.display_target(),
+                            self.owner.expression_store_owner(self.db),
+                            self.store,
                         )
                     })?;
                 let subst = match self.expr_ty_without_adjust(expr_id).kind() {
@@ -1432,6 +1436,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                         self.db,
                         c,
                         DisplayTarget::from_crate(db, owner.krate(db)),
+                        self.owner.expression_store_owner(self.db),
                         self.store,
                     )
                 };

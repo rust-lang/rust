@@ -37,6 +37,9 @@ pub use self::{adt::layout_of_adt_query, target::target_data_layout_query};
 pub(crate) mod adt;
 pub(crate) mod target;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RustcEnumVariantIdx(pub usize);
 
@@ -341,12 +344,14 @@ pub fn layout_of_ty_query(
             return db
                 .layout_of_ty(args.as_coroutine_closure().tupled_upvars_ty().store(), trait_env);
         }
-
         TyKind::CoroutineWitness(_, _) => {
             return Err(LayoutError::NotImplemented);
         }
 
-        TyKind::Pat(_, _) | TyKind::UnsafeBinder(_) => {
+        TyKind::Pat(_ty, _pat) => {
+            return Err(LayoutError::NotImplemented);
+        }
+        TyKind::UnsafeBinder(_) => {
             return Err(LayoutError::NotImplemented);
         }
 
@@ -411,6 +416,3 @@ fn field_ty<'a>(
 fn scalar_unit(dl: &TargetDataLayout, value: Primitive) -> Scalar {
     Scalar::Initialized { value, valid_range: WrappingRange::full(value.size(dl)) }
 }
-
-#[cfg(test)]
-mod tests;

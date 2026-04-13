@@ -665,6 +665,7 @@ Type =
 | NeverType
 | ParenType
 | PathType
+| PatternType
 | PtrType
 | RefType
 | SliceType
@@ -705,6 +706,9 @@ FnPtrType =
 
 ForType =
   ForBinder Type
+
+PatternType =
+  'builtin' '#' 'pattern_type' '(' Type 'is' Pat ')'
 
 ImplTraitType =
   'impl' TypeBoundList
@@ -749,6 +753,10 @@ Pat =
 | TupleStructPat
 | ConstBlockPat
 | DerefPat
+| NotNull
+
+NotNull =
+    '!' 'null'
 
 DerefPat =
     'builtin' '#' 'deref' '(' Pat ')'
