@@ -152,6 +152,7 @@ impl<'tcx> MatchPairTree<'tcx> {
             }
 
             PatKind::Range(ref range) => {
+                assert_eq!(pattern.ty, range.ty);
                 if range.is_full_range(cx.tcx) == Some(true) {
                     None
                 } else {
@@ -380,7 +381,6 @@ impl<'tcx> MatchPairTree<'tcx> {
                 place,
                 testable_case,
                 subpairs,
-                pattern_ty: pattern.ty,
                 pattern_span: pattern.span,
             })
         } else {

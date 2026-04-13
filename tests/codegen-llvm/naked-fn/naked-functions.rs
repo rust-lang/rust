@@ -19,17 +19,15 @@
 extern crate minicore;
 use minicore::*;
 
-// linux,win: .intel_syntax
+// linux,win_x86,win_i686: .intel_syntax
 //
 // linux:    .pushsection .text.naked_empty,\22ax\22, @progbits
 // macos:    .pushsection __TEXT,__text,regular,pure_instructions
-// win_x86:  .pushsection .text.naked_empty,\22xr\22
-// win_i686: .pushsection .text._naked_empty,\22xr\22
 // thumb:    .pushsection .text.naked_empty,\22ax\22, %progbits
 //
-// CHECK: .balign 4
+// linux, macos, thumb: .balign 4
 //
-// linux,win,thumb: .globl naked_empty
+// linux,thumb: .globl naked_empty
 // macos: .globl _naked_empty
 //
 // CHECK-NOT: .private_extern
@@ -44,20 +42,28 @@ use minicore::*;
 // win_x86,win_i686: .type 32
 // win_x86,win_i686: .endef
 //
+// win_x86:  .pushsection .text.naked_empty,\22xr\22
+// win_i686: .pushsection .text._naked_empty,\22xr\22
+//
+// win_x86: .globl naked_empty
+// win_i686: .globl _naked_empty
+//
+// win_x86,win_i686: .balign 16
+//
 // thumb: .type naked_empty, %function
 // thumb: .thumb
 // thumb: .thumb_func
 //
 // CHECK-LABEL: naked_empty:
 //
-// linux,macos,win: ret
+// linux,macos,win_x86,win_x86: ret
 // thumb: bx lr
 //
-// CHECK: .popsection
+// linux,macos,thumb: .popsection
 //
 // thumb: .thumb
 //
-// linux,win: .att_syntax
+// linux,win_x86,win_i686: .att_syntax
 
 #[no_mangle]
 #[unsafe(naked)]
@@ -72,17 +78,15 @@ pub extern "C" fn naked_empty() {
     }
 }
 
-// linux,win: .intel_syntax
+// linux,win_x86,win_i686: .intel_syntax
 //
 // linux:    .pushsection .text.naked_with_args_and_return,\22ax\22, @progbits
 // macos:    .pushsection __TEXT,__text,regular,pure_instructions
-// win_x86:  .pushsection .text.naked_with_args_and_return,\22xr\22
-// win_i686: .pushsection .text._naked_with_args_and_return,\22xr\22
 // thumb:    .pushsection .text.naked_with_args_and_return,\22ax\22, %progbits
 //
-// CHECK: .balign 4
+// linux, macos, thumb: .balign 4
 //
-// linux,win,thumb: .globl naked_with_args_and_return
+// linux,thumb: .globl naked_with_args_and_return
 // macos: .globl _naked_with_args_and_return
 //
 // CHECK-NOT: .private_extern
@@ -97,6 +101,14 @@ pub extern "C" fn naked_empty() {
 // win_x86,win_i686: .type 32
 // win_x86,win_i686: .endef
 //
+// win_x86:  .pushsection .text.naked_with_args_and_return,\22xr\22
+// win_i686: .pushsection .text._naked_with_args_and_return,\22xr\22
+//
+// win_x86: .globl naked_with_args_and_return
+// win_i686: .globl _naked_with_args_and_return
+//
+// win_x86,win_i686: .balign 16
+//
 // thumb: .type naked_with_args_and_return, %function
 // thumb: .thumb
 // thumb: .thumb_func
@@ -107,14 +119,14 @@ pub extern "C" fn naked_empty() {
 // macos: add x0, x0, x1
 // thumb: adds r0, r0, r1
 //
-// linux,macos,win: ret
+// linux,macos,win_x86,win_i686: ret
 // thumb: bx lr
 //
-// CHECK: .popsection
+// linux,macos,thumb: .popsection
 //
 // thumb: .thumb
 //
-// linux,win: .att_syntax
+// linux,win_x86,win_i686: .att_syntax
 
 #[no_mangle]
 #[unsafe(naked)]

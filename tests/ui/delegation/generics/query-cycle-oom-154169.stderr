@@ -1,0 +1,103 @@
+error[E0107]: missing generics for struct `test_1::S`
+  --> $DIR/query-cycle-oom-154169.rs:6:32
+   |
+LL |         fn foo(&self, x: T) -> S { x }
+   |                                ^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `T`
+  --> $DIR/query-cycle-oom-154169.rs:11:12
+   |
+LL |     struct S<T>(F, T);
+   |            ^ -
+help: add missing generic argument
+   |
+LL |         fn foo(&self, x: T) -> S<T> { x }
+   |                                 +++
+
+error[E0220]: associated type `Assoc` not found for `Self`
+  --> $DIR/query-cycle-oom-154169.rs:21:27
+   |
+LL |         fn foo() -> Self::Assoc;
+   |                           ^^^^^ associated type `Assoc` not found
+
+error[E0220]: associated type `Assoc` not found for `Self`
+  --> $DIR/query-cycle-oom-154169.rs:42:32
+   |
+LL |         fn foo(&self) -> Self::Assoc<3> {
+   |                                ^^^^^ associated type `Assoc` not found
+
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/query-cycle-oom-154169.rs:27:5
+   |
+LL |         fn foo() -> Self::Assoc;
+   |         ------------------------ `foo` from trait
+...
+LL |     impl Trait for u8 {
+   |     ^^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error[E0390]: cannot define inherent `impl` for primitive types
+  --> $DIR/query-cycle-oom-154169.rs:48:5
+   |
+LL |     impl () {
+   |     ^^^^^^^
+   |
+   = help: consider using an extension trait instead
+
+error[E0433]: cannot find module or crate `to_reuse` in this scope
+  --> $DIR/query-cycle-oom-154169.rs:14:15
+   |
+LL |         reuse to_reuse::foo { &self.0 }
+   |               ^^^^^^^^ use of unresolved module or unlinked crate `to_reuse`
+   |
+   = help: you might be missing a crate named `to_reuse`
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/query-cycle-oom-154169.rs:21:12
+   |
+LL |         fn foo() -> Self::Assoc;
+   |            ^^^
+...
+LL |         reuse Trait::* { &self.0 }
+   |                          ------- unexpected argument
+   |
+note: associated function defined here
+  --> $DIR/query-cycle-oom-154169.rs:21:12
+   |
+LL |         fn foo() -> Self::Assoc;
+   |            ^^^
+help: remove the extra argument
+   |
+LL -         fn foo() -> Self::Assoc;
+LL -
+LL -
+LL -         fn bar(&self) -> u8;
+LL -     }
+LL - 
+LL -     impl Trait for u8 {
+LL -
+LL -         fn bar(&self) -> u8 { 1 }
+LL -     }
+LL - 
+LL -     struct S(u8);
+LL - 
+LL -     impl Trait for S {
+LL -         reuse Trait::* { &self.0 }
+LL +         fn fo&self.0 }
+   |
+
+error[E0599]: no method named `foo` found for reference `&()` in the current scope
+  --> $DIR/query-cycle-oom-154169.rs:42:12
+   |
+LL |         fn foo(&self) -> Self::Assoc<3> {
+   |            ^^^ method not found in `&()`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `foo`, perhaps you need to implement one of them:
+           candidate #1: `test_1::Trait`
+           candidate #2: `test_2::Trait`
+           candidate #3: `test_3::Trait`
+
+error: aborting due to 8 previous errors
+
+Some errors have detailed explanations: E0046, E0061, E0107, E0220, E0390, E0433, E0599.
+For more information about an error, try `rustc --explain E0046`.

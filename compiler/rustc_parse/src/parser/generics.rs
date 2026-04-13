@@ -473,6 +473,17 @@ impl<'a> Parser<'a> {
                         }
                     }
                 } else {
+                    if let [.., last] = &attrs[..] {
+                        if last.is_doc_comment() {
+                            this.dcx().emit_err(errors::DocCommentDoesNotDocumentAnything {
+                                span: last.span,
+                                missing_comma: None,
+                            });
+                        } else {
+                            this.dcx()
+                                .emit_err(errors::AttrWithoutWherePredicates { span: last.span });
+                        }
+                    }
                     None
                 };
                 let predicate = kind.map(|kind| ast::WherePredicate {

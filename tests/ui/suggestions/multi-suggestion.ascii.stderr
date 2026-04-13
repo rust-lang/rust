@@ -81,7 +81,6 @@ error: cannot construct `HashMap<_, _, _, _>` with struct literal syntax due to 
 LL |     let _ = std::collections::HashMap {};
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: private field `base` that was not provided
 help: you might have meant to use an associated function to build this type
    |
 LL -     let _ = std::collections::HashMap {};
@@ -109,7 +108,6 @@ error: cannot construct `Box<_, _>` with struct literal syntax due to private fi
 LL |     let _ = Box {};
    |             ^^^
    |
-   = note: private fields `0` and `1` that were not provided
 help: you might have meant to use an associated function to build this type
    |
 LL -     let _ = Box {};

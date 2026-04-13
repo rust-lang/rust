@@ -1,11 +1,13 @@
 error[E0432]: unresolved import `ops`
-  --> $DIR/cycle-import-in-std-1.rs:5:11
+  --> $DIR/cycle-import-in-std-1.rs:5:5
    |
 LL | use ops::{self as std};
-   |           ^^^^^^^^^^^ no external crate `ops`
+   |     ^^^
    |
-   = help: consider importing this module instead:
-           std::ops
+help: a similar path exists
+   |
+LL | use core::ops::{self as std};
+   |     ++++++
 
 error: aborting due to 1 previous error
 

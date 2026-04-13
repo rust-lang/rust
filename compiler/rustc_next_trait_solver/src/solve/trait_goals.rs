@@ -665,6 +665,12 @@ where
             return Err(NoSolution);
         }
 
+        // Match the old solver by treating unresolved inference variables as
+        // ambiguous until `rustc_transmute` can compute their layout.
+        if goal.has_non_region_infer() {
+            return ecx.forced_ambiguity(MaybeCause::Ambiguity);
+        }
+
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             let assume = ecx.structurally_normalize_const(
                 goal.param_env,
@@ -1415,7 +1421,7 @@ where
         mut candidates: Vec<Candidate<I>>,
         failed_candidate_info: FailedCandidateInfo,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
-        if let TypingMode::Coherence = self.typing_mode() {
+        if self.typing_mode().is_coherence() {
             return if let Some((response, _)) = self.try_merge_candidates(&candidates) {
                 Ok((response, Some(TraitGoalProvenVia::Misc)))
             } else {

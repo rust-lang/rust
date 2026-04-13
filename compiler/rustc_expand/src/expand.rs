@@ -15,8 +15,8 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
-    AttributeParser, CFG_TEMPLATE, EvalConfigResult, ShouldEmit, eval_config_entry, parse_cfg,
-    validate_attr,
+    AttributeParser, CFG_TEMPLATE, Early, EvalConfigResult, ShouldEmit, eval_config_entry,
+    parse_cfg, validate_attr,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -30,7 +30,7 @@ use rustc_parse::parser::{
     RecoverColon, RecoverComma, Recovery, token_descr,
 };
 use rustc_session::Session;
-use rustc_session::lint::builtin::UNUSED_DOC_COMMENTS;
+use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::parse::feature_err;
 use rustc_span::hygiene::SyntaxContext;
 use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, Symbol, sym};
@@ -815,6 +815,27 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         {
                             rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
                         }
+                        Annotatable::Item(item_inner) if item_inner.tokens.is_none() => {
+                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
+                        }
+                        // When a function has EII implementations attached (via `eii_impls`),
+                        // use fake tokens so the pretty-printer re-emits the EII attribute
+                        // (e.g. `#[hello]`) in the token stream. Without this, the EII
+                        // attribute is lost during the token roundtrip performed by
+                        // `AttrProcMacro` expanders like `contracts::requires/ensures`,
+                        // breaking the EII link on the resulting re-parsed item.
+                        Annotatable::Item(item_inner)
+                            if matches!(&item_inner.kind,
+                                ItemKind::Fn(f) if !f.eii_impls.is_empty()) =>
+                        {
+                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
+                        }
+                        Annotatable::ForeignItem(item_inner) if item_inner.tokens.is_none() => {
+                            rustc_parse::fake_token_stream_for_foreign_item(
+                                &self.cx.sess.psess,
+                                item_inner,
+                            )
+                        }
                         _ => item.to_tokens(),
                     };
                     let attr_item = attr.get_normal_item();
@@ -1403,6 +1424,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
                         ecx.ecfg.features,
                         ecx.resolver.registered_tools(),
                         ecx.current_expansion.lint_node_id,
+                        &attrs,
                         &items,
                         ident.name,
                     );
@@ -1442,7 +1464,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
         if let ItemKind::Use(ut) = &self.kind {
             fn collect_use_tree_leaves(ut: &ast::UseTree, idents: &mut Vec<Ident>) {
                 match &ut.kind {
-                    ast::UseTreeKind::Glob => {}
+                    ast::UseTreeKind::Glob(_) => {}
                     ast::UseTreeKind::Simple(_) => idents.push(ut.ident()),
                     ast::UseTreeKind::Nested { items, .. } => {
                         for (ut, _) in items {
@@ -2257,7 +2279,6 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 self.cx.current_expansion.lint_node_id,
                 Some(self.cx.ecfg.features),
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
-                Some(self.cx.resolver.registered_tools()),
             );
 
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
@@ -2273,6 +2294,21 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     current_span,
                     self.cx.current_expansion.lint_node_id,
                     crate::errors::MacroCallUnusedDocComment { span: attr.span },
+                );
+            } else if rustc_attr_parsing::is_builtin_attr(attr)
+                && !AttributeParser::<Early>::is_parsed_attribute(&attr.path())
+            {
+                let attr_name = attr.name().unwrap();
+                self.cx.sess.psess.buffer_lint(
+                    UNUSED_ATTRIBUTES,
+                    attr.span,
+                    self.cx.current_expansion.lint_node_id,
+                    crate::errors::UnusedBuiltinAttribute {
+                        attr_name,
+                        macro_name: pprust::path_to_string(&call.path),
+                        invoc_span: call.path.span,
+                        attr_span: attr.span,
+                    },
                 );
             }
         }

@@ -17,7 +17,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner,
-    TypeFoldable,
+    TypeFoldable, TypingModeEqWrapper,
 };
 use tracing::instrument;
 
@@ -66,7 +66,10 @@ where
             predefined_opaques_in_body: delegate.cx().mk_predefined_opaques_in_body(opaque_types),
         },
     );
-    let query_input = ty::CanonicalQueryInput { canonical, typing_mode: delegate.typing_mode() };
+    let query_input = ty::CanonicalQueryInput {
+        canonical,
+        typing_mode: TypingModeEqWrapper(delegate.typing_mode()),
+    };
     (orig_values, query_input)
 }
 

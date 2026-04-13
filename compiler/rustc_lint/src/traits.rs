@@ -97,7 +97,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
             let def_id = trait_predicate.trait_ref.def_id;
             if cx.tcx.is_lang_item(def_id, LangItem::Drop) {
                 // Explicitly allow `impl Drop`, a drop-guards-as-unnameable-type pattern.
-                if trait_predicate.trait_ref.self_ty().is_impl_trait() {
+                if trait_predicate.trait_ref.self_ty().is_opaque() {
                     continue;
                 }
                 let Some(def_id) = cx.tcx.get_diagnostic_item(sym::needs_drop) else { return };

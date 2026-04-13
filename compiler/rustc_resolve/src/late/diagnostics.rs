@@ -1989,10 +1989,25 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         // where a brace being opened means a block is being started. Look
         // ahead for the next text to see if `span` is followed by a `{`.
         let sm = self.r.tcx.sess.source_map();
-        if let Some(followed_brace_span) = sm.span_look_ahead(span, "{", Some(50)) {
+        if let Some(open_brace_span) = sm.span_followed_by(span, "{") {
             // In case this could be a struct literal that needs to be surrounded
             // by parentheses, find the appropriate span.
-            let close_brace_span = sm.span_look_ahead(followed_brace_span, "}", Some(50));
+            let close_brace_span =
+                sm.span_to_next_source(open_brace_span).ok().and_then(|next_source| {
+                    // Find the matching `}` accounting for nested braces.
+                    let mut depth: u32 = 1;
+                    let offset = next_source.char_indices().find_map(|(i, c)| {
+                        match c {
+                            '{' => depth += 1,
+                            '}' if depth == 1 => return Some(i),
+                            '}' => depth -= 1,
+                            _ => {}
+                        }
+                        None
+                    })?;
+                    let start = open_brace_span.hi() + rustc_span::BytePos(offset as u32);
+                    Some(open_brace_span.with_lo(start).with_hi(start + rustc_span::BytePos(1)))
+                });
             let closing_brace = close_brace_span.map(|sp| span.to(sp));
             (true, closing_brace)
         } else {
@@ -4110,8 +4125,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 let sugg: String = std::iter::repeat_n(existing_name.as_str(), lt.count)
                     .intersperse(", ")
                     .collect();
-                let is_empty_brackets =
-                    source_map.span_look_ahead(lt.span, ">", Some(50)).is_some();
+                let is_empty_brackets = source_map.span_followed_by(lt.span, ">").is_some();
                 let sugg = if is_empty_brackets { sugg } else { format!("{sugg}, ") };
                 (lt.span.shrink_to_hi(), sugg)
             }

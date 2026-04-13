@@ -312,7 +312,7 @@ impl EarlyLintPass for UnsafeCode {
                     AttributeParser::parse_limited(
                         cx.builder.sess(),
                         &it.attrs,
-                        sym::allow_internal_unsafe,
+                        &[sym::allow_internal_unsafe],
                         it.span,
                         DUMMY_NODE_ID,
                         Some(cx.builder.features()),
@@ -1901,10 +1901,9 @@ impl KeywordIdents {
             return;
         }
 
-        cx.sess().psess.buffer_lint(
+        cx.emit_span_lint(
             lint,
             ident.span,
-            CRATE_NODE_ID,
             BuiltinKeywordIdents { kw: ident, next: edition, suggestion: ident.span, prefix },
         );
     }

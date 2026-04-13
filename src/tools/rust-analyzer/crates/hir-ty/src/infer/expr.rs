@@ -2158,7 +2158,7 @@ impl<'db> InferenceContext<'_, 'db> {
             );
             let param_env = self.table.param_env;
             self.table.register_predicates(clauses_as_obligations(
-                generic_predicates.iter_instantiated_copied(self.interner(), parameters.as_slice()),
+                generic_predicates.iter_instantiated(self.interner(), parameters.as_slice()),
                 ObligationCause::new(),
                 param_env,
             ));

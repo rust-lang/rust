@@ -68,8 +68,7 @@ pub fn inject(
         thin_vec![cx.attr_word(sym::prelude_import, span)],
         ast::ItemKind::Use(ast::UseTree {
             prefix: cx.path(span, import_path),
-            kind: ast::UseTreeKind::Glob,
-            span,
+            kind: ast::UseTreeKind::Glob(span),
         }),
     );
 

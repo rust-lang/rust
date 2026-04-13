@@ -116,8 +116,23 @@ fn completes_where() {
     check_with_base_items(
         r"fn func() $0",
         expect![[r#"
-        kw where
-    "#]],
+            en Enum (adds ->)          Enum
+            ma makro!(…) macro_rules! makro
+            md module (adds ->)
+            st Record (adds ->)      Record
+            st Tuple (adds ->)        Tuple
+            st Unit (adds ->)          Unit
+            tt Trait (adds ->)
+            un Union (adds ->)        Union
+            bt u32 (adds ->)            u32
+            kw crate:: (adds ->)
+            kw dyn (adds ->)
+            kw fn (adds ->)
+            kw for (adds ->)
+            kw impl (adds ->)
+            kw self:: (adds ->)
+            kw where
+        "#]],
     );
     check_with_base_items(
         r"enum Enum $0",
@@ -239,6 +254,19 @@ impl Copy for S $0
 struct S {}
 
 impl Copy for S where $0
+"#,
+    );
+}
+
+#[test]
+fn fn_item_where_kw() {
+    check_edit(
+        "where",
+        r#"
+fn foo() $0
+"#,
+        r#"
+fn foo() where $0
 "#,
     );
 }

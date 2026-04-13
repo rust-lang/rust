@@ -283,13 +283,17 @@ fn peel_parens(mut expr: ast::Expr) -> ast::Expr {
 /// Check whether the node is a valid expression which can be extracted to a variable.
 /// In general that's true for any expression, but in some cases that would produce invalid code.
 fn valid_target_expr(ctx: &AssistContext<'_>) -> impl Fn(SyntaxNode) -> Option<ast::Expr> {
-    |node| match node.kind() {
+    let selection = ctx.selection_trimmed();
+    move |node| match node.kind() {
         SyntaxKind::LOOP_EXPR | SyntaxKind::LET_EXPR => None,
         SyntaxKind::BREAK_EXPR => ast::BreakExpr::cast(node).and_then(|e| e.expr()),
         SyntaxKind::RETURN_EXPR => ast::ReturnExpr::cast(node).and_then(|e| e.expr()),
         SyntaxKind::BLOCK_EXPR => {
             ast::BlockExpr::cast(node).filter(|it| it.is_standalone()).map(ast::Expr::from)
         }
+        SyntaxKind::ARG_LIST => ast::ArgList::cast(node)?
+            .args()
+            .find(|expr| crate::utils::is_selected(expr, selection, false)),
         SyntaxKind::PATH_EXPR => {
             let path_expr = ast::PathExpr::cast(node)?;
             let path_resolution = ctx.sema.resolve_path(&path_expr.path()?)?;
@@ -1279,6 +1283,33 @@ fn main() {
             r#"
 fn main() {
     let lambda = |x: u32| { let $0var_name = x * 2; var_name };
+}
+"#,
+            "Extract into variable",
+        );
+    }
+
+    #[test]
+    fn extract_var_in_arglist_with_comma() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+fn main() {
+    let x = 2;
+    foo(
+        x + x,
+        $0x - x,$0
+    )
+}
+"#,
+            r#"
+fn main() {
+    let x = 2;
+    let $0var_name = x - x;
+    foo(
+        x + x,
+        var_name,
+    )
 }
 "#,
             "Extract into variable",

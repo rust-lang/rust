@@ -1462,7 +1462,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 && self
                     .cx
                     .structurally_resolve_type(self.cx.tcx().hir_span(base_place.hir_id), place_ty)
-                    .is_impl_trait()
+                    .is_opaque()
             {
                 projections.push(Projection { kind: ProjectionKind::OpaqueCast, ty: node_ty });
             }

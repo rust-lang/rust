@@ -220,7 +220,7 @@ fn parse_codeblock(buf: &[u8]) -> Parsed<'_> {
     let mut found = None;
     for idx in (0..working.len()).filter(|idx| working[*idx..].starts_with(&end_pat)) {
         let (eol_txt, rest) = parse_to_newline(&working[(idx + end_pat.len())..]);
-        if !eol_txt.iter().any(u8::is_ascii_whitespace) {
+        if eol_txt.iter().all(u8::is_ascii_whitespace) {
             found = Some((&working[..idx], rest));
             break;
         }

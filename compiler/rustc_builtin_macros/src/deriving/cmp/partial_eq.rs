@@ -129,23 +129,23 @@ fn get_substructure_equality_expr(
         EnumMatching(.., fields) | Struct(.., fields) => {
             let combine = move |acc, field| {
                 let rhs = get_field_equality_expr(cx, field);
-                if let Some(lhs) = acc {
+                match acc {
                     // Combine the previous comparison with the current field
                     // using logical AND.
-                    return Some(cx.expr_binary(field.span, BinOpKind::And, lhs, rhs));
+                    Some(lhs) => Some(cx.expr_binary(field.span, BinOpKind::And, lhs, rhs)),
+                    // Start the chain with the first field's comparison.
+                    None => Some(rhs),
                 }
-                // Start the chain with the first field's comparison.
-                Some(rhs)
             };
 
             // First compare scalar fields, then compound fields, combining all
             // with logical AND.
-            return fields
+            fields
                 .iter()
                 .filter(|field| !field.maybe_scalar)
                 .fold(fields.iter().filter(|field| field.maybe_scalar).fold(None, combine), combine)
                 // If there are no fields, treat as always equal.
-                .unwrap_or_else(|| cx.expr_bool(span, true));
+                .unwrap_or_else(|| cx.expr_bool(span, true))
         }
         EnumDiscr(disc, match_expr) => {
             let lhs = get_field_equality_expr(cx, disc);
@@ -154,7 +154,7 @@ fn get_substructure_equality_expr(
             };
             // Compare the discriminant first (cheaper), then the rest of the
             // fields.
-            return cx.expr_binary(disc.span, BinOpKind::And, lhs, match_expr.clone());
+            cx.expr_binary(disc.span, BinOpKind::And, lhs, match_expr.clone())
         }
         StaticEnum(..) => cx.dcx().span_bug(
             span,

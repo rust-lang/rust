@@ -93,7 +93,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
         let mut import_name_type = None;
         for item in items.mixed() {
             let Some(item) = item.meta_item() else {
-                cx.adcx().unexpected_literal(item.span());
+                cx.adcx().expected_not_literal(item.span());
                 continue;
             };
 
@@ -388,12 +388,7 @@ impl LinkParser {
             cx.adcx().duplicate_key(item.span(), sym::cfg);
             return true;
         }
-        let Some(link_cfg) = item.args().list() else {
-            cx.adcx().expected_list(item.span(), item.args());
-            return true;
-        };
-        let Some(link_cfg) = link_cfg.single() else {
-            cx.adcx().expected_single_argument(item.span());
+        let Some(link_cfg) = cx.single_element_list(item.args(), item.span()) else {
             return true;
         };
         if !features.link_cfg() {

@@ -146,7 +146,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 let mut parser = AttributeParser::<'_, Early>::new(
                     &self.resolver.tcx.sess,
                     self.resolver.tcx.features(),
-                    self.resolver.tcx().registered_tools(()),
+                    Vec::new(),
                     Early { emit_errors: ShouldEmit::Nothing },
                 );
                 let attrs = parser.parse_attribute_list(
@@ -169,8 +169,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 DefKind::Macro(macro_kinds)
             }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
-            ItemKind::Use(use_tree) => {
-                self.create_def(i.id, None, DefKind::Use, use_tree.span);
+            ItemKind::Use(_) => {
+                self.create_def(i.id, None, DefKind::Use, i.span);
                 return visit::walk_item(self, i);
             }
             ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
@@ -261,7 +261,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_nested_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId) {
-        self.create_def(id, None, DefKind::Use, use_tree.span);
+        self.create_def(id, None, DefKind::Use, use_tree.span());
         visit::walk_use_tree(self, use_tree);
     }
 

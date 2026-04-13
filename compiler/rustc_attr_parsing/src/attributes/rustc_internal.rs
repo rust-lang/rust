@@ -4,8 +4,7 @@ use rustc_ast::{LitIntType, LitKind, MetaItemLit};
 use rustc_hir::LangItem;
 use rustc_hir::attrs::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, DivergingBlockBehavior,
-    DivergingFallbackBehavior, RustcCleanAttribute, RustcCleanQueries, RustcLayoutType,
-    RustcMirKind,
+    DivergingFallbackBehavior, RustcCleanAttribute, RustcCleanQueries, RustcMirKind,
 };
 use rustc_session::errors;
 use rustc_span::Symbol;
@@ -195,11 +194,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcLintOptDenyFieldAccessParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Field)]);
     const TEMPLATE: AttributeTemplate = template!(Word);
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(arg) = args.list().and_then(MetaItemListParser::single) else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_single_argument(attr_span);
-            return None;
-        };
+        let arg = cx.single_element_list(args, cx.attr_span)?;
 
         let MetaItemOrLitParser::Lit(MetaItemLit { kind: LitKind::Str(lint_message, _), .. }) = arg
         else {
@@ -375,19 +370,10 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDeprecatedSafe2024Parser {
     const TEMPLATE: AttributeTemplate = template!(List: &[r#"audit_that = "...""#]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(args) = args.list() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return None;
-        };
-
-        let Some(single) = args.single() else {
-            cx.adcx().expected_single_argument(args.span);
-            return None;
-        };
+        let single = cx.single_element_list(args, cx.attr_span)?;
 
         let Some(arg) = single.meta_item() else {
-            cx.adcx().expected_name_value(args.span, None);
+            cx.adcx().expected_name_value(single.span(), None);
             return None;
         };
 
@@ -681,14 +667,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for PanicHandlerParser {
     const CREATE: fn(Span) -> AttributeKind = |span| AttributeKind::Lang(LangItem::PanicImpl, span);
 }
 
-pub(crate) struct RustcHiddenTypeOfOpaquesParser;
-
-impl<S: Stage> NoArgsAttributeParser<S> for RustcHiddenTypeOfOpaquesParser {
-    const PATH: &[Symbol] = &[sym::rustc_hidden_type_of_opaques];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcHiddenTypeOfOpaques;
-}
 pub(crate) struct RustcNounwindParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNounwindParser {
@@ -711,64 +689,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcOffloadKernelParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOffloadKernel;
-}
-
-pub(crate) struct RustcLayoutParser;
-
-impl<S: Stage> CombineAttributeParser<S> for RustcLayoutParser {
-    const PATH: &[Symbol] = &[sym::rustc_layout];
-
-    type Item = RustcLayoutType;
-
-    const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::RustcLayout(items);
-
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
-        Allow(Target::Struct),
-        Allow(Target::Enum),
-        Allow(Target::Union),
-        Allow(Target::TyAlias),
-    ]);
-
-    const TEMPLATE: AttributeTemplate =
-        template!(List: &["abi", "align", "size", "homogenous_aggregate", "debug"]);
-    fn extend(
-        cx: &mut AcceptContext<'_, '_, S>,
-        args: &ArgParser,
-    ) -> impl IntoIterator<Item = Self::Item> {
-        let ArgParser::List(items) = args else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_list(attr_span, args);
-            return vec![];
-        };
-
-        let mut result = Vec::new();
-        for item in items.mixed() {
-            let Some(arg) = item.meta_item() else {
-                cx.adcx().unexpected_literal(item.span());
-                continue;
-            };
-            let Some(ident) = arg.ident() else {
-                cx.adcx().expected_identifier(arg.span());
-                return vec![];
-            };
-            let ty = match ident.name {
-                sym::abi => RustcLayoutType::Abi,
-                sym::align => RustcLayoutType::Align,
-                sym::size => RustcLayoutType::Size,
-                sym::homogeneous_aggregate => RustcLayoutType::HomogenousAggregate,
-                sym::debug => RustcLayoutType::Debug,
-                _ => {
-                    cx.adcx().expected_specific_argument(
-                        ident.span,
-                        &[sym::abi, sym::align, sym::size, sym::homogeneous_aggregate, sym::debug],
-                    );
-                    continue;
-                }
-            };
-            result.push(ty);
-        }
-        result
-    }
 }
 
 pub(crate) struct RustcMirParser;
@@ -1022,7 +942,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcIfThisChangedParser {
             ArgParser::List(list) => {
                 let Some(item) = list.single() else {
                     let attr_span = cx.attr_span;
-                    cx.adcx().expected_single_argument(attr_span);
+                    cx.adcx().expected_single_argument(attr_span, list.len());
                     return None;
                 };
                 let Some(ident) = item.meta_item().and_then(|item| item.ident()) else {
@@ -1082,11 +1002,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcThenThisWouldNeedParser {
         if !cx.cx.sess.opts.unstable_opts.query_dep_graph {
             cx.emit_err(AttributeRequiresOpt { span: cx.attr_span, opt: "-Z query-dep-graph" });
         }
-        let Some(item) = args.list().and_then(|l| l.single()) else {
-            let inner_span = cx.inner_span;
-            cx.adcx().expected_single_argument(inner_span);
-            return None;
-        };
+        let item = cx.single_element_list(args, cx.attr_span)?;
         let Some(ident) = item.meta_item().and_then(|item| item.ident()) else {
             cx.adcx().expected_identifier(item.span());
             return None;
@@ -1210,54 +1126,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcNonnullOptimizationGuaranteedPa
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNonnullOptimizationGuaranteed;
 }
 
-pub(crate) struct RustcSymbolNameParser;
-
-impl<S: Stage> SingleAttributeParser<S> for RustcSymbolNameParser {
-    const PATH: &[Symbol] = &[sym::rustc_symbol_name];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
-        Allow(Target::Fn),
-        Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: true })),
-        Allow(Target::ForeignFn),
-        Allow(Target::ForeignStatic),
-        Allow(Target::Impl { of_trait: false }),
-    ]);
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const TEMPLATE: AttributeTemplate = template!(Word);
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        if let Err(span) = args.no_args() {
-            cx.adcx().expected_no_args(span);
-            return None;
-        }
-        Some(AttributeKind::RustcSymbolName(cx.attr_span))
-    }
-}
-
-pub(crate) struct RustcDefPathParser;
-
-impl<S: Stage> SingleAttributeParser<S> for RustcDefPathParser {
-    const PATH: &[Symbol] = &[sym::rustc_def_path];
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
-        Allow(Target::Fn),
-        Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::Method(MethodKind::Inherent)),
-        Allow(Target::Method(MethodKind::Trait { body: true })),
-        Allow(Target::ForeignFn),
-        Allow(Target::ForeignStatic),
-        Allow(Target::Impl { of_trait: false }),
-    ]);
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const TEMPLATE: AttributeTemplate = template!(Word);
-    fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        if let Err(span) = args.no_args() {
-            cx.adcx().expected_no_args(span);
-            return None;
-        }
-        Some(AttributeKind::RustcDefPath(cx.attr_span))
-    }
-}
-
 pub(crate) struct RustcStrictCoherenceParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcStrictCoherenceParser {
@@ -1348,4 +1216,13 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcIntrinsicConstStableIndirectPar
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsicConstStableIndirect;
+}
+
+pub(crate) struct RustcExhaustiveParser;
+
+impl<S: Stage> NoArgsAttributeParser<S> for RustcExhaustiveParser {
+    const PATH: &'static [Symbol] = &[sym::rustc_must_match_exhaustively];
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Enum)]);
+    const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcMustMatchExhaustively;
 }

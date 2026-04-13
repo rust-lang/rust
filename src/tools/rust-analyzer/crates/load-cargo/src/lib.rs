@@ -283,6 +283,19 @@ impl ProjectFolders {
             }
         }
 
+        // Collect workspace roots not already covered by a local PackageRoot
+        // (e.g. virtual workspaces where no package lives at the workspace root).
+        // We need these to load workspace-root rust-analyzer.toml into a local source root.
+        let uncovered_ws_roots: Vec<AbsPathBuf> = workspaces
+            .iter()
+            .filter_map(|ws| {
+                let ws_root = ws.workspace_root().to_path_buf();
+                let dominated =
+                    roots.iter().any(|root| root.is_local && root.include.contains(&ws_root));
+                (!dominated).then_some(ws_root)
+            })
+            .collect();
+
         for root in roots.into_iter().filter(|it| !it.include.is_empty()) {
             let file_set_roots: Vec<VfsPath> =
                 root.include.iter().cloned().map(VfsPath::from).collect();
@@ -291,6 +304,7 @@ impl ProjectFolders {
                 let mut dirs = vfs::loader::Directories::default();
                 dirs.extensions.push("rs".into());
                 dirs.extensions.push("toml".into());
+                dirs.extensions.push("md".into());
                 dirs.include.extend(root.include);
                 dirs.exclude.extend(root.exclude);
                 for excl in global_excludes {
@@ -333,6 +347,20 @@ impl ProjectFolders {
                 local_filesets.push(fsc.len() as u64);
                 fsc.add_file_set(file_set_roots)
             }
+        }
+
+        // For virtual workspaces, the workspace root has no local PackageRoot, so
+        // rust-analyzer.toml there would fall into a library source root and be
+        // ignored. Load it explicitly via Entry::Files and register the workspace
+        // root as a local file-set root so the file is classified as local.
+        for ws_root in &uncovered_ws_roots {
+            let ratoml_path = ws_root.join("rust-analyzer.toml");
+            let file_set_roots = vec![VfsPath::from(ws_root.clone())];
+            let entry = vfs::loader::Entry::Files(vec![ratoml_path]);
+            res.watch.push(res.load.len());
+            res.load.push(entry);
+            local_filesets.push(fsc.len() as u64);
+            fsc.add_file_set(file_set_roots);
         }
 
         if let Some(user_config_path) = user_config_dir_path {
@@ -738,7 +766,7 @@ fn resolve_sub_span(
 
 #[cfg(test)]
 mod tests {
-    use ide_db::base_db::RootQueryDb;
+    use ide_db::base_db::all_crates;
     use vfs::file_set::FileSetConfigBuilder;
 
     use super::*;
@@ -766,7 +794,7 @@ mod tests {
         let (db, _vfs, _proc_macro) =
             load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config).unwrap();
 
-        let n_crates = db.all_crates().len();
+        let n_crates = all_crates(&db).len();
         // RA has quite a few crates, but the exact count doesn't matter
         assert!(n_crates > 20);
     }

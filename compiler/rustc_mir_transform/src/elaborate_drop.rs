@@ -548,7 +548,16 @@ where
                 let subpath = self.elaborator.field_subpath(variant_path, field_idx);
                 let tcx = self.tcx();
 
-                assert_eq!(self.elaborator.typing_env().typing_mode, ty::TypingMode::PostAnalysis);
+                match self.elaborator.typing_env().typing_mode() {
+                    ty::TypingMode::PostAnalysis => {}
+                    ty::TypingMode::Coherence
+                    | ty::TypingMode::Analysis { .. }
+                    | ty::TypingMode::Borrowck { .. }
+                    | ty::TypingMode::PostBorrowckAnalysis { .. } => {
+                        bug!()
+                    }
+                }
+
                 let field_ty = field.ty(tcx, args);
                 // We silently leave an unnormalized type here to support polymorphic drop
                 // elaboration for users of rustc internal APIs

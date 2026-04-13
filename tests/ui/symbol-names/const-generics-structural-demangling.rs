@@ -10,7 +10,7 @@ use std::marker::ConstParamTy;
 
 pub struct RefByte<const RB: &'static u8>;
 
-#[rustc_symbol_name]
+#[rustc_dump_symbol_name]
 //~^ ERROR symbol-name
 //~| ERROR demangling
 //~| ERROR demangling-alt(<c::RefByte<{&123}>>)
@@ -20,7 +20,7 @@ impl RefByte<{ &123 }> {}
 // but that is currently not allowed in const generics.
 pub struct RefZst<const RMZ: &'static [u8; 0]>;
 
-#[rustc_symbol_name]
+#[rustc_dump_symbol_name]
 //~^ ERROR symbol-name
 //~| ERROR demangling
 //~| ERROR demangling-alt(<c::RefZst<{&[]}>>)
@@ -28,7 +28,7 @@ impl RefZst<{ &[] }> {}
 
 pub struct Array3Bytes<const A3B: [u8; 3]>;
 
-#[rustc_symbol_name]
+#[rustc_dump_symbol_name]
 //~^ ERROR symbol-name
 //~| ERROR demangling
 //~| ERROR demangling-alt(<c::Array3Bytes<{[1, 2, 3]}>>)
@@ -36,7 +36,7 @@ impl Array3Bytes<{ [1, 2, 3] }> {}
 
 pub struct TupleByteBool<const TBB: (u8, bool)>;
 
-#[rustc_symbol_name]
+#[rustc_dump_symbol_name]
 //~^ ERROR symbol-name
 //~| ERROR demangling
 //~| ERROR demangling-alt(<c::TupleByteBool<{(1, false)}>>)
@@ -52,7 +52,7 @@ pub struct OptionUsize<const OU: MyOption<usize>>;
 
 // HACK(eddyb) the full mangling is only in `.stderr` because we can normalize
 // the `core` disambiguator hash away there, but not here.
-#[rustc_symbol_name]
+#[rustc_dump_symbol_name]
 //~^ ERROR symbol-name
 //~| ERROR demangling
 //~| ERROR demangling-alt(<c::OptionUsize<{c::MyOption::<usize>::None}>>)
@@ -60,7 +60,7 @@ impl OptionUsize<{ MyOption::None }> {}
 
 // HACK(eddyb) the full mangling is only in `.stderr` because we can normalize
 // the `core` disambiguator hash away there, but not here.
-#[rustc_symbol_name]
+#[rustc_dump_symbol_name]
 //~^ ERROR symbol-name
 //~| ERROR demangling
 //~| ERROR demangling-alt(<c::OptionUsize<{c::MyOption::<usize>::Some(0)}>>)
@@ -74,7 +74,7 @@ pub struct Foo {
 }
 pub struct Foo_<const F: Foo>;
 
-#[rustc_symbol_name]
+#[rustc_dump_symbol_name]
 //~^ ERROR symbol-name
 //~| ERROR demangling
 //~| ERROR demangling-alt(<c::Foo_<{c::Foo { s: "abc", ch: 'x', slice: &[1, 2, 3] }}>>)
@@ -90,7 +90,7 @@ macro duplicate_field_name_test($x:ident) {
     }
     pub struct Bar_<const B: Bar>;
 
-    #[rustc_symbol_name]
+    #[rustc_dump_symbol_name]
     //~^ ERROR symbol-name
     //~| ERROR demangling
     //~| ERROR demangling-alt(<c::Bar_<{c::Bar { x: 123, x: 4096 }}>>)

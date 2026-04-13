@@ -864,6 +864,10 @@ fn analyze_attr(attr: &hir::Attribute, state: &mut AnalyzeAttrState<'_>) -> bool
         && p.encode_cross_crate() == EncodeCrossCrate::No
     {
         // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
+    } else if let Some(name) = attr.name()
+        && !rustc_feature::encode_cross_crate(name)
+    {
+        // Attributes not marked encode-cross-crate don't need to be encoded for downstream crates.
     } else if let hir::Attribute::Parsed(AttributeKind::DocComment { .. }) = attr {
         // We keep all doc comments reachable to rustdoc because they might be "imported" into
         // downstream crates if they use `#[doc(inline)]` to copy an item's documentation into
@@ -939,6 +943,10 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::Macro(_)
         | DefKind::Field
         | DefKind::Impl { .. } => true,
+        // Encoding attrs for `Use` items allows `#[doc(hidden)]` on re-exports
+        // to be read cross-crate, which is needed for diagnostic path selection
+        // in `visible_parent_map`. See #153477.
+        DefKind::Use => true,
         // Tools may want to be able to detect their tool lints on
         // closures from upstream crates, too. This is used by
         // https://github.com/model-checking/kani and is not a performance
@@ -949,7 +957,6 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::ConstParam
         | DefKind::Ctor(..)
         | DefKind::ExternCrate
-        | DefKind::Use
         | DefKind::ForeignMod
         | DefKind::AnonConst
         | DefKind::InlineConst

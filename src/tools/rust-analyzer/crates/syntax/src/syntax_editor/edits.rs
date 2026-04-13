@@ -229,6 +229,25 @@ impl ast::AssocItemList {
     }
 }
 
+impl ast::Impl {
+    pub fn get_or_create_assoc_item_list_with_editor(
+        &self,
+        editor: &mut SyntaxEditor,
+        make: &SyntaxFactory,
+    ) -> ast::AssocItemList {
+        if let Some(list) = self.assoc_item_list() {
+            list
+        } else {
+            let list = make.assoc_item_list_empty();
+            editor.insert_all(
+                Position::last_child_of(self.syntax()),
+                vec![make.whitespace(" ").into(), list.syntax().clone().into()],
+            );
+            list
+        }
+    }
+}
+
 impl ast::VariantList {
     pub fn add_variant(&self, editor: &mut SyntaxEditor, variant: &ast::Variant) {
         let make = SyntaxFactory::without_mappings();
@@ -473,8 +492,7 @@ enum Foo {
     }
 
     fn check_add_variant(before: &str, expected: &str, variant: ast::Variant) {
-        let enum_ = ast_from_text::<ast::Enum>(before);
-        let mut editor = SyntaxEditor::new(enum_.syntax().clone());
+        let (mut editor, enum_) = SyntaxEditor::with_ast_node(&ast_from_text::<ast::Enum>(before));
         if let Some(it) = enum_.variant_list() {
             it.add_variant(&mut editor, &variant)
         }

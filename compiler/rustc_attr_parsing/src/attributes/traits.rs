@@ -29,7 +29,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSkipDuringMethodDispatchParser 
         }
         for arg in args.mixed() {
             let Some(arg) = arg.meta_item() else {
-                cx.adcx().unexpected_literal(arg.span());
+                cx.adcx().expected_not_literal(arg.span());
                 continue;
             };
             if let Err(span) = arg.args().no_args() {

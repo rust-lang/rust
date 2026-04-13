@@ -1194,9 +1194,8 @@ export function runSingle(ctx: CtxInit): Cmd {
 }
 
 export function copyRunCommandLine(ctx: CtxInit) {
-    let prevRunnable: RunnableQuickPick | undefined;
     return async () => {
-        const item = await selectRunnable(ctx, prevRunnable);
+        const item = await selectRunnable(ctx, undefined);
         if (!item || !isCargoRunnableArgs(item.runnable.args)) return;
         const args = createCargoArgs(item.runnable.args);
         const commandLine = ["cargo", ...args].join(" ");

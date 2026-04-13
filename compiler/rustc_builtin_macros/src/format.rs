@@ -10,12 +10,12 @@ use rustc_ast::{
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    Applicability, BufferedEarlyLint, Diag, MultiSpan, PResult, SingleLabelManySpans, listify,
-    pluralize,
+    Applicability, BufferedEarlyLint, DecorateDiagCompat, Diag, Diagnostic, MultiSpan, PResult,
+    SingleLabelManySpans, listify, pluralize,
 };
 use rustc_expand::base::*;
+use rustc_lint_defs::LintId;
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
-use rustc_lint_defs::{BuiltinLintDiag, LintId};
 use rustc_parse::exp;
 use rustc_parse_format as parse;
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, InnerSpan, Span, Symbol};
@@ -611,14 +611,39 @@ fn make_format_args(
                 span: Some(arg_name.span.into()),
                 node_id: rustc_ast::CRATE_NODE_ID,
                 lint_id: LintId::of(NAMED_ARGUMENTS_USED_POSITIONALLY),
-                diagnostic: BuiltinLintDiag::NamedArgumentUsedPositionally {
-                    position_sp_to_replace,
-                    position_sp_for_msg,
-                    named_arg_sp: arg_name.span,
-                    named_arg_name: arg_name.name.to_string(),
-                    is_formatting_arg: matches!(used_as, Width | Precision),
-                }
-                .into(),
+                diagnostic: DecorateDiagCompat::Dynamic(Box::new(move |dcx, level, sess| {
+                    let (suggestion, name) =
+                        if let Some(positional_arg_to_replace) = position_sp_to_replace {
+                            let mut name = arg_name.name.to_string();
+                            let is_formatting_arg = matches!(used_as, Width | Precision);
+                            if is_formatting_arg {
+                                name.push('$')
+                            };
+                            let span_to_replace = if let Ok(positional_arg_content) = sess
+                                .downcast_ref::<rustc_session::Session>()
+                                .expect("expected a `Session`")
+                                .source_map()
+                                .span_to_snippet(positional_arg_to_replace)
+                                && positional_arg_content.starts_with(':')
+                            {
+                                positional_arg_to_replace.shrink_to_lo()
+                            } else {
+                                positional_arg_to_replace
+                            };
+                            (Some(span_to_replace), name)
+                        } else {
+                            (None, String::new())
+                        };
+
+                    errors::NamedArgumentUsedPositionally {
+                        named_arg_sp: arg_name.span,
+                        position_label_sp: position_sp_for_msg,
+                        suggestion,
+                        name,
+                        named_arg_name: arg_name.name.to_string(),
+                    }
+                    .into_diag(dcx, level)
+                })),
             });
         }
     }

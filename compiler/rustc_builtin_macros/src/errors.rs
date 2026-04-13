@@ -158,6 +158,16 @@ pub(crate) struct AllocMustStatics {
     pub(crate) span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag("allocators cannot be `#[thread_local]`")]
+pub(crate) struct AllocCannotThreadLocal {
+    #[primary_span]
+    pub(crate) span: Span,
+    #[label("marked `#[thread_local]` here")]
+    #[suggestion("remove this attribute", code = "", applicability = "maybe-incorrect")]
+    pub(crate) attr: Span,
+}
+
 pub(crate) use autodiff::*;
 
 mod autodiff {
@@ -1140,4 +1150,23 @@ pub(crate) struct EiiMacroExpectedMaxOneArgument {
     #[primary_span]
     pub span: Span,
     pub name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("named argument `{$named_arg_name}` is not used by name")]
+pub(crate) struct NamedArgumentUsedPositionally {
+    #[label("this named argument is referred to by position in formatting string")]
+    pub named_arg_sp: Span,
+    #[label("this formatting argument uses named argument `{$named_arg_name}` by position")]
+    pub position_label_sp: Option<Span>,
+    #[suggestion(
+        "use the named argument by name to avoid ambiguity",
+        style = "verbose",
+        code = "{name}",
+        applicability = "maybe-incorrect"
+    )]
+    pub suggestion: Option<Span>,
+
+    pub name: String,
+    pub named_arg_name: String,
 }

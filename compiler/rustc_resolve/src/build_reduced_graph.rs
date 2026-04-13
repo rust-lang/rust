@@ -32,7 +32,7 @@ use tracing::debug;
 
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
 use crate::def_collector::collect_definitions;
-use crate::imports::{ImportData, ImportKind};
+use crate::imports::{ImportData, ImportKind, OnUnknownData};
 use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
@@ -545,6 +545,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             root_id,
             vis,
             vis_span: item.vis.span,
+            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, item),
         });
 
         self.r.indeterminate_imports.push(import);
@@ -603,12 +604,15 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         // so prefixes are prepended with crate root segment if necessary.
         // The root is prepended lazily, when the first non-empty prefix or terminating glob
         // appears, so imports in braced groups can have roots prepended independently.
-        let is_glob = matches!(use_tree.kind, ast::UseTreeKind::Glob);
         let crate_root = match prefix_iter.peek() {
             Some(seg) if !seg.ident.is_path_segment_keyword() && seg.ident.span.is_rust_2015() => {
                 Some(seg.ident.span.ctxt())
             }
-            None if is_glob && use_tree.span.is_rust_2015() => Some(use_tree.span.ctxt()),
+            None if let ast::UseTreeKind::Glob(span) = use_tree.kind
+                && span.is_rust_2015() =>
+            {
+                Some(span.ctxt())
+            }
             _ => None,
         }
         .map(|ctxt| {
@@ -623,41 +627,41 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
 
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename) => {
-                let mut ident = use_tree.ident();
                 let mut module_path = prefix;
-                let mut source = module_path.pop().unwrap();
+                let source = module_path.pop().unwrap();
 
                 // `true` for `...::{self [as target]}` imports, `false` otherwise.
                 let type_ns_only = nested && source.ident.name == kw::SelfLower;
 
+                // Suggest `use prefix::{self};` for `use prefix::self;`
                 if source.ident.name == kw::SelfLower
-                    && let Some(parent) = module_path.pop()
+                    && let Some(parent) = module_path.last()
+                    && !type_ns_only
+                    && (parent.ident.name != kw::PathRoot
+                        || self.r.path_root_is_crate_root(parent.ident))
                 {
-                    // Suggest `use prefix::{self};` for `use prefix::self;`
-                    if !type_ns_only
-                        && (parent.ident.name != kw::PathRoot
-                            || self.r.path_root_is_crate_root(parent.ident))
-                    {
-                        let span_with_rename = match rename {
-                            Some(rename) => source.ident.span.to(rename.span),
-                            None => source.ident.span,
-                        };
+                    let span_with_rename = match rename {
+                        Some(rename) => source.ident.span.to(rename.span),
+                        None => source.ident.span,
+                    };
 
-                        self.r.report_error(
-                            parent.ident.span.shrink_to_hi().to(source.ident.span),
-                            ResolutionError::SelfImportsOnlyAllowedWithin {
-                                root: parent.ident.name == kw::PathRoot,
-                                span_with_rename,
-                            },
-                        );
-                    }
-
-                    let self_span = source.ident.span;
-                    source = parent;
-                    if rename.is_none() {
-                        ident = Ident::new(source.ident.name, self_span);
-                    }
+                    self.r.report_error(
+                        parent.ident.span.shrink_to_hi().to(source.ident.span),
+                        ResolutionError::SelfImportsOnlyAllowedWithin {
+                            root: parent.ident.name == kw::PathRoot,
+                            span_with_rename,
+                        },
+                    );
                 }
+
+                let ident = if source.ident.name == kw::SelfLower
+                    && rename.is_none()
+                    && let Some(parent) = module_path.last()
+                {
+                    Ident::new(parent.ident.name, source.ident.span)
+                } else {
+                    use_tree.ident()
+                };
 
                 match source.ident.name {
                     kw::DollarCrate => {
@@ -695,8 +699,12 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         }
                     }
                     // Deny `use ::{self};` after edition 2015
-                    kw::PathRoot if !self.r.path_root_is_crate_root(source.ident) => {
-                        self.r.dcx().span_err(use_tree.span, "extern prelude cannot be imported");
+                    kw::SelfLower
+                        if let Some(parent) = module_path.last()
+                            && parent.ident.name == kw::PathRoot
+                            && !self.r.path_root_is_crate_root(parent.ident) =>
+                    {
+                        self.r.dcx().span_err(use_tree.span(), "extern prelude cannot be imported");
                         return;
                     }
                     _ => {}
@@ -727,12 +735,12 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     id,
                 };
 
-                self.add_import(module_path, kind, use_tree.span, item, root_span, item.id, vis);
+                self.add_import(module_path, kind, use_tree.span(), item, root_span, item.id, vis);
             }
-            ast::UseTreeKind::Glob => {
+            ast::UseTreeKind::Glob(_) => {
                 if !ast::attr::contains_name(&item.attrs, sym::prelude_import) {
                     let kind = ImportKind::Glob { max_vis: CmCell::new(None), id };
-                    self.add_import(prefix, kind, use_tree.span, item, root_span, item.id, vis);
+                    self.add_import(prefix, kind, use_tree.span(), item, root_span, item.id, vis);
                 } else {
                     // Resolve the prelude import early.
                     let path_res =
@@ -740,7 +748,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     if let PathResult::Module(ModuleOrUniformRoot::Module(module)) = path_res {
                         self.r.prelude = Some(module);
                     } else {
-                        self.r.dcx().span_err(use_tree.span, "cannot resolve a prelude import");
+                        self.r.dcx().span_err(use_tree.span(), "cannot resolve a prelude import");
                     }
                 }
             }
@@ -764,7 +772,6 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     let tree = ast::UseTree {
                         prefix: ast::Path::from_ident(Ident::new(kw::SelfLower, new_span)),
                         kind: ast::UseTreeKind::Simple(Some(Ident::new(kw::Underscore, new_span))),
-                        span: use_tree.span,
                     };
                     self.build_reduced_graph_for_use_tree(
                         // This particular use tree
@@ -835,7 +842,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     // The whole `use` item
                     item,
                     vis,
-                    use_tree.span,
+                    use_tree.span(),
                 );
             }
 
@@ -1024,6 +1031,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             module_path: Vec::new(),
             vis,
             vis_span: item.vis.span,
+            on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, item),
         });
         if used {
             self.r.import_use_map.insert(import, Used::Other);
@@ -1119,7 +1127,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             AttributeParser::parse_limited(
                 self.r.tcx.sess,
                 &item.attrs,
-                sym::macro_use,
+                &[sym::macro_use],
                 item.span,
                 item.id,
                 None,
@@ -1156,6 +1164,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 module_path: Vec::new(),
                 vis: Visibility::Restricted(CRATE_DEF_ID),
                 vis_span: item.vis.span,
+                on_unknown_attr: OnUnknownData::from_attrs(this.r.tcx, item),
             })
         };
 
@@ -1327,6 +1336,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                     module_path: Vec::new(),
                     vis,
                     vis_span: item.vis.span,
+                    on_unknown_attr: OnUnknownData::from_attrs(self.r.tcx, item),
                 });
                 self.r.import_use_map.insert(import, Used::Other);
                 let import_decl = self.r.new_import_decl(decl, import);

@@ -128,17 +128,15 @@ use unused::*;
 
 #[rustfmt::skip]
 pub use builtin::{MissingDoc, SoftLints};
-pub use context::{EarlyContext, LateContext, LintContext, LintStore};
-pub use early::diagnostics::{DecorateAttrLint, DecorateBuiltinLint, DiagAndSess};
+pub use context::{CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore};
+pub use early::diagnostics::{DecorateAttrLint, DiagAndSess};
 pub use early::{EarlyCheckNode, check_ast_node};
 pub use late::{check_crate, late_lint_mod, unerased_lint_store};
 pub use levels::LintLevelsBuilder;
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_errors::BufferedEarlyLint;
 pub use rustc_session::lint::Level::{self, *};
-pub use rustc_session::lint::{
-    CheckLintNameResult, FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec,
-};
+pub use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintId, LintPass, LintVec};
 
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
@@ -670,6 +668,8 @@ fn register_internals(store: &mut LintStore) {
     store.register_early_pass(|| Box::new(ImplicitSysrootCrateImport));
     store.register_lints(&BadUseOfFindAttr::lint_vec());
     store.register_early_pass(|| Box::new(BadUseOfFindAttr));
+    store.register_lints(&RustcMustMatchExhaustively::lint_vec());
+    store.register_late_pass(|_| Box::new(RustcMustMatchExhaustively));
     store.register_group(
         false,
         "rustc::internal",
@@ -690,6 +690,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(DIRECT_USE_OF_RUSTC_TYPE_IR),
             LintId::of(IMPLICIT_SYSROOT_CRATE_IMPORT),
             LintId::of(BAD_USE_OF_FIND_ATTR),
+            LintId::of(RUSTC_MUST_MATCH_EXHAUSTIVELY),
         ],
     );
 }

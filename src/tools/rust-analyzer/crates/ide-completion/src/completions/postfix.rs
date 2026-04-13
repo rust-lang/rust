@@ -310,7 +310,7 @@ pub(crate) fn complete_postfix(
     if let ast::Expr::Literal(literal) = dot_receiver.clone()
         && let Some(literal_text) = ast::String::cast(literal.token())
     {
-        add_format_like_completions(acc, ctx, &dot_receiver_including_refs, cap, &literal_text);
+        add_format_like_completions(acc, ctx, dot_receiver, cap, &literal_text, semi);
     }
 
     postfix_snippet("return", "return expr", &format!("return {receiver_text}{semi}"))
@@ -402,7 +402,7 @@ fn receiver_accessor(receiver: &ast::Expr) -> ast::Expr {
         .unwrap_or_else(|| receiver.clone())
 }
 
-/// Given an `initial_element`, tries to expand it to include deref(s), and then references.
+/// Given an `initial_element`, tries to expand it to include deref(s), not(s), and then references.
 /// Returns the expanded expressions, and the added prefix as a string
 ///
 /// For example, if called with the `42` in `&&mut *42`, would return `(&&mut *42, "&&mut *")`.
@@ -410,22 +410,23 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
     let mut resulting_element = initial_element.clone();
     let mut prefix = String::new();
 
-    let mut found_ref_or_deref = false;
-
-    while let Some(parent_deref_element) =
-        resulting_element.syntax().parent().and_then(ast::PrefixExpr::cast)
-        && parent_deref_element.op_kind() == Some(ast::UnaryOp::Deref)
+    while let Some(parent) = resulting_element.syntax().parent().and_then(ast::PrefixExpr::cast)
+        && parent.op_kind() == Some(ast::UnaryOp::Deref)
     {
-        found_ref_or_deref = true;
-        resulting_element = ast::Expr::from(parent_deref_element);
-
+        resulting_element = ast::Expr::from(parent);
         prefix.insert(0, '*');
+    }
+
+    while let Some(parent) = resulting_element.syntax().parent().and_then(ast::PrefixExpr::cast)
+        && parent.op_kind() == Some(ast::UnaryOp::Not)
+    {
+        resulting_element = ast::Expr::from(parent);
+        prefix.insert(0, '!');
     }
 
     while let Some(parent_ref_element) =
         resulting_element.syntax().parent().and_then(ast::RefExpr::cast)
     {
-        found_ref_or_deref = true;
         let last_child_or_token = parent_ref_element.syntax().last_child_or_token();
         prefix.insert_str(
             0,
@@ -438,13 +439,6 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, String) {
                 .as_str(),
         );
         resulting_element = ast::Expr::from(parent_ref_element);
-    }
-
-    if !found_ref_or_deref {
-        // If we do not find any ref/deref expressions, restore
-        // all the progress of tree climbing
-        prefix.clear();
-        resulting_element = initial_element.clone();
     }
 
     (resulting_element, prefix)
@@ -1133,6 +1127,27 @@ fn main() {
     }
 
     #[test]
+    fn postfix_completion_for_nots() {
+        check_edit(
+            "if",
+            r#"
+fn main() {
+    let is_foo = true;
+    !is_foo.$0
+}
+"#,
+            r#"
+fn main() {
+    let is_foo = true;
+    if !is_foo {
+    $0
+}
+}
+"#,
+        )
+    }
+
+    #[test]
     fn postfix_completion_for_unsafe() {
         postfix_completion_for_block("unsafe");
     }
@@ -1287,34 +1302,42 @@ fn main() {
         check_edit(
             "panic",
             r#"fn main() { "Panic with {a}".$0 }"#,
-            r#"fn main() { panic!("Panic with {a}") }"#,
+            r#"fn main() { panic!("Panic with {a}"); }"#,
         );
         check_edit(
             "println",
             r#"fn main() { "{ 2+2 } { SomeStruct { val: 1, other: 32 } :?}".$0 }"#,
-            r#"fn main() { println!("{} {:?}", 2+2, SomeStruct { val: 1, other: 32 }) }"#,
+            r#"fn main() { println!("{} {:?}", 2+2, SomeStruct { val: 1, other: 32 }); }"#,
         );
         check_edit(
             "loge",
             r#"fn main() { "{2+2}".$0 }"#,
-            r#"fn main() { log::error!("{}", 2+2) }"#,
+            r#"fn main() { log::error!("{}", 2+2); }"#,
         );
         check_edit(
             "logt",
             r#"fn main() { "{2+2}".$0 }"#,
-            r#"fn main() { log::trace!("{}", 2+2) }"#,
+            r#"fn main() { log::trace!("{}", 2+2); }"#,
         );
         check_edit(
             "logd",
             r#"fn main() { "{2+2}".$0 }"#,
-            r#"fn main() { log::debug!("{}", 2+2) }"#,
+            r#"fn main() { log::debug!("{}", 2+2); }"#,
         );
-        check_edit("logi", r#"fn main() { "{2+2}".$0 }"#, r#"fn main() { log::info!("{}", 2+2) }"#);
-        check_edit("logw", r#"fn main() { "{2+2}".$0 }"#, r#"fn main() { log::warn!("{}", 2+2) }"#);
+        check_edit(
+            "logi",
+            r#"fn main() { "{2+2}".$0 }"#,
+            r#"fn main() { log::info!("{}", 2+2); }"#,
+        );
+        check_edit(
+            "logw",
+            r#"fn main() { "{2+2}".$0 }"#,
+            r#"fn main() { log::warn!("{}", 2+2); }"#,
+        );
         check_edit(
             "loge",
             r#"fn main() { "{2+2}".$0 }"#,
-            r#"fn main() { log::error!("{}", 2+2) }"#,
+            r#"fn main() { log::error!("{}", 2+2); }"#,
         );
     }
 
