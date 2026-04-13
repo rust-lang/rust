@@ -2010,7 +2010,7 @@ impl<'db> ExprCollector<'db> {
                 let it = self.alloc_expr(Expr::Path(Path::from(break_name)), syntax_ptr);
                 let convert_fn = match self.current_try_block {
                     Some(TryBlock::Homogeneous { .. }) => {
-                        self.lang_path(lang_items.ResidualIntoTry)
+                        self.lang_path(lang_items.ResidualIntoTry.or(lang_items.ResidualIntoTryOld))
                     }
                     Some(TryBlock::Heterogeneous { .. }) | None => {
                         self.lang_path(lang_items.TryFromResidual)
