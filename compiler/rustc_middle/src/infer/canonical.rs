@@ -153,17 +153,20 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
     /// `canonicalize_op` is intentionally not allowed to be a closure to
     /// statically prevent it from capturing `InferCtxt` and resolving
     /// inference variables, which invalidates the cache.
-    pub fn get_or_insert(
+    pub fn get_or_insert<F>(
         &self,
         tcx: TyCtxt<'tcx>,
         key: ty::ParamEnv<'tcx>,
         state: &mut OriginalQueryValues<'tcx>,
-        canonicalize_op: fn(
+        canonicalize_op: F,
+    ) -> Canonical<'tcx, ty::ParamEnv<'tcx>>
+    where
+        F: Fn(
             TyCtxt<'tcx>,
             ty::ParamEnv<'tcx>,
             &mut OriginalQueryValues<'tcx>,
         ) -> Canonical<'tcx, ty::ParamEnv<'tcx>>,
-    ) -> Canonical<'tcx, ty::ParamEnv<'tcx>> {
+    {
         if !key.has_type_flags(
             TypeFlags::HAS_INFER | TypeFlags::HAS_PLACEHOLDER | TypeFlags::HAS_FREE_REGIONS,
         ) {
