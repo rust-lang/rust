@@ -1729,12 +1729,6 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 ///
 /// # Safety
 ///
-/// Behavior is undefined if any of the following conditions are violated:
-///
-/// * `src` must be [valid] for reads.
-///
-/// * `src` must point to a properly initialized value of type `T`.
-///
 /// Like [`read`], `read_unaligned` creates a bitwise copy of `T`, regardless of
 /// whether `T` is [`Copy`]. If `T` is not [`Copy`], using both the returned
 /// value and the value at `*src` can [violate memory safety][read-ownership].
@@ -1797,6 +1791,7 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 #[rustc_const_stable(feature = "const_ptr_read", since = "1.71.0")]
 #[track_caller]
 #[rustc_diagnostic_item = "ptr_read_unaligned"]
+#[safety::requires(ValidPtrRead(src, T), Init(src, T))]
 pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
     let mut tmp = MaybeUninit::<T>::uninit();
     // SAFETY: the caller must guarantee that `src` is valid for reads.

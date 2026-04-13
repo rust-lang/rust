@@ -162,6 +162,9 @@ Options:
                         Remap source names in compiler messages
         --show-type-layout 
                         Include the memory layout of types in the docs
+        --safety-spec PATH
+                        The path of toml file for expanding safety tags into
+                        docs
         --no-capture    Don't capture stdout and stderr of tests
         --generate-link-to-definition 
                         Make the identifiers in the HTML source code pages
