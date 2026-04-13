@@ -411,7 +411,7 @@ pub(crate) enum CompletionAnalysis<'db> {
         fake_attribute_under_caret: Option<ast::TokenTreeMeta>,
         extern_crate: Option<ast::ExternCrate>,
     },
-    /// Set if we are inside the predicate of a #[cfg] or #[cfg_attr].
+    /// Set if we are inside the predicate of a `#[cfg]` or `#[cfg_attr]`.
     CfgPredicate,
     MacroSegment,
 }
