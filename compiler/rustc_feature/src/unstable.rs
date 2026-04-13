@@ -410,6 +410,8 @@ declare_features! (
     (unstable, cfg_target_has_atomic, "1.60.0", Some(94039)),
     /// Allows `cfg(target_has_atomic_equal_alignment = "...")`.
     (unstable, cfg_target_has_atomic_equal_alignment, "1.60.0", Some(93822)),
+    /// Allows `cfg(target_object_format = "...")`.
+    (unstable, cfg_target_object_format, "CURRENT_RUSTC_VERSION", Some(152586)),
     /// Allows `cfg(target_thread_local)`.
     (unstable, cfg_target_thread_local, "1.7.0", Some(29594)),
     /// Allows the use of `#[cfg(ub_checks)` to check if UB checks are enabled.
@@ -474,6 +476,8 @@ declare_features! (
     (unstable, diagnostic_on_const, "1.93.0", Some(143874)),
     /// Allows giving on-move borrowck custom diagnostic messages for a type
     (unstable, diagnostic_on_move, "CURRENT_RUSTC_VERSION", Some(154181)),
+    /// Allows giving unresolved imports a custom diagnostic message
+    (unstable, diagnostic_on_unknown, "CURRENT_RUSTC_VERSION", Some(152900)),
     /// Allows `#[doc(cfg(...))]`.
     (unstable, doc_cfg, "1.21.0", Some(43781)),
     /// Allows `#[doc(masked)]`.

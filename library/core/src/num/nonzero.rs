@@ -650,8 +650,6 @@ macro_rules! nonzero_integer {
             /// # Example
             ///
             /// ```
-            /// #![feature(isolate_most_least_significant_one)]
-            ///
             /// # use core::num::NonZero;
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
@@ -662,7 +660,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+            #[stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
@@ -683,8 +682,6 @@ macro_rules! nonzero_integer {
             /// # Example
             ///
             /// ```
-            /// #![feature(isolate_most_least_significant_one)]
-            ///
             /// # use core::num::NonZero;
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
@@ -695,7 +692,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+            #[stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]

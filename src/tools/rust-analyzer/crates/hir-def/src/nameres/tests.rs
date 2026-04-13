@@ -4,7 +4,6 @@ mod incremental;
 mod macros;
 mod mod_resolution;
 
-use base_db::RootQueryDb;
 use expect_test::{Expect, expect};
 use test_fixture::WithFixture;
 

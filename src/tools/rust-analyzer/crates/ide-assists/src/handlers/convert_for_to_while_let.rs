@@ -81,14 +81,14 @@ pub(crate) fn convert_for_loop_to_while_let(
             let indent = IndentLevel::from_node(for_loop.syntax());
 
             if let Some(label) = for_loop.label() {
-                let label = label.syntax().clone_for_update();
+                let label = label.syntax();
                 editor.insert(Position::before(for_loop.syntax()), make.whitespace(" "));
                 editor.insert(Position::before(for_loop.syntax()), label);
             }
             crate::utils::insert_attributes(
                 for_loop.syntax(),
                 &mut editor,
-                for_loop.attrs().map(|it| it.clone_for_update()),
+                for_loop.attrs(),
                 &make,
             );
 

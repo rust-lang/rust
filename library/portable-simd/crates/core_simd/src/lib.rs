@@ -1,17 +1,16 @@
 #![no_std]
 #![feature(
-    const_eval_select,
     convert_float_to_int,
+    f16,
     core_intrinsics,
     decl_macro,
-    intra_doc_pointers,
     repr_simd,
-    simd_ffi,
     staged_api,
     prelude_import,
     ptr_metadata,
     rustc_attrs
 )]
+#![cfg_attr(doc, feature(intra_doc_pointers))]
 #![cfg_attr(
     all(
         any(target_arch = "aarch64", target_arch = "arm64ec", target_arch = "arm",),
@@ -31,6 +30,7 @@
     any(target_arch = "powerpc", target_arch = "powerpc64"),
     feature(stdarch_powerpc)
 )]
+#![cfg_attr(target_arch = "hexagon", feature(stdarch_hexagon))]
 #![warn(missing_docs, clippy::missing_inline_in_public_items)] // basically all items, really
 #![deny(
     unsafe_op_in_unsafe_fn,

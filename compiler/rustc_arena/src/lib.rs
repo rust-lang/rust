@@ -287,10 +287,9 @@ impl<T> TypedArena<T> {
             // Also ensure that this chunk can fit `additional`.
             new_cap = cmp::max(additional, new_cap);
 
-            let mut chunk = ArenaChunk::<T>::new(new_cap);
+            let chunk = chunks.push_mut(ArenaChunk::<T>::new(new_cap));
             self.ptr.set(chunk.start());
             self.end.set(chunk.end());
-            chunks.push(chunk);
         }
     }
 
@@ -419,7 +418,7 @@ impl DroplessArena {
             // Also ensure that this chunk can fit `additional`.
             new_cap = cmp::max(additional, new_cap);
 
-            let mut chunk = ArenaChunk::new(align_up(new_cap, PAGE));
+            let chunk = chunks.push_mut(ArenaChunk::new(align_up(new_cap, PAGE)));
             self.start.set(chunk.start());
 
             // Align the end to DROPLESS_ALIGNMENT.
@@ -430,8 +429,6 @@ impl DroplessArena {
             debug_assert!(chunk.start().addr() <= end);
 
             self.end.set(chunk.end().with_addr(end));
-
-            chunks.push(chunk);
         }
     }
 

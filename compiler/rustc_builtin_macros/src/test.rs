@@ -483,7 +483,7 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
         AttributeParser::parse_limited(
             cx.sess,
             &i.attrs,
-            sym::should_panic,
+            &[sym::should_panic],
             i.span,
             i.node_id(),
             None,

@@ -52,30 +52,33 @@ fn test_ord_min_max_by() {
 #[test]
 fn min_by_compare_argument_order() {
     let mut order = vec![];
-    let _ = cmp::min_by(1i32, 2, |a, b| {
+    let res = cmp::min_by(1i32, 2, |a, b| {
         order.push((*a, *b));
         a.cmp(b)
     });
+    assert_eq!(res, 1);
     assert_eq!(order, [(1, 2)]);
 }
 
 #[test]
 fn max_by_compare_argument_order() {
     let mut order = vec![];
-    let _ = cmp::max_by(1i32, 2, |a, b| {
+    let res = cmp::max_by(1i32, 2, |a, b| {
         order.push((*a, *b));
         a.cmp(b)
     });
+    assert_eq!(res, 2);
     assert_eq!(order, [(1, 2)]);
 }
 
 #[test]
 fn minmax_by_compare_argument_order() {
     let mut order = vec![];
-    let _ = cmp::minmax_by(1i32, 2, |a, b| {
+    let res = cmp::minmax_by(1i32, 2, |a, b| {
         order.push((*a, *b));
         a.cmp(b)
     });
+    assert_eq!(res, [1, 2]);
     assert_eq!(order, [(1, 2)]);
 }
 

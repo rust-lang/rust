@@ -564,16 +564,16 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let infcx = self.build(input.typing_mode);
+        let infcx = self.build(input.typing_mode.0);
         let (value, args) = infcx.instantiate_canonical(span, &input.canonical);
         (infcx, value, args)
     }
 
     pub fn build_with_typing_env(
         mut self,
-        TypingEnv { typing_mode, param_env }: TypingEnv<'tcx>,
+        typing_env: TypingEnv<'tcx>,
     ) -> (InferCtxt<'tcx>, ty::ParamEnv<'tcx>) {
-        (self.build(typing_mode), param_env)
+        (self.build(typing_env.typing_mode()), typing_env.param_env)
     }
 
     pub fn build(&mut self, typing_mode: TypingMode<'tcx>) -> InferCtxt<'tcx> {
@@ -1376,7 +1376,7 @@ impl<'tcx> InferCtxt<'tcx> {
             | ty::TypingMode::PostBorrowckAnalysis { .. }
             | ty::TypingMode::PostAnalysis) => mode,
         };
-        ty::TypingEnv { typing_mode, param_env }
+        ty::TypingEnv::new(param_env, typing_mode)
     }
 
     /// Similar to [`Self::canonicalize_query`], except that it returns

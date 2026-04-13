@@ -8,7 +8,10 @@ use crate::marker::PhantomData;
 #[expect(missing_debug_implementations)]
 #[fundamental]
 pub struct FieldRepresentingType<T: ?Sized, const VARIANT: u32, const FIELD: u32> {
-    _phantom: PhantomData<T>,
+    // We want this type to be invariant over `T`, because otherwise `field_of!(Struct<'short>,
+    // field)` is a subtype of `field_of!(Struct<'long>, field)`. This subtype relationship does not
+    // have an immediately obvious meaning and we want to prevent people from relying on it.
+    _phantom: PhantomData<fn(T) -> T>,
 }
 
 // SAFETY: `FieldRepresentingType` doesn't contain any `T`

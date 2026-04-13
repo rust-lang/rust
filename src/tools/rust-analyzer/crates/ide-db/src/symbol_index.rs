@@ -27,7 +27,10 @@ use std::{
     ops::ControlFlow,
 };
 
-use base_db::{CrateOrigin, LangCrateOrigin, LibraryRoots, LocalRoots, RootQueryDb, SourceRootId};
+use base_db::{
+    CrateOrigin, InternedSourceRootId, LangCrateOrigin, LibraryRoots, LocalRoots, SourceRootId,
+    source_root_crates,
+};
 use fst::{Automaton, Streamer, raw::IndexedValue};
 use hir::{
     Crate, Module,
@@ -255,7 +258,7 @@ pub fn world_symbols(db: &RootDatabase, mut query: Query) -> Vec<FileSymbol<'_>>
         let mut crates = Vec::new();
 
         for &root in LocalRoots::get(db).roots(db).iter() {
-            crates.extend(db.source_root_crates(root).iter().copied())
+            crates.extend(source_root_crates(db, root).iter().copied())
         }
         crates
             .par_iter()
@@ -322,7 +325,7 @@ fn resolve_path_to_modules(
     // If not anchored to crate, also search for modules matching first segment in local crates
     if !anchor_to_crate {
         for &root in LocalRoots::get(db).roots(db).iter() {
-            for &krate in db.source_root_crates(root).iter() {
+            for &krate in source_root_crates(db, root).iter() {
                 let root_module = Crate::from(krate).root_module(db);
                 for child in root_module.children(db) {
                     if let Some(name) = child.name(db)
@@ -369,11 +372,6 @@ impl<'db> SymbolIndex<'db> {
         db: &'db dyn HirDatabase,
         source_root_id: SourceRootId,
     ) -> &'db SymbolIndex<'db> {
-        // FIXME:
-        #[salsa::interned]
-        struct InternedSourceRootId {
-            id: SourceRootId,
-        }
         #[salsa::tracked(returns(ref))]
         fn library_symbols<'db>(
             db: &'db dyn HirDatabase,
@@ -385,7 +383,7 @@ impl<'db> SymbolIndex<'db> {
             hir::attach_db(db, || {
                 let mut symbol_collector = SymbolCollector::new(db, true);
 
-                db.source_root_crates(source_root_id.id(db))
+                source_root_crates(db, source_root_id.id(db))
                     .iter()
                     .flat_map(|&krate| Crate::from(krate).modules(db))
                     // we specifically avoid calling other SymbolsDatabase queries here, even though they do the same thing,

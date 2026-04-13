@@ -50,7 +50,7 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         let mut editor = builder.make_editor(ctx.source_file().syntax());
         for (range, expr) in replacements {
             if let Some(expr) = expr {
-                editor.insert(Position::before(range[0].clone()), expr.syntax().clone_for_update());
+                editor.insert(Position::before(range[0].clone()), expr.syntax());
             }
             for node_or_token in range {
                 editor.delete(node_or_token);
@@ -163,7 +163,7 @@ fn compute_dbg_replacement(
                 None => false,
             };
             let expr = replace_nested_dbgs(expr.clone());
-            let expr = if wrap { make::expr_paren(expr).into() } else { expr.clone_subtree() };
+            let expr = if wrap { make::expr_paren(expr).into() } else { expr };
             (vec![macro_call.syntax().clone().into()], Some(expr))
         }
         // dbg!(expr0, expr1, ...)
@@ -209,8 +209,7 @@ fn replace_nested_dbgs(expanded: ast::Expr) -> ast::Expr {
         return replaced;
     }
 
-    let expanded = expanded.clone_subtree();
-    let mut editor = SyntaxEditor::new(expanded.syntax().clone());
+    let (mut editor, expanded) = SyntaxEditor::with_ast_node(&expanded);
     // We need to collect to avoid mutation during traversal.
     let macro_exprs: Vec<_> =
         expanded.syntax().descendants().filter_map(ast::MacroExpr::cast).collect();
@@ -222,7 +221,7 @@ fn replace_nested_dbgs(expanded: ast::Expr) -> ast::Expr {
         };
 
         if let Some(expr) = expr_opt {
-            editor.replace(mac.syntax(), expr.syntax().clone_for_update());
+            editor.replace(mac.syntax(), expr.syntax());
         } else {
             editor.delete(mac.syntax());
         }

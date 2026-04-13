@@ -433,6 +433,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             // also nested delegations may need to access information about this code (#154332),
             // so it is better to leave this code as opposed to bodies of extern functions,
             // which are completely erased from existence.
+            // FIXME(fn_delegation): fix `help` in error message (see `inner-attr.stderr`)
             if param_count == 0
                 && let Some(block) = block
             {

@@ -5,9 +5,10 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::{VisitorResult, walk_list};
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, spawn, try_par_for_each_in};
+use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -945,7 +946,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }) => until_within(*outer_span, ty.span),
             // With generics and bounds.
             Node::Item(Item {
-                kind: ItemKind::Trait(_, _, _, _, generics, bounds, _),
+                kind: ItemKind::Trait(_, _, _, _, _, generics, bounds, _),
                 span: outer_span,
                 ..
             })
@@ -1245,25 +1246,7 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
     }
 }
 
-fn force_delayed_owners_lowering(tcx: TyCtxt<'_>) {
-    let krate = tcx.hir_crate(());
-    for &id in &krate.delayed_ids {
-        tcx.ensure_done().lower_delayed_owner(id);
-    }
-
-    let (_, krate) = krate.delayed_resolver.steal();
-    let prof = tcx.sess.prof.clone();
-
-    // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.
-    spawn(move || {
-        let _timer = prof.verbose_generic_activity("drop_ast");
-        drop(krate);
-    });
-}
-
 pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
-    force_delayed_owners_lowering(tcx);
-
     let mut collector = ItemCollector::new(tcx, true);
 
     // A "crate collector" and "module collector" start at a
@@ -1324,11 +1307,12 @@ struct ItemCollector<'tcx> {
     nested_bodies: Vec<LocalDefId>,
     delayed_lint_items: Vec<OwnerId>,
     eiis: Vec<LocalDefId>,
+    delayed_ids: Option<&'tcx FxIndexSet<LocalDefId>>,
 }
 
 impl<'tcx> ItemCollector<'tcx> {
     fn new(tcx: TyCtxt<'tcx>, crate_collector: bool) -> ItemCollector<'tcx> {
-        ItemCollector {
+        let mut collector = ItemCollector {
             crate_collector,
             tcx,
             submodules: Vec::default(),
@@ -1341,12 +1325,45 @@ impl<'tcx> ItemCollector<'tcx> {
             nested_bodies: Vec::default(),
             delayed_lint_items: Vec::default(),
             eiis: Vec::default(),
+            delayed_ids: None,
+        };
+
+        if crate_collector {
+            let krate = tcx.hir_crate(());
+            collector.delayed_ids = Some(&krate.delayed_ids);
+
+            let delayed_kinds =
+                krate.delayed_ids.iter().copied().map(|id| (id, krate.owners[id].expect_delayed()));
+
+            // FIXME(fn_delegation): need to add delayed lints, eiis
+            for (def_id, kind) in delayed_kinds {
+                let owner_id = OwnerId { def_id };
+
+                match kind {
+                    DelayedOwnerKind::Item => collector.items.push(ItemId { owner_id }),
+                    DelayedOwnerKind::ImplItem => {
+                        collector.impl_items.push(ImplItemId { owner_id })
+                    }
+                    DelayedOwnerKind::TraitItem => {
+                        collector.trait_items.push(TraitItemId { owner_id })
+                    }
+                };
+
+                collector.body_owners.push(def_id);
+            }
         }
+
+        collector
     }
 }
 
 impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
     type NestedFilter = nested_filter::All;
+
+    #[inline]
+    fn visit_if_delayed(&self, def_id: LocalDefId) -> bool {
+        !self.crate_collector || self.delayed_ids.is_none_or(|ids| !ids.contains(&def_id))
+    }
 
     fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
         self.tcx

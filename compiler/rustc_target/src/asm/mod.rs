@@ -623,7 +623,7 @@ impl InlineAsmRegClass {
             Self::Hexagon(r) => r.supported_types(arch),
             Self::LoongArch(r) => r.supported_types(arch),
             Self::Mips(r) => r.supported_types(arch),
-            Self::S390x(r) => r.supported_types(arch, allow_experimental_reg),
+            Self::S390x(r) => r.supported_types(arch),
             Self::Sparc(r) => r.supported_types(arch),
             Self::SpirV(r) => r.supported_types(arch),
             Self::Wasm(r) => r.supported_types(arch),

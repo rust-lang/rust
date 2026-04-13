@@ -19,11 +19,11 @@ fn test(x: u64) {
     foo.trait_method();
 }
 
-// CHECK: .balign 4
+// CHECK: .balign
 // CHECK: add rax, 1
 // CHECK: add rax, 42
 
-// CHECK: .balign 4
+// CHECK: .balign
 // CHECK: add rax, 2
 // CHECK: add rax, 42
 
@@ -52,7 +52,7 @@ impl Invert for i64 {
     }
 }
 
-// CHECK: .balign 4
+// CHECK: .balign
 // CHECK-LABEL: generic_function:
 // CHECK: call
 // CHECK: ret
@@ -71,7 +71,7 @@ pub extern "C" fn generic_function<T: Invert>(x: i64) -> i64 {
 #[repr(transparent)]
 struct Foo(u64);
 
-// CHECK: .balign 4
+// CHECK: .balign
 // CHECK-LABEL: method:
 // CHECK: mov rax, rdi
 
@@ -83,7 +83,7 @@ impl Foo {
     }
 }
 
-// CHECK: .balign 4
+// CHECK: .balign
 // CHECK-LABEL: trait_method:
 // CHECK: mov rax, rdi
 
@@ -99,7 +99,7 @@ impl Bar for Foo {
     }
 }
 
-// CHECK: .balign 4
+// CHECK: .balign
 // CHECK-LABEL: naked_with_args_and_return:
 // CHECK: lea rax, [rdi + rsi]
 

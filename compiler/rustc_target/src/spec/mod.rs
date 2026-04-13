@@ -47,7 +47,7 @@ use std::str::FromStr;
 use std::{fmt, io};
 
 use rustc_abi::{
-    Align, CanonAbi, Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutErrors,
+    Align, CanonAbi, Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutError,
 };
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_error_messages::{DiagArgValue, IntoDiagArg, into_diag_arg_using_display};
@@ -1395,6 +1395,16 @@ impl BinaryFormat {
             Self::Xcoff => object::BinaryFormat::Xcoff,
         }
     }
+
+    pub fn desc_symbol(&self) -> Symbol {
+        match self {
+            Self::Coff => sym::coff,
+            Self::Elf => sym::elf,
+            Self::MachO => sym::macho,
+            Self::Wasm => sym::wasm,
+            Self::Xcoff => sym::xcoff,
+        }
+    }
 }
 
 impl ToJson for Align {
@@ -2166,7 +2176,7 @@ pub struct TargetMetadata {
 }
 
 impl Target {
-    pub fn parse_data_layout(&self) -> Result<TargetDataLayout, TargetDataLayoutErrors<'_>> {
+    pub fn parse_data_layout(&self) -> Result<TargetDataLayout, TargetDataLayoutError<'_>> {
         let mut dl = TargetDataLayout::parse_from_llvm_datalayout_string(
             &self.data_layout,
             self.options.default_address_space,
@@ -2174,7 +2184,7 @@ impl Target {
 
         // Perform consistency checks against the Target information.
         if dl.endian != self.endian {
-            return Err(TargetDataLayoutErrors::InconsistentTargetArchitecture {
+            return Err(TargetDataLayoutError::InconsistentTargetArchitecture {
                 dl: dl.endian.as_str(),
                 target: self.endian.as_str(),
             });
@@ -2183,7 +2193,7 @@ impl Target {
         let target_pointer_width: u64 = self.pointer_width.into();
         let dl_pointer_size: u64 = dl.pointer_size().bits();
         if dl_pointer_size != target_pointer_width {
-            return Err(TargetDataLayoutErrors::InconsistentTargetPointerWidth {
+            return Err(TargetDataLayoutError::InconsistentTargetPointerWidth {
                 pointer_size: dl_pointer_size,
                 target: self.pointer_width,
             });
@@ -2192,7 +2202,7 @@ impl Target {
         dl.c_enum_min_size = Integer::from_size(Size::from_bits(
             self.c_enum_min_bits.unwrap_or(self.c_int_width as _),
         ))
-        .map_err(|err| TargetDataLayoutErrors::InvalidBitsSize { err })?;
+        .map_err(|err| TargetDataLayoutError::InvalidBitsSize { err })?;
 
         Ok(dl)
     }

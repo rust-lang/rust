@@ -761,6 +761,7 @@ impl<'a> State<'a> {
                 constness,
                 is_auto,
                 safety,
+                impl_restriction,
                 ident,
                 generics,
                 bounds,
@@ -770,6 +771,7 @@ impl<'a> State<'a> {
                 self.print_constness(constness);
                 self.print_is_auto(is_auto);
                 self.print_safety(safety);
+                self.print_impl_restriction(impl_restriction);
                 self.word_nbsp("trait");
                 self.print_ident(ident);
                 self.print_generic_params(generics.params);
@@ -2643,6 +2645,18 @@ impl<'a> State<'a> {
         match s {
             hir::IsAuto::Yes => self.word_nbsp("auto"),
             hir::IsAuto::No => {}
+        }
+    }
+
+    fn print_impl_restriction(&mut self, r: &hir::ImplRestriction<'_>) {
+        match r.kind {
+            hir::RestrictionKind::Unrestricted => {}
+            hir::RestrictionKind::Restricted(path) => {
+                self.word("impl(");
+                self.word_nbsp("in");
+                self.print_path(path, false);
+                self.word(")");
+            }
         }
     }
 }

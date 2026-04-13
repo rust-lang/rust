@@ -97,8 +97,7 @@ fn generate_fn_def_assist(
     };
 
     acc.add(AssistId::refactor(ASSIST_NAME), ASSIST_LABEL, lifetime_loc, |edit| {
-        let root = fn_def.syntax().ancestors().last().unwrap().clone();
-        let mut editor = SyntaxEditor::new(root);
+        let mut editor = edit.make_editor(fn_def.syntax());
         let factory = SyntaxFactory::with_mappings();
 
         if let Some(generic_list) = fn_def.generic_param_list() {
@@ -167,8 +166,7 @@ fn generate_impl_def_assist(
     let new_lifetime_name = generate_unique_lifetime_param_name(impl_def.generic_param_list())?;
 
     acc.add(AssistId::refactor(ASSIST_NAME), ASSIST_LABEL, lifetime_loc, |edit| {
-        let root = impl_def.syntax().ancestors().last().unwrap().clone();
-        let mut editor = SyntaxEditor::new(root);
+        let mut editor = edit.make_editor(impl_def.syntax());
         let factory = SyntaxFactory::without_mappings();
 
         if let Some(generic_list) = impl_def.generic_param_list() {

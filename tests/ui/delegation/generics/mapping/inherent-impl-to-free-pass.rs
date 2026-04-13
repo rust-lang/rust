@@ -2,7 +2,6 @@
 
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
-#![allow(late_bound_lifetime_arguments)]
 
 //! This is one of the mapping tests, which tests mapping of delegee parent and child
 //! generic params, whose main goal is to create cases with

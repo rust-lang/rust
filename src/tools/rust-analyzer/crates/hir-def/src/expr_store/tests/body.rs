@@ -660,3 +660,24 @@ async fn main(&self, param1: i32, ref mut param2: i32, _: i32, param4 @ _: i32, 
         }"#]],
     )
 }
+
+#[test]
+fn array_element_cfg() {
+    pretty_print(
+        r#"
+fn foo() {
+    [
+        (),
+        #[cfg(false)]
+        ()
+    ];
+}
+    "#,
+        expect![[r#"
+        fn foo() {
+            [
+                (),
+            ];
+        }"#]],
+    );
+}

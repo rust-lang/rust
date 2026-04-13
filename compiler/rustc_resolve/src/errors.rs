@@ -1,7 +1,7 @@
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, ElidedLifetimeInPathSubdiag,
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, ElidedLifetimeInPathSubdiag,
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, Subdiagnostic, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
@@ -1739,4 +1739,55 @@ pub(crate) struct AbsPathWithModuleSugg {
     #[applicability]
     pub applicability: Applicability,
     pub replacement: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("hidden lifetime parameters in types are deprecated")]
+pub(crate) struct ElidedLifetimesInPaths {
+    #[subdiagnostic]
+    pub subdiag: rustc_errors::ElidedLifetimeInPathSubdiag,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "{$num_snippets ->
+        [one] unused import: {$span_snippets}
+        *[other] unused imports: {$span_snippets}
+    }"
+)]
+pub(crate) struct UnusedImports {
+    #[subdiagnostic]
+    pub sugg: UnusedImportsSugg,
+    #[help("if this is a test module, consider adding a `#[cfg(test)]` to the containing module")]
+    pub test_module_span: Option<Span>,
+
+    pub span_snippets: DiagArgValue,
+    pub num_snippets: usize,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum UnusedImportsSugg {
+    #[suggestion(
+        "remove the whole `use` item",
+        applicability = "machine-applicable",
+        code = "",
+        style = "tool-only"
+    )]
+    RemoveWholeUse {
+        #[primary_span]
+        span: Span,
+    },
+    #[multipart_suggestion(
+        "{$num_to_remove ->
+            [one] remove the unused import
+            *[other] remove the unused imports
+        }",
+        applicability = "machine-applicable",
+        style = "tool-only"
+    )]
+    RemoveImports {
+        #[suggestion_part(code = "")]
+        remove_spans: Vec<Span>,
+        num_to_remove: usize,
+    },
 }

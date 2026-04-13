@@ -48,7 +48,7 @@ export async function makeDebugConfig(ctx: Ctx, runnable: ra.Runnable): Promise<
 }
 
 export async function startDebugSession(ctx: Ctx, runnable: ra.Runnable): Promise<boolean> {
-    let debugConfig: vscode.DebugConfiguration | undefined = undefined;
+    let debugConfig: vscode.DebugConfiguration | undefined;
     let message = "";
 
     const wsLaunchSection = vscode.workspace.getConfiguration("launch");

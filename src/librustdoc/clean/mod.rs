@@ -176,6 +176,35 @@ fn is_glob_import(tcx: TyCtxt<'_>, import_id: LocalDefId) -> bool {
     }
 }
 
+/// Returns true if `def_id` is a macro and should be inlined.
+pub(crate) fn macro_reexport_is_inline(
+    tcx: TyCtxt<'_>,
+    import_id: LocalDefId,
+    def_id: DefId,
+) -> bool {
+    if !matches!(tcx.def_kind(def_id), DefKind::Macro(MacroKinds::BANG)) {
+        return false;
+    }
+
+    for reexport_def_id in reexport_chain(tcx, import_id, def_id).iter().flat_map(|r| r.id()) {
+        let is_hidden = tcx.is_doc_hidden(reexport_def_id);
+        let is_inline = find_attr!(
+            inline::load_attrs(tcx, reexport_def_id),
+            Doc(d)
+            if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
+        );
+
+        // hidden takes absolute priority over inline on the same node
+        if is_hidden {
+            return false;
+        }
+        if is_inline {
+            return true;
+        }
+    }
+    false
+}
+
 fn generate_item_with_correct_attrs(
     cx: &mut DocContext<'_>,
     kind: ItemKind,
@@ -201,7 +230,8 @@ fn generate_item_with_correct_attrs(
                 Doc(d)
                 if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
             ) || (is_glob_import(tcx, import_id)
-                && (cx.document_hidden() || !tcx.is_doc_hidden(def_id)));
+                && (cx.document_hidden() || !tcx.is_doc_hidden(def_id)))
+                || macro_reexport_is_inline(tcx, import_id, def_id);
             attrs.extend(get_all_import_attributes(cx, import_id, def_id, is_inline));
             is_inline = is_inline || import_is_inline;
         }
@@ -1808,7 +1838,15 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(clean_ty(m.ty, cx)) }
         }
         TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
-        TyKind::Pat(ty, pat) => Type::Pat(Box::new(clean_ty(ty, cx)), format!("{pat:?}").into()),
+        TyKind::Pat(inner_ty, pat) => {
+            // Local HIR pattern types should print the same way as cross-crate inlined ones,
+            // so lower to the canonical `rustc_middle::ty::Pattern` representation first.
+            let pat = match lower_ty(cx.tcx, ty).kind() {
+                ty::Pat(_, pat) => format!("{pat:?}").into_boxed_str(),
+                _ => format!("{pat:?}").into(),
+            };
+            Type::Pat(Box::new(clean_ty(inner_ty, cx)), pat)
+        }
         TyKind::FieldOf(ty, hir::TyFieldPath { variant, field }) => {
             let field_str = if let Some(variant) = variant {
                 format!("{variant}.{field}")
@@ -2876,7 +2914,8 @@ fn clean_maybe_renamed_item<'tcx>(
             ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
-            ItemKind::Trait(_, _, _, _, generics, bounds, item_ids) => {
+            // FIXME: rustdoc will need to handle `impl` restrictions at some point
+            ItemKind::Trait(_, _, _, _impl_restriction, _, generics, bounds, item_ids) => {
                 let items = item_ids
                     .iter()
                     .map(|&ti| clean_trait_item(cx.tcx.hir_trait_item(ti), cx))

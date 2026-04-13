@@ -31,6 +31,9 @@
         "vscode": "^1.93.0"
     },
     "enabledApiProposals": [],
+    "extensionKind": [
+        "workspace"
+    ],
     "scripts": {
         "vscode:prepublish": "npm run build-base -- --minify",
         "package": "vsce package -o rust-analyzer.vsix",
@@ -54,8 +57,8 @@
         "vscode-languageclient": "^9.0.1"
     },
     "devDependencies": {
-        "@eslint/js": "^9.21.0",
-        "@stylistic/eslint-plugin": "^4.1.0",
+        "@eslint/js": "^10.0.1",
+        "@stylistic/eslint-plugin": "^5.10.0",
         "@stylistic/eslint-plugin-js": "^4.1.0",
         "@tsconfig/strictest": "^2.0.5",
         "@types/lodash": "^4.17.20",
@@ -64,16 +67,16 @@
         "@typescript-eslint/eslint-plugin": "^8.25.0",
         "@typescript-eslint/parser": "^8.25.0",
         "@vscode/test-electron": "^2.4.1",
-        "@vscode/vsce": "^3.6.0",
+        "@vscode/vsce": "^3.7.1",
         "esbuild": "^0.25.0",
-        "eslint": "^9.21.0",
-        "eslint-config-prettier": "^10.0.2",
+        "eslint": "^10.2.0",
+        "eslint-config-prettier": "^10.1.8",
         "eslint-define-config": "^2.1.0",
-        "ovsx": "0.10.1",
-        "prettier": "^3.5.2",
+        "ovsx": "0.10.10",
+        "prettier": "^3.8.1",
         "tslib": "^2.8.1",
-        "typescript": "^5.7.3",
-        "typescript-eslint": "^8.25.0"
+        "typescript": "^6.0.2",
+        "typescript-eslint": "^8.58.0"
     },
     "activationEvents": [
         "workspaceContains:Cargo.toml",
@@ -993,6 +996,19 @@
             {
                 "title": "Cargo",
                 "properties": {
+                    "rust-analyzer.cargo.metadataExtraArgs": {
+                        "markdownDescription": "Extra arguments passed only to `cargo metadata`, not to other cargo invocations.\nUseful for flags like `--config` that `cargo metadata` supports.",
+                        "default": [],
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            {
+                "title": "Cargo",
+                "properties": {
                     "rust-analyzer.cargo.noDefaultFeatures": {
                         "markdownDescription": "Whether to pass `--no-default-features` to cargo.",
                         "default": false,
@@ -1588,6 +1604,16 @@
                         "items": {
                             "type": "string"
                         }
+                    }
+                }
+            },
+            {
+                "title": "rust-analyzer",
+                "properties": {
+                    "rust-analyzer.disableFixtureSupport": {
+                        "markdownDescription": "Disable support for `#[rust_analyzer::rust_fixture]` snippets.\n\nIf you are not working on rust-analyzer itself, you should ignore this config.",
+                        "default": false,
+                        "type": "boolean"
                     }
                 }
             },
@@ -2502,6 +2528,24 @@
                 }
             },
             {
+                "title": "Inlay Hints",
+                "properties": {
+                    "rust-analyzer.inlayHints.typeHints.location": {
+                        "markdownDescription": "Where to render type hints relative to their binding pattern.",
+                        "default": "inline",
+                        "type": "string",
+                        "enum": [
+                            "inline",
+                            "end_of_line"
+                        ],
+                        "enumDescriptions": [
+                            "Render type hints directly after the binding identifier.",
+                            "Render type hints after the end of the containing `let` statement when possible."
+                        ]
+                    }
+                }
+            },
+            {
                 "title": "Interpret",
                 "properties": {
                     "rust-analyzer.interpret.tests": {
@@ -2865,7 +2909,7 @@
                 "title": "Runnables",
                 "properties": {
                     "rust-analyzer.runnables.bench.overrideCommand": {
-                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}`, `${executable_args}` to dynamically\nreplace the package name, target option (such as `--bin` or `--example`), the target name and\nthe arguments passed to test binary args (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
+                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders:\n- `${package}`: package name.\n- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.\n- `${target}`: target name (empty for `--lib`).\n- `${test_name}`: the test path filter, e.g. `module::bench_func`.\n- `${exact}`: `--exact` for single benchmarks, empty for modules.\n- `${include_ignored}`: always empty for benchmarks.\n- `${executable_args}`: all of the above binary args bundled together\n    (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
                         "default": null,
                         "type": [
                             "null",
@@ -2894,7 +2938,7 @@
                 "title": "Runnables",
                 "properties": {
                     "rust-analyzer.runnables.doctest.overrideCommand": {
-                        "markdownDescription": "Override the command used for bench runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}`, `${executable_args}` to dynamically\nreplace the package name, target option (such as `--bin` or `--example`), the target name and\nthe arguments passed to test binary args (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
+                        "markdownDescription": "Override the command used for doc-test runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders:\n- `${package}`: package name.\n- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.\n- `${target}`: target name (empty for `--lib`).\n- `${test_name}`: the test path filter, e.g. `module::func`.\n- `${exact}`: always empty for doc-tests.\n- `${include_ignored}`: always empty for doc-tests.\n- `${executable_args}`: all of the above binary args bundled together\n    (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
                         "default": null,
                         "type": [
                             "null",
@@ -2948,7 +2992,7 @@
                 "title": "Runnables",
                 "properties": {
                     "rust-analyzer.runnables.test.overrideCommand": {
-                        "markdownDescription": "Override the command used for test runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nUse the placeholders `${package}`, `${target_arg}`, `${target}`, `${executable_args}` to dynamically\nreplace the package name, target option (such as `--bin` or `--example`), the target name and\nthe arguments passed to test binary args (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
+                        "markdownDescription": "Override the command used for test runnables.\nThe first element of the array should be the program to execute (for example, `cargo`).\n\nAvailable placeholders:\n- `${package}`: package name.\n- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.\n- `${target}`: target name (empty for `--lib`).\n- `${test_name}`: the test path filter, e.g. `module::test_func`.\n- `${exact}`: `--exact` for single tests, empty for modules.\n- `${include_ignored}`: `--include-ignored` for single tests, empty otherwise.\n- `${executable_args}`: all of the above binary args bundled together\n    (includes `rust-analyzer.runnables.extraTestBinaryArgs`).",
                         "default": null,
                         "type": [
                             "null",

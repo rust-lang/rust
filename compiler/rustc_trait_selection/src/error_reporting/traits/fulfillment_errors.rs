@@ -459,7 +459,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 (cand.self_ty().kind(), main_trait_predicate.self_ty().skip_binder().kind())
                             {
                                 // Wrap method receivers and `&`-references in parens
-                                let suggestion = if self.tcx.sess.source_map().span_look_ahead(span, ".", Some(50)).is_some() {
+                                let suggestion = if self.tcx.sess.source_map().span_followed_by(span, ".").is_some() {
                                     vec![
                                         (span.shrink_to_lo(), format!("(")),
                                         (span.shrink_to_hi(), format!(" as {})", cand.self_ty())),
@@ -874,7 +874,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         if let Ok(Some(ImplSource::UserDefined(impl_data))) =
-            SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref.skip_binder()))
+            self.enter_forall(trait_ref, |trait_ref_for_select| {
+                SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref_for_select))
+            })
         {
             let impl_did = impl_data.impl_def_id;
             let trait_did = trait_ref.def_id();
@@ -882,7 +884,35 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let trait_name = self.tcx.item_name(trait_did);
 
             if self.tcx.is_const_trait(trait_did) && !self.tcx.is_const_trait_impl(impl_did) {
-                if let Some(impl_did) = impl_did.as_local()
+                if !impl_did.is_local() {
+                    diag.span_note(
+                        impl_span,
+                        format!("trait `{trait_name}` is implemented but not `const`"),
+                    );
+                }
+
+                if let Some(command) =
+                    find_attr!(self.tcx, impl_did, OnConst {directive, ..} => directive.as_deref())
+                        .flatten()
+                {
+                    let (_, format_args) = self.on_unimplemented_components(
+                        trait_ref,
+                        main_obligation,
+                        diag.long_ty_path(),
+                    );
+                    let CustomDiagnostic { message, label, notes, parent_label: _ } =
+                        command.eval(None, &format_args);
+
+                    if let Some(message) = message {
+                        diag.primary_message(message);
+                    }
+                    if let Some(label) = label {
+                        diag.span_label(span, label);
+                    }
+                    for note in notes {
+                        diag.note(note);
+                    }
+                } else if let Some(impl_did) = impl_did.as_local()
                     && let item = self.tcx.hir_expect_item(impl_did)
                     && let hir::ItemKind::Impl(item) = item.kind
                     && let Some(of_trait) = item.of_trait
@@ -894,43 +924,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         "const ".to_string(),
                         Applicability::MaybeIncorrect,
                     );
-                } else {
-                    diag.span_note(
-                        impl_span,
-                        format!("trait `{trait_name}` is implemented but not `const`"),
-                    );
-
-                    let (condition_options, format_args) = self.on_unimplemented_components(
-                        trait_ref,
-                        main_obligation,
-                        diag.long_ty_path(),
-                    );
-
-                    if let Some(command) = find_attr!(self.tcx, impl_did, OnConst {directive, ..} => directive.as_deref()).flatten(){
-                        let note = command.eval(
-                            Some(&condition_options),
-                            &format_args,
-                        );
-                        let CustomDiagnostic {
-                            message,
-                            label,
-                            notes,
-                            parent_label,
-                        } = note;
-
-                        if let Some(message) = message {
-                            diag.primary_message(message);
-                        }
-                        if let Some(label) = label {
-                            diag.span_label(impl_span, label);
-                        }
-                        for note in notes {
-                            diag.note(note);
-                        }
-                        if let Some(parent_label) = parent_label {
-                            diag.span_label(impl_span, parent_label);
-                        }
-                    }
                 }
             }
         }

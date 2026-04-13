@@ -39,6 +39,7 @@ use std::mem;
 use std::sync::Arc;
 
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::visit::AssocCtxt;
 use rustc_ast::{self as ast, *};
 use rustc_attr_parsing::{AttributeParser, Late, OmitDoc};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -154,7 +155,7 @@ struct LoweringContext<'a, 'hir, R> {
 
 impl<'a, 'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'a, 'hir, R> {
     fn new(tcx: TyCtxt<'hir>, resolver: &'a mut R) -> Self {
-        let registered_tools = tcx.registered_tools(());
+        let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
             tcx,
             resolver,
@@ -633,13 +634,29 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
     let mut delayed_ids: FxIndexSet<LocalDefId> = Default::default();
 
     for def_id in ast_index.indices() {
-        match &ast_index[def_id] {
-            AstOwner::Item(Item { kind: ItemKind::Delegation { .. }, .. })
-            | AstOwner::AssocItem(Item { kind: AssocItemKind::Delegation { .. }, .. }, _) => {
-                delayed_ids.insert(def_id);
+        let delayed_owner_kind = match &ast_index[def_id] {
+            AstOwner::Item(Item { kind: ItemKind::Delegation(_), .. }) => {
+                Some(hir::DelayedOwnerKind::Item)
             }
-            _ => lowerer.lower_node(def_id),
+            AstOwner::AssocItem(Item { kind: AssocItemKind::Delegation(_), .. }, ctx) => {
+                Some(match ctx {
+                    AssocCtxt::Trait => hir::DelayedOwnerKind::TraitItem,
+                    AssocCtxt::Impl { .. } => hir::DelayedOwnerKind::ImplItem,
+                })
+            }
+            _ => None,
         };
+
+        if let Some(kind) = delayed_owner_kind {
+            delayed_ids.insert(def_id);
+
+            let owner = lowerer.owners.get_or_insert_mut(def_id);
+            if let hir::MaybeOwner::Phantom = owner {
+                *owner = hir::MaybeOwner::Delayed(kind)
+            }
+        } else {
+            lowerer.lower_node(def_id);
+        }
     }
 
     // Don't hash unless necessary, because it's expensive.

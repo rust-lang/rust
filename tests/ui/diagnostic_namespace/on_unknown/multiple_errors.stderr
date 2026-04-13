@@ -1,0 +1,43 @@
+error[E0432]: custom message
+  --> $DIR/multiple_errors.rs:9:20
+   |
+LL |     use std::vec::{NonExisting, Vec, Whatever};
+   |                    ^^^^^^^^^^^       ^^^^^^^^ custom label
+   |                    |
+   |                    custom label
+   |
+   = note: unresolved imports `std::vec::NonExisting`, `std::vec::Whatever`
+   = note: custom note
+
+error[E0432]: custom message
+  --> $DIR/multiple_errors.rs:19:15
+   |
+LL |     use std::{Whatever, vec::NonExisting, vec::Vec, *};
+   |               ^^^^^^^^  ^^^^^^^^^^^^^^^^ custom label
+   |               |
+   |               custom label
+   |
+   = note: unresolved imports `std::Whatever`, `std::vec::NonExisting`
+   = note: custom note
+
+error[E0432]: custom message
+  --> $DIR/multiple_errors.rs:31:15
+   |
+LL |         vec::{NonExisting, Vec},
+   |               ^^^^^^^^^^^ custom label
+   |
+   = note: unresolved import `std::vec::NonExisting`
+   = note: custom note
+
+error[E0432]: custom message
+  --> $DIR/multiple_errors.rs:44:20
+   |
+LL |         vec::{Vec, non_existing::*},
+   |                    ^^^^^^^^^^^^ custom label
+   |
+   = note: unresolved import `std::vec::non_existing`
+   = note: custom note
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0432`.
