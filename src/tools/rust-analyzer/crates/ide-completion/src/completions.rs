@@ -276,9 +276,6 @@ impl Completions {
         path_ctx: &PathCompletionCtx<'_>,
         e: hir::Enum,
     ) {
-        if !ctx.check_stability_and_hidden(e) {
-            return;
-        }
         e.variants(ctx.db)
             .into_iter()
             .for_each(|variant| self.add_enum_variant(ctx, path_ctx, variant, None));
