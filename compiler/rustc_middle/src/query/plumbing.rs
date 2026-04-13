@@ -77,7 +77,11 @@ pub enum EnsureMode {
 }
 
 /// Stores data and metadata (e.g. function pointers) for a particular query.
-pub struct QueryVTable<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>> {
+pub struct QueryVTable<'tcx, C, H>
+where
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
     pub name: &'static str,
 
     /// True if this query has the `eval_always` modifier.
@@ -108,7 +112,13 @@ pub struct QueryVTable<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Valu
     pub format_value: fn(&C::Value) -> String,
 
     pub create_tagged_key: fn(C::Key) -> TaggedQueryKey<'tcx>,
+}
 
+impl<'tcx, C, H> QueryVTable<'tcx, C, H>
+where
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
     /// Function pointer that is called by the query methods on [`TyCtxt`] and
     /// friends[^1], after they have checked the in-memory cache and found no
     /// existing value for this key.
@@ -118,7 +128,20 @@ pub struct QueryVTable<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Valu
     /// and putting the obtained value into the in-memory cache.
     ///
     /// [^1]: [`TyCtxt`], [`TyCtxtAt`], [`TyCtxtEnsureOk`], [`TyCtxtEnsureDone`]
-    pub execute_query_fn: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
+    pub(crate) fn execute_query_fn(
+        &'tcx self,
+        tcx: TyCtxt<'tcx>,
+        span: Span,
+        key: C::Key,
+        mode: QueryMode,
+    ) -> Option<C::Value> {
+        // FIXME: Figure out likely or unlikely
+        if tcx.dep_graph.is_fully_enabled() {
+            crate::query::impl_::execution::execute_query_incr_inner(self, tcx, span, key, mode)
+        } else {
+            Some(crate::query::impl_::execution::execute_query_non_incr_inner(self, tcx, span, key))
+        }
+    }
 }
 
 pub trait QueryHelper<'tcx, K, V>: Default + 'static {

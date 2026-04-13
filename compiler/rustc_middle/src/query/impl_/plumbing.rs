@@ -170,7 +170,7 @@ pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache, H>(
         // FIXME(Zalathar): Is there a reasonable way to skip more of the
         // query bookkeeping when doing this?
         None => {
-            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Get);
+            query.execute_query_fn(tcx, DUMMY_SP, key, QueryMode::Get);
         }
     }
 }

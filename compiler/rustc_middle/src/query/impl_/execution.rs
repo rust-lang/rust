@@ -610,23 +610,23 @@ where
 /// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
 /// in non-incremental mode.
 #[inline(always)]
-pub(super) fn execute_query_non_incr_inner<
-    'tcx,
-    C: QueryCache,
-    H: QueryHelper<'tcx, C::Key, C::Value>,
->(
+pub(crate) fn execute_query_non_incr_inner<'tcx, C, H>(
     query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
     span: Span,
     key: C::Key,
-) -> C::Value {
+) -> C::Value
+where
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
     ensure_sufficient_stack(|| try_execute_query::<C, H, false>(query, tcx, span, key, None).0)
 }
 
 /// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
 /// in incremental mode.
 #[inline(always)]
-pub(super) fn execute_query_incr_inner<'tcx, C, H>(
+pub(crate) fn execute_query_incr_inner<'tcx, C, H>(
     query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
     span: Span,

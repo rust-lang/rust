@@ -88,7 +88,7 @@ macro_rules! define_queries {
                     }
                 }
 
-                pub(crate) fn make_query_vtable<'tcx>(incremental: bool)
+                pub(crate) fn make_query_vtable<'tcx>()
                     -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>, rustc_middle::queries::$name::Helper>
                 {
                     use rustc_middle::queries::$name::Value;
@@ -126,11 +126,6 @@ macro_rules! define_queries {
                             format!("{:?}", erase::restore_val(*erased_value))
                         },
                         create_tagged_key: TaggedQueryKey::$name,
-                        execute_query_fn: if incremental {
-                            crate::query::impl_::query_impl::$name::execute_query_incr::__rust_end_short_backtrace
-                        } else {
-                            crate::query::impl_::query_impl::$name::execute_query_non_incr::__rust_end_short_backtrace
-                        },
                     }
                 }
 
@@ -149,12 +144,12 @@ macro_rules! define_queries {
             }
         )*
 
-        pub(crate) fn make_query_vtables<'tcx>(incremental: bool)
+        pub(crate) fn make_query_vtables<'tcx>()
             -> rustc_middle::queries::QueryVTables<'tcx>
         {
             rustc_middle::queries::QueryVTables {
                 $(
-                    $name: crate::query::impl_::query_impl::$name::make_query_vtable(incremental),
+                    $name: crate::query::impl_::query_impl::$name::make_query_vtable(),
                 )*
             }
         }

@@ -43,7 +43,7 @@ where
 {
     match try_get_cached(tcx, &query.cache, key) {
         Some(value) => value,
-        None => (query.execute_query_fn)(tcx, span, key, QueryMode::Get).unwrap(),
+        None => query.execute_query_fn(tcx, span, key, QueryMode::Get).unwrap(),
     }
 }
 
@@ -62,7 +62,7 @@ pub(crate) fn query_ensure_ok_or_done<'tcx, C, H>(
     match try_get_cached(tcx, &query.cache, key) {
         Some(_value) => {}
         None => {
-            (query.execute_query_fn)(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode });
+            query.execute_query_fn(tcx, DUMMY_SP, key, QueryMode::Ensure { ensure_mode });
         }
     }
 }
@@ -90,7 +90,7 @@ where
     match try_get_cached(tcx, &query.cache, key) {
         Some(value) => convert(value),
         None => {
-            match (query.execute_query_fn)(
+            match query.execute_query_fn(
                 tcx,
                 DUMMY_SP,
                 key,

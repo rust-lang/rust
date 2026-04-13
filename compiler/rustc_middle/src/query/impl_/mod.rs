@@ -13,7 +13,7 @@ pub use crate::query::impl_::job::{QueryJobMap, break_query_cycle, print_query_s
 
 mod dep_kind_vtables;
 mod error;
-mod execution;
+pub(crate) mod execution;
 mod handle_cycle_error;
 mod job;
 mod plumbing;
@@ -39,11 +39,10 @@ pub fn query_system<'tcx>(
     local_providers: Providers,
     extern_providers: ExternProviders,
     on_disk_cache: Option<OnDiskCache>,
-    incremental: bool,
 ) -> QuerySystem<'tcx> {
     QuerySystem {
         arenas: Default::default(),
-        query_vtables: query_impl::make_query_vtables(incremental),
+        query_vtables: query_impl::make_query_vtables(),
         side_effects: Default::default(),
         on_disk_cache,
         local_providers,

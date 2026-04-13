@@ -969,8 +969,6 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         callback(sess, &mut providers);
     }
 
-    let incremental = dep_graph.is_fully_enabled();
-
     // Note: this function body is the origin point of the widely-used 'tcx lifetime.
     //
     // `gcx_cell` is defined here and `&gcx_cell` is passed to `create_global_ctxt`, which then
@@ -1000,7 +998,6 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
             providers.queries,
             providers.extern_queries,
             query_result_on_disk_cache,
-            incremental,
         ),
         providers.hooks,
         compiler.current_gcx.clone(),
