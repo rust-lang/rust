@@ -226,11 +226,6 @@ pub trait Visitor<'v>: Sized {
     /// or `ControlFlow<T>`.
     type Result: VisitorResult = ();
 
-    #[inline]
-    fn visit_if_delayed(&self, _: LocalDefId) -> bool {
-        true
-    }
-
     /// If `type NestedFilter` is set to visit nested items, this method
     /// must also be overridden to provide a map to retrieve nested items.
     fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
@@ -249,23 +244,18 @@ pub trait Visitor<'v>: Sized {
     /// this method is if you want a nested pattern but cannot supply a
     /// `TyCtxt`; see `maybe_tcx` for advice.
     fn visit_nested_item(&mut self, id: ItemId) -> Self::Result {
-        if self.should_visit_maybe_delayed_inter(id.owner_id.def_id) {
+        if Self::NestedFilter::INTER {
             let item = self.maybe_tcx().hir_item(id);
             try_visit!(self.visit_item(item));
         }
         Self::Result::output()
     }
 
-    // Now delayed owners are only delegations, which are either item, trait item or impl item.
-    fn should_visit_maybe_delayed_inter(&mut self, id: LocalDefId) -> bool {
-        Self::NestedFilter::INTER && self.visit_if_delayed(id)
-    }
-
     /// Like `visit_nested_item()`, but for trait items. See
     /// `visit_nested_item()` for advice on when to override this
     /// method.
     fn visit_nested_trait_item(&mut self, id: TraitItemId) -> Self::Result {
-        if self.should_visit_maybe_delayed_inter(id.owner_id.def_id) {
+        if Self::NestedFilter::INTER {
             let item = self.maybe_tcx().hir_trait_item(id);
             try_visit!(self.visit_trait_item(item));
         }
@@ -276,7 +266,7 @@ pub trait Visitor<'v>: Sized {
     /// `visit_nested_item()` for advice on when to override this
     /// method.
     fn visit_nested_impl_item(&mut self, id: ImplItemId) -> Self::Result {
-        if self.should_visit_maybe_delayed_inter(id.owner_id.def_id) {
+        if Self::NestedFilter::INTER {
             let item = self.maybe_tcx().hir_impl_item(id);
             try_visit!(self.visit_impl_item(item));
         }

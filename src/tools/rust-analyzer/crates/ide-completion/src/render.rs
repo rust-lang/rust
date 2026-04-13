@@ -2211,7 +2211,6 @@ fn bb()-> &'static aa {
 }
 "#,
             expect![[r#"
-                ex bb()  [type]
                 fn from_bytes(…) fn(&[u8]) -> &aa [type_could_unify]
             "#]],
         );

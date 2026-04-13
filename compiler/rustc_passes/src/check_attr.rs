@@ -385,6 +385,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::ThreadLocal
                     | AttributeKind::TypeLengthLimit { .. }
                     | AttributeKind::UnstableFeatureBound(..)
+                    | AttributeKind::UnstableRemoved(..)
                     | AttributeKind::Used { .. }
                     | AttributeKind::WindowsSubsystem(..)
                     // tidy-alphabetical-end

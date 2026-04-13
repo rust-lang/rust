@@ -2,7 +2,6 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::ControlFlow;
 
-use rustc_data_structures::thinvec::ExtractIf;
 use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
@@ -103,18 +102,18 @@ impl<'tcx> ObligationStorage<'tcx> {
             // we get all obligations involved in the overflow. We pretty much check: if
             // we were to do another step of `try_evaluate_obligations`, which goals would
             // change.
-            // FIXME: <https://github.com/Gankra/thin-vec/pull/66> is merged, this can be removed.
             self.overflowed.extend(
-                ExtractIf::new(&mut self.pending, |(o, stalled_on)| {
-                    let goal = o.as_goal();
-                    let result = <&SolverDelegate<'tcx>>::from(infcx).evaluate_root_goal(
-                        goal,
-                        o.cause.span,
-                        stalled_on.take(),
-                    );
-                    matches!(result, Ok(GoalEvaluation { has_changed: HasChanged::Yes, .. }))
-                })
-                .map(|(o, _)| o),
+                self.pending
+                    .extract_if(.., |(o, stalled_on)| {
+                        let goal = o.as_goal();
+                        let result = <&SolverDelegate<'tcx>>::from(infcx).evaluate_root_goal(
+                            goal,
+                            o.cause.span,
+                            stalled_on.take(),
+                        );
+                        matches!(result, Ok(GoalEvaluation { has_changed: HasChanged::Yes, .. }))
+                    })
+                    .map(|(o, _)| o),
             );
         })
     }
