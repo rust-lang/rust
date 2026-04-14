@@ -3872,8 +3872,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         let Some(body) = &delegation.body else { return };
         self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
-            let span = delegation.path.segments.last().unwrap().ident.span;
-            let ident = Ident::new(kw::SelfLower, span.normalize_to_macro_rules());
+            let ident = Ident::new(kw::SelfLower, body.span.normalize_to_macro_rules());
             let res = Res::Local(delegation.id);
             this.innermost_rib_bindings(ValueNS).insert(ident, res);
 
