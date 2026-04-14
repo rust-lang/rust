@@ -253,19 +253,20 @@ fn try_resched_if_needed<R: BootRuntime>() {
             let sched = unsafe { &mut *(ptr as *mut types::Scheduler<R>) };
             let current = sched.state.per_cpu.get(cpu_idx).and_then(|pc| pc.current);
             let idle = sched.state.per_cpu.get(cpu_idx).and_then(|pc| pc.idle_task);
-            let has_work = sched.has_runnable_work(cpu_idx);
             let runq_total = sched
                 .state
                 .per_cpu
                 .get(cpu_idx)
                 .map(|pc| pc.runq.iter().map(|q| q.len()).sum::<usize>())
                 .unwrap_or(0);
+            // Capture the current task's priority before schedule_point() runs,
+            // so we can accurately judge "no switch" outcomes below.
+            let current_prio = current
+                .and_then(|tid| crate::task::registry::get_task::<R>(tid))
+                .map(|t| t.priority as usize)
+                .unwrap_or(0);
             // Capture whether a reschedule was explicitly requested *before*
-            // schedule_point() clears these flags.  The warning below is only
-            // meaningful when a switch was requested but the scheduler couldn't
-            // make one (e.g. starvation).  Without this guard, the warning fires
-            // spuriously every tick while a lower-priority task is in the queue
-            // but the current task hasn't used up its timeslice yet.
+            // schedule_point() clears these flags.
             let resched_requested =
                 sched.state.per_cpu.get(cpu_idx).map_or(false, |pc| pc.need_resched)
                     || GLOBAL_NEED_RESCHED[cpu_idx].load(Ordering::Acquire);
@@ -284,17 +285,34 @@ fn try_resched_if_needed<R: BootRuntime>() {
                         switch.to_user_fs_base,
                     );
                 }
-            } else if has_work && runq_total > 1 && resched_requested {
-                // A resched was requested and there is runnable work, yet the
-                // scheduler chose not to switch.  This is a genuine scheduling
-                // anomaly worth diagnosing (potential starvation).
-                crate::kwarn!(
-                    "SCHED: CPU {} handled resched but made no switch: current={:?} idle={:?} runq_total={}",
-                    cpu_idx,
-                    current,
-                    idle,
-                    runq_total
-                );
+            } else if resched_requested {
+                // A resched was explicitly requested but no context switch happened.
+                // This is only a genuine anomaly when there are tasks at STRICTLY
+                // higher priority than the current task that should have preempted it.
+                // When the scheduler correctly re-selects the current task (it is the
+                // highest-priority runnable task), runq[(current_prio+1)..] will be
+                // empty and we stay silent.  Emitting a warning for that normal case
+                // produced misleading "handled resched but made no switch" floods
+                // under SMP when a Normal-priority task is the only high-priority
+                // runnable task while several lower-priority tasks wait in the queue.
+                let has_strictly_higher = sched
+                    .state
+                    .per_cpu
+                    .get(cpu_idx)
+                    .map(|pc| {
+                        let start = (current_prio + 1).min(pc.runq.len());
+                        pc.runq[start..].iter().any(|q| !q.is_empty())
+                    })
+                    .unwrap_or(false);
+                if has_strictly_higher {
+                    crate::kwarn!(
+                        "SCHED: CPU {} handled resched but made no switch: current={:?} idle={:?} runq_total={}",
+                        cpu_idx,
+                        current,
+                        idle,
+                        runq_total
+                    );
+                }
             }
         }
     } else {
@@ -1072,15 +1090,12 @@ pub fn set_priority<R: BootRuntime>(id: TaskId, priority: TaskPriority) {
 }
 
 pub fn task_status<R: BootRuntime>(id: TaskId) -> Option<(TaskState, Option<i32>)> {
+    // Task state and exit code live in the registry, not the scheduler.
+    // Holding SCHEDULER here was unnecessary and caused timer-ISR try_lock
+    // misses on all other CPUs (the supervisor polls every task every cycle).
     let rt = crate::runtime::<R>();
     let _irq = rt.irq_disable();
-    let lock = SCHEDULER.lock();
-    let res = if let Some(ptr) = *lock {
-        let sched = unsafe { &*(ptr as *const types::Scheduler<R>) };
-        crate::task::registry::get_task::<R>(id).map(|t| (t.state, t.exit_code))
-    } else {
-        None
-    };
+    let res = crate::task::registry::get_task::<R>(id).map(|t| (t.state, t.exit_code));
     rt.irq_restore(_irq);
     res
 }
