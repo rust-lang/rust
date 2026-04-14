@@ -256,7 +256,7 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }
             };
-            Ok(ty::AliasTerm::new_from_args(relation.cx(), a.kind, args))
+            Ok(a.with_args(relation.cx(), args))
         }
     }
 }

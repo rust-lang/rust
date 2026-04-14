@@ -1340,11 +1340,7 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
     };
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new_from_args(
-            tcx,
-            obligation.predicate.kind,
-            trait_ref.args,
-        ),
+        projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: ty.into(),
     };
 
@@ -1388,11 +1384,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
     debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id()).name(), sym::Output);
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new_from_args(
-            tcx,
-            obligation.predicate.kind,
-            trait_ref.args,
-        ),
+        projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: return_ty.into(),
     };
 
@@ -1434,11 +1426,7 @@ fn confirm_iterator_candidate<'cx, 'tcx>(
     debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id()).name(), sym::Item);
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new_from_args(
-            tcx,
-            obligation.predicate.kind,
-            trait_ref.args,
-        ),
+        projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: yield_ty.into(),
     };
 
@@ -1488,11 +1476,7 @@ fn confirm_async_iterator_candidate<'cx, 'tcx>(
     let item_ty = args.type_at(0);
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new_from_args(
-            tcx,
-            obligation.predicate.kind,
-            trait_ref.args,
-        ),
+        projection_term: obligation.predicate.with_args(tcx, trait_ref.args),
         term: item_ty.into(),
     };
 
@@ -1898,11 +1882,7 @@ fn confirm_async_fn_kind_helper_candidate<'cx, 'tcx>(
     };
 
     let predicate = ty::ProjectionPredicate {
-        projection_term: ty::AliasTerm::new_from_args(
-            selcx.tcx(),
-            obligation.predicate.kind,
-            obligation.predicate.args,
-        ),
+        projection_term: obligation.predicate.with_args(selcx.tcx(), obligation.predicate.args),
         term: ty::CoroutineClosureSignature::tupled_upvars_by_closure_kind(
             selcx.tcx(),
             goal_kind_ty.expect_ty().to_opt_closure_kind().unwrap(),

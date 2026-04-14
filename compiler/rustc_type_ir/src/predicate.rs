@@ -769,6 +769,10 @@ impl<I: Interner> AliasTerm<I> {
         Ty::new_alias(interner, ty::AliasTy::new_from_args(interner, alias_ty_kind, self.args))
             .into()
     }
+
+    pub fn with_args(self, interner: I, args: I::GenericArgs) -> Self {
+        Self::new_from_args(interner, self.kind, args)
+    }
 }
 
 /// The following methods work only with (trait) associated term projections.
