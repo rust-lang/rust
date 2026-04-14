@@ -226,11 +226,7 @@ impl AssignmentEdit {
     fn apply(self, syntax_editor: &mut SyntaxEditor, syntax_mapping: &SyntaxFactory) {
         // with sub_pattern: keep original tuple and add subpattern: `tup @ (_0, _1)`
         if self.in_sub_pattern {
-            self.ident_pat.set_pat_with_editor(
-                Some(self.tuple_pat.into()),
-                syntax_editor,
-                syntax_mapping,
-            );
+            self.ident_pat.set_pat(Some(self.tuple_pat.into()), syntax_editor, syntax_mapping);
         } else if self.is_shorthand_field {
             syntax_editor.insert(Position::after(self.ident_pat.syntax()), self.tuple_pat.syntax());
             syntax_editor

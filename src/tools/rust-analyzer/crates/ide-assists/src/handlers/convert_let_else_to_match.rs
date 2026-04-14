@@ -139,7 +139,7 @@ fn remove_mut_and_collect_idents(
                 p.name()?,
             );
             let non_mut_pat = if let Some(inner) = p.pat() {
-                non_mut_pat.set_pat_with_editor(
+                non_mut_pat.set_pat(
                     remove_mut_and_collect_idents(make, editor, &inner, acc),
                     editor,
                     make,

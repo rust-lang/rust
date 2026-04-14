@@ -198,7 +198,7 @@ pub trait AstNodeEdit: AstNode + Clone + Sized {
 impl<N: AstNode + Clone> AstNodeEdit for N {}
 
 impl ast::IdentPat {
-    pub fn set_pat_with_editor(
+    pub fn set_pat(
         &self,
         pat: Option<ast::Pat>,
         syntax_editor: &mut SyntaxEditor,
