@@ -4,8 +4,8 @@ use super::prelude::*;
 use crate::attributes::{NoArgsAttributeParser, OnDuplicate, SingleAttributeParser};
 use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
+use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::{Allow, Warn};
-use crate::target_checking::{ALL_TARGETS, AllowedTargets};
 
 pub(crate) struct RustcSkipDuringMethodDispatchParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcSkipDuringMethodDispatchParser {
@@ -140,12 +140,4 @@ impl<S: Stage> NoArgsAttributeParser<S> for FundamentalParser {
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Struct), Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::Fundamental;
-}
-
-pub(crate) struct PointeeParser;
-impl<S: Stage> NoArgsAttributeParser<S> for PointeeParser {
-    const PATH: &[Symbol] = &[sym::pointee];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
-    const CREATE: fn(Span) -> AttributeKind = AttributeKind::Pointee;
 }
