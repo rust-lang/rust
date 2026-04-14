@@ -12,6 +12,7 @@ pub mod job;
 pub mod logging;
 pub mod memory;
 pub mod once_cell;
+pub mod place;
 pub mod signal;
 
 pub mod sched;
