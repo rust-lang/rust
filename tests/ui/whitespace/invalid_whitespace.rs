@@ -8,5 +8,5 @@ fn main() {
     let y = 10;
 
     let a​= x + y;
-    //~^ ERROR unknown start of token
+    //~^ ERROR unknown start of token: \u{200b}
 }
