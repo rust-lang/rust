@@ -10,6 +10,8 @@ kind thingos.task.state = enum {
 /// A kernel-scheduled unit of execution
 kind thingos.task = struct {
   state: thingos.task.state,
+  job: option<ref<thingos.job>>,
+  name: option<string>,
 }
 
 /// A collection of related tasks

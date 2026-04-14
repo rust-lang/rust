@@ -19,6 +19,7 @@
 //! | `/proc/<pid>/fd/`                | Directory of open fd targets |
 //! | `/proc/<pid>/task/`              | Directory of threads in the process |
 //! | `/proc/<pid>/task/<tid>/name`    | Thread's human-readable name |
+//! | `/proc/<pid>/task/<tid>/task`    | Canonical `thingos::task::Task` — state, job, name (Phase 5) |
 //! | `/proc/<pid>/task_state`         | Canonical `thingos::task::TaskState` (Phase 1) |
 //! | `/proc/<pid>/job_state`          | Canonical `thingos::job::JobState` (Phase 2) |
 //! | `/proc/<pid>/job_exit`           | Canonical `thingos::job::JobExit` — state + code (Phase 3) |
@@ -281,6 +282,35 @@ fn lookup_pid_task(pid: u32, tid_and_rest: &str) -> SysResult<Arc<dyn VfsNode>> 
             let ino = 0xC000_0000_0000_0000u64 | ((pid as u64) << 28) | (tid & 0x0FFF_FFFF);
             Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), ino)))
         }
+        "task" => {
+            // Canonical enriched Task shape (Phase 5 — v2).
+            //
+            // Populates the full thingos.task v2 shape: state, job, and name.
+            // Uses `kernel::task::bridge::task_from_snapshot` so that all three
+            // canonical fields are derived in one place.
+            let task = crate::task::bridge::task_from_snapshot(thread);
+            let state_name = match task.state {
+                thingos::task::TaskState::New => "new",
+                thingos::task::TaskState::Ready => "ready",
+                thingos::task::TaskState::Running => "running",
+                thingos::task::TaskState::Blocked => "blocked",
+                thingos::task::TaskState::Exited => "exited",
+            };
+            let job_str = match task.job {
+                Some(j) => alloc::format!("{}", j),
+                None => alloc::string::String::from("-"),
+            };
+            let name_str = match task.name.as_deref() {
+                Some(n) => alloc::string::String::from(n),
+                None => alloc::string::String::from("-"),
+            };
+            let text = alloc::format!(
+                "state: {}\njob: {}\nname: {}\n",
+                state_name, job_str, name_str
+            );
+            let ino = 0xD000_0000_0000_0000u64 | ((pid as u64) << 28) | (tid & 0x0FFF_FFFF);
+            Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), ino)))
+        }
         _ => Err(Errno::ENOENT),
     }
 }
@@ -468,7 +498,7 @@ impl VfsNode for ProcPidTaskTidDirNode {
         })
     }
     fn readdir(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
-        let entries = ["name", "task_state"];
+        let entries = ["name", "task_state", "task"];
         super::write_readdir_entries(entries.into_iter(), offset, buf)
     }
 }
