@@ -1,0 +1,28 @@
+- // MIR for `move_then_rebuild_plain` before GVN
++ // MIR for `move_then_rebuild_plain` after GVN
+  
+  fn move_then_rebuild_plain() -> () {
+      let mut _0: ();
+      let mut _1: ();
+      let mut _2: (u64,);
+      let mut _3: (u64,);
+  
+      bb0: {
+-         _2 = (const 1_u64,);
+-         _1 = consume::<(u64,)>(move _2) -> [return: bb1, unwind unreachable];
++         _2 = const (1_u64,);
++         _1 = consume::<(u64,)>(const (1_u64,)) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb1: {
+-         _3 = (const 1_u64,);
+-         _1 = consume::<(u64,)>(move _3) -> [return: bb2, unwind unreachable];
++         _3 = const (1_u64,);
++         _1 = consume::<(u64,)>(const (1_u64,)) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
+          return;
+      }
+  }
+  

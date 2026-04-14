@@ -235,8 +235,12 @@ fn remove_storage_dead<T>(f: fn() -> AlwaysSome<T>) -> AlwaysSome<T> {
     // CHECK-LABEL: fn remove_storage_dead(
     // CHECK: [[V1:_.*]] = copy _1() -> [return: [[BB1:bb.*]],
     // CHECK: [[BB1]]: {
-    // CHECK-NOT: StorageDead([[V1]]);
-    // CHECK: _0 = copy [[V1]];
+    // After <https://github.com/rust-lang/rust/issues/155241>, GVN no longer
+    // unifies the rebuilt `AlwaysSome::<T>::Some(_)` with `[[V1]]`, because
+    // the `Move` of `((... as Some).0: T)` invalidates `[[V1]]`'s recorded
+    // value. The aggregate-to-copy rewrite (and the related `StorageDead`
+    // elision) therefore no longer fires here.
+    // CHECK-NOT: _0 = copy [[V1]];
     let v = {
         match f() {
             AlwaysSome::Some(v) => v,

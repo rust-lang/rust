@@ -528,6 +528,25 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         self.rev_locals[value].push(local);
     }
 
+    /// Drop everything GVN knows about `local`, so that later code cannot unify another
+    /// value-equivalent expression with it via `try_as_local` / `try_as_place`. This must
+    /// be called whenever the storage backing `local` is invalidated — in particular,
+    /// whenever `local` is moved out of, because `Operand::Move(p)` leaves `p` in an
+    /// unspecified state (the callee may mutate it, it may be partially deinitialised,
+    /// and it may no longer be dropped by this function).
+    ///
+    /// Before this was introduced, GVN happily rewrote a later aggregate whose components
+    /// happened to have the same VnIndex into `Operand::Copy(earlier_local)`, and the
+    /// subsequent `StorageRemover` pass downgraded `Operand::Move(earlier_local)` uses
+    /// to `Operand::Copy(earlier_local)`, turning a single `move` into a double-read of
+    /// freed/mutated memory. See <https://github.com/rust-lang/rust/issues/155241>.
+    #[instrument(level = "trace", skip(self))]
+    fn invalidate_local(&mut self, local: Local) {
+        if let Some(vn) = self.locals[local].take() {
+            self.rev_locals[vn].retain(|l| *l != local);
+        }
+    }
+
     fn insert_bool(&mut self, flag: bool) -> VnIndex {
         // Booleans are deterministic.
         let value = Const::from_bool(self.tcx, flag);
@@ -1014,8 +1033,32 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let value = match *operand {
             Operand::RuntimeChecks(c) => self.insert(self.tcx.types.bool, Value::RuntimeChecks(c)),
             Operand::Constant(ref constant) => self.insert_constant(constant.const_),
-            Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
-                self.simplify_place_value(place, location)?
+            Operand::Copy(ref mut place) => self.simplify_place_value(place, location)?,
+            Operand::Move(ref mut place) => {
+                // Compute the VnIndex first (using the same machinery as `Copy`, since for the
+                // purpose of *this* read `Move` and `Copy` yield the same value). Then, if the
+                // moved-from place actually has destructors to run, drop everything we know
+                // about the backing local. After that program point the storage behind
+                // `place.local` is in an unspecified state — continuing to treat `place.local`
+                // as holding the read value would let GVN unify a later rvalue with it and
+                // rewrite the later rvalue into `Operand::Copy(place.local)`, which (once
+                // `StorageRemover` rewrites the original `Move` to `Copy` too) turns a single
+                // move into a double read of freed / mutated memory.
+                // See <https://github.com/rust-lang/rust/issues/155241>.
+                //
+                // For types with no drop glue (`!needs_drop`), `Move` and `Copy` are
+                // observationally equivalent in the post-borrowck MIR that GVN runs on: the
+                // bit pattern at the source is preserved and there is no destructor that would
+                // free / overwrite it on the move path, so unifying later reads with
+                // `place.local` is sound. We keep the existing GVN behaviour in that case to
+                // avoid pessimising e.g. moves of `&mut T` and other non-`Copy` but
+                // non-droppable values.
+                let value = self.simplify_place_value(place, location)?;
+                let place_ty = place.ty(self.local_decls, self.tcx).ty;
+                if place_ty.needs_drop(self.tcx, self.typing_env()) {
+                    self.invalidate_local(place.local);
+                }
+                value
             }
         };
         if let Some(const_) = self.try_as_constant(value) {
