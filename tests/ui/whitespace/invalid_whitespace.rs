@@ -14,3 +14,4 @@ fn main() {
     let a​= x + y;
     //~^ ERROR unknown start of token
 }
+
