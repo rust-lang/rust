@@ -61,11 +61,27 @@ LL |     if let Foo::A { .. } = f {}
    |        ^^^^^^^^^^^^^^^^^^^^^
    |
    = help: explicitly list all variants of the enum in a `match`
-note: using if let only matches on one variant (try using `match`)
+note: using `if let` only matches on one variant (try using `match`)
   --> $DIR/must_match_exhaustively.rs:44:8
    |
 LL |     if let Foo::A { .. } = f {}
    |        ^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: match is not exhaustive
+  --> $DIR/must_match_exhaustively.rs:47:5
+   |
+LL | #[rustc_must_match_exhaustively]
+   | -------------------------------- required because of this attribute
+...
+LL |     let Foo::A { .. } = f else { loop {} };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: explicitly list all variants of the enum in a `match`
+note: using `let else` only matches on one variant (try using `match`)
+  --> $DIR/must_match_exhaustively.rs:47:9
+   |
+LL |     let Foo::A { .. } = f else { loop {} };
+   |         ^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
 
