@@ -3366,10 +3366,7 @@ mod tests {
                     thread_ids: alloc::vec![pid as TaskId],
                     exec_in_progress: false,
                     exec_path: alloc::string::String::new(),
-                    mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                        crate::memory::mappings::MappingList::new(),
-                    )),
-                    aspace_raw: 0,
+                    space: crate::task::ProcessAddressSpace::empty(),
                     signals: crate::signal::ProcessSignals::new(),
                     children_done: alloc::collections::VecDeque::new(),
                 },
@@ -3617,10 +3614,7 @@ mod tests {
             thread_ids: alloc::vec![7000, 7001],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
@@ -3653,10 +3647,7 @@ mod tests {
             thread_ids: alloc::vec![8700, 8701],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
@@ -3715,10 +3706,7 @@ mod tests {
             thread_ids: alloc::vec![8800, 8801],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
@@ -3781,10 +3769,7 @@ mod tests {
             thread_ids: alloc::vec![9100, 9101, 9102],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
@@ -3890,10 +3875,7 @@ mod tests {
             thread_ids: all_tids.clone(),
             exec_in_progress: false,
             exec_path: alloc::string::String::from("/old/binary"),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
@@ -3986,10 +3968,7 @@ mod tests {
             thread_ids: alloc::vec![9300],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
