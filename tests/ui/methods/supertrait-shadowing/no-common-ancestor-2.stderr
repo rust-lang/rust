@@ -7,23 +7,23 @@ LL |     ().hello();
 note: candidate #1 is defined in an impl of the trait `A` for the type `T`
   --> $DIR/no-common-ancestor-2.rs:4:5
    |
-LL |     fn hello(&self) {
-   |     ^^^^^^^^^^^^^^^
+LL |     fn hello(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: candidate #2 is defined in an impl of the trait `B` for the type `T`
   --> $DIR/no-common-ancestor-2.rs:11:5
    |
-LL |     fn hello(&self) {
-   |     ^^^^^^^^^^^^^^^
+LL |     fn hello(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: candidate #3 is defined in an impl of the trait `C` for the type `T`
   --> $DIR/no-common-ancestor-2.rs:18:5
    |
-LL |     fn hello(&self) {
-   |     ^^^^^^^^^^^^^^^
+LL |     fn hello(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: candidate #4 is defined in an impl of the trait `D` for the type `T`
   --> $DIR/no-common-ancestor-2.rs:28:5
    |
-LL |     fn hello(&self) {
-   |     ^^^^^^^^^^^^^^^
+LL |     fn hello(&self) -> &'static str {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
 LL -     ().hello();

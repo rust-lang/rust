@@ -1,5 +1,4 @@
 //@ run-pass
-//@ check-run-results
 
 #![feature(supertrait_item_shadowing)]
 #![allow(dead_code)]
@@ -19,5 +18,5 @@ impl<T> B for T {
 }
 
 fn main() {
-    println!("{}", i32::CONST);
+    assert_eq!(i32::CONST, 2)
 }

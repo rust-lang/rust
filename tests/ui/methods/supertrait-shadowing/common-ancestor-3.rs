@@ -1,5 +1,4 @@
 //@ run-pass
-//@ check-run-results
 
 #![feature(supertrait_item_shadowing)]
 #![warn(resolving_to_items_shadowing_supertrait_items)]
@@ -7,23 +6,23 @@
 #![allow(dead_code)]
 
 trait A {
-    fn hello(&self) {
-        println!("A");
+    fn hello(&self) -> &'static str {
+        "A"
     }
 }
 impl<T> A for T {}
 
 trait B {
-    fn hello(&self) {
-        println!("B");
+    fn hello(&self) -> &'static str {
+        "B"
     }
 }
 impl<T> B for T {}
 
 trait C: A + B {
-    fn hello(&self) {
+    fn hello(&self) -> &'static str {
         //~^ WARN trait item `hello` from `C` shadows identically named item
-        println!("C");
+        "C"
     }
 }
 impl<T> C for T {}
@@ -31,14 +30,14 @@ impl<T> C for T {}
 // `D` extends `C` which extends `B` and `A`
 
 trait D: C {
-    fn hello(&self) {
+    fn hello(&self) -> &'static str {
         //~^ WARN trait item `hello` from `D` shadows identically named item
-        println!("D");
+        "D"
     }
 }
 impl<T> D for T {}
 
 fn main() {
-    ().hello();
+    assert_eq!(().hello(), "D");
     //~^ WARN trait item `hello` from `D` shadows identically named item from supertrait
 }
