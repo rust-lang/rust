@@ -1,0 +1,44 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/default-trait-bounds.rs:26:34
+   |
+LL | #[cfg(fail)] fn a1_fail() { a1::<str>; }
+   |                                  ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: required for `()` to implement `A1<str>`
+note: required by a bound in `a1`
+  --> $DIR/default-trait-bounds.rs:25:30
+   |
+LL | fn a1<T: ?Sized>() where (): A1<T> { ensure_is_sized::<T>; }
+   |                              ^^^^^ required by this bound in `a1`
+
+error[E0277]: the size for values of type `ExternTy` cannot be known
+  --> $DIR/default-trait-bounds.rs:49:34
+   |
+LL | #[cfg(fail)] fn b1_fail() { b1::<ExternTy>; }
+   |                                  ^^^^^^^^ doesn't have a known size
+   |
+   = help: the nightly-only, unstable trait `MetaSized` is not implemented for `ExternTy`
+   = note: required for `()` to implement `B1<ExternTy>`
+note: required by a bound in `b1`
+  --> $DIR/default-trait-bounds.rs:47:36
+   |
+LL | fn b1<T: PointeeSized>() where (): B1<T> { ensure_is_meta_sized::<T>(); }
+   |                                    ^^^^^ required by this bound in `b1`
+
+error[E0277]: the trait bound `ExternTy: C1` is not satisfied
+  --> $DIR/default-trait-bounds.rs:65:34
+   |
+LL | #[cfg(fail)] fn c1_fail() { c1::<ExternTy>; }
+   |                                  ^^^^^^^^ the nightly-only, unstable trait `MetaSized` is not implemented for `ExternTy`
+   |
+   = note: required for `ExternTy` to implement `C1`
+note: required by a bound in `c1`
+  --> $DIR/default-trait-bounds.rs:63:35
+   |
+LL | fn c1<T: PointeeSized>() where T: C1 { ensure_is_meta_sized::<T>; }
+   |                                   ^^ required by this bound in `c1`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
