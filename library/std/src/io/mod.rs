@@ -3087,8 +3087,9 @@ impl<T: Read> Read for Take<T> {
 
             let mut sliced_buf: BorrowedBuf<'_> = ibuf.into();
 
-            // SAFETY: extra_init bytes of ibuf are known to be initialized
             if is_init {
+                // SAFETY: `sliced_buf` is a subslice of `buf`, so if `buf` was initialized then
+                // `sliced_buf` is.
                 unsafe { sliced_buf.set_init() };
             }
 
