@@ -11,6 +11,7 @@ pub mod irq;
 pub mod job;
 pub mod logging;
 pub mod memory;
+pub mod message;
 pub mod once_cell;
 pub mod place;
 pub mod signal;

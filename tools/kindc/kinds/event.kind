@@ -15,8 +15,3 @@ kind thingos.event = enum {
   },
 }
 
-/// A message sent over a port
-kind thingos.port.message = struct {
-  kind: ref<thingos.kind>,
-  payload: bytes,
-}
