@@ -10,6 +10,6 @@ fn main() {
     let x = 5;
     let y = 10;
 
-    let a\u{200B}= x + y;
+    let a​= x + y;
     //~^ ERROR unknown start of token
 }
