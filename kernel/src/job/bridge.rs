@@ -165,3 +165,148 @@ pub fn job_wait_result_from_poll(poll_result: Option<i32>) -> JobWaitResult {
 pub fn job_wait_result_from_waitpid(exit_code: i32) -> JobWaitResult {
     JobWaitResult::Exited { code: Some(exit_code) }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sched::hooks::ProcessSnapshot;
+    use crate::task::TaskState;
+
+    fn make_snapshot(state: TaskState, exit_code: Option<i32>) -> ProcessSnapshot {
+        ProcessSnapshot {
+            pid: 1,
+            ppid: 0,
+            tid: 1,
+            name: alloc::string::String::from("test"),
+            state,
+            argv: alloc::vec::Vec::new(),
+            exec_path: alloc::string::String::new(),
+            exit_code,
+            pgid: 1,
+            sid: 1,
+            session_leader: false,
+            cwd: alloc::string::String::from("/"),
+            namespace_label: alloc::string::String::from("global"),
+        }
+    }
+
+    // ── job_state_from_thread_states ─────────────────────────────────────────
+
+    #[test]
+    fn test_job_state_empty_is_new() {
+        assert_eq!(job_state_from_thread_states(&[]), JobState::New);
+    }
+
+    #[test]
+    fn test_job_state_runnable_thread_is_running() {
+        assert_eq!(
+            job_state_from_thread_states(&[ThreadState::Runnable]),
+            JobState::Running
+        );
+    }
+
+    #[test]
+    fn test_job_state_running_thread_is_running() {
+        assert_eq!(
+            job_state_from_thread_states(&[ThreadState::Running]),
+            JobState::Running
+        );
+    }
+
+    #[test]
+    fn test_job_state_blocked_thread_is_running() {
+        assert_eq!(
+            job_state_from_thread_states(&[ThreadState::Blocked]),
+            JobState::Running
+        );
+    }
+
+    #[test]
+    fn test_job_state_all_dead_is_exited() {
+        assert_eq!(
+            job_state_from_thread_states(&[ThreadState::Dead, ThreadState::Dead]),
+            JobState::Exited
+        );
+    }
+
+    #[test]
+    fn test_job_state_mixed_live_and_dead_is_running() {
+        assert_eq!(
+            job_state_from_thread_states(&[ThreadState::Dead, ThreadState::Runnable]),
+            JobState::Running
+        );
+    }
+
+    // ── job_from_thread_states ───────────────────────────────────────────────
+
+    #[test]
+    fn test_job_from_thread_states_wraps_state() {
+        let job = job_from_thread_states(&[ThreadState::Runnable]);
+        assert_eq!(job.state, JobState::Running);
+    }
+
+    // ── job_exit_from_snapshot ───────────────────────────────────────────────
+
+    #[test]
+    fn test_job_exit_live_process_no_code() {
+        let snap = make_snapshot(TaskState::Runnable, None);
+        let exit = job_exit_from_snapshot(&snap);
+        assert_eq!(exit.state, JobState::Running);
+        assert_eq!(exit.code, None);
+    }
+
+    #[test]
+    fn test_job_exit_dead_process_has_code() {
+        let snap = make_snapshot(TaskState::Dead, Some(42));
+        let exit = job_exit_from_snapshot(&snap);
+        assert_eq!(exit.state, JobState::Exited);
+        assert_eq!(exit.code, Some(42));
+    }
+
+    #[test]
+    fn test_job_exit_live_process_stale_code_discarded() {
+        // A running process that somehow has a stale exit_code should not leak
+        // that code into the canonical JobExit representation.
+        let snap = make_snapshot(TaskState::Running, Some(99));
+        let exit = job_exit_from_snapshot(&snap);
+        assert_eq!(exit.state, JobState::Running);
+        assert_eq!(exit.code, None);
+    }
+
+    // ── job_wait_result_from_poll ────────────────────────────────────────────
+
+    #[test]
+    fn test_poll_none_is_running() {
+        assert_eq!(job_wait_result_from_poll(None), JobWaitResult::Running);
+    }
+
+    #[test]
+    fn test_poll_some_is_exited_with_code() {
+        assert_eq!(
+            job_wait_result_from_poll(Some(0)),
+            JobWaitResult::Exited { code: Some(0) }
+        );
+        assert_eq!(
+            job_wait_result_from_poll(Some(1)),
+            JobWaitResult::Exited { code: Some(1) }
+        );
+        assert_eq!(
+            job_wait_result_from_poll(Some(-1)),
+            JobWaitResult::Exited { code: Some(-1) }
+        );
+    }
+
+    // ── job_wait_result_from_waitpid ─────────────────────────────────────────
+
+    #[test]
+    fn test_waitpid_produces_exited_with_code() {
+        assert_eq!(
+            job_wait_result_from_waitpid(0),
+            JobWaitResult::Exited { code: Some(0) }
+        );
+        assert_eq!(
+            job_wait_result_from_waitpid(127),
+            JobWaitResult::Exited { code: Some(127) }
+        );
+    }
+}

@@ -190,3 +190,101 @@ impl JobWaitResult {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── JobState ─────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_job_state_as_str() {
+        assert_eq!(JobState::New.as_str(), "New");
+        assert_eq!(JobState::Running.as_str(), "Running");
+        assert_eq!(JobState::Exited.as_str(), "Exited");
+    }
+
+    #[test]
+    fn test_job_state_equality() {
+        assert_eq!(JobState::New, JobState::New);
+        assert_ne!(JobState::New, JobState::Running);
+        assert_ne!(JobState::Running, JobState::Exited);
+    }
+
+    // ── Job ──────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_job_carries_state() {
+        let job = Job { state: JobState::Running };
+        assert_eq!(job.state, JobState::Running);
+    }
+
+    // ── JobExit ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_job_exit_as_text_running() {
+        let exit = JobExit { state: JobState::Running, code: None };
+        let text = exit.as_text();
+        assert!(text.contains("state: Running"), "unexpected: {}", text);
+        assert!(text.contains("code: -"), "unexpected: {}", text);
+    }
+
+    #[test]
+    fn test_job_exit_as_text_exited_with_code() {
+        let exit = JobExit { state: JobState::Exited, code: Some(0) };
+        let text = exit.as_text();
+        assert!(text.contains("state: Exited"), "unexpected: {}", text);
+        assert!(text.contains("code: 0"), "unexpected: {}", text);
+    }
+
+    #[test]
+    fn test_job_exit_as_text_exited_nonzero() {
+        let exit = JobExit { state: JobState::Exited, code: Some(42) };
+        let text = exit.as_text();
+        assert!(text.contains("code: 42"), "unexpected: {}", text);
+    }
+
+    // ── JobWaitResult ────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_job_wait_result_state_str() {
+        assert_eq!(JobWaitResult::Running.state_str(), "Running");
+        assert_eq!(JobWaitResult::Exited { code: Some(0) }.state_str(), "Exited");
+        assert_eq!(JobWaitResult::Exited { code: None }.state_str(), "Exited");
+    }
+
+    #[test]
+    fn test_job_wait_result_as_text_running() {
+        let text = JobWaitResult::Running.as_text();
+        assert!(text.contains("result: Running"), "unexpected: {}", text);
+        assert!(text.contains("code: -"), "unexpected: {}", text);
+    }
+
+    #[test]
+    fn test_job_wait_result_as_text_exited_with_code() {
+        let text = JobWaitResult::Exited { code: Some(1) }.as_text();
+        assert!(text.contains("result: Exited"), "unexpected: {}", text);
+        assert!(text.contains("code: 1"), "unexpected: {}", text);
+    }
+
+    #[test]
+    fn test_job_wait_result_as_text_exited_no_code() {
+        let text = JobWaitResult::Exited { code: None }.as_text();
+        assert!(text.contains("result: Exited"), "unexpected: {}", text);
+        assert!(text.contains("code: -"), "unexpected: {}", text);
+    }
+
+    #[test]
+    fn test_job_wait_result_equality() {
+        assert_eq!(JobWaitResult::Running, JobWaitResult::Running);
+        assert_ne!(JobWaitResult::Running, JobWaitResult::Exited { code: Some(0) });
+        assert_eq!(
+            JobWaitResult::Exited { code: Some(0) },
+            JobWaitResult::Exited { code: Some(0) }
+        );
+        assert_ne!(
+            JobWaitResult::Exited { code: Some(0) },
+            JobWaitResult::Exited { code: Some(1) }
+        );
+    }
+}
