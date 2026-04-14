@@ -2276,8 +2276,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for inherent_method in
                     self.tcx.associated_items(inherent_impl_did).in_definition_order()
                 {
-                    if let Some(candidates) = find_attr!(self.tcx, inherent_method.def_id, RustcConfusables{symbols, ..} => symbols)
-                        && candidates.contains(&item_name.name)
+                    if let Some(confusables) = find_attr!(self.tcx, inherent_method.def_id, RustcConfusables{confusables} => confusables)
+                        && confusables.contains(&item_name.name)
                         && inherent_method.is_fn()
                     {
                         let args =
