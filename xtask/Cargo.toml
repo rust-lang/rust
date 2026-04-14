@@ -1,0 +1,17 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT OR Apache-2.0"
+description = "ThingOS build automation tasks."
+
+[features]
+diagnostic-apps = []
+svg-cursors = []
+
+[dependencies]
+anyhow = "1.0.100"
+clap = { version = "4.5.53", features = ["derive"] }
+walkdir = "2.5.0"
+xshell = "0.2.7"
