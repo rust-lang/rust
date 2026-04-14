@@ -67,6 +67,10 @@ impl SyntaxFactory {
         make::type_bound(bound).clone_for_update()
     }
 
+    pub fn type_bound_text(&self, bound: &str) -> ast::TypeBound {
+        make::type_bound_text(bound).clone_for_update()
+    }
+
     pub fn type_bound_list(
         &self,
         bounds: impl IntoIterator<Item = ast::TypeBound>,
