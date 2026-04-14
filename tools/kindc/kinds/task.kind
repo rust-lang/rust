@@ -14,6 +14,35 @@ kind thingos.task = struct {
   name: option<string>,
 }
 
+/// Lifecycle state of a job (creation, running, or fully exited)
+kind thingos.job.state = enum {
+  /// The job has been created but no threads are yet running.
+  New,
+  /// At least one thread in the job is alive.
+  Running,
+  /// All threads in the job have exited.
+  Exited,
+}
+
+/// Canonical exit snapshot for a job
+kind thingos.job.exit = struct {
+  /// Lifecycle state at the time of the snapshot.
+  state: thingos.job.state,
+  /// Exit code, present only when state == Exited.
+  code: option<i32>,
+}
+
+/// Result of waiting on (or polling) a job
+kind thingos.job.wait.result = enum {
+  /// The job is still running; no exit code is available yet.
+  Running,
+  /// The job has exited.
+  Exited {
+    /// The exit code reported by the job.
+    code: option<i32>,
+  },
+}
+
 /// A collection of related tasks
 kind thingos.job = struct {
   tasks: list<ref<thingos.task>>,
