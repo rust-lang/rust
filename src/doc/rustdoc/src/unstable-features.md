@@ -751,14 +751,6 @@ pass `--doctest-build-arg ARG` for each argument `ARG`.
 
 This flag enables the generation of toggles to expand macros in the HTML source code pages.
 
-## `--remap-path-prefix`: Remap source code paths in output
-
-This flag is the equivalent flag from `rustc` `--remap-path-prefix`.
-
-it permits remapping source path prefixes in all output, including compiler diagnostics,
-debug information, macro expansions, etc. It takes a value of the form `FROM=TO`
-where a path prefix equal to `FROM` is rewritten to the value `TO`.
-
 ## `--remap-path-scope`: Scopes to which the source remapping should be done
 
 This flag is the equivalent flag from `rustc` `--remap-path-scope`.
