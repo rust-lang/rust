@@ -4,7 +4,9 @@
 > This document is observational, not aspirational. Do not implement the future
 > authority model yet; first understand the present one faithfully.
 >
-> Companion document to `docs/migration/process_responsibility_map.md`.
+> Companion documents:
+> - `docs/migration/process_responsibility_map.md` — full field-ownership decomposition
+> - `docs/migration/process_execution_context_inventory.md` — focused execution-context inventory (cwd, namespace, tty, session)
 
 ---
 
