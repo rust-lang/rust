@@ -210,10 +210,19 @@ macro_rules! impl_Display {
                     remain /= scale;
                     let pair1 = (quad / 100) as usize;
                     let pair2 = (quad % 100) as usize;
-                    buf[offset + 0].write(DECIMAL_PAIRS[pair1 * 2 + 0]);
-                    buf[offset + 1].write(DECIMAL_PAIRS[pair1 * 2 + 1]);
-                    buf[offset + 2].write(DECIMAL_PAIRS[pair2 * 2 + 0]);
-                    buf[offset + 3].write(DECIMAL_PAIRS[pair2 * 2 + 1]);
+                    // Unchecked indexing here avoids relying on LLVM to elide the
+                    // bounds checks from the surrounding `assert_unchecked` hints;
+                    // this regressed under `opt-level=z` + fat LTO on LLVM 21
+                    // (see rust-lang/rust#152061).
+                    //
+                    // SAFETY: `offset + 4 <= buf.len()`, and `pair1, pair2 < 100`
+                    // so all `DECIMAL_PAIRS` indices are `< 200 == DECIMAL_PAIRS.len()`.
+                    unsafe {
+                        buf.get_unchecked_mut(offset).write(*DECIMAL_PAIRS.get_unchecked(pair1 * 2));
+                        buf.get_unchecked_mut(offset + 1).write(*DECIMAL_PAIRS.get_unchecked(pair1 * 2 + 1));
+                        buf.get_unchecked_mut(offset + 2).write(*DECIMAL_PAIRS.get_unchecked(pair2 * 2));
+                        buf.get_unchecked_mut(offset + 3).write(*DECIMAL_PAIRS.get_unchecked(pair2 * 2 + 1));
+                    }
                 }
 
                 // Format per two digits from the lookup table.
@@ -228,8 +237,14 @@ macro_rules! impl_Display {
 
                     let pair = (remain % 100) as usize;
                     remain /= 100;
-                    buf[offset + 0].write(DECIMAL_PAIRS[pair * 2 + 0]);
-                    buf[offset + 1].write(DECIMAL_PAIRS[pair * 2 + 1]);
+                    // See the outer loop for the rationale (rust-lang/rust#152061).
+                    //
+                    // SAFETY: `offset + 2 <= buf.len()`, and `pair < 100` so the
+                    // `DECIMAL_PAIRS` indices are `< 200 == DECIMAL_PAIRS.len()`.
+                    unsafe {
+                        buf.get_unchecked_mut(offset).write(*DECIMAL_PAIRS.get_unchecked(pair * 2));
+                        buf.get_unchecked_mut(offset + 1).write(*DECIMAL_PAIRS.get_unchecked(pair * 2 + 1));
+                    }
                 }
 
                 // Format the last remaining digit, if any.
@@ -242,10 +257,14 @@ macro_rules! impl_Display {
                     unsafe { core::hint::assert_unchecked(offset <= buf.len()) }
                     offset -= 1;
 
-                    // Either the compiler sees that remain < 10, or it prevents
-                    // a boundary check up next.
                     let last = (remain & 15) as usize;
-                    buf[offset].write(DECIMAL_PAIRS[last * 2 + 1]);
+                    // See the outer loop for the rationale (rust-lang/rust#152061).
+                    //
+                    // SAFETY: `offset < buf.len()`, and `last < 16` so
+                    // `last * 2 + 1 < 32 < 200 == DECIMAL_PAIRS.len()`.
+                    unsafe {
+                        buf.get_unchecked_mut(offset).write(*DECIMAL_PAIRS.get_unchecked(last * 2 + 1));
+                    }
                     // not used: remain = 0;
                 }
 
