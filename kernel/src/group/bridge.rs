@@ -94,3 +94,74 @@ pub fn group_kind_from_snapshot(
 pub fn group_from_snapshot(snapshot: &crate::sched::hooks::ProcessSnapshot) -> Group {
     Group { kind: group_kind_from_snapshot(snapshot) }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sched::hooks::ProcessSnapshot;
+    use crate::task::TaskState;
+
+    fn make_snapshot(session_leader: bool) -> ProcessSnapshot {
+        ProcessSnapshot {
+            pid: 1,
+            ppid: 0,
+            tid: 1,
+            name: alloc::string::String::from("test"),
+            state: TaskState::Runnable,
+            argv: alloc::vec::Vec::new(),
+            exec_path: alloc::string::String::new(),
+            exit_code: None,
+            pgid: 1,
+            sid: 1,
+            session_leader,
+            cwd: alloc::string::String::from("/"),
+            namespace_label: alloc::string::String::from("global"),
+        }
+    }
+
+    // ── group_kind_from_snapshot ─────────────────────────────────────────────
+
+    #[test]
+    fn test_session_leader_is_foreground() {
+        let snap = make_snapshot(true);
+        assert_eq!(group_kind_from_snapshot(&snap), GroupKind::Foreground);
+    }
+
+    #[test]
+    fn test_non_leader_is_coordination() {
+        let snap = make_snapshot(false);
+        assert_eq!(group_kind_from_snapshot(&snap), GroupKind::Coordination);
+    }
+
+    // ── group_from_snapshot ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_group_from_snapshot_session_leader() {
+        let snap = make_snapshot(true);
+        let group = group_from_snapshot(&snap);
+        assert_eq!(group.kind, GroupKind::Foreground);
+    }
+
+    #[test]
+    fn test_group_from_snapshot_non_leader() {
+        let snap = make_snapshot(false);
+        let group = group_from_snapshot(&snap);
+        assert_eq!(group.kind, GroupKind::Coordination);
+    }
+
+    #[test]
+    fn test_group_from_snapshot_as_text_foreground() {
+        let snap = make_snapshot(true);
+        let group = group_from_snapshot(&snap);
+        let text = group.as_text();
+        assert!(text.contains("kind: Foreground"), "unexpected: {}", text);
+    }
+
+    #[test]
+    fn test_group_from_snapshot_as_text_coordination() {
+        let snap = make_snapshot(false);
+        let group = group_from_snapshot(&snap);
+        let text = group.as_text();
+        assert!(text.contains("kind: Coordination"), "unexpected: {}", text);
+    }
+}
