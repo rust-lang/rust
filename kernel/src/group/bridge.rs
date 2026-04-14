@@ -58,8 +58,26 @@ use thingos::group::{Group, GroupKind};
 /// * Background processes and non-leader coordination groups report as
 ///   `Coordination`.
 ///
-/// When a public TTY-foreground query becomes available this logic will be
-/// replaced with an exact `foreground_pgid == pgid` comparison.
+/// # Known limitations
+///
+/// This heuristic produces false positives and false negatives in several
+/// real-world cases:
+///
+/// * **False positive**: A session leader that has moved itself to the
+///   background (e.g., via `&` or `bg`) still reports `Foreground` here,
+///   even though it no longer holds TTY foreground control.
+/// * **False negative**: A non-leader process that has acquired foreground
+///   control via `TIOCSPGRP` (e.g., a shell forked child that calls
+///   `tcsetpgrp`) reports `Coordination` even though it is the actual TTY
+///   foreground group.
+/// * **Multi-process groups**: When the foreground pgid belongs to a group
+///   whose leader is not a session leader, all members will report
+///   `Coordination`.
+///
+/// When a public TTY-foreground query becomes available outside `devfs`
+/// (i.e., `ConsoleTtyState::foreground_pgid` is accessible here), this
+/// logic will be replaced with an exact `foreground_pgid == pgid` comparison
+/// and the above corner cases will be eliminated.
 pub fn group_kind_from_snapshot(
     snapshot: &crate::sched::hooks::ProcessSnapshot,
 ) -> GroupKind {

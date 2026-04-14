@@ -2,6 +2,11 @@
 #![deny(missing_docs)]
 //! Core definitions for ThingOS.
 //!
+//! This crate is `no_std` so it can be used in both kernel and userspace
+//! contexts without pulling in the host operating system's standard library.
+//! Platform capabilities are accessed explicitly through `stem::pal` and the
+//! built-in `core` + `alloc` crates.
+//!
 //! This crate is intentionally small for now. It establishes a stable home in
 //! the workspace for ThingOS-owned concepts while the fork continues to track
 //! upstream Rust closely.
