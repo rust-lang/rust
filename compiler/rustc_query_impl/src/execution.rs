@@ -256,7 +256,7 @@ fn wait_for_query<'tcx, C: QueryCache>(
 
 /// Shared main part of both [`execute_query_incr_inner`] and [`execute_query_non_incr_inner`].
 #[inline(never)]
-fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
+fn try_execute_query<'tcx, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     tcx: TyCtxt<'tcx>,
     span: Span,
@@ -297,8 +297,8 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
             let job_guard = ActiveJobGuard { state: &query.state, key, key_hash };
 
             // Delegate to another function to actually execute the query job.
-            let (value, dep_node_index) = if INCR {
-                execute_job_incr(query, tcx, key, dep_node.unwrap(), id)
+            let (value, dep_node_index) = if let Some(dep_node) = dep_node {
+                execute_job_incr(query, tcx, key, dep_node, id)
             } else {
                 execute_job_non_incr(query, tcx, key, id)
             };
@@ -599,7 +599,7 @@ pub(super) fn execute_query_non_incr_inner<'tcx, C: QueryCache>(
     span: Span,
     key: C::Key,
 ) -> C::Value {
-    ensure_sufficient_stack(|| try_execute_query::<C, false>(query, tcx, span, key, None).0)
+    ensure_sufficient_stack(|| try_execute_query::<C>(query, tcx, span, key, None).0)
 }
 
 /// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
@@ -621,9 +621,8 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
         return None;
     }
 
-    let (result, dep_node_index) = ensure_sufficient_stack(|| {
-        try_execute_query::<C, true>(query, tcx, span, key, Some(dep_node))
-    });
+    let (result, dep_node_index) =
+        ensure_sufficient_stack(|| try_execute_query::<C>(query, tcx, span, key, Some(dep_node)));
     if let Some(dep_node_index) = dep_node_index {
         tcx.dep_graph.read_index(dep_node_index)
     }
@@ -645,9 +644,7 @@ pub(crate) fn force_query_dep_node<'tcx, C: QueryCache>(
         return false;
     };
 
-    ensure_sufficient_stack(|| {
-        try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node))
-    });
+    ensure_sufficient_stack(|| try_execute_query::<C>(query, tcx, DUMMY_SP, key, Some(dep_node)));
 
     // We did manage to recover a key and force the node, though it's up to
     // the caller to check whether the node ended up marked red or green.
