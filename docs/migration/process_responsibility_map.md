@@ -64,7 +64,7 @@ The table below covers every field currently present in `Process`
 | `session_leader: bool`              | TTY foreground proxy    | Group            | **bridged** ✓      | Used as `GroupKind::Foreground` heuristic until `foreground_pgid` is queryable.           |
 | `signals: ProcessSignals`           | Signal dispositions + pending set + stop/alarm state | Legacy compat → Authority/Group | quarantine | SIGTTOU/SIGTTIN job-control is Group concern; disposition table is Authority concern; not yet split. |
 | `argv: Vec<Vec<u8>>`                | Spawn-time arg vector   | Spawn record     | quarantine         | No principled spawn-record concept yet; quarantined legacy compat.                        |
-| `env: BTreeMap<Vec<u8>,Vec<u8>>`    | Unix environment blob   | Spawn record / Legacy compat | quarantine | Raw env map has no clean architectural home; quarantined.                              |
+| `env: BTreeMap<Vec<u8>,Vec<u8>>`    | Unix environment blob   | Legacy compat    | quarantine         | Raw key→value env map has no clean architectural home; quarantined Unix baggage. Not part of any future canonical concept until a principled env-passing design is adopted. |
 | `auxv: Vec<(u64,u64)>`              | ELF auxiliary vector    | Spawn record     | quarantine         | ELF-specific Unix compat; quarantined until a spawn-record concept exists.                |
 
 ### Thread fields with Process-level coupling
@@ -102,7 +102,7 @@ public surface** for its domain; new code must go through the bridge, not read
 | FD / handle table (`fd_table`)                        | Handle-table concept not yet introduced; extract after Phase 9+. |
 | Spawn invocation context (`argv`, `env`, `auxv`)      | No spawn-record concept; quarantined until one exists.           |
 | Signal state (`ProcessSignals`, `ThreadSignals`)      | Needs split: disposition → Authority, job-control → Group; complex. |
-| UID/GID / capability mask                             | Fields not yet present in `Process`; add before Authority Phase. |
+| UID/GID / capability mask *(planned addition)*        | Not yet present in `Process`; must be added to `Process` before a full Authority extraction is possible. Tracked here as a prerequisite gap, not as a current field. |
 | Controlling terminal / TTY attachment                 | Belongs to `Presence` (not yet introduced); quarantined for now. |
 | Per-process namespace isolation                       | `NamespaceRef` is a unit struct; defer until namespace work.     |
 | Reparenting to init (orphan reaping)                  | No init-process concept yet; deferred.                           |
