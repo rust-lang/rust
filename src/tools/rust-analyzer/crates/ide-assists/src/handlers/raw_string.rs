@@ -1,7 +1,7 @@
 use ide_db::source_change::SourceChangeBuilder;
 use syntax::{
-    AstToken,
-    ast::{self, IsString, make::tokens::literal},
+    AstNode, AstToken,
+    ast::{self, IsString, syntax_factory::SyntaxFactory},
 };
 
 use crate::{
@@ -162,23 +162,19 @@ fn replace_literal(
     builder: &mut SourceChangeBuilder,
     ctx: &AssistContext<'_>,
 ) {
-    let token = token.syntax();
-    let node = token.parent().expect("no parent token");
-    let edit = builder.make_editor(&node);
-    let new_literal = literal(new);
-
-    edit.replace(token, mut_token(new_literal));
-
-    builder.add_file_edits(ctx.vfs_file_id(), edit);
-}
-
-fn mut_token(token: syntax::SyntaxToken) -> syntax::SyntaxToken {
-    let node = token.parent().expect("no parent token");
-    node.clone_for_update()
-        .children_with_tokens()
-        .filter_map(|it| it.into_token())
-        .find(|it| it.text_range() == token.text_range() && it.text() == token.text())
-        .unwrap()
+    let old_token = token.syntax();
+    let parent = old_token.parent().expect("no parent token");
+    let make = SyntaxFactory::with_mappings();
+    let editor = builder.make_editor(&parent);
+    let new_literal = make.expr_literal(new);
+    let new_token = new_literal
+        .syntax()
+        .first_child_or_token()
+        .and_then(|it| it.into_token())
+        .expect("literal has no token child");
+    editor.replace(old_token, new_token);
+    editor.add_mappings(make.finish_with_mappings());
+    builder.add_file_edits(ctx.vfs_file_id(), editor);
 }
 
 #[cfg(test)]
