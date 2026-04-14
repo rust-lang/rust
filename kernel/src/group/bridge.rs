@@ -95,6 +95,24 @@ pub fn group_from_snapshot(snapshot: &crate::sched::hooks::ProcessSnapshot) -> G
     Group { kind: group_kind_from_snapshot(snapshot) }
 }
 
+/// Return `true` when this process is in the foreground coordination group.
+///
+/// Derives foreground status entirely from [`group_kind_from_snapshot`] so
+/// that all Group-bridge logic remains in one place.  Callers must not
+/// inspect `pgid`, `sid`, or `session_leader` directly.
+///
+/// # Usage
+///
+/// This function backs the `/proc/<pid>/foreground_group` procfs path.
+/// It is the canonical Group-vocabulary answer to "is this process in the
+/// foreground group?" and replaces any direct TTY/pgid inspection for new
+/// introspection surfaces.
+pub fn foreground_group_from_snapshot(
+    snapshot: &crate::sched::hooks::ProcessSnapshot,
+) -> bool {
+    group_kind_from_snapshot(snapshot) == GroupKind::Foreground
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -131,6 +149,20 @@ mod tests {
     fn test_non_leader_is_coordination() {
         let snap = make_snapshot(false);
         assert_eq!(group_kind_from_snapshot(&snap), GroupKind::Coordination);
+    }
+
+    // ── foreground_group_from_snapshot ──────────────────────────────────────
+
+    #[test]
+    fn test_foreground_group_from_snapshot_session_leader() {
+        let snap = make_snapshot(true);
+        assert!(foreground_group_from_snapshot(&snap));
+    }
+
+    #[test]
+    fn test_foreground_group_from_snapshot_non_leader() {
+        let snap = make_snapshot(false);
+        assert!(!foreground_group_from_snapshot(&snap));
     }
 
     // ── group_from_snapshot ──────────────────────────────────────────────────
