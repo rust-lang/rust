@@ -10,6 +10,6 @@ fn main() {
     let y = 10;
 
     let a​= x + y;
-    //~^ ERROR unknown start of token
-    //~| HELP invisible characters
+    //~^ ERROR unknown start of token: \u{200b}
+    //~| HELP invisible characters like
 }
