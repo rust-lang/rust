@@ -148,6 +148,7 @@ self-contained issue that cites this document.
 
 ## Related documents
 
+- `docs/migration/authority_inventory.md` — comprehensive authority/credential/permission inventory and extraction sequencing (companion to this document)
 - `docs/concepts/process-object.md` — `Process` / `Thread<R>` struct design
 - `docs/concepts/process-lifecycle.md` — state machine, exec collapse, zombie semantics
 - `docs/concepts/janix-guardrails.md` — architecture guardrails for all kernel changes
