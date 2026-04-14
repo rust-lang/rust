@@ -13,5 +13,3 @@ fn main() {
     let a\u{200B}= x + y;
     //~^ ERROR unknown start of token
 }
-
-
