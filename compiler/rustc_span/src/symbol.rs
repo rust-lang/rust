@@ -952,6 +952,7 @@ symbols! {
         floorf32,
         floorf64,
         floorf128,
+        fma4_target_feature,
         fmaf16,
         fmaf32,
         fmaf64,
