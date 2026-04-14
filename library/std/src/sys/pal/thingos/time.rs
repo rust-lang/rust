@@ -1,136 +1,208 @@
 //! ThingOS time implementation.
 //!
-//! `Instant`    — backed by `SYS_TIME_MONOTONIC` (0x1202), returns nanoseconds as usize.
-//! `SystemTime` — backed by `SYS_TIME_NOW`       (0x1203) with ClockId::Realtime (2).
-//!
-//! The `TimeSpec` written by `SYS_TIME_NOW` has the layout:
-//!   secs:     u64 LE
-//!   nanos:    u32 LE
-//!   reserved: u32 LE
-//! (matches abi/src/time.rs `TimeSpec`)
+//! `Instant` wraps `CLOCK_MONOTONIC` and `SystemTime` wraps `CLOCK_REALTIME`,
+//! both obtained via `SYS_CLOCK_GETTIME`.
 
+#![allow(dead_code)]
+
+use core::hash::{Hash, Hasher};
+
+use super::common::{CLOCK_MONOTONIC, CLOCK_REALTIME, SYS_CLOCK_GETTIME, Timespec, syscall2};
+use crate::cmp::Ordering;
+use crate::ops::{Add, AddAssign, Sub, SubAssign};
 use crate::time::Duration;
 
-// Syscall numbers (abi/src/numbers.rs)
-const SYS_TIME_MONOTONIC: u32 = 0x1202;
-const SYS_TIME_NOW: u32 = 0x1203;
-const CLOCK_REALTIME: usize = 2;
+const NSEC_PER_SEC: i64 = 1_000_000_000;
 
-/// Perform a raw syscall. Mirrors `sys/pal/thingos/common.rs`.
-#[inline(always)]
-unsafe fn raw_syscall6(
-    n: u32,
-    a0: usize,
-    a1: usize,
-    a2: usize,
-    a3: usize,
-    a4: usize,
-    a5: usize,
-) -> isize {
-    // SAFETY: caller guarantees arguments are valid for this syscall.
-    unsafe { crate::sys::pal::raw_syscall6(n, a0, a1, a2, a3, a4, a5) }
-}
-
-/// Query SYS_TIME_MONOTONIC — returns nanoseconds since boot as a usize.
-///
-/// Returns 0 on syscall failure; callers treat 0 as the epoch of the monotonic
-/// clock rather than aborting, matching the behaviour of other embedded PALs.
-/// A return of 0 is only expected before the scheduler is fully initialized.
-fn monotonic_ns() -> u64 {
-    let ret = unsafe { raw_syscall6(SYS_TIME_MONOTONIC, 0, 0, 0, 0, 0, 0) };
-    if ret < 0 { 0 } else { ret as u64 }
-}
-
-/// ThingOS TimeSpec layout (16 bytes, matches abi::time::TimeSpec).
-#[repr(C)]
-struct TimeSpec {
-    secs: u64,
-    nanos: u32,
-    _reserved: u32,
-}
-
-/// Query SYS_TIME_NOW for the real-time clock; returns total nanoseconds.
-fn realtime_ns() -> u64 {
-    let mut spec = TimeSpec { secs: 0, nanos: 0, _reserved: 0 };
-    let ret = unsafe {
-        raw_syscall6(
-            SYS_TIME_NOW,
-            CLOCK_REALTIME,
-            (&mut spec as *mut TimeSpec) as usize,
-            0,
-            0,
-            0,
-            0,
-        )
-    };
-    if ret < 0 {
-        return 0;
+fn clock_gettime(clk_id: u64) -> Timespec {
+    let mut ts = Timespec { tv_sec: 0, tv_nsec: 0 };
+    unsafe {
+        syscall2(SYS_CLOCK_GETTIME, clk_id, &raw mut ts as u64);
     }
-    spec.secs.saturating_mul(1_000_000_000).saturating_add(spec.nanos as u64)
+    ts
 }
 
-// ─── Instant ─────────────────────────────────────────────────────────────────
+// ── Internal Timespec helpers ────────────────────────────────────────────────
 
-/// Monotonic instant backed by `SYS_TIME_MONOTONIC`.
+#[derive(Copy, Clone, Debug)]
+struct Ts(Timespec);
+
+impl Ts {
+    const ZERO: Ts = Ts(Timespec { tv_sec: 0, tv_nsec: 0 });
+    const MAX: Ts = Ts(Timespec { tv_sec: i64::MAX, tv_nsec: NSEC_PER_SEC - 1 });
+    const MIN: Ts = Ts(Timespec { tv_sec: i64::MIN, tv_nsec: 0 });
+
+    fn sub_ts(&self, other: &Ts) -> Result<Duration, Duration> {
+        if self >= other {
+            let (sec_diff, nsec_diff) = if self.0.tv_nsec >= other.0.tv_nsec {
+                (
+                    (self.0.tv_sec - other.0.tv_sec) as u64,
+                    (self.0.tv_nsec - other.0.tv_nsec) as u32,
+                )
+            } else {
+                (
+                    (self.0.tv_sec - 1 - other.0.tv_sec) as u64,
+                    (self.0.tv_nsec + NSEC_PER_SEC - other.0.tv_nsec) as u32,
+                )
+            };
+            Ok(Duration::new(sec_diff, nsec_diff))
+        } else {
+            match other.sub_ts(self) {
+                Ok(d) => Err(d),
+                Err(d) => Ok(d),
+            }
+        }
+    }
+
+    fn checked_add_duration(&self, d: &Duration) -> Option<Ts> {
+        let mut secs = self.0.tv_sec.checked_add_unsigned(d.as_secs())?;
+        let mut nsec = self.0.tv_nsec + d.subsec_nanos() as i64;
+        if nsec >= NSEC_PER_SEC {
+            nsec -= NSEC_PER_SEC;
+            secs = secs.checked_add(1)?;
+        }
+        Some(Ts(Timespec { tv_sec: secs, tv_nsec: nsec }))
+    }
+
+    fn checked_sub_duration(&self, d: &Duration) -> Option<Ts> {
+        let mut secs = self.0.tv_sec.checked_sub_unsigned(d.as_secs())?;
+        let mut nsec = self.0.tv_nsec - d.subsec_nanos() as i64;
+        if nsec < 0 {
+            nsec += NSEC_PER_SEC;
+            secs = secs.checked_sub(1)?;
+        }
+        Some(Ts(Timespec { tv_sec: secs, tv_nsec: nsec }))
+    }
+}
+
+impl PartialEq for Ts {
+    fn eq(&self, other: &Ts) -> bool {
+        self.0.tv_sec == other.0.tv_sec && self.0.tv_nsec == other.0.tv_nsec
+    }
+}
+
+impl Eq for Ts {}
+
+impl PartialOrd for Ts {
+    fn partial_cmp(&self, other: &Ts) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Ts {
+    fn cmp(&self, other: &Ts) -> Ordering {
+        (self.0.tv_sec, self.0.tv_nsec).cmp(&(other.0.tv_sec, other.0.tv_nsec))
+    }
+}
+
+impl Hash for Ts {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.tv_sec.hash(state);
+        self.0.tv_nsec.hash(state);
+    }
+}
+
+// ── Instant ──────────────────────────────────────────────────────────────────
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct Instant(Duration);
+pub struct Instant(Ts);
 
 impl Instant {
     pub fn now() -> Instant {
-        Instant(Duration::from_nanos(monotonic_ns()))
+        Instant(Ts(clock_gettime(CLOCK_MONOTONIC)))
     }
 
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        self.0.checked_sub(other.0)
+        self.0.sub_ts(&other.0).ok()
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        self.0.checked_add(*other).map(Instant)
+        Some(Instant(self.0.checked_add_duration(other)?))
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        self.0.checked_sub(*other).map(Instant)
+        Some(Instant(self.0.checked_sub_duration(other)?))
     }
 }
 
-// ─── SystemTime ──────────────────────────────────────────────────────────────
+impl Add<Duration> for Instant {
+    type Output = Instant;
+    fn add(self, other: Duration) -> Instant {
+        self.checked_add_duration(&other).expect("overflow when adding duration to instant")
+    }
+}
 
-/// Wall-clock time backed by `SYS_TIME_NOW` with `ClockId::Realtime`.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-pub struct SystemTime(Duration);
+impl AddAssign<Duration> for Instant {
+    fn add_assign(&mut self, other: Duration) {
+        *self = *self + other;
+    }
+}
 
-pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
+impl Sub<Duration> for Instant {
+    type Output = Instant;
+    fn sub(self, other: Duration) -> Instant {
+        self.checked_sub_duration(&other)
+            .expect("overflow when subtracting duration from instant")
+    }
+}
+
+impl SubAssign<Duration> for Instant {
+    fn sub_assign(&mut self, other: Duration) {
+        *self = *self - other;
+    }
+}
+
+impl Sub<Instant> for Instant {
+    type Output = Duration;
+    fn sub(self, other: Instant) -> Duration {
+        self.checked_sub_instant(&other).unwrap_or_default()
+    }
+}
+
+// ── SystemTime ───────────────────────────────────────────────────────────────
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct SystemTime(Ts);
+
+pub const UNIX_EPOCH: SystemTime = SystemTime(Ts::ZERO);
 
 impl SystemTime {
-    pub const MAX: SystemTime = SystemTime(Duration::MAX);
-    pub const MIN: SystemTime = SystemTime(Duration::ZERO);
+    pub const MAX: SystemTime = SystemTime(Ts::MAX);
+    pub const MIN: SystemTime = SystemTime(Ts::MIN);
+
+    pub fn new(tv_sec: i64, tv_nsec: i64) -> SystemTime {
+        SystemTime(Ts(Timespec { tv_sec, tv_nsec }))
+    }
 
     pub fn now() -> SystemTime {
-        SystemTime(Duration::from_nanos(realtime_ns()))
+        SystemTime(Ts(clock_gettime(CLOCK_REALTIME)))
     }
 
     pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
-        self.0.checked_sub(other.0).ok_or_else(|| other.0 - self.0)
+        self.0.sub_ts(&other.0)
     }
 
     pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
-        self.0.checked_add(*other).map(SystemTime)
+        Some(SystemTime(self.0.checked_add_duration(other)?))
     }
 
     pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
-        self.0.checked_sub(*other).map(SystemTime)
+        Some(SystemTime(self.0.checked_sub_duration(other)?))
     }
 
-    /// Construct a `SystemTime` from seconds and nanoseconds since the Unix epoch.
-    ///
-    /// Used by the filesystem PAL layer to convert VFS stat timestamps into
-    /// `std::time::SystemTime` values.
-    pub(crate) fn from_timespec(secs: u64, nsecs: u32) -> SystemTime {
-        SystemTime(Duration::new(secs, nsecs))
+    /// Convenience: encode as nanoseconds since UNIX epoch (used by fs).
+    pub fn as_nanos_since_epoch(&self) -> u128 {
+        let ts = &self.0.0;
+        if ts.tv_sec < 0 {
+            return 0;
+        }
+        ts.tv_sec as u128 * 1_000_000_000u128 + ts.tv_nsec as u128
     }
 
-    /// Return the inner `Duration` since the Unix epoch.
-    pub(crate) fn as_duration(&self) -> Duration {
-        self.0
+    /// Convenience: decode from nanoseconds since UNIX epoch (used by fs).
+    pub fn from_nanos_since_epoch(ns: u128) -> SystemTime {
+        let secs = (ns / 1_000_000_000) as i64;
+        let nsec = (ns % 1_000_000_000) as i64;
+        SystemTime(Ts(Timespec { tv_sec: secs, tv_nsec: nsec }))
     }
 }

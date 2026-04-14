@@ -16,7 +16,6 @@ cfg_select! {
         use motor as imp;
     }
     target_os = "thingos" => {
-        #[path = "../pal/thingos/process.rs"]
         mod thingos;
         use thingos as imp;
     }

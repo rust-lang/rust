@@ -46,7 +46,6 @@ cfg_select! {
         use vexos as imp;
     }
     target_os = "thingos" => {
-        #[path = "../pal/thingos/fs.rs"]
         mod thingos;
         use thingos as imp;
     }
