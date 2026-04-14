@@ -2719,13 +2719,12 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    #[cfg_attr(bootstrap, doc = "```rust")]
-    #[cfg_attr(not(bootstrap), doc = "```rust,compile_fail")]
+    /// ```rust,compile_fail
     /// enum Void {}
     /// unsafe extern {
     ///     static EXTERN: Void;
     /// }
-    #[doc = "```"]
+    /// ```
     ///
     /// {{produces}}
     ///
