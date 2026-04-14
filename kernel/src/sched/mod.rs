@@ -1385,6 +1385,8 @@ fn mark_task_exited<R: BootRuntime>(
     // Also capture ppid/pid for SIGCHLD notification.
     let mut notify_ppid: u32 = 0;
     let mut notify_pid: u32 = 0;
+    // Capture the exit observer inbox ID (if set) for canonical JobExit delivery.
+    let mut exit_observer_inbox: Option<crate::inbox::InboxId> = None;
 
     let siblings_to_kill: alloc::vec::Vec<TaskId> = {
         let pinfo_opt =
@@ -1398,6 +1400,7 @@ fn mark_task_exited<R: BootRuntime>(
             if pi.pid as TaskId == tid {
                 notify_ppid = pi.lifecycle.ppid;
                 notify_pid = pi.pid;
+                exit_observer_inbox = pi.lifecycle.exit_observer_inbox;
                 core::mem::take(&mut pi.lifecycle.thread_ids)
             } else {
                 alloc::vec::Vec::new()
@@ -1446,6 +1449,17 @@ fn mark_task_exited<R: BootRuntime>(
             // Wake parent threads via the waiters list (after the scheduler lock
             // is released by the caller).
             waiters.extend(tids.iter().map(|&t| t as u64));
+        }
+    }
+
+    // Emit canonical JobExit notification via Message/Inbox path.
+    //
+    // Called after the SIGCHLD/children_done legacy path so that lifecycle
+    // state is already committed before the notification is sent.  Delivery
+    // failure is logged inside emit_job_exit and does not corrupt state.
+    if notify_pid != 0 {
+        if let Some(inbox_id) = exit_observer_inbox {
+            crate::job::notify::emit_job_exit(inbox_id, notify_pid, code);
         }
     }
 
@@ -3532,6 +3546,7 @@ mod tests {
                 thread_ids: alloc::vec![7000, 7001],
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
+                exit_observer_inbox: None,
             },
             unix_compat: crate::task::ProcessUnixCompat::isolated(7000, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
@@ -3564,6 +3579,7 @@ mod tests {
                 thread_ids: alloc::vec![8700, 8701],
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
+                exit_observer_inbox: None,
             },
             unix_compat: crate::task::ProcessUnixCompat::isolated(8700, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
@@ -3620,6 +3636,7 @@ mod tests {
                 thread_ids: alloc::vec![8800, 8801],
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
+                exit_observer_inbox: None,
             },
             unix_compat: crate::task::ProcessUnixCompat::isolated(8800, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
@@ -3678,6 +3695,7 @@ mod tests {
                 thread_ids: alloc::vec![9100, 9101, 9102],
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
+                exit_observer_inbox: None,
             },
             unix_compat: crate::task::ProcessUnixCompat::isolated(9100, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
@@ -3779,6 +3797,7 @@ mod tests {
                 thread_ids: all_tids.clone(),
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
+                exit_observer_inbox: None,
             },
             unix_compat: {
                 let mut uc = crate::task::ProcessUnixCompat::isolated(9700, false);

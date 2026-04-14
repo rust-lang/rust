@@ -13,3 +13,4 @@
 //! gradually (Phase 3 onwards).
 
 pub mod bridge;
+pub mod notify;

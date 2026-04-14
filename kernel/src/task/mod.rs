@@ -203,6 +203,16 @@ pub struct ProcessLifecycle {
     /// signal termination uses `signum`, and stopped/continued children use
     /// the appropriate `w_stop_sig` / `w_continued` values.
     pub children_done: alloc::collections::VecDeque<(u32, i32)>,
+    /// Optional inbox to receive a canonical `JobExit` message when this job
+    /// exits.
+    ///
+    /// When set, `kernel::job::notify::emit_job_exit` delivers a typed
+    /// `Message` (kind `THINGOS_JOB_EXIT`) to this inbox at the moment the
+    /// thread-group leader transitions to the `Dead` state.
+    ///
+    /// Set via `kernel::job::notify::register_exit_observer`.  `None` means
+    /// no inbox delivery is attempted (legacy/transitional path only).
+    pub exit_observer_inbox: Option<crate::inbox::InboxId>,
 }
 
 impl ProcessLifecycle {
@@ -217,6 +227,7 @@ impl ProcessLifecycle {
             thread_ids: alloc::vec![leader_tid],
             exec_in_progress: false,
             children_done: alloc::collections::VecDeque::new(),
+            exit_observer_inbox: None,
         }
     }
 }
