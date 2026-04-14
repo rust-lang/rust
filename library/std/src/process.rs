@@ -622,8 +622,8 @@ impl Command {
     ///
     /// # Platform-specific behavior
     ///
-    /// The details below describe the current behavior, but **these details
-    /// may change in future versions of Rust.**
+    /// The details below describe the current behavior, but these details
+    /// may change in future versions of Rust.
     ///
     /// On Unix, the `PATH` searched comes from the child's environment:
     ///
