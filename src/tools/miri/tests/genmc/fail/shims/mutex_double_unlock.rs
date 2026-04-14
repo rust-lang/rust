@@ -1,4 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
 //@error-in-other-file: Undefined Behavior
 
 // Test that GenMC can detect a double unlock of a mutex.
