@@ -1,0 +1,73 @@
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/interior-mutable-borrow-issue-154382.rs:14:14
+   |
+LL |     &const { Mutable::new(0) }
+   |              ^^^^^^^^^^^^^^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/interior-mutable-borrow-issue-154382.rs:25:52
+   |
+LL |     let _f: fn() -> &'static Mutable = || &const { Mutable::new(0) };
+   |                                                    ^^^^^^^^^^^^^^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/interior-mutable-borrow-issue-154382.rs:30:37
+   |
+LL |     let _h = Holder { val: &const { Mutable::new(0) } };
+   |                                     ^^^^^^^^^^^^^^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/interior-mutable-borrow-issue-154382.rs:35:27
+   |
+LL |     takes_static(&const { Mutable::new(0) });
+   |                           ^^^^^^^^^^^^^^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/interior-mutable-borrow-issue-154382.rs:45:33
+   |
+LL |     let _: &'static _ = const { &Mutable::new(0u32) };
+   |                                 ^^^^^^^^^^^^^^^^^^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/interior-mutable-borrow-issue-154382.rs:42:34
+   |
+LL |     let _: &'static _ = &const { Mutable::new(0u32) };
+   |                                  ^^^^^^^^^^^^^^^^^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error[E0492]: interior mutable shared borrows of temporaries that have their lifetime extended until the end of the program are not allowed
+  --> $DIR/interior-mutable-borrow-issue-154382.rs:48:34
+   |
+LL |     let _: &'static _ = &const { AtomicUsize::new(0) };
+   |                                  ^^^^^^^^^^^^^^^^^^^ this borrow of an interior mutable value refers to such a temporary
+   |
+   = note: temporaries in constants and statics can have their lifetime extended until the end of the program
+   = note: to avoid accidentally creating global mutable state, such temporaries must be immutable
+   = help: if you really want global mutable state, try replacing the temporary by an interior mutable `static` or a `static mut`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0492`.
