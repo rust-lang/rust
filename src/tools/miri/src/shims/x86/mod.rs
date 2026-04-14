@@ -1056,12 +1056,22 @@ fn pmaddbw<'tcx>(
     interp_ok(())
 }
 
-/// Shuffle 32-bit integers in `values` across lanes using the corresponding
-/// index in `indices`, and store the results in dst.
+/// Shuffle elements in `values` across lanes using the corresponding index in
+/// `indices`, and store the results in `dest`.
+///
+/// This helper is shared by both the 32-bit-lane and 64-bit-lane AVX
+/// permute-by-index intrinsics. The element type is taken from `values` and
+/// `dest`, while the index lanes are interpreted at their full width (`i32` or
+/// `i64`, depending on the intrinsic).
+///
+/// For a vector with `N` lanes, only the low `log2(N)` bits of each index are
+/// used. Equivalently, lane `i` of the result is copied from
+/// `values[indices[i] & (N - 1)]`.
 ///
 /// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permutevar8x32_epi32>
 /// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permutevar8x32_ps>
 /// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_permutexvar_epi32>
+/// <https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_permutexvar_epi64>
 fn permute<'tcx>(
     ecx: &mut crate::MiriInterpCx<'tcx>,
     values: &OpTy<'tcx>,
@@ -1075,18 +1085,21 @@ fn permute<'tcx>(
     // fn permd(a: u32x8, b: u32x8) -> u32x8;
     // fn permps(a: __m256, b: i32x8) -> __m256;
     // fn vpermd(a: i32x16, idx: i32x16) -> i32x16;
+    // fn vpermq(a: i64x8, b: i64x8) -> i64x8;
     assert_eq!(dest_len, values_len);
     assert_eq!(dest_len, indices_len);
 
     // Only use the lower 3 bits to index into a vector with 8 lanes,
     // or the lower 4 bits when indexing into a 16-lane vector.
     assert!(dest_len.is_power_of_two());
-    let mask = u32::try_from(dest_len).unwrap().strict_sub(1);
+    let mask = u128::from(dest_len).strict_sub(1);
 
     for i in 0..dest_len {
         let dest = ecx.project_index(&dest, i)?;
-        let index = ecx.read_scalar(&ecx.project_index(&indices, i)?)?.to_u32()?;
-        let element = ecx.project_index(&values, (index & mask).into())?;
+        let index_place = ecx.project_index(&indices, i)?;
+        let index = ecx.read_scalar(&index_place)?.to_uint(index_place.layout.size)?;
+        // `mask` is at most `dest_len - 1` which fits in a `u64`, so this cannot fail.
+        let element = ecx.project_index(&values, u64::try_from(index & mask).unwrap())?;
 
         ecx.copy_op(&element, &dest)?;
     }

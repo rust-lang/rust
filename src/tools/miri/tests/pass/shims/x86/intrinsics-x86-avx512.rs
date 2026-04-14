@@ -219,6 +219,30 @@ unsafe fn test_avx512() {
     }
     test_mm512_permutexvar_epi32();
 
+    #[target_feature(enable = "avx512f")]
+    unsafe fn test_mm512_permutexvar_epi64() {
+        let a = _mm512_setr_epi64(100, 200, 300, 400, 500, 600, 700, 800);
+
+        // Mirrors stdarch's basic sanity check.
+        let idx = _mm512_set1_epi64(1);
+        let r = _mm512_permutexvar_epi64(idx, a);
+        let e = _mm512_set1_epi64(200);
+        assert_eq_m512i(r, e);
+
+        // This must permute across the full 512-bit register, not within 128-bit lanes.
+        let idx = _mm512_setr_epi64(7, 0, 5, 2, 6, 1, 4, 3);
+        let r = _mm512_permutexvar_epi64(idx, a);
+        let e = _mm512_setr_epi64(800, 100, 600, 300, 700, 200, 500, 400);
+        assert_eq_m512i(r, e);
+
+        // Only the low 3 bits of each 64-bit index are used.
+        let idx = _mm512_setr_epi64(8, 15, -1, i64::MIN, 0, 1, 2, 3);
+        let r = _mm512_permutexvar_epi64(idx, a);
+        let e = _mm512_setr_epi64(100, 800, 800, 100, 100, 200, 300, 400);
+        assert_eq_m512i(r, e);
+    }
+    test_mm512_permutexvar_epi64();
+
     #[target_feature(enable = "avx512bw")]
     unsafe fn test_mm512_shuffle_epi8() {
         #[rustfmt::skip]

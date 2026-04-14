@@ -104,8 +104,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 pmaddbw(this, left, right, dest)?;
             }
-            // Used to implement the _mm512_permutexvar_epi32 function.
-            "permvar.si.512" => {
+            // Used to implement the _mm512_permutexvar_epi32/_mm512_permutexvar_epi64 functions.
+            "permvar.si.512" | "permvar.di.512" => {
                 let [left, right] =
                     this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
 
