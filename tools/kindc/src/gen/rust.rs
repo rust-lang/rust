@@ -108,7 +108,7 @@ impl RustGenerator {
         let last = *segments.last().unwrap_or(&s);
         
         // If the last segment is a generic suffix, prepend the parent segment
-        let name_to_use = if segments.len() > 1 && matches!(last, "kind" | "state" | "args" | "result") {
+        let name_to_use = if segments.len() > 1 && matches!(last, "exit" | "kind" | "state" | "args" | "result") {
             let parent = segments[segments.len() - 2];
             format!("{}_{}", parent, last)
         } else {
