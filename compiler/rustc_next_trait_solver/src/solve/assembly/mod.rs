@@ -442,7 +442,7 @@ where
         // normalizing the self type as well, since type variables are not uniquified.
         let goal = self.resolve_vars_if_possible(goal);
 
-        if let TypingMode::Coherence = self.typing_mode()
+        if self.typing_mode().is_coherence()
             && let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal)
         {
             candidates.push(candidate);
