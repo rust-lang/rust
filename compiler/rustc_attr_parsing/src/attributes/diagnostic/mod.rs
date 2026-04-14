@@ -150,18 +150,14 @@ fn parse_directive_items<'p, S: Stage>(
         let span = item.span();
 
         macro malformed() {{
-            if matches!(mode, Mode::RustcOnUnimplemented) {
-                cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
-            } else {
-                cx.emit_lint(
-                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    AttributeLintKind::MalFormedDiagnosticAttribute {
-                        attribute: mode.as_str(),
-                        span,
-                    },
+            cx.emit_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                AttributeLintKind::MalFormedDiagnosticAttribute {
+                attribute: mode.as_str(),
                     span,
-                );
-            }
+                },
+                span,
+            );
             continue;
         }}
 
@@ -175,19 +171,15 @@ fn parse_directive_items<'p, S: Stage>(
         }}
 
         macro duplicate($name: ident, $($first_span:tt)*) {{
-            if matches!(mode, Mode::RustcOnUnimplemented) {
-                cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
-            } else {
-                cx.emit_lint(
-                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    AttributeLintKind::IgnoredDiagnosticOption {
-                        first_span: $($first_span)*,
-                        later_span: span,
-                        option_name: $name,
-                    },
-                    span,
-                );
-            }
+            cx.emit_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                AttributeLintKind::IgnoredDiagnosticOption {
+                    first_span: $($first_span)*,
+                    later_span: span,
+                    option_name: $name,
+                },
+                span,
+            );
         }}
 
         let item: &MetaItemParser = or_malformed!(item.meta_item()?);
@@ -564,15 +556,6 @@ pub(crate) enum InvalidOnClause {
         span: Span,
         invalid_flag: Symbol,
     },
-}
-
-#[derive(Diagnostic)]
-#[diag("this attribute must have a value", code = E0232)]
-#[note("e.g. `#[rustc_on_unimplemented(message=\"foo\")]`")]
-pub(crate) struct NoValueInOnUnimplemented {
-    #[primary_span]
-    #[label("expected value here")]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
