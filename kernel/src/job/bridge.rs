@@ -72,5 +72,8 @@ pub fn job_from_thread_states(thread_states: &[ThreadState]) -> Job {
 pub fn job_state_from_snapshot(
     snapshot: &crate::sched::hooks::ProcessSnapshot,
 ) -> JobState {
+    // Single-element slice is intentional: ProcessSnapshot today carries only
+    // the thread-group leader's state.  When ProcessSnapshot is extended to
+    // include all TIDs this call site will pass the full slice.
     job_state_from_thread_states(&[snapshot.state])
 }

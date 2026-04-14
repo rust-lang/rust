@@ -288,6 +288,10 @@ impl VfsNode for ProcPidDirNode {
         })
     }
     fn readdir(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
+        // Legacy procfs entries (transitional internal model):
+        //   status, cmdline, fd, exe, task
+        // Canonical schema entries (Phase 1: task, Phase 2: job):
+        //   task_state, job_state
         let entries = ["status", "cmdline", "fd", "exe", "task", "task_state", "job_state"];
         super::write_readdir_entries(entries.into_iter(), offset, buf)
     }
