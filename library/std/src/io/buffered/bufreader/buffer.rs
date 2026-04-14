@@ -18,14 +18,12 @@ pub struct Buffer {
     buf: Box<[MaybeUninit<u8>]>,
     // The current seek offset into `buf`, must always be <= `filled`.
     pos: usize,
-    // Each call to `fill_buf` sets `filled` to indicate how many bytes at the start of `buf` are
+    // Each write into `buf` sets `filled` to indicate how many bytes at the start of `buf` are
     // initialized with bytes from a read.
     filled: usize,
-    // Whether `buf` has been fully initialized. We track this so that we can accurately tell
-    // `read_buf` how many bytes of buf are initialized, to bypass as much of its defensive
-    // initialization as possible. Note that while this often the same as `filled`, it doesn't need
-    // to be. Calls to `fill_buf` are not required to actually fill the buffer, and omitting this
-    // is a huge perf regression for `Read` impls that do not.
+    // Remembers whether all bytes of `buf` have been initialized. Omitting this would be a huge
+    // perf regression for `Read` impls that do not fully fill the output buffer and that don't
+    // implement `Read::read_buf`.
     initialized: bool,
 }
 
