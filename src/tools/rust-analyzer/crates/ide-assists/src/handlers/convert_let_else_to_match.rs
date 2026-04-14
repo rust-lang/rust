@@ -3,6 +3,7 @@ use syntax::ast::RangeItem;
 use syntax::ast::edit::AstNodeEdit;
 use syntax::ast::syntax_factory::SyntaxFactory;
 use syntax::ast::{self, AstNode, HasName, LetStmt, Pat};
+use syntax::syntax_editor::SyntaxEditor;
 
 use crate::{AssistContext, AssistId, Assists};
 
@@ -25,12 +26,15 @@ use crate::{AssistContext, AssistId, Assists};
 // }
 // ```
 pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    let root = ctx.source_file().syntax().clone();
+    let (mut editor, _) = SyntaxEditor::new(root);
     // Should focus on the `else` token to trigger
     let let_stmt = ctx
         .find_token_syntax_at_offset(T![else])
         .and_then(|it| it.parent()?.parent())
         .or_else(|| ctx.find_token_syntax_at_offset(T![let])?.parent())?;
     let let_stmt = LetStmt::cast(let_stmt)?;
+    let make = SyntaxFactory::with_mappings();
     let else_block = let_stmt.let_else()?.block_expr()?;
     let else_expr = if else_block.statements().next().is_none()
         && let Some(tail_expr) = else_block.tail_expr()
@@ -45,10 +49,8 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'
         return None;
     }
     let pat = let_stmt.pat()?;
-
-    let make = SyntaxFactory::with_mappings();
     let mut idents = Vec::default();
-    let pat_without_mut = remove_mut_and_collect_idents(&make, &pat, &mut idents)?;
+    let pat_without_mut = remove_mut_and_collect_idents(&make, &mut editor, &pat, &mut idents)?;
     let bindings = idents
         .into_iter()
         .filter_map(|ref pat| {
@@ -70,7 +72,7 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'
         },
         let_stmt.syntax().text_range(),
         |builder| {
-            let mut editor = builder.make_editor(let_stmt.syntax());
+            // let mut editor = builder.make_editor(let_stmt.syntax());
 
             let binding_paths = bindings
                 .iter()
@@ -124,6 +126,7 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'
 
 fn remove_mut_and_collect_idents(
     make: &SyntaxFactory,
+    editor: &mut SyntaxEditor,
     pat: &ast::Pat,
     acc: &mut Vec<ast::IdentPat>,
 ) -> Option<ast::Pat> {
@@ -135,34 +138,40 @@ fn remove_mut_and_collect_idents(
                 p.ref_token().is_some() && p.mut_token().is_some(),
                 p.name()?,
             );
-            if let Some(inner) = p.pat() {
-                non_mut_pat.set_pat(remove_mut_and_collect_idents(make, &inner, acc));
-            }
+            let non_mut_pat = if let Some(inner) = p.pat() {
+                non_mut_pat.set_pat_with_editor(
+                    remove_mut_and_collect_idents(make, editor, &inner, acc),
+                    editor,
+                    make,
+                )
+            } else {
+                non_mut_pat
+            };
             non_mut_pat.into()
         }
         ast::Pat::BoxPat(p) => {
-            make.box_pat(remove_mut_and_collect_idents(make, &p.pat()?, acc)?).into()
+            make.box_pat(remove_mut_and_collect_idents(make, editor, &p.pat()?, acc)?).into()
         }
         ast::Pat::OrPat(p) => make
             .or_pat(
                 p.pats()
-                    .map(|pat| remove_mut_and_collect_idents(make, &pat, acc))
+                    .map(|pat| remove_mut_and_collect_idents(make, editor, &pat, acc))
                     .collect::<Option<Vec<_>>>()?,
                 p.leading_pipe().is_some(),
             )
             .into(),
         ast::Pat::ParenPat(p) => {
-            make.paren_pat(remove_mut_and_collect_idents(make, &p.pat()?, acc)?).into()
+            make.paren_pat(remove_mut_and_collect_idents(make, editor, &p.pat()?, acc)?).into()
         }
         ast::Pat::RangePat(p) => make
             .range_pat(
                 if let Some(start) = p.start() {
-                    Some(remove_mut_and_collect_idents(make, &start, acc)?)
+                    Some(remove_mut_and_collect_idents(make, editor, &start, acc)?)
                 } else {
                     None
                 },
                 if let Some(end) = p.end() {
-                    Some(remove_mut_and_collect_idents(make, &end, acc)?)
+                    Some(remove_mut_and_collect_idents(make, editor, &end, acc)?)
                 } else {
                     None
                 },
@@ -175,13 +184,15 @@ fn remove_mut_and_collect_idents(
                     p.record_pat_field_list()?
                         .fields()
                         .map(|field| {
-                            remove_mut_and_collect_idents(make, &field.pat()?, acc).map(|pat| {
-                                if let Some(name_ref) = field.name_ref() {
-                                    make.record_pat_field(name_ref, pat)
-                                } else {
-                                    make.record_pat_field_shorthand(pat)
-                                }
-                            })
+                            remove_mut_and_collect_idents(make, editor, &field.pat()?, acc).map(
+                                |pat| {
+                                    if let Some(name_ref) = field.name_ref() {
+                                        make.record_pat_field(name_ref, pat)
+                                    } else {
+                                        make.record_pat_field_shorthand(pat)
+                                    }
+                                },
+                            )
                         })
                         .collect::<Option<Vec<_>>>()?,
                     p.record_pat_field_list()?.rest_pat(),
@@ -194,20 +205,20 @@ fn remove_mut_and_collect_idents(
                 acc.push(ident);
                 p.clone().into()
             } else {
-                make.ref_pat(remove_mut_and_collect_idents(make, &inner, acc)?).into()
+                make.ref_pat(remove_mut_and_collect_idents(make, editor, &inner, acc)?).into()
             }
         }
         ast::Pat::SlicePat(p) => make
             .slice_pat(
                 p.pats()
-                    .map(|pat| remove_mut_and_collect_idents(make, &pat, acc))
+                    .map(|pat| remove_mut_and_collect_idents(make, editor, &pat, acc))
                     .collect::<Option<Vec<_>>>()?,
             )
             .into(),
         ast::Pat::TuplePat(p) => make
             .tuple_pat(
                 p.fields()
-                    .map(|field| remove_mut_and_collect_idents(make, &field, acc))
+                    .map(|field| remove_mut_and_collect_idents(make, editor, &field, acc))
                     .collect::<Option<Vec<_>>>()?,
             )
             .into(),
@@ -215,7 +226,7 @@ fn remove_mut_and_collect_idents(
             .tuple_struct_pat(
                 p.path()?,
                 p.fields()
-                    .map(|field| remove_mut_and_collect_idents(make, &field, acc))
+                    .map(|field| remove_mut_and_collect_idents(make, editor, &field, acc))
                     .collect::<Option<Vec<_>>>()?,
             )
             .into(),

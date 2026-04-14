@@ -230,7 +230,7 @@ impl AssignmentEdit {
                 Some(self.tuple_pat.into()),
                 syntax_editor,
                 syntax_mapping,
-            )
+            );
         } else if self.is_shorthand_field {
             syntax_editor.insert(Position::after(self.ident_pat.syntax()), self.tuple_pat.syntax());
             syntax_editor
