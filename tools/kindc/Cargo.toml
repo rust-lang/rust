@@ -1,0 +1,17 @@
+[package]
+name = "kindc"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+clap = { version = "4.5.53", features = ["derive"] }
+blake3 = "1.5"
+indexmap = "2.2"
+
+[[bin]]
+name = "kindc"
+path = "src/cli.rs"
+
+[lib]
+path = "src/lib.rs"

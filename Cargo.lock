@@ -3261,6 +3261,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "kindc"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "clap",
+ "indexmap",
+]
+
+[[package]]
 name = "lazy-regex"
 version = "3.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

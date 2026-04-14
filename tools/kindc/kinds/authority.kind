@@ -1,0 +1,5 @@
+/// A capability-based authority
+kind thingos.authority = struct {
+  name: string,
+  capabilities: list<string>,
+}

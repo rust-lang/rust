@@ -1,0 +1,6 @@
+/// The intersection of identity, location, and authority
+kind thingos.presence = struct {
+  person: ref<thingos.person>,
+  place: ref<thingos.place>,
+  authority: ref<thingos.authority>,
+}

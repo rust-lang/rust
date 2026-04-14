@@ -1,0 +1,22 @@
+/// System events
+kind thingos.event = enum {
+  InterruptRequested {
+    source: string,
+  },
+
+  JobExited {
+    job: ref<thingos.job>,
+    code: i32,
+  },
+
+  Message {
+    kind: ref<thingos.kind>,
+    payload: bytes,
+  },
+}
+
+/// A message sent over a port
+kind thingos.port.message = struct {
+  kind: ref<thingos.kind>,
+  payload: bytes,
+}

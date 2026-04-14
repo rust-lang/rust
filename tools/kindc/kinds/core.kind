@@ -1,0 +1,13 @@
+/// Metadata about a Kind itself
+kind thingos.kind = struct {
+  name: string,
+  version: u32,
+  doc: option<string>,
+}
+
+/// A representation of a Schema with an encoding
+kind thingos.form = struct {
+  name: string,
+  kind: ref<thingos.kind>,
+  encoding: string,
+}

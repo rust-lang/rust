@@ -1,0 +1,24 @@
+/// Scheduler states for a task
+kind thingos.task.state = enum {
+  Ready,
+  Running,
+  Blocked,
+  Exited,
+}
+
+/// A kernel-scheduled unit of execution
+kind thingos.task = struct {
+  state: thingos.task.state,
+}
+
+/// A collection of related tasks
+kind thingos.job = struct {
+  tasks: list<ref<thingos.task>>,
+  name: string,
+}
+
+/// A hierarchical grouping of jobs
+kind thingos.group = struct {
+  members: list<ref<thingos.job>>,
+  name: string,
+}
