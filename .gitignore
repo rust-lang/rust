@@ -12,7 +12,7 @@
 /iso_root*/
 thing-os*.iso
 
-/bran/bin-*
+/bran/bin-x86_64/kernel
 
 ## File system
 .DS_Store
@@ -114,5 +114,6 @@ flake.lock
 # Before adding new lines, see the comment at the top.
 bran/bin-x86_64/kernel
 build_errors.log
+bran/bin-x86_64/kernel
 bran/bin-x86_64/kernel
 bran/bin-x86_64/kernel
