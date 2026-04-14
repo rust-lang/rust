@@ -44,7 +44,7 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
 use rustc_type_ir::{CollectAndApply, TypeFlags, WithCachedTypeInfo, elaborate, search_graph};
@@ -1705,6 +1705,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 // in downstream crates. It should never be linted, but should we
                 // hack this in the linter to ignore it?
                 && f.as_str() != "restricted_std"
+                // `doc_cfg` affects rustdoc behavior: rustdoc checks it via
+                // `tcx.features().doc_cfg()`, but a normal rustc compilation may
+                // never observe that use. Do not lint it as unused here.
+                && *f != sym::doc_cfg
             })
             .collect::<Vec<_>>();
 
