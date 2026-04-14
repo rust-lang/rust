@@ -70,7 +70,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for RustcParenSugarParser {
 pub(crate) struct MarkerParser;
 impl<S: Stage> NoArgsAttributeParser<S> for MarkerParser {
     const PATH: &[Symbol] = &[sym::marker];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Trait),
         Warn(Target::Field),

@@ -1186,7 +1186,7 @@ pub(crate) struct PreludeImportParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for PreludeImportParser {
     const PATH: &[Symbol] = &[sym::prelude_import];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Use)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::PreludeImport;
 }
