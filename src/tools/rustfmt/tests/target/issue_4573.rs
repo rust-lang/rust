@@ -11,11 +11,11 @@
 // post inner attribute comment
 
 #[cfg(not(miri))] // inline comment
-#[no_link]
+#[cfg(true)]
 extern crate foo;
 
 // before attributes
-#[no_link]
+#[cfg(true)]
 // between attributes
 #[cfg(not(miri))] // inline comment
 extern crate foo as bar;

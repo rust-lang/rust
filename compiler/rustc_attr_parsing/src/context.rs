@@ -44,7 +44,6 @@ use crate::attributes::macro_attrs::*;
 use crate::attributes::must_not_suspend::*;
 use crate::attributes::must_use::*;
 use crate::attributes::no_implicit_prelude::*;
-use crate::attributes::no_link::*;
 use crate::attributes::non_exhaustive::*;
 use crate::attributes::path::PathParser as PathAttributeParser;
 use crate::attributes::pin_v2::*;
@@ -261,7 +260,6 @@ attribute_parsers!(
         Single<WithoutArgs<NoBuiltinsParser>>,
         Single<WithoutArgs<NoCoreParser>>,
         Single<WithoutArgs<NoImplicitPreludeParser>>,
-        Single<WithoutArgs<NoLinkParser>>,
         Single<WithoutArgs<NoMainParser>>,
         Single<WithoutArgs<NoMangleParser>>,
         Single<WithoutArgs<NoStdParser>>,
