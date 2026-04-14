@@ -118,17 +118,14 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
                     // of the same `MetaVarKind`. Here we do the same but
                     // ignore the `MetaVarKind` because it is discarded when we
                     // convert it to a `Group`.
-                    while let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim {
-                        if stream.len() == 1
-                            && let tree = stream.iter().next().unwrap()
-                            && let tokenstream::TokenTree::Delimited(_, _, delim2, stream2) = tree
-                            && let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim2
-                        {
-                            delim = *delim2;
-                            stream = stream2.clone();
-                        } else {
-                            break;
-                        }
+                    while let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim
+                        && stream.len() == 1
+                        && let tree = stream.get(0).unwrap()
+                        && let tokenstream::TokenTree::Delimited(_, _, delim2, stream2) = tree
+                        && let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim2
+                    {
+                        delim = *delim2;
+                        stream = stream2.clone();
                     }
 
                     trees.push(TokenTree::Group(Group {
