@@ -8,7 +8,7 @@ use ide_db::{
 use stdx::never;
 use syntax::{
     AstNode, Direction, SyntaxNode, SyntaxToken, T,
-    ast::{self, Use, UseTree, VisibilityKind, make},
+    ast::{self, Use, UseTree, VisibilityKind, syntax_factory::SyntaxFactory},
 };
 
 use crate::{
@@ -148,6 +148,8 @@ fn build_expanded_import(
     current_module: Module,
     reexport_public_items: bool,
 ) {
+    let make = SyntaxFactory::with_mappings();
+    let mut editor = builder.make_editor(use_tree.syntax());
     let (must_be_pub, visible_from) = if !reexport_public_items {
         (false, current_module)
     } else {
@@ -167,15 +169,13 @@ fn build_expanded_import(
         if reexport_public_items { refs_in_target } else { refs_in_target.used_refs(ctx) };
 
     let names_to_import = find_names_to_import(filtered_defs, imported_defs);
-    let expanded = make::use_tree_list(names_to_import.iter().map(|n| {
-        let path = make::ext::ident_path(
+    let expanded = make.use_tree_list(names_to_import.iter().map(|n| {
+        let path = make.ident_path(
             &n.display(ctx.db(), current_module.krate(ctx.db()).edition(ctx.db())).to_string(),
         );
-        make::use_tree(path, None, None, false)
-    }))
-    .clone_for_update();
+        make.use_tree(path, None, None, false)
+    }));
 
-    let mut editor = builder.make_editor(use_tree.syntax());
     match use_tree.star_token() {
         Some(star) => {
             let needs_braces = use_tree.path().is_some() && names_to_import.len() != 1;
@@ -192,6 +192,7 @@ fn build_expanded_import(
         }
         None => never!(),
     }
+    editor.add_mappings(make.finish_with_mappings());
     builder.add_file_edits(ctx.vfs_file_id(), editor);
 }
 

@@ -71,6 +71,22 @@ impl SyntaxFactory {
         make::type_bound_text(bound).clone_for_update()
     }
 
+    pub fn use_tree_list(
+        &self,
+        use_trees: impl IntoIterator<Item = ast::UseTree>,
+    ) -> ast::UseTreeList {
+        let (use_trees, input) = iterator_input(use_trees);
+        let ast = make::use_tree_list(use_trees).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(input, ast.use_trees().map(|b| b.syntax().clone()));
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn type_bound_list(
         &self,
         bounds: impl IntoIterator<Item = ast::TypeBound>,
