@@ -257,11 +257,8 @@ pub mod net {
 
     /// Create an IPv4 TCP socket which listens on a random port at the localhost address.
     /// Returns the socket file descriptor and the actual socket address the socket is listening on.
-    pub fn make_listener_ipv4(
-        options: libc::c_int,
-    ) -> io::Result<(libc::c_int, libc::sockaddr_in)> {
-        let sockfd =
-            unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM | options, 0))? };
+    pub fn make_listener_ipv4() -> io::Result<(libc::c_int, libc::sockaddr_in)> {
+        let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0))? };
         // Turn address into socket address with a random free port.
         let addr = sock_addr_ipv4(IPV4_LOCALHOST, 0);
         unsafe {
@@ -285,11 +282,8 @@ pub mod net {
 
     /// Create an IPv6 TCP socket which listens on a random port at the localhost address.
     /// Returns the socket file descriptor and the actual socket address the socket is listening on.
-    pub fn make_listener_ipv6(
-        options: libc::c_int,
-    ) -> io::Result<(libc::c_int, libc::sockaddr_in6)> {
-        let sockfd =
-            unsafe { errno_result(libc::socket(libc::AF_INET6, libc::SOCK_STREAM | options, 0))? };
+    pub fn make_listener_ipv6() -> io::Result<(libc::c_int, libc::sockaddr_in6)> {
+        let sockfd = unsafe { errno_result(libc::socket(libc::AF_INET6, libc::SOCK_STREAM, 0))? };
         // Turn address into socket address with a random free port.
         let addr = sock_addr_ipv6(IPV6_LOCALHOST, 0);
         unsafe {

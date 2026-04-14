@@ -16,7 +16,7 @@ use utils::check_nondet;
 const TEST_BYTES: &[u8] = b"these are some test bytes!";
 
 fn main() {
-    test_socket_close();
+    test_create_close();
     test_bind_ipv4();
     test_bind_ipv4_reuseaddr();
     test_set_reuseaddr_invalid_len();
@@ -48,11 +48,17 @@ fn main() {
     test_getpeername_ipv6();
 }
 
-fn test_socket_close() {
-    unsafe {
-        let sockfd = errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap();
-        errno_check(libc::close(sockfd));
-    }
+/// Test creating a socket and then closing it afterwards.
+fn test_create_close() {
+    let sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    let flags = unsafe { errno_result(libc::fcntl(sockfd, libc::F_GETFL, 0)).unwrap() };
+
+    // Ensure that socket is initially blocking.
+    assert_eq!(flags & libc::O_NONBLOCK, 0);
+
+    unsafe { errno_check(libc::close(sockfd)) };
 }
 
 fn test_bind_ipv4() {
@@ -191,7 +197,7 @@ fn test_listen() {
 /// - Connecting when the server is already accepting
 /// - Accepting when there is already an incoming connection
 fn test_accept_connect() {
-    let (server_sockfd, addr) = net::make_listener_ipv4(0).unwrap();
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -234,7 +240,7 @@ fn test_accept_connect() {
 /// We especially want to test that the peeking doesn't remove the bytes from
 /// the queue.
 fn test_send_peek_recv() {
-    let (server_sockfd, addr) = net::make_listener_ipv4(0).unwrap();
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -291,7 +297,7 @@ fn test_send_peek_recv() {
 
 /// Test that we actually do partial sends and partial receives for sockets.
 fn test_partial_send_recv() {
-    let (server_sockfd, addr) = net::make_listener_ipv4(0).unwrap();
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -338,7 +344,7 @@ fn test_partial_send_recv() {
 /// We want to test this because `write` and `read` should be the same as
 /// `send` and `recv` with zero flags.
 fn test_write_read() {
-    let (server_sockfd, addr) = net::make_listener_ipv4(0).unwrap();
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -481,7 +487,7 @@ fn test_getsockname_ipv6() {
 /// For a connected socket, the `getpeername` syscall should
 /// return the same address as the socket was connected to.
 fn test_getpeername_ipv4() {
-    let (server_sockfd, addr) = net::make_listener_ipv4(0).unwrap();
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -506,7 +512,7 @@ fn test_getpeername_ipv4() {
 /// For a connected socket, the `getpeername` syscall should
 /// return the same address as the socket was connected to.
 fn test_getpeername_ipv6() {
-    let (server_sockfd, addr) = net::make_listener_ipv6(0).unwrap();
+    let (server_sockfd, addr) = net::make_listener_ipv6().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET6, libc::SOCK_STREAM, 0)).unwrap() };
 
