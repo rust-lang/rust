@@ -42,7 +42,6 @@ expression: test --skip=tests --skip=coverage-map --skip=coverage-run --skip=lib
     - Set({test::compiler/rustc_hashes})
     - Set({test::compiler/rustc_hir})
     - Set({test::compiler/rustc_hir_analysis})
-    - Set({test::compiler/rustc_hir_id})
     - Set({test::compiler/rustc_hir_pretty})
     - Set({test::compiler/rustc_hir_typeck})
     - Set({test::compiler/rustc_incremental})

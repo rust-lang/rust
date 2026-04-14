@@ -6,7 +6,7 @@ use clippy_utils::ty::{ExprFnSig, expr_sig, ty_sig};
 use clippy_utils::{as_some_expr, get_expr_use_or_unification_node, is_none_expr, std_or_core, sym};
 
 use rustc_errors::Applicability;
-use rustc_hir::hir_id::HirId;
+use rustc_hir::def_id::HirId;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Binder;

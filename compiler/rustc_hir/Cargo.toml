@@ -15,7 +15,6 @@ rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_error_messages = { path = "../rustc_error_messages" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_hashes = { path = "../rustc_hashes" }
-rustc_hir_id = { path = "../rustc_hir_id" }
 rustc_index = { path = "../rustc_index" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }

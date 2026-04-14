@@ -49,7 +49,6 @@ expression: bench
     - Set({bench::compiler/rustc_hashes})
     - Set({bench::compiler/rustc_hir})
     - Set({bench::compiler/rustc_hir_analysis})
-    - Set({bench::compiler/rustc_hir_id})
     - Set({bench::compiler/rustc_hir_pretty})
     - Set({bench::compiler/rustc_hir_typeck})
     - Set({bench::compiler/rustc_incremental})

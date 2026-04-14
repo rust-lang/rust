@@ -31,7 +31,6 @@ expression: build compiler
     - Set({build::compiler/rustc_hashes})
     - Set({build::compiler/rustc_hir})
     - Set({build::compiler/rustc_hir_analysis})
-    - Set({build::compiler/rustc_hir_id})
     - Set({build::compiler/rustc_hir_pretty})
     - Set({build::compiler/rustc_hir_typeck})
     - Set({build::compiler/rustc_incremental})

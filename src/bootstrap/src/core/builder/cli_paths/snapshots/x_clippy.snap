@@ -48,7 +48,6 @@ expression: clippy
     - Set({clippy::compiler/rustc_hashes})
     - Set({clippy::compiler/rustc_hir})
     - Set({clippy::compiler/rustc_hir_analysis})
-    - Set({clippy::compiler/rustc_hir_id})
     - Set({clippy::compiler/rustc_hir_pretty})
     - Set({clippy::compiler/rustc_hir_typeck})
     - Set({clippy::compiler/rustc_incremental})

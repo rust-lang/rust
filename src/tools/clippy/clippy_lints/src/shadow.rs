@@ -6,8 +6,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::visitors::{Descend, Visitable, for_each_expr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Res;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::hir_id::ItemLocalId;
+use rustc_hir::def_id::{LocalDefId, ItemLocalId};
 use rustc_hir::{
     Block, Body, BodyOwnerKind, Expr, ExprKind, HirId, LetExpr, LocalSource, Node, Pat, PatKind, QPath, UnOp,
 };

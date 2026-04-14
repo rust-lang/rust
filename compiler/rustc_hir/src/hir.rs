@@ -33,8 +33,7 @@ use tracing::debug;
 
 use crate::attrs::AttributeKind;
 use crate::def::{CtorKind, DefKind, MacroKinds, PerNS, Res};
-use crate::def_id::{DefId, LocalDefIdMap};
-pub(crate) use crate::hir_id::{HirId, ItemLocalId, ItemLocalMap, OwnerId};
+use crate::def_id::{DefId, HirId, ItemLocalId, ItemLocalMap, LocalDefIdMap, OwnerId};
 use crate::intravisit::{FnKind, VisitorExt};
 use crate::lints::DelayedLints;
 
@@ -4911,7 +4910,7 @@ impl<'hir> OwnerNode<'hir> {
             | OwnerNode::TraitItem(TraitItem { owner_id, .. })
             | OwnerNode::ImplItem(ImplItem { owner_id, .. })
             | OwnerNode::ForeignItem(ForeignItem { owner_id, .. }) => *owner_id,
-            OwnerNode::Crate(..) => crate::CRATE_HIR_ID.owner,
+            OwnerNode::Crate(..) => crate::def_id::CRATE_HIR_ID.owner,
             OwnerNode::Synthetic => unreachable!(),
         }
     }

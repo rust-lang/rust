@@ -6,9 +6,8 @@ use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
-use rustc_hir_id::{HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::def_id::DefPathHash;
+use rustc_span::def_id::{DefPathHash, HirId, ItemLocalId};
 pub use rustc_span::edition::Edition;
 use rustc_span::{AttrId, HashStableContext, Ident, Span, Symbol, sym};
 use serde::{Deserialize, Serialize};

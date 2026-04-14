@@ -23,8 +23,11 @@ pub mod def_path_hash_map;
 pub mod definitions;
 pub mod diagnostic_items;
 pub use rustc_span::def_id;
+pub use rustc_span::def_id::{
+    CRATE_HIR_ID, CRATE_OWNER_ID, HirId, HirIdMap, HirIdMapEntry, HirIdSet, ItemLocalId,
+    ItemLocalMap, ItemLocalMapEntry, ItemLocalSet, OwnerId,
+};
 mod hir;
-pub use rustc_hir_id::{self as hir_id, *};
 pub mod intravisit;
 pub mod lang_items;
 pub mod limit;

@@ -4,8 +4,7 @@ use clippy_utils::res::{MaybeQPath, MaybeResPath};
 use core::cell::Cell;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
-use rustc_hir::def_id::DefId;
-use rustc_hir::hir_id::HirIdMap;
+use rustc_hir::def_id::{DefId, HirIdMap};
 use rustc_hir::{
     Body, Expr, ExprKind, HirId, ImplItem, ImplItemImplKind, ImplItemKind, Node, PatKind, TraitItem, TraitItemKind,
 };
