@@ -235,6 +235,7 @@ pub(super) fn opt_item(p: &mut Parser<'_>, m: Marker, is_in_extern: bool) -> Res
         T![trait] => traits::trait_(p, m),
         T![impl] => traits::impl_(p, m),
 
+        T![type] if p.nth(1) == T![const] => consts::konst(p, m),
         T![type] => type_alias(p, m),
 
         // test extern_block
@@ -266,6 +267,9 @@ fn opt_item_without_modifiers(p: &mut Parser<'_>, m: Marker) -> Result<(), Marke
         T![use] => use_item::use_(p, m),
         T![mod] => mod_item(p, m),
 
+        // test type_const
+        // type const FOO: i32 = 2;
+        T![type] if la == T![const] => consts::konst(p, m),
         T![type] => type_alias(p, m),
         T![struct] => adt::strukt(p, m),
         T![enum] => adt::enum_(p, m),

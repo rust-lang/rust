@@ -328,6 +328,7 @@ VariantDef =
 Const =
   Attr* Visibility?
   'default'?
+  'type'?
   'const' (Name | '_') GenericParamList? ':' Type
   ('=' body:Expr)?
   WhereClause? ';'

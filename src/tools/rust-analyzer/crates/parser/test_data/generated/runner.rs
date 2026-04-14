@@ -688,6 +688,8 @@ mod ok {
     #[test]
     fn type_alias() { run_and_expect_no_errors("test_data/parser/inline/ok/type_alias.rs"); }
     #[test]
+    fn type_const() { run_and_expect_no_errors("test_data/parser/inline/ok/type_const.rs"); }
+    #[test]
     fn type_item_type_params() {
         run_and_expect_no_errors("test_data/parser/inline/ok/type_item_type_params.rs");
     }
