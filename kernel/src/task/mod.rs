@@ -221,6 +221,119 @@ impl ProcessLifecycle {
     }
 }
 
+/// Unix legacy compatibility state carried by a `Process`.
+///
+/// This struct is the **explicit quarantine boundary** for all Unix-derived
+/// state that is kept for compatibility but is **not** architectural truth in
+/// ThingOS.  It lives inside [`Process`] as a named subdivision so that:
+///
+/// * A reader immediately sees which concepts are transitional legacy.
+/// * New code is forced to touch `unix_compat.*` rather than top-level
+///   `Process` fields, making every new use of legacy state visible at code
+///   review time.
+/// * The extraction seam for each field is documented here, not scattered.
+///
+/// # ⚠️ Do not add new fields here
+///
+/// New kernel code MUST NOT add fields to `ProcessUnixCompat` unless
+/// absolutely forced by a Unix compatibility requirement.  All new public
+/// paths should use Task / Job / Group / Place / Authority vocabulary instead.
+///
+/// # Field inventory and future homes
+///
+/// | Field            | Unix origin                    | Future ThingOS home              |
+/// |------------------|--------------------------------|----------------------------------|
+/// | `signals`        | POSIX per-process signal state | Message / Inbox / Group broadcast|
+/// | `pgid`           | Process-group ID               | Group (Phase 5)                  |
+/// | `sid`            | Session ID                     | Group / Presence / Place (Phase 5)|
+/// | `session_leader` | Session-leader flag            | Group / Presence (Phase 5)       |
+/// | `argv`           | Spawn-time argument vector     | Structured spawn record → Job    |
+/// | `env`            | Inherited environment map      | Place / Authority context        |
+/// | `auxv`           | ELF auxiliary vector           | Structured spawn record → Job    |
+///
+/// # Note on Presence
+///
+/// Presence (terminal attachment, UI/console ownership, person-in-place) has
+/// not yet been introduced.  When it is, controlling-TTY state currently
+/// embedded in `signals` (SIGTTOU/SIGTTIN, job-control stop) will move there,
+/// **not** into Place.
+pub struct ProcessUnixCompat {
+    /// Per-process signal state: dispositions, pending set, stop/alarm state.
+    ///
+    /// Includes the controlling-terminal glue (SIGTTOU/SIGTTIN, job-control
+    /// stop signals) that properly belongs to Group / Presence once those
+    /// concepts are introduced.
+    ///
+    /// FUTURE: → Message / Inbox / Group broadcast
+    pub signals: crate::signal::ProcessSignals,
+
+    /// Process group ID.
+    ///
+    /// FUTURE: → Group (Phase 5)
+    pub pgid: u32,
+
+    /// Session ID.
+    ///
+    /// FUTURE: → Group / Presence / Place (Phase 5)
+    pub sid: u32,
+
+    /// True when this process is the leader of its session.
+    ///
+    /// FUTURE: → Group / Presence (Phase 5)
+    pub session_leader: bool,
+
+    /// Argument vector passed at spawn/exec time.
+    ///
+    /// FUTURE: → structured spawn record attached to Job
+    pub argv: Vec<Vec<u8>>,
+
+    /// Environment variables inherited at spawn/exec time.
+    ///
+    /// FUTURE: → Place / Authority context propagation
+    pub env: BTreeMap<Vec<u8>, Vec<u8>>,
+
+    /// ELF auxiliary vector (AT_* entries as `(type, value)` pairs).
+    ///
+    /// FUTURE: → structured spawn record attached to Job
+    pub auxv: Vec<(u64, u64)>,
+}
+
+impl ProcessUnixCompat {
+    /// Create Unix compatibility state for an **isolated** process (no parent).
+    ///
+    /// Sets `pgid` and `sid` to `pid`.  Pass `is_session_leader = true` when
+    /// this process bootstraps a new session (e.g. the root init process);
+    /// `false` otherwise.
+    pub fn isolated(pid: u32, is_session_leader: bool) -> Self {
+        ProcessUnixCompat {
+            signals: crate::signal::ProcessSignals::new(),
+            pgid: pid,
+            sid: pid,
+            session_leader: is_session_leader,
+            argv: Vec::new(),
+            env: BTreeMap::new(),
+            auxv: Vec::new(),
+        }
+    }
+
+    /// Create Unix compatibility state for a **child** process that inherits
+    /// session/group membership from `parent`.
+    ///
+    /// The child is never a session leader, inherits `pgid`/`sid` from the
+    /// parent, and inherits the parent's environment map.
+    pub fn inherit(parent: &ProcessUnixCompat) -> Self {
+        ProcessUnixCompat {
+            signals: crate::signal::ProcessSignals::new(),
+            pgid: parent.pgid,
+            sid: parent.sid,
+            session_leader: false,
+            argv: Vec::new(),
+            env: parent.env.clone(),
+            auxv: Vec::new(),
+        }
+    }
+}
+
 /// First-class process object.
 ///
 /// A `Process` is the unit of resource ownership in Thing-OS.  Every user
@@ -229,17 +342,17 @@ impl ProcessLifecycle {
 ///
 /// # Ownership model
 ///
-/// | Resource           | Owner   | How threads access it                              |
-/// |--------------------|---------|-----------------------------------------------------|
-/// | PID                | Process | `process.lock().pid`                               |
-/// | PPID / thread list | Process | `process.lock().lifecycle.ppid` etc.               |
-/// | VM address space   | Process | `process.lock().space.aspace_raw`                  |
-/// | VM mappings        | Process | `process.lock().space.mappings` (Arc)              |
-/// | FD table           | Process | `process.lock().fd_table`                          |
-/// | CWD                | Process | `process.lock().cwd`                               |
-/// | VFS namespace      | Process | `process.lock().namespace`                         |
-/// | argv / env / auxv  | Process | `process.lock().argv` etc.                         |
-/// | exec path          | Process | `process.lock().exec_path`                         |
+/// | Resource                | Owner   | How threads access it                            |
+/// |-------------------------|---------|--------------------------------------------------|
+/// | PID                     | Process | `process.lock().pid`                             |
+/// | PPID / thread list      | Process | `process.lock().lifecycle.ppid` etc.             |
+/// | VM address space        | Process | `process.lock().space.aspace_raw`                |
+/// | VM mappings             | Process | `process.lock().space.mappings` (Arc)            |
+/// | FD table                | Process | `process.lock().fd_table`                        |
+/// | CWD                     | Process | `process.lock().cwd`                             |
+/// | VFS namespace           | Process | `process.lock().namespace`                       |
+/// | Unix compat (legacy)    | Process | `process.lock().unix_compat.*`                   |
+/// | exec path               | Process | `process.lock().exec_path`                       |
 ///
 /// # Locking rules
 ///
@@ -264,16 +377,16 @@ impl ProcessLifecycle {
 /// * `namespace` — VFS mount-table view → `Place::namespace`
 /// * *(no root field yet)* — effective filesystem root → `Place::root`
 ///
-/// **Legacy compatibility** (quarantined Unix baggage — not architectural truth):
-/// * `env` — inherited Unix process-local environment blob
-/// * `argv` / `auxv` — spawn-time invocation context
-/// * `pgid` / `sid` / `session_leader` — Unix session/process-group state
-///   (→ `Group`, Phase 4/5)
-/// * `fd_table` — open-file descriptor table (→ future resource authority)
-/// * `signals` — per-process signal state (→ future authority concern)
+/// **Unix legacy compatibility** (quarantined — see [`ProcessUnixCompat`]):
+/// * `unix_compat` — all Unix-derived state (`signals`, `pgid`, `sid`,
+///   `session_leader`, `argv`, `env`, `auxv`).
+///   These fields are NOT architectural truth; they are kept behind an
+///   explicit compatibility boundary.  New code MUST NOT add to
+///   `ProcessUnixCompat` without a Unix compatibility justification.
 ///
 /// **Group** (coordination domain — `kernel::group::bridge`):
-/// * `pgid` / `sid` / `session_leader` — also used by Group bridge today
+/// * `unix_compat.pgid` / `unix_compat.sid` / `unix_compat.session_leader`
+///   — also used by Group bridge today
 ///
 /// **Authority** (permission context — `kernel::authority::bridge`):
 /// * `exec_path` — used as authority name fallback today
@@ -287,14 +400,6 @@ impl ProcessLifecycle {
 ///   `aspace_raw`.  New code must not attach additional memory-ownership state
 ///   directly to `Process`; add it to `ProcessAddressSpace` instead.
 ///
-/// # Note on Presence
-///
-/// **Presence has not yet been introduced as a live execution/interaction
-/// concept.**  Terminal attachment, UI/console attachment, and person-in-place
-/// relationships are not yet represented here.  When Presence is introduced,
-/// any terminal-attachment or controlling-TTY state will be extracted from
-/// `signals` or a future field; it will not be a Place field.
-///
 /// See `docs/concepts/process-object.md` for the full design document.
 pub struct Process {
     /// Thread Group ID — the PID of the thread-group leader.
@@ -305,6 +410,7 @@ pub struct Process {
     /// Once those two responsibilities are separated, `pid` will migrate into
     /// `ProcessLifecycle` alongside the other `Job`-bound fields.
     pub pid: u32,
+
     // ── Lifecycle subdivision (future `Job` kernel object) ────────────────────
     // Lifecycle concerns are grouped here rather than scattered across `Process`.
     // This subdivision is the extraction seam for a future first-class `Job`
@@ -316,37 +422,26 @@ pub struct Process {
     /// and the `waitpid` exit queue.  See [`ProcessLifecycle`] for the full
     /// design rationale and future extraction seams.
     pub lifecycle: ProcessLifecycle,
-    // ── Legacy compatibility: Unix session/process-group state ────────────────
-    // These fields implement necessary Unix session semantics but are NOT
-    // architectural truth.  Public-facing code should use `Group` (via
-    // `kernel::group::bridge`).  They remain here pending Phase 5 extraction.
-    /// Process group ID.
-    pub pgid: u32,
-    /// Session ID.
-    pub sid: u32,
-    /// True when this process is the leader of its session.
-    pub session_leader: bool,
-    // ── Legacy compatibility: spawn-time invocation context ──────────────────
-    // `argv` and `auxv` are Unix spawn-time data blobs.  They are not Place,
-    // not Authority, and not canonical context.  Quarantined here as legacy
-    // compatibility state until a principled spawn-record concept is introduced.
-    /// Argument vector passed at spawn/exec time.
-    pub argv: Vec<Vec<u8>>,
-    // ── Legacy compatibility: inherited Unix environment blob ─────────────────
-    // `env` is a raw key→value environment map inherited from the Unix model.
-    // It does not belong to Place, Authority, or Group.  It is quarantined here
-    // as legacy compatibility state.  New code must not treat `env` as the
-    // canonical answer to any of those questions.
-    /// Environment variables.
-    pub env: BTreeMap<Vec<u8>, Vec<u8>>,
-    // ── Legacy compatibility: ELF auxiliary vector ───────────────────────────
-    /// ELF auxiliary vector (AT_* entries as `(type, value)` pairs).
-    pub auxv: Vec<(u64, u64)>,
+
+    // ── Unix legacy compatibility boundary ───────────────────────────────────
+    // ALL Unix-derived compatibility state lives here, behind an explicit
+    // named boundary.  This makes legacy baggage visible in every code review.
+    //
+    // DO NOT move fields out of `unix_compat` back into top-level `Process`.
+    // DO NOT add new Unix compatibility state to top-level `Process` directly.
+    // Any unavoidable Unix compatibility code must live inside this boundary.
+    /// Unix legacy compatibility state — signals, pgid, sid, argv, env, auxv.
+    ///
+    /// See [`ProcessUnixCompat`] for the full field inventory, future homes,
+    /// and the rules that govern this boundary.
+    pub unix_compat: ProcessUnixCompat,
+
     // ── Resource table ────────────────────────────────────────────────────────
     // Future: fd_table will move to a resource-authority domain.  For now it
     // remains as transitional Process baggage.
     /// File descriptor table — fds 0/1/2 pre-populated at spawn time.
     pub fd_table: crate::vfs::fd_table::FdTable,
+
     // ── Place context (Phase 8 — world/visibility boundary) ──────────────────
     // These fields answer "in what world does this execution happen?".
     // They feed `kernel::place::bridge` → `thingos::place::Place`.
@@ -363,14 +458,17 @@ pub struct Process {
     ///
     /// See `docs/concepts/namespaces.md` for the behaviour matrix and roadmap.
     pub namespace: crate::vfs::NamespaceRef,
+
     /// Current working directory.
     ///
     /// Feeds `Place::cwd` through `kernel::place::bridge`.
     /// New code must not read this field directly for world-context purposes;
     /// use `crate::place::bridge::place_from_snapshot` instead.
     pub cwd: alloc::string::String,
+
     /// Path of the currently-running executable image.
     pub exec_path: alloc::string::String,
+
     // ── Space context (future `Space` kernel object) ──────────────────────────
     // Address-space concerns are grouped here rather than scattered across
     // `Process`.  This subdivision is the extraction seam for a future
@@ -381,14 +479,6 @@ pub struct Process {
     /// Contains the VM mapping list and the architecture-specific page-table
     /// token.  See [`ProcessAddressSpace`] for the full design rationale.
     pub space: ProcessAddressSpace,
-    /// Per-process signal state: dispositions, pending set, stop/alarm state.
-    ///
-    /// LEGACY COMPAT: signal dispositions and pending-set management are Unix
-    /// compatibility machinery.  The controlling-terminal glue embedded here
-    /// (SIGTTOU/SIGTTIN, job-control stop signals) is not yet moved to
-    /// Group/Presence terms.  This field is quarantined as transitional
-    /// compatibility state.
-    pub signals: crate::signal::ProcessSignals,
 }
 
 /// Backward-compatible alias — prefer `Process` in new code.

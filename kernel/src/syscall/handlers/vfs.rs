@@ -1730,18 +1730,12 @@ mod tests {
         Arc::new(Mutex::new(crate::task::ProcessInfo {
             pid: 1,
             lifecycle: crate::task::ProcessLifecycle::new(0, 1),
-            pgid: 1,
-            sid: 1,
-            session_leader: false,
-            argv: alloc::vec![],
-            env: alloc::collections::BTreeMap::new(),
-            auxv: alloc::vec![],
+            unix_compat: crate::task::ProcessUnixCompat::isolated(1, false),
             fd_table,
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
             exec_path: alloc::string::String::new(),
             space: crate::task::ProcessAddressSpace::empty(),
-            signals: crate::signal::ProcessSignals::new(),
         }))
     }
 

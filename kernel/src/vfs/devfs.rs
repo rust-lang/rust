@@ -304,9 +304,9 @@ impl ConsoleNode {
         let pinfo = crate::sched::process_info_current()?;
         let p = pinfo.lock();
         Some(ConsoleCaller {
-            sid: p.sid,
-            pgid: p.pgid,
-            session_leader: p.session_leader,
+            sid: p.unix_compat.sid,
+            pgid: p.unix_compat.pgid,
+            session_leader: p.unix_compat.session_leader,
         })
     }
 

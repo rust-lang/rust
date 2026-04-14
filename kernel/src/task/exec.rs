@@ -235,11 +235,11 @@ pub fn task_exec_current<R: BootRuntime>(
     {
         let page_size = rt.page_size() as u64;
         let mut pinfo = pinfo_arc.lock();
-        pinfo.argv = argv;
-        pinfo.env = env;
+        pinfo.unix_compat.argv = argv;
+        pinfo.unix_compat.env = env;
         // Rebuild auxv from freshly loaded image.  AT_* constants follow
         // the standard ELF auxiliary-vector specification (see elf.h).
-        pinfo.auxv = build_auxv(&aux_info, page_size);
+        pinfo.unix_compat.auxv = build_auxv(&aux_info, page_size);
         // Record the executable path for /proc/self/exe.
         pinfo.exec_path = exec_fd_path;
         // Close all file descriptors marked FD_CLOEXEC before the new image runs.
@@ -494,18 +494,12 @@ mod tests {
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
             },
-            pgid: pid,
-            sid: pid,
-            session_leader: false,
-            argv: alloc::vec::Vec::new(),
-            env: alloc::collections::BTreeMap::new(),
-            auxv: alloc::vec::Vec::new(),
+            unix_compat: crate::task::ProcessUnixCompat::isolated(pid, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
             exec_path: alloc::string::String::new(),
             space: crate::task::ProcessAddressSpace::empty(),
-            signals: crate::signal::ProcessSignals::new(),
         }))
     }
 
@@ -563,18 +557,12 @@ mod tests {
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
             },
-            pgid: 9230,
-            sid: 9230,
-            session_leader: false,
-            argv: alloc::vec::Vec::new(),
-            env: alloc::collections::BTreeMap::new(),
-            auxv: alloc::vec::Vec::new(),
+            unix_compat: crate::task::ProcessUnixCompat::isolated(9230, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
             exec_path: alloc::string::String::new(),
             space: crate::task::ProcessAddressSpace::empty(),
-            signals: crate::signal::ProcessSignals::new(),
         }));
 
         let caller_tid: crate::task::TaskId = 9230;
@@ -599,18 +587,12 @@ mod tests {
         let pinfo = Arc::new(Mutex::new(ProcessInfo {
             pid: 9240,
             lifecycle: crate::task::ProcessLifecycle::new(1, 9240),
-            pgid: 9240,
-            sid: 9240,
-            session_leader: false,
-            argv: alloc::vec::Vec::new(),
-            env: alloc::collections::BTreeMap::new(),
-            auxv: alloc::vec::Vec::new(),
+            unix_compat: crate::task::ProcessUnixCompat::isolated(9240, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
             exec_path: alloc::string::String::new(),
             space: crate::task::ProcessAddressSpace::empty(),
-            signals: crate::signal::ProcessSignals::new(),
         }));
 
         let caller_tid: crate::task::TaskId = 9240;
@@ -726,18 +708,12 @@ mod tests {
         let pinfo = Arc::new(Mutex::new(ProcessInfo {
             pid: 9300,
             lifecycle: crate::task::ProcessLifecycle::new(1, 9300),
-            pgid: 9300,
-            sid: 9300,
-            session_leader: false,
-            argv: alloc::vec::Vec::new(),
-            env: alloc::collections::BTreeMap::new(),
-            auxv: alloc::vec::Vec::new(),
+            unix_compat: crate::task::ProcessUnixCompat::isolated(9300, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
             exec_path: alloc::string::String::new(),
             space: crate::task::ProcessAddressSpace::empty(),
-            signals: crate::signal::ProcessSignals::new(),
         }));
 
         // Set up: fd 0 survives, fd 1 has FD_CLOEXEC.
@@ -779,18 +755,12 @@ mod tests {
         let pinfo = Arc::new(Mutex::new(ProcessInfo {
             pid: 9310,
             lifecycle: crate::task::ProcessLifecycle::new(1, 9310),
-            pgid: 9310,
-            sid: 9310,
-            session_leader: false,
-            argv: alloc::vec::Vec::new(),
-            env: alloc::collections::BTreeMap::new(),
-            auxv: alloc::vec::Vec::new(),
+            unix_compat: crate::task::ProcessUnixCompat::isolated(9310, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
             exec_path: alloc::string::String::new(),
             space: crate::task::ProcessAddressSpace::empty(),
-            signals: crate::signal::ProcessSignals::new(),
         }));
 
         {
@@ -939,19 +909,20 @@ mod tests {
         Arc::new(Mutex::new(ProcessInfo {
             pid,
             lifecycle: crate::task::ProcessLifecycle::new(1, pid as crate::task::TaskId),
-            pgid: pid,
-            sid: pid,
-            session_leader: false,
-            argv: alloc::vec![
-                b"old_binary".to_vec(),
-                b"--old-arg".to_vec(),
-            ],
-            env: {
-                let mut m = alloc::collections::BTreeMap::new();
-                m.insert(b"OLD_VAR".to_vec(), b"old_value".to_vec());
-                m
+            unix_compat: {
+                let mut uc = crate::task::ProcessUnixCompat::isolated(pid, false);
+                uc.argv = alloc::vec![
+                    b"old_binary".to_vec(),
+                    b"--old-arg".to_vec(),
+                ];
+                uc.env = {
+                    let mut m = alloc::collections::BTreeMap::new();
+                    m.insert(b"OLD_VAR".to_vec(), b"old_value".to_vec());
+                    m
+                };
+                uc.auxv = alloc::vec![(AT_PAGESZ, 4096), (AT_ENTRY, 0x1000)];
+                uc
             },
-            auxv: alloc::vec![(AT_PAGESZ, 4096), (AT_ENTRY, 0x1000)],
             fd_table,
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/old/cwd"),
@@ -962,7 +933,6 @@ mod tests {
                 )),
                 aspace_raw: 0xDEAD_0000,
             },
-            signals: crate::signal::ProcessSignals::new(),
         }))
     }
 
@@ -972,7 +942,7 @@ mod tests {
     fn exec_commit_replaces_argv() {
         let pinfo = make_pinfo_with_metadata(9500);
 
-        let old_argv = pinfo.lock().argv.clone();
+        let old_argv = pinfo.lock().unix_compat.argv.clone();
         assert_eq!(old_argv[0], b"old_binary");
 
         // Simulate exec commit: replace argv.
@@ -980,14 +950,14 @@ mod tests {
             b"new_binary".to_vec(),
             b"--new-arg1".to_vec(),
         ];
-        pinfo.lock().argv = new_argv.clone();
+        pinfo.lock().unix_compat.argv = new_argv.clone();
 
         let pi = pinfo.lock();
-        assert_eq!(pi.argv, new_argv, "argv must be completely replaced after exec");
-        assert_ne!(pi.argv, old_argv, "old argv must not survive exec commit");
+        assert_eq!(pi.unix_compat.argv, new_argv, "argv must be completely replaced after exec");
+        assert_ne!(pi.unix_compat.argv, old_argv, "old argv must not survive exec commit");
         // Old argv must not appear anywhere in the new argv
         assert!(
-            !pi.argv.iter().any(|a| a == b"old_binary"),
+            !pi.unix_compat.argv.iter().any(|a| a == b"old_binary"),
             "old binary name must not remain in argv after exec"
         );
     }
@@ -999,22 +969,22 @@ mod tests {
         let pinfo = make_pinfo_with_metadata(9510);
 
         // Verify pre-exec env is present.
-        assert!(pinfo.lock().env.contains_key(b"OLD_VAR".as_slice()));
+        assert!(pinfo.lock().unix_compat.env.contains_key(b"OLD_VAR".as_slice()));
 
         // Simulate exec commit: replace env.
         let mut new_env: alloc::collections::BTreeMap<alloc::vec::Vec<u8>, alloc::vec::Vec<u8>> =
             alloc::collections::BTreeMap::new();
         new_env.insert(b"NEW_VAR".to_vec(), b"new_value".to_vec());
-        pinfo.lock().env = new_env.clone();
+        pinfo.lock().unix_compat.env = new_env.clone();
 
         let pi = pinfo.lock();
-        assert_eq!(pi.env, new_env, "env must be completely replaced after exec");
+        assert_eq!(pi.unix_compat.env, new_env, "env must be completely replaced after exec");
         assert!(
-            !pi.env.contains_key(b"OLD_VAR".as_slice()),
+            !pi.unix_compat.env.contains_key(b"OLD_VAR".as_slice()),
             "old environment variable OLD_VAR must not survive exec commit"
         );
         assert!(
-            pi.env.contains_key(b"NEW_VAR".as_slice()),
+            pi.unix_compat.env.contains_key(b"NEW_VAR".as_slice()),
             "new environment variable must be present after exec"
         );
     }
@@ -1048,7 +1018,7 @@ mod tests {
         let pinfo = make_pinfo_with_metadata(9530);
 
         // Pre-exec: auxv references the old image entry point.
-        assert!(pinfo.lock().auxv.contains(&(AT_ENTRY, 0x1000)));
+        assert!(pinfo.lock().unix_compat.auxv.contains(&(AT_ENTRY, 0x1000)));
 
         // Simulate exec commit: rebuild auxv from new image.
         let new_info = LoaderAuxInfo {
@@ -1059,16 +1029,16 @@ mod tests {
             ..Default::default()
         };
         let new_auxv = build_auxv(&new_info, 4096);
-        pinfo.lock().auxv = new_auxv.clone();
+        pinfo.lock().unix_compat.auxv = new_auxv.clone();
 
         let pi = pinfo.lock();
-        assert_eq!(pi.auxv, new_auxv, "auxv must be completely replaced after exec");
+        assert_eq!(pi.unix_compat.auxv, new_auxv, "auxv must be completely replaced after exec");
         assert!(
-            !pi.auxv.contains(&(AT_ENTRY, 0x1000)),
+            !pi.unix_compat.auxv.contains(&(AT_ENTRY, 0x1000)),
             "old AT_ENTRY value must not survive exec commit"
         );
         assert!(
-            pi.auxv.contains(&(AT_ENTRY, 0x401000)),
+            pi.unix_compat.auxv.contains(&(AT_ENTRY, 0x401000)),
             "new AT_ENTRY must be present after exec"
         );
     }
@@ -1082,10 +1052,10 @@ mod tests {
         // Verify all pre-exec metadata is present before the commit.
         {
             let pi = pinfo.lock();
-            assert_eq!(pi.argv[0], b"old_binary");
-            assert!(pi.env.contains_key(b"OLD_VAR".as_slice()));
+            assert_eq!(pi.unix_compat.argv[0], b"old_binary");
+            assert!(pi.unix_compat.env.contains_key(b"OLD_VAR".as_slice()));
             assert_eq!(pi.exec_path, "/old/binary");
-            assert!(pi.auxv.contains(&(AT_ENTRY, 0x1000)));
+            assert!(pi.unix_compat.auxv.contains(&(AT_ENTRY, 0x1000)));
             assert_eq!(pi.space.aspace_raw, 0xDEAD_0000u64);
         }
 
@@ -1101,9 +1071,9 @@ mod tests {
 
         {
             let mut pi = pinfo.lock();
-            pi.argv = new_argv.clone();
-            pi.env = new_env.clone();
-            pi.auxv = new_auxv.clone();
+            pi.unix_compat.argv = new_argv.clone();
+            pi.unix_compat.env = new_env.clone();
+            pi.unix_compat.auxv = new_auxv.clone();
             pi.exec_path = alloc::string::String::from("/new/binary");
             pi.fd_table.close_on_exec();
             pi.lifecycle.exec_in_progress = false;
@@ -1114,19 +1084,19 @@ mod tests {
         let pi = pinfo.lock();
 
         // argv: old binary name must be gone, new one present
-        assert_eq!(pi.argv, new_argv, "argv not replaced");
+        assert_eq!(pi.unix_compat.argv, new_argv, "argv not replaced");
         assert!(
-            !pi.argv.iter().any(|a| a == b"old_binary"),
+            !pi.unix_compat.argv.iter().any(|a| a == b"old_binary"),
             "stale argv entry 'old_binary' found after exec"
         );
 
         // env: old var must be gone, new one present
         assert!(
-            !pi.env.contains_key(b"OLD_VAR".as_slice()),
+            !pi.unix_compat.env.contains_key(b"OLD_VAR".as_slice()),
             "stale env var OLD_VAR found after exec"
         );
         assert!(
-            pi.env.contains_key(b"NEW_VAR".as_slice()),
+            pi.unix_compat.env.contains_key(b"NEW_VAR".as_slice()),
             "new env var NEW_VAR missing after exec"
         );
 
@@ -1136,11 +1106,11 @@ mod tests {
 
         // auxv: old AT_ENTRY must be gone
         assert!(
-            !pi.auxv.contains(&(AT_ENTRY, 0x1000)),
+            !pi.unix_compat.auxv.contains(&(AT_ENTRY, 0x1000)),
             "stale auxv AT_ENTRY value found after exec"
         );
         assert!(
-            pi.auxv.contains(&(AT_ENTRY, 0x402000)),
+            pi.unix_compat.auxv.contains(&(AT_ENTRY, 0x402000)),
             "new AT_ENTRY missing from auxv after exec"
         );
 
@@ -1183,18 +1153,16 @@ mod tests {
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
             },
-            pgid: 9600,
-            sid: 9600,
-            session_leader: false,
-            argv: alloc::vec![b"old".to_vec()],
-            env: alloc::collections::BTreeMap::new(),
-            auxv: alloc::vec::Vec::new(),
+            unix_compat: {
+                let mut uc = crate::task::ProcessUnixCompat::isolated(9600, false);
+                uc.argv = alloc::vec![b"old".to_vec()];
+                uc
+            },
             fd_table: crate::vfs::fd_table::FdTable::new(),
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
             exec_path: alloc::string::String::from("/old"),
             space: crate::task::ProcessAddressSpace::empty(),
-            signals: crate::signal::ProcessSignals::new(),
         }));
 
         // ── Phase 1: set exec_in_progress ────────────────────────────────────

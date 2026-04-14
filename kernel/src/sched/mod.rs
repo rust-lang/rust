@@ -1277,12 +1277,12 @@ pub fn list_processes<R: BootRuntime>() -> alloc::vec::Vec<hooks::ProcessSnapsho
                     tid: task.id,
                     name,
                     state: task.state,
-                    argv: pi.argv.clone(),
+                    argv: pi.unix_compat.argv.clone(),
                     exec_path: pi.exec_path.clone(),
                     exit_code: task.exit_code,
-                    pgid: pi.pgid,
-                    sid: pi.sid,
-                    session_leader: pi.session_leader,
+                    pgid: pi.unix_compat.pgid,
+                    sid: pi.unix_compat.sid,
+                    session_leader: pi.unix_compat.session_leader,
                     // Place-context fields (Phase 8): extracted from Process into
                     // the snapshot so the place bridge can build a canonical Place
                     // without holding the Process lock.
@@ -1425,7 +1425,7 @@ fn mark_task_exited<R: BootRuntime>(
         if let Some(pi_arc) = parent_arc {
             let mut pp = pi_arc.lock();
             pp.lifecycle.children_done.push_back((notify_pid, encoded_status));
-            pp.signals.post(abi::signal::SIGCHLD);
+            pp.unix_compat.signals.post(abi::signal::SIGCHLD);
             let tids = pp.lifecycle.thread_ids.clone();
             drop(pp);
             // Wake parent threads via the waiters list (after the scheduler lock
@@ -3271,18 +3271,12 @@ mod tests {
                 crate::task::ProcessInfo {
                     pid,
                     lifecycle: crate::task::ProcessLifecycle::new(ppid, pid as TaskId),
-                    pgid: pid,
-                    sid: pid,
-                    session_leader: false,
-                    argv: alloc::vec::Vec::new(),
-                    env: alloc::collections::BTreeMap::new(),
-                    auxv: alloc::vec::Vec::new(),
+                    unix_compat: crate::task::ProcessUnixCompat::isolated(pid, false),
                     fd_table: crate::vfs::fd_table::FdTable::new(),
                     namespace: crate::vfs::NamespaceRef::global(),
                     cwd: alloc::string::String::from("/"),
                     exec_path: alloc::string::String::new(),
                     space: crate::task::ProcessAddressSpace::empty(),
-                    signals: crate::signal::ProcessSignals::new(),
                 },
             ))),
             user_fs_base: 0,
@@ -3524,18 +3518,12 @@ mod tests {
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
             },
-            pgid: 7000,
-            sid: 7000,
-            session_leader: false,
-            argv: alloc::vec::Vec::new(),
-            env: alloc::collections::BTreeMap::new(),
-            auxv: alloc::vec::Vec::new(),
+            unix_compat: crate::task::ProcessUnixCompat::isolated(7000, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
             exec_path: alloc::string::String::new(),
             space: crate::task::ProcessAddressSpace::empty(),
-            signals: crate::signal::ProcessSignals::new(),
         }));
 
         {
@@ -3562,18 +3550,12 @@ mod tests {
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
             },
-            pgid: 8700,
-            sid: 8700,
-            session_leader: false,
-            argv: alloc::vec::Vec::new(),
-            env: alloc::collections::BTreeMap::new(),
-            auxv: alloc::vec::Vec::new(),
+            unix_compat: crate::task::ProcessUnixCompat::isolated(8700, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
             exec_path: alloc::string::String::new(),
             space: crate::task::ProcessAddressSpace::empty(),
-            signals: crate::signal::ProcessSignals::new(),
         }));
 
         // Register both tasks.
@@ -3624,18 +3606,12 @@ mod tests {
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
             },
-            pgid: 8800,
-            sid: 8800,
-            session_leader: false,
-            argv: alloc::vec::Vec::new(),
-            env: alloc::collections::BTreeMap::new(),
-            auxv: alloc::vec::Vec::new(),
+            unix_compat: crate::task::ProcessUnixCompat::isolated(8800, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
             exec_path: alloc::string::String::new(),
             space: crate::task::ProcessAddressSpace::empty(),
-            signals: crate::signal::ProcessSignals::new(),
         }));
 
         crate::task::registry::get_registry::<MockRuntime>().insert(alloc::boxed::Box::new(
@@ -3688,18 +3664,12 @@ mod tests {
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
             },
-            pgid: 9100,
-            sid: 9100,
-            session_leader: false,
-            argv: alloc::vec::Vec::new(),
-            env: alloc::collections::BTreeMap::new(),
-            auxv: alloc::vec::Vec::new(),
+            unix_compat: crate::task::ProcessUnixCompat::isolated(9100, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
             exec_path: alloc::string::String::new(),
             space: crate::task::ProcessAddressSpace::empty(),
-            signals: crate::signal::ProcessSignals::new(),
         }));
 
         crate::task::registry::get_registry::<MockRuntime>().insert(alloc::boxed::Box::new(
@@ -3795,18 +3765,16 @@ mod tests {
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
             },
-            pgid: 9700,
-            sid: 9700,
-            session_leader: false,
-            argv: alloc::vec![b"old".to_vec()],
-            env: alloc::collections::BTreeMap::new(),
-            auxv: alloc::vec::Vec::new(),
+            unix_compat: {
+                let mut uc = crate::task::ProcessUnixCompat::isolated(9700, false);
+                uc.argv = alloc::vec![b"old".to_vec()];
+                uc
+            },
             fd_table: crate::vfs::fd_table::FdTable::new(),
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
             exec_path: alloc::string::String::from("/old/binary"),
             space: crate::task::ProcessAddressSpace::empty(),
-            signals: crate::signal::ProcessSignals::new(),
         }));
 
         crate::task::registry::get_registry::<MockRuntime>().insert(alloc::boxed::Box::new(
@@ -3885,18 +3853,12 @@ mod tests {
         let pinfo = alloc::sync::Arc::new(spin::Mutex::new(crate::task::ProcessInfo {
             pid: 9300,
             lifecycle: crate::task::ProcessLifecycle::new(1, 9300),
-            pgid: 9300,
-            sid: 9300,
-            session_leader: false,
-            argv: alloc::vec::Vec::new(),
-            env: alloc::collections::BTreeMap::new(),
-            auxv: alloc::vec::Vec::new(),
+            unix_compat: crate::task::ProcessUnixCompat::isolated(9300, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
             exec_path: alloc::string::String::new(),
             space: crate::task::ProcessAddressSpace::empty(),
-            signals: crate::signal::ProcessSignals::new(),
         }));
 
         // Before exec: flag is clear — new threads would be accepted.
