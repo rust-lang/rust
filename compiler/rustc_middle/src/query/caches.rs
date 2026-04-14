@@ -147,7 +147,6 @@ where
     type Key = DefId;
     type Value = V;
 
-    #[inline(always)]
     fn lookup(&self, key: &DefId) -> Option<(V, DepNodeIndex)> {
         if key.krate == LOCAL_CRATE {
             self.local.lookup(&key.index)

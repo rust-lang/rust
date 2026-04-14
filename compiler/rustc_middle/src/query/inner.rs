@@ -13,7 +13,6 @@ use crate::ty::TyCtxt;
 /// query cache, returning that value if present.
 ///
 /// (Also performs some associated bookkeeping, if a value was found.)
-#[inline(always)]
 fn try_get_cached<'tcx, C>(tcx: TyCtxt<'tcx>, cache: &C, key: C::Key) -> Option<C::Value>
 where
     C: QueryCache,
@@ -30,7 +29,6 @@ where
 
 /// Shared implementation of `tcx.$query(..)` and `tcx.at(span).$query(..)`
 /// for all queries.
-#[inline(always)]
 pub(crate) fn query_get_at<'tcx, C, H>(
     tcx: TyCtxt<'tcx>,
     span: Span,
@@ -49,7 +47,6 @@ where
 
 /// Shared implementation of `tcx.ensure_ok().$query(..)` and
 /// `tcx.ensure_done().$query(..)` for all queries.
-#[inline]
 pub(crate) fn query_ensure_ok_or_done<'tcx, C, H>(
     tcx: TyCtxt<'tcx>,
     query: &'tcx QueryVTable<'tcx, C, H>,
@@ -69,7 +66,6 @@ pub(crate) fn query_ensure_ok_or_done<'tcx, C, H>(
 
 /// Implementation of `tcx.ensure_result().$query(..)` for queries that
 /// return `Result<_, ErrorGuaranteed>`.
-#[inline]
 pub(crate) fn query_ensure_result<'tcx, C, T, H>(
     tcx: TyCtxt<'tcx>,
     query: &'tcx QueryVTable<'tcx, C, H>,

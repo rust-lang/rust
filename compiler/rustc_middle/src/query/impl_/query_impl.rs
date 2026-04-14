@@ -1,8 +1,6 @@
 use rustc_middle::queries::TaggedQueryKey;
-use rustc_middle::query::erase::Erased;
-use rustc_middle::query::{QueryMode, QueryVTable};
+use rustc_middle::query::QueryVTable;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
 
 use crate::query::impl_::GetQueryVTable;
 
@@ -37,56 +35,6 @@ macro_rules! define_queries {
         $(
             pub(crate) mod $name {
                 use super::*;
-
-                // It seems to be important that every query has its own monomorphic
-                // copy of `execute_query_incr` and `execute_query_non_incr`.
-                // Trying to inline these wrapper functions into their generic
-                // "inner" helpers tends to break `tests/run-make/short-ice`.
-
-                pub(crate) mod execute_query_incr {
-                    use super::*;
-                    use rustc_middle::queries::$name::{Key, Value};
-
-                    // Adding `__rust_end_short_backtrace` marker to backtraces so that we emit the frames
-                    // when `RUST_BACKTRACE=1`, add a new mod with `$name` here is to allow duplicate naming
-                    #[inline(never)]
-                    pub(crate) fn __rust_end_short_backtrace<'tcx>(
-                        tcx: TyCtxt<'tcx>,
-                        span: Span,
-                        key: Key<'tcx>,
-                        mode: QueryMode,
-                    ) -> Option<Erased<Value<'tcx>>> {
-                        #[cfg(debug_assertions)]
-                        let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
-                        crate::query::impl_::execution::execute_query_incr_inner(
-                            &tcx.query_system.query_vtables.$name,
-                            tcx,
-                            span,
-                            key,
-                            mode
-                        )
-                    }
-                }
-
-                pub(crate) mod execute_query_non_incr {
-                    use super::*;
-                    use rustc_middle::queries::$name::{Key, Value};
-
-                    #[inline(never)]
-                    pub(crate) fn __rust_end_short_backtrace<'tcx>(
-                        tcx: TyCtxt<'tcx>,
-                        span: Span,
-                        key: Key<'tcx>,
-                        __mode: QueryMode,
-                    ) -> Option<Erased<Value<'tcx>>> {
-                        Some(crate::query::impl_::execution::execute_query_non_incr_inner(
-                            &tcx.query_system.query_vtables.$name,
-                            tcx,
-                            span,
-                            key,
-                        ))
-                    }
-                }
 
                 pub(crate) fn make_query_vtable<'tcx>()
                     -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>, rustc_middle::queries::$name::Helper>

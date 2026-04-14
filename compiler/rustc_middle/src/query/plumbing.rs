@@ -374,7 +374,6 @@ macro_rules! define_callbacks {
 
                 impl<'tcx> crate::query::QueryHelper<'tcx, Key<'tcx>, Erased<Value<'tcx>>> for Helper {
                     #[cfg($cache_on_disk)]
-                    #[inline]
                     fn try_load_from_disk_fn(
                         tcx: TyCtxt<'tcx>,
                         prev_index: crate::dep_graph::SerializedDepNodeIndex,
@@ -393,7 +392,6 @@ macro_rules! define_callbacks {
                     ) -> Option<Erased<Value<'tcx>>> {
                         None
                     }
-                    #[cfg_attr(all($cache_on_disk, $separate_provide_extern), inline)]
                     #[cfg_attr(not(all($cache_on_disk, $separate_provide_extern)), inline(always))]
                     fn will_cache_on_disk_for_key(
                         _key: rustc_middle::queries::$name::Key<'tcx>,
@@ -409,47 +407,7 @@ macro_rules! define_callbacks {
                         }
                     }
 
-                    #[inline(always)]
                     fn invoke_provider_fn(tcx: TyCtxt<'tcx>, key: Key<'tcx>) -> Erased<Value<'tcx>> {
-                        invoke_provider_fn::__rust_begin_short_backtrace(tcx, key)
-                    }
-                }
-
-                impl<'tcx> crate::query::QueryHashHelper<Erased<Value<'tcx>>> for Helper {
-                    const NO_HASH: bool = $no_hash;
-
-                    #[cfg($no_hash)]
-                    #[cold]
-                    fn hash_value_fn(_: &mut crate::ich::StableHashingContext<'_>, _: &Erased<Value<'tcx>>) -> rustc_data_structures::fingerprint::Fingerprint {
-                        panic!("Tried to hash value for no_hash query. `no_hash` query modifier is unsupported with `feedable` modifier enabled")
-                    }
-
-                    #[cfg(not($no_hash))]
-                    #[inline]
-                    fn hash_value_fn(hcx: &mut crate::ich::StableHashingContext<'_>, value: &Erased<Value<'tcx>>) -> rustc_data_structures::fingerprint::Fingerprint {
-                        let value = erase::restore_val(*value);
-                        rustc_middle::dep_graph::hash_result(hcx, &value)
-                    }
-
-                    #[inline]
-                    fn format_value(erased_value: &erase::Erased<Value<'tcx>>) -> String {
-                        format!("{:?}", erase::restore_val(*erased_value))
-                    }
-                }
-
-                /// Defines an `invoke_provider` function that calls the query's provider,
-                /// to be used as a function pointer in the query's vtable.
-                ///
-                /// To mark a short-backtrace boundary, the function's actual name
-                /// (after demangling) must be `__rust_begin_short_backtrace`.
-                mod invoke_provider_fn {
-                    use super::*;
-
-                    #[inline(never)]
-                    pub(crate) fn __rust_begin_short_backtrace<'tcx>(
-                        tcx: TyCtxt<'tcx>,
-                        key: Key<'tcx>,
-                    ) -> Erased<Value<'tcx>> {
                         #[cfg(debug_assertions)]
                         let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
 
@@ -472,6 +430,28 @@ macro_rules! define_callbacks {
                         // Erase the returned value, because `QueryVTable` uses erased values.
                         // For queries with `arena_cache`, this also arena-allocates the value.
                         provided_to_erased(tcx, provided_value)
+                    }
+                }
+
+                impl<'tcx> crate::query::QueryHashHelper<Erased<Value<'tcx>>> for Helper {
+                    const NO_HASH: bool = $no_hash;
+
+                    #[cfg($no_hash)]
+                    #[cold]
+                    fn hash_value_fn(_: &mut crate::ich::StableHashingContext<'_>, _: &Erased<Value<'tcx>>) -> rustc_data_structures::fingerprint::Fingerprint {
+                        panic!("Tried to hash value for no_hash query. `no_hash` query modifier is unsupported with `feedable` modifier enabled")
+                    }
+
+                    #[cfg(not($no_hash))]
+                    #[inline]
+                    fn hash_value_fn(hcx: &mut crate::ich::StableHashingContext<'_>, value: &Erased<Value<'tcx>>) -> rustc_data_structures::fingerprint::Fingerprint {
+                        let value = erase::restore_val(*value);
+                        rustc_middle::dep_graph::hash_result(hcx, &value)
+                    }
+
+                    #[inline]
+                    fn format_value(erased_value: &erase::Erased<Value<'tcx>>) -> String {
+                        format!("{:?}", erase::restore_val(*erased_value))
                     }
                 }
 

@@ -190,7 +190,6 @@ impl<'tcx, K> Drop for ActiveJobGuard<'tcx, K>
 where
     K: Eq + Hash + Copy,
 {
-    #[inline(never)]
     #[cold]
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic.
@@ -215,7 +214,6 @@ fn find_and_handle_cycle<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Va
     (handle_cycle(query, tcx, key, cycle), None)
 }
 
-#[inline(always)]
 fn wait_for_query<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
     query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
@@ -261,7 +259,6 @@ fn wait_for_query<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
 }
 
 /// Shared main part of both [`execute_query_incr_inner`] and [`execute_query_non_incr_inner`].
-#[inline(never)]
 fn try_execute_query<'tcx, C, H, const INCR: bool>(
     query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
@@ -349,7 +346,6 @@ where
     }
 }
 
-#[inline(always)]
 fn check_feedable_consistency<'tcx, C, H>(
     tcx: TyCtxt<'tcx>,
     query: &'tcx QueryVTable<'tcx, C, H>,
@@ -393,7 +389,6 @@ fn check_feedable_consistency<'tcx, C, H>(
 }
 
 // Fast path for when incr. comp. is off.
-#[inline(always)]
 fn execute_job_non_incr<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>>(
     query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
@@ -421,7 +416,6 @@ fn execute_job_non_incr<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Val
     (value, dep_node_index)
 }
 
-#[inline(always)]
 fn execute_job_incr<'tcx, C, H>(
     query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
@@ -470,7 +464,6 @@ where
 /// Given that the dep node for this query+key is green, obtain a value for it
 /// by loading one from disk if possible, or by invoking its query provider if
 /// necessary.
-#[inline(always)]
 fn load_from_disk_or_invoke_provider_green<'tcx, C, H>(
     tcx: TyCtxt<'tcx>,
     dep_graph_data: &DepGraphData,
@@ -560,7 +553,6 @@ where
 /// This only makes sense during incremental compilation, because it relies
 /// on having the dependency graph (and in some cases a disk-cached value)
 /// from the previous incr-comp session.
-#[inline(never)]
 fn ensure_can_skip_execution<'tcx, C, H>(
     query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
@@ -612,7 +604,6 @@ where
 
 /// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
 /// in non-incremental mode.
-#[inline(always)]
 pub(crate) fn execute_query_non_incr_inner<'tcx, C, H>(
     query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
@@ -628,7 +619,6 @@ where
 
 /// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
 /// in incremental mode.
-#[inline(always)]
 pub(crate) fn execute_query_incr_inner<'tcx, C, H>(
     query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,

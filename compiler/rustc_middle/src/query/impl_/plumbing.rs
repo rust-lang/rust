@@ -51,7 +51,6 @@ pub(crate) fn current_query_job() -> Option<QueryJobId> {
 }
 
 /// Executes a job by changing the `ImplicitCtxt` to point to the new query job while it executes.
-#[inline(always)]
 pub(crate) fn start_query<R>(
     job_id: QueryJobId,
     depth_limit: bool,

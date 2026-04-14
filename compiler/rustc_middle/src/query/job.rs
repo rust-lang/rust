@@ -30,7 +30,7 @@ pub struct QueryJob<'tcx> {
 
 impl<'tcx> QueryJob<'tcx> {
     /// Creates a new query job.
-    #[inline]
+    #[inline(always)]
     pub fn new(id: QueryJobId, span: Span, parent: Option<QueryJobId>) -> Self {
         QueryJob { id, span, parent, latch: None }
     }
@@ -46,7 +46,6 @@ impl<'tcx> QueryJob<'tcx> {
     ///
     /// This does nothing for single threaded rustc,
     /// as there are no concurrent jobs which could be waiting on us
-    #[inline]
     pub fn signal_complete(self) {
         if let Some(latch) = self.latch {
             latch.set();
