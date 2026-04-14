@@ -134,7 +134,10 @@ static TRYLOCK_MISS_LAST_WARN_TICK: [AtomicU64; types::MAX_CPUS] = {
 };
 
 /// If trylock misses exceed this count in a 2-second window, emit a warning.
-pub const TRYLOCK_MISS_WARN_THRESHOLD: u64 = 50;
+/// Under SMP the scheduler lock can be briefly held by another CPU during its
+/// own scheduling cycle; 50 fired too readily at startup with 6 vCPUs. 100
+/// gives better signal-to-noise without hiding genuine long-hold-time issues.
+pub const TRYLOCK_MISS_WARN_THRESHOLD: u64 = 100;
 
 /// Minimum interval between threshold warning emissions per CPU.
 pub const TRYLOCK_MISS_WARN_COOLDOWN_SECS: u64 = 30;
@@ -257,6 +260,15 @@ fn try_resched_if_needed<R: BootRuntime>() {
                 .get(cpu_idx)
                 .map(|pc| pc.runq.iter().map(|q| q.len()).sum::<usize>())
                 .unwrap_or(0);
+            // Capture whether a reschedule was explicitly requested *before*
+            // schedule_point() clears these flags.  The warning below is only
+            // meaningful when a switch was requested but the scheduler couldn't
+            // make one (e.g. starvation).  Without this guard, the warning fires
+            // spuriously every tick while a lower-priority task is in the queue
+            // but the current task hasn't used up its timeslice yet.
+            let resched_requested =
+                sched.state.per_cpu.get(cpu_idx).map_or(false, |pc| pc.need_resched)
+                    || GLOBAL_NEED_RESCHED[cpu_idx].load(Ordering::Acquire);
             if let Some(switch) = sched.schedule_point(ScheduleReason::PreemptTick) {
                 // Must drop lock before context switch!
                 drop(lock);
@@ -272,7 +284,10 @@ fn try_resched_if_needed<R: BootRuntime>() {
                         switch.to_user_fs_base,
                     );
                 }
-            } else if has_work && runq_total > 1 {
+            } else if has_work && runq_total > 1 && resched_requested {
+                // A resched was requested and there is runnable work, yet the
+                // scheduler chose not to switch.  This is a genuine scheduling
+                // anomaly worth diagnosing (potential starvation).
                 crate::kwarn!(
                     "SCHED: CPU {} handled resched but made no switch: current={:?} idle={:?} runq_total={}",
                     cpu_idx,
@@ -738,10 +753,10 @@ impl<R: BootRuntime> types::Scheduler<R> {
 
         self.metrics.yields += 1;
 
-        // Don't push idle task or dead tasks back to runq
+        // Don't push idle task, dead tasks, or already-blocked tasks back to runq
         if Some(current_id) != self.state.per_cpu[cpu_idx].idle_task {
             if let Some(task) = crate::task::registry::get_task::<R>(current_id) {
-                if task.state != TaskState::Dead {
+                if task.state != TaskState::Dead && task.state != TaskState::Blocked {
                     let priority = task.priority;
                     // Push to LOCAL runq (we are yielding on this CPU)
                     self.state.enqueue_task(cpu_idx, priority as usize, current_id);
@@ -802,7 +817,12 @@ impl<R: BootRuntime> types::Scheduler<R> {
                             eff = (p + boost).min(4);
                         }
                     }
-                    if eff > best_eff || best_q.is_none() {
+                    // Use >= so that an aged lower-priority task wins the tie when its
+                    // boosted effective priority equals a higher-priority task's. We scan
+                    // from p=4 down to p=1; a later (lower-p) match with equal eff
+                    // replaces the earlier one, meaning the task that *needed* aging to
+                    // compete gets to run first, preventing indefinite starvation.
+                    if eff >= best_eff {
                         best_eff = eff;
                         best_q = Some(p);
                     }
@@ -864,18 +884,23 @@ impl<R: BootRuntime> types::Scheduler<R> {
                     self.metrics.idle_picks += 1;
                     idle
                 } else {
-                    // Flush misrouted tasks before returning
+                    // Flush misrouted tasks before returning; notify their CPUs
+                    // so they wake from HLT and pick up the newly-queued work.
                     for &(prio, target_cpu, id) in &misrouted[..misrouted_count] {
                         self.state.enqueue_task(target_cpu, prio, id);
+                        GLOBAL_NEED_RESCHED[target_cpu].store(true, Ordering::Release);
+                        crate::runtime::<R>().send_ipi(target_cpu, 0x30);
                     }
                     return None;
                 }
             }
         };
 
-        // Flush misrouted tasks to their correct CPU queues
+        // Flush misrouted tasks to their correct CPU queues and wake those CPUs.
         for &(prio, target_cpu, id) in &misrouted[..misrouted_count] {
             self.state.enqueue_task(target_cpu, prio, id);
+            GLOBAL_NEED_RESCHED[target_cpu].store(true, Ordering::Release);
+            crate::runtime::<R>().send_ipi(target_cpu, 0x30);
         }
 
         let current_id = self.state.per_cpu[cpu_idx]
