@@ -11,7 +11,7 @@ use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::{LangItem, Node, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, WellFormedLoc};
-use rustc_lint_defs::builtin::{REPR_TRANSPARENT_NON_ZST_FIELDS, UNSUPPORTED_CALLING_CONVENTIONS};
+use rustc_lint_defs::builtin::UNSUPPORTED_CALLING_CONVENTIONS;
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
@@ -1686,39 +1686,6 @@ pub(super) fn check_packed_inner(
 }
 
 pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
-    struct ZeroSizedFieldReprTransparentIncompatibility<'tcx> {
-        unsuited: UnsuitedInfo<'tcx>,
-    }
-
-    impl<'a, 'tcx> Diagnostic<'a, ()> for ZeroSizedFieldReprTransparentIncompatibility<'tcx> {
-        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-            let Self { unsuited } = self;
-            let (title, note) = match unsuited.reason {
-                UnsuitedReason::NonExhaustive => (
-                    "external non-exhaustive types",
-                    "is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future.",
-                ),
-                UnsuitedReason::PrivateField => (
-                    "external types with private fields",
-                    "contains private fields, so it could become non-zero-sized in the future.",
-                ),
-                UnsuitedReason::ReprC => (
-                    "`repr(C)` types",
-                    "is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.",
-                ),
-            };
-            Diag::new(
-                dcx,
-                level,
-                format!("zero-sized fields in `repr(transparent)` cannot contain {title}"),
-            )
-            .with_note(format!(
-                "this field contains `{field_ty}`, which {note}",
-                field_ty = unsuited.ty,
-            ))
-        }
-    }
-
     if !adt.repr().transparent() {
         return;
     }
@@ -1738,107 +1705,136 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         // Don't bother checking the fields.
         return;
     }
+    let variant = adt.variant(VariantIdx::ZERO);
 
-    let typing_env = ty::TypingEnv::non_body_analysis(tcx, adt.did());
-    // For each field, figure out if it has "trivial" layout (i.e., is a 1-ZST).
-    struct FieldInfo<'tcx> {
-        span: Span,
-        trivial: bool,
-        ty: Ty<'tcx>,
-    }
-
-    let field_infos = adt.all_fields().map(|field| {
-        let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did));
-        let layout = tcx.layout_of(typing_env.as_query_input(ty));
-        // We are currently checking the type this field came from, so it must be local
-        let span = tcx.hir_span_if_local(field.did).unwrap();
-        let trivial = layout.is_ok_and(|layout| layout.is_1zst());
-        FieldInfo { span, trivial, ty }
-    });
-
-    let non_trivial_fields = field_infos
-        .clone()
-        .filter_map(|field| if !field.trivial { Some(field.span) } else { None });
-    let non_trivial_count = non_trivial_fields.clone().count();
-    if non_trivial_count >= 2 {
-        bad_non_zero_sized_fields(
-            tcx,
-            adt,
-            non_trivial_count,
-            non_trivial_fields,
-            tcx.def_span(adt.did()),
-        );
+    if variant.fields.len() <= 1 {
+        // No need to check when there's at most one field.
         return;
     }
 
-    // Even some 1-ZST fields are not allowed though, if they have `non_exhaustive` or private
-    // fields or `repr(C)`. We call those fields "unsuited".
-    struct UnsuitedInfo<'tcx> {
-        /// The source of the problem, a type that is found somewhere within the field type.
-        ty: Ty<'tcx>,
-        reason: UnsuitedReason,
+    let typing_env = ty::TypingEnv::non_body_analysis(tcx, adt.did());
+
+    /// We call a field "trivial" for `repr(transparent)` purposes if it can be ignored.
+    /// IOW, `repr(transparent)` is allowed if there is at most one non-trivial field.
+    /// This enum captuers all the reasons why a field might not be "trivial".
+    enum NonTrivialReason<'tcx> {
+        UnknownLayout,
+        NonZeroSized,
+        NonTrivialAlignment,
+        PrivateField { inside: Ty<'tcx> },
+        NonExhaustive { ty: Ty<'tcx> },
+        ReprC { ty: Ty<'tcx> },
     }
-    enum UnsuitedReason {
-        NonExhaustive,
-        PrivateField,
-        ReprC,
+    struct NonTrivialFieldInfo<'tcx> {
+        span: Span,
+        reason: NonTrivialReason<'tcx>,
     }
 
-    fn check_unsuited<'tcx>(
+    /// Check if this type is "trivial" for `repr(transparent)`. If not, return the reason why
+    /// and the problematic type.
+    fn is_trivial<'tcx>(
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
         ty: Ty<'tcx>,
-    ) -> ControlFlow<UnsuitedInfo<'tcx>> {
+    ) -> ControlFlow<NonTrivialReason<'tcx>> {
         // We can encounter projections during traversal, so ensure the type is normalized.
         let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
         match ty.kind() {
-            ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited(tcx, typing_env, t)),
-            ty::Array(ty, _) => check_unsuited(tcx, typing_env, *ty),
+            ty::Tuple(list) => list.iter().try_for_each(|t| is_trivial(tcx, typing_env, t)),
+            ty::Array(ty, _) => is_trivial(tcx, typing_env, *ty),
             ty::Adt(def, args) => {
                 if !def.did().is_local() && !find_attr!(tcx, def.did(), RustcPubTransparent(_)) {
                     let non_exhaustive = def.is_variant_list_non_exhaustive()
                         || def.variants().iter().any(ty::VariantDef::is_field_list_non_exhaustive);
+                    if non_exhaustive {
+                        return ControlFlow::Break(NonTrivialReason::NonExhaustive { ty });
+                    }
                     let has_priv = def.all_fields().any(|f| !f.vis.is_public());
-                    if non_exhaustive || has_priv {
-                        return ControlFlow::Break(UnsuitedInfo {
-                            ty,
-                            reason: if non_exhaustive {
-                                UnsuitedReason::NonExhaustive
-                            } else {
-                                UnsuitedReason::PrivateField
-                            },
-                        });
+                    if has_priv {
+                        return ControlFlow::Break(NonTrivialReason::PrivateField { inside: ty });
                     }
                 }
                 if def.repr().c() {
-                    return ControlFlow::Break(UnsuitedInfo { ty, reason: UnsuitedReason::ReprC });
+                    return ControlFlow::Break(NonTrivialReason::ReprC { ty });
                 }
                 def.all_fields()
                     .map(|field| field.ty(tcx, args))
-                    .try_for_each(|t| check_unsuited(tcx, typing_env, t))
+                    .try_for_each(|t| is_trivial(tcx, typing_env, t))
             }
             _ => ControlFlow::Continue(()),
         }
     }
 
-    let mut prev_unsuited_1zst = false;
-    for field in field_infos {
-        if field.trivial
-            && let Some(unsuited) = check_unsuited(tcx, typing_env, field.ty).break_value()
-        {
-            // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
-            // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
-            if non_trivial_count > 0 || prev_unsuited_1zst {
-                tcx.emit_node_span_lint(
-                    REPR_TRANSPARENT_NON_ZST_FIELDS,
-                    tcx.local_def_id_to_hir_id(adt.did().expect_local()),
-                    field.span,
-                    ZeroSizedFieldReprTransparentIncompatibility { unsuited },
-                );
-            } else {
-                prev_unsuited_1zst = true;
+    let non_trivial_fields = variant
+        .fields
+        .iter()
+        .filter_map(|field| {
+            let ty = field.ty(tcx, GenericArgs::identity_for_item(tcx, field.did));
+            let layout = tcx.layout_of(typing_env.as_query_input(ty));
+            // We are currently checking the type this field came from, so it must be local
+            let span = tcx.hir_span_if_local(field.did).unwrap();
+            // Rule out non-1ZST
+            if !layout.is_ok_and(|layout| layout.is_1zst()) {
+                let reason = match layout {
+                    Err(_) => NonTrivialReason::UnknownLayout,
+                    Ok(layout) => {
+                        if !(layout.is_sized() && layout.size.bytes() == 0) {
+                            NonTrivialReason::NonZeroSized
+                        } else {
+                            NonTrivialReason::NonTrivialAlignment
+                        }
+                    }
+                };
+                return Some(NonTrivialFieldInfo { span, reason });
             }
+            // Recursively check for other things that have to be ruled out.
+            if let Some(reason) = is_trivial(tcx, typing_env, ty).break_value() {
+                return Some(NonTrivialFieldInfo { span, reason });
+            }
+            // Otherwise,
+            None
+        })
+        .collect::<Vec<_>>();
+
+    if non_trivial_fields.len() >= 2 {
+        let count = non_trivial_fields.len();
+        let desc = if adt.is_enum() {
+            format_args!("the variant of a transparent {}", adt.descr())
+        } else {
+            format_args!("transparent {}", adt.descr())
+        };
+        let ty_span = tcx.def_span(adt.did());
+        let mut diag = tcx.dcx().struct_span_err(
+            ty_span,
+            format!("{desc} needs at most one non-trivial field, but has {count}"),
+        );
+        diag.code(E0690);
+
+        // Label for the type.
+        diag.span_label(ty_span, format!("needs at most one non-trivial field, but has {count}"));
+        // Label for each non-trivial field.
+        for field in non_trivial_fields {
+            let msg = match field.reason {
+                NonTrivialReason::UnknownLayout => {
+                    format!("this field is generic and hence may have non-zero size")
+                }
+                NonTrivialReason::NonZeroSized => format!("this field has non-zero size"),
+                NonTrivialReason::NonTrivialAlignment => format!("this field requires alignment"),
+                NonTrivialReason::PrivateField { inside } => format!(
+                    "this field contains `{inside}`, which has private fields, so it could become non-zero-sized in the future"
+                ),
+                NonTrivialReason::NonExhaustive { ty } => format!(
+                    "this field contains `{ty}`, which is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future"
+                ),
+                NonTrivialReason::ReprC { ty } => format!(
+                    "this field contains `{ty}`, which is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets"
+                ),
+            };
+            diag.span_label(field.span, msg);
         }
+
+        diag.emit();
+        return;
     }
 }
 

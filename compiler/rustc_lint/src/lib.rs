@@ -369,10 +369,6 @@ fn register_builtins(store: &mut LintStore) {
     store.register_renamed("static_mut_ref", "static_mut_refs");
     store.register_renamed("temporary_cstring_as_ptr", "dangling_pointers_from_temporaries");
     store.register_renamed("elided_named_lifetimes", "mismatched_lifetime_syntaxes");
-    store.register_renamed(
-        "repr_transparent_external_private_fields",
-        "repr_transparent_non_zst_fields",
-    );
 
     // These were moved to tool lints, but rustc still sees them when compiling normally, before
     // tool lints are registered, so `check_tool_name_for_backwards_compat` doesn't work. Use
@@ -643,6 +639,16 @@ fn register_builtins(store: &mut LintStore) {
     );
     store.register_removed("wasm_c_abi", "the wasm C ABI has been fixed");
     store.register_removed("soft_unstable", "the general soft-unstable mechanism has been removed");
+    store.register_removed(
+        "repr_transparent_external_private_fields",
+        "converted into hard error, \
+         see <https://github.com/rust-lang/rust/issues/78586> for more information",
+    );
+    store.register_removed(
+        "repr_transparent_non_zst_fields",
+        "converted into hard error, \
+         see <https://github.com/rust-lang/rust/issues/78586> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
