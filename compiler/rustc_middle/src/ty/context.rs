@@ -1411,12 +1411,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         stable_crate_id: StableCrateId,
     ) -> Result<TyCtxtFeed<'tcx, CrateNum>, CrateNum> {
-        if let Some(&existing) = self.untracked().stable_crate_ids.read().get(&stable_crate_id) {
+        let mut lock = self.untracked().stable_crate_ids.write();
+        if let Some(&existing) = lock.get(&stable_crate_id) {
             return Err(existing);
         }
-
-        let num = CrateNum::new(self.untracked().stable_crate_ids.read().len());
-        self.untracked().stable_crate_ids.write().insert(stable_crate_id, num);
+        let num = CrateNum::new(lock.len());
+        lock.insert(stable_crate_id, num);
         Ok(TyCtxtFeed { key: num, tcx: self })
     }
 
