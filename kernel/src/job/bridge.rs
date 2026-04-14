@@ -108,8 +108,11 @@ pub fn job_exit_from_snapshot(
     snapshot: &crate::sched::hooks::ProcessSnapshot,
 ) -> JobExit {
     let state = job_state_from_snapshot(snapshot);
-    // exit_code is only meaningful when the thread-group leader has died.
-    // Preserve it as-is so the procfs consumer can decide what to display.
+    // Only forward exit_code when the job has actually exited.  The kernel may
+    // still carry a stale exit_code field on a thread that has been reused or
+    // whose state has not yet propagated; reporting it for a Running job would
+    // be misleading.  We intentionally discard any value present while the job
+    // is still live.
     let code = if state == JobState::Exited { snapshot.exit_code } else { None };
     JobExit { state, code }
 }

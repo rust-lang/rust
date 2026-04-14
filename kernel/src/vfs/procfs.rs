@@ -188,9 +188,9 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
         "job_wait" => {
             // poll_task_exit_current takes a TaskId (tid).  For the process
             // leader snap.tid == snap.pid as u64.
-            let poll = unsafe { crate::sched::poll_task_exit_current(snap.tid) };
-            let wait_result =
-                crate::job::bridge::job_wait_result_from_poll(poll.unwrap_or(None));
+            let poll = unsafe { crate::sched::poll_task_exit_current(snap.tid) }
+                .map_err(|_| Errno::ENOENT)?;
+            let wait_result = crate::job::bridge::job_wait_result_from_poll(poll);
             let text = wait_result.as_text();
             Ok(Arc::new(DynamicTextNode::new(
                 text.into_bytes(),

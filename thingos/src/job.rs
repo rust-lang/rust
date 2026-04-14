@@ -135,11 +135,14 @@ impl JobExit {
     /// code: 0
     /// ```
     pub fn as_text(&self) -> alloc::string::String {
-        let code_str = match self.code {
-            Some(c) => alloc::format!("{}", c),
-            None => alloc::string::String::from("-"),
-        };
-        alloc::format!("state: {}\ncode: {}\n", self.state.as_str(), code_str)
+        alloc::format!(
+            "state: {}\ncode: {}\n",
+            self.state.as_str(),
+            match self.code {
+                Some(c) => alloc::format!("{}", c),
+                None => alloc::string::String::from("-"),
+            }
+        )
     }
 }
 
@@ -177,13 +180,13 @@ impl JobWaitResult {
     pub fn as_text(&self) -> alloc::string::String {
         match self {
             JobWaitResult::Running => alloc::string::String::from("result: Running\ncode: -\n"),
-            JobWaitResult::Exited { code } => {
-                let c = match code {
+            JobWaitResult::Exited { code } => alloc::format!(
+                "result: Exited\ncode: {}\n",
+                match code {
                     Some(v) => alloc::format!("{}", v),
                     None => alloc::string::String::from("-"),
-                };
-                alloc::format!("result: Exited\ncode: {}\n", c)
-            }
+                }
+            ),
         }
     }
 }
