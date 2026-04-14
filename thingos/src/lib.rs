@@ -20,7 +20,7 @@
 //! structures are *transitional* implementations; they feed into these public
 //! types through explicit bridge layers rather than being exposed directly.
 //!
-//! ## Transitional mapping (Phases 1–4, 7)
+//! ## Transitional mapping (Phases 1–4, 7–8)
 //!
 //! | Canonical concept        | Current internal backing                  | Future direction              |
 //! |--------------------------|-------------------------------------------|-------------------------------|
@@ -30,6 +30,7 @@
 //! | `job::JobWaitResult`     | `poll_task_exit` result                   | Phase 3 wait path             |
 //! | `group::Group`           | `Process::pgid` / `ConsoleTtyState`       | Phase 4 coordination domain   |
 //! | `authority::Authority`   | `ProcessSnapshot::name` (transitional)    | Phase 7 permission context    |
+//! | `place::Place`           | `Process::cwd` + `namespace` (Phase 8)   | Phase 8 world context         |
 //!
 //! Public truth changes first; internal machinery follows.
 
@@ -38,6 +39,7 @@ extern crate alloc;
 pub mod authority;
 pub mod group;
 pub mod job;
+pub mod place;
 pub mod task;
 
 /// The canonical public name of the system.

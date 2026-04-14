@@ -25,6 +25,7 @@
 //! | `/proc/<pid>/job_wait`           | Canonical `thingos::job::JobWaitResult` — non-blocking poll (Phase 3) |
 //! | `/proc/<pid>/group_kind`         | Canonical `thingos::group::GroupKind` — coordination role (Phase 4)     |
 //! | `/proc/<pid>/authority`          | Canonical `thingos::authority::Authority` — permission context (Phase 7) |
+//! | `/proc/<pid>/place`              | Canonical `thingos::place::Place` — world/visibility context (Phase 8)  |
 
 use abi::errors::{Errno, SysResult};
 use alloc::collections::BTreeSet;
@@ -233,6 +234,30 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
                 300 + pid as u64 * 10 + 10,
             )))
         }
+        // /proc/<pid>/place — canonical thingos::place::Place (Phase 8).
+        //
+        // Reports the execution world-context (cwd, namespace, root) in
+        // canonical Place terms, bridged from the current Process-shaped
+        // cwd/namespace state via `kernel::place::bridge`.  This is the first
+        // public surface for the Place ontology (Phase 8).
+        //
+        // In Phase 8:
+        // * `cwd` is derived from Process::cwd.
+        // * `namespace` is always "global" (NamespaceRef is a unit struct).
+        // * `root` is always "/" (no per-process chroot yet).
+        //
+        // Note: terminal/UI/console attachment is NOT reported here.  That
+        // belongs to Presence, which has not yet been introduced as a live
+        // execution concept.  This path answers "in what world?", not
+        // "who is present?".
+        "place" => {
+            let place = crate::place::bridge::place_from_snapshot(&snap);
+            let text = place.as_text();
+            Ok(Arc::new(DynamicTextNode::new(
+                text.into_bytes(),
+                300 + pid as u64 * 10 + 11,
+            )))
+        }
         _ => Err(Errno::ENOENT),
     }
 }
@@ -378,10 +403,11 @@ impl VfsNode for ProcPidDirNode {
     fn readdir(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
         // Legacy procfs entries (transitional internal model):
         //   status, cmdline, fd, exe, task
-        // Canonical schema entries (Phase 1: task, Phase 2: job, Phase 3: exit/wait, Phase 4: group):
-        //   task_state, job_state, job_exit, job_wait, group_kind
+        // Canonical schema entries (Phase 1–8):
+        //   task_state, job_state, job_exit, job_wait, group_kind, authority, place
         let entries = ["status", "cmdline", "fd", "exe", "task",
-                       "task_state", "job_state", "job_exit", "job_wait", "group_kind"];
+                       "task_state", "job_state", "job_exit", "job_wait", "group_kind",
+                       "authority", "place"];
         super::write_readdir_entries(entries.into_iter(), offset, buf)
     }
 }

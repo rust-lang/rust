@@ -68,26 +68,87 @@ impl StartupArg {
 /// The `Process` mutex must **never** be acquired while the scheduler lock
 /// (`SCHEDULER.lock()`) is held — reverse order causes deadlock.
 ///
+/// # Responsibility classification (Phase 8 migration inventory)
+///
+/// Fields in this struct are grouped by their intended canonical destination
+/// in the phased migration.  Fields are **not** yet extracted; they remain
+/// here as transitional backing.  All public-facing access should go through
+/// the appropriate bridge module.
+///
+/// **Place** (world/visibility context — `kernel::place::bridge`):
+/// * `cwd` — current working directory path → `Place::cwd`
+/// * `namespace` — VFS mount-table view → `Place::namespace`
+/// * *(no root field yet)* — effective filesystem root → `Place::root`
+///
+/// **Legacy compatibility** (quarantined Unix baggage — not architectural truth):
+/// * `env` — inherited Unix process-local environment blob
+/// * `argv` / `auxv` — spawn-time invocation context
+/// * `pgid` / `sid` / `session_leader` — Unix session/process-group state
+///   (→ `Group`, Phase 4/5)
+/// * `fd_table` — open-file descriptor table (→ future resource authority)
+/// * `signals` — per-process signal state (→ future authority concern)
+///
+/// **Group** (coordination domain — `kernel::group::bridge`):
+/// * `pgid` / `sid` / `session_leader` — also used by Group bridge today
+///
+/// **Authority** (permission context — `kernel::authority::bridge`):
+/// * `exec_path` — used as authority name fallback today
+///
+/// **Lifecycle / identity** (Task/Job — not yet extracted):
+/// * `pid` / `ppid` / `thread_ids` / `exec_in_progress`
+/// * `mappings` / `aspace_raw` — VM ownership
+/// * `children_done` — waitpid queue
+///
+/// # Note on Presence
+///
+/// **Presence has not yet been introduced as a live execution/interaction
+/// concept.**  Terminal attachment, UI/console attachment, and person-in-place
+/// relationships are not yet represented here.  When Presence is introduced,
+/// any terminal-attachment or controlling-TTY state will be extracted from
+/// `signals` or a future field; it will not be a Place field.
+///
 /// See `docs/concepts/process-object.md` for the full design document.
 pub struct Process {
     /// Thread Group ID — the PID of the thread-group leader.
     pub pid: u32,
     /// PID of the parent process.
     pub ppid: u32,
+    // ── Legacy compatibility: Unix session/process-group state ────────────────
+    // These fields implement necessary Unix session semantics but are NOT
+    // architectural truth.  Public-facing code should use `Group` (via
+    // `kernel::group::bridge`).  They remain here pending Phase 5 extraction.
     /// Process group ID.
     pub pgid: u32,
     /// Session ID.
     pub sid: u32,
     /// True when this process is the leader of its session.
     pub session_leader: bool,
+    // ── Legacy compatibility: spawn-time invocation context ──────────────────
+    // `argv` and `auxv` are Unix spawn-time data blobs.  They are not Place,
+    // not Authority, and not canonical context.  Quarantined here as legacy
+    // compatibility state until a principled spawn-record concept is introduced.
     /// Argument vector passed at spawn/exec time.
     pub argv: Vec<Vec<u8>>,
+    // ── Legacy compatibility: inherited Unix environment blob ─────────────────
+    // `env` is a raw key→value environment map inherited from the Unix model.
+    // It does not belong to Place, Authority, or Group.  It is quarantined here
+    // as legacy compatibility state.  New code must not treat `env` as the
+    // canonical answer to any of those questions.
     /// Environment variables.
     pub env: BTreeMap<Vec<u8>, Vec<u8>>,
+    // ── Legacy compatibility: ELF auxiliary vector ───────────────────────────
     /// ELF auxiliary vector (AT_* entries as `(type, value)` pairs).
     pub auxv: Vec<(u64, u64)>,
+    // ── Resource table ────────────────────────────────────────────────────────
+    // Future: fd_table will move to a resource-authority domain.  For now it
+    // remains as transitional Process baggage.
     /// File descriptor table — fds 0/1/2 pre-populated at spawn time.
     pub fd_table: crate::vfs::fd_table::FdTable,
+    // ── Place context (Phase 8 — world/visibility boundary) ──────────────────
+    // These fields answer "in what world does this execution happen?".
+    // They feed `kernel::place::bridge` → `thingos::place::Place`.
+    // They remain in `Process` as transitional backing; the canonical surface
+    // is through the place bridge, not direct field access from new code.
     /// VFS namespace — currently a global stub shared by all processes.
     ///
     /// [`crate::vfs::NamespaceRef`] is a unit struct today: all instances
@@ -95,9 +156,15 @@ pub struct Process {
     /// so that per-process namespace isolation can be added later without
     /// touching every spawn call site.
     ///
+    /// Feeds `Place::namespace` through `kernel::place::bridge`.
+    ///
     /// See `docs/concepts/namespaces.md` for the behaviour matrix and roadmap.
     pub namespace: crate::vfs::NamespaceRef,
     /// Current working directory.
+    ///
+    /// Feeds `Place::cwd` through `kernel::place::bridge`.
+    /// New code must not read this field directly for world-context purposes;
+    /// use `crate::place::bridge::place_from_snapshot` instead.
     pub cwd: alloc::string::String,
     /// TIDs of all threads in this thread group.
     ///
@@ -128,6 +195,12 @@ pub struct Process {
     /// for kernel-only threads (which have no user address space).
     pub aspace_raw: u64,
     /// Per-process signal state: dispositions, pending set, stop/alarm state.
+    ///
+    /// LEGACY COMPAT: signal dispositions and pending-set management are Unix
+    /// compatibility machinery.  The controlling-terminal glue embedded here
+    /// (SIGTTOU/SIGTTIN, job-control stop signals) is not yet moved to
+    /// Group/Presence terms.  This field is quarantined as transitional
+    /// compatibility state.
     pub signals: crate::signal::ProcessSignals,
     /// Exited children waiting for `waitpid` to consume their status.
     ///

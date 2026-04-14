@@ -1248,6 +1248,15 @@ pub fn list_processes<R: BootRuntime>() -> alloc::vec::Vec<hooks::ProcessSnapsho
                     pgid: pi.pgid,
                     sid: pi.sid,
                     session_leader: pi.session_leader,
+                    // Place-context fields (Phase 8): extracted from Process into
+                    // the snapshot so the place bridge can build a canonical Place
+                    // without holding the Process lock.
+                    cwd: pi.cwd.clone(),
+                    // NamespaceRef is a unit struct in Phase 8 (all processes share
+                    // the global mount table).  Label it "global" here; future phases
+                    // will replace this with a stable per-process namespace identifier
+                    // once process namespace isolation is implemented.
+                    namespace_label: alloc::string::String::from("global"),
                 });
             }
         }

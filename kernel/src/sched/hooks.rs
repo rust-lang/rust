@@ -34,6 +34,21 @@ pub struct ProcessSnapshot {
     pub sid: u32,
     /// True when this process is the leader of its session.
     pub session_leader: bool,
+    // ── Place-context fields (Phase 8) ────────────────────────────────────────
+    /// Current working directory path.
+    ///
+    /// Feeds `kernel::place::bridge::place_from_snapshot` → `thingos::place::Place::cwd`.
+    /// Remains in `Process` as transitional backing; the canonical surface is
+    /// through the Place bridge, not this raw field.
+    pub cwd: String,
+    /// VFS namespace label for this process's mount-table view.
+    ///
+    /// Always `"global"` in Phase 8 because `NamespaceRef` is a unit struct
+    /// and all processes share one mount table.  Future phases will populate
+    /// this with a stable per-process namespace identifier.
+    ///
+    /// Feeds `kernel::place::bridge::place_from_snapshot` → `thingos::place::Place::namespace`.
+    pub namespace_label: String,
 }
 
 pub(crate) static mut YIELD_HOOK: Option<fn() -> bool> = None;
