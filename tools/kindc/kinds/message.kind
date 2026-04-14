@@ -1,0 +1,14 @@
+/// The canonical inter-unit communication envelope.
+///
+/// `thingos.message` is the atom of communication in ThingOS.
+/// All coordination, events, and IPC build on this structure.
+///
+/// - `kind` identifies the semantic type of the payload.
+/// - `payload` carries opaque bytes safe to pass across subsystem boundaries.
+///
+/// Future delivery mechanisms (Inbox, Group broadcast, Port-based IPC) will
+/// route and dispatch values of this type rather than inventing bespoke shapes.
+kind thingos.message = struct {
+  kind: ref<thingos.kind>,
+  payload: bytes,
+}

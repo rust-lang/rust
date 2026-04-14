@@ -102,6 +102,25 @@ pub struct ThingosKind {
     pub doc: Option<String>,
 }
 
+/// The canonical inter-unit communication envelope.
+/// 
+/// `thingos.message` is the atom of communication in ThingOS.
+/// All coordination, events, and IPC build on this structure.
+/// 
+/// - `kind` identifies the semantic type of the payload.
+/// - `payload` carries opaque bytes safe to pass across subsystem boundaries.
+/// 
+/// Future delivery mechanisms (Inbox, Group broadcast, Port-based IPC) will
+/// route and dispatch values of this type rather than inventing bespoke shapes.
+pub const KIND_ID_THINGOS_MESSAGE: [u8; 16] = [0x71, 0x69, 0xe9, 0x49, 0xac, 0x1f, 0x62, 0xc5, 0xee, 0x79, 0xd7, 0xcf, 0x26, 0xa6, 0x4c, 0xeb];
+
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Message {
+    pub kind: ThingId,
+    pub payload: Vec<u8>,
+}
+
 /// A person or agent in the system
 pub const KIND_ID_THINGOS_PERSON: [u8; 16] = [0x63, 0x04, 0xcf, 0x17, 0xeb, 0xb9, 0xc2, 0x41, 0x68, 0x0f, 0xd4, 0x6f, 0x35, 0x9d, 0x4f, 0x22];
 
@@ -143,16 +162,6 @@ pub enum PlaceKind {
     Remote,
 }
 
-/// A message sent over a port
-pub const KIND_ID_THINGOS_PORT_MESSAGE: [u8; 16] = [0x27, 0x09, 0x09, 0x88, 0x02, 0xa9, 0x28, 0x9a, 0xf9, 0xcb, 0xe7, 0x48, 0x65, 0xdc, 0x61, 0x4b];
-
-#[repr(C)]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Message {
-    pub kind: ThingId,
-    pub payload: Vec<u8>,
-}
-
 /// The intersection of identity, location, and authority
 pub const KIND_ID_THINGOS_PRESENCE: [u8; 16] = [0xe6, 0xf9, 0x7e, 0x82, 0x0d, 0x30, 0xa9, 0x16, 0xc4, 0xbc, 0x43, 0x69, 0xd0, 0xbd, 0x67, 0xa6];
 
@@ -179,12 +188,14 @@ pub const KIND_ID_THINGOS_SYS_TASK_CREATE_RESULT: [u8; 16] = [0x1d, 0xbb, 0x26, 
 pub type TaskCreateResult = Result<ThingId, i32>;
 
 /// A kernel-scheduled unit of execution
-pub const KIND_ID_THINGOS_TASK: [u8; 16] = [0x67, 0x21, 0x26, 0xdc, 0x4d, 0xa7, 0x50, 0x39, 0x2c, 0x82, 0x76, 0x52, 0x77, 0x47, 0xd0, 0xd3];
+pub const KIND_ID_THINGOS_TASK: [u8; 16] = [0xab, 0x4b, 0x17, 0xc4, 0x4a, 0x93, 0x83, 0xbb, 0xaa, 0x96, 0x6a, 0xa0, 0xd3, 0x7c, 0x36, 0xf9];
 
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Task {
     pub state: TaskState,
+    pub job: Option<ThingId>,
+    pub name: Option<String>,
 }
 
 /// Scheduler states for a task

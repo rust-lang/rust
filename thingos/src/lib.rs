@@ -13,12 +13,12 @@
 //!
 //! # Schema-generated canonical types
 //!
-//! The [`task`], [`job`], [`group`], and [`authority`] modules contain the
-//! schema-generated public types that define the canonical external
-//! representation of execution, lifecycle, coordination, and permission-context
-//! concepts respectively.  The kernel's internal `Thread` and `Process`
-//! structures are *transitional* implementations; they feed into these public
-//! types through explicit bridge layers rather than being exposed directly.
+//! The [`task`], [`job`], [`group`], [`authority`], and [`message`] modules
+//! contain the schema-generated public types that define the canonical external
+//! representation of execution, lifecycle, coordination, permission-context,
+//! and communication concepts respectively.  The kernel's internal `Thread` and
+//! `Process` structures are *transitional* implementations; they feed into these
+//! public types through explicit bridge layers rather than being exposed directly.
 //!
 //! ## Transitional mapping (Phases 1–4, 7–8)
 //!
@@ -31,6 +31,7 @@
 //! | `group::Group`           | `Process::pgid` / `ConsoleTtyState`       | Phase 4 coordination domain   |
 //! | `authority::Authority`   | `ProcessSnapshot::name` (transitional)    | Phase 7 permission context    |
 //! | `place::Place`           | `Process::cwd` + `namespace` (Phase 8)   | Phase 8 world context         |
+//! | `message::Message`       | (new) canonical communication envelope   | Inbox / Group / Port delivery |
 //!
 //! Public truth changes first; internal machinery follows.
 
@@ -39,6 +40,7 @@ extern crate alloc;
 pub mod authority;
 pub mod group;
 pub mod job;
+pub mod message;
 pub mod place;
 pub mod task;
 
