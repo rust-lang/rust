@@ -444,7 +444,10 @@ impl<'a> State<'a> {
                 &item.vis,
                 &deleg.qself,
                 &deleg.prefix,
-                deleg.suffixes.as_ref().map_or(DelegationKind::Glob, |s| DelegationKind::List(s)),
+                match &deleg.suffixes {
+                    ast::DelegationSuffixes::List(s) => DelegationKind::List(s),
+                    ast::DelegationSuffixes::Glob(_) => DelegationKind::Glob,
+                },
                 &deleg.body,
             ),
         }
@@ -651,7 +654,10 @@ impl<'a> State<'a> {
                 vis,
                 &deleg.qself,
                 &deleg.prefix,
-                deleg.suffixes.as_ref().map_or(DelegationKind::Glob, |s| DelegationKind::List(s)),
+                match &deleg.suffixes {
+                    ast::DelegationSuffixes::List(s) => DelegationKind::List(s),
+                    ast::DelegationSuffixes::Glob(_) => DelegationKind::Glob,
+                },
                 &deleg.body,
             ),
         }
