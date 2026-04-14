@@ -3293,7 +3293,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         proper_span: Span,
         explanation: BorrowExplanation<'tcx>,
     ) -> Diag<'infcx> {
-
         // Emit E0492 for `&const { expr }` when `expr` has
         // interior mutability, since that's what actually prevents promotion.
         if let Some(expr) = self.find_expr(proper_span)
@@ -3351,7 +3350,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 return diag;
             }
         }
-
 
         let mut err = self.temporary_value_borrowed_for_too_long(proper_span);
         err.span_label(proper_span, "creates a temporary value which is freed while still in use");
