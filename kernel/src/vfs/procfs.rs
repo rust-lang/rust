@@ -27,11 +27,12 @@
 //! | `/proc/<pid>/authority`          | Canonical `thingos::authority::Authority` — permission context (Phase 7) |
 //! | `/proc/<pid>/place`              | Canonical `thingos::place::Place` — world/visibility context (Phase 8)  |
 
-use abi::errors::{Errno, SysResult};
 use alloc::collections::BTreeSet;
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+
+use abi::errors::{Errno, SysResult};
 
 use super::{VfsDriver, VfsNode, VfsStat};
 
@@ -56,10 +57,7 @@ impl VfsDriver for ProcFs {
     fn lookup(&self, path: &str) -> SysResult<Arc<dyn VfsNode>> {
         match path {
             "" => Ok(Arc::new(ProcDirNode)),
-            "version" => Ok(Arc::new(StaticTextNode::new(
-                b"Thing-OS v0.1 (janix ACT VII)\n",
-                2,
-            ))),
+            "version" => Ok(Arc::new(StaticTextNode::new(b"Thing-OS v0.2\n", 2))),
             "mounts" => Ok(Arc::new(MountsNode)),
             "meminfo" => Ok(Arc::new(MemInfoNode)),
             "cpuinfo" => Ok(Arc::new(CpuInfoNode)),
@@ -118,10 +116,7 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
                 snap.pid,
                 snap.ppid,
             );
-            Ok(Arc::new(DynamicTextNode::new(
-                text.into_bytes(),
-                300 + pid as u64 * 10 + 1,
-            )))
+            Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), 300 + pid as u64 * 10 + 1)))
         }
         "cmdline" => {
             // Standard Linux /proc/<pid>/cmdline format: each argument is
@@ -132,10 +127,7 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
                 data.extend_from_slice(arg);
                 data.push(0);
             }
-            Ok(Arc::new(DynamicTextNode::new(
-                data,
-                300 + pid as u64 * 10 + 2,
-            )))
+            Ok(Arc::new(DynamicTextNode::new(data, 300 + pid as u64 * 10 + 2)))
         }
         "fd" => Ok(Arc::new(ProcPidFdDirNode { pid })),
         "exe" => {
@@ -148,13 +140,9 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
         // TaskState via `kernel::task::bridge`.  This is the first public
         // surface for the Task ontology (Phase 1).
         "task_state" => {
-            let task_state =
-                crate::task::bridge::task_state_from_thread(snap.state);
+            let task_state = crate::task::bridge::task_state_from_thread(snap.state);
             let text = alloc::format!("{}\n", task_state.as_str());
-            Ok(Arc::new(DynamicTextNode::new(
-                text.into_bytes(),
-                300 + pid as u64 * 10 + 5,
-            )))
+            Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), 300 + pid as u64 * 10 + 5)))
         }
         // /proc/<pid>/job_state — canonical thingos::job::JobState label.
         //
@@ -162,13 +150,9 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
         // schema-generated JobState via `kernel::job::bridge`.  This is the
         // first public surface for the Job ontology (Phase 2).
         "job_state" => {
-            let job_state =
-                crate::job::bridge::job_state_from_snapshot(&snap);
+            let job_state = crate::job::bridge::job_state_from_snapshot(&snap);
             let text = alloc::format!("{}\n", job_state.as_str());
-            Ok(Arc::new(DynamicTextNode::new(
-                text.into_bytes(),
-                300 + pid as u64 * 10 + 6,
-            )))
+            Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), 300 + pid as u64 * 10 + 6)))
         }
         // /proc/<pid>/job_exit — canonical thingos::job::JobExit (Phase 3).
         //
@@ -178,10 +162,7 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
         "job_exit" => {
             let job_exit = crate::job::bridge::job_exit_from_snapshot(&snap);
             let text = job_exit.as_text();
-            Ok(Arc::new(DynamicTextNode::new(
-                text.into_bytes(),
-                300 + pid as u64 * 10 + 7,
-            )))
+            Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), 300 + pid as u64 * 10 + 7)))
         }
         // /proc/<pid>/job_wait — canonical thingos::job::JobWaitResult (Phase 3).
         //
@@ -195,10 +176,7 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
                 .map_err(|_| Errno::ENOENT)?;
             let wait_result = crate::job::bridge::job_wait_result_from_poll(poll);
             let text = wait_result.as_text();
-            Ok(Arc::new(DynamicTextNode::new(
-                text.into_bytes(),
-                300 + pid as u64 * 10 + 8,
-            )))
+            Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), 300 + pid as u64 * 10 + 8)))
         }
         // /proc/<pid>/group_kind — canonical thingos::group::GroupKind (Phase 4).
         //
@@ -209,10 +187,7 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
         "group_kind" => {
             let group = crate::group::bridge::group_from_snapshot(&snap);
             let text = group.as_text();
-            Ok(Arc::new(DynamicTextNode::new(
-                text.into_bytes(),
-                300 + pid as u64 * 10 + 9,
-            )))
+            Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), 300 + pid as u64 * 10 + 9)))
         }
         // /proc/<pid>/authority — canonical thingos::authority::Authority (Phase 7).
         //
@@ -229,10 +204,7 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
         "authority" => {
             let authority = crate::authority::bridge::authority_from_snapshot(&snap);
             let text = authority.as_text();
-            Ok(Arc::new(DynamicTextNode::new(
-                text.into_bytes(),
-                300 + pid as u64 * 10 + 10,
-            )))
+            Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), 300 + pid as u64 * 10 + 10)))
         }
         // /proc/<pid>/place — canonical thingos::place::Place (Phase 8).
         //
@@ -253,10 +225,7 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
         "place" => {
             let place = crate::place::bridge::place_from_snapshot(&snap);
             let text = place.as_text();
-            Ok(Arc::new(DynamicTextNode::new(
-                text.into_bytes(),
-                300 + pid as u64 * 10 + 11,
-            )))
+            Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), 300 + pid as u64 * 10 + 11)))
         }
         _ => Err(Errno::ENOENT),
     }
@@ -278,10 +247,7 @@ fn lookup_pid_task(pid: u32, tid_and_rest: &str) -> SysResult<Arc<dyn VfsNode>> 
 
     // Find the thread snapshot with the matching pid and tid.
     let procs = crate::sched::list_processes_current();
-    let thread = procs
-        .iter()
-        .find(|s| s.pid == pid && s.tid == tid)
-        .ok_or(Errno::ENOENT)?;
+    let thread = procs.iter().find(|s| s.pid == pid && s.tid == tid).ok_or(Errno::ENOENT)?;
 
     match file {
         // /proc/<pid>/task/<tid> — per-thread directory.
@@ -292,9 +258,7 @@ fn lookup_pid_task(pid: u32, tid_and_rest: &str) -> SysResult<Arc<dyn VfsNode>> 
             text.push('\n');
             // Inode: top nibble 0xB, next 32 bits = pid, bottom 28 bits = tid.
             // This avoids collisions for the expected TID range (< 2^28).
-            let ino = 0xB000_0000_0000_0000u64
-                | ((pid as u64) << 28)
-                | (tid & 0x0FFF_FFFF);
+            let ino = 0xB000_0000_0000_0000u64 | ((pid as u64) << 28) | (tid & 0x0FFF_FFFF);
             Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), ino)))
         }
         "task_state" => {
@@ -314,9 +278,7 @@ fn lookup_pid_task(pid: u32, tid_and_rest: &str) -> SysResult<Arc<dyn VfsNode>> 
                 thingos::task::TaskState::Exited => "exited",
             };
             let text = alloc::format!("state: {}\n", state_name);
-            let ino = 0xC000_0000_0000_0000u64
-                | ((pid as u64) << 28)
-                | (tid & 0x0FFF_FFFF);
+            let ino = 0xC000_0000_0000_0000u64 | ((pid as u64) << 28) | (tid & 0x0FFF_FFFF);
             Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), ino)))
         }
         _ => Err(Errno::ENOENT),
@@ -355,12 +317,7 @@ impl VfsNode for ProcDirNode {
         Err(Errno::EISDIR)
     }
     fn stat(&self) -> SysResult<VfsStat> {
-        Ok(VfsStat {
-            mode: VfsStat::S_IFDIR | 0o555,
-            size: 0,
-            ino: 200,
-            ..Default::default()
-        })
+        Ok(VfsStat { mode: VfsStat::S_IFDIR | 0o555, size: 0, ino: 200, ..Default::default() })
     }
     fn readdir(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
         let mut names = alloc::vec![
@@ -405,9 +362,20 @@ impl VfsNode for ProcPidDirNode {
         //   status, cmdline, fd, exe, task
         // Canonical schema entries (Phase 1–8):
         //   task_state, job_state, job_exit, job_wait, group_kind, authority, place
-        let entries = ["status", "cmdline", "fd", "exe", "task",
-                       "task_state", "job_state", "job_exit", "job_wait", "group_kind",
-                       "authority", "place"];
+        let entries = [
+            "status",
+            "cmdline",
+            "fd",
+            "exe",
+            "task",
+            "task_state",
+            "job_state",
+            "job_exit",
+            "job_wait",
+            "group_kind",
+            "authority",
+            "place",
+        ];
         super::write_readdir_entries(entries.into_iter(), offset, buf)
     }
 }
@@ -495,9 +463,7 @@ impl VfsNode for ProcPidTaskTidDirNode {
             mode: VfsStat::S_IFDIR | 0o555,
             size: 0,
             // Inode: top nibble 0xA, next 32 bits = pid, bottom 28 bits = tid.
-            ino: 0xA000_0000_0000_0000u64
-                | ((self.pid as u64) << 28)
-                | (self.tid & 0x0FFF_FFFF),
+            ino: 0xA000_0000_0000_0000u64 | ((self.pid as u64) << 28) | (self.tid & 0x0FFF_FFFF),
             ..Default::default()
         })
     }
@@ -519,12 +485,7 @@ impl VfsNode for ProcSelfDirNode {
         Err(Errno::EISDIR)
     }
     fn stat(&self) -> SysResult<VfsStat> {
-        Ok(VfsStat {
-            mode: VfsStat::S_IFDIR | 0o555,
-            size: 0,
-            ino: 210,
-            ..Default::default()
-        })
+        Ok(VfsStat { mode: VfsStat::S_IFDIR | 0o555, size: 0, ino: 210, ..Default::default() })
     }
     fn readdir(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
         let entries = ["exe"];
@@ -555,21 +516,12 @@ impl VfsNode for ProcSelfExeNode {
         Err(Errno::EROFS)
     }
     fn stat(&self) -> SysResult<VfsStat> {
-        Ok(VfsStat {
-            mode: VfsStat::S_IFLNK | 0o777,
-            size: 0,
-            ino: 211,
-            ..Default::default()
-        })
+        Ok(VfsStat { mode: VfsStat::S_IFLNK | 0o777, size: 0, ino: 211, ..Default::default() })
     }
     fn readlink(&self) -> SysResult<String> {
         let pinfo = crate::sched::process_info_current().ok_or(Errno::ENOENT)?;
         let path = pinfo.lock().exec_path.clone();
-        if path.is_empty() {
-            Err(Errno::ENOENT)
-        } else {
-            Ok(path)
-        }
+        if path.is_empty() { Err(Errno::ENOENT) } else { Ok(path) }
     }
 }
 
@@ -604,11 +556,7 @@ impl VfsNode for ProcPidExeNode {
         })
     }
     fn readlink(&self) -> SysResult<String> {
-        if self.exec_path.is_empty() {
-            Err(Errno::ENOENT)
-        } else {
-            Ok(self.exec_path.clone())
-        }
+        if self.exec_path.is_empty() { Err(Errno::ENOENT) } else { Ok(self.exec_path.clone()) }
     }
 }
 
@@ -736,11 +684,7 @@ impl VfsNode for MemInfoNode {
         // We report the static heap reservation size; detailed used/free
         // accounting is not yet tracked in the global allocator.
         let total_kb = (crate::memory::layout::KHEAP_SIZE / 1024) as u64;
-        let text = alloc::format!(
-            "MemTotal:    {:8} kB\nMemFree:     {:8} kB\n",
-            total_kb,
-            0u64,
-        );
+        let text = alloc::format!("MemTotal:    {:8} kB\nMemFree:     {:8} kB\n", total_kb, 0u64,);
         let data = text.as_bytes();
         let off = offset as usize;
         if off >= data.len() {
@@ -754,12 +698,7 @@ impl VfsNode for MemInfoNode {
         Err(Errno::EROFS)
     }
     fn stat(&self) -> SysResult<VfsStat> {
-        Ok(VfsStat {
-            mode: VfsStat::S_IFREG | 0o444,
-            size: 0,
-            ino: 202,
-            ..Default::default()
-        })
+        Ok(VfsStat { mode: VfsStat::S_IFREG | 0o444, size: 0, ino: 202, ..Default::default() })
     }
 }
 
@@ -783,12 +722,7 @@ impl VfsNode for CpuInfoNode {
         Err(Errno::EROFS)
     }
     fn stat(&self) -> SysResult<VfsStat> {
-        Ok(VfsStat {
-            mode: VfsStat::S_IFREG | 0o444,
-            size: 0,
-            ino: 203,
-            ..Default::default()
-        })
+        Ok(VfsStat { mode: VfsStat::S_IFREG | 0o444, size: 0, ino: 203, ..Default::default() })
     }
 }
 
@@ -814,12 +748,7 @@ impl VfsNode for UptimeNode {
         Err(Errno::EROFS)
     }
     fn stat(&self) -> SysResult<VfsStat> {
-        Ok(VfsStat {
-            mode: VfsStat::S_IFREG | 0o444,
-            size: 0,
-            ino: 204,
-            ..Default::default()
-        })
+        Ok(VfsStat { mode: VfsStat::S_IFREG | 0o444, size: 0, ino: 204, ..Default::default() })
     }
 }
 
@@ -858,12 +787,7 @@ impl VfsNode for IpcDirNode {
         Err(Errno::EISDIR)
     }
     fn stat(&self) -> SysResult<VfsStat> {
-        Ok(VfsStat {
-            mode: VfsStat::S_IFDIR | 0o555,
-            size: 0,
-            ino: 500,
-            ..Default::default()
-        })
+        Ok(VfsStat { mode: VfsStat::S_IFDIR | 0o555, size: 0, ino: 500, ..Default::default() })
     }
     fn readdir(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
         let entries = ["channels", "pipes", "vfs_rpc"];
@@ -885,22 +809,13 @@ enum IpcDiagKind {
 
 impl IpcDiagNode {
     fn channels() -> Self {
-        Self {
-            kind: IpcDiagKind::Channels,
-            ino: 501,
-        }
+        Self { kind: IpcDiagKind::Channels, ino: 501 }
     }
     fn pipes() -> Self {
-        Self {
-            kind: IpcDiagKind::Pipes,
-            ino: 502,
-        }
+        Self { kind: IpcDiagKind::Pipes, ino: 502 }
     }
     fn vfs_rpc() -> Self {
-        Self {
-            kind: IpcDiagKind::VfsRpc,
-            ino: 503,
-        }
+        Self { kind: IpcDiagKind::VfsRpc, ino: 503 }
     }
 
     fn render(&self) -> alloc::string::String {
@@ -960,11 +875,7 @@ mod tests {
         let mut buf = [0u8; 64];
         let n = node.read(0, &mut buf).unwrap();
         assert!(n > 0);
-        assert!(
-            core::str::from_utf8(&buf[..n])
-                .unwrap()
-                .contains("Thing-OS")
-        );
+        assert!(core::str::from_utf8(&buf[..n]).unwrap().contains("Thing-OS"));
     }
 
     #[test]
