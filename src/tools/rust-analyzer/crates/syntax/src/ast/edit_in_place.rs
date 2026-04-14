@@ -9,220 +9,12 @@ use crate::{
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken,
     algo::{self, neighbor},
-    ast::{self, HasGenericParams, edit::IndentLevel, make, syntax_factory::SyntaxFactory},
+    ast::{self, edit::IndentLevel, make, syntax_factory::SyntaxFactory},
     syntax_editor::{Position, SyntaxEditor},
     ted,
 };
 
 use super::{GenericParam, HasName};
-
-pub trait GenericParamsOwnerEdit: ast::HasGenericParams {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList;
-    fn get_or_create_where_clause(&self) -> ast::WhereClause;
-}
-
-impl GenericParamsOwnerEdit for ast::Fn {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        match self.generic_param_list() {
-            Some(it) => it,
-            None => {
-                let position = if let Some(name) = self.name() {
-                    ted::Position::after(name.syntax)
-                } else if let Some(fn_token) = self.fn_token() {
-                    ted::Position::after(fn_token)
-                } else if let Some(param_list) = self.param_list() {
-                    ted::Position::before(param_list.syntax)
-                } else {
-                    ted::Position::last_child_of(self.syntax())
-                };
-                create_generic_param_list(position)
-            }
-        }
-    }
-
-    fn get_or_create_where_clause(&self) -> ast::WhereClause {
-        if self.where_clause().is_none() {
-            let position = if let Some(ty) = self.ret_type() {
-                ted::Position::after(ty.syntax())
-            } else if let Some(param_list) = self.param_list() {
-                ted::Position::after(param_list.syntax())
-            } else {
-                ted::Position::last_child_of(self.syntax())
-            };
-            create_where_clause(position);
-        }
-        self.where_clause().unwrap()
-    }
-}
-
-impl GenericParamsOwnerEdit for ast::Impl {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        match self.generic_param_list() {
-            Some(it) => it,
-            None => {
-                let position = match self.impl_token() {
-                    Some(imp_token) => ted::Position::after(imp_token),
-                    None => ted::Position::last_child_of(self.syntax()),
-                };
-                create_generic_param_list(position)
-            }
-        }
-    }
-
-    fn get_or_create_where_clause(&self) -> ast::WhereClause {
-        if self.where_clause().is_none() {
-            let position = match self.assoc_item_list() {
-                Some(items) => ted::Position::before(items.syntax()),
-                None => ted::Position::last_child_of(self.syntax()),
-            };
-            create_where_clause(position);
-        }
-        self.where_clause().unwrap()
-    }
-}
-
-impl GenericParamsOwnerEdit for ast::Trait {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        match self.generic_param_list() {
-            Some(it) => it,
-            None => {
-                let position = if let Some(name) = self.name() {
-                    ted::Position::after(name.syntax)
-                } else if let Some(trait_token) = self.trait_token() {
-                    ted::Position::after(trait_token)
-                } else {
-                    ted::Position::last_child_of(self.syntax())
-                };
-                create_generic_param_list(position)
-            }
-        }
-    }
-
-    fn get_or_create_where_clause(&self) -> ast::WhereClause {
-        if self.where_clause().is_none() {
-            let position = match (self.assoc_item_list(), self.semicolon_token()) {
-                (Some(items), _) => ted::Position::before(items.syntax()),
-                (_, Some(tok)) => ted::Position::before(tok),
-                (None, None) => ted::Position::last_child_of(self.syntax()),
-            };
-            create_where_clause(position);
-        }
-        self.where_clause().unwrap()
-    }
-}
-
-impl GenericParamsOwnerEdit for ast::TypeAlias {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        match self.generic_param_list() {
-            Some(it) => it,
-            None => {
-                let position = if let Some(name) = self.name() {
-                    ted::Position::after(name.syntax)
-                } else if let Some(trait_token) = self.type_token() {
-                    ted::Position::after(trait_token)
-                } else {
-                    ted::Position::last_child_of(self.syntax())
-                };
-                create_generic_param_list(position)
-            }
-        }
-    }
-
-    fn get_or_create_where_clause(&self) -> ast::WhereClause {
-        if self.where_clause().is_none() {
-            let position = match self.eq_token() {
-                Some(tok) => ted::Position::before(tok),
-                None => match self.semicolon_token() {
-                    Some(tok) => ted::Position::before(tok),
-                    None => ted::Position::last_child_of(self.syntax()),
-                },
-            };
-            create_where_clause(position);
-        }
-        self.where_clause().unwrap()
-    }
-}
-
-impl GenericParamsOwnerEdit for ast::Struct {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        match self.generic_param_list() {
-            Some(it) => it,
-            None => {
-                let position = if let Some(name) = self.name() {
-                    ted::Position::after(name.syntax)
-                } else if let Some(struct_token) = self.struct_token() {
-                    ted::Position::after(struct_token)
-                } else {
-                    ted::Position::last_child_of(self.syntax())
-                };
-                create_generic_param_list(position)
-            }
-        }
-    }
-
-    fn get_or_create_where_clause(&self) -> ast::WhereClause {
-        if self.where_clause().is_none() {
-            let tfl = self.field_list().and_then(|fl| match fl {
-                ast::FieldList::RecordFieldList(_) => None,
-                ast::FieldList::TupleFieldList(it) => Some(it),
-            });
-            let position = if let Some(tfl) = tfl {
-                ted::Position::after(tfl.syntax())
-            } else if let Some(gpl) = self.generic_param_list() {
-                ted::Position::after(gpl.syntax())
-            } else if let Some(name) = self.name() {
-                ted::Position::after(name.syntax())
-            } else {
-                ted::Position::last_child_of(self.syntax())
-            };
-            create_where_clause(position);
-        }
-        self.where_clause().unwrap()
-    }
-}
-
-impl GenericParamsOwnerEdit for ast::Enum {
-    fn get_or_create_generic_param_list(&self) -> ast::GenericParamList {
-        match self.generic_param_list() {
-            Some(it) => it,
-            None => {
-                let position = if let Some(name) = self.name() {
-                    ted::Position::after(name.syntax)
-                } else if let Some(enum_token) = self.enum_token() {
-                    ted::Position::after(enum_token)
-                } else {
-                    ted::Position::last_child_of(self.syntax())
-                };
-                create_generic_param_list(position)
-            }
-        }
-    }
-
-    fn get_or_create_where_clause(&self) -> ast::WhereClause {
-        if self.where_clause().is_none() {
-            let position = if let Some(gpl) = self.generic_param_list() {
-                ted::Position::after(gpl.syntax())
-            } else if let Some(name) = self.name() {
-                ted::Position::after(name.syntax())
-            } else {
-                ted::Position::last_child_of(self.syntax())
-            };
-            create_where_clause(position);
-        }
-        self.where_clause().unwrap()
-    }
-}
-
-fn create_where_clause(position: ted::Position) {
-    let where_clause = make::where_clause(empty()).clone_for_update();
-    ted::insert(position, where_clause.syntax());
-}
-
-fn create_generic_param_list(position: ted::Position) -> ast::GenericParamList {
-    let gpl = make::generic_param_list(empty()).clone_for_update();
-    ted::insert_raw(position, gpl.syntax());
-    gpl
-}
 
 pub trait AttrsOwnerEdit: ast::HasAttrs {
     fn remove_attrs_and_docs(&self) {
@@ -879,8 +671,6 @@ impl<N: AstNode + Clone> Indent for N {}
 
 #[cfg(test)]
 mod tests {
-    use std::fmt;
-
     use parser::Edition;
 
     use crate::SourceFile;
@@ -890,33 +680,6 @@ mod tests {
     fn ast_mut_from_text<N: AstNode>(text: &str) -> N {
         let parse = SourceFile::parse(text, Edition::CURRENT);
         parse.tree().syntax().descendants().find_map(N::cast).unwrap().clone_for_update()
-    }
-
-    #[test]
-    fn test_create_generic_param_list() {
-        fn check_create_gpl<N: GenericParamsOwnerEdit + fmt::Display>(before: &str, after: &str) {
-            let gpl_owner = ast_mut_from_text::<N>(before);
-            gpl_owner.get_or_create_generic_param_list();
-            assert_eq!(gpl_owner.to_string(), after);
-        }
-
-        check_create_gpl::<ast::Fn>("fn foo", "fn foo<>");
-        check_create_gpl::<ast::Fn>("fn foo() {}", "fn foo<>() {}");
-
-        check_create_gpl::<ast::Impl>("impl", "impl<>");
-        check_create_gpl::<ast::Impl>("impl Struct {}", "impl<> Struct {}");
-        check_create_gpl::<ast::Impl>("impl Trait for Struct {}", "impl<> Trait for Struct {}");
-
-        check_create_gpl::<ast::Trait>("trait Trait<>", "trait Trait<>");
-        check_create_gpl::<ast::Trait>("trait Trait<> {}", "trait Trait<> {}");
-
-        check_create_gpl::<ast::Struct>("struct A", "struct A<>");
-        check_create_gpl::<ast::Struct>("struct A;", "struct A<>;");
-        check_create_gpl::<ast::Struct>("struct A();", "struct A<>();");
-        check_create_gpl::<ast::Struct>("struct A {}", "struct A<> {}");
-
-        check_create_gpl::<ast::Enum>("enum E", "enum E<>");
-        check_create_gpl::<ast::Enum>("enum E {", "enum E<> {");
     }
 
     #[test]
