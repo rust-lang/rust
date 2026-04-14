@@ -844,7 +844,12 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
             let span = tcx.def_span(param.def_id);
             let def_id = param.def_id.expect_local();
 
-            if tcx.features().adt_const_params() || tcx.features().min_adt_const_params() {
+            if tcx.features().const_param_ty_unchecked() {
+                enter_wf_checking_ctxt(tcx, tcx.local_parent(def_id), |wfcx| {
+                    wfcx.register_wf_obligation(span, None, ty.into());
+                    Ok(())
+                })
+            } else if tcx.features().adt_const_params() || tcx.features().min_adt_const_params() {
                 enter_wf_checking_ctxt(tcx, tcx.local_parent(def_id), |wfcx| {
                     wfcx.register_bound(
                         ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(ty)),
@@ -1346,12 +1351,14 @@ pub(super) fn check_type_const<'tcx>(
     let tcx = wfcx.tcx();
     let span = tcx.def_span(def_id);
 
-    wfcx.register_bound(
-        ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(item_ty)),
-        wfcx.param_env,
-        item_ty,
-        tcx.require_lang_item(LangItem::ConstParamTy, span),
-    );
+    if !tcx.features().const_param_ty_unchecked() {
+        wfcx.register_bound(
+            ObligationCause::new(span, def_id, ObligationCauseCode::ConstParam(item_ty)),
+            wfcx.param_env,
+            item_ty,
+            tcx.require_lang_item(LangItem::ConstParamTy, span),
+        );
+    }
 
     if has_value {
         let raw_ct = tcx.const_of_item(def_id).instantiate_identity();
