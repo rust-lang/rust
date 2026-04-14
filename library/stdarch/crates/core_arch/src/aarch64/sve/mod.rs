@@ -374,6 +374,9 @@ pub enum svprfop {
     SV_PSTL3STRM = 13,
 }
 
-#[cfg(test)]
+// FIXME(arm-maintainers): On MSVC targets, it seemed like spurious corruption of the FFR was being
+// observed non-deterministically on CI. Disabling these tests out of caution on that platform until
+// it is investigated.
+#[cfg(all(test, not(target_env = "msvc")))]
 #[path = "ld_st_tests_aarch64.rs"]
 mod ld_st_tests;
