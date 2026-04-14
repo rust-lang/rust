@@ -30,6 +30,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::tagged_ptr::Tag;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, Walkable};
 pub use rustc_span::AttrId;
+pub use rustc_span::node_id::{self, CRATE_NODE_ID, DUMMY_NODE_ID, NodeId};
 use rustc_span::{
     ByteSymbol, DUMMY_SP, ErrorGuaranteed, HashStableContext, Ident, Span, Spanned, Symbol, kw,
     respan, sym,
@@ -369,8 +370,6 @@ impl ParenthesizedArgs {
         AngleBracketedArgs { span: self.inputs_span, args }
     }
 }
-
-pub use crate::node_id::{CRATE_NODE_ID, DUMMY_NODE_ID, NodeId};
 
 /// Modifiers on a trait bound like `[const]`, `?` and `!`.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, Walkable)]

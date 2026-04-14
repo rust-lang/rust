@@ -3869,7 +3869,6 @@ dependencies = [
  "anstream",
  "anstyle",
  "derive_setters",
- "rustc_ast",
  "rustc_data_structures",
  "rustc_error_codes",
  "rustc_error_messages",

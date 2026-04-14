@@ -29,7 +29,6 @@ pub mod entry;
 pub mod expand;
 pub mod format;
 pub mod mut_visit;
-pub mod node_id;
 pub mod token;
 pub mod tokenstream;
 pub mod visit;
