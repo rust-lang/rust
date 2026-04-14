@@ -165,6 +165,39 @@ pub const SYS_SHUTDOWN: u32 = 0x3025;
 /// Create a connected socket pair. Args: (domain, type, protocol, fds_ptr) → 0
 pub const SYS_SOCKETPAIR: u32 = 0x3026;
 
+// ── Typed Message Delivery (0x3030) ──────────────────────────────────────────
+//
+// Prototype group-broadcast using the typed message delivery model.
+// Broadcast is implemented as repeated per-recipient typed delivery;
+// there is no separate metaphysical channel.
+//
+// Membership is snapshotted once at send time (snapshot semantics).
+//
+// Args layout shared by both syscalls:
+//   arg0 – target: pid (direct) or pgid (broadcast)
+//   arg1 – kind_id_ptr: *const u8  (16-byte KindId, user pointer)
+//   arg2 – payload_ptr: *const u8  (arbitrary bytes, user pointer)
+//   arg3 – payload_len: usize
+
+/// Send one typed message directly to a process by PID.
+///
+/// Returns 0 on success, or an `Errno` error on failure:
+/// - `ESRCH`  — recipient process not found
+/// - `EAGAIN` — recipient inbox full
+/// - `EINVAL` — invalid arguments / null pointer
+pub const SYS_MSG_SEND: u32 = 0x3030;
+
+/// Broadcast one typed message to all members of a process group (pgid).
+///
+/// Membership is snapshotted at send time. Fanout continues past individual
+/// recipient failures. Returns a compact status word in the low bits:
+///   bits 31:16 – number of failures (saturated to 0xFFFF)
+///   bits 15:0  – number of successes (saturated to 0xFFFF)
+///
+/// Returns a negative `Errno` only for top-level errors:
+/// - `EINVAL` — pgid == 0 or invalid pointer arguments
+pub const SYS_MSG_BROADCAST: u32 = 0x3031;
+
 // ============================================================================
 // Virtual File System (VFS) (0x4000)
 // ============================================================================

@@ -323,6 +323,33 @@ mod tests {
     }
 
     #[test]
+    fn fanout_skips_exited_recipient_without_panic() {
+        // A recipient that has exited returns RecipientExited; fanout should
+        // continue and attribute the failure without corrupting other deliveries.
+        let recipients = [100u32, 101u32, 102u32];
+        let mut successes = Vec::new();
+
+        let report = fanout_snapshot(
+            &recipients,
+            |idx| make_meta(idx, 7),
+            |pid, _metadata| {
+                if pid == 101 {
+                    return Err(DeliveryFailureReason::RecipientExited);
+                }
+                successes.push(pid);
+                Ok(())
+            },
+        );
+
+        assert_eq!(report.targeted, 3);
+        assert_eq!(report.succeeded, 2);
+        assert_eq!(report.failed, 1);
+        assert_eq!(report.failures[0].pid, 101);
+        assert_eq!(report.failures[0].reason, DeliveryFailureReason::RecipientExited);
+        assert_eq!(successes, alloc::vec![100u32, 102u32]);
+    }
+
+    #[test]
     fn fanout_uses_snapshot_even_if_live_membership_changes() {
         let recipients_snapshot = alloc::vec![501u32, 502u32];
         let mut live_membership = alloc::vec![501u32, 502u32, 503u32];
