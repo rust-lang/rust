@@ -1245,6 +1245,9 @@ pub fn list_processes<R: BootRuntime>() -> alloc::vec::Vec<hooks::ProcessSnapsho
                     argv: pi.argv.clone(),
                     exec_path: pi.exec_path.clone(),
                     exit_code: task.exit_code,
+                    pgid: pi.pgid,
+                    sid: pi.sid,
+                    session_leader: pi.session_leader,
                 });
             }
         }

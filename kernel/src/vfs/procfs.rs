@@ -23,6 +23,7 @@
 //! | `/proc/<pid>/job_state`          | Canonical `thingos::job::JobState` (Phase 2) |
 //! | `/proc/<pid>/job_exit`           | Canonical `thingos::job::JobExit` — state + code (Phase 3) |
 //! | `/proc/<pid>/job_wait`           | Canonical `thingos::job::JobWaitResult` — non-blocking poll (Phase 3) |
+//! | `/proc/<pid>/group_kind`         | Canonical `thingos::group::GroupKind` — coordination role (Phase 4) |
 
 use abi::errors::{Errno, SysResult};
 use alloc::collections::BTreeSet;
@@ -197,11 +198,23 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
                 300 + pid as u64 * 10 + 8,
             )))
         }
+        // /proc/<pid>/group_kind — canonical thingos::group::GroupKind (Phase 4).
+        //
+        // Reports the coordination role of this process's group in canonical
+        // Group terms, bridged from the current session_leader field via
+        // `kernel::group::bridge`.  This is the first public surface for the
+        // Group ontology (Phase 4).
+        "group_kind" => {
+            let group = crate::group::bridge::group_from_snapshot(&snap);
+            let text = group.as_text();
+            Ok(Arc::new(DynamicTextNode::new(
+                text.into_bytes(),
+                300 + pid as u64 * 10 + 9,
+            )))
+        }
         _ => Err(Errno::ENOENT),
     }
 }
-
-/// Look up a node inside `/proc/<pid>/task/`.
 ///
 /// `tid_and_rest` is everything after `"task/"`, e.g. `""` (the directory
 /// itself), `"100"` (per-thread directory), or `"100/name"` (thread name).
@@ -322,10 +335,10 @@ impl VfsNode for ProcPidDirNode {
     fn readdir(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
         // Legacy procfs entries (transitional internal model):
         //   status, cmdline, fd, exe, task
-        // Canonical schema entries (Phase 1: task, Phase 2: job, Phase 3: exit/wait):
-        //   task_state, job_state, job_exit, job_wait
+        // Canonical schema entries (Phase 1: task, Phase 2: job, Phase 3: exit/wait, Phase 4: group):
+        //   task_state, job_state, job_exit, job_wait, group_kind
         let entries = ["status", "cmdline", "fd", "exe", "task",
-                       "task_state", "job_state", "job_exit", "job_wait"];
+                       "task_state", "job_state", "job_exit", "job_wait", "group_kind"];
         super::write_readdir_entries(entries.into_iter(), offset, buf)
     }
 }
