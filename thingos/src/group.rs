@@ -112,3 +112,64 @@ impl Group {
         alloc::format!("kind: {}\n", self.kind.as_str())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── GroupKind ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_group_kind_as_str_foreground() {
+        assert_eq!(GroupKind::Foreground.as_str(), "Foreground");
+    }
+
+    #[test]
+    fn test_group_kind_as_str_coordination() {
+        assert_eq!(GroupKind::Coordination.as_str(), "Coordination");
+    }
+
+    #[test]
+    fn test_group_kind_equality() {
+        assert_eq!(GroupKind::Foreground, GroupKind::Foreground);
+        assert_eq!(GroupKind::Coordination, GroupKind::Coordination);
+        assert_ne!(GroupKind::Foreground, GroupKind::Coordination);
+    }
+
+    // ── Group ────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_group_carries_kind() {
+        let g = Group { kind: GroupKind::Foreground };
+        assert_eq!(g.kind, GroupKind::Foreground);
+    }
+
+    #[test]
+    fn test_group_as_text_foreground() {
+        let g = Group { kind: GroupKind::Foreground };
+        let text = g.as_text();
+        assert!(text.contains("kind: Foreground"), "unexpected: {}", text);
+    }
+
+    #[test]
+    fn test_group_as_text_coordination() {
+        let g = Group { kind: GroupKind::Coordination };
+        let text = g.as_text();
+        assert!(text.contains("kind: Coordination"), "unexpected: {}", text);
+    }
+
+    #[test]
+    fn test_group_as_text_ends_with_newline() {
+        let g = Group { kind: GroupKind::Foreground };
+        assert!(g.as_text().ends_with('\n'));
+    }
+
+    #[test]
+    fn test_group_equality() {
+        assert_eq!(Group { kind: GroupKind::Foreground }, Group { kind: GroupKind::Foreground });
+        assert_ne!(
+            Group { kind: GroupKind::Foreground },
+            Group { kind: GroupKind::Coordination }
+        );
+    }
+}
