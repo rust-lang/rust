@@ -28,15 +28,6 @@ pub struct UnableToConstructConstantValue<'a> {
     pub unevaluated: ty::UnevaluatedConst<'a>,
 }
 
-#[derive(Diagnostic)]
-#[diag("this attribute must have a value", code = E0232)]
-#[note("e.g. `#[rustc_on_unimplemented(message=\"foo\")]`")]
-pub struct NoValueInOnUnimplemented {
-    #[primary_span]
-    #[label("expected value here")]
-    pub span: Span,
-}
-
 pub struct NegativePositiveConflict<'tcx> {
     pub impl_span: Span,
     pub trait_desc: ty::TraitRef<'tcx>,
@@ -1199,60 +1190,6 @@ pub struct TraitImplDiff {
     pub rel_help: bool,
     pub expected: String,
     pub found: String,
-}
-
-pub struct DynTraitConstraintSuggestion {
-    pub span: Span,
-    pub ident: Ident,
-}
-
-impl Subdiagnostic for DynTraitConstraintSuggestion {
-    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        let mut multi_span: MultiSpan = vec![self.span].into();
-        multi_span.push_span_label(
-            self.span,
-            msg!("this has an implicit `'static` lifetime requirement"),
-        );
-        multi_span.push_span_label(
-            self.ident.span,
-            msg!("calling this method introduces the `impl`'s `'static` requirement"),
-        );
-        let msg = msg!("the used `impl` has a `'static` requirement");
-        diag.span_note(multi_span, msg);
-        let msg = msg!("consider relaxing the implicit `'static` requirement");
-        diag.span_suggestion_verbose(
-            self.span.shrink_to_hi(),
-            msg,
-            " + '_",
-            Applicability::MaybeIncorrect,
-        );
-    }
-}
-
-pub struct ReqIntroducedLocations {
-    pub span: MultiSpan,
-    pub spans: Vec<Span>,
-    pub fn_decl_span: Span,
-    pub cause_span: Span,
-    pub add_label: bool,
-}
-
-impl Subdiagnostic for ReqIntroducedLocations {
-    fn add_to_diag<G: EmissionGuarantee>(mut self, diag: &mut Diag<'_, G>) {
-        for sp in self.spans {
-            self.span.push_span_label(sp, msg!("`'static` requirement introduced here"));
-        }
-
-        if self.add_label {
-            self.span.push_span_label(
-                self.fn_decl_span,
-                msg!("requirement introduced by this return type"),
-            );
-        }
-        self.span.push_span_label(self.cause_span, msg!("because of this returned expression"));
-        let msg = msg!("\"`'static` lifetime requirement introduced by the return type");
-        diag.span_note(self.span, msg);
-    }
 }
 
 #[derive(Diagnostic)]
