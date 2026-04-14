@@ -12,4 +12,5 @@ linked_list_allocator = "0.10"
 spin = "0.9"
 abi = { path = "../abi" }
 stem = { path = "../stem", default-features = false }
+thingos = { path = "../thingos" }
 bitflags = "2.10.0"

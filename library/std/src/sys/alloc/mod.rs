@@ -99,7 +99,6 @@ cfg_select! {
         mod vexos;
     }
     target_os = "thingos" => {
-        #[path = "../pal/thingos/alloc.rs"]
         mod thingos;
     }
     target_family = "wasm" => {

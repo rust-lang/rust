@@ -40,7 +40,6 @@ cfg_select! {
         pub use xous::*;
     }
     target_os = "thingos" => {
-        #[path = "../../pal/thingos/io_error.rs"]
         mod thingos;
         pub use thingos::*;
     }

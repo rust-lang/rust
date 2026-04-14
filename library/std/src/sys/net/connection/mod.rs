@@ -30,7 +30,6 @@ cfg_select! {
         pub use uefi::*;
     }
     target_os = "thingos" => {
-        #[path = "../../pal/thingos/net_connection.rs"]
         mod thingos;
         pub use thingos::*;
     }

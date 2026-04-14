@@ -26,6 +26,14 @@ pub struct ProcessSnapshot {
     pub state: TaskState,
     pub argv: Vec<Vec<u8>>,
     pub exec_path: String,
+    /// Exit code of the thread-group leader, present when `state` is `Dead`.
+    pub exit_code: Option<i32>,
+    /// Process group ID of the thread-group leader.
+    pub pgid: u32,
+    /// Session ID of the thread-group leader.
+    pub sid: u32,
+    /// True when this process is the leader of its session.
+    pub session_leader: bool,
 }
 
 pub(crate) static mut YIELD_HOOK: Option<fn() -> bool> = None;

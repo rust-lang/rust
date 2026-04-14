@@ -3250,6 +3250,7 @@ dependencies = [
  "linked_list_allocator",
  "spin",
  "stem",
+ "thingos",
 ]
 
 [[package]]

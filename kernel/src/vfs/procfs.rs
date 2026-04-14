@@ -4,21 +4,26 @@
 //!
 //! # Paths exposed
 //!
-//! | Path                       | Contents |
-//! |----------------------------|----------|
-//! | `/proc/version`            | Kernel version string |
-//! | `/proc/mounts`             | Active mount table (text) |
-//! | `/proc/meminfo`            | Heap memory statistics |
-//! | `/proc/cpuinfo`            | CPU model and frequency |
-//! | `/proc/uptime`             | Seconds since boot |
-//! | `/proc/self`               | Directory for the calling process |
-//! | `/proc/self/exe`           | Symlink to calling process's executable |
-//! | `/proc/<pid>/status`       | Process state, name, ppid |
-//! | `/proc/<pid>/cmdline`      | argv as null-delimited bytes |
-//! | `/proc/<pid>/exe`          | Symlink to the process's executable |
-//! | `/proc/<pid>/fd/`          | Directory of open fd targets |
-//! | `/proc/<pid>/task/`        | Directory of threads in the process |
-//! | `/proc/<pid>/task/<tid>/name` | Thread's human-readable name |
+//! | Path                             | Contents |
+//! |----------------------------------|----------|
+//! | `/proc/version`                  | Kernel version string |
+//! | `/proc/mounts`                   | Active mount table (text) |
+//! | `/proc/meminfo`                  | Heap memory statistics |
+//! | `/proc/cpuinfo`                  | CPU model and frequency |
+//! | `/proc/uptime`                   | Seconds since boot |
+//! | `/proc/self`                     | Directory for the calling process |
+//! | `/proc/self/exe`                 | Symlink to calling process's executable |
+//! | `/proc/<pid>/status`             | Process state, name, ppid |
+//! | `/proc/<pid>/cmdline`            | argv as null-delimited bytes |
+//! | `/proc/<pid>/exe`                | Symlink to the process's executable |
+//! | `/proc/<pid>/fd/`                | Directory of open fd targets |
+//! | `/proc/<pid>/task/`              | Directory of threads in the process |
+//! | `/proc/<pid>/task/<tid>/name`    | Thread's human-readable name |
+//! | `/proc/<pid>/task_state`         | Canonical `thingos::task::TaskState` (Phase 1) |
+//! | `/proc/<pid>/job_state`          | Canonical `thingos::job::JobState` (Phase 2) |
+//! | `/proc/<pid>/job_exit`           | Canonical `thingos::job::JobExit` — state + code (Phase 3) |
+//! | `/proc/<pid>/job_wait`           | Canonical `thingos::job::JobWaitResult` — non-blocking poll (Phase 3) |
+//! | `/proc/<pid>/group_kind`         | Canonical `thingos::group::GroupKind` — coordination role (Phase 4) |
 
 use abi::errors::{Errno, SysResult};
 use alloc::collections::BTreeSet;
@@ -135,11 +140,81 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
             // /proc/<pid>/exe — symlink to the process's executable path.
             Ok(Arc::new(ProcPidExeNode { exec_path: snap.exec_path.clone() }))
         }
+        // /proc/<pid>/task_state — canonical thingos::task::TaskState label.
+        //
+        // Bridges the current kernel ThreadState into the schema-generated
+        // TaskState via `kernel::task::bridge`.  This is the first public
+        // surface for the Task ontology (Phase 1).
+        "task_state" => {
+            let task_state =
+                crate::task::bridge::task_state_from_thread(snap.state);
+            let text = alloc::format!("{}\n", task_state.as_str());
+            Ok(Arc::new(DynamicTextNode::new(
+                text.into_bytes(),
+                300 + pid as u64 * 10 + 5,
+            )))
+        }
+        // /proc/<pid>/job_state — canonical thingos::job::JobState label.
+        //
+        // Bridges the current kernel Process/Thread lifecycle into the
+        // schema-generated JobState via `kernel::job::bridge`.  This is the
+        // first public surface for the Job ontology (Phase 2).
+        "job_state" => {
+            let job_state =
+                crate::job::bridge::job_state_from_snapshot(&snap);
+            let text = alloc::format!("{}\n", job_state.as_str());
+            Ok(Arc::new(DynamicTextNode::new(
+                text.into_bytes(),
+                300 + pid as u64 * 10 + 6,
+            )))
+        }
+        // /proc/<pid>/job_exit — canonical thingos::job::JobExit (Phase 3).
+        //
+        // Reports the exit state and code in canonical Job terms, bridged from
+        // the current Process/Thread model via `kernel::job::bridge`.
+        // For live processes `code` is reported as `-`.
+        "job_exit" => {
+            let job_exit = crate::job::bridge::job_exit_from_snapshot(&snap);
+            let text = job_exit.as_text();
+            Ok(Arc::new(DynamicTextNode::new(
+                text.into_bytes(),
+                300 + pid as u64 * 10 + 7,
+            )))
+        }
+        // /proc/<pid>/job_wait — canonical thingos::job::JobWaitResult (Phase 3).
+        //
+        // Non-blocking poll of the job's wait result.  Reinterprets the
+        // current `poll_task_exit` output through the canonical Job vocabulary
+        // via `kernel::job::bridge::job_wait_result_from_poll`.
+        "job_wait" => {
+            // poll_task_exit_current takes a TaskId (tid).  For the process
+            // leader snap.tid == snap.pid as u64.
+            let poll = unsafe { crate::sched::poll_task_exit_current(snap.tid) }
+                .map_err(|_| Errno::ENOENT)?;
+            let wait_result = crate::job::bridge::job_wait_result_from_poll(poll);
+            let text = wait_result.as_text();
+            Ok(Arc::new(DynamicTextNode::new(
+                text.into_bytes(),
+                300 + pid as u64 * 10 + 8,
+            )))
+        }
+        // /proc/<pid>/group_kind — canonical thingos::group::GroupKind (Phase 4).
+        //
+        // Reports the coordination role of this process's group in canonical
+        // Group terms, bridged from the current session_leader field via
+        // `kernel::group::bridge`.  This is the first public surface for the
+        // Group ontology (Phase 4).
+        "group_kind" => {
+            let group = crate::group::bridge::group_from_snapshot(&snap);
+            let text = group.as_text();
+            Ok(Arc::new(DynamicTextNode::new(
+                text.into_bytes(),
+                300 + pid as u64 * 10 + 9,
+            )))
+        }
         _ => Err(Errno::ENOENT),
     }
 }
-
-/// Look up a node inside `/proc/<pid>/task/`.
 ///
 /// `tid_and_rest` is everything after `"task/"`, e.g. `""` (the directory
 /// itself), `"100"` (per-thread directory), or `"100/name"` (thread name).
@@ -280,7 +355,12 @@ impl VfsNode for ProcPidDirNode {
         })
     }
     fn readdir(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
-        let entries = ["status", "cmdline", "fd", "exe", "task"];
+        // Legacy procfs entries (transitional internal model):
+        //   status, cmdline, fd, exe, task
+        // Canonical schema entries (Phase 1: task, Phase 2: job, Phase 3: exit/wait, Phase 4: group):
+        //   task_state, job_state, job_exit, job_wait, group_kind
+        let entries = ["status", "cmdline", "fd", "exe", "task",
+                       "task_state", "job_state", "job_exit", "job_wait", "group_kind"];
         super::write_readdir_entries(entries.into_iter(), offset, buf)
     }
 }

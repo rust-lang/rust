@@ -1,3 +1,4 @@
+pub mod bridge;
 pub mod exec;
 pub mod loader;
 pub mod registry;

@@ -14,7 +14,6 @@ cfg_select! {
         pub use motor::{Pipe, pipe};
     }
     target_os = "thingos" => {
-        #[path = "../pal/thingos/pipe.rs"]
         mod thingos;
         pub use thingos::{Pipe, pipe};
     }
