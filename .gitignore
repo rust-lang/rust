@@ -5,8 +5,12 @@
 # created during manual debugging and many people like to clean up instead of
 # having git ignore such leftovers. You can use `.git/info/exclude` to
 # configure your local ignore list.
+
 /assets/
 !/assets/wallpapers
+
+/iso_root*/
+thing-os*.iso
 
 ## File system
 .DS_Store
