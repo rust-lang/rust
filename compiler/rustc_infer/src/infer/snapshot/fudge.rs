@@ -6,12 +6,11 @@ use rustc_middle::ty::{
     self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt,
 };
-use rustc_span::Span;
 use tracing::instrument;
 use ut::UnifyKey;
 
 use super::VariableLengths;
-use crate::infer::type_variable::TypeVariableOrigin;
+use crate::infer::type_variable::{FloatVariableOrigin, TypeVariableOrigin};
 use crate::infer::unify_key::{ConstVariableValue, ConstVidKey};
 use crate::infer::{
     ConstVariableOrigin, InferCtxt, InferCtxtInner, RegionVariableOrigin, UnificationTable,
@@ -31,9 +30,9 @@ where
 fn float_vars_since_snapshot(
     inner: &mut InferCtxtInner<'_>,
     snapshot_var_len: usize,
-) -> (Range<FloatVid>, Vec<Span>) {
+) -> (Range<FloatVid>, Vec<FloatVariableOrigin>) {
     let range = vars_since_snapshot(&inner.float_unification_table(), snapshot_var_len);
-    (range.clone(), range.map(|index| inner.float_origin_span_storage[index]).collect())
+    (range.clone(), range.map(|index| inner.float_origin_origin_storage[index]).collect())
 }
 
 fn const_vars_since_snapshot<'tcx>(
@@ -141,7 +140,7 @@ struct SnapshotVarData<'tcx> {
     region_vars: (Range<RegionVid>, Vec<RegionVariableOrigin<'tcx>>),
     type_vars: (Range<TyVid>, Vec<TypeVariableOrigin>),
     int_vars: Range<IntVid>,
-    float_vars: (Range<FloatVid>, Vec<Span>),
+    float_vars: (Range<FloatVid>, Vec<FloatVariableOrigin>),
     const_vars: (Range<ConstVid>, Vec<ConstVariableOrigin>),
 }
 
@@ -215,8 +214,9 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
                 ty::FloatVar(vid) => {
                     if self.snapshot_vars.float_vars.0.contains(&vid) {
                         let idx = vid.as_usize() - self.snapshot_vars.float_vars.0.start.as_usize();
-                        let span = self.snapshot_vars.float_vars.1[idx];
-                        self.infcx.next_float_var(span)
+                        let FloatVariableOrigin { span, lint_id } =
+                            self.snapshot_vars.float_vars.1[idx];
+                        self.infcx.next_float_var(span, lint_id)
                     } else {
                         ty
                     }

@@ -161,15 +161,15 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .flat_map(|ty| ty.float_vid())
             .filter(|vid| roots.contains(&self.root_float_var(*vid)))
             .inspect(|vid| {
-                let span = self.float_var_origin(*vid);
+                let origin = self.float_var_origin(*vid);
                 // Show the entire literal in the suggestion to make it clearer.
-                let literal = self.tcx.sess.source_map().span_to_snippet(span).ok();
+                let literal = self.tcx.sess.source_map().span_to_snippet(origin.span).ok();
                 self.tcx.emit_node_span_lint(
                     FLOAT_LITERAL_F32_FALLBACK,
-                    CRATE_HIR_ID,
-                    span,
+                    origin.lint_id.unwrap_or(CRATE_HIR_ID),
+                    origin.span,
                     errors::FloatLiteralF32Fallback {
-                        span: literal.as_ref().map(|_| span),
+                        span: literal.as_ref().map(|_| origin.span),
                         literal: literal.unwrap_or_default(),
                     },
                 );

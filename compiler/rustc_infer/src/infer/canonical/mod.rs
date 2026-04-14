@@ -107,7 +107,10 @@ impl<'tcx> InferCtxt<'tcx> {
 
             CanonicalVarKind::Int => self.next_int_var().into(),
 
-            CanonicalVarKind::Float => self.next_float_var(span).into(),
+            CanonicalVarKind::Float => {
+                // There is no HirId available to pass as a lint_id.
+                self.next_float_var(span, None).into()
+            }
 
             CanonicalVarKind::PlaceholderTy(ty::PlaceholderType { universe, bound, .. }) => {
                 let universe_mapped = universe_map(universe);
