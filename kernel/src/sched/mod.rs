@@ -297,10 +297,8 @@ fn try_resched_if_needed<R: BootRuntime>() {
         } else {
             let misses = window_count.fetch_add(1, Ordering::Relaxed) + 1;
             if misses == TRYLOCK_MISS_WARN_THRESHOLD {
-                let cooldown_ticks = rt
-                    .mono_freq_hz()
-                    .max(1)
-                    .saturating_mul(TRYLOCK_MISS_WARN_COOLDOWN_SECS);
+                let cooldown_ticks =
+                    rt.mono_freq_hz().max(1).saturating_mul(TRYLOCK_MISS_WARN_COOLDOWN_SECS);
                 let last_warn = TRYLOCK_MISS_LAST_WARN_TICK[cpu_idx].load(Ordering::Relaxed);
                 if last_warn == 0 || now.saturating_sub(last_warn) >= cooldown_ticks {
                     TRYLOCK_MISS_LAST_WARN_TICK[cpu_idx].store(now, Ordering::Relaxed);
