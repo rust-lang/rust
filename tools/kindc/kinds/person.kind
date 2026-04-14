@@ -1,0 +1,12 @@
+/// Type of human/agent identity
+kind thingos.person.kind = enum {
+  Human,
+  Agent,
+  Service,
+}
+
+/// A person or agent in the system
+kind thingos.person = struct {
+  name: string,
+  kind: thingos.person.kind,
+}

@@ -1,0 +1,19 @@
+# ThingOS Kind Prelude
+# Built-in types are declared as opaque kinds for the resolver
+
+kind bool
+kind u8
+kind u16
+kind u32
+kind u64
+kind i8
+kind i16
+kind i32
+kind i64
+kind string
+kind bytes
+
+kind option<T>
+kind result<T, E>
+kind list<T>
+kind ref<T>

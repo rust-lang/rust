@@ -1,0 +1,13 @@
+/// Categories of places
+kind thingos.place.kind = enum {
+  System,
+  Realm,
+  Device,
+  Remote,
+}
+
+/// A logical or physical location
+kind thingos.place = struct {
+  name: string,
+  kind: thingos.place.kind,
+}

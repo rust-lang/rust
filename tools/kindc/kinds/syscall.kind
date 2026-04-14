@@ -1,0 +1,7 @@
+/// Arguments for the task_create syscall
+kind thingos.sys.task_create.args = struct {
+  job: ref<thingos.job>,
+}
+
+/// Result of the task_create syscall
+kind thingos.sys.task_create.result = result<ref<thingos.task>, i32>

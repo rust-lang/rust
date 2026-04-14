@@ -251,6 +251,28 @@ fn lookup_pid_task(pid: u32, tid_and_rest: &str) -> SysResult<Arc<dyn VfsNode>> 
                 | (tid & 0x0FFF_FFFF);
             Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), ino)))
         }
+        "task_state" => {
+            // Canonical Task-shaped state derived via the bridge layer.
+            //
+            // Maps the kernel's internal ThreadState to the public thingos.task
+            // vocabulary defined in tools/kindc/kinds/task.kind, using the
+            // explicit bridge in crate::task::bridge rather than ad-hoc
+            // conversion.  This is the first real code path that exposes the
+            // new ontology at a system boundary.
+            let task = crate::task::bridge::thread_state_to_task(thread.state);
+            let state_name = match task.state {
+                crate::generated::TaskState::New => "new",
+                crate::generated::TaskState::Ready => "ready",
+                crate::generated::TaskState::Running => "running",
+                crate::generated::TaskState::Blocked => "blocked",
+                crate::generated::TaskState::Exited => "exited",
+            };
+            let text = alloc::format!("state: {}\n", state_name);
+            let ino = 0xC000_0000_0000_0000u64
+                | ((pid as u64) << 28)
+                | (tid & 0x0FFF_FFFF);
+            Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), ino)))
+        }
         _ => Err(Errno::ENOENT),
     }
 }
@@ -433,7 +455,7 @@ impl VfsNode for ProcPidTaskTidDirNode {
         })
     }
     fn readdir(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
-        let entries = ["name"];
+        let entries = ["name", "task_state"];
         super::write_readdir_entries(entries.into_iter(), offset, buf)
     }
 }

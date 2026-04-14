@@ -214,6 +214,7 @@ test *args:
         -p llm \
         -p llm_stub \
         -p fb_common \
+        -p kindc \
         {{args}}
 
 # Check everything (compilation + UI split).
@@ -226,3 +227,11 @@ check: check-ui-split
 # Run smoke tests (quick boot validation).
 smoke:
     {{xtask}} bdd --arch x86_64 --tags @smoke
+
+# Generate Rust from .kind schema files.
+kindc *args:
+    cargo run -p kindc -- {{args}}
+
+# Regenerate checked-in fixture output.
+kindc-gen:
+    cargo run -p kindc -- tools/kindc/kinds -o tools/kindc/fixtures/generated

@@ -1,0 +1,12 @@
+/// Kind of filesystem node
+kind thingos.fs.node.kind = enum {
+  File,
+  Directory,
+  Device,
+}
+
+/// A generic node in the VFS
+kind thingos.fs.node = struct {
+  name: string,
+  kind: thingos.fs.node.kind,
+}
