@@ -167,6 +167,10 @@ pub fn dispatch(n: usize, args: [usize; 6]) -> isize {
         SYS_SHUTDOWN => handlers::sys_shutdown(args[0], args[1]),
         SYS_SOCKETPAIR => handlers::sys_socketpair(args[0], args[1], args[2], args[3]),
 
+        // ── Typed message delivery ────────────────────────────────────────
+        SYS_MSG_SEND => handlers::sys_msg_send(args[0], args[1], args[2], args[3]),
+        SYS_MSG_BROADCAST => handlers::sys_msg_broadcast(args[0], args[1], args[2], args[3]),
+
         _ => Err(abi::errors::Errno::ENOSYS),
     };
 
