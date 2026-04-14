@@ -1072,8 +1072,15 @@ pub fn start<R: BootRuntime>(runtime: &'static R) -> ! {
 
     contract!("Entering scheduler loop.");
     loop {
-        crate::task::yield_now::<R>();
-        // runtime.wait_for_interrupt(); // TODO: Only call when runqueue is empty
+        if !crate::task::yield_now::<R>() {
+            // No runnable work on this CPU — halt until the next interrupt
+            // (timer tick, IPI, or device IRQ).  This is the same idle pattern
+            // used by secondary CPUs in `run_scheduler` and prevents CPU 0 from
+            // spinning in a tight loop that continuously acquires the scheduler
+            // lock, which was the primary source of try_lock miss warnings under
+            // SMP.
+            crate::runtime::<R>().wait_for_interrupt();
+        }
     }
 }
 

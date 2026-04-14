@@ -295,23 +295,33 @@ fn try_resched_if_needed<R: BootRuntime>() {
                 // produced misleading "handled resched but made no switch" floods
                 // under SMP when a Normal-priority task is the only high-priority
                 // runnable task while several lower-priority tasks wait in the queue.
-                let has_strictly_higher = sched
-                    .state
-                    .per_cpu
-                    .get(cpu_idx)
-                    .map(|pc| {
-                        let start = (current_prio + 1).min(pc.runq.len());
-                        pc.runq[start..].iter().any(|q| !q.is_empty())
-                    })
-                    .unwrap_or(false);
-                if has_strictly_higher {
-                    crate::kwarn!(
-                        "SCHED: CPU {} handled resched but made no switch: current={:?} idle={:?} runq_total={}",
-                        cpu_idx,
-                        current,
-                        idle,
-                        runq_total
-                    );
+                //
+                // Additionally, suppress the warning when preemption was disabled at
+                // the time schedule_point ran.  In that case schedule_point sets
+                // per_cpu.need_resched = true so the reschedule is correctly deferred
+                // to the next safe preemption point; the queued higher-priority task
+                // will run as soon as the critical section exits.
+                let deferred_by_preempt =
+                    sched.state.per_cpu.get(cpu_idx).map_or(false, |pc| pc.need_resched);
+                if !deferred_by_preempt {
+                    let has_strictly_higher = sched
+                        .state
+                        .per_cpu
+                        .get(cpu_idx)
+                        .map(|pc| {
+                            let start = (current_prio + 1).min(pc.runq.len());
+                            pc.runq[start..].iter().any(|q| !q.is_empty())
+                        })
+                        .unwrap_or(false);
+                    if has_strictly_higher {
+                        crate::kwarn!(
+                            "SCHED: CPU {} handled resched but made no switch: current={:?} idle={:?} runq_total={}",
+                            cpu_idx,
+                            current,
+                            idle,
+                            runq_total
+                        );
+                    }
                 }
             }
         }
