@@ -153,7 +153,7 @@ pub mod x86_64 {
 
         let (sig, action) = {
             let mut p = pinfo_arc.lock();
-            let combined = thread_pending.union(p.signals.pending);
+            let combined = thread_pending.union(p.unix_compat.signals.pending);
             let deliverable = combined.difference(thread_mask)
                 .union(combined.intersection(UNCATCHABLE));
             let sig = deliverable.lowest();
@@ -166,11 +166,11 @@ pub mod x86_64 {
                 let mut new_pending = thread_pending;
                 new_pending.remove(sig);
                 crate::sched::hooks::set_thread_pending_current(new_pending);
-                let action = pinfo_arc.lock().signals.action(sig);
+                let action = pinfo_arc.lock().unix_compat.signals.action(sig);
                 (sig, action)
             } else {
-                p.signals.pending.remove(sig);
-                let action = p.signals.action(sig);
+                p.unix_compat.signals.pending.remove(sig);
+                let action = p.unix_compat.signals.action(sig);
                 drop(p);
                 (sig, action)
             }
@@ -310,7 +310,7 @@ pub mod x86_64 {
         // Handle SA_RESETHAND: reset disposition to SIG_DFL after delivery.
         if action.flags & abi::signal::sa_flags::SA_RESETHAND != 0 {
             let mut p = pinfo_arc.lock();
-            p.signals.actions[(sig - 1) as usize] = SigAction::default();
+            p.unix_compat.signals.actions[(sig - 1) as usize] = SigAction::default();
         }
 
         // Redirect the trap frame.
@@ -347,7 +347,7 @@ pub mod x86_64 {
     ) {
         {
             let mut p = pinfo_arc.lock();
-            p.signals.stopped = true;
+            p.unix_compat.signals.stopped = true;
             let ppid = p.lifecycle.ppid;
             let pid = p.pid;
             drop(p);
@@ -359,10 +359,10 @@ pub mod x86_64 {
 
     fn continue_current_process(pinfo_arc: &Arc<spin::Mutex<crate::task::Process>>) {
         let mut p = pinfo_arc.lock();
-        if !p.signals.stopped {
+        if !p.unix_compat.signals.stopped {
             return;
         }
-        p.signals.stopped = false;
+        p.unix_compat.signals.stopped = false;
         let tids = p.lifecycle.thread_ids.clone();
         let ppid = p.lifecycle.ppid;
         let pid = p.pid;

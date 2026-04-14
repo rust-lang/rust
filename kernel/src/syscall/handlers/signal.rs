@@ -56,7 +56,7 @@ pub fn sys_kill(pid_raw: usize, sig_raw: usize) -> SysResult<usize> {
         }
     } else if pid == 0 {
         let pinfo = sched::process_info_current().ok_or(Errno::ESRCH)?;
-        let pgid = pinfo.lock().pgid;
+        let pgid = pinfo.lock().unix_compat.pgid;
         let delivered = if sig == 0 {
             crate::signal::send_signal_to_group(pgid, 0)
         } else {
@@ -137,7 +137,7 @@ pub fn sys_sigaction(
 
     if oldact_ptr != 0 {
         validate_user_range(oldact_ptr, size_of::<SigAction>(), true)?;
-        let old = p.signals.action(sig);
+        let old = p.unix_compat.signals.action(sig);
         let old_bytes = unsafe {
             core::slice::from_raw_parts(&old as *const SigAction as *const u8, size_of::<SigAction>())
         };
@@ -155,9 +155,9 @@ pub fn sys_sigaction(
         };
         unsafe { copyin(dst, act_ptr)?; }
         new_action.mask = SigSet(new_action.mask.0 & !crate::signal::UNCATCHABLE.0);
-        p.signals.set_action(sig, new_action);
+        p.unix_compat.signals.set_action(sig, new_action);
         if new_action.handler == abi::signal::SIG_IGN {
-            p.signals.pending.remove(sig);
+            p.unix_compat.signals.pending.remove(sig);
         }
     }
 
@@ -216,7 +216,7 @@ pub fn sys_sigpending(set_ptr: usize) -> SysResult<usize> {
     let mask = sched::get_signal_mask_current();
     let thread_pending = sched::get_thread_pending_current();
     let proc_pending = sched::process_info_current()
-        .map(|p| p.lock().signals.pending)
+        .map(|p| p.lock().unix_compat.signals.pending)
         .unwrap_or(SigSet::EMPTY);
 
     // "pending" means blocked AND pending.
@@ -255,7 +255,7 @@ pub fn sys_sigsuspend(mask_ptr: usize) -> SysResult<usize> {
     loop {
         let thread_pending = sched::get_thread_pending_current();
         let proc_pending = sched::process_info_current()
-            .map(|p| p.lock().signals.pending)
+            .map(|p| p.lock().unix_compat.signals.pending)
             .unwrap_or(SigSet::EMPTY);
         let all = thread_pending.union(proc_pending);
         let deliverable = all.difference(new_mask)
@@ -296,17 +296,17 @@ pub fn sys_alarm(seconds: usize) -> SysResult<usize> {
     let now = crate::sched::TICK_COUNT.load(core::sync::atomic::Ordering::Relaxed);
     let ticks_per_sec = crate::time::SCHED_TICK_HZ;
 
-    let remaining = if p.signals.alarm_deadline > now {
-        let ticks_left = p.signals.alarm_deadline - now;
+    let remaining = if p.unix_compat.signals.alarm_deadline > now {
+        let ticks_left = p.unix_compat.signals.alarm_deadline - now;
         ((ticks_left + ticks_per_sec - 1) / ticks_per_sec) as usize
     } else {
         0
     };
 
     if seconds == 0 {
-        p.signals.alarm_deadline = 0;
+        p.unix_compat.signals.alarm_deadline = 0;
     } else {
-        p.signals.alarm_deadline = now + (seconds as u64) * ticks_per_sec;
+        p.unix_compat.signals.alarm_deadline = now + (seconds as u64) * ticks_per_sec;
     }
 
     Ok(remaining)
@@ -321,7 +321,7 @@ pub fn sys_pause() -> SysResult<usize> {
         let mask = sched::get_signal_mask_current();
         let thread_pending = sched::get_thread_pending_current();
         let proc_pending = sched::process_info_current()
-            .map(|p| p.lock().signals.pending)
+            .map(|p| p.lock().unix_compat.signals.pending)
             .unwrap_or(SigSet::EMPTY);
         let all = thread_pending.union(proc_pending);
         let deliverable = all.difference(mask)

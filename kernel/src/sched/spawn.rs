@@ -58,26 +58,16 @@ fn default_process_info(
         crate::vfs::OpenFlags::write_only(),
         "/dev/console".into(),
     );
-    let (pgid, sid, session_leader) = if ppid == 0 {
-        (pid, pid, true)
-    } else {
-        (pid, pid, false)
-    };
+    let is_session_leader = ppid == 0;
     alloc::sync::Arc::new(spin::Mutex::new(ProcessInfo {
         pid,
         lifecycle: crate::task::ProcessLifecycle::new(ppid, pid as TaskId),
-        pgid,
-        sid,
-        session_leader,
-        argv: alloc::vec::Vec::new(),
-        env: alloc::collections::BTreeMap::new(),
-        auxv: alloc::vec::Vec::new(),
+        unix_compat: crate::task::ProcessUnixCompat::isolated(pid, is_session_leader),
         fd_table,
         namespace: crate::vfs::NamespaceRef::global(),
         cwd: alloc::string::String::from("/"),
         exec_path: alloc::string::String::new(),
         space,
-        signals: crate::signal::ProcessSignals::new(),
     }))
 }
 
@@ -95,18 +85,12 @@ fn inherit_process_info<R: BootRuntime>(
         alloc::sync::Arc::new(spin::Mutex::new(ProcessInfo {
             pid,
             lifecycle: crate::task::ProcessLifecycle::new(ppid, pid as TaskId),
-            pgid: parent.pgid,
-            sid: parent.sid,
-            session_leader: false,
-            argv: alloc::vec::Vec::new(),
-            env: parent.env.clone(),
-            auxv: alloc::vec::Vec::new(),
+            unix_compat: crate::task::ProcessUnixCompat::inherit(&parent.unix_compat),
             fd_table: parent.fd_table.clone(),
             namespace: parent.namespace.clone(),
             cwd: parent.cwd.clone(),
             exec_path: alloc::string::String::new(),
             space,
-            signals: crate::signal::ProcessSignals::new(),
         }))
     } else {
         default_process_info(pid, ppid, space)
@@ -702,8 +686,8 @@ pub unsafe fn boot_spawn_process_with_priority<R: BootRuntime>(
     {
         let page_size = rt.page_size() as u64;
         let mut lock = pinfo.lock();
-        lock.argv = alloc::vec![module.name.as_bytes().to_vec()];
-        lock.auxv = crate::task::exec::build_auxv(&aux_info, page_size);
+        lock.unix_compat.argv = alloc::vec![module.name.as_bytes().to_vec()];
+        lock.unix_compat.auxv = crate::task::exec::build_auxv(&aux_info, page_size);
         lock.exec_path = alloc::format!("/boot/{}", module.name);
     }
 
@@ -1069,24 +1053,26 @@ pub unsafe fn boot_spawn_process_ex<R: BootRuntime>(
     // Derive the process-owned address-space token (raw u64) from the handle.
     let aspace_raw = rt.tasking().aspace_to_raw(aspace);
 
-    let (pgid, sid, session_leader) = if let Some(parent_pi) = &parent_pinfo {
+    let unix_compat = if let Some(parent_pi) = &parent_pinfo {
         let parent = parent_pi.lock();
-        (parent.pgid, parent.sid, false)
+        let mut uc = crate::task::ProcessUnixCompat::inherit(&parent.unix_compat);
+        uc.argv = final_argv;
+        uc.env = env;
+        uc.auxv = crate::task::exec::build_auxv(&aux_info, rt.page_size() as u64);
+        uc
     } else {
-        (id as u32, id as u32, true)
+        let mut uc = crate::task::ProcessUnixCompat::isolated(id as u32, true);
+        uc.argv = final_argv;
+        uc.env = env;
+        uc.auxv = crate::task::exec::build_auxv(&aux_info, rt.page_size() as u64);
+        uc
     };
 
     // Create per-process identity with provided argv & env
     let pinfo = alloc::sync::Arc::new(spin::Mutex::new(ProcessInfo {
         pid: id as u32,
         lifecycle: crate::task::ProcessLifecycle::new(ppid, id),
-        pgid,
-        sid,
-        session_leader,
-        argv: final_argv,
-        env,
-        auxv: crate::task::exec::build_auxv(&aux_info, rt.page_size() as u64),
-
+        unix_compat,
         fd_table,
         namespace: crate::vfs::NamespaceRef::global(),
         cwd: if let Some(explicit_cwd) = cwd {
@@ -1098,7 +1084,6 @@ pub unsafe fn boot_spawn_process_ex<R: BootRuntime>(
         },
         exec_path: alloc::format!("/boot/{}", module.name),
         space: crate::task::ProcessAddressSpace::from_parts(task_mappings, aspace_raw),
-        signals: crate::signal::ProcessSignals::new(),
     }));
 
     // Store name, process_info, and initial TLS thread pointer on the task struct.
@@ -1310,23 +1295,26 @@ pub unsafe fn spawn_process_from_path<R: BootRuntime>(
 
     let aspace_raw = rt.tasking().aspace_to_raw(aspace);
 
-    let (pgid, sid, session_leader) = if let Some(parent_pi) = &parent_pinfo {
+    let unix_compat = if let Some(parent_pi) = &parent_pinfo {
         let parent = parent_pi.lock();
-        (parent.pgid, parent.sid, false)
+        let mut uc = crate::task::ProcessUnixCompat::inherit(&parent.unix_compat);
+        uc.argv = final_argv;
+        uc.env = env;
+        uc.auxv = crate::task::exec::build_auxv(&aux_info, rt.page_size() as u64);
+        uc
     } else {
-        (id as u32, id as u32, true)
+        let mut uc = crate::task::ProcessUnixCompat::isolated(id as u32, true);
+        uc.argv = final_argv;
+        uc.env = env;
+        uc.auxv = crate::task::exec::build_auxv(&aux_info, rt.page_size() as u64);
+        uc
     };
 
     // Step 7: Build the ProcessInfo for the new process.
     let pinfo = alloc::sync::Arc::new(spin::Mutex::new(ProcessInfo {
         pid: id as u32,
         lifecycle: crate::task::ProcessLifecycle::new(ppid, id),
-        pgid,
-        sid,
-        session_leader,
-        argv: final_argv,
-        env,
-        auxv: crate::task::exec::build_auxv(&aux_info, rt.page_size() as u64),
+        unix_compat,
         fd_table,
         namespace: crate::vfs::NamespaceRef::global(),
         cwd: if let Some(explicit_cwd) = cwd {
@@ -1338,7 +1326,6 @@ pub unsafe fn spawn_process_from_path<R: BootRuntime>(
         },
         exec_path: alloc::string::String::from(path),
         space: crate::task::ProcessAddressSpace::from_parts(task_mappings, aspace_raw),
-        signals: crate::signal::ProcessSignals::new(),
     }));
 
     // Step 8: Attach the ProcessInfo to the new task and record its TLS base.
@@ -1492,18 +1479,12 @@ mod tests {
         alloc::sync::Arc::new(spin::Mutex::new(crate::task::ProcessInfo {
             pid: leader as u32,
             lifecycle: crate::task::ProcessLifecycle::new(1, leader),
-            pgid: leader as u32,
-            sid: leader as u32,
-            session_leader: false,
-            argv: alloc::vec::Vec::new(),
-            env: alloc::collections::BTreeMap::new(),
-            auxv: alloc::vec::Vec::new(),
+            unix_compat: crate::task::ProcessUnixCompat::isolated(leader as u32, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
             exec_path: alloc::string::String::new(),
             space: crate::task::ProcessAddressSpace::empty(),
-            signals: crate::signal::ProcessSignals::new(),
         }))
     }
 

@@ -248,7 +248,7 @@ pub fn sys_argv_get(buf_ptr: usize, buf_len: usize) -> SysResult<usize> {
 
     // Calculate total size needed
     let mut total = 4u32; // count
-    for arg in &lock.argv {
+    for arg in &lock.unix_compat.argv {
         total += 4 + arg.len() as u32; // len + bytes
     }
 
@@ -263,13 +263,13 @@ pub fn sys_argv_get(buf_ptr: usize, buf_len: usize) -> SysResult<usize> {
     let mut pos = 0usize;
 
     // Write count
-    let count = lock.argv.len() as u32;
+    let count = lock.unix_compat.argv.len() as u32;
     if pos + 4 <= copy_len {
         out[pos..pos + 4].copy_from_slice(&count.to_le_bytes());
     }
     pos += 4;
 
-    for arg in &lock.argv {
+    for arg in &lock.unix_compat.argv {
         let len = arg.len() as u32;
         if pos + 4 <= copy_len {
             out[pos..pos + 4].copy_from_slice(&len.to_le_bytes());
@@ -310,7 +310,7 @@ pub fn sys_env_get(
     let pinfo = pinfo.ok_or(Errno::ENOENT)?;
     let lock = pinfo.lock();
 
-    let val = lock.env.get(&key).ok_or(Errno::ENOENT)?;
+    let val = lock.unix_compat.env.get(&key).ok_or(Errno::ENOENT)?;
     let needed = val.len();
 
     if val_ptr != 0 && val_len > 0 {
@@ -344,7 +344,7 @@ pub fn sys_env_set(
 
     let pinfo = crate::sched::process_info_current();
     let pinfo = pinfo.ok_or(Errno::ENOENT)?;
-    pinfo.lock().env.insert(key, val);
+    pinfo.lock().unix_compat.env.insert(key, val);
     Ok(0)
 }
 
@@ -360,7 +360,7 @@ pub fn sys_env_unset(key_ptr: usize, key_len: usize) -> SysResult<usize> {
 
     let pinfo = crate::sched::process_info_current();
     let pinfo = pinfo.ok_or(Errno::ENOENT)?;
-    pinfo.lock().env.remove(&key);
+    pinfo.lock().unix_compat.env.remove(&key);
     Ok(0)
 }
 
@@ -372,9 +372,9 @@ pub fn sys_env_list(buf_ptr: usize, buf_len: usize) -> SysResult<usize> {
     let pi = info.lock();
 
     let mut blob = Vec::new();
-    let count = pi.env.len() as u32;
+    let count = pi.unix_compat.env.len() as u32;
     blob.extend_from_slice(&count.to_le_bytes());
-    for (k, v) in pi.env.iter() {
+    for (k, v) in pi.unix_compat.env.iter() {
         blob.extend_from_slice(&(k.len() as u32).to_le_bytes());
         blob.extend_from_slice(k);
         blob.extend_from_slice(&(v.len() as u32).to_le_bytes());
@@ -450,7 +450,7 @@ pub fn sys_auxv_get(buf_ptr: usize, buf_len: usize) -> SysResult<usize> {
     let info = scheduler::process_info_current().ok_or(Errno::ENOENT)?;
     let pi = info.lock();
 
-    let total = serialize_auxv_to_buf(&pi.auxv, &mut []);
+    let total = serialize_auxv_to_buf(&pi.unix_compat.auxv, &mut []);
 
     if buf_ptr == 0 || buf_len == 0 {
         return Ok(total);
@@ -458,7 +458,7 @@ pub fn sys_auxv_get(buf_ptr: usize, buf_len: usize) -> SysResult<usize> {
 
     let copy_len = buf_len.min(total);
     let mut out = alloc::vec![0u8; copy_len];
-    serialize_auxv_to_buf(&pi.auxv, &mut out);
+    serialize_auxv_to_buf(&pi.unix_compat.auxv, &mut out);
 
     drop(pi);
 

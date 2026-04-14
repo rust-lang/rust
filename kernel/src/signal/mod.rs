@@ -213,7 +213,7 @@ impl ThreadSignals {
 pub fn send_signal_to_process(pid: u32, sig: u8) -> bool {
     if let Some(pinfo) = process_info_for_pid(pid) {
         let mut p = pinfo.lock();
-        p.signals.post(sig);
+        p.unix_compat.signals.post(sig);
         let tids = p.lifecycle.thread_ids.clone();
         drop(p);
         for tid in tids {
@@ -229,7 +229,7 @@ pub fn send_signal_to_process(pid: u32, sig: u8) -> bool {
 pub fn send_signal_to_thread(tid: u64, sig: u8) {
     if let Some(pinfo) = crate::sched::process_info_for_tid_current(tid) {
         let mut p = pinfo.lock();
-        p.signals.post(sig);
+        p.unix_compat.signals.post(sig);
         drop(p);
         unsafe { crate::sched::wake_task_erased(tid) };
     }
@@ -265,7 +265,7 @@ fn list_unique_processes() -> alloc::vec::Vec<alloc::sync::Arc<spin::Mutex<crate
 pub fn process_group_exists_in_session(pgid: u32, sid: u32) -> bool {
     for pinfo in list_unique_processes() {
         let p = pinfo.lock();
-        if p.pgid == pgid && p.sid == sid {
+        if p.unix_compat.pgid == pgid && p.unix_compat.sid == sid {
             return true;
         }
     }
@@ -276,14 +276,14 @@ pub fn send_signal_to_group(pgid: u32, sig: u8) -> usize {
     let mut delivered = 0usize;
     for pinfo in list_unique_processes() {
         let mut p = pinfo.lock();
-        if p.pgid != pgid {
+        if p.unix_compat.pgid != pgid {
             continue;
         }
         if sig == 0 {
             delivered += 1;
             continue;
         }
-        p.signals.post(sig);
+        p.unix_compat.signals.post(sig);
         let tids = p.lifecycle.thread_ids.clone();
         drop(p);
         for tid in tids {
@@ -296,14 +296,14 @@ pub fn send_signal_to_group(pgid: u32, sig: u8) -> usize {
 
 pub fn getpgrp_current() -> Result<u32, Errno> {
     let pinfo = crate::sched::process_info_current().ok_or(Errno::ESRCH)?;
-    Ok(pinfo.lock().pgid)
+    Ok(pinfo.lock().unix_compat.pgid)
 }
 
 pub fn setpgid_current(pid: i64, pgid: i64) -> Result<(), Errno> {
     let caller_info = crate::sched::process_info_current().ok_or(Errno::ESRCH)?;
     let (caller_pid, caller_sid) = {
         let caller = caller_info.lock();
-        (caller.pid, caller.sid)
+        (caller.pid, caller.unix_compat.sid)
     };
 
     if pid < 0 || pgid < 0 {
@@ -322,10 +322,10 @@ pub fn setpgid_current(pid: i64, pgid: i64) -> Result<(), Errno> {
         if target.pid != caller_pid && target.lifecycle.ppid != caller_pid {
             return Err(Errno::EPERM);
         }
-        if target.sid != caller_sid {
+        if target.unix_compat.sid != caller_sid {
             return Err(Errno::EPERM);
         }
-        if target.session_leader {
+        if target.unix_compat.session_leader {
             return Err(Errno::EPERM);
         }
     }
@@ -334,7 +334,7 @@ pub fn setpgid_current(pid: i64, pgid: i64) -> Result<(), Errno> {
         return Err(Errno::EPERM);
     }
 
-    target_info.lock().pgid = new_pgid;
+    target_info.lock().unix_compat.pgid = new_pgid;
     Ok(())
 }
 
@@ -342,14 +342,14 @@ pub fn setsid_current() -> Result<u32, Errno> {
     let pinfo = crate::sched::process_info_current().ok_or(Errno::ESRCH)?;
     {
         let p = pinfo.lock();
-        if p.pgid == p.pid {
+        if p.unix_compat.pgid == p.pid {
             return Err(Errno::EPERM);
         }
     }
 
     let mut p = pinfo.lock();
-    p.sid = p.pid;
-    p.pgid = p.pid;
-    p.session_leader = true;
-    Ok(p.sid)
+    p.unix_compat.sid = p.pid;
+    p.unix_compat.pgid = p.pid;
+    p.unix_compat.session_leader = true;
+    Ok(p.unix_compat.sid)
 }
