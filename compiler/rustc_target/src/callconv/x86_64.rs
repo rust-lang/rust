@@ -151,7 +151,7 @@ fn reg_component(cls: &[Option<Class>], i: &mut usize, size: Size) -> Option<Reg
                     _ => Reg::f64(),
                 }
             } else {
-                Reg { kind: RegKind::Vector, size: Size::from_bytes(8) * (vec_len as u64) }
+                Reg::opaque_vector(Size::from_bytes(8) * (vec_len as u64))
             })
         }
         Some(c) => unreachable!("reg_component: unhandled class {:?}", c),
