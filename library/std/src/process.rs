@@ -617,21 +617,50 @@ impl Command {
     /// Builder methods are provided to change these defaults and
     /// otherwise configure the process.
     ///
-    /// If `program` is not an absolute path, the `PATH` will be searched in
-    /// an OS-defined way.
-    ///
-    /// The search path to be used may be controlled by setting the
-    /// `PATH` environment variable on the Command,
-    /// but this has some implementation limitations on Windows
-    /// (see issue #37519).
+    /// If `program` is not an absolute path, the `PATH` environment variable
+    /// will be searched in an OS-defined way.
     ///
     /// # Platform-specific behavior
     ///
-    /// Note on Windows: For executable files with the .exe extension,
-    /// it can be omitted when specifying the program for this Command.
-    /// However, if the file has a different extension,
-    /// a filename including the extension needs to be provided,
-    /// otherwise the file won't be found.
+    /// The details below describe the current behavior, but **these details
+    /// may change in future versions of Rust.**
+    ///
+    /// On Unix, the `PATH` searched comes from the child's environment:
+    ///
+    /// - If the environment is unmodified, the child inherits the parent's
+    ///   `PATH` and that is what is searched.
+    /// - If `PATH` is explicitly set via [`env`], that new value is searched.
+    /// - If [`env_clear`] or [`env_remove`] removes `PATH` without a
+    ///   replacement, `execvp` falls back to an OS-defined default (typically
+    ///   `/bin:/usr/bin`), **not** the parent's `PATH`. This may fail to find
+    ///   programs that rely on the parent's `PATH`.
+    ///
+    /// To avoid surprises, use an absolute path or explicitly set `PATH` on
+    /// the `Command` when modifying the child's environment.
+    ///
+    /// On Windows, Rust resolves the executable path before spawning, rather
+    /// than passing the name to `CreateProcessW` for resolution. When
+    /// `program` is not an absolute path, the following locations are searched
+    /// in order:
+    ///
+    /// 1. The child's `PATH`, if explicitly set via [`env`].
+    /// 2. The directory of the current executable.
+    /// 3. The system directory (`GetSystemDirectoryW`).
+    /// 4. The Windows directory (`GetWindowsDirectoryW`).
+    /// 5. The parent process's `PATH`.
+    ///
+    /// Note: when `PATH` is cleared via [`env_clear`] or [`env_remove`] on
+    /// Windows, step 1 is skipped but the parent process's `PATH` is still
+    /// searched at step 5, unlike on Unix.
+    ///
+    /// For executable files, the `.exe` extension may be omitted. Files with
+    /// other extensions must include the extension, otherwise they will not be
+    /// found. Note that this behavior has some known limitations
+    /// (see issue #37519).
+    ///
+    /// [`env`]: Self::env
+    /// [`env_remove`]: Self::env_remove
+    /// [`env_clear`]: Self::env_clear
     ///
     /// # Examples
     ///
