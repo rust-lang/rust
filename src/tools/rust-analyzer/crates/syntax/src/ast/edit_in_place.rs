@@ -625,31 +625,6 @@ impl ast::IdentPat {
     }
 }
 
-pub trait HasVisibilityEdit: ast::HasVisibility {
-    fn set_visibility(&self, visibility: Option<ast::Visibility>) {
-        if let Some(visibility) = visibility {
-            match self.visibility() {
-                Some(current_visibility) => {
-                    ted::replace(current_visibility.syntax(), visibility.syntax())
-                }
-                None => {
-                    let vis_before = self
-                        .syntax()
-                        .children_with_tokens()
-                        .find(|it| !matches!(it.kind(), WHITESPACE | COMMENT | ATTR))
-                        .unwrap_or_else(|| self.syntax().first_child_or_token().unwrap());
-
-                    ted::insert(ted::Position::before(vis_before), visibility.syntax());
-                }
-            }
-        } else if let Some(visibility) = self.visibility() {
-            ted::remove(visibility.syntax());
-        }
-    }
-}
-
-impl<T: ast::HasVisibility> HasVisibilityEdit for T {}
-
 pub trait Indent: AstNode + Clone + Sized {
     fn indent_level(&self) -> IndentLevel {
         IndentLevel::from_node(self.syntax())
