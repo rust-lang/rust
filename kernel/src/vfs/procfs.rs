@@ -23,7 +23,8 @@
 //! | `/proc/<pid>/job_state`          | Canonical `thingos::job::JobState` (Phase 2) |
 //! | `/proc/<pid>/job_exit`           | Canonical `thingos::job::JobExit` — state + code (Phase 3) |
 //! | `/proc/<pid>/job_wait`           | Canonical `thingos::job::JobWaitResult` — non-blocking poll (Phase 3) |
-//! | `/proc/<pid>/group_kind`         | Canonical `thingos::group::GroupKind` — coordination role (Phase 4) |
+//! | `/proc/<pid>/group_kind`         | Canonical `thingos::group::GroupKind` — coordination role (Phase 4)     |
+//! | `/proc/<pid>/authority`          | Canonical `thingos::authority::Authority` — permission context (Phase 7) |
 
 use abi::errors::{Errno, SysResult};
 use alloc::collections::BTreeSet;
@@ -210,6 +211,26 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
             Ok(Arc::new(DynamicTextNode::new(
                 text.into_bytes(),
                 300 + pid as u64 * 10 + 9,
+            )))
+        }
+        // /proc/<pid>/authority — canonical thingos::authority::Authority (Phase 7).
+        //
+        // Reports the active permission context in canonical Authority terms,
+        // bridged from the current Process-shaped credential state via
+        // `kernel::authority::bridge`.  This is the first public surface for
+        // the Authority ontology (Phase 7).
+        //
+        // In Phase 7 the authority name is derived from the process name and
+        // capabilities is always empty (the current `Process` carries no
+        // explicit capability mask).  Future phases will populate capabilities
+        // once uid/gid-like fields or a capability mask are introduced into
+        // the Process struct.
+        "authority" => {
+            let authority = crate::authority::bridge::authority_from_snapshot(&snap);
+            let text = authority.as_text();
+            Ok(Arc::new(DynamicTextNode::new(
+                text.into_bytes(),
+                300 + pid as u64 * 10 + 10,
             )))
         }
         _ => Err(Errno::ENOENT),
