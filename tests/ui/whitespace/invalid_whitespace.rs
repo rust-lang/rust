@@ -1,8 +1,7 @@
 // This test ensures that the Rust lexer rejects invalid whitespace
 // characters that are not part of Unicode Pattern_White_Space.
 //
-// Here we use a ZERO WIDTH SPACE (\u{200B}) via escape to avoid
-// issues with invisible characters in editors.
+// This uses a ZERO WIDTH SPACE (U+200B), which is not valid Rust whitespace.
 
 //@ check-fail
 
@@ -12,4 +11,5 @@ fn main() {
 
     let a​= x + y;
     //~^ ERROR unknown start of token
+    //~| HELP invisible characters
 }
