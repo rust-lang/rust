@@ -65,7 +65,7 @@ fn default_process_info(
     };
     alloc::sync::Arc::new(spin::Mutex::new(ProcessInfo {
         pid,
-        ppid,
+        lifecycle: crate::task::ProcessLifecycle::new(ppid, pid as TaskId),
         pgid,
         sid,
         session_leader,
@@ -75,12 +75,9 @@ fn default_process_info(
         fd_table,
         namespace: crate::vfs::NamespaceRef::global(),
         cwd: alloc::string::String::from("/"),
-        thread_ids: alloc::vec![pid as TaskId],
-        exec_in_progress: false,
         exec_path: alloc::string::String::new(),
         space,
         signals: crate::signal::ProcessSignals::new(),
-        children_done: alloc::collections::VecDeque::new(),
     }))
 }
 
@@ -97,7 +94,7 @@ fn inherit_process_info<R: BootRuntime>(
         let parent = parent_pi.lock();
         alloc::sync::Arc::new(spin::Mutex::new(ProcessInfo {
             pid,
-            ppid,
+            lifecycle: crate::task::ProcessLifecycle::new(ppid, pid as TaskId),
             pgid: parent.pgid,
             sid: parent.sid,
             session_leader: false,
@@ -107,12 +104,9 @@ fn inherit_process_info<R: BootRuntime>(
             fd_table: parent.fd_table.clone(),
             namespace: parent.namespace.clone(),
             cwd: parent.cwd.clone(),
-            thread_ids: alloc::vec![pid as TaskId],
-            exec_in_progress: false,
             exec_path: alloc::string::String::new(),
             space,
             signals: crate::signal::ProcessSignals::new(),
-            children_done: alloc::collections::VecDeque::new(),
         }))
     } else {
         default_process_info(pid, ppid, space)
@@ -148,8 +142,8 @@ pub(crate) fn register_thread_in_process(
 ) {
     if let Some(pinfo) = pinfo {
         let mut pi = pinfo.lock();
-        if !pi.thread_ids.contains(&tid) {
-            pi.thread_ids.push(tid);
+        if !pi.lifecycle.thread_ids.contains(&tid) {
+            pi.lifecycle.thread_ids.push(tid);
         }
     }
 }
@@ -1085,7 +1079,7 @@ pub unsafe fn boot_spawn_process_ex<R: BootRuntime>(
     // Create per-process identity with provided argv & env
     let pinfo = alloc::sync::Arc::new(spin::Mutex::new(ProcessInfo {
         pid: id as u32,
-        ppid,
+        lifecycle: crate::task::ProcessLifecycle::new(ppid, id),
         pgid,
         sid,
         session_leader,
@@ -1102,12 +1096,9 @@ pub unsafe fn boot_spawn_process_ex<R: BootRuntime>(
         } else {
             alloc::string::String::from("/")
         },
-        thread_ids: alloc::vec![id],
-        exec_in_progress: false,
         exec_path: alloc::format!("/boot/{}", module.name),
         space: crate::task::ProcessAddressSpace::from_parts(task_mappings, aspace_raw),
         signals: crate::signal::ProcessSignals::new(),
-        children_done: alloc::collections::VecDeque::new(),
     }));
 
     // Store name, process_info, and initial TLS thread pointer on the task struct.
@@ -1329,7 +1320,7 @@ pub unsafe fn spawn_process_from_path<R: BootRuntime>(
     // Step 7: Build the ProcessInfo for the new process.
     let pinfo = alloc::sync::Arc::new(spin::Mutex::new(ProcessInfo {
         pid: id as u32,
-        ppid,
+        lifecycle: crate::task::ProcessLifecycle::new(ppid, id),
         pgid,
         sid,
         session_leader,
@@ -1345,12 +1336,9 @@ pub unsafe fn spawn_process_from_path<R: BootRuntime>(
         } else {
             alloc::string::String::from("/")
         },
-        thread_ids: alloc::vec![id],
-        exec_in_progress: false,
         exec_path: alloc::string::String::from(path),
         space: crate::task::ProcessAddressSpace::from_parts(task_mappings, aspace_raw),
         signals: crate::signal::ProcessSignals::new(),
-        children_done: alloc::collections::VecDeque::new(),
     }));
 
     // Step 8: Attach the ProcessInfo to the new task and record its TLS base.
@@ -1503,7 +1491,7 @@ mod tests {
     ) -> alloc::sync::Arc<spin::Mutex<crate::task::ProcessInfo>> {
         alloc::sync::Arc::new(spin::Mutex::new(crate::task::ProcessInfo {
             pid: leader as u32,
-            ppid: 1,
+            lifecycle: crate::task::ProcessLifecycle::new(1, leader),
             pgid: leader as u32,
             sid: leader as u32,
             session_leader: false,
@@ -1513,12 +1501,9 @@ mod tests {
             fd_table: crate::vfs::fd_table::FdTable::new(),
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
-            thread_ids: alloc::vec![leader],
-            exec_in_progress: false,
             exec_path: alloc::string::String::new(),
             space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
-            children_done: alloc::collections::VecDeque::new(),
         }))
     }
 
@@ -1595,11 +1580,11 @@ mod tests {
 
         let pi = pinfo.lock();
         assert!(
-            pi.thread_ids.contains(&child_id),
+            pi.lifecycle.thread_ids.contains(&child_id),
             "thread spawned with tls_base=0 must appear in process thread_ids"
         );
         assert!(
-            pi.thread_ids.contains(&leader_id),
+            pi.lifecycle.thread_ids.contains(&leader_id),
             "leader TID must still be present after spawning a child"
         );
     }
@@ -1631,7 +1616,7 @@ mod tests {
 
         let pi = pinfo.lock();
         assert!(
-            pi.thread_ids.contains(&child_id),
+            pi.lifecycle.thread_ids.contains(&child_id),
             "thread spawned with non-zero tls_base must appear in process thread_ids"
         );
     }
@@ -1651,7 +1636,7 @@ mod tests {
         register_thread_in_process(&pinfo_opt, 7301);
 
         let pi = pinfo.lock();
-        let count = pi.thread_ids.iter().filter(|&&t| t == 7301).count();
+        let count = pi.lifecycle.thread_ids.iter().filter(|&&t| t == 7301).count();
         assert_eq!(count, 1, "duplicate TID entries must not be created");
     }
 
@@ -1686,13 +1671,13 @@ mod tests {
         let pi = pinfo.lock();
         // Leader + 4 children = 5 entries, no duplicates.
         assert_eq!(
-            pi.thread_ids.len(),
+            pi.lifecycle.thread_ids.len(),
             5,
             "all spawned threads plus leader must be in thread_ids"
         );
         for &cid in &child_ids {
             assert!(
-                pi.thread_ids.contains(&cid),
+                pi.lifecycle.thread_ids.contains(&cid),
                 "child TID {} must be in thread_ids",
                 cid
             );

@@ -1729,7 +1729,7 @@ mod tests {
         }
         Arc::new(Mutex::new(crate::task::ProcessInfo {
             pid: 1,
-            ppid: 0,
+            lifecycle: crate::task::ProcessLifecycle::new(0, 1),
             pgid: 1,
             sid: 1,
             session_leader: false,
@@ -1739,12 +1739,9 @@ mod tests {
             fd_table,
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/"),
-            thread_ids: alloc::vec![1],
-            exec_in_progress: false,
             exec_path: alloc::string::String::new(),
             space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
-            children_done: alloc::collections::VecDeque::new(),
         }))
     }
 

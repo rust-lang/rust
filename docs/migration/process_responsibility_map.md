@@ -1,7 +1,7 @@
 # Process Responsibility Map (Migration Inventory)
 
-> **Status**: Active migration control document — Phase 8 baseline.
-> Space-oriented subdivision introduced (issue: Isolate Address Space into Space-Oriented Substructure).
+> **Status**: Active migration control document — Phase 9 baseline.
+> Lifecycle-oriented subdivision introduced (issue: Decompose Process: Extract Lifecycle State into Job-Aligned Structure).
 > Cite this document in all subsequent decomposition issues.
 
 ---
@@ -49,11 +49,11 @@ The table below covers every field currently present in `Process`
 
 | Current field / concept             | Current role            | Future owner     | Migration status   | Notes                                                                                     |
 |-------------------------------------|-------------------------|------------------|--------------------|-------------------------------------------------------------------------------------------|
-| `pid: u32` (TGID)                   | Process identity        | Job + Space      | bridge in place    | PID doubles as TGID; future `Job` carries lifecycle ID, `Space` carries VM identity.     |
-| `ppid: u32`                         | Parent/child linkage    | Job              | bridge in place    | Needed for `waitpid` parent filter; migrates with wait semantics.                         |
-| `thread_ids: Vec<ThreadId>`         | Thread membership list  | Job + Task       | bridge in place    | Group-leader exit and exec collapse both rely on this; migrates with Job lifecycle.       |
-| `exec_in_progress: bool`            | Exec synchronisation    | Job              | extract next       | Guards concurrent `SYS_SPAWN_THREAD` during exec; belongs with Job lifecycle gate.        |
-| `children_done: VecDeque<(u32,i32)>`| Waitpid exit queue      | Job              | extract next       | Exit-status accumulator for parent `waitpid`; should move with Job wait semantics.       |
+| `pid: u32` (TGID)                   | Process identity        | Job + Space      | bridge in place    | PID doubles as TGID; future `Job` carries lifecycle ID, `Space` carries VM identity. Kept at top-level `Process` until the Job/Space split is complete.     |
+| `ppid: u32`                         | Parent/child linkage    | Job              | **grouped** ✓      | Moved into `ProcessLifecycle` subdivision (`Process.lifecycle.ppid`). Extract `Job` next.                         |
+| `thread_ids: Vec<ThreadId>`         | Thread membership list  | Job + Task       | **grouped** ✓      | Moved into `ProcessLifecycle` subdivision (`Process.lifecycle.thread_ids`). Extract `Job` next.       |
+| `exec_in_progress: bool`            | Exec synchronisation    | Job              | **grouped** ✓      | Moved into `ProcessLifecycle` subdivision (`Process.lifecycle.exec_in_progress`). Extract `Job` next.        |
+| `children_done: VecDeque<(u32,i32)>`| Waitpid exit queue      | Job              | **grouped** ✓      | Moved into `ProcessLifecycle` subdivision (`Process.lifecycle.children_done`). Extract `Job` next.       |
 | `mappings: Arc<Mutex<MappingList>>` | VM mapping ownership    | Space            | **grouped** ✓      | Moved into `ProcessAddressSpace` subdivision (`Process.space.mappings`). Extract `Space` next. |
 | `aspace_raw: u64`                   | Address-space token     | Space            | **grouped** ✓      | Moved into `ProcessAddressSpace` subdivision (`Process.space.aspace_raw`). Extract `Space` next.|
 | `fd_table: FdTable`                 | Open-file resource table| Handle table     | keep for now       | No handle-table concept yet; extract after Authority stabilises (Phase 9+).               |
@@ -81,7 +81,7 @@ The table below covers every field currently present in `Process`
 
 ## What is already bridged
 
-The following bridges are in place (Phase 3–8). Each bridge is the **canonical
+The following bridges are in place (Phase 3–9). Each bridge is the **canonical
 public surface** for its domain; new code must go through the bridge, not read
 `Process` fields directly.
 
@@ -99,6 +99,7 @@ public surface** for its domain; new code must go through the bridge, not read
 
 | Responsibility                                        | Blocker / note                                                   |
 |-------------------------------------------------------|------------------------------------------------------------------|
+| Lifecycle fields (`ppid`, `thread_ids`, `exec_in_progress`, `children_done`) | Now grouped under `ProcessLifecycle` inside `Process.lifecycle`. Future work: introduce first-class `Job` object, promote subdivision into it. |
 | Address space / VM mappings (`space.mappings`, `space.aspace_raw`) | Now grouped under `ProcessAddressSpace` inside `Process.space`. Future work: introduce first-class `Space` object, promote subdivision into it. |
 | FD / handle table (`fd_table`)                        | Handle-table concept not yet introduced; extract after Phase 9+. |
 | Spawn invocation context (`argv`, `env`, `auxv`)      | No spawn-record concept; quarantined until one exists.           |
@@ -117,18 +118,17 @@ self-contained issue that cites this document.
 
 | Step | Responsibility                         | Destination    | Rationale                                                   |
 |------|----------------------------------------|----------------|-------------------------------------------------------------|
-| 1    | Exit state + wait queue + children_done| Job            | Already bridged; lowest-risk first extraction.              |
-| 2    | exec_in_progress lifecycle gate        | Job            | Small flag that belongs with Job lifecycle; extract with step 1. |
-| 3    | thread_ids membership                  | Job + Task     | Needed for group-exit; extract after Job lifecycle is solid. |
-| 4    | pgid / sid / session_leader (raw fields)| Group         | Bridges exist; can quarantine raw fields once Group carries truth. |
-| 5    | Signal dispositions (ProcessSignals)   | Authority      | Disposition table is permission context; needs Authority stabilised first. |
-| 6    | Job-control stop signals (in signals)  | Group          | SIGSTOP/SIGCONT/SIGTTOU semantics belong in Group; extract after step 4. |
-| 7    | `Process.space` → first-class `Space`  | Space          | `ProcessAddressSpace` subdivision is now the extraction seam. Promote `Process.space` into a first-class `Space` kernel object; share across threads/processes as needed. |
-| 8    | fd_table                               | Handle table   | Introduce handle-table concept; extract after Space.        |
-| 9    | cwd / namespace / root                 | Place          | Bridge exists; promote backing fields into Place substructure after Space. |
-| 10   | argv / env / auxv                      | Spawn record   | Introduce spawn-record concept; then move quarantined fields.|
-| 11   | UID/GID / capabilities                 | Authority      | Add fields to Process first; then surface through authority bridge.|
-| 12   | Controlling terminal / TTY             | Presence       | Introduce Presence; then extract from signals/session state. |
+| 1    | Promote `ProcessLifecycle` → `Job`     | Job            | Subdivision is in place; promote to first-class `Job` object. |
+| 2    | Move `exit_code`/`exit_waiters` from `Thread<R>` | Job | Grouped with lifecycle once `Job` exists.                |
+| 3    | `pgid` / `sid` / `session_leader` (raw fields)| Group   | Bridges exist; can quarantine raw fields once Group carries truth. |
+| 4    | Signal dispositions (ProcessSignals)   | Authority      | Disposition table is permission context; needs Authority stabilised first. |
+| 5    | Job-control stop signals (in signals)  | Group          | SIGSTOP/SIGCONT/SIGTTOU semantics belong in Group; extract after step 3. |
+| 6    | `Process.space` → first-class `Space`  | Space          | `ProcessAddressSpace` subdivision is now the extraction seam. Promote `Process.space` into a first-class `Space` kernel object; share across threads/processes as needed. |
+| 7    | fd_table                               | Handle table   | Introduce handle-table concept; extract after Space.        |
+| 8    | cwd / namespace / root                 | Place          | Bridge exists; promote backing fields into Place substructure after Space. |
+| 9    | argv / env / auxv                      | Spawn record   | Introduce spawn-record concept; then move quarantined fields.|
+| 10   | UID/GID / capabilities                 | Authority      | Add fields to Process first; then surface through authority bridge.|
+| 11   | Controlling terminal / TTY             | Presence       | Introduce Presence; then extract from signals/session state. |
 
 ---
 

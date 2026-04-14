@@ -38,13 +38,32 @@
 //!
 //! * **Phase 3** (this phase): wait/exit reporting added to the `Job` bridge.
 //! * **Phase 4**: introduce `Group` as the coordination truth.
-//! * **Phase 5**: begin internal `Process` decomposition by responsibility.
+//! * **Phase 9** (current): lifecycle state grouped into `ProcessLifecycle`
+//!   as the extraction seam for `Job`.
+//!
+//! # Preferred source: `ProcessLifecycle`
+//!
+//! As of Phase 9, lifecycle-oriented state inside `Process` is grouped under
+//! [`crate::task::ProcessLifecycle`] (`Process.lifecycle`).  This bridge is
+//! the **canonical public surface** for that data; new code mapping lifecycle
+//! state to `Job` / `JobExit` / `JobWaitResult` should read from
+//! `Process.lifecycle` rather than from top-level `Process` fields.
+//!
+//! | `ProcessLifecycle` field     | Canonical `Job` concept          |
+//! |------------------------------|----------------------------------|
+//! | `lifecycle.ppid`             | Job parent/child linkage         |
+//! | `lifecycle.thread_ids`       | Job thread-group membership      |
+//! | `lifecycle.exec_in_progress` | Job lifecycle gate               |
+//! | `lifecycle.children_done`    | Job wait queue                   |
 //!
 //! # Future direction
 //!
 //! Once `Process` is decomposed, this bridge will shrink.  The thread-count
 //! heuristic used here will be replaced by an explicit lifecycle transition
-//! embedded in the scheduler (spawned → running → exited).
+//! embedded in the scheduler (spawned → running → exited).  The
+//! `ProcessLifecycle` subdivision introduced in Phase 9 is the extraction seam
+//! that will allow this bridge to read from a first-class `Job` object instead
+//! of a `Process`-shaped snapshot.
 
 use crate::sched::state::ThreadState;
 use thingos::job::{Job, JobExit, JobState, JobWaitResult};
