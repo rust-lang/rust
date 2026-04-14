@@ -446,6 +446,9 @@ mod tests {
         Arc::new(Mutex::new(crate::task::ProcessInfo {
             pid: 1,
             ppid: 0,
+            pgid: 1,
+            sid: 1,
+            session_leader: false,
             argv: alloc::vec![],
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec![],

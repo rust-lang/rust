@@ -489,6 +489,9 @@ mod tests {
         Arc::new(Mutex::new(ProcessInfo {
             pid,
             ppid: 1,
+            pgid: pid,
+            sid: pid,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -553,6 +556,9 @@ mod tests {
         let pinfo = Arc::new(Mutex::new(ProcessInfo {
             pid: 9230,
             ppid: 1,
+            pgid: 9230,
+            sid: 9230,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -589,6 +595,9 @@ mod tests {
         let pinfo = Arc::new(Mutex::new(ProcessInfo {
             pid: 9240,
             ppid: 1,
+            pgid: 9240,
+            sid: 9240,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -716,6 +725,9 @@ mod tests {
         let pinfo = Arc::new(Mutex::new(ProcessInfo {
             pid: 9300,
             ppid: 1,
+            pgid: 9300,
+            sid: 9300,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -769,6 +781,9 @@ mod tests {
         let pinfo = Arc::new(Mutex::new(ProcessInfo {
             pid: 9310,
             ppid: 1,
+            pgid: 9310,
+            sid: 9310,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -929,6 +944,9 @@ mod tests {
         Arc::new(Mutex::new(ProcessInfo {
             pid,
             ppid: 1,
+            pgid: pid,
+            sid: pid,
+            session_leader: false,
             argv: alloc::vec![
                 b"old_binary".to_vec(),
                 b"--old-arg".to_vec(),
@@ -1168,6 +1186,9 @@ mod tests {
         let pinfo = Arc::new(Mutex::new(ProcessInfo {
             pid: 9600,
             ppid: 1,
+            pgid: 9600,
+            sid: 9600,
+            session_leader: false,
             argv: alloc::vec![b"old".to_vec()],
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),

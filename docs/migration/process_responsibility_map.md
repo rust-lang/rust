@@ -1,6 +1,7 @@
 # Process Responsibility Map (Migration Inventory)
 
 > **Status**: Active migration control document — Phase 8 baseline.
+> Space-oriented subdivision introduced (issue: Isolate Address Space into Space-Oriented Substructure).
 > Cite this document in all subsequent decomposition issues.
 
 ---
@@ -53,8 +54,8 @@ The table below covers every field currently present in `Process`
 | `thread_ids: Vec<ThreadId>`         | Thread membership list  | Job + Task       | bridge in place    | Group-leader exit and exec collapse both rely on this; migrates with Job lifecycle.       |
 | `exec_in_progress: bool`            | Exec synchronisation    | Job              | extract next       | Guards concurrent `SYS_SPAWN_THREAD` during exec; belongs with Job lifecycle gate.        |
 | `children_done: VecDeque<(u32,i32)>`| Waitpid exit queue      | Job              | extract next       | Exit-status accumulator for parent `waitpid`; should move with Job wait semantics.       |
-| `mappings: Arc<Mutex<MappingList>>` | VM mapping ownership    | Space            | keep for now       | Shared Arc also cloned into each `Thread.mappings`; extract after Space is introduced.   |
-| `aspace_raw: u64`                   | Address-space token     | Space            | keep for now       | Arch-specific page-table root; extract together with `mappings` into `Space`.             |
+| `mappings: Arc<Mutex<MappingList>>` | VM mapping ownership    | Space            | **grouped** ✓      | Moved into `ProcessAddressSpace` subdivision (`Process.space.mappings`). Extract `Space` next. |
+| `aspace_raw: u64`                   | Address-space token     | Space            | **grouped** ✓      | Moved into `ProcessAddressSpace` subdivision (`Process.space.aspace_raw`). Extract `Space` next.|
 | `fd_table: FdTable`                 | Open-file resource table| Handle table     | keep for now       | No handle-table concept yet; extract after Authority stabilises (Phase 9+).               |
 | `cwd: String`                       | Current working dir     | Place            | **bridged** ✓      | Surfaced through `kernel::place::bridge::place_from_snapshot`; field stays as backing.   |
 | `namespace: NamespaceRef`           | VFS mount-table view    | Place            | bridge in place    | Unit struct today (global); per-process isolation deferred. Provisional backing for Place.|
@@ -98,7 +99,7 @@ public surface** for its domain; new code must go through the bridge, not read
 
 | Responsibility                                        | Blocker / note                                                   |
 |-------------------------------------------------------|------------------------------------------------------------------|
-| Address space / VM mappings (`mappings`, `aspace_raw`)| `Space` concept not yet introduced; extract after Space design.  |
+| Address space / VM mappings (`space.mappings`, `space.aspace_raw`) | Now grouped under `ProcessAddressSpace` inside `Process.space`. Future work: introduce first-class `Space` object, promote subdivision into it. |
 | FD / handle table (`fd_table`)                        | Handle-table concept not yet introduced; extract after Phase 9+. |
 | Spawn invocation context (`argv`, `env`, `auxv`)      | No spawn-record concept; quarantined until one exists.           |
 | Signal state (`ProcessSignals`, `ThreadSignals`)      | Needs split: disposition → Authority, job-control → Group; complex. |
@@ -122,7 +123,7 @@ self-contained issue that cites this document.
 | 4    | pgid / sid / session_leader (raw fields)| Group         | Bridges exist; can quarantine raw fields once Group carries truth. |
 | 5    | Signal dispositions (ProcessSignals)   | Authority      | Disposition table is permission context; needs Authority stabilised first. |
 | 6    | Job-control stop signals (in signals)  | Group          | SIGSTOP/SIGCONT/SIGTTOU semantics belong in Group; extract after step 4. |
-| 7    | mappings + aspace_raw                  | Space          | Introduce Space concept first; then migrate VM ownership.   |
+| 7    | `Process.space` → first-class `Space`  | Space          | `ProcessAddressSpace` subdivision is now the extraction seam. Promote `Process.space` into a first-class `Space` kernel object; share across threads/processes as needed. |
 | 8    | fd_table                               | Handle table   | Introduce handle-table concept; extract after Space.        |
 | 9    | cwd / namespace / root                 | Place          | Bridge exists; promote backing fields into Place substructure after Space. |
 | 10   | argv / env / auxv                      | Spawn record   | Introduce spawn-record concept; then move quarantined fields.|
@@ -136,6 +137,7 @@ self-contained issue that cites this document.
 | Status            | Meaning                                                          |
 |-------------------|------------------------------------------------------------------|
 | **bridged** ✓     | A bridge module exists and is the canonical public surface.      |
+| **grouped** ✓     | Fields are grouped into a named subdivision (e.g. `ProcessAddressSpace`) as an extraction seam. Next step: promote to first-class object. |
 | bridge in place   | Bridge exists but raw field still serves as the only backing.    |
 | extract next      | Low-risk; extraction is the next logical step for this concern.  |
 | keep for now      | No extraction work until a prerequisite concept is introduced.   |
@@ -149,7 +151,7 @@ self-contained issue that cites this document.
 - `docs/concepts/process-object.md` — `Process` / `Thread<R>` struct design
 - `docs/concepts/process-lifecycle.md` — state machine, exec collapse, zombie semantics
 - `docs/concepts/janix-guardrails.md` — architecture guardrails for all kernel changes
-- `kernel/src/task/mod.rs` — primary `Process` struct (inline migration annotations)
+- `kernel/src/task/mod.rs` — primary `Process` struct (inline migration annotations); `ProcessAddressSpace` subdivision
 - `kernel/src/job/bridge.rs` — Phase 3 lifecycle bridge
 - `kernel/src/group/bridge.rs` — Phase 4 coordination bridge
 - `kernel/src/authority/bridge.rs` — Phase 7 permission bridge

@@ -43,6 +43,92 @@ impl StartupArg {
     }
 }
 
+/// Address-space subdivision of a `Process`.
+///
+/// This struct groups all memory/address-space concerns that are conceptually
+/// owned by **Space**, not by `Process`, `Job`, or `Task`.  It lives inside
+/// `Process` as a transitional measure: the fields are here because a
+/// first-class `Space` kernel object does not yet exist, but they are
+/// deliberately separated so that future extraction into `Space` is obvious
+/// and mechanical.
+///
+/// # Conceptual future ownership
+///
+/// In the emerging ThingOS object model:
+/// - **Task** owns execution context (registers, stack, scheduling state).
+/// - **Job** owns process lifecycle (creation, exit, reaping).
+/// - **Space** owns address-space state: the page-table root, the virtual
+///   memory map, user-stack / program-image layout, and all mapping metadata.
+///
+/// New kernel code that needs to add memory-ownership state should add it
+/// **here**, not directly to `Process`.  When `Space` is introduced as a
+/// first-class object this subdivision is the extraction seam.
+///
+/// # Future extraction seams
+///
+/// Likely follow-on cuts once a first-class `Space` is introduced:
+/// - Promote `ProcessAddressSpace` into `Space` and share it across processes
+///   that map the same image (copy-on-write / shared mappings).
+/// - Separate the `exec` transition helpers that currently live in
+///   `kernel::task::exec` and reach into this struct directly.
+/// - Expose canonical `Space` identity at syscall boundaries
+///   (e.g. `SYS_VM_MAP` currently operates on the implicit current space).
+/// - Untangle `fork`/`exec` assumptions: today `exec` replaces both
+///   `mappings` and `aspace_raw` in-place; a real `Space` swap would instead
+///   atomically replace the entire `ProcessAddressSpace`.
+pub struct ProcessAddressSpace {
+    /// Process-scoped VM mapping list.
+    ///
+    /// Every `Thread` in this process holds a clone of this `Arc` in its own
+    /// `mappings` field so the scheduler's hot path (the `CURRENT_MAPPINGS`
+    /// per-CPU cache) works without locking the `Process` mutex on every
+    /// context switch.  The underlying `MappingList` is therefore always the
+    /// same object visible from both `Process.space.mappings` and each
+    /// thread's `Thread.mappings`.
+    pub mappings: alloc::sync::Arc<spin::Mutex<crate::memory::mappings::MappingList>>,
+
+    /// Process-scoped address-space token (architecture-specific raw value).
+    ///
+    /// Stores the page-table root for this process in an architecture-neutral
+    /// `u64` representation (see [`crate::BootTasking::aspace_to_raw`]).  All
+    /// threads in this process share the same address space; `Thread.aspace`
+    /// holds a typed copy of the same token for the scheduler's fast path.
+    ///
+    /// Updated atomically with `Thread.aspace` during exec and remains 0
+    /// for kernel-only threads (which have no user address space).
+    pub aspace_raw: u64,
+}
+
+impl ProcessAddressSpace {
+    /// Create a fresh, empty address space subdivision (no mappings, no page-table root).
+    ///
+    /// Used when spawning a new process before ELF loading assigns a real
+    /// address space.
+    pub fn empty() -> Self {
+        ProcessAddressSpace {
+            mappings: alloc::sync::Arc::new(spin::Mutex::new(
+                crate::memory::mappings::MappingList::new(),
+            )),
+            aspace_raw: 0,
+        }
+    }
+
+    /// Create an address space subdivision from an existing mappings `Arc` and
+    /// a raw page-table token.
+    ///
+    /// Used by the spawn path after the ELF loader has populated the address
+    /// space and the architecture runtime has converted the handle to a raw token.
+    pub fn from_parts(
+        mappings: alloc::sync::Arc<spin::Mutex<crate::memory::mappings::MappingList>>,
+        aspace_raw: u64,
+    ) -> Self {
+        ProcessAddressSpace {
+            mappings,
+            aspace_raw,
+        }
+    }
+}
+
 /// First-class process object.
 ///
 /// A `Process` is the unit of resource ownership in Thing-OS.  Every user
@@ -51,17 +137,17 @@ impl StartupArg {
 ///
 /// # Ownership model
 ///
-/// | Resource           | Owner   | How threads access it               |
-/// |--------------------|---------|-------------------------------------|
-/// | PID / PPID         | Process | `process.lock().pid`                |
-/// | VM address space   | Process | `process.lock().aspace_raw`         |
-/// | VM mappings        | Process | `process.lock().mappings` (Arc)     |
-/// | FD table           | Process | `process.lock().fd_table`           |
-/// | CWD                | Process | `process.lock().cwd`                |
-/// | VFS namespace      | Process | `process.lock().namespace`          |
-/// | argv / env / auxv  | Process | `process.lock().argv` etc.          |
-/// | Thread list        | Process | `process.lock().thread_ids`         |
-/// | exec path          | Process | `process.lock().exec_path`          |
+/// | Resource           | Owner   | How threads access it                    |
+/// |--------------------|---------|------------------------------------------|
+/// | PID / PPID         | Process | `process.lock().pid`                     |
+/// | VM address space   | Process | `process.lock().space.aspace_raw`        |
+/// | VM mappings        | Process | `process.lock().space.mappings` (Arc)    |
+/// | FD table           | Process | `process.lock().fd_table`                |
+/// | CWD                | Process | `process.lock().cwd`                     |
+/// | VFS namespace      | Process | `process.lock().namespace`               |
+/// | argv / env / auxv  | Process | `process.lock().argv` etc.               |
+/// | Thread list        | Process | `process.lock().thread_ids`              |
+/// | exec path          | Process | `process.lock().exec_path`               |
 ///
 /// # Locking rules
 ///
@@ -96,8 +182,12 @@ impl StartupArg {
 ///
 /// **Lifecycle / identity** (Task/Job — not yet extracted):
 /// * `pid` / `ppid` / `thread_ids` / `exec_in_progress`
-/// * `mappings` / `aspace_raw` — VM ownership
 /// * `children_done` — waitpid queue
+///
+/// **Space** (address-space ownership — future `Space` kernel object):
+/// * `space` — grouped under [`ProcessAddressSpace`]; contains `mappings` and
+///   `aspace_raw`.  New code must not attach additional memory-ownership state
+///   directly to `Process`; add it to `ProcessAddressSpace` instead.
 ///
 /// # Note on Presence
 ///
@@ -175,25 +265,16 @@ pub struct Process {
     pub exec_in_progress: bool,
     /// Path of the currently-running executable image.
     pub exec_path: alloc::string::String,
-    /// Process-scoped VM mapping list.
+    // ── Space context (future `Space` kernel object) ──────────────────────────
+    // Address-space concerns are grouped here rather than scattered across
+    // `Process`.  This subdivision is the extraction seam for a future
+    // first-class `Space` object.  Do NOT attach new memory-ownership state
+    // directly to `Process` — add it to `ProcessAddressSpace` instead.
+    /// Address-space subdivision — conceptually future `Space` ownership.
     ///
-    /// Every `Thread` in this process holds a clone of this `Arc` in its own
-    /// `mappings` field so the scheduler's hot path (the `CURRENT_MAPPINGS`
-    /// per-CPU cache) works without locking the `Process` mutex on every
-    /// context switch.  The underlying `MappingList` is therefore always the
-    /// same object visible from both `Process.mappings` and each thread's
-    /// `Thread.mappings`.
-    pub mappings: alloc::sync::Arc<spin::Mutex<crate::memory::mappings::MappingList>>,
-    /// Process-scoped address-space token (architecture-specific raw value).
-    ///
-    /// Stores the page-table root for this process in an architecture-neutral
-    /// `u64` representation (see [`crate::BootTasking::aspace_to_raw`]).  All
-    /// threads in this process share the same address space; `Thread.aspace`
-    /// holds a typed copy of the same token for the scheduler's fast path.
-    ///
-    /// Updated atomically with `Thread.aspace` during exec and remains 0
-    /// for kernel-only threads (which have no user address space).
-    pub aspace_raw: u64,
+    /// Contains the VM mapping list and the architecture-specific page-table
+    /// token.  See [`ProcessAddressSpace`] for the full design rationale.
+    pub space: ProcessAddressSpace,
     /// Per-process signal state: dispositions, pending set, stop/alarm state.
     ///
     /// LEGACY COMPAT: signal dispositions and pending-set management are Unix
@@ -252,11 +333,11 @@ pub struct Thread<R: BootRuntime> {
 
     pub stack_info: Option<StackInfo>,
 
-    /// VM mapping list — a clone of `Process.mappings` (same underlying `Arc`).
+    /// VM mapping list — a clone of `Process.space.mappings` (same underlying `Arc`).
     ///
     /// Kept here for zero-lock fast access by the scheduler's per-CPU mapping
     /// cache (`CURRENT_MAPPINGS`).  Always updated atomically with
-    /// `Process.mappings` during exec or thread creation.
+    /// `Process.space.mappings` during exec or thread creation.
     pub mappings: Arc<Mutex<crate::memory::mappings::MappingList>>,
 
     /// Remaining time slice in ticks before preemption.

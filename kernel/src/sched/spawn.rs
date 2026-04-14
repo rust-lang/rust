@@ -1504,6 +1504,9 @@ mod tests {
         alloc::sync::Arc::new(spin::Mutex::new(crate::task::ProcessInfo {
             pid: leader as u32,
             ppid: 1,
+            pgid: leader as u32,
+            sid: leader as u32,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -1720,6 +1723,7 @@ mod tests {
                 0,
                 alloc::vec![],
                 None,
+                alloc::vec![],
             )
         };
 
@@ -1786,6 +1790,7 @@ mod tests {
                 0,
                 alloc::vec![],
                 None,
+                alloc::vec![],
             )
         };
 
@@ -1819,6 +1824,7 @@ mod tests {
                 0,
                 alloc::vec![],
                 None,
+                alloc::vec![],
             )
         };
 
