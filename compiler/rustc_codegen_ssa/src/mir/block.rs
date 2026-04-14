@@ -1799,7 +1799,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         args: &[ArgAbi<'tcx, Ty<'tcx>>],
         lifetime_ends_after_call: &mut Vec<(Bx::Value, Size)>,
     ) -> usize {
-        let tuple = self.codegen_operand(bx, operand);
+        let mut tuple = self.codegen_operand(bx, operand);
+
+        // Mirrors the safety-copy in `codegen_call_terminator` (see #45996): if the
+        // tuple is a non-immediate `Copy` or `Constant` operand, its backing memory
+        // may be shared (e.g. it points into `.rodata` for a promoted constant), but
+        // the `extern "rust-call"` callee owns its argument storage by ABI and is
+        // free to write through it. Copy the tuple into a fresh alloca first so that
+        // the fields projected out of it below point at caller-owned memory.
+        if let &mir::Operand::Copy(_) | &mir::Operand::Constant(_) = operand
+            && let Ref(PlaceValue { llextra: None, .. }) = tuple.val
+        {
+            let tmp = PlaceRef::alloca(bx, tuple.layout);
+            bx.lifetime_start(tmp.val.llval, tmp.layout.size);
+            tuple.store_with_annotation(bx, tmp);
+            tuple.val = Ref(tmp.val);
+            lifetime_ends_after_call.push((tmp.val.llval, tmp.layout.size));
+        }
 
         // Handle both by-ref and immediate tuples.
         if let Ref(place_val) = tuple.val {
