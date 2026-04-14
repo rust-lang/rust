@@ -28,9 +28,17 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
             return;
         }
 
+        // Cap the number of iterations to avoid non-termination on tainted
+        // input (e.g. when layout cycle errors cause `iter_fields` to keep
+        // producing self-referential field types, cf.
+        // https://github.com/rust-lang/rust/issues/153205). In practice, 2
+        // iterations capture nearly all the value and more than 10 is never
+        // needed for non-contrived code, so 10 is enough.
+        const MAX_ITERATIONS: usize = 10;
+
         let mut excluded = excluded_locals(body);
         let typing_env = body.typing_env(tcx);
-        loop {
+        for _ in 0..MAX_ITERATIONS {
             debug!(?excluded);
             let escaping = escaping_locals(tcx, &excluded, body);
             debug!(?escaping);
