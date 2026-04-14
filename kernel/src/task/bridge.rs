@@ -89,7 +89,7 @@ pub fn task_from_thread_state(state: ThreadState) -> Task {
 pub fn task_from_snapshot(snapshot: &crate::sched::hooks::ProcessSnapshot) -> Task {
     let state = task_state_from_thread(snapshot.state);
     let job = Some(snapshot.pid);
-    let name = if snapshot.name.is_empty() { None } else { Some(snapshot.name.clone()) };
+    let name = (!snapshot.name.is_empty()).then(|| snapshot.name.clone());
     Task { state, job, name }
 }
 

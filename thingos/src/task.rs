@@ -26,11 +26,11 @@
 //! representation so that the new ontology appears first at the edges
 //! while the internal machinery is replaced gradually.
 //!
-//! | Canonical field | Current kernel source                      |
-//! |-----------------|--------------------------------------------|
-//! | `state`         | `Thread::state` (ThreadState)              |
-//! | `job`           | `Process::pid` (provisional Job ID / PID)  |
-//! | `name`          | `Thread::name` (human-readable label)      |
+//! | Canonical field | Current kernel source                     |
+//! |-----------------|-------------------------------------------|
+//! | `state`         | `Thread::state` (ThreadState)             |
+//! | `job`           | `Process::pid` (provisional Job ID / PID) |
+//! | `name`          | `Thread::name` (human-readable label)     |
 //!
 //! `ThreadState::Runnable` maps to `TaskState::Ready` because the kernel
 //! distinguishes "eligible to run" from "currently executing", which aligns

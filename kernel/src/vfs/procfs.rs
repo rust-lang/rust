@@ -301,8 +301,8 @@ fn lookup_pid_task(pid: u32, tid_and_rest: &str) -> SysResult<Arc<dyn VfsNode>> 
                 None => alloc::string::String::from("-"),
             };
             let name_str = match task.name.as_deref() {
-                Some(n) if !n.is_empty() => alloc::string::String::from(n),
-                _ => alloc::string::String::from("-"),
+                Some(n) => alloc::string::String::from(n),
+                None => alloc::string::String::from("-"),
             };
             let text = alloc::format!(
                 "state: {}\njob: {}\nname: {}\n",
