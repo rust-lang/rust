@@ -106,33 +106,24 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
 
             // If the enabled feature is unstable, record it.
             if UNSTABLE_LANG_FEATURES.iter().find(|f| feature_ident.name == f.name).is_some() {
-                // When the ICE comes from a standard library crate, there's a chance that the person
-                // hitting the ICE may be using -Zbuild-std or similar with an untested target.
-                // The bug is probably in the standard library and not the compiler in that case,
-                // but that doesn't really matter - we want a bug report.
-                if features.internal(feature_ident.name)
-                    && !STDLIB_STABLE_CRATES.contains(&crate_name)
-                {
-                    sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
-                }
-
                 features.set_enabled_lang_feature(EnabledLangFeature {
                     gate_name: feature_ident.name,
                     attr_sp: feature_ident.span,
                     stable_since: None,
                 });
-                continue;
+            } else {
+                // Otherwise, the feature is unknown. Enable it as a lib feature.
+                // It will be checked later whether the feature really exists.
+                features.set_enabled_lib_feature(EnabledLibFeature {
+                    gate_name: feature_ident.name,
+                    attr_sp: feature_ident.span,
+                });
             }
 
-            // Otherwise, the feature is unknown. Enable it as a lib feature.
-            // It will be checked later whether the feature really exists.
-            features.set_enabled_lib_feature(EnabledLibFeature {
-                gate_name: feature_ident.name,
-                attr_sp: feature_ident.span,
-            });
-
-            // Similar to above, detect internal lib features to suppress
-            // the ICE message that asks for a report.
+            // When the ICE comes from a standard library crate, there's a chance that the person
+            // hitting the ICE may be using -Zbuild-std or similar with an untested target.
+            // The bug is probably in the standard library and not the compiler in that case,
+            // but that doesn't really matter - we want a bug report.
             if features.internal(feature_ident.name) && !STDLIB_STABLE_CRATES.contains(&crate_name)
             {
                 sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
