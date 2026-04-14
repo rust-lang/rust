@@ -1,3 +1,4 @@
+#![no_std]
 #![deny(missing_docs)]
 
 //! Core definitions for ThingOS.
@@ -5,6 +6,26 @@
 //! This crate is intentionally small for now. It establishes a stable home in
 //! the workspace for ThingOS-owned concepts while the fork continues to track
 //! upstream Rust closely.
+//!
+//! # Schema-generated canonical types
+//!
+//! The [`task`] and [`job`] modules contain the schema-generated public types
+//! that define the canonical external representation of execution and lifecycle
+//! concepts respectively.  The kernel's internal `Thread` and `Process`
+//! structures are *transitional* implementations; they feed into these public
+//! types through explicit bridge layers rather than being exposed directly.
+//!
+//! ## Transitional mapping (Phase 1 + 2)
+//!
+//! | Canonical concept | Current internal backing  | Future direction             |
+//! |-------------------|---------------------------|------------------------------|
+//! | `task::Task`      | kernel `Thread`           | becomes the Task impl        |
+//! | `job::Job`        | kernel `Process` (partial)| hollowed out by further phases|
+//!
+//! Public truth changes first; internal machinery follows.
+
+pub mod job;
+pub mod task;
 
 /// The canonical public name of the system.
 pub const NAME: &str = "ThingOS";

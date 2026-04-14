@@ -4,21 +4,23 @@
 //!
 //! # Paths exposed
 //!
-//! | Path                       | Contents |
-//! |----------------------------|----------|
-//! | `/proc/version`            | Kernel version string |
-//! | `/proc/mounts`             | Active mount table (text) |
-//! | `/proc/meminfo`            | Heap memory statistics |
-//! | `/proc/cpuinfo`            | CPU model and frequency |
-//! | `/proc/uptime`             | Seconds since boot |
-//! | `/proc/self`               | Directory for the calling process |
-//! | `/proc/self/exe`           | Symlink to calling process's executable |
-//! | `/proc/<pid>/status`       | Process state, name, ppid |
-//! | `/proc/<pid>/cmdline`      | argv as null-delimited bytes |
-//! | `/proc/<pid>/exe`          | Symlink to the process's executable |
-//! | `/proc/<pid>/fd/`          | Directory of open fd targets |
-//! | `/proc/<pid>/task/`        | Directory of threads in the process |
-//! | `/proc/<pid>/task/<tid>/name` | Thread's human-readable name |
+//! | Path                             | Contents |
+//! |----------------------------------|----------|
+//! | `/proc/version`                  | Kernel version string |
+//! | `/proc/mounts`                   | Active mount table (text) |
+//! | `/proc/meminfo`                  | Heap memory statistics |
+//! | `/proc/cpuinfo`                  | CPU model and frequency |
+//! | `/proc/uptime`                   | Seconds since boot |
+//! | `/proc/self`                     | Directory for the calling process |
+//! | `/proc/self/exe`                 | Symlink to calling process's executable |
+//! | `/proc/<pid>/status`             | Process state, name, ppid |
+//! | `/proc/<pid>/cmdline`            | argv as null-delimited bytes |
+//! | `/proc/<pid>/exe`                | Symlink to the process's executable |
+//! | `/proc/<pid>/fd/`                | Directory of open fd targets |
+//! | `/proc/<pid>/task/`              | Directory of threads in the process |
+//! | `/proc/<pid>/task/<tid>/name`    | Thread's human-readable name |
+//! | `/proc/<pid>/task_state`         | Canonical `thingos::task::TaskState` (Phase 1) |
+//! | `/proc/<pid>/job_state`          | Canonical `thingos::job::JobState` (Phase 2) |
 
 use abi::errors::{Errno, SysResult};
 use alloc::collections::BTreeSet;
@@ -134,6 +136,34 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
         "exe" => {
             // /proc/<pid>/exe — symlink to the process's executable path.
             Ok(Arc::new(ProcPidExeNode { exec_path: snap.exec_path.clone() }))
+        }
+        // /proc/<pid>/task_state — canonical thingos::task::TaskState label.
+        //
+        // Bridges the current kernel ThreadState into the schema-generated
+        // TaskState via `kernel::task::bridge`.  This is the first public
+        // surface for the Task ontology (Phase 1).
+        "task_state" => {
+            let task_state =
+                crate::task::bridge::task_state_from_thread(snap.state);
+            let text = alloc::format!("{}\n", task_state.as_str());
+            Ok(Arc::new(DynamicTextNode::new(
+                text.into_bytes(),
+                300 + pid as u64 * 10 + 5,
+            )))
+        }
+        // /proc/<pid>/job_state — canonical thingos::job::JobState label.
+        //
+        // Bridges the current kernel Process/Thread lifecycle into the
+        // schema-generated JobState via `kernel::job::bridge`.  This is the
+        // first public surface for the Job ontology (Phase 2).
+        "job_state" => {
+            let job_state =
+                crate::job::bridge::job_state_from_snapshot(&snap);
+            let text = alloc::format!("{}\n", job_state.as_str());
+            Ok(Arc::new(DynamicTextNode::new(
+                text.into_bytes(),
+                300 + pid as u64 * 10 + 6,
+            )))
         }
         _ => Err(Errno::ENOENT),
     }
@@ -258,7 +288,7 @@ impl VfsNode for ProcPidDirNode {
         })
     }
     fn readdir(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
-        let entries = ["status", "cmdline", "fd", "exe", "task"];
+        let entries = ["status", "cmdline", "fd", "exe", "task", "task_state", "job_state"];
         super::write_readdir_entries(entries.into_iter(), offset, buf)
     }
 }

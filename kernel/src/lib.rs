@@ -6,6 +6,7 @@ pub mod device_registry;
 pub mod entropy;
 pub mod ipc;
 pub mod irq;
+pub mod job;
 pub mod logging;
 pub mod memory;
 pub mod once_cell;
