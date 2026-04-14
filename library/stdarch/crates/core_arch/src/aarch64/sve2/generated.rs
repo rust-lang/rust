@@ -10281,7 +10281,10 @@ pub fn svmul_lane_u64<const IMM_INDEX: i32>(op1: svuint64_t, op2: svuint64_t) ->
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(smullb, IMM_INDEX = 0))]
+#[cfg_attr(
+    all(test, not(target_env = "msvc")),
+    assert_instr(smullb, IMM_INDEX = 0)
+)]
 pub fn svmullb_lane_s32<const IMM_INDEX: i32>(op1: svint16_t, op2: svint16_t) -> svint32_t {
     static_assert_range!(IMM_INDEX, 0..=7);
     unsafe extern "unadjusted" {
@@ -10298,7 +10301,10 @@ pub fn svmullb_lane_s32<const IMM_INDEX: i32>(op1: svint16_t, op2: svint16_t) ->
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(smullb, IMM_INDEX = 0))]
+#[cfg_attr(
+    all(test, not(target_env = "msvc")),
+    assert_instr(smullb, IMM_INDEX = 0)
+)]
 pub fn svmullb_lane_s64<const IMM_INDEX: i32>(op1: svint32_t, op2: svint32_t) -> svint64_t {
     static_assert_range!(IMM_INDEX, 0..=3);
     unsafe extern "unadjusted" {
@@ -10315,7 +10321,10 @@ pub fn svmullb_lane_s64<const IMM_INDEX: i32>(op1: svint32_t, op2: svint32_t) ->
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(umullb, IMM_INDEX = 0))]
+#[cfg_attr(
+    all(test, not(target_env = "msvc")),
+    assert_instr(umullb, IMM_INDEX = 0)
+)]
 pub fn svmullb_lane_u32<const IMM_INDEX: i32>(op1: svuint16_t, op2: svuint16_t) -> svuint32_t {
     static_assert_range!(IMM_INDEX, 0..=7);
     unsafe extern "unadjusted" {
@@ -10332,7 +10341,10 @@ pub fn svmullb_lane_u32<const IMM_INDEX: i32>(op1: svuint16_t, op2: svuint16_t) 
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(umullb, IMM_INDEX = 0))]
+#[cfg_attr(
+    all(test, not(target_env = "msvc")),
+    assert_instr(umullb, IMM_INDEX = 0)
+)]
 pub fn svmullb_lane_u64<const IMM_INDEX: i32>(op1: svuint32_t, op2: svuint32_t) -> svuint64_t {
     static_assert_range!(IMM_INDEX, 0..=3);
     unsafe extern "unadjusted" {
@@ -10481,7 +10493,10 @@ pub fn svmullb_n_u64(op1: svuint32_t, op2: u32) -> svuint64_t {
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(smullt, IMM_INDEX = 0))]
+#[cfg_attr(
+    all(test, not(target_env = "msvc")),
+    assert_instr(smullt, IMM_INDEX = 0)
+)]
 pub fn svmullt_lane_s32<const IMM_INDEX: i32>(op1: svint16_t, op2: svint16_t) -> svint32_t {
     static_assert_range!(IMM_INDEX, 0..=7);
     unsafe extern "unadjusted" {
@@ -10498,7 +10513,10 @@ pub fn svmullt_lane_s32<const IMM_INDEX: i32>(op1: svint16_t, op2: svint16_t) ->
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(smullt, IMM_INDEX = 0))]
+#[cfg_attr(
+    all(test, not(target_env = "msvc")),
+    assert_instr(smullt, IMM_INDEX = 0)
+)]
 pub fn svmullt_lane_s64<const IMM_INDEX: i32>(op1: svint32_t, op2: svint32_t) -> svint64_t {
     static_assert_range!(IMM_INDEX, 0..=3);
     unsafe extern "unadjusted" {
@@ -10515,7 +10533,10 @@ pub fn svmullt_lane_s64<const IMM_INDEX: i32>(op1: svint32_t, op2: svint32_t) ->
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(umullt, IMM_INDEX = 0))]
+#[cfg_attr(
+    all(test, not(target_env = "msvc")),
+    assert_instr(umullt, IMM_INDEX = 0)
+)]
 pub fn svmullt_lane_u32<const IMM_INDEX: i32>(op1: svuint16_t, op2: svuint16_t) -> svuint32_t {
     static_assert_range!(IMM_INDEX, 0..=7);
     unsafe extern "unadjusted" {
@@ -10532,7 +10553,10 @@ pub fn svmullt_lane_u32<const IMM_INDEX: i32>(op1: svuint16_t, op2: svuint16_t) 
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(umullt, IMM_INDEX = 0))]
+#[cfg_attr(
+    all(test, not(target_env = "msvc")),
+    assert_instr(umullt, IMM_INDEX = 0)
+)]
 pub fn svmullt_lane_u64<const IMM_INDEX: i32>(op1: svuint32_t, op2: svuint32_t) -> svuint64_t {
     static_assert_range!(IMM_INDEX, 0..=3);
     unsafe extern "unadjusted" {
@@ -10549,7 +10573,7 @@ pub fn svmullt_lane_u64<const IMM_INDEX: i32>(op1: svuint32_t, op2: svuint32_t) 
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(smullt))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(smullt))]
 pub fn svmullt_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.smullt.nxv8i16")]
@@ -10562,7 +10586,7 @@ pub fn svmullt_s16(op1: svint8_t, op2: svint8_t) -> svint16_t {
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(smullt))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(smullt))]
 pub fn svmullt_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
     svmullt_s16(op1, svdup_n_s8(op2))
 }
@@ -10571,7 +10595,7 @@ pub fn svmullt_n_s16(op1: svint8_t, op2: i8) -> svint16_t {
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(smullt))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(smullt))]
 pub fn svmullt_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.smullt.nxv4i32")]
@@ -10584,7 +10608,7 @@ pub fn svmullt_s32(op1: svint16_t, op2: svint16_t) -> svint32_t {
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(smullt))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(smullt))]
 pub fn svmullt_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
     svmullt_s32(op1, svdup_n_s16(op2))
 }
@@ -10593,7 +10617,7 @@ pub fn svmullt_n_s32(op1: svint16_t, op2: i16) -> svint32_t {
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(smullt))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(smullt))]
 pub fn svmullt_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.smullt.nxv2i64")]
@@ -10606,7 +10630,7 @@ pub fn svmullt_s64(op1: svint32_t, op2: svint32_t) -> svint64_t {
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(smullt))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(smullt))]
 pub fn svmullt_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
     svmullt_s64(op1, svdup_n_s32(op2))
 }
@@ -10615,7 +10639,7 @@ pub fn svmullt_n_s64(op1: svint32_t, op2: i32) -> svint64_t {
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(umullt))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(umullt))]
 pub fn svmullt_u16(op1: svuint8_t, op2: svuint8_t) -> svuint16_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.umullt.nxv8i16")]
@@ -10628,7 +10652,7 @@ pub fn svmullt_u16(op1: svuint8_t, op2: svuint8_t) -> svuint16_t {
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(umullt))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(umullt))]
 pub fn svmullt_n_u16(op1: svuint8_t, op2: u8) -> svuint16_t {
     svmullt_u16(op1, svdup_n_u8(op2))
 }
@@ -10637,7 +10661,7 @@ pub fn svmullt_n_u16(op1: svuint8_t, op2: u8) -> svuint16_t {
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(umullt))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(umullt))]
 pub fn svmullt_u32(op1: svuint16_t, op2: svuint16_t) -> svuint32_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.umullt.nxv4i32")]
@@ -10650,7 +10674,7 @@ pub fn svmullt_u32(op1: svuint16_t, op2: svuint16_t) -> svuint32_t {
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(umullt))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(umullt))]
 pub fn svmullt_n_u32(op1: svuint16_t, op2: u16) -> svuint32_t {
     svmullt_u32(op1, svdup_n_u16(op2))
 }
@@ -10659,7 +10683,7 @@ pub fn svmullt_n_u32(op1: svuint16_t, op2: u16) -> svuint32_t {
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(umullt))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(umullt))]
 pub fn svmullt_u64(op1: svuint32_t, op2: svuint32_t) -> svuint64_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(target_arch = "aarch64", link_name = "llvm.aarch64.sve.umullt.nxv2i64")]
@@ -10672,7 +10696,7 @@ pub fn svmullt_u64(op1: svuint32_t, op2: svuint32_t) -> svuint64_t {
 #[inline(always)]
 #[target_feature(enable = "sve,sve2")]
 #[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
-#[cfg_attr(test, assert_instr(umullt))]
+#[cfg_attr(all(test, not(target_env = "msvc")), assert_instr(umullt))]
 pub fn svmullt_n_u64(op1: svuint32_t, op2: u32) -> svuint64_t {
     svmullt_u64(op1, svdup_n_u32(op2))
 }

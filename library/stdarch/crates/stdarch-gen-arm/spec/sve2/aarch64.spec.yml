@@ -10,6 +10,10 @@ generate_load_store_tests: true
 sve-unstable: &sve-unstable
   FnCall: [unstable, ['feature = "stdarch_aarch64_sve"', 'issue= "145052"']]
 
+# `#[cfg_attr(all(test, not(target_env = "msvc"))]`
+msvc-disabled: &msvc-disabled
+  FnCall: [all, [test, {FnCall: [not, ['target_env = "msvc"']]}]]
+
 intrinsics:
   - name: svbext[{_n}_{type}]
     attr: [*sve-unstable]
@@ -2429,7 +2433,10 @@ intrinsics:
       - LLVMLink: { name: "{type_kind[0].su}mullb.{sve_type[0]}" }
 
   - name: svmullb_lane[_{type[0]}]
-    attr: [*sve-unstable]
+    attr:
+      - *sve-unstable
+      # FIXME(arm-maintainers): MSVC disassembly of `[su]mullb` fails
+      - FnCall: [cfg_attr, [*msvc-disabled, {FnCall: [assert_instr, ["{type_kind[0].su}mullb", "IMM_INDEX = 0"]]}]]
     doc: Multiply long (bottom)
     arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
     return_type: "{sve_type[0]}"
@@ -2440,7 +2447,6 @@ intrinsics:
       - [u64, u32]
     static_defs: ["const IMM_INDEX: i32"]
     constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[1]}" }]
-    assert_instr: [["{type_kind[0].su}mullb", "IMM_INDEX = 0"]]
     compose:
       - LLVMLink:
           name: "{type_kind[0].su}mullb.lane.{sve_type[0]}"
@@ -2449,7 +2455,10 @@ intrinsics:
       - FnCall: ["{llvm_link}", [$op1, $op2, $IMM_INDEX]]
 
   - name: svmullt[{_n}_{type[0]}]
-    attr: [*sve-unstable]
+    attr:
+      - *sve-unstable
+      # FIXME(arm-maintainers): MSVC disassembly of `[su]mullt` fails
+      - FnCall: [cfg_attr, [*msvc-disabled, {FnCall: [assert_instr, ["{type_kind[0].su}mullt"]]}]]
     doc: Multiply long (top)
     arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
     return_type: "{sve_type[0]}"
@@ -2460,13 +2469,15 @@ intrinsics:
       - [u16, u8]
       - [u32, u16]
       - [u64, u32]
-    assert_instr: ["{type_kind[0].su}mullt"]
     n_variant_op: op2
     compose:
       - LLVMLink: { name: "{type_kind[0].su}mullt.{sve_type[0]}" }
 
   - name: svmullt_lane[_{type[0]}]
-    attr: [*sve-unstable]
+    attr:
+      - *sve-unstable
+      # FIXME(arm-maintainers): MSVC disassembly of `[su]mullt` fails
+      - FnCall: [cfg_attr, [*msvc-disabled, {FnCall: [assert_instr, ["{type_kind[0].su}mullt", "IMM_INDEX = 0"]]}]]
     doc: Multiply long (top)
     arguments: ["op1: {sve_type[1]}", "op2: {sve_type[1]}"]
     return_type: "{sve_type[0]}"
@@ -2477,7 +2488,6 @@ intrinsics:
       - [u64, u32]
     static_defs: ["const IMM_INDEX: i32"]
     constraints: [{ variable: IMM_INDEX, vec_max_elems_type: "{type[1]}" }]
-    assert_instr: [["{type_kind[0].su}mullt", "IMM_INDEX = 0"]]
     compose:
       - LLVMLink:
           name: "{type_kind[0].su}mullt.lane.{sve_type[0]}"
