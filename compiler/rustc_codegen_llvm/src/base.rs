@@ -77,12 +77,21 @@ pub(crate) fn compile_codegen_unit(
             dep_graph::hash_result(hcx, result)
         }
 
+        #[cold]
         fn format_value(_: &ModuleCodegen<ModuleLlvm>) -> String {
             unimplemented!()
         }
     }
 
+    // FIXME: use a separate trait for this
     impl<'tcx> QueryHelper<'tcx, Symbol, ModuleCodegen<ModuleLlvm>> for CompileCguHashHelper {
+        const EVAL_ALWAYS: bool = false;
+        const DEPTH_LIMIT: bool = false;
+        const DEP_KIND: dep_graph::DepKind = dep_graph::DepKind::CompileCodegenUnit;
+        const FEEDABLE: bool = false;
+        const NAME: &'static str = "";
+
+        #[cold]
         fn try_load_from_disk_fn(
             _: TyCtxt<'tcx>,
             _: dep_graph::SerializedDepNodeIndex,
@@ -90,6 +99,7 @@ pub(crate) fn compile_codegen_unit(
             unimplemented!()
         }
 
+        #[cold]
         fn will_cache_on_disk_for_key(_: Symbol) -> bool {
             unimplemented!()
         }
@@ -196,6 +206,21 @@ pub(crate) fn compile_codegen_unit(
             }
 
             ModuleCodegen::new_regular(cgu_name.to_string(), llvm_module)
+        }
+
+        #[cold]
+        fn create_tagged_key(_: Symbol) -> rustc_middle::queries::TaggedQueryKey<'tcx> {
+            unimplemented!()
+        }
+
+        #[cold]
+        fn handle_cycle_error_fn(
+            _: TyCtxt<'tcx>,
+            _: Symbol,
+            _: rustc_middle::query::Cycle<'tcx>,
+            _: rustc_errors::Diag<'_>,
+        ) -> ModuleCodegen<ModuleLlvm> {
+            unimplemented!()
         }
     }
 

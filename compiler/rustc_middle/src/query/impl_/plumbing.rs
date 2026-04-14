@@ -20,6 +20,7 @@ use crate::query::impl_::job::find_dep_kind_root;
 use crate::query::impl_::query_impl::for_each_query_vtable;
 use crate::query::impl_::{CollectActiveJobsKind, collect_active_query_jobs};
 
+#[cold]
 fn depth_limit_error<'tcx>(tcx: TyCtxt<'tcx>, job: QueryJobId) {
     let job_map = collect_active_query_jobs(tcx, CollectActiveJobsKind::Full);
     let (span, desc, depth) = find_dep_kind_root(tcx, job, job_map);
@@ -51,22 +52,25 @@ pub(crate) fn current_query_job() -> Option<QueryJobId> {
 }
 
 /// Executes a job by changing the `ImplicitCtxt` to point to the new query job while it executes.
-pub(crate) fn start_query<R>(
-    job_id: QueryJobId,
-    depth_limit: bool,
-    compute: impl FnOnce() -> R,
-) -> R {
+pub(crate) fn start_query_depth_limit<R>(job_id: QueryJobId, compute: impl FnOnce() -> R) -> R {
     tls::with_context(move |icx| {
-        if depth_limit && !icx.tcx.recursion_limit().value_within_limit(icx.query_depth) {
+        if !icx.tcx.recursion_limit().value_within_limit(icx.query_depth) {
             depth_limit_error(icx.tcx, job_id);
         }
 
         // Update the `ImplicitCtxt` to point to our new query job.
-        let icx = ImplicitCtxt {
-            query: Some(job_id),
-            query_depth: icx.query_depth + if depth_limit { 1 } else { 0 },
-            ..*icx
-        };
+        let icx = ImplicitCtxt { query: Some(job_id), query_depth: icx.query_depth + 1, ..*icx };
+
+        // Use the `ImplicitCtxt` while we execute the query.
+        tls::enter_context(&icx, compute)
+    })
+}
+
+/// Executes a job by changing the `ImplicitCtxt` to point to the new query job while it executes.
+pub(crate) fn start_query_no_depth_limit<R>(job_id: QueryJobId, compute: impl FnOnce() -> R) -> R {
+    tls::with_context(move |icx| {
+        // Update the `ImplicitCtxt` to point to our new query job.
+        let icx = ImplicitCtxt { query: Some(job_id), ..*icx };
 
         // Use the `ImplicitCtxt` while we execute the query.
         tls::enter_context(&icx, compute)
@@ -88,7 +92,7 @@ fn encode_query_values_inner<'a, 'tcx, C, V, H>(
     H: QueryHelper<'tcx, C::Key, C::Value>,
     V: Erasable + Encodable<CacheEncoder<'a, 'tcx>>,
 {
-    let _timer = tcx.prof.generic_activity_with_arg("encode_query_results_for", query.name);
+    let _timer = tcx.prof.generic_activity_with_arg("encode_query_results_for", H::NAME);
 
     assert!(all_inactive(&query.state));
     query.cache.for_each(&mut |key, value, dep_node| {
@@ -112,12 +116,12 @@ fn verify_query_key_hashes_inner<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Ke
     query: &'tcx QueryVTable<'tcx, C, H>,
     tcx: TyCtxt<'tcx>,
 ) {
-    let _timer = tcx.prof.generic_activity_with_arg("query_key_hash_verify_for", query.name);
+    let _timer = tcx.prof.generic_activity_with_arg("query_key_hash_verify_for", H::NAME);
 
     let cache = &query.cache;
     let mut map = UnordMap::with_capacity(cache.len());
     cache.for_each(&mut |key, _, _| {
-        let node = DepNode::construct(tcx, query.dep_kind, key);
+        let node = DepNode::construct(tcx, H::DEP_KIND, key);
         if let Some(other_key) = map.insert(node, *key) {
             bug!(
                 "query key:\n\

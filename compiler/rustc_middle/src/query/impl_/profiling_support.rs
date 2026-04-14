@@ -218,7 +218,7 @@ fn alloc_self_profile_query_strings_inner<'tcx, C, H>(
         if profiler.query_key_recording_enabled() {
             let mut query_string_builder = QueryKeyStringBuilder::new(profiler, tcx, string_cache);
 
-            let query_name = profiler.get_or_alloc_cached_string(query.name);
+            let query_name = profiler.get_or_alloc_cached_string(H::NAME);
 
             // Since building the string representation of query keys might
             // need to invoke queries itself, we cannot keep the query caches
@@ -246,7 +246,7 @@ fn alloc_self_profile_query_strings_inner<'tcx, C, H>(
             }
         } else {
             // In this branch we don't allocate query keys
-            let query_name = profiler.get_or_alloc_cached_string(query.name);
+            let query_name = profiler.get_or_alloc_cached_string(H::NAME);
             let event_id = event_id_builder.from_label(query_name).to_string_id();
 
             // FIXME(eddyb) make this O(1) by using a pre-cached query name `EventId`,

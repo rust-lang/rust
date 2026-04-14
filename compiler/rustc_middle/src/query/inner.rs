@@ -155,7 +155,7 @@ pub(crate) fn query_feed<'tcx, C, H>(
         None => {
             // There is no cached value for this key, so feed the query by
             // adding the provided value to the cache.
-            let dep_node = dep_graph::DepNode::construct(tcx, query.dep_kind, &key);
+            let dep_node = dep_graph::DepNode::construct(tcx, H::DEP_KIND, &key);
             let dep_node_index = tcx.dep_graph.with_feed_task(
                 dep_node,
                 tcx,

@@ -82,29 +82,19 @@ where
     C: QueryCache,
     H: QueryHelper<'tcx, C::Key, C::Value>,
 {
-    pub name: &'static str,
-
-    /// True if this query has the `eval_always` modifier.
-    pub eval_always: bool,
-    /// True if this query has the `depth_limit` modifier.
-    pub depth_limit: bool,
-    /// True if this query has the `feedable` modifier.
-    pub feedable: bool,
-
-    pub dep_kind: DepKind,
     pub state: QueryState<'tcx, C::Key>,
     pub cache: C,
-
     pub helper: H,
+}
 
-    /// Function pointer that handles a cycle error. `error` must be consumed, e.g. with `emit` (if
-    /// it should be emitted) or `delay_as_bug` (if it need not be emitted because an alternative
-    /// error is created and emitted). A value may be returned, or (more commonly) the function may
-    /// just abort after emitting the error.
-    pub handle_cycle_error_fn:
-        fn(tcx: TyCtxt<'tcx>, key: C::Key, cycle: Cycle<'tcx>, error: Diag<'_>) -> C::Value,
-
-    pub create_tagged_key: fn(C::Key) -> TaggedQueryKey<'tcx>,
+impl<'tcx, C, H> Default for QueryVTable<'tcx, C, H>
+where
+    C: QueryCache + Default,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
+{
+    fn default() -> Self {
+        Self { state: Default::default(), cache: Default::default(), helper: Default::default() }
+    }
 }
 
 impl<'tcx, C, H> QueryVTable<'tcx, C, H>
@@ -138,6 +128,12 @@ where
 }
 
 pub trait QueryHelper<'tcx, K, V>: QueryHashHelper<V> + Default + 'static {
+    const EVAL_ALWAYS: bool;
+    const DEPTH_LIMIT: bool;
+    const FEEDABLE: bool;
+    const DEP_KIND: DepKind;
+    const NAME: &'static str;
+
     fn try_load_from_disk_fn(tcx: TyCtxt<'tcx>, prev_index: SerializedDepNodeIndex) -> Option<V>;
 
     fn will_cache_on_disk_for_key(key: K) -> bool;
@@ -148,6 +144,14 @@ pub trait QueryHelper<'tcx, K, V>: QueryHashHelper<V> + Default + 'static {
     ///
     /// This should be the only code that calls the provider function.
     fn invoke_provider_fn(tcx: TyCtxt<'tcx>, key: K) -> V;
+
+    fn create_tagged_key(key: K) -> TaggedQueryKey<'tcx>;
+
+    /// Function pointer that handles a cycle error. `error` must be consumed, e.g. with `emit` (if
+    /// it should be emitted) or `delay_as_bug` (if it need not be emitted because an alternative
+    /// error is created and emitted). A value may be returned, or (more commonly) the function may
+    /// just abort after emitting the error.
+    fn handle_cycle_error_fn(tcx: TyCtxt<'tcx>, key: K, cycle: Cycle<'tcx>, error: Diag<'_>) -> V;
 }
 
 pub trait QueryHashHelper<V>: Default + 'static {
@@ -161,8 +165,10 @@ pub trait QueryHashHelper<V>: Default + 'static {
     fn format_value(value: &V) -> String;
 }
 
-impl<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>> fmt::Debug
-    for QueryVTable<'tcx, C, H>
+impl<'tcx, C, H> fmt::Debug for QueryVTable<'tcx, C, H>
+where
+    C: QueryCache,
+    H: QueryHelper<'tcx, C::Key, C::Value>,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // When debug-printing a query vtable (e.g. for ICE or tracing),
@@ -171,7 +177,7 @@ impl<'tcx, C: QueryCache, H: QueryHelper<'tcx, C::Key, C::Value>> fmt::Debug
         //
         // If there is need for a more detailed dump of all flags and fields,
         // consider writing a separate dump method and calling it explicitly.
-        f.write_str(self.name)
+        f.write_str(H::NAME)
     }
 }
 
@@ -373,6 +379,12 @@ macro_rules! define_callbacks {
                 pub struct Helper;
 
                 impl<'tcx> crate::query::QueryHelper<'tcx, Key<'tcx>, Erased<Value<'tcx>>> for Helper {
+                    const EVAL_ALWAYS: bool = $eval_always;
+                    const DEPTH_LIMIT: bool = $depth_limit;
+                    const FEEDABLE: bool = $feedable;
+                    const DEP_KIND: crate::dep_graph::DepKind = crate::dep_graph::DepKind::$name;
+                    const NAME: &'static str = stringify!($name);
+
                     #[cfg($cache_on_disk)]
                     fn try_load_from_disk_fn(
                         tcx: TyCtxt<'tcx>,
@@ -430,6 +442,20 @@ macro_rules! define_callbacks {
                         // Erase the returned value, because `QueryVTable` uses erased values.
                         // For queries with `arena_cache`, this also arena-allocates the value.
                         provided_to_erased(tcx, provided_value)
+                    }
+
+                    #[inline(always)]
+                    fn create_tagged_key(key: Key<'tcx>) -> TaggedQueryKey<'tcx> {
+                        TaggedQueryKey::$name(key)
+                    }
+
+                    #[cfg($handle_cycle_error)]
+                    fn handle_cycle_error_fn(tcx: TyCtxt<'tcx>, key: Key<'tcx>, cycle: $crate::query::plumbing::Cycle<'tcx>, err: rustc_errors::Diag<'_>) -> Erased<Value<'tcx>> {
+                        rustc_middle::query::erase::erase_val($crate::query::impl_::handle_cycle_error::$name(tcx, key, cycle, err))
+                    }
+                    #[cfg(not($handle_cycle_error))]
+                    fn handle_cycle_error_fn(_: TyCtxt<'tcx>, _: Key<'tcx>, _: $crate::query::plumbing::Cycle<'tcx>, err: rustc_errors::Diag<'_>) -> Erased<Value<'tcx>> {
+                        $crate::query::impl_::handle_cycle_error::default(err)
                     }
                 }
 
@@ -582,6 +608,7 @@ macro_rules! define_callbacks {
         }
 
         /// Holds a `QueryVTable` for each query.
+        #[derive(Default)]
         pub struct QueryVTables<'tcx> {
             $(
                 pub $name: $crate::query::QueryVTable<'tcx, $name::Cache<'tcx>, $name::Helper>,

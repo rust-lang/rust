@@ -17,7 +17,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId, 
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::find_attr;
 use rustc_hir_pretty::id_to_string;
-use rustc_middle::dep_graph::WorkProductId;
+use rustc_middle::dep_graph::{DepKind, WorkProductId};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::mir::interpret;
 use rustc_middle::query::{Providers, QueryHashHelper, QueryHelper};
@@ -2478,6 +2478,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
     impl QueryHashHelper<()> for EncodeMetadataHelper {
         const NO_HASH: bool = true;
 
+        #[cold]
         fn hash_value_fn(
             _: &mut rustc_middle::ich::StableHashingContext<'_>,
             _: &(),
@@ -2485,12 +2486,20 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
             unimplemented!()
         }
 
+        #[cold]
         fn format_value((): &()) -> String {
             "()".to_string()
         }
     }
 
     impl<'tcx> QueryHelper<'tcx, &Path, ()> for EncodeMetadataHelper {
+        const EVAL_ALWAYS: bool = false;
+        const DEPTH_LIMIT: bool = false;
+        const FEEDABLE: bool = false;
+        const NAME: &'static str = "";
+        const DEP_KIND: rustc_middle::dep_graph::DepKind = DepKind::Metadata;
+
+        #[cold]
         fn try_load_from_disk_fn(
             _: TyCtxt<'tcx>,
             _: rustc_middle::dep_graph::SerializedDepNodeIndex,
@@ -2498,6 +2507,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
             unimplemented!()
         }
 
+        #[cold]
         fn will_cache_on_disk_for_key(_: &Path) -> bool {
             unimplemented!()
         }
@@ -2519,6 +2529,21 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
 
                 root.position.get()
             })
+        }
+
+        #[cold]
+        fn create_tagged_key(_: &Path) -> rustc_middle::queries::TaggedQueryKey<'tcx> {
+            unimplemented!()
+        }
+
+        #[cold]
+        fn handle_cycle_error_fn(
+            _: TyCtxt<'tcx>,
+            _: &Path,
+            _: rustc_middle::query::Cycle<'tcx>,
+            _: rustc_errors::Diag<'_>,
+        ) -> () {
+            unimplemented!()
         }
     }
 

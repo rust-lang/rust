@@ -1,4 +1,3 @@
-use rustc_middle::queries::TaggedQueryKey;
 use rustc_middle::query::QueryVTable;
 use rustc_middle::ty::TyCtxt;
 
@@ -36,35 +35,6 @@ macro_rules! define_queries {
             pub(crate) mod $name {
                 use super::*;
 
-                pub(crate) fn make_query_vtable<'tcx>()
-                    -> QueryVTable<'tcx, rustc_middle::queries::$name::Cache<'tcx>, rustc_middle::queries::$name::Helper>
-                {
-                    QueryVTable {
-                        name: stringify!($name),
-                        eval_always: $eval_always,
-                        depth_limit: $depth_limit,
-                        feedable: $feedable,
-                        dep_kind: rustc_middle::dep_graph::DepKind::$name,
-                        state: Default::default(),
-                        cache: Default::default(),
-
-                        helper: Default::default(),
-
-                        #[cfg($handle_cycle_error)]
-                        handle_cycle_error_fn: |tcx, key, cycle, err| {
-                            use rustc_middle::query::erase::erase_val;
-
-                            erase_val($crate::query::impl_::handle_cycle_error::$name(tcx, key, cycle, err))
-                        },
-                        #[cfg(not($handle_cycle_error))]
-                        handle_cycle_error_fn: |_tcx, _key, _cycle, err| {
-                            $crate::query::impl_::handle_cycle_error::default(err)
-                        },
-
-                        create_tagged_key: TaggedQueryKey::$name,
-                    }
-                }
-
                 /// Marker type that implements [`GetQueryVTable`] for this query.
                 pub(crate) enum VTableGetter {}
 
@@ -79,16 +49,6 @@ macro_rules! define_queries {
                 }
             }
         )*
-
-        pub(crate) fn make_query_vtables<'tcx>()
-            -> rustc_middle::queries::QueryVTables<'tcx>
-        {
-            rustc_middle::queries::QueryVTables {
-                $(
-                    $name: crate::query::impl_::query_impl::$name::make_query_vtable(),
-                )*
-            }
-        }
 
         /// Given a filter condition (e.g. `ALL` or `CACHE_ON_DISK`), a `tcx`,
         /// and a closure expression that accepts `&QueryVTable`, this macro
