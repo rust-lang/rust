@@ -1,5 +1,6 @@
 /// Scheduler states for a task
 kind thingos.task.state = enum {
+  New,
   Ready,
   Running,
   Blocked,
