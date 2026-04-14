@@ -25,6 +25,7 @@
 //! | `/proc/<pid>/job_exit`           | Canonical `thingos::job::JobExit` — state + code (Phase 3) |
 //! | `/proc/<pid>/job_wait`           | Canonical `thingos::job::JobWaitResult` — non-blocking poll (Phase 3) |
 //! | `/proc/<pid>/group_kind`         | Canonical `thingos::group::GroupKind` — coordination role (Phase 4)     |
+//! | `/proc/<pid>/foreground_group`   | Canonical foreground membership — `true`/`false` in Group terms (Phase 4) |
 //! | `/proc/<pid>/authority`          | Canonical `thingos::authority::Authority` — permission context (Phase 7) |
 //! | `/proc/<pid>/place`              | Canonical `thingos::place::Place` — world/visibility context (Phase 8)  |
 
@@ -103,6 +104,12 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
     match rest {
         // /proc/<pid> — the per-process directory itself
         "" => Ok(Arc::new(ProcPidDirNode { pid })),
+        // /proc/<pid>/status — transitional: legacy process-group surface.
+        //
+        // Reports basic process state (name, state, pid, ppid) using
+        // Unix-process vocabulary.  This path is maintained for compatibility
+        // but must not be extended or improved.  New coordination state should
+        // use `/proc/<pid>/group_kind` or `/proc/<pid>/foreground_group`.
         "status" => {
             let state_name = match snap.state {
                 crate::task::TaskState::Runnable => "R",
@@ -189,6 +196,20 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
             let group = crate::group::bridge::group_from_snapshot(&snap);
             let text = group.as_text();
             Ok(Arc::new(DynamicTextNode::new(text.into_bytes(), 300 + pid as u64 * 10 + 9)))
+        }
+        // /proc/<pid>/foreground_group — canonical foreground membership (Phase 4).
+        //
+        // Reports whether this process belongs to the foreground coordination
+        // group, in canonical Group terms via `kernel::group::bridge`.
+        // Returns "true\n" when the process is in the foreground group and
+        // "false\n" otherwise.
+        //
+        // This path avoids exposing pgid/sid/session concepts directly.
+        // All logic is routed through `kernel::group::bridge::foreground_group_from_snapshot`.
+        "foreground_group" => {
+            let is_fg = crate::group::bridge::foreground_group_from_snapshot(&snap);
+            let text = if is_fg { "true\n" } else { "false\n" };
+            Ok(Arc::new(DynamicTextNode::new(text.as_bytes().to_vec(), 300 + pid as u64 * 10 + 12)))
         }
         // /proc/<pid>/authority — canonical thingos::authority::Authority (Phase 7).
         //
@@ -391,7 +412,7 @@ impl VfsNode for ProcPidDirNode {
         // Legacy procfs entries (transitional internal model):
         //   status, cmdline, fd, exe, task
         // Canonical schema entries (Phase 1–8):
-        //   task_state, job_state, job_exit, job_wait, group_kind, authority, place
+        //   task_state, job_state, job_exit, job_wait, group_kind, foreground_group, authority, place
         let entries = [
             "status",
             "cmdline",
@@ -403,6 +424,7 @@ impl VfsNode for ProcPidDirNode {
             "job_exit",
             "job_wait",
             "group_kind",
+            "foreground_group",
             "authority",
             "place",
         ];
