@@ -75,7 +75,7 @@ pub fn sys_spawn_thread(req_ptr: usize, _unused: usize) -> SysResult<usize> {
 
     // Reject thread creation while an exec is in progress for this process.
     if let Some(pinfo) = crate::sched::process_info_current() {
-        if pinfo.lock().exec_in_progress {
+        if pinfo.lock().lifecycle.exec_in_progress {
             return Err(Errno::EAGAIN);
         }
     }
@@ -234,7 +234,7 @@ pub fn sys_getpid() -> SysResult<usize> {
 
 pub fn sys_getppid() -> SysResult<usize> {
     let pinfo = crate::sched::process_info_current();
-    let ppid = pinfo.map(|p| p.lock().ppid).unwrap_or(0);
+    let ppid = pinfo.map(|p| p.lock().lifecycle.ppid).unwrap_or(0);
     Ok(ppid as usize)
 }
 

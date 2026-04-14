@@ -117,3 +117,4 @@ build_errors.log
 bran/bin-x86_64/kernel
 bran/bin-x86_64/kernel
 bran/bin-x86_64/kernel
+assets/pci/pci.ids

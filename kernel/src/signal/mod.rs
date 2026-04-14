@@ -214,7 +214,7 @@ pub fn send_signal_to_process(pid: u32, sig: u8) -> bool {
     if let Some(pinfo) = process_info_for_pid(pid) {
         let mut p = pinfo.lock();
         p.signals.post(sig);
-        let tids = p.thread_ids.clone();
+        let tids = p.lifecycle.thread_ids.clone();
         drop(p);
         for tid in tids {
             unsafe { crate::sched::wake_task_erased(tid as u64) };
@@ -284,7 +284,7 @@ pub fn send_signal_to_group(pgid: u32, sig: u8) -> usize {
             continue;
         }
         p.signals.post(sig);
-        let tids = p.thread_ids.clone();
+        let tids = p.lifecycle.thread_ids.clone();
         drop(p);
         for tid in tids {
             unsafe { crate::sched::wake_task_erased(tid as u64) };
@@ -319,7 +319,7 @@ pub fn setpgid_current(pid: i64, pgid: i64) -> Result<(), Errno> {
     let target_info = process_info_for_pid(target_pid).ok_or(Errno::ESRCH)?;
     {
         let target = target_info.lock();
-        if target.pid != caller_pid && target.ppid != caller_pid {
+        if target.pid != caller_pid && target.lifecycle.ppid != caller_pid {
             return Err(Errno::EPERM);
         }
         if target.sid != caller_sid {

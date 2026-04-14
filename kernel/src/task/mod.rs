@@ -129,6 +129,98 @@ impl ProcessAddressSpace {
     }
 }
 
+/// Lifecycle subdivision of a `Process`.
+///
+/// This struct groups all lifecycle/accounting concerns that are conceptually
+/// owned by **Job**, not by `Process`, `Task`, or `Space`.  It lives inside
+/// `Process` as a transitional measure: the fields are here because a
+/// first-class `Job` kernel object does not yet exist, but they are
+/// deliberately separated so that future extraction into `Job` is obvious
+/// and mechanical.
+///
+/// # Conceptual future ownership
+///
+/// In the emerging ThingOS object model:
+/// - **Task** owns execution context (registers, stack, scheduling state).
+/// - **Job** owns lifecycle: creation, parent/child linkage, thread-group
+///   membership, exec gating, exit-status accumulation, and reaping.
+/// - **Process** is transitional and should stop accumulating lifecycle meaning.
+///
+/// New kernel code that needs to add lifecycle state should add it **here**,
+/// not directly to top-level `Process`.  When `Job` is introduced as a
+/// first-class object, this subdivision is the extraction seam.
+///
+/// # Current lifecycle responsibility set
+///
+/// | Field              | Role                                                        |
+/// |--------------------|-------------------------------------------------------------|
+/// | `ppid`             | Parent/child linkage for `waitpid` filtering                |
+/// | `thread_ids`       | Thread-group membership; drives group-exit and exec collapse|
+/// | `exec_in_progress` | Lifecycle gate; blocks `SYS_SPAWN_THREAD` during exec       |
+/// | `children_done`    | Exit-status accumulator consumed by parent `waitpid`        |
+///
+/// # Future extraction seams
+///
+/// Likely follow-on cuts once a first-class `Job` is introduced:
+/// - Promote `ProcessLifecycle` into `Job` and share it across threads in the
+///   group (replacing the `Arc<Mutex<Process>>` back-reference for lifecycle).
+/// - Move `exit_code` and `exit_waiters` from `Thread<R>` here, then into `Job`.
+/// - Move parent/child lifecycle semantics (SIGCHLD, orphan reaping) into `Job`.
+/// - Move `pid` (TGID) from top-level `Process` here once `Space` identity is
+///   separated; `pid` currently doubles as both lifecycle ID (→ `Job`) and
+///   address-space tag (→ `Space`).
+/// - Detach `children_done` from `Process` entirely once `Job` can hold its own
+///   wait queue.
+///
+/// # Relationship to the `kernel::job::bridge` module
+///
+/// `kernel::job::bridge` is the canonical public surface for lifecycle state.
+/// All lifecycle-facing public paths (procfs, introspection, wait syscalls)
+/// should derive `Job` / `JobExit` / `JobWaitResult` through that bridge
+/// rather than reading this subdivision directly.  This subdivision is the
+/// preferred **source** for those bridge mappings.
+pub struct ProcessLifecycle {
+    /// PID of the parent process.
+    ///
+    /// Used by `waitpid` to filter exit notifications to the correct parent.
+    /// Migrates to `Job` with exit/wait semantics.
+    pub ppid: u32,
+    /// TIDs of all threads in this thread group.
+    ///
+    /// The first entry is the thread-group leader (TID == PID).  Entries are
+    /// added on `spawn_user_thread` and removed when a thread exits.
+    /// Drives group-leader exit (kills siblings) and exec collapse.
+    pub thread_ids: Vec<ThreadId>,
+    /// Set while an `exec` is in progress; blocks new `SYS_SPAWN_THREAD` calls.
+    ///
+    /// This is a lifecycle gate: concurrent thread spawning is illegal during
+    /// exec collapse.  Belongs with `Job` lifecycle once extracted.
+    pub exec_in_progress: bool,
+    /// Exited children waiting for `waitpid` to consume their status.
+    ///
+    /// Each entry is `(child_pid, wait_status)`.  The status is encoded in
+    /// the same format as POSIX `waitpid`: normal exit uses `(code << 8)`,
+    /// signal termination uses `signum`, and stopped/continued children use
+    /// the appropriate `w_stop_sig` / `w_continued` values.
+    pub children_done: alloc::collections::VecDeque<(u32, i32)>,
+}
+
+impl ProcessLifecycle {
+    /// Create a fresh lifecycle subdivision for a new process.
+    ///
+    /// `ppid` is the PID of the creating (parent) process, or `0` for a
+    /// root/orphan process.  `leader_tid` is the TID of the thread-group
+    /// leader (normally equal to the new process's PID cast to `ThreadId`).
+    pub fn new(ppid: u32, leader_tid: ThreadId) -> Self {
+        ProcessLifecycle {
+            ppid,
+            thread_ids: alloc::vec![leader_tid],
+            exec_in_progress: false,
+            children_done: alloc::collections::VecDeque::new(),
+        }
+    }
+}
+
 /// First-class process object.
 ///
 /// A `Process` is the unit of resource ownership in Thing-OS.  Every user
@@ -137,29 +229,35 @@ impl ProcessAddressSpace {
 ///
 /// # Ownership model
 ///
-/// | Resource           | Owner   | How threads access it                    |
-/// |--------------------|---------|------------------------------------------|
-/// | PID / PPID         | Process | `process.lock().pid`                     |
-/// | VM address space   | Process | `process.lock().space.aspace_raw`        |
-/// | VM mappings        | Process | `process.lock().space.mappings` (Arc)    |
-/// | FD table           | Process | `process.lock().fd_table`                |
-/// | CWD                | Process | `process.lock().cwd`                     |
-/// | VFS namespace      | Process | `process.lock().namespace`               |
-/// | argv / env / auxv  | Process | `process.lock().argv` etc.               |
-/// | Thread list        | Process | `process.lock().thread_ids`              |
-/// | exec path          | Process | `process.lock().exec_path`               |
+/// | Resource           | Owner   | How threads access it                              |
+/// |--------------------|---------|-----------------------------------------------------|
+/// | PID                | Process | `process.lock().pid`                               |
+/// | PPID / thread list | Process | `process.lock().lifecycle.ppid` etc.               |
+/// | VM address space   | Process | `process.lock().space.aspace_raw`                  |
+/// | VM mappings        | Process | `process.lock().space.mappings` (Arc)              |
+/// | FD table           | Process | `process.lock().fd_table`                          |
+/// | CWD                | Process | `process.lock().cwd`                               |
+/// | VFS namespace      | Process | `process.lock().namespace`                         |
+/// | argv / env / auxv  | Process | `process.lock().argv` etc.                         |
+/// | exec path          | Process | `process.lock().exec_path`                         |
 ///
 /// # Locking rules
 ///
 /// The `Process` mutex must **never** be acquired while the scheduler lock
 /// (`SCHEDULER.lock()`) is held — reverse order causes deadlock.
 ///
-/// # Responsibility classification (Phase 8 migration inventory)
+/// # Responsibility classification (Phase 9 migration inventory)
 ///
 /// Fields in this struct are grouped by their intended canonical destination
 /// in the phased migration.  Fields are **not** yet extracted; they remain
 /// here as transitional backing.  All public-facing access should go through
 /// the appropriate bridge module.
+///
+/// **Lifecycle** (Job — `kernel::job::bridge`):
+/// * `lifecycle` — grouped under [`ProcessLifecycle`]; contains `ppid`,
+///   `thread_ids`, `exec_in_progress`, and `children_done`.
+///   New code must not add lifecycle state directly to `Process`; add it to
+///   `ProcessLifecycle` instead.
 ///
 /// **Place** (world/visibility context — `kernel::place::bridge`):
 /// * `cwd` — current working directory path → `Place::cwd`
@@ -180,9 +278,9 @@ impl ProcessAddressSpace {
 /// **Authority** (permission context — `kernel::authority::bridge`):
 /// * `exec_path` — used as authority name fallback today
 ///
-/// **Lifecycle / identity** (Task/Job — not yet extracted):
-/// * `pid` / `ppid` / `thread_ids` / `exec_in_progress`
-/// * `children_done` — waitpid queue
+/// **Identity** (shared between Job and Space — not yet extracted):
+/// * `pid` — TGID; doubles as lifecycle ID (→ `Job`) and address-space tag
+///   (→ `Space`).  Split deferred until `Space` identity is separated.
 ///
 /// **Space** (address-space ownership — future `Space` kernel object):
 /// * `space` — grouped under [`ProcessAddressSpace`]; contains `mappings` and
@@ -200,9 +298,24 @@ impl ProcessAddressSpace {
 /// See `docs/concepts/process-object.md` for the full design document.
 pub struct Process {
     /// Thread Group ID — the PID of the thread-group leader.
+    ///
+    /// `pid` is kept at the top level of `Process` rather than inside
+    /// `lifecycle` because it currently doubles as both the lifecycle identity
+    /// (→ future `Job`) and the address-space identity (→ future `Space`).
+    /// Once those two responsibilities are separated, `pid` will migrate into
+    /// `ProcessLifecycle` alongside the other `Job`-bound fields.
     pub pid: u32,
-    /// PID of the parent process.
-    pub ppid: u32,
+    // ── Lifecycle subdivision (future `Job` kernel object) ────────────────────
+    // Lifecycle concerns are grouped here rather than scattered across `Process`.
+    // This subdivision is the extraction seam for a future first-class `Job`
+    // object.  Do NOT add new lifecycle state directly to top-level `Process` —
+    // add it to `ProcessLifecycle` instead.
+    /// Lifecycle subdivision — conceptually future `Job` ownership.
+    ///
+    /// Contains parent/child linkage, thread-group membership, exec gating,
+    /// and the `waitpid` exit queue.  See [`ProcessLifecycle`] for the full
+    /// design rationale and future extraction seams.
+    pub lifecycle: ProcessLifecycle,
     // ── Legacy compatibility: Unix session/process-group state ────────────────
     // These fields implement necessary Unix session semantics but are NOT
     // architectural truth.  Public-facing code should use `Group` (via
@@ -256,13 +369,6 @@ pub struct Process {
     /// New code must not read this field directly for world-context purposes;
     /// use `crate::place::bridge::place_from_snapshot` instead.
     pub cwd: alloc::string::String,
-    /// TIDs of all threads in this thread group.
-    ///
-    /// The first entry is the thread-group leader (TID == PID).  Entries are
-    /// added on `spawn_user_thread` and removed when a thread exits.
-    pub thread_ids: Vec<ThreadId>,
-    /// Set while an `exec` is in progress; blocks new `SYS_SPAWN_THREAD` calls.
-    pub exec_in_progress: bool,
     /// Path of the currently-running executable image.
     pub exec_path: alloc::string::String,
     // ── Space context (future `Space` kernel object) ──────────────────────────
@@ -283,13 +389,6 @@ pub struct Process {
     /// Group/Presence terms.  This field is quarantined as transitional
     /// compatibility state.
     pub signals: crate::signal::ProcessSignals,
-    /// Exited children waiting for `waitpid` to consume their status.
-    ///
-    /// Each entry is `(child_pid, wait_status)`.  The status is encoded in
-    /// the same format as POSIX `waitpid`: normal exit uses `(code << 8)`,
-    /// signal termination uses `signum`, and stopped/continued children use
-    /// the appropriate `w_stop_sig` / `w_continued` values.
-    pub children_done: alloc::collections::VecDeque<(u32, i32)>,
 }
 
 /// Backward-compatible alias — prefer `Process` in new code.
