@@ -9,5 +9,5 @@ fn main() {
 
     let a​= x + y;
     //~^ ERROR unknown start of token: \u{200b}
-    //~| HELP invisible characters like '\u{200b}' are not usually visible in text editors
+    //~| help: invisible characters like '\u{200b}' are not usually visible in text editors
 }
