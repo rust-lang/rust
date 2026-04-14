@@ -26,15 +26,15 @@ pub const KIND_ID_THINGOS_TASK_STATE: [u8; 16] = [
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TaskState {
-    /// Thread has been created but has not yet been placed on a run queue.
+    /// Task has been created but has not yet been placed on a run queue.
     New,
-    /// Thread is on a run queue, waiting for CPU time.
+    /// Task is on a run queue, waiting for CPU time.
     Ready,
-    /// Thread is currently executing on a CPU.
+    /// Task is currently executing on a CPU.
     Running,
-    /// Thread is waiting for an event (I/O, lock, timer, …).
+    /// Task is waiting for an event (I/O, lock, timer, …).
     Blocked,
-    /// Thread has exited; its exit code is available.
+    /// Task has exited; its exit code is available.
     Exited,
 }
 
