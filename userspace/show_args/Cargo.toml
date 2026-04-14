@@ -1,0 +1,13 @@
+[package]
+name = "show_args"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt"] }
+
+[[bin]]
+name = "show_args"
+path = "src/main.rs"
+test = false
+bench = false

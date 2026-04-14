@@ -1,0 +1,7 @@
+[package]
+name = "reboot"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt", "global-alloc"] }

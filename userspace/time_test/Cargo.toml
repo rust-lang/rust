@@ -1,0 +1,13 @@
+[package]
+name = "time_test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt"] }
+
+[[bin]]
+name = "time_test"
+path = "src/main.rs"
+test = false
+bench = false

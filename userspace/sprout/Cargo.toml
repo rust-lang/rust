@@ -1,0 +1,20 @@
+[package]
+name = "sprout"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt", "global-alloc"] }
+fdt = { version = "0.1.5", default-features = false }
+abi = { path = "../../abi" }
+spin = "0.9"
+
+[features]
+diagnostic-apps = []
+
+[[bin]]
+name = "sprout"
+path = "src/main.rs"
+# For userspace/sprout, test=false usually helps avoid test harness issues on bare metal if needed
+test = false
+doctest = false

@@ -1,0 +1,12 @@
+[package]
+name = "ps2_mouse"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "ps2_mouse"
+path = "src/main.rs"
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt"] }
+abi = { path = "../../abi" }

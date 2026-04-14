@@ -1,0 +1,13 @@
+[package]
+name = "driver_wasm_host"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+wasmi = "0.32"
+anyhow = "1.0"
+stem = { path = "../../stem" }
+abi = { path = "../../abi" }
+log = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

@@ -26,7 +26,7 @@ check-ui-split:
 
 # Audit platform boundary (verify no_std compliance).
 audit-platform:
-    python3 scripts/audit_platform_boundary.py
+    {{xtask}} audit
 
 # Alias for iso.
 build arch=karch:
@@ -211,7 +211,6 @@ test *args:
         -p xtask \
         -p stem \
         -p stem-macros \
-        -p bulb \
         -p llm \
         -p llm_stub \
         -p fb_common \

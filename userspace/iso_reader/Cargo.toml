@@ -1,0 +1,10 @@
+[package]
+name = "iso_reader"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt", "global-alloc"] }
+abi = { path = "../../abi" }
+iso9660 = { path = "../iso9660" }
+sha2 = { version = "0.10", default-features = false }

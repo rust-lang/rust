@@ -1,0 +1,22 @@
+{
+    "llvm-target": "riscv64",
+    "llvm-abiname": "lp64d",
+    "arch": "riscv64",
+    "os": "thingos",
+    "target-pointer-width": 64,
+    "data-layout": "e-m:e-p:64:64-i64:64-i128:128-n32:64-S128",
+    "linker-flavor": "ld.lld",
+    "linker": "rust-lld",
+    "pre-link-args": {
+        "ld.lld": [
+            "-Tlink/user/riscv64.ld"
+        ]
+    },
+    "panic-strategy": "abort",
+    "position-independent-executables": false,
+    "static-position-independent-executables": false,
+    "relocation-model": "static",
+    "features": "+m,+a,+f,+d,+c",
+    "executables": true,
+    "has-thread-local": true
+}

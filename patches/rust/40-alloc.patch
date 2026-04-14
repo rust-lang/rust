@@ -1,0 +1,48 @@
+diff --git a/library/std/src/sys/alloc/mod.rs b/library/std/src/sys/alloc/mod.rs
+index f2f1d1c7..9cb7e7b6 100644
+--- a/library/std/src/sys/alloc/mod.rs
++++ b/library/std/src/sys/alloc/mod.rs
+@@ -98,6 +98,9 @@ unsafe fn realloc_fallback(
+     target_os = "vexos" => {
+         mod vexos;
+     }
++    target_os = "thingos" => {
++        mod thingos;
++    }
+     target_family = "wasm" => {
+         mod wasm;
+     }
+diff --git a/library/std/src/sys/alloc/thingos.rs b/library/std/src/sys/alloc/thingos.rs
+new file mode 100644
+index 00000000..b80ccfc5
+--- /dev/null
++++ b/library/std/src/sys/alloc/thingos.rs
+@@ -0,0 +1,28 @@
++//! Global Allocator for ThingOS.
++//!
++//! This is a stub — Thing-OS userspace apps use stem's `#[global_allocator]`
++//! which takes precedence over this `System` allocator. These methods should
++//! never actually be called, but they must exist for std to compile.
++
++use crate::alloc::{GlobalAlloc, Layout, System};
++
++#[stable(feature = "alloc_system_type", since = "1.28.0")]
++unsafe impl GlobalAlloc for System {
++    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
++        // stem's global allocator handles all allocations.
++        let _ = layout;
++        crate::ptr::null_mut()
++    }
++
++    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
++        // stem's global allocator handles all deallocations.
++    }
++
++    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
++        self.alloc(layout)
++    }
++
++    unsafe fn realloc(&self, _ptr: *mut u8, _old_layout: Layout, _new_size: usize) -> *mut u8 {
++        core::ptr::null_mut()
++    }
++}

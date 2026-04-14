@@ -1,0 +1,18 @@
+[package]
+name = "bristle"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "bristle"
+path = "src/main.rs"
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+diagnostic-apps = []
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt"] }
+abi = { path = "../../abi" }

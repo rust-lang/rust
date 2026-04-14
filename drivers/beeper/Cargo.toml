@@ -1,0 +1,9 @@
+[package]
+name = "beeper"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt", "global-alloc"] }
+abi = { path = "../../abi" }
+libm = "0.2"

@@ -12,6 +12,7 @@ svg-cursors = []
 
 [dependencies]
 anyhow = "1.0.100"
+cargo_metadata = "0.18"
 clap = { version = "4.5.53", features = ["derive"] }
 walkdir = "2.5.0"
 xshell = "0.2.7"

@@ -1,0 +1,9 @@
+[package]
+name = "libdl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt"] }
+abi = { path = "../../abi" }
+spin = "0.9"

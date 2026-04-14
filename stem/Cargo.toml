@@ -1,0 +1,25 @@
+[package]
+name = "stem"
+version = "0.1.0"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+abi = { path = "../abi" }
+
+stem-macros = { path = "../stem-macros", optional = true }
+linked_list_allocator = "0.10"
+spin = "0.9"
+xml-no-std = "0.8"
+htmlparser = { version = "0.2", default-features = false }
+libm = "0.2"
+
+[build-dependencies]
+pciids = { path = "../tools/pciids" }
+
+[features]
+default = ["global-alloc", "simd"]
+rt = ["stem-macros"]
+alloc = []
+global-alloc = []
+simd = []

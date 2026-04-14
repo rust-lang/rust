@@ -1,0 +1,54 @@
+diff --git a/llvm/cmake/config-ix.cmake b/llvm/cmake/config-ix.cmake
+index a8e4e5a63..69b0d8c3b 100644
+--- a/llvm/cmake/config-ix.cmake
++++ b/llvm/cmake/config-ix.cmake
+@@ -12,7 +12,7 @@ include(CheckCompilerVersion)
+ include(CheckProblematicConfigurations)
+ include(HandleLLVMStdlib)
+ 
+-if (ANDROID OR CYGWIN OR CMAKE_SYSTEM_NAME MATCHES "AIX|DragonFly|FreeBSD|Haiku|Linux|NetBSD|OpenBSD|SunOS")
++if (ANDROID OR CYGWIN OR CMAKE_SYSTEM_NAME MATCHES "AIX|DragonFly|FreeBSD|Haiku|Linux|NetBSD|OpenBSD|SunOS|ThingOS")
+   set(HAVE_MACH_MACH_H 0)
+   set(HAVE_MALLOC_MALLOC_H 0)
+   set(HAVE_PTHREAD_H 1)
+@@ -57,7 +57,7 @@ else()
+   check_include_file(sys/ioctl.h HAVE_SYS_IOCTL_H)
+ endif()
+ 
+-if( UNIX AND NOT (APPLE OR BEOS OR HAIKU) )
++if((UNIX OR CMAKE_SYSTEM_NAME STREQUAL "ThingOS") AND NOT (APPLE OR BEOS OR HAIKU))
+   # Used by check_symbol_exists:
+   list(APPEND CMAKE_REQUIRED_LIBRARIES "m")
+ endif()
+@@ -69,14 +69,14 @@ endif()
+ 
+ # Do checks with _XOPEN_SOURCE and large-file API on AIX, because we will build
+ # with those too.
+-if (UNIX AND ${CMAKE_SYSTEM_NAME} MATCHES "AIX")
++if ((UNIX OR CMAKE_SYSTEM_NAME STREQUAL "ThingOS") AND ${CMAKE_SYSTEM_NAME} MATCHES "AIX")
+           list(APPEND CMAKE_REQUIRED_DEFINITIONS "-D_XOPEN_SOURCE=700")
+           list(APPEND CMAKE_REQUIRED_DEFINITIONS "-D_LARGE_FILE_API")
+ endif()
+ 
+ # Do checks with _FILE_OFFSET_BITS=64 on Solaris, because we will build
+ # with those too.
+-if (UNIX AND ${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
++if ((UNIX OR CMAKE_SYSTEM_NAME STREQUAL "ThingOS") AND ${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
+           list(APPEND CMAKE_REQUIRED_DEFINITIONS "-D_FILE_OFFSET_BITS=64")
+ endif()
+ 
+diff --git a/llvm/cmake/modules/HandleLLVMOptions.cmake b/llvm/cmake/modules/HandleLLVMOptions.cmake
+index c126b0d07..a040da344 100644
+--- a/llvm/cmake/modules/HandleLLVMOptions.cmake
++++ b/llvm/cmake/modules/HandleLLVMOptions.cmake
+@@ -237,6 +237,10 @@ elseif(FUCHSIA OR UNIX)
+   else()
+     set(LLVM_HAVE_LINK_VERSION_SCRIPT 1)
+   endif()
++elseif(CMAKE_SYSTEM_NAME STREQUAL "ThingOS")
++  set(LLVM_ON_WIN32 0)
++  set(LLVM_ON_UNIX 1)
++  set(LLVM_HAVE_LINK_VERSION_SCRIPT 1)
+ elseif(CMAKE_SYSTEM_NAME STREQUAL "Generic")
+   set(LLVM_ON_WIN32 0)
+   set(LLVM_ON_UNIX 0)

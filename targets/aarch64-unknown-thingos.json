@@ -1,0 +1,21 @@
+{
+    "llvm-target": "aarch64-unknown-none",
+    "arch": "aarch64",
+    "os": "thingos",
+    "target-pointer-width": 64,
+    "data-layout": "e-m:e-p270:32:32-p271:32:32-p272:64:64-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128-Fn32",
+    "linker-flavor": "ld.lld",
+    "linker": "rust-lld",
+    "pre-link-args": {
+        "ld.lld": [
+            "-Tlink/user/aarch64.ld"
+        ]
+    },
+    "panic-strategy": "abort",
+    "position-independent-executables": false,
+    "static-position-independent-executables": false,
+    "relocation-model": "static",
+    "features": "+strict-align,+v8a",
+    "executables": true,
+    "has-thread-local": true
+}

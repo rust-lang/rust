@@ -1,0 +1,15 @@
+[package]
+name = "kernel"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+sched_debug = []
+diagnostic-apps = []
+
+[dependencies]
+linked_list_allocator = "0.10"
+spin = "0.9"
+abi = { path = "../abi" }
+stem = { path = "../stem", default-features = false }
+bitflags = "2.10.0"

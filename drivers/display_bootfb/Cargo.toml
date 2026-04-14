@@ -1,0 +1,9 @@
+[package]
+name = "display_bootfb"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt"] }
+abi = { path = "../../abi" }
+ipc_helpers = { path = "../../libs/ipc_helpers" }

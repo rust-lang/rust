@@ -1,0 +1,15 @@
+[package]
+name = "terminal"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt"] }
+abi = { path = "../../abi" }
+log = "0.4"
+vte = "0.11"
+bitflags = "2.4"
+fb_common = { path = "../../libs/fb_common" }
+
+[features]
+default = []

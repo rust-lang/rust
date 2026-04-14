@@ -1,0 +1,298 @@
+warning: unused import: `core::sync::atomic::AtomicU64`
+ --> abi/src/wire.rs:8:5
+  |
+8 | use core::sync::atomic::AtomicU64;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `abi` (lib) generated 1 warning (run `cargo fix --lib -p abi` to apply 1 suggestion)
+warning: unused import: `alloc::vec::Vec`
+  --> stem/src/css/ingest.rs:10:5
+   |
+10 | use alloc::vec::Vec;
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused imports: `FillRule`, `PathVerb`, and `PointF`
+ --> stem/src/petals/drawlist.rs:6:38
+  |
+6 | use abi::drawlist::{DrawListBuilder, FillRule, PathVerb, PointF};
+  |                                      ^^^^^^^^  ^^^^^^^^  ^^^^^^
+
+warning: unused import: `abi::errors::Errno`
+ --> stem/src/petals/drawlist.rs:7:5
+  |
+7 | use abi::errors::Errno;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `alloc::vec::Vec`
+  --> stem/src/petals/drawlist.rs:11:5
+   |
+11 | use alloc::vec::Vec;
+   |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `core::arch::asm`
+ --> stem/src/syscall/arch/x86_64.rs:1:5
+  |
+1 | use core::arch::asm;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `abi::ids::HandleId`
+ --> stem/src/petals/drawlist.rs:9:5
+  |
+9 | use abi::ids::HandleId;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `abi::ids::HandleId`
+ --> stem/src/ui.rs:3:5
+  |
+3 | use abi::ids::HandleId;
+  |     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `abi::ids::HandleId`
+  --> stem/src/thing/graph_debug.rs:25:21
+   |
+25 |                 use abi::ids::HandleId;
+   |                     ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `abi::ids::HandleId`
+  --> stem/src/thing/debug.rs:27:21
+   |
+27 |                 use abi::ids::HandleId;
+   |                     ^^^^^^^^^^^^^^^^^^
+
+warning: `stem` (lib) generated 9 warnings (run `cargo fix --lib -p stem` to apply 5 suggestions)
+    Checking kernel v0.1.0 (/home/dancxjo/src/thing-os/kernel)
+warning: unused import: `AtomicUsize`
+ --> kernel/src/irq/mod.rs:5:48
+  |
+5 | use core::sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Orde...
+  |                                                ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `EthernetFrame`
+ --> kernel/src/net/virtio_net.rs:5:18
+  |
+5 | use crate::net::{EthernetFrame, Nic, NicStats, TxError};
+  |                  ^^^^^^^^^^^^^
+
+warning: unused imports: `BlockReason`, `DequeueReason`, and `WakeSource`
+ --> kernel/src/sched/ring.rs:8:28
+  |
+8 | ...ts::{BlockReason, DequeueReason, SchedEvent, WakeSource};
+  |         ^^^^^^^^^^^  ^^^^^^^^^^^^^              ^^^^^^^^^^
+
+warning: unused import: `Task`
+ --> kernel/src/sched/types.rs:3:19
+  |
+3 | use crate::task::{Task, TaskId};
+  |                   ^^^^
+
+warning: unused import: `alloc::collections::VecDeque`
+ --> kernel/src/sched/types.rs:6:5
+  |
+6 | use alloc::collections::VecDeque;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `alloc::vec::Vec`
+ --> kernel/src/sched/types.rs:7:5
+  |
+7 | use alloc::vec::Vec;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused imports: `AtomicUsize` and `Ordering`
+ --> kernel/src/sched/types.rs:9:26
+  |
+9 | use core::sync::atomic::{AtomicUsize, Ordering};
+  |                          ^^^^^^^^^^^  ^^^^^^^^
+
+warning: unused import: `alloc::sync::Arc`
+ --> kernel/src/sched/vm.rs:7:5
+  |
+7 | use alloc::sync::Arc;
+  |     ^^^^^^^^^^^^^^^^
+
+warning: unused import: `alloc::vec::Vec`
+  --> kernel/src/sched/mod.rs:48:5
+   |
+48 | use alloc::vec::Vec;
+   |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `crate::memory::FRAME_ALLOCATOR`
+   --> kernel/src/syscall/handlers/device.rs:252:9
+    |
+252 |     use crate::memory::FRAME_ALLOCATOR;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `stdio_mode`
+   --> kernel/src/syscall/handlers/process.rs:349:22
+    |
+349 |     use abi::types::{stdio_mode, SpawnProcessExReq, SpawnProce...
+    |                      ^^^^^^^^^^
+
+warning: unused import: `Errno`
+ --> kernel/src/syscall/handlers/random.rs:4:19
+  |
+4 | use abi::errors::{Errno, SysResult};
+  |                   ^^^^^
+
+warning: unused import: `crate::sched as scheduler`
+ --> kernel/src/task/mod.rs:7:5
+  |
+7 | use crate::sched as scheduler;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unreachable expression
+    --> kernel/src/sched/mod.rs:1197:5
+     |
+1191 |           hook();
+     |           ------ any code following this expression is unreachable
+...
+1197 | /     loop {
+1198 | |         crate::runtime_base().wait_for_interrupt();
+1199 | |     }
+     | |_____^ unreachable expression
+     |
+     = note: `#[warn(unreachable_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `owner`
+   --> kernel/src/ipc/port.rs:223:13
+    |
+223 |         let owner = target.load(Ordering::Acquire);
+    |             ^^^^^ help: if this is intentional, prefix it with an underscore: `_owner`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `creator_tid`
+  --> kernel/src/root/handlers/graph.rs:48:5
+   |
+48 |     creator_tid: u64,
+   |     ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_creator_tid`
+
+error[E0515]: cannot return value referencing function parameter `t`
+   --> kernel/src/sched/spawn.rs:499:23
+    |
+499 |         .and_then(|t| t.process_info.as_ref())
+    |                       -^^^^^^^^^^^^^^^^^^^^^^
+    |                       |
+    |                       returns a value referencing data owned by the current function
+    |                       `t` is borrowed here
+
+error[E0515]: cannot return value referencing function parameter `task`
+   --> kernel/src/sched/spawn.rs:543:26
+    |
+543 |         .and_then(|task| task.process_info.as_ref())
+    |                          ----^^^^^^^^^^^^^^^^^^^^^^
+    |                          |
+    |                          returns a value referencing data owned by the current function
+    |                          `task` is borrowed here
+
+error[E0515]: cannot return value referencing function parameter `t`
+   --> kernel/src/sched/spawn.rs:662:23
+    |
+662 |         .and_then(|t| t.process_info.as_ref())
+    |                       -^^^^^^^^^^^^^^^^^^^^^^
+    |                       |
+    |                       returns a value referencing data owned by the current function
+    |                       `t` is borrowed here
+
+error[E0596]: cannot borrow `task` as mutable, as it is not declared as mutable
+   --> kernel/src/sched/stack.rs:224:5
+    |
+224 |     task.stack_info = Some(abi::types::StackInfo {
+    |     ^^^^ cannot borrow as mutable
+    |
+help: consider changing this to be mutable
+    |
+147 |     let mut task = match crate::task::registry::get_task_mut::<R>(current_id) {
+    |         +++
+
+warning: unused variable: `old_priority`
+   --> kernel/src/sched/mod.rs:814:17
+    |
+814 |             let old_priority = crate::task::registry::get_regi...
+    |                 ^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_old_priority`
+
+warning: unused variable: `sched`
+   --> kernel/src/sched/mod.rs:879:13
+    |
+879 |         let sched = unsafe { &*(ptr as *const types::Scheduler...
+    |             ^^^^^ help: if this is intentional, prefix it with an underscore: `_sched`
+
+warning: unnecessary `unsafe` block
+   --> kernel/src/sched/mod.rs:973:5
+    |
+973 |     unsafe {
+    |     ^^^^^^ unnecessary `unsafe` block
+    |
+    = note: `#[warn(unused_unsafe)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> kernel/src/sched/mod.rs:967:13
+    |
+967 |         let mut lock = SCHEDULER.lock();
+    |             ----^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: variable does not need to be mutable
+   --> kernel/src/syscall/handlers/port.rs:174:17
+    |
+174 | ...   let mut table = crate::ipc::GLOBAL_HANDLE_TABLE.lock();
+    |           ----^^^^^
+    |           |
+    |           help: remove this `mut`
+
+warning: unnecessary `unsafe` block
+   --> kernel/src/syscall/handlers/process.rs:135:21
+    |
+135 |                     unsafe {
+    |                     ^^^^^^ unnecessary `unsafe` block
+
+warning: unused variable: `max_ticks`
+  --> kernel/src/task/flusher.rs:58:33
+   |
+58 | ...h(max_events: usize, max_ticks: u64, start_ticks: u64) -> Fl...
+   |                         ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_max_ticks`
+
+warning: unused variable: `start_ticks`
+  --> kernel/src/task/flusher.rs:58:49
+   |
+58 | ...e, max_ticks: u64, start_ticks: u64) -> FlushResult {
+   |                       ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_start_ticks`
+
+warning: variable does not need to be mutable
+  --> kernel/src/task/loader.rs:73:17
+   |
+73 |             let mut perms = MapPerms {
+   |                 ----^^^^^
+   |                 |
+   |                 help: remove this `mut`
+
+warning: unused variable: `cr3_before`
+   --> kernel/src/task/mod.rs:196:13
+    |
+196 |         let cr3_before = rt.debug_active_aspace_root();
+    |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_cr3_before`
+
+warning: unused variable: `cr3_before`
+   --> kernel/src/task/mod.rs:228:13
+    |
+228 |         let cr3_before = rt.debug_active_aspace_root();
+    |             ^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_cr3_before`
+
+warning: unused variable: `used`
+   --> kernel/src/virtio/queue.rs:261:13
+    |
+261 |         let used = unsafe { &*(self.used_virt as *const Virtqu...
+    |             ^^^^ help: if this is intentional, prefix it with an underscore: `_used`
+
+Some errors have detailed explanations: E0515, E0596.
+For more information about an error, try `rustc --explain E0515`.
+warning: `kernel` (lib) generated 28 warnings
+error: could not compile `kernel` (lib) due to 4 previous errors; 28 warnings emitted

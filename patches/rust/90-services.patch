@@ -1,0 +1,485 @@
+diff --git a/library/std/src/sys/args/mod.rs b/library/std/src/sys/args/mod.rs
+index 5424d40a..86f5bcf4 100644
+--- a/library/std/src/sys/args/mod.rs
++++ b/library/std/src/sys/args/mod.rs
+@@ -5,6 +5,7 @@
+ #[cfg(any(
+     all(target_family = "unix", not(any(target_os = "espidf", target_os = "vita"))),
+     target_family = "windows",
++    target_os = "thingos",
+     target_os = "hermit",
+     target_os = "motor",
+     target_os = "uefi",
+@@ -53,6 +54,10 @@
+         mod zkvm;
+         pub use zkvm::*;
+     }
++    target_os = "thingos" => {
++        mod thingos;
++        pub use thingos::*;
++    }
+     _ => {
+         mod unsupported;
+         pub use unsupported::*;
+diff --git a/library/std/src/sys/args/thingos.rs b/library/std/src/sys/args/thingos.rs
+new file mode 100644
+index 00000000..ca7f6735
+--- /dev/null
++++ b/library/std/src/sys/args/thingos.rs
+@@ -0,0 +1,69 @@
++//! ThingOS `args()` implementation.
++//!
++//! # ABI
++//! `SYS_ARGV_GET(buf_ptr, buf_len)` → total bytes needed.
++//!
++//! Serialized argv blob format (kernel/src/syscall/handlers/process.rs):
++//!   count: u32 LE
++//!   for each arg:
++//!     len:   u32 LE
++//!     bytes: [u8; len]
++//!
++//! Call with buf_ptr=0/buf_len=0 to query the required size first.
++
++pub use super::common::Args;
++use crate::ffi::OsString;
++
++// Syscall number (abi/src/numbers.rs)
++const SYS_ARGV_GET: u32 = 0x1100;
++
++#[inline(always)]
++unsafe fn raw_syscall6(n: u32, a0: usize, a1: usize, a2: usize, a3: usize, a4: usize, a5: usize) -> isize {
++    unsafe { crate::sys::pal::raw_syscall6(n, a0, a1, a2, a3, a4, a5) }
++}
++
++/// Retrieve argv from the kernel and return it as an `Args` iterator.
++pub fn args() -> Args {
++    // Phase 1: query required buffer size.
++    let needed = unsafe { raw_syscall6(SYS_ARGV_GET, 0, 0, 0, 0, 0, 0) };
++    if needed <= 0 {
++        return Args::new(crate::vec![]);
++    }
++    let needed = needed as usize;
++
++    // Phase 2: fill buffer.
++    let mut buf = crate::vec![0u8; needed];
++    let ret = unsafe {
++        raw_syscall6(SYS_ARGV_GET, buf.as_mut_ptr() as usize, buf.len(), 0, 0, 0, 0)
++    };
++    if ret < 0 {
++        return Args::new(crate::vec![]);
++    }
++
++    parse_argv(&buf)
++}
++
++fn parse_argv(blob: &[u8]) -> Args {
++    if blob.len() < 4 {
++        return Args::new(crate::vec![]);
++    }
++    let count = u32::from_le_bytes([blob[0], blob[1], blob[2], blob[3]]) as usize;
++    let mut pos = 4;
++    let mut result: crate::vec::Vec<OsString> = crate::vec::Vec::with_capacity(count);
++
++    for _ in 0..count {
++        if pos + 4 > blob.len() {
++            break;
++        }
++        let len = u32::from_le_bytes([blob[pos], blob[pos+1], blob[pos+2], blob[pos+3]]) as usize;
++        pos += 4;
++        if pos + len > blob.len() {
++            break;
++        }
++        let bytes = blob[pos..pos + len].to_vec();
++        pos += len;
++        // SAFETY: bytes came from the kernel argv blob; valid OsString encoding.
++        result.push(unsafe { OsString::from_encoded_bytes_unchecked(bytes) });
++    }
++    Args::new(result)
++}
+diff --git a/library/std/src/sys/env/mod.rs b/library/std/src/sys/env/mod.rs
+index 89856516..036e0e87 100644
+--- a/library/std/src/sys/env/mod.rs
++++ b/library/std/src/sys/env/mod.rs
+@@ -5,6 +5,7 @@
+ #[cfg(any(
+     target_family = "unix",
+     target_os = "hermit",
++    target_os = "thingos",
+     target_os = "motor",
+     all(target_vendor = "fortanix", target_env = "sgx"),
+     target_os = "solid_asp3",
+@@ -55,6 +56,10 @@
+         mod zkvm;
+         pub use zkvm::*;
+     }
++    target_os = "thingos" => {
++        mod thingos;
++        pub use thingos::*;
++    }
+     _ => {
+         mod unsupported;
+         pub use unsupported::*;
+diff --git a/library/std/src/sys/env/thingos.rs b/library/std/src/sys/env/thingos.rs
+new file mode 100644
+index 00000000..dc169427
+--- /dev/null
++++ b/library/std/src/sys/env/thingos.rs
+@@ -0,0 +1,150 @@
++//! ThingOS environment-variable implementation.
++//!
++//! Wires `std::env::{var, vars, set_var, remove_var}` to kernel syscalls.
++//!
++//! **Note:** Environment storage is currently process-local only. Child
++//! processes inherit a snapshot of the parent's environment at spawn time
++//! (handled by the kernel), but there is no shared/global env store.
++//!
++//! # Syscalls used (abi/src/numbers.rs)
++//! | Syscall        | Number | Purpose              |
++//! |----------------|--------|----------------------|
++//! | SYS_ENV_GET    | 0x1101 | Read one variable    |
++//! | SYS_ENV_SET    | 0x1102 | Write one variable   |
++//! | SYS_ENV_UNSET  | 0x1103 | Delete one variable  |
++//! | SYS_ENV_LIST   | 0x1104 | List all variables   |
++
++pub use super::common::Env;
++use crate::ffi::{OsStr, OsString};
++use crate::io;
++
++const SYS_ENV_GET: u32 = 0x1101;
++const SYS_ENV_SET: u32 = 0x1102;
++const SYS_ENV_UNSET: u32 = 0x1103;
++const SYS_ENV_LIST: u32 = 0x1104;
++
++#[inline(always)]
++unsafe fn raw_syscall6(
++    n: u32,
++    a0: usize,
++    a1: usize,
++    a2: usize,
++    a3: usize,
++    a4: usize,
++    a5: usize,
++) -> isize {
++    unsafe { crate::sys::pal::raw_syscall6(n, a0, a1, a2, a3, a4, a5) }
++}
++
++#[inline]
++fn syscall_err(ret: isize) -> io::Error {
++    io::Error::from_raw_os_error((-ret) as i32)
++}
++
++/// List all environment variables.
++///
++/// Blob format (kernel/src/syscall/handlers/process.rs `sys_env_list`):
++///   count:   u32 LE
++///   for each entry: key_len: u32 LE, key_bytes, val_len: u32 LE, val_bytes
++pub fn env() -> Env {
++
++    let needed = unsafe { raw_syscall6(SYS_ENV_LIST, 0, 0, 0, 0, 0, 0) };
++    if needed <= 0 {
++        return Env::new(crate::vec![]);
++    }
++    let mut buf = crate::vec![0u8; needed as usize];
++    let ret =
++        unsafe { raw_syscall6(SYS_ENV_LIST, buf.as_mut_ptr() as usize, buf.len(), 0, 0, 0, 0) };
++    if ret < 0 {
++        return Env::new(crate::vec![]);
++    }
++
++    let blob = &buf[..];
++    if blob.len() < 4 {
++        return Env::new(crate::vec![]);
++    }
++    let count = u32::from_le_bytes([blob[0], blob[1], blob[2], blob[3]]) as usize;
++    let mut pos = 4usize;
++    let mut pairs: crate::vec::Vec<(OsString, OsString)> = crate::vec::Vec::with_capacity(count);
++
++    for _ in 0..count {
++        if pos + 4 > blob.len() {
++            break;
++        }
++        let key_len =
++            u32::from_le_bytes([blob[pos], blob[pos + 1], blob[pos + 2], blob[pos + 3]]) as usize;
++        pos += 4;
++        if pos + key_len > blob.len() {
++            break;
++        }
++        let key = unsafe { OsString::from_encoded_bytes_unchecked(blob[pos..pos + key_len].to_vec()) };
++        pos += key_len;
++
++        if pos + 4 > blob.len() {
++            break;
++        }
++        let val_len =
++            u32::from_le_bytes([blob[pos], blob[pos + 1], blob[pos + 2], blob[pos + 3]]) as usize;
++        pos += 4;
++        if pos + val_len > blob.len() {
++            break;
++        }
++        let val = unsafe { OsString::from_encoded_bytes_unchecked(blob[pos..pos + val_len].to_vec()) };
++        pos += val_len;
++
++        pairs.push((key, val));
++    }
++
++    Env::new(pairs)
++}
++
++pub fn getenv(k: &OsStr) -> Option<OsString> {
++
++    let kb = k.as_encoded_bytes();
++    // Probe for needed length.
++    let needed =
++        unsafe { raw_syscall6(SYS_ENV_GET as u32, kb.as_ptr() as usize, kb.len(), 0, 0, 0, 0) };
++    if needed < 0 {
++        return None;
++    }
++    let mut val = crate::vec![0u8; needed as usize];
++    let ret = unsafe {
++        raw_syscall6(
++            SYS_ENV_GET as u32,
++            kb.as_ptr() as usize,
++            kb.len(),
++            val.as_mut_ptr() as usize,
++            val.len(),
++            0,
++            0,
++        )
++    };
++    if ret < 0 {
++        return None;
++    }
++    Some(unsafe { OsString::from_encoded_bytes_unchecked(val) })
++}
++
++pub unsafe fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
++    let kb = k.as_encoded_bytes();
++    let vb = v.as_encoded_bytes();
++    let ret = unsafe {
++        raw_syscall6(
++            SYS_ENV_SET as u32,
++            kb.as_ptr() as usize,
++            kb.len(),
++            vb.as_ptr() as usize,
++            vb.len(),
++            0,
++            0,
++        )
++    };
++    if ret < 0 { Err(syscall_err(ret)) } else { Ok(()) }
++}
++
++pub unsafe fn unsetenv(k: &OsStr) -> io::Result<()> {
++    let kb = k.as_encoded_bytes();
++    let ret =
++        unsafe { raw_syscall6(SYS_ENV_UNSET as u32, kb.as_ptr() as usize, kb.len(), 0, 0, 0, 0) };
++    if ret < 0 { Err(syscall_err(ret)) } else { Ok(()) }
++}
+diff --git a/library/std/src/sys/random/mod.rs b/library/std/src/sys/random/mod.rs
+index 91f72d07..f5c4bd6f 100644
+--- a/library/std/src/sys/random/mod.rs
++++ b/library/std/src/sys/random/mod.rs
+@@ -102,6 +102,10 @@
+         mod zkvm;
+         pub use zkvm::fill_bytes;
+     }
++    target_os = "thingos" => {
++        mod thingos;
++        pub use thingos::fill_bytes;
++    }
+     any(
+         all(target_family = "wasm", target_os = "unknown"),
+         target_os = "xous",
+diff --git a/library/std/src/sys/random/thingos.rs b/library/std/src/sys/random/thingos.rs
+new file mode 100644
+index 00000000..066e9881
+--- /dev/null
++++ b/library/std/src/sys/random/thingos.rs
+@@ -0,0 +1,30 @@
++//! Random data for ThingOS via the SYS_GETRANDOM syscall (0x7001).
++//!
++//! The kernel entropy pool is seeded from hardware (RDRAND/RDSEED) and
++//! caps each call at 256 bytes.  We loop until the caller's buffer is full.
++use crate::sys::pal::raw_syscall6;
++
++/// Syscall number for SYS_GETRANDOM (defined in `abi/src/numbers.rs`).
++const SYS_GETRANDOM: u32 = 0x7001;
++/// Maximum bytes the kernel fills per SYS_GETRANDOM call.
++const GETRANDOM_MAX: usize = 256;
++
++pub fn fill_bytes(bytes: &mut [u8]) {
++    let mut offset = 0;
++    while offset < bytes.len() {
++        // Pass at most GETRANDOM_MAX bytes per call so the kernel doesn't
++        // reject oversized requests.
++        let chunk_len = (bytes.len() - offset).min(GETRANDOM_MAX);
++        let chunk = &mut bytes[offset..offset + chunk_len];
++        // args: buf_ptr, buf_len, flags (0 = blocking, fill fully)
++        let ret = unsafe {
++            raw_syscall6(SYS_GETRANDOM, chunk.as_mut_ptr() as usize, chunk_len, 0, 0, 0, 0)
++        };
++        // SYS_GETRANDOM returns 0 on success (not byte count); a negative
++        // value encodes an errno-style error code.
++        if ret < 0 {
++            panic!("SYS_GETRANDOM failed: {}", ret);
++        }
++        offset += chunk_len;
++    }
++}
+diff --git a/library/std/src/sys/time/mod.rs b/library/std/src/sys/time/mod.rs
+index 6cd1850e..0e72cee4 100644
+--- a/library/std/src/sys/time/mod.rs
++++ b/library/std/src/sys/time/mod.rs
+@@ -44,6 +44,10 @@ mod imp {
+         mod xous;
+         use xous as imp;
+     }
++    target_os = "thingos" => {
++        mod thingos;
++        use thingos as imp;
++    }
+     _ => {
+         mod unsupported;
+         use unsupported as imp;
+diff --git a/library/std/src/sys/time/thingos.rs b/library/std/src/sys/time/thingos.rs
+new file mode 100644
+index 00000000..b730cc26
+--- /dev/null
++++ b/library/std/src/sys/time/thingos.rs
+@@ -0,0 +1,136 @@
++//! ThingOS time implementation.
++//!
++//! `Instant`    — backed by `SYS_TIME_MONOTONIC` (0x1202), returns nanoseconds as usize.
++//! `SystemTime` — backed by `SYS_TIME_NOW`       (0x1203) with ClockId::Realtime (2).
++//!
++//! The `TimeSpec` written by `SYS_TIME_NOW` has the layout:
++//!   secs:     u64 LE
++//!   nanos:    u32 LE
++//!   reserved: u32 LE
++//! (matches abi/src/time.rs `TimeSpec`)
++
++use crate::time::Duration;
++
++// Syscall numbers (abi/src/numbers.rs)
++const SYS_TIME_MONOTONIC: u32 = 0x1202;
++const SYS_TIME_NOW: u32 = 0x1203;
++const CLOCK_REALTIME: usize = 2;
++
++/// Perform a raw syscall. Mirrors `sys/pal/thingos/common.rs`.
++#[inline(always)]
++unsafe fn raw_syscall6(
++    n: u32,
++    a0: usize,
++    a1: usize,
++    a2: usize,
++    a3: usize,
++    a4: usize,
++    a5: usize,
++) -> isize {
++    // SAFETY: caller guarantees arguments are valid for this syscall.
++    unsafe { crate::sys::pal::raw_syscall6(n, a0, a1, a2, a3, a4, a5) }
++}
++
++/// Query SYS_TIME_MONOTONIC — returns nanoseconds since boot as a usize.
++///
++/// Returns 0 on syscall failure; callers treat 0 as the epoch of the monotonic
++/// clock rather than aborting, matching the behaviour of other embedded PALs.
++/// A return of 0 is only expected before the scheduler is fully initialized.
++fn monotonic_ns() -> u64 {
++    let ret = unsafe { raw_syscall6(SYS_TIME_MONOTONIC, 0, 0, 0, 0, 0, 0) };
++    if ret < 0 { 0 } else { ret as u64 }
++}
++
++/// ThingOS TimeSpec layout (16 bytes, matches abi::time::TimeSpec).
++#[repr(C)]
++struct TimeSpec {
++    secs: u64,
++    nanos: u32,
++    _reserved: u32,
++}
++
++/// Query SYS_TIME_NOW for the real-time clock; returns total nanoseconds.
++fn realtime_ns() -> u64 {
++    let mut spec = TimeSpec { secs: 0, nanos: 0, _reserved: 0 };
++    let ret = unsafe {
++        raw_syscall6(
++            SYS_TIME_NOW,
++            CLOCK_REALTIME,
++            (&mut spec as *mut TimeSpec) as usize,
++            0,
++            0,
++            0,
++            0,
++        )
++    };
++    if ret < 0 {
++        return 0;
++    }
++    spec.secs.saturating_mul(1_000_000_000).saturating_add(spec.nanos as u64)
++}
++
++// ─── Instant ─────────────────────────────────────────────────────────────────
++
++/// Monotonic instant backed by `SYS_TIME_MONOTONIC`.
++#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
++pub struct Instant(Duration);
++
++impl Instant {
++    pub fn now() -> Instant {
++        Instant(Duration::from_nanos(monotonic_ns()))
++    }
++
++    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
++        self.0.checked_sub(other.0)
++    }
++
++    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
++        self.0.checked_add(*other).map(Instant)
++    }
++
++    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
++        self.0.checked_sub(*other).map(Instant)
++    }
++}
++
++// ─── SystemTime ──────────────────────────────────────────────────────────────
++
++/// Wall-clock time backed by `SYS_TIME_NOW` with `ClockId::Realtime`.
++#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
++pub struct SystemTime(Duration);
++
++pub const UNIX_EPOCH: SystemTime = SystemTime(Duration::from_secs(0));
++
++impl SystemTime {
++    pub const MAX: SystemTime = SystemTime(Duration::MAX);
++    pub const MIN: SystemTime = SystemTime(Duration::ZERO);
++
++    pub fn now() -> SystemTime {
++        SystemTime(Duration::from_nanos(realtime_ns()))
++    }
++
++    pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
++        self.0.checked_sub(other.0).ok_or_else(|| other.0 - self.0)
++    }
++
++    pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
++        self.0.checked_add(*other).map(SystemTime)
++    }
++
++    pub fn checked_sub_duration(&self, other: &Duration) -> Option<SystemTime> {
++        self.0.checked_sub(*other).map(SystemTime)
++    }
++
++    /// Construct a `SystemTime` from seconds and nanoseconds since the Unix epoch.
++    ///
++    /// Used by the filesystem PAL layer to convert VFS stat timestamps into
++    /// `std::time::SystemTime` values.
++    pub(crate) fn from_timespec(secs: u64, nsecs: u32) -> SystemTime {
++        SystemTime(Duration::new(secs, nsecs))
++    }
++
++    /// Return the inner `Duration` since the Unix epoch.
++    pub(crate) fn as_duration(&self) -> Duration {
++        self.0
++    }
++}

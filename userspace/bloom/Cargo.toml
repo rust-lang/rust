@@ -1,0 +1,15 @@
+[package]
+name = "bloom"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt"] }
+abi = { path = "../../abi" }
+petals = { path = "../petals" }
+
+[[bin]]
+name = "bloom"
+path = "src/main.rs"
+test = false
+doctest = false

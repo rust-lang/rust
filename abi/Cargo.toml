@@ -1,0 +1,16 @@
+[package]
+name = "abi"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0", default-features = false, features = ["derive", "alloc"] }
+blake3 = { version = "1.5", default-features = false, features = ["pure"] }
+bitflags = { version = "2.10.0", default-features = false }
+abi-macros = { version = "0.1.0", path = "../abi-macros" }
+
+[features]
+kernel-id-gen = []
+
+[dev-dependencies]
+abi = { path = ".", features = ["kernel-id-gen"] }

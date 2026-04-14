@@ -1,0 +1,19 @@
+[package]
+name = "netd"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt", "global-alloc"] }
+abi = { path = "../../abi" }
+smoltcp = { version = "0.11", default-features = false, features = [
+    "proto-ipv4",
+    "proto-dhcpv4",
+    "proto-igmp",
+    "socket-udp",
+    "socket-tcp",
+    "socket-dhcpv4",
+    "medium-ethernet",
+    "alloc",
+] }
+

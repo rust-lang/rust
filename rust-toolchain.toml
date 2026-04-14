@@ -1,0 +1,4 @@
+[toolchain]
+channel = "nightly-2026-02-10"
+components = ["rust-src", "rustc-dev", "llvm-tools-preview"]
+targets = ["x86_64-unknown-none"]

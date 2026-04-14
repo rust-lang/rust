@@ -1,0 +1,14 @@
+[package]
+name = "proc_smoke"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem", default-features = false, features = ["rt"] }
+abi = { path = "../../abi" }
+
+[[bin]]
+name = "proc_smoke"
+path = "src/main.rs"
+test = false
+doctest = false

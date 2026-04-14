@@ -1,0 +1,68 @@
+diff --git a/library/std/Cargo.toml b/library/std/Cargo.toml
+index f4cc8edc..0d7466be 100644
+--- a/library/std/Cargo.toml
++++ b/library/std/Cargo.toml
+@@ -11,7 +11,6 @@ autobenches = false
+ 
+ [lib]
+ crate-type = ["dylib", "rlib"]
+-
+ [dependencies]
+ alloc = { path = "../alloc", public = true }
+ # std no longer uses cfg-if directly, but the included copy of backtrace does.
+diff --git a/library/std/src/lib.rs b/library/std/src/lib.rs
+index dcde208f..dfb525d4 100644
+--- a/library/std/src/lib.rs
++++ b/library/std/src/lib.rs
+@@ -436,6 +436,7 @@
+ #[macro_use]
+ extern crate alloc as alloc_crate;
+ 
++
+ // Many compiler tests depend on libc being pulled in by std
+ // so include it here even if it's unused.
+ #[doc(masked)]
+@@ -696,7 +697,7 @@ pub mod arch {
+ #[allow(dead_code, unused_attributes, fuzzy_provenance_casts, unsafe_op_in_unsafe_fn)]
+ mod backtrace_rs;
+ 
+-#[unstable(feature = "cfg_select", issue = "115585")]
++#[stable(feature = "cfg_select", since = "CURRENT_RUSTC_VERSION")]
+ pub use core::cfg_select;
+ #[unstable(
+     feature = "concat_bytes",
+diff --git a/library/std/src/prelude/v1.rs b/library/std/src/prelude/v1.rs
+index af9d28eb..f17f11de 100644
+--- a/library/std/src/prelude/v1.rs
++++ b/library/std/src/prelude/v1.rs
+@@ -79,7 +79,7 @@ mod panic {}
+ #[doc(no_inline)]
+ pub use self::ambiguous_macros_only::{vec, panic};
+ 
+-#[unstable(feature = "cfg_select", issue = "115585")]
++#[stable(feature = "cfg_select", since = "CURRENT_RUSTC_VERSION")]
+ #[doc(no_inline)]
+ pub use core::prelude::v1::cfg_select;
+ 
+diff --git a/library/std/src/sys/env_consts.rs b/library/std/src/sys/env_consts.rs
+index 573f5404..a01dde20 100644
+--- a/library/std/src/sys/env_consts.rs
++++ b/library/std/src/sys/env_consts.rs
+@@ -312,6 +312,17 @@ pub mod os {
+     pub const EXE_EXTENSION: &str = "";
+ }
+ 
++#[cfg(target_os = "thingos")]
++pub mod os {
++    pub const FAMILY: &str = "";
++    pub const OS: &str = "thingos";
++    pub const DLL_PREFIX: &str = "";
++    pub const DLL_SUFFIX: &str = "";
++    pub const DLL_EXTENSION: &str = "";
++    pub const EXE_SUFFIX: &str = "";
++    pub const EXE_EXTENSION: &str = "";
++}
++
+ #[cfg(target_os = "uefi")]
+ pub mod os {
+     pub const FAMILY: &str = "";

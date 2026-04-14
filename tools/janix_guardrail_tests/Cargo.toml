@@ -1,0 +1,11 @@
+[package]
+name = "janix_guardrail_tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+abi = { path = "../../abi" }
+
+[[test]]
+name = "janix_guardrails"
+path = "../../tests/janix_guardrails.rs"

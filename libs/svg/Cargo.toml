@@ -1,0 +1,11 @@
+[package]
+name = "svg"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem" }
+alloc = { version = "0.0.0", optional = true }
+
+[features]
+default = []

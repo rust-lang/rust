@@ -1,0 +1,12 @@
+[package]
+name = "ipc_helpers"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt", "global-alloc"] }
+abi = { path = "../../abi" }
+spin = "0.9"
+
+[features]
+default = []

@@ -1,0 +1,9 @@
+[package]
+name = "display_virtio_gpu"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stem = { path = "../../stem", features = ["rt"] }
+abi = { path = "../../abi" }
+virtio_gpu = { path = "../virtio_gpu" }

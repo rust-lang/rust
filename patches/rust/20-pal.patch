@@ -1,0 +1,312 @@
+diff --git a/library/std/src/sys/pal/mod.rs b/library/std/src/sys/pal/mod.rs
+index 88d9d420..b9ec9655 100644
+--- a/library/std/src/sys/pal/mod.rs
++++ b/library/std/src/sys/pal/mod.rs
+@@ -60,6 +60,10 @@
+         mod zkvm;
+         pub use self::zkvm::*;
+     }
++    target_os = "thingos" => {
++        mod thingos;
++        pub use self::thingos::*;
++    }
+     _ => {
+         mod unsupported;
+         pub use self::unsupported::*;
+diff --git a/library/std/src/sys/pal/thingos/common.rs b/library/std/src/sys/pal/thingos/common.rs
+new file mode 100644
+index 00000000..98651dda
+--- /dev/null
++++ b/library/std/src/sys/pal/thingos/common.rs
+@@ -0,0 +1,117 @@
++//! ThingOS PAL — core platform primitives.
++//!
++//! This is a stub implementation. Functions will be fleshed out as the
++//! Thing-OS userspace runtime (stem) exposes the necessary syscalls.
++
++use crate::io as std_io;
++
++// SAFETY: must be called only once during runtime initialization.
++// NOTE: this is not guaranteed to run, for example when Rust code is called externally.
++pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
++
++// SAFETY: must be called only once during runtime cleanup.
++// NOTE: this is not guaranteed to run, for example when the program aborts.
++pub unsafe fn cleanup() {}
++
++pub fn unsupported<T>() -> std_io::Result<T> {
++    Err(unsupported_err())
++}
++
++pub fn unsupported_err() -> std_io::Error {
++    std_io::Error::UNSUPPORTED_PLATFORM
++}
++
++pub fn abort_internal() -> ! {
++    core::intrinsics::abort();
++}
++
++/// Low-level syscall entry point shared across ThingOS `sys` modules.
++///
++/// Exposed as `pub` so that platform-specific modules such as `sys::time`,
++/// `sys::args`, `sys::env`, and `sys::stdio` can call it via
++/// `crate::sys::pal::raw_syscall6` without duplicating the inline-asm.
++pub unsafe fn raw_syscall6(
++    n: u32,
++    a0: usize,
++    a1: usize,
++    a2: usize,
++    a3: usize,
++    a4: usize,
++    a5: usize,
++) -> isize {
++    #[cfg(target_arch = "x86_64")]
++    {
++        let ret: isize;
++        core::arch::asm!(
++            "syscall",
++            inlateout("rax") n as usize => ret,
++            in("rdi") a0,
++            in("rsi") a1,
++            in("rdx") a2,
++            in("r10") a3,
++            in("r8") a4,
++            in("r9") a5,
++            out("rcx") _,
++            out("r11") _,
++            options(nostack, preserves_flags)
++        );
++        return ret;
++    }
++
++    #[cfg(target_arch = "aarch64")]
++    {
++        let ret: isize;
++        core::arch::asm!(
++            "svc #0",
++            inlateout("x0") a0 as isize => ret,
++            in("x1") a1,
++            in("x2") a2,
++            in("x3") a3,
++            in("x4") a4,
++            in("x5") a5,
++            in("x8") n,
++            options(nostack, preserves_flags)
++        );
++        return ret;
++    }
++
++    #[cfg(target_arch = "riscv64")]
++    {
++        let ret: isize;
++        core::arch::asm!(
++            "ecall",
++            inlateout("a0") a0 as isize => ret,
++            in("a1") a1,
++            in("a2") a2,
++            in("a3") a3,
++            in("a4") a4,
++            in("a5") a5,
++            in("a7") n,
++            options(nostack, preserves_flags)
++        );
++        return ret;
++    }
++
++    #[cfg(target_arch = "loongarch64")]
++    {
++        let ret: isize;
++        core::arch::asm!(
++            "syscall 0",
++            inlateout("$a0") a0 as isize => ret,
++            in("$a1") a1,
++            in("$a2") a2,
++            in("$a3") a3,
++            in("$a4") a4,
++            in("$a5") a5,
++            in("$a7") n,
++            options(nostack, preserves_flags)
++        );
++        return ret;
++    }
++
++    #[allow(unreachable_code)]
++    {
++        let _ = (n, a0, a1, a2, a3, a4, a5);
++        -95 // ENOTSUP fallback
++    }
++}
+diff --git a/library/std/src/sys/pal/thingos/mod.rs b/library/std/src/sys/pal/thingos/mod.rs
+new file mode 100644
+index 00000000..0f157819
+--- /dev/null
++++ b/library/std/src/sys/pal/thingos/mod.rs
+@@ -0,0 +1,6 @@
++#![deny(unsafe_op_in_unsafe_fn)]
++
++pub mod os;
++
++mod common;
++pub use common::*;
+diff --git a/library/std/src/sys/pal/thingos/os.rs b/library/std/src/sys/pal/thingos/os.rs
+new file mode 100644
+index 00000000..b2bafcb0
+--- /dev/null
++++ b/library/std/src/sys/pal/thingos/os.rs
+@@ -0,0 +1,156 @@
++//! ThingOS PAL — OS-level syscall bindings.
++//!
++//! All syscall numbers come from the shared ABI definitions (abi/src/numbers.rs).
++//! Unsupported operations return `io::Error::UNSUPPORTED_PLATFORM` explicitly.
++
++use super::raw_syscall6;
++use crate::ffi::{OsStr, OsString};
++use crate::path::{self, PathBuf};
++use crate::{fmt, io};
++
++// Syscall numbers (from abi/src/numbers.rs)
++const SYS_EXIT: u32 = 0x1000;
++const SYS_GETPID: u32 = 0x1002;
++const SYS_FS_CHDIR: u32 = 0x4012;
++const SYS_FS_GETCWD: u32 = 0x4013;
++const SYS_FS_READLINK: u32 = 0x401A;
++
++/// Converts a negative syscall return value to an io::Error.
++#[inline]
++fn syscall_err(ret: isize) -> io::Error {
++    io::Error::from_raw_os_error((-ret) as i32)
++}
++
++pub fn getcwd() -> io::Result<PathBuf> {
++    // First call: buf_ptr=0 returns the number of bytes needed.
++    let needed = unsafe { raw_syscall6(SYS_FS_GETCWD, 0, 0, 0, 0, 0, 0) };
++    if needed < 0 {
++        return Err(syscall_err(needed));
++    }
++    let needed = needed as usize;
++    if needed == 0 {
++        return Ok(PathBuf::from("/"));
++    }
++    let mut buf = crate::vec![0u8; needed];
++    let ret = unsafe {
++        raw_syscall6(SYS_FS_GETCWD, buf.as_mut_ptr() as usize, buf.len(), 0, 0, 0, 0)
++    };
++    if ret < 0 {
++        return Err(syscall_err(ret));
++    }
++    let n = ret as usize;
++    buf.truncate(n);
++    let s = crate::string::String::from_utf8(buf)
++        .map_err(|_| io::const_error!(io::ErrorKind::InvalidData, "cwd is not valid UTF-8"))?;
++    Ok(PathBuf::from(s))
++}
++
++pub fn chdir(p: &path::Path) -> io::Result<()> {
++    let path = p
++        .to_str()
++        .ok_or_else(|| io::const_error!(io::ErrorKind::InvalidInput, "path is not valid UTF-8"))?;
++    let ret = unsafe {
++        raw_syscall6(SYS_FS_CHDIR, path.as_ptr() as usize, path.len(), 0, 0, 0, 0)
++    };
++    if ret < 0 { Err(syscall_err(ret)) } else { Ok(()) }
++}
++
++pub struct SplitPaths<'a> {
++    iter: crate::slice::Split<'a, u8, fn(&u8) -> bool>,
++}
++
++pub fn split_paths(unparsed: &OsStr) -> SplitPaths<'_> {
++    fn is_colon(b: &u8) -> bool {
++        *b == b':'
++    }
++    SplitPaths { iter: unparsed.as_encoded_bytes().split(is_colon as fn(&u8) -> bool) }
++}
++
++impl<'a> Iterator for SplitPaths<'a> {
++    type Item = PathBuf;
++    fn next(&mut self) -> Option<PathBuf> {
++        self.iter.next().map(|b| {
++            // SAFETY: bytes came from an OsStr via as_encoded_bytes, so they are valid.
++            let s = unsafe { OsStr::from_encoded_bytes_unchecked(b) };
++            PathBuf::from(s)
++        })
++    }
++}
++
++#[derive(Debug)]
++pub struct JoinPathsError;
++
++pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
++where
++    I: Iterator<Item = T>,
++    T: AsRef<OsStr>,
++{
++    let mut joined = crate::vec::Vec::new();
++    for (i, path) in paths.enumerate() {
++        let bytes = path.as_ref().as_encoded_bytes();
++        if bytes.contains(&b':') {
++            return Err(JoinPathsError);
++        }
++        if i > 0 {
++            joined.push(b':');
++        }
++        joined.extend_from_slice(bytes);
++    }
++    // SAFETY: bytes were assembled from OsStr encoded bytes, which are always valid.
++    Ok(unsafe { OsString::from_encoded_bytes_unchecked(joined) })
++}
++
++impl fmt::Display for JoinPathsError {
++    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
++        "path segment contains separator `:`".fmt(f)
++    }
++}
++
++impl crate::error::Error for JoinPathsError {}
++
++pub fn exit(code: i32) -> ! {
++    unsafe { raw_syscall6(SYS_EXIT, code as usize, 0, 0, 0, 0, 0) };
++    loop {}
++}
++
++pub fn getpid() -> u32 {
++    let ret = unsafe { raw_syscall6(SYS_GETPID, 0, 0, 0, 0, 0, 0) };
++    if ret < 0 { 0 } else { ret as u32 }
++}
++
++pub fn home_dir() -> Option<PathBuf> {
++    // ThingOS doesn't have a traditional system user DB.  Return None;
++    // callers fall back to querying the HOME env var.
++    None
++}
++
++pub fn temp_dir() -> PathBuf {
++    PathBuf::from("/tmp")
++}
++
++/// Returns the path of the current process's executable by reading the
++/// `/proc/self/exe` symlink exposed by the ThingOS kernel.
++pub fn current_exe() -> io::Result<PathBuf> {
++    const PATH: &[u8] = b"/proc/self/exe";
++    let mut buf = crate::vec![0u8; 4096];
++    let ret = unsafe {
++        raw_syscall6(
++            SYS_FS_READLINK,
++            PATH.as_ptr() as usize,
++            PATH.len(),
++            buf.as_mut_ptr() as usize,
++            buf.len(),
++            0,
++            0,
++        )
++    };
++    if ret < 0 {
++        return Err(syscall_err(ret));
++    }
++    let n = ret as usize;
++    buf.truncate(n);
++    let s = crate::string::String::from_utf8(buf).map_err(|_| {
++        io::const_error!(io::ErrorKind::InvalidData, "current_exe path is not valid UTF-8")
++    })?;
++    Ok(PathBuf::from(s))
++}

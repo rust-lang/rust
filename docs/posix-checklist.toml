@@ -1,0 +1,638 @@
+version = 1
+project = "janix-posix-checklist"
+description = "Machine-checkable POSIX and Rust-hosting coverage tracker for Janix"
+
+[meta]
+status_enum = ["missing", "partial", "present", "stub", "deferred", "n/a"]
+priority_enum = ["p0", "p1", "p2", "p3"]
+owner_enum = ["kernel", "libc", "userspace", "mixed"]
+category_enum = [
+    "process",
+    "fd",
+    "filesystem",
+    "path",
+    "memory",
+    "time",
+    "ipc",
+    "signals",
+    "terminal",
+    "threads",
+    "tls",
+    "dynamic_loading",
+    "network",
+    "runtime",
+    "misc",
+]
+
+# -----------------------------------------------------------------------------
+# Milestones
+# -----------------------------------------------------------------------------
+
+[[milestones]]
+id = "rust_boot"
+title = "Rust boots natively"
+description = "Enough host substrate for native Rust programs with std to run meaningfully."
+required_features = [
+    "proc.exec_replace",
+    "tls.fs_base_switch",
+    "vm.protect",
+    "fs.stat_timestamps",
+    "time.clock_gettime",
+    "time.nanosleep",
+    "fd.pipe",
+    "fd.poll",
+    "path.getcwd",
+    "path.chdir",
+]
+
+[[milestones]]
+id = "cargo_offline"
+title = "Cargo works offline"
+description = "Enough POSIX-ish behavior for local cargo builds without networking."
+required_features = [
+    "proc.exec_replace",
+    "proc.waitpid",
+    "fd.isatty",
+    "path.realpath",
+    "fd.fcntl_basic",
+    "filesystem.fsync",
+    "fs.stat_timestamps",
+    "fd.pipe",
+    "fd.poll",
+    "env.getenv",
+    "env.setenv",
+    "path.getcwd",
+    "path.chdir",
+]
+
+[[milestones]]
+id = "unix_comfortable"
+title = "Feels like Unix"
+description = "Comfortable compatibility for ordinary CLI and build tooling."
+required_features = [
+    "signals.eintr",
+    "terminal.termios_basic",
+    "fs.symlinks",
+    "fs.readlink",
+    "proc.exec_wrappers",
+    "proc.close_on_exec",
+    "runtime.auxv_basic",
+    "threads.user_threads",
+    "threads.futex_basic",
+]
+
+# -----------------------------------------------------------------------------
+# Features
+# -----------------------------------------------------------------------------
+
+# ---- Process / execution -----------------------------------------------------
+
+[[features]]
+id = "proc.exec_replace"
+title = "In-place process image replacement"
+category = "process"
+priority = "p0"
+status = "missing"
+owner = "kernel"
+rust_blocker = true
+cargo_blocker = true
+posix = "execve"
+notes = "Janix-native fd/handle-based task_exec preferred over path-first execve."
+
+[[features]]
+id = "proc.exec_wrappers"
+title = "Userspace exec wrappers"
+category = "process"
+priority = "p2"
+status = "missing"
+owner = "libc"
+rust_blocker = false
+cargo_blocker = false
+posix = "execv/execve/execvp/fexecve"
+notes = "Layer path-based wrappers atop Janix-native task_exec(fd, ...)."
+
+[[features]]
+id = "proc.close_on_exec"
+title = "Close-on-exec descriptor semantics"
+category = "process"
+priority = "p2"
+status = "missing"
+owner = "mixed"
+rust_blocker = false
+cargo_blocker = false
+posix = "FD_CLOEXEC"
+notes = "Naturally fits with fcntl completion."
+
+[[features]]
+id = "proc.waitpid"
+title = "Wait for child process exit"
+category = "process"
+priority = "p1"
+status = "partial"
+owner = "kernel"
+rust_blocker = false
+cargo_blocker = true
+posix = "waitpid"
+notes = "Audit shows parent wait exists via SYS_TASK_WAIT; verify full child-process semantics and nonblocking variants if needed."
+
+[[features]]
+id = "proc.fork"
+title = "fork semantics"
+category = "process"
+priority = "p3"
+status = "deferred"
+owner = "kernel"
+rust_blocker = false
+cargo_blocker = false
+posix = "fork"
+notes = "Not required for Janix if spawn/task_exec model is strong."
+
+[[features]]
+id = "proc.process_groups"
+title = "Process groups and sessions"
+category = "process"
+priority = "p3"
+status = "missing"
+owner = "kernel"
+rust_blocker = false
+cargo_blocker = false
+posix = "setpgid/setsid"
+notes = "Useful later for shells and job control."
+
+# ---- Environment -------------------------------------------------------------
+
+[[features]]
+id = "env.getenv"
+title = "Read environment variables"
+category = "runtime"
+priority = "p1"
+status = "present"
+owner = "libc"
+rust_blocker = false
+cargo_blocker = true
+posix = "getenv"
+notes = "Audit shows BTreeMap-backed environment via SYS_ENV_GET/SET."
+
+[[features]]
+id = "env.setenv"
+title = "Set environment variables"
+category = "runtime"
+priority = "p1"
+status = "partial"
+owner = "mixed"
+rust_blocker = false
+cargo_blocker = true
+posix = "setenv/unsetenv"
+notes = "Kernel substrate appears present; verify libc wrappers and semantics."
+
+[[features]]
+id = "env.argv_envp"
+title = "argv/envp process startup"
+category = "runtime"
+priority = "p0"
+status = "present"
+owner = "mixed"
+rust_blocker = true
+cargo_blocker = true
+posix = "process startup"
+notes = "Present at a basic level; ensure exec path preserves or replaces correctly."
+
+# ---- File descriptors --------------------------------------------------------
+
+[[features]]
+id = "fd.open_close"
+title = "Open and close file descriptors"
+category = "fd"
+priority = "p0"
+status = "present"
+owner = "kernel"
+rust_blocker = true
+cargo_blocker = true
+posix = "open/close"
+notes = "Audit reports SYS_FS_OPEN/CLOSE present."
+
+[[features]]
+id = "fd.read_write"
+title = "Read and write file descriptors"
+category = "fd"
+priority = "p0"
+status = "present"
+owner = "kernel"
+rust_blocker = true
+cargo_blocker = true
+posix = "read/write"
+notes = "Audit reports SYS_FS_READ/WRITE present."
+
+[[features]]
+id = "fd.lseek"
+title = "Seek on seekable descriptors"
+category = "fd"
+priority = "p1"
+status = "present"
+owner = "kernel"
+rust_blocker = false
+cargo_blocker = true
+posix = "lseek"
+notes = "Audit reports SYS_FS_SEEK present; verify full edge semantics."
+
+[[features]]
+id = "fd.dup"
+title = "Duplicate descriptor"
+category = "fd"
+priority = "p1"
+status = "present"
+owner = "kernel"
+rust_blocker = false
+cargo_blocker = true
+posix = "dup/dup2"
+notes = "Audit reports SYS_FS_DUP and SYS_FS_DUP2 present."
+
+[[features]]
+id = "fd.fcntl_basic"
+title = "Basic fcntl descriptor control"
+category = "fd"
+priority = "p1"
+status = "partial"
+owner = "mixed"
+rust_blocker = false
+cargo_blocker = true
+posix = "fcntl"
+notes = "Audit notes O_NONBLOCK/O_APPEND exist, but F_GETFL/F_SETFL and related control are incomplete."
+
+[[features]]
+id = "fd.pipe"
+title = "Pipes and socketpair-like streams"
+category = "ipc"
+priority = "p0"
+status = "present"
+owner = "kernel"
+rust_blocker = true
+cargo_blocker = true
+posix = "pipe"
+notes = "Audit reports standard pipes and socketpairs, with pollability."
+
+[[features]]
+id = "fd.poll"
+title = "Poll/select readiness"
+category = "fd"
+priority = "p0"
+status = "present"
+owner = "kernel"
+rust_blocker = true
+cargo_blocker = true
+posix = "poll/select"
+notes = "Audit reports SYS_FS_POLL present; semantics may still need refinement."
+
+[[features]]
+id = "fd.isatty"
+title = "Terminal detection"
+category = "terminal"
+priority = "p1"
+status = "partial"
+owner = "mixed"
+rust_blocker = false
+cargo_blocker = true
+posix = "isatty"
+notes = "SYS_FS_ISATTY present; sys_fs_isatty checks VfsNode::is_tty() which defaults to false. Console/TTY nodes can override is_tty()."
+
+# ---- Filesystem and stat -----------------------------------------------------
+
+[[features]]
+id = "fs.stat_basic"
+title = "Basic stat/fstat metadata"
+category = "filesystem"
+priority = "p0"
+status = "partial"
+owner = "kernel"
+rust_blocker = true
+cargo_blocker = true
+posix = "stat/fstat"
+notes = "Audit reports mode, size, inode present, but timestamps missing."
+
+[[features]]
+id = "fs.stat_timestamps"
+title = "atime/mtime/ctime in stat and fstat"
+category = "filesystem"
+priority = "p0"
+status = "present"
+owner = "mixed"
+rust_blocker = true
+cargo_blocker = true
+posix = "stat/fstat"
+notes = "VfsStat and FileStat include atime/mtime/ctime (sec+nsec). Timestamps are updated on write/truncate/mkdir; read by kernel::time::now_timespec()."
+
+[[features]]
+id = "fs.readdir"
+title = "Read directory entries"
+category = "filesystem"
+priority = "p1"
+status = "present"
+owner = "kernel"
+rust_blocker = false
+cargo_blocker = true
+posix = "readdir"
+notes = "Audit reports SYS_FS_READDIR present."
+
+[[features]]
+id = "fs.rename"
+title = "Rename path entries"
+category = "filesystem"
+priority = "p1"
+status = "present"
+owner = "kernel"
+rust_blocker = false
+cargo_blocker = true
+posix = "rename"
+notes = "Verify atomicity guarantees."
+
+[[features]]
+id = "fs.unlink_rmdir"
+title = "Unlink files and remove directories"
+category = "filesystem"
+priority = "p1"
+status = "present"
+owner = "kernel"
+rust_blocker = false
+cargo_blocker = true
+posix = "unlink/rmdir"
+notes = "Audit reports syscall support; verify errno and edge cases."
+
+[[features]]
+id = "filesystem.fsync"
+title = "File sync / durability barrier"
+category = "filesystem"
+priority = "p1"
+status = "present"
+owner = "mixed"
+rust_blocker = false
+cargo_blocker = true
+posix = "fsync"
+notes = "SYS_FS_SYNC (sys_fs_sync) implemented; calls VfsNode::sync() on the fd's node. No-op for ramfs (in-memory), deferred for persistent backing stores."
+
+[[features]]
+id = "fs.symlinks"
+title = "Symbolic links"
+category = "filesystem"
+priority = "p2"
+status = "present"
+owner = "kernel"
+rust_blocker = false
+cargo_blocker = false
+posix = "symlink"
+notes = "SYS_FS_SYMLINK and RamFs::create_symlink implemented. path.rs resolve() follows symlinks up to MAX_SYMLINK_DEPTH (40). VfsDriver::symlink supported in ramfs."
+
+[[features]]
+id = "fs.readlink"
+title = "Read symbolic link target"
+category = "filesystem"
+priority = "p2"
+status = "present"
+owner = "kernel"
+rust_blocker = false
+cargo_blocker = false
+posix = "readlink"
+notes = "SYS_FS_READLINK implemented; calls VfsNode::readlink(). RamFs symlink nodes return the target via readlink(). lstat (SYS_FS_LSTAT) and resolve_no_follow() also present."
+
+[[features]]
+id = "fs.permissions"
+title = "Permissions and ownership model"
+category = "filesystem"
+priority = "p3"
+status = "partial"
+owner = "kernel"
+rust_blocker = false
+cargo_blocker = false
+posix = "chmod/chown/mode"
+notes = "Audit says basic UNIX mode bits exist, but no UID/GID ownership."
+
+# ---- Paths -------------------------------------------------------------------
+
+[[features]]
+id = "path.getcwd"
+title = "Current working directory query"
+category = "path"
+priority = "p1"
+status = "present"
+owner = "mixed"
+rust_blocker = false
+cargo_blocker = true
+posix = "getcwd"
+notes = "CWD exists in process metadata; verify userspace wrapper quality."
+
+[[features]]
+id = "path.chdir"
+title = "Change current working directory"
+category = "path"
+priority = "p1"
+status = "present"
+owner = "mixed"
+rust_blocker = false
+cargo_blocker = true
+posix = "chdir"
+notes = "CWD inheritance already exists; verify chdir surface if not already exposed cleanly."
+
+[[features]]
+id = "path.realpath"
+title = "Canonical path resolution"
+category = "path"
+priority = "p1"
+status = "present"
+owner = "mixed"
+rust_blocker = false
+cargo_blocker = true
+posix = "realpath"
+notes = "SYS_FS_REALPATH (sys_fs_realpath) implemented. vfs::path::normalise() handles . / .. / double-slash. stem::syscall::vfs_realpath() wraps the syscall."
+
+# ---- Memory ------------------------------------------------------------------
+
+[[features]]
+id = "vm.mmap"
+title = "Map memory"
+category = "memory"
+priority = "p0"
+status = "present"
+owner = "kernel"
+rust_blocker = true
+cargo_blocker = true
+posix = "mmap"
+notes = "Anonymous and file-backed mappings reported present."
+
+[[features]]
+id = "vm.unmap"
+title = "Unmap memory"
+category = "memory"
+priority = "p0"
+status = "present"
+owner = "kernel"
+rust_blocker = true
+cargo_blocker = true
+posix = "munmap"
+notes = "Audit reports SYS_VM_UNMAP present."
+
+[[features]]
+id = "vm.protect"
+title = "Change protection on mapped memory"
+category = "memory"
+priority = "p0"
+status = "stub"
+owner = "kernel"
+rust_blocker = true
+cargo_blocker = true
+posix = "mprotect"
+notes = "Audit says SYS_VM_PROTECT returns ENOSYS."
+
+# ---- Time --------------------------------------------------------------------
+
+[[features]]
+id = "time.clock_gettime"
+title = "Clock access"
+category = "time"
+priority = "p0"
+status = "present"
+owner = "mixed"
+rust_blocker = true
+cargo_blocker = true
+posix = "clock_gettime"
+notes = "Monotonic and realtime concepts appear present; verify stable userspace API."
+
+[[features]]
+id = "time.nanosleep"
+title = "High resolution sleep"
+category = "time"
+priority = "p0"
+status = "present"
+owner = "mixed"
+rust_blocker = true
+cargo_blocker = true
+posix = "nanosleep"
+notes = "Audit reports SYS_SLEEP_NS present."
+
+# ---- Signals / interruption --------------------------------------------------
+
+[[features]]
+id = "signals.eintr"
+title = "Interruptible blocking syscalls"
+category = "signals"
+priority = "p1"
+status = "missing"
+owner = "kernel"
+rust_blocker = false
+cargo_blocker = true
+posix = "EINTR behavior"
+notes = "Audit indicates no signal/interrupt model yet."
+
+[[features]]
+id = "signals.basic"
+title = "Basic signal delivery"
+category = "signals"
+priority = "p3"
+status = "missing"
+owner = "kernel"
+rust_blocker = false
+cargo_blocker = false
+posix = "signal/sigaction/kill"
+notes = "Can defer behind a Janix-native interruption model."
+
+# ---- Terminal ----------------------------------------------------------------
+
+[[features]]
+id = "terminal.termios_basic"
+title = "Basic terminal control"
+category = "terminal"
+priority = "p2"
+status = "missing"
+owner = "mixed"
+rust_blocker = false
+cargo_blocker = false
+posix = "termios"
+notes = "Audit marks raw mode and termios-like support missing."
+
+# ---- Threads and TLS ---------------------------------------------------------
+
+[[features]]
+id = "threads.user_threads"
+title = "User threads"
+category = "threads"
+priority = "p1"
+status = "present"
+owner = "kernel"
+rust_blocker = true
+cargo_blocker = false
+posix = "pthread substrate"
+notes = "Audit reports SYS_SPAWN_THREAD and wait semantics for threads."
+
+[[features]]
+id = "threads.futex_basic"
+title = "Futex-style wait/wake"
+category = "threads"
+priority = "p1"
+status = "present"
+owner = "kernel"
+rust_blocker = true
+cargo_blocker = false
+posix = "pthread substrate"
+notes = "Audit reports futex support present."
+
+[[features]]
+id = "tls.fs_base_switch"
+title = "Per-thread FS_BASE save/restore"
+category = "tls"
+priority = "p0"
+status = "missing"
+owner = "kernel"
+rust_blocker = true
+cargo_blocker = false
+posix = "thread-local runtime substrate"
+notes = "Audit identifies missing FS_BASE save/restore as critical."
+
+# ---- Dynamic loading ---------------------------------------------------------
+
+[[features]]
+id = "runtime.auxv_basic"
+title = "Auxiliary vector on process startup"
+category = "runtime"
+priority = "p2"
+status = "missing"
+owner = "mixed"
+rust_blocker = false
+cargo_blocker = false
+posix = "process runtime ABI"
+notes = "Useful for serious runtimes and dynamic loader integration."
+
+[[features]]
+id = "dynamic.loader"
+title = "Dynamic ELF loader"
+category = "dynamic_loading"
+priority = "p3"
+status = "missing"
+owner = "userspace"
+rust_blocker = false
+cargo_blocker = false
+posix = "ld.so style runtime"
+notes = "Not required for offline static-first milestone, but required for broad ecosystem."
+
+[[features]]
+id = "dynamic.dlopen"
+title = "Runtime shared library loading"
+category = "dynamic_loading"
+priority = "p3"
+status = "missing"
+owner = "userspace"
+rust_blocker = false
+cargo_blocker = false
+posix = "dlopen/dlsym"
+notes = "Needed for procedural macros and plugin-heavy ecosystems."
+
+# ---- Randomness / misc -------------------------------------------------------
+
+[[features]]
+id = "misc.random"
+title = "Kernel random bytes source"
+category = "misc"
+priority = "p2"
+status = "missing"
+owner = "kernel"
+rust_blocker = false
+cargo_blocker = false
+posix = "getrandom-like substrate"
+notes = "Not POSIX-core, but increasingly expected by Rust ecosystem."

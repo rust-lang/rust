@@ -1,0 +1,11 @@
+[package]
+name = "display_proto_tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+abi = { path = "../../abi" }
+
+[[test]]
+name = "display_negotiation"
+path = "../../tests/display_negotiation.rs"

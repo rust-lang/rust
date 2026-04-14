@@ -1,0 +1,16 @@
+[package]
+name = "bran"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+boot-terminal = []  # Full scrolling terminal console
+diagnostic-apps = ["kernel/diagnostic-apps"]
+
+[dependencies]
+limine = "0.5"
+kernel = { path = "../kernel" }
+abi = { path = "../abi" }
+embedded-graphics = "0.8.1"
+spin = "0.9"
+fb_common = { path = "../libs/fb_common" }

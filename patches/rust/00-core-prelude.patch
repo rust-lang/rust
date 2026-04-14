@@ -1,0 +1,39 @@
+diff --git a/library/core/src/lib.rs b/library/core/src/lib.rs
+index 17cf6b37..aacc2d1a 100644
+--- a/library/core/src/lib.rs
++++ b/library/core/src/lib.rs
+@@ -246,7 +246,7 @@ pub mod autodiff {
+ #[unstable(feature = "contracts", issue = "128044")]
+ pub mod contracts;
+ 
+-#[unstable(feature = "cfg_select", issue = "115585")]
++#[stable(feature = "cfg_select", since = "CURRENT_RUSTC_VERSION")]
+ pub use crate::macros::cfg_select;
+ 
+ #[macro_use]
+diff --git a/library/core/src/macros/mod.rs b/library/core/src/macros/mod.rs
+index 3176f3c0..0aca1136 100644
+--- a/library/core/src/macros/mod.rs
++++ b/library/core/src/macros/mod.rs
+@@ -234,7 +234,7 @@ macro_rules! assert_ne {
+ ///     _ => { "Behind every successful diet is an unwatched pizza" }
+ /// };
+ /// ```
+-#[unstable(feature = "cfg_select", issue = "115585")]
++#[stable(feature = "cfg_select", since = "CURRENT_RUSTC_VERSION")]
+ #[rustc_diagnostic_item = "cfg_select"]
+ #[rustc_builtin_macro]
+ pub macro cfg_select($($tt:tt)*) {
+diff --git a/library/core/src/prelude/v1.rs b/library/core/src/prelude/v1.rs
+index 354be271..17928b1e 100644
+--- a/library/core/src/prelude/v1.rs
++++ b/library/core/src/prelude/v1.rs
+@@ -80,7 +80,7 @@ mod panic {}
+ #[doc(no_inline)]
+ pub use self::ambiguous_macros_only::{env, panic};
+ 
+-#[unstable(feature = "cfg_select", issue = "115585")]
++#[stable(feature = "cfg_select", since = "CURRENT_RUSTC_VERSION")]
+ #[doc(no_inline)]
+ pub use crate::cfg_select;
+ 
