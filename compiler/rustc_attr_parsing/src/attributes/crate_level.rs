@@ -108,7 +108,6 @@ pub(crate) struct MoveSizeLimitParser;
 
 impl<S: Stage> SingleAttributeParser<S> for MoveSizeLimitParser {
     const PATH: &[Symbol] = &[sym::move_size_limit];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
 
@@ -154,7 +153,6 @@ pub(crate) struct PatternComplexityLimitParser;
 
 impl<S: Stage> SingleAttributeParser<S> for PatternComplexityLimitParser {
     const PATH: &[Symbol] = &[sym::pattern_complexity_limit];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
 
@@ -177,7 +175,6 @@ pub(crate) struct NoCoreParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for NoCoreParser {
     const PATH: &[Symbol] = &[sym::no_core];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::NoCore;
 }
@@ -204,7 +201,6 @@ pub(crate) struct RustcCoherenceIsCoreParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcCoherenceIsCoreParser {
     const PATH: &[Symbol] = &[sym::rustc_coherence_is_core];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcCoherenceIsCore;
 }
@@ -247,7 +243,6 @@ pub(crate) struct PanicRuntimeParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for PanicRuntimeParser {
     const PATH: &[Symbol] = &[sym::panic_runtime];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::PanicRuntime;
 }
@@ -256,7 +251,6 @@ pub(crate) struct NeedsPanicRuntimeParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for NeedsPanicRuntimeParser {
     const PATH: &[Symbol] = &[sym::needs_panic_runtime];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsPanicRuntime;
 }
@@ -265,7 +259,6 @@ pub(crate) struct ProfilerRuntimeParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for ProfilerRuntimeParser {
     const PATH: &[Symbol] = &[sym::profiler_runtime];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ProfilerRuntime;
 }
@@ -283,7 +276,6 @@ pub(crate) struct RustcPreserveUbChecksParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcPreserveUbChecksParser {
     const PATH: &[Symbol] = &[sym::rustc_preserve_ub_checks];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcPreserveUbChecks;
 }
@@ -292,7 +284,6 @@ pub(crate) struct RustcNoImplicitBoundsParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNoImplicitBoundsParser {
     const PATH: &[Symbol] = &[sym::rustc_no_implicit_bounds];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNoImplicitBounds;
 }
@@ -301,7 +292,6 @@ pub(crate) struct DefaultLibAllocatorParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for DefaultLibAllocatorParser {
     const PATH: &[Symbol] = &[sym::default_lib_allocator];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::DefaultLibAllocator;
 }

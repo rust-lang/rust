@@ -19,7 +19,6 @@ pub(crate) struct RustcMainParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcMainParser {
     const PATH: &[Symbol] = &[sym::rustc_main];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcMain;
 }
@@ -28,7 +27,6 @@ pub(crate) struct RustcMustImplementOneOfParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcMustImplementOneOfParser {
     const PATH: &[Symbol] = &[sym::rustc_must_implement_one_of];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["function1, function2, ..."]);
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
@@ -74,7 +72,6 @@ pub(crate) struct RustcNeverReturnsNullPtrParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNeverReturnsNullPtrParser {
     const PATH: &[Symbol] = &[sym::rustc_never_returns_null_ptr];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -88,7 +85,6 @@ pub(crate) struct RustcNoImplicitAutorefsParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNoImplicitAutorefsParser {
     const PATH: &[Symbol] = &[sym::rustc_no_implicit_autorefs];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -104,7 +100,6 @@ pub(crate) struct RustcLayoutScalarValidRangeStartParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeStartParser {
     const PATH: &[Symbol] = &[sym::rustc_layout_scalar_valid_range_start];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["start"]);
 
@@ -118,7 +113,6 @@ pub(crate) struct RustcLayoutScalarValidRangeEndParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLayoutScalarValidRangeEndParser {
     const PATH: &[Symbol] = &[sym::rustc_layout_scalar_valid_range_end];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["end"]);
 
@@ -132,7 +126,6 @@ pub(crate) struct RustcLegacyConstGenericsParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLegacyConstGenericsParser {
     const PATH: &[Symbol] = &[sym::rustc_legacy_const_generics];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["N"]);
 
@@ -176,7 +169,6 @@ pub(crate) struct RustcInheritOverflowChecksParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcInheritOverflowChecksParser {
     const PATH: &[Symbol] = &[sym::rustc_inherit_overflow_checks];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -190,7 +182,6 @@ pub(crate) struct RustcLintOptDenyFieldAccessParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcLintOptDenyFieldAccessParser {
     const PATH: &[Symbol] = &[sym::rustc_lint_opt_deny_field_access];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Field)]);
     const TEMPLATE: AttributeTemplate = template!(Word);
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
@@ -210,7 +201,6 @@ pub(crate) struct RustcLintOptTyParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcLintOptTyParser {
     const PATH: &[Symbol] = &[sym::rustc_lint_opt_ty];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcLintOptTy;
 }
@@ -359,7 +349,6 @@ pub(crate) struct RustcDeprecatedSafe2024Parser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcDeprecatedSafe2024Parser {
     const PATH: &[Symbol] = &[sym::rustc_deprecated_safe_2024];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -400,7 +389,6 @@ pub(crate) struct RustcConversionSuggestionParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcConversionSuggestionParser {
     const PATH: &[Symbol] = &[sym::rustc_conversion_suggestion];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -415,7 +403,6 @@ pub(crate) struct RustcCaptureAnalysisParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcCaptureAnalysisParser {
     const PATH: &[Symbol] = &[sym::rustc_capture_analysis];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Closure)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCaptureAnalysis;
 }
@@ -424,7 +411,6 @@ pub(crate) struct RustcNeverTypeOptionsParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcNeverTypeOptionsParser {
     const PATH: &[Symbol] = &[sym::rustc_never_type_options];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &[
         r#"fallback = "unit", "never", "no""#,
@@ -507,7 +493,6 @@ pub(crate) struct RustcTrivialFieldReadsParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcTrivialFieldReadsParser {
     const PATH: &[Symbol] = &[sym::rustc_trivial_field_reads];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcTrivialFieldReads;
 }
@@ -516,7 +501,6 @@ pub(crate) struct RustcNoMirInlineParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNoMirInlineParser {
     const PATH: &[Symbol] = &[sym::rustc_no_mir_inline];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -546,7 +530,6 @@ pub(crate) struct RustcLintQueryInstabilityParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcLintQueryInstabilityParser {
     const PATH: &[Symbol] = &[sym::rustc_lint_query_instability];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -561,7 +544,6 @@ pub(crate) struct RustcRegionsParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcRegionsParser {
     const PATH: &[Symbol] = &[sym::rustc_regions];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -577,7 +559,6 @@ pub(crate) struct RustcLintUntrackedQueryInformationParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcLintUntrackedQueryInformationParser {
     const PATH: &[Symbol] = &[sym::rustc_lint_untracked_query_information];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -593,7 +574,6 @@ pub(crate) struct RustcSimdMonomorphizeLaneLimitParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcSimdMonomorphizeLaneLimitParser {
     const PATH: &[Symbol] = &[sym::rustc_simd_monomorphize_lane_limit];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
 
@@ -611,7 +591,6 @@ pub(crate) struct RustcScalableVectorParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcScalableVectorParser {
     const PATH: &[Symbol] = &[sym::rustc_scalable_vector];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["count"]);
 
@@ -636,7 +615,6 @@ pub(crate) struct LangParser;
 
 impl<S: Stage> SingleAttributeParser<S> for LangParser {
     const PATH: &[Symbol] = &[sym::lang];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); // Targets are checked per lang item in `rustc_passes`
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
@@ -662,7 +640,6 @@ pub(crate) struct RustcHasIncoherentInherentImplsParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcHasIncoherentInherentImplsParser {
     const PATH: &[Symbol] = &[sym::rustc_has_incoherent_inherent_impls];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Trait),
         Allow(Target::Struct),
@@ -677,7 +654,6 @@ pub(crate) struct PanicHandlerParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for PanicHandlerParser {
     const PATH: &[Symbol] = &[sym::panic_handler];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); // Targets are checked per lang item in `rustc_passes`
     const CREATE: fn(Span) -> AttributeKind = |span| AttributeKind::Lang(LangItem::PanicImpl, span);
 }
@@ -686,7 +662,6 @@ pub(crate) struct RustcNounwindParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNounwindParser {
     const PATH: &[Symbol] = &[sym::rustc_nounwind];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::ForeignFn),
@@ -701,7 +676,6 @@ pub(crate) struct RustcOffloadKernelParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcOffloadKernelParser {
     const PATH: &[Symbol] = &[sym::rustc_offload_kernel];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcOffloadKernel;
 }
@@ -800,7 +774,6 @@ pub(crate) struct RustcNonConstTraitMethodParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNonConstTraitMethodParser {
     const PATH: &[Symbol] = &[sym::rustc_non_const_trait_method];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::Trait { body: false })),
@@ -919,8 +892,6 @@ pub(crate) struct RustcIfThisChangedParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcIfThisChangedParser {
     const PATH: &[Symbol] = &[sym::rustc_if_this_changed];
 
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         // tidy-alphabetical-start
         Allow(Target::AssocConst),
@@ -1030,7 +1001,6 @@ pub(crate) struct RustcInsignificantDtorParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcInsignificantDtorParser {
     const PATH: &[Symbol] = &[sym::rustc_insignificant_dtor];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Enum),
         Allow(Target::Struct),
@@ -1043,7 +1013,6 @@ pub(crate) struct RustcEffectiveVisibilityParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcEffectiveVisibilityParser {
     const PATH: &[Symbol] = &[sym::rustc_effective_visibility];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Use),
         Allow(Target::Static),
@@ -1082,7 +1051,6 @@ pub(crate) struct RustcDiagnosticItemParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcDiagnosticItemParser {
     const PATH: &[Symbol] = &[sym::rustc_diagnostic_item];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Trait),
         Allow(Target::Struct),
@@ -1121,7 +1089,6 @@ pub(crate) struct RustcDoNotConstCheckParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDoNotConstCheckParser {
     const PATH: &[Symbol] = &[sym::rustc_do_not_const_check];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -1136,7 +1103,6 @@ pub(crate) struct RustcNonnullOptimizationGuaranteedParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcNonnullOptimizationGuaranteedParser {
     const PATH: &[Symbol] = &[sym::rustc_nonnull_optimization_guaranteed];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Struct)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcNonnullOptimizationGuaranteed;
 }
@@ -1145,7 +1111,6 @@ pub(crate) struct RustcStrictCoherenceParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcStrictCoherenceParser {
     const PATH: &[Symbol] = &[sym::rustc_strict_coherence];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Trait),
         Allow(Target::Struct),
@@ -1160,7 +1125,6 @@ pub(crate) struct RustcReservationImplParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcReservationImplParser {
     const PATH: &[Symbol] = &[sym::rustc_reservation_impl];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Impl { of_trait: true })]);
 
@@ -1186,7 +1150,6 @@ pub(crate) struct PreludeImportParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for PreludeImportParser {
     const PATH: &[Symbol] = &[sym::prelude_import];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Use)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::PreludeImport;
 }
@@ -1195,7 +1158,6 @@ pub(crate) struct RustcDocPrimitiveParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcDocPrimitiveParser {
     const PATH: &[Symbol] = &[sym::rustc_doc_primitive];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Mod)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "primitive name");
 
@@ -1219,7 +1181,6 @@ pub(crate) struct RustcIntrinsicParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcIntrinsicParser {
     const PATH: &[Symbol] = &[sym::rustc_intrinsic];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsic;
 }
@@ -1228,7 +1189,6 @@ pub(crate) struct RustcIntrinsicConstStableIndirectParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcIntrinsicConstStableIndirectParser {
     const PATH: &'static [Symbol] = &[sym::rustc_intrinsic_const_stable_indirect];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcIntrinsicConstStableIndirect;
 }
@@ -1237,7 +1197,6 @@ pub(crate) struct RustcExhaustiveParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcExhaustiveParser {
     const PATH: &'static [Symbol] = &[sym::rustc_must_match_exhaustively];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Enum)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcMustMatchExhaustively;
 }

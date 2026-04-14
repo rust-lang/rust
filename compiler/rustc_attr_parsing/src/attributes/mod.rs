@@ -128,7 +128,7 @@ pub(crate) trait SingleAttributeParser<S: Stage>: 'static {
 
     /// Configures what to do when when the same attribute is
     /// applied more than once on the same syntax node.
-    const ON_DUPLICATE: OnDuplicate<S>;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const SAFETY: AttributeSafety = AttributeSafety::Normal;
 
     const ALLOWED_TARGETS: AllowedTargets;
@@ -240,7 +240,7 @@ pub enum AttributeSafety {
 //
 pub(crate) trait NoArgsAttributeParser<S: Stage>: 'static {
     const PATH: &[Symbol];
-    const ON_DUPLICATE: OnDuplicate<S>;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets;
     const SAFETY: AttributeSafety = AttributeSafety::Normal;
 

@@ -502,7 +502,6 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
 pub(crate) struct ExportStableParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ExportStableParser {
     const PATH: &[Symbol] = &[sym::export_stable];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ExportStable;
 }
@@ -510,7 +509,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for ExportStableParser {
 pub(crate) struct FfiConstParser;
 impl<S: Stage> NoArgsAttributeParser<S> for FfiConstParser {
     const PATH: &[Symbol] = &[sym::ffi_const];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiConst;
@@ -519,7 +517,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for FfiConstParser {
 pub(crate) struct FfiPureParser;
 impl<S: Stage> NoArgsAttributeParser<S> for FfiPureParser {
     const PATH: &[Symbol] = &[sym::ffi_pure];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
@@ -528,7 +525,6 @@ impl<S: Stage> NoArgsAttributeParser<S> for FfiPureParser {
 pub(crate) struct RustcStdInternalSymbolParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcStdInternalSymbolParser {
     const PATH: &[Symbol] = &[sym::rustc_std_internal_symbol];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::ForeignFn),
@@ -542,7 +538,6 @@ pub(crate) struct LinkOrdinalParser;
 
 impl<S: Stage> SingleAttributeParser<S> for LinkOrdinalParser {
     const PATH: &[Symbol] = &[sym::link_ordinal];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
@@ -583,7 +578,6 @@ pub(crate) struct LinkageParser;
 impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
     const PATH: &[Symbol] = &[sym::linkage];
 
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -666,7 +660,6 @@ pub(crate) struct NeedsAllocatorParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for NeedsAllocatorParser {
     const PATH: &[Symbol] = &[sym::needs_allocator];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsAllocator;
 }
@@ -675,7 +668,6 @@ pub(crate) struct CompilerBuiltinsParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for CompilerBuiltinsParser {
     const PATH: &[Symbol] = &[sym::compiler_builtins];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::CompilerBuiltins;
 }
