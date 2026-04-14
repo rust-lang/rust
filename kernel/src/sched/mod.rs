@@ -3357,6 +3357,9 @@ mod tests {
                 crate::task::ProcessInfo {
                     pid,
                     ppid,
+                    pgid: pid,
+                    sid: pid,
+                    session_leader: false,
                     argv: alloc::vec::Vec::new(),
                     env: alloc::collections::BTreeMap::new(),
                     auxv: alloc::vec::Vec::new(),
@@ -3366,10 +3369,7 @@ mod tests {
                     thread_ids: alloc::vec![pid as TaskId],
                     exec_in_progress: false,
                     exec_path: alloc::string::String::new(),
-                    mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                        crate::memory::mappings::MappingList::new(),
-                    )),
-                    aspace_raw: 0,
+                    space: crate::task::ProcessAddressSpace::empty(),
                     signals: crate::signal::ProcessSignals::new(),
                     children_done: alloc::collections::VecDeque::new(),
                 },
@@ -3608,6 +3608,9 @@ mod tests {
         let pinfo = alloc::sync::Arc::new(spin::Mutex::new(crate::task::ProcessInfo {
             pid: 7000,
             ppid: 1,
+            pgid: 7000,
+            sid: 7000,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -3617,10 +3620,7 @@ mod tests {
             thread_ids: alloc::vec![7000, 7001],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
@@ -3644,6 +3644,9 @@ mod tests {
         let pinfo = alloc::sync::Arc::new(spin::Mutex::new(crate::task::ProcessInfo {
             pid: 8700,
             ppid: 1,
+            pgid: 8700,
+            sid: 8700,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -3653,10 +3656,7 @@ mod tests {
             thread_ids: alloc::vec![8700, 8701],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
@@ -3706,6 +3706,9 @@ mod tests {
         let pinfo = alloc::sync::Arc::new(spin::Mutex::new(crate::task::ProcessInfo {
             pid: 8800,
             ppid: 1,
+            pgid: 8800,
+            sid: 8800,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -3715,10 +3718,7 @@ mod tests {
             thread_ids: alloc::vec![8800, 8801],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
@@ -3772,6 +3772,9 @@ mod tests {
         let pinfo = alloc::sync::Arc::new(spin::Mutex::new(crate::task::ProcessInfo {
             pid: 9100,
             ppid: 1,
+            pgid: 9100,
+            sid: 9100,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -3781,10 +3784,7 @@ mod tests {
             thread_ids: alloc::vec![9100, 9101, 9102],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
@@ -3881,6 +3881,9 @@ mod tests {
         let pinfo = alloc::sync::Arc::new(spin::Mutex::new(crate::task::ProcessInfo {
             pid: 9700,
             ppid: 1,
+            pgid: 9700,
+            sid: 9700,
+            session_leader: false,
             argv: alloc::vec![b"old".to_vec()],
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -3890,10 +3893,7 @@ mod tests {
             thread_ids: all_tids.clone(),
             exec_in_progress: false,
             exec_path: alloc::string::String::from("/old/binary"),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
@@ -3977,6 +3977,9 @@ mod tests {
         let pinfo = alloc::sync::Arc::new(spin::Mutex::new(crate::task::ProcessInfo {
             pid: 9300,
             ppid: 1,
+            pgid: 9300,
+            sid: 9300,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -3986,10 +3989,7 @@ mod tests {
             thread_ids: alloc::vec![9300],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));

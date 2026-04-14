@@ -293,7 +293,7 @@ pub fn task_exec_current<R: BootRuntime>(
     // never be taken while the registry lock is held).
     {
         let aspace_raw = rt.tasking().aspace_to_raw(new_aspace);
-        pinfo_arc.lock().aspace_raw = aspace_raw;
+        pinfo_arc.lock().space.aspace_raw = aspace_raw;
     }
 
     // 8. Perform the actual transition
@@ -489,6 +489,9 @@ mod tests {
         Arc::new(Mutex::new(ProcessInfo {
             pid,
             ppid: 1,
+            pgid: pid,
+            sid: pid,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -498,10 +501,7 @@ mod tests {
             thread_ids: alloc::vec![tid_leader, tid_sibling],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }))
@@ -556,6 +556,9 @@ mod tests {
         let pinfo = Arc::new(Mutex::new(ProcessInfo {
             pid: 9230,
             ppid: 1,
+            pgid: 9230,
+            sid: 9230,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -565,10 +568,7 @@ mod tests {
             thread_ids: alloc::vec![9230, 9231, 9232],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
@@ -595,6 +595,9 @@ mod tests {
         let pinfo = Arc::new(Mutex::new(ProcessInfo {
             pid: 9240,
             ppid: 1,
+            pgid: 9240,
+            sid: 9240,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -604,10 +607,7 @@ mod tests {
             thread_ids: alloc::vec![9240],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
@@ -725,6 +725,9 @@ mod tests {
         let pinfo = Arc::new(Mutex::new(ProcessInfo {
             pid: 9300,
             ppid: 1,
+            pgid: 9300,
+            sid: 9300,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -734,10 +737,7 @@ mod tests {
             thread_ids: alloc::vec![9300],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
@@ -781,6 +781,9 @@ mod tests {
         let pinfo = Arc::new(Mutex::new(ProcessInfo {
             pid: 9310,
             ppid: 1,
+            pgid: 9310,
+            sid: 9310,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -790,10 +793,7 @@ mod tests {
             thread_ids: alloc::vec![9310],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));
@@ -823,7 +823,7 @@ mod tests {
     #[test]
     fn process_aspace_raw_default_is_zero() {
         let pinfo = make_two_thread_pinfo(9400, 9400, 9401);
-        assert_eq!(pinfo.lock().aspace_raw, 0, "aspace_raw should default to 0");
+        assert_eq!(pinfo.lock().space.aspace_raw, 0, "aspace_raw should default to 0");
     }
 
     /// Verify that updating `aspace_raw` on the process is visible to all
@@ -834,13 +834,13 @@ mod tests {
 
         // Simulate the exec commit: update aspace_raw on the process.
         const FAKE_CR3: u64 = 0x0000_0010_0000_0000;
-        pinfo.lock().aspace_raw = FAKE_CR3;
+        pinfo.lock().space.aspace_raw = FAKE_CR3;
 
         // Both thread representations reference the same Arc, so both observe
         // the same updated value.
         let pi = pinfo.lock();
         assert_eq!(
-            pi.aspace_raw, FAKE_CR3,
+            pi.space.aspace_raw, FAKE_CR3,
             "process aspace_raw must be visible to all threads sharing the Arc"
         );
     }
@@ -897,14 +897,14 @@ mod tests {
         let pinfo = make_two_thread_pinfo(9420, 9420, 9421);
 
         // Before exec: initial state.
-        assert_eq!(pinfo.lock().aspace_raw, 0);
-        assert_eq!(pinfo.lock().mappings.lock().regions.len(), 0);
+        assert_eq!(pinfo.lock().space.aspace_raw, 0);
+        assert_eq!(pinfo.lock().space.mappings.lock().regions.len(), 0);
 
         // Simulate exec commit: replace mappings and update aspace_raw.
         const NEW_CR3: u64 = 0x0000_0020_0000_0000;
         {
             let mut pi = pinfo.lock();
-            let mut ml = pi.mappings.lock();
+            let mut ml = pi.space.mappings.lock();
             *ml = crate::memory::mappings::MappingList::new();
             ml.insert(abi::vm::VmRegionInfo {
                 start: 0x200000,
@@ -913,14 +913,14 @@ mod tests {
                 ..Default::default()
             });
             drop(ml);
-            pi.aspace_raw = NEW_CR3;
+            pi.space.aspace_raw = NEW_CR3;
         }
 
         // After exec: process reflects new VM state.
         let pi = pinfo.lock();
-        assert_eq!(pi.aspace_raw, NEW_CR3, "aspace_raw must reflect new page table after exec");
+        assert_eq!(pi.space.aspace_raw, NEW_CR3, "aspace_raw must reflect new page table after exec");
         assert_eq!(
-            pi.mappings.lock().regions.len(),
+            pi.space.mappings.lock().regions.len(),
             1,
             "mappings must contain the new region after exec"
         );
@@ -944,6 +944,9 @@ mod tests {
         Arc::new(Mutex::new(ProcessInfo {
             pid,
             ppid: 1,
+            pgid: pid,
+            sid: pid,
+            session_leader: false,
             argv: alloc::vec![
                 b"old_binary".to_vec(),
                 b"--old-arg".to_vec(),
@@ -960,10 +963,12 @@ mod tests {
             thread_ids: alloc::vec![pid as crate::task::TaskId],
             exec_in_progress: false,
             exec_path: alloc::string::String::from("/old/binary"),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0xDEAD_0000,
+            space: crate::task::ProcessAddressSpace {
+                mappings: alloc::sync::Arc::new(spin::Mutex::new(
+                    crate::memory::mappings::MappingList::new(),
+                )),
+                aspace_raw: 0xDEAD_0000,
+            },
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }))
@@ -1089,7 +1094,7 @@ mod tests {
             assert!(pi.env.contains_key(b"OLD_VAR".as_slice()));
             assert_eq!(pi.exec_path, "/old/binary");
             assert!(pi.auxv.contains(&(AT_ENTRY, 0x1000)));
-            assert_eq!(pi.aspace_raw, 0xDEAD_0000u64);
+            assert_eq!(pi.space.aspace_raw, 0xDEAD_0000u64);
         }
 
         // --- exec commit phase ---
@@ -1110,7 +1115,7 @@ mod tests {
             pi.exec_path = alloc::string::String::from("/new/binary");
             pi.fd_table.close_on_exec();
             pi.exec_in_progress = false;
-            pi.aspace_raw = 0x0000_C0DE_0000u64;
+            pi.space.aspace_raw = 0x0000_C0DE_0000u64;
         }
 
         // --- verify no stale metadata ---
@@ -1158,7 +1163,7 @@ mod tests {
         assert!(!pi.exec_in_progress, "exec_in_progress must be cleared after commit");
 
         // aspace_raw: must reflect new address space
-        assert_eq!(pi.aspace_raw, 0x0000_C0DE_0000u64, "aspace_raw not updated");
+        assert_eq!(pi.space.aspace_raw, 0x0000_C0DE_0000u64, "aspace_raw not updated");
     }
 
     // ── Thread-group collapse determinism (ProcessInfo-level) ────────────────
@@ -1181,6 +1186,9 @@ mod tests {
         let pinfo = Arc::new(Mutex::new(ProcessInfo {
             pid: 9600,
             ppid: 1,
+            pgid: 9600,
+            sid: 9600,
+            session_leader: false,
             argv: alloc::vec![b"old".to_vec()],
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -1190,10 +1198,7 @@ mod tests {
             thread_ids: all_tids.clone(),
             exec_in_progress: false,
             exec_path: alloc::string::String::from("/old"),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }));

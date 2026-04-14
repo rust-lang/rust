@@ -35,8 +35,7 @@ fn current_parent_pid<R: BootRuntime>(sched: &Scheduler<R>) -> u32 {
 fn default_process_info(
     pid: u32,
     ppid: u32,
-    mappings: alloc::sync::Arc<spin::Mutex<crate::memory::mappings::MappingList>>,
-    aspace_raw: u64,
+    space: crate::task::ProcessAddressSpace,
 ) -> alloc::sync::Arc<spin::Mutex<ProcessInfo>> {
     let console_node: alloc::sync::Arc<dyn crate::vfs::VfsNode> =
         alloc::sync::Arc::new(crate::vfs::devfs::ConsoleNode);
@@ -79,8 +78,7 @@ fn default_process_info(
         thread_ids: alloc::vec![pid as TaskId],
         exec_in_progress: false,
         exec_path: alloc::string::String::new(),
-        mappings,
-        aspace_raw,
+        space,
         signals: crate::signal::ProcessSignals::new(),
         children_done: alloc::collections::VecDeque::new(),
     }))
@@ -89,8 +87,7 @@ fn default_process_info(
 fn inherit_process_info<R: BootRuntime>(
     pid: u32,
     ppid: u32,
-    mappings: alloc::sync::Arc<spin::Mutex<crate::memory::mappings::MappingList>>,
-    aspace_raw: u64,
+    space: crate::task::ProcessAddressSpace,
 ) -> alloc::sync::Arc<spin::Mutex<ProcessInfo>> {
     let tid = crate::runtime::<R>().current_tid();
     let current_pinfo =
@@ -113,13 +110,12 @@ fn inherit_process_info<R: BootRuntime>(
             thread_ids: alloc::vec![pid as TaskId],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings,
-            aspace_raw,
+            space,
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }))
     } else {
-        default_process_info(pid, ppid, mappings, aspace_raw)
+        default_process_info(pid, ppid, space)
     }
 }
 
@@ -318,7 +314,7 @@ impl<R: BootRuntime> Scheduler<R> {
         // no parent process (should not happen for user threads).
         let mappings = parent_pinfo
             .as_ref()
-            .map(|pi| pi.lock().mappings.clone())
+            .map(|pi| pi.lock().space.mappings.clone())
             .unwrap_or_else(|| {
                 alloc::sync::Arc::new(spin::Mutex::new(crate::memory::mappings::MappingList::new()))
             });
@@ -449,7 +445,7 @@ impl<R: BootRuntime> Scheduler<R> {
         let mappings_arc = alloc::sync::Arc::new(spin::Mutex::new(mapping_list));
         // Derive the process-owned address-space token from the typed aspace handle.
         let aspace_raw = rt.tasking().aspace_to_raw(aspace);
-        let pinfo = default_process_info(id as u32, ppid, mappings_arc.clone(), aspace_raw);
+        let pinfo = default_process_info(id as u32, ppid, crate::task::ProcessAddressSpace::from_parts(mappings_arc.clone(), aspace_raw));
 
         let target_cpu = self.pick_cpu_and_bringup(affinity, true);
         // Push to target CPU's run queue
@@ -708,7 +704,7 @@ pub unsafe fn boot_spawn_process_with_priority<R: BootRuntime>(
     let aspace_raw = rt.tasking().aspace_to_raw(aspace);
 
     // Create per-process identity
-    let pinfo = inherit_process_info::<R>(id as u32, ppid, task_mappings, aspace_raw);
+    let pinfo = inherit_process_info::<R>(id as u32, ppid, crate::task::ProcessAddressSpace::from_parts(task_mappings, aspace_raw));
     {
         let page_size = rt.page_size() as u64;
         let mut lock = pinfo.lock();
@@ -1109,8 +1105,7 @@ pub unsafe fn boot_spawn_process_ex<R: BootRuntime>(
         thread_ids: alloc::vec![id],
         exec_in_progress: false,
         exec_path: alloc::format!("/boot/{}", module.name),
-        mappings: task_mappings,
-        aspace_raw,
+        space: crate::task::ProcessAddressSpace::from_parts(task_mappings, aspace_raw),
         signals: crate::signal::ProcessSignals::new(),
         children_done: alloc::collections::VecDeque::new(),
     }));
@@ -1353,8 +1348,7 @@ pub unsafe fn spawn_process_from_path<R: BootRuntime>(
         thread_ids: alloc::vec![id],
         exec_in_progress: false,
         exec_path: alloc::string::String::from(path),
-        mappings: task_mappings,
-        aspace_raw,
+        space: crate::task::ProcessAddressSpace::from_parts(task_mappings, aspace_raw),
         signals: crate::signal::ProcessSignals::new(),
         children_done: alloc::collections::VecDeque::new(),
     }));
@@ -1510,6 +1504,9 @@ mod tests {
         alloc::sync::Arc::new(spin::Mutex::new(crate::task::ProcessInfo {
             pid: leader as u32,
             ppid: 1,
+            pgid: leader as u32,
+            sid: leader as u32,
+            session_leader: false,
             argv: alloc::vec::Vec::new(),
             env: alloc::collections::BTreeMap::new(),
             auxv: alloc::vec::Vec::new(),
@@ -1519,10 +1516,7 @@ mod tests {
             thread_ids: alloc::vec![leader],
             exec_in_progress: false,
             exec_path: alloc::string::String::new(),
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
-            aspace_raw: 0,
+            space: crate::task::ProcessAddressSpace::empty(),
             signals: crate::signal::ProcessSignals::new(),
             children_done: alloc::collections::VecDeque::new(),
         }))
@@ -1729,6 +1723,7 @@ mod tests {
                 0,
                 alloc::vec![],
                 None,
+                alloc::vec![],
             )
         };
 
@@ -1795,6 +1790,7 @@ mod tests {
                 0,
                 alloc::vec![],
                 None,
+                alloc::vec![],
             )
         };
 
@@ -1828,6 +1824,7 @@ mod tests {
                 0,
                 alloc::vec![],
                 None,
+                alloc::vec![],
             )
         };
 
