@@ -342,6 +342,10 @@ impl Crate {
             })
             .map(Crate::from)
     }
+
+    pub fn is_unstable_feature_enabled(self, db: &dyn HirDatabase, feature: &Symbol) -> bool {
+        crate_def_map(db, self.id).is_unstable_feature_enabled(feature)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

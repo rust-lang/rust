@@ -1076,6 +1076,41 @@ impl AttrFlags {
             })
         }
     }
+
+    pub fn unstable_feature(self, db: &dyn DefDatabase, owner: AttrDefId) -> Option<Symbol> {
+        if !self.contains(AttrFlags::IS_UNSTABLE) {
+            return None;
+        }
+
+        return unstable_feature(db, owner);
+
+        #[salsa::tracked]
+        fn unstable_feature(db: &dyn DefDatabase, owner: AttrDefId) -> Option<Symbol> {
+            collect_attrs(db, owner, |attr| {
+                if let ast::Meta::TokenTreeMeta(attr) = attr
+                    && let path = attr.path()
+                    && path.is1("unstable")
+                    && let Some(tt) = attr.token_tree()
+                {
+                    let mut tt = TokenTreeChildren::new(&tt);
+                    // Technically the `feature = "..."` always comes first, but it's not a requirement.
+                    while let Some(token) = tt.next() {
+                        if let NodeOrToken::Token(token) = token
+                            && token.text() == "feature"
+                            && let Some(NodeOrToken::Token(eq)) = tt.next()
+                            && eq.kind() == T![=]
+                            && let Some(NodeOrToken::Token(feature)) = tt.next()
+                            && let Some(feature) = ast::String::cast(feature)
+                            && let Ok(feature) = feature.value()
+                        {
+                            return ControlFlow::Break(Symbol::intern(&feature));
+                        }
+                    }
+                }
+                ControlFlow::Continue(())
+            })
+        }
+    }
 }
 
 fn merge_repr(this: &mut ReprOptions, other: ReprOptions) {
