@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-ignore-leaks -Zmiri-genmc -Zmiri-disable-stacked-borrows
+//@compile-flags: -Zmiri-ignore-leaks
 
 use std::alloc::{Layout, alloc};
 use std::cell::Cell;

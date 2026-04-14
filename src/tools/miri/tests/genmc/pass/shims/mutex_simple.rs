@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows -Zmiri-genmc-verbose
+//@compile-flags: -Zmiri-genmc-verbose
 //@normalize-stderr-test: "Verification took .*s" -> "Verification took [TIME]s"
 
 // Test various features of the `std::sync::Mutex` API with GenMC.

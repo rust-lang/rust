@@ -1,4 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
 //@error-in-other-file: Undefined Behavior
 
 // Test that GenMC throws an error if a `std::sync::Mutex` is unlocked from a different thread than the one that locked it.
