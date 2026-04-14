@@ -409,17 +409,10 @@ pub trait GlobDelegationExpander {
     fn expand(&self, ecx: &mut ExtCtxt<'_>) -> ExpandResult<Vec<(Ident, Option<Ident>)>, ()>;
 }
 
-// Use a macro because forwarding to a simple function has type system issues
-macro_rules! make_stmts_default {
-    ($me:expr) => {
-        $me.make_expr().map(|e| {
-            smallvec![ast::Stmt {
-                id: ast::DUMMY_NODE_ID,
-                span: e.span,
-                kind: ast::StmtKind::Expr(e),
-            }]
-        })
-    };
+fn make_stmts_default(expr: Option<Box<ast::Expr>>) -> Option<SmallVec<[ast::Stmt; 1]>> {
+    expr.map(|e| {
+        smallvec![ast::Stmt { id: ast::DUMMY_NODE_ID, span: e.span, kind: ast::StmtKind::Expr(e) }]
+    })
 }
 
 /// The result of a macro expansion. The return values of the various
@@ -465,7 +458,7 @@ pub trait MacResult {
     /// By default this attempts to create an expression statement,
     /// returning None if that fails.
     fn make_stmts(self: Box<Self>) -> Option<SmallVec<[ast::Stmt; 1]>> {
-        make_stmts_default!(self)
+        make_stmts_default(self.make_expr())
     }
 
     fn make_ty(self: Box<Self>) -> Option<Box<ast::Ty>> {
@@ -571,9 +564,10 @@ impl MacResult for MacEager {
     }
 
     fn make_stmts(self: Box<Self>) -> Option<SmallVec<[ast::Stmt; 1]>> {
-        match self.stmts.as_ref().map_or(0, |s| s.len()) {
-            0 => make_stmts_default!(self),
-            _ => self.stmts,
+        if self.stmts.as_ref().is_none_or(|s| s.is_empty()) {
+            make_stmts_default(self.make_expr())
+        } else {
+            self.stmts
         }
     }
 
