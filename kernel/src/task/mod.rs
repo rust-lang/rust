@@ -221,6 +221,49 @@ impl ProcessLifecycle {
     }
 }
 
+/// Delivery strategy used when a message is enqueued into a process inbox.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MessageDeliveryKind {
+    /// One sender targeted one specific recipient.
+    Direct,
+    /// One sender targeted a group and this recipient was reached via fanout.
+    GroupBroadcast,
+}
+
+/// Delivery metadata carried alongside a queued process message.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProcessMessageMetadata {
+    /// Thread ID of the sender at enqueue time.
+    pub sender_tid: ThreadId,
+    /// Provisional sender Job ID (currently the sender process PID), if known.
+    pub sender_job: Option<u32>,
+    /// Target process-group ID for group fanout deliveries.
+    pub target_group: Option<u32>,
+    /// Delivery strategy used to enqueue the message.
+    pub delivery_kind: MessageDeliveryKind,
+    /// Per-broadcast sequence index assigned during fanout.
+    pub broadcast_sequence: Option<u64>,
+}
+
+/// Message record stored in a process inbox.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProcessMessage {
+    /// Canonical typed message envelope.
+    pub message: crate::message::Message,
+    /// Metadata about how this message was delivered.
+    pub metadata: ProcessMessageMetadata,
+}
+
+/// Process inbox enqueue errors for prototype typed delivery.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MessageEnqueueError {
+    /// Inbox reached its bounded capacity.
+    InboxFull { capacity: usize },
+}
+
+/// Fixed prototype inbox capacity per process.
+pub const PROCESS_MESSAGE_INBOX_CAPACITY: usize = 64;
+
 /// Unix legacy compatibility state carried by a `Process`.
 ///
 /// This struct is the **explicit quarantine boundary** for all Unix-derived
@@ -267,6 +310,12 @@ pub struct ProcessUnixCompat {
     /// FUTURE: → Message / Inbox / Group broadcast
     pub signals: crate::signal::ProcessSignals,
 
+    /// Prototype typed message inbox used by direct and group fanout delivery.
+    ///
+    /// This queue is deliberately bounded to force explicit partial-failure
+    /// behavior in early broadcast prototypes.
+    pub message_inbox: VecDeque<ProcessMessage>,
+
     /// Process group ID.
     ///
     /// FUTURE: → Group (Phase 5)
@@ -307,6 +356,7 @@ impl ProcessUnixCompat {
     pub fn isolated(pid: u32, is_session_leader: bool) -> Self {
         ProcessUnixCompat {
             signals: crate::signal::ProcessSignals::new(),
+            message_inbox: VecDeque::new(),
             pgid: pid,
             sid: pid,
             session_leader: is_session_leader,
@@ -324,6 +374,7 @@ impl ProcessUnixCompat {
     pub fn inherit(parent: &ProcessUnixCompat) -> Self {
         ProcessUnixCompat {
             signals: crate::signal::ProcessSignals::new(),
+            message_inbox: VecDeque::new(),
             pgid: parent.pgid,
             sid: parent.sid,
             session_leader: false,
@@ -331,6 +382,27 @@ impl ProcessUnixCompat {
             env: parent.env.clone(),
             auxv: Vec::new(),
         }
+    }
+
+    /// Enqueue one typed message into the process inbox.
+    pub fn enqueue_message(&mut self, msg: ProcessMessage) -> Result<(), MessageEnqueueError> {
+        if self.message_inbox.len() >= PROCESS_MESSAGE_INBOX_CAPACITY {
+            return Err(MessageEnqueueError::InboxFull {
+                capacity: PROCESS_MESSAGE_INBOX_CAPACITY,
+            });
+        }
+        self.message_inbox.push_back(msg);
+        Ok(())
+    }
+
+    /// Pop the next queued typed message from the process inbox.
+    pub fn dequeue_message(&mut self) -> Option<ProcessMessage> {
+        self.message_inbox.pop_front()
+    }
+
+    /// Current inbox depth for diagnostics and tests.
+    pub fn message_inbox_len(&self) -> usize {
+        self.message_inbox.len()
     }
 }
 

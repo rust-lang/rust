@@ -17,6 +17,7 @@
 //! See [`thingos::message`] for the full type documentation.
 
 pub mod bridge;
+pub mod delivery;
 
 /// Re-export of the canonical [`thingos::message::Message`] type.
 pub use thingos::message::Message;
