@@ -22,6 +22,12 @@ These tests exercise `#![feature(allocator_api)]` and the `#[global_allocator]` 
 
 See [Allocator traits and `std::heap` #32838](https://github.com/rust-lang/rust/issues/32838).
 
+## `tests/ui/allow-partial-mitigations`
+
+These tests exercise the support for mitigation coverage and the `allow-partial-mitigations` and `deny-partial-mitigations` options.
+
+See [RFC 3855](https://github.com/rust-lang/rfcs/pull/3855).
+
 ## `tests/ui/annotate-moves`
 
 These tests exercise the `annotate-moves` feature.
