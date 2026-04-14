@@ -1,77 +1,128 @@
-<div align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/rust-lang/www.rust-lang.org/master/static/images/rust-social-wide-dark.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/rust-lang/www.rust-lang.org/master/static/images/rust-social-wide-light.svg">
-    <img alt="The Rust Programming Language: A language empowering everyone to build reliable and efficient software"
-         src="https://raw.githubusercontent.com/rust-lang/www.rust-lang.org/master/static/images/rust-social-wide-light.svg"
-         width="50%">
-  </picture>
+# ThingOS
 
-[Website][Rust] | [Getting started] | [Learn] | [Documentation] | [Contributing]
-</div>
+ThingOS treats **types as the system itself**.
 
-This is the main source code repository for [Rust]. It contains the compiler,
-standard library, and documentation.
+Every meaningful element - objects, messages, files, interfaces, events - is defined by a single canonical schema called a **Kind**. That definition is used everywhere: to generate code, to validate data at runtime, to describe APIs, and to ensure that what the system *means* is consistent across all layers.
 
-[Rust]: https://www.rust-lang.org/
-[Getting Started]: https://www.rust-lang.org/learn/get-started
-[Learn]: https://www.rust-lang.org/learn
-[Documentation]: https://www.rust-lang.org/learn#learn-use
-[Contributing]: CONTRIBUTING.md
+There is no split between "types in code," "formats on the wire," and "data on disk."
+There is only the **Kind**, expressed in different **Forms**.
 
-## Why Rust?
+---
 
-- **Performance:** Fast and memory-efficient, suitable for critical services, embedded devices, and easily integrated with other languages.
+# The Model
 
-- **Reliability:** Our rich type system and ownership model ensure memory and thread safety, reducing bugs at compile-time.
+Everything in ThingOS is a **Thing**, and every Thing has a **Kind**.
 
-- **Productivity:** Comprehensive documentation, a compiler committed to providing great diagnostics, and advanced tooling including package manager and build tool ([Cargo]), auto-formatter ([rustfmt]), linter ([Clippy]) and editor support ([rust-analyzer]).
+Kinds define:
 
-[Cargo]: https://github.com/rust-lang/cargo
-[rustfmt]: https://github.com/rust-lang/rustfmt
-[Clippy]: https://github.com/rust-lang/rust-clippy
-[rust-analyzer]: https://github.com/rust-lang/rust-analyzer
+* structure
+* meaning
+* valid operations
+* compatibility over time
 
-## Quick Start
+From this, the rest of the system emerges.
 
-Read ["Installation"] from [The Book].
+---
 
-["Installation"]: https://doc.rust-lang.org/book/ch01-01-installation.html
-[The Book]: https://doc.rust-lang.org/book/index.html
+# People, Places, Things
 
-## Installing from Source
+The system is organized around three primary concepts:
 
-If you really want to install from source (though this is not recommended), see
-[INSTALL.md](INSTALL.md).
+* **Thing** - any object in the system
+* **Place** - a context in which Things exist and interact
+* **Person** - an actor that can act upon Things
 
-## Getting Help
+A Person operates concretely:
 
-See https://www.rust-lang.org/community for a list of chat platforms and forums.
+> A **Person** acts through an **Authority**, inhabits a **Place** via a **Presence**, and manipulates **Things**.
 
-## Contributing
+These are not metaphors. They are first-class, typed objects.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+---
 
-## License
+# Execution
 
-Rust is primarily distributed under the terms of both the MIT license and the
-Apache License (Version 2.0), with portions covered by various BSD-like
-licenses.
+Computation is expressed through simple, orthogonal Things:
 
-See [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), and
-[COPYRIGHT](COPYRIGHT) for details.
+* **Task** - something that runs
+* **Job** - something that lives and dies
+* **Group** - something that coordinates
 
-## Trademark
+Each has a single responsibility. No hidden coupling. No overloaded abstractions.
 
-[The Rust Foundation][rust-foundation] owns and protects the Rust and Cargo
-trademarks and logos (the "Rust Trademarks").
+---
 
-If you want to use these names or brands, please read the
-[Rust language trademark policy][trademark-policy].
+# Kinds
 
-Third-party logos may be subject to third-party copyrights and trademarks. See
-[Licenses][policies-licenses] for details.
+A **Kind** is the authoritative definition of structure and meaning.
 
-[rust-foundation]: https://rustfoundation.org/
-[trademark-policy]: https://rustfoundation.org/policy/rust-trademark-policy/
-[policies-licenses]: https://www.rust-lang.org/policies/licenses
+Kinds are:
+
+* written once
+* compiled into Rust types and interfaces
+* enforced by the kernel
+* available at runtime for introspection
+
+They define:
+
+* object layouts
+* message schemas
+* syscall arguments and results
+* event payloads
+* service contracts
+
+Everything that crosses a boundary declares its Kind.
+
+---
+
+# Forms
+
+A **Form** is a representation of a Kind.
+
+Kinds answer *what something is*.
+Forms answer *how it is expressed*.
+
+A Kind may have multiple Forms:
+
+* a canonical binary form for IPC and storage
+* a debug text form for inspection
+* bridge forms (such as JSON) for interoperability
+
+Meaning stays fixed. Representation can vary.
+
+---
+
+# Toolchain
+
+ThingOS uses a forked Rust toolchain with a custom target. The standard library is rebuilt for the system, and core types are generated from Kind definitions.
+
+Rust provides the implementation surface.
+Kinds provide the definition of truth.
+
+---
+
+# Direction
+
+The system moves toward:
+
+* eliminating duplicated type systems across layers
+* generating interfaces instead of hand-writing them
+* enforcing structure at system boundaries
+* making the running system introspectable in its own terms
+
+The end state is a system where the definitions used to build it are the same definitions it uses to understand itself.
+
+---
+
+# Summary
+
+ThingOS is a **typed world** where:
+
+* every Thing has a Kind
+* every boundary is validated
+* every interface is derived
+* and meaning is consistent from compiler to kernel to runtime
+
+The system is not just implemented in a language.
+
+It *is* a language.

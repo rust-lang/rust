@@ -1,3 +1,5 @@
-# The Rust Code of Conduct
+# ThingOS Code of Conduct
 
-The Code of Conduct for this repository [can be found online](https://www.rust-lang.org/conduct.html).
+This repository is maintained independently from the Rust project.
+
+Community standards and moderation are set by the ThingOS maintainers. Until a fuller policy is published, contributors are expected to act professionally, directly, and respectfully.

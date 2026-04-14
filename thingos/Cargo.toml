@@ -1,0 +1,10 @@
+[package]
+name = "thingos"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Core crate for ThingOS concepts and fork-local integration points."
+license = "MIT OR Apache-2.0"
+
+[lib]
+path = "src/lib.rs"
