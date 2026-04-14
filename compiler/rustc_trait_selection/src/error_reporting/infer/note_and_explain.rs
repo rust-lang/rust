@@ -606,6 +606,7 @@ impl<T> Trait<T> for X {
         ty: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
+        // FIXME(inherent_associated_types): Extend this to support `ty::Inherent`, too.
         if !matches!(proj_ty.kind, ty::AliasTyKind::Projection { .. }) {
             return false;
         }
