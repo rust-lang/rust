@@ -1,8 +1,10 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::{is_empty_block, sym};
 use rustc_hir::{ImplItemKind, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -35,7 +37,17 @@ declare_clippy_lint! {
     "manual implementations of noop wakers can be simplified using Waker::noop()"
 }
 
-declare_lint_pass!(ManualNoopWaker => [MANUAL_NOOP_WAKER]);
+impl_lint_pass!(ManualNoopWaker => [MANUAL_NOOP_WAKER]);
+
+pub struct ManualNoopWaker {
+    msrv: Msrv,
+}
+
+impl ManualNoopWaker {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self { msrv: conf.msrv }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for ManualNoopWaker {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
@@ -43,6 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNoopWaker {
             && let Some(trait_ref) = imp.of_trait
             && let Some(trait_id) = trait_ref.trait_ref.trait_def_id()
             && cx.tcx.is_diagnostic_item(sym::Wake, trait_id)
+            && self.msrv.meets(cx, msrvs::WAKER_NOOP)
         {
             for impl_item_ref in imp.items {
                 let impl_item = cx
