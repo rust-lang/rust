@@ -49,6 +49,17 @@ pub struct ProcessSnapshot {
     ///
     /// Feeds `kernel::place::bridge::place_from_snapshot` → `thingos::place::Place::namespace`.
     pub namespace_label: String,
+    // ── Job-context fields (Phase 9) ──────────────────────────────────────────
+    /// States of **all** threads in this process's thread group.
+    ///
+    /// Populated from [`crate::task::ProcessLifecycle::thread_ids`] by
+    /// looking up each TID's live state in the task registry at snapshot time.
+    /// This is the authoritative input for `kernel::job::bridge::job_state_from_snapshot`
+    /// and removes the prior limitation to the thread-group leader's state alone.
+    ///
+    /// An empty `Vec` (e.g. from legacy test helpers) causes the bridge to
+    /// fall back to `[snapshot.state]` — equivalent to pre-Phase-9 behaviour.
+    pub thread_states: Vec<TaskState>,
 }
 
 pub(crate) static mut YIELD_HOOK: Option<fn() -> bool> = None;

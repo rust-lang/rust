@@ -56,6 +56,21 @@
 //! | `lifecycle.exec_in_progress` | Job lifecycle gate               |
 //! | `lifecycle.children_done`    | Job wait queue                   |
 //!
+//! The Phase 9 integration is visible in `ProcessSnapshot::thread_states`:
+//! `list_processes` now populates that field from `lifecycle.thread_ids`,
+//! so `job_state_from_snapshot` accurately reflects the full thread-group
+//! state rather than only the thread-group leader's state.
+//!
+//! # Entry points
+//!
+//! | Code context                              | Preferred function                   |
+//! |-------------------------------------------|--------------------------------------|
+//! | Has a `ProcessSnapshot` (e.g. procfs)     | `job_state_from_snapshot`            |
+//! | Has `ProcessLifecycle` + thread states    | `job_state_from_lifecycle`           |
+//! | Has raw `&[ThreadState]`                  | `job_state_from_thread_states`       |
+//! | Mapping `poll_task_exit` result           | `job_wait_result_from_poll`          |
+//! | Mapping `waitpid` result                  | `job_wait_result_from_waitpid`       |
+//!
 //! # Future direction
 //!
 //! Once `Process` is decomposed, this bridge will shrink.  The thread-count
@@ -97,16 +112,61 @@ pub fn job_from_thread_states(thread_states: &[ThreadState]) -> Job {
 
 /// Derive `JobState` from a [`crate::sched::hooks::ProcessSnapshot`].
 ///
-/// Because `ProcessSnapshot` carries only the primary thread's state today,
-/// this mapping is conservative: a single dead thread-group leader is treated
-/// as `Exited`.  Once the snapshot includes all TIDs this will be refined.
+/// Uses `snapshot.thread_states` when non-empty — this slice is populated from
+/// [`crate::task::ProcessLifecycle::thread_ids`] in Phase 9 and gives accurate
+/// `JobState` for multi-threaded processes.  Falls back to `[snapshot.state]`
+/// (the thread-group leader's state alone) for legacy test helpers or code
+/// paths that have not yet been updated.
 pub fn job_state_from_snapshot(
     snapshot: &crate::sched::hooks::ProcessSnapshot,
 ) -> JobState {
-    // Single-element slice is intentional: ProcessSnapshot today carries only
-    // the thread-group leader's state.  When ProcessSnapshot is extended to
-    // include all TIDs this call site will pass the full slice.
-    job_state_from_thread_states(&[snapshot.state])
+    if !snapshot.thread_states.is_empty() {
+        job_state_from_thread_states(&snapshot.thread_states)
+    } else {
+        // Fallback: only the group-leader state is available (e.g. test
+        // helpers that don't populate thread_states).  Treat as a
+        // single-thread process — correct for single-threaded processes and
+        // conservative for multi-threaded ones (may undercount).
+        job_state_from_thread_states(&[snapshot.state])
+    }
+}
+
+// ── JobState from ProcessLifecycle (Phase 9) ─────────────────────────────────
+
+/// Derive `JobState` from a [`crate::task::ProcessLifecycle`] and the current
+/// states of its threads.
+///
+/// This is the **preferred** bridge entry point for code that already holds
+/// (or can directly access) a `ProcessLifecycle` — e.g. code running under
+/// the process mutex in the scheduler.  Callers should supply the live
+/// `ThreadState` for each TID in `lifecycle.thread_ids`, in any order.
+///
+/// The `lifecycle` parameter is accepted for documentation clarity and
+/// future use; today the mapping is derived entirely from `thread_states`.
+/// Future phases will use `lifecycle` fields directly once `Job` is a
+/// first-class kernel object.
+///
+/// # Relationship to `job_state_from_thread_states`
+///
+/// This is a thin, explicitly-named wrapper over
+/// [`job_state_from_thread_states`] that makes the intended data-flow
+/// (`ProcessLifecycle` → `Job`) visible in the call graph.  Prefer it over
+/// calling `job_state_from_thread_states` directly when `ProcessLifecycle` is
+/// in scope.
+pub fn job_state_from_lifecycle(
+    lifecycle: &crate::task::ProcessLifecycle,
+    thread_states: &[ThreadState],
+) -> JobState {
+    // Debug sanity: the caller should provide at most as many states as there
+    // are known TIDs in the lifecycle.  Extra states are harmless but indicate
+    // a likely bug in the caller.
+    debug_assert!(
+        thread_states.len() <= lifecycle.thread_ids.len(),
+        "thread_states has more entries ({}) than lifecycle.thread_ids ({})",
+        thread_states.len(),
+        lifecycle.thread_ids.len(),
+    );
+    job_state_from_thread_states(thread_states)
 }
 
 // ── JobExit (Phase 3) ─────────────────────────────────────────────────────────
@@ -187,6 +247,9 @@ mod tests {
             session_leader: false,
             cwd: alloc::string::String::from("/"),
             namespace_label: alloc::string::String::from("global"),
+            // Phase 9: populate thread_states so job_state_from_snapshot uses
+            // the full slice path rather than the single-leader fallback.
+            thread_states: alloc::vec![state],
         }
     }
 
@@ -308,5 +371,82 @@ mod tests {
             job_wait_result_from_waitpid(127),
             JobWaitResult::Exited { code: Some(127) }
         );
+    }
+
+    // ── job_state_from_snapshot (multi-thread, Phase 9) ──────────────────────
+
+    fn make_snapshot_with_threads(
+        leader_state: TaskState,
+        all_thread_states: alloc::vec::Vec<TaskState>,
+    ) -> ProcessSnapshot {
+        ProcessSnapshot {
+            pid: 1,
+            ppid: 0,
+            tid: 1,
+            name: alloc::string::String::from("test"),
+            state: leader_state,
+            argv: alloc::vec::Vec::new(),
+            exec_path: alloc::string::String::new(),
+            exit_code: None,
+            pgid: 1,
+            sid: 1,
+            session_leader: false,
+            cwd: alloc::string::String::from("/"),
+            namespace_label: alloc::string::String::from("global"),
+            thread_states: all_thread_states,
+        }
+    }
+
+    /// When the leader has exited but a sibling thread is still alive, the
+    /// canonical JobState must be Running, not Exited.
+    #[test]
+    fn test_job_state_from_snapshot_uses_all_thread_states() {
+        // Leader is Dead but a sibling is still Runnable.
+        let snap = make_snapshot_with_threads(
+            TaskState::Dead,
+            alloc::vec![TaskState::Dead, TaskState::Runnable],
+        );
+        assert_eq!(
+            job_state_from_snapshot(&snap),
+            JobState::Running,
+            "group is Running while any sibling thread is alive"
+        );
+    }
+
+    /// When thread_states is empty the bridge falls back to the leader state.
+    #[test]
+    fn test_job_state_from_snapshot_fallback_when_thread_states_empty() {
+        let snap = make_snapshot_with_threads(TaskState::Dead, alloc::vec::Vec::new());
+        assert_eq!(
+            job_state_from_snapshot(&snap),
+            JobState::Exited,
+            "empty thread_states should fall back to leader state"
+        );
+    }
+
+    // ── job_state_from_lifecycle ─────────────────────────────────────────────
+
+    #[test]
+    fn test_job_state_from_lifecycle_all_dead_is_exited() {
+        let lifecycle = crate::task::ProcessLifecycle::new(0, 1);
+        assert_eq!(
+            job_state_from_lifecycle(&lifecycle, &[ThreadState::Dead]),
+            JobState::Exited
+        );
+    }
+
+    #[test]
+    fn test_job_state_from_lifecycle_live_thread_is_running() {
+        let lifecycle = crate::task::ProcessLifecycle::new(0, 1);
+        assert_eq!(
+            job_state_from_lifecycle(&lifecycle, &[ThreadState::Runnable]),
+            JobState::Running
+        );
+    }
+
+    #[test]
+    fn test_job_state_from_lifecycle_empty_is_new() {
+        let lifecycle = crate::task::ProcessLifecycle::new(0, 1);
+        assert_eq!(job_state_from_lifecycle(&lifecycle, &[]), JobState::New);
     }
 }

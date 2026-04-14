@@ -1291,11 +1291,33 @@ pub fn list_processes<R: BootRuntime>() -> alloc::vec::Vec<hooks::ProcessSnapsho
     let mut out = alloc::vec::Vec::new();
     {
         let reg = crate::task::registry::get_registry::<R>();
+
+        // Phase 9: build a TID→state map so each process snapshot can carry the
+        // full set of thread states from `ProcessLifecycle.thread_ids`.  This
+        // allows `kernel::job::bridge::job_state_from_snapshot` to give accurate
+        // `JobState` for multi-threaded processes rather than only seeing the
+        // thread-group leader's state.
+        let mut tid_state: alloc::collections::BTreeMap<TaskId, TaskState> =
+            alloc::collections::BTreeMap::new();
+        for task in reg.threads.iter() {
+            tid_state.insert(task.id, task.state);
+        }
+
         for task in reg.threads.iter() {
             if let Some(pi_arc) = &task.process_info {
                 let pi = pi_arc.lock();
                 let name_bytes = &task.name[..task.name_len as usize];
                 let name = alloc::string::String::from_utf8_lossy(name_bytes).into_owned();
+                // Collect the live state for every TID in the thread group.
+                // TIDs that exited between the two passes are silently omitted;
+                // the bridge treats their absence as "no longer contributing to
+                // group liveness".
+                let thread_states: alloc::vec::Vec<TaskState> = pi
+                    .lifecycle
+                    .thread_ids
+                    .iter()
+                    .filter_map(|&tid| tid_state.get(&tid).copied())
+                    .collect();
                 out.push(hooks::ProcessSnapshot {
                     pid: pi.pid,
                     ppid: pi.lifecycle.ppid,
@@ -1317,6 +1339,8 @@ pub fn list_processes<R: BootRuntime>() -> alloc::vec::Vec<hooks::ProcessSnapsho
                     // will replace this with a stable per-process namespace identifier
                     // once process namespace isolation is implemented.
                     namespace_label: alloc::string::String::from("global"),
+                    // Job-context field (Phase 9): all thread states for the group.
+                    thread_states,
                 });
             }
         }
