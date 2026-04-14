@@ -1294,9 +1294,9 @@ where
 
         // Remove any trivial or duplicated region constraints once we've resolved regions
         let mut unique = HashSet::default();
-        external_constraints.region_constraints.retain(|outlives| {
-            outlives.0.as_region().is_none_or(|re| re != outlives.1) && unique.insert(*outlives)
-        });
+        external_constraints
+            .region_constraints
+            .retain(|outlives| !outlives.is_trivial() && unique.insert(*outlives));
 
         let canonical = canonicalize_response(
             self.delegate,
@@ -1350,7 +1350,7 @@ where
         // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-5-ambig.rs` and
         // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-6-ambig-unify.rs`.
         let region_constraints = if certainty == Certainty::Yes {
-            self.delegate.make_deduplicated_outlives_constraints()
+            self.delegate.make_deduplicated_region_constraints()
         } else {
             Default::default()
         };

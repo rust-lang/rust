@@ -253,7 +253,7 @@ impl<I: Interner> Eq for Response<I> {}
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub struct ExternalConstraintsData<I: Interner> {
-    pub region_constraints: Vec<ty::OutlivesPredicate<I, I::GenericArg>>,
+    pub region_constraints: Vec<ty::RegionConstraint<I>>,
     pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
     pub normalization_nested_goals: NestedNormalizationGoals<I>,
 }

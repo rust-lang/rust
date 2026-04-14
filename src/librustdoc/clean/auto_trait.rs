@@ -234,7 +234,7 @@ fn clean_region_outlives_constraints<'tcx>(
     // Each `RegionTarget` (a `RegionVid` or a `Region`) maps to its smaller and larger regions.
     // Note that "larger" regions correspond to sub regions in the surface language.
     // E.g., in `'a: 'b`, `'a` is the larger region.
-    for (c, _) in &regions.constraints {
+    for c in regions.constraints.iter().flat_map(|(c, _)| c.iter_outlives()) {
         match c.kind {
             ConstraintKind::VarSubVar => {
                 let sub_vid = c.sub.as_var();
@@ -264,6 +264,9 @@ fn clean_region_outlives_constraints<'tcx>(
                         .or_default()
                         .push(c.sub);
                 }
+            }
+            ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => {
+                unreachable!()
             }
         }
     }
