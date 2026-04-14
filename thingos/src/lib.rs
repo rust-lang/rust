@@ -13,27 +13,29 @@
 //!
 //! # Schema-generated canonical types
 //!
-//! The [`task`], [`job`], and [`group`] modules contain the schema-generated
-//! public types that define the canonical external representation of execution,
-//! lifecycle, and coordination concepts respectively.  The kernel's internal
-//! `Thread` and `Process` structures are *transitional* implementations; they
-//! feed into these public types through explicit bridge layers rather than
-//! being exposed directly.
+//! The [`task`], [`job`], [`group`], and [`authority`] modules contain the
+//! schema-generated public types that define the canonical external
+//! representation of execution, lifecycle, coordination, and permission-context
+//! concepts respectively.  The kernel's internal `Thread` and `Process`
+//! structures are *transitional* implementations; they feed into these public
+//! types through explicit bridge layers rather than being exposed directly.
 //!
-//! ## Transitional mapping (Phase 1 – 4)
+//! ## Transitional mapping (Phases 1–4, 7)
 //!
-//! | Canonical concept      | Current internal backing              | Future direction             |
-//! |------------------------|---------------------------------------|------------------------------|
-//! | `task::Task`           | kernel `Thread`                       | becomes the Task impl        |
-//! | `job::Job`             | kernel `Process` (partial)            | hollowed out by further phases|
-//! | `job::JobExit`         | `Thread::exit_code`                   | Phase 3 exit path            |
-//! | `job::JobWaitResult`   | `poll_task_exit` result               | Phase 3 wait path            |
-//! | `group::Group`         | `Process::pgid` / `ConsoleTtyState`   | Phase 4 coordination domain  |
+//! | Canonical concept        | Current internal backing                  | Future direction              |
+//! |--------------------------|-------------------------------------------|-------------------------------|
+//! | `task::Task`             | kernel `Thread`                           | becomes the Task impl         |
+//! | `job::Job`               | kernel `Process` (partial)                | hollowed out by further phases|
+//! | `job::JobExit`           | `Thread::exit_code`                       | Phase 3 exit path             |
+//! | `job::JobWaitResult`     | `poll_task_exit` result                   | Phase 3 wait path             |
+//! | `group::Group`           | `Process::pgid` / `ConsoleTtyState`       | Phase 4 coordination domain   |
+//! | `authority::Authority`   | `ProcessSnapshot::name` (transitional)    | Phase 7 permission context    |
 //!
 //! Public truth changes first; internal machinery follows.
 
 extern crate alloc;
 
+pub mod authority;
 pub mod group;
 pub mod job;
 pub mod task;

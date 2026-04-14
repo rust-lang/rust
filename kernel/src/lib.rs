@@ -2,6 +2,7 @@
 
 extern crate alloc;
 
+pub mod authority;
 pub mod device_registry;
 pub mod entropy;
 pub mod group;
