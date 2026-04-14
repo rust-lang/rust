@@ -176,8 +176,9 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::ExpectedNoArgs => lints::ExpectedNoArgs.into_diag(dcx, level),
 
             &AttributeLintKind::ExpectedNameValue => lints::ExpectedNameValue.into_diag(dcx, level),
-            &AttributeLintKind::MalFormedDiagnosticAttribute { attribute, span } => {
-                lints::MalFormedDiagnosticAttributeLint { attribute, span }.into_diag(dcx, level)
+            &AttributeLintKind::MalFormedDiagnosticAttribute { attribute, options, span } => {
+                lints::MalFormedDiagnosticAttributeLint { attribute, options, span }
+                    .into_diag(dcx, level)
             }
 
             AttributeLintKind::MalformedDiagnosticFormat { warning } => match warning {
@@ -198,8 +199,9 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                 lints::IgnoredDiagnosticOption { option_name, first_span, later_span }
                     .into_diag(dcx, level)
             }
-            &AttributeLintKind::MissingOptionsForDiagnosticAttribute { attribute } => {
-                lints::MissingOptionsForDiagnosticAttribute { attribute }.into_diag(dcx, level)
+            &AttributeLintKind::MissingOptionsForDiagnosticAttribute { attribute, options } => {
+                lints::MissingOptionsForDiagnosticAttribute { attribute, options }
+                    .into_diag(dcx, level)
             }
             &AttributeLintKind::NonMetaItemDiagnosticAttribute => {
                 lints::NonMetaItemDiagnosticAttribute.into_diag(dcx, level)

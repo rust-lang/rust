@@ -3585,9 +3585,10 @@ pub(crate) struct IgnoredDiagnosticOption {
 
 #[derive(Diagnostic)]
 #[diag("missing options for `{$attribute}` attribute")]
-#[help("at least one of the `message`, `note` and `label` options are expected")]
+#[help("{$options}")]
 pub(crate) struct MissingOptionsForDiagnosticAttribute {
     pub attribute: &'static str,
+    pub options: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -3604,9 +3605,10 @@ pub(crate) struct NonMetaItemDiagnosticAttribute;
 
 #[derive(Diagnostic)]
 #[diag("malformed `{$attribute}` attribute")]
-#[help("only `message`, `note` and `label` are allowed as options")]
+#[help("{$options}")]
 pub(crate) struct MalFormedDiagnosticAttributeLint {
     pub attribute: &'static str,
+    pub options: &'static str,
     #[label("invalid option found here")]
     pub span: Span,
 }

@@ -735,6 +735,7 @@ pub enum AttributeLintKind {
     ExpectedNameValue,
     MalFormedDiagnosticAttribute {
         attribute: &'static str,
+        options: &'static str,
         span: Span,
     },
     MalformedDiagnosticFormat {
@@ -752,6 +753,7 @@ pub enum AttributeLintKind {
     },
     MissingOptionsForDiagnosticAttribute {
         attribute: &'static str,
+        options: &'static str,
     },
     NonMetaItemDiagnosticAttribute,
 }

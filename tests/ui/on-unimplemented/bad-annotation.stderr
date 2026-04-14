@@ -84,7 +84,7 @@ warning: missing options for `rustc_on_unimplemented` attribute
 LL | #[rustc_on_unimplemented]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: at least one of the `message`, `note` and `label` options are expected
+   = help: see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>
    = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 warning: positional format arguments are not allowed here
@@ -101,7 +101,7 @@ warning: malformed `rustc_on_unimplemented` attribute
 LL | #[rustc_on_unimplemented(lorem = "")]
    |                          ^^^^^^^^^^ invalid option found here
    |
-   = help: only `message`, `note` and `label` are allowed as options
+   = help: see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>
 
 warning: malformed `rustc_on_unimplemented` attribute
   --> $DIR/bad-annotation.rs:34:26
@@ -109,7 +109,7 @@ warning: malformed `rustc_on_unimplemented` attribute
 LL | #[rustc_on_unimplemented(lorem(ipsum(dolor)))]
    |                          ^^^^^^^^^^^^^^^^^^^ invalid option found here
    |
-   = help: only `message`, `note` and `label` are allowed as options
+   = help: see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>
 
 warning: `message` is ignored due to previous definition of `message`
   --> $DIR/bad-annotation.rs:39:41
@@ -125,7 +125,7 @@ warning: malformed `rustc_on_unimplemented` attribute
 LL | #[rustc_on_unimplemented(on = "x", message = "y")]
    |                          ^^^^^^^^ invalid option found here
    |
-   = help: only `message`, `note` and `label` are allowed as options
+   = help: see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>
 
 warning: malformed `rustc_on_unimplemented` attribute
   --> $DIR/bad-annotation.rs:60:26
@@ -133,7 +133,7 @@ warning: malformed `rustc_on_unimplemented` attribute
 LL | #[rustc_on_unimplemented(on(Self = "y"), message = "y")]
    |                          ^^^^^^^^^^^^^^ invalid option found here
    |
-   = help: only `message`, `note` and `label` are allowed as options
+   = help: see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>
 
 warning: malformed `rustc_on_unimplemented` attribute
   --> $DIR/bad-annotation.rs:65:46
@@ -141,7 +141,7 @@ warning: malformed `rustc_on_unimplemented` attribute
 LL | #[rustc_on_unimplemented(on(from_desugaring, on(from_desugaring, message = "x")), message = "y")]
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid option found here
    |
-   = help: only `message`, `note` and `label` are allowed as options
+   = help: see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>
 
 error: aborting due to 10 previous errors; 11 warnings emitted
 

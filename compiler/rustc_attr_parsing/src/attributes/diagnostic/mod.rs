@@ -50,6 +50,33 @@ impl Mode {
             Self::DiagnosticOnUnknown => "diagnostic::on_unknown",
         }
     }
+
+    fn expected_options(&self) -> &'static str {
+        const DEFAULT: &str =
+            "at least one of the `message`, `note` and `label` options are expected";
+        match self {
+            Self::RustcOnUnimplemented => {
+                "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>"
+            }
+            Self::DiagnosticOnUnimplemented => DEFAULT,
+            Self::DiagnosticOnConst => DEFAULT,
+            Self::DiagnosticOnMove => DEFAULT,
+            Self::DiagnosticOnUnknown => DEFAULT,
+        }
+    }
+
+    fn allowed_options(&self) -> &'static str {
+        const DEFAULT: &str = "only `message`, `note` and `label` are allowed as options";
+        match self {
+            Self::RustcOnUnimplemented => {
+                "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>"
+            }
+            Self::DiagnosticOnUnimplemented => DEFAULT,
+            Self::DiagnosticOnConst => DEFAULT,
+            Self::DiagnosticOnMove => DEFAULT,
+            Self::DiagnosticOnUnknown => DEFAULT,
+        }
+    }
 }
 
 fn merge_directives<S: Stage>(
@@ -118,6 +145,7 @@ fn parse_list<'p, S: Stage>(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                 AttributeLintKind::MissingOptionsForDiagnosticAttribute {
                     attribute: mode.as_str(),
+                    options: mode.expected_options(),
                 },
                 span,
             );
@@ -125,7 +153,11 @@ fn parse_list<'p, S: Stage>(
         ArgParser::NameValue(_) => {
             cx.emit_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                AttributeLintKind::MalFormedDiagnosticAttribute { attribute: mode.as_str(), span },
+                AttributeLintKind::MalFormedDiagnosticAttribute {
+                    attribute: mode.as_str(),
+                    options: mode.allowed_options(),
+                    span,
+                },
                 span,
             );
         }
@@ -153,7 +185,8 @@ fn parse_directive_items<'p, S: Stage>(
             cx.emit_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
                 AttributeLintKind::MalFormedDiagnosticAttribute {
-                attribute: mode.as_str(),
+                    attribute: mode.as_str(),
+                    options: mode.allowed_options(),
                     span,
                 },
                 span,
