@@ -783,7 +783,7 @@ impl<'tcx> LateLintPass<'tcx> for RustcMustMatchExhaustively {
                     }
                 }
             }
-            hir::ExprKind::If(expr, ..) if let ExprKind::Let(expr) = expr.kind => {
+            hir::ExprKind::Let(expr, ..) => {
                 if let Some(attr_span) = is_rustc_must_match_exhaustively(cx, expr.init.hir_id) {
                     cx.emit_span_lint(
                         RUSTC_MUST_MATCH_EXHAUSTIVELY,
@@ -791,7 +791,29 @@ impl<'tcx> LateLintPass<'tcx> for RustcMustMatchExhaustively {
                         RustcMustMatchExhaustivelyNotExhaustive {
                             attr_span,
                             pat_span: expr.span,
-                            message: "using if let only matches on one variant (try using `match`)",
+                            message: "using `if let` only matches on one variant (try using `match`)",
+                        },
+                    );
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx rustc_hir::Stmt<'tcx>) {
+        match stmt.kind {
+            rustc_hir::StmtKind::Let(let_stmt) => {
+                if let_stmt.els.is_some()
+                    && let Some(attr_span) =
+                        is_rustc_must_match_exhaustively(cx, let_stmt.pat.hir_id)
+                {
+                    cx.emit_span_lint(
+                        RUSTC_MUST_MATCH_EXHAUSTIVELY,
+                        let_stmt.span,
+                        RustcMustMatchExhaustivelyNotExhaustive {
+                            attr_span,
+                            pat_span: let_stmt.pat.span,
+                            message: "using `let else` only matches on one variant (try using `match`)",
                         },
                     );
                 }

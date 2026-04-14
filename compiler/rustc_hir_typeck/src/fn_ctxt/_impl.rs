@@ -659,9 +659,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // being stalled on a coroutine.
         self.select_obligations_where_possible(|_| {});
 
-        let ty::TypingMode::Analysis { defining_opaque_types_and_generators } = self.typing_mode()
-        else {
-            bug!();
+        let defining_opaque_types_and_generators = match self.typing_mode() {
+            ty::TypingMode::Analysis { defining_opaque_types_and_generators } => {
+                defining_opaque_types_and_generators
+            }
+            ty::TypingMode::Coherence
+            | ty::TypingMode::Borrowck { .. }
+            | ty::TypingMode::PostBorrowckAnalysis { .. }
+            | ty::TypingMode::PostAnalysis => {
+                bug!()
+            }
         };
 
         if defining_opaque_types_and_generators
