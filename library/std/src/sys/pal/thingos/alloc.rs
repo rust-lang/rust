@@ -14,8 +14,7 @@ use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::ptr;
 use crate::sync::atomic::Ordering::{Acquire, Release};
 use crate::sync::atomic::{Atomic, AtomicI32};
-
-use super::raw_syscall6;
+use crate::sys::pal::raw_syscall6;
 
 // ── Syscall numbers (abi/src/numbers.rs) ─────────────────────────────────────
 const SYS_VM_MAP: u32 = 0x2001;
@@ -42,7 +41,7 @@ const MAP_PRIVATE: u32 = 1 << 2;
 struct VmBackingAnon {
     discriminant: i32, // 0 = Anonymous
     _pad0: [u8; 4],
-    zeroed: u8,  // 0 = false, 1 = true
+    zeroed: u8, // 0 = false, 1 = true
     _pad1: [u8; 15],
 }
 
@@ -117,17 +116,11 @@ unsafe impl dlmalloc::Allocator for ThingOs {
         if ret < 0 || resp.addr == 0 {
             (ptr::null_mut(), 0, 0)
         } else {
-            (resp.addr as *mut u8, resp.len, 0)
+            (ptr::with_exposed_provenance_mut(resp.addr), resp.len, 0)
         }
     }
 
-    fn remap(
-        &self,
-        _ptr: *mut u8,
-        _oldsize: usize,
-        _newsize: usize,
-        _can_move: bool,
-    ) -> *mut u8 {
+    fn remap(&self, _ptr: *mut u8, _oldsize: usize, _newsize: usize, _can_move: bool) -> *mut u8 {
         // ThingOS has no mremap equivalent; let dlmalloc fall back to alloc+copy+free.
         ptr::null_mut()
     }
