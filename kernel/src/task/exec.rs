@@ -493,6 +493,7 @@ mod tests {
                 thread_ids: alloc::vec![tid_leader, tid_sibling],
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
+                exit_observer_inbox: None,
             },
             unix_compat: crate::task::ProcessUnixCompat::isolated(pid, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
@@ -556,6 +557,7 @@ mod tests {
                 thread_ids: alloc::vec![9230, 9231, 9232],
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
+                exit_observer_inbox: None,
             },
             unix_compat: crate::task::ProcessUnixCompat::isolated(9230, false),
             fd_table: crate::vfs::fd_table::FdTable::new(),
@@ -1152,6 +1154,7 @@ mod tests {
                 thread_ids: all_tids.clone(),
                 exec_in_progress: false,
                 children_done: alloc::collections::VecDeque::new(),
+                exit_observer_inbox: None,
             },
             unix_compat: {
                 let mut uc = crate::task::ProcessUnixCompat::isolated(9600, false);

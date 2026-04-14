@@ -144,6 +144,59 @@ impl JobExit {
             }
         )
     }
+
+    /// Encode this `JobExit` plus `job_id` as a binary notification payload.
+    ///
+    /// The layout is 10 bytes:
+    ///
+    /// | Bytes | Type        | Value                                   |
+    /// |-------|-------------|------------------------------------------|
+    /// | 0–3   | u32 LE      | `job_id` (the PID of the exiting job)   |
+    /// | 4     | u8          | state discriminant (0=New, 1=Running, 2=Exited) |
+    /// | 5     | u8          | code_present (0 or 1)                   |
+    /// | 6–9   | i32 LE      | exit code (only valid when `code_present == 1`) |
+    ///
+    /// Pair with [`decode_notification`] for round-trip testing.
+    pub fn encode_as_notification(&self, job_id: u32) -> alloc::vec::Vec<u8> {
+        let state_byte: u8 = match self.state {
+            JobState::New => 0,
+            JobState::Running => 1,
+            JobState::Exited => 2,
+        };
+        let (code_present, code_bytes): (u8, [u8; 4]) = match self.code {
+            Some(c) => (1, c.to_le_bytes()),
+            None => (0, [0u8; 4]),
+        };
+        let mut buf = alloc::vec::Vec::with_capacity(10);
+        buf.extend_from_slice(&job_id.to_le_bytes());
+        buf.push(state_byte);
+        buf.push(code_present);
+        buf.extend_from_slice(&code_bytes);
+        buf
+    }
+
+    /// Decode a binary notification payload produced by [`encode_as_notification`].
+    ///
+    /// Returns `Some((job_id, JobExit))` on success, or `None` if the slice is
+    /// too short or contains an unrecognised state discriminant.
+    pub fn decode_notification(bytes: &[u8]) -> Option<(u32, Self)> {
+        if bytes.len() < 10 {
+            return None;
+        }
+        let job_id = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+        let state = match bytes[4] {
+            0 => JobState::New,
+            1 => JobState::Running,
+            2 => JobState::Exited,
+            _ => return None,
+        };
+        let code = if bytes[5] == 1 {
+            Some(i32::from_le_bytes([bytes[6], bytes[7], bytes[8], bytes[9]]))
+        } else {
+            None
+        };
+        Some((job_id, JobExit { state, code }))
+    }
 }
 
 /// The canonical result of waiting on (or polling) a job.
@@ -242,6 +295,84 @@ mod tests {
         let exit = JobExit { state: JobState::Exited, code: Some(42) };
         let text = exit.as_text();
         assert!(text.contains("code: 42"), "unexpected: {}", text);
+    }
+
+    // ── JobExit::encode_as_notification / decode_notification ────────────────
+
+    #[test]
+    fn encode_notification_produces_ten_bytes() {
+        let exit = JobExit { state: JobState::Exited, code: Some(0) };
+        let bytes = exit.encode_as_notification(1234);
+        assert_eq!(bytes.len(), 10);
+    }
+
+    #[test]
+    fn encode_decode_round_trip_exited_with_code() {
+        let original = JobExit { state: JobState::Exited, code: Some(42) };
+        let job_id = 99u32;
+        let bytes = original.encode_as_notification(job_id);
+        let (decoded_id, decoded_exit) = JobExit::decode_notification(&bytes).expect("should decode");
+        assert_eq!(decoded_id, job_id);
+        assert_eq!(decoded_exit, original);
+    }
+
+    #[test]
+    fn encode_decode_round_trip_exited_no_code() {
+        let original = JobExit { state: JobState::Exited, code: None };
+        let bytes = original.encode_as_notification(7);
+        let (decoded_id, decoded_exit) = JobExit::decode_notification(&bytes).expect("should decode");
+        assert_eq!(decoded_id, 7);
+        assert_eq!(decoded_exit, original);
+    }
+
+    #[test]
+    fn encode_decode_round_trip_running() {
+        let original = JobExit { state: JobState::Running, code: None };
+        let bytes = original.encode_as_notification(1);
+        let (decoded_id, decoded) = JobExit::decode_notification(&bytes).expect("should decode");
+        assert_eq!(decoded_id, 1);
+        assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn encode_decode_round_trip_new() {
+        let original = JobExit { state: JobState::New, code: None };
+        let bytes = original.encode_as_notification(0);
+        let (decoded_id, decoded) = JobExit::decode_notification(&bytes).expect("should decode");
+        assert_eq!(decoded_id, 0);
+        assert_eq!(decoded, original);
+    }
+
+    #[test]
+    fn encode_decode_negative_exit_code() {
+        let original = JobExit { state: JobState::Exited, code: Some(-1) };
+        let bytes = original.encode_as_notification(500);
+        let (decoded_id, decoded) = JobExit::decode_notification(&bytes).expect("should decode");
+        assert_eq!(decoded_id, 500);
+        assert_eq!(decoded.code, Some(-1));
+    }
+
+    #[test]
+    fn decode_notification_too_short_returns_none() {
+        assert!(JobExit::decode_notification(&[]).is_none());
+        assert!(JobExit::decode_notification(&[0u8; 9]).is_none());
+    }
+
+    #[test]
+    fn decode_notification_bad_state_byte_returns_none() {
+        let mut bytes = [0u8; 10];
+        bytes[4] = 0xff; // invalid state discriminant
+        assert!(JobExit::decode_notification(&bytes).is_none());
+    }
+
+    #[test]
+    fn encode_decode_large_job_id() {
+        let original = JobExit { state: JobState::Exited, code: Some(127) };
+        let job_id = u32::MAX;
+        let bytes = original.encode_as_notification(job_id);
+        let (decoded_id, decoded) = JobExit::decode_notification(&bytes).expect("should decode");
+        assert_eq!(decoded_id, job_id);
+        assert_eq!(decoded, original);
     }
 
     // ── JobWaitResult ────────────────────────────────────────────────────────

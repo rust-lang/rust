@@ -68,6 +68,14 @@ impl KindId {
     /// `thingos.message` can compare against this constant.
     pub const THINGOS_MESSAGE: KindId =
         KindId([0x71, 0x69, 0xe9, 0x49, 0xac, 0x1f, 0x62, 0xc5, 0xee, 0x79, 0xd7, 0xcf, 0x26, 0xa6, 0x4c, 0xeb]);
+
+    /// The KindId generated for `thingos.job.exit` by `kindc`.
+    ///
+    /// Identifies the payload of a `JobExit` notification message delivered
+    /// through the canonical Message/Inbox path.  Receivers dispatch on this
+    /// value to recognise job-exit lifecycle events.
+    pub const THINGOS_JOB_EXIT: KindId =
+        KindId([0xc2, 0x60, 0x8e, 0x30, 0xff, 0xa2, 0xa2, 0xda, 0x8b, 0x96, 0x22, 0x8d, 0x3e, 0xd0, 0x11, 0x74]);
 }
 
 /// The canonical inter-unit communication envelope.
