@@ -11,6 +11,7 @@
 //! instead of silently getting null pointers.
 
 use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::cell::UnsafeCell;
 use crate::ptr;
 use crate::sync::atomic::Ordering::{Acquire, Release};
 use crate::sync::atomic::{Atomic, AtomicI32};
@@ -191,12 +192,14 @@ unsafe impl dlmalloc::Allocator for ThingOs {
 
 #[cfg_attr(test, linkage = "available_externally")]
 #[unsafe(export_name = "_ZN16__rust_internals3std3sys5alloc7thingos8DLMALLOCE")]
-static DLMALLOC: AllocLock =
-    AllocLock { lock: AtomicI32::new(0), inner: dlmalloc::Dlmalloc::new_with_allocator(ThingOs) };
+static DLMALLOC: AllocLock = AllocLock {
+    lock: AtomicI32::new(0),
+    inner: UnsafeCell::new(dlmalloc::Dlmalloc::new_with_allocator(ThingOs)),
+};
 
 struct AllocLock {
     lock: Atomic<i32>,
-    inner: dlmalloc::Dlmalloc<ThingOs>,
+    inner: UnsafeCell<dlmalloc::Dlmalloc<ThingOs>>,
 }
 
 // SAFETY: The `AllocLock` is only accessed through the `lock()`/`unlock()` pair
@@ -226,7 +229,7 @@ impl Drop for AllocGuard<'_> {
 impl AllocGuard<'_> {
     fn dlmalloc(&mut self) -> &mut dlmalloc::Dlmalloc<ThingOs> {
         // SAFETY: we hold the lock, so we have exclusive access.
-        unsafe { &mut *(&self.0.inner as *const _ as *mut _) }
+        unsafe { &mut *self.0.inner.get() }
     }
 }
 
