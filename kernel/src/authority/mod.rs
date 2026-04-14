@@ -15,6 +15,20 @@
 //! observable property is its `name` (derived from the running process/thread
 //! name) and an initially empty `capabilities` list.
 //!
+//! # Canonical entry points for new authorization code
+//!
+//! New authorization checks **must** use the helpers in `bridge`:
+//!
+//! | Helper | Purpose |
+//! |--------|---------|
+//! | `bridge::authority_for_current()` | Obtain the current task's Authority without touching Process fields directly |
+//! | `bridge::authority_from_snapshot(snap)` | Build an Authority from a `ProcessSnapshot` (used by procfs paths) |
+//! | `bridge::check_privilege(auth, priv)` | Gate a privileged operation through Authority semantics |
+//!
+//! New code that needs to answer "is the caller allowed to do X?" should call
+//! `authority_for_current()` followed by `check_privilege(...)`, not reach
+//! into Process fields.
+//!
 //! # Transitional mapping
 //!
 //! The current kernel still stores all permission-bearing state inside
