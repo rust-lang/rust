@@ -21,6 +21,8 @@
 //! | `/proc/<pid>/task/<tid>/name`    | Thread's human-readable name |
 //! | `/proc/<pid>/task_state`         | Canonical `thingos::task::TaskState` (Phase 1) |
 //! | `/proc/<pid>/job_state`          | Canonical `thingos::job::JobState` (Phase 2) |
+//! | `/proc/<pid>/job_exit`           | Canonical `thingos::job::JobExit` — state + code (Phase 3) |
+//! | `/proc/<pid>/job_wait`           | Canonical `thingos::job::JobWaitResult` — non-blocking poll (Phase 3) |
 
 use abi::errors::{Errno, SysResult};
 use alloc::collections::BTreeSet;
@@ -165,6 +167,36 @@ fn lookup_pid(pid: u32, rest: &str) -> SysResult<Arc<dyn VfsNode>> {
                 300 + pid as u64 * 10 + 6,
             )))
         }
+        // /proc/<pid>/job_exit — canonical thingos::job::JobExit (Phase 3).
+        //
+        // Reports the exit state and code in canonical Job terms, bridged from
+        // the current Process/Thread model via `kernel::job::bridge`.
+        // For live processes `code` is reported as `-`.
+        "job_exit" => {
+            let job_exit = crate::job::bridge::job_exit_from_snapshot(&snap);
+            let text = job_exit.as_text();
+            Ok(Arc::new(DynamicTextNode::new(
+                text.into_bytes(),
+                300 + pid as u64 * 10 + 7,
+            )))
+        }
+        // /proc/<pid>/job_wait — canonical thingos::job::JobWaitResult (Phase 3).
+        //
+        // Non-blocking poll of the job's wait result.  Reinterprets the
+        // current `poll_task_exit` output through the canonical Job vocabulary
+        // via `kernel::job::bridge::job_wait_result_from_poll`.
+        "job_wait" => {
+            // poll_task_exit_current takes a TaskId (tid).  For the process
+            // leader snap.tid == snap.pid as u64.
+            let poll = unsafe { crate::sched::poll_task_exit_current(snap.tid) };
+            let wait_result =
+                crate::job::bridge::job_wait_result_from_poll(poll.unwrap_or(None));
+            let text = wait_result.as_text();
+            Ok(Arc::new(DynamicTextNode::new(
+                text.into_bytes(),
+                300 + pid as u64 * 10 + 8,
+            )))
+        }
         _ => Err(Errno::ENOENT),
     }
 }
@@ -290,9 +322,10 @@ impl VfsNode for ProcPidDirNode {
     fn readdir(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
         // Legacy procfs entries (transitional internal model):
         //   status, cmdline, fd, exe, task
-        // Canonical schema entries (Phase 1: task, Phase 2: job):
-        //   task_state, job_state
-        let entries = ["status", "cmdline", "fd", "exe", "task", "task_state", "job_state"];
+        // Canonical schema entries (Phase 1: task, Phase 2: job, Phase 3: exit/wait):
+        //   task_state, job_state, job_exit, job_wait
+        let entries = ["status", "cmdline", "fd", "exe", "task",
+                       "task_state", "job_state", "job_exit", "job_wait"];
         super::write_readdir_entries(entries.into_iter(), offset, buf)
     }
 }

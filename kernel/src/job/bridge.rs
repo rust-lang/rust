@@ -1,11 +1,12 @@
-//! Bridge layer: kernel `Process` snapshot → canonical `thingos::job::Job`.
+//! Bridge layer: kernel `Process` snapshot → canonical `thingos::job` types.
 //!
 //! # Purpose
 //!
 //! This module is the **single conversion point** from the kernel's
 //! transitional `Process`-shaped lifecycle model to the schema-generated
-//! canonical `Job` representation.  All job-lifecycle-facing public paths
-//! (procfs, introspection, status reporting) go through here.
+//! canonical `Job`, `JobExit`, and `JobWaitResult` representations.  All
+//! job-lifecycle-facing public paths (procfs, introspection, status reporting)
+//! go through here.
 //!
 //! # Transitional mapping
 //!
@@ -13,11 +14,20 @@
 //! threads belonging to the process, since `Process` itself does not carry
 //! an explicit lifecycle state field in the current implementation.
 //!
-//! | Observed thread group state                   | Canonical `JobState` |
-//! |-----------------------------------------------|----------------------|
-//! | No threads known yet / process embryonic       | `New`                |
-//! | At least one thread is Runnable/Running/Blocked | `Running`           |
-//! | All known threads are Dead                    | `Exited`             |
+//! | Observed thread group state                    | Canonical `JobState`  |
+//! |------------------------------------------------|-----------------------|
+//! | No threads known yet / process embryonic        | `New`                 |
+//! | At least one thread is Runnable/Running/Blocked | `Running`             |
+//! | All known threads are Dead                     | `Exited`              |
+//!
+//! Exit and wait results (Phase 3):
+//!
+//! | Kernel source                        | Canonical type          | Value                            |
+//! |--------------------------------------|-------------------------|----------------------------------|
+//! | `ProcessSnapshot` (state + exit_code)| `JobExit`               | state + code forwarded           |
+//! | `poll_task_exit` → `None`            | `JobWaitResult::Running`|                                  |
+//! | `poll_task_exit` → `Some(code)`      | `JobWaitResult::Exited` | `code: Some(code)`               |
+//! | `waitpid` → `(_, code)`              | `JobWaitResult::Exited` | `code: Some(code)`               |
 //!
 //! # What `Process` is not (yet)
 //!
@@ -26,7 +36,7 @@
 //! responsibilities are part of `Job` today.  Future phases will migrate
 //! those concerns to their own canonical kinds:
 //!
-//! * **Phase 3**: wait/exit reporting migrates into `Job` terms.
+//! * **Phase 3** (this phase): wait/exit reporting added to the `Job` bridge.
 //! * **Phase 4**: introduce `Group` as the coordination truth.
 //! * **Phase 5**: begin internal `Process` decomposition by responsibility.
 //!
@@ -37,7 +47,9 @@
 //! embedded in the scheduler (spawned → running → exited).
 
 use crate::sched::state::ThreadState;
-use thingos::job::{Job, JobState};
+use thingos::job::{Job, JobExit, JobState, JobWaitResult};
+
+// ── JobState / Job ────────────────────────────────────────────────────────────
 
 /// Derive the canonical `JobState` from the lifecycle of a process's threads.
 ///
@@ -76,4 +88,58 @@ pub fn job_state_from_snapshot(
     // the thread-group leader's state.  When ProcessSnapshot is extended to
     // include all TIDs this call site will pass the full slice.
     job_state_from_thread_states(&[snapshot.state])
+}
+
+// ── JobExit (Phase 3) ─────────────────────────────────────────────────────────
+
+/// Build a canonical `JobExit` from a [`crate::sched::hooks::ProcessSnapshot`].
+///
+/// The snapshot carries the thread-group leader's `ThreadState` and the
+/// exit code stored when `mark_task_exited` was called.  When the leader is
+/// still alive `code` is `None`.
+///
+/// # Transitional mapping
+///
+/// | Snapshot field      | `JobExit` field |
+/// |---------------------|-----------------|
+/// | `snapshot.state`    | `state` (via `job_state_from_snapshot`) |
+/// | `snapshot.exit_code`| `code`          |
+pub fn job_exit_from_snapshot(
+    snapshot: &crate::sched::hooks::ProcessSnapshot,
+) -> JobExit {
+    let state = job_state_from_snapshot(snapshot);
+    // exit_code is only meaningful when the thread-group leader has died.
+    // Preserve it as-is so the procfs consumer can decide what to display.
+    let code = if state == JobState::Exited { snapshot.exit_code } else { None };
+    JobExit { state, code }
+}
+
+// ── JobWaitResult (Phase 3) ───────────────────────────────────────────────────
+
+/// Convert the result of `poll_task_exit` into a canonical `JobWaitResult`.
+///
+/// `poll_result` is the `Option<i32>` returned by
+/// `crate::sched::poll_task_exit_current`:
+///
+/// * `None`       → the task is still alive → `JobWaitResult::Running`
+/// * `Some(code)` → the task has exited     → `JobWaitResult::Exited { code: Some(code) }`
+///
+/// This is the **authoritative** mapping from the current poll machinery into
+/// the canonical wait-result vocabulary.  Call sites in procfs and any future
+/// wait syscall wrapper should use this function rather than their own ad-hoc
+/// match.
+pub fn job_wait_result_from_poll(poll_result: Option<i32>) -> JobWaitResult {
+    match poll_result {
+        None => JobWaitResult::Running,
+        Some(code) => JobWaitResult::Exited { code: Some(code) },
+    }
+}
+
+/// Convert the result of `waitpid` into a canonical `JobWaitResult`.
+///
+/// `waitpid` returns `(child_pid, exit_code)` on success.  This function
+/// maps that to `JobWaitResult::Exited`.  The caller is responsible for
+/// the `WNOHANG`/no-children distinction; pass only a confirmed exit here.
+pub fn job_wait_result_from_waitpid(exit_code: i32) -> JobWaitResult {
+    JobWaitResult::Exited { code: Some(exit_code) }
 }

@@ -1,6 +1,5 @@
 #![no_std]
 #![deny(missing_docs)]
-
 //! Core definitions for ThingOS.
 //!
 //! This crate is intentionally small for now. It establishes a stable home in
@@ -15,14 +14,18 @@
 //! structures are *transitional* implementations; they feed into these public
 //! types through explicit bridge layers rather than being exposed directly.
 //!
-//! ## Transitional mapping (Phase 1 + 2)
+//! ## Transitional mapping (Phase 1 + 2 + 3)
 //!
-//! | Canonical concept | Current internal backing  | Future direction             |
-//! |-------------------|---------------------------|------------------------------|
-//! | `task::Task`      | kernel `Thread`           | becomes the Task impl        |
-//! | `job::Job`        | kernel `Process` (partial)| hollowed out by further phases|
+//! | Canonical concept      | Current internal backing  | Future direction             |
+//! |------------------------|---------------------------|------------------------------|
+//! | `task::Task`           | kernel `Thread`           | becomes the Task impl        |
+//! | `job::Job`             | kernel `Process` (partial)| hollowed out by further phases|
+//! | `job::JobExit`         | `Thread::exit_code`       | Phase 3 exit path            |
+//! | `job::JobWaitResult`   | `poll_task_exit` result   | Phase 3 wait path            |
 //!
 //! Public truth changes first; internal machinery follows.
+
+extern crate alloc;
 
 pub mod job;
 pub mod task;
