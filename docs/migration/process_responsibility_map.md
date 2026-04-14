@@ -149,6 +149,7 @@ self-contained issue that cites this document.
 ## Related documents
 
 - `docs/migration/authority_inventory.md` — comprehensive authority/credential/permission inventory and extraction sequencing (companion to this document)
+- `docs/migration/process_execution_context_inventory.md` — focused inventory of Process-carried execution context (cwd, namespace, tty, session); maps each item to Place / Presence / Group / legacy; includes extraction seams for Phase 8+ Place/Presence work
 - `docs/concepts/process-object.md` — `Process` / `Thread<R>` struct design
 - `docs/concepts/process-lifecycle.md` — state machine, exec collapse, zombie semantics
 - `docs/concepts/janix-guardrails.md` — architecture guardrails for all kernel changes
