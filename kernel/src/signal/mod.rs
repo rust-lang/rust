@@ -15,6 +15,7 @@
 //! - Signal handler invocation is architecture-specific; see `arch/delivery.rs`.
 
 pub mod delivery;
+pub mod routing;
 
 use abi::errors::Errno;
 use abi::signal::{SIG_DFL, SIG_IGN, SIGCHLD, SIGCONT, SIGKILL, SIGSTOP, SigAction, SigSet};
@@ -206,33 +207,45 @@ impl ThreadSignals {
 /// Returns `true` if the process was found and the signal delivered to its
 /// queue.  The signal may still be masked or ignored.
 ///
+/// # Routing
+///
+/// This function now routes through the typed signal routing layer
+/// ([`routing::route_signal`]) so that targeting is explicit and observable.
+/// Compatibility semantics (pending set, masks, disposition, handler
+/// invocation) are fully preserved through the canonical
+/// [`routing::deliver_to_recipient`] hook.
+///
 /// # Permissions (simplified)
 ///
 /// Any process can send SIGCONT to a process in the same session.  For now
 /// ThingOS grants kill permission freely (no UID/GID checks yet).
 pub fn send_signal_to_process(pid: u32, sig: u8) -> bool {
-    if let Some(pinfo) = process_info_for_pid(pid) {
-        let mut p = pinfo.lock();
-        p.unix_compat.signals.post(sig);
-        let tids = p.lifecycle.thread_ids.clone();
-        drop(p);
-        for tid in tids {
-            unsafe { crate::sched::wake_task_erased(tid as u64) };
-        }
-        true
-    } else {
-        false
-    }
+    use routing::{SignalRoute, SignalTargetKind, SignalDeliveryOutcome};
+    let route = SignalRoute {
+        signal: sig,
+        sender_tid: Some(unsafe { crate::sched::current_tid_current() }),
+        target_kind: SignalTargetKind::Process,
+        target_id: pid as u64,
+    };
+    let report = routing::route_signal(route);
+    report.succeeded > 0
+        || report.failures.iter().all(|(_, o)| *o != SignalDeliveryOutcome::RecipientNotFound)
 }
 
 /// Post signal `sig` to the process containing thread `tid`.
+///
+/// Routes through the typed signal routing layer for explicit, observable
+/// targeting.  Compatibility semantics are preserved through the canonical
+/// [`routing::deliver_to_thread_recipient`] hook.
 pub fn send_signal_to_thread(tid: u64, sig: u8) {
-    if let Some(pinfo) = crate::sched::process_info_for_tid_current(tid) {
-        let mut p = pinfo.lock();
-        p.unix_compat.signals.post(sig);
-        drop(p);
-        unsafe { crate::sched::wake_task_erased(tid) };
-    }
+    use routing::{SignalRoute, SignalTargetKind};
+    let route = SignalRoute {
+        signal: sig,
+        sender_tid: Some(unsafe { crate::sched::current_tid_current() }),
+        target_kind: SignalTargetKind::Thread,
+        target_id: tid,
+    };
+    routing::route_signal(route);
 }
 
 /// Deliver SIGCHLD to the parent of the process with PID `child_pid`.
@@ -273,25 +286,16 @@ pub fn process_group_exists_in_session(pgid: u32, sid: u32) -> bool {
 }
 
 pub fn send_signal_to_group(pgid: u32, sig: u8) -> usize {
-    let mut delivered = 0usize;
-    for pinfo in list_unique_processes() {
-        let mut p = pinfo.lock();
-        if p.unix_compat.pgid != pgid {
-            continue;
-        }
-        if sig == 0 {
-            delivered += 1;
-            continue;
-        }
-        p.unix_compat.signals.post(sig);
-        let tids = p.lifecycle.thread_ids.clone();
-        drop(p);
-        for tid in tids {
-            unsafe { crate::sched::wake_task_erased(tid as u64) };
-        }
-        delivered += 1;
-    }
-    delivered
+    use routing::{SignalRoute, SignalTargetKind};
+    let route = SignalRoute {
+        signal: sig,
+        sender_tid: Some(unsafe { crate::sched::current_tid_current() }),
+        target_kind: SignalTargetKind::ProcessGroup,
+        target_id: pgid as u64,
+    };
+    let report = routing::route_signal(route);
+    // For the sig==0 existence check, targeted counts as delivered.
+    if sig == 0 { report.targeted } else { report.succeeded }
 }
 
 pub fn getpgrp_current() -> Result<u32, Errno> {
