@@ -2764,64 +2764,46 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             Res::Def(DefKind::Ctor(ctor_of, CtorKind::Const), did) => {
                 assert_eq!(opt_self_ty, None);
-                let [leading_segments @ .., segment] = path.segments else { bug!() };
-                // Check if this is the Enum::<...>::Variant form
-                let use_enum_segment = if path.segments.len() == 2
-                    && path.segments[0].args.is_some()
-                    && matches!(path.segments[0].res, Res::Def(DefKind::Enum, _))
-                {
-                    // Enum::<...>::Variant form - allow enum segment to have args, use them
-                    // instead of variant segment's args (which are typically empty)
-                    true
-                } else {
-                    let _ = self.prohibit_generic_args(
-                        leading_segments.iter(),
-                        GenericsArgsErrExtend::None,
-                    );
-                    false
-                };
+                let generics = self.probe_generic_path_segments(
+                    path.segments,
+                    opt_self_ty,
+                    DefKind::Ctor(ctor_of, CtorKind::Const),
+                    did,
+                    span,
+                );
                 let parent_did = tcx.parent(did);
                 let generics_did = match ctor_of {
                     CtorOf::Variant => tcx.parent(parent_did),
                     CtorOf::Struct => parent_did,
                 };
-                // Use enum segment's args when in Enum::<...>::Variant form
-                let args = if use_enum_segment {
-                    self.lower_generic_args_of_path_segment(span, generics_did, &path.segments[0])
-                } else {
-                    self.lower_generic_args_of_path_segment(span, generics_did, segment)
-                };
+                let args = self.lower_generic_args_of_path_segment(
+                    span,
+                    generics_did,
+                    &path.segments[generics[0].1],
+                );
                 self.construct_const_ctor_value(did, ctor_of, args)
             }
-            Res::Def(DefKind::Ctor(_, CtorKind::Fn), did) => {
+            Res::Def(DefKind::Ctor(ctor_of, CtorKind::Fn), did) => {
                 assert_eq!(opt_self_ty, None);
-                let [leading_segments @ .., segment] = path.segments else { bug!() };
-                // Check if this is the Enum::<...>::Variant form
-                let use_enum_segment = if path.segments.len() == 2
-                    && path.segments[0].args.is_some()
-                    && matches!(path.segments[0].res, Res::Def(DefKind::Enum, _))
-                {
-                    // Enum::<...>::Variant form - allow enum segment to have args, use them
-                    true
-                } else {
-                    let _ = self.prohibit_generic_args(
-                        leading_segments.iter(),
-                        GenericsArgsErrExtend::None,
-                    );
-                    false
-                };
+                let generics = self.probe_generic_path_segments(
+                    path.segments,
+                    opt_self_ty,
+                    DefKind::Ctor(ctor_of, CtorKind::Const),
+                    did,
+                    span,
+                );
                 let parent_did = tcx.parent(did);
                 let generics_did = if let DefKind::Ctor(CtorOf::Variant, _) = tcx.def_kind(did) {
                     tcx.parent(parent_did)
                 } else {
                     parent_did
                 };
-                // Use enum segment's args when in Enum::<...>::Variant form
-                let args = if use_enum_segment {
-                    self.lower_generic_args_of_path_segment(span, generics_did, &path.segments[0])
-                } else {
-                    self.lower_generic_args_of_path_segment(span, generics_did, segment)
-                };
+                let args = self.lower_generic_args_of_path_segment(
+                    span,
+                    generics_did,
+                    &path.segments[generics[0].1],
+                );
+
                 ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, args))
             }
             Res::Def(DefKind::AssocConst { .. }, did) => {
