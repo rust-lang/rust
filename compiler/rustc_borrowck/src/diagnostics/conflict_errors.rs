@@ -3293,19 +3293,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         proper_span: Span,
         explanation: BorrowExplanation<'tcx>,
     ) -> Diag<'infcx> {
-        if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
-            explanation
-        {
-            if let Err(diag) = self.try_report_cannot_return_reference_to_local(
-                borrow,
-                proper_span,
-                span,
-                category,
-                None,
-            ) {
-                return diag;
-            }
-        }
 
         // Emit E0492 for `&const { expr }` when `expr` has
         // interior mutability, since that's what actually prevents promotion.
@@ -3329,7 +3316,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     inner_span,
                     E0492,
                     "interior mutable shared borrows of temporaries that have their \
-                     lifetime extended until the end of the program are not allowed"
+                    lifetime extended until the end of the program are not allowed"
                 );
                 err.span_label(
                     inner_span,
@@ -3337,19 +3324,34 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 );
                 err.note(
                     "temporaries in constants and statics can have their lifetime \
-                     extended until the end of the program",
+                    extended until the end of the program",
                 );
                 err.note(
                     "to avoid accidentally creating global mutable state, such \
-                     temporaries must be immutable",
+                    temporaries must be immutable",
                 );
                 err.help(
                     "if you really want global mutable state, try replacing the \
-                     temporary by an interior mutable `static` or a `static mut`",
+                    temporary by an interior mutable `static` or a `static mut`",
                 );
                 return err;
             }
         }
+
+        if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
+            explanation
+        {
+            if let Err(diag) = self.try_report_cannot_return_reference_to_local(
+                borrow,
+                proper_span,
+                span,
+                category,
+                None,
+            ) {
+                return diag;
+            }
+        }
+
 
         let mut err = self.temporary_value_borrowed_for_too_long(proper_span);
         err.span_label(proper_span, "creates a temporary value which is freed while still in use");
