@@ -7,7 +7,6 @@
     target_family = "windows",
     target_os = "hermit",
     target_os = "motor",
-    target_os = "thingos",
     target_os = "uefi",
     target_os = "wasi",
     target_os = "xous",
@@ -34,10 +33,6 @@ cfg_select! {
     target_os = "motor" => {
         mod motor;
         pub use motor::*;
-    }
-    target_os = "thingos" => {
-        mod thingos;
-        pub use thingos::*;
     }
     target_os = "uefi" => {
         mod uefi;

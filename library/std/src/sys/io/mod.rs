@@ -41,10 +41,6 @@ mod is_terminal {
             mod motor;
             pub use motor::*;
         }
-        target_os = "thingos" => {
-            mod thingos;
-            pub use thingos::*;
-        }
         _ => {
             mod unsupported;
             pub use unsupported::*;

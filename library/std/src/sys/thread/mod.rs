@@ -117,6 +117,7 @@ cfg_select! {
         pub use unsupported::{current_os_id, set_name};
     }
     target_os = "thingos" => {
+        #[path = "../pal/thingos/thread.rs"]
         mod thingos;
         pub use thingos::{
             Thread, DEFAULT_MIN_STACK_SIZE, available_parallelism, current_os_id,

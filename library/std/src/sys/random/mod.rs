@@ -83,6 +83,7 @@ cfg_select! {
         pub use trusty::fill_bytes;
     }
     target_os = "thingos" => {
+        #[path = "../pal/thingos/random.rs"]
         mod thingos;
         pub use thingos::fill_bytes;
     }
@@ -129,7 +130,21 @@ cfg_select! {
 )))]
 pub fn hashmap_random_keys() -> (u64, u64) {
     let mut buf = [0; 16];
+
+    #[cfg(target_os = "thingos")]
+    {
+        if fill_bytes(&mut buf).is_err() {
+            let stack = 0u8;
+            let heap = Box::new(0u8);
+            let k1 = crate::ptr::from_ref(&stack).addr() as u64;
+            let k2 = crate::ptr::from_ref(&*heap).addr() as u64;
+            return (k1, k2);
+        }
+    }
+
+    #[cfg(not(target_os = "thingos"))]
     fill_bytes(&mut buf);
+
     let k1 = u64::from_ne_bytes(buf[..8].try_into().unwrap());
     let k2 = u64::from_ne_bytes(buf[8..].try_into().unwrap());
     (k1, k2)

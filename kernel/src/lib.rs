@@ -5,7 +5,6 @@ extern crate alloc;
 pub mod device_registry;
 pub mod entropy;
 pub mod group;
-pub mod generated;
 pub mod ipc;
 pub mod irq;
 pub mod job;

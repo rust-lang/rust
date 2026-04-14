@@ -12,6 +12,8 @@
 /iso_root*/
 thing-os*.iso
 
+/bran/bin-*
+
 ## File system
 .DS_Store
 desktop.ini
@@ -110,3 +112,7 @@ flake.lock
 /default.nix
 
 # Before adding new lines, see the comment at the top.
+bran/bin-x86_64/kernel
+build_errors.log
+bran/bin-x86_64/kernel
+bran/bin-x86_64/kernel

@@ -1,64 +1,63 @@
-//! ThingOS I/O error mapping.
-//!
-//! ThingOS uses POSIX-compatible errno values, so mapping is straightforward.
-
-use crate::io;
-use crate::sys::io::RawOsError;
-
-/// Returns the value of `errno` for the current thread.
-///
-/// On ThingOS, errno is stored in a kernel-managed thread-local variable
-/// accessible via a dedicated syscall.  For now we return 0 as a safe
-/// placeholder; individual syscall wrappers return `-errno` directly.
-pub fn errno() -> RawOsError {
+pub fn errno() -> i32 {
     0
 }
 
-/// Returns `true` when the error code represents an interrupted operation.
-#[inline]
-pub fn is_interrupted(code: io::RawOsError) -> bool {
-    code == 4 // EINTR
+pub fn is_interrupted(code: i32) -> bool {
+    code == 4
 }
 
-/// Map a raw ThingOS errno value to an `io::ErrorKind`.
-pub fn decode_error_kind(code: io::RawOsError) -> io::ErrorKind {
-    use io::ErrorKind::*;
+pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
     match code {
-        1 => PermissionDenied,   // EPERM
-        2 => NotFound,           // ENOENT
-        4 => Interrupted,        // EINTR
-        5 => InvalidData,        // EIO (general I/O)
-        11 => WouldBlock,        // EAGAIN / EWOULDBLOCK
-        12 => OutOfMemory,       // ENOMEM
-        13 => PermissionDenied,  // EACCES
-        17 => AlreadyExists,     // EEXIST
-        20 => NotADirectory,     // ENOTDIR
-        21 => IsADirectory,      // EISDIR
-        22 => InvalidInput,      // EINVAL
-        23 => QuotaExceeded,     // ENFILE (used as quota)
-        24 => QuotaExceeded,     // EMFILE
-        28 => StorageFull,       // ENOSPC
-        32 => BrokenPipe,        // EPIPE
-        36 => InvalidFilename,   // ENAMETOOLONG
-        61 => ConnectionRefused, // ECONNREFUSED
-        62 => AddrInUse,         // EADDRINUSE
-        95 => Unsupported,       // EOPNOTSUPP
-        97 => Unsupported,       // EAFNOSUPPORT (IPv6)
-        98 => AddrInUse,         // EADDRINUSE
-        104 => ConnectionReset,  // ECONNRESET
-        107 => NotConnected,     // ENOTCONN
-        108 => NotConnected,     // ESHUTDOWN
-        110 => TimedOut,         // ETIMEDOUT
-        111 => ConnectionRefused, // ECONNREFUSED
-        113 => HostUnreachable,  // EHOSTUNREACH
-        // 116 is often ESTALE; treat as other
-        _ => Uncategorized,
+        1 => crate::io::ErrorKind::PermissionDenied,    // EPERM
+        2 => crate::io::ErrorKind::NotFound,            // ENOENT
+        4 => crate::io::ErrorKind::Interrupted,         // EINTR
+        5 => crate::io::ErrorKind::Uncategorized,       // EIO
+        9 => crate::io::ErrorKind::InvalidInput,        // EBADF
+        11 => crate::io::ErrorKind::WouldBlock,         // EAGAIN / EWOULDBLOCK
+        12 => crate::io::ErrorKind::OutOfMemory,        // ENOMEM
+        13 => crate::io::ErrorKind::PermissionDenied,   // EACCES
+        16 => crate::io::ErrorKind::ResourceBusy,       // EBUSY
+        17 => crate::io::ErrorKind::AlreadyExists,      // EEXIST
+        20 => crate::io::ErrorKind::NotADirectory,      // ENOTDIR
+        21 => crate::io::ErrorKind::IsADirectory,       // EISDIR
+        22 => crate::io::ErrorKind::InvalidInput,       // EINVAL
+        28 => crate::io::ErrorKind::StorageFull,        // ENOSPC
+        32 => crate::io::ErrorKind::BrokenPipe,         // EPIPE
+        38 => crate::io::ErrorKind::Unsupported,        // ENOSYS
+        39 => crate::io::ErrorKind::DirectoryNotEmpty,  // ENOTEMPTY
+        75 => crate::io::ErrorKind::InvalidData,        // EOVERFLOW
+        95 | 97 => crate::io::ErrorKind::Unsupported,   // EOPNOTSUPP / EAFNOSUPPORT
+        110 => crate::io::ErrorKind::TimedOut,          // ETIMEDOUT
+        111 => crate::io::ErrorKind::ConnectionRefused, // ECONNREFUSED
+        _ => crate::io::ErrorKind::Uncategorized,
     }
 }
 
-/// Format a ThingOS errno value as a human-readable string.
-pub fn error_string(errno: RawOsError) -> String {
-    // For a production implementation this would call into a kernel
-    // error-string facility; for now we format the number.
-    format!("ThingOS error code {errno}")
+pub fn error_string(errno: i32) -> String {
+    match errno {
+        1 => "operation not permitted",
+        2 => "no such file or directory",
+        4 => "interrupted system call",
+        5 => "i/o error",
+        9 => "bad file descriptor",
+        11 => "resource temporarily unavailable",
+        12 => "cannot allocate memory",
+        13 => "permission denied",
+        16 => "device or resource busy",
+        17 => "file exists",
+        20 => "not a directory",
+        21 => "is a directory",
+        22 => "invalid argument",
+        28 => "no space left on device",
+        32 => "broken pipe",
+        38 => "function not implemented",
+        39 => "directory not empty",
+        75 => "value too large for defined data type",
+        95 => "operation not supported",
+        97 => "address family not supported",
+        110 => "timed out",
+        111 => "connection refused",
+        _ => "uncategorized error",
+    }
+    .to_string()
 }

@@ -11,7 +11,6 @@ cfg_select! {
         target_os = "hermit",
         target_os = "thingos",
        target_os = "motor",
-       target_os = "thingos",
     ) => {
         mod futex;
         pub use futex::RwLock;

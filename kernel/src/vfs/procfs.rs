@@ -261,11 +261,11 @@ fn lookup_pid_task(pid: u32, tid_and_rest: &str) -> SysResult<Arc<dyn VfsNode>> 
             // new ontology at a system boundary.
             let task = crate::task::bridge::thread_state_to_task(thread.state);
             let state_name = match task.state {
-                crate::generated::TaskState::New => "new",
-                crate::generated::TaskState::Ready => "ready",
-                crate::generated::TaskState::Running => "running",
-                crate::generated::TaskState::Blocked => "blocked",
-                crate::generated::TaskState::Exited => "exited",
+                thingos::task::TaskState::New => "new",
+                thingos::task::TaskState::Ready => "ready",
+                thingos::task::TaskState::Running => "running",
+                thingos::task::TaskState::Blocked => "blocked",
+                thingos::task::TaskState::Exited => "exited",
             };
             let text = alloc::format!("state: {}\n", state_name);
             let ino = 0xC000_0000_0000_0000u64
