@@ -2830,6 +2830,7 @@ fn main() {
 
     #[test]
     fn extract_variable_in_token_tree() {
+        // FIXME: Keep the original trivia instead of extracting macro expanded?
         check_assist_by_label(
             extract_variable,
             r#"
@@ -2909,6 +2910,39 @@ macro_rules! foo {
 fn main() {
     let $0var_name = 2+3+4;
     let x = foo!(= var_name);
+}
+"#,
+            "Extract into variable",
+        );
+
+        // FIXME: Extract to inside the macro instead of outside the macro
+        check_assist_by_label(
+            extract_variable,
+            r#"
+macro_rules! foo {
+    (= $($t:tt)*) => {
+        $($t)*
+    };
+}
+
+fn main() {
+    let x = foo!(= {
+        $02 + 3 + 4$0
+    });
+}
+"#,
+            r#"
+macro_rules! foo {
+    (= $($t:tt)*) => {
+        $($t)*
+    };
+}
+
+fn main() {
+    let $0var_name = 2+3+4;
+    let x = foo!(= {
+        var_name
+    });
 }
 "#,
             "Extract into variable",
