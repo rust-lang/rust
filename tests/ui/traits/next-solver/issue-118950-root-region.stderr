@@ -16,7 +16,7 @@ help: this trait has no implementations, consider adding one
 LL | trait ToUnit<'a> {
    | ^^^^^^^^^^^^^^^^
 
- WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTerm { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a)), ?1t], def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc), .. }
+ WARN rustc_infer::infer::relate::generalize may incompletely handle alias type: AliasTerm { args: ['^0.Named(DefId(0:15 ~ issue_118950_root_region[d54f]::{impl#1}::'a)), ?1t], kind: FreeTy { def_id: DefId(0:8 ~ issue_118950_root_region[d54f]::Assoc) }, .. }
 error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0277, E0425.
