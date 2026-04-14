@@ -134,6 +134,7 @@ mod tests {
             session_leader,
             cwd: alloc::string::String::from("/"),
             namespace_label: alloc::string::String::from("global"),
+            thread_states: alloc::vec![TaskState::Runnable],
         }
     }
 
