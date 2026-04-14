@@ -436,6 +436,9 @@ mod spec_extend;
 #[doc(alias = "list")]
 #[doc(alias = "vector")]
 pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
+    // FIXME: Despite "Its uninitialized memory is scratch space that it may use however it wants"
+    // mentioned above, `BufWriter::flush_buf` relies on the sctach space being never
+    // de-initialized by several methods.
     buf: RawVec<T, A>,
     len: usize,
 }

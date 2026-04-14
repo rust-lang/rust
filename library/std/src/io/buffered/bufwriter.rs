@@ -193,6 +193,13 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// `write`), any 0-length writes from `inner` must be reported as i/o
     /// errors from this method.
     pub(in crate::io) fn flush_buf(&mut self) -> io::Result<()> {
+        // SAFETY: `<BufWriter as BufferedWriterSpec>::copy_from` requires that `self.buf`'s spare
+        // capacity is preserved by this function. This function does not grow `self.buf` or
+        // explicitly shrink its capacity; `Vec` guarantees that this is sufficient to avoid it
+        // re-allocating. We never de-initialize the spare capacity of `self.buf` and we assume none
+        // of the `Vec` methods used here will do so either, though nothing in `Vec`'s documentation
+        // guarantees this.
+
         /// Helper struct to ensure the buffer is updated after all the writes
         /// are complete. It tracks the number of written bytes and drains them
         /// all from the front of the buffer when dropped.

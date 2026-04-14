@@ -71,6 +71,9 @@ const unsafe fn new_cap<T>(cap: usize) -> Cap {
 /// `Box<[T]>`, since `capacity()` won't yield the length.
 #[allow(missing_debug_implementations)]
 pub(crate) struct RawVec<T, A: Allocator = Global> {
+    // FIXME: Despite "Its uninitialized memory is scratch space that it may use however it wants"
+    // in `Vec`'s documentation, `BufWriter::flush_buf` relies on the scratch space being never
+    // de-initialized by several methods.
     inner: RawVecInner<A>,
     _marker: PhantomData<T>,
 }
@@ -83,6 +86,9 @@ pub(crate) struct RawVec<T, A: Allocator = Global> {
 /// as most operations don't need the actual type, just its layout.
 #[allow(missing_debug_implementations)]
 struct RawVecInner<A: Allocator = Global> {
+    // FIXME: Despite "Its uninitialized memory is scratch space that it may use however it wants"
+    // in `Vec`'s documentation, `BufWriter::flush_buf` relies on the scratch space being never
+    // de-initialized by several methods.
     ptr: Unique<u8>,
     /// Never used for ZSTs; it's `capacity()`'s responsibility to return usize::MAX in that case.
     ///
