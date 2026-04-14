@@ -779,6 +779,38 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
 
+            sym::cold_path => {
+                // Emit an empty inline asm with a `cold` call-site attribute.
+                // This causes LLVM's BranchProbabilityInfo to mark this block
+                // as unlikely. Unlike `llvm.expect`-based `!prof` metadata
+                // (which can be lost when the InlinerPass folds branches),
+                // this marker survives the full optimization pipeline.
+                let void_ty = self.cx.type_void();
+                let fty = self.cx.type_func(&[], void_ty);
+                let asm_val = unsafe {
+                    llvm::LLVMGetInlineAsm(
+                        fty,
+                        c"".as_ptr().cast(),
+                        0,
+                        c"".as_ptr().cast(),
+                        0,
+                        llvm::TRUE,  // HasSideEffects
+                        llvm::FALSE, // IsAlignStack
+                        llvm::AsmDialect::Att,
+                        llvm::FALSE, // CanThrow
+                    )
+                };
+                let call = self.call(fty, None, None, asm_val, &[], None, None);
+                let cold_attr =
+                    llvm::AttributeKind::Cold.create_attr(self.llcx);
+                crate::attributes::apply_to_callsite(
+                    call,
+                    llvm::AttributePlace::Function,
+                    &[cold_attr],
+                );
+                return Ok(());
+            }
+
             _ => {
                 debug!("unknown intrinsic '{}' -- falling back to default body", name);
                 // Call the fallback body instead of generating the intrinsic code

@@ -579,11 +579,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            sym::cold_path => {
-                // This is a no-op. The intrinsic is just a hint to the optimizer.
-                return Ok(());
-            }
-
             _ => {
                 // Need to use backend-specific things in the implementation.
                 return bx.codegen_intrinsic_call(instance, args, result, span);
