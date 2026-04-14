@@ -1,3 +1,4 @@
+
 // This test ensures that the Rust lexer rejects invalid whitespace
 // characters that are not part of Unicode Pattern_White_Space.
 //
@@ -14,4 +15,5 @@ fn main() {
     let a​= x + y;
     //~^ ERROR unknown start of token
 }
+
 
