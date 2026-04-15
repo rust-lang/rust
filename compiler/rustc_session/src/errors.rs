@@ -84,13 +84,6 @@ pub(crate) struct CliFeatureDiagnosticHelp {
 }
 
 #[derive(Diagnostic)]
-#[diag("must be a name of an associated function")]
-pub struct MustBeNameOfAssociatedFunction {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(
     "`-Zunleash-the-miri-inside-of-you` may not be used to circumvent feature gates, except when testing error paths in the CTFE engine"
 )]
