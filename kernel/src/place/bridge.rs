@@ -57,6 +57,50 @@
 
 use thingos::place::Place;
 
+/// Return the canonical [`Place`] for the **currently running task**.
+///
+/// This is the **preferred entry point** for any new world-context inspection
+/// that needs to know "in what world is this execution occurring?".  Callers
+/// should use this function instead of reaching into `Process` fields directly.
+///
+/// # Transitional behaviour
+///
+/// In Phase 8 this derives the `Place` from the current process's `cwd` field
+/// (via `process_info_current`) and hard-codes `"global"` for the namespace
+/// and `"/"` for the root.  When no process context is available (kernel
+/// threads), `cwd` falls back to `"/"`.
+///
+/// # Migration note
+///
+/// Once per-process namespace isolation and chroot are added to `Process`,
+/// this function remains the **single entry point** — callers will
+/// transparently receive a richer `Place` without code changes at call sites.
+pub fn place_for_current() -> Place {
+    // PROVISIONAL: cwd is taken from ProcessInfo::cwd (the Process struct).
+    // Future phases will replace this raw path with a stable VFS-node reference
+    // once cwd tracking migrates into a Place-shaped substructure.
+    let cwd = crate::sched::process_info_current()
+        .map(|p| p.lock().cwd.clone())
+        .unwrap_or_default();
+
+    let cwd = if cwd.is_empty() {
+        alloc::string::String::from("/")
+    } else {
+        cwd
+    };
+
+    // PROVISIONAL: namespace is always "global" in Phase 8 — all processes
+    // share one global mount table.  Future phases will derive a stable
+    // per-process namespace identifier from ProcessInfo::namespace.
+    let namespace = alloc::string::String::from("global");
+
+    // PROVISIONAL: root is always "/" because per-process chroot / pivot-root
+    // is not yet implemented.
+    let root = alloc::string::String::from("/");
+
+    Place { cwd, namespace, root }
+}
+
 /// Build a canonical `Place` from a [`crate::sched::hooks::ProcessSnapshot`].
 ///
 /// # Transitional mapping
@@ -189,6 +233,37 @@ mod tests {
         let snap = make_snapshot("/", "global");
         let place = place_from_snapshot(&snap);
         let text = place.as_text();
+        assert!(text.contains("root: /"), "unexpected: {text}");
+    }
+
+    // ── place_for_current (no scheduler context) ──────────────────────────────
+
+    #[test]
+    fn test_place_for_current_returns_root_cwd_when_no_process_context() {
+        // In test environments there is no scheduler hook registered, so
+        // `process_info_current()` returns None and `cwd` defaults to "/".
+        let place = place_for_current();
+        assert_eq!(place.cwd, "/");
+    }
+
+    #[test]
+    fn test_place_for_current_namespace_is_global() {
+        let place = place_for_current();
+        assert_eq!(place.namespace, "global");
+    }
+
+    #[test]
+    fn test_place_for_current_root_is_slash() {
+        let place = place_for_current();
+        assert_eq!(place.root, "/");
+    }
+
+    #[test]
+    fn test_place_for_current_as_text_is_valid() {
+        let place = place_for_current();
+        let text = place.as_text();
+        assert!(text.contains("cwd: "), "unexpected: {text}");
+        assert!(text.contains("namespace: global"), "unexpected: {text}");
         assert!(text.contains("root: /"), "unexpected: {text}");
     }
 }
