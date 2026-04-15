@@ -499,10 +499,10 @@ fn allocate_tls_block() -> usize {
 // ── TLS auxiliary vector reader ───────────────────────────────────────────────
 
 struct TlsInfo {
-    template_va: usize, // AT_JANIX_TLS_TEMPLATE_VA
-    filesz: usize,      // AT_JANIX_TLS_FILESZ
-    memsz: usize,       // AT_JANIX_TLS_MEMSZ
-    align: usize,       // AT_JANIX_TLS_ALIGN
+    template_va: usize, // AT_THINGOS_TLS_TEMPLATE_VA
+    filesz: usize,      // AT_THINGOS_TLS_FILESZ
+    memsz: usize,       // AT_THINGOS_TLS_MEMSZ
+    align: usize,       // AT_THINGOS_TLS_ALIGN
 }
 
 /// Read TLS metadata from the kernel auxiliary vector via `SYS_AUXV_GET`.
@@ -512,13 +512,13 @@ struct TlsInfo {
 ///
 /// Returns `None` when:
 /// - the auxv syscall fails, or
-/// - no `AT_JANIX_TLS_MEMSZ` entry is present (no PT_TLS segment).
+/// - no `AT_THINGOS_TLS_MEMSZ` entry is present (no PT_TLS segment).
 fn read_tls_info() -> Option<TlsInfo> {
     const AT_NULL: u64 = 0;
-    const AT_JANIX_TLS_TEMPLATE_VA: u64 = 0x1000;
-    const AT_JANIX_TLS_FILESZ: u64 = 0x1001;
-    const AT_JANIX_TLS_MEMSZ: u64 = 0x1002;
-    const AT_JANIX_TLS_ALIGN: u64 = 0x1003;
+    const AT_THINGOS_TLS_TEMPLATE_VA: u64 = 0x1000;
+    const AT_THINGOS_TLS_FILESZ: u64 = 0x1001;
+    const AT_THINGOS_TLS_MEMSZ: u64 = 0x1002;
+    const AT_THINGOS_TLS_ALIGN: u64 = 0x1003;
 
     // Phase 1: query required buffer size (buf_ptr = 0 → return total bytes).
     let needed = unsafe { raw_syscall6(SYS_AUXV_GET, 0, 0, 0, 0, 0, 0) };
@@ -551,10 +551,10 @@ fn read_tls_info() -> Option<TlsInfo> {
         let val = u64::from_le_bytes(buf[off + 8..off + 16].try_into().ok()?);
         match typ {
             AT_NULL => break,
-            AT_JANIX_TLS_TEMPLATE_VA => template_va = val as usize,
-            AT_JANIX_TLS_FILESZ => filesz = val as usize,
-            AT_JANIX_TLS_MEMSZ => memsz = val as usize,
-            AT_JANIX_TLS_ALIGN => align = val as usize,
+            AT_THINGOS_TLS_TEMPLATE_VA => template_va = val as usize,
+            AT_THINGOS_TLS_FILESZ => filesz = val as usize,
+            AT_THINGOS_TLS_MEMSZ => memsz = val as usize,
+            AT_THINGOS_TLS_ALIGN => align = val as usize,
             _ => {}
         }
     }
