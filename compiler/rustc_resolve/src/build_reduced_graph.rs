@@ -38,11 +38,9 @@ use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
     BindingKey, Decl, DeclData, DeclKind, ExternPreludeEntry, Finalize, IdentKey, MacroData,
-    Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, ResolutionError, Resolver,
-    Segment, Used, VisResolutionError, errors,
+    Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, Res, ResolutionError,
+    Resolver, Segment, Used, VisResolutionError, errors,
 };
-
-type Res = def::Res<NodeId>;
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Attempt to put the declaration with the given name and namespace into the module,

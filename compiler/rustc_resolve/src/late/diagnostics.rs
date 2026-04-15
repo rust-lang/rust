@@ -19,7 +19,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, MacroKinds};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, MacroKinds};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy, find_attr};
 use rustc_middle::ty;
@@ -38,11 +38,9 @@ use crate::late::{
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{
-    Finalize, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PathSource,
+    Finalize, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PathSource, Res,
     Resolver, ScopeSet, Segment, errors, path_names_to_string,
 };
-
-type Res = def::Res<ast::NodeId>;
 
 /// A field or associated item from self type suggested in case of resolution failure.
 enum AssocSuggestion {
@@ -1893,10 +1891,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let ast::TyKind::Path(Some(qself), path) = &bounded_ty.kind else { return false };
         // use this to verify that ident is a type param.
         let Some(partial_res) = self.r.partial_res_map.get(&bounded_ty.id) else { return false };
-        if !matches!(
-            partial_res.full_res(),
-            Some(hir::def::Res::Def(hir::def::DefKind::AssocTy, _))
-        ) {
+        if !matches!(partial_res.full_res(), Some(Res::Def(DefKind::AssocTy, _))) {
             return false;
         }
 
@@ -1906,10 +1901,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let Some(partial_res) = self.r.partial_res_map.get(&peeled_ty.id) else {
             return false;
         };
-        if !matches!(
-            partial_res.full_res(),
-            Some(hir::def::Res::Def(hir::def::DefKind::TyParam, _))
-        ) {
+        if !matches!(partial_res.full_res(), Some(Res::Def(DefKind::TyParam, _))) {
             return false;
         }
         let ([ast::PathSegment { args: None, .. }], [ast::GenericBound::Trait(poly_trait_ref)]) =
@@ -1929,7 +1921,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             let Some(partial_res) = self.r.partial_res_map.get(&id) else {
                 return false;
             };
-            if !matches!(partial_res.full_res(), Some(hir::def::Res::Def(..))) {
+            if !matches!(partial_res.full_res(), Some(Res::Def(..))) {
                 return false;
             }
 
