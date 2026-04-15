@@ -1,4 +1,4 @@
-//! VFS file status types for the janix ABI.
+//! VFS file status types for the ThingOS ABI.
 //!
 //! These types cross the userspace/kernel boundary and must remain stable.
 //! They are used by the `SYS_FS_STAT` syscall and the `vfs_stat` stem wrapper.
