@@ -2,6 +2,7 @@
 
 > **Status**: Phase 9 baseline audit — initial inventory artifact.
 > **Companion**: `docs/migration/authority_inventory.md` (credential/permission axis)
+> **Companion**: `docs/migration/bridge_architecture.md` (bridge layer design and conventions)
 >
 > This document inventories every **kernel-facing boundary surface** and records
 > whether it currently uses kind-generated types as its canonical external shape.

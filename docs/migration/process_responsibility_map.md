@@ -148,6 +148,7 @@ self-contained issue that cites this document.
 
 ## Related documents
 
+- `docs/migration/bridge_architecture.md` — centralized bridge layer design: why bridges exist, conventions, adding new bridges, expected lifetime
 - `docs/migration/authority_inventory.md` — comprehensive authority/credential/permission inventory and extraction sequencing (companion to this document)
 - `docs/migration/process_execution_context_inventory.md` — focused inventory of Process-carried execution context (cwd, namespace, tty, session); maps each item to Place / Presence / Group / legacy; includes extraction seams for Phase 8+ Place/Presence work
 - `docs/concepts/process-object.md` — `Process` / `Thread<R>` struct design
