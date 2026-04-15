@@ -320,11 +320,11 @@ const AT_PHENT: u64 = abi::auxv::AT_PHENT;
 const AT_PHNUM: u64 = abi::auxv::AT_PHNUM;
 const AT_ENTRY: u64 = abi::auxv::AT_ENTRY;
 
-// Janix-specific AT_* entries for ELF TLS — shared constants from abi::auxv.
-const AT_JANIX_TLS_TEMPLATE_VA: u64 = abi::auxv::AT_JANIX_TLS_TEMPLATE_VA;
-const AT_JANIX_TLS_FILESZ: u64 = abi::auxv::AT_JANIX_TLS_FILESZ;
-const AT_JANIX_TLS_MEMSZ: u64 = abi::auxv::AT_JANIX_TLS_MEMSZ;
-const AT_JANIX_TLS_ALIGN: u64 = abi::auxv::AT_JANIX_TLS_ALIGN;
+// Thing-OS-specific AT_* entries for ELF TLS — shared constants from abi::auxv.
+const AT_THINGOS_TLS_TEMPLATE_VA: u64 = abi::auxv::AT_THINGOS_TLS_TEMPLATE_VA;
+const AT_THINGOS_TLS_FILESZ: u64 = abi::auxv::AT_THINGOS_TLS_FILESZ;
+const AT_THINGOS_TLS_MEMSZ: u64 = abi::auxv::AT_THINGOS_TLS_MEMSZ;
+const AT_THINGOS_TLS_ALIGN: u64 = abi::auxv::AT_THINGOS_TLS_ALIGN;
 
 /// Build the standard auxiliary-vector entries for a freshly loaded image.
 ///
@@ -351,10 +351,10 @@ pub fn build_auxv(
     }
     // Emit TLS auxiliary entries when a PT_TLS segment was found.
     if aux_info.tls_memsz != 0 {
-        v.push((AT_JANIX_TLS_TEMPLATE_VA, aux_info.tls_template_vaddr));
-        v.push((AT_JANIX_TLS_FILESZ, aux_info.tls_filesz));
-        v.push((AT_JANIX_TLS_MEMSZ, aux_info.tls_memsz));
-        v.push((AT_JANIX_TLS_ALIGN, aux_info.tls_align));
+        v.push((AT_THINGOS_TLS_TEMPLATE_VA, aux_info.tls_template_vaddr));
+        v.push((AT_THINGOS_TLS_FILESZ, aux_info.tls_filesz));
+        v.push((AT_THINGOS_TLS_MEMSZ, aux_info.tls_memsz));
+        v.push((AT_THINGOS_TLS_ALIGN, aux_info.tls_align));
     }
     v
 }
@@ -384,7 +384,7 @@ mod tests {
         // AT_ENTRY present when entry_vaddr != 0.
         assert!(auxv.contains(&(AT_ENTRY, 0x201000)));
         // No TLS entries when tls_memsz == 0.
-        assert!(!auxv.iter().any(|&(k, _)| k == AT_JANIX_TLS_MEMSZ));
+        assert!(!auxv.iter().any(|&(k, _)| k == AT_THINGOS_TLS_MEMSZ));
     }
 
     #[test]
@@ -439,10 +439,10 @@ mod tests {
         assert!(auxv.contains(&(AT_PHDR, 0x200040)));
         assert!(auxv.contains(&(AT_ENTRY, 0x201000)));
         // TLS entries present when tls_memsz != 0.
-        assert!(auxv.contains(&(AT_JANIX_TLS_TEMPLATE_VA, 0x300000)));
-        assert!(auxv.contains(&(AT_JANIX_TLS_FILESZ, 64)));
-        assert!(auxv.contains(&(AT_JANIX_TLS_MEMSZ, 128)));
-        assert!(auxv.contains(&(AT_JANIX_TLS_ALIGN, 16)));
+        assert!(auxv.contains(&(AT_THINGOS_TLS_TEMPLATE_VA, 0x300000)));
+        assert!(auxv.contains(&(AT_THINGOS_TLS_FILESZ, 64)));
+        assert!(auxv.contains(&(AT_THINGOS_TLS_MEMSZ, 128)));
+        assert!(auxv.contains(&(AT_THINGOS_TLS_ALIGN, 16)));
     }
 
     #[test]
