@@ -2,7 +2,7 @@ use ide_db::source_change::SourceChangeBuilder;
 use itertools::Itertools;
 use syntax::{
     NodeOrToken, SyntaxToken, T, TextRange, algo,
-    ast::{self, AstNode, edit::AstNodeEdit, make, syntax_factory::SyntaxFactory},
+    ast::{self, AstNode, edit::AstNodeEdit, make},
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -192,8 +192,8 @@ fn wrap_derive(
         }
     }
     let handle_source_change = |edit: &mut SourceChangeBuilder| {
-        let make = SyntaxFactory::with_mappings();
-        let mut editor = edit.make_editor(attr.syntax());
+        let editor = edit.make_editor(attr.syntax());
+        let make = editor.make();
         let new_derive = make.attr_outer(
             make.meta_token_tree(make.ident_path("derive"), make.token_tree(T!['('], new_derive)),
         );
@@ -221,8 +221,6 @@ fn wrap_derive(
             let tabstop = edit.make_placeholder_snippet(snippet_cap);
             editor.add_annotation(cfg_predicate.syntax(), tabstop);
         }
-
-        editor.add_mappings(make.finish_with_mappings());
         edit.add_file_edits(ctx.vfs_file_id(), editor);
     };
 
@@ -239,8 +237,8 @@ fn wrap_cfg_attrs(acc: &mut Assists, ctx: &AssistContext<'_>, attrs: Vec<ast::At
     let (first_attr, last_attr) = (attrs.first()?, attrs.last()?);
     let range = first_attr.syntax().text_range().cover(last_attr.syntax().text_range());
     let handle_source_change = |edit: &mut SourceChangeBuilder| {
-        let make = SyntaxFactory::with_mappings();
-        let mut editor = edit.make_editor(first_attr.syntax());
+        let editor = edit.make_editor(first_attr.syntax());
+        let make = editor.make();
         let meta =
             make.cfg_attr_meta(make.cfg_flag("cfg"), attrs.iter().filter_map(|attr| attr.meta()));
         let cfg_attr = if first_attr.excl_token().is_some() {
@@ -258,8 +256,6 @@ fn wrap_cfg_attrs(acc: &mut Assists, ctx: &AssistContext<'_>, attrs: Vec<ast::At
             let tabstop = edit.make_placeholder_snippet(snippet_cap);
             editor.add_annotation(cfg_flag.syntax(), tabstop);
         }
-
-        editor.add_mappings(make.finish_with_mappings());
         edit.add_file_edits(ctx.vfs_file_id(), editor);
     };
     acc.add(

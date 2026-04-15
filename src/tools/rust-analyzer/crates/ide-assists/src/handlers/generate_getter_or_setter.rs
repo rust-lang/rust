@@ -410,35 +410,37 @@ fn parse_record_field(
     Some(RecordFieldInfo { field_name, field_ty, fn_name, target })
 }
 
+fn items(
+    ctx: &AssistContext<'_>,
+    info_of_record_fields: Vec<RecordFieldInfo>,
+    assist_info: &AssistInfo,
+    make: &SyntaxFactory,
+) -> Vec<ast::AssocItem> {
+    info_of_record_fields
+        .iter()
+        .map(|record_field_info| {
+            let method = match assist_info.assist_type {
+                AssistType::Set => generate_setter_from_info(assist_info, record_field_info, make),
+                _ => generate_getter_from_info(ctx, assist_info, record_field_info, make),
+            };
+            let new_fn = method;
+            let new_fn = new_fn.indent(1.into());
+            new_fn.into()
+        })
+        .collect()
+}
+
 fn build_source_change(
     builder: &mut SourceChangeBuilder,
     ctx: &AssistContext<'_>,
     info_of_record_fields: Vec<RecordFieldInfo>,
     assist_info: AssistInfo,
 ) {
-    let syntax_factory = SyntaxFactory::without_mappings();
-
-    let items: Vec<ast::AssocItem> = info_of_record_fields
-        .iter()
-        .map(|record_field_info| {
-            let method = match assist_info.assist_type {
-                AssistType::Set => {
-                    generate_setter_from_info(&assist_info, record_field_info, &syntax_factory)
-                }
-                _ => {
-                    generate_getter_from_info(ctx, &assist_info, record_field_info, &syntax_factory)
-                }
-            };
-            let new_fn = method;
-            let new_fn = new_fn.indent(1.into());
-            new_fn.into()
-        })
-        .collect();
-
     if let Some(impl_def) = &assist_info.impl_def {
         // We have an existing impl to add to
-        let mut editor = builder.make_editor(impl_def.syntax());
-        impl_def.assoc_item_list().unwrap().add_items(&mut editor, items.clone());
+        let editor = builder.make_editor(impl_def.syntax());
+        let items = items(ctx, info_of_record_fields, &assist_info, editor.make());
+        impl_def.assoc_item_list().unwrap().add_items(&editor, items.clone());
 
         if let Some(cap) = ctx.config.snippet_cap
             && let Some(ast::AssocItem::Fn(fn_)) = items.last()
@@ -451,22 +453,26 @@ fn build_source_change(
         builder.add_file_edits(ctx.vfs_file_id(), editor);
         return;
     }
+
+    let editor = builder.make_editor(assist_info.strukt.syntax());
+    let make = editor.make();
+    let items = items(ctx, info_of_record_fields, &assist_info, make);
     let ty_params = assist_info.strukt.generic_param_list();
     let ty_args = ty_params.as_ref().map(|it| it.to_generic_args());
-    let impl_def = syntax_factory.impl_(
+    let impl_def = make.impl_(
         None,
         ty_params,
         ty_args,
-        syntax_factory
-            .ty_path(syntax_factory.ident_path(&assist_info.strukt.name().unwrap().to_string()))
+        editor
+            .make()
+            .ty_path(make.ident_path(&assist_info.strukt.name().unwrap().to_string()))
             .into(),
         None,
-        Some(syntax_factory.assoc_item_list(items)),
+        Some(make.assoc_item_list(items)),
     );
-    let mut editor = builder.make_editor(assist_info.strukt.syntax());
     editor.insert_all(
         Position::after(assist_info.strukt.syntax()),
-        vec![syntax_factory.whitespace("\n\n").into(), impl_def.syntax().clone().into()],
+        vec![make.whitespace("\n\n").into(), impl_def.syntax().clone().into()],
     );
 
     if let Some(cap) = ctx.config.snippet_cap

@@ -80,8 +80,8 @@ pub(crate) fn generate_single_field_struct_from(
         "Generate single field `From`",
         strukt.syntax().text_range(),
         |builder| {
-            let make = SyntaxFactory::with_mappings();
-            let mut editor = builder.make_editor(strukt.syntax());
+            let editor = builder.make_editor(strukt.syntax());
+            let make = editor.make();
 
             let indent = strukt.indent_level();
             let ty_where_clause = strukt.where_clause();
@@ -95,10 +95,11 @@ pub(crate) fn generate_single_field_struct_from(
             let ty = make.ty(&strukt_name.text());
 
             let constructor =
-                make_adt_constructor(names.as_deref(), constructors, &main_field_name, &make);
+                make_adt_constructor(names.as_deref(), constructors, &main_field_name, make);
             let body = make.block_expr([], Some(constructor));
 
-            let fn_ = make
+            let fn_ = editor
+                .make()
                 .fn_(
                     [],
                     None,
@@ -119,7 +120,7 @@ pub(crate) fn generate_single_field_struct_from(
                     false,
                     false,
                 )
-                .indent_with_mapping(1.into(), &make);
+                .indent_with_mapping(1.into(), make);
 
             let cfg_attrs =
                 strukt.attrs().filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))));
@@ -139,13 +140,12 @@ pub(crate) fn generate_single_field_struct_from(
                 None,
             );
 
-            let (mut impl_editor, impl_root) = SyntaxEditor::with_ast_node(&impl_);
-            let assoc_list =
-                impl_root.get_or_create_assoc_item_list_with_editor(&mut impl_editor, &make);
-            assoc_list.add_items(&mut impl_editor, vec![fn_.into()]);
+            let (impl_editor, impl_root) = SyntaxEditor::with_ast_node(&impl_);
+            let assoc_list = impl_root.get_or_create_assoc_item_list_with_editor(&impl_editor);
+            assoc_list.add_items(&impl_editor, vec![fn_.into()]);
             let impl_ = ast::Impl::cast(impl_editor.finish().new_root().clone())
                 .unwrap()
-                .indent_with_mapping(indent, &make);
+                .indent_with_mapping(indent, make);
 
             editor.insert_all(
                 Position::after(strukt.syntax()),
@@ -154,8 +154,6 @@ pub(crate) fn generate_single_field_struct_from(
                     impl_.syntax().clone().into(),
                 ],
             );
-
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

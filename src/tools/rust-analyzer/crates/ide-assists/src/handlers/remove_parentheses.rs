@@ -1,8 +1,4 @@
-use syntax::{
-    AstNode, SyntaxKind, T,
-    ast::{self, syntax_factory::SyntaxFactory},
-    syntax_editor::Position,
-};
+use syntax::{AstNode, SyntaxKind, T, ast, syntax_editor::Position};
 
 use crate::{AssistContext, AssistId, Assists};
 
@@ -44,7 +40,8 @@ pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         "Remove redundant parentheses",
         target,
         |builder| {
-            let mut editor = builder.make_editor(parens.syntax());
+            let editor = builder.make_editor(parens.syntax());
+            let make = editor.make();
             let prev_token = parens.syntax().first_token().and_then(|it| it.prev_token());
             let need_to_add_ws = match prev_token {
                 Some(it) => {
@@ -54,9 +51,7 @@ pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                 None => false,
             };
             if need_to_add_ws {
-                let make = SyntaxFactory::with_mappings();
                 editor.insert(Position::before(parens.syntax()), make.whitespace(" "));
-                editor.add_mappings(make.finish_with_mappings());
             }
             editor.replace(parens.syntax(), expr.syntax());
             builder.add_file_edits(ctx.vfs_file_id(), editor);

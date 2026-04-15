@@ -494,7 +494,7 @@ fn remove_instantiated_params(
     }
 }
 
-fn remove_useless_where_clauses(editor: &mut SyntaxEditor, delegate: &ast::Impl) {
+fn remove_useless_where_clauses(editor: &SyntaxEditor, delegate: &ast::Impl) {
     let Some(wc) = delegate.where_clause() else {
         return;
     };
@@ -563,7 +563,7 @@ fn finalize_delegate(
         return Some(delegate.clone());
     }
 
-    let (mut editor, delegate) = SyntaxEditor::with_ast_node(delegate);
+    let (editor, delegate) = SyntaxEditor::with_ast_node(delegate);
 
     // 1. Replace assoc_item_list if we have new items
     if let Some(items) = assoc_items
@@ -577,7 +577,7 @@ fn finalize_delegate(
 
     // 2. Remove useless where clauses
     if remove_where_clauses {
-        remove_useless_where_clauses(&mut editor, &delegate);
+        remove_useless_where_clauses(&editor, &delegate);
     }
 
     ast::Impl::cast(editor.finish().new_root().clone())

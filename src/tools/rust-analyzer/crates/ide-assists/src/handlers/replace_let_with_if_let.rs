@@ -46,8 +46,8 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
         "Replace let with if let",
         target,
         |builder| {
-            let mut editor = builder.make_editor(let_stmt.syntax());
-            let make = SyntaxFactory::with_mappings();
+            let editor = builder.make_editor(let_stmt.syntax());
+            let make = editor.make();
             let ty = ctx.sema.type_of_expr(&init);
             let pat = if let_stmt.let_else().is_some() {
                 // Do not add the wrapper type that implements `Try`,
@@ -59,9 +59,10 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
                     .map(|it| it.happy_case());
                 match happy_variant {
                     None => original_pat,
-                    Some(var_name) => {
-                        make.tuple_struct_pat(make.ident_path(var_name), [original_pat]).into()
-                    }
+                    Some(var_name) => editor
+                        .make()
+                        .tuple_struct_pat(make.ident_path(var_name), [original_pat])
+                        .into(),
                 }
             };
             let init_expr =
@@ -79,7 +80,6 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
             let if_stmt = make.expr_stmt(if_expr.into());
 
             editor.replace(let_stmt.syntax(), if_stmt.syntax());
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

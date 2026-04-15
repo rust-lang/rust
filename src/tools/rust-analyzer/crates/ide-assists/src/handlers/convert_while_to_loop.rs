@@ -6,7 +6,6 @@ use syntax::{
     ast::{
         self, HasLoopBody,
         edit::{AstNodeEdit, IndentLevel},
-        syntax_factory::SyntaxFactory,
     },
     syntax_editor::{Element, Position},
 };
@@ -52,18 +51,19 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) 
         "Convert while to loop",
         target,
         |builder| {
-            let make = SyntaxFactory::without_mappings();
-            let mut edit = builder.make_editor(while_expr.syntax());
+            let editor = builder.make_editor(while_expr.syntax());
+            let make = editor.make();
             let while_indent_level = IndentLevel::from_node(while_expr.syntax());
 
-            let break_block = make
+            let break_block = editor
+                .make()
                 .block_expr(
                     iter::once(make.expr_stmt(make.expr_break(None, None).into()).into()),
                     None,
                 )
                 .indent(IndentLevel(1));
 
-            edit.replace_all(
+            editor.replace_all(
                 while_kw.syntax_element()..=while_cond.syntax().syntax_element(),
                 vec![make.token(T![loop]).syntax_element()],
             );
@@ -73,17 +73,17 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 let if_expr = make.expr_if(while_cond, then_branch, Some(break_block.into()));
                 let stmts = iter::once(make.expr_stmt(if_expr.into()).into());
                 let block_expr = make.block_expr(stmts, None);
-                edit.replace(while_body.syntax(), block_expr.indent(while_indent_level).syntax());
+                editor.replace(while_body.syntax(), block_expr.indent(while_indent_level).syntax());
             } else {
-                let if_cond = invert_boolean_expression(&make, while_cond);
+                let if_cond = invert_boolean_expression(make, while_cond);
                 let if_expr = make.expr_if(if_cond, break_block, None).indent(while_indent_level);
                 if !while_body.syntax().text().contains_char('\n') {
-                    edit.insert(
+                    editor.insert(
                         Position::after(&l_curly),
                         make.whitespace(&format!("\n{while_indent_level}")),
                     );
                 }
-                edit.insert_all(
+                editor.insert_all(
                     Position::after(&l_curly),
                     vec![
                         make.whitespace(&format!("\n{}", while_indent_level + 1)).into(),
@@ -91,9 +91,7 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) 
                     ],
                 );
             };
-
-            edit.add_mappings(make.finish_with_mappings());
-            builder.add_file_edits(ctx.vfs_file_id(), edit);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

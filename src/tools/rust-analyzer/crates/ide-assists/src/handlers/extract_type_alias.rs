@@ -2,10 +2,7 @@ use either::Either;
 use hir::HirDisplay;
 use ide_db::syntax_helpers::node_ext::walk_ty;
 use syntax::{
-    ast::{
-        self, AstNode, HasGenericArgs, HasGenericParams, HasName, edit::IndentLevel,
-        syntax_factory::SyntaxFactory,
-    },
+    ast::{self, AstNode, HasGenericArgs, HasGenericParams, HasName, edit::IndentLevel},
     syntax_editor,
 };
 
@@ -56,8 +53,8 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         "Extract type as type alias",
         target,
         |builder| {
-            let mut edit = builder.make_editor(node);
-            let make = SyntaxFactory::without_mappings();
+            let editor = builder.make_editor(node);
+            let make = editor.make();
 
             let resolved_ty = make.ty(&resolved_ty);
 
@@ -82,7 +79,7 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             } else {
                 make.path_segment(make.name_ref("Type"))
             };
-            edit.replace(ty.syntax(), new_ty.syntax());
+            editor.replace(ty.syntax(), new_ty.syntax());
 
             // Insert new alias
             let ty_alias =
@@ -91,11 +88,11 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             if let Some(cap) = ctx.config.snippet_cap
                 && let Some(name) = ty_alias.name()
             {
-                edit.add_annotation(name.syntax(), builder.make_tabstop_before(cap));
+                editor.add_annotation(name.syntax(), builder.make_tabstop_before(cap));
             }
 
             let indent = IndentLevel::from_node(node);
-            edit.insert_all(
+            editor.insert_all(
                 syntax_editor::Position::before(node),
                 vec![
                     ty_alias.syntax().clone().into(),
@@ -103,7 +100,7 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                 ],
             );
 
-            builder.add_file_edits(ctx.vfs_file_id(), edit);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

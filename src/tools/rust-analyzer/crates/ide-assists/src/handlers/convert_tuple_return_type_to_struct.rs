@@ -72,15 +72,15 @@ pub(crate) fn convert_tuple_return_type_to_struct(
         "Convert tuple return type to tuple struct",
         target,
         move |edit| {
-            let mut syntax_editor = edit.make_editor(ret_type.syntax());
-            let syntax_factory = SyntaxFactory::with_mappings();
+            let editor = edit.make_editor(ret_type.syntax());
+            let make = editor.make();
 
             let usages = Definition::Function(fn_def).usages(&ctx.sema).all();
             let struct_name = format!("{}Result", stdx::to_camel_case(&fn_name.to_string()));
             let parent = fn_.syntax().ancestors().find_map(<Either<ast::Impl, ast::Trait>>::cast);
             add_tuple_struct_def(
                 edit,
-                &syntax_factory,
+                make,
                 ctx,
                 &usages,
                 parent.as_ref().map(|it| it.syntax()).unwrap_or(fn_.syntax()),
@@ -89,22 +89,12 @@ pub(crate) fn convert_tuple_return_type_to_struct(
                 &target_module,
             );
 
-            syntax_editor.replace(
-                ret_type.syntax(),
-                syntax_factory.ret_type(syntax_factory.ty(&struct_name)).syntax(),
-            );
+            editor.replace(ret_type.syntax(), make.ret_type(make.ty(&struct_name)).syntax());
 
             if let Some(fn_body) = fn_.body() {
-                replace_body_return_values(
-                    &mut syntax_editor,
-                    &syntax_factory,
-                    ast::Expr::BlockExpr(fn_body),
-                    &struct_name,
-                );
+                replace_body_return_values(&editor, ast::Expr::BlockExpr(fn_body), &struct_name);
             }
-
-            syntax_editor.add_mappings(syntax_factory.finish_with_mappings());
-            edit.add_file_edits(ctx.vfs_file_id(), syntax_editor);
+            edit.add_file_edits(ctx.vfs_file_id(), editor);
 
             replace_usages(edit, ctx, &usages, &struct_name, &target_module);
         },
@@ -122,35 +112,22 @@ fn replace_usages(
     for (file_id, references) in usages.iter() {
         let Some(first_ref) = references.first() else { continue };
 
-        let mut editor = edit.make_editor(first_ref.name.syntax().as_node().unwrap());
-        let syntax_factory = SyntaxFactory::with_mappings();
+        let editor = edit.make_editor(first_ref.name.syntax().as_node().unwrap());
+        let make = editor.make();
 
-        let refs_with_imports = augment_references_with_imports(
-            &syntax_factory,
-            ctx,
-            references,
-            struct_name,
-            target_module,
-        );
+        let refs_with_imports =
+            augment_references_with_imports(make, ctx, references, struct_name, target_module);
 
         refs_with_imports.into_iter().rev().for_each(|(name, import_data)| {
             if let Some(fn_) = name.syntax().parent().and_then(ast::Fn::cast) {
                 cov_mark::hit!(replace_trait_impl_fns);
 
                 if let Some(ret_type) = fn_.ret_type() {
-                    editor.replace(
-                        ret_type.syntax(),
-                        syntax_factory.ret_type(syntax_factory.ty(struct_name)).syntax(),
-                    );
+                    editor.replace(ret_type.syntax(), make.ret_type(make.ty(struct_name)).syntax());
                 }
 
                 if let Some(fn_body) = fn_.body() {
-                    replace_body_return_values(
-                        &mut editor,
-                        &syntax_factory,
-                        ast::Expr::BlockExpr(fn_body),
-                        struct_name,
-                    );
+                    replace_body_return_values(&editor, ast::Expr::BlockExpr(fn_body), struct_name);
                 }
             } else {
                 // replace tuple patterns
@@ -172,27 +149,17 @@ fn replace_usages(
                 for tuple_pat in tuple_pats {
                     editor.replace(
                         tuple_pat.syntax(),
-                        syntax_factory
-                            .tuple_struct_pat(
-                                syntax_factory.path_from_text(struct_name),
-                                tuple_pat.fields(),
-                            )
+                        editor
+                            .make()
+                            .tuple_struct_pat(make.path_from_text(struct_name), tuple_pat.fields())
                             .syntax(),
                     );
                 }
             }
             if let Some((import_scope, path)) = import_data {
-                insert_use_with_editor(
-                    &import_scope,
-                    path,
-                    &ctx.config.insert_use,
-                    &mut editor,
-                    &syntax_factory,
-                );
+                insert_use_with_editor(&import_scope, path, &ctx.config.insert_use, &editor);
             }
         });
-
-        editor.add_mappings(syntax_factory.finish_with_mappings());
         edit.add_file_edits(file_id.file_id(ctx.db()), editor);
     }
 }
@@ -296,12 +263,8 @@ fn add_tuple_struct_def(
 }
 
 /// Replaces each returned tuple in `body` with the constructor of the tuple struct named `struct_name`.
-fn replace_body_return_values(
-    syntax_editor: &mut SyntaxEditor,
-    syntax_factory: &SyntaxFactory,
-    body: ast::Expr,
-    struct_name: &str,
-) {
+fn replace_body_return_values(editor: &SyntaxEditor, body: ast::Expr, struct_name: &str) {
+    let make = editor.make();
     let mut exprs_to_wrap = Vec::new();
 
     let tail_cb = &mut |e: &_| tail_cb_impl(&mut exprs_to_wrap, e);
@@ -316,11 +279,11 @@ fn replace_body_return_values(
 
     for ret_expr in exprs_to_wrap {
         if let ast::Expr::TupleExpr(tuple_expr) = &ret_expr {
-            let struct_constructor = syntax_factory.expr_call(
-                syntax_factory.expr_path(syntax_factory.ident_path(struct_name)),
-                syntax_factory.arg_list(tuple_expr.fields()),
+            let struct_constructor = make.expr_call(
+                make.expr_path(make.ident_path(struct_name)),
+                make.arg_list(tuple_expr.fields()),
             );
-            syntax_editor.replace(ret_expr.syntax(), struct_constructor.syntax());
+            editor.replace(ret_expr.syntax(), struct_constructor.syntax());
         }
     }
 }

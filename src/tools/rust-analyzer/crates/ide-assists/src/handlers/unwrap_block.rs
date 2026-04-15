@@ -72,18 +72,18 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     let replacement = replacement.stmt_list()?;
 
     acc.add(AssistId::refactor_rewrite("unwrap_block"), "Unwrap block", target, |builder| {
-        let mut edit = builder.make_editor(block.syntax());
+        let editor = builder.make_editor(block.syntax());
         let replacement = replacement.dedent(from_indent).indent(into_indent);
         let container = prefer_container.unwrap_or(container);
 
-        edit.replace_with_many(&container, extract_statements(replacement));
-        delete_else_before(container, &mut edit);
+        editor.replace_with_many(&container, extract_statements(replacement));
+        delete_else_before(container, &editor);
 
-        builder.add_file_edits(ctx.vfs_file_id(), edit);
+        builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }
 
-fn delete_else_before(container: SyntaxNode, edit: &mut SyntaxEditor) {
+fn delete_else_before(container: SyntaxNode, edit: &SyntaxEditor) {
     let Some(else_token) = container
         .siblings_with_tokens(syntax::Direction::Prev)
         .skip(1)
@@ -103,7 +103,7 @@ fn delete_else_before(container: SyntaxNode, edit: &mut SyntaxEditor) {
 fn wrap_let(assign: &ast::LetStmt, replacement: ast::BlockExpr) -> ast::BlockExpr {
     let try_wrap_assign = || {
         let initializer = assign.initializer()?.syntax().syntax_element();
-        let (mut edit, replacement) = SyntaxEditor::with_ast_node(&replacement);
+        let (editor, replacement) = SyntaxEditor::with_ast_node(&replacement);
         let tail_expr = replacement.tail_expr()?;
         let before =
             assign.syntax().children_with_tokens().take_while(|it| *it != initializer).collect();
@@ -114,9 +114,9 @@ fn wrap_let(assign: &ast::LetStmt, replacement: ast::BlockExpr) -> ast::BlockExp
             .skip(1)
             .collect();
 
-        edit.insert_all(Position::before(tail_expr.syntax()), before);
-        edit.insert_all(Position::after(tail_expr.syntax()), after);
-        ast::BlockExpr::cast(edit.finish().new_root().clone())
+        editor.insert_all(Position::before(tail_expr.syntax()), before);
+        editor.insert_all(Position::after(tail_expr.syntax()), after);
+        ast::BlockExpr::cast(editor.finish().new_root().clone())
     };
     try_wrap_assign().unwrap_or(replacement)
 }

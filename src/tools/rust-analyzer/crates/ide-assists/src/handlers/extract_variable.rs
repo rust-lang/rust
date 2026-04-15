@@ -9,7 +9,6 @@ use syntax::{
     ast::{
         self, AstNode,
         edit::{AstNodeEdit, IndentLevel},
-        syntax_factory::SyntaxFactory,
     },
     syntax_editor::{Element, Position},
 };
@@ -206,8 +205,8 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                         to_replace.clone()
                     };
 
-                let make = SyntaxFactory::with_mappings();
-                let mut editor = edit.make_editor(&place);
+                let editor = edit.make_editor(&place);
+                let make = editor.make();
 
                 let pat_name = make.name(&var_name);
                 let name_expr = make.expr_path(make.ident_path(&var_name));
@@ -292,13 +291,11 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                             make.block_expr([new_stmt], Some(to_wrap.clone()))
                         }
                         // fixup indentation of block
-                        .indent_with_mapping(indent_to, &make);
+                        .indent_with_mapping(indent_to, make);
 
                         editor.replace(to_wrap.syntax(), block.syntax());
                     }
                 }
-
-                editor.add_mappings(make.finish_with_mappings());
                 edit.add_file_edits(ctx.vfs_file_id(), editor);
                 edit.rename();
             },

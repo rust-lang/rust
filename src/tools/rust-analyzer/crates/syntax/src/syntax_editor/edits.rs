@@ -3,10 +3,7 @@
 use crate::{
     AstToken, Direction, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, T,
     algo::neighbor,
-    ast::{
-        self, AstNode, Fn, GenericParam, HasGenericParams, HasName, edit::IndentLevel, make,
-        syntax_factory::SyntaxFactory,
-    },
+    ast::{self, AstNode, Fn, GenericParam, HasGenericParams, HasName, edit::IndentLevel, make},
     syntax_editor::{Position, SyntaxEditor},
 };
 
@@ -15,10 +12,10 @@ pub trait GetOrCreateWhereClause: ast::HasGenericParams {
 
     fn get_or_create_where_clause(
         &self,
-        editor: &mut SyntaxEditor,
-        make: &SyntaxFactory,
+        editor: &SyntaxEditor,
         new_preds: impl Iterator<Item = ast::WherePred>,
     ) {
+        let make = editor.make();
         let existing = self.where_clause();
         let all_preds: Vec<_> =
             existing.iter().flat_map(|wc| wc.predicates()).chain(new_preds).collect();
@@ -113,7 +110,7 @@ impl GetOrCreateWhereClause for ast::Enum {
 
 impl SyntaxEditor {
     /// Adds a new generic param to the function using `SyntaxEditor`
-    pub fn add_generic_param(&mut self, function: &Fn, new_param: GenericParam) {
+    pub fn add_generic_param(&self, function: &Fn, new_param: GenericParam) {
         match function.generic_param_list() {
             Some(generic_param_list) => match generic_param_list.generic_params().last() {
                 Some(last_param) => {
@@ -177,8 +174,8 @@ impl SyntaxEditor {
     }
 }
 
-fn get_or_insert_comma_after(editor: &mut SyntaxEditor, syntax: &SyntaxNode) -> SyntaxToken {
-    let make = SyntaxFactory::without_mappings();
+fn get_or_insert_comma_after(editor: &SyntaxEditor, syntax: &SyntaxNode) -> SyntaxToken {
+    let make = editor.make();
     match syntax
         .siblings_with_tokens(Direction::Next)
         .filter_map(|it| it.into_token())
@@ -198,7 +195,7 @@ impl ast::AssocItemList {
     ///
     /// Attention! This function does align the first line of `item` with respect to `self`,
     /// but it does _not_ change indentation of other lines (if any).
-    pub fn add_items(&self, editor: &mut SyntaxEditor, items: Vec<ast::AssocItem>) {
+    pub fn add_items(&self, editor: &SyntaxEditor, items: Vec<ast::AssocItem>) {
         let (indent, position, whitespace) = match self.assoc_items().last() {
             Some(last_item) => (
                 IndentLevel::from_node(last_item.syntax()),
@@ -232,9 +229,9 @@ impl ast::AssocItemList {
 impl ast::Impl {
     pub fn get_or_create_assoc_item_list_with_editor(
         &self,
-        editor: &mut SyntaxEditor,
-        make: &SyntaxFactory,
+        editor: &SyntaxEditor,
     ) -> ast::AssocItemList {
+        let make = editor.make();
         if let Some(list) = self.assoc_item_list() {
             list
         } else {
@@ -249,8 +246,8 @@ impl ast::Impl {
 }
 
 impl ast::VariantList {
-    pub fn add_variant(&self, editor: &mut SyntaxEditor, variant: &ast::Variant) {
-        let make = SyntaxFactory::without_mappings();
+    pub fn add_variant(&self, editor: &SyntaxEditor, variant: &ast::Variant) {
+        let make = editor.make();
         let (indent, position) = match self.variants().last() {
             Some(last_item) => (
                 IndentLevel::from_node(last_item.syntax()),
@@ -274,7 +271,7 @@ impl ast::VariantList {
 }
 
 impl ast::Fn {
-    pub fn replace_or_insert_body(&self, editor: &mut SyntaxEditor, body: ast::BlockExpr) {
+    pub fn replace_or_insert_body(&self, editor: &SyntaxEditor, body: ast::BlockExpr) {
         if let Some(old_body) = self.body() {
             editor.replace(old_body.syntax(), body.syntax());
         } else {
@@ -290,8 +287,8 @@ impl ast::Fn {
     }
 }
 
-fn normalize_ws_between_braces(editor: &mut SyntaxEditor, node: &SyntaxNode) -> Option<()> {
-    let make = SyntaxFactory::without_mappings();
+fn normalize_ws_between_braces(editor: &SyntaxEditor, node: &SyntaxNode) -> Option<()> {
+    let make = editor.make();
     let l = node
         .children_with_tokens()
         .filter_map(|it| it.into_token())
@@ -318,11 +315,11 @@ fn normalize_ws_between_braces(editor: &mut SyntaxEditor, node: &SyntaxNode) -> 
 }
 
 pub trait Removable: AstNode {
-    fn remove(&self, editor: &mut SyntaxEditor);
+    fn remove(&self, editor: &SyntaxEditor);
 }
 
 impl Removable for ast::TypeBoundList {
-    fn remove(&self, editor: &mut SyntaxEditor) {
+    fn remove(&self, editor: &SyntaxEditor) {
         match self.syntax().siblings_with_tokens(Direction::Prev).find(|it| it.kind() == T![:]) {
             Some(colon) => editor.delete_all(colon..=self.syntax().clone().into()),
             None => editor.delete(self.syntax()),
@@ -331,9 +328,8 @@ impl Removable for ast::TypeBoundList {
 }
 
 impl Removable for ast::Use {
-    fn remove(&self, editor: &mut SyntaxEditor) {
-        let make = SyntaxFactory::without_mappings();
-
+    fn remove(&self, editor: &SyntaxEditor) {
+        let make = editor.make();
         let next_ws = self
             .syntax()
             .next_sibling_or_token()
@@ -355,7 +351,7 @@ impl Removable for ast::Use {
 }
 
 impl Removable for ast::UseTree {
-    fn remove(&self, editor: &mut SyntaxEditor) {
+    fn remove(&self, editor: &SyntaxEditor) {
         for dir in [Direction::Next, Direction::Prev] {
             if let Some(next_use_tree) = neighbor(self, dir) {
                 let separators = self
@@ -379,7 +375,7 @@ mod tests {
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
 
-    use crate::SourceFile;
+    use crate::{SourceFile, ast::syntax_factory::SyntaxFactory};
 
     use super::*;
 
@@ -492,9 +488,9 @@ enum Foo {
     }
 
     fn check_add_variant(before: &str, expected: &str, variant: ast::Variant) {
-        let (mut editor, enum_) = SyntaxEditor::with_ast_node(&ast_from_text::<ast::Enum>(before));
+        let (editor, enum_) = SyntaxEditor::with_ast_node(&ast_from_text::<ast::Enum>(before));
         if let Some(it) = enum_.variant_list() {
-            it.add_variant(&mut editor, &variant)
+            it.add_variant(&editor, &variant)
         }
         let edit = editor.finish();
         let after = edit.new_root.to_string();

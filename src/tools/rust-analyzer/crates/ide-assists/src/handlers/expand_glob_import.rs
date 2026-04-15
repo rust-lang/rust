@@ -8,7 +8,7 @@ use ide_db::{
 use stdx::never;
 use syntax::{
     AstNode, Direction, SyntaxNode, SyntaxToken, T,
-    ast::{self, Use, UseTree, VisibilityKind, syntax_factory::SyntaxFactory},
+    ast::{self, Use, UseTree, VisibilityKind},
 };
 
 use crate::{
@@ -148,8 +148,8 @@ fn build_expanded_import(
     current_module: Module,
     reexport_public_items: bool,
 ) {
-    let make = SyntaxFactory::with_mappings();
-    let mut editor = builder.make_editor(use_tree.syntax());
+    let editor = builder.make_editor(use_tree.syntax());
+    let make = editor.make();
     let (must_be_pub, visible_from) = if !reexport_public_items {
         (false, current_module)
     } else {
@@ -192,7 +192,6 @@ fn build_expanded_import(
         }
         None => never!(),
     }
-    editor.add_mappings(make.finish_with_mappings());
     builder.add_file_edits(ctx.vfs_file_id(), editor);
 }
 
