@@ -56,6 +56,9 @@ run *args:
         ARCH="${ARGS_ARRAY[0]}"
         ARGS_ARRAY=("${ARGS_ARRAY[@]:1}")
     fi
+    if [[ " ${ARGS_ARRAY[*]} " != *" -i "* && " ${ARGS_ARRAY[*]} " != *" --interactive "* ]]; then
+        ARGS_ARRAY+=("-i")
+    fi
     RUSTFLAGS="-Awarnings" {{xtask}} run --env "$ARCH" --profile "{{rust_profile}}" "${ARGS_ARRAY[@]}" --qemu-flags "{{qemuflags}}"
 
 # Start HTTPS proxy for guest (runs on port 8081).
