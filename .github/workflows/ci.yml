@@ -17,6 +17,13 @@ on:
   pull_request:
     branches:
       - "**"
+  workflow_dispatch:
+    inputs:
+      enable_rust_ci:
+        description: Run upstream Rust CI matrix in this repository
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -45,6 +52,7 @@ jobs:
   # It calculates which jobs should be executed, based on the data of the ${{ github }} context.
   # If you want to modify CI jobs, take a look at src/ci/github-actions/jobs.yml.
   calculate_matrix:
+    if: ${{ github.repository == 'rust-lang/rust' || (github.event_name == 'workflow_dispatch' && inputs.enable_rust_ci == 'true') }}
     name: Calculate job matrix
     runs-on: ubuntu-24.04-arm
     outputs:
@@ -68,8 +76,9 @@ jobs:
           CARGO_INCREMENTAL=0 cargo run calculate-job-matrix >> $GITHUB_OUTPUT
         id: jobs
   job:
+    if: ${{ github.repository == 'rust-lang/rust' || (github.event_name == 'workflow_dispatch' && inputs.enable_rust_ci == 'true') }}
     name: ${{ matrix.full_name }}
-    needs: [ calculate_matrix ]
+    needs: [calculate_matrix]
     runs-on: "${{ matrix.os }}"
     timeout-minutes: 360
     # The bors environment contains secrets required for elevated workflows (try and auto builds),
@@ -307,10 +316,10 @@ jobs:
 
   # This job is used to publish toolstate for successful auto builds.
   outcome:
+    if: ${{ (github.repository == 'rust-lang/rust' || (github.event_name == 'workflow_dispatch' && inputs.enable_rust_ci == 'true')) && needs.calculate_matrix.outputs.run_type == 'auto' }}
     name: publish toolstate
     runs-on: ubuntu-24.04
-    needs: [ calculate_matrix, job ]
-    if: ${{ needs.calculate_matrix.outputs.run_type == 'auto' }}
+    needs: [calculate_matrix, job]
     environment: ${{ (github.repository == 'rust-lang/rust' && 'bors') || '' }}
     steps:
       - name: checkout the source code
