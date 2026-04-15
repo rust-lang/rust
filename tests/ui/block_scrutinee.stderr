@@ -1,0 +1,87 @@
+error: this scrutinee is wrapped in a block
+  --> tests/ui/block_scrutinee.rs:11:22
+   |
+LL |     if let Some(x) = { my_function() } {
+   |                      ^^^^^^^^^^^^^^^^^
+   |
+   = note: temporary values in this block-wrapped scrutinee will be dropped after the body of the `if let` statement
+   = note: starting with the 2024 edition, temporaries within a block's final expression are dropped immediately at the end of the block
+   = note: `-D clippy::block-scrutinee` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::block_scrutinee)]`
+help: to drop temporaries after the surrounding `if let`, remove the block
+   |
+LL -     if let Some(x) = { my_function() } {
+LL +     if let Some(x) = my_function() {
+   |
+help: to drop temporaries early, move them to a separate local binding (or update your `Cargo.toml` to the 2024 edition)
+   |
+LL ~     let res = my_function();
+LL ~     if let Some(x) = res {
+   |
+
+error: this scrutinee is wrapped in a block
+  --> tests/ui/block_scrutinee.rs:16:11
+   |
+LL |     match { my_function() } {
+   |           ^^^^^^^^^^^^^^^^^
+   |
+   = note: temporary values in this block-wrapped scrutinee will be dropped after the body of the `match` statement
+   = note: starting with the 2024 edition, temporaries within a block's final expression are dropped immediately at the end of the block
+help: to drop temporaries after the surrounding `match`, remove the block
+   |
+LL -     match { my_function() } {
+LL +     match my_function() {
+   |
+help: to drop temporaries early, move them to a separate local binding (or update your `Cargo.toml` to the 2024 edition)
+   |
+LL ~     let res = my_function();
+LL ~     match res {
+   |
+
+error: this scrutinee is wrapped in a block
+  --> tests/ui/block_scrutinee.rs:24:25
+   |
+LL |     while let Some(x) = { v.pop() } {
+   |                         ^^^^^^^^^^^
+   |
+   = note: temporary values in this block-wrapped scrutinee will be dropped after the body of the `while let` statement
+   = note: starting with the 2024 edition, temporaries within a block's final expression are dropped immediately at the end of the block
+help: to drop temporaries after the surrounding `while let`, remove the block
+   |
+LL -     while let Some(x) = { v.pop() } {
+LL +     while let Some(x) = v.pop() {
+   |
+help: to drop temporaries early, move them to a separate local binding (or update your `Cargo.toml` to the 2024 edition)
+   |
+LL ~     let res = v.pop();
+LL ~     while let Some(x) = res {
+   |
+
+error: this scrutinee is wrapped in a block
+  --> tests/ui/block_scrutinee.rs:41:22
+   |
+LL |       if let Some(x) = {
+   |  ______________________^
+LL | |         // We are popping a value
+LL | |         v.pop()
+LL | |     } {
+   | |_____^
+   |
+   = note: temporary values in this block-wrapped scrutinee will be dropped after the body of the `if let` statement
+   = note: starting with the 2024 edition, temporaries within a block's final expression are dropped immediately at the end of the block
+help: to drop temporaries after the surrounding `if let`, remove the block
+   |
+LL -     if let Some(x) = {
+LL -         // We are popping a value
+LL -         v.pop()
+LL -     } {
+LL +     if let Some(x) = v.pop() {
+   |
+help: to drop temporaries early, move them to a separate local binding (or update your `Cargo.toml` to the 2024 edition)
+   |
+LL ~     let res = v.pop();
+LL ~     if let Some(x) = res {
+   |
+
+error: aborting due to 4 previous errors
+
