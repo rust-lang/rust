@@ -78,6 +78,12 @@ Stabilized APIs
 - [`<*const T>::as_ref_unchecked`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.as_ref_unchecked)
 - [`<*mut T>::as_ref_unchecked`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.as_ref_unchecked-1)
 - [`<*mut T>::as_mut_unchecked`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.as_mut_unchecked)
+- [`Vec::push_mut`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.push_mut)
+- [`VecDeque::push_front_mut`](https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.push_front_mut)
+- [`VecDeque::push_back_mut`](https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.push_back_mut)
+- [`VecDeque::insert_mut`](https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.insert_mut)
+- [`LinkedList::push_front_mut`](https://doc.rust-lang.org/stable/std/collections/struct.LinkedList.html#method.push_front_mut)
+- [`LinkedList::push_back_mut`](https://doc.rust-lang.org/stable/std/collections/struct.LinkedList.html#method.push_back_mut)
 
 
 These previously stable APIs are now stable in const contexts:
