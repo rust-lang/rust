@@ -1336,9 +1336,7 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_confusables]`.
     RustcConfusables {
-        symbols: ThinVec<Symbol>,
-        // FIXME(jdonszelmann): remove when target validation code is moved
-        first_span: Span,
+        confusables: ThinVec<Symbol>,
     },
     /// Represents `#[rustc_const_stable]` and `#[rustc_const_unstable]`.
     RustcConstStability {

@@ -26,7 +26,7 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::{
     edit_distance_with_substrings, find_best_match_for_name_with_substrings,
 };
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::solve::Goal;
@@ -2592,38 +2592,25 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     /// Determine if the associated item with the given DefId matches
-    /// the desired name via a doc alias.
+    /// the desired name via a doc alias or rustc_confusables
     fn matches_by_doc_alias(&self, def_id: DefId) -> bool {
         let Some(method) = self.method_name else {
             return false;
         };
-        let Some(local_def_id) = def_id.as_local() else {
-            return false;
-        };
-        let hir_id = self.fcx.tcx.local_def_id_to_hir_id(local_def_id);
-        let attrs = self.fcx.tcx.hir_attrs(hir_id);
 
-        if let Some(d) = find_attr!(attrs, Doc(d) => d)
+        if let Some(d) = find_attr!(self.tcx, def_id, Doc(d) => d)
             && d.aliases.contains_key(&method.name)
         {
             return true;
         }
 
-        for attr in attrs {
-            if attr.has_name(sym::rustc_confusables) {
-                let Some(confusables) = attr.meta_item_list() else {
-                    continue;
-                };
-                // #[rustc_confusables("foo", "bar"))]
-                for n in confusables {
-                    if let Some(lit) = n.lit()
-                        && method.name == lit.symbol
-                    {
-                        return true;
-                    }
-                }
-            }
+        if let Some(confusables) =
+            find_attr!(self.tcx, def_id, RustcConfusables{ confusables } => confusables)
+            && confusables.contains(&method.name)
+        {
+            return true;
         }
+
         false
     }
 
