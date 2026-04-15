@@ -30,6 +30,20 @@ use core::mem::size_of;
 /// - `pid < -1` → signal all processes in group `-pid`
 /// - `pid == -1` is currently not implemented
 /// - `sig == 0` → permission/existence check only (no signal sent)
+///
+/// # TRANSITIONAL — Process-based authorization
+///
+/// This handler reads the caller's `pgid` directly from `Process.unix_compat`
+/// (see `pid == 0` branch below) and performs no sender/receiver relationship
+/// check.  Any process can send any signal to any other PID or group.
+///
+/// Future work: gate signal delivery through `authority_for_current()` +
+/// `check_privilege("signal")`, and verify that the caller's Authority has a
+/// legitimate relationship with the target.
+/// See `docs/migration/authority_inventory.md` §1.6 for the inventory entry.
+///
+/// DO NOT add new authorization logic here that reads Process fields
+/// directly — introduce it through `crate::authority::bridge` instead.
 pub fn sys_kill(pid_raw: usize, sig_raw: usize) -> SysResult<usize> {
     let pid = pid_raw as isize as i64;
     let sig = sig_raw as u8;

@@ -1,6 +1,21 @@
 //! Syscall handler implementations
 //!
 //! Organized into focused modules by function category.
+//!
+//! # Authorization guardrail
+//!
+//! **New authorization checks must not read `Process` fields directly.**
+//! All authorization-facing code must go through the Authority bridge:
+//!
+//! ```text
+//! let authority = crate::authority::bridge::authority_for_current();
+//! crate::authority::bridge::check_privilege(&authority, "my_privilege")?;
+//! ```
+//!
+//! Existing direct Process-based checks are explicitly marked with
+//! `// TRANSITIONAL` comments and are documented in
+//! `docs/migration/authority_inventory.md`.  Do not deepen them; route new
+//! logic through `crate::authority::bridge` instead.
 
 mod device;
 mod futex;

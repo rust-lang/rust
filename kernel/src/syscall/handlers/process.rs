@@ -20,6 +20,17 @@ pub fn sys_exit(code: i32) -> SysResult<usize> {
 pub fn sys_reboot(cmd: usize) -> SysResult<usize> {
     use abi::syscall::reboot_cmd;
 
+    // AUTHORITY CHECK — route through the canonical bridge rather than reading
+    // Process fields directly.  In Phase 7 this is a no-op (check_privilege
+    // always succeeds), but it establishes the Authority-oriented pattern so
+    // future phases can enforce real privilege without changing call sites.
+    //
+    // PROVISIONAL: Real privilege enforcement is deferred to the
+    // TODO(authority-enforcement) milestone.  Until then this call documents
+    // intent and keeps the direct-Process anti-pattern from proliferating.
+    let authority = crate::authority::bridge::authority_for_current();
+    crate::authority::bridge::check_privilege(&authority, "reboot")?;
+
     match cmd as u32 {
         reboot_cmd::RESTART => {
             crate::kprintln!("SYSCALL REBOOT: system reboot requested");
@@ -194,6 +205,15 @@ pub fn sys_waitpid(pid: usize, status_ptr: usize, flags: usize) -> SysResult<usi
 }
 
 pub fn sys_set_priority(tid: usize, priority: usize) -> SysResult<usize> {
+    // TRANSITIONAL: Only a bounds check is applied; any thread may raise any
+    // other thread to Realtime priority.  No authority check is performed.
+    //
+    // Future work: gate escalation to Realtime (priority == 4) through
+    // `authority_for_current()` + `check_privilege("realtime_priority")`.
+    // See `docs/migration/authority_inventory.md` §2.1 for the inventory entry.
+    //
+    // DO NOT add new authorization logic here that reads Process fields
+    // directly — introduce it through `crate::authority::bridge` instead.
     if priority > 4 {
         return Err(Errno::EINVAL);
     }
@@ -212,6 +232,17 @@ pub fn sys_set_priority(tid: usize, priority: usize) -> SysResult<usize> {
 }
 
 pub fn sys_task_kill(tid: usize) -> SysResult<usize> {
+    // TRANSITIONAL: This check uses the scheduler's TID existence lookup
+    // directly, with no relationship or authority check between caller and
+    // target.  Any thread can kill any other thread by TID.
+    //
+    // Future work: gate this through `authority_for_current()` +
+    // `check_privilege("kill")`, and verify that the caller's Authority has a
+    // relationship with the target (same Job/Group, or an explicit capability).
+    // See `docs/migration/authority_inventory.md` §2.1 for the inventory entry.
+    //
+    // DO NOT add new authorization logic here that reads Process fields
+    // directly — introduce it through `crate::authority::bridge` instead.
     let killed = unsafe { crate::sched::kill_by_tid_current(tid as u64) };
     if killed { Ok(0) } else { Err(Errno::ESRCH) }
 }
