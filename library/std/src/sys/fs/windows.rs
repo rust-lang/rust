@@ -53,6 +53,47 @@ pub struct ReadDir {
     first: Option<c::WIN32_FIND_DATAW>,
 }
 
+/// Specialization trait used to construct a `ReadDir`
+trait ReadDirFromPath<P> {
+    fn from_path(
+        handle: Option<FindNextFileHandle>,
+        path: P,
+        first: Option<c::WIN32_FIND_DATAW>,
+    ) -> Self;
+}
+
+impl<P: AsRef<Path>> ReadDirFromPath<P> for ReadDir {
+    default fn from_path(
+        handle: Option<FindNextFileHandle>,
+        path: P,
+        first: Option<c::WIN32_FIND_DATAW>,
+    ) -> Self {
+        ReadDir { handle, root: Arc::new(path.as_ref().to_path_buf()), first }
+    }
+}
+
+/// This constructs a `ReadDir` for all types that can be converted
+/// into `PathBuf` without allocating
+macro_rules! impl_read_dir_from_path {
+    ($t:ty) => {
+        impl ReadDirFromPath<$t> for ReadDir {
+            fn from_path(
+                handle: Option<FindNextFileHandle>,
+                path: $t,
+                first: Option<c::WIN32_FIND_DATAW>,
+            ) -> Self {
+                ReadDir { handle, root: Arc::new(path.into()), first }
+            }
+        }
+    };
+}
+
+impl_read_dir_from_path!(PathBuf);
+impl_read_dir_from_path!(Box<Path>);
+impl_read_dir_from_path!(Cow<'_, Path>);
+impl_read_dir_from_path!(OsString);
+impl_read_dir_from_path!(String);
+
 struct FindNextFileHandle(c::HANDLE);
 
 unsafe impl Send for FindNextFileHandle {}
@@ -1222,17 +1263,16 @@ impl DirBuilder {
     }
 }
 
-pub fn readdir(p: &Path) -> io::Result<ReadDir> {
+pub fn readdir<P: AsRef<Path>>(p: P) -> io::Result<ReadDir> {
     // We push a `*` to the end of the path which cause the empty path to be
     // treated as the current directory. So, for consistency with other platforms,
     // we explicitly error on the empty path.
-    if p.as_os_str().is_empty() {
+    if p.as_ref().as_os_str().is_empty() {
         // Return an error code consistent with other ways of opening files.
         // E.g. fs::metadata or File::open.
         return Err(io::Error::from_raw_os_error(c::ERROR_PATH_NOT_FOUND as i32));
     }
-    let root = p.to_path_buf();
-    let star = p.join("*");
+    let star = p.as_ref().join("*");
     let path = maybe_verbatim(&star)?;
 
     unsafe {
@@ -1254,11 +1294,11 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
         );
 
         if find_handle != c::INVALID_HANDLE_VALUE {
-            Ok(ReadDir {
-                handle: Some(FindNextFileHandle(find_handle)),
-                root: Arc::new(root),
-                first: Some(wfd),
-            })
+            Ok(<ReadDir as ReadDirFromPath<P>>::from_path(
+                Some(FindNextFileHandle(find_handle)),
+                p,
+                Some(wfd),
+            ))
         } else {
             // The status `ERROR_FILE_NOT_FOUND` is returned by the `FindFirstFileExW` function
             // if no matching files can be found, but not necessarily that the path to find the
@@ -1273,7 +1313,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
             // See issue #120040: https://github.com/rust-lang/rust/issues/120040.
             let last_error = api::get_last_error();
             if last_error == WinError::FILE_NOT_FOUND {
-                return Ok(ReadDir { handle: None, root: Arc::new(root), first: None });
+                return Ok(<ReadDir as ReadDirFromPath<P>>::from_path(None, p, None));
             }
 
             // Just return the error constructed from the raw OS error if the above is not the case.

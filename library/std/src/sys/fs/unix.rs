@@ -6,6 +6,7 @@
 #[cfg(test)]
 mod tests;
 
+use alloc_crate::borrow::Cow;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use libc::c_char;
 #[cfg(any(
@@ -271,6 +272,37 @@ impl ReadDir {
         Self { inner: Arc::new(inner), end_of_stream: false }
     }
 }
+
+/// Specialization trait used to construct a `ReadDir`
+trait ReadDirFromPath<P> {
+    fn from_path(dirp: DirStream, path: P) -> Self;
+}
+
+impl<P: AsRef<Path>> ReadDirFromPath<P> for ReadDir {
+    default fn from_path(dirp: DirStream, path: P) -> Self {
+        let inner = InnerReadDir { dirp, root: path.as_ref().to_path_buf() };
+        ReadDir::new(inner)
+    }
+}
+
+/// This constructs a `ReadDir` for all types that can be converted
+/// into `PathBuf` without allocating
+macro_rules! impl_read_dir_from_path {
+    ($t:ty) => {
+        impl ReadDirFromPath<$t> for ReadDir {
+            fn from_path(dirp: DirStream, path: $t) -> Self {
+                let inner = InnerReadDir { dirp, root: path.into() };
+                ReadDir::new(inner)
+            }
+        }
+    };
+}
+
+impl_read_dir_from_path!(PathBuf);
+impl_read_dir_from_path!(Box<Path>);
+impl_read_dir_from_path!(Cow<'_, Path>);
+impl_read_dir_from_path!(OsString);
+impl_read_dir_from_path!(String);
 
 struct DirStream(*mut libc::DIR);
 
@@ -2077,14 +2109,12 @@ impl fmt::Debug for Mode {
     }
 }
 
-pub fn readdir(path: &Path) -> io::Result<ReadDir> {
-    let ptr = run_path_with_cstr(path, &|p| unsafe { Ok(libc::opendir(p.as_ptr())) })?;
+pub fn readdir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
+    let ptr = run_path_with_cstr(path.as_ref(), &|p| unsafe { Ok(libc::opendir(p.as_ptr())) })?;
     if ptr.is_null() {
         Err(Error::last_os_error())
     } else {
-        let root = path.to_path_buf();
-        let inner = InnerReadDir { dirp: DirStream(ptr), root };
-        Ok(ReadDir::new(inner))
+        Ok(<ReadDir as ReadDirFromPath<P>>::from_path(DirStream(ptr), path))
     }
 }
 
