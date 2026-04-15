@@ -85,6 +85,10 @@ Stabilized APIs
 - [`VecDeque::insert_mut`](https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.insert_mut)
 - [`LinkedList::push_front_mut`](https://doc.rust-lang.org/stable/std/collections/struct.LinkedList.html#method.push_front_mut)
 - [`LinkedList::push_back_mut`](https://doc.rust-lang.org/stable/std/collections/struct.LinkedList.html#method.push_back_mut)
+- [`Layout::danging_ptr`](https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.danging_ptr)
+- [`Layout::repeat`](https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.repeat)
+- [`Layout::repeat_packed`](https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.repeat_packed)
+- [`Layout::extend_packed`](https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.extend_packed)
 
 
 These previously stable APIs are now stable in const contexts:
