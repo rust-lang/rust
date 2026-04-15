@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use rustc_type_ir::solve::{Certainty, Goal, NoSolution};
+use rustc_type_ir::solve::{Certainty, FetchEligibleAssocItemResponse, Goal, NoSolution};
 use rustc_type_ir::{self as ty, InferCtxtLike, Interner, TypeFoldable};
 
 pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
@@ -79,10 +79,7 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         goal_trait_ref: ty::TraitRef<Self::Interner>,
         trait_assoc_def_id: <Self::Interner as Interner>::DefId,
         impl_def_id: <Self::Interner as Interner>::ImplId,
-    ) -> Result<
-        Option<<Self::Interner as Interner>::DefId>,
-        <Self::Interner as Interner>::ErrorGuaranteed,
-    >;
+    ) -> FetchEligibleAssocItemResponse<Self::Interner>;
 
     fn is_transmutable(
         &self,

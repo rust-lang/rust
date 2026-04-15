@@ -5,7 +5,9 @@ use std::hash::Hash;
 
 use crate::lang_items::SolverTraitLangItem;
 use crate::search_graph::PathKind;
-use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
+use crate::{
+    self as ty, Canonical, CanonicalVarValues, CantBeErased, Interner, TypingMode, Upcast,
+};
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
@@ -478,6 +480,14 @@ pub enum BuiltinImplSource {
     ///
     /// The index is only used for winnowing.
     TraitUpcasting(usize),
+}
+
+#[derive_where(Copy, Clone, Debug; I: Interner)]
+pub enum FetchEligibleAssocItemResponse<I: Interner> {
+    Err(I::ErrorGuaranteed),
+    Found(I::DefId),
+    NotFound(TypingMode<I, CantBeErased>),
+    NotFoundBecauseErased,
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
