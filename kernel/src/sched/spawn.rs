@@ -82,6 +82,7 @@ fn inherit_process_info<R: BootRuntime>(
 
     if let Some(parent_pi) = current_pinfo {
         let parent = parent_pi.lock();
+        // Create the first-class Space object from the ProcessAddressSpace fields.
         alloc::sync::Arc::new(spin::Mutex::new(ProcessInfo {
             pid,
             lifecycle: crate::task::ProcessLifecycle::new(ppid, pid as TaskId),

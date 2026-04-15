@@ -929,11 +929,11 @@ mod tests {
             namespace: crate::vfs::NamespaceRef::global(),
             cwd: alloc::string::String::from("/old/cwd"),
             exec_path: alloc::string::String::from("/old/binary"),
-            space: crate::task::ProcessAddressSpace {
-                mappings: alloc::sync::Arc::new(spin::Mutex::new(
+            space: {
+                let mappings = alloc::sync::Arc::new(spin::Mutex::new(
                     crate::memory::mappings::MappingList::new(),
-                )),
-                aspace_raw: 0xDEAD_0000,
+                ));
+                crate::task::ProcessAddressSpace::from_parts(mappings, 0xDEAD_0000)
             },
         }))
     }

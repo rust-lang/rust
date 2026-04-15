@@ -1342,6 +1342,13 @@ pub fn list_processes<R: BootRuntime>() -> alloc::vec::Vec<hooks::ProcessSnapsho
                     namespace_label: alloc::string::String::from("global"),
                     // Job-context field (Phase 9): all thread states for the group.
                     thread_states,
+                    // Space-context fields (Space Phase 1): stable SpaceId plus
+                    // best-effort mapping and sharing counts from the live Space object.
+                    space_id: pi.space.space_obj.id,
+                    space_mapping_count: pi.space.space_obj.mapping_count() as u32,
+                    // sharing_count = Arc strong_count − 1 (exclude this reference).
+                    space_sharing_count: (alloc::sync::Arc::strong_count(&pi.space.space_obj) as u32)
+                        .saturating_sub(1),
                 });
             }
         }

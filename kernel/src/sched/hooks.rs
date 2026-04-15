@@ -84,6 +84,34 @@ pub struct ProcessSnapshot {
     /// An empty `Vec` (e.g. from legacy test helpers) causes the bridge to
     /// fall back to `[snapshot.state]` — equivalent to pre-Phase-9 behaviour.
     pub thread_states: Vec<TaskState>,
+    // ── Space-context fields (Phase 9 / Space Phase 1) ────────────────────────
+    /// Stable identifier for the address space owned by this process.
+    ///
+    /// Derived from `Process.space_obj.id` at snapshot time.  `SpaceId::NONE`
+    /// for kernel-only threads that have no user address space.
+    ///
+    /// Feeds `kernel::space::bridge::space_from_snapshot` →
+    /// `thingos::space::Space::id`.
+    pub space_id: thingos::space::SpaceId,
+    /// Number of mapped virtual regions in this process's address space at
+    /// snapshot time.
+    ///
+    /// Derived from `Process.space_obj.mapping_count()`.  This is a best-effort
+    /// diagnostic value; it is not atomic with other snapshot fields.
+    ///
+    /// Feeds `kernel::space::bridge::space_from_snapshot` →
+    /// `thingos::space::Space::mapping_count`.
+    pub space_mapping_count: u32,
+    /// Number of tasks (or equivalent) currently sharing this address space at
+    /// snapshot time.
+    ///
+    /// Derived from `Arc::strong_count(&Process.space_obj.mappings) − 1`.
+    /// `1` means the space is private to this process; `> 1` means it is
+    /// shared (e.g. by multiple threads in the same thread group).
+    ///
+    /// Feeds `kernel::space::bridge::space_from_snapshot` →
+    /// `thingos::space::Space::sharing_count`.
+    pub space_sharing_count: u32,
 }
 
 pub(crate) static mut YIELD_HOOK: Option<fn() -> bool> = None;

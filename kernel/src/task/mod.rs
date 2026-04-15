@@ -95,20 +95,46 @@ pub struct ProcessAddressSpace {
     /// Updated atomically with `Thread.aspace` during exec and remains 0
     /// for kernel-only threads (which have no user address space).
     pub aspace_raw: u64,
+
+    /// First-class `Space` kernel object (Phase 1 — transitional).
+    ///
+    /// Wraps the same `mappings` `Arc` and carries a stable
+    /// [`crate::space::Space::id`] (`SpaceId`) for diagnostics and future
+    /// handle-based ABI exposure.
+    ///
+    /// In Phase 1 this lives inside `ProcessAddressSpace` (alongside
+    /// `mappings` and `aspace_raw`) so that **no call site that constructs
+    /// `ProcessAddressSpace` needs to change** — the constructors
+    /// (`empty`, `from_parts`) automatically create the corresponding
+    /// `Space` object.  Once the extraction is complete, this field will
+    /// become the sole VM anchor and `mappings`/`aspace_raw` will move
+    /// inside `Space`.
+    ///
+    /// # Usage rules
+    ///
+    /// * Read `space.space_obj.id` when you need a stable `SpaceId`.
+    /// * Read `space.space_obj.mapping_count()` for a diagnostic region count.
+    /// * Continue to use `space.mappings` and `space.aspace_raw` for all
+    ///   existing VM-mutation paths — they share the same `Arc` allocation.
+    pub space_obj: alloc::sync::Arc<crate::space::Space>,
 }
 
 impl ProcessAddressSpace {
     /// Create a fresh, empty address space subdivision (no mappings, no page-table root).
     ///
     /// Used when spawning a new process before ELF loading assigns a real
-    /// address space.
+    /// address space.  A fresh `Space` kernel object is created automatically
+    /// and shares the same `Arc<Mutex<MappingList>>`.
     pub fn empty() -> Self {
-        ProcessAddressSpace {
-            mappings: alloc::sync::Arc::new(spin::Mutex::new(
-                crate::memory::mappings::MappingList::new(),
-            )),
+        let mappings = alloc::sync::Arc::new(spin::Mutex::new(
+            crate::memory::mappings::MappingList::new(),
+        ));
+        let space_obj = alloc::sync::Arc::new(crate::space::Space {
+            id: crate::space::alloc_space_id(),
+            mappings: alloc::sync::Arc::clone(&mappings),
             aspace_raw: 0,
-        }
+        });
+        ProcessAddressSpace { mappings, aspace_raw: 0, space_obj }
     }
 
     /// Create an address space subdivision from an existing mappings `Arc` and
@@ -116,11 +142,18 @@ impl ProcessAddressSpace {
     ///
     /// Used by the spawn path after the ELF loader has populated the address
     /// space and the architecture runtime has converted the handle to a raw token.
+    /// A fresh `Space` kernel object is created automatically and shares the
+    /// provided `mappings` `Arc`.
     pub fn from_parts(
         mappings: alloc::sync::Arc<spin::Mutex<crate::memory::mappings::MappingList>>,
         aspace_raw: u64,
     ) -> Self {
-        ProcessAddressSpace { mappings, aspace_raw }
+        let space_obj = alloc::sync::Arc::new(crate::space::Space {
+            id: crate::space::alloc_space_id(),
+            mappings: alloc::sync::Arc::clone(&mappings),
+            aspace_raw,
+        });
+        ProcessAddressSpace { mappings, aspace_raw, space_obj }
     }
 }
 
@@ -556,8 +589,9 @@ pub struct Process {
     // directly to `Process` — add it to `ProcessAddressSpace` instead.
     /// Address-space subdivision — conceptually future `Space` ownership.
     ///
-    /// Contains the VM mapping list and the architecture-specific page-table
-    /// token.  See [`ProcessAddressSpace`] for the full design rationale.
+    /// Contains the VM mapping list, the architecture-specific page-table
+    /// token, and the first-class [`crate::space::Space`] object wrapper.
+    /// See [`ProcessAddressSpace`] for the full design rationale.
     pub space: ProcessAddressSpace,
 }
 

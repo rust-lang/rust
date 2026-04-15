@@ -173,6 +173,9 @@ mod tests {
             cwd: alloc::string::String::from(cwd),
             namespace_label: alloc::string::String::from(namespace_label),
             thread_states: alloc::vec![TaskState::Runnable],
+            space_id: thingos::space::SpaceId::NONE,
+            space_mapping_count: 0,
+            space_sharing_count: 0,
         }
     }
 

@@ -22,7 +22,7 @@
 //! these public types through explicit bridge layers rather than being exposed
 //! directly.
 //!
-//! ## Transitional mapping (Phases 1–4, 7–8)
+//! ## Transitional mapping (Phases 1–4, 7–9)
 //!
 //! | Canonical concept        | Current internal backing                  | Future direction              |
 //! |--------------------------|-------------------------------------------|-------------------------------|
@@ -35,6 +35,7 @@
 //! | `place::Place`           | `Process::cwd` + `namespace` (Phase 8)   | Phase 8 world context         |
 //! | `message::Message`       | (new) canonical communication envelope   | Inbox / Group / Port delivery |
 //! | `presence::Presence`     | (schema only — deferred embodiment model) | future Place/Group/UI integration |
+//! | `space::Space`           | `Process::space` (`ProcessAddressSpace`)  | Phase 9 VM identity           |
 //!
 //! Public truth changes first; internal machinery follows.
 
@@ -46,6 +47,7 @@ pub mod job;
 pub mod message;
 pub mod place;
 pub mod presence;
+pub mod space;
 pub mod task;
 
 /// The canonical public name of the system.
