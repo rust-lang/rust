@@ -47,6 +47,7 @@ declare_lint_pass! {
         EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
         EXPORTED_PRIVATE_DEPENDENCIES,
         FFI_UNWIND_CALLS,
+        FLOAT_LITERAL_F32_FALLBACK,
         FORBIDDEN_LINT_GROUPS,
         FUNCTION_ITEM_REFERENCES,
         FUZZY_PROVENANCE_CASTS,
@@ -5642,4 +5643,54 @@ declare_lint! {
     Allow,
     "detects uses of deprecated LLVM intrinsics",
     @feature_gate = link_llvm_intrinsics;
+}
+
+declare_lint! {
+    /// The `float_literal_f32_fallback` lint detects situations where the type of an unsuffixed
+    /// float literal falls back to `f32` instead of `f64` to avoid a compilation error. This occurs
+    /// when there is a trait bound `f32: From<T>` (or equivalent, such as `T: Into<f32>`) and the
+    /// literal is inferred to have the same type as `T`.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn foo(x: impl Into<f32>) -> f32 {
+    ///     x.into()
+    /// }
+    ///
+    /// fn main() {
+    ///     dbg!(foo(2.5));
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Rust allows traits that are only implemented for a single floating point type to guide type
+    /// inference for floating point literals. This used to apply in the case of `f32: From<T>`
+    /// (where `T` was inferred to be the same type as a floating point literal), as the only
+    /// floating point type impl was `f32: From<f32>`. However, as Rust is in the process of adding
+    /// support for `f16`, there are now two implementations for floating point types:
+    /// `f32: From<f16>` and `f32: From<f32>`. This means that the trait bound `f32: From<T>` can no
+    /// longer guide inference for the type of the floating point literal. The default fallback for
+    /// unsuffixed floating point literals is `f64`. As `f32` does not implement `From<f64>`,
+    /// falling back to `f64` would cause a compilation error; therefore, the float type fallback
+    /// has been tempoarily adjusted to fallback to `f32` in this scenario.
+    ///
+    /// The lint will automatically provide a machine-applicable suggestion to add a `_f32` suffix
+    /// to the literal, which will fix the problem.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard error in the future. See
+    /// [issue #154024] for more details.
+    ///
+    /// [issue #154024]: https://github.com/rust-lang/rust/issues/154024
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub FLOAT_LITERAL_F32_FALLBACK,
+    Warn,
+    "detects unsuffixed floating point literals whose type fallback to `f32`",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #154024),
+        report_in_deps: false,
+    };
 }

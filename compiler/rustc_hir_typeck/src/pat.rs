@@ -917,7 +917,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_expr_unadjusted(&self, lt: &'tcx hir::PatExpr<'tcx>) -> Ty<'tcx> {
         let ty = match &lt.kind {
             rustc_hir::PatExprKind::Lit { lit, negated } => {
-                let ty = self.check_expr_lit(lit, Expectation::NoExpectation);
+                let ty = self.check_expr_lit(lit, lt.hir_id, Expectation::NoExpectation);
                 if *negated {
                     self.register_bound(
                         ty,
