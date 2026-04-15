@@ -28,11 +28,35 @@ pub struct ProcessSnapshot {
     pub exec_path: String,
     /// Exit code of the thread-group leader, present when `state` is `Dead`.
     pub exit_code: Option<i32>,
-    /// Process group ID of the thread-group leader.
+    // ── Unix legacy compatibility fields ─────────────────────────────────────
+    // These fields are snapshotted from `Process.unix_compat` for procfs
+    // rendering and bridge modules.  They represent quarantined Unix session /
+    // process-group / environment baggage and are NOT architectural truth in
+    // ThingOS.
+    //
+    // Future homes:
+    //   pgid            → Group (Phase 5)
+    //   sid             → Group / Presence / Place (Phase 5)
+    //   session_leader  → Group / Presence (Phase 5)
+    //
+    // New code must NOT read these fields directly for coordination or
+    // world-context purposes; use `kernel::group::bridge` instead.
+    /// Process group ID — Unix legacy compat; backed by `Process.unix_compat.pgid`.
+    ///
+    /// FUTURE: → `Group` (Phase 5)
     pub pgid: u32,
-    /// Session ID of the thread-group leader.
+    /// Session ID — Unix legacy compat; backed by `Process.unix_compat.sid`.
+    ///
+    /// FUTURE: → `Group / Presence / Place` (Phase 5)
     pub sid: u32,
-    /// True when this process is the leader of its session.
+    /// Session-leader flag — Unix legacy compat; backed by
+    /// `Process.unix_compat.session_leader`.
+    ///
+    /// Used by `kernel::group::bridge` as a provisional foreground-ownership
+    /// proxy.  Do not inspect this field directly; call
+    /// `kernel::group::bridge::group_kind_from_snapshot` instead.
+    ///
+    /// FUTURE: → `Group / Presence` (Phase 5)
     pub session_leader: bool,
     // ── Place-context fields (Phase 8) ────────────────────────────────────────
     /// Current working directory path.
