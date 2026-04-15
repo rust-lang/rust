@@ -18,7 +18,7 @@ use melior::ir::operation::OperationLike;
 use melior::ir::{BlockLike, BlockRef, Location, Operation, TypeLike, Value, ValueLike};
 use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, UnwindAction};
 use rustc_middle::ty::{EarlyBinder, Instance, TyCtxt, TypingEnv};
-use rustc_mlir::triton::tensor::{CacheModifier, EvictionPolicy, add_ptr, arange, load, store};
+use rustc_mlir::triton::tensor::{CacheModifier, EvictionPolicy, add_ptr, make_range, load, store};
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 
@@ -57,7 +57,7 @@ impl<'a> TritonCodegen<'a> {
         let start = self.to_scalar_int(tcx, instance, &args[0].node)?.to_i32();
         let end = self.to_scalar_int(tcx, instance, &args[1].node)?.to_i32();
 
-        let arange_op: Operation<'a> = arange(self.module.context(), location, start, end)
+        let arange_op: Operation<'a> = make_range(self.module.context(), location, start, end)
             .map_err(|e| MlirError::CreateOperation { err: e })?
             .into();
 

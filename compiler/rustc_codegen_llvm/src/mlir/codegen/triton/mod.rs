@@ -504,11 +504,12 @@ impl<'a> TritonCodegen<'a> {
                         ),
                     };
                     let int_val = Int::I8(discr as u8);
-                    let const_op = create_int_constant(
+                    let const_op: Operation<'a> = create_int_constant(
                         self.module.context(), location, int_val,
-                    ).map_err(|e| MlirError::CreateOperation { err: e })?;
-                    let result = const_op.result(0).unwrap();
-                    mlir_block.append_operation(const_op.into());
+                    ).map_err(|e| MlirError::CreateOperation { err: e })?.into();
+                    let result = const_op.result(0)
+                        .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+                    mlir_block.append_operation(const_op);
                     state.ssa_values.insert(place.local, result.into());
                     return Ok(());
                 }
@@ -1185,7 +1186,8 @@ impl<'a> TritonCodegen<'a> {
                             .map_err(|e| MlirError::CreateOperation { err: e })?
                             .into();
 
-                    let result = const_op.result(0).unwrap();
+                    let result = const_op.result(0)
+                        .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
                     mlir_block.append_operation(const_op);
                     Ok(result.into())
                 }

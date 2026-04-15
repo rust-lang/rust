@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
-use melior::ir::{Context, Location};
+use melior::Context;
+use melior::ir::Location;
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
+use rustc_span::{Pos, Span};
 
 /// Convert a rustc `Span` to an MLIR `Location` (FileLineColLoc).
 ///
