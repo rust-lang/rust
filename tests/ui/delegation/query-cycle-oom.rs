@@ -22,7 +22,6 @@ mod test_2 {
     trait Trait {
         fn foo() -> Self::Assoc;
         //~^ ERROR: associated type `Assoc` not found for `Self`
-        //~| ERROR: this function takes 0 arguments but 1 argument was supplied
         fn bar(&self) -> u8;
     }
 
@@ -35,6 +34,7 @@ mod test_2 {
 
     impl Trait for S {
         reuse Trait::* { &self.0 }
+        //~^ ERROR: this function takes 0 arguments but 1 argument was supplied
         fn bar(&self) -> u8 { 2 }
     }
 }
@@ -42,13 +42,13 @@ mod test_2 {
 mod test_3 {
     trait Trait {
         fn foo(&self) -> Self::Assoc<3> { //~ ERROR: associated type `Assoc` not found for `Self`
-        //~^ ERROR: no method named `foo` found for reference `&()` in the current scope
             [(); 3]
         }
     }
 
     impl () { //~ ERROR: cannot define inherent `impl` for primitive types
         reuse Trait::*;
+        //~^ ERROR: no method named `foo` found for reference `&()` in the current scope
     }
 }
 

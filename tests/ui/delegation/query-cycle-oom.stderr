@@ -49,7 +49,7 @@ LL |     reuse Trait::<_>::foo::<i32> as x;
    |                   ^ not allowed in type signatures
 
 error[E0046]: not all trait items implemented, missing: `foo`
-  --> $DIR/query-cycle-oom.rs:29:5
+  --> $DIR/query-cycle-oom.rs:28:5
    |
 LL |         fn foo() -> Self::Assoc;
    |         ------------------------ `foo` from trait
@@ -58,7 +58,7 @@ LL |     impl Trait for u8 {
    |     ^^^^^^^^^^^^^^^^^ missing `foo` in implementation
 
 error[E0390]: cannot define inherent `impl` for primitive types
-  --> $DIR/query-cycle-oom.rs:50:5
+  --> $DIR/query-cycle-oom.rs:49:5
    |
 LL |     impl () {
    |     ^^^^^^^
@@ -74,13 +74,10 @@ LL |         reuse to_reuse::foo { &self.0 }
    = help: you might be missing a crate named `to_reuse`
 
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
-  --> $DIR/query-cycle-oom.rs:23:12
+  --> $DIR/query-cycle-oom.rs:36:22
    |
-LL |         fn foo() -> Self::Assoc;
-   |            ^^^
-...
 LL |         reuse Trait::* { &self.0 }
-   |                          ------- unexpected argument
+   |                      ^   ------- unexpected argument
    |
 note: associated function defined here
   --> $DIR/query-cycle-oom.rs:23:12
@@ -89,29 +86,15 @@ LL |         fn foo() -> Self::Assoc;
    |            ^^^
 help: remove the extra argument
    |
-LL -         fn foo() -> Self::Assoc;
-LL -
-LL -
-LL -         fn bar(&self) -> u8;
-LL -     }
-LL - 
-LL -     impl Trait for u8 {
-LL -
-LL -         fn bar(&self) -> u8 { 1 }
-LL -     }
-LL - 
-LL -     struct S(u8);
-LL - 
-LL -     impl Trait for S {
 LL -         reuse Trait::* { &self.0 }
-LL +         fn fo&self.0 }
+LL +         reuse Trait::&self.0 }
    |
 
 error[E0599]: no method named `foo` found for reference `&()` in the current scope
-  --> $DIR/query-cycle-oom.rs:44:12
+  --> $DIR/query-cycle-oom.rs:50:22
    |
-LL |         fn foo(&self) -> Self::Assoc<3> {
-   |            ^^^ method not found in `&()`
+LL |         reuse Trait::*;
+   |                      ^ method not found in `&()`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
    = note: the following traits define an item `foo`, perhaps you need to implement one of them:

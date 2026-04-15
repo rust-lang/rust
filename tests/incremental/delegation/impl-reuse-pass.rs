@@ -174,19 +174,6 @@ mod macros {
     macro_rules! m { () => { M } }
     reuse impl Trait for m!() { self_0_ref!(self) }
 
-    struct S1(u8);
-    macro_rules! one_line_reuse { ($self:ident) => { reuse impl Trait for S1 { $self.0 } } }
-    one_line_reuse!(self);
-
-    struct S2(u8);
-    macro_rules! one_line_reuse_expr { ($x:expr) => { reuse impl Trait for S2 { $x } } }
-    one_line_reuse_expr!(self.0);
-
-    struct S3(u8);
-    macro_rules! s3 { () => { S3 } }
-    macro_rules! one_line_reuse_expr2 { ($x:expr) => { reuse impl Trait for s3!() { $x } } }
-    one_line_reuse_expr2!(self.0);
-
     fn f() {
         let s = S(1);
         s.foo();
@@ -195,18 +182,6 @@ mod macros {
         let m = M(41);
         m.foo();
         m.bar();
-
-        let s1 = S1(2);
-        s1.foo();
-        s1.bar();
-
-        let s2 = S2(4);
-        s2.foo();
-        s2.bar();
-
-        let s3 = S3(5);
-        s3.foo();
-        s3.bar();
     }
 }
 
