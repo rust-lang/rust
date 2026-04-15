@@ -2,18 +2,16 @@ pub mod bridge;
 pub mod exec;
 pub mod loader;
 pub mod registry;
-use crate::sched as scheduler;
-
-pub use crate::sched::Scheduler;
-
-use crate::BootRuntime;
-use crate::BootTasking;
-use crate::simd::SimdState;
-use abi::types::StackInfo;
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+
+use abi::types::StackInfo;
 use spin::Mutex;
+
+pub use crate::sched::Scheduler;
+use crate::simd::SimdState;
+use crate::{BootRuntime, BootTasking, sched as scheduler};
 
 pub type ThreadId = crate::sched::state::ThreadId;
 /// Backward-compatible alias — prefer `ThreadId` in new code.
@@ -122,10 +120,7 @@ impl ProcessAddressSpace {
         mappings: alloc::sync::Arc<spin::Mutex<crate::memory::mappings::MappingList>>,
         aspace_raw: u64,
     ) -> Self {
-        ProcessAddressSpace {
-            mappings,
-            aspace_raw,
-        }
+        ProcessAddressSpace { mappings, aspace_raw }
     }
 }
 
@@ -818,10 +813,7 @@ fn bootstrap_cpu<R: BootRuntime>() {
 }
 
 pub fn run_scheduler<R: BootRuntime>() -> ! {
-    crate::kinfo!(
-        "SMP: run_scheduler entry on CPU {}",
-        crate::sched::current_cpu_index::<R>()
-    );
+    crate::kinfo!("SMP: run_scheduler entry on CPU {}", crate::sched::current_cpu_index::<R>());
     // Bootstrap this CPU if needed (sets current thread for secondary CPUs).
     bootstrap_cpu::<R>();
 

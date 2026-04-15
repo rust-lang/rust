@@ -314,7 +314,7 @@ fn try_resched_if_needed<R: BootRuntime>() {
                         })
                         .unwrap_or(false);
                     if has_strictly_higher {
-                        crate::kwarn!(
+                        crate::kdebug!(
                             "SCHED: CPU {} handled resched but made no switch: current={:?} idle={:?} runq_total={}",
                             cpu_idx,
                             current,
@@ -345,7 +345,7 @@ fn try_resched_if_needed<R: BootRuntime>() {
                 let last_warn = TRYLOCK_MISS_LAST_WARN_TICK[cpu_idx].load(Ordering::Relaxed);
                 if last_warn == 0 || now.saturating_sub(last_warn) >= cooldown_ticks {
                     TRYLOCK_MISS_LAST_WARN_TICK[cpu_idx].store(now, Ordering::Relaxed);
-                    crate::kwarn!(
+                    crate::kdebug!(
                         "SCHED: CPU {} resched try_lock misses reached {} in 2s (suppressing until window reset)",
                         cpu_idx,
                         TRYLOCK_MISS_WARN_THRESHOLD
@@ -3330,18 +3330,16 @@ mod tests {
             last_cpu: Some(0),
             name: [0; 32],
             name_len: 0,
-            process_info: Some(alloc::sync::Arc::new(spin::Mutex::new(
-                crate::task::ProcessInfo {
-                    pid,
-                    lifecycle: crate::task::ProcessLifecycle::new(ppid, pid as TaskId),
-                    unix_compat: crate::task::ProcessUnixCompat::isolated(pid, false),
-                    fd_table: crate::vfs::fd_table::FdTable::new(),
-                    namespace: crate::vfs::NamespaceRef::global(),
-                    cwd: alloc::string::String::from("/"),
-                    exec_path: alloc::string::String::new(),
-                    space: crate::task::ProcessAddressSpace::empty(),
-                },
-            ))),
+            process_info: Some(alloc::sync::Arc::new(spin::Mutex::new(crate::task::ProcessInfo {
+                pid,
+                lifecycle: crate::task::ProcessLifecycle::new(ppid, pid as TaskId),
+                unix_compat: crate::task::ProcessUnixCompat::isolated(pid, false),
+                fd_table: crate::vfs::fd_table::FdTable::new(),
+                namespace: crate::vfs::NamespaceRef::global(),
+                cwd: alloc::string::String::from("/"),
+                exec_path: alloc::string::String::new(),
+                space: crate::task::ProcessAddressSpace::empty(),
+            }))),
             user_fs_base: 0,
             detached: false,
             signals: crate::signal::ThreadSignals::new(),
@@ -3641,10 +3639,7 @@ mod tests {
         {
             let pi = pinfo.lock();
             // 8701 should have been removed.
-            assert!(
-                !pi.lifecycle.thread_ids.contains(&8701),
-                "sibling TID still in thread_ids"
-            );
+            assert!(!pi.lifecycle.thread_ids.contains(&8701), "sibling TID still in thread_ids");
             // 8700 (leader) is still present — it hasn't exited yet.
             assert!(pi.lifecycle.thread_ids.contains(&8700), "leader TID wrongly removed");
         }
@@ -3761,7 +3756,8 @@ mod tests {
         let caller_tid: TaskId = 9100;
         let siblings: alloc::vec::Vec<TaskId> = pinfo
             .lock()
-            .lifecycle.thread_ids
+            .lifecycle
+            .thread_ids
             .iter()
             .copied()
             .filter(|&t| t != caller_tid)
@@ -3797,10 +3793,7 @@ mod tests {
 
         // Step 4: simulate commit – clear exec_in_progress.
         pinfo.lock().lifecycle.exec_in_progress = false;
-        assert!(
-            !pinfo.lock().lifecycle.exec_in_progress,
-            "exec_in_progress cleared after commit"
-        );
+        assert!(!pinfo.lock().lifecycle.exec_in_progress, "exec_in_progress cleared after commit");
     }
 
     /// exec collapse with 4 threads is deterministic: ALL siblings (9701–9703)
@@ -3864,7 +3857,8 @@ mod tests {
         // Phase 2: collect sibling TIDs (excluding caller).
         let siblings: alloc::vec::Vec<TaskId> = pinfo
             .lock()
-            .lifecycle.thread_ids
+            .lifecycle
+            .thread_ids
             .iter()
             .copied()
             .filter(|&t| t != caller_tid)
@@ -3944,10 +3938,7 @@ mod tests {
 
         // Rollback: clear the flag on pre-commit failure.
         pinfo.lock().lifecycle.exec_in_progress = false;
-        assert!(
-            !pinfo.lock().lifecycle.exec_in_progress,
-            "flag cleared after rollback"
-        );
+        assert!(!pinfo.lock().lifecycle.exec_in_progress, "flag cleared after rollback");
     }
 
     // ── TLS-base and detached-thread tests ───────────────────────────────────
