@@ -1,3 +1,5 @@
+//@ compile-flags: -Z deduplicate-diagnostics=yes
+
 #![feature(fn_delegation)]
 
 trait Trait<'a, 'b, 'c, A = usize, B = u32, C = String, const N: usize = 123> {

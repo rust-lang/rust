@@ -22,12 +22,20 @@ pub struct ImplicitCtxt<'a, 'tcx> {
     /// The current dep graph task. This is used to add dependencies to queries
     /// when executing them.
     pub task_deps: TaskDepsRef<'a>,
+
+    pub is_sandbox: bool,
 }
 
 impl<'a, 'tcx> ImplicitCtxt<'a, 'tcx> {
     pub fn new(gcx: &'tcx GlobalCtxt<'tcx>) -> Self {
         let tcx = TyCtxt { gcx };
-        ImplicitCtxt { tcx, query: None, query_depth: 0, task_deps: TaskDepsRef::Ignore }
+        ImplicitCtxt {
+            tcx,
+            query: None,
+            query_depth: 0,
+            task_deps: TaskDepsRef::Ignore,
+            is_sandbox: false,
+        }
     }
 }
 
@@ -55,6 +63,10 @@ where
         let _reset = rustc_data_structures::defer(move || tlv.set(old));
         f()
     })
+}
+
+pub fn is_sandbox() -> bool {
+    with_context_opt(|ctx| ctx.map(|c| c.is_sandbox).unwrap_or_default())
 }
 
 /// Allows access to the current `ImplicitCtxt` in a closure if one is available.
