@@ -2,50 +2,17 @@
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
+use std::rc::Rc;
 use std::sync::atomic::AtomicU32;
 
 use super::*;
 
 #[repr(C)]
 pub(super) struct HandleCounters {
-    pub(super) token_stream: AtomicU32,
     pub(super) span: AtomicU32,
 }
 
-static COUNTERS: HandleCounters =
-    HandleCounters { token_stream: AtomicU32::new(1), span: AtomicU32::new(1) };
-
-pub(crate) struct TokenStream {
-    handle: handle::Handle,
-}
-
-impl !Send for TokenStream {}
-impl !Sync for TokenStream {}
-
-// Forward `Drop::drop` to the inherent `drop` method.
-impl Drop for TokenStream {
-    fn drop(&mut self) {
-        Methods::ts_drop(TokenStream { handle: self.handle });
-    }
-}
-
-impl<S> Encode<S> for TokenStream {
-    fn encode(self, w: &mut Buffer, s: &mut S) {
-        mem::ManuallyDrop::new(self).handle.encode(w, s);
-    }
-}
-
-impl<S> Encode<S> for &TokenStream {
-    fn encode(self, w: &mut Buffer, s: &mut S) {
-        self.handle.encode(w, s);
-    }
-}
-
-impl<S> Decode<'_, '_, S> for TokenStream {
-    fn decode(r: &mut &[u8], s: &mut S) -> Self {
-        TokenStream { handle: handle::Handle::decode(r, s) }
-    }
-}
+static COUNTERS: HandleCounters = HandleCounters { span: AtomicU32::new(1) };
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct Span {
@@ -56,7 +23,7 @@ impl !Send for Span {}
 impl !Sync for Span {}
 
 impl<S> Encode<S> for Span {
-    fn encode(self, w: &mut Buffer, s: &mut S) {
+    fn encode(&self, w: &mut Buffer, s: &mut S) {
         self.handle.encode(w, s);
     }
 }
@@ -64,12 +31,6 @@ impl<S> Encode<S> for Span {
 impl<S> Decode<'_, '_, S> for Span {
     fn decode(r: &mut &[u8], s: &mut S) -> Self {
         Span { handle: handle::Handle::decode(r, s) }
-    }
-}
-
-impl Clone for TokenStream {
-    fn clone(&self) -> Self {
-        Methods::ts_clone(self)
     }
 }
 
@@ -121,7 +82,7 @@ macro_rules! define_client_side {
         }
     }
 }
-with_api!(define_client_side, TokenStream, Span, Symbol);
+with_api!(define_client_side, Span, Symbol);
 
 struct Bridge<'a> {
     /// Reusable buffer (only `clear`-ed, never shrunk), primarily
@@ -296,7 +257,9 @@ impl Client<crate::TokenStream, crate::TokenStream> {
         Client {
             handle_counters: &COUNTERS,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
-                run_client(bridge, |input| f(crate::TokenStream(Some(input))).0)
+                run_client(bridge, |input| {
+                    Rc::unwrap_or_clone(f(crate::TokenStream(input)).0.trees)
+                })
             }),
             _marker: PhantomData,
         }
@@ -311,7 +274,9 @@ impl Client<(crate::TokenStream, crate::TokenStream), crate::TokenStream> {
             handle_counters: &COUNTERS,
             run: super::selfless_reify::reify_to_extern_c_fn_hrt_bridge(move |bridge| {
                 run_client(bridge, |(input, input2)| {
-                    f(crate::TokenStream(Some(input)), crate::TokenStream(Some(input2))).0
+                    Rc::unwrap_or_clone(
+                        f(crate::TokenStream(input), crate::TokenStream(input2)).0.trees,
+                    )
                 })
             }),
             _marker: PhantomData,
