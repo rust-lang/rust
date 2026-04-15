@@ -14,6 +14,7 @@
 //! | `/proc/self`                     | Directory for the calling process |
 //! | `/proc/self/exe`                 | Symlink to calling process's executable |
 //! | `/proc/self/authority`           | Canonical `thingos::authority::Authority` for the calling process |
+//! | `/proc/self/place`               | Canonical `thingos::place::Place` — world/visibility context for the calling process (Phase 8) |
 //! | `/proc/<pid>/status`             | Process state, name, ppid |
 //! | `/proc/<pid>/cmdline`            | argv as null-delimited bytes |
 //! | `/proc/<pid>/exe`                | Symlink to the process's executable |
@@ -81,6 +82,18 @@ impl VfsDriver for ProcFs {
             // This is the convenient self-introspection path: callers do not
             // need to know their own PID.
             "self/authority" => Ok(Arc::new(ProcSelfAuthorityNode)),
+            // /proc/self/place — canonical Place for the calling process (Phase 8).
+            //
+            // Reports the execution world-context (cwd, namespace, root) of the
+            // calling task in canonical Place terms via
+            // `kernel::place::bridge::place_for_current`.  This is the
+            // convenient self-introspection path: callers do not need to know
+            // their own PID.
+            //
+            // Note: terminal/UI/console attachment is NOT reported here.  That
+            // belongs to Presence, which has not yet been introduced.  This
+            // path answers "in what world?", not "who is present?".
+            "self/place" => Ok(Arc::new(ProcSelfPlaceNode)),
             _ => {
                 // Try to match /proc/<pid>/... paths.
                 // `path` is already relative to the mount point, so it looks
@@ -548,7 +561,7 @@ impl VfsNode for ProcSelfDirNode {
         Ok(VfsStat { mode: VfsStat::S_IFDIR | 0o555, size: 0, ino: 210, ..Default::default() })
     }
     fn readdir(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
-        let entries = ["exe", "authority"];
+        let entries = ["exe", "authority", "place"];
         super::write_readdir_entries(entries.into_iter(), offset, buf)
     }
 }
@@ -612,6 +625,36 @@ impl VfsNode for ProcSelfAuthorityNode {
     }
     fn stat(&self) -> SysResult<VfsStat> {
         Ok(VfsStat { mode: VfsStat::S_IFREG | 0o444, size: 0, ino: 212, ..Default::default() })
+    }
+}
+
+// ── /proc/self/place — Place for the calling process ─────────────────────────
+
+/// A read-only node that reports the calling task's canonical Place.
+///
+/// Reads the place by calling [`crate::place::bridge::place_for_current`]
+/// at read time; the result reflects the world-context of the task that
+/// opened the file, formatted via [`thingos::place::Place::as_text`].
+struct ProcSelfPlaceNode;
+
+impl VfsNode for ProcSelfPlaceNode {
+    fn read(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
+        let place = crate::place::bridge::place_for_current();
+        let text = place.as_text();
+        let data = text.as_bytes();
+        let off = offset as usize;
+        if off >= data.len() {
+            return Ok(0);
+        }
+        let n = (data.len() - off).min(buf.len());
+        buf[..n].copy_from_slice(&data[off..off + n]);
+        Ok(n)
+    }
+    fn write(&self, _offset: u64, _buf: &[u8]) -> SysResult<usize> {
+        Err(Errno::EROFS)
+    }
+    fn stat(&self) -> SysResult<VfsStat> {
+        Ok(VfsStat { mode: VfsStat::S_IFREG | 0o444, size: 0, ino: 213, ..Default::default() })
     }
 }
 
