@@ -8,8 +8,9 @@ use hir_def::{
     HasModule, ItemContainerId, LocalFieldId, Lookup, TraitId, TupleId,
     expr_store::{Body, ExpressionStore, HygieneId, path::Path},
     hir::{
-        ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ExprId, LabelId, Literal, MatchArm,
-        Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread, generics::GenericParams,
+        ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ClosureKind, ExprId, LabelId,
+        Literal, MatchArm, Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread,
+        generics::GenericParams,
     },
     item_tree::FieldsShape,
     lang_item::LangItems,
@@ -956,7 +957,6 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             }
             Expr::Await { .. } => not_supported!("await"),
             Expr::Yeet { .. } => not_supported!("yeet"),
-            Expr::Async { .. } => not_supported!("async block"),
             &Expr::Const(_) => {
                 // let subst = self.placeholder_subst();
                 // self.lower_const(
@@ -1245,7 +1245,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 );
                 Ok(Some(current))
             }
-            Expr::Closure { .. } => {
+            Expr::Closure { closure_kind: ClosureKind::Closure, .. } => {
                 let ty = self.expr_ty_without_adjust(expr_id);
                 let TyKind::Closure(id, _) = ty.kind() else {
                     not_supported!("closure with non closure type");
@@ -1304,6 +1304,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 );
                 Ok(Some(current))
             }
+            Expr::Closure { closure_kind, .. } => not_supported!("{closure_kind:?} closure"),
             Expr::Tuple { exprs } => {
                 let Some(values) = exprs
                     .iter()
@@ -2110,7 +2111,7 @@ pub fn mir_body_for_closure_query<'db>(
     db: &'db dyn HirDatabase,
     closure: InternedClosureId,
 ) -> Result<'db, Arc<MirBody>> {
-    let InternedClosure(owner, expr) = db.lookup_intern_closure(closure);
+    let InternedClosure(owner, expr) = closure.loc(db);
     let body_owner =
         owner.as_def_with_body().expect("MIR lowering should only happen for body-owned closures");
     let body = Body::of(db, body_owner);

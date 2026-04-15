@@ -152,7 +152,7 @@ impl<'db> Evaluator<'db> {
                     not_supported!("wrong arg count for clone");
                 };
                 let addr = Address::from_bytes(arg.get(self)?)?;
-                let InternedClosure(owner, _) = self.db.lookup_intern_closure(id.0);
+                let InternedClosure(owner, _) = id.0.loc(self.db);
                 let infer = InferenceResult::of(self.db, owner);
                 let (captures, _) = infer.closure_info(id.0);
                 let layout = self.layout(self_ty)?;

@@ -27,11 +27,12 @@ use rustc_type_ir::{
 
 use crate::{
     FnAbi,
-    db::{HirDatabase, InternedCoroutine},
+    db::{HirDatabase, InternedClosure},
     lower::GenericPredicates,
     next_solver::{
         AdtDef, AliasTy, Binder, CallableIdWrapper, Clause, ClauseKind, ClosureIdWrapper, Const,
-        CoroutineIdWrapper, FnSig, GenericArgKind, PolyFnSig, Region, TraitRef, TypeAliasIdWrapper,
+        CoroutineClosureIdWrapper, CoroutineIdWrapper, FnSig, GenericArgKind, PolyFnSig, Region,
+        TraitRef, TypeAliasIdWrapper,
         abi::Safety,
         impl_foldable_for_interned_slice, impl_stored_interned, interned_slice,
         util::{CoroutineArgsExt, IntegerTypeExt},
@@ -527,7 +528,7 @@ impl<'db> Ty<'db> {
                     let unit_ty = Ty::new_unit(interner);
                     let return_ty = Ty::new_coroutine(
                         interner,
-                        coroutine_id,
+                        interner.coroutine_for_closure(coroutine_id),
                         CoroutineArgs::new(
                             interner,
                             CoroutineArgsParts {
@@ -713,7 +714,7 @@ impl<'db> Ty<'db> {
                 }
             }
             TyKind::Coroutine(coroutine_id, _args) => {
-                let InternedCoroutine(owner, _) = coroutine_id.0.loc(db);
+                let InternedClosure(owner, _) = coroutine_id.0.loc(db);
                 let krate = owner.krate(db);
                 if let Some(future_trait) = hir_def::lang_item::lang_items(db, krate).Future {
                     // This is only used by type walking.
@@ -1107,7 +1108,7 @@ impl<'db> rustc_type_ir::inherent::Ty<DbInterner<'db>> for Ty<'db> {
 
     fn new_coroutine_closure(
         interner: DbInterner<'db>,
-        def_id: CoroutineIdWrapper,
+        def_id: CoroutineClosureIdWrapper,
         args: <DbInterner<'db> as Interner>::GenericArgs,
     ) -> Self {
         Ty::new(interner, TyKind::CoroutineClosure(def_id, args))

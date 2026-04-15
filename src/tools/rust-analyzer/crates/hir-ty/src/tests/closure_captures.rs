@@ -11,7 +11,6 @@ use test_fixture::WithFixture;
 
 use crate::{
     InferenceResult,
-    db::HirDatabase,
     display::{DisplayTarget, HirDisplay},
     mir::MirSpan,
     test_db::TestDB,
@@ -42,7 +41,7 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
             let db = &db;
             captures_info.extend(infer.closure_info.iter().flat_map(
                 |(closure_id, (captures, _))| {
-                    let closure = db.lookup_intern_closure(*closure_id);
+                    let closure = closure_id.loc(db);
                     let body_owner = closure.0;
                     let source_map = ExpressionStore::with_source_map(db, body_owner).1;
                     let closure_text_range = source_map

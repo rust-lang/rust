@@ -17,7 +17,7 @@ use hir_def::{FunctionId, hir::ClosureKind};
 use hir_expand::name::Name;
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::{
-    CoroutineArgs, CoroutineArgsParts, InferTy, Interner,
+    InferTy, Interner,
     inherent::{AdtDef, GenericArgs as _, IntoKind, Ty as _},
 };
 use syntax::ast::RangeOp;
@@ -27,7 +27,6 @@ use crate::{
     Adjust, Adjustment, CallableDefId, DeclContext, DeclOrigin, Rawness,
     autoderef::InferenceContextAutoderef,
     consteval,
-    db::InternedCoroutine,
     generics::generics,
     infer::{
         AllowTwoPhase, BreakableKind, coerce::CoerceMany, find_continuable,
@@ -244,7 +243,6 @@ impl<'db> InferenceContext<'_, 'db> {
             | Expr::Assignment { .. }
             | Expr::Yield { .. }
             | Expr::Cast { .. }
-            | Expr::Async { .. }
             | Expr::Unsafe { .. }
             | Expr::Await { .. }
             | Expr::Ref { .. }
@@ -389,9 +387,6 @@ impl<'db> InferenceContext<'_, 'db> {
                     this.infer_expr(*id, expected, ExprIsRead::Yes)
                 })
                 .1
-            }
-            Expr::Async { id: _, statements, tail } => {
-                self.infer_async_block(tgt_expr, statements, tail)
             }
             &Expr::Loop { body, label } => {
                 // FIXME: should be:
@@ -1183,72 +1178,6 @@ impl<'db> InferenceContext<'_, 'db> {
             }
         }
         oprnd_t
-    }
-
-    fn infer_async_block(
-        &mut self,
-        tgt_expr: ExprId,
-        statements: &[Statement],
-        tail: &Option<ExprId>,
-    ) -> Ty<'db> {
-        let ret_ty = self.table.next_ty_var();
-        let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
-        let prev_ret_ty = mem::replace(&mut self.return_ty, ret_ty);
-        let prev_ret_coercion = self.return_coercion.replace(CoerceMany::new(ret_ty));
-
-        // FIXME: We should handle async blocks like we handle closures
-        let expected = &Expectation::has_type(ret_ty);
-        let (_, inner_ty) = self.with_breakable_ctx(BreakableKind::Border, None, None, |this| {
-            let ty = this.infer_block(tgt_expr, statements, *tail, None, expected);
-            if let Some(target) = expected.only_has_type(&mut this.table) {
-                match this.coerce(tgt_expr.into(), ty, target, AllowTwoPhase::No, ExprIsRead::Yes) {
-                    Ok(res) => res,
-                    Err(_) => {
-                        this.result.type_mismatches.get_or_insert_default().insert(
-                            tgt_expr.into(),
-                            TypeMismatch { expected: target.store(), actual: ty.store() },
-                        );
-                        target
-                    }
-                }
-            } else {
-                ty
-            }
-        });
-
-        self.diverges = prev_diverges;
-        self.return_ty = prev_ret_ty;
-        self.return_coercion = prev_ret_coercion;
-
-        self.lower_async_block_type_impl_trait(inner_ty, tgt_expr)
-    }
-
-    pub(crate) fn lower_async_block_type_impl_trait(
-        &mut self,
-        inner_ty: Ty<'db>,
-        tgt_expr: ExprId,
-    ) -> Ty<'db> {
-        let coroutine_id = InternedCoroutine(self.owner, tgt_expr);
-        let coroutine_id = self.db.intern_coroutine(coroutine_id).into();
-        let parent_args = GenericArgs::identity_for_item(self.interner(), self.generic_def.into());
-        Ty::new_coroutine(
-            self.interner(),
-            coroutine_id,
-            CoroutineArgs::new(
-                self.interner(),
-                CoroutineArgsParts {
-                    parent_args: parent_args.as_slice(),
-                    kind_ty: self.types.types.unit,
-                    // rustc uses a special lang item type for the resume ty. I don't believe this can cause us problems.
-                    resume_ty: self.types.types.unit,
-                    yield_ty: self.types.types.unit,
-                    return_ty: inner_ty,
-                    // FIXME: Infer upvars.
-                    tupled_upvars_ty: self.types.types.unit,
-                },
-            )
-            .args,
-        )
     }
 
     pub(crate) fn write_fn_trait_method_resolution(

@@ -85,7 +85,7 @@ use hir_ty::{
     GenericPredicates, InferenceResult, ParamEnvAndCrate, TyDefId, TyLoweringDiagnostic,
     ValueTyDefId, all_super_traits, autoderef, check_orphan_rules,
     consteval::try_const_usize,
-    db::{InternedClosureId, InternedCoroutineId},
+    db::{InternedClosureId, InternedCoroutineClosureId},
     diagnostics::BodyValidationDiagnostic,
     direct_super_traits, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
@@ -2950,7 +2950,7 @@ impl<'db> Param<'db> {
                 }
             }
             Callee::Closure(closure, _) => {
-                let c = db.lookup_intern_closure(closure);
+                let c = closure.loc(db);
                 let body_owner = c.0;
                 let store = ExpressionStore::of(db, c.0);
 
@@ -5092,7 +5092,7 @@ impl<'db> TraitRef<'db> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum AnyClosureId {
     ClosureId(InternedClosureId),
-    CoroutineClosureId(InternedCoroutineId),
+    CoroutineClosureId(InternedCoroutineClosureId),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -5131,7 +5131,7 @@ impl<'db> Closure<'db> {
             // FIXME: Infer coroutine closures' captures.
             return Vec::new();
         };
-        let owner = db.lookup_intern_closure(id).0;
+        let owner = id.loc(db).0;
         let infer = InferenceResult::of(db, owner);
         let info = infer.closure_info(id);
         info.0
@@ -5151,7 +5151,7 @@ impl<'db> Closure<'db> {
             // FIXME: Infer coroutine closures' captures.
             return Vec::new();
         };
-        let owner = db.lookup_intern_closure(id).0;
+        let owner = id.loc(db).0;
         let Some(body_owner) = owner.as_def_with_body() else {
             return Vec::new();
         };
@@ -5164,7 +5164,7 @@ impl<'db> Closure<'db> {
     pub fn fn_trait(&self, db: &dyn HirDatabase) -> FnTrait {
         match self.id {
             AnyClosureId::ClosureId(id) => {
-                let owner = db.lookup_intern_closure(id).0;
+                let owner = id.loc(db).0;
                 let Some(body_owner) = owner.as_def_with_body() else {
                     return FnTrait::FnOnce;
                 };
@@ -6532,7 +6532,7 @@ pub struct Callable<'db> {
 enum Callee<'db> {
     Def(CallableDefId),
     Closure(InternedClosureId, GenericArgs<'db>),
-    CoroutineClosure(InternedCoroutineId, GenericArgs<'db>),
+    CoroutineClosure(InternedCoroutineClosureId, GenericArgs<'db>),
     FnPtr,
     FnImpl(traits::FnTrait),
     BuiltinDeriveImplMethod { method: BuiltinDeriveImplMethod, impl_: BuiltinDeriveImplId },

@@ -121,7 +121,7 @@ fn make_fetch_closure_field<'db>(
     db: &'db dyn HirDatabase,
 ) -> impl FnOnce(InternedClosureId, GenericArgs<'db>, usize) -> Ty<'db> + use<'db> {
     |c: InternedClosureId, subst: GenericArgs<'db>, f: usize| {
-        let InternedClosure(owner, _) = db.lookup_intern_closure(c);
+        let InternedClosure(owner, _) = c.loc(db);
         let interner = DbInterner::new_no_crate(db);
         let infer = InferenceResult::of(db, owner);
         let (captures, _) = infer.closure_info(c);

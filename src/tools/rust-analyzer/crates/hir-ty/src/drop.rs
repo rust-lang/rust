@@ -133,7 +133,7 @@ fn has_drop_glue_impl<'db>(
         }
         TyKind::Slice(ty) => has_drop_glue_impl(infcx, ty, env, visited),
         TyKind::Closure(closure_id, subst) => {
-            let owner = db.lookup_intern_closure(closure_id.0).0;
+            let owner = closure_id.0.loc(db).0;
             let infer = InferenceResult::of(db, owner);
             let (captures, _) = infer.closure_info(closure_id.0);
             let env = db.trait_environment(owner);

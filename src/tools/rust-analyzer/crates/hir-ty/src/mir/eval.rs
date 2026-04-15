@@ -736,7 +736,7 @@ impl<'db> Evaluator<'db> {
             self.param_env.param_env,
             ty,
             |c, subst, f| {
-                let InternedClosure(owner, _) = self.db.lookup_intern_closure(c);
+                let InternedClosure(owner, _) = c.loc(self.db);
                 let infer = InferenceResult::of(self.db, owner);
                 let (captures, _) = infer.closure_info(c);
                 let parent_subst = subst.as_closure().parent_args();
