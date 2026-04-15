@@ -58,6 +58,16 @@
 //! will be updated and the internal Unix-shaped structures will be made
 //! progressively obsolete.
 
+/// The KindId generated for `thingos.group` by `kindc`.
+///
+/// Identifies the canonical coordination-domain schema kind.  Consumers that
+/// need to distinguish a `Group`-shaped message payload can compare against
+/// this constant.
+pub const KIND_ID_THINGOS_GROUP: [u8; 16] = [
+    0x2e, 0xc7, 0xf2, 0xca, 0x9d, 0x59, 0xe8, 0x5e,
+    0x7f, 0x92, 0x7d, 0xd5, 0xd1, 0x5e, 0x01, 0x98,
+];
+
 /// The coordination role that a group plays in the system.
 ///
 /// Corresponds to the `thingos.group.kind` schema kind (v1).

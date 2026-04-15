@@ -51,6 +51,24 @@
 //! that exists today.  Both fields are optional so that the absence of a full
 //! internal implementation is represented explicitly rather than silently.
 
+/// The KindId generated for `thingos.task.state` by `kindc`.
+///
+/// Identifies the canonical task lifecycle-state enum kind.
+pub const KIND_ID_THINGOS_TASK_STATE: [u8; 16] = [
+    0x7c, 0x53, 0x41, 0x3f, 0xed, 0x32, 0x05, 0x53,
+    0xdb, 0x63, 0x96, 0x34, 0x28, 0x65, 0x01, 0xc8,
+];
+
+/// The KindId generated for `thingos.task` by `kindc`.
+///
+/// Identifies the canonical task schema kind.  Consumers that need to
+/// distinguish a `Task`-shaped message payload can compare against this
+/// constant.
+pub const KIND_ID_THINGOS_TASK: [u8; 16] = [
+    0xab, 0x4b, 0x17, 0xc4, 0x4a, 0x93, 0x83, 0xbb,
+    0xaa, 0x96, 0x6a, 0xa0, 0xd3, 0x7c, 0x36, 0xf9,
+];
+
 /// Canonical execution lifecycle state for a `thingos.task`.
 ///
 /// This is the external truth exposed at system boundaries (procfs, introspection

@@ -61,6 +61,43 @@
 //! over time.  `Job` covers *only* the lifecycle/accounting axis: creation,
 //! running, and exit.
 
+/// The KindId generated for `thingos.job.state` by `kindc`.
+///
+/// Identifies the canonical job lifecycle-state enum kind.
+pub const KIND_ID_THINGOS_JOB_STATE: [u8; 16] = [
+    0x13, 0x8d, 0xf8, 0x73, 0x03, 0xbc, 0x87, 0xb8,
+    0xdf, 0x0a, 0x02, 0x78, 0x55, 0x3a, 0x92, 0x50,
+];
+
+/// The KindId generated for `thingos.job` by `kindc`.
+///
+/// Identifies the canonical job lifecycle/accounting schema kind.  Consumers
+/// that need to distinguish a `Job`-shaped message payload can compare against
+/// this constant.
+pub const KIND_ID_THINGOS_JOB: [u8; 16] = [
+    0x31, 0xb2, 0x29, 0x72, 0x08, 0xbd, 0x27, 0x39,
+    0xde, 0x66, 0x1c, 0x69, 0x2d, 0x4c, 0x0f, 0x99,
+];
+
+/// The KindId generated for `thingos.job.exit` by `kindc`.
+///
+/// Identifies the canonical job-exit notification schema kind.  Consumers
+/// dispatching on [`KindId`](crate::message::KindId) should compare against
+/// `KindId::THINGOS_JOB_EXIT` (derived from this value) to recognise job-exit
+/// messages.
+pub const KIND_ID_THINGOS_JOB_EXIT: [u8; 16] = [
+    0xc2, 0x60, 0x8e, 0x30, 0xff, 0xa2, 0xa2, 0xda,
+    0x8b, 0x96, 0x22, 0x8d, 0x3e, 0xd0, 0x11, 0x74,
+];
+
+/// The KindId generated for `thingos.job.wait.result` by `kindc`.
+///
+/// Identifies the canonical job wait-result schema kind.
+pub const KIND_ID_THINGOS_JOB_WAIT_RESULT: [u8; 16] = [
+    0x60, 0x9d, 0x28, 0x53, 0xea, 0xaf, 0x37, 0x97,
+    0x2d, 0xef, 0x65, 0x61, 0x84, 0xbe, 0xd2, 0xe9,
+];
+
 /// Canonical lifecycle state for a `thingos.job`.
 ///
 /// This is the external truth for process lifecycle exposed at system
