@@ -525,6 +525,24 @@ fn link_staticlib(
         sess.dcx().emit_fatal(e);
     }
 
+    if sess.opts.unstable_opts.staticlib_hide_internal_symbols {
+        if !matches!(&*sess.target.archive_format, "gnu" | "bsd") {
+            sess.dcx().emit_warn(errors::StaticlibHideInternalSymbolsUnsupported {
+                archive_format: sess.target.archive_format.to_string(),
+            });
+        } else if let Some(symbols) =
+            codegen_results.crate_info.exported_symbols.get(&CrateType::Staticlib)
+        {
+            use rustc_data_structures::fx::FxHashSet;
+            let mut keep: FxHashSet<String> = symbols.iter().map(|(s, _)| s.clone()).collect();
+            // rust_eh_personality cannot be mangled and hidden.
+            // See discussions in https://github.com/rust-lang/rust/issues/104707
+            // Keep it visible so that .eh_frame references from other object files
+            keep.insert("rust_eh_personality".to_owned());
+            ab.set_keep_symbols(keep);
+        }
+    }
+
     ab.build(out_filename);
 
     let crates = crate_info.used_crates.iter();

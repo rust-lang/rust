@@ -2473,6 +2473,14 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let mut collected_options = Default::default();
 
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
+
+    if unstable_opts.staticlib_hide_internal_symbols && !crate_types.contains(&CrateType::Staticlib)
+    {
+        early_dcx.early_fatal(
+            "-Zstaticlib-hide-internal-symbols can only be used with `--crate-type staticlib`",
+        );
+    }
+
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
 
     if !unstable_opts.unstable_options && json_timings {

@@ -676,6 +676,12 @@ pub(crate) struct UnknownArchiveKind<'a> {
 pub(crate) struct BpfStaticlibNotSupported;
 
 #[derive(Diagnostic)]
+#[diag("-Zstaticlib-hide-internal-symbols only supports ELF archive formats (gnu/bsd), but the target uses `{$archive_format}`")]
+pub(crate) struct StaticlibHideInternalSymbolsUnsupported {
+    pub archive_format: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("entry symbol `main` declared multiple times")]
 #[help(
     "did you use `#[no_mangle]` on `fn main`? Use `#![no_main]` to suppress the usual Rust-generated entry point"

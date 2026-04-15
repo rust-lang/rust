@@ -11,7 +11,7 @@ use ar_archive_writer::{
 pub use ar_archive_writer::{DEFAULT_OBJECT_READER, ObjectReader};
 use object::read::archive::ArchiveFile;
 use object::read::macho::FatArch;
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
 use rustc_fs_util::TempDirBuilder;
 use rustc_metadata::EncodedMetadata;
@@ -318,6 +318,8 @@ pub trait ArchiveBuilder {
     ) -> io::Result<()>;
 
     fn build(self: Box<Self>, output: &Path) -> bool;
+
+    fn set_keep_symbols(&mut self, keep: FxHashSet<String>);
 }
 
 pub struct ArArchiveBuilderBuilder;
@@ -337,6 +339,7 @@ pub struct ArArchiveBuilder<'a> {
     // Don't use an `HashMap` here, as the order is important. `lib.rmeta` needs
     // to be at the end of an archive in some cases for linkers to not get confused.
     entries: Vec<(Vec<u8>, ArchiveEntry)>,
+    keep_symbols: Option<FxHashSet<String>>,
 }
 
 #[derive(Debug)]
@@ -347,7 +350,17 @@ enum ArchiveEntry {
 
 impl<'a> ArArchiveBuilder<'a> {
     pub fn new(sess: &'a Session, object_reader: &'static ObjectReader) -> ArArchiveBuilder<'a> {
-        ArArchiveBuilder { sess, object_reader, src_archives: vec![], entries: vec![] }
+        ArArchiveBuilder {
+            sess,
+            object_reader,
+            src_archives: vec![],
+            entries: vec![],
+            keep_symbols: None,
+        }
+    }
+
+    pub fn set_keep_symbols(&mut self, keep: FxHashSet<String>) {
+        self.keep_symbols = Some(keep);
     }
 }
 
@@ -460,6 +473,10 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
             }
         }
     }
+
+    fn set_keep_symbols(&mut self, keep: FxHashSet<String>) {
+        self.keep_symbols = Some(keep);
+    }
 }
 
 impl<'a> ArArchiveBuilder<'a> {
@@ -478,7 +495,7 @@ impl<'a> ArArchiveBuilder<'a> {
         let mut entries = Vec::new();
 
         for (entry_name, entry) in self.entries {
-            let data =
+            let data: Box<dyn AsRef<[u8]>> =
                 match entry {
                     ArchiveEntry::FromArchive { archive_index, file_range } => {
                         let src_archive = &self.src_archives[archive_index];
@@ -497,6 +514,16 @@ impl<'a> ArArchiveBuilder<'a> {
                         ) as Box<dyn AsRef<[u8]>>
                     },
                 };
+
+            let data: Box<dyn AsRef<[u8]>> = if let Some(ref keep) = self.keep_symbols {
+                if let Some(filtered) = elf_filter_global_symbols(data.as_ref().as_ref(), keep) {
+                    Box::new(filtered)
+                } else {
+                    data
+                }
+            } else {
+                data
+            };
 
             entries.push(NewArchiveMember {
                 buf: data,
@@ -556,4 +583,143 @@ impl<'a> ArArchiveBuilder<'a> {
 
 fn io_error_context(context: &str, err: io::Error) -> io::Error {
     io::Error::new(io::ErrorKind::Other, format!("{context}: {err}"))
+}
+
+/// For ELF object files, set `STV_HIDDEN` visibility on GLOBAL/WEAK symbols
+/// that are NOT in the `keep_symbols` set. Returns `Some(modified_data)` if
+/// any changes were made, `None` if the data is not an ELF object or no
+/// changes were needed.
+fn elf_filter_global_symbols(data: &[u8], keep_symbols: &FxHashSet<String>) -> Option<Vec<u8>> {
+    use object::{Endianness, elf};
+
+    if data.len() < 16 || &data[0..4] != elf::ELFMAG {
+        return None;
+    }
+
+    match data[4] {
+        elf::ELFCLASS64 => elf_filter_symbols_inner::<elf::FileHeader64<Endianness>>(
+            data,
+            keep_symbols,
+            /* sym_entry_size= */ 24,
+            /* st_info_offset= */ 4,
+            /* st_other_offset= */ 5,
+        ),
+        elf::ELFCLASS32 => elf_filter_symbols_inner::<elf::FileHeader32<Endianness>>(
+            data,
+            keep_symbols,
+            /* sym_entry_size= */ 16,
+            /* st_info_offset= */ 12,
+            /* st_other_offset= */ 13,
+        ),
+        _ => None,
+    }
+}
+
+fn elf_filter_symbols_inner<Elf: object::read::elf::FileHeader<Endian = object::Endianness>>(
+    data: &[u8],
+    keep_symbols: &FxHashSet<String>,
+    sym_entry_size: usize,
+    st_info_offset: usize,
+    st_other_offset: usize,
+) -> Option<Vec<u8>>
+where
+    u64: From<Elf::Word>,
+{
+    use object::read::elf::SectionHeader;
+    use object::{Endianness, elf};
+
+    let endian = match Elf::parse(data) {
+        Ok(h) => match h.endian() {
+            Ok(e) => e,
+            Err(_) => return None,
+        },
+        Err(_) => return None,
+    };
+
+    let header = Elf::parse(data).unwrap();
+    let sections = match header.sections(endian, data) {
+        Ok(s) => s,
+        Err(_) => return None,
+    };
+
+    let mut modified: Option<Vec<u8>> = None;
+
+    for section in sections.iter() {
+        if section.sh_type(endian) != elf::SHT_SYMTAB {
+            continue;
+        }
+
+        let strtab_index = section.sh_link(endian) as usize;
+        let strtab_section = match sections.section(object::SectionIndex(strtab_index)) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+        let strtab_data = match strtab_section.data(endian, data) {
+            Ok(d) => d,
+            Err(_) => continue,
+        };
+
+        if sym_entry_size == 0 {
+            continue;
+        }
+
+        let sym_offset = u64::from(section.sh_offset(endian)) as usize;
+        let sym_size = u64::from(section.sh_size(endian)) as usize;
+        let sym_count = sym_size / sym_entry_size;
+
+        let buf = modified.get_or_insert_with(|| data.to_vec());
+
+        for i in 1..sym_count {
+            let off = sym_offset + i * sym_entry_size;
+            if off + sym_entry_size > buf.len() {
+                break;
+            }
+
+            let st_info = buf[off + st_info_offset];
+            let binding = st_info >> 4;
+
+            // Only process GLOBAL and WEAK symbols
+            if binding != elf::STB_GLOBAL && binding != elf::STB_WEAK {
+                continue;
+            }
+
+            let st_shndx_offset = st_other_offset + 1;
+            let st_shndx_bytes: [u8; 2] =
+                buf[off + st_shndx_offset..off + st_shndx_offset + 2].try_into().unwrap_or([0, 0]);
+            let st_shndx = match endian {
+                Endianness::Little => u16::from_le_bytes(st_shndx_bytes),
+                Endianness::Big => u16::from_be_bytes(st_shndx_bytes),
+            };
+            if st_shndx == elf::SHN_UNDEF as u16 {
+                continue;
+            }
+
+            let st_name_bytes: [u8; 4] = buf[off..off + 4].try_into().unwrap_or([0; 4]);
+            let st_name_off = match endian {
+                Endianness::Little => u32::from_le_bytes(st_name_bytes),
+                Endianness::Big => u32::from_be_bytes(st_name_bytes),
+            } as usize;
+
+            if st_name_off >= strtab_data.len() {
+                continue;
+            }
+            let name_end = strtab_data[st_name_off..]
+                .iter()
+                .position(|&b| b == 0)
+                .unwrap_or(strtab_data.len() - st_name_off);
+            let name = match std::str::from_utf8(&strtab_data[st_name_off..st_name_off + name_end])
+            {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+
+            if keep_symbols.contains(name) {
+                continue;
+            }
+
+            buf[off + st_other_offset] = elf::STV_HIDDEN;
+        }
+    }
+
+    modified
 }
