@@ -3,10 +3,7 @@
 use crate::{
     AstToken, Direction, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, T,
     algo::neighbor,
-    ast::{
-        self, AstNode, Fn, GenericParam, HasGenericParams, HasName, edit::IndentLevel, make,
-        syntax_factory::SyntaxFactory,
-    },
+    ast::{self, AstNode, Fn, GenericParam, HasGenericParams, HasName, edit::IndentLevel, make},
     syntax_editor::{Position, SyntaxEditor},
 };
 
@@ -16,20 +13,19 @@ pub trait GetOrCreateWhereClause: ast::HasGenericParams {
     fn get_or_create_where_clause(
         &self,
         editor: &mut SyntaxEditor,
-        make: &SyntaxFactory,
         new_preds: impl Iterator<Item = ast::WherePred>,
     ) {
         let existing = self.where_clause();
         let all_preds: Vec<_> =
             existing.iter().flat_map(|wc| wc.predicates()).chain(new_preds).collect();
-        let new_where = make.where_clause(all_preds);
+        let new_where = editor.make().where_clause(all_preds);
 
         if let Some(existing) = &existing {
             editor.replace(existing.syntax(), new_where.syntax());
         } else if let Some(pos) = self.where_clause_position() {
             editor.insert_all(
                 pos,
-                vec![make.whitespace(" ").into(), new_where.syntax().clone().into()],
+                vec![editor.make().whitespace(" ").into(), new_where.syntax().clone().into()],
             );
         }
     }
@@ -178,7 +174,6 @@ impl SyntaxEditor {
 }
 
 fn get_or_insert_comma_after(editor: &mut SyntaxEditor, syntax: &SyntaxNode) -> SyntaxToken {
-    let make = SyntaxFactory::without_mappings();
     match syntax
         .siblings_with_tokens(Direction::Next)
         .filter_map(|it| it.into_token())
@@ -186,7 +181,7 @@ fn get_or_insert_comma_after(editor: &mut SyntaxEditor, syntax: &SyntaxNode) -> 
     {
         Some(it) => it,
         None => {
-            let comma = make.token(T![,]);
+            let comma = editor.make().token(T![,]);
             editor.insert(Position::after(syntax), &comma);
             comma
         }
@@ -233,15 +228,14 @@ impl ast::Impl {
     pub fn get_or_create_assoc_item_list_with_editor(
         &self,
         editor: &mut SyntaxEditor,
-        make: &SyntaxFactory,
     ) -> ast::AssocItemList {
         if let Some(list) = self.assoc_item_list() {
             list
         } else {
-            let list = make.assoc_item_list_empty();
+            let list = editor.make().assoc_item_list_empty();
             editor.insert_all(
                 Position::last_child_of(self.syntax()),
-                vec![make.whitespace(" ").into(), list.syntax().clone().into()],
+                vec![editor.make().whitespace(" ").into(), list.syntax().clone().into()],
             );
             list
         }
@@ -250,7 +244,6 @@ impl ast::Impl {
 
 impl ast::VariantList {
     pub fn add_variant(&self, editor: &mut SyntaxEditor, variant: &ast::Variant) {
-        let make = SyntaxFactory::without_mappings();
         let (indent, position) = match self.variants().last() {
             Some(last_item) => (
                 IndentLevel::from_node(last_item.syntax()),
@@ -265,9 +258,9 @@ impl ast::VariantList {
             },
         };
         let elements: Vec<SyntaxElement> = vec![
-            make.whitespace(&format!("{}{indent}", "\n")).into(),
+            editor.make().whitespace(&format!("{}{indent}", "\n")).into(),
             variant.syntax().clone().into(),
-            make.token(T![,]).into(),
+            editor.make().token(T![,]).into(),
         ];
         editor.insert_all(position, elements);
     }
@@ -291,7 +284,6 @@ impl ast::Fn {
 }
 
 fn normalize_ws_between_braces(editor: &mut SyntaxEditor, node: &SyntaxNode) -> Option<()> {
-    let make = SyntaxFactory::without_mappings();
     let l = node
         .children_with_tokens()
         .filter_map(|it| it.into_token())
@@ -306,11 +298,11 @@ fn normalize_ws_between_braces(editor: &mut SyntaxEditor, node: &SyntaxNode) -> 
     match l.next_sibling_or_token() {
         Some(ws) if ws.kind() == SyntaxKind::WHITESPACE => {
             if ws.next_sibling_or_token()?.into_token()? == r {
-                editor.replace(ws, make.whitespace(&format!("\n{indent}")));
+                editor.replace(ws, editor.make().whitespace(&format!("\n{indent}")));
             }
         }
         Some(ws) if ws.kind() == T!['}'] => {
-            editor.insert(Position::after(l), make.whitespace(&format!("\n{indent}")));
+            editor.insert(Position::after(l), editor.make().whitespace(&format!("\n{indent}")));
         }
         _ => (),
     }
@@ -332,8 +324,6 @@ impl Removable for ast::TypeBoundList {
 
 impl Removable for ast::Use {
     fn remove(&self, editor: &mut SyntaxEditor) {
-        let make = SyntaxFactory::without_mappings();
-
         let next_ws = self
             .syntax()
             .next_sibling_or_token()
@@ -345,7 +335,7 @@ impl Removable for ast::Use {
                 if rest.is_empty() {
                     editor.delete(next_ws.syntax());
                 } else {
-                    editor.replace(next_ws.syntax(), make.whitespace(rest));
+                    editor.replace(next_ws.syntax(), editor.make().whitespace(rest));
                 }
             }
         }
@@ -379,7 +369,7 @@ mod tests {
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
 
-    use crate::SourceFile;
+    use crate::{SourceFile, ast::syntax_factory::SyntaxFactory};
 
     use super::*;
 

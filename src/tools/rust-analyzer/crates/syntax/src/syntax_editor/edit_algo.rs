@@ -35,7 +35,8 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
     //   - changed nodes become part of the changed node set (useful for the formatter to only change those parts)
     // - Propagate annotations
 
-    let SyntaxEditor { root, mut changes, mappings, annotations } = editor;
+    let SyntaxEditor { root, mut changes, annotations, make } = editor;
+    let mappings = make.take();
 
     let mut node_depths = FxHashMap::<SyntaxNode, usize>::default();
     let mut get_node_depth = |node: SyntaxNode| {

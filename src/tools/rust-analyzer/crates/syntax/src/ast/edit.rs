@@ -202,7 +202,6 @@ impl ast::IdentPat {
         &self,
         pat: Option<ast::Pat>,
         syntax_editor: &mut SyntaxEditor,
-        syntax_factory: &SyntaxFactory,
     ) -> ast::IdentPat {
         match pat {
             None => {
@@ -234,9 +233,9 @@ impl ast::IdentPat {
                     // Don't have an `@`, should have a name
                     let name = self.name().unwrap();
                     let elements = vec![
-                        syntax_factory.whitespace(" ").into(),
-                        syntax_factory.token(T![@]).into(),
-                        syntax_factory.whitespace(" ").into(),
+                        syntax_editor.make().whitespace(" ").into(),
+                        syntax_editor.make().token(T![@]).into(),
+                        syntax_editor.make().whitespace(" ").into(),
                         pat.syntax().clone().into(),
                     ];
 
