@@ -71,7 +71,7 @@ pub(crate) struct FeatureDiagnosticHelp {
     applicability = "maybe-incorrect",
     code = "#![feature({feature})]\n"
 )]
-pub struct FeatureDiagnosticSuggestion {
+pub(crate) struct FeatureDiagnosticSuggestion {
     pub feature: Symbol,
     #[primary_span]
     pub span: Span,

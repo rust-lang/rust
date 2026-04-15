@@ -1826,7 +1826,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         debug!(?diag);
     }
 
-    pub fn type_error_additional_suggestions(
+    pub(crate) fn type_error_additional_suggestions(
         &self,
         trace: &TypeTrace<'tcx>,
         terr: TypeError<'tcx>,
@@ -2274,6 +2274,7 @@ impl<'tcx> ObligationCause<'tcx> {
             },
         }
     }
+
     fn as_failure_code_diag(
         &self,
         terr: TypeError<'tcx>,
