@@ -281,7 +281,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::Path(..)
                     | AttributeKind::PatternComplexityLimit { .. }
                     | AttributeKind::PinV2(..)
-                    | AttributeKind::Pointee(..)
                     | AttributeKind::PreludeImport
                     | AttributeKind::ProfilerRuntime
                     | AttributeKind::RecursionLimit { .. }

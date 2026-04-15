@@ -234,16 +234,6 @@ pub struct ConflictingAllocErrorHandler {
 pub struct GlobalAllocRequired;
 
 #[derive(Diagnostic)]
-#[diag(
-    "the crate `{$crate_name}` cannot depend on a crate that needs {$needs_crate_name}, but it depends on `{$deps_crate_name}`"
-)]
-pub struct NoTransitiveNeedsDep<'a> {
-    pub crate_name: Symbol,
-    pub needs_crate_name: &'a str,
-    pub deps_crate_name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("failed to write {$filename}: {$err}")]
 pub struct FailedWriteError {
     pub filename: PathBuf,
