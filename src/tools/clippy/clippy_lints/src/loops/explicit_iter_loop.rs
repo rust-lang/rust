@@ -139,7 +139,7 @@ fn is_ref_iterable<'tcx>(
         }
 
         let res_ty = cx.tcx.erase_and_anonymize_regions(
-            EarlyBinder::bind(req_res_ty).instantiate(cx.tcx, typeck.node_args(call_expr.hir_id)),
+            EarlyBinder::bind(req_res_ty).instantiate(cx.tcx, typeck.node_args(call_expr.hir_id)).skip_norm_wip(),
         );
         let mutbl = if let ty::Ref(_, _, mutbl) = *req_self_ty.kind() {
             Some(mutbl)

@@ -143,7 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                     .fields
                     .iter()
                     .all(|field| {
-                        is_copy(cx, cx.tcx.type_of(field.did).instantiate(cx.tcx, args))
+                        is_copy(cx, cx.tcx.type_of(field.did).instantiate(cx.tcx, args).skip_norm_wip())
                     })
                 && (!has_drop(cx, binding_type) || all_fields_are_copy)
             {

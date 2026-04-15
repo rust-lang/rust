@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for LenWithoutIsEmpty {
             && let Some(ty_id) = cx.qpath_res(ty_path, imp.self_ty.hir_id).opt_def_id()
             && let Some(local_id) = ty_id.as_local()
             && let ty_hir_id = cx.tcx.local_def_id_to_hir_id(local_id)
-            && let Some(output) = LenOutput::new(cx, cx.tcx.fn_sig(item.owner_id).instantiate_identity().skip_binder())
+            && let Some(output) = LenOutput::new(cx, cx.tcx.fn_sig(item.owner_id).instantiate_identity().skip_norm_wip().skip_binder())
         {
             let (name, kind) = match cx.tcx.hir_node(ty_hir_id) {
                 Node::ForeignItem(x) => (x.ident.name, "extern type"),
@@ -313,7 +313,7 @@ fn check_for_is_empty(
             if !(is_empty.is_method()
                 && check_is_empty_sig(
                     cx,
-                    cx.tcx.fn_sig(is_empty.def_id).instantiate_identity().skip_binder(),
+                    cx.tcx.fn_sig(is_empty.def_id).instantiate_identity().skip_norm_wip().skip_binder(),
                     len_self_kind,
                     len_output,
                 )) =>

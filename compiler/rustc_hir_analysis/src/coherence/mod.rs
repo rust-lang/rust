@@ -172,7 +172,7 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Result<(), ErrorGuaranteed>
 
     for &impl_def_id in impls {
         let impl_header = tcx.impl_trait_header(impl_def_id);
-        let trait_ref = impl_header.trait_ref.instantiate_identity();
+        let trait_ref = impl_header.trait_ref.instantiate_identity().skip_norm_wip();
         let trait_def = tcx.trait_def(trait_ref.def_id);
 
         res = res

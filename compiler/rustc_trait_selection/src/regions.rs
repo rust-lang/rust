@@ -4,7 +4,7 @@ use rustc_infer::infer::{InferCtxt, RegionResolutionError};
 use rustc_macros::extension;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
-use rustc_middle::ty::{self, Ty, elaborate};
+use rustc_middle::ty::{self, Ty, Unnormalized, elaborate};
 
 use crate::traits::ScrubbedTraitError;
 use crate::traits::outlives_bounds::InferCtxtExt;
@@ -34,7 +34,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
                 if infcx.next_trait_solver() {
                     match crate::solve::deeply_normalize::<_, ScrubbedTraitError<'tcx>>(
                         infcx.at(&ObligationCause::dummy(), param_env),
-                        type_outlives,
+                        Unnormalized::new_wip(type_outlives),
                     ) {
                         Ok(new) => type_outlives = new,
                         Err(_) => {
@@ -107,7 +107,7 @@ impl<'tcx> InferCtxt<'tcx> {
                         &ObligationCause::dummy_with_span(origin.span()),
                         outlives_env.param_env,
                     ),
-                    ty,
+                    Unnormalized::new_wip(ty),
                 )
                 .map_err(|_: Vec<ScrubbedTraitError<'tcx>>| NoSolution)
             } else {

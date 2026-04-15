@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::ty::implements_trait;
+use rustc_middle::ty::Unnormalized;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{FnSig, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -67,10 +68,11 @@ fn check_sig(cx: &LateContext<'_>, name: Symbol, sig: &FnSig<'_>, fn_id: LocalDe
     if sig.decl.implicit_self().has_implicit_self() {
         let ret_ty = cx
             .tcx
-            .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(fn_id).instantiate_identity().output());
+            .instantiate_bound_regions_with_erased(cx.tcx
+                .fn_sig(fn_id).instantiate_identity().skip_norm_wip().output()
+            );
         let ret_ty = cx
-            .tcx
-            .try_normalize_erasing_regions(cx.typing_env(), ret_ty)
+            .tcx.try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(ret_ty))
             .unwrap_or(ret_ty);
         if cx
             .tcx

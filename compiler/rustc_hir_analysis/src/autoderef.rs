@@ -93,7 +93,8 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
                 if self.infcx.next_trait_solver()
                     && let ty::Alias(..) = ty.kind()
                 {
-                    let (normalized_ty, obligations) = self.structurally_normalize_ty(ty)?;
+                    let (normalized_ty, obligations) =
+                        self.structurally_normalize_ty(Unnormalized::new_wip(ty))?;
                     self.state.obligations.extend(obligations);
                     (AutoderefKind::Builtin, normalized_ty)
                 } else {
@@ -176,8 +177,9 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        let (normalized_ty, obligations) =
-            self.structurally_normalize_ty(Ty::new_projection(tcx, trait_target_def_id, [ty]))?;
+        let (normalized_ty, obligations) = self.structurally_normalize_ty(Unnormalized::new(
+            Ty::new_projection(tcx, trait_target_def_id, [ty]),
+        ))?;
         debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
         self.state.obligations.extend(obligations);
 

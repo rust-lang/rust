@@ -304,7 +304,7 @@ impl<'tcx> Generics {
             .rev()
             .take_while(|param| {
                 param.default_value(tcx).is_some_and(|default| {
-                    default.instantiate(tcx, args) == args[param.index as usize]
+                    default.instantiate(tcx, args).skip_norm_wip() == args[param.index as usize]
                 })
             })
             .count();
@@ -334,8 +334,9 @@ impl<'tcx> Generics {
     ) -> bool {
         let mut default_param_seen = false;
         for param in self.own_params.iter() {
-            if let Some(inst) =
-                param.default_value(tcx).map(|default| default.instantiate(tcx, args))
+            if let Some(inst) = param
+                .default_value(tcx)
+                .map(|default| default.instantiate(tcx, args).skip_norm_wip())
             {
                 if inst == args[param.index as usize] {
                     default_param_seen = true;

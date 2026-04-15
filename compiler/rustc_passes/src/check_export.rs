@@ -12,7 +12,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::privacy::{EffectiveVisibility, Level};
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Visibility,
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Unnormalized, Visibility,
 };
 use rustc_session::config::CrateType;
 use rustc_span::Span;
@@ -211,7 +211,10 @@ impl<'tcx, 'a> ExportableItemsChecker<'tcx, 'a> {
 
         let sig = self
             .tcx
-            .try_normalize_erasing_regions(ty::TypingEnv::non_body_analysis(self.tcx, def_id), sig)
+            .try_normalize_erasing_regions(
+                ty::TypingEnv::non_body_analysis(self.tcx, def_id),
+                Unnormalized::new_wip(sig),
+            )
             .unwrap_or(sig);
 
         let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
@@ -280,7 +283,8 @@ impl<'tcx, 'a> TypeVisitor<TyCtxt<'tcx>> for ExportableItemsChecker<'tcx, 'a> {
                 }
                 for variant in adt_def.variants() {
                     for field in &variant.fields {
-                        let field_ty = self.tcx.type_of(field.did).instantiate_identity();
+                        let field_ty =
+                            self.tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
                         field_ty.visit_with(self)?;
                     }
                 }

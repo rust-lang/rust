@@ -116,7 +116,7 @@ use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::HasTypingEnv;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
@@ -1657,10 +1657,13 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let right_meta_ty = right_ptr_ty.pointee_metadata_ty_or_projection(self.tcx);
         if left_meta_ty == right_meta_ty {
             true
-        } else if let Ok(left) =
-            self.tcx.try_normalize_erasing_regions(self.typing_env(), left_meta_ty)
-            && let Ok(right) =
-                self.tcx.try_normalize_erasing_regions(self.typing_env(), right_meta_ty)
+        } else if let Ok(left) = self
+            .tcx
+            .try_normalize_erasing_regions(self.typing_env(), Unnormalized::new_wip(left_meta_ty))
+            && let Ok(right) = self.tcx.try_normalize_erasing_regions(
+                self.typing_env(),
+                Unnormalized::new_wip(right_meta_ty),
+            )
         {
             left == right
         } else {

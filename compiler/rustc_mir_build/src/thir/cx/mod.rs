@@ -198,6 +198,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 self.tcx
                     .type_of(va_list_did)
                     .instantiate(self.tcx, &[self.tcx.lifetimes.re_erased.into()])
+                    .skip_norm_wip()
             } else {
                 fn_sig.inputs()[index]
             };

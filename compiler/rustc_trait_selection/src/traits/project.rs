@@ -520,7 +520,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
             param_env,
             cause.clone(),
             depth + 1,
-            predicate,
+            predicate.skip_norm_wip(),
             obligations,
         );
 
@@ -544,9 +544,9 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
     }
 
     let term: Term<'tcx> = if alias_term.kind(tcx).is_type() {
-        tcx.type_of(alias_term.def_id).instantiate(tcx, args).into()
+        tcx.type_of(alias_term.def_id).instantiate(tcx, args).skip_norm_wip().into()
     } else {
-        tcx.const_of_item(alias_term.def_id).instantiate(tcx, args).into()
+        tcx.const_of_item(alias_term.def_id).instantiate(tcx, args).skip_norm_wip().into()
     };
 
     let mut term = selcx.infcx.resolve_vars_if_possible(term);
@@ -572,7 +572,7 @@ pub fn compute_inherent_assoc_term_args<'a, 'b, 'tcx>(
     let impl_def_id = tcx.parent(alias_term.def_id);
     let impl_args = selcx.infcx.fresh_args_for_item(cause.span, impl_def_id);
 
-    let mut impl_ty = tcx.type_of(impl_def_id).instantiate(tcx, impl_args);
+    let mut impl_ty = tcx.type_of(impl_def_id).instantiate(tcx, impl_args).skip_norm_wip();
     if !selcx.infcx.next_trait_solver() {
         impl_ty = normalize_with_depth_to(
             selcx,
@@ -2056,7 +2056,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         Progress { term: err, obligations: nested }
     } else {
         assoc_term_own_obligations(selcx, obligation, &mut nested);
-        Progress { term: term.instantiate(tcx, args), obligations: nested }
+        Progress { term: term.instantiate(tcx, args).skip_norm_wip(), obligations: nested }
     };
     Ok(Projected::Progress(progress))
 }
@@ -2082,7 +2082,7 @@ fn assoc_term_own_obligations<'cx, 'tcx>(
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            predicate,
+            predicate.skip_norm_wip(),
             nested,
         );
 

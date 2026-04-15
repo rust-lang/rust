@@ -1366,9 +1366,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     let parent_self_ty =
                         matches!(tcx.def_kind(parent_did), rustc_hir::def::DefKind::Impl { .. })
                             .then_some(parent_did)
-                            .and_then(|did| match tcx.type_of(did).instantiate_identity().kind() {
-                                ty::Adt(def, ..) => Some(def.did()),
-                                _ => None,
+                            .and_then(|did| {
+                                match tcx.type_of(did).instantiate_identity().skip_norm_wip().kind()
+                                {
+                                    ty::Adt(def, ..) => Some(def.did()),
+                                    _ => None,
+                                }
                             });
                     let is_option_or_result = parent_self_ty.is_some_and(|def_id| {
                         matches!(tcx.get_diagnostic_name(def_id), Some(sym::Option | sym::Result))
@@ -1445,7 +1448,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             && let self_ty = self.infcx.instantiate_binder_with_fresh_vars(
                                 fn_call_span,
                                 BoundRegionConversionTime::FnCall,
-                                tcx.fn_sig(method_did).instantiate(tcx, method_args).input(0),
+                                tcx.fn_sig(method_did)
+                                    .instantiate(tcx, method_args)
+                                    .skip_norm_wip()
+                                    .input(0),
                             )
                             && self.infcx.can_eq(self.infcx.param_env, ty, self_ty)
                         {

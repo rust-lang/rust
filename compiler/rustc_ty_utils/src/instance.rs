@@ -7,6 +7,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
 use rustc_middle::ty::{
     self, ClosureKind, GenericArgsRef, Instance, PseudoCanonicalInput, TyCtxt, TypeVisitableExt,
+    Unnormalized,
 };
 use rustc_span::sym;
 use rustc_trait_selection::traits;
@@ -28,7 +29,7 @@ fn resolve_instance_raw<'tcx>(
             def_id,
             typing_env,
             trait_def_id,
-            tcx.normalize_erasing_regions(typing_env, args),
+            tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(args)),
         )
     } else {
         let def = if tcx.intrinsic(def_id).is_some() {
@@ -194,7 +195,7 @@ fn resolve_associated_item<'tcx>(
                 let sized_def_id = tcx.lang_items().sized_trait();
                 // If we find a `Self: Sized` bound on the item, then we know
                 // that `dyn Trait` can certainly never apply here.
-                if !predicates.into_iter().filter_map(ty::Clause::as_trait_clause).any(|clause| {
+                if !predicates.into_iter().filter_map(|p| p.as_trait_clause()).any(|clause| {
                     Some(clause.def_id()) == sized_def_id
                         && clause.skip_binder().self_ty() == self_ty
                 }) {

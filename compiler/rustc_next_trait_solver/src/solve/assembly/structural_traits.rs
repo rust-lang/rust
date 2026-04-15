@@ -9,7 +9,7 @@ use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{
     self as ty, Binder, FallibleTypeFolder, Interner, Movability, Mutability, TypeFoldable,
-    TypeSuperFoldable, Upcast as _, elaborate,
+    TypeSuperFoldable, Unnormalized, Upcast as _, elaborate,
 };
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
@@ -87,6 +87,7 @@ where
             .cx()
             .coroutine_hidden_types(def_id)
             .instantiate(cx, args)
+            .skip_norm_wip()
             .map_bound(|bound| bound.types.to_vec())),
 
         ty::UnsafeBinder(bound_ty) => Ok(bound_ty.map_bound(|ty| vec![ty])),
@@ -94,15 +95,18 @@ where
         // For `PhantomData<T>`, we pass `T`.
         ty::Adt(def, args) if def.is_phantom_data() => Ok(ty::Binder::dummy(vec![args.type_at(0)])),
 
-        ty::Adt(def, args) => {
-            Ok(ty::Binder::dummy(def.all_field_tys(cx).iter_instantiated(cx, args).collect()))
-        }
+        ty::Adt(def, args) => Ok(ty::Binder::dummy(
+            def.all_field_tys(cx)
+                .iter_instantiated(cx, args)
+                .map(Unnormalized::skip_norm_wip)
+                .collect(),
+        )),
 
         ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
             // We can resolve the `impl Trait` to its concrete type,
             // which enforces a DAG between the functions requiring
             // the auto trait bounds in question.
-            Ok(ty::Binder::dummy(vec![cx.type_of(def_id).instantiate(cx, args)]))
+            Ok(ty::Binder::dummy(vec![cx.type_of(def_id).instantiate(cx, args).skip_norm_wip()]))
         }
     }
 }
@@ -178,7 +182,7 @@ where
         //   even if the ADT is {meta,pointee,}sized for all possible args.
         ty::Adt(def, args) => {
             if let Some(crit) = def.sizedness_constraint(ecx.cx(), sizedness) {
-                Ok(ty::Binder::dummy(vec![crit.instantiate(ecx.cx(), args)]))
+                Ok(ty::Binder::dummy(vec![crit.instantiate(ecx.cx(), args).skip_norm_wip()]))
             } else {
                 Ok(ty::Binder::dummy(vec![]))
             }
@@ -264,6 +268,7 @@ where
             .cx()
             .coroutine_hidden_types(def_id)
             .instantiate(ecx.cx(), args)
+            .skip_norm_wip()
             .map_bound(|bound| bound.types.to_vec())),
     }
 }
@@ -281,6 +286,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
             if sig.skip_binder().is_fn_trait_compatible() && !cx.has_target_features(def_id) {
                 Ok(Some(
                     sig.instantiate(cx, args)
+                        .skip_norm_wip()
                         .map_bound(|sig| (Ty::new_tup(cx, sig.inputs().as_slice()), sig.output())),
                 ))
             } else {
@@ -678,6 +684,7 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
             {
                 Ok((
                     sig.instantiate(cx, args)
+                        .skip_norm_wip()
                         .map_bound(|sig| (Ty::new_tup(cx, sig.inputs().as_slice()), sig.output())),
                     def_id.into(),
                     args,
@@ -759,6 +766,7 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
             let mut const_conditions: Vec<_> = adt_def
                 .all_field_tys(cx)
                 .iter_instantiated(cx, args)
+                .map(Unnormalized::skip_norm_wip)
                 .map(|field_ty| ty::TraitRef::new(cx, destruct_def_id, [field_ty]))
                 .collect();
             match adt_def.destructor(cx) {
@@ -884,6 +892,7 @@ where
         cx,
         cx.explicit_super_predicates_of(trait_ref.def_id)
             .iter_instantiated(cx, trait_ref.args)
+            .map(Unnormalized::skip_norm_wip)
             .map(|(pred, _)| pred),
     ));
 
@@ -896,8 +905,11 @@ where
             continue;
         }
 
-        requirements
-            .extend(cx.item_bounds(associated_type_def_id).iter_instantiated(cx, trait_ref.args));
+        requirements.extend(
+            cx.item_bounds(associated_type_def_id)
+                .iter_instantiated(cx, trait_ref.args)
+                .map(Unnormalized::skip_norm_wip),
+        );
     }
 
     let mut replace_projection_with: HashMap<_, Vec<_>> = HashMap::default();

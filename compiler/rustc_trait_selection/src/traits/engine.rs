@@ -331,7 +331,7 @@ where
             match self
                 .infcx
                 .at(&cause, param_env)
-                .deeply_normalize(ty, &mut **self.engine.borrow_mut())
+                .deeply_normalize(Unnormalized::new_wip(ty), &mut **self.engine.borrow_mut())
             {
                 // Insert well-formed types, ignoring duplicates.
                 Ok(normalized) => drop(implied_bounds.insert(normalized)),

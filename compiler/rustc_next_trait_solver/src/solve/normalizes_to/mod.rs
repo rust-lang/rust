@@ -7,7 +7,9 @@ use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use rustc_type_ir::solve::SizedTraitKind;
-use rustc_type_ir::{self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Upcast as _};
+use rustc_type_ir::{
+    self as ty, FieldInfo, Interner, NormalizesTo, PredicateKind, Unnormalized, Upcast as _,
+};
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
@@ -178,6 +180,7 @@ where
             GoalSource::AliasWellFormed,
             cx.own_predicates_of(goal.predicate.def_id())
                 .iter_instantiated(cx, goal.predicate.alias.args)
+                .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred)),
         );
 
@@ -235,13 +238,14 @@ where
 
         ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id.into());
-            let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args);
+            let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args).skip_norm_wip();
 
             ecx.eq(goal.param_env, goal_trait_ref, impl_trait_ref)?;
 
             let where_clause_bounds = cx
                 .predicates_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
+                .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
 
@@ -258,6 +262,7 @@ where
                 GoalSource::AliasWellFormed,
                 cx.own_predicates_of(goal.predicate.def_id())
                     .iter_instantiated(cx, goal.predicate.alias.args)
+                    .map(Unnormalized::skip_norm_wip)
                     .map(|pred| goal.with(cx, pred)),
             );
 
@@ -388,7 +393,10 @@ where
                 kind => panic!("expected projection, found {kind:?}"),
             };
 
-            ecx.instantiate_normalizes_to_term(goal, term.instantiate(cx, target_args));
+            ecx.instantiate_normalizes_to_term(
+                goal,
+                term.instantiate(cx, target_args).skip_norm_wip(),
+            );
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -651,6 +659,7 @@ where
                 let dyn_metadata = cx.require_lang_item(SolverLangItem::DynMetadata);
                 cx.type_of(dyn_metadata)
                     .instantiate(cx, &[I::GenericArg::from(goal.predicate.self_ty())])
+                    .skip_norm_wip()
             }
 
             ty::Alias(_) | ty::Param(_) | ty::Placeholder(..) => {
@@ -684,9 +693,11 @@ where
 
             ty::Adt(def, args) if def.is_struct() => match def.struct_tail_ty(cx) {
                 None => Ty::new_unit(cx),
-                Some(tail_ty) => {
-                    Ty::new_projection(cx, metadata_def_id, [tail_ty.instantiate(cx, args)])
-                }
+                Some(tail_ty) => Ty::new_projection(
+                    cx,
+                    metadata_def_id,
+                    [tail_ty.instantiate(cx, args).skip_norm_wip()],
+                ),
             },
             ty::Adt(_, _) => Ty::new_unit(cx),
 
@@ -1000,7 +1011,8 @@ where
             let target_args = self.fresh_args_for_item(target_container_def_id);
             let target_trait_ref = cx
                 .impl_trait_ref(target_container_def_id.try_into().unwrap())
-                .instantiate(cx, target_args);
+                .instantiate(cx, target_args)
+                .skip_norm_wip();
             // Relate source impl to target impl by equating trait refs.
             self.eq(goal.param_env, impl_trait_ref, target_trait_ref)?;
             // Also add predicates since they may be needed to constrain the
@@ -1009,6 +1021,7 @@ where
                 GoalSource::Misc,
                 cx.predicates_of(target_container_def_id)
                     .iter_instantiated(cx, target_args)
+                    .map(Unnormalized::skip_norm_wip)
                     .map(|pred| goal.with(cx, pred)),
             );
             goal.predicate.alias.args.rebase_onto(cx, impl_trait_ref.def_id.into(), target_args)

@@ -11,7 +11,7 @@ use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, Adt, AdtDef, AdtKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt,
+    TypeVisitableExt, Unnormalized,
 };
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
@@ -146,7 +146,9 @@ fn get_type_from_field<'tcx>(
     args: GenericArgsRef<'tcx>,
 ) -> Ty<'tcx> {
     let field_ty = field.ty(cx.tcx, args);
-    cx.tcx.try_normalize_erasing_regions(cx.typing_env(), field_ty).unwrap_or(field_ty)
+    cx.tcx
+        .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(field_ty))
+        .unwrap_or(field_ty)
 }
 
 /// Check a variant of a non-exhaustive enum for improper ctypes
@@ -209,7 +211,7 @@ fn check_arg_for_power_alignment<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> 
         // report if any fields after the nested struct within the
         // original struct are misaligned.
         for struct_field in &struct_variant.fields {
-            let field_ty = tcx.type_of(struct_field.did).instantiate_identity();
+            let field_ty = tcx.type_of(struct_field.did).instantiate_identity().skip_norm_wip();
             if check_arg_for_power_alignment(cx, field_ty) {
                 return true;
             }
@@ -246,7 +248,7 @@ fn check_struct_for_power_alignment<'tcx>(
             // Struct fields (after the first field) are checked for the
             // power alignment rule, as fields after the first are likely
             // to be the fields that are misaligned.
-            let ty = tcx.type_of(field_def.def_id).instantiate_identity();
+            let ty = tcx.type_of(field_def.def_id).instantiate_identity().skip_norm_wip();
             if check_arg_for_power_alignment(cx, ty) {
                 cx.emit_span_lint(USES_POWER_ALIGNMENT, field_def.span, UsesPowerAlignment);
             }
@@ -742,7 +744,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
     /// Determine the FFI-safety of a single (MIR) type, given the context of how it is used.
     fn check_type(&mut self, state: VisitorState, ty: Ty<'tcx>) -> FfiResult<'tcx> {
-        let ty = self.cx.tcx.try_normalize_erasing_regions(self.cx.typing_env(), ty).unwrap_or(ty);
+        let ty = self
+            .cx
+            .tcx
+            .try_normalize_erasing_regions(self.cx.typing_env(), Unnormalized::new_wip(ty))
+            .unwrap_or(ty);
         if let Some(res) = self.visit_for_opaque_ty(ty) {
             return res;
         }
@@ -833,7 +839,7 @@ impl<'tcx> ImproperCTypesLint {
         def_id: LocalDefId,
         decl: &'tcx hir::FnDecl<'_>,
     ) {
-        let sig = cx.tcx.fn_sig(def_id).instantiate_identity();
+        let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
         let sig = cx.tcx.instantiate_bound_regions_with_erased(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
@@ -865,7 +871,7 @@ impl<'tcx> ImproperCTypesLint {
     }
 
     fn check_foreign_static(&mut self, cx: &LateContext<'tcx>, id: hir::OwnerId, span: Span) {
-        let ty = cx.tcx.type_of(id).instantiate_identity();
+        let ty = cx.tcx.type_of(id).instantiate_identity().skip_norm_wip();
         let mut visitor = ImproperCTypesVisitor::new(cx, ty, CItemKind::Declaration);
         let ffi_res = visitor.check_type(VisitorState::STATIC_TY, ty);
         self.process_ffi_result(cx, span, ffi_res, CItemKind::Declaration);
@@ -879,7 +885,7 @@ impl<'tcx> ImproperCTypesLint {
         def_id: LocalDefId,
         decl: &'tcx hir::FnDecl<'_>,
     ) {
-        let sig = cx.tcx.fn_sig(def_id).instantiate_identity();
+        let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
         let sig = cx.tcx.instantiate_bound_regions_with_erased(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
@@ -993,7 +999,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
                     cx,
                     VisitorState::STATIC_TY,
                     ty,
-                    cx.tcx.type_of(item.owner_id).instantiate_identity(),
+                    cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip(),
                     CItemKind::Definition,
                 );
             }
@@ -1027,7 +1033,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesLint {
             cx,
             VisitorState::STATIC_TY,
             field.ty,
-            cx.tcx.type_of(field.def_id).instantiate_identity(),
+            cx.tcx.type_of(field.def_id).instantiate_identity().skip_norm_wip(),
             CItemKind::Definition,
         );
     }
