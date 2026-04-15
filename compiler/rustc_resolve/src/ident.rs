@@ -1087,7 +1087,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 orig_ident_span,
                 binding,
                 parent_scope,
-                module,
                 finalize,
                 shadowing,
             );
@@ -1150,7 +1149,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 orig_ident_span,
                 binding,
                 parent_scope,
-                module,
                 finalize,
                 shadowing,
             );
@@ -1260,7 +1258,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         orig_ident_span: Span,
         binding: Option<Decl<'ra>>,
         parent_scope: &ParentScope<'ra>,
-        module: Module<'ra>,
         finalize: Finalize,
         shadowing: Shadowing,
     ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
@@ -1293,17 +1290,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && matches!(import.kind, ImportKind::MacroExport)
         {
             self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
-        }
-
-        // If we encounter a re-export for a type with private fields, it will not be able to
-        // be constructed through this re-export. We track that case here to expand later
-        // privacy errors with appropriate information.
-        if let Res::Def(_, def_id) = binding.res() {
-            if let Some(ctor) = self.struct_ctor(def_id)
-                && ctor.has_private_fields(module, self)
-            {
-                self.inaccessible_ctor_reexport.insert(path_span, binding.span);
-            }
         }
 
         self.record_use(ident, binding, used);

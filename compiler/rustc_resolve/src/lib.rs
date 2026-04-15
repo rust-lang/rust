@@ -1285,11 +1285,6 @@ pub struct Resolver<'ra, 'tcx> {
     /// Crate-local macro expanded `macro_export` referred to by a module-relative path.
     macro_expanded_macro_export_errors: BTreeSet<(Span, Span)> = BTreeSet::new(),
 
-    /// When a type is re-exported that has an inaccessible constructor because it has fields that
-    /// are inaccessible from the import's scope, we mark that as the type won't be able to be built
-    /// through the re-export. We use this information to extend the existing diagnostic.
-    inaccessible_ctor_reexport: FxHashMap<Span, Span> = default::fx_hash_map(),
-
     arenas: &'ra ResolverArenas<'ra>,
     dummy_decl: Decl<'ra>,
     builtin_type_decls: FxHashMap<Symbol, Decl<'ra>>,

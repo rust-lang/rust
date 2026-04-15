@@ -2368,16 +2368,28 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     return true;
                 };
 
+                // A type is re-exported and has an inaccessible constructor because it has fields
+                // that are inaccessible from the reexport's scope, extend the diagnostic.
                 let is_accessible = self.r.is_accessible_from(ctor.vis, self.parent_scope.module);
-                if let Some(use_span) = self.r.inaccessible_ctor_reexport.get(&span)
-                    && is_accessible
+                if is_accessible
+                    && let mod_path = &path[..path.len() - 1]
+                    && let PathResult::Module(ModuleOrUniformRoot::Module(import_mod)) =
+                        self.resolve_path(mod_path, Some(TypeNS), None, PathSource::Module)
+                    && ctor.has_private_fields(import_mod, self.r)
+                    && let Ok(import_decl) = self.r.cm().maybe_resolve_ident_in_module(
+                        ModuleOrUniformRoot::Module(import_mod),
+                        path.last().unwrap().ident,
+                        TypeNS,
+                        &self.parent_scope,
+                        None,
+                    )
                 {
                     err.span_note(
-                        *use_span,
+                        import_decl.span,
                         "the type is accessed through this re-export, but the type's constructor \
                          is not visible in this import's scope due to private fields",
                     );
-                    if is_accessible && !ctor.has_private_fields(self.parent_scope.module, self.r) {
+                    if !ctor.has_private_fields(self.parent_scope.module, self.r) {
                         err.span_suggestion_verbose(
                             span,
                             "the type can be constructed directly, because its fields are \
