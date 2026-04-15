@@ -11,22 +11,24 @@ use core::default::Default;
 extern crate alloc;
 
 // Modules are now declared in main.rs
-use crate::ledger::DeviceLedger;
-use crate::pipelines::{
-    setup_audio_stack, setup_display_pipeline, setup_graphics_stack, setup_input_broker,
-    setup_serial_shell, DisplayHandles,
-};
-use crate::task::{ManagedTask, TaskKind};
-use abi::display_driver_protocol;
-use abi::supervisor_protocol::{
-    self, classes, MSG_BIND_ASSIGNED, MSG_BIND_FAILED, MSG_BIND_READY, MSG_SERVICE_EXITING,
-    MSG_SERVICE_READY,
-};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+
+use abi::display_driver_protocol;
+use abi::supervisor_protocol::{
+    self, MSG_BIND_ASSIGNED, MSG_BIND_FAILED, MSG_BIND_READY, MSG_SERVICE_EXITING,
+    MSG_SERVICE_READY, classes,
+};
 use spin::Mutex;
-use stem::syscall::{channel_create, channel_send_all, vfs_mount, ChannelHandle};
+use stem::syscall::{ChannelHandle, channel_create, channel_send_all, vfs_mount};
 use stem::{debug, error, info, warn};
+
+use crate::ledger::DeviceLedger;
+use crate::pipelines::{
+    DisplayHandles, setup_audio_stack, setup_display_pipeline, setup_graphics_stack,
+    setup_input_broker, setup_serial_shell,
+};
+use crate::task::{ManagedTask, TaskKind};
 
 pub struct Supervisor {
     pub tasks: Arc<Mutex<Vec<ManagedTask>>>,
@@ -180,10 +182,7 @@ impl Supervisor {
         // Collect PIDs to check without holding the lock for the whole operation
         let pids: Vec<(u64, alloc::string::String)> = {
             let tasks = self.tasks.lock();
-            tasks
-                .iter()
-                .filter_map(|t| t.pid.map(|p| (p as u64, t.name.clone())))
-                .collect()
+            tasks.iter().filter_map(|t| t.pid.map(|p| (p as u64, t.name.clone()))).collect()
         };
 
         if pids.is_empty() {
@@ -193,7 +192,7 @@ impl Supervisor {
         for (pid, name) in pids {
             match stem::syscall::task_poll(pid) {
                 Ok((status, code)) => {
-                    stem::info!(
+                    stem::debug!(
                         "SPROUT: Polling task '{}' (PID {}): status={:?}, code={}",
                         name,
                         pid,
@@ -201,10 +200,7 @@ impl Supervisor {
                         code
                     );
                     if status == stem::abi::types::TaskStatus::Dead {
-                        info!(
-                            "SPROUT: Task '{}' (PID {}) is Dead (code {})",
-                            name, pid, code
-                        );
+                        info!("SPROUT: Task '{}' (PID {}) is Dead (code {})", name, pid, code);
 
                         // Re-lock to update task state
                         let mut tasks = self.tasks.lock();
@@ -364,7 +360,7 @@ impl Supervisor {
         payload: &[u8],
         bundled_fd: u32,
     ) {
-        use abi::supervisor_protocol::{self, classes, MSG_BIND_ASSIGNED, MSG_BIND_FAILED};
+        use abi::supervisor_protocol::{self, MSG_BIND_ASSIGNED, MSG_BIND_FAILED, classes};
         use stem::syscall::{channel_send_all, vfs_mount};
 
         // Helper: send MSG_BIND_FAILED back to the driver.
@@ -396,10 +392,7 @@ impl Supervisor {
         if let Some(ready) = supervisor_protocol::decode_bind_ready_le(payload) {
             let provider_port = bundled_fd;
             if provider_port == 0 {
-                warn!(
-                    "SPROUT: BIND_READY from {} carried no provider FD — rejecting",
-                    task_name
-                );
+                warn!("SPROUT: BIND_READY from {} carried no provider FD — rejecting", task_name);
                 send_failed(
                     drv_req_write,
                     ready.bind_instance_id,
@@ -485,10 +478,7 @@ impl Supervisor {
                 }
             }
         } else {
-            warn!(
-                "SPROUT: Received malformed BIND_READY from {} — rejecting",
-                task_name
-            );
+            warn!("SPROUT: Received malformed BIND_READY from {} — rejecting", task_name);
             send_failed(
                 drv_req_write,
                 0,

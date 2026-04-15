@@ -17,6 +17,8 @@ pub mod once_cell;
 pub mod place;
 pub mod signal;
 
+#[cfg(test)]
+mod boundary_contract;
 pub mod sched;
 pub mod simd;
 pub mod syscall;
@@ -27,9 +29,10 @@ pub mod time;
 pub mod trace;
 pub mod virtio;
 
-use crate::task::StartupArg;
 use abi::errors::Errno;
 use abi::vm::{VmBackingKind, VmMapFlags, VmProt, VmRegionInfo};
+
+use crate::task::StartupArg;
 
 #[unsafe(no_mangle)]
 pub extern "C" fn kernel_handle_page_fault(rip: u64, addr: u64, err: u64) {
@@ -611,10 +614,7 @@ pub fn runtime<R: BootRuntime>() -> &'static R {
     if let Some(rt) = any_ref.downcast_ref::<R>() {
         rt
     } else {
-        panic!(
-            "Runtime type mismatch: expected {}",
-            core::any::type_name::<R>()
-        );
+        panic!("Runtime type mismatch: expected {}", core::any::type_name::<R>());
     }
 }
 
@@ -753,11 +753,7 @@ fn paint_bootfb_probe(fb: FramebufferInfo) {
         for y in 0..marker_h {
             let row = core::slice::from_raw_parts_mut(ptr.add(y * stride_px), width.min(stride_px));
             for x in 0..marker_w {
-                row[x] = if ((x / 16) + (y / 16)) % 2 == 0 {
-                    0x00_FF_FF_FF
-                } else {
-                    0x00_00_00_00
-                };
+                row[x] = if ((x / 16) + (y / 16)) % 2 == 0 { 0x00_FF_FF_FF } else { 0x00_00_00_00 };
             }
         }
 
@@ -791,14 +787,10 @@ fn paint_bootfb_probe(fb: FramebufferInfo) {
 }
 
 pub fn start<R: BootRuntime>(runtime: &'static R) -> ! {
-    crate::irq::IRQ_DISABLE_HOOK.store(
-        _irq_disable_wrapper::<R> as *mut (),
-        core::sync::atomic::Ordering::SeqCst,
-    );
-    crate::irq::IRQ_RESTORE_HOOK.store(
-        _irq_restore_wrapper::<R> as *mut (),
-        core::sync::atomic::Ordering::SeqCst,
-    );
+    crate::irq::IRQ_DISABLE_HOOK
+        .store(_irq_disable_wrapper::<R> as *mut (), core::sync::atomic::Ordering::SeqCst);
+    crate::irq::IRQ_RESTORE_HOOK
+        .store(_irq_restore_wrapper::<R> as *mut (), core::sync::atomic::Ordering::SeqCst);
 
     init_runtime(runtime);
     unsafe { crate::logging::init(runtime) };
@@ -832,11 +824,7 @@ pub fn start<R: BootRuntime>(runtime: &'static R) -> ! {
             // but is typically a kernel virtual address (HHDM).
             // device_registry expects PHYSICAL addresses for BARs.
             let ph_offset = runtime.phys_to_virt_offset();
-            let phys_addr = if fb.addr >= ph_offset {
-                fb.addr - ph_offset
-            } else {
-                fb.addr
-            };
+            let phys_addr = if fb.addr >= ph_offset { fb.addr - ph_offset } else { fb.addr };
 
             bars[0] = phys_addr;
             sizes[0] = fb.byte_len as u64;
