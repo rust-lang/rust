@@ -1,10 +1,11 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/2316>
 //@ run-pass
-//@ aux-build:issue-2316-a.rs
-//@ aux-build:issue-2316-b.rs
+//@ aux-build:resolve-conflict-local-vs-glob-import-a.rs
+//@ aux-build:resolve-conflict-local-vs-glob-import-b.rs
 
 
-extern crate issue_2316_b;
-use issue_2316_b::cloth;
+extern crate resolve_conflict_local_vs_glob_import_b;
+use resolve_conflict_local_vs_glob_import_b::cloth;
 
 pub fn main() {
   let _c: cloth::fabric = cloth::fabric::calico;
