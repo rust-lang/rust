@@ -120,9 +120,7 @@ impl BootFbDriver {
     fn blit_primary(&mut self, commit: &PlaneCommit) -> SysResult<()> {
         let buffer = self.buffers.get(&commit.buffer_id).ok_or(Errno::ENOENT)?;
 
-        // Simple full-frame blit for now.
-        // TODO: Respect commit.src_rect and commit.dst_rect.
-
+        // Determine bytes-per-pixel from framebuffer metadata.
         let pitch_bpp = if self.fb.width > 0 {
             (self.fb.stride / self.fb.width) as usize
         } else {
@@ -133,14 +131,49 @@ impl BootFbDriver {
             bpp = pitch_bpp;
         }
 
-        let h = self.fb.height.min(buffer.height) as usize;
-        let row_bytes = (self.fb.width.min(buffer.width) as usize) * bpp;
+        // Clip src_rect to buffer bounds.
+        let src_x = commit.src_rect.x.min(buffer.width) as usize;
+        let src_y = commit.src_rect.y.min(buffer.height) as usize;
+        let src_w = commit
+            .src_rect
+            .w
+            .min(buffer.width.saturating_sub(commit.src_rect.x)) as usize;
+        let src_h = commit
+            .src_rect
+            .h
+            .min(buffer.height.saturating_sub(commit.src_rect.y)) as usize;
 
-        for row in 0..h {
+        // Clip dest_rect to framebuffer bounds.
+        let dst_x = commit.dest_rect.x.min(self.fb.width) as usize;
+        let dst_y = commit.dest_rect.y.min(self.fb.height) as usize;
+        let dst_w = commit
+            .dest_rect
+            .w
+            .min(self.fb.width.saturating_sub(commit.dest_rect.x)) as usize;
+        let dst_h = commit
+            .dest_rect
+            .h
+            .min(self.fb.height.saturating_sub(commit.dest_rect.y)) as usize;
+
+        // Copy extent is the intersection of the clipped src and dst dimensions.
+        // Scaling is not supported; a 1:1 pixel mapping is performed.
+        let copy_w = src_w.min(dst_w);
+        let copy_h = src_h.min(dst_h);
+        let row_bytes = copy_w * bpp;
+
+        if row_bytes == 0 || copy_h == 0 {
+            return Ok(());
+        }
+
+        for row in 0..copy_h {
             unsafe {
                 core::ptr::copy_nonoverlapping(
-                    buffer.ptr.add(row * buffer.stride as usize),
-                    self.fb.base.add(row * self.fb.stride as usize),
+                    buffer
+                        .ptr
+                        .add((src_y + row) * buffer.stride as usize + src_x * bpp),
+                    self.fb
+                        .base
+                        .add((dst_y + row) * self.fb.stride as usize + dst_x * bpp),
                     row_bytes,
                 );
             }
