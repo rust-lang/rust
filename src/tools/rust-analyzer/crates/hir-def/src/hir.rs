@@ -21,7 +21,7 @@ use std::fmt;
 use hir_expand::{MacroDefId, name::Name};
 use intern::Symbol;
 use la_arena::Idx;
-use rustc_apfloat::ieee::{Half as f16, Quad as f128};
+use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use syntax::ast;
 use type_ref::TypeRefId;
 
@@ -94,19 +94,19 @@ impl FloatTypeWrapper {
         Self(sym)
     }
 
-    pub fn to_f128(&self) -> f128 {
+    pub fn to_f128(&self) -> Quad {
         self.0.as_str().parse().unwrap_or_default()
     }
 
-    pub fn to_f64(&self) -> f64 {
+    pub fn to_f64(&self) -> Double {
         self.0.as_str().parse().unwrap_or_default()
     }
 
-    pub fn to_f32(&self) -> f32 {
+    pub fn to_f32(&self) -> Single {
         self.0.as_str().parse().unwrap_or_default()
     }
 
-    pub fn to_f16(&self) -> f16 {
+    pub fn to_f16(&self) -> Half {
         self.0.as_str().parse().unwrap_or_default()
     }
 }

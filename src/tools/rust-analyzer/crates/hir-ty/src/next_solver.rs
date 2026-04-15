@@ -5,6 +5,7 @@
 // incorrect lifetime here.
 
 pub mod abi;
+mod allocation;
 mod binder;
 mod consts;
 mod def_id;
@@ -29,6 +30,7 @@ pub mod util;
 
 use std::{mem::ManuallyDrop, sync::OnceLock};
 
+pub use allocation::*;
 pub use binder::*;
 pub use consts::*;
 pub use def_id::*;
@@ -89,6 +91,7 @@ pub struct DefaultTypes<'db> {
 
 pub struct DefaultConsts<'db> {
     pub error: Const<'db>,
+    pub u8_values: [Const<'db>; 256],
 }
 
 pub struct DefaultRegions<'db> {
@@ -232,10 +235,11 @@ pub fn default_types<'a, 'db>(db: &'db dyn HirDatabase) -> &'a DefaultAny<'db> {
         let statik = create_region(RegionKind::ReStatic);
         let empty_tys = create_tys(&[]);
         let unit = create_ty(TyKind::Tuple(empty_tys));
+        let u8 = create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U8));
         DefaultAny {
             types: DefaultTypes {
                 usize: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::Usize)),
-                u8: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U8)),
+                u8,
                 u16: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U16)),
                 u32: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U32)),
                 u64: create_ty(TyKind::Uint(rustc_ast_ir::UintTy::U64)),
@@ -259,7 +263,15 @@ pub fn default_types<'a, 'db>(db: &'db dyn HirDatabase) -> &'a DefaultAny<'db> {
                 static_str_ref: create_ty(TyKind::Ref(statik, str, rustc_ast_ir::Mutability::Not)),
                 mut_unit_ptr: create_ty(TyKind::RawPtr(unit, rustc_ast_ir::Mutability::Mut)),
             },
-            consts: DefaultConsts { error: create_const(ConstKind::Error(ErrorGuaranteed)) },
+            consts: DefaultConsts {
+                error: create_const(ConstKind::Error(ErrorGuaranteed)),
+                u8_values: std::array::from_fn(|u8_value| {
+                    create_const(ConstKind::Value(ValueConst {
+                        ty: u8,
+                        value: ValTree::new(ValTreeKind::Leaf(ScalarInt::from(u8_value as u8))),
+                    }))
+                }),
+            },
             regions: DefaultRegions {
                 error: create_region(RegionKind::ReError(ErrorGuaranteed)),
                 statik,

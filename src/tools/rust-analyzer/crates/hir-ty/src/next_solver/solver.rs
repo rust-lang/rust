@@ -14,10 +14,13 @@ use rustc_type_ir::{
 };
 use tracing::debug;
 
-use crate::next_solver::{
-    AliasTy, AnyImplId, CanonicalVarKind, Clause, ClauseKind, CoercePredicate, GenericArgs,
-    ParamEnv, Predicate, PredicateKind, SubtypePredicate, Ty, TyKind, fold::fold_tys,
-    util::sizedness_fast_path,
+use crate::{
+    ParamEnvAndCrate,
+    next_solver::{
+        AliasTy, AnyImplId, CanonicalVarKind, Clause, ClauseKind, CoercePredicate, GenericArgs,
+        ParamEnv, Predicate, PredicateKind, SubtypePredicate, Ty, TyKind, UnevaluatedConst,
+        fold::fold_tys, util::sizedness_fast_path,
+    },
 };
 
 use super::{
@@ -248,25 +251,26 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
     fn evaluate_const(
         &self,
-        _param_env: ParamEnv<'db>,
-        uv: rustc_type_ir::UnevaluatedConst<Self::Interner>,
-    ) -> Option<<Self::Interner as rustc_type_ir::Interner>::Const> {
-        match uv.def.0 {
+        param_env: ParamEnv<'db>,
+        uv: UnevaluatedConst<'db>,
+    ) -> Option<Const<'db>> {
+        let ec = match uv.def.0 {
             GeneralConstId::ConstId(c) => {
                 let subst = uv.args;
-                let ec = self.cx().db.const_eval(c, subst, None).ok()?;
-                Some(ec)
+                self.cx().db.const_eval(c, subst, None).ok()?
             }
-            GeneralConstId::StaticId(c) => {
-                let ec = self.cx().db.const_eval_static(c).ok()?;
-                Some(ec)
-            }
+            GeneralConstId::StaticId(c) => self.cx().db.const_eval_static(c).ok()?,
             // TODO: Wire up const_eval_anon query in Phase 5.
             // For now, return an error const so normalization resolves the
             // unevaluated const to Error (matching the old behavior where
             // complex expressions produced ConstKind::Error directly).
-            GeneralConstId::AnonConstId(_) => Some(Const::error(self.cx())),
-        }
+            GeneralConstId::AnonConstId(_) => return Some(Const::error(self.cx())),
+        };
+        Some(Const::new_from_allocation(
+            self.interner,
+            &ec,
+            ParamEnvAndCrate { param_env, krate: self.interner.expect_crate() },
+        ))
     }
 
     fn compute_goal_fast_path(

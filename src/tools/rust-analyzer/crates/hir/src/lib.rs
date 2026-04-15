@@ -3124,7 +3124,7 @@ impl Const {
         let interner = DbInterner::new_no_crate(db);
         let ty = db.value_ty(self.id.into()).unwrap().instantiate_identity();
         db.const_eval(self.id, GenericArgs::empty(interner), None).map(|it| EvaluatedConst {
-            const_: it,
+            allocation: it,
             def: self.id.into(),
             ty,
         })
@@ -3139,22 +3139,19 @@ impl HasVisibility for Const {
 
 pub struct EvaluatedConst<'db> {
     def: DefWithBodyId,
-    const_: hir_ty::next_solver::Const<'db>,
+    allocation: hir_ty::next_solver::Allocation<'db>,
     ty: Ty<'db>,
 }
 
 impl<'db> EvaluatedConst<'db> {
     pub fn render(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> String {
-        format!("{}", self.const_.display(db, display_target))
+        format!("{}", self.allocation.display(db, display_target))
     }
 
     pub fn render_debug(&self, db: &'db dyn HirDatabase) -> Result<String, MirEvalError> {
-        let kind = self.const_.kind();
-        if let ConstKind::Value(c) = kind
-            && let ty = c.ty.kind()
-            && let TyKind::Int(_) | TyKind::Uint(_) = ty
-        {
-            let b = &c.value.inner().memory;
+        let ty = self.allocation.ty.kind();
+        if let TyKind::Int(_) | TyKind::Uint(_) = ty {
+            let b = &self.allocation.memory;
             let value = u128::from_le_bytes(mir::pad16(b, false));
             let value_signed = i128::from_le_bytes(mir::pad16(b, matches!(ty, TyKind::Int(_))));
             let mut result =
@@ -3166,7 +3163,7 @@ impl<'db> EvaluatedConst<'db> {
                 return Ok(result);
             }
         }
-        mir::render_const_using_debug_impl(db, self.def, self.const_, self.ty)
+        mir::render_const_using_debug_impl(db, self.def, self.allocation, self.ty)
     }
 }
 
@@ -3207,7 +3204,7 @@ impl Static {
     pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst<'_>, ConstEvalError> {
         let ty = db.value_ty(self.id.into()).unwrap().instantiate_identity();
         db.const_eval_static(self.id).map(|it| EvaluatedConst {
-            const_: it,
+            allocation: it,
             def: self.id.into(),
             ty,
         })

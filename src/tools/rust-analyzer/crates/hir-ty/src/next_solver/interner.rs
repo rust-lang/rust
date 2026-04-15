@@ -44,8 +44,9 @@ use crate::{
     next_solver::{
         AdtIdWrapper, AnyImplId, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
         Consts, CoroutineClosureIdWrapper, CoroutineIdWrapper, Ctor, FnSig, FxIndexMap,
-        GeneralConstIdWrapper, LateParamRegion, OpaqueTypeKey, RegionAssumptions, SimplifiedType,
-        SolverContext, SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper, UnevaluatedConst,
+        GeneralConstIdWrapper, LateParamRegion, OpaqueTypeKey, RegionAssumptions, ScalarInt,
+        SimplifiedType, SolverContext, SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper,
+        UnevaluatedConst,
         util::{explicit_item_bounds, explicit_item_self_bounds},
     },
 };
@@ -53,7 +54,7 @@ use crate::{
 use super::{
     Binder, BoundExistentialPredicates, BoundTy, BoundTyKind, Clause, ClauseKind, Clauses, Const,
     ErrorGuaranteed, ExprConst, ExternalConstraints, GenericArg, GenericArgs, ParamConst, ParamEnv,
-    ParamTy, PredefinedOpaques, Predicate, SolverDefId, Term, Ty, TyKind, Tys, Valtree, ValueConst,
+    ParamTy, PredefinedOpaques, Predicate, SolverDefId, Term, Ty, TyKind, Tys, ValTree, ValueConst,
     abi::Safety,
     fold::{BoundVarReplacer, BoundVarReplacerDelegate, FnMutDelegate},
     generics::{Generics, generics},
@@ -369,6 +370,11 @@ impl<'db> DbInterner<'db> {
     #[inline]
     pub fn default_types<'a>(&self) -> &'a crate::next_solver::DefaultAny<'db> {
         crate::next_solver::default_types(self.db)
+    }
+
+    #[inline]
+    pub(crate) fn expect_crate(&self) -> Crate {
+        self.krate.expect("should have a crate")
     }
 }
 
@@ -1056,9 +1062,9 @@ impl<'db> Interner for DbInterner<'db> {
     type Const = Const<'db>;
     type ParamConst = ParamConst;
     type ValueConst = ValueConst<'db>;
-    type ValTree = Valtree<'db>;
+    type ValTree = ValTree<'db>;
     type Consts = Consts<'db>;
-    type ScalarInt = ();
+    type ScalarInt = ScalarInt;
     type ExprConst = ExprConst;
 
     type Region = Region<'db>;
@@ -2416,6 +2422,7 @@ TrivialTypeTraversalImpls! {
     ParamTy,
     EarlyParamRegion,
     AdtDef,
+    ScalarInt,
 }
 
 mod tls_db {
@@ -2608,13 +2615,15 @@ pub unsafe fn collect_ty_garbage() {
     let mut gc = intern::GarbageCollector::default();
 
     gc.add_storage::<super::consts::ConstInterned>();
-    gc.add_storage::<super::consts::ValtreeInterned>();
+    gc.add_storage::<super::consts::ValTreeInterned>();
+    gc.add_storage::<super::allocation::AllocationInterned>();
     gc.add_storage::<PatternInterned>();
     gc.add_storage::<super::opaques::ExternalConstraintsInterned>();
     gc.add_storage::<super::predicate::PredicateInterned>();
     gc.add_storage::<super::region::RegionInterned>();
     gc.add_storage::<super::ty::TyInterned>();
 
+    gc.add_slice_storage::<super::consts::ConstsStorage>();
     gc.add_slice_storage::<super::predicate::ClausesStorage>();
     gc.add_slice_storage::<super::generic_arg::GenericArgsStorage>();
     gc.add_slice_storage::<BoundVarKindsStorage>();
@@ -2649,7 +2658,8 @@ macro_rules! impl_gc_visit {
 
 impl_gc_visit!(
     super::consts::ConstInterned,
-    super::consts::ValtreeInterned,
+    super::consts::ValTreeInterned,
+    super::allocation::AllocationInterned,
     PatternInterned,
     super::opaques::ExternalConstraintsInterned,
     super::predicate::PredicateInterned,
@@ -2688,4 +2698,5 @@ impl_gc_visit_slice!(
     super::predicate::BoundExistentialPredicatesStorage,
     super::region::RegionAssumptionsStorage,
     super::ty::TysStorage,
+    super::consts::ConstsStorage,
 );

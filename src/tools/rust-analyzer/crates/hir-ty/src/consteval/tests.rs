@@ -5,17 +5,16 @@ use rustc_apfloat::{
     Float,
     ieee::{Half as f16, Quad as f128},
 };
-use rustc_type_ir::inherent::IntoKind;
 use test_fixture::WithFixture;
 use test_utils::skip_slow_tests;
 
 use crate::{
     MemoryMap,
-    consteval::try_const_usize,
+    consteval::allocation_as_usize,
     db::HirDatabase,
     display::DisplayTarget,
     mir::pad16,
-    next_solver::{Const, ConstBytes, ConstKind, DbInterner, GenericArgs},
+    next_solver::{Allocation, DbInterner, GenericArgs},
     setup_tracing,
     test_db::TestDB,
 };
@@ -45,7 +44,11 @@ fn check_fail(
     crate::attach_db(&db, || match eval_goal(&db, file_id) {
         Ok(_) => panic!("Expected fail, but it succeeded"),
         Err(e) => {
-            assert!(error(simplify(e.clone())), "Actual error was: {}", pretty_print_err(e, &db))
+            assert!(
+                error(simplify(e.clone())),
+                "Actual error was: {}\n{e:?}",
+                pretty_print_err(e.clone(), &db)
+            )
         }
     })
 }
@@ -94,13 +97,7 @@ fn check_answer(
                 panic!("Error in evaluating goal: {err}");
             }
         };
-        match r.kind() {
-            ConstKind::Value(value) => {
-                let ConstBytes { memory, memory_map } = value.value.inner();
-                check(memory, memory_map);
-            }
-            _ => panic!("Expected number but found {r:?}"),
-        }
+        check(&r.memory, &r.memory_map);
     });
 }
 
@@ -121,7 +118,7 @@ fn pretty_print_err(e: ConstEvalError, db: &TestDB) -> String {
     err
 }
 
-fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const<'_>, ConstEvalError> {
+fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Allocation<'_>, ConstEvalError> {
     let _tracing = setup_tracing();
     let interner = DbInterner::new_no_crate(db);
     let module_id = db.module_for_file(file_id.file_id(db));
@@ -2524,7 +2521,7 @@ fn enums() {
     );
     crate::attach_db(&db, || {
         let r = eval_goal(&db, file_id).unwrap();
-        assert_eq!(try_const_usize(&db, r), Some(1));
+        assert_eq!(allocation_as_usize(r), 1);
     })
 }
 
@@ -2537,7 +2534,15 @@ fn const_loop() {
     const F2: i32 = 2 * F1;
     const GOAL: i32 = F3;
     "#,
-        |e| e == ConstEvalError::MirLowerError(MirLowerError::Loop),
+        |e| {
+            if let ConstEvalError::MirEvalError(MirEvalError::ConstEvalError(_, inner)) = e
+                && let ConstEvalError::MirLowerError(MirLowerError::Loop) = *inner
+            {
+                true
+            } else {
+                false
+            }
+        },
     );
 }
 
@@ -2940,6 +2945,14 @@ fn recursive_adt() {
             TAG_TREE
         };
     "#,
-        |e| matches!(e, ConstEvalError::MirLowerError(MirLowerError::Loop)),
+        |e| {
+            if let ConstEvalError::MirEvalError(MirEvalError::ConstEvalError(_, inner)) = e
+                && let ConstEvalError::MirLowerError(MirLowerError::Loop) = *inner
+            {
+                true
+            } else {
+                false
+            }
+        },
     );
 }
