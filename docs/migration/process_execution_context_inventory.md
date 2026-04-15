@@ -222,7 +222,7 @@ by extraction difficulty.
 - `docs/migration/authority_inventory.md` — credential/permission inventory (companion)
 - `docs/concepts/process-object.md` — Process / Thread struct design
 - `docs/concepts/namespaces.md` — namespace behaviour matrix and roadmap
-- `docs/concepts/janix-guardrails.md` — architecture guardrails for all kernel changes
+- `docs/concepts/thingos-guardrails.md` — architecture guardrails for all kernel changes
 - `kernel/src/task/mod.rs` — primary `Process` struct with inline migration annotations
 - `kernel/src/place/bridge.rs` — Phase 8 world-context bridge
 - `kernel/src/group/bridge.rs` — Phase 4 coordination bridge

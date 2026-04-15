@@ -237,7 +237,7 @@ current Unix-shaped state into a canonical `Group` vocabulary (Phase 4).
 - `docs/migration/process_responsibility_map.md` — canonical Process field decomposition
 - `docs/migration/authority_inventory.md` — credential/permission inventory
 - `docs/migration/boundary_audit.md` — bridge compliance audit
-- `docs/concepts/janix-guardrails.md` — architecture guardrails for all kernel changes
+- `docs/concepts/thingos-guardrails.md` — architecture guardrails for all kernel changes
 - `docs/concepts/process-object.md` — Process / Thread struct design
 - `docs/concepts/namespaces.md` — namespace behaviour matrix and roadmap
 - `kernel/src/task/mod.rs` — `ProcessUnixCompat` struct and quarantine commentary

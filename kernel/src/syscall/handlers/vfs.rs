@@ -1,7 +1,7 @@
 //! VFS syscall handlers: open, close, read, write, stat, readdir,
 //!                       unlink, mkdir, dup, dup2, pipe, poll.
 //!
-//! These handlers implement the janix VFS syscall interface:
+//! These handlers implement the thingos VFS syscall interface:
 //!
 //! - [`sys_fs_open`]   — open (or create) a path, return a file descriptor
 //! - [`sys_fs_close`]  — release a file descriptor (all fds, including 0-2)

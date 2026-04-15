@@ -1,11 +1,11 @@
-# janix Service Namespace Convention
+# thingos Service Namespace Convention
 
 > *"Services do not register themselves with a central authority. They mount
 > themselves into the namespace."* — Plan 9 inspiration
 
 ## Overview
 
-In janix, every service exposes its interface as a subtree in the VFS
+In thingos, every service exposes its interface as a subtree in the VFS
 namespace.  Clients discover services by opening well-known paths rather than
 querying a registry.
 

@@ -2,11 +2,11 @@
 //!
 //! # Conceptual mapping
 //!
-//! `Space` is the Janix replacement for the implicit address-space ownership
+//! `Space` is the ThingOS replacement for the implicit address-space ownership
 //! that currently lives inside the Unix `Process` concept.
 //! See `docs/architecture/space-object.md` for the full design document and
 //! `docs/migration/concept-mapping.md` §2 (Address Space → Space) for the
-//! canonical legacy→Janix mapping.
+//! canonical legacy→ThingOS mapping.
 //!
 //! # Schema (v1)
 //!

@@ -21,7 +21,7 @@ and **Group**.  Before writing or reviewing code that touches `kernel/`, `abi/`,
 `bran/`, `stem/`, or `userspace/`, consult:
 
 - [`docs/migration/concept-mapping.md`](docs/migration/concept-mapping.md) —
-  canonical mapping between legacy Unix concepts and Janix/ThingOS concepts,
+  canonical mapping between legacy Unix concepts and ThingOS/ThingOS concepts,
   including naming rules and migration guidance.
 - [`docs/migration/review-guidelines.md`](docs/migration/review-guidelines.md) —
   PR review checklist derived from the concept mapping.

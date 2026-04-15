@@ -153,7 +153,7 @@ self-contained issue that cites this document.
 - `docs/migration/process_execution_context_inventory.md` — focused inventory of Process-carried execution context (cwd, namespace, tty, session); maps each item to Place / Presence / Group / legacy; includes extraction seams for Phase 8+ Place/Presence work
 - `docs/concepts/process-object.md` — `Process` / `Thread<R>` struct design
 - `docs/concepts/process-lifecycle.md` — state machine, exec collapse, zombie semantics
-- `docs/concepts/janix-guardrails.md` — architecture guardrails for all kernel changes
+- `docs/concepts/thingos-guardrails.md` — architecture guardrails for all kernel changes
 - `kernel/src/task/mod.rs` — primary `Process` struct (inline migration annotations); `ProcessAddressSpace` subdivision
 - `kernel/src/job/bridge.rs` — Phase 3 lifecycle bridge
 - `kernel/src/group/bridge.rs` — Phase 4 coordination bridge

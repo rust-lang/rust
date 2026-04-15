@@ -1114,7 +1114,7 @@ pub unsafe fn boot_spawn_process_ex<R: BootRuntime>(
 /// General-purpose runtime process creation from a VFS path.
 ///
 /// This is the **standard runtime process creation path** that follows the
-/// Janix process model:
+/// ThingOS process model:
 ///
 /// 1. Open the executable from the VFS (e.g. `/usr/bin/ls`).
 /// 2. Build a new process object and initial thread.

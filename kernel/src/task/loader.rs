@@ -1024,7 +1024,7 @@ mod tests {
     #[test]
     fn test_extract_interp_path_nul_stripped() {
         // Ensure trailing NUL bytes are stripped from the returned path.
-        let interp = b"/lib/ld-janix.so";
+        let interp = b"/lib/ld-thingos.so";
         let bytes = build_elf64_with_interp(interp);
         let path = extract_interp_path(&bytes).expect("should extract");
         assert!(

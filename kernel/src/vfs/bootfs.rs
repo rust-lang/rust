@@ -15,7 +15,7 @@ use super::{VfsDriver, VfsNode, VfsStat};
 
 // ── Embedded file contents ────────────────────────────────────────────────────
 
-const VERSION_DATA: &[u8] = b"Thing-OS v0.1 (janix ACT IV)\n";
+const VERSION_DATA: &[u8] = b"Thing-OS v0.1 (thingos ACT IV)\n";
 const MOTD_DATA: &[u8] = b"Welcome to Thing-OS.\nBooting into path-based namespace...\n";
 
 // ── BootFs driver ─────────────────────────────────────────────────────────────

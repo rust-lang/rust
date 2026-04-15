@@ -2,7 +2,7 @@
 //!
 //! Discovers block devices in the system graph, probes them for ISO9660
 //! filesystems, and mounts the first one found as a userland VFS provider at
-//! `/mnt/iso` using the janix Act V VFS provider mechanism.
+//! `/mnt/iso` using the thingos Act V VFS provider mechanism.
 //!
 //! ## How it works
 //!

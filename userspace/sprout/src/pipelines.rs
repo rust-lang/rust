@@ -299,7 +299,7 @@ pub fn setup_display_pipeline(
     let mut driver_name: Option<&'static str> = None;
     let mut backend_name: &'static str = "unknown";
 
-    // Janix-style BootFB probe: if /dev/fb0 exists, trust that as the canonical display.
+    // ThingOS-style BootFB probe: if /dev/fb0 exists, trust that as the canonical display.
     if let Some((w, h, stride, format)) = probe_bootfb_vfs() {
         display_width = w;
         display_height = h;

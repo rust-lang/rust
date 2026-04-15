@@ -10,7 +10,7 @@ use crate::{BootRuntime, BootTasking};
 
 /// Core logic for in-place process image replacement.
 ///
-/// This implementation follows the Janix-style "fd-first" design:
+/// This implementation follows the ThingOS-style "fd-first" design:
 /// 1. Set exec-in-progress flag and collect sibling TIDs.
 /// 2. Kill all sibling user threads (they must not resume in the old image).
 /// 3. Read the executable from the given FD.

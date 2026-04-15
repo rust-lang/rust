@@ -1,7 +1,7 @@
-//! `ld_so` — Dynamic ELF loader for Janix.
+//! `ld_so` — Dynamic ELF loader for ThingOS.
 //!
 //! This binary serves as the runtime dynamic linker / loader (`ld.so` /
-//! `ld-linux.so` equivalent) for the Janix userspace.
+//! `ld-linux.so` equivalent) for the ThingOS userspace.
 //!
 //! ## When does this run?
 //!

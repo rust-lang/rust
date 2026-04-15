@@ -1,4 +1,4 @@
-//! `libdl` — Runtime dynamic loading API for Janix userspace.
+//! `libdl` — Runtime dynamic loading API for ThingOS userspace.
 //!
 //! Provides `dlopen`, `dlsym`, `dlclose`, and `dlerror` analogous to the
 //! POSIX `<dlfcn.h>` interface.

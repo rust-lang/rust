@@ -235,5 +235,5 @@ processes exit frequently.
 
 - `docs/concepts/process-object.md` — `Process` / `Thread<R>` struct design
 - `docs/concepts/scheduling.md` — scheduler state and preemption
-- `docs/concepts/janix-guardrails.md` — architecture guardrails
+- `docs/concepts/thingos-guardrails.md` — architecture guardrails
 - `abi/src/numbers.rs` — syscall numbers (`SYS_WAITPID`, `SYS_SPAWN_PROCESS`, …)

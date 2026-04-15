@@ -1,7 +1,7 @@
 //! Userspace VFS syscall wrappers.
 //!
 //! These are thin wrappers around the raw VFS syscalls introduced in the
-//! janix de-graphing migration (Act III – Birth of the VFS, Act IV – Kernel
+//! thingos de-graphing migration (Act III – Birth of the VFS, Act IV – Kernel
 //! Filesystems).
 
 use abi::errors::SysResult;

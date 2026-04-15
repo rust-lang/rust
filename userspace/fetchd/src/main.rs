@@ -324,7 +324,7 @@ fn pick_best_ip() -> (alloc::string::String, bool) {
 
 #[stem::main]
 fn main(_arg: usize) -> ! {
-    info!("FETCHD: publishing Janix session window");
+    info!("FETCHD: publishing ThingOS session window");
     ensure_session_objects();
 
     let buffer = create_buffer();

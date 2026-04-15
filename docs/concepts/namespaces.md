@@ -185,7 +185,7 @@ it returns `false`.
 * **This issue** — Clarify namespace semantics and roadmap
   (stub vs implemented isolation)
 * `docs/concepts/process-object.md` — Process / Thread ownership model
-* `docs/concepts/janix-guardrails.md` — Architectural guardrails (VFS-first,
+* `docs/concepts/thingos-guardrails.md` — Architectural guardrails (VFS-first,
   spawn+exec model)
 * `kernel/src/vfs/mod.rs` — `NamespaceRef` struct and global mount init
 * `kernel/src/vfs/mount.rs` — Global mount table implementation

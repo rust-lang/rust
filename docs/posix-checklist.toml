@@ -1,6 +1,6 @@
 version = 1
-project = "janix-posix-checklist"
-description = "Machine-checkable POSIX and Rust-hosting coverage tracker for Janix"
+project = "thingos-posix-checklist"
+description = "Machine-checkable POSIX and Rust-hosting coverage tracker for ThingOS"
 
 [meta]
 status_enum = ["missing", "partial", "present", "stub", "deferred", "n/a"]
@@ -97,7 +97,7 @@ owner = "kernel"
 rust_blocker = true
 cargo_blocker = true
 posix = "execve"
-notes = "Janix-native fd/handle-based task_exec preferred over path-first execve."
+notes = "ThingOS-native fd/handle-based task_exec preferred over path-first execve."
 
 [[features]]
 id = "proc.exec_wrappers"
@@ -109,7 +109,7 @@ owner = "libc"
 rust_blocker = false
 cargo_blocker = false
 posix = "execv/execve/execvp/fexecve"
-notes = "Layer path-based wrappers atop Janix-native task_exec(fd, ...)."
+notes = "Layer path-based wrappers atop ThingOS-native task_exec(fd, ...)."
 
 [[features]]
 id = "proc.close_on_exec"
@@ -145,7 +145,7 @@ owner = "kernel"
 rust_blocker = false
 cargo_blocker = false
 posix = "fork"
-notes = "Not required for Janix if spawn/task_exec model is strong."
+notes = "Not required for ThingOS if spawn/task_exec model is strong."
 
 [[features]]
 id = "proc.process_groups"
@@ -531,7 +531,7 @@ owner = "kernel"
 rust_blocker = false
 cargo_blocker = false
 posix = "signal/sigaction/kill"
-notes = "Can defer behind a Janix-native interruption model."
+notes = "Can defer behind a ThingOS-native interruption model."
 
 # ---- Terminal ----------------------------------------------------------------
 

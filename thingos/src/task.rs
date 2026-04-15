@@ -2,7 +2,7 @@
 //!
 //! # Conceptual mapping
 //!
-//! `Task` is the Janix replacement for the Unix `Thread` concept.
+//! `Task` is the ThingOS replacement for the Unix `Thread` concept.
 //! See `docs/migration/concept-mapping.md` §2 (Thread → Task) for the full
 //! mapping, naming rules, and migration guidance.
 //!
@@ -51,7 +51,7 @@
 //! ## Intentional ahead-of-implementation shape
 //!
 //! The canonical public `Task` shape is intentionally richer than what the
-//! internal janix substrate currently provides.  The `job` field references a
+//! internal thingos substrate currently provides.  The `job` field references a
 //! `thingos.job` kind whose authoritative Rust backing is still the transitional
 //! `Process` struct; `name` is sourced from the thread-level `[u8; 32]` store
 //! that exists today.  Both fields are optional so that the absence of a full

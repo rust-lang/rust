@@ -114,7 +114,7 @@ pub fn dispatch(n: usize, args: [usize; 6]) -> isize {
             Ok(0)
         }
 
-        // ── VFS (janix) ───────────────────────────────────────────────────
+        // ── VFS (thingos) ───────────────────────────────────────────────────
         SYS_FS_OPEN => handlers::vfs::sys_fs_open(args[0], args[1], args[2]),
         SYS_FS_CLOSE => handlers::vfs::sys_fs_close(args[0]),
         SYS_FS_READ => handlers::vfs::sys_fs_read(args[0], args[1], args[2]),

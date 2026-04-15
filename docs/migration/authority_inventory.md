@@ -436,4 +436,4 @@ Items marked as requiring follow-up investigation or design clarification:
 - `kernel/src/task/mod.rs` — primary `Process` and `Thread<R>` structs with inline migration annotations
 - `kernel/src/ipc/handles.rs` — handle table comment: "Per-process capability-gated port access" (aspirational; currently global)
 - `kernel/src/syscall/dispatch.rs` — complete syscall surface
-- `docs/concepts/janix-guardrails.md` — architecture guardrails for all kernel changes
+- `docs/concepts/thingos-guardrails.md` — architecture guardrails for all kernel changes

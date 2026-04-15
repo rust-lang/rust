@@ -1,6 +1,6 @@
-# Janix Architecture Guardrails
+# ThingOS Architecture Guardrails
 
-> **Non-negotiable design principles for the janix kernel and its userland.**
+> **Non-negotiable design principles for the thingos kernel and its userland.**
 > These rules exist to prevent architectural regressions during large refactors.
 > Every PR that touches `kernel/`, `abi/`, `bran/`, or `userspace/` must be
 > evaluated against this checklist.
@@ -119,7 +119,7 @@ filesystem subtree.
 ## 4. Spawn + Exec as the Process Model
 
 **Rule:** New processes are created with **`spawn` + `exec`**, not `fork`.
-There is no `SYS_FORK` in janix; this is intentional and permanent.
+There is no `SYS_FORK` in thingos; this is intentional and permanent.
 
 ### What this means in practice
 

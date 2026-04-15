@@ -1,4 +1,4 @@
-//! VFS (Virtual Filesystem) core for janix.
+//! VFS (Virtual Filesystem) core for thingos.
 //!
 //! Implements Act III of the de-graphing migration: a minimal path-based
 //! kernel VFS. Provides:
@@ -177,7 +177,7 @@ impl VfsStat {
     /// Encode a major/minor device number pair into a single `rdev` value.
     ///
     /// Uses the simplified Linux encoding: `(major << 8) | (minor & 0xFF)`.
-    /// Sufficient for the small set of built-in devices in janix.
+    /// Sufficient for the small set of built-in devices in thingos.
     #[inline]
     pub const fn makedev(major: u32, minor: u32) -> u64 {
         ((major as u64) << 8) | ((minor as u64) & 0xFF)

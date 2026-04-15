@@ -1,4 +1,4 @@
-# Concept Mapping: Legacy Unix → Janix/ThingOS
+# Concept Mapping: Legacy Unix → ThingOS/ThingOS
 
 > **Status**: Living reference — Phase 9 baseline.
 > This is the canonical lexicon for the Thing-OS conceptual migration.
@@ -8,14 +8,14 @@
 > - `docs/migration/review-guidelines.md` — PR review rules derived from this mapping
 > - `docs/migration/process_responsibility_map.md` — field-level decomposition of `Process`
 > - `docs/migration/bridge_architecture.md` — bridge layer design and conventions
-> - `docs/concepts/janix-guardrails.md` — architecture guardrails checklist
+> - `docs/concepts/thingos-guardrails.md` — architecture guardrails checklist
 
 ---
 
 ## Purpose
 
 This document is the **single source of truth** for conceptual translation between
-the legacy Unix/Linux model and the emerging Janix/ThingOS model.
+the legacy Unix/Linux model and the emerging ThingOS/ThingOS model.
 
 It exists to:
 
@@ -30,7 +30,7 @@ When in doubt about terminology, consult this document first.
 
 ## 1. Canonical Mapping Table
 
-| Legacy concept     | Janix concept              | Relationship         | Status       | Notes |
+| Legacy concept     | ThingOS concept              | Relationship         | Status       | Notes |
 |--------------------|----------------------------|----------------------|--------------|-------|
 | Thread             | Task                       | Equivalent (refined) | Stable       | Schedulable execution unit; `Thread` is the transitional kernel backing |
 | Process            | Job + Space + Authority + Place + Task(s) | Split | Transitional | No direct equivalent; decomposes into multiple first-class concepts |
@@ -54,7 +54,7 @@ When in doubt about terminology, consult this document first.
 | Type                  | Meaning |
 |-----------------------|---------|
 | **Equivalent**        | Same core semantics; renamed or made explicit |
-| **Equivalent (refined)** | Same concept; Janix version is more precise or composable |
+| **Equivalent (refined)** | Same concept; ThingOS version is more precise or composable |
 | **Split**             | One old concept becomes multiple new ones |
 | **Merged**            | Multiple old concepts unify into one |
 | **Eliminated**        | Concept removed entirely; use alternate mechanism |
@@ -74,7 +74,7 @@ When in doubt about terminology, consult this document first.
 - Identified by a `ThreadId` (tid)
 - State machine: Runnable → Running → Blocked → Exited
 
-**Janix Task:**
+**ThingOS Task:**
 - Schedulable execution unit
 - References a `Space` explicitly (rather than inheriting from an owning process)
 - May belong to a `Job` for grouping and lifecycle accounting
@@ -113,7 +113,7 @@ The public canonical surface is `thingos::task::Task`, produced by `kernel::task
 - Carries spawn-time context (argv, env, auxv)
 - Is the identity anchor for most kernel operations
 
-**Janix decomposition (target):**
+**ThingOS decomposition (target):**
 
 ```text
 Process (legacy)
@@ -154,7 +154,7 @@ Process (legacy)
 - Identified by the process's page table root (a hardware token)
 - No first-class kernel object; accessed via `Process.mappings`
 
-**Janix Space (target):**
+**ThingOS Space (target):**
 - First-class kernel object
 - Explicit owner of all virtual memory mappings
 - May be shared across multiple Tasks (shared-memory model)
@@ -182,7 +182,7 @@ Process (legacy)
 - May reference files, pipes, sockets, devices, etc.
 - Inherited across fork; closed-on-exec semantics
 
-**Janix Handle / FD (tentative):**
+**ThingOS Handle / FD (tentative):**
 - The FD integer representation is likely preserved at the POSIX compatibility surface
 - A first-class `Handle` concept may wrap the underlying resource reference
 - The handle table (today: `Process.fd_table`) becomes a first-class object
@@ -204,12 +204,12 @@ Process (legacy)
 
 **Legacy signal:**
 - Asynchronous notification delivered to a process or thread
-- Has three roles that Janix disaggregates:
+- Has three roles that ThingOS disaggregates:
   1. **Job control** (SIGSTOP, SIGCONT, SIGTTOU/SIGTTIN) → `Group`
   2. **Permission/disposition** (signal handlers, masks) → `Authority`
   3. **Inter-process notification** (kill, raise) → `Message`/Event system
 
-**Janix direction (unresolved):**
+**ThingOS direction (unresolved):**
 - Job-control signals: `Group` (coordination domain)
 - Signal dispositions and masks: `Authority` (permission context)
 - Software notifications (IPC signals): `Message` or Event system
@@ -235,7 +235,7 @@ Process (legacy)
 - Session (`sid`): collection of process groups sharing a controlling terminal
 - Session leader: first process in a session
 
-**Janix Group:**
+**ThingOS Group:**
 - Coordination domain for purposes of signal delivery and TTY job control
 - `GroupKind` distinguishes `Background` from `Foreground`
 - Session semantics are folded into `Group`; no separate `Session` concept
@@ -260,7 +260,7 @@ Process (legacy)
 - Doubles as thread-group leader ID (TGID) in Linux
 - Used for signal delivery, waitpid, /proc paths
 
-**Janix split (target):**
+**ThingOS split (target):**
 - **TaskId**: identity of a schedulable execution unit
 - **Job ID**: identity of a lifecycle container (currently backed by PID/TGID)
 
@@ -277,7 +277,7 @@ Process (legacy)
 **Legacy fork:**
 - Creates a copy-on-write clone of the calling process
 
-**Janix:**
+**ThingOS:**
 - `SYS_FORK` does not exist and will not be added
 - New processes are created with `SYS_SPAWN_PROCESS[_EX]` + `SYS_TASK_EXEC`
 - POSIX `posix_spawn` semantics are emulated at the userspace level
@@ -287,7 +287,7 @@ Process (legacy)
 **Migration guidance:**
 - Never add `SYS_FORK` or COW address-space duplication to the kernel
 - If porting Unix code that uses fork-exec, translate to spawn + exec
-- See `docs/concepts/janix-guardrails.md` §4 for full rationale
+- See `docs/concepts/thingos-guardrails.md` §4 for full rationale
 
 ---
 
@@ -436,7 +436,7 @@ stable mapping. Additions or resolutions should update this document.
 - `docs/migration/bridge_architecture.md` — bridge layer design and conventions
 - `docs/migration/authority_inventory.md` — credential/permission field inventory
 - `docs/migration/process_execution_context_inventory.md` — execution-context field inventory
-- `docs/concepts/janix-guardrails.md` — architecture guardrails (spawn+exec, VFS-first, etc.)
+- `docs/concepts/thingos-guardrails.md` — architecture guardrails (spawn+exec, VFS-first, etc.)
 - `docs/concepts/process-object.md` — `Process` / `Thread<R>` struct design
 - `docs/concepts/process-lifecycle.md` — state machine, exec, zombie semantics
 - `docs/ipc/inbox_vs_port_semantics.md` — IPC port/inbox design discussion

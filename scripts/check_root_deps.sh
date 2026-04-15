@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/check_root_deps.sh
 #
-# janix ACT I: Sever the Graph Spine — regression guard.
+# thingos ACT I: Sever the Graph Spine — regression guard.
 #
 # This script verifies that no new `crate::root` or `use crate::root`
 # dependencies are introduced outside the explicitly allowed set of files.
@@ -25,7 +25,7 @@ KERNEL_SRC="kernel/src"
 ALLOWED=(
     # Root service implementation — obviously allowed.
     "root/"
-    # Background graph-observer tasks (janix ACT I quarantined layer).
+    # Background graph-observer tasks (thingos ACT I quarantined layer).
     "task/graph.rs"
     "task/graph_queue.rs"
     "task/graphify.rs"

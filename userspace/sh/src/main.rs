@@ -833,7 +833,7 @@ fn write_str(s: &str) {
 #[stem::main]
 fn main(_arg: usize) -> ! {
     install_signal_handlers();
-    write_str("janix sh\n");
+    write_str("thingos sh\n");
 
     let mut shell = Shell::new();
 

@@ -1,0 +1,11 @@
+[package]
+name = "thingos_guardrail_tests"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+abi = { path = "../../abi" }
+
+[[test]]
+name = "thingos_guardrails"
+path = "../../tests/thingos_guardrails.rs"

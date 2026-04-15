@@ -2,7 +2,7 @@
 
 ## Conceptual Overview
 
-Janix exposes GUI objects as ordinary filesystem objects so Bloom can discover, inspect, and manage them through the same VFS model used everywhere else.
+ThingOS exposes GUI objects as ordinary filesystem objects so Bloom can discover, inspect, and manage them through the same VFS model used everywhere else.
 
 The design keeps the Wayland-friendly split intact:
 

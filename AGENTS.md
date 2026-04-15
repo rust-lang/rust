@@ -87,7 +87,7 @@ Four non-negotiable design rules govern all kernel and userspace changes:
 3. **VFS-first** — all system resources are reachable through mounted filesystem paths.
 4. **Spawn + exec** — new processes use `SYS_SPAWN_PROCESS[_EX]` + `SYS_TASK_EXEC`; there is no `SYS_FORK`.
 
-**See `docs/concepts/janix-guardrails.md` for the full reference and PR review checklist.**
+**See `docs/concepts/thingos-guardrails.md` for the full reference and PR review checklist.**
 
 ## Notes
 - Workspace members are listed in `Cargo.toml`.

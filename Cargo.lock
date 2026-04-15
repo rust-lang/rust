@@ -3153,13 +3153,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
 
 [[package]]
-name = "janix_guardrail_tests"
-version = "0.1.0"
-dependencies = [
- "abi",
-]
-
-[[package]]
 name = "jiff"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7568,6 +7561,13 @@ checksum = "144f754d318415ac792f9d69fc87abbbfc043ce2ef041c60f16ad828f638717d"
 [[package]]
 name = "thingos"
 version = "0.1.0"
+
+[[package]]
+name = "thingos_guardrail_tests"
+version = "0.1.0"
+dependencies = [
+ "abi",
+]
 
 [[package]]
 name = "thiserror"

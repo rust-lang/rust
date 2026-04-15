@@ -1,6 +1,6 @@
 //! vfs_hello — "Hello from VFS" milestone program.
 //!
-//! This program demonstrates Act III of the janix de-graphing migration:
+//! This program demonstrates Act III of the thingos de-graphing migration:
 //! the kernel VFS is alive when this program can:
 //!
 //! 1. `open("/dev/console")` via `SYS_FS_OPEN`
@@ -10,7 +10,7 @@
 //! A second pass verifies `/dev/null` and `/dev/zero` are also reachable.
 //!
 //! # North star
-//! You can debug janix with `cat` and `ls`.
+//! You can debug thingos with `cat` and `ls`.
 //! This program is the first step towards that world.
 #![no_std]
 #![no_main]

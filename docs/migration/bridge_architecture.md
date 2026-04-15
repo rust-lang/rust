@@ -212,5 +212,5 @@ When a new canonical concept is introduced (e.g. `Space`):
   credential/permission fields
 - `docs/migration/process_execution_context_inventory.md` — inventory of
   execution-context fields (cwd, namespace, tty, session)
-- `docs/concepts/janix-guardrails.md` — architecture guardrails for all kernel
+- `docs/concepts/thingos-guardrails.md` — architecture guardrails for all kernel
   changes

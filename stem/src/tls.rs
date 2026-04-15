@@ -57,7 +57,7 @@ pub struct TlsInfo {
 ///
 /// Returns `None` when the process has no PT_TLS segment (i.e. it was loaded
 /// from an ELF binary without thread-local storage, or the kernel did not emit
-/// the Janix TLS auxiliary entries).
+/// the ThingOS TLS auxiliary entries).
 pub fn read_tls_info() -> Option<TlsInfo> {
     // First call: discover required buffer size.
     let needed = crate::syscall::auxv_get(&mut []).ok()?;

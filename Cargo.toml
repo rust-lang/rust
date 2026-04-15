@@ -81,7 +81,7 @@ members = [
   "stem-macros",
   "tools/bdd",
   "tools/display_proto_tests",
-  "tools/janix_guardrail_tests",
+  "tools/thingos_guardrail_tests",
   "tools/pciids",
   "userspace/basename",
   "userspace/bloom",

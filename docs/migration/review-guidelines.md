@@ -155,5 +155,5 @@ concepts are considered stable vs. transitional.
 - `docs/migration/concept-mapping.md` — the canonical lexicon this checklist is derived from
 - `docs/migration/process_responsibility_map.md` — field-level decomposition and extraction sequencing
 - `docs/migration/bridge_architecture.md` — bridge layer design, conventions, and guardrails
-- `docs/concepts/janix-guardrails.md` — architecture guardrails (spawn+exec, VFS-first, etc.)
+- `docs/concepts/thingos-guardrails.md` — architecture guardrails (spawn+exec, VFS-first, etc.)
 - `.github/PULL_REQUEST_TEMPLATE.md` — machine-readable PR checklist (references this document)
