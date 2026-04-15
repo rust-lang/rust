@@ -1831,7 +1831,7 @@ mod prim_ref {}
 /// - `*const T`, `*mut T`, `&T`, `&mut T`, `Box<T>` (specifically, only `Box<T, Global>`), and
 ///   `NonNull<T>` are all ABI-compatible with each other for all `T`. They are also ABI-compatible
 ///   with each other for _different_ `T` if they have the same metadata type (`<T as
-///   Pointee>::Metadata`).
+///   Pointee>::Metadata`). However, see the [Control Flow Integrity] section below for caveats.
 /// - `usize` is ABI-compatible with the `uN` integer type of the same size, and likewise `isize` is
 ///   ABI-compatible with the `iN` integer type of the same size.
 /// - `char` is ABI-compatible with `u32`.
@@ -1889,6 +1889,33 @@ mod prim_ref {}
 /// `Option<NonZero<i32>>`, and the value used for the argument is `None`, then this call is Undefined
 /// Behavior since transmuting `None::<NonZero<i32>>` to `NonZero<i32>` violates the non-zero
 /// requirement.
+///
+/// #### Control Flow Integrity
+/// [Control Flow Integrity]: #control-flow-integrity
+///
+/// There are some caveats to the above ABI-compatibility rules due to how the [CFI (control flow
+/// integrity)][cfi-docs] sanitizer is implemented. CFI is a tool that can be used to validate
+/// that dynamic function calls respect the ABI, but due to its C/C++ origins, it disagrees with the
+/// above documented guarantees in the following manner:
+///
+/// When running the CFI sanitizer, pointer types are only ABI-compatible if the target type and
+/// mutability is the same. This means that `*mut String` and `*mut i32` are incompatible when using
+/// CFI. It also means that `*mut i32` is incompatible with `*const i32`. The `NonNull<_>` pointer
+/// type is considered immutable.
+///
+/// Furthermore, CFI will also compare the *name* of aggregate types. This means that even if two
+/// `#[repr(C)]` structs have the same fields in the same order, CFI does not consider them to be
+/// ABI-compatible unless they have the same name.
+///
+/// When not using the `-Zsanitizer-cfi-normalize-integers` flag, the CFI sanitizer further
+/// restricts the rules by considering `usize` incompatible with the `uN` integer type of the same
+/// size, and similarly for `isize`.
+///
+/// As sanitizers are unstable, these rules may change in the future. This section only documents
+/// cases where CFI disagrees with the usual Rust ABI-compatibility rules, and is not meant to be a
+/// complete explanation of how CFI works.
+///
+/// [cfi-docs]: https://doc.rust-lang.org/beta/unstable-book/compiler-flags/sanitizer.html#controlflowintegrity
 ///
 /// ### Trait implementations
 ///
