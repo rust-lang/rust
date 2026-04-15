@@ -609,9 +609,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     self.consume_expr(expr);
                 }
             }
-            Expr::Async { statements, tail, .. }
-            | Expr::Unsafe { statements, tail, .. }
-            | Expr::Block { statements, tail, .. } => {
+            Expr::Unsafe { statements, tail, .. } | Expr::Block { statements, tail, .. } => {
                 for s in statements.iter() {
                     match s {
                         Statement::Let { pat, type_ref: _, initializer, else_branch } => {
@@ -755,7 +753,7 @@ impl<'db> InferenceContext<'_, 'db> {
             Expr::Closure { .. } => {
                 let ty = self.expr_ty(tgt_expr);
                 let TyKind::Closure(id, _) = ty.kind() else {
-                    never!("closure type is always closure");
+                    // A coroutine or a coroutine closure.
                     return;
                 };
                 let (captures, _) =
@@ -876,7 +874,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
     fn is_upvar(&self, place: &HirPlace) -> bool {
         if let Some(c) = self.current_closure {
-            let InternedClosure(_, root) = self.db.lookup_intern_closure(c);
+            let InternedClosure(_, root) = c.loc(self.db);
             return self.store.is_binding_upvar(place.local, root);
         }
         false
@@ -1139,7 +1137,7 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 
     fn analyze_closure(&mut self, closure: InternedClosureId) -> FnTrait {
-        let InternedClosure(_, root) = self.db.lookup_intern_closure(closure);
+        let InternedClosure(_, root) = closure.loc(self.db);
         self.current_closure = Some(closure);
         let Expr::Closure { body, capture_by, .. } = &self.store[root] else {
             unreachable!("Closure expression id is always closure");

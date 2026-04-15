@@ -46,8 +46,9 @@ use crate::{
     },
     hir::{
         Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy, ClosureKind,
-        Expr, ExprId, Item, Label, LabelId, Literal, MatchArm, Movability, OffsetOf, Pat, PatId,
-        RecordFieldPat, RecordLitField, RecordSpread, Statement, generics::GenericParams,
+        CoroutineSource, Expr, ExprId, Item, Label, LabelId, Literal, MatchArm, Movability,
+        OffsetOf, Pat, PatId, RecordFieldPat, RecordLitField, RecordSpread, Statement,
+        generics::GenericParams,
     },
     item_scope::BuiltinShadowMode,
     item_tree::FieldsShape,
@@ -978,11 +979,33 @@ impl<'db> ExprCollector<'db> {
             *param = pat_id;
         }
 
-        self.alloc_expr_desugared(Expr::Async {
-            id: None,
-            statements: statements.into_boxed_slice(),
-            tail: Some(body),
-        })
+        let async_ = self.async_block(
+            CoroutineSource::Fn,
+            CaptureBy::Value,
+            None,
+            statements.into_boxed_slice(),
+            Some(body),
+        );
+        self.alloc_expr_desugared(async_)
+    }
+
+    fn async_block(
+        &mut self,
+        source: CoroutineSource,
+        capture_by: CaptureBy,
+        id: Option<BlockId>,
+        statements: Box<[Statement]>,
+        tail: Option<ExprId>,
+    ) -> Expr {
+        let block = self.alloc_expr_desugared(Expr::Block { label: None, id, statements, tail });
+        Expr::Closure {
+            args: Box::default(),
+            arg_types: Box::default(),
+            ret_type: None,
+            body: block,
+            closure_kind: ClosureKind::AsyncBlock { source },
+            capture_by,
+        }
     }
 
     fn collect(
@@ -1126,7 +1149,7 @@ impl<'db> ExprCollector<'db> {
                     self.desugar_try_block(e, result_type)
                 }
                 Some(ast::BlockModifier::Unsafe(_)) => {
-                    self.collect_block_(e, |id, statements, tail| Expr::Unsafe {
+                    self.collect_block_(e, |_, id, statements, tail| Expr::Unsafe {
                         id,
                         statements,
                         tail,
@@ -1136,7 +1159,7 @@ impl<'db> ExprCollector<'db> {
                     let label_hygiene = self.hygiene_id_for(label.syntax().text_range());
                     let label_id = self.collect_label(label);
                     self.with_labeled_rib(label_id, label_hygiene, |this| {
-                        this.collect_block_(e, |id, statements, tail| Expr::Block {
+                        this.collect_block_(e, |_, id, statements, tail| Expr::Block {
                             id,
                             statements,
                             tail,
@@ -1145,12 +1168,18 @@ impl<'db> ExprCollector<'db> {
                     })
                 }
                 Some(ast::BlockModifier::Async(_)) => {
+                    let capture_by =
+                        if e.move_token().is_some() { CaptureBy::Value } else { CaptureBy::Ref };
                     self.with_label_rib(RibKind::Closure, |this| {
                         this.with_awaitable_block(Awaitable::Yes, |this| {
-                            this.collect_block_(e, |id, statements, tail| Expr::Async {
-                                id,
-                                statements,
-                                tail,
+                            this.collect_block_(e, |this, id, statements, tail| {
+                                this.async_block(
+                                    CoroutineSource::Block,
+                                    capture_by,
+                                    id,
+                                    statements,
+                                    tail,
+                                )
                             })
                         })
                     })
@@ -1406,7 +1435,7 @@ impl<'db> ExprCollector<'db> {
                     } else {
                         Awaitable::No("non-async closure")
                     };
-                    let body = this
+                    let mut body = this
                         .with_awaitable_block(awaitable, |this| this.collect_expr_opt(e.body()));
 
                     let closure_kind = if this.is_lowering_coroutine {
@@ -1417,7 +1446,22 @@ impl<'db> ExprCollector<'db> {
                         };
                         ClosureKind::Coroutine(movability)
                     } else if e.async_token().is_some() {
-                        ClosureKind::Async
+                        // It's important that this expr is allocated immediately before the closure.
+                        // We rely on it for `coroutine_for_closure()`.
+                        body = this.alloc_expr_desugared(Expr::Closure {
+                            args: Box::default(),
+                            arg_types: Box::default(),
+                            ret_type: None,
+                            body,
+                            closure_kind: ClosureKind::AsyncBlock {
+                                source: CoroutineSource::Closure,
+                            },
+                            // The block may need to capture by move, but we cannot know it now.
+                            // It will be fixed in capture analysis.
+                            capture_by: CaptureBy::Ref,
+                        });
+
+                        ClosureKind::AsyncClosure
                     } else {
                         ClosureKind::Closure
                     };
@@ -1762,7 +1806,7 @@ impl<'db> ExprCollector<'db> {
         let ptr = AstPtr::new(&e).upcast();
         let (btail, expr_id) = self.with_labeled_rib(label, HygieneId::ROOT, |this| {
             let mut btail = None;
-            let block = this.collect_block_(e, |id, statements, tail| {
+            let block = this.collect_block_(e, |_, id, statements, tail| {
                 btail = tail;
                 Expr::Block { id, statements, tail, label: Some(label) }
             });
@@ -2220,7 +2264,7 @@ impl<'db> ExprCollector<'db> {
     }
 
     fn collect_block(&mut self, block: ast::BlockExpr) -> ExprId {
-        self.collect_block_(block, |id, statements, tail| Expr::Block {
+        self.collect_block_(block, |_, id, statements, tail| Expr::Block {
             id,
             statements,
             tail,
@@ -2231,7 +2275,7 @@ impl<'db> ExprCollector<'db> {
     fn collect_block_(
         &mut self,
         block: ast::BlockExpr,
-        mk_block: impl FnOnce(Option<BlockId>, Box<[Statement]>, Option<ExprId>) -> Expr,
+        mk_block: impl FnOnce(&mut Self, Option<BlockId>, Box<[Statement]>, Option<ExprId>) -> Expr,
     ) -> ExprId {
         let block_id = self.expander.ast_id_map().ast_id_for_block(&block).map(|file_local_id| {
             let ast_id = self.expander.in_file(file_local_id);
@@ -2266,8 +2310,8 @@ impl<'db> ExprCollector<'db> {
         });
 
         let syntax_node_ptr = AstPtr::new(&block.into());
-        let expr_id = self
-            .alloc_expr(mk_block(block_id, statements.into_boxed_slice(), tail), syntax_node_ptr);
+        let expr = mk_block(self, block_id, statements.into_boxed_slice(), tail);
+        let expr_id = self.alloc_expr(expr, syntax_node_ptr);
 
         self.def_map = prev_def_map;
         self.module = prev_local_module;

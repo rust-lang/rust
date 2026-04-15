@@ -332,7 +332,7 @@ pub fn layout_of_ty_query(
             Layout::scalar(dl, ptr)
         }
         TyKind::Closure(id, args) => {
-            let def = db.lookup_intern_closure(id.0);
+            let def = id.0.loc(db);
             let infer = InferenceResult::of(db, def.0);
             let (captures, _) = infer.closure_info(id.0);
             let fields = captures

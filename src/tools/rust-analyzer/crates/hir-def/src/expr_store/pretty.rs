@@ -9,6 +9,7 @@ use std::{
 use hir_expand::{Lookup, mod_path::PathKind};
 use itertools::Itertools;
 use span::Edition;
+use stdx::never;
 use syntax::ast::{HasName, RangeOp};
 
 use crate::{
@@ -760,14 +761,31 @@ impl Printer<'_> {
                 w!(self, "]");
             }
             Expr::Closure { args, arg_types, ret_type, body, closure_kind, capture_by } => {
+                let mut body = *body;
+                let mut print_pipes = true;
                 match closure_kind {
                     ClosureKind::Coroutine(Movability::Static) => {
                         w!(self, "static ");
                     }
-                    ClosureKind::Async => {
+                    ClosureKind::AsyncClosure => {
+                        if let Expr::Closure {
+                            body: inner_body,
+                            closure_kind: ClosureKind::AsyncBlock { .. },
+                            ..
+                        } = self.store[body]
+                        {
+                            body = inner_body;
+                        } else {
+                            never!("async closure should always have an async block body");
+                        }
+
                         w!(self, "async ");
                     }
-                    _ => (),
+                    ClosureKind::AsyncBlock { .. } => {
+                        w!(self, "async ");
+                        print_pipes = false;
+                    }
+                    ClosureKind::Closure | ClosureKind::Coroutine(Movability::Movable) => (),
                 }
                 match capture_by {
                     CaptureBy::Value => {
@@ -775,24 +793,26 @@ impl Printer<'_> {
                     }
                     CaptureBy::Ref => (),
                 }
-                w!(self, "|");
-                for (i, (pat, ty)) in args.iter().zip(arg_types.iter()).enumerate() {
-                    if i != 0 {
-                        w!(self, ", ");
+                if print_pipes {
+                    w!(self, "|");
+                    for (i, (pat, ty)) in args.iter().zip(arg_types.iter()).enumerate() {
+                        if i != 0 {
+                            w!(self, ", ");
+                        }
+                        self.print_pat(*pat);
+                        if let Some(ty) = ty {
+                            w!(self, ": ");
+                            self.print_type_ref(*ty);
+                        }
                     }
-                    self.print_pat(*pat);
-                    if let Some(ty) = ty {
-                        w!(self, ": ");
-                        self.print_type_ref(*ty);
+                    w!(self, "|");
+                    if let Some(ret_ty) = ret_type {
+                        w!(self, " -> ");
+                        self.print_type_ref(*ret_ty);
                     }
+                    self.whitespace();
                 }
-                w!(self, "|");
-                if let Some(ret_ty) = ret_type {
-                    w!(self, " -> ");
-                    self.print_type_ref(*ret_ty);
-                }
-                self.whitespace();
-                self.print_expr(*body);
+                self.print_expr(body);
             }
             Expr::Tuple { exprs } => {
                 w!(self, "(");
@@ -831,9 +851,6 @@ impl Printer<'_> {
             }
             Expr::Unsafe { id: _, statements, tail } => {
                 self.print_block(Some("unsafe "), statements, tail);
-            }
-            Expr::Async { id: _, statements, tail } => {
-                self.print_block(Some("async "), statements, tail);
             }
             Expr::Const(id) => {
                 w!(self, "const {{ /* {id:?} */ }}");

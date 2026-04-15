@@ -38,14 +38,14 @@ use rustc_type_ir::{
 
 use crate::{
     FnAbi,
-    db::{HirDatabase, InternedCoroutine, InternedCoroutineId},
+    db::{HirDatabase, InternedClosure, InternedCoroutineId},
     lower::GenericPredicates,
     method_resolution::TraitImpls,
     next_solver::{
         AdtIdWrapper, AnyImplId, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
-        CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, GeneralConstIdWrapper, OpaqueTypeKey,
-        RegionAssumptions, SimplifiedType, SolverContext, SolverDefIds, TraitIdWrapper,
-        TypeAliasIdWrapper, UnevaluatedConst,
+        CoroutineClosureIdWrapper, CoroutineIdWrapper, Ctor, FnSig, FxIndexMap,
+        GeneralConstIdWrapper, OpaqueTypeKey, RegionAssumptions, SimplifiedType, SolverContext,
+        SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper, UnevaluatedConst,
         util::{explicit_item_bounds, explicit_item_self_bounds},
     },
 };
@@ -1022,7 +1022,7 @@ impl<'db> Interner for DbInterner<'db> {
     type ForeignId = TypeAliasIdWrapper;
     type FunctionId = CallableIdWrapper;
     type ClosureId = ClosureIdWrapper;
-    type CoroutineClosureId = CoroutineIdWrapper;
+    type CoroutineClosureId = CoroutineClosureIdWrapper;
     type CoroutineId = CoroutineIdWrapper;
     type AdtId = AdtIdWrapper;
     type ImplId = AnyImplId;
@@ -1198,6 +1198,7 @@ impl<'db> Interner for DbInterner<'db> {
             | SolverDefId::BuiltinDeriveImplId(_)
             | SolverDefId::InternedClosureId(_)
             | SolverDefId::InternedCoroutineId(_)
+            | SolverDefId::InternedCoroutineClosureId(_)
             | SolverDefId::AnonConstId(_) => {
                 return VariancesOf::empty(self);
             }
@@ -1315,10 +1316,13 @@ impl<'db> Interner for DbInterner<'db> {
             SolverDefId::TypeAliasId(it) => it.lookup(self.db()).container,
             SolverDefId::ConstId(it) => it.lookup(self.db()).container,
             SolverDefId::InternedClosureId(it) => {
-                return self.db().lookup_intern_closure(it).0.generic_def(self.db()).into();
+                return it.loc(self.db).0.generic_def(self.db()).into();
             }
             SolverDefId::InternedCoroutineId(it) => {
-                return self.db().lookup_intern_coroutine(it).0.generic_def(self.db()).into();
+                return it.loc(self.db).0.generic_def(self.db()).into();
+            }
+            SolverDefId::InternedCoroutineClosureId(it) => {
+                return it.loc(self.db).0.generic_def(self.db()).into();
             }
             SolverDefId::StaticId(_)
             | SolverDefId::AdtId(_)
@@ -1356,7 +1360,7 @@ impl<'db> Interner for DbInterner<'db> {
     fn coroutine_movability(self, def_id: Self::CoroutineId) -> rustc_ast_ir::Movability {
         // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
         // the current infer query, except with revealed opaques - is it rare enough to not matter?
-        let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
+        let InternedClosure(owner, expr_id) = def_id.0.loc(self.db);
         let store = ExpressionStore::of(self.db, owner);
         let expr = &store[expr_id];
         match *expr {
@@ -1365,16 +1369,17 @@ impl<'db> Interner for DbInterner<'db> {
                     hir_def::hir::Movability::Static => rustc_ast_ir::Movability::Static,
                     hir_def::hir::Movability::Movable => rustc_ast_ir::Movability::Movable,
                 },
-                hir_def::hir::ClosureKind::Async => rustc_ast_ir::Movability::Static,
+                hir_def::hir::ClosureKind::AsyncBlock { .. } => rustc_ast_ir::Movability::Static,
                 _ => panic!("unexpected expression for a coroutine: {expr:?}"),
             },
-            hir_def::hir::Expr::Async { .. } => rustc_ast_ir::Movability::Static,
             _ => panic!("unexpected expression for a coroutine: {expr:?}"),
         }
     }
 
     fn coroutine_for_closure(self, def_id: Self::CoroutineClosureId) -> Self::CoroutineId {
-        def_id
+        let InternedClosure(owner, coroutine_closure_expr) = def_id.0.loc(self.db);
+        let coroutine_expr = ExpressionStore::coroutine_for_closure(coroutine_closure_expr);
+        InternedCoroutineId::new(self.db, InternedClosure(owner, coroutine_expr)).into()
     }
 
     fn generics_require_sized_self(self, def_id: Self::DefId) -> bool {
@@ -1763,6 +1768,7 @@ impl<'db> Interner for DbInterner<'db> {
                     | SolverDefId::StaticId(_)
                     | SolverDefId::InternedClosureId(_)
                     | SolverDefId::InternedCoroutineId(_)
+                    | SolverDefId::InternedCoroutineClosureId(_)
                     | SolverDefId::InternedOpaqueTyId(_)
                     | SolverDefId::EnumVariantId(_)
                     | SolverDefId::AnonConstId(_)
@@ -1976,7 +1982,7 @@ impl<'db> Interner for DbInterner<'db> {
     fn is_general_coroutine(self, def_id: Self::CoroutineId) -> bool {
         // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
         // the current infer query, except with revealed opaques - is it rare enough to not matter?
-        let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
+        let InternedClosure(owner, expr_id) = def_id.0.loc(self.db);
         let store = ExpressionStore::of(self.db, owner);
         matches!(
             store[expr_id],
@@ -1990,12 +1996,14 @@ impl<'db> Interner for DbInterner<'db> {
     fn coroutine_is_async(self, def_id: Self::CoroutineId) -> bool {
         // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
         // the current infer query, except with revealed opaques - is it rare enough to not matter?
-        let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
+        let InternedClosure(owner, expr_id) = def_id.0.loc(self.db);
         let store = ExpressionStore::of(self.db, owner);
         matches!(
             store[expr_id],
-            hir_def::hir::Expr::Closure { closure_kind: hir_def::hir::ClosureKind::Async, .. }
-                | hir_def::hir::Expr::Async { .. }
+            hir_def::hir::Expr::Closure {
+                closure_kind: hir_def::hir::ClosureKind::AsyncBlock { .. },
+                ..
+            }
         )
     }
 
@@ -2118,16 +2126,15 @@ impl<'db> Interner for DbInterner<'db> {
         body.exprs().for_each(|(expr_id, expr)| {
             if matches!(
                 expr,
-                hir_def::hir::Expr::Async { .. }
-                    | hir_def::hir::Expr::Closure {
-                        closure_kind: hir_def::hir::ClosureKind::Async
-                            | hir_def::hir::ClosureKind::Coroutine(_),
-                        ..
-                    }
+                hir_def::hir::Expr::Closure {
+                    closure_kind: hir_def::hir::ClosureKind::AsyncBlock { .. }
+                        | hir_def::hir::ClosureKind::Coroutine(_),
+                    ..
+                }
             ) {
                 let coroutine = InternedCoroutineId::new(
                     self.db,
-                    InternedCoroutine(ExpressionStoreOwnerId::Body(def_id), expr_id),
+                    InternedClosure(ExpressionStoreOwnerId::Body(def_id), expr_id),
                 );
                 result.push(coroutine.into());
             }
@@ -2414,6 +2421,7 @@ TrivialTypeTraversalImpls! {
     CallableIdWrapper,
     ClosureIdWrapper,
     CoroutineIdWrapper,
+    CoroutineClosureIdWrapper,
     AdtIdWrapper,
     AnyImplId,
     GeneralConstIdWrapper,

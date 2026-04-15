@@ -214,11 +214,6 @@ pub enum Expr {
         tail: Option<ExprId>,
         label: Option<LabelId>,
     },
-    Async {
-        id: Option<BlockId>,
-        statements: Box<[Statement]>,
-        tail: Option<ExprId>,
-    },
     Const(ExprId),
     // FIXME: Fold this into Block with an unsafe flag?
     Unsafe {
@@ -339,7 +334,6 @@ impl Expr {
             | Expr::Block { .. }
             | Expr::Unsafe { .. }
             | Expr::Const(_)
-            | Expr::Async { .. }
             | Expr::If { .. }
             | Expr::Literal(_)
             | Expr::Loop { .. }
@@ -534,7 +528,25 @@ pub enum InlineAsmRegOrRegClass {
 pub enum ClosureKind {
     Closure,
     Coroutine(Movability),
-    Async,
+    AsyncBlock { source: CoroutineSource },
+    AsyncClosure,
+}
+
+/// In the case of a coroutine created as part of an async/gen construct,
+/// which kind of async/gen construct caused it to be created?
+///
+/// This helps error messages but is also used to drive coercions in
+/// type-checking (see #60424).
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Copy)]
+pub enum CoroutineSource {
+    /// An explicit `async`/`gen` block written by the user.
+    Block,
+
+    /// An explicit `async`/`gen` closure written by the user.
+    Closure,
+
+    /// The `async`/`gen` block generated as the body of an async/gen function.
+    Fn,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

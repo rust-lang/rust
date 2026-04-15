@@ -39,8 +39,7 @@ use rustc_apfloat::{
 use rustc_ast_ir::FloatTy;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
-    AliasTyKind, BoundVarIndexKind, CoroutineArgsParts, CoroutineClosureArgsParts, RegionKind,
-    Upcast,
+    AliasTyKind, BoundVarIndexKind, CoroutineArgsParts, RegionKind, Upcast,
     inherent::{AdtDef, GenericArgs as _, IntoKind, Term as _, Ty as _, Tys as _},
 };
 use smallvec::SmallVec;
@@ -49,7 +48,7 @@ use stdx::never;
 
 use crate::{
     CallableDefId, FnAbi, ImplTraitId, InferenceResult, MemoryMap, ParamEnvAndCrate, consteval,
-    db::{HirDatabase, InternedClosure, InternedCoroutine},
+    db::{HirDatabase, InternedClosure},
     generics::generics,
     layout::Layout,
     lower::GenericPredicates,
@@ -1349,7 +1348,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 }
                 let sig = interner.signature_unclosure(substs.as_closure().sig(), Safety::Safe);
                 let sig = sig.skip_binder();
-                let InternedClosure(owner, _) = db.lookup_intern_closure(id);
+                let InternedClosure(owner, _) = id.loc(db);
                 let infer = InferenceResult::of(db, owner);
                 let (_, kind) = infer.closure_info(id);
                 match f.closure_style {
@@ -1403,26 +1402,16 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                     }
                     _ => (),
                 }
-                let CoroutineClosureArgsParts { closure_kind_ty, signature_parts_ty, .. } =
-                    args.split_coroutine_closure_args();
-                let kind = closure_kind_ty.to_opt_closure_kind().unwrap();
+                let kind = args.as_coroutine_closure().kind();
                 let kind = match kind {
                     rustc_type_ir::ClosureKind::Fn => "AsyncFn",
                     rustc_type_ir::ClosureKind::FnMut => "AsyncFnMut",
                     rustc_type_ir::ClosureKind::FnOnce => "AsyncFnOnce",
                 };
-                let TyKind::FnPtr(coroutine_sig, _) = signature_parts_ty.kind() else {
-                    unreachable!("invalid coroutine closure signature");
-                };
+                let coroutine_sig = args.as_coroutine_closure().coroutine_closure_sig();
                 let coroutine_sig = coroutine_sig.skip_binder();
-                let coroutine_inputs = coroutine_sig.inputs();
-                let TyKind::Tuple(coroutine_inputs) = coroutine_inputs[1].kind() else {
-                    unreachable!("invalid coroutine closure signature");
-                };
-                let TyKind::Tuple(coroutine_output) = coroutine_sig.output().kind() else {
-                    unreachable!("invalid coroutine closure signature");
-                };
-                let coroutine_output = coroutine_output.as_slice()[1];
+                let coroutine_inputs = coroutine_sig.tupled_inputs_ty.tuple_fields();
+                let coroutine_output = coroutine_sig.return_ty;
                 match f.closure_style {
                     ClosureStyle::ImplFn => write!(f, "impl {kind}(")?,
                     ClosureStyle::RANotation => write!(f, "async |")?,
@@ -1536,17 +1525,16 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
             }
             TyKind::Infer(..) => write!(f, "_")?,
             TyKind::Coroutine(coroutine_id, subst) => {
-                let InternedCoroutine(owner, expr_id) = coroutine_id.0.loc(db);
+                let InternedClosure(owner, expr_id) = coroutine_id.0.loc(db);
                 let CoroutineArgsParts { resume_ty, yield_ty, return_ty, .. } =
                     subst.split_coroutine_args();
                 let body = ExpressionStore::of(db, owner);
                 let expr = &body[expr_id];
                 match expr {
                     hir_def::hir::Expr::Closure {
-                        closure_kind: hir_def::hir::ClosureKind::Async,
+                        closure_kind: hir_def::hir::ClosureKind::AsyncBlock { .. },
                         ..
-                    }
-                    | hir_def::hir::Expr::Async { .. } => {
+                    } => {
                         let future_trait = f.lang_items().Future;
                         let output = future_trait.and_then(|t| {
                             t.trait_items(db)
