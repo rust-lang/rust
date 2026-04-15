@@ -115,12 +115,17 @@ fn check_transmute<'tcx>(
             && let SizeSkeleton::Known(size_to, _) = sk_to
             && size_to == Pointer(tcx.data_layout.instruction_address_space).size(&tcx)
         {
-            struct_span_code_err!(tcx.sess.dcx(), span(), E0591, "can't transmute zero-sized type")
-                .with_note(format!("source type: {from}"))
-                .with_note(format!("target type: {to}"))
-                .with_help("cast with `as` to a pointer instead")
-                .emit();
-            return Ok(());
+            let err = struct_span_code_err!(
+                tcx.sess.dcx(),
+                span(),
+                E0591,
+                "can't transmute zero-sized type"
+            )
+            .with_note(format!("source type: {from}"))
+            .with_note(format!("target type: {to}"))
+            .with_help("cast with `as` to a pointer instead")
+            .emit();
+            return Err(err);
         }
     }
 
@@ -150,7 +155,7 @@ pub(crate) fn check_transmutes(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<(),
     let typing_env = ty::TypingEnv::post_analysis(tcx, owner);
     let mut result = Ok(());
     for &(from, to, hir_id) in &typeck_results.transmutes_to_check {
-        result = check_transmute(tcx, typing_env, from, to, hir_id);
+        result = result.and(check_transmute(tcx, typing_env, from, to, hir_id));
     }
     result
 }
