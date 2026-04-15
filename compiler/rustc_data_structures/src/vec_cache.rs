@@ -206,6 +206,24 @@ impl SlotIndex {
 
         index_and_lock.store(extra.checked_add(2).unwrap(), Ordering::Release);
     }
+
+    #[inline]
+    unsafe fn remove<V>(&self, buckets: &[AtomicPtr<Slot<V>>; 21]) {
+        let bucket = &buckets[self.bucket_idx];
+        let ptr = self.bucket_ptr(bucket);
+
+        debug_assert!(self.index_in_bucket < self.bucket_idx.capacity());
+
+        // SAFETY: `bucket` was allocated (so <= isize in total bytes) to hold `entries`, so this
+        // must be inbounds.
+        let slot = unsafe { ptr.add(self.index_in_bucket) };
+
+        // SAFETY: initialized bucket has zeroed all memory within the bucket, so we are valid for
+        // AtomicU32 access.
+        let index_and_lock = unsafe { &(*slot).index_and_lock };
+
+        index_and_lock.store(0, Ordering::Release);
+    }
 }
 
 /// In-memory cache for queries whose keys are densely-numbered IDs
@@ -338,6 +356,39 @@ where
 
     pub fn len(&self) -> usize {
         self.len.load(Ordering::Acquire)
+    }
+
+    pub fn remove(&self, key: &K) {
+        let key = u32::try_from(key.index()).unwrap();
+        let slot_idx = SlotIndex::from_index(key);
+
+        unsafe { slot_idx.remove(&self.buckets) };
+    }
+
+    pub fn invalidate(&self, selector: impl Fn(K) -> bool) {
+        let mut to_remove = vec![];
+        let mut remaining = vec![];
+
+        self.for_each(&mut |key, _, _| {
+            if selector(*key) {
+                to_remove.push(*key);
+            } else {
+                remaining.push(*key);
+            }
+        });
+
+        for key in to_remove {
+            self.remove(&key);
+        }
+
+        for (index, key) in remaining.iter().enumerate() {
+            let slot = SlotIndex::from_index(u32::try_from(index).unwrap());
+            let key = u32::try_from(key.index()).unwrap();
+
+            unsafe { slot.put_unique(&self.present, (), key) };
+        }
+
+        self.len.store(remaining.len(), Ordering::Release);
     }
 }
 

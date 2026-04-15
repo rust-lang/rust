@@ -18,7 +18,7 @@ use rustc_middle::ty::TyCtxt;
 pub use crate::dep_kind_vtables::make_dep_kind_vtables;
 pub use crate::execution::{CollectActiveJobsKind, collect_active_query_jobs};
 pub use crate::job::{QueryJobMap, break_query_cycle, print_query_stack};
-
+use crate::query_impl::for_each_query_vtable;
 mod dep_kind_vtables;
 mod error;
 mod execution;
@@ -60,9 +60,34 @@ pub fn query_system<'tcx>(
     }
 }
 
+fn enter_sandbox<'tcx, C: QueryCache>(query: &'tcx QueryVTable<'tcx, C>) {
+    query.save_keys();
+}
+
+fn leave_sandbox<'tcx, C: QueryCache>(query: &'tcx QueryVTable<'tcx, C>) {
+    if query.name == "lower_delayed_owner"
+        || query.name == "delayed_owner"
+        || query.name == "def_kind"
+    {
+        return;
+    }
+
+    query.invalidate_saved_keys();
+}
+
 pub fn provide(providers: &mut rustc_middle::util::Providers) {
     providers.hooks.alloc_self_profile_query_strings =
         profiling_support::alloc_self_profile_query_strings;
     providers.hooks.verify_query_key_hashes = plumbing::verify_query_key_hashes;
     providers.hooks.encode_query_values = plumbing::encode_query_values;
+    providers.hooks.enter_query_sandbox = |tcx| {
+        for_each_query_vtable!(ALL, tcx, |query| {
+            enter_sandbox(query);
+        });
+    };
+    providers.hooks.leave_query_sandbox = |tcx| {
+        for_each_query_vtable!(ALL, tcx, |query| {
+            leave_sandbox(query);
+        });
+    };
 }

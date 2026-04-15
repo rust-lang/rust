@@ -12,6 +12,7 @@ use rustc_middle::query::{
     QueryMode, QueryState, QueryVTable,
 };
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::tls::is_sandbox;
 use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::warn;
@@ -320,7 +321,11 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
             // Delegate to another function to actually execute the query job.
             let (value, dep_node_index) = if INCR {
-                execute_job_incr(query, tcx, key, dep_node.unwrap(), id)
+                if is_sandbox() {
+                    execute_job_non_incr(query, tcx, key, id)
+                } else {
+                    execute_job_incr(query, tcx, key, dep_node.unwrap(), id)
+                }
             } else {
                 execute_job_non_incr(query, tcx, key, id)
             };

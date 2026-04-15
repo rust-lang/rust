@@ -1,3 +1,5 @@
+//@ compile-flags: -Z deduplicate-diagnostics=yes
+
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
 
