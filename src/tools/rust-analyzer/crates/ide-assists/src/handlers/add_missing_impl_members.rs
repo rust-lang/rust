@@ -148,9 +148,9 @@ fn add_missing_impl_members_inner(
 
     let target = impl_def.syntax().text_range();
     acc.add(AssistId::quick_fix(assist_id), label, target, |edit| {
-        let make = SyntaxFactory::with_mappings();
+        let mut editor = edit.make_editor(impl_def.syntax());
         let new_item = add_trait_assoc_items_to_impl(
-            &make,
+            editor.make(),
             &ctx.sema,
             ctx.config,
             &missing_items,
@@ -166,7 +166,7 @@ fn add_missing_impl_members_inner(
         let mut first_new_item = if let DefaultMethods::No = mode
             && let ast::AssocItem::Fn(func) = &first_new_item
             && let Some(body) = try_gen_trait_body(
-                &make,
+                editor.make(),
                 ctx,
                 func,
                 trait_ref,
@@ -188,14 +188,13 @@ fn add_missing_impl_members_inner(
             .chain(other_items.iter().cloned())
             .collect::<Vec<_>>();
 
-        let mut editor = edit.make_editor(impl_def.syntax());
         if let Some(assoc_item_list) = impl_def.assoc_item_list() {
             assoc_item_list.add_items(&mut editor, new_assoc_items);
         } else {
-            let assoc_item_list = make.assoc_item_list(new_assoc_items);
+            let assoc_item_list = editor.make().assoc_item_list(new_assoc_items);
             editor.insert_all(
                 Position::after(impl_def.syntax()),
-                vec![make.whitespace(" ").into(), assoc_item_list.syntax().clone().into()],
+                vec![editor.make().whitespace(" ").into(), assoc_item_list.syntax().clone().into()],
             );
             first_new_item = assoc_item_list.assoc_items().next();
         }
@@ -218,7 +217,6 @@ fn add_missing_impl_members_inner(
                 editor.add_annotation(first_new_item.syntax(), tabstop);
             };
         };
-        editor.add_mappings(make.finish_with_mappings());
         edit.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }

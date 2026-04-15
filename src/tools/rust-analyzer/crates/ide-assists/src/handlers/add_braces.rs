@@ -1,7 +1,7 @@
 use either::Either;
 use syntax::{
     AstNode, T,
-    ast::{self, edit::AstNodeEdit, syntax_factory::SyntaxFactory},
+    ast::{self, edit::AstNodeEdit},
     match_ast,
 };
 
@@ -56,15 +56,12 @@ pub(crate) fn add_braces(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         },
         expr.syntax().text_range(),
         |builder| {
-            let make = SyntaxFactory::with_mappings();
             let mut editor = builder.make_editor(expr.syntax());
 
             let new_expr = expr.reset_indent().indent(1.into());
-            let block_expr = make.block_expr(None, Some(new_expr));
+            let block_expr = editor.make().block_expr(None, Some(new_expr));
 
             editor.replace(expr.syntax(), block_expr.indent(expr.indent_level()).syntax());
-
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

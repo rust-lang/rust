@@ -145,19 +145,15 @@ struct StructEditData {
 }
 
 impl StructEditData {
-    fn apply_to_destruct(
-        &self,
-        new_pat: ast::Pat,
-        editor: &mut SyntaxEditor,
-        make: &SyntaxFactory,
-    ) {
+    fn apply_to_destruct(&self, new_pat: ast::Pat, editor: &mut SyntaxEditor) {
         match &self.target {
             Target::IdentPat(pat) => {
                 // If the binding is nested inside a record, we need to wrap the new
                 // destructured pattern in a non-shorthand record field
                 if self.need_record_field_name {
-                    let new_pat =
-                        make.record_pat_field(make.name_ref(&self.name.to_string()), new_pat);
+                    let new_pat = editor
+                        .make()
+                        .record_pat_field(editor.make().name_ref(&self.name.to_string()), new_pat);
                     editor.replace(pat.syntax(), new_pat.syntax())
                 } else {
                     editor.replace(pat.syntax(), new_pat.syntax())
@@ -165,9 +161,9 @@ impl StructEditData {
             }
             Target::SelfParam { insert_after, .. } => {
                 let indent = IndentLevel::from_token(insert_after) + 1;
-                let newline = make.whitespace(&format!("\n{indent}"));
-                let initializer = make.expr_path(make.ident_path("self"));
-                let let_stmt = make.let_stmt(new_pat, None, Some(initializer));
+                let newline = editor.make().whitespace(&format!("\n{indent}"));
+                let initializer = editor.make().expr_path(editor.make().ident_path("self"));
+                let let_stmt = editor.make().let_stmt(new_pat, None, Some(initializer));
                 editor.insert_all(
                     Position::after(insert_after),
                     vec![newline.into(), let_stmt.syntax().clone().into()],
@@ -283,39 +279,46 @@ fn destructure_pat(
     let is_ref = data.target.is_ref();
     let is_mut = data.target.is_mut();
 
-    let make = SyntaxFactory::with_mappings();
     let new_pat = match data.kind {
         hir::StructKind::Tuple => {
             let ident_pats = field_names.iter().map(|(_, new_name)| {
-                let name = make.name(new_name);
-                ast::Pat::from(make.ident_pat(is_ref, is_mut, name))
+                let name = editor.make().name(new_name);
+                ast::Pat::from(editor.make().ident_pat(is_ref, is_mut, name))
             });
-            ast::Pat::TupleStructPat(make.tuple_struct_pat(struct_path, ident_pats))
+            ast::Pat::TupleStructPat(editor.make().tuple_struct_pat(struct_path, ident_pats))
         }
         hir::StructKind::Record => {
             let fields = field_names.iter().map(|(old_name, new_name)| {
                 // Use shorthand syntax if possible
                 if old_name == new_name {
-                    make.record_pat_field_shorthand(
-                        make.ident_pat(is_ref, is_mut, make.name(old_name)).into(),
+                    editor.make().record_pat_field_shorthand(
+                        editor
+                            .make()
+                            .ident_pat(is_ref, is_mut, editor.make().name(old_name))
+                            .into(),
                     )
                 } else {
-                    make.record_pat_field(
-                        make.name_ref(old_name),
-                        ast::Pat::IdentPat(make.ident_pat(is_ref, is_mut, make.name(new_name))),
+                    editor.make().record_pat_field(
+                        editor.make().name_ref(old_name),
+                        ast::Pat::IdentPat(editor.make().ident_pat(
+                            is_ref,
+                            is_mut,
+                            editor.make().name(new_name),
+                        )),
                     )
                 }
             });
-            let field_list = make
-                .record_pat_field_list(fields, data.has_private_members.then_some(make.rest_pat()));
+            let field_list = editor.make().record_pat_field_list(
+                fields,
+                data.has_private_members.then_some(editor.make().rest_pat()),
+            );
 
-            ast::Pat::RecordPat(make.record_pat_with_fields(struct_path, field_list))
+            ast::Pat::RecordPat(editor.make().record_pat_with_fields(struct_path, field_list))
         }
-        hir::StructKind::Unit => make.path_pat(struct_path),
+        hir::StructKind::Unit => editor.make().path_pat(struct_path),
     };
 
-    data.apply_to_destruct(new_pat, editor, &make);
-    editor.add_mappings(make.finish_with_mappings());
+    data.apply_to_destruct(new_pat, editor);
 }
 
 fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(SmolStr, SmolStr)> {
@@ -359,13 +362,11 @@ fn update_usages(
     field_names: &FxHashMap<SmolStr, SmolStr>,
 ) {
     let source = ctx.source_file().syntax();
-    let make = SyntaxFactory::with_mappings();
     let edits = data
         .usages
         .iter()
-        .filter_map(|r| build_usage_edit(ctx, &make, data, r, field_names))
+        .filter_map(|r| build_usage_edit(ctx, editor.make(), data, r, field_names))
         .collect_vec();
-    editor.add_mappings(make.finish_with_mappings());
     for (old, new) in edits {
         if let Some(range) = ctx.sema.original_range_opt(&old) {
             editor.replace_all(cover_edit_range(source, range.range), vec![new.into()]);

@@ -60,7 +60,6 @@ pub(crate) fn extract_struct_from_enum_variant(
         "Extract struct from enum variant",
         target,
         |builder| {
-            let make = SyntaxFactory::with_mappings();
             let mut editor = builder.make_editor(variant.syntax());
             let edition = enum_hir.krate(ctx.db()).edition(ctx.db());
             let variant_hir_name = variant_hir.name(ctx.db());
@@ -96,10 +95,8 @@ pub(crate) fn extract_struct_from_enum_variant(
                         import,
                         edition,
                         &mut file_editor,
-                        &make,
                     )
                 });
-                file_editor.add_mappings(make.take());
                 builder.add_file_edits(file_id.file_id(ctx.db()), file_editor);
             }
 
@@ -119,13 +116,12 @@ pub(crate) fn extract_struct_from_enum_variant(
                         import,
                         edition,
                         &mut editor,
-                        &make,
                     )
                 });
             }
 
             let generic_params = enum_ast.generic_param_list().and_then(|known_generics| {
-                extract_generic_params(&make, &known_generics, &field_list)
+                extract_generic_params(editor.make(), &known_generics, &field_list)
             });
 
             // resolve GenericArg in field_list to actual type
@@ -148,13 +144,13 @@ pub(crate) fn extract_struct_from_enum_variant(
             };
 
             let (comments_for_struct, comments_to_delete) =
-                collect_variant_comments(&make, variant.syntax());
+                collect_variant_comments(editor.make(), variant.syntax());
             for element in &comments_to_delete {
                 editor.delete(element.clone());
             }
 
             let def = create_struct_def(
-                &make,
+                editor.make(),
                 variant_name.clone(),
                 &field_list,
                 generic_params.clone(),
@@ -168,20 +164,15 @@ pub(crate) fn extract_struct_from_enum_variant(
             let mut insert_items: Vec<SyntaxElement> = Vec::new();
             for attr in enum_ast.attrs() {
                 insert_items.push(attr.syntax().clone().into());
-                insert_items.push(make.whitespace("\n").into());
+                insert_items.push(editor.make().whitespace("\n").into());
             }
             insert_items.extend(comments_for_struct);
             insert_items.push(def.syntax().clone().into());
-            insert_items.push(make.whitespace(&format!("\n\n{indent}")).into());
-            editor.insert_all_with_whitespace(
-                Position::before(enum_ast.syntax()),
-                insert_items,
-                &make,
-            );
+            insert_items.push(editor.make().whitespace(&format!("\n\n{indent}")).into());
+            editor.insert_all_with_whitespace(Position::before(enum_ast.syntax()), insert_items);
 
-            update_variant(&make, &mut editor, &variant, generic_params);
+            update_variant(&mut editor, &variant, generic_params);
 
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -340,7 +331,6 @@ fn create_struct_def(
 }
 
 fn update_variant(
-    make: &SyntaxFactory,
     editor: &mut SyntaxEditor,
     variant: &ast::Variant,
     generics: Option<ast::GenericParamList>,
@@ -351,13 +341,13 @@ fn update_variant(
         .map(|generics| generics.to_generic_args());
     // FIXME: replace with a `ast::make` constructor
     let ty = match generic_args {
-        Some(generic_args) => make.ty(&format!("{name}{generic_args}")),
-        None => make.ty(&name.text()),
+        Some(generic_args) => editor.make().ty(&format!("{name}{generic_args}")),
+        None => editor.make().ty(&name.text()),
     };
 
     // change from a record to a tuple field list
-    let tuple_field = make.tuple_field(None, ty);
-    let field_list = make.tuple_field_list(iter::once(tuple_field));
+    let tuple_field = editor.make().tuple_field(None, ty);
+    let field_list = editor.make().tuple_field_list(iter::once(tuple_field));
     editor.replace(variant.field_list()?.syntax(), field_list.syntax());
 
     // remove any ws after the name
@@ -408,22 +398,15 @@ fn apply_references(
     import: Option<(ImportScope, hir::ModPath)>,
     edition: Edition,
     editor: &mut SyntaxEditor,
-    make: &SyntaxFactory,
 ) {
     if let Some((scope, path)) = import {
-        insert_use_with_editor(
-            &scope,
-            mod_path_to_ast(&path, edition),
-            &insert_use_cfg,
-            editor,
-            make,
-        );
+        insert_use_with_editor(&scope, mod_path_to_ast(&path, edition), &insert_use_cfg, editor);
     }
     // deep clone to prevent cycle
-    let path = make.path_from_segments(iter::once(segment.clone()), false);
-    editor.insert(Position::before(segment.syntax()), make.token(T!['(']));
+    let path = editor.make().path_from_segments(iter::once(segment.clone()), false);
+    editor.insert(Position::before(segment.syntax()), editor.make().token(T!['(']));
     editor.insert(Position::before(segment.syntax()), path.syntax());
-    editor.insert(Position::after(&node), make.token(T![')']));
+    editor.insert(Position::after(&node), editor.make().token(T![')']));
 }
 
 fn process_references(

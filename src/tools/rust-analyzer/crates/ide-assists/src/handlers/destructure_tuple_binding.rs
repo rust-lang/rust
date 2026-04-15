@@ -90,20 +90,18 @@ fn destructure_tuple_edit_impl(
     in_sub_pattern: bool,
 ) {
     let mut syntax_editor = edit.make_editor(data.ident_pat.syntax());
-    let syntax_factory = SyntaxFactory::with_mappings();
 
     let assignment_edit =
-        edit_tuple_assignment(ctx, edit, &mut syntax_editor, &syntax_factory, data, in_sub_pattern);
-    let current_file_usages_edit = edit_tuple_usages(data, ctx, &syntax_factory, in_sub_pattern);
+        edit_tuple_assignment(ctx, edit, &mut syntax_editor, data, in_sub_pattern);
+    let current_file_usages_edit =
+        edit_tuple_usages(data, ctx, syntax_editor.make(), in_sub_pattern);
 
-    assignment_edit.apply(&mut syntax_editor, &syntax_factory);
+    assignment_edit.apply(&mut syntax_editor);
     if let Some(usages_edit) = current_file_usages_edit {
         usages_edit
             .into_iter()
             .for_each(|usage_edit| usage_edit.apply(ctx, edit, &mut syntax_editor))
     }
-
-    syntax_editor.add_mappings(syntax_factory.finish_with_mappings());
     edit.add_file_edits(ctx.vfs_file_id(), syntax_editor);
 }
 
@@ -176,7 +174,6 @@ fn edit_tuple_assignment(
     ctx: &AssistContext<'_>,
     edit: &mut SourceChangeBuilder,
     editor: &mut SyntaxEditor,
-    make: &SyntaxFactory,
     data: &TupleData,
     in_sub_pattern: bool,
 ) -> AssignmentEdit {
@@ -184,11 +181,10 @@ fn edit_tuple_assignment(
         let original = &data.ident_pat;
         let is_ref = original.ref_token().is_some();
         let is_mut = original.mut_token().is_some();
-        let fields = data
-            .field_names
-            .iter()
-            .map(|name| ast::Pat::from(make.ident_pat(is_ref, is_mut, make.name(name))));
-        make.tuple_pat(fields)
+        let fields = data.field_names.iter().map(|name| {
+            ast::Pat::from(editor.make().ident_pat(is_ref, is_mut, editor.make().name(name)))
+        });
+        editor.make().tuple_pat(fields)
     };
     let is_shorthand_field = data
         .ident_pat
@@ -223,16 +219,20 @@ struct AssignmentEdit {
 }
 
 impl AssignmentEdit {
-    fn apply(self, syntax_editor: &mut SyntaxEditor, syntax_mapping: &SyntaxFactory) {
+    fn apply(self, syntax_editor: &mut SyntaxEditor) {
         // with sub_pattern: keep original tuple and add subpattern: `tup @ (_0, _1)`
         if self.in_sub_pattern {
-            self.ident_pat.set_pat(Some(self.tuple_pat.into()), syntax_editor, syntax_mapping);
+            self.ident_pat.set_pat(Some(self.tuple_pat.into()), syntax_editor);
         } else if self.is_shorthand_field {
             syntax_editor.insert(Position::after(self.ident_pat.syntax()), self.tuple_pat.syntax());
-            syntax_editor
-                .insert(Position::after(self.ident_pat.syntax()), syntax_mapping.whitespace(" "));
-            syntax_editor
-                .insert(Position::after(self.ident_pat.syntax()), syntax_mapping.token(T![:]));
+            syntax_editor.insert(
+                Position::after(self.ident_pat.syntax()),
+                syntax_editor.make().whitespace(" "),
+            );
+            syntax_editor.insert(
+                Position::after(self.ident_pat.syntax()),
+                syntax_editor.make().token(T![:]),
+            );
         } else {
             syntax_editor.replace(self.ident_pat.syntax(), self.tuple_pat.syntax())
         }

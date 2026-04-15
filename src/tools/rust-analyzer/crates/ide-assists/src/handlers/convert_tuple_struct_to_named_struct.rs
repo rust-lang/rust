@@ -86,9 +86,9 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
         "Convert to named struct",
         target,
         |edit| {
-            let names = generate_names(tuple_fields.fields());
-            edit_field_references(ctx, edit, tuple_fields.fields(), &names);
             let mut editor = edit.make_editor(syntax);
+            let names = generate_names(tuple_fields.fields(), editor.make());
+            edit_field_references(ctx, edit, tuple_fields.fields(), &names);
             edit_struct_references(ctx, edit, strukt_def, &names);
             edit_struct_def(&mut editor, &strukt_or_variant, tuple_fields, names);
             edit.add_file_edits(ctx.vfs_file_id(), editor);
@@ -111,8 +111,7 @@ fn edit_struct_def(
         );
         ast::RecordField::cast(field_editor.finish().new_root().clone())
     });
-    let make = SyntaxFactory::without_mappings();
-    let record_fields = make.record_field_list(record_fields);
+    let record_fields = editor.make().record_field_list(record_fields);
     let tuple_fields_before = Position::before(tuple_fields.syntax());
 
     if let Either::Left(strukt) = strukt {
@@ -171,7 +170,6 @@ fn process_struct_name_reference(
     strukt_def: &Definition,
     names: &[ast::Name],
 ) -> Option<()> {
-    let make = SyntaxFactory::without_mappings();
     let name_ref = r.name.as_name_ref()?;
     let path_segment = name_ref.syntax().parent().and_then(ast::PathSegment::cast)?;
     let full_path = path_segment.syntax().parent().and_then(ast::Path::cast)?.top_path();
@@ -187,7 +185,7 @@ fn process_struct_name_reference(
         match parent {
             ast::TupleStructPat(tuple_struct_pat) => {
                 let range = ctx.sema.original_range_opt(tuple_struct_pat.syntax())?.range;
-                let new = make.record_pat_with_fields(
+                let new = editor.make().record_pat_with_fields(
                     full_path,
                     generate_record_pat_list(&tuple_struct_pat, names),
                 );
@@ -209,9 +207,9 @@ fn process_struct_name_reference(
                     let range = ctx.sema.original_range_opt(expr.syntax())?.range;
                     let place = cover_edit_range(source.syntax(), range);
                     let elements = vec![
-                        make.name_ref(&name.text()).syntax().clone().into(),
-                        make.token(T![:]).into(),
-                        make.whitespace(" ").into(),
+                        editor.make().name_ref(&name.text()).syntax().clone().into(),
+                        editor.make().token(T![:]).into(),
+                        editor.make().whitespace(" ").into(),
                     ];
                     if first_insert.is_empty() {
                         // XXX: SyntaxEditor cannot insert after deleted element
@@ -247,14 +245,13 @@ fn process_delimiter(
         syntax::NodeOrToken::Token(t) => Some(t.clone()),
     };
 
-    let make = SyntaxFactory::without_mappings();
     if let Some(l_paren) = l_paren
         && l_paren.kind() == T!['(']
     {
         let mut open_delim = vec![
-            make.whitespace(" ").into(),
-            make.token(T!['{']).into(),
-            make.whitespace(" ").into(),
+            editor.make().whitespace(" ").into(),
+            editor.make().token(T!['{']).into(),
+            editor.make().whitespace(" ").into(),
         ];
         open_delim.extend(first_insert);
         editor.replace_with_many(l_paren, open_delim);
@@ -264,7 +261,7 @@ fn process_delimiter(
     {
         editor.replace_with_many(
             r_paren,
-            vec![make.whitespace(" ").into(), make.token(T!['}']).into()],
+            vec![editor.make().whitespace(" ").into(), editor.make().token(T!['}']).into()],
         );
     }
 }
@@ -300,8 +297,10 @@ fn edit_field_references(
     }
 }
 
-fn generate_names(fields: impl Iterator<Item = ast::TupleField>) -> Vec<ast::Name> {
-    let make = SyntaxFactory::without_mappings();
+fn generate_names(
+    fields: impl Iterator<Item = ast::TupleField>,
+    make: &SyntaxFactory,
+) -> Vec<ast::Name> {
     fields
         .enumerate()
         .map(|(i, _)| {

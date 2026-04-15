@@ -74,24 +74,26 @@ pub(crate) fn generate_blanket_trait_impl(
         name.syntax().text_range(),
         |builder| {
             let mut editor = builder.make_editor(traitd.syntax());
-            let make = SyntaxFactory::with_mappings();
-            let namety = make.ty_path(make.path_from_text(&name.text()));
+            let namety = editor.make().ty_path(editor.make().path_from_text(&name.text()));
             let trait_where_clause = traitd.where_clause().map(|it| it.reset_indent());
-            let bounds = traitd.type_bound_list().and_then(|list| exclude_sized(&make, list));
+            let bounds =
+                traitd.type_bound_list().and_then(|list| exclude_sized(editor.make(), list));
             let is_unsafe = traitd.unsafe_token().is_some();
-            let thisname = this_name(&make, &traitd);
-            let thisty = make.ty_path(make.path_from_text(&thisname.text()));
+            let thisname = this_name(editor.make(), &traitd);
+            let thisty = editor.make().ty_path(editor.make().path_from_text(&thisname.text()));
             let indent = traitd.indent_level();
 
-            let gendecl = make.generic_param_list([GenericParam::TypeParam(make.type_param(
-                thisname.clone(),
-                apply_sized(&make, has_sized(&traitd, &ctx.sema), bounds),
-            ))]);
+            let gendecl = editor.make().generic_param_list([GenericParam::TypeParam(
+                editor.make().type_param(
+                    thisname.clone(),
+                    apply_sized(editor.make(), has_sized(&traitd, &ctx.sema), bounds),
+                ),
+            )]);
 
             let trait_gen_args =
                 traitd.generic_param_list().map(|param_list| param_list.to_generic_args());
 
-            let impl_ = make.impl_trait(
+            let impl_ = editor.make().impl_trait(
                 cfg_attrs(&traitd),
                 is_unsafe,
                 traitd.generic_param_list(),
@@ -107,12 +109,11 @@ pub(crate) fn generate_blanket_trait_impl(
             );
 
             if let Some(trait_assoc_list) = traitd.assoc_item_list() {
-                let assoc_item_list =
-                    impl_.get_or_create_assoc_item_list_with_editor(&mut editor, &make);
+                let assoc_item_list = impl_.get_or_create_assoc_item_list_with_editor(&mut editor);
                 for item in trait_assoc_list.assoc_items() {
                     let item = match item {
                         ast::AssocItem::Fn(method) if method.body().is_none() => {
-                            todo_fn(&make, &method, ctx.config).into()
+                            todo_fn(editor.make(), &method, ctx.config).into()
                         }
                         ast::AssocItem::Const(_) | ast::AssocItem::TypeAlias(_) => item,
                         _ => continue,
@@ -126,7 +127,7 @@ pub(crate) fn generate_blanket_trait_impl(
             editor.insert_all(
                 Position::after(traitd.syntax()),
                 vec![
-                    make.whitespace(&format!("\n\n{indent}")).into(),
+                    editor.make().whitespace(&format!("\n\n{indent}")).into(),
                     impl_.syntax().clone().into(),
                 ],
             );
@@ -136,8 +137,6 @@ pub(crate) fn generate_blanket_trait_impl(
             {
                 builder.add_tabstop_before(cap, self_ty);
             }
-
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     );

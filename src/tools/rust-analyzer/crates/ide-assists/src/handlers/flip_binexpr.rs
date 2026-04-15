@@ -1,6 +1,6 @@
 use syntax::{
     SyntaxKind, T,
-    ast::{self, AstNode, BinExpr, RangeItem, syntax_factory::SyntaxFactory},
+    ast::{self, AstNode, BinExpr, RangeItem},
     syntax_editor::Position,
 };
 
@@ -49,13 +49,11 @@ pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         op_token.text_range(),
         |builder| {
             let mut editor = builder.make_editor(&expr.syntax().parent().unwrap());
-            let make = SyntaxFactory::with_mappings();
             if let FlipAction::FlipAndReplaceOp(binary_op) = action {
-                editor.replace(op_token, make.token(binary_op))
+                editor.replace(op_token, editor.make().token(binary_op))
             };
             editor.replace(lhs.syntax(), rhs.syntax());
             editor.replace(rhs.syntax(), lhs.syntax());
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

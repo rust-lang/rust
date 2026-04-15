@@ -1,10 +1,5 @@
 use either::Either;
-use syntax::{
-    AstNode,
-    algo::find_node_at_range,
-    ast::{self, syntax_factory::SyntaxFactory},
-    syntax_editor::SyntaxEditor,
-};
+use syntax::{AstNode, algo::find_node_at_range, ast, syntax_editor::SyntaxEditor};
 
 use crate::{
     AssistId,
@@ -110,13 +105,11 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         "Pull assignment up",
         target,
         move |edit| {
-            let make = SyntaxFactory::with_mappings();
             let mut editor = edit.make_editor(tgt.syntax());
-            let assign_expr = make.expr_assignment(collector.common_lhs, new_tgt.clone());
-            let assign_stmt = make.expr_stmt(assign_expr.into());
+            let assign_expr = editor.make().expr_assignment(collector.common_lhs, new_tgt.clone());
+            let assign_stmt = editor.make().expr_stmt(assign_expr.into());
 
             editor.replace(tgt.syntax(), assign_stmt.syntax());
-            editor.add_mappings(make.finish_with_mappings());
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

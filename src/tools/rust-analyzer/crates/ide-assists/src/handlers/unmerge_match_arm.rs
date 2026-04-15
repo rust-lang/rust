@@ -1,6 +1,6 @@
 use syntax::{
     Direction, SyntaxKind, T,
-    ast::{self, AstNode, edit::IndentLevel, syntax_factory::SyntaxFactory},
+    ast::{self, AstNode, edit::IndentLevel},
     syntax_editor::{Element, Position},
 };
 
@@ -56,15 +56,14 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         "Unmerge match arm",
         pipe_token.text_range(),
         |edit| {
-            let make = SyntaxFactory::with_mappings();
             let mut editor = edit.make_editor(&new_parent);
             // It is guaranteed that `pats_after` has at least one element
             let new_pat = if pats_after.len() == 1 {
                 pats_after[0].clone()
             } else {
-                make.or_pat(pats_after, or_pat.leading_pipe().is_some()).into()
+                editor.make().or_pat(pats_after, or_pat.leading_pipe().is_some()).into()
             };
-            let new_match_arm = make.match_arm(new_pat, match_arm.guard(), match_arm_body);
+            let new_match_arm = editor.make().match_arm(new_pat, match_arm.guard(), match_arm_body);
             let mut pipe_index = pipe_token.index();
             if pipe_token
                 .prev_sibling_or_token()
@@ -92,16 +91,15 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
             //    we don't want to insert a comma at all.
             let has_comma_after = match_arm.comma_token().is_some();
             if !has_comma_after && !match_arm.expr().unwrap().is_block_like() {
-                insert_after_old_arm.push(make.token(T![,]).into());
+                insert_after_old_arm.push(editor.make().token(T![,]).into());
             }
 
             let indent = IndentLevel::from_node(match_arm.syntax());
-            insert_after_old_arm.push(make.whitespace(&format!("\n{indent}")).into());
+            insert_after_old_arm.push(editor.make().whitespace(&format!("\n{indent}")).into());
 
             insert_after_old_arm.push(new_match_arm.syntax().clone().into());
 
             editor.insert_all(Position::after(match_arm.syntax()), insert_after_old_arm);
-            editor.add_mappings(make.finish_with_mappings());
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

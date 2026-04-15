@@ -1,7 +1,7 @@
 use syntax::{
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     T,
-    ast::{self, AstNode, HasAttrs, edit::IndentLevel, syntax_factory::SyntaxFactory},
+    ast::{self, AstNode, HasAttrs, edit::IndentLevel},
     syntax_editor::{Element, Position},
 };
 
@@ -42,17 +42,13 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     };
 
     acc.add(AssistId::generate("generate_derive"), "Add `#[derive]`", target, |edit| {
-        let make = SyntaxFactory::without_mappings();
-
         match derive_attr {
             None => {
-                let derive =
-                    make.attr_outer(make.meta_token_tree(
-                        make.ident_path("derive"),
-                        make.token_tree(T!['('], vec![]),
-                    ));
-
                 let mut editor = edit.make_editor(nominal.syntax());
+                let derive = editor.make().attr_outer(editor.make().meta_token_tree(
+                    editor.make().ident_path("derive"),
+                    editor.make().token_tree(T!['('], vec![]),
+                ));
                 let indent = IndentLevel::from_node(nominal.syntax());
                 let after_attrs_and_comments = nominal
                     .syntax()
@@ -64,7 +60,7 @@ pub(crate) fn generate_derive(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
                     after_attrs_and_comments,
                     vec![
                         derive.syntax().syntax_element(),
-                        make.whitespace(&format!("\n{indent}")).syntax_element(),
+                        editor.make().whitespace(&format!("\n{indent}")).syntax_element(),
                     ],
                 );
 

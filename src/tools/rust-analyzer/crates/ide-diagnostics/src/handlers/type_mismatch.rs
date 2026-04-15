@@ -10,7 +10,6 @@ use syntax::{
     ast::{
         self, BlockExpr, Expr, ExprStmt, HasArgList,
         edit::{AstNodeEdit, IndentLevel},
-        syntax_factory::SyntaxFactory,
     },
 };
 
@@ -245,24 +244,21 @@ fn remove_unnecessary_wrapper(
                 .and_then(Either::<ast::ReturnExpr, ast::StmtList>::cast)?;
 
             editor = builder.make_editor(parent.syntax());
-            let make = SyntaxFactory::with_mappings();
 
             match parent {
                 Either::Left(ret_expr) => {
-                    editor.replace(ret_expr.syntax(), make.expr_return(None).syntax());
+                    editor.replace(ret_expr.syntax(), editor.make().expr_return(None).syntax());
                 }
                 Either::Right(stmt_list) => {
                     let new_block = if stmt_list.statements().next().is_none() {
-                        make.expr_empty_block()
+                        editor.make().expr_empty_block()
                     } else {
-                        make.block_expr(stmt_list.statements(), None)
+                        editor.make().block_expr(stmt_list.statements(), None)
                     };
 
                     editor.replace(stmt_list.syntax().parent()?, new_block.syntax());
                 }
             }
-
-            editor.add_mappings(make.finish_with_mappings());
         }
         _ => {
             editor = builder.make_editor(call_expr.syntax());

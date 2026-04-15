@@ -74,7 +74,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         .filter(|pat| !matches!(pat, Pat::WildcardPat(_)))
         .collect();
 
-    let make = SyntaxFactory::with_mappings();
+    let make = SyntaxFactory::without_mappings();
 
     let scope = ctx.sema.scope(expr.syntax())?;
     let module = scope.module();
@@ -297,7 +297,6 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 }
             }
 
-            editor.add_mappings(make.take());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

@@ -9,11 +9,7 @@ use ide_db::{
 };
 use syntax::Edition;
 use syntax::ast::HasGenericArgs;
-use syntax::{
-    AstNode, ast,
-    ast::{HasArgList, syntax_factory::SyntaxFactory},
-    syntax_editor::SyntaxEditor,
-};
+use syntax::{AstNode, ast, ast::HasArgList, syntax_editor::SyntaxEditor};
 
 use crate::{
     AssistId, GroupLabel,
@@ -102,17 +98,14 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             label(ctx.db(), candidate, &import, current_edition),
             range,
             |builder| {
-                let make = SyntaxFactory::with_mappings();
                 let mut editor = builder.make_editor(&syntax_under_caret);
                 qualify_candidate.qualify(
                     |replace_with: String| builder.replace(range, replace_with),
                     &mut editor,
-                    &make,
                     &import.import_path,
                     import.item_to_import,
                     current_edition,
                 );
-                editor.add_mappings(make.finish_with_mappings());
                 builder.add_file_edits(ctx.vfs_file_id(), editor);
             },
         );
@@ -132,7 +125,6 @@ impl QualifyCandidate<'_> {
         &self,
         mut replacer: impl FnMut(String),
         editor: &mut SyntaxEditor,
-        make: &SyntaxFactory,
         import: &hir::ModPath,
         item: hir::ItemInNs,
         edition: Edition,
@@ -151,10 +143,10 @@ impl QualifyCandidate<'_> {
                 replacer(format!("<{qualifier} as {import}>::{segment}"));
             }
             QualifyCandidate::TraitMethod(db, mcall_expr) => {
-                Self::qualify_trait_method(db, mcall_expr, editor, make, import, item);
+                Self::qualify_trait_method(db, mcall_expr, editor, import, item);
             }
             QualifyCandidate::ImplMethod(db, mcall_expr, hir_fn) => {
-                Self::qualify_fn_call(db, mcall_expr, editor, make, import, hir_fn);
+                Self::qualify_fn_call(db, mcall_expr, editor, import, hir_fn);
             }
         }
     }
@@ -163,7 +155,6 @@ impl QualifyCandidate<'_> {
         db: &RootDatabase,
         mcall_expr: &ast::MethodCallExpr,
         editor: &mut SyntaxEditor,
-        make: &SyntaxFactory,
         import: ast::Path,
         hir_fn: &hir::Function,
     ) -> Option<()> {
@@ -175,16 +166,17 @@ impl QualifyCandidate<'_> {
 
         if let Some(self_access) = hir_fn.self_param(db).map(|sp| sp.access(db)) {
             let receiver = match self_access {
-                hir::Access::Shared => make.expr_ref(receiver, false),
-                hir::Access::Exclusive => make.expr_ref(receiver, true),
+                hir::Access::Shared => editor.make().expr_ref(receiver, false),
+                hir::Access::Exclusive => editor.make().expr_ref(receiver, true),
                 hir::Access::Owned => receiver,
             };
             let arg_list = match arg_list {
-                Some(args) => make.arg_list(iter::once(receiver).chain(args)),
-                None => make.arg_list(iter::once(receiver)),
+                Some(args) => editor.make().arg_list(iter::once(receiver).chain(args)),
+                None => editor.make().arg_list(iter::once(receiver)),
             };
-            let call_path = make.path_from_text(&format!("{import}::{method_name}{generics}"));
-            let call_expr = make.expr_call(make.expr_path(call_path), arg_list);
+            let call_path =
+                editor.make().path_from_text(&format!("{import}::{method_name}{generics}"));
+            let call_expr = editor.make().expr_call(editor.make().expr_path(call_path), arg_list);
             editor.replace(mcall_expr.syntax(), call_expr.syntax());
         }
         Some(())
@@ -194,14 +186,13 @@ impl QualifyCandidate<'_> {
         db: &RootDatabase,
         mcall_expr: &ast::MethodCallExpr,
         editor: &mut SyntaxEditor,
-        make: &SyntaxFactory,
         import: ast::Path,
         item: hir::ItemInNs,
     ) -> Option<()> {
         let trait_method_name = mcall_expr.name_ref()?;
         let trait_ = item_as_trait(db, item)?;
         let method = find_trait_method(db, trait_, &trait_method_name)?;
-        Self::qualify_fn_call(db, mcall_expr, editor, make, import, &method)
+        Self::qualify_fn_call(db, mcall_expr, editor, import, &method)
     }
 }
 

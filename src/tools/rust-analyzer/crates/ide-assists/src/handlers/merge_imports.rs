@@ -4,11 +4,7 @@ use ide_db::imports::{
     merge_imports::{MergeBehavior, try_merge_imports, try_merge_trees},
 };
 use syntax::{
-    AstNode, SyntaxElement, SyntaxNode,
-    algo::neighbor,
-    ast::{self, syntax_factory::SyntaxFactory},
-    match_ast,
-    syntax_editor::Removable,
+    AstNode, SyntaxElement, SyntaxNode, algo::neighbor, ast, match_ast, syntax_editor::Removable,
 };
 
 use crate::{
@@ -76,7 +72,6 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
     };
 
     acc.add(AssistId::refactor_rewrite("merge_imports"), "Merge imports", target, |builder| {
-        let make = SyntaxFactory::with_mappings();
         let mut editor = builder.make_editor(&parent_node);
 
         for edit in edits {
@@ -94,7 +89,6 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
                 }
             }
         }
-        editor.add_mappings(make.finish_with_mappings());
         builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }

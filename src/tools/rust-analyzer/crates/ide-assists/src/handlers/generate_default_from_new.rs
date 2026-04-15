@@ -73,16 +73,15 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext<'
         "Generate a Default impl from a new fn",
         target,
         move |builder| {
-            let make = SyntaxFactory::without_mappings();
-            let default_impl = generate_default_impl(&make, &impl_, self_ty);
+            let mut editor = builder.make_editor(impl_.syntax());
+            let default_impl = generate_default_impl(editor.make(), &impl_, self_ty);
             let indent = IndentLevel::from_node(impl_.syntax());
             let default_impl = default_impl.indent(indent);
 
-            let mut editor = builder.make_editor(impl_.syntax());
             editor.insert_all(
                 Position::after(impl_.syntax()),
                 vec![
-                    make.whitespace(&format!("\n\n{indent}")).into(),
+                    editor.make().whitespace(&format!("\n\n{indent}")).into(),
                     default_impl.syntax().clone().into(),
                 ],
             );

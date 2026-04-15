@@ -94,21 +94,20 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                 ident.text_range(),
                 |builder| {
                     let mut editor = builder.make_editor(let_stmt.syntax());
-                    let make = SyntaxFactory::without_mappings();
 
                     if let_stmt.semicolon_token().is_none() {
                         editor.insert(
                             Position::last_child_of(let_stmt.syntax()),
-                            make.token(syntax::SyntaxKind::SEMICOLON),
+                            editor.make().token(syntax::SyntaxKind::SEMICOLON),
                         );
                     }
 
-                    let placeholder_ty = make.ty_placeholder();
+                    let placeholder_ty = editor.make().ty_placeholder();
 
                     if let Some(pat) = let_stmt.pat() {
                         let elements = vec![
-                            make.token(syntax::SyntaxKind::COLON).into(),
-                            make.whitespace(" ").into(),
+                            editor.make().token(syntax::SyntaxKind::COLON).into(),
+                            editor.make().whitespace(" ").into(),
                             placeholder_ty.syntax().clone().into(),
                         ];
                         editor.insert_all(Position::after(pat.syntax()), elements);
@@ -141,14 +140,12 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         ident.text_range(),
         |builder| {
             builder.trigger_parameter_hints();
-
-            let make = SyntaxFactory::with_mappings();
             let mut editor = match &turbofish_target {
                 Either::Left(it) => builder.make_editor(it.syntax()),
                 Either::Right(it) => builder.make_editor(it.syntax()),
             };
 
-            let fish_head = get_fish_head(&make, number_of_arguments);
+            let fish_head = get_fish_head(editor.make(), number_of_arguments);
 
             match turbofish_target {
                 Either::Left(path_segment) => {
@@ -180,8 +177,6 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                     editor.add_annotation(arg.syntax(), builder.make_placeholder_snippet(cap));
                 }
             }
-
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

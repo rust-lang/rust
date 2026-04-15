@@ -2,7 +2,7 @@ use hir::{Name, sym};
 use ide_db::{famous_defs::FamousDefs, syntax_helpers::suggest_name};
 use syntax::{
     AstNode,
-    ast::{self, HasAttrs, HasLoopBody, edit::IndentLevel, syntax_factory::SyntaxFactory},
+    ast::{self, HasAttrs, HasLoopBody, edit::IndentLevel},
     syntax_editor::Position,
 };
 
@@ -48,22 +48,24 @@ pub(crate) fn convert_for_loop_to_while_let(
         "Replace this for loop with `while let`",
         for_loop.syntax().text_range(),
         |builder| {
-            let make = SyntaxFactory::with_mappings();
             let mut editor = builder.make_editor(for_loop.syntax());
 
             let (iterable, method) = if impls_core_iter(&ctx.sema, &iterable) {
                 (iterable, None)
             } else if let Some((expr, method)) = is_ref_and_impls_iter_method(&ctx.sema, &iterable)
             {
-                (expr, Some(make.name_ref(method.as_str())))
+                (expr, Some(editor.make().name_ref(method.as_str())))
             } else if let ast::Expr::RefExpr(_) = iterable {
-                (make.expr_paren(iterable).into(), Some(make.name_ref("into_iter")))
+                (
+                    editor.make().expr_paren(iterable).into(),
+                    Some(editor.make().name_ref("into_iter")),
+                )
             } else {
-                (iterable, Some(make.name_ref("into_iter")))
+                (iterable, Some(editor.make().name_ref("into_iter")))
             };
 
             let iterable = if let Some(method) = method {
-                make.expr_method_call(iterable, method, make.arg_list([])).into()
+                editor.make().expr_method_call(iterable, method, editor.make().arg_list([])).into()
             } else {
                 iterable
             };
@@ -73,8 +75,8 @@ pub(crate) fn convert_for_loop_to_while_let(
             );
             let tmp_var = new_name.suggest_name("iter");
 
-            let mut_expr = make.let_stmt(
-                make.ident_pat(false, true, make.name(&tmp_var)).into(),
+            let mut_expr = editor.make().let_stmt(
+                editor.make().ident_pat(false, true, editor.make().name(&tmp_var)).into(),
                 None,
                 Some(iterable),
             );
@@ -82,35 +84,29 @@ pub(crate) fn convert_for_loop_to_while_let(
 
             if let Some(label) = for_loop.label() {
                 let label = label.syntax();
-                editor.insert(Position::before(for_loop.syntax()), make.whitespace(" "));
+                editor.insert(Position::before(for_loop.syntax()), editor.make().whitespace(" "));
                 editor.insert(Position::before(for_loop.syntax()), label);
             }
-            crate::utils::insert_attributes(
-                for_loop.syntax(),
-                &mut editor,
-                for_loop.attrs(),
-                &make,
-            );
+            crate::utils::insert_attributes(for_loop.syntax(), &mut editor, for_loop.attrs());
 
             editor.insert(
                 Position::before(for_loop.syntax()),
-                make.whitespace(format!("\n{indent}").as_str()),
+                editor.make().whitespace(format!("\n{indent}").as_str()),
             );
             editor.insert(Position::before(for_loop.syntax()), mut_expr.syntax());
 
-            let opt_pat = make.tuple_struct_pat(make.ident_path("Some"), [pat]);
-            let iter_next_expr = make.expr_method_call(
-                make.expr_path(make.ident_path(&tmp_var)),
-                make.name_ref("next"),
-                make.arg_list([]),
+            let opt_pat = editor.make().tuple_struct_pat(editor.make().ident_path("Some"), [pat]);
+            let iter_next_expr = editor.make().expr_method_call(
+                editor.make().expr_path(editor.make().ident_path(&tmp_var)),
+                editor.make().name_ref("next"),
+                editor.make().arg_list([]),
             );
-            let cond = make.expr_let(opt_pat.into(), iter_next_expr.into());
+            let cond = editor.make().expr_let(opt_pat.into(), iter_next_expr.into());
 
-            let while_loop = make.expr_while_loop(cond.into(), body);
+            let while_loop = editor.make().expr_while_loop(cond.into(), body);
 
             editor.replace(for_loop.syntax(), while_loop.syntax());
 
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

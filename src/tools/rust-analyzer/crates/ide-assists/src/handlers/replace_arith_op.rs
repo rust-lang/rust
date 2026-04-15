@@ -1,7 +1,7 @@
 use ide_db::assists::{AssistId, GroupLabel};
 use syntax::{
     AstNode,
-    ast::{self, ArithOp, BinaryOp, syntax_factory::SyntaxFactory},
+    ast::{self, ArithOp, BinaryOp},
 };
 
 use crate::assist_context::{AssistContext, Assists};
@@ -83,19 +83,20 @@ fn replace_arith(acc: &mut Assists, ctx: &AssistContext<'_>, kind: ArithKind) ->
         kind.label(),
         op_expr.text_range(),
         |builder| {
-            let mut edit = builder.make_editor(rhs.syntax());
-            let make = SyntaxFactory::with_mappings();
+            let mut editor = builder.make_editor(rhs.syntax());
             let method_name = kind.method_name(op);
 
             let needs_parentheses =
                 lhs.precedence().needs_parentheses_in(ast::prec::ExprPrecedence::Postfix);
-            let receiver = if needs_parentheses { make.expr_paren(lhs).into() } else { lhs };
-            let arith_expr =
-                make.expr_method_call(receiver, make.name_ref(&method_name), make.arg_list([rhs]));
-            edit.replace(op_expr, arith_expr.syntax());
-
-            edit.add_mappings(make.finish_with_mappings());
-            builder.add_file_edits(ctx.vfs_file_id(), edit);
+            let receiver =
+                if needs_parentheses { editor.make().expr_paren(lhs).into() } else { lhs };
+            let arith_expr = editor.make().expr_method_call(
+                receiver,
+                editor.make().name_ref(&method_name),
+                editor.make().arg_list([rhs]),
+            );
+            editor.replace(op_expr, arith_expr.syntax());
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

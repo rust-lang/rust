@@ -80,51 +80,55 @@ pub(crate) fn generate_single_field_struct_from(
         "Generate single field `From`",
         strukt.syntax().text_range(),
         |builder| {
-            let make = SyntaxFactory::with_mappings();
             let mut editor = builder.make_editor(strukt.syntax());
 
             let indent = strukt.indent_level();
             let ty_where_clause = strukt.where_clause();
             let type_gen_params = strukt.generic_param_list();
             let type_gen_args = type_gen_params.as_ref().map(|params| params.to_generic_args());
-            let trait_gen_args = Some(make.generic_arg_list(
-                [ast::GenericArg::TypeArg(make.type_arg(main_field_ty.clone()))],
+            let trait_gen_args = Some(editor.make().generic_arg_list(
+                [ast::GenericArg::TypeArg(editor.make().type_arg(main_field_ty.clone()))],
                 false,
             ));
 
-            let ty = make.ty(&strukt_name.text());
+            let ty = editor.make().ty(&strukt_name.text());
 
-            let constructor =
-                make_adt_constructor(names.as_deref(), constructors, &main_field_name, &make);
-            let body = make.block_expr([], Some(constructor));
+            let constructor = make_adt_constructor(
+                names.as_deref(),
+                constructors,
+                &main_field_name,
+                editor.make(),
+            );
+            let body = editor.make().block_expr([], Some(constructor));
 
-            let fn_ = make
+            let fn_ = editor
+                .make()
                 .fn_(
                     [],
                     None,
-                    make.name("from"),
+                    editor.make().name("from"),
                     None,
                     None,
-                    make.param_list(
+                    editor.make().param_list(
                         None,
-                        [make.param(
-                            make.path_pat(make.path_from_text(&main_field_name)),
+                        [editor.make().param(
+                            editor.make().path_pat(editor.make().path_from_text(&main_field_name)),
                             main_field_ty,
                         )],
                     ),
                     body,
-                    Some(make.ret_type(make.ty("Self"))),
+                    Some(editor.make().ret_type(editor.make().ty("Self"))),
                     false,
                     false,
                     false,
                     false,
                 )
-                .indent_with_mapping(1.into(), &make);
+                .indent_with_mapping(1.into(), editor.make());
 
             let cfg_attrs =
                 strukt.attrs().filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))));
 
-            let impl_ = make.impl_trait(
+            let impl_ = editor.make().impl_trait(
                 cfg_attrs,
                 false,
                 None,
@@ -132,7 +136,7 @@ pub(crate) fn generate_single_field_struct_from(
                 type_gen_params,
                 type_gen_args,
                 false,
-                make.ty("From"),
+                editor.make().ty("From"),
                 ty.clone(),
                 None,
                 ty_where_clause.map(|wc| wc.reset_indent()),
@@ -140,22 +144,19 @@ pub(crate) fn generate_single_field_struct_from(
             );
 
             let (mut impl_editor, impl_root) = SyntaxEditor::with_ast_node(&impl_);
-            let assoc_list =
-                impl_root.get_or_create_assoc_item_list_with_editor(&mut impl_editor, &make);
+            let assoc_list = impl_root.get_or_create_assoc_item_list_with_editor(&mut impl_editor);
             assoc_list.add_items(&mut impl_editor, vec![fn_.into()]);
             let impl_ = ast::Impl::cast(impl_editor.finish().new_root().clone())
                 .unwrap()
-                .indent_with_mapping(indent, &make);
+                .indent_with_mapping(indent, editor.make());
 
             editor.insert_all(
                 Position::after(strukt.syntax()),
                 vec![
-                    make.whitespace(&format!("\n\n{indent}")).into(),
+                    editor.make().whitespace(&format!("\n\n{indent}")).into(),
                     impl_.syntax().clone().into(),
                 ],
             );
-
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

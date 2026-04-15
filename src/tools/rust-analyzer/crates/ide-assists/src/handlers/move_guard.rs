@@ -156,7 +156,7 @@ pub(crate) fn move_arm_cond_to_match_guard(
         "Move condition to match guard",
         replace_node.text_range(),
         |builder| {
-            let make = SyntaxFactory::without_mappings();
+            let mut editor = builder.make_editor(match_arm.syntax());
             let mut replace_arms = vec![];
 
             // Dedent if if_expr is in a BlockExpr
@@ -175,17 +175,17 @@ pub(crate) fn move_arm_cond_to_match_guard(
                     (Some(lhs), Some(rhs)) => {
                         let op_expr = |expr: Expr| {
                             if expr.precedence().needs_parentheses_in(ExprPrecedence::LAnd) {
-                                make.expr_paren(expr).into()
+                                editor.make().expr_paren(expr).into()
                             } else {
                                 expr
                             }
                         };
                         let op = syntax::ast::BinaryOp::LogicOp(syntax::ast::LogicOp::And);
-                        let expr_bin = make.expr_bin(op_expr(lhs), op, op_expr(rhs));
+                        let expr_bin = editor.make().expr_bin(op_expr(lhs), op, op_expr(rhs));
                         expr_bin.into()
                     }
                 };
-                Some(make.match_guard(condition))
+                Some(editor.make().match_guard(condition))
             };
 
             for (cond, block) in conds_blocks {
@@ -194,7 +194,8 @@ pub(crate) fn move_arm_cond_to_match_guard(
                     Some(then_expr) if only_expr => then_expr,
                     _ => block.dedent(dedent.into()).into(),
                 };
-                let new_arm = make.match_arm(match_pat.clone(), make_guard(Some(cond)), expr);
+                let new_arm =
+                    editor.make().match_arm(match_pat.clone(), make_guard(Some(cond)), expr);
                 replace_arms.push(new_arm);
             }
             if let Some(block) = tail {
@@ -207,7 +208,7 @@ pub(crate) fn move_arm_cond_to_match_guard(
                     }
                     _ => block.dedent(dedent.into()).into(),
                 };
-                let new_arm = make.match_arm(match_pat, make_guard(None), expr);
+                let new_arm = editor.make().match_arm(match_pat, make_guard(None), expr);
                 replace_arms.push(new_arm);
             } else {
                 // There's no else branch. Add a pattern without guard, unless the following match
@@ -221,20 +222,22 @@ pub(crate) fn move_arm_cond_to_match_guard(
                         cov_mark::hit!(move_guard_ifelse_has_wildcard);
                     }
                     _ => {
-                        let block_expr = make.expr_empty_block().into();
-                        replace_arms.push(make.match_arm(match_pat, make_guard(None), block_expr));
+                        let block_expr = editor.make().expr_empty_block().into();
+                        replace_arms.push(editor.make().match_arm(
+                            match_pat,
+                            make_guard(None),
+                            block_expr,
+                        ));
                     }
                 }
             }
 
-            let mut edit = builder.make_editor(match_arm.syntax());
-
-            let newline = make.whitespace(&format!("\n{indent_level}"));
+            let newline = editor.make().whitespace(&format!("\n{indent_level}"));
             let replace_arms = replace_arms.iter().map(|it| it.syntax().syntax_element());
             let replace_arms = Itertools::intersperse(replace_arms, newline.syntax_element());
-            edit.replace_with_many(match_arm.syntax(), replace_arms.collect());
+            editor.replace_with_many(match_arm.syntax(), replace_arms.collect());
 
-            builder.add_file_edits(ctx.vfs_file_id(), edit);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

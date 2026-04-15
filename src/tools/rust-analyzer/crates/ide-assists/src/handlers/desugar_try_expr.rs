@@ -65,37 +65,40 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         "Replace try expression with match",
         target,
         |builder| {
-            let make = SyntaxFactory::with_mappings();
             let mut editor = builder.make_editor(try_expr.syntax());
 
             let sad_pat = match try_enum {
-                TryEnum::Option => make.path_pat(make.ident_path("None")),
-                TryEnum::Result => make
+                TryEnum::Option => editor.make().path_pat(editor.make().ident_path("None")),
+                TryEnum::Result => editor
+                    .make()
                     .tuple_struct_pat(
-                        make.ident_path("Err"),
-                        iter::once(make.path_pat(make.ident_path("err"))),
+                        editor.make().ident_path("Err"),
+                        iter::once(editor.make().path_pat(editor.make().ident_path("err"))),
                     )
                     .into(),
             };
-            let sad_expr = make.expr_return(Some(sad_expr(try_enum, &make, || {
-                make.expr_path(make.ident_path("err"))
-            })));
+            let sad_expr =
+                editor.make().expr_return(Some(sad_expr(try_enum, editor.make(), || {
+                    editor.make().expr_path(editor.make().ident_path("err"))
+                })));
 
-            let happy_arm = make.match_arm(
-                try_enum.happy_pattern(make.ident_pat(false, false, make.name("it")).into()),
+            let happy_arm = editor.make().match_arm(
+                try_enum.happy_pattern(
+                    editor.make().ident_pat(false, false, editor.make().name("it")).into(),
+                ),
                 None,
-                make.expr_path(make.ident_path("it")),
+                editor.make().expr_path(editor.make().ident_path("it")),
             );
-            let sad_arm = make.match_arm(sad_pat, None, sad_expr.into());
+            let sad_arm = editor.make().match_arm(sad_pat, None, sad_expr.into());
 
-            let match_arm_list = make.match_arm_list([happy_arm, sad_arm]);
+            let match_arm_list = editor.make().match_arm_list([happy_arm, sad_arm]);
 
-            let expr_match = make
+            let expr_match = editor
+                .make()
                 .expr_match(expr.clone(), match_arm_list)
                 .indent(IndentLevel::from_node(try_expr.syntax()));
 
             editor.replace(try_expr.syntax(), expr_match.syntax());
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     );
@@ -109,31 +112,42 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             "Replace try expression with let else",
             target,
             |builder| {
-                let make = SyntaxFactory::with_mappings();
                 let mut editor = builder.make_editor(let_stmt.syntax());
 
                 let indent_level = IndentLevel::from_node(let_stmt.syntax());
                 let fill_expr = || crate::utils::expr_fill_default(ctx.config);
-                let new_let_stmt = make.let_else_stmt(
+                let new_let_stmt = editor.make().let_else_stmt(
                     try_enum.happy_pattern(pat),
                     let_stmt.ty().map(|ty| match try_enum {
-                        TryEnum::Option => make.ty_option(ty).into(),
-                        TryEnum::Result => make.ty_result(ty, make.ty_infer().into()).into(),
+                        TryEnum::Option => editor.make().ty_option(ty).into(),
+                        TryEnum::Result => {
+                            editor.make().ty_result(ty, editor.make().ty_infer().into()).into()
+                        }
                     }),
                     expr,
-                    make.block_expr(
-                        iter::once(
-                            make.expr_stmt(
-                                make.expr_return(Some(sad_expr(try_enum, &make, fill_expr))).into(),
-                            )
-                            .into(),
-                        ),
-                        None,
-                    )
-                    .indent(indent_level),
+                    editor
+                        .make()
+                        .block_expr(
+                            iter::once(
+                                editor
+                                    .make()
+                                    .expr_stmt(
+                                        editor
+                                            .make()
+                                            .expr_return(Some(sad_expr(
+                                                try_enum,
+                                                editor.make(),
+                                                fill_expr,
+                                            )))
+                                            .into(),
+                                    )
+                                    .into(),
+                            ),
+                            None,
+                        )
+                        .indent(indent_level),
                 );
                 editor.replace(let_stmt.syntax(), new_let_stmt.syntax());
-                editor.add_mappings(make.finish_with_mappings());
                 builder.add_file_edits(ctx.vfs_file_id(), editor);
             },
         );

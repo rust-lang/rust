@@ -7,7 +7,7 @@ use ide_db::{
 };
 use syntax::{
     Direction, TextRange,
-    ast::{self, AstNode, AstToken, HasName, syntax_factory::SyntaxFactory},
+    ast::{self, AstNode, AstToken, HasName},
     syntax_editor::{Element, SyntaxEditor},
 };
 
@@ -98,25 +98,21 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 }
             }
 
-            let make = SyntaxFactory::with_mappings();
-
             for (name, should_wrap) in wrap_in_parens {
                 let replacement = if should_wrap {
-                    make.expr_paren(initializer_expr.clone()).into()
+                    editor.make().expr_paren(initializer_expr.clone()).into()
                 } else {
                     initializer_expr.clone()
                 };
 
                 if let Some(record_field) = ast::RecordExprField::for_field_name(&name) {
                     cov_mark::hit!(inline_field_shorthand);
-                    let replacement = make.record_expr_field(name, Some(replacement));
+                    let replacement = editor.make().record_expr_field(name, Some(replacement));
                     editor.replace(record_field.syntax(), replacement.syntax());
                 } else {
                     editor.replace(name.syntax(), replacement.syntax());
                 }
             }
-
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

@@ -5,7 +5,6 @@ use ide_db::{
     defs::Definition,
     search::{SearchScope, UsageSearchResult},
 };
-use syntax::ast::syntax_factory::SyntaxFactory;
 use syntax::{
     AstNode,
     ast::{self, HasGenericParams, HasName, HasTypeBounds, Name, NameLike, PathType},
@@ -73,7 +72,6 @@ pub(crate) fn replace_named_generic_with_impl(
         target,
         |edit| {
             let mut editor = edit.make_editor(type_param.syntax());
-            let make = SyntaxFactory::without_mappings();
 
             // remove trait from generic param list
             if let Some(generic_params) = fn_.generic_param_list() {
@@ -85,12 +83,12 @@ pub(crate) fn replace_named_generic_with_impl(
                 if params.is_empty() {
                     editor.delete(generic_params.syntax());
                 } else {
-                    let new_generic_param_list = make.generic_param_list(params);
+                    let new_generic_param_list = editor.make().generic_param_list(params);
                     editor.replace(generic_params.syntax(), new_generic_param_list.syntax());
                 }
             }
 
-            let new_bounds = make.impl_trait_type(type_bound_list);
+            let new_bounds = editor.make().impl_trait_type(type_bound_list);
             for path_type in path_types_to_replace.iter().rev() {
                 editor.replace(path_type.syntax(), new_bounds.syntax());
             }

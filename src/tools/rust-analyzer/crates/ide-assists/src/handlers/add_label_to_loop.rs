@@ -3,7 +3,7 @@ use ide_db::{
 };
 use syntax::{
     SyntaxToken, T,
-    ast::{self, AstNode, HasLoopBody, syntax_factory::SyntaxFactory},
+    ast::{self, AstNode, HasLoopBody},
     syntax_editor::{Position, SyntaxEditor},
 };
 
@@ -42,14 +42,13 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         "Add Label",
         loop_expr.syntax().text_range(),
         |builder| {
-            let make = SyntaxFactory::with_mappings();
             let mut editor = builder.make_editor(loop_expr.syntax());
 
-            let label = make.lifetime("'l");
+            let label = editor.make().lifetime("'l");
             let elements = vec![
                 label.syntax().clone().into(),
-                make.token(T![:]).into(),
-                make.whitespace(" ").into(),
+                editor.make().token(T![:]).into(),
+                editor.make().whitespace(" ").into(),
             ];
             editor.insert_all(Position::before(&loop_kw), elements);
 
@@ -65,11 +64,10 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
                     _ => return,
                 };
                 if let Some(token) = token {
-                    insert_label_after_token(&mut editor, &make, &token, ctx, builder);
+                    insert_label_after_token(&mut editor, &token, ctx, builder);
                 }
             });
 
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
             builder.rename();
         },
@@ -86,13 +84,12 @@ fn loop_token(loop_expr: &ast::AnyHasLoopBody) -> Option<syntax::SyntaxToken> {
 
 fn insert_label_after_token(
     editor: &mut SyntaxEditor,
-    make: &SyntaxFactory,
     token: &SyntaxToken,
     ctx: &AssistContext<'_>,
     builder: &mut SourceChangeBuilder,
 ) {
-    let label = make.lifetime("'l");
-    let elements = vec![make.whitespace(" ").into(), label.syntax().clone().into()];
+    let label = editor.make().lifetime("'l");
+    let elements = vec![editor.make().whitespace(" ").into(), label.syntax().clone().into()];
     editor.insert_all(Position::after(token), elements);
 
     if let Some(cap) = ctx.config.snippet_cap {

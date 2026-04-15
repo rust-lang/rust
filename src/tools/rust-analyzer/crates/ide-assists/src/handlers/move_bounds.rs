@@ -46,21 +46,20 @@ pub(crate) fn move_bounds_to_where_clause(
         target,
         |builder| {
             let mut edit = builder.make_editor(&parent);
-            let make = SyntaxFactory::without_mappings();
 
             let new_preds: Vec<ast::WherePred> = type_param_list
                 .generic_params()
-                .filter_map(|param| build_predicate(param, &make))
+                .filter_map(|param| build_predicate(param, edit.make()))
                 .collect();
 
             match_ast! {
                 match (&parent) {
-                    ast::Fn(it) => it.get_or_create_where_clause(&mut edit, &make, new_preds.into_iter()),
-                    ast::Trait(it) => it.get_or_create_where_clause(&mut edit, &make, new_preds.into_iter()),
-                    ast::Impl(it) => it.get_or_create_where_clause(&mut edit, &make, new_preds.into_iter()),
-                    ast::Enum(it) => it.get_or_create_where_clause(&mut edit, &make, new_preds.into_iter()),
-                    ast::Struct(it) => it.get_or_create_where_clause(&mut edit, &make, new_preds.into_iter()),
-                    ast::TypeAlias(it) => it.get_or_create_where_clause(&mut edit, &make, new_preds.into_iter()),
+                    ast::Fn(it) => it.get_or_create_where_clause(&mut edit, new_preds.into_iter()),
+                    ast::Trait(it) => it.get_or_create_where_clause(&mut edit, new_preds.into_iter()),
+                    ast::Impl(it) => it.get_or_create_where_clause(&mut edit, new_preds.into_iter()),
+                    ast::Enum(it) => it.get_or_create_where_clause(&mut edit, new_preds.into_iter()),
+                    ast::Struct(it) => it.get_or_create_where_clause(&mut edit, new_preds.into_iter()),
+                    ast::TypeAlias(it) => it.get_or_create_where_clause(&mut edit, new_preds.into_iter()),
                     _ => return,
                 }
             };

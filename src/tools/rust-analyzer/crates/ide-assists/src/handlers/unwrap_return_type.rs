@@ -5,7 +5,7 @@ use ide_db::{
 };
 use syntax::{
     AstNode, NodeOrToken, SyntaxKind,
-    ast::{self, HasArgList, HasGenericArgs, syntax_factory::SyntaxFactory},
+    ast::{self, HasArgList, HasGenericArgs},
     match_ast,
 };
 
@@ -67,7 +67,6 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
 
     acc.add(kind.assist_id(), kind.label(), type_ref.syntax().text_range(), |builder| {
         let mut editor = builder.make_editor(&parent);
-        let make = SyntaxFactory::with_mappings();
 
         let mut exprs_to_unwrap = Vec::new();
         let tail_cb = &mut |e: &_| tail_cb_impl(&mut exprs_to_unwrap, e);
@@ -119,14 +118,15 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                             .and_then(Either::<ast::ReturnExpr, ast::StmtList>::cast)
                             .unwrap();
                         match tail_parent {
-                            Either::Left(ret_expr) => {
-                                editor.replace(ret_expr.syntax(), make.expr_return(None).syntax())
-                            }
+                            Either::Left(ret_expr) => editor.replace(
+                                ret_expr.syntax(),
+                                editor.make().expr_return(None).syntax(),
+                            ),
                             Either::Right(stmt_list) => {
                                 let new_block = if stmt_list.statements().next().is_none() {
-                                    make.expr_empty_block()
+                                    editor.make().expr_empty_block()
                                 } else {
-                                    make.block_expr(stmt_list.statements(), None)
+                                    editor.make().block_expr(stmt_list.statements(), None)
                                 };
                                 editor.replace(
                                     stmt_list.syntax(),
@@ -147,7 +147,7 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                         continue;
                     }
 
-                    let new_tail_expr = make.expr_unit();
+                    let new_tail_expr = editor.make().expr_unit();
                     editor.replace(path_expr.syntax(), new_tail_expr.syntax());
                     if let Some(cap) = ctx.config.snippet_cap {
                         editor.add_annotation(
@@ -168,7 +168,6 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             editor.add_annotation(final_placeholder.syntax(), builder.make_tabstop_after(cap));
         }
 
-        editor.add_mappings(make.finish_with_mappings());
         builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }

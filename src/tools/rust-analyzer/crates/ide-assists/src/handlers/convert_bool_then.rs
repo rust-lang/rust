@@ -96,12 +96,12 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
             let closure_body = ast::Expr::cast(edit.new_root().clone()).unwrap();
 
             let mut editor = builder.make_editor(expr.syntax());
-            let make = SyntaxFactory::with_mappings();
             let closure_body = match closure_body {
                 ast::Expr::BlockExpr(block) => unwrap_trivial_block(block),
                 e => e,
             };
-            let cond = if invert_cond { invert_boolean_expression(&make, cond) } else { cond };
+            let cond =
+                if invert_cond { invert_boolean_expression(editor.make(), cond) } else { cond };
 
             let parenthesize = matches!(
                 cond,
@@ -124,12 +124,12 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
                     | ast::Expr::YieldExpr(_)
             );
 
-            let cond = if parenthesize { make.expr_paren(cond).into() } else { cond };
-            let arg_list = make.arg_list(Some(make.expr_closure(None, closure_body).into()));
-            let mcall = make.expr_method_call(cond, make.name_ref("then"), arg_list);
+            let cond = if parenthesize { editor.make().expr_paren(cond).into() } else { cond };
+            let arg_list =
+                editor.make().arg_list(Some(editor.make().expr_closure(None, closure_body).into()));
+            let mcall =
+                editor.make().expr_method_call(cond, editor.make().name_ref("then"), arg_list);
             editor.replace(expr.syntax(), mcall.syntax());
-
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -211,22 +211,20 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
             let closure_body = ast::BlockExpr::cast(edit.new_root().clone()).unwrap();
 
             let mut editor = builder.make_editor(mcall.syntax());
-            let make = SyntaxFactory::with_mappings();
 
             let cond = match &receiver {
                 ast::Expr::ParenExpr(expr) => expr.expr().unwrap_or(receiver),
                 _ => receiver,
             };
-            let if_expr = make
+            let if_expr = editor
+                .make()
                 .expr_if(
                     cond,
                     closure_body,
-                    Some(ast::ElseBranch::Block(make.block_expr(None, Some(none_path)))),
+                    Some(ast::ElseBranch::Block(editor.make().block_expr(None, Some(none_path)))),
                 )
                 .indent(mcall.indent_level());
             editor.replace(mcall.syntax().clone(), if_expr.syntax().clone());
-
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

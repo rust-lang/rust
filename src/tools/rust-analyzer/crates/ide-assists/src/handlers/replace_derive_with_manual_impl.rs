@@ -4,7 +4,7 @@ use itertools::Itertools;
 use syntax::{
     SyntaxKind::WHITESPACE,
     T,
-    ast::{self, AstNode, HasName, syntax_factory::SyntaxFactory},
+    ast::{self, AstNode, HasName},
     syntax_editor::{Position, SyntaxEditor},
 };
 
@@ -128,10 +128,11 @@ fn add_assist(
     let label = format!("Convert to manual `impl {replace_trait_path} for {annotated_name}`");
 
     acc.add(AssistId::refactor("replace_derive_with_manual_impl"), label, target, |builder| {
-        let make = SyntaxFactory::with_mappings();
+        let mut editor = builder.make_editor(attr.syntax());
         let insert_after = Position::after(adt.syntax());
         let impl_is_unsafe = trait_.map(|s| s.is_unsafe(ctx.db())).unwrap_or(false);
         let impl_def = impl_def_from_trait(
+            &editor,
             &ctx.sema,
             ctx.config,
             adt,
@@ -140,11 +141,9 @@ fn add_assist(
             replace_trait_path,
             impl_is_unsafe,
         );
+        update_attribute(&mut editor, old_derives, old_tree, old_trait_path, attr);
 
-        let mut editor = builder.make_editor(attr.syntax());
-        update_attribute(&make, &mut editor, old_derives, old_tree, old_trait_path, attr);
-
-        let trait_path = make.ty_path(replace_trait_path.clone()).into();
+        let trait_path = editor.make().ty_path(replace_trait_path.clone()).into();
 
         let (impl_def, first_assoc_item) = if let Some(impl_def) = impl_def {
             (
@@ -152,7 +151,7 @@ fn add_assist(
                 impl_def.assoc_item_list().and_then(|list| list.assoc_items().next()),
             )
         } else {
-            (generate_trait_impl(&make, impl_is_unsafe, adt, trait_path), None)
+            (generate_trait_impl(editor.make(), impl_is_unsafe, adt, trait_path), None)
         };
 
         if let Some(cap) = ctx.config.snippet_cap {
@@ -176,14 +175,14 @@ fn add_assist(
 
         editor.insert_all(
             insert_after,
-            vec![make.whitespace("\n\n").into(), impl_def.syntax().clone().into()],
+            vec![editor.make().whitespace("\n\n").into(), impl_def.syntax().clone().into()],
         );
-        editor.add_mappings(make.finish_with_mappings());
         builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }
 
 fn impl_def_from_trait(
+    editor: &SyntaxEditor,
     sema: &hir::Semantics<'_, ide_db::RootDatabase>,
     config: &AssistConfig,
     adt: &ast::Adt,
@@ -208,12 +207,11 @@ fn impl_def_from_trait(
     if trait_items.is_empty() {
         return None;
     }
-    let make = SyntaxFactory::without_mappings();
-    let trait_ty: ast::Type = make.ty_path(trait_path.clone()).into();
-    let impl_def = generate_trait_impl(&make, impl_is_unsafe, adt, trait_ty.clone());
+    let trait_ty: ast::Type = editor.make().ty_path(trait_path.clone()).into();
+    let impl_def = generate_trait_impl(editor.make(), impl_is_unsafe, adt, trait_ty.clone());
 
     let assoc_items = add_trait_assoc_items_to_impl(
-        &make,
+        editor.make(),
         sema,
         config,
         &trait_items,
@@ -223,7 +221,7 @@ fn impl_def_from_trait(
     );
     let assoc_item_list = if let Some((first, other)) = assoc_items.split_first() {
         let first_item = if let ast::AssocItem::Fn(func) = first
-            && let Some(body) = gen_trait_fn_body(&make, func, trait_path, adt, None)
+            && let Some(body) = gen_trait_fn_body(editor.make(), func, trait_path, adt, None)
             && let Some(func_body) = func.body()
         {
             let (mut editor, _) = SyntaxEditor::new(first.syntax().clone());
@@ -234,16 +232,21 @@ fn impl_def_from_trait(
         };
         let items: Vec<ast::AssocItem> =
             first_item.into_iter().chain(other.iter().cloned()).collect();
-        make.assoc_item_list(items)
+        editor.make().assoc_item_list(items)
     } else {
-        make.assoc_item_list_empty()
+        editor.make().assoc_item_list_empty()
     };
 
-    Some(generate_trait_impl_with_item(&make, impl_is_unsafe, adt, trait_ty, assoc_item_list))
+    Some(generate_trait_impl_with_item(
+        editor.make(),
+        impl_is_unsafe,
+        adt,
+        trait_ty,
+        assoc_item_list,
+    ))
 }
 
 fn update_attribute(
-    make: &SyntaxFactory,
     editor: &mut SyntaxEditor,
     old_derives: &[ast::Path],
     old_tree: &ast::TokenTree,
@@ -264,13 +267,16 @@ fn update_attribute(
                 .collect::<Vec<_>>()
         });
         // ...which are interspersed with ", "
-        let tt = Itertools::intersperse(tt, vec![make.token(T![,]), make.whitespace(" ")]);
+        let tt = Itertools::intersperse(
+            tt,
+            vec![editor.make().token(T![,]), editor.make().whitespace(" ")],
+        );
         // ...wrap them into the appropriate `NodeOrToken` variant
         let tt = tt.flatten().map(syntax::NodeOrToken::Token);
         // ...and make them into a flat list of tokens
         let tt = tt.collect::<Vec<_>>();
 
-        let new_tree = make.token_tree(T!['('], tt);
+        let new_tree = editor.make().token_tree(T!['('], tt);
         editor.replace(old_tree.syntax(), new_tree.syntax());
     } else {
         // Remove the attr and any trailing whitespace

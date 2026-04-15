@@ -22,7 +22,7 @@ use crate::{
 use syntax::{
     ast::{
         self, AstNode, FieldList, HasAttrs, HasGenericArgs, HasGenericParams, HasModuleItem,
-        HasName, HasTypeBounds, make, syntax_factory::SyntaxFactory,
+        HasName, HasTypeBounds, make,
     },
     syntax_editor::{GetOrCreateWhereClause, SyntaxEditor},
     ted,
@@ -1295,9 +1295,7 @@ fn coerce_pointee_expand(
     }
 
     let (mut editor, strukt) = SyntaxEditor::with_ast_node(strukt);
-    let make = SyntaxFactory::with_mappings();
-    strukt.get_or_create_where_clause(&mut editor, &make, new_predicates.into_iter());
-    editor.add_mappings(make.finish_with_mappings());
+    strukt.get_or_create_where_clause(&mut editor, new_predicates.into_iter());
     let edit = editor.finish();
     let strukt = ast::Struct::cast(edit.new_root().clone()).unwrap();
     let adt = ast::Adt::Struct(strukt.clone());

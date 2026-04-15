@@ -368,8 +368,7 @@ fn create_replacement(
             };
             let new_string = replacement_syntax.to_string();
             let new = if new_string == "_" {
-                let make = SyntaxFactory::without_mappings();
-                make.wildcard_pat().syntax().clone()
+                editor.make().wildcard_pat().syntax().clone()
             } else {
                 replacement_syntax.clone()
             };

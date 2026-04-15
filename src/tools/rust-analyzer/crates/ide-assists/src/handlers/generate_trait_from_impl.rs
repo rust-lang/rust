@@ -4,7 +4,6 @@ use syntax::{
     AstNode, AstToken, SyntaxKind, T,
     ast::{
         self, HasDocComments, HasGenericParams, HasName, HasVisibility, edit::AstNodeEdit, make,
-        syntax_factory::SyntaxFactory,
     },
     syntax_editor::{Position, SyntaxEditor},
 };
@@ -109,8 +108,8 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
                 ast::AssocItemList::cast(trait_items_editor.finish().new_root().clone()).unwrap()
             };
 
-            let factory = SyntaxFactory::with_mappings();
-            let trait_ast = factory.trait_(
+            let mut editor = builder.make_editor(impl_ast.syntax());
+            let trait_ast = editor.make().trait_(
                 false,
                 &trait_name(&impl_assoc_items).text(),
                 impl_ast.generic_param_list(),
@@ -119,7 +118,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
             );
 
             let trait_name = trait_ast.name().expect("new trait should have a name");
-            let trait_name_ref = factory.name_ref(&trait_name.to_string());
+            let trait_name_ref = editor.make().name_ref(&trait_name.to_string());
 
             // Change `impl Foo` to `impl NewTrait for Foo`
             let mut elements = vec![
@@ -134,7 +133,6 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
                 elements.insert(1, gen_args.syntax().clone().into());
             }
 
-            let mut editor = builder.make_editor(impl_ast.syntax());
             impl_assoc_items.assoc_items().for_each(|item| {
                 remove_items_visibility(&mut editor, &item);
                 remove_doc_comments(&mut editor, &item);
@@ -157,8 +155,6 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
                 editor.add_annotation(trait_name.syntax(), placeholder);
                 editor.add_annotation(trait_name_ref.syntax(), placeholder);
             }
-
-            editor.add_mappings(factory.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     );

@@ -8,7 +8,7 @@ use syntax::{
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::WHITESPACE,
     SyntaxToken, T,
-    ast::{self, TokenTree, syntax_factory::SyntaxFactory},
+    ast::{self, TokenTree},
 };
 
 // Assist: extract_expressions_from_format_string
@@ -57,7 +57,7 @@ pub(crate) fn extract_expressions_from_format_string(
         "Extract format expressions",
         tt.syntax().text_range(),
         |edit| {
-            let make = SyntaxFactory::without_mappings();
+            let mut editor = edit.make_editor(tt.syntax());
             // Extract existing arguments in macro
             let mut raw_tokens = tt.token_trees_and_tokens().skip(1).collect_vec();
             let format_string_index = format_str_index(&raw_tokens, &fmt_string);
@@ -95,14 +95,15 @@ pub(crate) fn extract_expressions_from_format_string(
             let mut new_tt_bits = raw_tokens;
             let mut placeholder_indexes = vec![];
 
-            new_tt_bits.push(NodeOrToken::Token(make.expr_literal(&new_fmt).token().clone()));
+            new_tt_bits
+                .push(NodeOrToken::Token(editor.make().expr_literal(&new_fmt).token().clone()));
 
             for arg in extracted_args {
                 if matches!(arg, Arg::Expr(_) | Arg::Placeholder) {
                     // insert ", " before each arg
                     new_tt_bits.extend_from_slice(&[
-                        NodeOrToken::Token(make.token(T![,])),
-                        NodeOrToken::Token(make.whitespace(" ")),
+                        NodeOrToken::Token(editor.make().token(T![,])),
+                        NodeOrToken::Token(editor.make().whitespace(" ")),
                     ]);
                 }
 
@@ -110,7 +111,7 @@ pub(crate) fn extract_expressions_from_format_string(
                     Arg::Expr(s) => {
                         // insert arg
                         let expr = ast::Expr::parse(&s, ctx.edition()).syntax_node();
-                        let mut expr_tt = utils::tt_from_syntax(expr, &make);
+                        let mut expr_tt = utils::tt_from_syntax(expr, editor.make());
                         new_tt_bits.append(&mut expr_tt);
                     }
                     Arg::Placeholder => {
@@ -121,7 +122,7 @@ pub(crate) fn extract_expressions_from_format_string(
                             }
                             None => {
                                 placeholder_indexes.push(new_tt_bits.len());
-                                new_tt_bits.push(NodeOrToken::Token(make.token(T![_])));
+                                new_tt_bits.push(NodeOrToken::Token(editor.make().token(T![_])));
                             }
                         }
                     }
@@ -130,8 +131,7 @@ pub(crate) fn extract_expressions_from_format_string(
             }
 
             // Insert new args
-            let new_tt = make.token_tree(tt_delimiter, new_tt_bits);
-            let mut editor = edit.make_editor(tt.syntax());
+            let new_tt = editor.make().token_tree(tt_delimiter, new_tt_bits);
             editor.replace(tt.syntax(), new_tt.syntax());
 
             if let Some(cap) = ctx.config.snippet_cap {
@@ -158,7 +158,6 @@ pub(crate) fn extract_expressions_from_format_string(
                     editor.add_annotation(literal, annotation);
                 }
             }
-            editor.add_mappings(make.finish_with_mappings());
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     );

@@ -4,7 +4,6 @@ use syntax::{
     ast::{
         self, AstNode, HasGenericParams, HasName, HasVisibility as _,
         edit::{AstNodeEdit, IndentLevel},
-        syntax_factory::SyntaxFactory,
     },
     syntax_editor::Position,
 };
@@ -107,8 +106,9 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
             format!("Generate delegate for `{field_name}.{name}()`",),
             target,
             |edit| {
-                let make = SyntaxFactory::without_mappings();
-                let field = make
+                let mut editor = edit.make_editor(strukt.syntax());
+                let field = editor
+                    .make()
                     .field_from_idents(["self", &field_name])
                     .expect("always be a valid expression");
                 // Create the function
@@ -135,27 +135,32 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                 let is_unsafe = method_source.unsafe_token().is_some();
                 let is_gen = method_source.gen_token().is_some();
 
-                let fn_name = make.name(&name);
+                let fn_name = editor.make().name(&name);
 
                 let type_params = method_source.generic_param_list();
                 let where_clause = method_source.where_clause();
-                let params =
-                    method_source.param_list().unwrap_or_else(|| make.param_list(None, []));
+                let params = method_source
+                    .param_list()
+                    .unwrap_or_else(|| editor.make().param_list(None, []));
 
                 // compute the `body`
                 let arg_list = method_source
                     .param_list()
-                    .map(|v| convert_param_list_to_arg_list(v, &make))
-                    .unwrap_or_else(|| make.arg_list([]));
+                    .map(|v| convert_param_list_to_arg_list(v, editor.make()))
+                    .unwrap_or_else(|| editor.make().arg_list([]));
 
-                let tail_expr = make.expr_method_call(field, make.name_ref(&name), arg_list).into();
+                let tail_expr = editor
+                    .make()
+                    .expr_method_call(field, editor.make().name_ref(&name), arg_list)
+                    .into();
                 let tail_expr_finished =
-                    if is_async { make.expr_await(tail_expr).into() } else { tail_expr };
-                let body = make.block_expr([], Some(tail_expr_finished));
+                    if is_async { editor.make().expr_await(tail_expr).into() } else { tail_expr };
+                let body = editor.make().block_expr([], Some(tail_expr_finished));
 
                 let ret_type = method_source.ret_type();
 
-                let f = make
+                let f = editor
+                    .make()
                     .fn_(
                         None,
                         vis,
@@ -173,7 +178,6 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     .indent(IndentLevel(1));
                 let item = ast::AssocItem::Fn(f.clone());
 
-                let mut editor = edit.make_editor(strukt.syntax());
                 let fn_: Option<ast::AssocItem> = match impl_def {
                     Some(impl_def) => match impl_def.assoc_item_list() {
                         Some(assoc_item_list) => {
@@ -182,7 +186,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                             Some(item)
                         }
                         None => {
-                            let assoc_item_list = make.assoc_item_list(vec![item]);
+                            let assoc_item_list = editor.make().assoc_item_list(vec![item]);
                             editor.insert(
                                 Position::last_child_of(impl_def.syntax()),
                                 assoc_item_list.syntax(),
@@ -195,13 +199,15 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                         let ty_params = strukt.generic_param_list();
                         let ty_args = ty_params.as_ref().map(|it| it.to_generic_args());
                         let where_clause = strukt.where_clause();
-                        let assoc_item_list = make.assoc_item_list(vec![item]);
+                        let assoc_item_list = editor.make().assoc_item_list(vec![item]);
 
-                        let impl_def = make.impl_(
+                        let impl_def = editor.make().impl_(
                             None,
                             ty_params,
                             ty_args,
-                            syntax::ast::Type::PathType(make.ty_path(make.ident_path(name))),
+                            syntax::ast::Type::PathType(
+                                editor.make().ty_path(editor.make().ident_path(name)),
+                            ),
                             where_clause,
                             Some(assoc_item_list),
                         );
@@ -215,7 +221,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                         editor.insert_all(
                             Position::after(strukt.syntax()),
                             vec![
-                                make.whitespace(&format!("\n\n{indent}")).into(),
+                                editor.make().whitespace(&format!("\n\n{indent}")).into(),
                                 impl_def.syntax().clone().into(),
                             ],
                         );
@@ -229,7 +235,6 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     let tabstop = edit.make_tabstop_before(cap);
                     editor.add_annotation(fn_.syntax(), tabstop);
                 }
-                editor.add_mappings(make.finish_with_mappings());
                 edit.add_file_edits(ctx.vfs_file_id(), editor);
             },
         )?;

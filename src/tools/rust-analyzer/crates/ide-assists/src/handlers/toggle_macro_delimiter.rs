@@ -2,7 +2,7 @@ use ide_db::assists::AssistId;
 use syntax::{
     AstNode, SyntaxKind, SyntaxToken, T,
     algo::{previous_non_trivia_token, skip_trivia_token},
-    ast::{self, syntax_factory::SyntaxFactory},
+    ast,
 };
 
 use crate::{AssistContext, Assists};
@@ -73,34 +73,35 @@ pub(crate) fn toggle_macro_delimiter(acc: &mut Assists, ctx: &AssistContext<'_>)
         },
         token_tree.syntax().text_range(),
         |builder| {
-            let make = SyntaxFactory::with_mappings();
             let mut editor = builder.make_editor(token_tree.syntax());
 
             match token {
                 MacroDelims::LPar | MacroDelims::RPar => {
-                    editor.replace(ltoken, make.token(T!['{']));
-                    editor.replace(rtoken, make.token(T!['}']));
+                    editor.replace(ltoken, editor.make().token(T!['{']));
+                    editor.replace(rtoken, editor.make().token(T!['}']));
                     if let Some(sc) = semicolon {
                         editor.delete(sc);
                     }
                 }
                 MacroDelims::LBra | MacroDelims::RBra => {
-                    editor.replace(ltoken, make.token(T!['(']));
-                    editor.replace(rtoken, make.token(T![')']));
+                    editor.replace(ltoken, editor.make().token(T!['(']));
+                    editor.replace(rtoken, editor.make().token(T![')']));
                 }
                 MacroDelims::LCur | MacroDelims::RCur => {
-                    editor.replace(ltoken, make.token(T!['[']));
+                    editor.replace(ltoken, editor.make().token(T!['[']));
                     if semicolon.is_some() || !needs_semicolon(token_tree) {
-                        editor.replace(rtoken, make.token(T![']']));
+                        editor.replace(rtoken, editor.make().token(T![']']));
                     } else {
                         editor.replace_with_many(
                             rtoken,
-                            vec![make.token(T![']']).into(), make.token(T![;]).into()],
+                            vec![
+                                editor.make().token(T![']']).into(),
+                                editor.make().token(T![;]).into(),
+                            ],
                         );
                     }
                 }
             }
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

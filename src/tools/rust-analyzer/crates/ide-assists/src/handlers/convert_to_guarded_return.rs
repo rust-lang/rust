@@ -130,7 +130,7 @@ fn if_expr_to_guarded_return(
         "Convert to guarded return",
         target,
         |edit| {
-            let make = SyntaxFactory::without_mappings();
+            let mut editor = edit.make_editor(if_expr.syntax());
             let if_indent_level = IndentLevel::from_node(if_expr.syntax());
             let early_expression = else_block.make_early_block(&ctx.sema, &make);
             let replacement = let_chains.into_iter().map(|expr| {
@@ -170,7 +170,6 @@ fn if_expr_to_guarded_return(
                         .take_while(|i| *i != end_of_then),
                 )
                 .collect();
-            let mut editor = edit.make_editor(if_expr.syntax());
             editor.replace_with_many(if_expr.syntax(), then_statements);
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
@@ -209,22 +208,20 @@ fn let_stmt_to_guarded_return(
         "Convert to guarded return",
         target,
         |edit| {
+            let mut editor = edit.make_editor(let_stmt.syntax());
             let let_indent_level = IndentLevel::from_node(let_stmt.syntax());
-            let make = SyntaxFactory::without_mappings();
 
             let replacement = {
-                let let_else_stmt = make.let_else_stmt(
+                let let_else_stmt = editor.make().let_else_stmt(
                     happy_pattern,
                     let_stmt.ty(),
                     expr.reset_indent(),
-                    else_block.make_early_block(&ctx.sema, &make),
+                    else_block.make_early_block(&ctx.sema, editor.make()),
                 );
                 let let_else_stmt = let_else_stmt.indent(let_indent_level);
                 let_else_stmt.syntax().clone()
             };
-            let mut editor = edit.make_editor(let_stmt.syntax());
             editor.replace(let_stmt.syntax(), replacement);
-            editor.add_mappings(make.finish_with_mappings());
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -277,12 +274,10 @@ impl<'db> ElseBlock<'db> {
         };
         let whitespace = last_element.prev_sibling_or_token().filter(|it| it.kind() == WHITESPACE);
 
-        let make = SyntaxFactory::without_mappings();
-
         if let Some(tail_expr) = block_expr.tail_expr()
             && !self.kind.is_unit()
         {
-            let early_expr = self.kind.make_early_expr(sema, &make, Some(tail_expr.clone()));
+            let early_expr = self.kind.make_early_expr(sema, make, Some(tail_expr.clone()));
             edit.replace(tail_expr.syntax(), early_expr.syntax());
         } else {
             let last_stmt = match block_expr.tail_expr() {
@@ -291,7 +286,7 @@ impl<'db> ElseBlock<'db> {
             };
             let whitespace =
                 make.whitespace(&whitespace.map_or(String::new(), |it| it.to_string()));
-            let early_expr = self.kind.make_early_expr(sema, &make, None).syntax().clone().into();
+            let early_expr = self.kind.make_early_expr(sema, make, None).syntax().clone().into();
             edit.replace_with_many(
                 last_element,
                 vec![last_stmt.into(), whitespace.into(), early_expr],

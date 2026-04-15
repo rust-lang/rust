@@ -2,10 +2,7 @@ use either::Either;
 use hir::HirDisplay;
 use ide_db::syntax_helpers::node_ext::walk_ty;
 use syntax::{
-    ast::{
-        self, AstNode, HasGenericArgs, HasGenericParams, HasName, edit::IndentLevel,
-        syntax_factory::SyntaxFactory,
-    },
+    ast::{self, AstNode, HasGenericArgs, HasGenericParams, HasName, edit::IndentLevel},
     syntax_editor,
 };
 
@@ -56,10 +53,9 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         "Extract type as type alias",
         target,
         |builder| {
-            let mut edit = builder.make_editor(node);
-            let make = SyntaxFactory::without_mappings();
+            let mut editor = builder.make_editor(node);
 
-            let resolved_ty = make.ty(&resolved_ty);
+            let resolved_ty = editor.make().ty(&resolved_ty);
 
             let mut known_generics = match item.generic_param_list() {
                 Some(it) => it.generic_params().collect(),
@@ -73,37 +69,43 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             }
             let generics = collect_used_generics(&ty, &known_generics);
             let generic_params =
-                generics.map(|it| make.generic_param_list(it.into_iter().cloned()));
+                generics.map(|it| editor.make().generic_param_list(it.into_iter().cloned()));
 
             // Replace original type with the alias
             let ty_args = generic_params.as_ref().map(|it| it.to_generic_args().generic_args());
             let new_ty = if let Some(ty_args) = ty_args {
-                make.generic_ty_path_segment(make.name_ref("Type"), ty_args)
+                editor.make().generic_ty_path_segment(editor.make().name_ref("Type"), ty_args)
             } else {
-                make.path_segment(make.name_ref("Type"))
+                editor.make().path_segment(editor.make().name_ref("Type"))
             };
-            edit.replace(ty.syntax(), new_ty.syntax());
+            editor.replace(ty.syntax(), new_ty.syntax());
 
             // Insert new alias
-            let ty_alias =
-                make.ty_alias(None, "Type", generic_params, None, None, Some((resolved_ty, None)));
+            let ty_alias = editor.make().ty_alias(
+                None,
+                "Type",
+                generic_params,
+                None,
+                None,
+                Some((resolved_ty, None)),
+            );
 
             if let Some(cap) = ctx.config.snippet_cap
                 && let Some(name) = ty_alias.name()
             {
-                edit.add_annotation(name.syntax(), builder.make_tabstop_before(cap));
+                editor.add_annotation(name.syntax(), builder.make_tabstop_before(cap));
             }
 
             let indent = IndentLevel::from_node(node);
-            edit.insert_all(
+            editor.insert_all(
                 syntax_editor::Position::before(node),
                 vec![
                     ty_alias.syntax().clone().into(),
-                    make.whitespace(&format!("\n\n{indent}")).into(),
+                    editor.make().whitespace(&format!("\n\n{indent}")).into(),
                 ],
             );
 
-            builder.add_file_edits(ctx.vfs_file_id(), edit);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

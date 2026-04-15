@@ -111,27 +111,34 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
         format!("Replace if{let_} with match"),
         available_range,
         move |builder| {
-            let make = SyntaxFactory::with_mappings();
+            let mut editor = builder.make_editor(if_expr.syntax());
             let match_expr: ast::Expr = {
-                let else_arm = make_else_arm(ctx, &make, else_block, &cond_bodies);
+                let else_arm = make_else_arm(ctx, editor.make(), else_block, &cond_bodies);
                 let make_match_arm =
                     |(pat, guard, body): (_, Option<ast::Expr>, ast::BlockExpr)| {
                         // Dedent from original position, then indent for match arm
                         let body = body.dedent(indent);
                         let body = unwrap_trivial_block(body);
-                        match (pat, guard.map(|it| make.match_guard(it))) {
-                            (Some(pat), guard) => make.match_arm(pat, guard, body),
-                            (None, _) if !pat_seen => {
-                                make.match_arm(make.literal_pat("true").into(), None, body)
-                            }
-                            (None, guard) => {
-                                make.match_arm(make.wildcard_pat().into(), guard, body)
-                            }
+                        match (pat, guard.map(|it| editor.make().match_guard(it))) {
+                            (Some(pat), guard) => editor.make().match_arm(pat, guard, body),
+                            (None, _) if !pat_seen => editor.make().match_arm(
+                                editor.make().literal_pat("true").into(),
+                                None,
+                                body,
+                            ),
+                            (None, guard) => editor.make().match_arm(
+                                editor.make().wildcard_pat().into(),
+                                guard,
+                                body,
+                            ),
                         }
                     };
                 let arms = cond_bodies.into_iter().map(make_match_arm).chain([else_arm]);
                 let expr = scrutinee_to_be_expr.reset_indent();
-                let match_expr = make.expr_match(expr, make.match_arm_list(arms)).indent(indent);
+                let match_expr = editor
+                    .make()
+                    .expr_match(expr, editor.make().match_arm_list(arms))
+                    .indent(indent);
                 match_expr.into()
             };
 
@@ -139,17 +146,15 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
                 if_expr.syntax().parent().is_some_and(|it| ast::IfExpr::can_cast(it.kind()));
             let expr = if has_preceding_if_expr {
                 // make sure we replace the `else if let ...` with a block so we don't end up with `else expr`
-                let block_expr = make
+                let block_expr = editor
+                    .make()
                     .block_expr([], Some(match_expr.dedent(indent).indent(IndentLevel(1))))
                     .indent(indent);
                 block_expr.into()
             } else {
                 match_expr
             };
-
-            let mut editor = builder.make_editor(if_expr.syntax());
             editor.replace(if_expr.syntax(), expr.syntax());
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -267,14 +272,14 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
         format!("Replace match with if{let_}"),
         match_expr.syntax().text_range(),
         move |builder| {
-            let make = SyntaxFactory::with_mappings();
+            let mut editor = builder.make_editor(match_expr.syntax());
             let make_block_expr = |expr: ast::Expr| {
                 // Blocks with modifiers (unsafe, async, etc.) are parsed as BlockExpr, but are
                 // formatted without enclosing braces. If we encounter such block exprs,
                 // wrap them in another BlockExpr.
                 match expr {
                     ast::Expr::BlockExpr(block) if block.modifier().is_none() => block,
-                    expr => make.block_expr([], Some(expr.indent(IndentLevel(1)))),
+                    expr => editor.make().block_expr([], Some(expr.indent(IndentLevel(1)))),
                 }
             };
 
@@ -287,13 +292,16 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
                 ast::Pat::LiteralPat(p)
                     if p.literal().is_some_and(|it| it.token().kind() == T![false]) =>
                 {
-                    make.expr_prefix(T![!], scrutinee).into()
+                    editor.make().expr_prefix(T![!], scrutinee).into()
                 }
-                _ => make.expr_let(if_let_pat, scrutinee).into(),
+                _ => editor.make().expr_let(if_let_pat, scrutinee).into(),
             };
             let condition = if let Some(guard) = guard {
-                let guard = wrap_paren(guard, &make, ast::prec::ExprPrecedence::LAnd);
-                make.expr_bin(condition, ast::BinaryOp::LogicOp(ast::LogicOp::And), guard).into()
+                let guard = wrap_paren(guard, editor.make(), ast::prec::ExprPrecedence::LAnd);
+                editor
+                    .make()
+                    .expr_bin(condition, ast::BinaryOp::LogicOp(ast::LogicOp::And), guard)
+                    .into()
             } else {
                 condition
             };
@@ -301,7 +309,8 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
             let else_expr = else_expr.reset_indent();
             let then_block = make_block_expr(then_expr);
             let else_expr = if is_empty_expr(&else_expr) { None } else { Some(else_expr) };
-            let if_let_expr = make
+            let if_let_expr = editor
+                .make()
                 .expr_if(
                     condition,
                     then_block,
@@ -309,9 +318,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
                 )
                 .indent(IndentLevel::from_node(match_expr.syntax()));
 
-            let mut editor = builder.make_editor(match_expr.syntax());
             editor.replace(match_expr.syntax(), if_let_expr.syntax());
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )

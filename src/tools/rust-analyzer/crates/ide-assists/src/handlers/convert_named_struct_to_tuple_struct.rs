@@ -3,9 +3,7 @@ use ide_db::{defs::Definition, search::FileReference};
 use syntax::{
     NodeOrToken, SyntaxKind, SyntaxNode, T,
     algo::next_non_trivia_token,
-    ast::{
-        self, AstNode, HasAttrs, HasGenericParams, HasVisibility, syntax_factory::SyntaxFactory,
-    },
+    ast::{self, AstNode, HasAttrs, HasGenericParams, HasVisibility},
     match_ast,
     syntax_editor::{Element, Position, SyntaxEditor},
 };
@@ -113,21 +111,20 @@ fn edit_struct_def(
         Some(field)
     });
 
-    let make = SyntaxFactory::without_mappings();
-    let mut edit = builder.make_editor(strukt.syntax());
+    let mut editor = builder.make_editor(strukt.syntax());
 
-    let tuple_fields = make.tuple_field_list(tuple_fields);
+    let tuple_fields = editor.make().tuple_field_list(tuple_fields);
 
     let mut elements = vec![tuple_fields.syntax().clone().into()];
     if let Either::Left(strukt) = strukt {
         if let Some(w) = strukt.where_clause() {
-            edit.delete(w.syntax());
+            editor.delete(w.syntax());
 
             elements.extend([
-                make.whitespace("\n").into(),
+                editor.make().whitespace("\n").into(),
                 remove_trailing_comma(w).into(),
-                make.token(T![;]).into(),
-                make.whitespace("\n").into(),
+                editor.make().token(T![;]).into(),
+                editor.make().whitespace("\n").into(),
             ]);
 
             if let Some(tok) = strukt
@@ -136,23 +133,23 @@ fn edit_struct_def(
                 .and_then(|tok| tok.next_token())
                 .filter(|tok| tok.kind() == SyntaxKind::WHITESPACE)
             {
-                edit.delete(tok);
+                editor.delete(tok);
             }
         } else {
-            elements.push(make.token(T![;]).into());
+            elements.push(editor.make().token(T![;]).into());
         }
     }
-    edit.replace_with_many(record_fields.syntax(), elements);
+    editor.replace_with_many(record_fields.syntax(), elements);
 
     if let Some(tok) = record_fields
         .l_curly_token()
         .and_then(|tok| tok.prev_token())
         .filter(|tok| tok.kind() == SyntaxKind::WHITESPACE)
     {
-        edit.delete(tok)
+        editor.delete(tok)
     }
 
-    builder.add_file_edits(ctx.vfs_file_id(), edit);
+    builder.add_file_edits(ctx.vfs_file_id(), editor);
 }
 
 fn edit_struct_references(
@@ -232,7 +229,7 @@ fn process_struct_name_reference(
 fn record_to_tuple_struct_like<T, I>(
     ctx: &AssistContext<'_>,
     source: &ast::SourceFile,
-    edit: &mut SyntaxEditor,
+    editor: &mut SyntaxEditor,
     field_list: T,
     fields: impl FnOnce(&T) -> I,
 ) -> Option<()>
@@ -240,7 +237,6 @@ where
     T: AstNode,
     I: IntoIterator<Item = ast::NameRef>,
 {
-    let make = SyntaxFactory::without_mappings();
     let orig = ctx.sema.original_range_opt(field_list.syntax())?;
     let list_range = cover_edit_range(source.syntax(), orig.range);
 
@@ -254,13 +250,13 @@ where
     };
 
     if l_curly.kind() == T!['{'] {
-        delete_whitespace(edit, l_curly.prev_token());
-        delete_whitespace(edit, l_curly.next_token());
-        edit.replace(l_curly, make.token(T!['(']));
+        delete_whitespace(editor, l_curly.prev_token());
+        delete_whitespace(editor, l_curly.next_token());
+        editor.replace(l_curly, editor.make().token(T!['(']));
     }
     if r_curly.kind() == T!['}'] {
-        delete_whitespace(edit, r_curly.prev_token());
-        edit.replace(r_curly, make.token(T![')']));
+        delete_whitespace(editor, r_curly.prev_token());
+        editor.replace(r_curly, editor.make().token(T![')']));
     }
 
     for name_ref in fields(&field_list) {
@@ -270,14 +266,14 @@ where
         if let Some(colon) = next_non_trivia_token(name_range.end().clone())
             && colon.kind() == T![:]
         {
-            edit.delete(&colon);
-            edit.delete_all(name_range);
+            editor.delete(&colon);
+            editor.delete_all(name_range);
 
             if let Some(next) = next_non_trivia_token(colon.clone())
                 && next.kind() != T!['}']
             {
                 // Avoid overlapping delete whitespace on `{ field: }`
-                delete_whitespace(edit, colon.next_token());
+                delete_whitespace(editor, colon.next_token());
             }
         }
     }
@@ -289,7 +285,6 @@ fn edit_field_references(
     builder: &mut SourceChangeBuilder,
     fields: impl Iterator<Item = ast::RecordField>,
 ) {
-    let make = SyntaxFactory::without_mappings();
     for (index, field) in fields.enumerate() {
         let field = match ctx.sema.to_def(&field) {
             Some(it) => it,
@@ -299,21 +294,23 @@ fn edit_field_references(
         let usages = def.usages(&ctx.sema).all();
         for (file_id, refs) in usages {
             let source = ctx.sema.parse(file_id);
-            let mut edit = builder.make_editor(source.syntax());
+            let mut editor = builder.make_editor(source.syntax());
 
             for r in refs {
                 if let Some(name_ref) = r.name.as_name_ref() {
                     // Only edit the field reference if it's part of a `.field` access
                     if name_ref.syntax().parent().and_then(ast::FieldExpr::cast).is_some() {
-                        edit.replace_all(
+                        editor.replace_all(
                             cover_edit_range(source.syntax(), r.range),
-                            vec![make.name_ref(&index.to_string()).syntax().clone().into()],
+                            vec![
+                                editor.make().name_ref(&index.to_string()).syntax().clone().into(),
+                            ],
                         );
                     }
                 }
             }
 
-            builder.add_file_edits(file_id.file_id(ctx.db()), edit);
+            builder.add_file_edits(file_id.file_id(ctx.db()), editor);
         }
     }
 }
