@@ -7,6 +7,7 @@ use alloc::collections::VecDeque;
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use core::sync::atomic::{AtomicU64, Ordering};
 use spin::Mutex;
 
 use super::{VfsNode, VfsStat};
@@ -175,21 +176,34 @@ impl VfsNode for Watch {
 
 // ── Registry ────────────────────────────────────────────────────────────────
 
+/// Monotonically-increasing counter used to assign stable per-registration
+/// subject IDs.  IDs are never reused within a single kernel session, so
+/// clients can reliably correlate events across the lifetime of a watch.
+static NEXT_WATCH_ID: AtomicU64 = AtomicU64::new(1);
+
 struct WatchRecord {
     watch: Arc<Watch>,
     target_ino: u64,
     mount_id: u64,
+    /// Stable identifier for this registration, emitted as `WatchEvent::subject_id`.
+    ///
+    /// Unlike raw inode numbers, this ID is unique per [`register_watch`] call
+    /// and is never reused, making it safe for long-lived watchers to use as a
+    /// stable correlation key.
+    subject_id: u64,
 }
 
 static REGISTRY: Mutex<Vec<WatchRecord>> = Mutex::new(Vec::new());
 
 pub fn register_watch(node: &Arc<dyn VfsNode>, watch: Arc<Watch>, mount_id: u64) -> SysResult<()> {
     let stat = node.stat()?;
+    let subject_id = NEXT_WATCH_ID.fetch_add(1, Ordering::Relaxed);
     let mut lock = REGISTRY.lock();
     lock.push(WatchRecord {
         watch,
         target_ino: stat.ino,
         mount_id,
+        subject_id,
     });
     Ok(())
 }
@@ -209,7 +223,7 @@ pub fn emit_event(node: &dyn VfsNode, mask: u32, name: Option<&str>, cookie: u32
                 let mut event = WatchEvent::default();
                 event.mask = mask;
                 event.cookie = cookie;
-                event.subject_id = stat.ino; // TODO: use a more stable ID?
+                event.subject_id = record.subject_id;
                 if stat.is_dir() {
                     event.flags |= vfs_watch::event_flags::IS_DIR;
                 }
@@ -348,6 +362,63 @@ mod tests {
         emit_event(&*node, abi::vfs_watch::mask::MODIFY, None, 0, mount_id);
 
         assert!(!watch.queue.is_empty(), "watch should fire for correct (mount_id, ino) pair");
+
+        // Clean up.
+        REGISTRY.lock().retain(|r| r.mount_id != mount_id);
+    }
+
+    /// `subject_id` must be a stable, per-registration ID — not a raw inode.
+    ///
+    /// Two separate registrations on the same node must produce different
+    /// `subject_id` values.  Each watch must see its own stable ID in every
+    /// event it receives.
+    #[test]
+    fn subject_id_is_stable_and_unique_per_registration() {
+        let mount_id: u64 = 0xdead_0010;
+        let ino: u64 = 77;
+
+        let node = Arc::new(FixedInoNode(ino)) as Arc<dyn VfsNode>;
+
+        let watch_x = Arc::new(Watch::new(0xffff_ffff, 0));
+        let watch_y = Arc::new(Watch::new(0xffff_ffff, 0));
+
+        register_watch(&node, watch_x.clone(), mount_id).unwrap();
+        register_watch(&node, watch_y.clone(), mount_id).unwrap();
+
+        // Emit two events so each watch gets one.
+        emit_event(&*node, abi::vfs_watch::mask::MODIFY, None, 0, mount_id);
+        emit_event(&*node, abi::vfs_watch::mask::MODIFY, None, 0, mount_id);
+
+        // Read out the events.
+        let buf_size = core::mem::size_of::<WatchEvent>();
+        let mut buf_x = vec![0u8; buf_size];
+        let mut buf_y = vec![0u8; buf_size];
+        watch_x.read(0, &mut buf_x).expect("watch_x should have an event");
+        watch_y.read(0, &mut buf_y).expect("watch_y should have an event");
+
+        let event_x: WatchEvent = unsafe { core::ptr::read(buf_x.as_ptr() as *const _) };
+        let event_y: WatchEvent = unsafe { core::ptr::read(buf_y.as_ptr() as *const _) };
+
+        // The two registrations must have different subject_ids.
+        assert_ne!(
+            event_x.subject_id, event_y.subject_id,
+            "different watch registrations must produce distinct subject_ids"
+        );
+
+        // Neither subject_id should equal the raw inode number.
+        assert_ne!(event_x.subject_id, ino, "subject_id must not be a raw inode");
+        assert_ne!(event_y.subject_id, ino, "subject_id must not be a raw inode");
+
+        // A second event on watch_x must carry the same subject_id as the first.
+        emit_event(&*node, abi::vfs_watch::mask::MODIFY, None, 0, mount_id);
+        emit_event(&*node, abi::vfs_watch::mask::MODIFY, None, 0, mount_id);
+        let mut buf_x2 = vec![0u8; buf_size];
+        watch_x.read(0, &mut buf_x2).expect("watch_x second read");
+        let event_x2: WatchEvent = unsafe { core::ptr::read(buf_x2.as_ptr() as *const _) };
+        assert_eq!(
+            event_x.subject_id, event_x2.subject_id,
+            "subject_id must be stable across multiple events on the same registration"
+        );
 
         // Clean up.
         REGISTRY.lock().retain(|r| r.mount_id != mount_id);
