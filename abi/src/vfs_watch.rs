@@ -74,7 +74,15 @@ pub struct WatchEvent {
     pub name_len: u16,
     /// Unique cookie linking paired events (e.g. MOVE_FROM/MOVE_TO).
     pub cookie: u32,
-    /// System ID of the node which was the subject of the event.
+    /// Stable per-registration identifier for the node that was the subject of
+    /// the event.
+    ///
+    /// This is a monotonically-increasing ID assigned by the kernel when a
+    /// watch is registered (via `sys_watch_fd` / `sys_watch_path`).  It is
+    /// unique for the lifetime of the watch and is never reused within a kernel
+    /// session, so clients can reliably correlate events to the resource they
+    /// registered without relying on raw inode numbers, which are not stable
+    /// across remounts and can be recycled.
     pub subject_id: u64,
 }
 
