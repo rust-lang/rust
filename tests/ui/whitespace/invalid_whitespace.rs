@@ -11,8 +11,3 @@ fn main() {
     //~^ ERROR unknown start of token
     //~| HELP invisible characters like
 }
-
-
-
-
-
