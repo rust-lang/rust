@@ -59,6 +59,16 @@
 
 extern crate alloc;
 
+/// The KindId generated for `thingos.authority` by `kindc`.
+///
+/// Identifies the canonical permission-context schema kind.  Consumers that
+/// need to distinguish an `Authority`-shaped message payload can compare
+/// against this constant.
+pub const KIND_ID_THINGOS_AUTHORITY: [u8; 16] = [
+    0xc7, 0x7d, 0x6d, 0x64, 0xb9, 0xfd, 0x54, 0x04,
+    0x23, 0x53, 0xfc, 0x38, 0x1c, 0x8c, 0xee, 0xbc,
+];
+
 /// Canonical permission context for a running unit in ThingOS.
 ///
 /// Corresponds to the `thingos.authority` schema kind (v1).  The kernel's
@@ -104,5 +114,127 @@ impl Authority {
             alloc::format!("[{}]", self.capabilities.join(", "))
         };
         alloc::format!("name: {}\ncapabilities: {}\n", self.name, caps)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── KIND_ID_THINGOS_AUTHORITY ─────────────────────────────────────────────
+
+    #[test]
+    fn test_kind_id_thingos_authority_constant() {
+        // Verify the constant matches the kindc-generated value.
+        let expected: [u8; 16] = [
+            0xc7, 0x7d, 0x6d, 0x64, 0xb9, 0xfd, 0x54, 0x04,
+            0x23, 0x53, 0xfc, 0x38, 0x1c, 0x8c, 0xee, 0xbc,
+        ];
+        assert_eq!(KIND_ID_THINGOS_AUTHORITY, expected);
+    }
+
+    // ── Authority construction ────────────────────────────────────────────────
+
+    #[test]
+    fn test_authority_carries_name() {
+        let a = Authority {
+            name: alloc::string::String::from("bristle"),
+            capabilities: alloc::vec::Vec::new(),
+        };
+        assert_eq!(a.name, "bristle");
+    }
+
+    #[test]
+    fn test_authority_carries_capabilities() {
+        let a = Authority {
+            name: alloc::string::String::from("svc"),
+            capabilities: alloc::vec![
+                alloc::string::String::from("net_bind"),
+                alloc::string::String::from("read_fs"),
+            ],
+        };
+        assert_eq!(a.capabilities.len(), 2);
+        assert_eq!(a.capabilities[0], "net_bind");
+        assert_eq!(a.capabilities[1], "read_fs");
+    }
+
+    // ── as_text ───────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_as_text_empty_capabilities() {
+        let a = Authority {
+            name: alloc::string::String::from("bristle"),
+            capabilities: alloc::vec::Vec::new(),
+        };
+        let text = a.as_text();
+        assert!(text.contains("name: bristle"), "unexpected: {text}");
+        assert!(text.contains("capabilities: []"), "unexpected: {text}");
+    }
+
+    #[test]
+    fn test_as_text_with_capabilities() {
+        let a = Authority {
+            name: alloc::string::String::from("my-service"),
+            capabilities: alloc::vec![
+                alloc::string::String::from("net_bind"),
+                alloc::string::String::from("read_fs"),
+            ],
+        };
+        let text = a.as_text();
+        assert!(text.contains("name: my-service"), "unexpected: {text}");
+        assert!(
+            text.contains("capabilities: [net_bind, read_fs]"),
+            "unexpected: {text}"
+        );
+    }
+
+    #[test]
+    fn test_as_text_ends_with_newline() {
+        let a = Authority {
+            name: alloc::string::String::from("x"),
+            capabilities: alloc::vec::Vec::new(),
+        };
+        assert!(a.as_text().ends_with('\n'));
+    }
+
+    // ── equality ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_authority_equality_same() {
+        let a = Authority {
+            name: alloc::string::String::from("svc"),
+            capabilities: alloc::vec::Vec::new(),
+        };
+        let b = Authority {
+            name: alloc::string::String::from("svc"),
+            capabilities: alloc::vec::Vec::new(),
+        };
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_authority_inequality_different_name() {
+        let a = Authority {
+            name: alloc::string::String::from("alpha"),
+            capabilities: alloc::vec::Vec::new(),
+        };
+        let b = Authority {
+            name: alloc::string::String::from("beta"),
+            capabilities: alloc::vec::Vec::new(),
+        };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn test_authority_inequality_different_capabilities() {
+        let a = Authority {
+            name: alloc::string::String::from("svc"),
+            capabilities: alloc::vec![alloc::string::String::from("net_bind")],
+        };
+        let b = Authority {
+            name: alloc::string::String::from("svc"),
+            capabilities: alloc::vec::Vec::new(),
+        };
+        assert_ne!(a, b);
     }
 }
