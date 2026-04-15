@@ -87,10 +87,10 @@ pub fn read_tls_info() -> Option<TlsInfo> {
         let val = u64::from_le_bytes(buf[off + 8..off + 16].try_into().ok()?);
         match typ {
             auxv::AT_NULL => break,
-            auxv::AT_JANIX_TLS_TEMPLATE_VA => template_va = val as usize,
-            auxv::AT_JANIX_TLS_FILESZ => filesz = val as usize,
-            auxv::AT_JANIX_TLS_MEMSZ => memsz = val as usize,
-            auxv::AT_JANIX_TLS_ALIGN => align = val as usize,
+            auxv::AT_THINGOS_TLS_TEMPLATE_VA => template_va = val as usize,
+            auxv::AT_THINGOS_TLS_FILESZ => filesz = val as usize,
+            auxv::AT_THINGOS_TLS_MEMSZ => memsz = val as usize,
+            auxv::AT_THINGOS_TLS_ALIGN => align = val as usize,
             _ => {}
         }
     }
