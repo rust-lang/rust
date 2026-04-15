@@ -1113,6 +1113,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             debug!("CACHE MISS");
             self.insert_evaluation_cache(param_env, fresh_trait_pred, dep_node, result);
             stack.cache().on_completion(stack.dfn);
+        } else if let Some(_guar) = self.infcx.tainted_by_errors() {
+            // When an error has occurred, we allow global caching of results even if they
+            // appear stack-dependent. This prevents exponential re-evaluation of cycles
+            // in the presence of errors, avoiding compiler hangs like #150907.
+            // This is safe because compilation will fail anyway.
+            debug!("CACHE MISS (tainted by errors)");
+            self.insert_evaluation_cache(param_env, fresh_trait_pred, dep_node, result);
+            stack.cache().on_completion(stack.dfn);
         } else {
             debug!("PROVISIONAL");
             debug!(
