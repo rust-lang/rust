@@ -108,7 +108,7 @@ impl IndentLevel {
     }
 
     pub(super) fn clone_increase_indent(self, node: &SyntaxNode) -> SyntaxNode {
-        let (mut editor, node) = SyntaxEditor::new(node.clone());
+        let (editor, node) = SyntaxEditor::new(node.clone());
         let tokens = node
             .preorder_with_tokens()
             .filter_map(|event| match event {
@@ -142,7 +142,7 @@ impl IndentLevel {
     }
 
     pub(super) fn clone_decrease_indent(self, node: &SyntaxNode) -> SyntaxNode {
-        let (mut editor, node) = SyntaxEditor::new(node.clone());
+        let (editor, node) = SyntaxEditor::new(node.clone());
         let tokens = node
             .preorder_with_tokens()
             .filter_map(|event| match event {
@@ -198,11 +198,8 @@ pub trait AstNodeEdit: AstNode + Clone + Sized {
 impl<N: AstNode + Clone> AstNodeEdit for N {}
 
 impl ast::IdentPat {
-    pub fn set_pat(
-        &self,
-        pat: Option<ast::Pat>,
-        syntax_editor: &mut SyntaxEditor,
-    ) -> ast::IdentPat {
+    pub fn set_pat(&self, pat: Option<ast::Pat>, editor: &SyntaxEditor) -> ast::IdentPat {
+        let make = editor.make();
         match pat {
             None => {
                 if let Some(at_token) = self.at_token() {
@@ -212,7 +209,7 @@ impl ast::IdentPat {
                         .pat()
                         .map(|it| it.syntax().clone().into())
                         .unwrap_or_else(|| at_token.into());
-                    syntax_editor.delete_all(start..=end);
+                    editor.delete_all(start..=end);
 
                     // Remove any trailing ws
                     if let Some(last) =
@@ -225,28 +222,28 @@ impl ast::IdentPat {
             Some(pat) => {
                 if let Some(old_pat) = self.pat() {
                     // Replace existing pattern
-                    syntax_editor.replace(old_pat.syntax(), pat.syntax())
+                    editor.replace(old_pat.syntax(), pat.syntax())
                 } else if let Some(at_token) = self.at_token() {
                     // Have an `@` token but not a pattern yet
-                    syntax_editor.insert(Position::after(at_token), pat.syntax());
+                    editor.insert(Position::after(at_token), pat.syntax());
                 } else {
                     // Don't have an `@`, should have a name
                     let name = self.name().unwrap();
                     let elements = vec![
-                        syntax_editor.make().whitespace(" ").into(),
-                        syntax_editor.make().token(T![@]).into(),
-                        syntax_editor.make().whitespace(" ").into(),
+                        make.whitespace(" ").into(),
+                        make.token(T![@]).into(),
+                        make.whitespace(" ").into(),
                         pat.syntax().clone().into(),
                     ];
 
                     if self.syntax().parent().is_none() {
-                        let (mut local, local_self) = SyntaxEditor::with_ast_node(self);
+                        let (local, local_self) = SyntaxEditor::with_ast_node(self);
                         let local_name = local_self.name().unwrap();
                         local.insert_all(Position::after(local_name.syntax()), elements);
                         let edit = local.finish();
                         return ast::IdentPat::cast(edit.new_root().clone()).unwrap();
                     } else {
-                        syntax_editor.insert_all(Position::after(name.syntax()), elements);
+                        editor.insert_all(Position::after(name.syntax()), elements);
                     }
                 }
             }
