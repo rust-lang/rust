@@ -178,22 +178,23 @@ impl VfsNode for Watch {
 struct WatchRecord {
     watch: Arc<Watch>,
     target_ino: u64,
-    // TODO: add mount_id or similar to distinguish same inos on different mounts
+    mount_id: u64,
 }
 
 static REGISTRY: Mutex<Vec<WatchRecord>> = Mutex::new(Vec::new());
 
-pub fn register_watch(node: &Arc<dyn VfsNode>, watch: Arc<Watch>) -> SysResult<()> {
+pub fn register_watch(node: &Arc<dyn VfsNode>, watch: Arc<Watch>, mount_id: u64) -> SysResult<()> {
     let stat = node.stat()?;
     let mut lock = REGISTRY.lock();
     lock.push(WatchRecord {
         watch,
         target_ino: stat.ino,
+        mount_id,
     });
     Ok(())
 }
 
-pub fn emit_event(node: &dyn VfsNode, mask: u32, name: Option<&str>, cookie: u32) {
+pub fn emit_event(node: &dyn VfsNode, mask: u32, name: Option<&str>, cookie: u32, mount_id: u64) {
     let stat = match node.stat() {
         Ok(s) => s,
         Err(_) => return,
@@ -203,7 +204,7 @@ pub fn emit_event(node: &dyn VfsNode, mask: u32, name: Option<&str>, cookie: u32
     // Use a temporary list to avoid holding the lock while calling watch.queue.push (which might wake tasks)
     // Actually, EventQueue::push uses its own lock, so it's fine.
     for record in lock.iter() {
-        if record.target_ino == stat.ino {
+        if record.target_ino == stat.ino && record.mount_id == mount_id {
             if record.watch.mask & mask != 0 {
                 let mut event = WatchEvent::default();
                 event.mask = mask;
@@ -290,5 +291,65 @@ mod tests {
         let n = watch.read(0, &mut buf).expect("retry read should succeed");
         assert_eq!(n, total);
         assert!(watch.queue.is_empty());
+    }
+
+    // ── Registry disambiguation tests ─────────────────────────────────────────
+
+    struct FixedInoNode(u64);
+
+    impl VfsNode for FixedInoNode {
+        fn read(&self, _: u64, _: &mut [u8]) -> SysResult<usize> { Ok(0) }
+        fn write(&self, _: u64, _: &[u8]) -> SysResult<usize> { Ok(0) }
+        fn stat(&self) -> SysResult<VfsStat> {
+            Ok(VfsStat { ino: self.0, mode: VfsStat::S_IFREG | 0o644, ..Default::default() })
+        }
+    }
+
+    /// Watches on different mounts with the same inode number must be independent:
+    /// an event emitted for mount A must not reach a watch registered for mount B.
+    #[test]
+    fn same_ino_different_mount_ids_are_independent() {
+        // Isolate this test by operating on a private registry snapshot via the
+        // public API, using distinct mount_ids that no other test uses.
+        let mount_a: u64 = 0xdead_0001;
+        let mount_b: u64 = 0xdead_0002;
+        let shared_ino: u64 = 42;
+
+        let node = Arc::new(FixedInoNode(shared_ino)) as Arc<dyn VfsNode>;
+
+        let watch_a = Arc::new(Watch::new(0xffff_ffff, 0));
+        let watch_b = Arc::new(Watch::new(0xffff_ffff, 0));
+
+        register_watch(&node, watch_a.clone(), mount_a).unwrap();
+        register_watch(&node, watch_b.clone(), mount_b).unwrap();
+
+        // Emit an event only for mount_a.
+        emit_event(&*node, abi::vfs_watch::mask::MODIFY, None, 0, mount_a);
+
+        // watch_a must receive the event.
+        assert!(!watch_a.queue.is_empty(), "watch_a should receive the event for mount_a");
+        // watch_b must NOT receive the event.
+        assert!(watch_b.queue.is_empty(), "watch_b must not receive events for a different mount");
+
+        // Clean up registry entries added by this test.
+        REGISTRY.lock().retain(|r| r.mount_id != mount_a && r.mount_id != mount_b);
+    }
+
+    /// A watch registered for a given (mount_id, ino) pair fires for that exact pair.
+    #[test]
+    fn same_mount_same_ino_fires() {
+        let mount_id: u64 = 0xdead_0003;
+        let shared_ino: u64 = 99;
+
+        let node = Arc::new(FixedInoNode(shared_ino)) as Arc<dyn VfsNode>;
+        let watch = Arc::new(Watch::new(0xffff_ffff, 0));
+
+        register_watch(&node, watch.clone(), mount_id).unwrap();
+        emit_event(&*node, abi::vfs_watch::mask::MODIFY, None, 0, mount_id);
+
+        assert!(!watch.queue.is_empty(), "watch should fire for correct (mount_id, ino) pair");
+
+        // Clean up.
+        REGISTRY.lock().retain(|r| r.mount_id != mount_id);
     }
 }
