@@ -1,5 +1,11 @@
 //! Canonical public types for the `thingos.task` schema kind.
 //!
+//! # Conceptual mapping
+//!
+//! `Task` is the Janix replacement for the Unix `Thread` concept.
+//! See `docs/migration/concept-mapping.md` §2 (Thread → Task) for the full
+//! mapping, naming rules, and migration guidance.
+//!
 //! # Schema (v2)
 //!
 //! ```text

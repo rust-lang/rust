@@ -479,6 +479,8 @@ impl ProcessUnixCompat {
 ///   directly to `Process`; add it to `ProcessAddressSpace` instead.
 ///
 /// See `docs/concepts/process-object.md` for the full design document.
+/// See `docs/migration/concept-mapping.md` §2 (Process → Job + Space + Authority + Place + Task(s))
+/// for the canonical legacy→Janix mapping and naming rules.
 pub struct Process {
     /// Thread Group ID — the PID of the thread-group leader.
     ///
