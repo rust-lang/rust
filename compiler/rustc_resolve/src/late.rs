@@ -367,6 +367,9 @@ enum LifetimeRibKind {
 
     /// This rib acts as a barrier to forbid reference to lifetimes of a parent item.
     Item,
+
+    /// Lifetimes cannot be elided in `impl Trait` types without `#![feature(anonymous_lifetime_in_impl_trait)]`.
+    ImplTrait,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -943,7 +946,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
             }
             TyKind::ImplTrait(..) => {
                 let candidates = self.lifetime_elision_candidates.take();
-                visit::walk_ty(self, ty);
+                self.with_lifetime_rib(LifetimeRibKind::ImplTrait, |this| visit::walk_ty(this, ty));
                 self.lifetime_elision_candidates = candidates;
             }
             TyKind::TraitObject(bounds, ..) => {
@@ -1355,6 +1358,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                         LifetimeRibKind::AnonymousCreateParameter { .. }
                         | LifetimeRibKind::AnonymousReportError
                         | LifetimeRibKind::StaticIfNoLifetimeInScope { .. }
+                        | LifetimeRibKind::ImplTrait
                         | LifetimeRibKind::Elided(_)
                         | LifetimeRibKind::ElisionFailure
                         | LifetimeRibKind::ConcreteAnonConst(_)
@@ -1782,6 +1786,15 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     LifetimeRibKind::ConcreteAnonConst(_) => {
                                         span_bug!(ident.span, "unexpected rib kind: {:?}", rib.kind)
                                     }
+
+                                    LifetimeRibKind::ImplTrait => {
+                                        if self.r.tcx.features().anonymous_lifetime_in_impl_trait()
+                                        {
+                                            None
+                                        } else {
+                                            Some(LifetimeUseSet::Many)
+                                        }
+                                    }
                                 })
                                 .unwrap_or(LifetimeUseSet::Many);
                             debug!(?use_ctxt, ?use_set);
@@ -1821,6 +1834,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 | LifetimeRibKind::Generics { .. }
                 | LifetimeRibKind::ElisionFailure
                 | LifetimeRibKind::AnonymousReportError
+                | LifetimeRibKind::ImplTrait
                 | LifetimeRibKind::StaticIfNoLifetimeInScope { .. } => {}
             }
         }
@@ -2002,7 +2016,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     return;
                 }
                 LifetimeRibKind::Item => break,
-                LifetimeRibKind::Generics { .. } | LifetimeRibKind::ConstParamTy => {}
+                LifetimeRibKind::Generics { .. }
+                | LifetimeRibKind::ConstParamTy
+                | LifetimeRibKind::ImplTrait => {}
                 LifetimeRibKind::ConcreteAnonConst(_) => {
                     // There is always an `Elided(LifetimeRes::Infer)` inside an `AnonConst`.
                     span_bug!(lifetime.ident.span, "unexpected rib kind: {:?}", rib.kind)
@@ -2325,7 +2341,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         }
                         break;
                     }
-                    LifetimeRibKind::Generics { .. } | LifetimeRibKind::ConstParamTy => {}
+                    LifetimeRibKind::Generics { .. }
+                    | LifetimeRibKind::ConstParamTy
+                    | LifetimeRibKind::ImplTrait => {}
                     LifetimeRibKind::ConcreteAnonConst(_) => {
                         // There is always an `Elided(LifetimeRes::Infer)` inside an `AnonConst`.
                         span_bug!(elided_lifetime_span, "unexpected rib kind: {:?}", rib.kind)
