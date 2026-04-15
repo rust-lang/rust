@@ -550,11 +550,15 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
         body.tainted_by_errors = Some(error_reported);
     }
 
+    let root = tcx.typeck_root_def_id_local(def);
+    if let Err(e) = tcx.check_transmutes(root) {
+        body.tainted_by_errors = Some(e);
+    }
+
     // Also taint the body if it's within a top-level item that is not well formed.
     //
     // We do this check here and not during `mir_promoted` because that may result
     // in borrowck cycles if WF requires looking into an opaque hidden type.
-    let root = tcx.typeck_root_def_id_local(def);
     match tcx.def_kind(root) {
         DefKind::Fn
         | DefKind::AssocFn
