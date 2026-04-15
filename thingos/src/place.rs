@@ -137,3 +137,91 @@ impl Place {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_place(cwd: &str, namespace: &str, root: &str) -> Place {
+        Place {
+            cwd: alloc::string::String::from(cwd),
+            namespace: alloc::string::String::from(namespace),
+            root: alloc::string::String::from(root),
+        }
+    }
+
+    // ── as_text ───────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_as_text_contains_cwd() {
+        let p = make_place("/home/user", "global", "/");
+        let text = p.as_text();
+        assert!(text.contains("cwd: /home/user"), "unexpected: {text}");
+    }
+
+    #[test]
+    fn test_as_text_contains_namespace() {
+        let p = make_place("/", "global", "/");
+        let text = p.as_text();
+        assert!(text.contains("namespace: global"), "unexpected: {text}");
+    }
+
+    #[test]
+    fn test_as_text_contains_root() {
+        let p = make_place("/", "global", "/");
+        let text = p.as_text();
+        assert!(text.contains("root: /"), "unexpected: {text}");
+    }
+
+    #[test]
+    fn test_as_text_ends_with_newline() {
+        let p = make_place("/", "global", "/");
+        assert!(p.as_text().ends_with('\n'));
+    }
+
+    #[test]
+    fn test_as_text_root_cwd_defaults() {
+        let p = make_place("/", "global", "/");
+        let text = p.as_text();
+        assert_eq!(text, "cwd: /\nnamespace: global\nroot: /\n");
+    }
+
+    // ── equality ──────────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_place_equality_same() {
+        let a = make_place("/home/user", "global", "/");
+        let b = make_place("/home/user", "global", "/");
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_place_inequality_different_cwd() {
+        let a = make_place("/home/alice", "global", "/");
+        let b = make_place("/home/bob", "global", "/");
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn test_place_inequality_different_namespace() {
+        let a = make_place("/", "global", "/");
+        let b = make_place("/", "container-1", "/");
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn test_place_inequality_different_root() {
+        let a = make_place("/", "global", "/");
+        let b = make_place("/", "global", "/chroot");
+        assert_ne!(a, b);
+    }
+
+    // ── clone / debug ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_place_clone_is_equal() {
+        let a = make_place("/work", "global", "/");
+        let b = a.clone();
+        assert_eq!(a, b);
+    }
+}

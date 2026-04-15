@@ -106,3 +106,89 @@ pub fn place_from_snapshot(
 
     Place { cwd, namespace, root }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sched::hooks::ProcessSnapshot;
+    use crate::task::TaskState;
+
+    fn make_snapshot(cwd: &str, namespace_label: &str) -> ProcessSnapshot {
+        ProcessSnapshot {
+            pid: 1,
+            ppid: 0,
+            tid: 1,
+            name: alloc::string::String::from("test"),
+            state: TaskState::Runnable,
+            argv: alloc::vec::Vec::new(),
+            exec_path: alloc::string::String::new(),
+            exit_code: None,
+            pgid: 1,
+            sid: 1,
+            session_leader: false,
+            cwd: alloc::string::String::from(cwd),
+            namespace_label: alloc::string::String::from(namespace_label),
+            thread_states: alloc::vec![TaskState::Runnable],
+        }
+    }
+
+    // ── cwd mapping ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_cwd_is_propagated_from_snapshot() {
+        let snap = make_snapshot("/home/user", "global");
+        let place = place_from_snapshot(&snap);
+        assert_eq!(place.cwd, "/home/user");
+    }
+
+    #[test]
+    fn test_empty_cwd_defaults_to_root() {
+        let snap = make_snapshot("", "global");
+        let place = place_from_snapshot(&snap);
+        assert_eq!(place.cwd, "/");
+    }
+
+    // ── namespace mapping ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_namespace_label_is_propagated() {
+        let snap = make_snapshot("/", "global");
+        let place = place_from_snapshot(&snap);
+        assert_eq!(place.namespace, "global");
+    }
+
+    // ── root mapping ──────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_root_is_always_slash_in_phase_8() {
+        let snap = make_snapshot("/work", "global");
+        let place = place_from_snapshot(&snap);
+        assert_eq!(place.root, "/");
+    }
+
+    // ── as_text output ────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_place_from_snapshot_as_text_contains_cwd() {
+        let snap = make_snapshot("/srv", "global");
+        let place = place_from_snapshot(&snap);
+        let text = place.as_text();
+        assert!(text.contains("cwd: /srv"), "unexpected: {text}");
+    }
+
+    #[test]
+    fn test_place_from_snapshot_as_text_contains_namespace() {
+        let snap = make_snapshot("/", "global");
+        let place = place_from_snapshot(&snap);
+        let text = place.as_text();
+        assert!(text.contains("namespace: global"), "unexpected: {text}");
+    }
+
+    #[test]
+    fn test_place_from_snapshot_as_text_contains_root() {
+        let snap = make_snapshot("/", "global");
+        let place = place_from_snapshot(&snap);
+        let text = place.as_text();
+        assert!(text.contains("root: /"), "unexpected: {text}");
+    }
+}
