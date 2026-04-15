@@ -821,7 +821,7 @@ where
     unsafe { drop_glue(&mut *to_drop) }
 }
 
-/// Helper function for `drop_in_place`.
+/// Helper function for `drop_in_place`. The compiler replaces this by the actual drop glue.
 #[lang = "drop_glue"]
 pub(crate) const unsafe fn drop_glue<T: PointeeSized>(_: &mut T)
 where
