@@ -22,7 +22,7 @@ use rustc_mlir::triton::program::{ProgramAxis, create_get_program_id};
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 
-use crate::mlir::codegen::triton::{SsaValues, TritonCodegen};
+use crate::mlir::codegen::triton::{CodegenState, TritonCodegen};
 use crate::mlir::errors::MlirError;
 
 impl<'a> TritonCodegen<'a> {
@@ -41,7 +41,7 @@ impl<'a> TritonCodegen<'a> {
         fn_span: &Span,
         location: Location<'a>,
         mlir_block: &BlockRef,
-        _ssa_values: &mut SsaValues<'a, 'a>,
+        _state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         debug_assert!(args.len() == 1, "TritonCodegen::codegen_program_id: args length must be 1");
 

@@ -30,7 +30,7 @@ use rustc_mlir::triton::tensor::add_ptr;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 
-use crate::mlir::codegen::triton::{SsaValues, TritonCodegen};
+use crate::mlir::codegen::triton::{CodegenState, TritonCodegen};
 use crate::mlir::errors::MlirError;
 
 impl<'a> TritonCodegen<'a> {
@@ -49,7 +49,7 @@ impl<'a> TritonCodegen<'a> {
         _fn_span: &Span,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         debug_assert!(args.len() == 2, "TritonCodegen::codegen_mul_call: args length must be 2");
 
@@ -66,7 +66,7 @@ impl<'a> TritonCodegen<'a> {
             arg0.ty(mir, tcx),
             location,
             mlir_block,
-            ssa_values,
+            state,
         )?;
         let arg1_value = self.codegen_operand(
             tcx,
@@ -75,7 +75,7 @@ impl<'a> TritonCodegen<'a> {
             arg1.ty(mir, tcx),
             location,
             mlir_block,
-            ssa_values,
+            state,
         )?;
 
         self.codegen_mul(location, arg0_value, arg1_value, mlir_block)
@@ -96,7 +96,7 @@ impl<'a> TritonCodegen<'a> {
         _fn_span: &Span,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         debug_assert!(args.len() == 2, "TritonCodegen::codegen_add_call: args length must be 2");
 
@@ -113,7 +113,7 @@ impl<'a> TritonCodegen<'a> {
             arg0.ty(mir, tcx),
             location,
             mlir_block,
-            ssa_values,
+            state,
         )?;
         let rhs = self.codegen_operand(
             tcx,
@@ -122,7 +122,7 @@ impl<'a> TritonCodegen<'a> {
             arg1.ty(mir, tcx),
             location,
             mlir_block,
-            ssa_values,
+            state,
         )?;
 
         self.codegen_add(tcx, location, lhs, rhs, mlir_block)
@@ -143,7 +143,7 @@ impl<'a> TritonCodegen<'a> {
         _fn_span: &Span,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         debug_assert!(args.len() == 2, "TritonCodegen::codegen_lt_call: args length must be 2");
 
@@ -157,7 +157,7 @@ impl<'a> TritonCodegen<'a> {
             arg0.ty(mir, tcx),
             location,
             mlir_block,
-            ssa_values,
+            state,
         )?;
         let rhs = self.codegen_operand(
             tcx,
@@ -166,7 +166,7 @@ impl<'a> TritonCodegen<'a> {
             arg1.ty(mir, tcx),
             location,
             mlir_block,
-            ssa_values,
+            state,
         )?;
 
         self.codegen_cmpi(tcx, Predicate::SLT, location, lhs, rhs, mlir_block)

@@ -55,7 +55,27 @@ mod location;
 mod ops;
 mod types;
 
+use types::is_option_ty;
+
 type SsaValues<'c, 'p> = HashMap<Local, Value<'c, 'p>>;
+
+/// Tracks `Option<T>` MIR locals that must not be materialised as MLIR SSA values.
+/// `None` entry  → the local holds the `None` variant (no inner value).
+/// `Some(v)` entry → the local holds `Some(v)` with this MLIR value as the inner.
+/// These locals are NEVER inserted into `SsaValues`.
+type OptionTable<'c, 'p> = HashMap<Local, Option<Value<'c, 'p>>>;
+
+/// Codegen state threaded through all statement/terminator handlers.
+pub(crate) struct CodegenState<'c, 'p> {
+    pub(crate) ssa_values: SsaValues<'c, 'p>,
+    pub(crate) option_table: OptionTable<'c, 'p>,
+}
+
+impl<'c, 'p> CodegenState<'c, 'p> {
+    fn new() -> Self {
+        Self { ssa_values: HashMap::new(), option_table: HashMap::new() }
+    }
+}
 
 pub(crate) struct TritonCodegen<'a> {
     module: &'a MlirModule<'static>,
@@ -142,7 +162,7 @@ impl<'a> TritonCodegen<'a> {
         fn_ty: Ty<'tcx>,
         instance: &Instance<'tcx>,
     ) -> Result<(), MlirError> {
-        let mut ssa_values: SsaValues<'a, 'a> = HashMap::new();
+        let mut state = CodegenState::new();
         let mut basic_blocks: HashMap<BasicBlock, BlockRef> = HashMap::new();
 
         // Downcast to a FnSig
@@ -229,7 +249,7 @@ impl<'a> TritonCodegen<'a> {
                 // Add function arguments as block arguments to the entry block
                 for (i, ty) in arg_types.iter().enumerate() {
                     let value = block.add_argument(*ty, location);
-                    ssa_values.insert(Local::from_usize(i + 1), value);
+                    state.ssa_values.insert(Local::from_usize(i + 1), value);
                 }
             }
 
@@ -246,12 +266,12 @@ impl<'a> TritonCodegen<'a> {
                 bb,
                 bb_data,
                 &func_op,
-                &mut ssa_values,
+                &mut state,
                 &basic_blocks,
             )?;
         }
 
-        println!("[DEBUG] TritonCodegen::codegen_function end: ssa_values: {:?}", ssa_values);
+        println!("[DEBUG] TritonCodegen::codegen_function end: ssa_values: {:?}", state.ssa_values);
         self.module.mlir.body().append_operation(func_op.into());
 
         Ok(())
@@ -265,14 +285,14 @@ impl<'a> TritonCodegen<'a> {
         bb: BasicBlock,
         bb_data: &BasicBlockData<'tcx>,
         _func_op: &Operation,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
         basic_blocks: &HashMap<BasicBlock, BlockRef<'a, 'a>>,
     ) -> Result<(), MlirError> {
         let mlir_block = basic_blocks.get(&bb).expect("block not found");
 
         // Codegen each MIR statement in order.
         for stmt in &bb_data.statements {
-            self.codegen_statement(tcx, instance, mir, stmt, mlir_block, ssa_values)?;
+            self.codegen_statement(tcx, instance, mir, stmt, mlir_block, state)?;
         }
 
         // Codegen the block terminator.
@@ -282,7 +302,7 @@ impl<'a> TritonCodegen<'a> {
             mir,
             bb_data.terminator(),
             mlir_block,
-            ssa_values,
+            state,
             basic_blocks,
         )?;
 
@@ -296,9 +316,9 @@ impl<'a> TritonCodegen<'a> {
         mir: &Body<'tcx>,
         stmt: &Statement<'tcx>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<(), MlirError> {
-        println!("[DEBUG] TritonCodegen::codegen_statement: ssa_values: {:?}", ssa_values);
+        println!("[DEBUG] TritonCodegen::codegen_statement: ssa_values: {:?}", state.ssa_values);
         let location = span_to_location(self.module.context(), tcx, stmt.source_info.span);
         match &stmt.kind {
             StatementKind::Assign(assign) => {
@@ -308,11 +328,11 @@ impl<'a> TritonCodegen<'a> {
                     stmt, place, rvalue
                 );
                 self.codegen_assign(
-                    tcx, instance, mir, place, rvalue, location, mlir_block, ssa_values,
+                    tcx, instance, mir, place, rvalue, location, mlir_block, state,
                 )
             }
             StatementKind::SetDiscriminant { place, variant_index } => {
-                self.codegen_set_discriminant(tcx, place, *variant_index, mlir_block)
+                self.codegen_set_discriminant(tcx, instance, mir, place, *variant_index, mlir_block, state)
             }
             StatementKind::StorageLive(local) => self.codegen_storage_live(tcx, *local, mlir_block),
             StatementKind::StorageDead(local) => self.codegen_storage_dead(tcx, *local, mlir_block),
@@ -330,7 +350,7 @@ impl<'a> TritonCodegen<'a> {
             | StatementKind::Retag(..) => Ok(()),
         }?;
 
-        println!("[DEBUG] TritonCodegen::codegen_statement: ssa_values: {:?}", ssa_values);
+        println!("[DEBUG] TritonCodegen::codegen_statement: ssa_values: {:?}", state.ssa_values);
         Ok(())
     }
 
@@ -344,7 +364,7 @@ impl<'a> TritonCodegen<'a> {
         rvalue: &Rvalue<'tcx>,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<(), MlirError> {
         match rvalue {
             Rvalue::Use(operand) => {
@@ -356,6 +376,22 @@ impl<'a> TritonCodegen<'a> {
                     EarlyBinder::bind(ty),
                 );
 
+                // Route Option<T> locals into the option_table instead of ssa_values.
+                if is_option_ty(tcx, normalized_ty) {
+                    let opt_value = match operand {
+                        Operand::Copy(src) | Operand::Move(src) => {
+                            *state.option_table.get(&src.local).unwrap_or_else(|| {
+                                panic!("Option local {:?} not found in option_table", src.local)
+                            })
+                        }
+                        // `None::<T>` as a constant — no inner value.
+                        Operand::Constant(_) => None,
+                        Operand::RuntimeChecks(_) => todo!("RuntimeChecks operand not yet supported"),
+                    };
+                    state.option_table.insert(place.local, opt_value);
+                    return Ok(());
+                }
+
                 let result = self.codegen_operand(
                     tcx,
                     instance,
@@ -363,18 +399,18 @@ impl<'a> TritonCodegen<'a> {
                     normalized_ty,
                     location,
                     mlir_block,
-                    ssa_values,
+                    state,
                 )?;
                 println!(
                     "[DEBUG] TritonCodegen::codegen_assign ssa_values_insert 1: result: Place: {:?}, Result: {:?}",
                     place, result
                 );
-                ssa_values.insert(place.local, result);
+                state.ssa_values.insert(place.local, result);
             }
             Rvalue::Cast(cast_kind, operand, ty) => {
                 println!("Cast cast_kind: {:?}, operand: {:?}, ty: {:?}", cast_kind, operand, ty);
                 let result = self.codegen_cast(
-                    tcx, instance, cast_kind, operand, ty, location, mlir_block, ssa_values,
+                    tcx, instance, cast_kind, operand, ty, location, mlir_block, state,
                 )?;
 
                 println!(
@@ -382,14 +418,31 @@ impl<'a> TritonCodegen<'a> {
                     place, result
                 );
 
-                ssa_values.insert(place.local, result);
+                state.ssa_values.insert(place.local, result);
             }
             Rvalue::Aggregate(aggregate_kind, index_vec) => {
                 println!(
                     "[DEBUG] TritonCodegen::codegen_assign: Aggregate: {:?}, index_vec: {:?}",
                     aggregate_kind, index_vec
                 );
-                println!("[DEBUG] TritonCodegen::codegen_assign: ssa_values: {:?}", ssa_values);
+                println!("[DEBUG] TritonCodegen::codegen_assign: ssa_values: {:?}", state.ssa_values);
+
+                // Route Option<T> aggregates (Some/None) into the option_table.
+                if let AggregateKind::Adt(def_id, variant_index, _, _, _) = aggregate_kind.as_ref() {
+                    let adt_def = tcx.adt_def(*def_id);
+                    let norm_place_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                        tcx,
+                        TypingEnv::fully_monomorphized(),
+                        EarlyBinder::bind(place.ty(mir, tcx).ty),
+                    );
+                    if is_option_ty(tcx, norm_place_ty) {
+                        return self.codegen_option_aggregate(
+                            tcx, instance, mir, place, adt_def, *variant_index, index_vec,
+                            location, mlir_block, state,
+                        );
+                    }
+                }
+
                 let result = self.codegen_aggregate_create(
                     tcx,
                     instance,
@@ -398,7 +451,7 @@ impl<'a> TritonCodegen<'a> {
                     index_vec,
                     location,
                     mlir_block,
-                    ssa_values,
+                    state,
                 )?;
                 println!(
                     "[DEBUG] TritonCodegen::codegen_assign ssa_values_insert 3: result: Place: {:?}, Result: {:?}",
@@ -410,7 +463,7 @@ impl<'a> TritonCodegen<'a> {
                         "codegen_aggregate_create: result: ** {:?} ** {:?}",
                         place.local, result
                     );
-                    ssa_values.insert(place.local, result);
+                    state.ssa_values.insert(place.local, result);
                 } else {
                     println!(
                         "[DEBUG] TritonCodegen::codegen_assign: result is None: {:?} {:?}",
@@ -426,14 +479,41 @@ impl<'a> TritonCodegen<'a> {
             Rvalue::RawPtr(raw_ptr_kind, place) => todo!("RawPtr: {:?} {:?}", raw_ptr_kind, place),
             Rvalue::BinaryOp(bin_op, operands) => {
                 let value = self.codegen_binary_op(
-                    tcx, instance, mir, place, bin_op, operands, location, mlir_block, ssa_values,
+                    tcx, instance, mir, place, bin_op, operands, location, mlir_block, state,
                 )?;
                 if let Some(value) = value {
-                    ssa_values.insert(place.local, value);
+                    state.ssa_values.insert(place.local, value);
                 }
             }
             Rvalue::UnaryOp(un_op, operand) => todo!("UnaryOp: {:?} {:?}", un_op, operand),
-            Rvalue::Discriminant(place) => todo!("Discriminant: {:?}", place),
+            Rvalue::Discriminant(src_place) => {
+                let src_ty = src_place.ty(mir, tcx).ty;
+                let norm_src_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx,
+                    TypingEnv::fully_monomorphized(),
+                    EarlyBinder::bind(src_ty),
+                );
+                if is_option_ty(tcx, norm_src_ty) {
+                    // The discriminant of an Option is statically known from the option_table.
+                    let discr: i64 = match state.option_table.get(&src_place.local) {
+                        Some(None)    => 0, // None variant
+                        Some(Some(_)) => 1, // Some variant
+                        None => panic!(
+                            "Option local {:?} not found in option_table for Discriminant",
+                            src_place.local
+                        ),
+                    };
+                    let int_val = Int::I8(discr as u8);
+                    let const_op = create_int_constant(
+                        self.module.context(), location, int_val,
+                    ).map_err(|e| MlirError::CreateOperation { err: e })?;
+                    let result = const_op.result(0).unwrap();
+                    mlir_block.append_operation(const_op.into());
+                    state.ssa_values.insert(place.local, result.into());
+                    return Ok(());
+                }
+                todo!("Discriminant for non-Option: {:?}", src_place)
+            }
             Rvalue::ShallowInitBox(operand, ty) => todo!("ShallowInitBox: {:?} {:?}", operand, ty),
             Rvalue::CopyForDeref(place) => todo!("CopyForDeref: {:?}", place),
             Rvalue::WrapUnsafeBinder(operand, ty) => {
@@ -454,7 +534,7 @@ impl<'a> TritonCodegen<'a> {
         index_vec: &IndexVec<FieldIdx, Operand<'tcx>>,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         println!("codegen_aggregate_assign: {:?} {:?} {:?}", aggregate_kind, index_vec, mlir_block);
 
@@ -466,11 +546,11 @@ impl<'a> TritonCodegen<'a> {
 
                 if "triton::llvm::triton::tensor::Tensor" == adt_name {
                     self.codegen_create_tensor(
-                        tcx, instance, mir, index_vec, location, mlir_block, ssa_values,
+                        tcx, instance, mir, index_vec, location, mlir_block, state,
                     )
                 } else if "triton::llvm::triton::pointer::Pointer" == adt_name {
                     self.codegen_create_pointer(
-                        tcx, instance, mir, index_vec, location, mlir_block, ssa_values,
+                        tcx, instance, mir, index_vec, location, mlir_block, state,
                     )
                 } else {
                     todo!(
@@ -493,7 +573,7 @@ impl<'a> TritonCodegen<'a> {
         index_vec: &IndexVec<FieldIdx, Operand<'tcx>>,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        _state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         let arg1 = index_vec.get(FieldIdx::from_usize(0)).expect("arg1 not found");
         let arg1_ty = instance.instantiate_mir_and_normalize_erasing_regions(
@@ -525,7 +605,7 @@ impl<'a> TritonCodegen<'a> {
         index_vec: &IndexVec<FieldIdx, Operand<'tcx>>,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         let arg1 = index_vec.get(FieldIdx::from_usize(0)).expect("arg1 not found");
         let arg1_ty = instance.instantiate_mir_and_normalize_erasing_regions(
@@ -536,7 +616,7 @@ impl<'a> TritonCodegen<'a> {
         // `Pointer<T>` is a newtype wrapper around a raw pointer in Triton DSL.
         // Preserve the wrapped pointer SSA value rather than materializing poison.
         let pointer_value =
-            self.codegen_operand(tcx, instance, arg1, arg1_ty, location, mlir_block, ssa_values)?;
+            self.codegen_operand(tcx, instance, arg1, arg1_ty, location, mlir_block, state)?;
         Ok(Some(pointer_value))
     }
 
@@ -590,7 +670,7 @@ impl<'a> TritonCodegen<'a> {
         operands: &(Operand<'tcx>, Operand<'tcx>),
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         let (lhs_op, rhs_op) = operands;
 
@@ -605,9 +685,9 @@ impl<'a> TritonCodegen<'a> {
             EarlyBinder::bind(rhs_op.ty(mir, tcx)),
         );
         let lhs =
-            self.codegen_operand(tcx, instance, lhs_op, lhs_ty, location, mlir_block, ssa_values)?;
+            self.codegen_operand(tcx, instance, lhs_op, lhs_ty, location, mlir_block, state)?;
         let rhs =
-            self.codegen_operand(tcx, instance, rhs_op, rhs_ty, location, mlir_block, ssa_values)?;
+            self.codegen_operand(tcx, instance, rhs_op, rhs_ty, location, mlir_block, state)?;
 
         match bin_op {
             BinOp::Add => todo!(),
@@ -639,14 +719,78 @@ impl<'a> TritonCodegen<'a> {
         }
     }
 
+    /// Codegen construction of an `Option<T>` aggregate (either `None` or `Some(inner)`).
+    /// The result is stored in `state.option_table` rather than `state.ssa_values`.
+    #[allow(clippy::too_many_arguments)]
+    fn codegen_option_aggregate<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        place: &Place<'tcx>,
+        _adt_def: rustc_middle::ty::AdtDef<'tcx>,
+        variant_index: rustc_abi::VariantIdx,
+        index_vec: &rustc_index::IndexVec<FieldIdx, Operand<'tcx>>,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<(), MlirError> {
+        if variant_index.as_usize() == 0 {
+            // None variant — no inner value.
+            state.option_table.insert(place.local, None);
+        } else {
+            // Some(inner) — codegen the single field and stash it.
+            let inner_op = index_vec.get(FieldIdx::from_usize(0))
+                .expect("Option::Some aggregate must have exactly one field");
+            let inner_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                tcx,
+                TypingEnv::fully_monomorphized(),
+                EarlyBinder::bind(inner_op.ty(mir, tcx)),
+            );
+            let inner_value = self.codegen_operand(
+                tcx, instance, inner_op, inner_ty, location, mlir_block, state,
+            )?;
+            state.option_table.insert(place.local, Some(inner_value));
+        }
+        Ok(())
+    }
+
     fn codegen_set_discriminant<'tcx>(
         &self,
-        _tcx: TyCtxt<'tcx>,
-        _place: &Place<'tcx>,
-        _variant_index: rustc_abi::VariantIdx,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        place: &Place<'tcx>,
+        variant_index: rustc_abi::VariantIdx,
         _mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<(), MlirError> {
-        todo!("[TODO] TritonCodegen::codegen_set_discriminant")
+        let place_ty = place.ty(mir, tcx).ty;
+        let norm_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx,
+            TypingEnv::fully_monomorphized(),
+            EarlyBinder::bind(place_ty),
+        );
+
+        if is_option_ty(tcx, norm_ty) {
+            if variant_index.as_usize() == 0 {
+                // Two-phase None: discriminant set to 0.
+                state.option_table.insert(place.local, None);
+            } else {
+                // Two-phase Some: inner value was written into ssa_values[place.local] by
+                // a preceding field-assignment via Place::Downcast projection.  Promote it.
+                let inner = state.ssa_values.remove(&place.local).unwrap_or_else(|| {
+                    panic!(
+                        "SetDiscriminant Some: expected inner value in ssa_values for {:?}",
+                        place.local
+                    )
+                });
+                state.option_table.insert(place.local, Some(inner));
+            }
+            return Ok(());
+        }
+
+        todo!("[TODO] TritonCodegen::codegen_set_discriminant for non-Option types")
     }
 
     fn codegen_storage_live<'tcx>(
@@ -689,19 +833,19 @@ impl<'a> TritonCodegen<'a> {
         ty: &Ty<'tcx>,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
         match cast_kind {
             CastKind::PointerWithExposedProvenance => {
                 self.codegen_pointer_with_exposed_provenance(
-                    tcx, instance, operand, ty, location, mlir_block, ssa_values,
+                    tcx, instance, operand, ty, location, mlir_block, state,
                 )
             }
             CastKind::PtrToPtr => {
-                self.codegen_ptr_to_ptr(tcx, instance, operand, ty, location, mlir_block, ssa_values)
+                self.codegen_ptr_to_ptr(tcx, instance, operand, ty, location, mlir_block, state)
             }
             CastKind::IntToInt => {
-                self.codegen_int_to_int(tcx, instance, operand, ty, location, mlir_block, ssa_values)
+                self.codegen_int_to_int(tcx, instance, operand, ty, location, mlir_block, state)
             }
             _ => todo!("CastKind: {:?}", cast_kind),
         }
@@ -715,10 +859,8 @@ impl<'a> TritonCodegen<'a> {
         ty: &Ty<'tcx>,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
-        // Resolve function-level type parameters (e.g. D) using this instance's generic args,
-        // then normalize (e.g. associated types).
         let typing_env = TypingEnv::fully_monomorphized();
         let normalized_ty = instance.instantiate_mir_and_normalize_erasing_regions(
             tcx,
@@ -731,7 +873,7 @@ impl<'a> TritonCodegen<'a> {
             operand, ty, normalized_ty
         );
 
-        self.codegen_operand(tcx, instance, operand, normalized_ty, location, mlir_block, ssa_values)
+        self.codegen_operand(tcx, instance, operand, normalized_ty, location, mlir_block, state)
     }
 
     fn codegen_ptr_to_ptr<'tcx>(
@@ -742,7 +884,7 @@ impl<'a> TritonCodegen<'a> {
         ty: &Ty<'tcx>,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
         let typing_env = TypingEnv::fully_monomorphized();
         let normalized_ty = instance.instantiate_mir_and_normalize_erasing_regions(
@@ -751,7 +893,7 @@ impl<'a> TritonCodegen<'a> {
             EarlyBinder::bind(*ty),
         );
 
-        self.codegen_operand(tcx, instance, operand, normalized_ty, location, mlir_block, ssa_values)
+        self.codegen_operand(tcx, instance, operand, normalized_ty, location, mlir_block, state)
     }
 
     fn codegen_int_to_int<'tcx>(
@@ -762,7 +904,7 @@ impl<'a> TritonCodegen<'a> {
         ty: &Ty<'tcx>,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
         let typing_env = TypingEnv::fully_monomorphized();
         let normalized_ty = instance.instantiate_mir_and_normalize_erasing_regions(
@@ -770,7 +912,7 @@ impl<'a> TritonCodegen<'a> {
             typing_env,
             EarlyBinder::bind(*ty),
         );
-        self.codegen_operand(tcx, instance, operand, normalized_ty, location, mlir_block, ssa_values)
+        self.codegen_operand(tcx, instance, operand, normalized_ty, location, mlir_block, state)
     }
 
     fn codegen_operand<'tcx>(
@@ -781,16 +923,16 @@ impl<'a> TritonCodegen<'a> {
         normalized_ty: Ty<'tcx>,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
         println!(
             "[DEBUG] TritonCodegen::codegen_operand: ssa_values: {:?} operand: {:?}",
-            ssa_values, operand
+            state.ssa_values, operand
         );
 
         // For MLIR move is the same as copy
         match operand {
-            Operand::Copy(place) | Operand::Move(place) => self.codegen_copy(place, ssa_values),
+            Operand::Copy(place) | Operand::Move(place) => self.codegen_copy(place, state),
             Operand::Constant(const_operand) => self.codegen_constant_cast(
                 tcx,
                 instance,
@@ -803,17 +945,60 @@ impl<'a> TritonCodegen<'a> {
         }
     }
 
+    /// Resolve an operand that may be `Option<T>`.
+    /// Returns the inner MLIR value if the option is `Some` (or if the operand is not an Option),
+    /// or `None` if the option is absent.
+    pub(crate) fn codegen_option_operand<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        operand: &Operand<'tcx>,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx,
+            TypingEnv::fully_monomorphized(),
+            EarlyBinder::bind(operand.ty(mir, tcx)),
+        );
+
+        if is_option_ty(tcx, ty) {
+            let inner = match operand {
+                Operand::Copy(p) | Operand::Move(p) => {
+                    *state.option_table.get(&p.local).unwrap_or_else(|| {
+                        panic!("Option local {:?} not found in option_table", p.local)
+                    })
+                }
+                // `None::<T>` constant — no inner value.
+                Operand::Constant(_) => None,
+                Operand::RuntimeChecks(_) => todo!("RuntimeChecks operand not yet supported"),
+            };
+            Ok(inner)
+        } else {
+            let value = self.codegen_operand(tcx, instance, operand, ty, location, mlir_block, state)?;
+            Ok(Some(value))
+        }
+    }
+
     fn codegen_copy<'tcx>(
         &self,
         place: &Place<'tcx>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
         println!(
             "[DEBUG] TritonCodegen::codegen_copy: Local: {:?}, ssa_values: {:?}",
-            place.local, ssa_values
+            place.local, state.ssa_values
         );
 
-        Ok(ssa_values
+        debug_assert!(
+            !state.option_table.contains_key(&place.local),
+            "BUG: Option local {:?} used as a direct MLIR value; use codegen_option_operand instead",
+            place.local
+        );
+
+        Ok(state.ssa_values
             .get(&place.local)
             .copied()
             .expect(format!("Value not found for local: {:?}", place.local).as_str()))

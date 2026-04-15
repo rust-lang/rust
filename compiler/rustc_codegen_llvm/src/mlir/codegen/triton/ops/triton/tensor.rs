@@ -16,19 +16,13 @@
 
 use melior::ir::operation::OperationLike;
 use melior::ir::{BlockLike, BlockRef, Location, Operation, TypeLike, Value, ValueLike};
-use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::mir::{
-    BasicBlock, Body, CallSource, Const, ConstValue, Operand, Place, UnwindAction,
-};
-use rustc_middle::ty::{Instance, TyCtxt};
-use rustc_mlir::shared::arith::{Int, create_int_constant};
-use rustc_mlir::triton::program::{ProgramAxis, create_get_program_id};
-use rustc_mlir::triton::tensor::{add_ptr, arange, load, store};
-use rustc_mlir::triton::tensor::{maximumf, zeros_like};
+use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, UnwindAction};
+use rustc_middle::ty::{EarlyBinder, Instance, TyCtxt, TypingEnv};
+use rustc_mlir::triton::tensor::{CacheModifier, EvictionPolicy, add_ptr, arange, load, store};
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 
-use crate::mlir::codegen::triton::{SsaValues, TritonCodegen};
+use crate::mlir::codegen::triton::{CodegenState, TritonCodegen};
 use crate::mlir::errors::MlirError;
 
 impl<'a> TritonCodegen<'a> {
@@ -36,7 +30,7 @@ impl<'a> TritonCodegen<'a> {
         &self,
         tcx: TyCtxt<'tcx>,
         instance: &Instance<'tcx>,
-        mir: &Body<'tcx>,
+        _mir: &Body<'tcx>,
         func: &Operand<'tcx>,
         _func_name: &str,
         args: &[Spanned<Operand<'tcx>>],
@@ -47,10 +41,10 @@ impl<'a> TritonCodegen<'a> {
         fn_span: &Span,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        _state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         println!(
-            "[DEBUG] TritonCodegen::codegen_program_id: func: {:?} args: {:?} destination: {:?} target: {:?} unwind: {:?} call_source: {:?} fn_span: {:?}",
+            "[DEBUG] TritonCodegen::codegen_arange: func: {:?} args: {:?} destination: {:?} target: {:?} unwind: {:?} call_source: {:?} fn_span: {:?}",
             func, args, destination, target, unwind, call_source, fn_span
         );
 
@@ -88,7 +82,7 @@ impl<'a> TritonCodegen<'a> {
         _fn_span: &Span,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         debug_assert!(
             args.len() == 2,
@@ -99,10 +93,10 @@ impl<'a> TritonCodegen<'a> {
         let arg1 = &args[1].node;
 
         let ptr = self.codegen_operand(
-            tcx, instance, arg0, arg0.ty(mir, tcx), location, mlir_block, ssa_values,
+            tcx, instance, arg0, arg0.ty(mir, tcx), location, mlir_block, state,
         )?;
         let offset = self.codegen_operand(
-            tcx, instance, arg1, arg1.ty(mir, tcx), location, mlir_block, ssa_values,
+            tcx, instance, arg1, arg1.ty(mir, tcx), location, mlir_block, state,
         )?;
 
         debug_assert!(
@@ -138,7 +132,7 @@ impl<'a> TritonCodegen<'a> {
         fn_span: &Span,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         println!(
             "[DEBUG] TritonCodegen::codegen_load: func: {:?} args: {:?} destination: {:?} target: {:?} unwind: {:?} call_source: {:?} fn_span: {:?}",
@@ -155,16 +149,32 @@ impl<'a> TritonCodegen<'a> {
         let arg1 = &args[1].node;
 
         let ptr = self.codegen_operand(
-            tcx, instance, arg0, arg0.ty(mir, tcx), location, mlir_block, ssa_values,
+            tcx, instance, arg0, arg0.ty(mir, tcx), location, mlir_block, state,
         )?;
-        let mask = self.codegen_operand(
-            tcx, instance, arg1, arg1.ty(mir, tcx), location, mlir_block, ssa_values,
-        )?;
+        let mask = self.codegen_option_operand(tcx, instance, mir, arg1, location, mlir_block, state)?;
+
+        // Derive the result type from the MIR destination place type.
+        let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx,
+            TypingEnv::fully_monomorphized(),
+            EarlyBinder::bind(destination.ty(mir, tcx).ty),
+        );
+        let result_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
 
         let load_op: Operation<'a> =
-            load(self.module.context(), location, ptr, mask)
-                .map_err(|e| MlirError::CreateOperation { err: e })?
-                .into();
+            load(
+                self.module.context(),
+                location,
+                ptr,
+                mask,
+                None,
+                result_ty,
+                CacheModifier::None,
+                EvictionPolicy::Normal,
+                false,
+            )
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
         let result = load_op.result(0).expect("Load operation result not found");
         eprintln!("[DEBUG] AXM TritonCodegen::codegen_load: {:?}", load_op.to_string());
         mlir_block.append_operation(load_op);
@@ -186,7 +196,7 @@ impl<'a> TritonCodegen<'a> {
         fn_span: &Span,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         println!(
             "[DEBUG] TritonCodegen::codegen_store: func: {:?} args: {:?} destination: {:?} target: {:?} unwind: {:?} call_source: {:?} fn_span: {:?}",
@@ -204,19 +214,25 @@ impl<'a> TritonCodegen<'a> {
         let arg2 = &args[2].node;
 
         let dest = self.codegen_operand(
-            tcx, instance, arg0, arg0.ty(mir, tcx), location, mlir_block, ssa_values,
+            tcx, instance, arg0, arg0.ty(mir, tcx), location, mlir_block, state,
         )?;
         let src = self.codegen_operand(
-            tcx, instance, arg1, arg1.ty(mir, tcx), location, mlir_block, ssa_values,
+            tcx, instance, arg1, arg1.ty(mir, tcx), location, mlir_block, state,
         )?;
-        let mask = self.codegen_operand(
-            tcx, instance, arg2, arg2.ty(mir, tcx), location, mlir_block, ssa_values,
-        )?;
+        let mask = self.codegen_option_operand(tcx, instance, mir, arg2, location, mlir_block, state)?;
 
         let store_op: Operation<'a> =
-            store(self.module.context(), location, dest, src, mask)
-                .map_err(|e| MlirError::CreateOperation { err: e })?
-                .into();
+            store(
+                self.module.context(),
+                location,
+                dest,
+                src,
+                mask,
+                CacheModifier::None,
+                EvictionPolicy::Normal,
+            )
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
 
         eprintln!("[DEBUG] AXM TritonCodegen::codegen_store: {:?}", store_op.to_string());
         mlir_block.append_operation(store_op);
@@ -239,7 +255,7 @@ impl<'a> TritonCodegen<'a> {
         fn_span: &Span,
         _location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         println!(
             "[DEBUG] TritonCodegen::codegen_maximum: func: {:?} args: {:?} destination: {:?} target: {:?} unwind: {:?} call_source: {:?} fn_span: {:?}",
@@ -256,10 +272,10 @@ impl<'a> TritonCodegen<'a> {
         let arg1 = &args[1].node;
 
         let _x = self.codegen_operand(
-            tcx, instance, arg0, arg0.ty(mir, tcx), _location, mlir_block, ssa_values,
+            tcx, instance, arg0, arg0.ty(mir, tcx), _location, mlir_block, state,
         )?;
         let _y = self.codegen_operand(
-            tcx, instance, arg1, arg1.ty(mir, tcx), _location, mlir_block, ssa_values,
+            tcx, instance, arg1, arg1.ty(mir, tcx), _location, mlir_block, state,
         )?;
 
         todo!()
@@ -288,7 +304,7 @@ impl<'a> TritonCodegen<'a> {
         fn_span: &Span,
         _location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         println!(
             "[DEBUG] TritonCodegen::codegen_zeros_like: func: {:?} args: {:?} destination: {:?} target: {:?} unwind: {:?} call_source: {:?} fn_span: {:?}",
@@ -303,7 +319,7 @@ impl<'a> TritonCodegen<'a> {
 
         let arg0 = &args[0].node;
         let _tensor = self.codegen_operand(
-            tcx, instance, arg0, arg0.ty(mir, tcx), _location, mlir_block, ssa_values,
+            tcx, instance, arg0, arg0.ty(mir, tcx), _location, mlir_block, state,
         )?;
 
         todo!()

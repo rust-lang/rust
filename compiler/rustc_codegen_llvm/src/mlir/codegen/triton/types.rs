@@ -22,6 +22,15 @@ use rustc_middle::ty::{
     AdtDef, AliasTy, AliasTyKind, GenericArg, ParamTy, Ty, TyCtxt, TyKind, TypingEnv,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
+
+/// Returns true if `ty` is `core::option::Option<_>`.
+pub fn is_option_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    if let TyKind::Adt(adt_def, _) = ty.kind() {
+        with_no_trimmed_paths!(tcx.def_path_str(adt_def.did())) == "core::option::Option"
+    } else {
+        false
+    }
+}
 use rustc_mlir::shared::builtin::tensor_type;
 use rustc_mlir::triton::pointer_type;
 

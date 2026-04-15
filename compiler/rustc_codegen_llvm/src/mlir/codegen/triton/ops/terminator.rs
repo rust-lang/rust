@@ -28,7 +28,7 @@ use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 
 use crate::mlir::codegen::triton::location::span_to_location;
-use crate::mlir::codegen::triton::{SsaValues, TritonCodegen};
+use crate::mlir::codegen::triton::{CodegenState, TritonCodegen};
 use crate::mlir::errors::MlirError;
 
 // Used inside codegen_terminator_call where 'a and 'tcx are concrete — no HRTB needed.
@@ -47,7 +47,7 @@ type LocalCallHandler<'a, 'tcx> = fn(
     &Span,
     Location<'a>,
     &BlockRef<'a, 'a>,
-    &mut SsaValues<'a, 'a>,
+    &mut CodegenState<'a, 'a>,
 ) -> Result<Option<Value<'a, 'a>>, MlirError>;
 
 impl<'a> TritonCodegen<'a> {
@@ -58,12 +58,12 @@ impl<'a> TritonCodegen<'a> {
         mir: &Body<'tcx>,
         terminator: &Terminator<'tcx>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
         basic_blocks: &HashMap<BasicBlock, BlockRef>,
     ) -> Result<(), MlirError> {
         println!(
             "[DEBUG] TritonCodegen::codegen_terminator: ssa_values: {:?} terminator: {:?}",
-            ssa_values, terminator
+            state.ssa_values, terminator
         );
 
         let location =
@@ -71,7 +71,7 @@ impl<'a> TritonCodegen<'a> {
 
         match &terminator.kind {
             rustc_middle::mir::TerminatorKind::Return => {
-                self.codegen_return(location, terminator, mlir_block, ssa_values)
+                self.codegen_return(location, terminator, mlir_block, state)
             }
             rustc_middle::mir::TerminatorKind::Goto { target } => {
                 self.codegen_goto(location, target, mlir_block, basic_blocks)
@@ -113,7 +113,7 @@ impl<'a> TritonCodegen<'a> {
                     call_loc,
                     mlir_block,
                     basic_blocks,
-                    ssa_values,
+                    state,
                 )
             }
             rustc_middle::mir::TerminatorKind::TailCall { func, args, fn_span } => {
@@ -166,7 +166,7 @@ impl<'a> TritonCodegen<'a> {
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         basic_blocks: &HashMap<BasicBlock, BlockRef>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<(), MlirError> {
         let func_name = match func {
             Operand::Constant(c) => {
@@ -223,11 +223,11 @@ impl<'a> TritonCodegen<'a> {
             fn_span,
             location,
             mlir_block,
-            ssa_values,
+            state,
         )?;
 
         if let Some(value) = value {
-            ssa_values.insert(destination.local, value);
+            state.ssa_values.insert(destination.local, value);
         }
         self.codegen_goto(location, &target.expect("target must be Some"), mlir_block, basic_blocks)?;
         Ok(())
@@ -248,7 +248,7 @@ impl<'a> TritonCodegen<'a> {
         _fn_span: &Span,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        ssa_values: &mut SsaValues<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         let args = args
             .iter()
@@ -260,7 +260,7 @@ impl<'a> TritonCodegen<'a> {
                     arg.node.ty(mir, tcx),
                     location,
                     mlir_block,
-                    ssa_values,
+                    state,
                 )
             })
             .collect::<Result<Vec<_>, MlirError>>()?;
