@@ -2228,6 +2228,9 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                                 .visit_expr(&anon_const.value)
                                 .is_break()
                             {
+                                // FIXME(mgca): make this non-fatal once we have a better way
+                                // to handle nested items in anno const from binder
+                                // Issue: https://github.com/rust-lang/rust/issues/123629
                                 self.dcx().emit_fatal(err)
                             } else {
                                 self.dcx().emit_err(err);
@@ -2571,6 +2574,9 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         let overly_complex_const = |this: &mut Self| {
             let msg = "complex const arguments must be placed inside of a `const` block";
             let e = if expr::WillCreateDefIdsVisitor.visit_expr(expr).is_break() {
+                // FIXME(mgca): make this non-fatal once we have a better way to handle
+                // nested items in const args
+                // Issue: https://github.com/rust-lang/rust/issues/154539
                 this.dcx().struct_span_fatal(expr.span, msg).emit()
             } else {
                 this.dcx().struct_span_err(expr.span, msg).emit()
