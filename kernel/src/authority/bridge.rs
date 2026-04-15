@@ -209,3 +209,86 @@ pub fn check_privilege(_authority: &Authority, _privilege: &str) -> SysResult<()
     // PROVISIONAL: all calls succeed in Phase 7.
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sched::hooks::ProcessSnapshot;
+    use crate::task::TaskState;
+
+    fn make_snapshot(name: &str, exec_path: &str) -> ProcessSnapshot {
+        ProcessSnapshot {
+            pid: 1,
+            ppid: 0,
+            tid: 1,
+            name: alloc::string::String::from(name),
+            state: TaskState::Runnable,
+            argv: alloc::vec::Vec::new(),
+            exec_path: alloc::string::String::from(exec_path),
+            exit_code: None,
+            pgid: 1,
+            sid: 1,
+            session_leader: false,
+            cwd: alloc::string::String::from("/"),
+            namespace_label: alloc::string::String::from("global"),
+            thread_states: alloc::vec![TaskState::Runnable],
+        }
+    }
+
+    // ── authority_from_snapshot ──────────────────────────────────────────────
+
+    #[test]
+    fn test_authority_name_from_snapshot_uses_name() {
+        let snap = make_snapshot("my-service", "/bin/my-service");
+        let auth = authority_from_snapshot(&snap);
+        assert_eq!(auth.name, "my-service");
+    }
+
+    #[test]
+    fn test_authority_name_falls_back_to_exec_path_when_name_is_empty() {
+        let snap = make_snapshot("", "/bin/fallback");
+        let auth = authority_from_snapshot(&snap);
+        assert_eq!(auth.name, "/bin/fallback");
+    }
+
+    #[test]
+    fn test_authority_capabilities_are_empty_in_phase7() {
+        let snap = make_snapshot("svc", "/bin/svc");
+        let auth = authority_from_snapshot(&snap);
+        assert!(auth.capabilities.is_empty());
+    }
+
+    #[test]
+    fn test_authority_as_text_contains_name() {
+        let snap = make_snapshot("bristle", "/bin/bristle");
+        let auth = authority_from_snapshot(&snap);
+        let text = auth.as_text();
+        assert!(text.contains("name: bristle"), "unexpected text: {text}");
+    }
+
+    #[test]
+    fn test_authority_as_text_contains_empty_capabilities() {
+        let snap = make_snapshot("bristle", "/bin/bristle");
+        let auth = authority_from_snapshot(&snap);
+        let text = auth.as_text();
+        assert!(text.contains("capabilities: []"), "unexpected text: {text}");
+    }
+
+    #[test]
+    fn test_authority_as_text_ends_with_newline() {
+        let snap = make_snapshot("x", "/bin/x");
+        let auth = authority_from_snapshot(&snap);
+        assert!(auth.as_text().ends_with('\n'));
+    }
+
+    // ── check_privilege ──────────────────────────────────────────────────────
+
+    #[test]
+    fn test_check_privilege_always_ok_in_phase7() {
+        let snap = make_snapshot("svc", "/bin/svc");
+        let auth = authority_from_snapshot(&snap);
+        // Phase 7: all privilege checks pass (no enforcement yet).
+        assert!(check_privilege(&auth, "reboot").is_ok());
+        assert!(check_privilege(&auth, "any_privilege").is_ok());
+    }
+}
