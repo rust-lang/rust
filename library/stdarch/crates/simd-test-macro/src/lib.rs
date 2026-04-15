@@ -71,6 +71,7 @@ pub fn simd_test(
         "powerpc64" | "powerpc64le" => "is_powerpc64_feature_detected",
         "loongarch32" | "loongarch64" => "is_loongarch_feature_detected",
         "s390x" => "is_s390x_feature_detected",
+        "mips64" | "mips64el" => "is_mips64_feature_detected",
         t => panic!("unknown target: {t}"),
     };
     let macro_test = Ident::new(macro_test, Span::call_site());
