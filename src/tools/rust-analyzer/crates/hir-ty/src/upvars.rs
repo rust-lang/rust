@@ -250,8 +250,9 @@ fn resolve_maybe_upvar<'db>(
     path: &Path,
 ) {
     if let Path::BarePath(mod_path) = path
-        && matches!(mod_path.kind, PathKind::Plain)
-        && mod_path.segments().len() == 1
+        && matches!(mod_path.kind, PathKind::Plain | PathKind::SELF)
+        // `self` is length zero.
+        && mod_path.segments().len() <= 1
     {
         // Could be a variable.
         let guard = resolver.update_to_inner_scope(db, owner, expr);
@@ -269,7 +270,9 @@ fn resolve_maybe_upvar<'db>(
 #[cfg(test)]
 mod tests {
     use expect_test::{Expect, expect};
-    use hir_def::{DefWithBodyId, ModuleDefId, expr_store::Body, nameres::crate_def_map};
+    use hir_def::{
+        AssocItemId, DefWithBodyId, ModuleDefId, expr_store::Body, nameres::crate_def_map,
+    };
     use itertools::Itertools;
     use span::Edition;
     use test_fixture::WithFixture;
@@ -288,6 +291,14 @@ mod tests {
                     ModuleDefId::FunctionId(func) => Some(func),
                     _ => None,
                 })
+                .chain(def_map.modules().flat_map(|(_, module)| {
+                    module.scope.impls().flat_map(|impl_| &*impl_.impl_items(&db).items).filter_map(
+                        |&(_, item)| match item {
+                            AssocItemId::FunctionId(it) => Some(it),
+                            _ => None,
+                        },
+                    )
+                }))
                 .exactly_one()
                 .unwrap_or_else(|_| panic!("expected one function"));
             let (body, source_map) = Body::with_source_map(&db, func.into());
@@ -385,6 +396,21 @@ fn foo() {
             expect![[r#"
                 30..116: a
                 49..110: a, b"#]],
+        );
+    }
+
+    #[test]
+    fn self_upvar() {
+        check(
+            r#"
+struct Foo(i32);
+impl Foo {
+    fn foo(&self) {
+        || self.0;
+    }
+}
+        "#,
+            expect!["56..65: self"],
         );
     }
 }
