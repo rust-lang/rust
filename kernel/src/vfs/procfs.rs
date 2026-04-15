@@ -13,6 +13,7 @@
 //! | `/proc/uptime`                   | Seconds since boot |
 //! | `/proc/self`                     | Directory for the calling process |
 //! | `/proc/self/exe`                 | Symlink to calling process's executable |
+//! | `/proc/self/authority`           | Canonical `thingos::authority::Authority` for the calling process |
 //! | `/proc/<pid>/status`             | Process state, name, ppid |
 //! | `/proc/<pid>/cmdline`            | argv as null-delimited bytes |
 //! | `/proc/<pid>/exe`                | Symlink to the process's executable |
@@ -73,6 +74,13 @@ impl VfsDriver for ProcFs {
             "self" => Ok(Arc::new(ProcSelfDirNode)),
             // /proc/self/exe — symlink to the current process's executable
             "self/exe" => Ok(Arc::new(ProcSelfExeNode)),
+            // /proc/self/authority — canonical Authority for the calling process (Phase 7).
+            //
+            // Reports the active permission context of the calling task in
+            // canonical Authority terms via `kernel::authority::bridge::authority_for_current`.
+            // This is the convenient self-introspection path: callers do not
+            // need to know their own PID.
+            "self/authority" => Ok(Arc::new(ProcSelfAuthorityNode)),
             _ => {
                 // Try to match /proc/<pid>/... paths.
                 // `path` is already relative to the mount point, so it looks
@@ -540,7 +548,7 @@ impl VfsNode for ProcSelfDirNode {
         Ok(VfsStat { mode: VfsStat::S_IFDIR | 0o555, size: 0, ino: 210, ..Default::default() })
     }
     fn readdir(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
-        let entries = ["exe"];
+        let entries = ["exe", "authority"];
         super::write_readdir_entries(entries.into_iter(), offset, buf)
     }
 }
@@ -574,6 +582,36 @@ impl VfsNode for ProcSelfExeNode {
         let pinfo = crate::sched::process_info_current().ok_or(Errno::ENOENT)?;
         let path = pinfo.lock().exec_path.clone();
         if path.is_empty() { Err(Errno::ENOENT) } else { Ok(path) }
+    }
+}
+
+// ── /proc/self/authority — Authority for the calling process ─────────────────
+
+/// A read-only node that reports the calling task's canonical Authority.
+///
+/// Reads the authority by calling [`crate::authority::bridge::authority_for_current`]
+/// at read time; the result reflects the permission context of the task that
+/// opened the file, formatted via [`thingos::authority::Authority::as_text`].
+struct ProcSelfAuthorityNode;
+
+impl VfsNode for ProcSelfAuthorityNode {
+    fn read(&self, offset: u64, buf: &mut [u8]) -> SysResult<usize> {
+        let authority = crate::authority::bridge::authority_for_current();
+        let text = authority.as_text();
+        let data = text.as_bytes();
+        let off = offset as usize;
+        if off >= data.len() {
+            return Ok(0);
+        }
+        let n = (data.len() - off).min(buf.len());
+        buf[..n].copy_from_slice(&data[off..off + n]);
+        Ok(n)
+    }
+    fn write(&self, _offset: u64, _buf: &[u8]) -> SysResult<usize> {
+        Err(Errno::EROFS)
+    }
+    fn stat(&self) -> SysResult<VfsStat> {
+        Ok(VfsStat { mode: VfsStat::S_IFREG | 0o444, size: 0, ino: 212, ..Default::default() })
     }
 }
 
@@ -1043,5 +1081,49 @@ mod tests {
             let node = lookup(path).unwrap();
             assert!(matches!(node.write(0, b"x"), Err(Errno::EROFS)));
         }
+    }
+
+    // ── /proc/self/authority ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_lookup_self_authority_succeeds() {
+        // /proc/self/authority is always resolvable — it uses authority_for_current()
+        // which falls back to "kernel" when no process context exists.
+        assert!(lookup("self/authority").is_ok());
+    }
+
+    #[test]
+    fn test_self_authority_is_readable() {
+        let node = lookup("self/authority").unwrap();
+        let mut buf = [0u8; 256];
+        let n = node.read(0, &mut buf).unwrap();
+        assert!(n > 0);
+        let s = core::str::from_utf8(&buf[..n]).unwrap();
+        assert!(s.contains("name:"), "authority text must contain 'name:': {s}");
+        assert!(s.contains("capabilities:"), "authority text must contain 'capabilities:': {s}");
+    }
+
+    #[test]
+    fn test_self_authority_is_readonly() {
+        let node = lookup("self/authority").unwrap();
+        assert!(matches!(node.write(0, b"x"), Err(Errno::EROFS)));
+    }
+
+    #[test]
+    fn test_self_authority_is_regular_file() {
+        let node = lookup("self/authority").unwrap();
+        let stat = node.stat().unwrap();
+        assert!(!stat.is_dir());
+        // Readable by all; not writable.
+        assert_eq!(stat.mode & 0o777, 0o444);
+    }
+
+    #[test]
+    fn test_self_dir_readdir_includes_authority() {
+        let node = lookup("self").unwrap();
+        let mut buf = [0u8; 256];
+        let n = node.readdir(0, &mut buf).unwrap();
+        let s = core::str::from_utf8(&buf[..n]).unwrap();
+        assert!(s.contains("authority"), "self readdir must list 'authority': {s}");
     }
 }

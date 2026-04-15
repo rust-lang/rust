@@ -63,4 +63,8 @@ fn bridge_signatures_return_canonical_types() {
 fn kind_ids_match_kindc_generated_constants() {
     assert_eq!(KindId::THINGOS_MESSAGE.0, parse_generated_kind_id("KIND_ID_THINGOS_MESSAGE"));
     assert_eq!(KindId::THINGOS_JOB_EXIT.0, parse_generated_kind_id("KIND_ID_THINGOS_JOB_EXIT"));
+    assert_eq!(
+        thingos::authority::KIND_ID_THINGOS_AUTHORITY,
+        parse_generated_kind_id("KIND_ID_THINGOS_AUTHORITY"),
+    );
 }
