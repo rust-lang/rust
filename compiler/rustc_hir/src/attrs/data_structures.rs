@@ -1233,9 +1233,6 @@ pub enum AttributeKind {
     /// Represents `#[pin_v2]`
     PinV2(Span),
 
-    /// Represents `#[pointee]`
-    Pointee(Span),
-
     /// Represents `#[prelude_import]`
     PreludeImport,
 
