@@ -16,6 +16,7 @@ pub mod message;
 pub mod once_cell;
 pub mod place;
 pub mod signal;
+pub mod space;
 
 #[cfg(test)]
 mod boundary_contract;
