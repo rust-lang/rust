@@ -47,7 +47,7 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         .map(|t| t.text_range())
         .reduce(|acc, range| acc.cover(range))?;
     acc.add(AssistId::quick_fix("remove_dbg"), "Remove dbg!()", target, |builder| {
-        let mut editor = builder.make_editor(ctx.source_file().syntax());
+        let editor = builder.make_editor(ctx.source_file().syntax());
         for (range, expr) in replacements {
             if let Some(expr) = expr {
                 editor.insert(Position::before(range[0].clone()), expr.syntax());
@@ -209,7 +209,7 @@ fn replace_nested_dbgs(expanded: ast::Expr) -> ast::Expr {
         return replaced;
     }
 
-    let (mut editor, expanded) = SyntaxEditor::with_ast_node(&expanded);
+    let (editor, expanded) = SyntaxEditor::with_ast_node(&expanded);
     // We need to collect to avoid mutation during traversal.
     let macro_exprs: Vec<_> =
         expanded.syntax().descendants().filter_map(ast::MacroExpr::cast).collect();

@@ -41,20 +41,16 @@ pub(crate) fn unmerge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
 
     let target = tree.syntax().text_range();
     acc.add(AssistId::refactor_rewrite("unmerge_imports"), label, target, |builder| {
-        let mut editor = builder.make_editor(use_.syntax());
-        let new_use = editor.make().use_(
+        let editor = builder.make_editor(use_.syntax());
+        let make = editor.make();
+        let new_use = make.use_(
             use_.attrs(),
             use_.visibility(),
-            editor.make().use_tree(
-                path,
-                tree.use_tree_list(),
-                tree.rename(),
-                tree.star_token().is_some(),
-            ),
+            make.use_tree(path, tree.use_tree_list(), tree.rename(), tree.star_token().is_some()),
         );
 
         // Remove the use tree from the current use item
-        tree.remove(&mut editor);
+        tree.remove(&editor);
         // Insert a newline and indentation, followed by the new use item
         editor.insert_all(
             Position::after(use_.syntax()),

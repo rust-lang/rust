@@ -72,16 +72,16 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
     };
 
     acc.add(AssistId::refactor_rewrite("merge_imports"), "Merge imports", target, |builder| {
-        let mut editor = builder.make_editor(&parent_node);
+        let editor = builder.make_editor(&parent_node);
 
         for edit in edits {
             match edit {
                 Remove(it) => {
                     let node = it.as_ref();
                     if let Some(left) = node.left() {
-                        left.remove(&mut editor);
+                        left.remove(&editor);
                     } else if let Some(right) = node.right() {
-                        right.remove(&mut editor);
+                        right.remove(&editor);
                     }
                 }
                 Replace(old, new) => {

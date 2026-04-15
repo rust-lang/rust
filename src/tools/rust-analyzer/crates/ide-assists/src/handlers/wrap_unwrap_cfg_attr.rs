@@ -192,25 +192,25 @@ fn wrap_derive(
         }
     }
     let handle_source_change = |edit: &mut SourceChangeBuilder| {
-        let mut editor = edit.make_editor(attr.syntax());
-        let new_derive = editor.make().attr_outer(editor.make().meta_token_tree(
-            editor.make().ident_path("derive"),
-            editor.make().token_tree(T!['('], new_derive),
-        ));
-        let meta = editor.make().cfg_attr_meta(
-            editor.make().cfg_flag("cfg"),
-            [editor.make().meta_token_tree(
-                editor.make().ident_path("derive"),
-                editor.make().token_tree(T!['('], cfg_derive_tokens),
+        let editor = edit.make_editor(attr.syntax());
+        let make = editor.make();
+        let new_derive = make.attr_outer(
+            make.meta_token_tree(make.ident_path("derive"), make.token_tree(T!['('], new_derive)),
+        );
+        let meta = make.cfg_attr_meta(
+            make.cfg_flag("cfg"),
+            [make.meta_token_tree(
+                make.ident_path("derive"),
+                make.token_tree(T!['('], cfg_derive_tokens),
             )],
         );
 
-        let cfg_attr = editor.make().attr_outer(meta.clone().into());
+        let cfg_attr = make.attr_outer(meta.clone().into());
         editor.replace_with_many(
             attr.syntax(),
             vec![
                 new_derive.syntax().clone().into(),
-                editor.make().whitespace("\n").into(),
+                make.whitespace("\n").into(),
                 cfg_attr.syntax().clone().into(),
             ],
         );
@@ -237,15 +237,14 @@ fn wrap_cfg_attrs(acc: &mut Assists, ctx: &AssistContext<'_>, attrs: Vec<ast::At
     let (first_attr, last_attr) = (attrs.first()?, attrs.last()?);
     let range = first_attr.syntax().text_range().cover(last_attr.syntax().text_range());
     let handle_source_change = |edit: &mut SourceChangeBuilder| {
-        let mut editor = edit.make_editor(first_attr.syntax());
-        let meta = editor.make().cfg_attr_meta(
-            editor.make().cfg_flag("cfg"),
-            attrs.iter().filter_map(|attr| attr.meta()),
-        );
+        let editor = edit.make_editor(first_attr.syntax());
+        let make = editor.make();
+        let meta =
+            make.cfg_attr_meta(make.cfg_flag("cfg"), attrs.iter().filter_map(|attr| attr.meta()));
         let cfg_attr = if first_attr.excl_token().is_some() {
-            editor.make().attr_inner(meta.clone().into())
+            make.attr_inner(meta.clone().into())
         } else {
-            editor.make().attr_outer(meta.clone().into())
+            make.attr_outer(meta.clone().into())
         };
 
         let syntax_range = first_attr.syntax().clone().into()..=last_attr.syntax().clone().into();

@@ -164,7 +164,7 @@ fn replace_literal(
 ) {
     let token = token.syntax();
     let node = token.parent().expect("no parent token");
-    let mut edit = builder.make_editor(&node);
+    let edit = builder.make_editor(&node);
     let new_literal = literal(new);
 
     edit.replace(token, mut_token(new_literal));

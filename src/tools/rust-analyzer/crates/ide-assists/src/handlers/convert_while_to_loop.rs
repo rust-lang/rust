@@ -51,45 +51,42 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) 
         "Convert while to loop",
         target,
         |builder| {
-            let mut editor = builder.make_editor(while_expr.syntax());
+            let editor = builder.make_editor(while_expr.syntax());
+            let make = editor.make();
             let while_indent_level = IndentLevel::from_node(while_expr.syntax());
 
             let break_block = editor
                 .make()
                 .block_expr(
-                    iter::once(
-                        editor.make().expr_stmt(editor.make().expr_break(None, None).into()).into(),
-                    ),
+                    iter::once(make.expr_stmt(make.expr_break(None, None).into()).into()),
                     None,
                 )
                 .indent(IndentLevel(1));
 
             editor.replace_all(
                 while_kw.syntax_element()..=while_cond.syntax().syntax_element(),
-                vec![editor.make().token(T![loop]).syntax_element()],
+                vec![make.token(T![loop]).syntax_element()],
             );
 
             if is_pattern_cond(while_cond.clone()) {
                 let then_branch = while_body.reset_indent().indent(IndentLevel(1));
-                let if_expr =
-                    editor.make().expr_if(while_cond, then_branch, Some(break_block.into()));
-                let stmts = iter::once(editor.make().expr_stmt(if_expr.into()).into());
-                let block_expr = editor.make().block_expr(stmts, None);
+                let if_expr = make.expr_if(while_cond, then_branch, Some(break_block.into()));
+                let stmts = iter::once(make.expr_stmt(if_expr.into()).into());
+                let block_expr = make.block_expr(stmts, None);
                 editor.replace(while_body.syntax(), block_expr.indent(while_indent_level).syntax());
             } else {
-                let if_cond = invert_boolean_expression(editor.make(), while_cond);
-                let if_expr =
-                    editor.make().expr_if(if_cond, break_block, None).indent(while_indent_level);
+                let if_cond = invert_boolean_expression(make, while_cond);
+                let if_expr = make.expr_if(if_cond, break_block, None).indent(while_indent_level);
                 if !while_body.syntax().text().contains_char('\n') {
                     editor.insert(
                         Position::after(&l_curly),
-                        editor.make().whitespace(&format!("\n{while_indent_level}")),
+                        make.whitespace(&format!("\n{while_indent_level}")),
                     );
                 }
                 editor.insert_all(
                     Position::after(&l_curly),
                     vec![
-                        editor.make().whitespace(&format!("\n{}", while_indent_level + 1)).into(),
+                        make.whitespace(&format!("\n{}", while_indent_level + 1)).into(),
                         if_expr.syntax().syntax_element(),
                     ],
                 );

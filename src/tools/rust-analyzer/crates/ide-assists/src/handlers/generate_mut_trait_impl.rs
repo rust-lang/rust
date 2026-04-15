@@ -67,9 +67,9 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
         format!("Generate `{trait_new}` impl from this `{trait_name}` trait"),
         target,
         |edit| {
-            let (mut editor, impl_clone) = SyntaxEditor::with_ast_node(&impl_def.reset_indent());
+            let (editor, impl_clone) = SyntaxEditor::with_ast_node(&impl_def.reset_indent());
 
-            apply_generate_mut_impl(&mut editor, &impl_clone, trait_new);
+            apply_generate_mut_impl(&editor, &impl_clone, trait_new);
 
             let new_root = editor.finish();
             let new_root = new_root.new_root();
@@ -78,12 +78,13 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
 
             let new_impl = new_impl.indent(indent);
 
-            let mut editor = edit.make_editor(impl_def.syntax());
+            let editor = edit.make_editor(impl_def.syntax());
+            let make = editor.make();
             editor.insert_all(
                 Position::before(impl_def.syntax()),
                 vec![
                     new_impl.syntax().syntax_element(),
-                    editor.make().whitespace(&format!("\n\n{indent}")).syntax_element(),
+                    make.whitespace(&format!("\n\n{indent}")).syntax_element(),
                 ],
             );
 
@@ -97,7 +98,7 @@ pub(crate) fn generate_mut_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>
     )
 }
 
-fn delete_with_trivia(editor: &mut SyntaxEditor, node: &SyntaxNode) {
+fn delete_with_trivia(editor: &SyntaxEditor, node: &SyntaxNode) {
     let mut end: SyntaxElement = node.clone().into();
 
     if let Some(next) = node.next_sibling_or_token()
@@ -111,22 +112,23 @@ fn delete_with_trivia(editor: &mut SyntaxEditor, node: &SyntaxNode) {
 }
 
 fn apply_generate_mut_impl(
-    editor: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     impl_def: &ast::Impl,
     trait_new: &str,
 ) -> Option<()> {
+    let make = editor.make();
     let path =
         impl_def.trait_().and_then(|t| t.syntax().descendants().find_map(ast::Path::cast))?;
     let seg = path.segment()?;
     let name_ref = seg.name_ref()?;
 
-    let new_name_ref = editor.make().name_ref(trait_new);
+    let new_name_ref = make.name_ref(trait_new);
     editor.replace(name_ref.syntax(), new_name_ref.syntax());
 
     if let Some((name, new_name)) =
         impl_def.syntax().descendants().filter_map(ast::Name::cast).find_map(process_method_name)
     {
-        let new_name_node = editor.make().name(new_name);
+        let new_name_node = make.name(new_name);
         editor.replace(name.syntax(), new_name_node.syntax());
     }
 
@@ -135,14 +137,14 @@ fn apply_generate_mut_impl(
     }
 
     if let Some(self_param) = impl_def.syntax().descendants().find_map(ast::SelfParam::cast) {
-        let mut_self = editor.make().mut_self_param();
+        let mut_self = make.mut_self_param();
         editor.replace(self_param.syntax(), mut_self.syntax());
     }
 
     if let Some(ret_type) = impl_def.syntax().descendants().find_map(ast::RetType::cast)
-        && let Some(new_ty) = process_ret_type(editor.make(), &ret_type)
+        && let Some(new_ty) = process_ret_type(make, &ret_type)
     {
-        let new_ret = editor.make().ret_type(new_ty);
+        let new_ret = make.ret_type(new_ty);
         editor.replace(ret_type.syntax(), new_ret.syntax())
     }
 
@@ -158,7 +160,8 @@ fn apply_generate_mut_impl(
     Some(())
 }
 
-fn process_ref_mut(editor: &mut SyntaxEditor, fn_: &ast::Fn) {
+fn process_ref_mut(editor: &SyntaxEditor, fn_: &ast::Fn) {
+    let make = editor.make();
     let Some(expr) = fn_.body().and_then(|b| b.tail_expr()) else { return };
 
     let ast::Expr::RefExpr(ref_expr) = expr else { return };
@@ -169,8 +172,8 @@ fn process_ref_mut(editor: &mut SyntaxEditor, fn_: &ast::Fn) {
 
     let Some(amp) = ref_expr.amp_token() else { return };
 
-    let mut_kw = editor.make().token(T![mut]);
-    let space = editor.make().whitespace(" ");
+    let mut_kw = make.token(T![mut]);
+    let space = make.whitespace(" ");
 
     editor.insert(Position::after(amp.clone()), space.syntax_element());
     editor.insert(Position::after(amp), mut_kw.syntax_element());

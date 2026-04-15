@@ -1294,8 +1294,8 @@ fn coerce_pointee_expand(
         ));
     }
 
-    let (mut editor, strukt) = SyntaxEditor::with_ast_node(strukt);
-    strukt.get_or_create_where_clause(&mut editor, new_predicates.into_iter());
+    let (editor, strukt) = SyntaxEditor::with_ast_node(strukt);
+    strukt.get_or_create_where_clause(&editor, new_predicates.into_iter());
     let edit = editor.finish();
     let strukt = ast::Struct::cast(edit.new_root().clone()).unwrap();
     let adt = ast::Adt::Struct(strukt.clone());

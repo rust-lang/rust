@@ -93,21 +93,23 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                 "Add `: _` before assignment operator",
                 ident.text_range(),
                 |builder| {
-                    let mut editor = builder.make_editor(let_stmt.syntax());
+                    let editor = builder.make_editor(let_stmt.syntax());
+                    let make = editor.make();
 
                     if let_stmt.semicolon_token().is_none() {
                         editor.insert(
                             Position::last_child_of(let_stmt.syntax()),
-                            editor.make().token(syntax::SyntaxKind::SEMICOLON),
+                            make.token(syntax::SyntaxKind::SEMICOLON),
                         );
                     }
 
-                    let placeholder_ty = editor.make().ty_placeholder();
+                    let make = editor.make();
+                    let placeholder_ty = make.ty_placeholder();
 
                     if let Some(pat) = let_stmt.pat() {
                         let elements = vec![
-                            editor.make().token(syntax::SyntaxKind::COLON).into(),
-                            editor.make().whitespace(" ").into(),
+                            make.token(syntax::SyntaxKind::COLON).into(),
+                            make.whitespace(" ").into(),
                             placeholder_ty.syntax().clone().into(),
                         ];
                         editor.insert_all(Position::after(pat.syntax()), elements);
@@ -140,7 +142,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         ident.text_range(),
         |builder| {
             builder.trigger_parameter_hints();
-            let mut editor = match &turbofish_target {
+            let editor = match &turbofish_target {
                 Either::Left(it) => builder.make_editor(it.syntax()),
                 Either::Right(it) => builder.make_editor(it.syntax()),
             };

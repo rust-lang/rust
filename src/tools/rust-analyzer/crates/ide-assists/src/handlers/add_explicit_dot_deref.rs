@@ -53,14 +53,15 @@ pub(crate) fn add_explicit_method_call_deref(
         "Insert explicit method call derefs",
         dot_token.text_range(),
         |builder| {
-            let mut editor = builder.make_editor(method_call_expr.syntax());
+            let editor = builder.make_editor(method_call_expr.syntax());
+            let make = editor.make();
             let mut expr = receiver.clone();
 
             for adjust_kind in adjustments {
-                expr = adjust_kind.wrap_expr(expr, editor.make());
+                expr = adjust_kind.wrap_expr(expr, make);
             }
 
-            expr = editor.make().expr_paren(expr).into();
+            expr = make.expr_paren(expr).into();
             editor.replace(receiver.syntax(), expr.syntax());
 
             builder.add_file_edits(ctx.vfs_file_id(), editor);

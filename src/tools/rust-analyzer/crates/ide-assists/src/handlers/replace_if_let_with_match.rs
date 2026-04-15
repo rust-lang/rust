@@ -111,34 +111,28 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
         format!("Replace if{let_} with match"),
         available_range,
         move |builder| {
-            let mut editor = builder.make_editor(if_expr.syntax());
+            let editor = builder.make_editor(if_expr.syntax());
+            let make = editor.make();
             let match_expr: ast::Expr = {
-                let else_arm = make_else_arm(ctx, editor.make(), else_block, &cond_bodies);
+                let else_arm = make_else_arm(ctx, make, else_block, &cond_bodies);
                 let make_match_arm =
                     |(pat, guard, body): (_, Option<ast::Expr>, ast::BlockExpr)| {
                         // Dedent from original position, then indent for match arm
                         let body = body.dedent(indent);
                         let body = unwrap_trivial_block(body);
-                        match (pat, guard.map(|it| editor.make().match_guard(it))) {
-                            (Some(pat), guard) => editor.make().match_arm(pat, guard, body),
-                            (None, _) if !pat_seen => editor.make().match_arm(
-                                editor.make().literal_pat("true").into(),
-                                None,
-                                body,
-                            ),
-                            (None, guard) => editor.make().match_arm(
-                                editor.make().wildcard_pat().into(),
-                                guard,
-                                body,
-                            ),
+                        match (pat, guard.map(|it| make.match_guard(it))) {
+                            (Some(pat), guard) => make.match_arm(pat, guard, body),
+                            (None, _) if !pat_seen => {
+                                make.match_arm(make.literal_pat("true").into(), None, body)
+                            }
+                            (None, guard) => {
+                                make.match_arm(make.wildcard_pat().into(), guard, body)
+                            }
                         }
                     };
                 let arms = cond_bodies.into_iter().map(make_match_arm).chain([else_arm]);
                 let expr = scrutinee_to_be_expr.reset_indent();
-                let match_expr = editor
-                    .make()
-                    .expr_match(expr, editor.make().match_arm_list(arms))
-                    .indent(indent);
+                let match_expr = make.expr_match(expr, make.match_arm_list(arms)).indent(indent);
                 match_expr.into()
             };
 
@@ -272,14 +266,15 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
         format!("Replace match with if{let_}"),
         match_expr.syntax().text_range(),
         move |builder| {
-            let mut editor = builder.make_editor(match_expr.syntax());
+            let editor = builder.make_editor(match_expr.syntax());
+            let make = editor.make();
             let make_block_expr = |expr: ast::Expr| {
                 // Blocks with modifiers (unsafe, async, etc.) are parsed as BlockExpr, but are
                 // formatted without enclosing braces. If we encounter such block exprs,
                 // wrap them in another BlockExpr.
                 match expr {
                     ast::Expr::BlockExpr(block) if block.modifier().is_none() => block,
-                    expr => editor.make().block_expr([], Some(expr.indent(IndentLevel(1)))),
+                    expr => make.block_expr([], Some(expr.indent(IndentLevel(1)))),
                 }
             };
 
@@ -292,16 +287,13 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
                 ast::Pat::LiteralPat(p)
                     if p.literal().is_some_and(|it| it.token().kind() == T![false]) =>
                 {
-                    editor.make().expr_prefix(T![!], scrutinee).into()
+                    make.expr_prefix(T![!], scrutinee).into()
                 }
-                _ => editor.make().expr_let(if_let_pat, scrutinee).into(),
+                _ => make.expr_let(if_let_pat, scrutinee).into(),
             };
             let condition = if let Some(guard) = guard {
-                let guard = wrap_paren(guard, editor.make(), ast::prec::ExprPrecedence::LAnd);
-                editor
-                    .make()
-                    .expr_bin(condition, ast::BinaryOp::LogicOp(ast::LogicOp::And), guard)
-                    .into()
+                let guard = wrap_paren(guard, make, ast::prec::ExprPrecedence::LAnd);
+                make.expr_bin(condition, ast::BinaryOp::LogicOp(ast::LogicOp::And), guard).into()
             } else {
                 condition
             };
@@ -409,21 +401,20 @@ fn let_and_guard(cond: &ast::Expr) -> (Option<ast::LetExpr>, Option<ast::Expr>) 
     } else if let ast::Expr::BinExpr(bin_expr) = cond
         && let Some(ast::Expr::LetExpr(let_expr)) = and_bin_expr_left(bin_expr).lhs()
     {
-        let (mut edit, new_expr) = SyntaxEditor::with_ast_node(bin_expr);
-
+        let (editor, new_expr) = SyntaxEditor::with_ast_node(bin_expr);
         let left_bin = and_bin_expr_left(&new_expr);
         if let Some(rhs) = left_bin.rhs() {
-            edit.replace(left_bin.syntax(), rhs.syntax());
+            editor.replace(left_bin.syntax(), rhs.syntax());
         } else {
             if let Some(next) = left_bin.syntax().next_sibling_or_token()
                 && next.kind() == SyntaxKind::WHITESPACE
             {
-                edit.delete(next);
+                editor.delete(next);
             }
-            edit.delete(left_bin.syntax());
+            editor.delete(left_bin.syntax());
         }
 
-        let new_expr = edit.finish().new_root().clone();
+        let new_expr = editor.finish().new_root().clone();
         (Some(let_expr), ast::Expr::cast(new_expr))
     } else {
         (None, Some(cond.clone()))

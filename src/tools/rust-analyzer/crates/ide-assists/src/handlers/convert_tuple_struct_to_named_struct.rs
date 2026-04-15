@@ -86,24 +86,25 @@ pub(crate) fn convert_tuple_struct_to_named_struct(
         "Convert to named struct",
         target,
         |edit| {
-            let mut editor = edit.make_editor(syntax);
+            let editor = edit.make_editor(syntax);
             let names = generate_names(tuple_fields.fields(), editor.make());
             edit_field_references(ctx, edit, tuple_fields.fields(), &names);
             edit_struct_references(ctx, edit, strukt_def, &names);
-            edit_struct_def(&mut editor, &strukt_or_variant, tuple_fields, names);
+            edit_struct_def(&editor, &strukt_or_variant, tuple_fields, names);
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
 
 fn edit_struct_def(
-    editor: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     strukt: &Either<ast::Struct, ast::Variant>,
     tuple_fields: ast::TupleFieldList,
     names: Vec<ast::Name>,
 ) {
+    let make = editor.make();
     let record_fields = tuple_fields.fields().zip(names).filter_map(|(f, name)| {
-        let (mut field_editor, field) =
+        let (field_editor, field) =
             SyntaxEditor::with_ast_node(&ast::make::record_field(f.visibility(), name, f.ty()?));
         field_editor.insert_all(
             Position::first_child_of(field.syntax()),
@@ -111,7 +112,7 @@ fn edit_struct_def(
         );
         ast::RecordField::cast(field_editor.finish().new_root().clone())
     });
-    let record_fields = editor.make().record_field_list(record_fields);
+    let record_fields = make.record_field_list(record_fields);
     let tuple_fields_before = Position::before(tuple_fields.syntax());
 
     if let Either::Left(strukt) = strukt {
@@ -152,10 +153,10 @@ fn edit_struct_references(
 
     for (file_id, refs) in usages {
         let source = ctx.sema.parse(file_id);
-        let mut editor = edit.make_editor(source.syntax());
+        let editor = edit.make_editor(source.syntax());
 
         for r in refs {
-            process_struct_name_reference(ctx, r, &mut editor, &source, &strukt_def, names);
+            process_struct_name_reference(ctx, r, &editor, &source, &strukt_def, names);
         }
 
         edit.add_file_edits(file_id.file_id(ctx.db()), editor);
@@ -165,11 +166,12 @@ fn edit_struct_references(
 fn process_struct_name_reference(
     ctx: &AssistContext<'_>,
     r: FileReference,
-    editor: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     source: &ast::SourceFile,
     strukt_def: &Definition,
     names: &[ast::Name],
 ) -> Option<()> {
+    let make = editor.make();
     let name_ref = r.name.as_name_ref()?;
     let path_segment = name_ref.syntax().parent().and_then(ast::PathSegment::cast)?;
     let full_path = path_segment.syntax().parent().and_then(ast::Path::cast)?.top_path();
@@ -185,7 +187,7 @@ fn process_struct_name_reference(
         match parent {
             ast::TupleStructPat(tuple_struct_pat) => {
                 let range = ctx.sema.original_range_opt(tuple_struct_pat.syntax())?.range;
-                let new = editor.make().record_pat_with_fields(
+                let new = make.record_pat_with_fields(
                     full_path,
                     generate_record_pat_list(&tuple_struct_pat, names),
                 );
@@ -207,9 +209,9 @@ fn process_struct_name_reference(
                     let range = ctx.sema.original_range_opt(expr.syntax())?.range;
                     let place = cover_edit_range(source.syntax(), range);
                     let elements = vec![
-                        editor.make().name_ref(&name.text()).syntax().clone().into(),
-                        editor.make().token(T![:]).into(),
-                        editor.make().whitespace(" ").into(),
+                        make.name_ref(&name.text()).syntax().clone().into(),
+                        make.token(T![:]).into(),
+                        make.whitespace(" ").into(),
                     ];
                     if first_insert.is_empty() {
                         // XXX: SyntaxEditor cannot insert after deleted element
@@ -229,10 +231,11 @@ fn process_struct_name_reference(
 fn process_delimiter(
     ctx: &AssistContext<'_>,
     source: &ast::SourceFile,
-    editor: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     list: &impl AstNode,
     first_insert: Vec<syntax::SyntaxElement>,
 ) {
+    let make = editor.make();
     let Some(range) = ctx.sema.original_range_opt(list.syntax()) else { return };
     let place = cover_edit_range(source.syntax(), range.range);
 
@@ -249,9 +252,9 @@ fn process_delimiter(
         && l_paren.kind() == T!['(']
     {
         let mut open_delim = vec![
-            editor.make().whitespace(" ").into(),
-            editor.make().token(T!['{']).into(),
-            editor.make().whitespace(" ").into(),
+            make.whitespace(" ").into(),
+            make.token(T!['{']).into(),
+            make.whitespace(" ").into(),
         ];
         open_delim.extend(first_insert);
         editor.replace_with_many(l_paren, open_delim);
@@ -261,7 +264,7 @@ fn process_delimiter(
     {
         editor.replace_with_many(
             r_paren,
-            vec![editor.make().whitespace(" ").into(), editor.make().token(T!['}']).into()],
+            vec![make.whitespace(" ").into(), make.token(T!['}']).into()],
         );
     }
 }
@@ -281,7 +284,7 @@ fn edit_field_references(
         let usages = def.usages(&ctx.sema).all();
         for (file_id, refs) in usages {
             let source = ctx.sema.parse(file_id);
-            let mut editor = edit.make_editor(source.syntax());
+            let editor = edit.make_editor(source.syntax());
             for r in refs {
                 if let Some(name_ref) = r.name.as_name_ref()
                     && let Some(original) = ctx.sema.original_range_opt(name_ref.syntax())

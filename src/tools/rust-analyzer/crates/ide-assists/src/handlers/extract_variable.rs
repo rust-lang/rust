@@ -205,10 +205,11 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                         to_replace.clone()
                     };
 
-                let mut editor = edit.make_editor(&place);
+                let editor = edit.make_editor(&place);
+                let make = editor.make();
 
-                let pat_name = editor.make().name(&var_name);
-                let name_expr = editor.make().expr_path(editor.make().ident_path(&var_name));
+                let pat_name = make.name(&var_name);
+                let name_expr = make.expr_path(make.ident_path(&var_name));
 
                 if let Some(cap) = ctx.config.snippet_cap {
                     let tabstop = edit.make_tabstop_before(cap);
@@ -217,33 +218,27 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
                 let initializer = match ty.as_ref().filter(|_| needs_ref) {
                     Some(receiver_type) if receiver_type.is_mutable_reference() => {
-                        editor.make().expr_ref(to_extract_no_ref.clone(), true)
+                        make.expr_ref(to_extract_no_ref.clone(), true)
                     }
                     Some(receiver_type) if receiver_type.is_reference() => {
-                        editor.make().expr_ref(to_extract_no_ref.clone(), false)
+                        make.expr_ref(to_extract_no_ref.clone(), false)
                     }
                     _ => to_extract_no_ref.clone(),
                 };
 
                 let new_stmt: ast::Stmt = match kind {
                     ExtractionKind::Variable => {
-                        let ident_pat = editor.make().ident_pat(false, needs_mut, pat_name);
-                        editor.make().let_stmt(ident_pat.into(), None, Some(initializer)).into()
+                        let ident_pat = make.ident_pat(false, needs_mut, pat_name);
+                        make.let_stmt(ident_pat.into(), None, Some(initializer)).into()
                     }
                     ExtractionKind::Constant => {
-                        let ast_ty = editor.make().ty(&ty_string);
-                        ast::Item::Const(editor.make().item_const(
-                            None,
-                            None,
-                            pat_name,
-                            ast_ty,
-                            initializer,
-                        ))
-                        .into()
+                        let ast_ty = make.ty(&ty_string);
+                        ast::Item::Const(make.item_const(None, None, pat_name, ast_ty, initializer))
+                            .into()
                     }
                     ExtractionKind::Static => {
-                        let ast_ty = editor.make().ty(&ty_string);
-                        ast::Item::Static(editor.make().item_static(
+                        let ast_ty = make.ty(&ty_string);
+                        ast::Item::Static(make.item_static(
                             None,
                             false,
                             false,
@@ -271,7 +266,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                             Position::before(place),
                             vec![
                                 new_stmt.syntax().clone().into(),
-                                editor.make().whitespace(&trailing_ws).into(),
+                                make.whitespace(&trailing_ws).into(),
                             ],
                         );
 
@@ -288,15 +283,15 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                         let block = if to_wrap.syntax() == &expr_replace {
                             // Since `expr_replace` is the same that needs to be wrapped in a block,
                             // we can just directly replace it with a block
-                            editor.make().block_expr([new_stmt], Some(name_expr))
+                            make.block_expr([new_stmt], Some(name_expr))
                         } else {
                             // `expr_replace` is a descendant of `to_wrap`, so we just replace it with `name_expr`.
                             editor
                                 .replace_all(to_replace, vec![name_expr.syntax().syntax_element()]);
-                            editor.make().block_expr([new_stmt], Some(to_wrap.clone()))
+                            make.block_expr([new_stmt], Some(to_wrap.clone()))
                         }
                         // fixup indentation of block
-                        .indent_with_mapping(indent_to, editor.make());
+                        .indent_with_mapping(indent_to, make);
 
                         editor.replace(to_wrap.syntax(), block.syntax());
                     }

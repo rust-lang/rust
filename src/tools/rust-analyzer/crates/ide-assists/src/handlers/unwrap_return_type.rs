@@ -66,7 +66,8 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let happy_type = extract_wrapped_type(type_ref)?;
 
     acc.add(kind.assist_id(), kind.label(), type_ref.syntax().text_range(), |builder| {
-        let mut editor = builder.make_editor(&parent);
+        let editor = builder.make_editor(&parent);
+        let make = editor.make();
 
         let mut exprs_to_unwrap = Vec::new();
         let tail_cb = &mut |e: &_| tail_cb_impl(&mut exprs_to_unwrap, e);
@@ -118,15 +119,14 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                             .and_then(Either::<ast::ReturnExpr, ast::StmtList>::cast)
                             .unwrap();
                         match tail_parent {
-                            Either::Left(ret_expr) => editor.replace(
-                                ret_expr.syntax(),
-                                editor.make().expr_return(None).syntax(),
-                            ),
+                            Either::Left(ret_expr) => {
+                                editor.replace(ret_expr.syntax(), make.expr_return(None).syntax())
+                            }
                             Either::Right(stmt_list) => {
                                 let new_block = if stmt_list.statements().next().is_none() {
-                                    editor.make().expr_empty_block()
+                                    make.expr_empty_block()
                                 } else {
-                                    editor.make().block_expr(stmt_list.statements(), None)
+                                    make.block_expr(stmt_list.statements(), None)
                                 };
                                 editor.replace(
                                     stmt_list.syntax(),
@@ -147,7 +147,7 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
                         continue;
                     }
 
-                    let new_tail_expr = editor.make().expr_unit();
+                    let new_tail_expr = make.expr_unit();
                     editor.replace(path_expr.syntax(), new_tail_expr.syntax());
                     if let Some(cap) = ctx.config.snippet_cap {
                         editor.add_annotation(

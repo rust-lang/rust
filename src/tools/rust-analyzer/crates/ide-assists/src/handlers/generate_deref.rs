@@ -138,35 +138,30 @@ fn generate_edit(
     trait_path: ModPath,
     edition: Edition,
 ) {
-    let mut editor = edit.make_editor(strukt.syntax());
+    let editor = edit.make_editor(strukt.syntax());
+    let make = editor.make();
     let strukt_adt = ast::Adt::Struct(strukt.clone());
-    let trait_ty = editor.make().ty(&trait_path.display(db, edition).to_string());
+    let trait_ty = make.ty(&trait_path.display(db, edition).to_string());
 
     let assoc_items: Vec<ast::AssocItem> = match deref_type {
         DerefType::Deref => {
             let target_alias =
-                editor.make().ty_alias([], "Target", None, None, None, Some((field_type, None)));
-            let ret_ty = editor.make().ty_ref(
-                editor.make().ty_path(editor.make().path_from_text("Self::Target")).into(),
-                false,
-            );
-            let field_expr = editor
-                .make()
-                .expr_field(editor.make().expr_path(editor.make().ident_path("self")), field_name);
-            let body = editor
-                .make()
-                .block_expr([], Some(editor.make().expr_ref(field_expr.into(), false)));
+                make.ty_alias([], "Target", None, None, None, Some((field_type, None)));
+            let ret_ty =
+                make.ty_ref(make.ty_path(make.path_from_text("Self::Target")).into(), false);
+            let field_expr = make.expr_field(make.expr_path(make.ident_path("self")), field_name);
+            let body = make.block_expr([], Some(make.expr_ref(field_expr.into(), false)));
             let fn_ = editor
                 .make()
                 .fn_(
                     [],
                     None,
-                    editor.make().name("deref"),
+                    make.name("deref"),
                     None,
                     None,
-                    editor.make().param_list(Some(editor.make().self_param()), []),
+                    make.param_list(Some(make.self_param()), []),
                     body,
-                    Some(editor.make().ret_type(ret_ty)),
+                    Some(make.ret_type(ret_ty)),
                     false,
                     false,
                     false,
@@ -176,26 +171,21 @@ fn generate_edit(
             vec![ast::AssocItem::TypeAlias(target_alias), ast::AssocItem::Fn(fn_)]
         }
         DerefType::DerefMut => {
-            let ret_ty = editor.make().ty_ref(
-                editor.make().ty_path(editor.make().path_from_text("Self::Target")).into(),
-                true,
-            );
-            let field_expr = editor
-                .make()
-                .expr_field(editor.make().expr_path(editor.make().ident_path("self")), field_name);
-            let body =
-                editor.make().block_expr([], Some(editor.make().expr_ref(field_expr.into(), true)));
+            let ret_ty =
+                make.ty_ref(make.ty_path(make.path_from_text("Self::Target")).into(), true);
+            let field_expr = make.expr_field(make.expr_path(make.ident_path("self")), field_name);
+            let body = make.block_expr([], Some(make.expr_ref(field_expr.into(), true)));
             let fn_ = editor
                 .make()
                 .fn_(
                     [],
                     None,
-                    editor.make().name("deref_mut"),
+                    make.name("deref_mut"),
                     None,
                     None,
-                    editor.make().param_list(Some(editor.make().mut_self_param()), []),
+                    make.param_list(Some(make.mut_self_param()), []),
                     body,
-                    Some(editor.make().ret_type(ret_ty)),
+                    Some(make.ret_type(ret_ty)),
                     false,
                     false,
                     false,
@@ -206,17 +196,13 @@ fn generate_edit(
         }
     };
 
-    let body = editor.make().assoc_item_list(assoc_items);
+    let body = make.assoc_item_list(assoc_items);
     let indent = strukt.indent_level();
-    let impl_ =
-        generate_trait_impl_intransitive_with_item(editor.make(), &strukt_adt, trait_ty, body)
-            .indent(indent);
+    let impl_ = generate_trait_impl_intransitive_with_item(make, &strukt_adt, trait_ty, body)
+        .indent(indent);
     editor.insert_all(
         Position::after(strukt.syntax()),
-        vec![
-            editor.make().whitespace(&format!("\n\n{indent}")).into(),
-            impl_.syntax().clone().into(),
-        ],
+        vec![make.whitespace(&format!("\n\n{indent}")).into(), impl_.syntax().clone().into()],
     );
     edit.add_file_edits(file_id, editor);
 }

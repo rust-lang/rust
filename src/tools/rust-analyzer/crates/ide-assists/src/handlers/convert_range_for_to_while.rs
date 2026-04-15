@@ -52,34 +52,35 @@ pub(crate) fn convert_range_for_to_while(acc: &mut Assists, ctx: &AssistContext<
         description,
         for_.syntax().text_range(),
         |builder| {
-            let mut editor = builder.make_editor(for_.syntax());
+            let editor = builder.make_editor(for_.syntax());
+            let make = editor.make();
 
             let indent = for_.indent_level();
-            let pat = editor.make().ident_pat(pat.ref_token().is_some(), true, name.clone());
-            let let_stmt = editor.make().let_stmt(pat.into(), None, Some(start));
+            let pat = make.ident_pat(pat.ref_token().is_some(), true, name.clone());
+            let let_stmt = make.let_stmt(pat.into(), None, Some(start));
             editor.insert_all(
                 Position::before(for_.syntax()),
                 vec![
                     let_stmt.syntax().syntax_element(),
-                    editor.make().whitespace(&format!("\n{}", indent)).syntax_element(),
+                    make.whitespace(&format!("\n{}", indent)).syntax_element(),
                 ],
             );
 
             let mut elements = vec![];
 
-            let var_expr = editor.make().expr_path(editor.make().ident_path(&name.text()));
+            let var_expr = make.expr_path(make.ident_path(&name.text()));
             let op = ast::BinaryOp::CmpOp(ast::CmpOp::Ord {
                 ordering: ast::Ordering::Less,
                 strict: !inclusive,
             });
             if let Some(end) = end {
                 elements.extend([
-                    editor.make().token(T![while]).syntax_element(),
-                    editor.make().whitespace(" ").syntax_element(),
-                    editor.make().expr_bin(var_expr.clone(), op, end).syntax().syntax_element(),
+                    make.token(T![while]).syntax_element(),
+                    make.whitespace(" ").syntax_element(),
+                    make.expr_bin(var_expr.clone(), op, end).syntax().syntax_element(),
                 ]);
             } else {
-                elements.push(editor.make().token(T![loop]).syntax_element());
+                elements.push(make.token(T![loop]).syntax_element());
             }
 
             editor.replace_all(
@@ -89,11 +90,11 @@ pub(crate) fn convert_range_for_to_while(acc: &mut Assists, ctx: &AssistContext<
 
             let op = ast::BinaryOp::Assignment { op: Some(ast::ArithOp::Add) };
             let incrementer = vec![
-                editor.make().whitespace(&format!("\n{}", indent + 1)).syntax_element(),
-                editor.make().expr_bin(var_expr, op, step).syntax().syntax_element(),
-                editor.make().token(T![;]).syntax_element(),
+                make.whitespace(&format!("\n{}", indent + 1)).syntax_element(),
+                make.expr_bin(var_expr, op, step).syntax().syntax_element(),
+                make.token(T![;]).syntax_element(),
             ];
-            process_loop_body(body, label, &mut editor, incrementer);
+            process_loop_body(body, label, &editor, incrementer);
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -118,7 +119,7 @@ fn extract_range(iterable: &ast::Expr) -> Option<(ast::Expr, Option<ast::Expr>, 
 fn process_loop_body(
     body: ast::StmtList,
     label: Option<ast::Label>,
-    edit: &mut SyntaxEditor,
+    edit: &SyntaxEditor,
     incrementer: Vec<SyntaxElement>,
 ) -> Option<()> {
     let last = previous_non_trivia_token(body.r_curly_token()?)?.syntax_element();
@@ -146,7 +147,7 @@ fn process_loop_body(
 
     let continue_label = make::lifetime("'cont");
     let break_expr = make::expr_break(Some(continue_label.clone()), None);
-    let (mut new_edit, _) = SyntaxEditor::new(new_body.syntax().clone());
+    let (new_edit, _) = SyntaxEditor::new(new_body.syntax().clone());
     for continue_expr in &continues {
         new_edit.replace(continue_expr.syntax(), break_expr.syntax());
     }

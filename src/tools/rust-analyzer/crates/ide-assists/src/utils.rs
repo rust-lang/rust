@@ -248,20 +248,20 @@ pub fn add_trait_assoc_items_to_impl(
         })
         .filter_map(|item| match item {
             ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
-                let (mut fn_editor, fn_) = SyntaxEditor::with_ast_node(&fn_);
+                let (fn_editor, fn_) = SyntaxEditor::with_ast_node(&fn_);
                 let fill_expr: ast::Expr = match config.expr_fill_default {
                     ExprFillDefaultMode::Todo | ExprFillDefaultMode::Default => make.expr_todo(),
                     ExprFillDefaultMode::Underscore => make.expr_underscore().into(),
                 };
                 let new_body = make.block_expr(None::<ast::Stmt>, Some(fill_expr));
-                fn_.replace_or_insert_body(&mut fn_editor, new_body);
+                fn_.replace_or_insert_body(&fn_editor, new_body);
                 let new_fn_ = fn_editor.finish().new_root().clone();
                 ast::AssocItem::cast(new_fn_)
             }
             ast::AssocItem::TypeAlias(type_alias) => {
-                let (mut type_alias_editor, type_alias) = SyntaxEditor::with_ast_node(&type_alias);
+                let (type_alias_editor, type_alias) = SyntaxEditor::with_ast_node(&type_alias);
                 if let Some(type_bound_list) = type_alias.type_bound_list() {
-                    type_bound_list.remove(&mut type_alias_editor);
+                    type_bound_list.remove(&type_alias_editor);
                 };
                 let type_alias = type_alias_editor.finish().new_root().clone();
                 ast::AssocItem::cast(type_alias)
@@ -346,9 +346,10 @@ fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Ex
 
 pub(crate) fn insert_attributes(
     before: impl Element,
-    edit: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     attrs: impl IntoIterator<Item = ast::Attr>,
 ) {
+    let make = editor.make();
     let mut attrs = attrs.into_iter().peekable();
     if attrs.peek().is_none() {
         return;
@@ -357,9 +358,9 @@ pub(crate) fn insert_attributes(
     let indent = IndentLevel::from_element(&elem);
     let whitespace = format!("\n{indent}");
     let elements: Vec<syntax::SyntaxElement> = attrs
-        .flat_map(|attr| [attr.syntax().clone().into(), edit.make().whitespace(&whitespace).into()])
+        .flat_map(|attr| [attr.syntax().clone().into(), make.whitespace(&whitespace).into()])
         .collect();
-    edit.insert_all(syntax::syntax_editor::Position::before(elem), elements);
+    editor.insert_all(syntax::syntax_editor::Position::before(elem), elements);
 }
 
 pub(crate) fn next_prev() -> impl Iterator<Item = Direction> {

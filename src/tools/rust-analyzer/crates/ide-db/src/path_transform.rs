@@ -278,7 +278,7 @@ impl Ctx<'_> {
         // `transform_path` may update a node's parent and that would break the
         // tree traversal. Thus all paths in the tree are collected into a vec
         // so that such operation is safe.
-        let (mut editor, item) = SyntaxEditor::new(self.transform_path(item));
+        let (editor, item) = SyntaxEditor::new(self.transform_path(item));
         preorder_rev(&item).filter_map(ast::Lifetime::cast).for_each(|lifetime| {
             if let Some(subst) = self.lifetime_substs.get(&lifetime.syntax().text().to_string()) {
                 editor.replace(lifetime.syntax(), subst.clone().syntax());
@@ -329,22 +329,22 @@ impl Ctx<'_> {
             result
         }
 
-        let (mut editor, root_path) = SyntaxEditor::new(path.clone());
+        let (editor, root_path) = SyntaxEditor::new(path.clone());
         let result = find_child_paths_and_ident_pats(&root_path);
         for sub_path in result {
             let new = self.transform_path(sub_path.syntax());
             editor.replace(sub_path.syntax(), new);
         }
-        let (mut editor, update_sub_item) = SyntaxEditor::new(editor.finish().new_root().clone());
+        let (editor, update_sub_item) = SyntaxEditor::new(editor.finish().new_root().clone());
         let item = find_child_paths_and_ident_pats(&update_sub_item);
         for sub_path in item {
-            self.transform_path_or_ident_pat(&mut editor, &sub_path);
+            self.transform_path_or_ident_pat(&editor, &sub_path);
         }
         editor.finish().new_root().clone()
     }
     fn transform_path_or_ident_pat(
         &self,
-        editor: &mut SyntaxEditor,
+        editor: &SyntaxEditor,
         item: &Either<ast::Path, ast::IdentPat>,
     ) -> Option<()> {
         match item {
@@ -353,7 +353,7 @@ impl Ctx<'_> {
         }
     }
 
-    fn transform_path_(&self, editor: &mut SyntaxEditor, path: &ast::Path) -> Option<()> {
+    fn transform_path_(&self, editor: &SyntaxEditor, path: &ast::Path) -> Option<()> {
         if path.qualifier().is_some() {
             return None;
         }
@@ -448,7 +448,7 @@ impl Ctx<'_> {
                 };
                 let found_path = self.target_module.find_path(self.source_scope.db, def, cfg)?;
                 let res = mod_path_to_ast(&found_path, self.target_edition);
-                let (mut res_editor, res) = SyntaxEditor::with_ast_node(&res);
+                let (res_editor, res) = SyntaxEditor::with_ast_node(&res);
                 if let Some(args) = path.segment().and_then(|it| it.generic_arg_list())
                     && let Some(segment) = res.segment()
                 {
@@ -522,11 +522,7 @@ impl Ctx<'_> {
         Some(())
     }
 
-    fn transform_ident_pat(
-        &self,
-        editor: &mut SyntaxEditor,
-        ident_pat: &ast::IdentPat,
-    ) -> Option<()> {
+    fn transform_ident_pat(&self, editor: &SyntaxEditor, ident_pat: &ast::IdentPat) -> Option<()> {
         let name = ident_pat.name()?;
 
         let temp_path = make::path_from_text(&name.text());

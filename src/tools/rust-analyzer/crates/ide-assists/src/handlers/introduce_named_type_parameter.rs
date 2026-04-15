@@ -30,7 +30,8 @@ pub(crate) fn introduce_named_type_parameter(
         "Replace impl trait with type parameter",
         target,
         |builder| {
-            let mut editor = builder.make_editor(fn_.syntax());
+            let editor = builder.make_editor(fn_.syntax());
+            let make = editor.make();
 
             let existing_names = match fn_.generic_param_list() {
                 Some(generic_param_list) => generic_param_list
@@ -47,10 +48,8 @@ pub(crate) fn introduce_named_type_parameter(
             )
             .for_impl_trait_as_generic(&impl_trait_type);
 
-            let type_param = editor
-                .make()
-                .type_param(editor.make().name(&type_param_name), Some(type_bound_list));
-            let new_ty = editor.make().ty(&type_param_name);
+            let type_param = make.type_param(make.name(&type_param_name), Some(type_bound_list));
+            let new_ty = make.ty(&type_param_name);
 
             editor.replace(impl_trait_type.syntax(), new_ty.syntax());
             editor.add_generic_param(&fn_, type_param.clone().into());

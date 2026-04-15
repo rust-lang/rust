@@ -65,33 +65,30 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         "Replace try expression with match",
         target,
         |builder| {
-            let mut editor = builder.make_editor(try_expr.syntax());
-
+            let editor = builder.make_editor(try_expr.syntax());
+            let make = editor.make();
             let sad_pat = match try_enum {
-                TryEnum::Option => editor.make().path_pat(editor.make().ident_path("None")),
+                TryEnum::Option => make.path_pat(make.ident_path("None")),
                 TryEnum::Result => editor
                     .make()
                     .tuple_struct_pat(
-                        editor.make().ident_path("Err"),
-                        iter::once(editor.make().path_pat(editor.make().ident_path("err"))),
+                        make.ident_path("Err"),
+                        iter::once(make.path_pat(make.ident_path("err"))),
                     )
                     .into(),
             };
-            let sad_expr =
-                editor.make().expr_return(Some(sad_expr(try_enum, editor.make(), || {
-                    editor.make().expr_path(editor.make().ident_path("err"))
-                })));
+            let sad_expr = make.expr_return(Some(sad_expr(try_enum, make, || {
+                make.expr_path(make.ident_path("err"))
+            })));
 
-            let happy_arm = editor.make().match_arm(
-                try_enum.happy_pattern(
-                    editor.make().ident_pat(false, false, editor.make().name("it")).into(),
-                ),
+            let happy_arm = make.match_arm(
+                try_enum.happy_pattern(make.ident_pat(false, false, make.name("it")).into()),
                 None,
-                editor.make().expr_path(editor.make().ident_path("it")),
+                make.expr_path(make.ident_path("it")),
             );
-            let sad_arm = editor.make().match_arm(sad_pat, None, sad_expr.into());
+            let sad_arm = make.match_arm(sad_pat, None, sad_expr.into());
 
-            let match_arm_list = editor.make().match_arm_list([happy_arm, sad_arm]);
+            let match_arm_list = make.match_arm_list([happy_arm, sad_arm]);
 
             let expr_match = editor
                 .make()
@@ -112,17 +109,16 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             "Replace try expression with let else",
             target,
             |builder| {
-                let mut editor = builder.make_editor(let_stmt.syntax());
+                let editor = builder.make_editor(let_stmt.syntax());
+                let make = editor.make();
 
                 let indent_level = IndentLevel::from_node(let_stmt.syntax());
                 let fill_expr = || crate::utils::expr_fill_default(ctx.config);
-                let new_let_stmt = editor.make().let_else_stmt(
+                let new_let_stmt = make.let_else_stmt(
                     try_enum.happy_pattern(pat),
                     let_stmt.ty().map(|ty| match try_enum {
-                        TryEnum::Option => editor.make().ty_option(ty).into(),
-                        TryEnum::Result => {
-                            editor.make().ty_result(ty, editor.make().ty_infer().into()).into()
-                        }
+                        TryEnum::Option => make.ty_option(ty).into(),
+                        TryEnum::Result => make.ty_result(ty, make.ty_infer().into()).into(),
                     }),
                     expr,
                     editor
@@ -134,11 +130,7 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                                     .expr_stmt(
                                         editor
                                             .make()
-                                            .expr_return(Some(sad_expr(
-                                                try_enum,
-                                                editor.make(),
-                                                fill_expr,
-                                            )))
+                                            .expr_return(Some(sad_expr(try_enum, make, fill_expr)))
                                             .into(),
                                     )
                                     .into(),

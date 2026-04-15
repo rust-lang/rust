@@ -59,14 +59,8 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) ->
         format!("Qualify `{ident}` method call"),
         range,
         |builder| {
-            let mut editor = builder.make_editor(call.syntax());
-            qualify_candidate.qualify(
-                |_| {},
-                &mut editor,
-                &receiver_path,
-                item_in_ns,
-                current_edition,
-            );
+            let editor = builder.make_editor(call.syntax());
+            qualify_candidate.qualify(|_| {}, &editor, &receiver_path, item_in_ns, current_edition);
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     );

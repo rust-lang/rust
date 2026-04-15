@@ -77,19 +77,16 @@ pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             kind.label(),
             type_ref.syntax().text_range(),
             |builder| {
-                let mut editor = builder.make_editor(&parent);
-                let alias =
-                    wrapper_alias(ctx, editor.make(), core_wrapper, type_ref, &ty, kind.symbol());
+                let editor = builder.make_editor(&parent);
+                let make = editor.make();
+                let alias = wrapper_alias(ctx, make, core_wrapper, type_ref, &ty, kind.symbol());
                 let (ast_new_return_ty, semantic_new_return_ty) = alias.unwrap_or_else(|| {
                     let (ast_ty, ty_constructor) = match kind {
-                        WrapperKind::Option => (
-                            editor.make().ty_option(type_ref.clone()),
-                            famous_defs.core_option_Option(),
-                        ),
+                        WrapperKind::Option => {
+                            (make.ty_option(type_ref.clone()), famous_defs.core_option_Option())
+                        }
                         WrapperKind::Result => (
-                            editor
-                                .make()
-                                .ty_result(type_ref.clone(), editor.make().ty_infer().into()),
+                            make.ty_result(type_ref.clone(), make.ty_infer().into()),
                             famous_defs.core_result_Result(),
                         ),
                     };
@@ -124,9 +121,9 @@ pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                         continue;
                     }
 
-                    let happy_wrapped = editor.make().expr_call(
-                        editor.make().expr_path(editor.make().ident_path(kind.happy_ident())),
-                        editor.make().arg_list(iter::once(ret_expr_arg.clone())),
+                    let happy_wrapped = make.expr_call(
+                        make.expr_path(make.ident_path(kind.happy_ident())),
+                        make.arg_list(iter::once(ret_expr_arg.clone())),
                     );
                     editor.replace(ret_expr_arg.syntax(), happy_wrapped.syntax());
                 }

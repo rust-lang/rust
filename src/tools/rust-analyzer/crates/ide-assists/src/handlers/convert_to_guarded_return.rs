@@ -130,9 +130,10 @@ fn if_expr_to_guarded_return(
         "Convert to guarded return",
         target,
         |edit| {
-            let mut editor = edit.make_editor(if_expr.syntax());
+            let editor = edit.make_editor(if_expr.syntax());
+            let make = editor.make();
             let if_indent_level = IndentLevel::from_node(if_expr.syntax());
-            let early_expression = else_block.make_early_block(&ctx.sema, &make);
+            let early_expression = else_block.make_early_block(&ctx.sema, make);
             let replacement = let_chains.into_iter().map(|expr| {
                 if let ast::Expr::LetExpr(let_expr) = &expr
                     && let (Some(pat), Some(expr)) = (let_expr.pat(), let_expr.expr())
@@ -145,8 +146,8 @@ fn if_expr_to_guarded_return(
                 } else {
                     // If.
                     let new_expr = {
-                        let then_branch = clean_stmt_block(&early_expression, &make);
-                        let cond = invert_boolean_expression(&make, expr);
+                        let then_branch = clean_stmt_block(&early_expression, make);
+                        let cond = invert_boolean_expression(make, expr);
                         make.expr_if(cond, then_branch, None).indent(if_indent_level)
                     };
                     new_expr.syntax().clone()
@@ -208,15 +209,16 @@ fn let_stmt_to_guarded_return(
         "Convert to guarded return",
         target,
         |edit| {
-            let mut editor = edit.make_editor(let_stmt.syntax());
+            let editor = edit.make_editor(let_stmt.syntax());
+            let make = editor.make();
             let let_indent_level = IndentLevel::from_node(let_stmt.syntax());
 
             let replacement = {
-                let let_else_stmt = editor.make().let_else_stmt(
+                let let_else_stmt = make.let_else_stmt(
                     happy_pattern,
                     let_stmt.ty(),
                     expr.reset_indent(),
-                    else_block.make_early_block(&ctx.sema, editor.make()),
+                    else_block.make_early_block(&ctx.sema, make),
                 );
                 let let_else_stmt = let_else_stmt.indent(let_indent_level);
                 let_else_stmt.syntax().clone()
@@ -265,7 +267,8 @@ impl<'db> ElseBlock<'db> {
             return block_expr.reset_indent();
         }
 
-        let (mut edit, block_expr) = SyntaxEditor::with_ast_node(&block_expr.reset_indent());
+        let (editor, block_expr) = SyntaxEditor::with_ast_node(&block_expr.reset_indent());
+        let make = editor.make();
 
         let last_stmt = block_expr.statements().last().map(|it| it.syntax().clone());
         let tail_expr = block_expr.tail_expr().map(|it| it.syntax().clone());
@@ -278,7 +281,7 @@ impl<'db> ElseBlock<'db> {
             && !self.kind.is_unit()
         {
             let early_expr = self.kind.make_early_expr(sema, make, Some(tail_expr.clone()));
-            edit.replace(tail_expr.syntax(), early_expr.syntax());
+            editor.replace(tail_expr.syntax(), early_expr.syntax());
         } else {
             let last_stmt = match block_expr.tail_expr() {
                 Some(expr) => make.expr_stmt(expr).syntax().clone(),
@@ -287,13 +290,13 @@ impl<'db> ElseBlock<'db> {
             let whitespace =
                 make.whitespace(&whitespace.map_or(String::new(), |it| it.to_string()));
             let early_expr = self.kind.make_early_expr(sema, make, None).syntax().clone().into();
-            edit.replace_with_many(
+            editor.replace_with_many(
                 last_element,
                 vec![last_stmt.into(), whitespace.into(), early_expr],
             );
         }
 
-        ast::BlockExpr::cast(edit.finish().new_root().clone()).unwrap()
+        ast::BlockExpr::cast(editor.finish().new_root().clone()).unwrap()
     }
 }
 

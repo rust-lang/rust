@@ -73,31 +73,29 @@ pub(crate) fn toggle_macro_delimiter(acc: &mut Assists, ctx: &AssistContext<'_>)
         },
         token_tree.syntax().text_range(),
         |builder| {
-            let mut editor = builder.make_editor(token_tree.syntax());
+            let editor = builder.make_editor(token_tree.syntax());
+            let make = editor.make();
 
             match token {
                 MacroDelims::LPar | MacroDelims::RPar => {
-                    editor.replace(ltoken, editor.make().token(T!['{']));
-                    editor.replace(rtoken, editor.make().token(T!['}']));
+                    editor.replace(ltoken, make.token(T!['{']));
+                    editor.replace(rtoken, make.token(T!['}']));
                     if let Some(sc) = semicolon {
                         editor.delete(sc);
                     }
                 }
                 MacroDelims::LBra | MacroDelims::RBra => {
-                    editor.replace(ltoken, editor.make().token(T!['(']));
-                    editor.replace(rtoken, editor.make().token(T![')']));
+                    editor.replace(ltoken, make.token(T!['(']));
+                    editor.replace(rtoken, make.token(T![')']));
                 }
                 MacroDelims::LCur | MacroDelims::RCur => {
-                    editor.replace(ltoken, editor.make().token(T!['[']));
+                    editor.replace(ltoken, make.token(T!['[']));
                     if semicolon.is_some() || !needs_semicolon(token_tree) {
-                        editor.replace(rtoken, editor.make().token(T![']']));
+                        editor.replace(rtoken, make.token(T![']']));
                     } else {
                         editor.replace_with_many(
                             rtoken,
-                            vec![
-                                editor.make().token(T![']']).into(),
-                                editor.make().token(T![;]).into(),
-                            ],
+                            vec![make.token(T![']']).into(), make.token(T![;]).into()],
                         );
                     }
                 }

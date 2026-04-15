@@ -58,19 +58,18 @@ pub(crate) fn convert_iter_for_each_to_for(
         range,
         |builder| {
             let target_node = stmt.as_ref().map_or(method.syntax(), AstNode::syntax);
-            let mut editor = builder.make_editor(target_node);
+            let editor = builder.make_editor(target_node);
+            let make = editor.make();
             let indent =
                 stmt.as_ref().map_or_else(|| method.indent_level(), ast::ExprStmt::indent_level);
 
             let block = match body {
                 ast::Expr::BlockExpr(block) => block.reset_indent(),
-                _ => {
-                    editor.make().block_expr(Vec::new(), Some(body.reset_indent().indent(1.into())))
-                }
+                _ => make.block_expr(Vec::new(), Some(body.reset_indent().indent(1.into()))),
             }
             .indent(indent);
 
-            let expr_for_loop = editor.make().expr_for_loop(param, receiver, block);
+            let expr_for_loop = make.expr_for_loop(param, receiver, block);
             editor.replace(target_node, expr_for_loop.syntax());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },

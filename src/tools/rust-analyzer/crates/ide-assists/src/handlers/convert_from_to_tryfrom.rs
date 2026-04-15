@@ -74,32 +74,24 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
         "Convert From to TryFrom",
         impl_.syntax().text_range(),
         |builder| {
-            let mut editor = builder.make_editor(impl_.syntax());
+            let editor = builder.make_editor(impl_.syntax());
+            let make = editor.make();
 
-            editor.replace(
-                trait_ty.syntax(),
-                editor.make().ty(&format!("TryFrom<{from_type}>")).syntax(),
-            );
+            editor.replace(trait_ty.syntax(), make.ty(&format!("TryFrom<{from_type}>")).syntax());
             editor.replace(
                 from_fn_return_type.syntax(),
-                editor.make().ty("Result<Self, Self::Error>").syntax(),
+                make.ty("Result<Self, Self::Error>").syntax(),
             );
-            editor.replace(from_fn_name.syntax(), editor.make().name("try_from").syntax());
-            editor.replace(tail_expr.syntax(), wrap_ok(editor.make(), tail_expr.clone()).syntax());
+            editor.replace(from_fn_name.syntax(), make.name("try_from").syntax());
+            editor.replace(tail_expr.syntax(), wrap_ok(make, tail_expr.clone()).syntax());
 
             for r in return_exprs {
-                let t = r.expr().unwrap_or_else(|| editor.make().expr_unit());
-                editor.replace(t.syntax(), wrap_ok(editor.make(), t.clone()).syntax());
+                let t = r.expr().unwrap_or_else(|| make.expr_unit());
+                editor.replace(t.syntax(), wrap_ok(make, t.clone()).syntax());
             }
 
-            let error_type_alias = editor.make().ty_alias(
-                None,
-                "Error",
-                None,
-                None,
-                None,
-                Some((editor.make().ty("()"), None)),
-            );
+            let error_type_alias =
+                make.ty_alias(None, "Error", None, None, None, Some((make.ty("()"), None)));
             let error_type = ast::AssocItem::TypeAlias(error_type_alias);
 
             if let Some(cap) = ctx.config.snippet_cap
@@ -114,9 +106,9 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
             editor.insert_all(
                 Position::after(associated_l_curly),
                 vec![
-                    editor.make().whitespace(&format!("\n{indent}")).syntax_element(),
+                    make.whitespace(&format!("\n{indent}")).syntax_element(),
                     error_type.syntax().syntax_element(),
-                    editor.make().whitespace("\n").syntax_element(),
+                    make.whitespace("\n").syntax_element(),
                 ],
             );
             builder.add_file_edits(ctx.vfs_file_id(), editor);

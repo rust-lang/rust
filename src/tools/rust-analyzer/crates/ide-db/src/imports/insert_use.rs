@@ -175,7 +175,7 @@ pub fn insert_use_with_editor(
     scope: &ImportScope,
     path: ast::Path,
     cfg: &InsertUseConfig,
-    syntax_editor: &mut SyntaxEditor,
+    syntax_editor: &SyntaxEditor,
 ) {
     insert_use_with_alias_option_with_editor(scope, path, cfg, None, syntax_editor);
 }
@@ -268,8 +268,9 @@ fn insert_use_with_alias_option_with_editor(
     path: ast::Path,
     cfg: &InsertUseConfig,
     alias: Option<ast::Rename>,
-    syntax_editor: &mut SyntaxEditor,
+    syntax_editor: &SyntaxEditor,
 ) {
+    let make = syntax_editor.make();
     let _p = tracing::info_span!("insert_use_with_alias_option").entered();
     let mut mb = match cfg.granularity {
         ImportGranularity::Crate => Some(MergeBehavior::Crate),
@@ -299,7 +300,7 @@ fn insert_use_with_alias_option_with_editor(
         };
     }
 
-    let use_tree = syntax_editor.make().use_tree(path, None, alias, false);
+    let use_tree = make.use_tree(path, None, alias, false);
     if mb == Some(MergeBehavior::One) && use_tree.path().is_some() {
         use_tree.wrap_in_tree_list();
     }
@@ -602,8 +603,9 @@ fn insert_use_with_editor_(
     scope: &ImportScope,
     use_item: ast::Use,
     group_imports: bool,
-    syntax_editor: &mut SyntaxEditor,
+    syntax_editor: &SyntaxEditor,
 ) {
+    let make = syntax_editor.make();
     let scope_syntax = scope.as_syntax_node();
     let insert_use_tree =
         use_item.use_tree().expect("`use_item` should have a use tree for `insert_path`");
@@ -653,7 +655,7 @@ fn insert_use_with_editor_(
             cov_mark::hit!(insert_group_new_group);
             syntax_editor.insert(Position::before(&node), use_item.syntax());
             if let Some(node) = algo::non_trivia_sibling(node.into(), Direction::Prev) {
-                syntax_editor.insert(Position::after(node), syntax_editor.make().whitespace("\n"));
+                syntax_editor.insert(Position::after(node), make.whitespace("\n"));
             }
             return;
         }
@@ -661,7 +663,7 @@ fn insert_use_with_editor_(
         if let Some(node) = last {
             cov_mark::hit!(insert_group_no_group);
             syntax_editor.insert(Position::after(&node), use_item.syntax());
-            syntax_editor.insert(Position::after(node), syntax_editor.make().whitespace("\n"));
+            syntax_editor.insert(Position::after(node), make.whitespace("\n"));
             return;
         }
     } else {
@@ -700,21 +702,18 @@ fn insert_use_with_editor_(
     {
         cov_mark::hit!(insert_empty_inner_attr);
         syntax_editor.insert(Position::after(&last_inner_element), use_item.syntax());
-        syntax_editor
-            .insert(Position::after(last_inner_element), syntax_editor.make().whitespace("\n"));
+        syntax_editor.insert(Position::after(last_inner_element), make.whitespace("\n"));
     } else {
         match l_curly {
             Some(b) => {
                 cov_mark::hit!(insert_empty_module);
-                syntax_editor.insert(Position::after(&b), syntax_editor.make().whitespace("\n"));
+                syntax_editor.insert(Position::after(&b), make.whitespace("\n"));
                 syntax_editor.insert_with_whitespace(Position::after(&b), use_item.syntax());
             }
             None => {
                 cov_mark::hit!(insert_empty_file);
-                syntax_editor.insert(
-                    Position::first_child_of(scope_syntax),
-                    syntax_editor.make().whitespace("\n\n"),
-                );
+                syntax_editor
+                    .insert(Position::first_child_of(scope_syntax), make.whitespace("\n\n"));
                 syntax_editor.insert(Position::first_child_of(scope_syntax), use_item.syntax());
             }
         }

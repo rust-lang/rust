@@ -148,9 +148,10 @@ fn add_missing_impl_members_inner(
 
     let target = impl_def.syntax().text_range();
     acc.add(AssistId::quick_fix(assist_id), label, target, |edit| {
-        let mut editor = edit.make_editor(impl_def.syntax());
+        let editor = edit.make_editor(impl_def.syntax());
+        let make = editor.make();
         let new_item = add_trait_assoc_items_to_impl(
-            editor.make(),
+            make,
             &ctx.sema,
             ctx.config,
             &missing_items,
@@ -166,7 +167,7 @@ fn add_missing_impl_members_inner(
         let mut first_new_item = if let DefaultMethods::No = mode
             && let ast::AssocItem::Fn(func) = &first_new_item
             && let Some(body) = try_gen_trait_body(
-                editor.make(),
+                make,
                 ctx,
                 func,
                 trait_ref,
@@ -175,7 +176,7 @@ fn add_missing_impl_members_inner(
             )
             && let Some(func_body) = func.body()
         {
-            let (mut func_editor, _) = SyntaxEditor::new(first_new_item.syntax().clone());
+            let (func_editor, _) = SyntaxEditor::new(first_new_item.syntax().clone());
             func_editor.replace(func_body.syntax(), body.syntax());
             ast::AssocItem::cast(func_editor.finish().new_root().clone())
         } else {
@@ -189,12 +190,12 @@ fn add_missing_impl_members_inner(
             .collect::<Vec<_>>();
 
         if let Some(assoc_item_list) = impl_def.assoc_item_list() {
-            assoc_item_list.add_items(&mut editor, new_assoc_items);
+            assoc_item_list.add_items(&editor, new_assoc_items);
         } else {
-            let assoc_item_list = editor.make().assoc_item_list(new_assoc_items);
+            let assoc_item_list = make.assoc_item_list(new_assoc_items);
             editor.insert_all(
                 Position::after(impl_def.syntax()),
-                vec![editor.make().whitespace(" ").into(), assoc_item_list.syntax().clone().into()],
+                vec![make.whitespace(" ").into(), assoc_item_list.syntax().clone().into()],
             );
             first_new_item = assoc_item_list.assoc_items().next();
         }

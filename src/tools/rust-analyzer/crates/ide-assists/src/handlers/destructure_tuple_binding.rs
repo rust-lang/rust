@@ -89,20 +89,17 @@ fn destructure_tuple_edit_impl(
     data: &TupleData,
     in_sub_pattern: bool,
 ) {
-    let mut syntax_editor = edit.make_editor(data.ident_pat.syntax());
+    let editor = edit.make_editor(data.ident_pat.syntax());
+    let make = editor.make();
 
-    let assignment_edit =
-        edit_tuple_assignment(ctx, edit, &mut syntax_editor, data, in_sub_pattern);
-    let current_file_usages_edit =
-        edit_tuple_usages(data, ctx, syntax_editor.make(), in_sub_pattern);
+    let assignment_edit = edit_tuple_assignment(ctx, edit, &editor, data, in_sub_pattern);
+    let current_file_usages_edit = edit_tuple_usages(data, ctx, make, in_sub_pattern);
 
-    assignment_edit.apply(&mut syntax_editor);
+    assignment_edit.apply(&editor);
     if let Some(usages_edit) = current_file_usages_edit {
-        usages_edit
-            .into_iter()
-            .for_each(|usage_edit| usage_edit.apply(ctx, edit, &mut syntax_editor))
+        usages_edit.into_iter().for_each(|usage_edit| usage_edit.apply(ctx, edit, &editor))
     }
-    edit.add_file_edits(ctx.vfs_file_id(), syntax_editor);
+    edit.add_file_edits(ctx.vfs_file_id(), editor);
 }
 
 fn collect_data(ident_pat: IdentPat, ctx: &AssistContext<'_>) -> Option<TupleData> {
@@ -173,18 +170,20 @@ struct TupleData {
 fn edit_tuple_assignment(
     ctx: &AssistContext<'_>,
     edit: &mut SourceChangeBuilder,
-    editor: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     data: &TupleData,
     in_sub_pattern: bool,
 ) -> AssignmentEdit {
+    let make = editor.make();
     let tuple_pat = {
         let original = &data.ident_pat;
         let is_ref = original.ref_token().is_some();
         let is_mut = original.mut_token().is_some();
-        let fields = data.field_names.iter().map(|name| {
-            ast::Pat::from(editor.make().ident_pat(is_ref, is_mut, editor.make().name(name)))
-        });
-        editor.make().tuple_pat(fields)
+        let fields = data
+            .field_names
+            .iter()
+            .map(|name| ast::Pat::from(make.ident_pat(is_ref, is_mut, make.name(name))));
+        make.tuple_pat(fields)
     };
     let is_shorthand_field = data
         .ident_pat
@@ -219,22 +218,17 @@ struct AssignmentEdit {
 }
 
 impl AssignmentEdit {
-    fn apply(self, syntax_editor: &mut SyntaxEditor) {
+    fn apply(self, editor: &SyntaxEditor) {
+        let make = editor.make();
         // with sub_pattern: keep original tuple and add subpattern: `tup @ (_0, _1)`
         if self.in_sub_pattern {
-            self.ident_pat.set_pat(Some(self.tuple_pat.into()), syntax_editor);
+            self.ident_pat.set_pat(Some(self.tuple_pat.into()), editor);
         } else if self.is_shorthand_field {
-            syntax_editor.insert(Position::after(self.ident_pat.syntax()), self.tuple_pat.syntax());
-            syntax_editor.insert(
-                Position::after(self.ident_pat.syntax()),
-                syntax_editor.make().whitespace(" "),
-            );
-            syntax_editor.insert(
-                Position::after(self.ident_pat.syntax()),
-                syntax_editor.make().token(T![:]),
-            );
+            editor.insert(Position::after(self.ident_pat.syntax()), self.tuple_pat.syntax());
+            editor.insert(Position::after(self.ident_pat.syntax()), make.whitespace(" "));
+            editor.insert(Position::after(self.ident_pat.syntax()), make.token(T![:]));
         } else {
-            syntax_editor.replace(self.ident_pat.syntax(), self.tuple_pat.syntax())
+            editor.replace(self.ident_pat.syntax(), self.tuple_pat.syntax())
         }
     }
 }
@@ -313,7 +307,7 @@ impl EditTupleUsage {
         self,
         ctx: &AssistContext<'_>,
         edit: &mut SourceChangeBuilder,
-        syntax_editor: &mut SyntaxEditor,
+        syntax_editor: &SyntaxEditor,
     ) {
         match self {
             EditTupleUsage::NoIndex(range) => {

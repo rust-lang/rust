@@ -98,18 +98,19 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
         impl_ast.syntax().text_range(),
         |builder| {
             let trait_items: ast::AssocItemList = {
-                let (mut trait_items_editor, trait_items) =
+                let (trait_items_editor, trait_items) =
                     SyntaxEditor::with_ast_node(&impl_assoc_items);
 
                 trait_items.assoc_items().for_each(|item| {
-                    strip_body(&mut trait_items_editor, &item);
-                    remove_items_visibility(&mut trait_items_editor, &item);
+                    strip_body(&trait_items_editor, &item);
+                    remove_items_visibility(&trait_items_editor, &item);
                 });
                 ast::AssocItemList::cast(trait_items_editor.finish().new_root().clone()).unwrap()
             };
 
-            let mut editor = builder.make_editor(impl_ast.syntax());
-            let trait_ast = editor.make().trait_(
+            let editor = builder.make_editor(impl_ast.syntax());
+            let make = editor.make();
+            let trait_ast = make.trait_(
                 false,
                 &trait_name(&impl_assoc_items).text(),
                 impl_ast.generic_param_list(),
@@ -118,7 +119,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
             );
 
             let trait_name = trait_ast.name().expect("new trait should have a name");
-            let trait_name_ref = editor.make().name_ref(&trait_name.to_string());
+            let trait_name_ref = make.name_ref(&trait_name.to_string());
 
             // Change `impl Foo` to `impl NewTrait for Foo`
             let mut elements = vec![
@@ -134,8 +135,8 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
             }
 
             impl_assoc_items.assoc_items().for_each(|item| {
-                remove_items_visibility(&mut editor, &item);
-                remove_doc_comments(&mut editor, &item);
+                remove_items_visibility(&editor, &item);
+                remove_doc_comments(&editor, &item);
             });
 
             editor.insert_all(Position::before(impl_name.syntax()), elements);
@@ -175,7 +176,7 @@ fn trait_name(items: &ast::AssocItemList) -> ast::Name {
 }
 
 /// `E0449` Trait items always share the visibility of their trait
-fn remove_items_visibility(editor: &mut SyntaxEditor, item: &ast::AssocItem) {
+fn remove_items_visibility(editor: &SyntaxEditor, item: &ast::AssocItem) {
     if let Some(has_vis) = ast::AnyHasVisibility::cast(item.syntax().clone()) {
         if let Some(vis) = has_vis.visibility()
             && let Some(token) = vis.syntax().next_sibling_or_token()
@@ -189,7 +190,7 @@ fn remove_items_visibility(editor: &mut SyntaxEditor, item: &ast::AssocItem) {
     }
 }
 
-fn remove_doc_comments(editor: &mut SyntaxEditor, item: &ast::AssocItem) {
+fn remove_doc_comments(editor: &SyntaxEditor, item: &ast::AssocItem) {
     for doc in item.doc_comments() {
         if let Some(next) = doc.syntax().next_token()
             && next.kind() == SyntaxKind::WHITESPACE
@@ -200,7 +201,7 @@ fn remove_doc_comments(editor: &mut SyntaxEditor, item: &ast::AssocItem) {
     }
 }
 
-fn strip_body(editor: &mut SyntaxEditor, item: &ast::AssocItem) {
+fn strip_body(editor: &SyntaxEditor, item: &ast::AssocItem) {
     if let ast::AssocItem::Fn(f) = item
         && let Some(body) = f.body()
     {

@@ -148,7 +148,8 @@ fn build_expanded_import(
     current_module: Module,
     reexport_public_items: bool,
 ) {
-    let mut editor = builder.make_editor(use_tree.syntax());
+    let editor = builder.make_editor(use_tree.syntax());
+    let make = editor.make();
     let (must_be_pub, visible_from) = if !reexport_public_items {
         (false, current_module)
     } else {
@@ -168,11 +169,11 @@ fn build_expanded_import(
         if reexport_public_items { refs_in_target } else { refs_in_target.used_refs(ctx) };
 
     let names_to_import = find_names_to_import(filtered_defs, imported_defs);
-    let expanded = editor.make().use_tree_list(names_to_import.iter().map(|n| {
-        let path = editor.make().ident_path(
+    let expanded = make.use_tree_list(names_to_import.iter().map(|n| {
+        let path = make.ident_path(
             &n.display(ctx.db(), current_module.krate(ctx.db()).edition(ctx.db())).to_string(),
         );
-        editor.make().use_tree(path, None, None, false)
+        make.use_tree(path, None, None, false)
     }));
 
     match use_tree.star_token() {

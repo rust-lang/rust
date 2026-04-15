@@ -41,7 +41,7 @@ pub(crate) fn flip_comma(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
     let target = comma.text_range();
     acc.add(AssistId::refactor_rewrite("flip_comma"), "Flip comma", target, |builder| {
         let parent = comma.parent().unwrap();
-        let mut editor = builder.make_editor(&parent);
+        let editor = builder.make_editor(&parent);
 
         if let Some(parent) = ast::TokenTree::cast(parent) {
             // An attribute. It often contains a path followed by a

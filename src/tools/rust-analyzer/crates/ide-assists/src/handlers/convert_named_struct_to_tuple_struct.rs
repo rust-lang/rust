@@ -100,7 +100,7 @@ fn edit_struct_def(
     // Note that we don't need to consider macro files in this function because this is
     // currently not triggered for struct definitions inside macro calls.
     let tuple_fields = record_fields.fields().filter_map(|f| {
-        let (mut editor, field) =
+        let (editor, field) =
             SyntaxEditor::with_ast_node(&ast::make::tuple_field(f.visibility(), f.ty()?));
         editor.insert_all(
             Position::first_child_of(field.syntax()),
@@ -111,9 +111,10 @@ fn edit_struct_def(
         Some(field)
     });
 
-    let mut editor = builder.make_editor(strukt.syntax());
+    let editor = builder.make_editor(strukt.syntax());
+    let make = editor.make();
 
-    let tuple_fields = editor.make().tuple_field_list(tuple_fields);
+    let tuple_fields = make.tuple_field_list(tuple_fields);
 
     let mut elements = vec![tuple_fields.syntax().clone().into()];
     if let Either::Left(strukt) = strukt {
@@ -121,10 +122,10 @@ fn edit_struct_def(
             editor.delete(w.syntax());
 
             elements.extend([
-                editor.make().whitespace("\n").into(),
+                make.whitespace("\n").into(),
                 remove_trailing_comma(w).into(),
-                editor.make().token(T![;]).into(),
-                editor.make().whitespace("\n").into(),
+                make.token(T![;]).into(),
+                make.whitespace("\n").into(),
             ]);
 
             if let Some(tok) = strukt
@@ -136,7 +137,7 @@ fn edit_struct_def(
                 editor.delete(tok);
             }
         } else {
-            elements.push(editor.make().token(T![;]).into());
+            elements.push(make.token(T![;]).into());
         }
     }
     editor.replace_with_many(record_fields.syntax(), elements);
@@ -165,18 +166,18 @@ fn edit_struct_references(
 
     for (file_id, refs) in usages {
         let source = ctx.sema.parse(file_id);
-        let mut edit = builder.make_editor(source.syntax());
+        let editor = builder.make_editor(source.syntax());
         for r in refs {
-            process_struct_name_reference(ctx, r, &mut edit, &source);
+            process_struct_name_reference(ctx, r, &editor, &source);
         }
-        builder.add_file_edits(file_id.file_id(ctx.db()), edit);
+        builder.add_file_edits(file_id.file_id(ctx.db()), editor);
     }
 }
 
 fn process_struct_name_reference(
     ctx: &AssistContext<'_>,
     r: FileReference,
-    edit: &mut SyntaxEditor,
+    edit: &SyntaxEditor,
     source: &ast::SourceFile,
 ) -> Option<()> {
     // First check if it's the last semgnet of a path that directly belongs to a record
@@ -229,7 +230,7 @@ fn process_struct_name_reference(
 fn record_to_tuple_struct_like<T, I>(
     ctx: &AssistContext<'_>,
     source: &ast::SourceFile,
-    editor: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     field_list: T,
     fields: impl FnOnce(&T) -> I,
 ) -> Option<()>
@@ -237,6 +238,7 @@ where
     T: AstNode,
     I: IntoIterator<Item = ast::NameRef>,
 {
+    let make = editor.make();
     let orig = ctx.sema.original_range_opt(field_list.syntax())?;
     let list_range = cover_edit_range(source.syntax(), orig.range);
 
@@ -252,11 +254,11 @@ where
     if l_curly.kind() == T!['{'] {
         delete_whitespace(editor, l_curly.prev_token());
         delete_whitespace(editor, l_curly.next_token());
-        editor.replace(l_curly, editor.make().token(T!['(']));
+        editor.replace(l_curly, make.token(T!['(']));
     }
     if r_curly.kind() == T!['}'] {
         delete_whitespace(editor, r_curly.prev_token());
-        editor.replace(r_curly, editor.make().token(T![')']));
+        editor.replace(r_curly, make.token(T![')']));
     }
 
     for name_ref in fields(&field_list) {
@@ -294,7 +296,8 @@ fn edit_field_references(
         let usages = def.usages(&ctx.sema).all();
         for (file_id, refs) in usages {
             let source = ctx.sema.parse(file_id);
-            let mut editor = builder.make_editor(source.syntax());
+            let editor = builder.make_editor(source.syntax());
+            let make = editor.make();
 
             for r in refs {
                 if let Some(name_ref) = r.name.as_name_ref() {
@@ -302,9 +305,7 @@ fn edit_field_references(
                     if name_ref.syntax().parent().and_then(ast::FieldExpr::cast).is_some() {
                         editor.replace_all(
                             cover_edit_range(source.syntax(), r.range),
-                            vec![
-                                editor.make().name_ref(&index.to_string()).syntax().clone().into(),
-                            ],
+                            vec![make.name_ref(&index.to_string()).syntax().clone().into()],
                         );
                     }
                 }
@@ -315,7 +316,7 @@ fn edit_field_references(
     }
 }
 
-fn delete_whitespace(edit: &mut SyntaxEditor, whitespace: Option<impl Element>) {
+fn delete_whitespace(edit: &SyntaxEditor, whitespace: Option<impl Element>) {
     let Some(whitespace) = whitespace else { return };
     let NodeOrToken::Token(token) = whitespace.syntax_element() else { return };
 
@@ -325,7 +326,7 @@ fn delete_whitespace(edit: &mut SyntaxEditor, whitespace: Option<impl Element>) 
 }
 
 fn remove_trailing_comma(w: ast::WhereClause) -> SyntaxNode {
-    let (mut editor, w) = SyntaxEditor::new(w.syntax().clone());
+    let (editor, w) = SyntaxEditor::new(w.syntax().clone());
     if let Some(last) = w.last_child_or_token()
         && last.kind() == T![,]
     {

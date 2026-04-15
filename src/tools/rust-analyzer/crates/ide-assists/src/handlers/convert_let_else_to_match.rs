@@ -25,7 +25,7 @@ use crate::{AssistContext, AssistId, Assists};
 // }
 // ```
 pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let (mut editor, _) = SyntaxEditor::new(ctx.source_file().syntax().clone());
+    let (editor, _) = SyntaxEditor::new(ctx.source_file().syntax().clone());
     // Should focus on the `else` token to trigger
     let let_stmt = ctx
         .find_token_syntax_at_offset(T![else])
@@ -47,7 +47,7 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'
     }
     let pat = let_stmt.pat()?;
     let mut idents = Vec::default();
-    let pat_without_mut = remove_mut_and_collect_idents(&mut editor, &pat, &mut idents)?;
+    let pat_without_mut = remove_mut_and_collect_idents(&editor, &pat, &mut idents)?;
     let bindings = idents
         .into_iter()
         .filter_map(|ref pat| {
@@ -69,14 +69,13 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'
         },
         let_stmt.syntax().text_range(),
         |builder| {
+            let make = editor.make();
             let binding_paths = bindings
                 .iter()
-                .map(|(name, _)| {
-                    editor.make().expr_path(editor.make().ident_path(&name.to_string()))
-                })
+                .map(|(name, _)| make.expr_path(make.ident_path(&name.to_string())))
                 .collect::<Vec<_>>();
 
-            let binding_arm = editor.make().match_arm(
+            let binding_arm = make.match_arm(
                 pat_without_mut,
                 None,
                 // There are three possible cases:
@@ -85,16 +84,15 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'
                 // - Single binding: `Some(it) => it`
                 // - Multiple bindings: `Foo::Bar { a, b, .. } => (a, b)`
                 match binding_paths.len() {
-                    0 => editor.make().expr_empty_block().into(),
+                    0 => make.expr_empty_block().into(),
 
                     1 => binding_paths[0].clone(),
-                    _ => editor.make().expr_tuple(binding_paths).into(),
+                    _ => make.expr_tuple(binding_paths).into(),
                 },
             );
-            let else_arm =
-                editor.make().match_arm(editor.make().wildcard_pat().into(), None, else_expr);
+            let else_arm = make.match_arm(make.wildcard_pat().into(), None, else_expr);
             let arms = [binding_arm, else_arm].map(|arm| arm.indent(1.into()));
-            let match_ = editor.make().expr_match(init, editor.make().match_arm_list(arms));
+            let match_ = make.expr_match(init, make.match_arm_list(arms));
             let match_ = match_.indent(let_stmt.indent_level());
 
             if bindings.is_empty() {
@@ -102,13 +100,13 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'
             } else {
                 let ident_pats = bindings
                     .into_iter()
-                    .map(|(name, is_mut)| editor.make().ident_pat(false, is_mut, name).into())
+                    .map(|(name, is_mut)| make.ident_pat(false, is_mut, name).into())
                     .collect::<Vec<Pat>>();
-                let new_let_stmt = editor.make().let_stmt(
+                let new_let_stmt = make.let_stmt(
                     if ident_pats.len() == 1 {
                         ident_pats[0].clone()
                     } else {
-                        editor.make().tuple_pat(ident_pats).into()
+                        make.tuple_pat(ident_pats).into()
                     },
                     None,
                     Some(match_.into()),
@@ -121,14 +119,15 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'
 }
 
 fn remove_mut_and_collect_idents(
-    editor: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     pat: &ast::Pat,
     acc: &mut Vec<ast::IdentPat>,
 ) -> Option<ast::Pat> {
+    let make = editor.make();
     Some(match pat {
         ast::Pat::IdentPat(p) => {
             acc.push(p.clone());
-            let non_mut_pat = editor.make().ident_pat(
+            let non_mut_pat = make.ident_pat(
                 p.ref_token().is_some(),
                 p.ref_token().is_some() && p.mut_token().is_some(),
                 p.name()?,
@@ -142,18 +141,18 @@ fn remove_mut_and_collect_idents(
         }
         ast::Pat::BoxPat(p) => {
             let pat = remove_mut_and_collect_idents(editor, &p.pat()?, acc)?;
-            editor.make().box_pat(pat).into()
+            make.box_pat(pat).into()
         }
         ast::Pat::OrPat(p) => {
             let pats = p
                 .pats()
                 .map(|pat| remove_mut_and_collect_idents(editor, &pat, acc))
                 .collect::<Option<Vec<_>>>()?;
-            editor.make().or_pat(pats, p.leading_pipe().is_some()).into()
+            make.or_pat(pats, p.leading_pipe().is_some()).into()
         }
         ast::Pat::ParenPat(p) => {
             let pat = remove_mut_and_collect_idents(editor, &p.pat()?, acc)?;
-            editor.make().paren_pat(pat).into()
+            make.paren_pat(pat).into()
         }
         ast::Pat::RangePat(p) => {
             let start = if let Some(start) = p.start() {
@@ -166,7 +165,7 @@ fn remove_mut_and_collect_idents(
             } else {
                 None
             };
-            editor.make().range_pat(start, end).into()
+            make.range_pat(start, end).into()
         }
         ast::Pat::RecordPat(p) => {
             let fields = p
@@ -175,9 +174,9 @@ fn remove_mut_and_collect_idents(
                 .map(|field| {
                     remove_mut_and_collect_idents(editor, &field.pat()?, acc).map(|pat| {
                         if let Some(name_ref) = field.name_ref() {
-                            editor.make().record_pat_field(name_ref, pat)
+                            make.record_pat_field(name_ref, pat)
                         } else {
-                            editor.make().record_pat_field_shorthand(pat)
+                            make.record_pat_field_shorthand(pat)
                         }
                     })
                 })
@@ -199,7 +198,7 @@ fn remove_mut_and_collect_idents(
                 p.clone().into()
             } else {
                 let pat = remove_mut_and_collect_idents(editor, &inner, acc)?;
-                editor.make().ref_pat(pat).into()
+                make.ref_pat(pat).into()
             }
         }
         ast::Pat::SlicePat(p) => {
@@ -207,21 +206,21 @@ fn remove_mut_and_collect_idents(
                 .pats()
                 .map(|pat| remove_mut_and_collect_idents(editor, &pat, acc))
                 .collect::<Option<Vec<_>>>()?;
-            editor.make().slice_pat(pats).into()
+            make.slice_pat(pats).into()
         }
         ast::Pat::TuplePat(p) => {
             let pats = p
                 .fields()
                 .map(|field| remove_mut_and_collect_idents(editor, &field, acc))
                 .collect::<Option<Vec<_>>>()?;
-            editor.make().tuple_pat(pats).into()
+            make.tuple_pat(pats).into()
         }
         ast::Pat::TupleStructPat(p) => {
             let fields = p
                 .fields()
                 .map(|field| remove_mut_and_collect_idents(editor, &field, acc))
                 .collect::<Option<Vec<_>>>()?;
-            editor.make().tuple_struct_pat(p.path()?, fields).into()
+            make.tuple_struct_pat(p.path()?, fields).into()
         }
         ast::Pat::RestPat(_)
         | ast::Pat::LiteralPat(_)

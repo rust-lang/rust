@@ -50,15 +50,16 @@ pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) 
         "Unqualify method call",
         call.syntax().text_range(),
         |builder| {
-            let mut editor = builder.make_editor(call.syntax());
+            let editor = builder.make_editor(call.syntax());
+            let make = editor.make();
 
-            let new_arg_list = editor.make().arg_list(args.args().skip(1));
+            let new_arg_list = make.arg_list(args.args().skip(1));
             let receiver = if first_arg.precedence().needs_parentheses_in(ExprPrecedence::Postfix) {
-                ast::Expr::from(editor.make().expr_paren(first_arg.clone()))
+                ast::Expr::from(make.expr_paren(first_arg.clone()))
             } else {
                 first_arg.clone()
             };
-            let method_call = editor.make().expr_method_call(receiver, method_name, new_arg_list);
+            let method_call = make.expr_method_call(receiver, method_name, new_arg_list);
 
             editor.replace(call.syntax(), method_call.syntax());
 
@@ -66,7 +67,7 @@ pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 && let Some(trait_) = fun.container_or_implemented_trait(ctx.db())
                 && !scope.can_use_trait_methods(trait_)
             {
-                add_import(qualifier, ctx, &mut editor);
+                add_import(qualifier, ctx, &editor);
             }
 
             builder.add_file_edits(ctx.vfs_file_id(), editor);
@@ -77,7 +78,7 @@ pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) 
 fn add_import(
     qualifier: ast::Path,
     ctx: &AssistContext<'_>,
-    editor: &mut syntax::syntax_editor::SyntaxEditor,
+    editor: &syntax::syntax_editor::SyntaxEditor,
 ) {
     if let Some(path_segment) = qualifier.segment() {
         // for `<i32 as std::ops::Add>`

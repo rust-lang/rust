@@ -438,9 +438,9 @@ fn build_source_change(
 ) {
     if let Some(impl_def) = &assist_info.impl_def {
         // We have an existing impl to add to
-        let mut editor = builder.make_editor(impl_def.syntax());
+        let editor = builder.make_editor(impl_def.syntax());
         let items = items(ctx, info_of_record_fields, &assist_info, editor.make());
-        impl_def.assoc_item_list().unwrap().add_items(&mut editor, items.clone());
+        impl_def.assoc_item_list().unwrap().add_items(&editor, items.clone());
 
         if let Some(cap) = ctx.config.snippet_cap
             && let Some(ast::AssocItem::Fn(fn_)) = items.last()
@@ -454,24 +454,25 @@ fn build_source_change(
         return;
     }
 
-    let mut editor = builder.make_editor(assist_info.strukt.syntax());
-    let items = items(ctx, info_of_record_fields, &assist_info, editor.make());
+    let editor = builder.make_editor(assist_info.strukt.syntax());
+    let make = editor.make();
+    let items = items(ctx, info_of_record_fields, &assist_info, make);
     let ty_params = assist_info.strukt.generic_param_list();
     let ty_args = ty_params.as_ref().map(|it| it.to_generic_args());
-    let impl_def = editor.make().impl_(
+    let impl_def = make.impl_(
         None,
         ty_params,
         ty_args,
         editor
             .make()
-            .ty_path(editor.make().ident_path(&assist_info.strukt.name().unwrap().to_string()))
+            .ty_path(make.ident_path(&assist_info.strukt.name().unwrap().to_string()))
             .into(),
         None,
-        Some(editor.make().assoc_item_list(items)),
+        Some(make.assoc_item_list(items)),
     );
     editor.insert_all(
         Position::after(assist_info.strukt.syntax()),
-        vec![editor.make().whitespace("\n\n").into(), impl_def.syntax().clone().into()],
+        vec![make.whitespace("\n\n").into(), impl_def.syntax().clone().into()],
     );
 
     if let Some(cap) = ctx.config.snippet_cap

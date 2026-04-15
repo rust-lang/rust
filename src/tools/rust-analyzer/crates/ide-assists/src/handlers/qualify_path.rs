@@ -98,10 +98,10 @@ pub(crate) fn qualify_path(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             label(ctx.db(), candidate, &import, current_edition),
             range,
             |builder| {
-                let mut editor = builder.make_editor(&syntax_under_caret);
+                let editor = builder.make_editor(&syntax_under_caret);
                 qualify_candidate.qualify(
                     |replace_with: String| builder.replace(range, replace_with),
-                    &mut editor,
+                    &editor,
                     &import.import_path,
                     import.item_to_import,
                     current_edition,
@@ -124,7 +124,7 @@ impl QualifyCandidate<'_> {
     pub(crate) fn qualify(
         &self,
         mut replacer: impl FnMut(String),
-        editor: &mut SyntaxEditor,
+        editor: &SyntaxEditor,
         import: &hir::ModPath,
         item: hir::ItemInNs,
         edition: Edition,
@@ -154,10 +154,11 @@ impl QualifyCandidate<'_> {
     fn qualify_fn_call(
         db: &RootDatabase,
         mcall_expr: &ast::MethodCallExpr,
-        editor: &mut SyntaxEditor,
+        editor: &SyntaxEditor,
         import: ast::Path,
         hir_fn: &hir::Function,
     ) -> Option<()> {
+        let make = editor.make();
         let receiver = mcall_expr.receiver()?;
         let method_name = mcall_expr.name_ref()?;
         let generics =
@@ -166,17 +167,16 @@ impl QualifyCandidate<'_> {
 
         if let Some(self_access) = hir_fn.self_param(db).map(|sp| sp.access(db)) {
             let receiver = match self_access {
-                hir::Access::Shared => editor.make().expr_ref(receiver, false),
-                hir::Access::Exclusive => editor.make().expr_ref(receiver, true),
+                hir::Access::Shared => make.expr_ref(receiver, false),
+                hir::Access::Exclusive => make.expr_ref(receiver, true),
                 hir::Access::Owned => receiver,
             };
             let arg_list = match arg_list {
-                Some(args) => editor.make().arg_list(iter::once(receiver).chain(args)),
-                None => editor.make().arg_list(iter::once(receiver)),
+                Some(args) => make.arg_list(iter::once(receiver).chain(args)),
+                None => make.arg_list(iter::once(receiver)),
             };
-            let call_path =
-                editor.make().path_from_text(&format!("{import}::{method_name}{generics}"));
-            let call_expr = editor.make().expr_call(editor.make().expr_path(call_path), arg_list);
+            let call_path = make.path_from_text(&format!("{import}::{method_name}{generics}"));
+            let call_expr = make.expr_call(make.expr_path(call_path), arg_list);
             editor.replace(mcall_expr.syntax(), call_expr.syntax());
         }
         Some(())
@@ -185,7 +185,7 @@ impl QualifyCandidate<'_> {
     fn qualify_trait_method(
         db: &RootDatabase,
         mcall_expr: &ast::MethodCallExpr,
-        editor: &mut SyntaxEditor,
+        editor: &SyntaxEditor,
         import: ast::Path,
         item: hir::ItemInNs,
     ) -> Option<()> {

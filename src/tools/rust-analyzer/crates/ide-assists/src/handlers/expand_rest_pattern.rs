@@ -51,9 +51,10 @@ fn expand_record_rest_pattern(
         "Fill struct fields",
         rest_pat.syntax().text_range(),
         |builder| {
-            let mut editor = builder.make_editor(rest_pat.syntax());
+            let editor = builder.make_editor(rest_pat.syntax());
+            let make = editor.make();
             let new_fields = old_field_list.fields().chain(matched_fields.iter().map(|(f, _)| {
-                editor.make().record_pat_field_shorthand(
+                make.record_pat_field_shorthand(
                     editor
                         .make()
                         .ident_pat(
@@ -66,7 +67,7 @@ fn expand_record_rest_pattern(
                         .into(),
                 )
             }));
-            let new_field_list = editor.make().record_pat_field_list(new_fields, None);
+            let new_field_list = make.record_pat_field_list(new_fields, None);
 
             editor.replace(old_field_list.syntax(), new_field_list.syntax());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
@@ -131,17 +132,18 @@ fn expand_tuple_struct_rest_pattern(
         "Fill tuple struct fields",
         rest_pat.syntax().text_range(),
         |builder| {
-            let mut editor = builder.make_editor(rest_pat.syntax());
+            let editor = builder.make_editor(rest_pat.syntax());
+            let make = editor.make();
 
             let mut name_gen = NameGenerator::new_from_scope_locals(ctx.sema.scope(pat.syntax()));
-            let new_pat = editor.make().tuple_struct_pat(
+            let new_pat = make.tuple_struct_pat(
                 path,
                 pat.fields()
                     .take(prefix_count)
                     .chain(fields[prefix_count..fields.len() - suffix_count].iter().map(|f| {
                         gen_unnamed_pat(
                             ctx,
-                            editor.make(),
+                            make,
                             &mut name_gen,
                             &f.ty(ctx.db()).to_type(ctx.sema.db),
                             f.index(),
@@ -198,21 +200,15 @@ fn expand_tuple_rest_pattern(
         "Fill tuple fields",
         rest_pat.syntax().text_range(),
         |builder| {
-            let mut editor = builder.make_editor(rest_pat.syntax());
-
+            let editor = builder.make_editor(rest_pat.syntax());
+            let make = editor.make();
             let mut name_gen = NameGenerator::new_from_scope_locals(ctx.sema.scope(pat.syntax()));
-            let new_pat = editor.make().tuple_pat(
+            let new_pat = make.tuple_pat(
                 pat.fields()
                     .take(prefix_count)
                     .chain(fields[prefix_count..len - suffix_count].iter().enumerate().map(
                         |(index, ty)| {
-                            gen_unnamed_pat(
-                                ctx,
-                                editor.make(),
-                                &mut name_gen,
-                                ty,
-                                prefix_count + index,
-                            )
+                            gen_unnamed_pat(ctx, make, &mut name_gen, ty, prefix_count + index)
                         },
                     ))
                     .chain(pat.fields().skip(prefix_count + 1)),
@@ -265,15 +261,17 @@ fn expand_slice_rest_pattern(
         "Fill slice fields",
         rest_pat.syntax().text_range(),
         |builder| {
-            let mut editor = builder.make_editor(rest_pat.syntax());
+            let editor = builder.make_editor(rest_pat.syntax());
+            let make = editor.make();
 
             let mut name_gen = NameGenerator::new_from_scope_locals(ctx.sema.scope(pat.syntax()));
-            let new_pat = editor.make().slice_pat(
+            let new_pat = make.slice_pat(
                 pat.pats()
                     .take(prefix_count)
-                    .chain((prefix_count..len - suffix_count).map(|index| {
-                        gen_unnamed_pat(ctx, editor.make(), &mut name_gen, &ty, index)
-                    }))
+                    .chain(
+                        (prefix_count..len - suffix_count)
+                            .map(|index| gen_unnamed_pat(ctx, make, &mut name_gen, &ty, index)),
+                    )
                     .chain(pat.pats().skip(prefix_count + 1)),
             );
 

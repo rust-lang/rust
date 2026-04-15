@@ -45,21 +45,21 @@ pub(crate) fn move_bounds_to_where_clause(
         "Move to where clause",
         target,
         |builder| {
-            let mut edit = builder.make_editor(&parent);
+            let editor = builder.make_editor(&parent);
 
             let new_preds: Vec<ast::WherePred> = type_param_list
                 .generic_params()
-                .filter_map(|param| build_predicate(param, edit.make()))
+                .filter_map(|param| build_predicate(param, editor.make()))
                 .collect();
 
             match_ast! {
                 match (&parent) {
-                    ast::Fn(it) => it.get_or_create_where_clause(&mut edit, new_preds.into_iter()),
-                    ast::Trait(it) => it.get_or_create_where_clause(&mut edit, new_preds.into_iter()),
-                    ast::Impl(it) => it.get_or_create_where_clause(&mut edit, new_preds.into_iter()),
-                    ast::Enum(it) => it.get_or_create_where_clause(&mut edit, new_preds.into_iter()),
-                    ast::Struct(it) => it.get_or_create_where_clause(&mut edit, new_preds.into_iter()),
-                    ast::TypeAlias(it) => it.get_or_create_where_clause(&mut edit, new_preds.into_iter()),
+                    ast::Fn(it) => it.get_or_create_where_clause(&editor, new_preds.into_iter()),
+                    ast::Trait(it) => it.get_or_create_where_clause(&editor, new_preds.into_iter()),
+                    ast::Impl(it) => it.get_or_create_where_clause(&editor, new_preds.into_iter()),
+                    ast::Enum(it) => it.get_or_create_where_clause(&editor, new_preds.into_iter()),
+                    ast::Struct(it) => it.get_or_create_where_clause(&editor, new_preds.into_iter()),
+                    ast::TypeAlias(it) => it.get_or_create_where_clause(&editor, new_preds.into_iter()),
                     _ => return,
                 }
             };
@@ -71,11 +71,11 @@ pub(crate) fn move_bounds_to_where_clause(
                     ast::GenericParam::ConstParam(_) => continue,
                 };
                 if let Some(tbl) = param.type_bound_list() {
-                    tbl.remove(&mut edit);
+                    tbl.remove(&editor);
                 }
             }
 
-            builder.add_file_edits(ctx.vfs_file_id(), edit);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

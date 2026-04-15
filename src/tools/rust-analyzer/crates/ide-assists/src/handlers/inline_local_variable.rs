@@ -83,7 +83,8 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
         "Inline variable",
         target.text_range(),
         move |builder| {
-            let mut editor = builder.make_editor(&target);
+            let editor = builder.make_editor(&target);
+            let make = editor.make();
             if delete_let {
                 editor.delete(let_stmt.syntax());
 
@@ -91,23 +92,23 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
                     && let Some(op_token) = bin_expr.op_token()
                 {
                     editor.delete(&op_token);
-                    remove_whitespace(op_token, Direction::Prev, &mut editor);
-                    remove_whitespace(let_stmt.syntax(), Direction::Prev, &mut editor);
+                    remove_whitespace(op_token, Direction::Prev, &editor);
+                    remove_whitespace(let_stmt.syntax(), Direction::Prev, &editor);
                 } else {
-                    remove_whitespace(let_stmt.syntax(), Direction::Next, &mut editor);
+                    remove_whitespace(let_stmt.syntax(), Direction::Next, &editor);
                 }
             }
 
             for (name, should_wrap) in wrap_in_parens {
                 let replacement = if should_wrap {
-                    editor.make().expr_paren(initializer_expr.clone()).into()
+                    make.expr_paren(initializer_expr.clone()).into()
                 } else {
                     initializer_expr.clone()
                 };
 
                 if let Some(record_field) = ast::RecordExprField::for_field_name(&name) {
                     cov_mark::hit!(inline_field_shorthand);
-                    let replacement = editor.make().record_expr_field(name, Some(replacement));
+                    let replacement = make.record_expr_field(name, Some(replacement));
                     editor.replace(record_field.syntax(), replacement.syntax());
                 } else {
                     editor.replace(name.syntax(), replacement.syntax());
@@ -200,7 +201,7 @@ fn inline_usage(
     Some(InlineData { let_stmt, delete_let, target: ast::NameOrNameRef::NameRef(name), references })
 }
 
-fn remove_whitespace(elem: impl Element, dir: Direction, editor: &mut SyntaxEditor) {
+fn remove_whitespace(elem: impl Element, dir: Direction, editor: &SyntaxEditor) {
     let token = match elem.syntax_element() {
         syntax::NodeOrToken::Node(node) => match dir {
             Direction::Next => node.last_token(),

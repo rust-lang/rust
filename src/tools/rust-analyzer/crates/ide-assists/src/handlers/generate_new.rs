@@ -69,7 +69,8 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
 
     let target = strukt.syntax().text_range();
     acc.add(AssistId::generate("generate_new"), "Generate `new`", target, |builder| {
-        let mut editor = builder.make_editor(strukt.syntax());
+        let editor = builder.make_editor(strukt.syntax());
+        let make = editor.make();
 
         let trivial_constructors = field_list
             .iter()
@@ -96,64 +97,53 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                     edition,
                 )?;
 
-                Some((editor.make().name_ref(name), Some(expr)))
+                Some((make.name_ref(name), Some(expr)))
             })
             .collect::<Vec<_>>();
 
         let params = field_list.iter().enumerate().filter_map(|(i, (name, ty))| {
             if trivial_constructors[i].is_none() {
-                Some(editor.make().param(
-                    editor.make().ident_pat(false, false, editor.make().name(name)).into(),
-                    ty.clone(),
-                ))
+                Some(make.param(make.ident_pat(false, false, make.name(name)).into(), ty.clone()))
             } else {
                 None
             }
         });
-        let params = editor.make().param_list(None, params);
+        let params = make.param_list(None, params);
 
         let fields = field_list.iter().enumerate().map(|(i, (name, _))| {
             if let Some(constructor) = trivial_constructors[i].clone() {
                 constructor
             } else {
-                (editor.make().name_ref(name), None)
+                (make.name_ref(name), None)
             }
         });
 
         let tail_expr: ast::Expr = match strukt.kind() {
             StructKind::Record(_) => {
-                let fields = fields.map(|(name, expr)| editor.make().record_expr_field(name, expr));
-                let fields = editor.make().record_expr_field_list(fields);
-                editor.make().record_expr(editor.make().ident_path("Self"), fields).into()
+                let fields = fields.map(|(name, expr)| make.record_expr_field(name, expr));
+                let fields = make.record_expr_field_list(fields);
+                make.record_expr(make.ident_path("Self"), fields).into()
             }
             StructKind::Tuple(_) => {
                 let args = fields.map(|(arg, expr)| {
-                    let arg = || {
-                        editor.make().expr_path(
-                            editor.make().path_unqualified(editor.make().path_segment(arg)),
-                        )
-                    };
+                    let arg = || make.expr_path(make.path_unqualified(make.path_segment(arg)));
                     expr.unwrap_or_else(arg)
                 });
-                let arg_list = editor.make().arg_list(args);
-                editor
-                    .make()
-                    .expr_call(editor.make().expr_path(editor.make().ident_path("Self")), arg_list)
-                    .into()
+                let arg_list = make.arg_list(args);
+                make.expr_call(make.expr_path(make.ident_path("Self")), arg_list).into()
             }
             StructKind::Unit => unreachable!(),
         };
-        let body = editor.make().block_expr(None, tail_expr.into());
+        let body = make.block_expr(None, tail_expr.into());
 
-        let ret_type =
-            editor.make().ret_type(editor.make().ty_path(editor.make().ident_path("Self")).into());
+        let ret_type = make.ret_type(make.ty_path(make.ident_path("Self")).into());
 
         let fn_ = editor
             .make()
             .fn_(
                 [],
                 strukt.visibility(),
-                editor.make().name("new"),
+                make.name("new"),
                 None,
                 None,
                 params,
@@ -180,31 +170,28 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                             .whitespace(&format!("\n{}", impl_def.indent_level() + 1))
                             .into(),
                         fn_.syntax().clone().into(),
-                        editor.make().whitespace("\n").into(),
+                        make.whitespace("\n").into(),
                     ],
                 );
                 fn_.syntax().clone()
             } else {
-                let list = editor.make().assoc_item_list([ast::AssocItem::Fn(fn_)]);
+                let list = make.assoc_item_list([ast::AssocItem::Fn(fn_)]);
                 editor.insert(Position::after(impl_def.syntax()), list.syntax());
                 list.syntax().clone()
             }
         } else {
             // Generate a new impl to add the method to
             let indent_level = strukt.indent_level();
-            let list = editor.make().assoc_item_list([ast::AssocItem::Fn(fn_)]);
-            let impl_def = generate_impl_with_item(
-                editor.make(),
-                &ast::Adt::Struct(strukt.clone()),
-                Some(list),
-            )
-            .indent(strukt.indent_level());
+            let list = make.assoc_item_list([ast::AssocItem::Fn(fn_)]);
+            let impl_def =
+                generate_impl_with_item(make, &ast::Adt::Struct(strukt.clone()), Some(list))
+                    .indent(strukt.indent_level());
 
             // Insert it after the adt
             editor.insert_all(
                 Position::after(strukt.syntax()),
                 vec![
-                    editor.make().whitespace(&format!("\n\n{indent_level}")).into(),
+                    make.whitespace(&format!("\n\n{indent_level}")).into(),
                     impl_def.syntax().clone().into(),
                 ],
             );

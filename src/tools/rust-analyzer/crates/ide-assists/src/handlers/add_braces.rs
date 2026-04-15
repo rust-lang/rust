@@ -56,10 +56,11 @@ pub(crate) fn add_braces(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         },
         expr.syntax().text_range(),
         |builder| {
-            let mut editor = builder.make_editor(expr.syntax());
+            let editor = builder.make_editor(expr.syntax());
+            let make = editor.make();
 
             let new_expr = expr.reset_indent().indent(1.into());
-            let block_expr = editor.make().block_expr(None, Some(new_expr));
+            let block_expr = make.block_expr(None, Some(new_expr));
 
             editor.replace(expr.syntax(), block_expr.indent(expr.indent_level()).syntax());
             builder.add_file_edits(ctx.vfs_file_id(), editor);

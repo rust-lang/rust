@@ -488,9 +488,9 @@ enum Foo {
     }
 
     fn check_add_variant(before: &str, expected: &str, variant: ast::Variant) {
-        let (mut editor, enum_) = SyntaxEditor::with_ast_node(&ast_from_text::<ast::Enum>(before));
+        let (editor, enum_) = SyntaxEditor::with_ast_node(&ast_from_text::<ast::Enum>(before));
         if let Some(it) = enum_.variant_list() {
-            it.add_variant(&mut editor, &variant)
+            it.add_variant(&editor, &variant)
         }
         let edit = editor.finish();
         let after = edit.new_root.to_string();

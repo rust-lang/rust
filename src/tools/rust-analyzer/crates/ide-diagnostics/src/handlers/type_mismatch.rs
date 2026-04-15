@@ -234,7 +234,7 @@ fn remove_unnecessary_wrapper(
 
     let file_id = expr_ptr.file_id.original_file(db);
     let mut builder = SourceChangeBuilder::new(file_id.file_id(ctx.sema.db));
-    let mut editor;
+    let editor;
     match inner_arg {
         // We're returning `()`
         Expr::TupleExpr(tup) if tup.fields().next().is_none() => {
@@ -244,16 +244,17 @@ fn remove_unnecessary_wrapper(
                 .and_then(Either::<ast::ReturnExpr, ast::StmtList>::cast)?;
 
             editor = builder.make_editor(parent.syntax());
+            let make = editor.make();
 
             match parent {
                 Either::Left(ret_expr) => {
-                    editor.replace(ret_expr.syntax(), editor.make().expr_return(None).syntax());
+                    editor.replace(ret_expr.syntax(), make.expr_return(None).syntax());
                 }
                 Either::Right(stmt_list) => {
                     let new_block = if stmt_list.statements().next().is_none() {
-                        editor.make().expr_empty_block()
+                        make.expr_empty_block()
                     } else {
-                        editor.make().block_expr(stmt_list.statements(), None)
+                        make.block_expr(stmt_list.statements(), None)
                     };
 
                     editor.replace(stmt_list.syntax().parent()?, new_block.syntax());

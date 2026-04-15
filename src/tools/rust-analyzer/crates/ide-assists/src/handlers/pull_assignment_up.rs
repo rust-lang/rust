@@ -70,8 +70,7 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     }
     let target = tgt.syntax().text_range();
 
-    let (mut editor, edit_tgt) = SyntaxEditor::new(tgt.syntax().clone());
-
+    let (editor, edit_tgt) = SyntaxEditor::new(tgt.syntax().clone());
     let assignments: Vec<_> = collector
         .assignments
         .into_iter()
@@ -105,9 +104,10 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         "Pull assignment up",
         target,
         move |edit| {
-            let mut editor = edit.make_editor(tgt.syntax());
-            let assign_expr = editor.make().expr_assignment(collector.common_lhs, new_tgt.clone());
-            let assign_stmt = editor.make().expr_stmt(assign_expr.into());
+            let editor = edit.make_editor(tgt.syntax());
+            let make = editor.make();
+            let assign_expr = make.expr_assignment(collector.common_lhs, new_tgt.clone());
+            let assign_stmt = make.expr_stmt(assign_expr.into());
 
             editor.replace(tgt.syntax(), assign_stmt.syntax());
             edit.add_file_edits(ctx.vfs_file_id(), editor);
