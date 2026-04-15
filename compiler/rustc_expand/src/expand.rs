@@ -1050,7 +1050,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             return;
         }
         feature_err(
-            &self.cx.sess,
+            self.cx.sess,
             sym::proc_macro_hygiene,
             span,
             format!("custom attributes cannot be applied to {kind}"),
@@ -1085,7 +1085,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
 
         if !self.cx.ecfg.features.proc_macro_hygiene() {
-            annotatable.visit_with(&mut GateProcMacroInput { sess: &self.cx.sess });
+            annotatable.visit_with(&mut GateProcMacroInput { sess: self.cx.sess });
         }
     }
 
@@ -1474,7 +1474,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
                 }
             }
             let mut idents = Vec::new();
-            collect_use_tree_leaves(&ut, &mut idents);
+            collect_use_tree_leaves(ut, &mut idents);
             idents
         } else {
             self.kind.ident().into_iter().collect()
@@ -1482,7 +1482,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
     }
 
     fn as_target(&self) -> Target {
-        Target::from_ast_item(&*self)
+        Target::from_ast_item(self)
     }
 }
 

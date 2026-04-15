@@ -214,7 +214,7 @@ fn parse_tree<'a>(
             // during parsing.
             let mut next = outer_iter.next();
             let mut iter_storage;
-            let mut iter: &mut TokenStreamIter<'_> = match next {
+            let iter: &mut TokenStreamIter<'_> = match next {
                 Some(tokenstream::TokenTree::Delimited(.., delim, tts)) if delim.skip() => {
                     iter_storage = tts.iter();
                     next = iter_storage.next();
@@ -284,7 +284,7 @@ fn parse_tree<'a>(
                     let sequence = parse(tts, part, sess, node_id, features, edition);
                     // Get the Kleene operator and optional separator
                     let (separator, kleene) =
-                        parse_sep_and_kleene_op(&mut iter, delim_span.entire(), sess);
+                        parse_sep_and_kleene_op(iter, delim_span.entire(), sess);
                     // Count the number of captured "names" (i.e., named metavars)
                     let num_captures =
                         if part.is_pattern() { count_metavar_decls(&sequence) } else { 0 };
