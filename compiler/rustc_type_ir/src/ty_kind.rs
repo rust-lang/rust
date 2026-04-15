@@ -63,10 +63,6 @@ pub enum AliasTyKind<I: Interner> {
 }
 
 impl<I: Interner> AliasTyKind<I> {
-    pub fn new_from_def_id(interner: I, def_id: I::DefId) -> Self {
-        interner.alias_ty_kind_from_def_id(def_id)
-    }
-
     pub fn descr(self) -> &'static str {
         match self {
             AliasTyKind::Projection { .. } => "associated type",
