@@ -204,15 +204,80 @@ pub enum PlaceKind {
     Remote,
 }
 
-/// The intersection of identity, location, and authority
-pub const KIND_ID_THINGOS_PRESENCE: [u8; 16] = [0xe6, 0xf9, 0x7e, 0x82, 0x0d, 0x30, 0xa9, 0x16, 0xc4, 0xbc, 0x43, 0x69, 0xd0, 0xbd, 0x67, 0xa6];
+/// Deferred embodiment model: a structured description of where and how an
+/// entity is situated within the system's social/spatial context.
+/// 
+/// Presence is defined as a stable descriptive schema before it becomes a
+/// runtime driver of behaviour.  It is not yet a scheduler primitive, routing
+/// target, or live synchronisation system.  Runtime embodiment semantics are
+/// deferred until Place and Group foundations are stable.
+/// 
+/// Non-goals (deferred):
+/// - scheduling residency
+/// - automatic group joins or message-routing membership
+/// - authority/capability decisions
+/// - live sensor certainty or device/avatar synchronisation
+/// - physical pose, topology, or movement
+pub const KIND_ID_THINGOS_PRESENCE: [u8; 16] = [0xde, 0xfd, 0xa1, 0x99, 0x59, 0x72, 0x8f, 0x20, 0xaf, 0xbe, 0x09, 0xd0, 0x94, 0x72, 0xa4, 0xac];
 
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Presence {
-    pub person: ThingId,
-    pub place: ThingId,
-    pub authority: ThingId,
+    /// The entity whose presence this describes.
+    pub subject: ThingId,
+    /// The place in which the entity is present, if known.
+    pub place: Option<ThingId>,
+    /// The coordination group anchoring this presence, if any.
+    pub group: Option<ThingId>,
+    /// How the presence currently exists.
+    pub mode: Mode,
+    /// The kind of embodiment, if applicable.
+    pub embodiment: Option<EmbodimentKind>,
+    /// When this presence was last observed, in Unix milliseconds, if known.
+    pub observed_at: Option<u64>,
+}
+
+/// The kind of embodiment describing how an entity is physically or virtually present.
+/// 
+/// This is a lightweight descriptor, not a full embodiment model.  Full
+/// device/sensor/avatar/body synchronisation is explicitly out of scope.
+pub const KIND_ID_THINGOS_PRESENCE_EMBODIMENT_KIND: [u8; 16] = [0x94, 0xa8, 0xe7, 0x82, 0x46, 0x4a, 0xb3, 0xd1, 0xa6, 0x64, 0x78, 0xc2, 0x2f, 0x5d, 0x3b, 0x97];
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum EmbodimentKind {
+    /// Direct, first-person, locally embodied presence.
+    Direct,
+    /// Presence mediated through a remote channel or proxy.
+    Remote,
+    /// Presence inherited from a parent or enclosing context.
+    Inherited,
+    /// A symbolic or representational placeholder presence.
+    Symbolic,
+    /// Embodiment is explicitly deferred pending future integration.
+    Deferred,
+}
+
+/// How an entity is present: the mode of its situated existence.
+/// 
+/// Presence is defined here as a descriptive schema concept, not a runtime
+/// driver.  Runtime embodiment semantics are deferred until Place and Group
+/// foundations are stable.
+pub const KIND_ID_THINGOS_PRESENCE_MODE: [u8; 16] = [0x9b, 0xaa, 0x44, 0x76, 0x79, 0xec, 0x7d, 0xbc, 0xf3, 0x4f, 0x82, 0x74, 0xb6, 0xec, 0x96, 0xdf];
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Mode {
+    /// The entity is actively present and reachable.
+    Active,
+    /// The entity is present but quiescent; not actively interacting.
+    Latent,
+    /// The entity is present through a remote or mediated connection.
+    Remote,
+    /// The entity is present through a derived or mirrored association.
+    Projected,
+    /// The entity's presence status has not yet been determined.
+    Deferred,
+    /// The entity cannot currently be reached or verified.
+    Unavailable,
 }
 
 /// Arguments for the task_create syscall

@@ -13,12 +13,14 @@
 //!
 //! # Schema-generated canonical types
 //!
-//! The [`task`], [`job`], [`group`], [`authority`], and [`message`] modules
-//! contain the schema-generated public types that define the canonical external
-//! representation of execution, lifecycle, coordination, permission-context,
-//! and communication concepts respectively.  The kernel's internal `Thread` and
-//! `Process` structures are *transitional* implementations; they feed into these
-//! public types through explicit bridge layers rather than being exposed directly.
+//! The [`task`], [`job`], [`group`], [`authority`], [`message`], [`place`],
+//! and [`presence`] modules contain the schema-generated public types that
+//! define the canonical external representation of execution, lifecycle,
+//! coordination, permission-context, communication, world-context, and
+//! embodiment concepts respectively.  The kernel's internal `Thread` and
+//! `Process` structures are *transitional* implementations; they feed into
+//! these public types through explicit bridge layers rather than being exposed
+//! directly.
 //!
 //! ## Transitional mapping (Phases 1–4, 7–8)
 //!
@@ -32,6 +34,7 @@
 //! | `authority::Authority`   | `ProcessSnapshot::name` (transitional)    | Phase 7 permission context    |
 //! | `place::Place`           | `Process::cwd` + `namespace` (Phase 8)   | Phase 8 world context         |
 //! | `message::Message`       | (new) canonical communication envelope   | Inbox / Group / Port delivery |
+//! | `presence::Presence`     | (schema only — deferred embodiment model) | future Place/Group/UI integration |
 //!
 //! Public truth changes first; internal machinery follows.
 
@@ -42,6 +45,7 @@ pub mod group;
 pub mod job;
 pub mod message;
 pub mod place;
+pub mod presence;
 pub mod task;
 
 /// The canonical public name of the system.

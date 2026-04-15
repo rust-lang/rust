@@ -1,6 +1,65 @@
-/// The intersection of identity, location, and authority
+/// How an entity is present: the mode of its situated existence.
+///
+/// Presence is defined here as a descriptive schema concept, not a runtime
+/// driver.  Runtime embodiment semantics are deferred until Place and Group
+/// foundations are stable.
+kind thingos.presence.mode = enum {
+  /// The entity is actively present and reachable.
+  Active,
+  /// The entity is present but quiescent; not actively interacting.
+  Latent,
+  /// The entity is present through a remote or mediated connection.
+  Remote,
+  /// The entity is present through a derived or mirrored association.
+  Projected,
+  /// The entity's presence status has not yet been determined.
+  Deferred,
+  /// The entity cannot currently be reached or verified.
+  Unavailable,
+}
+
+/// The kind of embodiment describing how an entity is physically or virtually present.
+///
+/// This is a lightweight descriptor, not a full embodiment model.  Full
+/// device/sensor/avatar/body synchronisation is explicitly out of scope.
+kind thingos.presence.embodiment_kind = enum {
+  /// Direct, first-person, locally embodied presence.
+  Direct,
+  /// Presence mediated through a remote channel or proxy.
+  Remote,
+  /// Presence inherited from a parent or enclosing context.
+  Inherited,
+  /// A symbolic or representational placeholder presence.
+  Symbolic,
+  /// Embodiment is explicitly deferred pending future integration.
+  Deferred,
+}
+
+/// Deferred embodiment model: a structured description of where and how an
+/// entity is situated within the system's social/spatial context.
+///
+/// Presence is defined as a stable descriptive schema before it becomes a
+/// runtime driver of behaviour.  It is not yet a scheduler primitive, routing
+/// target, or live synchronisation system.  Runtime embodiment semantics are
+/// deferred until Place and Group foundations are stable.
+///
+/// Non-goals (deferred):
+///   - scheduling residency
+///   - automatic group joins or message-routing membership
+///   - authority/capability decisions
+///   - live sensor certainty or device/avatar synchronisation
+///   - physical pose, topology, or movement
 kind thingos.presence = struct {
-  person: ref<thingos.person>,
-  place: ref<thingos.place>,
-  authority: ref<thingos.authority>,
+  /// The entity whose presence this describes.
+  subject: ref<thingos.person>,
+  /// The place in which the entity is present, if known.
+  place: option<ref<thingos.place>>,
+  /// The coordination group anchoring this presence, if any.
+  group: option<ref<thingos.group>>,
+  /// How the presence currently exists.
+  mode: thingos.presence.mode,
+  /// The kind of embodiment, if applicable.
+  embodiment: option<thingos.presence.embodiment_kind>,
+  /// When this presence was last observed, in Unix milliseconds, if known.
+  observed_at: option<u64>,
 }
