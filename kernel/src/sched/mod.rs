@@ -1029,6 +1029,7 @@ impl<R: BootRuntime> types::Scheduler<R> {
             .expect("terminate_current called with no current task");
 
         let waiters = mark_task_exited::<R>(self, current_id, code);
+        purge_task_from_scheduler_queues::<R>(self, current_id);
 
         // Release any claimed devices
         let released = crate::device_registry::REGISTRY.lock().release_all_for_task(current_id);
@@ -1519,6 +1520,22 @@ fn mark_task_exited<R: BootRuntime>(
     waiters
 }
 
+fn purge_task_from_scheduler_queues<R: BootRuntime>(
+    sched: &mut types::Scheduler<R>,
+    tid: TaskId,
+) {
+    sched.state.remove_task_from_runq(tid);
+
+    if let Some(pos) = sched.state.wait_queue.iter().position(|&wid| wid == tid) {
+        sched.state.wait_queue.remove(pos);
+    }
+
+    sched.state.sleep_queue.retain(|_, tids| {
+        tids.retain(|&queued_tid| queued_tid != tid);
+        !tids.is_empty()
+    });
+}
+
 fn wake_waiters(waiters: &[u64]) {
     for &tid in waiters {
         unsafe {
@@ -1587,20 +1604,7 @@ pub fn kill_by_tid<R: BootRuntime>(tid: u64) -> bool {
                     } else {
                         let waiters = mark_task_exited::<R>(sched, tid, -9);
 
-                        // Remove from all run queues
-                        sched.state.remove_task_from_runq(tid);
-
-                        // Remove from wait queue
-                        if let Some(pos) = sched.state.wait_queue.iter().position(|&wid| wid == tid)
-                        {
-                            sched.state.wait_queue.remove(pos);
-                        }
-
-                        // Remove from sleep queue
-                        sched.state.sleep_queue.retain(|_, tids| {
-                            tids.retain(|&t| t != tid);
-                            !tids.is_empty()
-                        });
+                        purge_task_from_scheduler_queues::<R>(sched, tid);
 
                         // Release any claimed devices
                         let released =
@@ -1940,6 +1944,7 @@ pub fn remove_task_completely<R: BootRuntime>(tid: TaskId) {
         let lock = SCHEDULER.lock();
         if let Some(ptr) = *lock {
             let sched = unsafe { &mut *(ptr as *mut types::Scheduler<R>) };
+            purge_task_from_scheduler_queues::<R>(sched, tid);
             sched.state.remove_task(tid);
         }
     }
@@ -3208,6 +3213,102 @@ mod tests {
         assert_eq!(poll_task_exit::<MockRuntime>(8301).unwrap(), None);
         assert_eq!(poll_task_exit::<MockRuntime>(8302).unwrap(), Some(17));
         assert_eq!(poll_task_exit::<MockRuntime>(8399).unwrap_err(), abi::errors::Errno::ECHILD);
+    }
+
+    #[test]
+    fn test_terminate_current_purges_dead_task_from_scheduler_queues() {
+        let _g = init_test_env();
+
+        let mut sched = types::Scheduler::<MockRuntime>::new();
+        sched.state.per_cpu.push(crate::sched::state::PerCpu::new());
+        sched.state.per_cpu[0].current = Some(8303);
+
+        crate::task::registry::get_registry::<MockRuntime>()
+            .insert(alloc::boxed::Box::new(make_task(8303, TaskState::Running, TaskPriority::Normal)));
+        crate::task::registry::get_registry::<MockRuntime>()
+            .insert(alloc::boxed::Box::new(make_task(8304, TaskState::Runnable, TaskPriority::Normal)));
+
+        sched
+            .state
+            .insert_task(crate::sched::state::ThreadSchedFields { tid: 8303, runq_location: None });
+        sched
+            .state
+            .insert_task(crate::sched::state::ThreadSchedFields { tid: 8304, runq_location: None });
+
+        // Seed stale queue membership for the exiting task and ensure another
+        // runnable task exists so terminate_current can produce a switch.
+        sched.state.enqueue_task(0, TaskPriority::Normal as usize, 8303);
+        sched.state.enqueue_task(0, TaskPriority::Normal as usize, 8304);
+        sched.state.wait_queue.push_back(8303);
+        sched.state.sleep_queue.insert(55, alloc::vec![8303, 9999]);
+
+        let (switch, _waiters) = sched.terminate_current(101);
+
+        assert_eq!(switch.to_tid, 8304, "scheduler should switch to the next runnable task");
+        assert_eq!(
+            crate::task::registry::get_task::<MockRuntime>(8303).unwrap().state,
+            TaskState::Dead
+        );
+        assert_eq!(
+            crate::task::registry::get_task::<MockRuntime>(8303).unwrap().exit_code,
+            Some(101)
+        );
+        assert!(
+            !sched.state.per_cpu[0].runq[TaskPriority::Normal as usize].iter().any(|&tid| tid == 8303),
+            "dead current task must be removed from the run queue"
+        );
+        assert!(
+            !sched.state.wait_queue.iter().any(|&tid| tid == 8303),
+            "dead current task must be removed from the wait queue"
+        );
+        assert_eq!(sched.state.sleep_queue.get(&55).cloned(), Some(alloc::vec![9999]));
+    }
+
+    #[test]
+    fn test_remove_task_completely_purges_scheduler_queues() {
+        let _g = init_test_env();
+
+        let mut sched = types::Scheduler::<MockRuntime>::new();
+        sched.state.per_cpu.push(crate::sched::state::PerCpu::new());
+        sched.state.per_cpu[0].current = Some(0);
+
+        crate::task::registry::get_registry::<MockRuntime>()
+            .insert(alloc::boxed::Box::new(make_task(0, TaskState::Running, TaskPriority::Normal)));
+        let mut dead = make_task(8305, TaskState::Dead, TaskPriority::Normal);
+        dead.exit_code = Some(42);
+        crate::task::registry::get_registry::<MockRuntime>().insert(alloc::boxed::Box::new(dead));
+
+        sched
+            .state
+            .insert_task(crate::sched::state::ThreadSchedFields { tid: 0, runq_location: None });
+        sched
+            .state
+            .insert_task(crate::sched::state::ThreadSchedFields { tid: 8305, runq_location: None });
+
+        sched.state.enqueue_task(0, TaskPriority::Normal as usize, 8305);
+        sched.state.wait_queue.push_back(8305);
+        sched.state.sleep_queue.insert(77, alloc::vec![8305]);
+
+        let mut sched_lock = SCHEDULER.lock();
+        *sched_lock = Some((&mut sched as *mut types::Scheduler<MockRuntime>) as usize);
+        drop(sched_lock);
+
+        remove_task_completely::<MockRuntime>(8305);
+
+        assert!(crate::task::registry::get_task::<MockRuntime>(8305).is_none());
+        assert!(sched.state.get_task(8305).is_none());
+        assert!(
+            !sched.state.per_cpu[0].runq[TaskPriority::Normal as usize].iter().any(|&tid| tid == 8305),
+            "reaped task must be removed from the run queue"
+        );
+        assert!(
+            !sched.state.wait_queue.iter().any(|&tid| tid == 8305),
+            "reaped task must be removed from the wait queue"
+        );
+        assert!(!sched.state.sleep_queue.contains_key(&77));
+
+        let mut sched_lock = SCHEDULER.lock();
+        *sched_lock = None;
     }
 
     #[test]

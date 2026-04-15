@@ -1,7 +1,5 @@
 #![no_std]
 #![no_main]
-use alloc::string::ToString;
-use core::default::Default;
 extern crate alloc;
 
 use abi::syscall::{poll_flags, PollFd};
@@ -18,13 +16,13 @@ fn main(_arg: usize) -> ! {
     stem::println!("Pipe created: read={}, write={}", pr, pw);
 
     // 2. Create a channel and bridge it to a VFS fd
-    let (c1, c2) = stem::syscall::channel_create(1024).expect("channel create failed");
-    let c1_fd = vfs_fd_from_handle(c1).expect("vfs_fd_from_handle failed");
+    let (c_write, c_read) = stem::syscall::channel_create(1024).expect("channel create failed");
+    let c_read_fd = vfs_fd_from_handle(c_read).expect("vfs_fd_from_handle failed");
     stem::println!(
-        "Channel created: h1={}, h2={}, bridged_fd={}",
-        c1,
-        c2,
-        c1_fd
+        "Channel created: write={}, read={}, bridged_fd={}",
+        c_write,
+        c_read,
+        c_read_fd
     );
 
     // 3. Open a regular device file (/dev/null is always present).
@@ -42,7 +40,7 @@ fn main(_arg: usize) -> ! {
             revents: 0,
         },
         PollFd {
-            fd: c1_fd as i32,
+            fd: c_read_fd as i32,
             events: poll_flags::POLLIN,
             revents: 0,
         },
@@ -91,7 +89,7 @@ fn main(_arg: usize) -> ! {
     );
 
     // 7. Test channel readiness (write before poll)
-    stem::syscall::channel_send(c2, b"world").expect("send to channel failed");
+    stem::syscall::channel_send(c_write, b"world").expect("send to channel failed");
     stem::println!("Sent to channel, polling now...");
     fds[0].revents = 0;
     fds[1].revents = 0;
@@ -118,7 +116,7 @@ fn main(_arg: usize) -> ! {
             revents: 0,
         },
         PollFd {
-            fd: c1_fd as i32,
+            fd: c_read_fd as i32,
             events: poll_flags::POLLIN,
             revents: 0,
         },
