@@ -16,6 +16,7 @@ pkgs.mkShell {
     pkgs.nix
     pkgs.glibc.out
     pkgs.glibc.static
+    pkgs.cargo # needed for rust-analyzer vscode extension
     x
     # Get the runtime deps of the x wrapper
   ] ++ lists.flatten (attrsets.attrValues env);
