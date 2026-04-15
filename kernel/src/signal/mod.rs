@@ -4,6 +4,30 @@
 //! and delivery.  Per-thread signal masks and thread-local pending signals live
 //! in the `Thread` struct but are accessed through helpers here.
 //!
+//! # Unix legacy compatibility boundary
+//!
+//! The entire signal subsystem — including `ProcessSignals`, the `pgid`/`sid`
+//! manipulation in `setpgid_current`/`setsid_current`, and the job-control
+//! stop signals (SIGTTOU, SIGTTIN, SIGTSTP) — is **quarantined Unix legacy
+//! compatibility state**.  It lives in `Process.unix_compat` and is accessed
+//! only through the explicit `unix_compat.*` prefix.
+//!
+//! **New code must not add Unix session or process-group assumptions here.**
+//! Specifically:
+//!
+//! - `pgid`/`sid`/`session_leader` operations belong to the `Group` domain
+//!   (Phase 5) and must not be deepened.
+//! - SIGTTOU/SIGTTIN/SIGTSTP job-control stop signals belong to
+//!   `Group / Presence` and must not be entangled further with the core
+//!   signal table.
+//! - Any unavoidable Unix signal compatibility code must remain inside
+//!   `Process.unix_compat.signals`; it must not leak into new top-level
+//!   `Process` fields.
+//!
+//! See `docs/concepts/unix-compat.md` and
+//! `docs/migration/process_execution_context_inventory.md` for the canonical
+//! quarantine inventory and future migration plan.
+//!
 //! # Design notes
 //!
 //! - Signal numbers 1–31 are standard non-realtime signals (POSIX).
