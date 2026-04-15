@@ -1040,14 +1040,15 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
 
                 if let Some(Res::Def(DefKind::Struct, def_id)) = res {
-                    let private_fields = self.has_private_fields(def_id);
-                    let adjust_error_message =
-                        private_fields && self.is_struct_with_fn_ctor(def_id);
-                    if adjust_error_message {
-                        self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
-                    }
-
-                    if private_fields {
+                    if let Some(ctor) = self.r.struct_ctor(def_id)
+                        && ctor.has_private_fields(self.parent_scope.module, self.r)
+                    {
+                        if matches!(
+                            ctor.res,
+                            Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), _)
+                        ) {
+                            self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
+                        }
                         err.note("constructor is not visible here due to private fields");
                     }
                 } else {
@@ -2015,19 +2016,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn is_struct_with_fn_ctor(&mut self, def_id: DefId) -> bool {
-        def_id
-            .as_local()
-            .and_then(|local_id| self.r.struct_constructors.get(&local_id))
-            .map(|struct_ctor| {
-                matches!(
-                    struct_ctor.0,
-                    def::Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), _)
-                )
-            })
-            .unwrap_or(false)
-    }
-
     fn update_err_for_private_tuple_struct_fields(
         &mut self,
         err: &mut Diag<'_>,
@@ -2201,7 +2189,17 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         _ => (": val", "literal", Applicability::HasPlaceholders, None),
                     };
 
-                    if !this.has_private_fields(def_id) {
+                    // Imprecise for local structs without ctors, we don't keep fields for them.
+                    let has_private_fields = match def_id.as_local() {
+                        Some(def_id) => this.r.struct_ctors.get(&def_id).is_some_and(|ctor| {
+                            ctor.has_private_fields(this.parent_scope.module, this.r)
+                        }),
+                        None => this.r.tcx.associated_item_def_ids(def_id).iter().any(|field_id| {
+                            let vis = this.r.tcx.visibility(*field_id);
+                            !this.r.is_accessible_from(vis, this.parent_scope.module)
+                        }),
+                    };
+                    if !has_private_fields {
                         // If the fields of the type are private, we shouldn't be suggesting using
                         // the struct literal syntax at all, as that will cause a subsequent error.
                         let fields = this.r.field_idents(def_id);
@@ -2367,40 +2365,18 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 self.suggest_using_enum_variant(err, source, def_id, span);
             }
             (Res::Def(DefKind::Struct, def_id), source) if ns == ValueNS => {
-                let struct_ctor = match def_id.as_local() {
-                    Some(def_id) => self.r.struct_constructors.get(&def_id).cloned(),
-                    None => {
-                        let ctor = self.r.cstore().ctor_untracked(self.r.tcx(), def_id);
-                        ctor.map(|(ctor_kind, ctor_def_id)| {
-                            let ctor_res =
-                                Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
-                            let ctor_vis = self.r.tcx.visibility(ctor_def_id);
-                            let field_visibilities = self
-                                .r
-                                .tcx
-                                .associated_item_def_ids(def_id)
-                                .iter()
-                                .map(|&field_id| self.r.tcx.visibility(field_id))
-                                .collect();
-                            (ctor_res, ctor_vis, field_visibilities)
-                        })
-                    }
-                };
-
-                let (ctor_def, ctor_vis, fields) = if let Some(struct_ctor) = struct_ctor {
-                    if let PathSource::Expr(Some(parent)) = source
-                        && let ExprKind::Field(..) | ExprKind::MethodCall(..) = parent.kind
-                    {
-                        bad_struct_syntax_suggestion(self, err, def_id);
-                        return true;
-                    }
-                    struct_ctor
-                } else {
+                if let PathSource::Expr(Some(parent)) = source
+                    && let ExprKind::Field(..) | ExprKind::MethodCall(..) = parent.kind
+                {
+                    bad_struct_syntax_suggestion(self, err, def_id);
+                    return true;
+                }
+                let Some(ctor) = self.r.struct_ctor(def_id) else {
                     bad_struct_syntax_suggestion(self, err, def_id);
                     return true;
                 };
 
-                let is_accessible = self.r.is_accessible_from(ctor_vis, self.parent_scope.module);
+                let is_accessible = self.r.is_accessible_from(ctor.vis, self.parent_scope.module);
                 if let Some(use_span) = self.r.inaccessible_ctor_reexport.get(&span)
                     && is_accessible
                 {
@@ -2409,11 +2385,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         "the type is accessed through this re-export, but the type's constructor \
                          is not visible in this import's scope due to private fields",
                     );
-                    if is_accessible
-                        && fields
-                            .iter()
-                            .all(|vis| self.r.is_accessible_from(*vis, self.parent_scope.module))
-                    {
+                    if is_accessible && !ctor.has_private_fields(self.parent_scope.module, self.r) {
                         err.span_suggestion_verbose(
                             span,
                             "the type can be constructed directly, because its fields are \
@@ -2430,17 +2402,17 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     }
                     self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
                 }
-                if !is_expected(ctor_def) || is_accessible {
+                if !is_expected(ctor.res) || is_accessible {
                     return true;
                 }
 
                 let field_spans =
                     self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
 
-                if let Some(spans) =
-                    field_spans.filter(|spans| spans.len() > 0 && fields.len() == spans.len())
+                if let Some(spans) = field_spans
+                    .filter(|spans| spans.len() > 0 && ctor.field_visibilities.len() == spans.len())
                 {
-                    let non_visible_spans: Vec<Span> = iter::zip(&fields, &spans)
+                    let non_visible_spans: Vec<Span> = iter::zip(&ctor.field_visibilities, &spans)
                         .filter(|(vis, _)| {
                             !self.r.is_accessible_from(**vis, self.parent_scope.module)
                         })
@@ -2713,24 +2685,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
         }
-    }
-
-    fn has_private_fields(&self, def_id: DefId) -> bool {
-        let fields = match def_id.as_local() {
-            Some(def_id) => self.r.struct_constructors.get(&def_id).cloned().map(|(_, _, f)| f),
-            None => Some(
-                self.r
-                    .tcx
-                    .associated_item_def_ids(def_id)
-                    .iter()
-                    .map(|&field_id| self.r.tcx.visibility(field_id))
-                    .collect(),
-            ),
-        };
-
-        fields.is_some_and(|fields| {
-            fields.iter().any(|vis| !self.r.is_accessible_from(*vis, self.parent_scope.module))
-        })
     }
 
     /// Given the target `ident` and `kind`, search for the similarly named associated item

@@ -26,7 +26,7 @@ use std::fmt;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
-use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
+use diagnostics::{ImportSuggestion, LabelSuggestion, StructCtor, Suggestion};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
 use errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use hygiene::Macros20NormalizedSyntaxContext;
@@ -1346,7 +1346,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
     /// Also includes of list of each fields visibility
-    struct_constructors: LocalDefIdMap<(Res, Visibility<DefId>, Vec<Visibility<DefId>>)> = Default::default(),
+    struct_ctors: LocalDefIdMap<StructCtor> = Default::default(),
 
     /// for all the struct
     /// it's not used during normal resolution, only for better error reporting.
