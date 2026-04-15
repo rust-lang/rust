@@ -19,10 +19,13 @@ struct MountEntry {
     /// The canonical mount point, e.g. `"/dev"` (no trailing slash).
     prefix: String,
     driver: Arc<dyn VfsDriver>,
+    /// Stable per-mount identifier, assigned once at mount time.
+    id: u64,
 }
 
 static MOUNT_TABLE: Mutex<Vec<MountEntry>> = Mutex::new(Vec::new());
 static INIT_DONE: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
+static NEXT_MOUNT_ID: core::sync::atomic::AtomicU64 = core::sync::atomic::AtomicU64::new(1);
 
 /// Initialise the mount table storage.  Must be called once before any
 /// [`mount`] or [`lookup`] call.
@@ -36,10 +39,11 @@ pub fn init() {
 /// Replaces any existing mount at the same point.  Thread-safe.
 pub fn mount(mount_point: &str, driver: Arc<dyn VfsDriver>) {
     let prefix = normalise(mount_point);
+    let id = NEXT_MOUNT_ID.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
     let mut table = MOUNT_TABLE.lock();
     // Remove duplicate.
     table.retain(|e| e.prefix != prefix);
-    table.push(MountEntry { prefix, driver });
+    table.push(MountEntry { prefix, driver, id });
     // Keep longest-prefix first so that `/dev/pts` beats `/dev`.
     table.sort_by(|a, b| b.prefix.len().cmp(&a.prefix.len()));
 }
@@ -128,6 +132,25 @@ pub fn get_mounts_under(parent_path: &str) -> Vec<String> {
     }
 
     results
+}
+
+/// Return the stable mount ID for the best-matching mount covering `path`.
+///
+/// Returns `0` if no mount covers `path` (which should not happen for valid
+/// absolute paths after the VFS is initialised).
+pub fn mount_id_for_path(path: &str) -> u64 {
+    if !path.starts_with('/') {
+        return 0;
+    }
+    let table = MOUNT_TABLE.lock();
+    // The table is sorted longest-prefix first, so the first match is the
+    // most specific mount.
+    for entry in table.iter() {
+        if strip_prefix(path, &entry.prefix).is_some() {
+            return entry.id;
+        }
+    }
+    0
 }
 
 /// Create a new regular file at `path` by finding the best-matching mount.

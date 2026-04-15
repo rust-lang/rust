@@ -331,7 +331,7 @@ pub fn sys_fs_write(fd: usize, buf_ptr: usize, buf_len: usize) -> SysResult<usiz
     let mut kbuf = vec![0u8; buf_len];
     unsafe { copyin(&mut kbuf, buf_ptr)? };
 
-    let (node, offset_cell, status_flags) = {
+    let (node, offset_cell, status_flags, mount_id) = {
         let pinfo_arc = crate::sched::process_info_current().ok_or(Errno::ENOENT)?;
         let lock = pinfo_arc.lock();
         let file = lock.fd_table.get(fd as u32)?;
@@ -339,7 +339,8 @@ pub fn sys_fs_write(fd: usize, buf_ptr: usize, buf_len: usize) -> SysResult<usiz
         if !status_flags.is_writable() {
             return Err(Errno::EBADF);
         }
-        (file.node.clone(), file.offset.clone(), status_flags)
+        let mid = vfs::mount::mount_id_for_path(&file.path);
+        (file.node.clone(), file.offset.clone(), status_flags, mid)
     };
 
     if status_flags.write_would_block(node.poll()) {
@@ -352,7 +353,7 @@ pub fn sys_fs_write(fd: usize, buf_ptr: usize, buf_len: usize) -> SysResult<usiz
     if n > 0 {
         *offset_cell.lock() = write_offset.saturating_add(n as u64);
         // Emit MODIFY event
-        crate::vfs::watch::emit_event(&*node, abi::vfs_watch::mask::MODIFY, None, 0);
+        crate::vfs::watch::emit_event(&*node, abi::vfs_watch::mask::MODIFY, None, 0, mount_id);
     }
 
     Ok(n)
@@ -458,7 +459,7 @@ pub fn sys_fs_writev(fd: usize, iovec_ptr: usize, iovec_count: usize) -> SysResu
         )?
     };
 
-    let (node, offset_cell, status_flags) = {
+    let (node, offset_cell, status_flags, mount_id) = {
         let pinfo_arc = crate::sched::process_info_current().ok_or(Errno::ENOENT)?;
         let lock = pinfo_arc.lock();
         let file = lock.fd_table.get(fd as u32)?;
@@ -466,7 +467,8 @@ pub fn sys_fs_writev(fd: usize, iovec_ptr: usize, iovec_count: usize) -> SysResu
         if !status_flags.is_writable() {
             return Err(Errno::EBADF);
         }
-        (file.node.clone(), file.offset.clone(), status_flags)
+        let mid = vfs::mount::mount_id_for_path(&file.path);
+        (file.node.clone(), file.offset.clone(), status_flags, mid)
     };
 
     if status_flags.write_would_block(node.poll()) {
@@ -488,7 +490,7 @@ pub fn sys_fs_writev(fd: usize, iovec_ptr: usize, iovec_count: usize) -> SysResu
         let n = node.write(write_offset, &kbuf)?;
         if n > 0 {
             *offset_cell.lock() = write_offset.saturating_add(n as u64);
-            crate::vfs::watch::emit_event(&*node, abi::vfs_watch::mask::MODIFY, None, 0);
+            crate::vfs::watch::emit_event(&*node, abi::vfs_watch::mask::MODIFY, None, 0, mount_id);
             total += n;
         }
         if n < iov.len {
@@ -514,11 +516,12 @@ pub fn sys_fs_unlink(path_ptr: usize, path_len: usize) -> SysResult<usize> {
     // Resolve parent to emit event
     let (parent_path, name) = split_parent(&abs_path);
     let parent_node = vfs::mount::lookup(parent_path).ok();
+    let parent_mount_id = vfs::mount::mount_id_for_path(parent_path);
 
     vfs::mount::unlink(&abs_path)?;
 
     if let Some(parent) = parent_node {
-        crate::vfs::watch::emit_event(&*parent, abi::vfs_watch::mask::REMOVE, Some(name), 0);
+        crate::vfs::watch::emit_event(&*parent, abi::vfs_watch::mask::REMOVE, Some(name), 0, parent_mount_id);
     }
 
     Ok(0)
@@ -541,11 +544,12 @@ pub fn sys_fs_mkdir(path_ptr: usize, path_len: usize) -> SysResult<usize> {
     // Resolve parent to emit event
     let (parent_path, name) = split_parent(&abs_path);
     let parent_node = vfs::mount::lookup(parent_path).ok();
+    let parent_mount_id = vfs::mount::mount_id_for_path(parent_path);
 
     vfs::mount::mkdir(&abs_path)?;
 
     if let Some(parent) = parent_node {
-        crate::vfs::watch::emit_event(&*parent, abi::vfs_watch::mask::CREATE, Some(name), 0);
+        crate::vfs::watch::emit_event(&*parent, abi::vfs_watch::mask::CREATE, Some(name), 0, parent_mount_id);
     }
 
     Ok(0)
@@ -1043,14 +1047,15 @@ pub fn sys_fs_seek(fd: usize, offset: usize, whence: usize) -> SysResult<usize> 
 pub fn sys_watch_fd(fd: usize, mask: usize, flags: usize) -> SysResult<usize> {
     let pinfo_arc = crate::sched::process_info_current().ok_or(Errno::ENOENT)?;
 
-    let node = {
+    let (node, mount_id) = {
         let lock = pinfo_arc.lock();
         let file = lock.fd_table.get(fd as u32)?;
-        file.node.clone()
+        let mid = vfs::mount::mount_id_for_path(&file.path);
+        (file.node.clone(), mid)
     };
 
     let watch = Arc::new(crate::vfs::watch::Watch::new(mask as u32, flags as u32));
-    crate::vfs::watch::register_watch(&node, watch.clone())?;
+    crate::vfs::watch::register_watch(&node, watch.clone(), mount_id)?;
 
     // Return the watch as a new file descriptor
     let watch_fd = pinfo_arc.lock().fd_table.open(
@@ -1074,9 +1079,10 @@ pub fn sys_watch_path(
 
     let abs_path = resolve_path(path)?;
     let node = vfs::mount::lookup(&abs_path)?;
+    let mount_id = vfs::mount::mount_id_for_path(&abs_path);
 
     let watch = Arc::new(crate::vfs::watch::Watch::new(mask as u32, flags as u32));
-    crate::vfs::watch::register_watch(&node, watch.clone())?;
+    crate::vfs::watch::register_watch(&node, watch.clone(), mount_id)?;
 
     let pinfo_arc = crate::sched::process_info_current().ok_or(Errno::ENOENT)?;
     let watch_fd = pinfo_arc.lock().fd_table.open(
@@ -1180,6 +1186,8 @@ pub fn sys_fs_rename(
     let (new_parent_path, new_name) = split_parent(&new_abs);
     let old_parent_node = vfs::mount::lookup(old_parent_path).ok();
     let new_parent_node = vfs::mount::lookup(new_parent_path).ok();
+    let old_parent_mount_id = vfs::mount::mount_id_for_path(old_parent_path);
+    let new_parent_mount_id = vfs::mount::mount_id_for_path(new_parent_path);
 
     // Perform rename (VFS mount layer needs a rename method too, which redirects to driver)
     vfs::mount::rename(&old_abs, &new_abs)?;
@@ -1192,6 +1200,7 @@ pub fn sys_fs_rename(
             abi::vfs_watch::mask::MOVE_FROM,
             Some(old_name),
             cookie,
+            old_parent_mount_id,
         );
     }
     if let Some(parent) = new_parent_node {
@@ -1200,6 +1209,7 @@ pub fn sys_fs_rename(
             abi::vfs_watch::mask::MOVE_TO,
             Some(new_name),
             cookie,
+            new_parent_mount_id,
         );
     }
 
