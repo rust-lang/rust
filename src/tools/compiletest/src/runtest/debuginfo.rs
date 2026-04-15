@@ -1,6 +1,5 @@
 use std::ffi::{OsStr, OsString};
-use std::fs::File;
-use std::io::{BufRead, BufReader, Read};
+use std::io::{BufRead, BufReader};
 use std::process::{Command, Output, Stdio};
 
 use camino::Utf8Path;
@@ -407,9 +406,6 @@ impl TestCx<'_> {
             "command script import {}/lldb_lookup.py\n",
             rust_pp_module_abs_path
         ));
-        File::open(rust_pp_module_abs_path.join("lldb_commands"))
-            .and_then(|mut file| file.read_to_string(&mut script_str))
-            .expect("Failed to read lldb_commands");
 
         // Set breakpoints on every line that contains the string "#break"
         let source_file_name = self.testpaths.file.file_name().unwrap();
