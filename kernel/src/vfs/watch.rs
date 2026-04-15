@@ -60,6 +60,15 @@ impl EventQueue {
         self.events.lock().pop_front()
     }
 
+    /// Re-insert an event at the **front** of the queue.
+    ///
+    /// Used by [`Watch::read`] to preserve an event when the caller's buffer
+    /// is too small to hold it.  Unlike [`push`], this bypasses the overflow
+    /// check because the event was already validated and queued once.
+    pub fn push_front(&self, event: WatchEvent, name: Option<String>) {
+        self.events.lock().push_front((event, name));
+    }
+
     pub fn is_empty(&self) -> bool {
         self.events.lock().is_empty()
     }
@@ -116,7 +125,10 @@ impl VfsNode for Watch {
         let total_size = header_size + name_bytes.len();
 
         if buf.len() < total_size {
-            // TODO: Re-push or handle partial reads? POSIX inotify returns EINVAL if buffer is too small for one event.
+            // Re-queue the event so it is not lost, then return EINVAL.
+            // Inotify semantics: the event is preserved; the caller must
+            // provide a buffer large enough to hold at least one event.
+            self.queue.push_front(event, name);
             return Err(Errno::EINVAL);
         }
 
@@ -203,5 +215,80 @@ pub fn emit_event(node: &dyn VfsNode, mask: u32, name: Option<&str>, cookie: u32
                 record.watch.queue.push(event, name);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use abi::vfs_watch::WatchEvent;
+
+    fn make_event(mask: u32) -> WatchEvent {
+        let mut e = WatchEvent::default();
+        e.mask = mask;
+        e
+    }
+
+    /// A too-small buffer must NOT drop the pending event.
+    #[test]
+    fn small_buffer_preserves_event() {
+        let watch = Watch::new(0xffff_ffff, 0);
+
+        watch.queue.push(make_event(1), None);
+
+        // Buffer is smaller than a WatchEvent header — must fail with EINVAL.
+        let mut tiny = [0u8; 1];
+        let result = watch.read(0, &mut tiny);
+        assert_eq!(result, Err(Errno::EINVAL));
+
+        // Event must still be in the queue.
+        assert!(!watch.queue.is_empty(), "event was dropped after EINVAL");
+    }
+
+    /// A correctly-sized buffer delivers the event and removes it from the queue.
+    #[test]
+    fn correct_size_buffer_delivers_event() {
+        let watch = Watch::new(0xffff_ffff, 0);
+
+        watch.queue.push(make_event(42), None);
+
+        let mut buf = vec![0u8; core::mem::size_of::<WatchEvent>()];
+        let n = watch.read(0, &mut buf).expect("read should succeed");
+        assert_eq!(n, core::mem::size_of::<WatchEvent>());
+        assert!(watch.queue.is_empty(), "queue should be empty after successful read");
+    }
+
+    /// Buffer too small for name portion must also preserve the event.
+    #[test]
+    fn small_buffer_with_name_preserves_event() {
+        let watch = Watch::new(0xffff_ffff, 0);
+
+        watch.queue.push(make_event(3), Some("hello.txt"));
+
+        // Just big enough for the header but not the name.
+        let mut buf = vec![0u8; core::mem::size_of::<WatchEvent>()];
+        let result = watch.read(0, &mut buf);
+        assert_eq!(result, Err(Errno::EINVAL));
+        assert!(!watch.queue.is_empty(), "event with name was dropped after EINVAL");
+    }
+
+    /// The re-queued event is returned on the next read with a large enough buffer.
+    #[test]
+    fn requeued_event_is_delivered_on_retry() {
+        let watch = Watch::new(0xffff_ffff, 0);
+        let name = "foo.txt";
+
+        watch.queue.push(make_event(7), Some(name));
+
+        // First attempt: too small.
+        let mut tiny = [0u8; 2];
+        assert_eq!(watch.read(0, &mut tiny), Err(Errno::EINVAL));
+
+        // Second attempt: large enough buffer.
+        let total = core::mem::size_of::<WatchEvent>() + name.len();
+        let mut buf = vec![0u8; total];
+        let n = watch.read(0, &mut buf).expect("retry read should succeed");
+        assert_eq!(n, total);
+        assert!(watch.queue.is_empty());
     }
 }
