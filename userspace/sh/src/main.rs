@@ -3,20 +3,21 @@
 
 extern crate alloc;
 
-use abi::errors::Errno;
-use abi::signal::{
-    SigAction, SigSet, SIG_IGN, SIGCONT, SIGINT, SIGTSTP, SIGTTIN, SIGTTOU,
-    wexitstatus, wifcontinued, wifexited, wifsignaled, wifstopped, wstopsig, wtermsig,
-};
-use abi::syscall::vfs_flags;
-use abi::types::{stdio_mode, waitpid_flags};
 use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
+
+use abi::errors::Errno;
+use abi::signal::{
+    SIG_IGN, SIGCONT, SIGINT, SIGTSTP, SIGTTIN, SIGTTOU, SigAction, SigSet, wexitstatus,
+    wifcontinued, wifexited, wifsignaled, wifstopped, wstopsig, wtermsig,
+};
+use abi::syscall::vfs_flags;
+use abi::termios;
+use abi::types::{stdio_mode, waitpid_flags};
 use stem::syscall;
-use stem::syscall::signal;
-use stem::syscall::vfs;
+use stem::syscall::{signal, vfs};
 
 const TTY_FD: u32 = 0;
 
@@ -55,10 +56,7 @@ impl Job {
     fn new(id: usize, pgid: u32, command: String, background: bool, pids: Vec<u32>) -> Self {
         let processes = pids
             .into_iter()
-            .map(|pid| ProcessEntry {
-                pid,
-                state: ProcessState::Running,
-            })
+            .map(|pid| ProcessEntry { pid, state: ProcessState::Running })
             .collect();
         Self {
             id,
@@ -192,13 +190,7 @@ impl<'a> Cmd<'a> {
             idx += 1;
         }
 
-        program.map(|program| Self {
-            program,
-            args,
-            stdin_file,
-            stdout_file,
-            stdout_append,
-        })
+        program.map(|program| Self { program, args, stdin_file, stdout_file, stdout_append })
     }
 }
 
@@ -222,12 +214,7 @@ impl Shell {
         let _ = signal::setpgid(0, 0);
         let shell_pgid = signal::getpgrp().unwrap_or(shell_pid as i32) as u32;
         let _ = vfs::tcsetpgrp(TTY_FD, shell_pgid);
-        Self {
-            shell_pgid,
-            jobs: Vec::new(),
-            next_job_id: 1,
-            last_foreground_status: None,
-        }
+        Self { shell_pgid, jobs: Vec::new(), next_job_id: 1, last_foreground_status: None }
     }
 
     fn reap_children(&mut self, nohang: bool) {
@@ -253,10 +240,8 @@ impl Shell {
     }
 
     fn handle_child_status(&mut self, pid: u32, status: i32) {
-        let Some(idx) = self
-            .jobs
-            .iter()
-            .position(|job| job.processes.iter().any(|process| process.pid == pid))
+        let Some(idx) =
+            self.jobs.iter().position(|job| job.processes.iter().any(|process| process.pid == pid))
         else {
             return;
         };
@@ -291,8 +276,7 @@ impl Shell {
             Ok((pgid, pids)) => {
                 let job_id = self.next_job_id;
                 self.next_job_id += 1;
-                self.jobs
-                    .push(Job::new(job_id, pgid, String::from(command), background, pids));
+                self.jobs.push(Job::new(job_id, pgid, String::from(command), background, pids));
 
                 if background {
                     let msg = format!("[{}] {}\n", job_id, pgid);
@@ -405,9 +389,7 @@ impl Shell {
             return self.job_index(id);
         }
 
-        self.jobs
-            .iter()
-            .rposition(|job| job.state != JobState::Completed)
+        self.jobs.iter().rposition(|job| job.state != JobState::Completed)
     }
 
     fn job_index(&self, job_id: usize) -> Option<usize> {
@@ -424,12 +406,7 @@ impl Shell {
 }
 
 fn install_signal_handlers() {
-    let ignore = SigAction {
-        handler: SIG_IGN,
-        mask: SigSet::EMPTY,
-        flags: 0,
-        restorer: 0,
-    };
+    let ignore = SigAction { handler: SIG_IGN, mask: SigSet::EMPTY, flags: 0, restorer: 0 };
     let _ = signal::sigaction(SIGINT, Some(&ignore), None);
     let _ = signal::sigaction(SIGTSTP, Some(&ignore), None);
     let _ = signal::sigaction(SIGTTIN, Some(&ignore), None);
@@ -448,20 +425,215 @@ fn prompt() {
     }
 }
 
+struct TtyModeGuard {
+    original: Option<termios::Termios>,
+}
+
+impl TtyModeGuard {
+    fn raw(fd: u32) -> Self {
+        let mut original = termios::Termios::default();
+        if vfs::tcgetattr(fd, &mut original).is_err() {
+            return Self { original: None };
+        }
+
+        let mut raw = original;
+        raw.c_lflag &=
+            !(termios::ICANON | termios::ECHO | termios::ECHOE | termios::ECHONL | termios::ISIG);
+        raw.c_cc[termios::VMIN] = 1;
+        raw.c_cc[termios::VTIME] = 0;
+        if vfs::tcsetattr(fd, &raw).is_err() {
+            return Self { original: None };
+        }
+
+        Self { original: Some(original) }
+    }
+
+    fn is_active(&self) -> bool {
+        self.original.is_some()
+    }
+}
+
+impl Drop for TtyModeGuard {
+    fn drop(&mut self) {
+        if let Some(original) = self.original.as_ref() {
+            let _ = vfs::tcsetattr(TTY_FD, original);
+        }
+    }
+}
+
+fn is_word_byte(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || byte == b'_'
+}
+
+fn trailing_word_start(bytes: &[u8]) -> Option<usize> {
+    if bytes.is_empty() || !is_word_byte(*bytes.last()?) {
+        return None;
+    }
+
+    let mut idx = bytes.len() - 1;
+    while idx > 0 && is_word_byte(bytes[idx - 1]) {
+        idx -= 1;
+    }
+    Some(idx)
+}
+
+fn common_prefix_len(candidates: &[String]) -> usize {
+    let Some(first) = candidates.first() else {
+        return 0;
+    };
+
+    let first_bytes = first.as_bytes();
+    let mut shared = first_bytes.len();
+    for candidate in candidates.iter().skip(1) {
+        let candidate_bytes = candidate.as_bytes();
+        let mut idx = 0;
+        while idx < shared
+            && idx < candidate_bytes.len()
+            && candidate_bytes[idx] == first_bytes[idx]
+        {
+            idx += 1;
+        }
+        shared = idx;
+        if shared == 0 {
+            break;
+        }
+    }
+    shared
+}
+
+fn complete_from_current_dir(fragment: &str) -> Option<String> {
+    if fragment.is_empty() {
+        return None;
+    }
+
+    let fd = vfs::vfs_open(".", vfs_flags::O_RDONLY).ok()?;
+    let mut matches = Vec::new();
+    let mut buf = [0u8; 1024];
+
+    loop {
+        match vfs::vfs_readdir(fd, &mut buf) {
+            Ok(0) => break,
+            Ok(n) => {
+                let mut offset = 0;
+                while offset < n {
+                    let mut end = offset;
+                    while end < n && buf[end] != 0 {
+                        end += 1;
+                    }
+
+                    if let Ok(name) = core::str::from_utf8(&buf[offset..end]) {
+                        if !name.is_empty() && name.starts_with(fragment) {
+                            matches.push(String::from(name));
+                        }
+                    }
+
+                    offset = end + 1;
+                }
+            }
+            Err(_) => break,
+        }
+    }
+
+    let _ = syscall::vfs_close(fd);
+
+    if matches.is_empty() {
+        return None;
+    }
+
+    matches.sort();
+    if matches.len() == 1 {
+        let mut completion = matches.remove(0);
+        completion.push(' ');
+        return Some(completion);
+    }
+
+    let shared = common_prefix_len(&matches);
+    if shared > fragment.len() {
+        return Some(String::from(&matches[0][..shared]));
+    }
+
+    None
+}
+
+fn redraw_line(bytes: &[u8]) {
+    write_str("\r\x1B[K");
+    prompt();
+    if let Ok(text) = core::str::from_utf8(bytes) {
+        write_str(text);
+    }
+}
+
 fn read_line() -> ReadLineResult {
-    let mut buf = [0u8; 512];
+    let tty_guard = TtyModeGuard::raw(TTY_FD);
+    if !tty_guard.is_active() {
+        let mut buf = [0u8; 512];
+        let mut bytes = Vec::new();
+        loop {
+            match syscall::vfs_read(0, &mut buf) {
+                Ok(0) => return ReadLineResult::Eof,
+                Ok(n) => {
+                    for &b in &buf[..n] {
+                        bytes.push(b);
+                        if b == b'\n' {
+                            return ReadLineResult::Line(
+                                String::from_utf8(bytes).unwrap_or_default(),
+                            );
+                        }
+                    }
+                }
+                Err(Errno::EINTR) => return ReadLineResult::Interrupted,
+                Err(_) => return ReadLineResult::Eof,
+            }
+        }
+    }
+
+    let _tty_guard = tty_guard;
+    let mut buf = [0u8; 1];
     let mut bytes = Vec::new();
+
     loop {
         match syscall::vfs_read(0, &mut buf) {
             Ok(0) => return ReadLineResult::Eof,
-            Ok(n) => {
-                for &b in &buf[..n] {
-                    bytes.push(b);
-                    if b == b'\n' {
-                        return ReadLineResult::Line(String::from_utf8(bytes).unwrap_or_default());
+            Ok(_) => match buf[0] {
+                b'\r' | b'\n' => {
+                    write_str("\n");
+                    bytes.push(b'\n');
+                    return ReadLineResult::Line(String::from_utf8(bytes).unwrap_or_default());
+                }
+                0x03 => {
+                    write_str("^C\n");
+                    return ReadLineResult::Interrupted;
+                }
+                0x04 => {
+                    if bytes.is_empty() {
+                        return ReadLineResult::Eof;
                     }
                 }
-            }
+                0x08 | 0x7f => {
+                    if bytes.pop().is_some() {
+                        write_str("\x08 \x08");
+                    }
+                }
+                b'\t' => {
+                    let Some(start) = trailing_word_start(&bytes) else {
+                        continue;
+                    };
+                    let Ok(fragment) = core::str::from_utf8(&bytes[start..]) else {
+                        continue;
+                    };
+                    let Some(completion) = complete_from_current_dir(fragment) else {
+                        continue;
+                    };
+
+                    bytes.truncate(start);
+                    bytes.extend_from_slice(completion.as_bytes());
+                    redraw_line(&bytes);
+                }
+                b => {
+                    bytes.push(b);
+                    let _ = syscall::vfs_write(1, &buf);
+                }
+            },
             Err(Errno::EINTR) => return ReadLineResult::Interrupted,
             Err(_) => return ReadLineResult::Eof,
         }
@@ -487,10 +659,7 @@ fn parse_line<'a>(line: &'a str) -> (Vec<Cmd<'a>>, bool) {
     }
     segments.push(current);
 
-    let cmds = segments
-        .iter()
-        .filter_map(|segment| Cmd::parse(segment))
-        .collect();
+    let cmds = segments.iter().filter_map(|segment| Cmd::parse(segment)).collect();
     (cmds, background)
 }
 
@@ -523,16 +692,8 @@ fn spawn_job(cmds: &[Cmd<'_>], background: bool) -> Result<(u32, Vec<u32>), Errn
         pipes.push(pair);
     }
 
-    let bg_in = if background {
-        Some(open_read("/dev/null")?)
-    } else {
-        None
-    };
-    let bg_out = if background {
-        Some(open_write("/dev/null", false)?)
-    } else {
-        None
-    };
+    let bg_in = if background { Some(open_read("/dev/null")?) } else { None };
+    let bg_out = if background { Some(open_write("/dev/null", false)?) } else { None };
 
     let env = BTreeMap::new();
     let mut spawned = Vec::new();
@@ -579,11 +740,8 @@ fn spawn_job(cmds: &[Cmd<'_>], background: bool) -> Result<(u32, Vec<u32>), Errn
             stdio_mode::INHERIT
         };
 
-        let stderr_mode = if background {
-            stdio_mode::fd(bg_out.unwrap())
-        } else {
-            stdio_mode::INHERIT
-        };
+        let stderr_mode =
+            if background { stdio_mode::fd(bg_out.unwrap()) } else { stdio_mode::INHERIT };
 
         match syscall::spawn_process_ex(
             &path,
@@ -629,12 +787,7 @@ fn spawn_job(cmds: &[Cmd<'_>], background: bool) -> Result<(u32, Vec<u32>), Errn
     Ok((pgid, spawned))
 }
 
-fn cleanup_fds(
-    pipes: &[[u32; 2]],
-    transient_fds: &[u32],
-    bg_in: Option<u32>,
-    bg_out: Option<u32>,
-) {
+fn cleanup_fds(pipes: &[[u32; 2]], transient_fds: &[u32], bg_in: Option<u32>, bg_out: Option<u32>) {
     for pair in pipes {
         let _ = syscall::vfs_close(pair[0]);
         let _ = syscall::vfs_close(pair[1]);
