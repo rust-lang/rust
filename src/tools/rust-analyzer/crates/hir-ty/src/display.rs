@@ -54,9 +54,10 @@ use crate::{
     lower::GenericPredicates,
     mir::pad16,
     next_solver::{
-        AliasTy, Clause, ClauseKind, Const, ConstKind, DbInterner, ExistentialPredicate, FnSig,
-        GenericArg, GenericArgKind, GenericArgs, ParamEnv, PolyFnSig, Region, SolverDefId,
-        StoredEarlyBinder, StoredTy, Term, TermKind, TraitRef, Ty, TyKind, TypingMode,
+        AliasTy, Allocation, Clause, ClauseKind, Const, ConstKind, DbInterner,
+        ExistentialPredicate, FnSig, GenericArg, GenericArgKind, GenericArgs, ParamEnv, PolyFnSig,
+        Region, SolverDefId, StoredEarlyBinder, StoredTy, Term, TermKind, TraitRef, Ty, TyKind,
+        TypingMode, ValTree,
         abi::Safety,
         infer::{DbInternerInferExt, traits::ObligationCause},
     },
@@ -646,7 +647,7 @@ fn write_projection<'db>(
                     ClauseKind::TypeOutlives(t) => t.0,
                     _ => return false,
                 };
-                let TyKind::Alias(AliasTyKind::Projection, a) = ty.kind() else {
+                let TyKind::Alias(a) = ty.kind() else {
                     return false;
                 };
                 a == *alias
@@ -657,7 +658,7 @@ fn write_projection<'db>(
                 write_bounds_like_dyn_trait_with_prefix(
                     f,
                     "impl",
-                    Either::Left(Ty::new_alias(f.interner, AliasTyKind::Projection, *alias)),
+                    Either::Left(Ty::new_alias(f.interner, *alias)),
                     &bounds,
                     SizedByDefault::NotSized,
                     needs_parens_if_multi,
@@ -673,7 +674,7 @@ fn write_projection<'db>(
     write!(
         f,
         ">::{}",
-        TypeAliasSignature::of(f.db, alias.def_id.expect_type_alias())
+        TypeAliasSignature::of(f.db, alias.kind.def_id().expect_type_alias())
             .name
             .display(f.db, f.edition())
     )?;
@@ -688,6 +689,12 @@ impl<'db> HirDisplay<'db> for GenericArg<'db> {
             GenericArgKind::Lifetime(lt) => lt.hir_fmt(f),
             GenericArgKind::Const(c) => c.hir_fmt(f),
         }
+    }
+}
+
+impl<'db> HirDisplay<'db> for Allocation<'db> {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
+        render_const_scalar(f, &self.memory, &self.memory_map, self.ty)
     }
 }
 
@@ -710,12 +717,7 @@ impl<'db> HirDisplay<'db> for Const<'db> {
                 f.end_location_link();
                 Ok(())
             }
-            ConstKind::Value(const_bytes) => render_const_scalar(
-                f,
-                &const_bytes.value.inner().memory,
-                &const_bytes.value.inner().memory_map,
-                const_bytes.ty,
-            ),
+            ConstKind::Value(value) => render_const_scalar_from_valtree(f, value.ty, value.value),
             ConstKind::Unevaluated(unev) => {
                 let c = unev.def.0;
                 write!(f, "{}", c.name(f.db))?;
@@ -1005,12 +1007,157 @@ fn render_const_scalar_inner<'db>(
         TyKind::Pat(_, _) => f.write_str("<pat>"),
         TyKind::Error(..)
         | TyKind::Placeholder(_)
-        | TyKind::Alias(_, _)
+        | TyKind::Alias(..)
         | TyKind::Param(_)
         | TyKind::Bound(_, _)
         | TyKind::Infer(_) => f.write_str("<placeholder-or-unknown-type>"),
         // The below arms are unreachable, since we handled them in ref case.
         TyKind::Slice(_) | TyKind::Str | TyKind::Dynamic(_, _) => f.write_str("<unsized-value>"),
+    }
+}
+
+fn render_const_scalar_from_valtree<'db>(
+    f: &mut HirFormatter<'_, 'db>,
+    ty: Ty<'db>,
+    valtree: ValTree<'db>,
+) -> Result {
+    let param_env = ParamEnv::empty();
+    let infcx = f.interner.infer_ctxt().build(TypingMode::PostAnalysis);
+    let ty = infcx.at(&ObligationCause::new(), param_env).deeply_normalize(ty).unwrap_or(ty);
+    render_const_scalar_from_valtree_inner(f, ty, valtree, param_env)
+}
+
+fn render_const_scalar_from_valtree_inner<'db>(
+    f: &mut HirFormatter<'_, 'db>,
+    ty: Ty<'db>,
+    valtree: ValTree<'db>,
+    _param_env: ParamEnv<'db>,
+) -> Result {
+    use TyKind;
+    match ty.kind() {
+        TyKind::Bool => write!(f, "{}", valtree.inner().to_leaf().try_to_bool().unwrap()),
+        TyKind::Char => {
+            let it = valtree.inner().to_leaf().to_u32();
+            let Ok(c) = char::try_from(it) else {
+                return f.write_str("<unicode-error>");
+            };
+            write!(f, "{c:?}")
+        }
+        TyKind::Int(_) => {
+            let it = valtree.inner().to_leaf().to_int_unchecked();
+            write!(f, "{it}")
+        }
+        TyKind::Uint(_) => {
+            let it = valtree.inner().to_leaf().to_uint_unchecked();
+            write!(f, "{it}")
+        }
+        TyKind::Float(fl) => match fl {
+            FloatTy::F16 => {
+                // FIXME(#17451): Replace with builtins once they are stabilised.
+                let it = f16::from_bits(valtree.inner().to_leaf().to_u16() as u128);
+                let s = it.to_string();
+                if s.strip_prefix('-').unwrap_or(&s).chars().all(|c| c.is_ascii_digit()) {
+                    // Match Rust debug formatting
+                    write!(f, "{s}.0")
+                } else {
+                    write!(f, "{s}")
+                }
+            }
+            FloatTy::F32 => {
+                let it = f32::from_bits(valtree.inner().to_leaf().to_u32());
+                write!(f, "{it:?}")
+            }
+            FloatTy::F64 => {
+                let it = f64::from_bits(valtree.inner().to_leaf().to_u64());
+                write!(f, "{it:?}")
+            }
+            FloatTy::F128 => {
+                // FIXME(#17451): Replace with builtins once they are stabilised.
+                let it = f128::from_bits(valtree.inner().to_leaf().to_u128());
+                let s = it.to_string();
+                if s.strip_prefix('-').unwrap_or(&s).chars().all(|c| c.is_ascii_digit()) {
+                    // Match Rust debug formatting
+                    write!(f, "{s}.0")
+                } else {
+                    write!(f, "{s}")
+                }
+            }
+        },
+        TyKind::Ref(_, inner_ty, _) => {
+            render_const_scalar_from_valtree_inner(f, inner_ty, valtree, _param_env)
+        }
+        TyKind::Str => {
+            let bytes = valtree
+                .inner()
+                .to_branch()
+                .iter()
+                .map(|konst| match konst.kind() {
+                    ConstKind::Value(value) => Some(value.value.inner().to_leaf().to_u8()),
+                    _ => None,
+                })
+                .collect::<Option<Vec<_>>>();
+            let Some(bytes) = bytes else { return f.write_str("<invalid-str>") };
+            let s = std::str::from_utf8(&bytes).unwrap_or("<utf8-error>");
+            write!(f, "{s:?}")
+        }
+        TyKind::Slice(inner_ty) | TyKind::Array(inner_ty, _) => {
+            let mut first = true;
+            write!(f, "[")?;
+            for item in valtree.inner().to_branch() {
+                if !first {
+                    write!(f, ", ")?;
+                } else {
+                    first = false;
+                }
+                let ConstKind::Value(value) = item.kind() else {
+                    return f.write_str("<invalid-const>");
+                };
+                render_const_scalar_from_valtree_inner(f, inner_ty, value.value, _param_env)?;
+            }
+            write!(f, "]")
+        }
+        TyKind::Tuple(tys) => {
+            let mut first = true;
+            write!(f, "(")?;
+            for (inner_ty, item) in std::iter::zip(tys, valtree.inner().to_branch()) {
+                if !first {
+                    write!(f, ", ")?;
+                } else {
+                    first = false;
+                }
+                let ConstKind::Value(value) = item.kind() else {
+                    return f.write_str("<invalid-const>");
+                };
+                render_const_scalar_from_valtree_inner(f, inner_ty, value.value, _param_env)?;
+            }
+            write!(f, ")")
+        }
+        TyKind::Adt(..) => {
+            // FIXME: ADTs, requires `adt_const_params`.
+            f.write_str("<adt>")
+        }
+        TyKind::FnDef(..) => ty.hir_fmt(f),
+        TyKind::FnPtr(_, _) | TyKind::RawPtr(_, _) => {
+            let it = valtree.inner().to_leaf().to_uint_unchecked();
+            write!(f, "{it:#X} as ")?;
+            ty.hir_fmt(f)
+        }
+        TyKind::Never => f.write_str("!"),
+        TyKind::Closure(_, _) => f.write_str("<closure>"),
+        TyKind::Coroutine(_, _) => f.write_str("<coroutine>"),
+        TyKind::CoroutineWitness(_, _) => f.write_str("<coroutine-witness>"),
+        TyKind::CoroutineClosure(_, _) => f.write_str("<coroutine-closure>"),
+        TyKind::UnsafeBinder(_) => f.write_str("<unsafe-binder>"),
+        // The below arms are unreachable, since const eval will bail out before here.
+        TyKind::Foreign(_) => f.write_str("<extern-type>"),
+        TyKind::Pat(_, _) => f.write_str("<pat>"),
+        TyKind::Error(..)
+        | TyKind::Placeholder(_)
+        | TyKind::Alias(..)
+        | TyKind::Param(_)
+        | TyKind::Bound(_, _)
+        | TyKind::Infer(_) => f.write_str("<placeholder-or-unknown-type>"),
+        TyKind::Dynamic(_, _) => f.write_str("<dyn-trait>"),
     }
 }
 
@@ -1280,7 +1427,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
 
                 hir_fmt_generics(f, parameters.as_slice(), Some(def.def_id().0.into()), None)?;
             }
-            TyKind::Alias(AliasTyKind::Projection, alias_ty) => {
+            TyKind::Alias(alias_ty @ AliasTy { kind: AliasTyKind::Projection { .. }, .. }) => {
                 write_projection(f, &alias_ty, trait_bounds_need_parens)?
             }
             TyKind::Foreign(alias) => {
@@ -1289,8 +1436,8 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 write!(f, "{}", type_alias.name.display(f.db, f.edition()))?;
                 f.end_location_link();
             }
-            TyKind::Alias(AliasTyKind::Opaque, alias_ty) => {
-                let opaque_ty_id = match alias_ty.def_id {
+            TyKind::Alias(alias_ty @ AliasTy { kind: AliasTyKind::Opaque { def_id }, .. }) => {
+                let opaque_ty_id = match def_id {
                     SolverDefId::InternedOpaqueTyId(id) => id,
                     _ => unreachable!(),
                 };
@@ -1585,7 +1732,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
             TyKind::CoroutineWitness(..) => write!(f, "{{coroutine witness}}")?,
             TyKind::Pat(_, _) => write!(f, "{{pat}}")?,
             TyKind::UnsafeBinder(_) => write!(f, "{{unsafe binder}}")?,
-            TyKind::Alias(_, _) => write!(f, "{{alias}}")?,
+            TyKind::Alias(..) => write!(f, "{{alias}}")?,
         }
         Ok(())
     }

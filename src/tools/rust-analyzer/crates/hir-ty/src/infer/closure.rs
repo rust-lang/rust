@@ -364,7 +364,7 @@ impl<'db> InferenceContext<'_, 'db> {
         closure_kind: ClosureKind,
     ) -> (Option<PolyFnSig<'db>>, Option<rustc_type_ir::ClosureKind>) {
         match expected_ty.kind() {
-            TyKind::Alias(rustc_type_ir::Opaque, AliasTy { def_id, args, .. }) => self
+            TyKind::Alias(AliasTy { kind: rustc_type_ir::Opaque { def_id }, args, .. }) => self
                 .deduce_closure_signature_from_predicates(
                     expected_ty,
                     closure_kind,

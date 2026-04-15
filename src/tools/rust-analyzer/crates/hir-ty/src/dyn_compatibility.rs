@@ -21,8 +21,9 @@ use crate::{
     db::{HirDatabase, InternedOpaqueTyId},
     lower::{GenericPredicates, associated_ty_item_bounds},
     next_solver::{
-        Binder, Clause, Clauses, DbInterner, EarlyBinder, GenericArgs, Goal, ParamEnv, ParamTy,
-        SolverDefId, TraitPredicate, TraitRef, Ty, TypingMode, infer::DbInternerInferExt, mk_param,
+        AliasTy, Binder, Clause, Clauses, DbInterner, EarlyBinder, GenericArgs, Goal, ParamEnv,
+        ParamTy, SolverDefId, TraitPredicate, TraitRef, Ty, TypingMode, infer::DbInternerInferExt,
+        mk_param,
     },
     traits::next_trait_solve_in_ctxt,
 };
@@ -239,30 +240,30 @@ fn contains_illegal_self_type_reference<'db, T: rustc_type_ir::TypeVisitable<DbI
             match ty.kind() {
                 rustc_type_ir::TyKind::Param(param) if param.index == 0 => ControlFlow::Break(()),
                 rustc_type_ir::TyKind::Param(_) => ControlFlow::Continue(()),
-                rustc_type_ir::TyKind::Alias(AliasTyKind::Projection, proj) => {
-                    match self.allow_self_projection {
-                        AllowSelfProjection::Yes => {
-                            let trait_ = proj.trait_def_id(interner);
-                            let trait_ = match trait_ {
-                                SolverDefId::TraitId(id) => id,
-                                _ => unreachable!(),
-                            };
-                            if self.super_traits.is_none() {
-                                self.super_traits = Some(
-                                    elaborate::supertrait_def_ids(interner, self.trait_.into())
-                                        .map(|super_trait| super_trait.0)
-                                        .collect(),
-                                )
-                            }
-                            if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
-                                ControlFlow::Continue(())
-                            } else {
-                                ty.super_visit_with(self)
-                            }
+                rustc_type_ir::TyKind::Alias(
+                    proj @ AliasTy { kind: AliasTyKind::Projection { .. }, .. },
+                ) => match self.allow_self_projection {
+                    AllowSelfProjection::Yes => {
+                        let trait_ = proj.trait_def_id(interner);
+                        let trait_ = match trait_ {
+                            SolverDefId::TraitId(id) => id,
+                            _ => unreachable!(),
+                        };
+                        if self.super_traits.is_none() {
+                            self.super_traits = Some(
+                                elaborate::supertrait_def_ids(interner, self.trait_.into())
+                                    .map(|super_trait| super_trait.0)
+                                    .collect(),
+                            )
                         }
-                        AllowSelfProjection::No => ty.super_visit_with(self),
+                        if self.super_traits.as_ref().is_some_and(|s| s.contains(&trait_)) {
+                            ControlFlow::Continue(())
+                        } else {
+                            ty.super_visit_with(self)
+                        }
                     }
-                }
+                    AllowSelfProjection::No => ty.super_visit_with(self),
+                },
                 _ => ty.super_visit_with(self),
             }
         }
@@ -503,8 +504,12 @@ fn contains_illegal_impl_trait_in_trait<'db>(
             &mut self,
             ty: <DbInterner<'db> as rustc_type_ir::Interner>::Ty,
         ) -> Self::Result {
-            if let rustc_type_ir::TyKind::Alias(AliasTyKind::Opaque, op) = ty.kind() {
-                let id = match op.def_id {
+            if let rustc_type_ir::TyKind::Alias(AliasTy {
+                kind: AliasTyKind::Opaque { def_id },
+                ..
+            }) = ty.kind()
+            {
+                let id = match def_id {
                     SolverDefId::InternedOpaqueTyId(id) => id,
                     _ => unreachable!(),
                 };

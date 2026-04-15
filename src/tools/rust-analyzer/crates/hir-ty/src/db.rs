@@ -21,8 +21,8 @@ use crate::{
     lower::{Diagnostics, GenericDefaults},
     mir::{BorrowckResult, MirBody, MirLowerError},
     next_solver::{
-        Const, EarlyBinder, GenericArgs, ParamEnv, PolyFnSig, StoredEarlyBinder, StoredGenericArgs,
-        StoredTy, TraitRef, Ty, VariancesOf,
+        Allocation, EarlyBinder, GenericArgs, ParamEnv, PolyFnSig, StoredEarlyBinder,
+        StoredGenericArgs, StoredTy, TraitRef, Ty, VariancesOf,
     },
     traits::{ParamEnvAndCrate, StoredParamEnvAndCrate},
 };
@@ -68,11 +68,11 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         def: ConstId,
         subst: GenericArgs<'db>,
         trait_env: Option<ParamEnvAndCrate<'db>>,
-    ) -> Result<Const<'db>, ConstEvalError>;
+    ) -> Result<Allocation<'db>, ConstEvalError>;
 
     #[salsa::invoke(crate::consteval::const_eval_static)]
     #[salsa::transparent]
-    fn const_eval_static<'db>(&'db self, def: StaticId) -> Result<Const<'db>, ConstEvalError>;
+    fn const_eval_static<'db>(&'db self, def: StaticId) -> Result<Allocation<'db>, ConstEvalError>;
 
     #[salsa::invoke(crate::consteval::const_eval_discriminant_variant)]
     #[salsa::cycle(cycle_result = crate::consteval::const_eval_discriminant_cycle_result)]

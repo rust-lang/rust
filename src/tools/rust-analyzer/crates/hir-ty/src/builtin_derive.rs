@@ -20,8 +20,8 @@ use crate::{
     GenericPredicates,
     db::HirDatabase,
     next_solver::{
-        Clause, Clauses, DbInterner, EarlyBinder, GenericArgs, ParamEnv, StoredEarlyBinder,
-        StoredTy, TraitRef, Ty, TyKind, fold::fold_tys, generics::Generics,
+        AliasTy, Clause, Clauses, DbInterner, EarlyBinder, GenericArgs, ParamEnv,
+        StoredEarlyBinder, StoredTy, TraitRef, Ty, TyKind, fold::fold_tys, generics::Generics,
     },
 };
 
@@ -342,7 +342,7 @@ fn extend_assoc_type_bounds<'db>(
         type Result = ();
 
         fn visit_ty(&mut self, t: Ty<'db>) -> Self::Result {
-            if let TyKind::Alias(AliasTyKind::Projection, _) = t.kind() {
+            if let TyKind::Alias(AliasTy { kind: AliasTyKind::Projection { .. }, .. }) = t.kind() {
                 self.assoc_type_bounds.push(
                     TraitRef::new_from_args(
                         self.interner,
@@ -546,49 +546,49 @@ struct WithGenerics<'a, T: Trait, const N: usize>(&'a [T; N], T::Assoc);
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Debug, polarity:Positive), bound_vars: [] })
-                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): Debug, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(AliasTy { args: [#1], kind: Projection { def_id: TypeAliasId("Assoc") }, .. }): Debug, polarity:Positive), bound_vars: [] })
 
                 Clause(Binder { value: TraitPredicate(#1: Trait, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Clone, polarity:Positive), bound_vars: [] })
-                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): Clone, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(AliasTy { args: [#1], kind: Projection { def_id: TypeAliasId("Assoc") }, .. }): Clone, polarity:Positive), bound_vars: [] })
 
                 Clause(Binder { value: TraitPredicate(#1: Trait, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Copy, polarity:Positive), bound_vars: [] })
-                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): Copy, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(AliasTy { args: [#1], kind: Projection { def_id: TypeAliasId("Assoc") }, .. }): Copy, polarity:Positive), bound_vars: [] })
 
                 Clause(Binder { value: TraitPredicate(#1: Trait, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: PartialEq<[#1]>, polarity:Positive), bound_vars: [] })
-                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): PartialEq<[Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. })]>, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(AliasTy { args: [#1], kind: Projection { def_id: TypeAliasId("Assoc") }, .. }): PartialEq<[Alias(AliasTy { args: [#1], kind: Projection { def_id: TypeAliasId("Assoc") }, .. })]>, polarity:Positive), bound_vars: [] })
 
                 Clause(Binder { value: TraitPredicate(#1: Trait, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Eq, polarity:Positive), bound_vars: [] })
-                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): Eq, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(AliasTy { args: [#1], kind: Projection { def_id: TypeAliasId("Assoc") }, .. }): Eq, polarity:Positive), bound_vars: [] })
 
                 Clause(Binder { value: TraitPredicate(#1: Trait, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: PartialOrd<[#1]>, polarity:Positive), bound_vars: [] })
-                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): PartialOrd<[Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. })]>, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(AliasTy { args: [#1], kind: Projection { def_id: TypeAliasId("Assoc") }, .. }): PartialOrd<[Alias(AliasTy { args: [#1], kind: Projection { def_id: TypeAliasId("Assoc") }, .. })]>, polarity:Positive), bound_vars: [] })
 
                 Clause(Binder { value: TraitPredicate(#1: Trait, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Ord, polarity:Positive), bound_vars: [] })
-                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): Ord, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(AliasTy { args: [#1], kind: Projection { def_id: TypeAliasId("Assoc") }, .. }): Ord, polarity:Positive), bound_vars: [] })
 
                 Clause(Binder { value: TraitPredicate(#1: Trait, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: ConstArgHasType(#2, usize), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Sized, polarity:Positive), bound_vars: [] })
                 Clause(Binder { value: TraitPredicate(#1: Hash, polarity:Positive), bound_vars: [] })
-                Clause(Binder { value: TraitPredicate(Alias(Projection, AliasTy { args: [#1], def_id: TypeAliasId("Assoc"), .. }): Hash, polarity:Positive), bound_vars: [] })
+                Clause(Binder { value: TraitPredicate(Alias(AliasTy { args: [#1], kind: Projection { def_id: TypeAliasId("Assoc") }, .. }): Hash, polarity:Positive), bound_vars: [] })
 
             "#]],
         );

@@ -160,7 +160,7 @@ fn moved_out_of_ref<'db>(
                 result.push(MovedOutOfRef { span: op.span.unwrap_or(span), ty: ty.store() });
             }
         }
-        OperandKind::Constant { .. } | OperandKind::Static(_) => (),
+        OperandKind::Constant { .. } | OperandKind::Static(_) | OperandKind::Allocation { .. } => {}
     };
     for (_, block) in body.basic_blocks.iter() {
         db.unwind_if_revision_cancelled();
@@ -254,7 +254,7 @@ fn partially_moved<'db>(
                 result.push(PartiallyMoved { span, ty: ty.store(), local: p.local });
             }
         }
-        OperandKind::Constant { .. } | OperandKind::Static(_) => (),
+        OperandKind::Constant { .. } | OperandKind::Static(_) | OperandKind::Allocation { .. } => {}
     };
     for (_, block) in body.basic_blocks.iter() {
         db.unwind_if_revision_cancelled();

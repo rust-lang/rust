@@ -1493,8 +1493,8 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             hir_def::hir::Literal::Uint(it, _) => Box::from(&it.to_le_bytes()[0..size()?]),
             hir_def::hir::Literal::Float(f, _) => match size()? {
                 16 => Box::new(f.to_f128().to_bits().to_le_bytes()),
-                8 => Box::new(f.to_f64().to_le_bytes()),
-                4 => Box::new(f.to_f32().to_le_bytes()),
+                8 => Box::new(f.to_f64().to_bits().to_le_bytes()),
+                4 => Box::new(f.to_f32().to_bits().to_le_bytes()),
                 2 => Box::new(u16::try_from(f.to_f16().to_bits()).unwrap().to_le_bytes()),
                 _ => {
                     return Err(MirLowerError::TypeError(
@@ -1528,31 +1528,14 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
         subst: GenericArgs<'db>,
         const_id: GeneralConstId,
     ) -> Result<'db, Operand> {
-        let konst = if !subst.is_empty() {
-            // We can't evaluate constant with substitution now, as generics are not monomorphized in lowering.
-            Const::new_unevaluated(
-                self.interner(),
-                UnevaluatedConst { def: const_id.into(), args: subst },
-            )
-        } else {
-            match const_id {
-                id @ GeneralConstId::ConstId(const_id) => {
-                    self.db.const_eval(const_id, subst, None).map_err(|e| {
-                        let name = id.name(self.db);
-                        MirLowerError::ConstEvalError(name.into(), Box::new(e))
-                    })?
-                }
-                GeneralConstId::StaticId(static_id) => {
-                    self.db.const_eval_static(static_id).map_err(|e| {
-                        let name = const_id.name(self.db);
-                        MirLowerError::ConstEvalError(name.into(), Box::new(e))
-                    })?
-                }
-                GeneralConstId::AnonConstId(_) => {
-                    return Err(MirLowerError::IncompleteExpr);
-                }
-            }
-        };
+        if matches!(const_id, GeneralConstId::AnonConstId(_)) {
+            // FIXME:
+            not_supported!("anon consts are not supported yet in const eval");
+        }
+        let konst = Const::new_unevaluated(
+            self.interner(),
+            UnevaluatedConst { def: const_id.into(), args: subst },
+        );
         let ty = self
             .db
             .value_ty(match const_id {

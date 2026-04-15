@@ -1663,7 +1663,7 @@ fn coerce<'db>(
                         Const::new_bound(
                             self.interner,
                             self.debruijn,
-                            BoundConst { var: BoundVar::from_usize(i) },
+                            BoundConst::new(BoundVar::from_usize(i)),
                         )
                     },
                 )

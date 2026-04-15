@@ -537,8 +537,11 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         let args = GenericArgs::identity_for_item(self.interner, opaque_ty_id);
                         Ty::new_alias(
                             self.interner,
-                            AliasTyKind::Opaque,
-                            AliasTy::new_from_args(self.interner, opaque_ty_id, args),
+                            AliasTy::new_from_args(
+                                self.interner,
+                                AliasTyKind::Opaque { def_id: opaque_ty_id },
+                                args,
+                            ),
                         )
                     }
                     ImplTraitLoweringMode::Disallowed => {
@@ -1039,8 +1042,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         let args = GenericArgs::identity_for_item(interner, def_id);
         let self_ty = Ty::new_alias(
             self.interner,
-            rustc_type_ir::AliasTyKind::Opaque,
-            AliasTy::new_from_args(interner, def_id, args),
+            AliasTy::new_from_args(interner, rustc_type_ir::Opaque { def_id }, args),
         );
         let (predicates, assoc_ty_bounds_start) =
             self.with_shifted_in(DebruijnIndex::from_u32(1), |ctx| {

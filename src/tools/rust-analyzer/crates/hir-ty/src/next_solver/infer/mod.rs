@@ -30,7 +30,7 @@ use unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 
 pub use crate::next_solver::infer::traits::ObligationInspector;
 use crate::next_solver::{
-    ArgOutlivesPredicate, BoundConst, BoundRegion, BoundTy, BoundVarKind, Goal, Predicate,
+    ArgOutlivesPredicate, BoundConst, BoundRegion, BoundTy, BoundVariableKind, Goal, Predicate,
     SolverContext,
     fold::BoundVarReplacerDelegate,
     infer::{at::ToTrace, select::EvaluationResult, traits::PredicateObligation},
@@ -53,7 +53,7 @@ mod outlives;
 pub mod region_constraints;
 pub mod relate;
 pub mod resolve;
-pub(crate) mod select;
+pub mod select;
 pub(crate) mod snapshot;
 pub(crate) mod traits;
 mod type_variable;
@@ -366,7 +366,7 @@ impl<'db> InferCtxtBuilder<'db> {
     where
         T: TypeFoldable<DbInterner<'db>>,
     {
-        let infcx = self.build(input.typing_mode);
+        let infcx = self.build(input.typing_mode.0);
         let (value, args) = infcx.instantiate_canonical(&input.canonical);
         (infcx, value, args)
     }
@@ -1098,9 +1098,9 @@ impl<'db> InferCtxt<'db> {
 
         for bound_var_kind in bound_vars {
             let arg: GenericArg<'db> = match bound_var_kind {
-                BoundVarKind::Ty(_) => self.next_ty_var().into(),
-                BoundVarKind::Region(_) => self.next_region_var().into(),
-                BoundVarKind::Const => self.next_const_var().into(),
+                BoundVariableKind::Ty(_) => self.next_ty_var().into(),
+                BoundVariableKind::Region(_) => self.next_region_var().into(),
+                BoundVariableKind::Const => self.next_const_var().into(),
             };
             args.push(arg);
         }
@@ -1110,13 +1110,13 @@ impl<'db> InferCtxt<'db> {
         }
 
         impl<'db> BoundVarReplacerDelegate<'db> for ToFreshVars<'db> {
-            fn replace_region(&mut self, br: BoundRegion) -> Region<'db> {
+            fn replace_region(&mut self, br: BoundRegion<'db>) -> Region<'db> {
                 self.args[br.var.index()].expect_region()
             }
-            fn replace_ty(&mut self, bt: BoundTy) -> Ty<'db> {
+            fn replace_ty(&mut self, bt: BoundTy<'db>) -> Ty<'db> {
                 self.args[bt.var.index()].expect_ty()
             }
-            fn replace_const(&mut self, bv: BoundConst) -> Const<'db> {
+            fn replace_const(&mut self, bv: BoundConst<'db>) -> Const<'db> {
                 self.args[bv.var.index()].expect_const()
             }
         }

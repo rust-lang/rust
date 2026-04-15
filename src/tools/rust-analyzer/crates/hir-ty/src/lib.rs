@@ -84,7 +84,7 @@ use crate::{
     lower::SupertraitsInfo,
     next_solver::{
         AliasTy, Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, Canonical,
-        CanonicalVarKind, CanonicalVars, ClauseKind, Const, ConstKind, DbInterner, FnSig,
+        CanonicalVarKind, CanonicalVarKinds, ClauseKind, Const, ConstKind, DbInterner, FnSig,
         GenericArgs, PolyFnSig, Predicate, Region, RegionKind, TraitRef, Ty, TyKind, Tys, abi,
     },
 };
@@ -435,7 +435,7 @@ where
                 ConstKind::Error(_) => {
                     let var = rustc_type_ir::BoundVar::from_usize(self.vars.len());
                     self.vars.push(CanonicalVarKind::Const(rustc_type_ir::UniverseIndex::ZERO));
-                    Ok(Const::new_bound(self.interner, self.binder, BoundConst { var }))
+                    Ok(Const::new_bound(self.interner, self.binder, BoundConst::new(var)))
                 }
                 ConstKind::Infer(_) => error(),
                 ConstKind::Bound(BoundVarIndexKind::Bound(index), _) if index > self.binder => {
@@ -479,7 +479,7 @@ where
     Canonical {
         value,
         max_universe: rustc_type_ir::UniverseIndex::ZERO,
-        variables: CanonicalVars::new_from_slice(&error_replacer.vars),
+        var_kinds: CanonicalVarKinds::new_from_slice(&error_replacer.vars),
     }
 }
 
@@ -551,8 +551,11 @@ pub fn callable_sig_from_fn_trait<'db>(
     let trait_ref = TraitRef::new_from_args(table.interner(), fn_once_trait.into(), args);
     let projection = Ty::new_alias(
         table.interner(),
-        rustc_type_ir::AliasTyKind::Projection,
-        AliasTy::new_from_args(table.interner(), output_assoc_type.into(), args),
+        AliasTy::new_from_args(
+            table.interner(),
+            rustc_type_ir::Projection { def_id: output_assoc_type.into() },
+            args,
+        ),
     );
 
     let pred = Predicate::upcast_from(trait_ref, table.interner());

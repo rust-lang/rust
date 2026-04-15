@@ -23,8 +23,8 @@ use crate::{
     display::{DisplayTarget, HirDisplay},
     infer::PointerCast,
     next_solver::{
-        Const, DbInterner, ErrorGuaranteed, GenericArgs, ParamEnv, StoredConst, StoredGenericArgs,
-        StoredTy, Ty, TyKind,
+        Allocation, AllocationData, DbInterner, ErrorGuaranteed, GenericArgs, ParamEnv,
+        StoredAllocation, StoredConst, StoredGenericArgs, StoredTy, Ty, TyKind,
         infer::{InferCtxt, traits::ObligationCause},
         obligation_ctxt::ObligationCtxt,
     },
@@ -107,7 +107,13 @@ pub enum OperandKind {
     /// [UCG#188]: https://github.com/rust-lang/unsafe-code-guidelines/issues/188
     Move(Place),
     /// Constants are already semantically values, and remain unchanged.
-    Constant { konst: StoredConst, ty: StoredTy },
+    Constant {
+        konst: StoredConst,
+        ty: StoredTy,
+    },
+    Allocation {
+        allocation: StoredAllocation,
+    },
     /// NON STANDARD: This kind of operand returns an immutable reference to that static memory. Rustc
     /// handles it with the `Constant` variant somehow.
     Static(StaticId),
@@ -115,11 +121,10 @@ pub enum OperandKind {
 
 impl<'db> Operand {
     fn from_concrete_const(data: Box<[u8]>, memory_map: MemoryMap<'db>, ty: Ty<'db>) -> Self {
-        let interner = DbInterner::conjure();
         Operand {
-            kind: OperandKind::Constant {
-                konst: Const::new_valtree(interner, ty, data, memory_map).store(),
-                ty: ty.store(),
+            kind: OperandKind::Allocation {
+                allocation: Allocation::new(AllocationData { ty, memory: data, memory_map })
+                    .store(),
             },
             span: None,
         }
@@ -1095,7 +1100,9 @@ impl MirBody {
                 OperandKind::Copy(p) | OperandKind::Move(p) => {
                     f(p, store);
                 }
-                OperandKind::Constant { .. } | OperandKind::Static(_) => (),
+                OperandKind::Constant { .. }
+                | OperandKind::Static(_)
+                | OperandKind::Allocation { .. } => (),
             }
         }
         for (_, block) in self.basic_blocks.iter_mut() {

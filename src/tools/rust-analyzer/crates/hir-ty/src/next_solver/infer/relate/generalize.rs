@@ -531,7 +531,7 @@ impl<'db> TypeRelation<DbInterner<'db>> for Generalizer<'_, 'db> {
                 }
             }
 
-            TyKind::Alias(_, data) => match self.structurally_relate_aliases {
+            TyKind::Alias(data) => match self.structurally_relate_aliases {
                 StructurallyRelateAliases::No => self.generalize_alias_ty(data),
                 StructurallyRelateAliases::Yes => relate::structurally_relate_tys(self, t, t),
             },

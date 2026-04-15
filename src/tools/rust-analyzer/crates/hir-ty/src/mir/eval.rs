@@ -21,7 +21,7 @@ use hir_expand::{InFile, mod_path::path, name::Name};
 use intern::sym;
 use la_arena::ArenaMap;
 use macros::GenericTypeVisitable;
-use rustc_abi::TargetDataLayout;
+use rustc_abi::{Size, TargetDataLayout};
 use rustc_apfloat::{
     Float,
     ieee::{Half as f16, Quad as f128},
@@ -46,8 +46,8 @@ use crate::{
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
     method_resolution::{is_dyn_method, lookup_impl_const},
     next_solver::{
-        Const, ConstBytes, ConstKind, DbInterner, ErrorGuaranteed, GenericArgs, Region,
-        StoredConst, StoredTy, Ty, TyKind, TypingMode, UnevaluatedConst, ValueConst,
+        AliasTy, Allocation, AllocationData, Const, ConstKind, DbInterner, ErrorGuaranteed,
+        GenericArgs, Region, StoredTy, Ty, TyKind, TypingMode, UnevaluatedConst, ValTree,
         infer::{DbInternerInferExt, InferCtxt, traits::ObligationCause},
         obligation_ctxt::ObligationCtxt,
     },
@@ -359,7 +359,7 @@ pub enum MirEvalError {
     MirLowerErrorForClosure(InternedClosureId, MirLowerError),
     TypeIsUnsized(StoredTy, &'static str),
     NotSupported(String),
-    InvalidConst(StoredConst),
+    InvalidConst,
     InFunction(
         Box<MirEvalError>,
         Vec<(Either<FunctionId, InternedClosureId>, MirSpan, DefWithBodyId)>,
@@ -484,7 +484,7 @@ impl MirEvalError {
             | MirEvalError::MirLowerErrorForClosure(_, _)
             | MirEvalError::TypeIsUnsized(_, _)
             | MirEvalError::NotSupported(_)
-            | MirEvalError::InvalidConst(_)
+            | MirEvalError::InvalidConst
             | MirEvalError::ExecutionLimitExceeded
             | MirEvalError::StackOverflow
             | MirEvalError::CoerceUnsizedError(_)
@@ -537,7 +537,7 @@ impl std::fmt::Debug for MirEvalError {
             Self::InternalError(arg0) => f.debug_tuple("InternalError").field(arg0).finish(),
             Self::InvalidVTableId(arg0) => f.debug_tuple("InvalidVTableId").field(arg0).finish(),
             Self::NotSupported(arg0) => f.debug_tuple("NotSupported").field(arg0).finish(),
-            Self::InvalidConst(arg0) => f.debug_tuple("InvalidConst").field(&arg0).finish(),
+            Self::InvalidConst => f.write_str("InvalidConst"),
             Self::InFunction(e, stack) => {
                 f.debug_struct("WithStack").field("error", e).field("stack", &stack).finish()
             }
@@ -606,10 +606,10 @@ pub fn interpret_mir<'db>(
     // (and probably should) do better here, for example by excluding bindings outside of the target expression.
     assert_placeholder_ty_is_unused: bool,
     trait_env: Option<ParamEnvAndCrate<'db>>,
-) -> Result<'db, (Result<'db, Const<'db>>, MirOutput)> {
+) -> Result<'db, (Result<'db, Allocation<'db>>, MirOutput)> {
     let ty = body.locals[return_slot()].ty.as_ref();
     let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env)?;
-    let it: Result<'db, Const<'db>> = (|| {
+    let it: Result<'db, Allocation<'db>> = (|| {
         if evaluator.ptr_size() != size_of::<usize>() {
             not_supported!("targets with different pointer size from host");
         }
@@ -620,7 +620,7 @@ pub fn interpret_mir<'db>(
             ty,
             &Locals { ptr: ArenaMap::new(), body, drop_flags: DropFlags::default() },
         )?;
-        let bytes = bytes.into();
+        let bytes = Box::from(bytes);
         let memory_map = if memory_map.memory.is_empty() && evaluator.vtable_map.is_empty() {
             MemoryMap::Empty
         } else {
@@ -628,7 +628,7 @@ pub fn interpret_mir<'db>(
             memory_map.vtable.shrink_to_fit();
             MemoryMap::Complex(Box::new(memory_map))
         };
-        Ok(Const::new_valtree(evaluator.interner(), ty, bytes, memory_map))
+        Ok(Allocation::new(AllocationData { ty, memory: bytes, memory_map }))
     })();
     Ok((it, MirOutput { stdout: evaluator.stdout, stderr: evaluator.stderr }))
 }
@@ -898,6 +898,7 @@ impl<'db> Evaluator<'db> {
         Ok(match &o.kind {
             OperandKind::Copy(p) | OperandKind::Move(p) => self.place_ty(p, locals)?,
             OperandKind::Constant { konst: _, ty } => ty.as_ref(),
+            OperandKind::Allocation { allocation } => allocation.as_ref().ty,
             &OperandKind::Static(s) => {
                 let ty = InferenceResult::of(self.db, DefWithBodyId::from(s))
                     .expr_ty(Body::of(self.db, s.into()).root_expr());
@@ -1927,7 +1928,141 @@ impl<'db> Evaluator<'db> {
             OperandKind::Constant { konst, .. } => {
                 self.allocate_const_in_heap(locals, konst.as_ref())?
             }
+            OperandKind::Allocation { allocation } => {
+                self.allocate_allocation_in_heap(locals, allocation.as_ref())?
+            }
         })
+    }
+
+    fn allocate_valtree_in_heap(
+        &mut self,
+        ty: Ty<'db>,
+        valtree: ValTree<'db>,
+    ) -> Result<'db, Interval> {
+        match ty.kind() {
+            TyKind::Bool => {
+                let value = valtree.inner().to_leaf().try_to_bool().unwrap();
+                let addr = self.heap_allocate(1, 1)?;
+                self.write_memory(addr, &[u8::from(value)])?;
+                Ok(Interval::new(addr, 1))
+            }
+            TyKind::Char => {
+                let value = valtree.inner().to_leaf().to_u32();
+                let addr = self.heap_allocate(4, 4)?;
+                self.write_memory(addr, &value.to_le_bytes())?;
+                Ok(Interval::new(addr, 4))
+            }
+            TyKind::Int(int_ty) => {
+                let size = int_ty.bit_width().unwrap_or(self.ptr_size() as u64);
+                let value = valtree.inner().to_leaf().to_int(Size::from_bytes(size));
+                let addr = self.heap_allocate(size as usize, size as usize)?;
+                self.write_memory(addr, &value.to_le_bytes()[..size as usize])?;
+                Ok(Interval::new(addr, size as usize))
+            }
+            TyKind::Uint(uint_ty) => {
+                let size = uint_ty.bit_width().unwrap_or(self.ptr_size() as u64);
+                let value = valtree.inner().to_leaf().to_uint(Size::from_bytes(size));
+                let addr = self.heap_allocate(size as usize, size as usize)?;
+                self.write_memory(addr, &value.to_le_bytes()[..size as usize])?;
+                Ok(Interval::new(addr, size as usize))
+            }
+            TyKind::Float(float_ty) => {
+                let size = float_ty.bit_width();
+                let value = valtree.inner().to_leaf().to_uint(Size::from_bytes(size));
+                let addr = self.heap_allocate(size as usize, size as usize)?;
+                self.write_memory(addr, &value.to_le_bytes()[..size as usize])?;
+                Ok(Interval::new(addr, size as usize))
+            }
+            TyKind::RawPtr(..) => {
+                let size = self.ptr_size();
+                let value = valtree.inner().to_leaf().to_uint(Size::from_bytes(size));
+                let addr = self.heap_allocate(size, size)?;
+                self.write_memory(addr, &value.to_le_bytes()[..size])?;
+                Ok(Interval::new(addr, size))
+            }
+            TyKind::Ref(_, inner_ty, _) => match inner_ty.kind() {
+                TyKind::Str => {
+                    let bytes = valtree
+                        .inner()
+                        .to_branch()
+                        .iter()
+                        .map(|konst| match konst.kind() {
+                            ConstKind::Value(value) => Ok(value.value.inner().to_leaf().to_u8()),
+                            _ => not_supported!("unsupported const"),
+                        })
+                        .collect::<Result<'_, Vec<_>>>()?;
+                    let bytes_addr = self.heap_allocate(bytes.len(), 1)?;
+                    self.write_memory(bytes_addr, &bytes)?;
+                    let ref_addr = self.heap_allocate(self.ptr_size() * 2, self.ptr_size())?;
+                    self.write_memory(ref_addr, &bytes_addr.to_bytes())?;
+                    let mut len = [0; 16];
+                    len[..size_of::<usize>()].copy_from_slice(&bytes.len().to_le_bytes());
+                    self.write_memory(ref_addr.offset(self.ptr_size()), &len[..self.ptr_size()])?;
+                    Ok(Interval::new(ref_addr, self.ptr_size() * 2))
+                }
+                TyKind::Slice(inner_ty) => {
+                    let item_layout = self.layout(inner_ty)?;
+                    let items = valtree
+                        .inner()
+                        .to_branch()
+                        .iter()
+                        .map(|konst| match konst.kind() {
+                            ConstKind::Value(value) => {
+                                self.allocate_valtree_in_heap(value.ty, value.value)
+                            }
+                            _ => not_supported!("unsupported const"),
+                        })
+                        .collect::<Result<'_, Vec<_>>>()?;
+                    let items_addr = self.heap_allocate(
+                        items.len() * (item_layout.size.bits() as usize),
+                        item_layout.align.bits_usize(),
+                    )?;
+                    for (i, item) in items.iter().enumerate() {
+                        self.copy_from_interval(
+                            items_addr.offset(i * (item_layout.size.bits() as usize)),
+                            *item,
+                        )?;
+                    }
+                    let ref_addr = self.heap_allocate(self.ptr_size() * 2, self.ptr_size())?;
+                    self.write_memory(ref_addr, &items_addr.to_bytes())?;
+                    let mut len = [0; 16];
+                    len[..size_of::<usize>()].copy_from_slice(&items.len().to_le_bytes());
+                    self.write_memory(ref_addr.offset(self.ptr_size()), &len[..self.ptr_size()])?;
+                    Ok(Interval::new(ref_addr, self.ptr_size() * 2))
+                }
+                TyKind::Dynamic(..) => not_supported!("`dyn Trait` consts not supported yet"),
+                _ => {
+                    let inner_addr = self.allocate_valtree_in_heap(inner_ty, valtree)?;
+                    let ref_addr = self.heap_allocate(self.ptr_size(), self.ptr_size())?;
+                    self.write_memory(ref_addr, &inner_addr.addr.to_bytes())?;
+                    Ok(Interval::new(ref_addr, self.ptr_size()))
+                }
+            },
+            TyKind::Adt(_, _) | TyKind::Array(_, _) | TyKind::Tuple(_) => {
+                not_supported!(
+                    "ADTs, arrays and tuples are unsupported in consts currently (requires `adt_const_params`)"
+                )
+            }
+            TyKind::Pat(_, _)
+            | TyKind::Slice(_)
+            | TyKind::FnDef(_, _)
+            | TyKind::Foreign(_)
+            | TyKind::Dynamic(_, _)
+            | TyKind::UnsafeBinder(..)
+            | TyKind::FnPtr(..)
+            | TyKind::Closure(_, _)
+            | TyKind::CoroutineClosure(_, _)
+            | TyKind::Coroutine(_, _)
+            | TyKind::CoroutineWitness(_, _)
+            | TyKind::Never
+            | TyKind::Alias(..)
+            | TyKind::Param(_)
+            | TyKind::Bound(..)
+            | TyKind::Placeholder(_)
+            | TyKind::Infer(_)
+            | TyKind::Str
+            | TyKind::Error(_) => not_supported!("unsupported const"),
+        }
     }
 
     #[allow(clippy::double_parens)]
@@ -1936,10 +2071,9 @@ impl<'db> Evaluator<'db> {
         locals: &Locals,
         konst: Const<'db>,
     ) -> Result<'db, Interval> {
-        let result_owner;
-        let value = match konst.kind() {
-            ConstKind::Value(value) => value,
-            ConstKind::Unevaluated(UnevaluatedConst { def: const_id, args: subst }) => 'b: {
+        match konst.kind() {
+            ConstKind::Value(value) => self.allocate_valtree_in_heap(value.ty, value.value),
+            ConstKind::Unevaluated(UnevaluatedConst { def: const_id, args: subst }) => {
                 let mut id = const_id.0;
                 let mut subst = subst;
                 if let hir_def::GeneralConstId::ConstId(c) = id {
@@ -1947,7 +2081,7 @@ impl<'db> Evaluator<'db> {
                     id = hir_def::GeneralConstId::ConstId(c);
                     subst = s;
                 }
-                result_owner = match id {
+                let allocation = match id {
                     GeneralConstId::ConstId(const_id) => {
                         self.db.const_eval(const_id, subst, Some(self.param_env)).map_err(|e| {
                             let name = id.name(self.db);
@@ -1964,21 +2098,24 @@ impl<'db> Evaluator<'db> {
                         not_supported!("anonymous const evaluation")
                     }
                 };
-                if let ConstKind::Value(value) = result_owner.kind() {
-                    break 'b value;
-                }
-                not_supported!("unevaluatable constant");
+                self.allocate_allocation_in_heap(locals, allocation)
             }
             _ => not_supported!("evaluating unknown const"),
-        };
-        let ValueConst { ty, value } = value;
-        let ConstBytes { memory: v, memory_map } = value.inner();
+        }
+    }
+
+    fn allocate_allocation_in_heap(
+        &mut self,
+        locals: &Locals,
+        allocation: Allocation<'db>,
+    ) -> Result<'db, Interval> {
+        let AllocationData { ty, memory: ref v, ref memory_map } = *allocation;
         let patch_map = memory_map.transform_addresses(|b, align| {
             let addr = self.heap_allocate(b.len(), align)?;
             self.write_memory(addr, b)?;
             Ok(addr.to_usize())
         })?;
-        let (size, align) = self.size_align_of(ty, locals)?.unwrap_or((v.len(), 1));
+        let (size, align) = self.size_align_of(allocation.ty, locals)?.unwrap_or((v.len(), 1));
         let v: Cow<'_, [u8]> = if size != v.len() {
             // Handle self enum
             if size == 16 && v.len() < 16 {
@@ -1986,7 +2123,7 @@ impl<'db> Evaluator<'db> {
             } else if size < 16 && v.len() == 16 {
                 Cow::Borrowed(&v[0..size])
             } else {
-                return Err(MirEvalError::InvalidConst(konst.store()));
+                return Err(MirEvalError::InvalidConst);
             }
         } else {
             Cow::Borrowed(v)
@@ -2340,7 +2477,7 @@ impl<'db> Evaluator<'db> {
                     }
                     AdtId::UnionId(_) => (),
                 },
-                TyKind::Alias(AliasTyKind::Projection, _) => {
+                TyKind::Alias(AliasTy { kind: AliasTyKind::Projection { .. }, .. }) => {
                     let mut ocx = ObligationCtxt::new(&this.infcx);
                     let ty = ocx
                         .structurally_normalize_ty(
@@ -2483,7 +2620,7 @@ impl<'db> Evaluator<'db> {
             | TyKind::Error(_)
             | TyKind::Placeholder(_)
             | TyKind::Dynamic(_, _)
-            | TyKind::Alias(_, _)
+            | TyKind::Alias(..)
             | TyKind::Bound(_, _)
             | TyKind::Infer(_)
             | TyKind::Pat(_, _)
@@ -2840,10 +2977,10 @@ impl<'db> Evaluator<'db> {
         };
         let static_data = StaticSignature::of(self.db, st);
         let result = if !static_data.flags.contains(StaticFlags::EXTERN) {
-            let konst = self.db.const_eval_static(st).map_err(|e| {
+            let allocation = self.db.const_eval_static(st).map_err(|e| {
                 MirEvalError::ConstEvalError(static_data.name.as_str().to_owned(), Box::new(e))
             })?;
-            self.allocate_const_in_heap(locals, konst)?
+            self.allocate_allocation_in_heap(locals, allocation)?
         } else {
             let ty = InferenceResult::of(self.db, DefWithBodyId::from(st))
                 .expr_ty(Body::of(self.db, st.into()).root_expr());
@@ -3003,7 +3140,7 @@ impl<'db> Evaluator<'db> {
 pub fn render_const_using_debug_impl<'db>(
     db: &'db dyn HirDatabase,
     owner: DefWithBodyId,
-    c: Const<'db>,
+    c: Allocation<'db>,
     ty: Ty<'db>,
 ) -> Result<'db, String> {
     let mut evaluator = Evaluator::new(db, owner, false, None)?;
@@ -3014,7 +3151,7 @@ pub fn render_const_using_debug_impl<'db>(
             .map_err(|_| MirEvalError::NotSupported("unreachable".to_owned()))?,
         drop_flags: DropFlags::default(),
     };
-    let data = evaluator.allocate_const_in_heap(locals, c)?;
+    let data = evaluator.allocate_allocation_in_heap(locals, c)?;
     let resolver = owner.resolver(db);
     let Some(TypeNs::TraitId(debug_trait)) = resolver.resolve_path_in_type_ns_fully(
         db,
