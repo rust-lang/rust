@@ -132,8 +132,27 @@ impl Message {
 mod tests {
     use super::*;
 
-    mod kindc_generated {
-        include!(concat!(env!("CARGO_MANIFEST_DIR"), "/../tools/kindc/fixtures/generated/mod.rs"));
+    fn parse_generated_kind_id(name: &str) -> [u8; 16] {
+        let src = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../tools/kindc/fixtures/generated/mod.rs"
+        ));
+        let needle = alloc::format!("pub const {}: [u8; 16] = [", name);
+        let start = src.find(&needle).expect("kind id constant must exist") + needle.len();
+        let tail = &src[start..];
+        let end = tail.find("];\n").expect("kind id constant must terminate with ];");
+        let body = &tail[..end];
+
+        let mut out = [0u8; 16];
+        let mut count = 0usize;
+        for tok in body.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()) {
+            assert!(count < 16, "kind id has too many bytes");
+            let hex = tok.strip_prefix("0x").expect("kind id bytes must be hex");
+            out[count] = u8::from_str_radix(hex, 16).expect("invalid kind id byte");
+            count += 1;
+        }
+        assert_eq!(count, 16, "kind id must contain exactly 16 bytes");
+        out
     }
 
     #[test]
@@ -157,12 +176,12 @@ mod tests {
 
     #[test]
     fn test_kind_id_thingos_message_constant() {
-        assert_eq!(KindId::THINGOS_MESSAGE.0, kindc_generated::KIND_ID_THINGOS_MESSAGE);
+        assert_eq!(KindId::THINGOS_MESSAGE.0, parse_generated_kind_id("KIND_ID_THINGOS_MESSAGE"));
     }
 
     #[test]
     fn test_kind_id_thingos_job_exit_constant() {
-        assert_eq!(KindId::THINGOS_JOB_EXIT.0, kindc_generated::KIND_ID_THINGOS_JOB_EXIT);
+        assert_eq!(KindId::THINGOS_JOB_EXIT.0, parse_generated_kind_id("KIND_ID_THINGOS_JOB_EXIT"));
     }
 
     #[test]
