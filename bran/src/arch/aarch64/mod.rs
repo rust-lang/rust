@@ -1,5 +1,5 @@
 use crate::runtime::ArchRuntime;
-use core::arch::asm;
+use core::arch::{asm, naked_asm};
 use kernel::time::MonotonicClamp;
 use kernel::{FrameAllocatorHook, IrqState, MapKind, MapPerms, UserEntry, UserTaskSpec};
 
@@ -24,6 +24,64 @@ impl AArch64Runtime {
 
 pub use paging::AArch64AddressSpace;
 pub use task::AArch64Context;
+
+/// Ensure execution is in EL1h (using SP_EL1) before normal kernel init.
+///
+/// Handles two boot scenarios:
+///
+/// 1. **Arriving at EL2** (some firmware/hypervisor configurations): sets
+///    `HCR_EL2.RW=1` so that EL1 runs as AArch64, programs `SPSR_EL2` for
+///    EL1h with D/A/I/F masked, sets `ELR_EL2` to the post-`eret`
+///    continuation, and executes `eret` to drop to EL1h.
+///
+/// 2. **Already at EL1t** (SPSel=0): copies the current SP value into
+///    `SP_EL1` and sets `SPSel=1`.
+///
+/// If `SPSel` is already 1 the function is a no-op (idempotent).
+#[unsafe(naked)]
+unsafe extern "C" fn switch_to_el1h() {
+    naked_asm!(
+        // Save current SP before any branching so both paths can initialise
+        // SP_EL1 to a valid kernel stack address.
+        "mov  x9, sp",
+
+        // ── Detect current EL ───────────────────────────────────────────
+        "mrs  x10, CurrentEL",
+        "lsr  x10, x10, #2",   // bits [3:2] → x10
+        "and  x10, x10, #3",   // isolate two-bit EL field
+        "cmp  x10, #2",
+        "bne  1f",             // not EL2 → already at EL1, go to common path
+
+        // ── EL2 path ────────────────────────────────────────────────────
+        // HCR_EL2.RW = 1  →  EL1/EL0 execute as AArch64.
+        "mrs  x10, hcr_el2",
+        "orr  x10, x10, #(1 << 31)",
+        "msr  hcr_el2, x10",
+
+        // SPSR_EL2:
+        //   M[4:0] = 0b00101 = 5  (EL1h, using SP_EL1)
+        //   D/A/I/F (bits [9:6]) = 0b1111  (all async aborts + IRQ + FIQ masked)
+        //   → 0x3C5
+        "mov  x10, #0x3C5",
+        "msr  spsr_el2, x10",
+
+        // ELR_EL2: resume at the common SP_EL1 setup block after eret.
+        "adr  x10, 2f",
+        "msr  elr_el2, x10",
+
+        "isb",
+        "eret",                // → EL1h, continues at label 2
+
+        // ── EL1 path (fall-through) ──────────────────────────────────────
+        "1:",
+        // ── Common: install saved SP into SP_EL1 and select it ──────────
+        "2:",
+        "msr  spsel, #1",      // switch stack-pointer select to SP_EL1
+        "mov  sp, x9",         // initialise SP_EL1 from the saved value
+        "isb",
+        "ret",
+    );
+}
 
 impl ArchRuntime for AArch64Runtime {
     type Context = AArch64Context;
@@ -105,7 +163,9 @@ impl ArchRuntime for AArch64Runtime {
     }
 
     unsafe fn early_init(&self) {
-        // TODO: EL1h (SPx) mode switch during early boot
+        unsafe {
+            switch_to_el1h();
+        }
     }
 
     fn fence_full(&self) {
