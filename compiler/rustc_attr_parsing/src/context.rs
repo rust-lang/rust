@@ -16,7 +16,7 @@ use rustc_hir::{AttrPath, HirId};
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{AttrId, ErrorGuaranteed, Span, Symbol};
 
 // Glob imports to avoid big, bitrotty import lists
 use crate::attributes::allow_unstable::*;
@@ -39,6 +39,7 @@ use crate::attributes::dummy::*;
 use crate::attributes::inline::*;
 use crate::attributes::instruction_set::*;
 use crate::attributes::link_attrs::*;
+use crate::attributes::lint::*;
 use crate::attributes::lint_helpers::*;
 use crate::attributes::loop_match::*;
 use crate::attributes::macro_attrs::*;
@@ -154,6 +155,7 @@ attribute_parsers!(
         ConfusablesParser,
         ConstStabilityParser,
         DocParser,
+        LintParser,
         MacroUseParser,
         NakedParser,
         OnConstParser,
@@ -454,6 +456,8 @@ pub struct AcceptContext<'f, 'sess, S: Stage> {
 
     /// The name of the attribute we're currently accepting.
     pub(crate) attr_path: AttrPath,
+
+    pub(crate) attr_id: AttrId,
 }
 
 impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
@@ -895,6 +899,17 @@ where
                 strings: true,
                 list: false,
             },
+        )
+    }
+
+    pub(crate) fn expected_nv_as_last_argument(
+        &mut self,
+        span: Span,
+        name_value_key: Symbol,
+    ) -> ErrorGuaranteed {
+        self.emit_parse_error(
+            span,
+            AttributeParseErrorReason::ExpectedNameValueAsLastArgument { span, name_value_key },
         )
     }
 

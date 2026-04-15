@@ -1,12 +1,13 @@
-//@ compile-flags: -Zunpretty=hir
-//@ check-pass
-
-#![expect(incomplete_features)]
-#![allow(dead_code)]
 #![attr = Feature([min_generic_const_args#0, adt_const_params#0])]
+#![attr = LintAttributes([LintAttribute {kind: Expect, attr_style: Inner,
+lint_instances: [incomplete_features]}, LintAttribute {kind: Allow,
+attr_style: Inner, lint_instances: [dead_code]}])]
 extern crate std;
 #[attr = PreludeImport]
 use ::std::prelude::rust_2015::*;
+//@ compile-flags: -Zunpretty=hir
+//@ check-pass
+
 
 use std::marker::ConstParamTy;
 

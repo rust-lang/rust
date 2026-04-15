@@ -31,17 +31,14 @@ LL |     let _ = foo!(warn_in_expr);
    = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
    = note: this warning originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: unused attribute `allow`
+warning: `#[allow]` attribute cannot be used on macro calls
   --> $DIR/semicolon-in-expressions-from-macros.rs:50:13
    |
 LL |     let _ = #[allow(semicolon_in_expressions_from_macros)] foo!(allow_does_not_work);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-note: the built-in attribute `allow` will be ignored, since it's applied to the macro invocation `foo`
-  --> $DIR/semicolon-in-expressions-from-macros.rs:50:60
-   |
-LL |     let _ = #[allow(semicolon_in_expressions_from_macros)] foo!(allow_does_not_work);
-   |                                                            ^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = help: `#[allow]` can be applied to associated consts, associated types, const parameters, const parameters, constants, crates, data types, enum variants, expressions, extern crates, foreign modules, foreign statics, function params, functions, global asms, impl blocks, lifetime parameters, lifetime parameters, macro defs, match arms, modules, pattern fields, statements, statics, struct fields, struct fields, trait aliases, traits, type aliases, type parameters, type parameters, and use statements
    = note: requested on the command line with `-W unused-attributes`
 
 warning: trailing semicolon in macro used in expression position
