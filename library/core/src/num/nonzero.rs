@@ -1950,7 +1950,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// #
         /// # fn main() { test().unwrap(); }
         /// # fn test() -> Option<()> {
-        #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::MIN.bit_width(), NonZero::new(1)?);")]
+        #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1)?.bit_width(), NonZero::new(1)?);")]
         #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b111)?.bit_width(), NonZero::new(3)?);")]
         #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1110)?.bit_width(), NonZero::new(4)?);")]
         /// # Some(())
