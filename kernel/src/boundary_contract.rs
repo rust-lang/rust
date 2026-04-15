@@ -3,6 +3,24 @@
 //! These tests ensure kernel-facing bridge functions keep returning canonical
 //! ThingOS boundary types and that KindId constants remain aligned with
 //! kindc-generated schema output.
+//!
+//! # Guardrail coverage
+//!
+//! | Surface                              | Test                                    |
+//! |--------------------------------------|-----------------------------------------|
+//! | task bridge signatures               | [`bridge_signatures_return_canonical_types`] |
+//! | job bridge signatures                | [`bridge_signatures_return_canonical_types`] |
+//! | group bridge signatures              | [`bridge_signatures_return_canonical_types`] |
+//! | authority bridge signatures          | [`bridge_signatures_return_canonical_types`] |
+//! | place bridge signatures              | [`bridge_signatures_return_canonical_types`] |
+//! | message bridge signatures            | [`bridge_signatures_return_canonical_types`] |
+//! | KIND_ID_THINGOS_MESSAGE              | [`kind_ids_match_kindc_generated_constants`] |
+//! | KIND_ID_THINGOS_JOB_EXIT             | [`kind_ids_match_kindc_generated_constants`] |
+//! | KIND_ID_THINGOS_AUTHORITY            | [`kind_ids_match_kindc_generated_constants`] |
+//! | KIND_ID_THINGOS_TASK / TASK_STATE    | [`kind_ids_match_kindc_generated_constants`] |
+//! | KIND_ID_THINGOS_JOB / JOB_STATE / JOB_WAIT_RESULT | [`kind_ids_match_kindc_generated_constants`] |
+//! | KIND_ID_THINGOS_GROUP                | [`kind_ids_match_kindc_generated_constants`] |
+//! | KIND_ID_THINGOS_PLACE                | [`kind_ids_match_kindc_generated_constants`] |
 
 use thingos::message::KindId;
 
@@ -61,10 +79,53 @@ fn bridge_signatures_return_canonical_types() {
 
 #[test]
 fn kind_ids_match_kindc_generated_constants() {
+    // ── message ───────────────────────────────────────────────────────────────
     assert_eq!(KindId::THINGOS_MESSAGE.0, parse_generated_kind_id("KIND_ID_THINGOS_MESSAGE"));
     assert_eq!(KindId::THINGOS_JOB_EXIT.0, parse_generated_kind_id("KIND_ID_THINGOS_JOB_EXIT"));
+
+    // ── authority ─────────────────────────────────────────────────────────────
     assert_eq!(
         thingos::authority::KIND_ID_THINGOS_AUTHORITY,
         parse_generated_kind_id("KIND_ID_THINGOS_AUTHORITY"),
+    );
+
+    // ── task ──────────────────────────────────────────────────────────────────
+    assert_eq!(
+        thingos::task::KIND_ID_THINGOS_TASK,
+        parse_generated_kind_id("KIND_ID_THINGOS_TASK"),
+    );
+    assert_eq!(
+        thingos::task::KIND_ID_THINGOS_TASK_STATE,
+        parse_generated_kind_id("KIND_ID_THINGOS_TASK_STATE"),
+    );
+
+    // ── job ───────────────────────────────────────────────────────────────────
+    assert_eq!(
+        thingos::job::KIND_ID_THINGOS_JOB,
+        parse_generated_kind_id("KIND_ID_THINGOS_JOB"),
+    );
+    assert_eq!(
+        thingos::job::KIND_ID_THINGOS_JOB_STATE,
+        parse_generated_kind_id("KIND_ID_THINGOS_JOB_STATE"),
+    );
+    assert_eq!(
+        thingos::job::KIND_ID_THINGOS_JOB_EXIT,
+        parse_generated_kind_id("KIND_ID_THINGOS_JOB_EXIT"),
+    );
+    assert_eq!(
+        thingos::job::KIND_ID_THINGOS_JOB_WAIT_RESULT,
+        parse_generated_kind_id("KIND_ID_THINGOS_JOB_WAIT_RESULT"),
+    );
+
+    // ── group ─────────────────────────────────────────────────────────────────
+    assert_eq!(
+        thingos::group::KIND_ID_THINGOS_GROUP,
+        parse_generated_kind_id("KIND_ID_THINGOS_GROUP"),
+    );
+
+    // ── place ─────────────────────────────────────────────────────────────────
+    assert_eq!(
+        thingos::place::KIND_ID_THINGOS_PLACE,
+        parse_generated_kind_id("KIND_ID_THINGOS_PLACE"),
     );
 }

@@ -75,6 +75,16 @@
 
 extern crate alloc;
 
+/// The KindId generated for `thingos.place` by `kindc`.
+///
+/// Identifies the canonical world-context schema kind.  Consumers that need
+/// to distinguish a `Place`-shaped message payload can compare against this
+/// constant.
+pub const KIND_ID_THINGOS_PLACE: [u8; 16] = [
+    0x99, 0xcc, 0xb2, 0x68, 0xc5, 0xa0, 0x4a, 0x05,
+    0xd9, 0xed, 0xb9, 0x89, 0x43, 0xdc, 0xd6, 0x28,
+];
+
 /// Canonical world-context for a running unit in ThingOS.
 ///
 /// Corresponds to the `thingos.place` schema kind (v1).  The kernel's
