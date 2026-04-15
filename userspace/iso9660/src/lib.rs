@@ -354,7 +354,89 @@ impl IsoFs {
                         // If CONTINUE bit (0) or others are not set, we might be done,
                         // but NM entries can be split. We just append them all.
                     } else if sig == b"CE" {
-                        // Continuation Area (implied TODO: simple NM parsing normally resides in the record itself)
+                        // Continuation Area entry.
+                        // Format: sig(2) + len(1) + ver(1)
+                        //         + block_le(4) + block_be(4)
+                        //         + offset_le(4) + offset_be(4)
+                        //         + length_le(4) + length_be(4) = 28 bytes total
+                        if len >= 28 {
+                            let ce_block = u32::from_le_bytes([
+                                buf[sys_use_offset + 4],
+                                buf[sys_use_offset + 5],
+                                buf[sys_use_offset + 6],
+                                buf[sys_use_offset + 7],
+                            ]);
+                            let ce_byte_offset = u32::from_le_bytes([
+                                buf[sys_use_offset + 12],
+                                buf[sys_use_offset + 13],
+                                buf[sys_use_offset + 14],
+                                buf[sys_use_offset + 15],
+                            ]);
+                            let ce_length = u32::from_le_bytes([
+                                buf[sys_use_offset + 20],
+                                buf[sys_use_offset + 21],
+                                buf[sys_use_offset + 22],
+                                buf[sys_use_offset + 23],
+                            ]);
+
+                            if ce_length > 0 {
+                                // Sectors needed to cover ce_byte_offset + ce_length bytes
+                                let sectors_needed = ((ce_byte_offset as usize
+                                    + ce_length as usize)
+                                    + ISO_SECTOR_SIZE as usize
+                                    - 1)
+                                    / ISO_SECTOR_SIZE as usize;
+                                let mut ce_buf = alloc::vec![
+                                    0u8;
+                                    sectors_needed * ISO_SECTOR_SIZE as usize
+                                ];
+                                if dev
+                                    .read_sectors(
+                                        ce_block as u64,
+                                        sectors_needed as u64,
+                                        &mut ce_buf,
+                                    )
+                                    .is_ok()
+                                {
+                                    let ce_start = ce_byte_offset as usize;
+                                    let ce_end = ce_start + ce_length as usize;
+                                    let mut ce_pos = ce_start;
+                                    while ce_pos + 4 <= ce_end
+                                        && ce_pos + 4 <= ce_buf.len()
+                                    {
+                                        let ce_sig =
+                                            &ce_buf[ce_pos..ce_pos + 2];
+                                        let ce_len =
+                                            ce_buf[ce_pos + 2] as usize;
+                                        if ce_len < 4
+                                            || ce_pos + ce_len > ce_end
+                                            || ce_pos + ce_len > ce_buf.len()
+                                        {
+                                            break;
+                                        }
+                                        if ce_sig == b"NM" {
+                                            let name_start = ce_pos + 5;
+                                            let name_end = ce_pos + ce_len;
+                                            if name_end > name_start {
+                                                if let Ok(nm_part) =
+                                                    core::str::from_utf8(
+                                                        &ce_buf[name_start
+                                                            ..name_end],
+                                                    )
+                                                {
+                                                    rock_ridge_name
+                                                        .push_str(nm_part);
+                                                    found_nm = true;
+                                                }
+                                            }
+                                        } else if ce_sig == b"ST" {
+                                            break;
+                                        }
+                                        ce_pos += ce_len;
+                                    }
+                                }
+                            }
+                        }
                     } else if sig == b"ST" {
                         // Terminator
                         break;
@@ -880,6 +962,183 @@ mod tests {
         assert_eq!(e2.extent_lba, 300);
         assert_eq!(e2.size, 5678);
         assert!(!e2.is_directory);
+    }
+
+    /// Build a MockIsoImage whose sector 0 is a directory with two entries:
+    /// "." / ".." and one file whose Rock Ridge NM is split via a CE entry.
+    ///
+    /// The directory record contains:
+    ///   • NM(flags=CONTINUE, "Split") — first half, continue flag set
+    ///   • CE(block=ce_lba, offset=0, length=<ce_area_len>)
+    ///
+    /// The continuation area (sector `ce_lba`) contains:
+    ///   • NM(flags=0, "File.txt") — second half
+    ///
+    /// Expected resolved name: "SplitFile.txt"
+    struct CeMockDevice {
+        /// Directory sector (LBA 0).
+        dir_sector: Vec<u8>,
+        /// Continuation area sector.
+        ce_lba: u64,
+        ce_sector: Vec<u8>,
+    }
+
+    impl BlockDevice for CeMockDevice {
+        fn read_sectors(
+            &self,
+            lba: u64,
+            count: u64,
+            buf: &mut [u8],
+        ) -> Result<(), stem::block::BlockError> {
+            for i in 0..count {
+                let sector_lba = lba + i;
+                let start = (i * 2048) as usize;
+                let end = start + 2048;
+                if buf.len() < end {
+                    return Err(stem::block::BlockError::IoError);
+                }
+                let src: &[u8] = if sector_lba == 0 {
+                    &self.dir_sector
+                } else if sector_lba == self.ce_lba {
+                    &self.ce_sector
+                } else {
+                    return Err(stem::block::BlockError::IoError);
+                };
+                let copy_len = src.len().min(2048);
+                buf[start..start + copy_len].copy_from_slice(&src[..copy_len]);
+                buf[start + copy_len..end].fill(0);
+            }
+            Ok(())
+        }
+        fn sector_size(&self) -> u64 {
+            2048
+        }
+    }
+
+    #[test]
+    fn test_parse_dir_entries_ce_continuation() {
+        const CE_LBA: u32 = 42;
+
+        // --- Build continuation area (sector CE_LBA) ---
+        // NM(flags=0, "File.txt") — second fragment
+        let ce_nm_name = b"File.txt";
+        let ce_nm_len: u8 = 5 + ce_nm_name.len() as u8; // sig(2)+len(1)+ver(1)+flags(1)+name
+        let mut ce_sector = alloc::vec![0u8; 2048];
+        let mut cp = 0usize;
+        ce_sector[cp] = b'N';
+        ce_sector[cp + 1] = b'M';
+        ce_sector[cp + 2] = ce_nm_len;
+        ce_sector[cp + 3] = 1; // version
+        ce_sector[cp + 4] = 0; // flags: no continue
+        ce_sector[cp + 5..cp + 5 + ce_nm_name.len()].copy_from_slice(ce_nm_name);
+        cp += ce_nm_len as usize;
+        let ce_area_len = cp as u32;
+
+        // --- Build directory sector (LBA 0) ---
+        let mut dir_buf = alloc::vec![0u8; 2048];
+        let mut off = 0usize;
+
+        // "." and ".."
+        write_dir_record(&mut dir_buf, &mut off, "\x00", 0, 2048, 2, None);
+        write_dir_record(&mut dir_buf, &mut off, "\x01", 0, 2048, 2, None);
+
+        // Build the file entry manually so we can embed CE + split NM.
+        let iso_name = b"SPLITFIL.;1";
+        let iso_name_len = iso_name.len();
+
+        // NM entry for first fragment: "Split" with CONTINUE flag (bit 0 = 1)
+        let nm1_name = b"Split";
+        let nm1_len: u8 = 5 + nm1_name.len() as u8;
+
+        // CE entry: 28 bytes fixed
+        let ce_entry_len: u8 = 28;
+
+        // System-use area size
+        let sys_use_len = nm1_len as usize + ce_entry_len as usize;
+
+        // record_len must be even
+        let mut record_len = 33 + iso_name_len + sys_use_len;
+        if record_len % 2 != 0 {
+            record_len += 1;
+        }
+        // Padding after name if name_len is even
+        let mut sys_use_start = 33 + iso_name_len;
+        if iso_name_len % 2 == 0 {
+            sys_use_start += 1;
+        }
+
+        let rec_start = off;
+        dir_buf[rec_start] = record_len as u8;
+        // extent (LE at +2)
+        let file_extent: u32 = 300;
+        let file_size: u32 = 9999;
+        dir_buf[rec_start + 2..rec_start + 6].copy_from_slice(&file_extent.to_le_bytes());
+        dir_buf[rec_start + 10..rec_start + 14].copy_from_slice(&file_size.to_le_bytes());
+        dir_buf[rec_start + 25] = 0; // file flags
+        dir_buf[rec_start + 32] = iso_name_len as u8;
+        dir_buf[rec_start + 33..rec_start + 33 + iso_name_len].copy_from_slice(iso_name);
+
+        // Write NM entry (first fragment, CONTINUE flag)
+        let su = rec_start + sys_use_start;
+        dir_buf[su] = b'N';
+        dir_buf[su + 1] = b'M';
+        dir_buf[su + 2] = nm1_len;
+        dir_buf[su + 3] = 1; // version
+        dir_buf[su + 4] = 0x01; // CONTINUE flag
+        dir_buf[su + 5..su + 5 + nm1_name.len()].copy_from_slice(nm1_name);
+
+        // Write CE entry immediately after NM
+        let ce_su = su + nm1_len as usize;
+        dir_buf[ce_su] = b'C';
+        dir_buf[ce_su + 1] = b'E';
+        dir_buf[ce_su + 2] = ce_entry_len;
+        dir_buf[ce_su + 3] = 1; // version
+        // block LE at +4
+        dir_buf[ce_su + 4..ce_su + 8].copy_from_slice(&CE_LBA.to_le_bytes());
+        // block BE at +8
+        dir_buf[ce_su + 8..ce_su + 12].copy_from_slice(&CE_LBA.to_be_bytes());
+        // offset LE at +12 (0)
+        dir_buf[ce_su + 12..ce_su + 16].copy_from_slice(&0u32.to_le_bytes());
+        // offset BE at +16 (0)
+        dir_buf[ce_su + 16..ce_su + 20].copy_from_slice(&0u32.to_be_bytes());
+        // length LE at +20
+        dir_buf[ce_su + 20..ce_su + 24].copy_from_slice(&ce_area_len.to_le_bytes());
+        // length BE at +24
+        dir_buf[ce_su + 24..ce_su + 28].copy_from_slice(&ce_area_len.to_be_bytes());
+
+        off += record_len;
+
+        let dev = CeMockDevice {
+            dir_sector: dir_buf,
+            ce_lba: CE_LBA as u64,
+            ce_sector,
+        };
+
+        let iso = IsoFs {
+            pvd: PrimaryVolumeDescriptor {
+                system_id: [0; 32],
+                volume_id: [0; 32],
+                volume_space_size: 0,
+                root_dir_extent: 0,
+                root_dir_size: 0,
+                logical_block_size: 2048,
+            },
+            dir_cache: RefCell::new(BTreeMap::new()),
+            #[cfg(feature = "perf")]
+            perf: RefCell::new(PerfCounters::default()),
+        };
+
+        let entries = iso.parse_dir_entries(&dev, 0, off as u32);
+        assert_eq!(entries.len(), 1, "Should have exactly one file entry");
+
+        let e = &entries[0];
+        assert_eq!(
+            e.name, "SplitFile.txt",
+            "Rock Ridge name should be stitched from CE continuation"
+        );
+        assert_eq!(e.extent_lba, file_extent);
+        assert_eq!(e.size, file_size);
+        assert!(!e.is_directory);
     }
 
     struct MockIsoImage {
