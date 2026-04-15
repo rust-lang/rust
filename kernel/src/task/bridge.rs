@@ -100,3 +100,125 @@ pub use task_state_from_thread as thread_state_to_task_state;
 
 /// Alias for [`task_from_thread_state`].
 pub use task_from_thread_state as thread_state_to_task;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sched::hooks::ProcessSnapshot;
+
+    fn make_snapshot(state: ThreadState, name: &str, pid: u32) -> ProcessSnapshot {
+        ProcessSnapshot {
+            pid,
+            ppid: 0,
+            tid: pid as u64,
+            name: alloc::string::String::from(name),
+            state,
+            argv: alloc::vec::Vec::new(),
+            exec_path: alloc::string::String::new(),
+            exit_code: None,
+            pgid: pid,
+            sid: pid,
+            session_leader: false,
+            cwd: alloc::string::String::from("/"),
+            namespace_label: alloc::string::String::from("global"),
+            thread_states: alloc::vec![state],
+        }
+    }
+
+    // ── task_state_from_thread ───────────────────────────────────────────────
+
+    #[test]
+    fn test_runnable_maps_to_ready() {
+        assert_eq!(task_state_from_thread(ThreadState::Runnable), TaskState::Ready);
+    }
+
+    #[test]
+    fn test_running_maps_to_running() {
+        assert_eq!(task_state_from_thread(ThreadState::Running), TaskState::Running);
+    }
+
+    #[test]
+    fn test_blocked_maps_to_blocked() {
+        assert_eq!(task_state_from_thread(ThreadState::Blocked), TaskState::Blocked);
+    }
+
+    #[test]
+    fn test_dead_maps_to_exited() {
+        assert_eq!(task_state_from_thread(ThreadState::Dead), TaskState::Exited);
+    }
+
+    // ── task_from_thread_state ───────────────────────────────────────────────
+
+    #[test]
+    fn test_task_from_thread_state_has_correct_state() {
+        let task = task_from_thread_state(ThreadState::Runnable);
+        assert_eq!(task.state, TaskState::Ready);
+    }
+
+    #[test]
+    fn test_task_from_thread_state_has_no_job() {
+        let task = task_from_thread_state(ThreadState::Running);
+        assert_eq!(task.job, None);
+    }
+
+    #[test]
+    fn test_task_from_thread_state_has_no_name() {
+        let task = task_from_thread_state(ThreadState::Blocked);
+        assert_eq!(task.name, None);
+    }
+
+    // ── task_from_snapshot ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_task_from_snapshot_state_is_mapped() {
+        let snap = make_snapshot(ThreadState::Runnable, "proc", 1);
+        let task = task_from_snapshot(&snap);
+        assert_eq!(task.state, TaskState::Ready);
+    }
+
+    #[test]
+    fn test_task_from_snapshot_job_is_pid() {
+        let snap = make_snapshot(ThreadState::Running, "proc", 42);
+        let task = task_from_snapshot(&snap);
+        assert_eq!(task.job, Some(42));
+    }
+
+    #[test]
+    fn test_task_from_snapshot_name_is_set_when_non_empty() {
+        let snap = make_snapshot(ThreadState::Running, "my-proc", 1);
+        let task = task_from_snapshot(&snap);
+        assert_eq!(task.name.as_deref(), Some("my-proc"));
+    }
+
+    #[test]
+    fn test_task_from_snapshot_name_is_none_when_empty() {
+        let snap = make_snapshot(ThreadState::Running, "", 1);
+        let task = task_from_snapshot(&snap);
+        assert_eq!(task.name, None);
+    }
+
+    #[test]
+    fn test_task_from_snapshot_dead_state_is_exited() {
+        let snap = make_snapshot(ThreadState::Dead, "zombie", 7);
+        let task = task_from_snapshot(&snap);
+        assert_eq!(task.state, TaskState::Exited);
+    }
+
+    // ── alias coverage ───────────────────────────────────────────────────────
+
+    #[test]
+    fn test_thread_state_to_task_state_alias() {
+        assert_eq!(
+            thread_state_to_task_state(ThreadState::Dead),
+            TaskState::Exited
+        );
+    }
+
+    #[test]
+    fn test_thread_state_to_task_alias() {
+        let task = thread_state_to_task(ThreadState::Blocked);
+        assert_eq!(task.state, TaskState::Blocked);
+        assert_eq!(task.job, None);
+        assert_eq!(task.name, None);
+    }
+}
