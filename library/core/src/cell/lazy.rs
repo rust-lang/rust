@@ -377,8 +377,7 @@ impl<T, F> From<T> for LazyCell<T, F> {
     }
 }
 
-#[cold]
-#[inline(never)]
+#[rustc_panic_entrypoint]
 const fn panic_poisoned() -> ! {
     panic!("LazyCell instance has previously been poisoned")
 }

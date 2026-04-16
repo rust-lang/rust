@@ -70,11 +70,9 @@ mod asymmetric;
 /// The behavior of all divisions by zero is controlled by this function. This function should be
 /// impossible to reach by Rust users, unless `compiler-builtins` public division functions or
 /// `core/std::unchecked_div/rem` are directly used without a zero check in front.
+#[allow(rustc::missing_panic_entrypoint)]
 fn zero_div_fn() -> ! {
-    // Calling the intrinsic directly, to avoid the `assert_unsafe_precondition` that cannot be used
-    // here because it involves non-`inline` functions
-    // (https://github.com/rust-lang/compiler-builtins/issues/491).
-    unsafe { core::intrinsics::unreachable() }
+    unsafe { core::hint::unreachable_unchecked() }
 }
 
 const USE_LZ: bool = {

@@ -1,6 +1,6 @@
 use rustc_abi::{Align, ExternAbi};
 use rustc_hir::attrs::{
-    AttributeKind, EiiImplResolution, InlineAttr, Linkage, RtsanSetting, UsedBy,
+    AttributeKind, EiiImplResolution, InlineAttr, Linkage, OptimizeAttr, RtsanSetting, UsedBy,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -15,7 +15,7 @@ use rustc_middle::ty::{self as ty, TyCtxt};
 use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, sym};
-use rustc_target::spec::Os;
+use rustc_target::spec::{Os, PanicStrategy};
 
 use crate::errors;
 use crate::target_features::{
@@ -293,6 +293,9 @@ fn process_builtin_attrs(
                 codegen_fn_attrs.patchable_function_entry =
                     Some(PatchableFunctionEntry::from_prefix_and_entry(*prefix, *entry));
             }
+            AttributeKind::RustcPanicEntrypoint => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::PANIC_ENTRYPOINT
+            }
             _ => {}
         }
     }
@@ -383,6 +386,28 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
             //
             // if none of the exceptions apply; apply no_mangle
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+        }
+    }
+
+    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::PANIC_ENTRYPOINT) {
+        // Panic entrypoints are always cold.
+        //
+        // If we have immediate-abort enabled, we want panic entrypoints to be inlined. We have a
+        // MIR transform that tries to patch out immediate-abort panic entrypoint calls, but it can
+        // miss indirect calls. In such cases, this should encourage the optimizer to clean up the
+        // mess that we missed.
+        //
+        // When the panic strategies that support panic messages are enabled, we want panic
+        // entrypoints outlined and optimized for size.
+        // Most panic entrypoints want #[track_caller] but not all, so we do not add it.
+        // FIXME: It seems unlikely that all choices of #[track_caller] were deliberate, but it can
+        // have a code size impact, so it makes sense to apply judiciously.
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
+        if tcx.sess.panic_strategy() == PanicStrategy::ImmediateAbort {
+            codegen_fn_attrs.inline = InlineAttr::Always;
+        } else {
+            codegen_fn_attrs.inline = InlineAttr::Never;
+            codegen_fn_attrs.optimize = OptimizeAttr::Size;
         }
     }
 }
