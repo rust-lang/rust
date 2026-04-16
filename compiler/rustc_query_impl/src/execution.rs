@@ -12,7 +12,6 @@ use rustc_middle::query::{
     QueryMode, QueryState, QueryVTable,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::tls::is_sandbox;
 use rustc_middle::verify_ich::incremental_verify_ich;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::warn;
@@ -283,7 +282,7 @@ fn execute_query_and_callback<'tcx, R, C: QueryCache>(
     action: impl FnOnce() -> R,
 ) -> R {
     if let Some(callback_fn) = query.sandbox_callfront_fn
-        && !is_sandbox()
+        && !tcx.is_in_sandbox()
     {
         (callback_fn)(tcx);
     }
@@ -335,7 +334,7 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
             // Delegate to another function to actually execute the query job.
             let (value, dep_node_index) = if INCR {
-                if is_sandbox() {
+                if tcx.is_in_sandbox() {
                     execute_job_non_incr(query, tcx, key, id)
                 } else {
                     execute_job_incr(query, tcx, key, dep_node.unwrap(), id)

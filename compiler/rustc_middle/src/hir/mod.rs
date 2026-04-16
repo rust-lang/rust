@@ -25,7 +25,6 @@ use rustc_span::{ErrorGuaranteed, ExpnId, HashStableContext, Span};
 
 use crate::query::Providers;
 use crate::ty::print::with_no_trimmed_paths;
-use crate::ty::tls::{ImplicitCtxt, enter_context, with_context};
 use crate::ty::{ResolverAstLowering, TyCtxt};
 
 /// The top-level data structure that stores the entire contents of
@@ -210,19 +209,16 @@ impl ModuleItems {
 
 impl<'tcx> TyCtxt<'tcx> {
     fn sandbox(self, action: impl FnOnce() -> ()) {
-        with_context(|icx| {
-            let icx = ImplicitCtxt { is_sandbox: true, ..*icx };
-            enter_context(&icx, || {
-                self.enter_query_sandbox();
+        self.with_sandbox(|| {
+            self.enter_query_sandbox();
 
-                self.dep_graph.with_query_deserialization(|| {
-                    with_no_trimmed_paths!({
-                        action();
-                    });
+            self.dep_graph.with_sandbox(|| {
+                with_no_trimmed_paths!({
+                    action();
                 });
+            });
 
-                self.leave_query_sandbox();
-            })
+            self.leave_query_sandbox();
         });
     }
 

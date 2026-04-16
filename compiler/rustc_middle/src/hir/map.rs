@@ -21,7 +21,6 @@ use crate::hir::{ModuleItems, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::query::LocalCrate;
 use crate::ty::TyCtxt;
-use crate::ty::tls::is_sandbox;
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
 /// Constructed using `tcx.hir_parent_iter(hir_id)`.
@@ -1336,7 +1335,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
     }
 
     fn visit_if_delayed(&self, _: LocalDefId) -> bool {
-        !is_sandbox()
+        !self.tcx.is_in_sandbox()
     }
 
     fn visit_item(&mut self, item: &'hir Item<'hir>) {
