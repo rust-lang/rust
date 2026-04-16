@@ -52,8 +52,8 @@ pub unsafe fn keep_transparent_transmute() {
     // CHECK: as i16 (Transmute);
     // CHECK-NOT: .{{[0-9]+}}: i16
 
-    // Transmutes should not be converted to field accesses, because MCP#807
-    // bans projections into `[rustc_layout_scalar_valid_range_*]` types.
+    // Transmutes should not be converted to field accesses, because
+    // pattern types do not have fields.
     let _a: i16 = transmute(const { std::num::NonZero::new(12345_i16).unwrap() });
     let _a: i16 = transmute(std::num::Wrapping(0_i16));
 }
