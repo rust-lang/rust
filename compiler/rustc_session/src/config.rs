@@ -1320,7 +1320,8 @@ impl OutputFilenames {
     }
 }
 
-pub(crate) fn parse_remap_path_scope(
+// pub for rustdoc
+pub fn parse_remap_path_scope(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
     unstable_opts: &UnstableOptions,
