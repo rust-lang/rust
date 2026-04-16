@@ -27,27 +27,42 @@ error[E0539]: malformed `target_feature` attribute input
    |
 LL | #[target_feature = "+sse2"]
    | ^^^^^^^^^^^^^^^^^---------^
-   | |                |
-   | |                expected this to be a list
-   | help: must be of the form: `#[target_feature(enable = "feat1, feat2")]`
+   |                  |
+   |                  expected this to be a list
+   |
+help: must be of the form
+   |
+LL - #[target_feature = "+sse2"]
+LL + #[target_feature(enable = "feat1, feat2")]
+   |
 
 error[E0539]: malformed `target_feature` attribute input
   --> $DIR/invalid-attribute.rs:29:1
    |
 LL | #[target_feature(bar)]
    | ^^^^^^^^^^^^^^^^^---^^
-   | |                |
-   | |                expected this to be of the form `enable = "..."`
-   | help: must be of the form: `#[target_feature(enable = "feat1, feat2")]`
+   |                  |
+   |                  expected this to be of the form `enable = "..."`
+   |
+help: must be of the form
+   |
+LL - #[target_feature(bar)]
+LL + #[target_feature(enable = "feat1, feat2")]
+   |
 
 error[E0539]: malformed `target_feature` attribute input
   --> $DIR/invalid-attribute.rs:32:1
    |
 LL | #[target_feature(disable = "baz")]
    | ^^^^^^^^^^^^^^^^^-------^^^^^^^^^^
-   | |                |
-   | |                expected this to be of the form `enable = "..."`
-   | help: must be of the form: `#[target_feature(enable = "feat1, feat2")]`
+   |                  |
+   |                  expected this to be of the form `enable = "..."`
+   |
+help: must be of the form
+   |
+LL - #[target_feature(disable = "baz")]
+LL + #[target_feature(enable = "feat1, feat2")]
+   |
 
 error: `#[target_feature]` attribute cannot be used on modules
   --> $DIR/invalid-attribute.rs:37:1

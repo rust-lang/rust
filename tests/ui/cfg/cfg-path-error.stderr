@@ -3,44 +3,60 @@ error[E0539]: malformed `cfg` attribute input
    |
 LL | #[cfg(any(foo, foo::bar))]
    | ^^^^^^^^^^^^^^^--------^^^
-   | |              |
-   | |              expected a valid identifier here
-   | help: must be of the form: `#[cfg(predicate)]`
+   |                |
+   |                expected a valid identifier here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL - #[cfg(any(foo, foo::bar))]
+LL + #[cfg(predicate)]
+   |
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-path-error.rs:12:1
    |
 LL | #[cfg(any(foo::bar, foo))]
    | ^^^^^^^^^^--------^^^^^^^^
-   | |         |
-   | |         expected a valid identifier here
-   | help: must be of the form: `#[cfg(predicate)]`
+   |           |
+   |           expected a valid identifier here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL - #[cfg(any(foo::bar, foo))]
+LL + #[cfg(predicate)]
+   |
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-path-error.rs:18:1
    |
 LL | #[cfg(all(foo, foo::bar))]
    | ^^^^^^^^^^^^^^^--------^^^
-   | |              |
-   | |              expected a valid identifier here
-   | help: must be of the form: `#[cfg(predicate)]`
+   |                |
+   |                expected a valid identifier here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL - #[cfg(all(foo, foo::bar))]
+LL + #[cfg(predicate)]
+   |
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/cfg-path-error.rs:24:1
    |
 LL | #[cfg(all(foo::bar, foo))]
    | ^^^^^^^^^^--------^^^^^^^^
-   | |         |
-   | |         expected a valid identifier here
-   | help: must be of the form: `#[cfg(predicate)]`
+   |           |
+   |           expected a valid identifier here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL - #[cfg(all(foo::bar, foo))]
+LL + #[cfg(predicate)]
+   |
 
 error: aborting due to 4 previous errors
 
