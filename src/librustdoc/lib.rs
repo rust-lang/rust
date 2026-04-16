@@ -558,6 +558,14 @@ fn opts() -> Vec<RustcOptGroup> {
         ),
         opt(
             Unstable,
+            Opt,
+            "",
+            "remap-path-scope",
+            "Defines which scopes of paths should be remapped by `--remap-path-prefix`",
+            "[macro,diagnostics,debuginfo,coverage,object,all]",
+        ),
+        opt(
+            Unstable,
             FlagMulti,
             "",
             "show-type-layout",
