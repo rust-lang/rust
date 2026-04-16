@@ -1,6 +1,6 @@
 use crate::fmt;
 use crate::hash::Hash;
-use crate::marker::{Destruct, StructuralPartialEq};
+use crate::marker::Destruct;
 /// An unbounded range (`..`).
 ///
 /// `RangeFull` is primarily used as a [slicing index], its shorthand is `..`.
@@ -351,7 +351,8 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// ```
 #[lang = "RangeInclusive"]
 #[doc(alias = "..=")]
-#[derive(Clone)] // not Copy -- see #27186
+#[derive(Clone, Hash)]
+#[derive_const(Eq, PartialEq)] // not Copy -- see #27186
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
     // Note that the fields here are not public to allow changing the
@@ -487,33 +488,6 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
             write!(fmt, " (exhausted)")?;
         }
         Ok(())
-    }
-}
-
-#[stable(feature = "inclusive_range", since = "1.26.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl<Idx: [const] PartialEq> const PartialEq for RangeInclusive<Idx> {
-    fn eq(&self, other: &Self) -> bool {
-        if self.exhausted || other.exhausted {
-            return false;
-        }
-        self.start == other.start && self.end == other.end
-    }
-}
-
-#[stable(feature = "inclusive_range", since = "1.26.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
-impl<Idx: [const] Eq> const Eq for RangeInclusive<Idx> {}
-
-#[unstable(feature = "structural_match", issue = "31434")]
-impl<Idx: StructuralPartialEq> StructuralPartialEq for RangeInclusive<Idx> {}
-
-#[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<Idx: Hash> Hash for RangeInclusive<Idx> {
-    fn hash<H: crate::hash::Hasher>(&self, state: &mut H) {
-        self.start.hash(state);
-        self.end.hash(state);
-        self.exhausted.hash(state);
     }
 }
 

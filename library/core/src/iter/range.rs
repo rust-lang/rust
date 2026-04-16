@@ -1566,26 +1566,13 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
             return None;
         }
 
-        if let Some(plus_n) = Step::forward_checked(self.start.clone(), n) {
-            use crate::cmp::Ordering::*;
+        let (plus_n, on) = Step::forward_overflowing(self.start.clone(), n);
+        let (plus_1, o1) = Step::forward_overflowing(plus_n.clone(), 1);
 
-            match plus_n.partial_cmp(&self.end) {
-                Some(Less) => {
-                    self.start = Step::forward(plus_n.clone(), 1);
-                    return Some(plus_n);
-                }
-                Some(Equal) => {
-                    self.start = plus_n.clone();
-                    self.exhausted = true;
-                    return Some(plus_n);
-                }
-                _ => {}
-            }
-        }
+        self.start = plus_1;
+        self.exhausted |= on | o1;
 
-        self.start = self.end.clone();
-        self.exhausted = true;
-        None
+        if !on && plus_n <= self.end { Some(plus_n) } else { None }
     }
 
     #[inline]
@@ -1647,26 +1634,13 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
             return None;
         }
 
-        if let Some(minus_n) = Step::backward_checked(self.end.clone(), n) {
-            use crate::cmp::Ordering::*;
+        let (minus_n, on) = Step::backward_overflowing(self.end.clone(), n);
+        let (minus_1, o1) = Step::backward_overflowing(minus_n.clone(), 1);
 
-            match minus_n.partial_cmp(&self.start) {
-                Some(Greater) => {
-                    self.end = Step::backward(minus_n.clone(), 1);
-                    return Some(minus_n);
-                }
-                Some(Equal) => {
-                    self.end = minus_n.clone();
-                    self.exhausted = true;
-                    return Some(minus_n);
-                }
-                _ => {}
-            }
-        }
+        self.end = minus_1;
+        self.exhausted |= on | o1;
 
-        self.end = self.start.clone();
-        self.exhausted = true;
-        None
+        if !on && minus_n >= self.start { Some(minus_n) } else { None }
     }
 
     #[inline]
