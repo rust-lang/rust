@@ -28,8 +28,8 @@ pub trait MetaSized: PointeeSized {}
 #[lang = "sized"]
 pub trait Sized: MetaSized {}
 
-#[lang = "drop_in_place"]
-fn drop_in_place<T>(_: *mut T) {}
+#[lang = "drop_glue"]
+fn drop_glue<T>(_: &mut T) {}
 
 #[used]
 #[no_mangle]

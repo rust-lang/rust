@@ -656,8 +656,8 @@ fn check_recursion_limit<'tcx>(
     let recursion_depth = recursion_depths.get(&def_id).cloned().unwrap_or(0);
     debug!(" => recursion depth={}", recursion_depth);
 
-    let adjusted_recursion_depth = if tcx.is_lang_item(def_id, LangItem::DropInPlace) {
-        // HACK: drop_in_place creates tight monomorphization loops. Give
+    let adjusted_recursion_depth = if tcx.is_lang_item(def_id, LangItem::DropGlue) {
+        // HACK: `drop_glue` creates tight monomorphization loops. Give
         // it more margin.
         recursion_depth / 4
     } else {
@@ -935,7 +935,7 @@ fn visit_drop_use<'tcx>(
     source: Span,
     output: &mut MonoItems<'tcx>,
 ) {
-    let instance = Instance::resolve_drop_in_place(tcx, ty);
+    let instance = Instance::resolve_drop_glue(tcx, ty);
     visit_instance_use(tcx, instance, is_direct_call, source, output);
 }
 
@@ -1525,7 +1525,7 @@ impl<'v> RootCollector<'_, 'v> {
                         });
 
                     // This type is impossible to instantiate, so we should not try to
-                    // generate a `drop_in_place` instance for it.
+                    // generate a `drop_glue` instance for it.
                     if self.tcx.instantiate_and_check_impossible_predicates((
                         id.owner_id.to_def_id(),
                         id_args,

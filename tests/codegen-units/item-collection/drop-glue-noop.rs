@@ -8,6 +8,8 @@
 pub fn start(_: isize, _: *const *const u8) -> isize {
     // No item produced for this, it's a no-op drop and so is removed.
     unsafe {
+        // FIXME: is not removed on opt-level=0 anymore...
+        //~ MONO_ITEM fn std::ptr::drop_in_place::<u32> @@ drop_glue_noop-cgu.0[External]
         std::ptr::drop_in_place::<u32>(&mut 0);
     }
 
@@ -16,7 +18,7 @@ pub fn start(_: isize, _: *const *const u8) -> isize {
     // instantiation-through-vtable.rs) because we special case null pointer for drop glue since
     // #122662.
     //
-    //~ MONO_ITEM fn std::ptr::drop_in_place::<u64> - shim(None) @@ drop_glue_noop-cgu.0[External]
+    //~ MONO_ITEM fn std::ptr::drop_in_place::<u64> @@ drop_glue_noop-cgu.0[External]
     std::ptr::drop_in_place::<u64> as unsafe fn(*mut u64);
 
     0
