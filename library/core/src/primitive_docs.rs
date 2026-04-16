@@ -1794,6 +1794,7 @@ mod prim_ref {}
 /// have different sizes.
 ///
 /// ### ABI compatibility
+/// [ABI compatibility]: #abi-compatibility
 ///
 /// Generally, when a function is declared with one signature and called via a function pointer with
 /// a different signature, the two signatures must be *ABI-compatible* or else calling the function
@@ -1899,7 +1900,8 @@ mod prim_ref {}
 /// There are some caveats to the above ABI-compatibility rules due to how the [CFI (control flow
 /// integrity)][cfi-docs] sanitizer is implemented. CFI is a tool that can be used to validate
 /// that dynamic function calls respect the ABI, but due to its C/C++ origins, it disagrees with the
-/// above documented guarantees in a few ways.
+/// above documented guarantees in a few ways, see below. As CFI is unstable, the details may change
+/// in the future.
 ///
 /// When running the CFI sanitizer, pointer types are only ABI-compatible if the target type and
 /// mutability is the same. This means that `*mut String` and `*mut i32` are incompatible when using
@@ -1911,9 +1913,9 @@ mod prim_ref {}
 /// restricts the rules by considering `usize`/`isize` incompatible with the `uN`/`iN` integer type
 /// of the same size.
 ///
-/// As sanitizers are unstable, these rules may change in the future. This section only documents
-/// cases where CFI disagrees with the usual Rust ABI-compatibility rules, and is not meant to be a
-/// complete explanation of how CFI works.
+/// This section only covers cases where CFI disagrees with [the ABI-compatibility rules for
+/// Rust-to-Rust calls][ABI compatibility]. It is not meant to be a complete explanation of how CFI
+/// works, and details important for to C-to-Rust or Rust-to-C calls are omitted.
 ///
 /// [cfi-docs]: https://doc.rust-lang.org/beta/unstable-book/compiler-flags/sanitizer.html#controlflowintegrity
 ///
