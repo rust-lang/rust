@@ -957,6 +957,7 @@ where
                     values.iter().copied().zip(blocks.iter().copied()),
                     *blocks.last().unwrap(),
                 ),
+                indirect_br: false,
             },
         );
         self.drop_flag_test_block(switch_block, succ, unwind)

@@ -74,7 +74,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
             },
             ExprKind::Match { scrutinee, arms, .. } => {
                 let discr = self.parse_operand(*scrutinee)?;
-                self.parse_match(arms, expr.span).map(|t| TerminatorKind::SwitchInt { discr, targets: t })
+                self.parse_match(arms, expr.span).map(|t| TerminatorKind::SwitchInt { discr, targets: t, indirect_br: false })
             },
         )
     }

@@ -629,7 +629,7 @@ impl<'tcx> Body<'tcx> {
             mono_literal.try_eval_bits(tcx, typing_env)
         };
 
-        let TerminatorKind::SwitchInt { discr, targets } = &block.terminator().kind else {
+        let TerminatorKind::SwitchInt { discr, targets, .. } = &block.terminator().kind else {
             return None;
         };
 

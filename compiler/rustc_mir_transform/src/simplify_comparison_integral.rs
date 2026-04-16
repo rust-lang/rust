@@ -134,8 +134,11 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
             let targets = SwitchTargets::new(iter::once((new_value, bb_cond)), bb_otherwise);
 
             let terminator = bb.terminator_mut();
-            terminator.kind =
-                TerminatorKind::SwitchInt { discr: Operand::Copy(opt.to_switch_on), targets };
+            terminator.kind = TerminatorKind::SwitchInt {
+                discr: Operand::Copy(opt.to_switch_on),
+                targets,
+                indirect_br: false,
+            };
         }
 
         for (idx, bb_idx) in storage_deads_to_remove {

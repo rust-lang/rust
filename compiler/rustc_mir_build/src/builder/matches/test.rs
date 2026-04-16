@@ -104,6 +104,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     TerminatorKind::SwitchInt {
                         discr: Operand::Move(discr),
                         targets: switch_targets,
+                        indirect_br: false,
                     },
                 );
             }
@@ -125,6 +126,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let terminator = TerminatorKind::SwitchInt {
                     discr: Operand::Copy(place),
                     targets: switch_targets,
+                    indirect_br: false,
                 };
                 self.cfg.terminate(block, self.source_info(match_start_span), terminator);
             }

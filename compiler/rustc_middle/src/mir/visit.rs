@@ -545,7 +545,7 @@ macro_rules! make_mir_visitor {
                         );
                     }
 
-                    TerminatorKind::SwitchInt { discr, targets: _ } => {
+                    TerminatorKind::SwitchInt { discr, targets: _, indirect_br: _ } => {
                         self.visit_operand(discr, location);
                     }
 

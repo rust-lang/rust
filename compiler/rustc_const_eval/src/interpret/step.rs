@@ -516,7 +516,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             Goto { target } => self.go_to_block(target),
 
-            SwitchInt { ref discr, ref targets } => {
+            SwitchInt { ref discr, ref targets, indirect_br: _ } => {
                 let discr = self.read_immediate(&self.eval_operand(discr, None)?)?;
                 trace!("SwitchInt({:?})", *discr);
 

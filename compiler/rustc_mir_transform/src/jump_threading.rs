@@ -659,7 +659,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                 return;
             }
             // `SwitchInt` is handled specially.
-            TerminatorKind::SwitchInt { ref discr, ref targets } => {
+            TerminatorKind::SwitchInt { ref discr, ref targets, indirect_br: _ } => {
                 return self.process_switch_int(discr, targets, state);
             }
             // These do not modify memory.

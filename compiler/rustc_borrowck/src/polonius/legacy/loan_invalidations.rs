@@ -94,7 +94,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'a, 'tcx> {
         self.check_activations(location);
 
         match &terminator.kind {
-            TerminatorKind::SwitchInt { discr, targets: _ } => {
+            TerminatorKind::SwitchInt { discr, targets: _, indirect_br: _ } => {
                 self.consume_operand(location, discr);
             }
             TerminatorKind::Drop {

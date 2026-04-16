@@ -173,6 +173,7 @@ fn build_poll_switch<'tcx>(
                         .into_iter(),
                     unreachable_block,
                 ),
+                indirect_br: false,
             },
         }),
         false,

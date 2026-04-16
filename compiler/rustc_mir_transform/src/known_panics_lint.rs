@@ -755,7 +755,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             TerminatorKind::Assert { expected, msg, cond, .. } => {
                 self.check_assertion(*expected, msg, cond, location);
             }
-            TerminatorKind::SwitchInt { discr, targets } => {
+            TerminatorKind::SwitchInt { discr, targets, indirect_br: _ } => {
                 if let Some(ref value) = self.eval_operand(discr)
                     && let Some(value_const) = self.use_ecx(|this| this.ecx.read_scalar(value))
                     && let Some(constant) = value_const.to_bits(value_const.size()).discard_err()

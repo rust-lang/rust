@@ -70,7 +70,7 @@ pub(crate) fn remove_successors_from_switch<'tcx>(
     is_unreachable_block: impl Fn(BasicBlock) -> bool,
 ) -> bool {
     let terminator = body.basic_blocks[bb].terminator();
-    let TerminatorKind::SwitchInt { discr, targets } = &terminator.kind else { bug!() };
+    let TerminatorKind::SwitchInt { discr, targets, .. } = &terminator.kind else { bug!() };
     let source_info = terminator.source_info;
     let location = body.terminator_loc(bb);
 
@@ -146,7 +146,11 @@ pub(crate) fn remove_successors_from_switch<'tcx>(
             // Nothing has changed.
             return false;
         }
-        _ => TerminatorKind::SwitchInt { discr: discr.clone(), targets: new_targets },
+        _ => TerminatorKind::SwitchInt {
+            discr: discr.clone(),
+            targets: new_targets,
+            indirect_br: false,
+        },
     };
 
     patch.patch_terminator(bb, terminator);

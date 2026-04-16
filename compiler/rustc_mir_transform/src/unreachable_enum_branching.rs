@@ -115,7 +115,8 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
             trace!("allowed_variants = {:?}", allowed_variants);
 
             unreachable_targets.clear();
-            let TerminatorKind::SwitchInt { targets, discr } = &bb_data.terminator().kind else {
+            let TerminatorKind::SwitchInt { targets, discr, .. } = &bb_data.terminator().kind
+            else {
                 bug!()
             };
 
@@ -164,7 +165,10 @@ impl<'tcx> crate::MirPass<'tcx> for UnreachableEnumBranching {
             for index in unreachable_targets.iter() {
                 targets.all_targets_mut()[*index] = unreachable_block;
             }
-            patch.patch_terminator(bb, TerminatorKind::SwitchInt { targets, discr: discr.clone() });
+            patch.patch_terminator(
+                bb,
+                TerminatorKind::SwitchInt { targets, discr: discr.clone(), indirect_br: false },
+            );
         }
 
         patch.apply(body);

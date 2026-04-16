@@ -470,7 +470,11 @@ impl<'tcx> TerminatorKind<'tcx> {
 
     #[inline]
     pub fn if_(cond: Operand<'tcx>, t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
-        TerminatorKind::SwitchInt { discr: cond, targets: SwitchTargets::static_if(0, f, t) }
+        TerminatorKind::SwitchInt {
+            discr: cond,
+            targets: SwitchTargets::static_if(0, f, t),
+            indirect_br: false,
+        }
     }
 }
 
@@ -660,7 +664,7 @@ impl<'tcx> TerminatorKind<'tcx> {
     #[inline]
     pub fn as_switch(&self) -> Option<(&Operand<'tcx>, &SwitchTargets)> {
         match self {
-            TerminatorKind::SwitchInt { discr, targets } => Some((discr, targets)),
+            TerminatorKind::SwitchInt { discr, targets, .. } => Some((discr, targets)),
             _ => None,
         }
     }
@@ -785,7 +789,9 @@ impl<'tcx> TerminatorKind<'tcx> {
                 place: CallReturnPlaces::InlineAsm(operands),
             },
 
-            SwitchInt { ref targets, ref discr } => TerminatorEdges::SwitchInt { targets, discr },
+            SwitchInt { ref targets, ref discr, .. } => {
+                TerminatorEdges::SwitchInt { targets, discr }
+            }
         }
     }
 }

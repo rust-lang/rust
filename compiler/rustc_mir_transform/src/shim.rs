@@ -790,6 +790,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
                 *kind = TerminatorKind::SwitchInt {
                     discr: Operand::Move(temp),
                     targets: SwitchTargets::new(cases.into_iter(), unreachable),
+                    indirect_br: false,
                 };
             }
             BasicBlockData { terminator: None, .. } => unreachable!(),

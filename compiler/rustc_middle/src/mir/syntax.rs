@@ -705,6 +705,7 @@ pub enum TerminatorKind<'tcx> {
         /// The discriminant value being tested.
         discr: Operand<'tcx>,
         targets: SwitchTargets,
+        indirect_br: bool,
     },
 
     /// Indicates that the landing pad is finished and that the process should continue unwinding.

@@ -386,6 +386,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         discr: &mir::Operand<'tcx>,
         targets: &SwitchTargets,
+        _indirect_br: bool,
     ) {
         let discr = self.codegen_operand(bx, discr);
         let discr_value = discr.immediate();
@@ -1570,8 +1571,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 helper.funclet_br(self, bx, target, mergeable_succ())
             }
 
-            mir::TerminatorKind::SwitchInt { ref discr, ref targets } => {
-                self.codegen_switchint_terminator(helper, bx, discr, targets);
+            mir::TerminatorKind::SwitchInt { ref discr, ref targets, indirect_br } => {
+                self.codegen_switchint_terminator(helper, bx, discr, targets, indirect_br);
                 MergingSucc::False
             }
 
