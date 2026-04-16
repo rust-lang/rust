@@ -19,7 +19,7 @@ pub use crate::dep_kind_vtables::make_dep_kind_vtables;
 pub use crate::execution::{CollectActiveJobsKind, collect_active_query_jobs};
 pub use crate::job::{QueryJobMap, break_query_cycle, print_query_stack};
 use crate::query_impl::for_each_query_vtable;
-mod callback;
+mod callfront;
 mod dep_kind_vtables;
 mod error;
 mod execution;
