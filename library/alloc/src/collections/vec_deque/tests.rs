@@ -1431,3 +1431,51 @@ fn extract_if_pred_panic_leak() {
     assert_eq!(DROPS.get(), 2); // 0 and 1
     assert_eq!(q.len(), 6);
 }
+
+// Test symmetric PartialEq implementations between Vec/Slices/Arrays and VecDeque
+#[test]
+fn test_partialeq_symmetric() {
+    // Vec == VecDeque
+    let mut dq = VecDeque::new();
+    dq.push_back(1);
+    dq.push_back(2);
+    dq.push_back(3);
+    let vec = vec![1, 2, 3];
+    assert_eq!(vec, dq);
+    assert_eq!(dq, vec);
+
+    // &[T] == VecDeque
+    let slice: &[i32] = &[1, 2, 3];
+    assert_eq!(slice, dq);
+    assert_eq!(dq, slice);
+
+    // &mut [T] == VecDeque
+    let mut arr = [1, 2, 3];
+    {
+        let slice_mut: &mut [i32] = &mut arr;
+        assert_eq!(slice_mut, dq);
+        assert_eq!(dq, slice_mut);
+    }
+
+    // [T; N] == VecDeque
+    let array: [i32; 3] = [1, 2, 3];
+    assert_eq!(array, dq);
+    assert_eq!(dq, array);
+
+    // &[T; N] == VecDeque
+    let array_ref: &[i32; 3] = &[1, 2, 3];
+    assert_eq!(array_ref, dq);
+    assert_eq!(dq, array_ref);
+
+    // &mut [T; N] == VecDeque
+    {
+        let array_mut: &mut [i32; 3] = &mut arr;
+        assert_eq!(array_mut, dq);
+        assert_eq!(dq, array_mut);
+    }
+
+    // Test inequality
+    let different_vec = vec![1, 2, 4];
+    assert_ne!(different_vec, dq);
+    assert_ne!(dq, different_vec);
+}

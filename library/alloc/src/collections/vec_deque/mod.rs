@@ -3595,6 +3595,97 @@ __impl_slice_eq1! { [const N: usize] VecDeque<T, A>, [U; N], }
 __impl_slice_eq1! { [const N: usize] VecDeque<T, A>, &[U; N], }
 __impl_slice_eq1! { [const N: usize] VecDeque<T, A>, &mut [U; N], }
 
+// Reverse PartialEq impls: Vec, slices, and arrays compared with VecDeque
+#[stable(feature = "vec_deque_partial_eq_slice", since = "1.17.0")]
+impl<T, U, A1: Allocator, A2: Allocator> PartialEq<VecDeque<U, A2>> for Vec<T, A1>
+where
+    T: PartialEq<U>,
+{
+    #[inline]
+    fn eq(&self, other: &VecDeque<U, A2>) -> bool {
+        other.eq(self)
+    }
+    #[inline]
+    fn ne(&self, other: &VecDeque<U, A2>) -> bool {
+        other.ne(self)
+    }
+}
+
+#[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")]
+impl<T, U, A: Allocator> PartialEq<VecDeque<U, A>> for &[T]
+where
+    T: PartialEq<U>,
+{
+    #[inline]
+    fn eq(&self, other: &VecDeque<U, A>) -> bool {
+        other.eq(self)
+    }
+    #[inline]
+    fn ne(&self, other: &VecDeque<U, A>) -> bool {
+        other.ne(self)
+    }
+}
+
+#[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")]
+impl<T, U, A: Allocator> PartialEq<VecDeque<U, A>> for &mut [T]
+where
+    T: PartialEq<U>,
+{
+    #[inline]
+    fn eq(&self, other: &VecDeque<U, A>) -> bool {
+        other.eq(self)
+    }
+    #[inline]
+    fn ne(&self, other: &VecDeque<U, A>) -> bool {
+        other.ne(self)
+    }
+}
+
+#[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")]
+impl<T, U, A: Allocator, const N: usize> PartialEq<VecDeque<U, A>> for [T; N]
+where
+    T: PartialEq<U>,
+{
+    #[inline]
+    fn eq(&self, other: &VecDeque<U, A>) -> bool {
+        other.eq(self)
+    }
+    #[inline]
+    fn ne(&self, other: &VecDeque<U, A>) -> bool {
+        other.ne(self)
+    }
+}
+
+#[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")]
+impl<T, U, A: Allocator, const N: usize> PartialEq<VecDeque<U, A>> for &[T; N]
+where
+    T: PartialEq<U>,
+{
+    #[inline]
+    fn eq(&self, other: &VecDeque<U, A>) -> bool {
+        other.eq(self)
+    }
+    #[inline]
+    fn ne(&self, other: &VecDeque<U, A>) -> bool {
+        other.ne(self)
+    }
+}
+
+#[stable(feature = "partialeq_vec_for_ref_slice", since = "1.46.0")]
+impl<T, U, A: Allocator, const N: usize> PartialEq<VecDeque<U, A>> for &mut [T; N]
+where
+    T: PartialEq<U>,
+{
+    #[inline]
+    fn eq(&self, other: &VecDeque<U, A>) -> bool {
+        other.eq(self)
+    }
+    #[inline]
+    fn ne(&self, other: &VecDeque<U, A>) -> bool {
+        other.ne(self)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd, A: Allocator> PartialOrd for VecDeque<T, A> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
