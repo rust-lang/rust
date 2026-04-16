@@ -385,7 +385,7 @@ pub enum Severity {
     Allow,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct MiniCore<'a>(&'a str);
 
 impl<'a> MiniCore<'a> {
@@ -397,6 +397,15 @@ impl<'a> MiniCore<'a> {
     #[inline]
     pub const fn default() -> Self {
         Self(test_utils::MiniCore::RAW_SOURCE)
+    }
+}
+
+impl std::fmt::Debug for MiniCore<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("MiniCore")
+            // don't print the whole contents if they correspond to the default
+            .field(if self.0 == test_utils::MiniCore::RAW_SOURCE { &"<default>" } else { &self.0 })
+            .finish()
     }
 }
 
