@@ -712,6 +712,11 @@ impl<'a> TritonCodegen<'a> {
         } else if name == "triton::llvm::triton::pointer::Pointer" {
             // `Pointer<T>` is a newtype wrapper — pass through the wrapped value directly.
             Ok(value)
+        } else if adt_def.is_enum() {
+            // For enum ADTs (e.g. `Axis`, `PaddingOption`, `CacheModifier`, etc.),
+            // `codegen_scalar_const_value` already emitted the discriminant as an integer.
+            // Pass through the value unchanged.
+            Ok(value)
         } else {
             todo!("Adt: {:?}", adt_def)
         }
@@ -1316,35 +1321,40 @@ impl<'a> TritonCodegen<'a> {
                         scalar, adt_def, args
                     );
 
-                    // For scalar newtype ADTs (e.g. `I32(pub i32)`), get the inner
-                    // field's primitive type so Int::from_scalar can determine the
-                    // correct MLIR integer kind.  codegen_constant_cast will call
-                    // codegen_const_adt to wrap the result, so we must NOT call it
-                    // here to avoid a double-call.
-                    let variant = adt_def.non_enum_variant();
-                    let inner_ty = tcx
-                        .type_of(variant.fields[FieldIdx::from_usize(0)].did)
-                        .instantiate(tcx, args);
-
-                    let scalar_op: Operation<'a> = match scalar {
-                        Scalar::Int(scalar_int) => {
-                            let value = Int::from_scalar(inner_ty, scalar_int).map_err(|e| {
-                                MlirError::InvalidScalar {
-                                    node: format!(
-                                        "Invalid scalar: {:?} {:?} {:?}",
-                                        e, inner_ty, scalar_int
-                                    ),
-                                }
-                            })?;
-                            create_int_constant(self.module.context(), location, value)
-                                .map_err(|e| MlirError::CreateOperation { err: e })?
-                                .into()
-                        }
+                    let scalar_int = match scalar {
+                        Scalar::Int(s) => s,
                         Scalar::Ptr(pointer, _) => todo!("Scalar::Ptr: {:?}", pointer),
                     };
 
-                    let result = scalar_op.result(0).unwrap();
-                    mlir_block.append_operation(scalar_op);
+                    // For enum ADTs (e.g. `#[repr(i32)] enum Axis { X=0, Y=1, Z=2 }`),
+                    // emit the discriminant as the underlying integer directly.
+                    let int_val = if adt_def.is_enum() {
+                        match scalar_int.size().bytes() {
+                            1 => Int::I8(scalar_int.to_u8()),
+                            2 => Int::I16(scalar_int.to_u16()),
+                            4 => Int::I32(scalar_int.to_u32()),
+                            8 => Int::I64(scalar_int.to_u64()),
+                            n => todo!("Enum scalar size {} bytes", n),
+                        }
+                    } else {
+                        // For scalar newtype ADTs (e.g. `struct I32(pub i32)`), get the inner
+                        // field's primitive type so Int::from_scalar can determine the
+                        // correct MLIR integer kind.
+                        let variant = adt_def.non_enum_variant();
+                        let inner_ty = tcx
+                            .type_of(variant.fields[FieldIdx::from_usize(0)].did)
+                            .instantiate(tcx, args);
+                        Int::from_scalar(inner_ty, scalar_int).map_err(|e| MlirError::InvalidScalar {
+                            node: format!("Invalid scalar: {:?} {:?} {:?}", e, inner_ty, scalar_int),
+                        })?
+                    };
+
+                    let const_op: Operation<'a> =
+                        create_int_constant(self.module.context(), location, int_val)
+                            .map_err(|e| MlirError::CreateOperation { err: e })?
+                            .into();
+                    let result = const_op.result(0).unwrap();
+                    mlir_block.append_operation(const_op);
                     Ok(result.into())
                 }
                 _ => todo!("Scalar::Int ty: {:?} {:?}", ty.kind(), ty),

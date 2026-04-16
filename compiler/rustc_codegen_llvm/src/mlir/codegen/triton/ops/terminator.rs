@@ -324,24 +324,42 @@ impl<'a> TritonCodegen<'a> {
             func, callee_name
         );
 
-        let ret_ty = self.type_mapper.map_type(self.module.context(), &tcx, &ret_ty);
+        // Flatten the return type: unit → [], tuple → multiple types, scalar → one type.
+        let result_types: Vec<_> = if ret_ty.is_unit() {
+            vec![]
+        } else if let TyKind::Tuple(elem_tys) = ret_ty.kind() {
+            elem_tys
+                .iter()
+                .map(|ty| self.type_mapper.map_type(self.module.context(), &tcx, &ty))
+                .collect()
+        } else {
+            vec![self.type_mapper.map_type(self.module.context(), &tcx, &ret_ty)]
+        };
+
         let call_op: Operation<'a> = call(
             self.module.context(),
             location,
             callee_name.as_str(),
             &args,
-            &[ret_ty],
+            &result_types,
         )
         .map_err(|e| MlirError::CreateOperation { err: e })?
         .into();
 
         eprintln!("[DEBUG] AXM TritonCodegen::codegen_call: call_op: {:?}", call_op.to_string());
 
-        let result = if call_op.result_count() > 0 {
-            let result = call_op.result(0).expect("Call operation result not found");
-            Some(result.into())
-        } else {
-            None
+        let result = match result_types.len() {
+            0 => None,
+            1 => {
+                let result = call_op.result(0).expect("Call operation result not found");
+                Some(result.into())
+            }
+            _ => {
+                // Multiple return values — caller must route them into tuple_fields.
+                // Return the first value here; the tuple routing is done by the caller.
+                let result = call_op.result(0).expect("Call operation result not found");
+                Some(result.into())
+            }
         };
 
         mlir_block.append_operation(call_op);
