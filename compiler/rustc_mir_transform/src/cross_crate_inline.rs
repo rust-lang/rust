@@ -146,8 +146,9 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             TerminatorKind::Call { func, unwind, .. } => {
                 // We track calls because they make our function not a leaf (and in theory, the
                 // number of calls indicates how likely this function is to perturb other CGUs).
-                // But intrinsics don't have a body that gets assigned to a CGU, so they are
-                // ignored.
+                // But there are a handful of intrinsics such as raw_eq that should not block
+                // cross-crate-inlining. Adding a broad exception for all intrinsics benchmarks well
+                // and seems more sustainable than an ever-growing list of intrinsics to ignore.
                 if let Some((fn_def_id, _)) = func.const_fn_def()
                     && find_attr!(tcx, fn_def_id, RustcIntrinsic)
                 {

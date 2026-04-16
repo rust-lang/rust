@@ -294,24 +294,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.apply_adjustments(lhs_expr, vec![autoref]);
                     }
 
-                    if let ty::Ref(_, _, mutbl) = method.sig.inputs()[1].kind() {
-                        // Allow two-phase borrows for binops in initial deployment
-                        // since they desugar to methods
-                        let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::Yes);
-                        let autoref = Adjustment {
-                            kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
-                            target: method.sig.inputs()[1],
-                        };
-                        // HACK(eddyb) Bypass checks due to reborrows being in
-                        // some cases applied on the RHS, on top of which we need
-                        // to autoref, which is not allowed by apply_adjustments.
-                        // self.apply_adjustments(rhs_expr, vec![autoref]);
-                        self.typeck_results
-                            .borrow_mut()
-                            .adjustments_mut()
-                            .entry(rhs_expr.hir_id)
-                            .or_default()
-                            .push(autoref);
+                    if by_ref_binop {
+                        if let ty::Ref(_, _, mutbl) = method.sig.inputs()[1].kind() {
+                            // Allow two-phase borrows for binops in initial deployment
+                            // since they desugar to methods
+                            let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::Yes);
+                            let autoref = Adjustment {
+                                kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
+                                target: method.sig.inputs()[1],
+                            };
+                            // HACK(eddyb) Bypass checks due to reborrows being in
+                            // some cases applied on the RHS, on top of which we need
+                            // to autoref, which is not allowed by apply_adjustments.
+                            // self.apply_adjustments(rhs_expr, vec![autoref]);
+                            self.typeck_results
+                                .borrow_mut()
+                                .adjustments_mut()
+                                .entry(rhs_expr.hir_id)
+                                .or_default()
+                                .push(autoref);
+                        }
                     }
                 }
 

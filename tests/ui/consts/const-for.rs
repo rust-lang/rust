@@ -2,8 +2,8 @@
 
 const _: () = {
     for _ in 0..5 {}
-    //~^ ERROR `std::ops::Range<{integer}>: const Iterator` is not satisfied
-    //~| ERROR `std::ops::Range<{integer}>: const Iterator` is not satisfied
+    //~^ ERROR cannot use `for`
+    //~| ERROR cannot use `for`
 };
 
 fn main() {}

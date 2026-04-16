@@ -937,6 +937,8 @@ marker_impls! {
         {T: PointeeSized} *mut T,
         {T: PointeeSized} &T,
         {T: PointeeSized} &mut T,
+        {T: PointeeSized} pattern_type!(*const T is !null),
+        {T: PointeeSized} pattern_type!(*mut T is !null),
 }
 
 /// Types that do not require any pinning guarantees.
@@ -1093,9 +1095,13 @@ pub macro ConstParamTy($item:item) {
     /* compiler built-in */
 }
 
+// For `adt_const_params` to be recognized as a feature
+#[unstable(feature = "adt_const_params", issue = "95174")]
+const _: () = ();
+
 // FIXME(adt_const_params): handle `ty::FnDef`/`ty::Closure`
 marker_impls! {
-    #[unstable(feature = "adt_const_params", issue = "95174")]
+    #[unstable(feature = "min_adt_const_params", issue = "154042")]
     ConstParamTy_ for
         usize, u8, u16, u32, u64, u128,
         isize, i8, i16, i32, i64, i128,

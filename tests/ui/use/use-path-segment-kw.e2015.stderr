@@ -935,39 +935,49 @@ help: try renaming it with a name
 LL |         use $crate::{self as name};
    |                           +++++++
 
-error[E0432]: unresolved import `foobar`
+error[E0433]: cannot find module or crate `foobar` in the crate root
   --> $DIR/use-path-segment-kw.rs:187:17
    |
 LL |         pub use foobar::qux::self;
-   |                 ^^^^^^
+   |                 ^^^^^^ use of unresolved module or unlinked crate `foobar`
    |
-help: a similar path exists
+help: you might be missing a crate named `foobar`, add it to your project and import it in your code
    |
-LL |         pub use self::foobar::qux::self;
-   |                 ++++++
+LL + extern crate foobar;
+   |
+
+error[E0433]: cannot find module or crate `foobar` in the crate root
+  --> $DIR/use-path-segment-kw.rs:191:17
+   |
+LL |         pub use foobar::baz::{self};
+   |                 ^^^^^^ use of unresolved module or unlinked crate `foobar`
+   |
+help: you might be missing a crate named `foobar`, add it to your project and import it in your code
+   |
+LL + extern crate foobar;
+   |
 
 error[E0432]: unresolved import `foobar`
   --> $DIR/use-path-segment-kw.rs:189:17
    |
 LL |         pub use foobar::self as _self3;
-   |                 ^^^^^^^^^^^^^^^^^^^^^^ no `foobar` in the root
-
-error[E0432]: unresolved import `foobar`
-  --> $DIR/use-path-segment-kw.rs:191:17
-   |
-LL |         pub use foobar::baz::{self};
    |                 ^^^^^^
    |
 help: a similar path exists
    |
-LL |         pub use self::foobar::baz::{self};
+LL |         pub use self::foobar::self as _self3;
    |                 ++++++
 
 error[E0432]: unresolved import `foobar`
-  --> $DIR/use-path-segment-kw.rs:192:26
+  --> $DIR/use-path-segment-kw.rs:192:17
    |
 LL |         pub use foobar::{self as _nested_self3};
-   |                          ^^^^^^^^^^^^^^^^^^^^^ no `foobar` in the root
+   |                 ^^^^^^
+   |
+help: a similar path exists
+   |
+LL |         pub use self::foobar::{self as _nested_self3};
+   |                 ++++++
 
 error[E0433]: `self` in paths can only be used in start position
   --> $DIR/use-path-segment-kw.rs:215:36

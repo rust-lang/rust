@@ -89,7 +89,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 if def_id.is_local() =>
             {
                 let def_id = def_id.expect_local();
-                if let ty::TypingMode::Coherence = self.typing_mode() {
+                if self.typing_mode().is_coherence() {
                     // See comment on `insert_hidden_type` for why this is sufficient in coherence
                     return Some(self.register_hidden_type(
                         OpaqueTypeKey { def_id, args },

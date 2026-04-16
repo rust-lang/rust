@@ -1,0 +1,29 @@
+// MIR for `prefix_of_array` after PreCodegen
+
+fn prefix_of_array(_1: [u32; 4]) -> [u32; 2] {
+    debug x => _1;
+    let mut _0: [u32; 2];
+    scope 1 (inlined transmute_prefix::<[u32; 4], [u32; 2]>) {
+        let _2: std::mem::transmute_prefix::Transmute<[u32; 4], [u32; 2]>;
+        let mut _3: std::mem::ManuallyDrop<[u32; 2]>;
+        scope 2 {
+        }
+        scope 3 {
+            scope 4 (inlined transmute_neo::<ManuallyDrop<[u32; 2]>, [u32; 2]>) {
+            }
+        }
+        scope 5 (inlined transmute_neo::<[u32; 4], ManuallyDrop<[u32; 4]>>) {
+        }
+    }
+
+    bb0: {
+        StorageLive(_2);
+        _2 = copy _1 as std::mem::transmute_prefix::Transmute<[u32; 4], [u32; 2]> (Transmute);
+        StorageLive(_3);
+        _3 = move (_2.1: std::mem::ManuallyDrop<[u32; 2]>);
+        _0 = copy _3 as [u32; 2] (Transmute);
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
+    }
+}

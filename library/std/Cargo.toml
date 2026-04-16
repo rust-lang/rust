@@ -20,7 +20,7 @@ panic_unwind = { path = "../panic_unwind", optional = true }
 panic_abort = { path = "../panic_abort" }
 core = { path = "../core", public = true }
 unwind = { path = "../unwind" }
-hashbrown = { version = "0.16.1", default-features = false, features = [
+hashbrown = { version = "0.17.0", default-features = false, features = [
     'rustc-dep-of-std',
 ] }
 std_detect = { path = "../std_detect", public = true }
@@ -33,7 +33,7 @@ miniz_oxide = { version = "0.8.0", optional = true, default-features = false }
 addr2line = { version = "0.25.0", optional = true, default-features = false }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
-libc = { version = "0.2.183", default-features = false, features = [
+libc = { version = "0.2.185", default-features = false, features = [
     'rustc-dep-of-std',
 ], public = true }
 

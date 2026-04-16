@@ -2,7 +2,6 @@
 
 #![feature(fn_delegation)]
 #![allow(incomplete_features)]
-#![allow(late_bound_lifetime_arguments)]
 
 //! This is one of the mapping tests, which tests mapping of delegee parent and child
 //! generic params, whose main goal is to create cases with
@@ -10,14 +9,32 @@
 //! delegation parent if applicable. At some tests predicates are
 //! added. At some tests user-specified args are specified in reuse statement.
 
-// Testing lifetimes + types + consts, reusing without
-// user args, checking predicates inheritance
+// Testing lifetimes + types + consts, reusing with(out)
+// user args, checking predicates inheritance, testing with impl Traits
 mod test_1 {
-    fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
+    trait Bound1 {}
+    trait Bound2 {}
+    trait Bound3 {}
+
+    struct X {}
+
+    impl Bound1 for X {}
+    impl Bound2 for X {}
+    impl Bound3 for X {}
+
+    fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>(
+        _x: impl Bound1 + Bound2 + Bound3,
+        _f: impl FnOnce(T) -> U,
+    ) {
+    }
 
     pub fn check() {
         reuse foo as bar;
-        bar::<i32, i32, 1>();
+        bar::<i32, i32, 1>(X {}, |x| x);
+
+        reuse foo::<'static, 'static, usize, String, 132> as bar1;
+
+        bar1(X {}, |x| x.to_string());
     }
 }
 

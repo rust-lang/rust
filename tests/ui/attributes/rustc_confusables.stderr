@@ -51,7 +51,7 @@ error[E0599]: no method named `push` found for struct `rustc_confusables_across_
   --> $DIR/rustc_confusables.rs:17:7
    |
 LL |     x.push();
-   |       ^^^^ method not found in `rustc_confusables_across_crate::BTreeSet`
+   |       ^^^^
    |
 help: you might have meant to use `insert`
    |

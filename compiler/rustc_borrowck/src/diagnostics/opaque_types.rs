@@ -219,12 +219,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for FindOpaqueRegion<'_, 'tcx> {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         // If we find an opaque in a local ty, then for each of its captured regions,
         // try to find a path between that captured regions and our borrow region...
-        if let ty::Alias(opaque @ ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = *ty.kind()
+        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *ty.kind()
             && let hir::OpaqueTyOrigin::FnReturn { parent, in_trait_or_impl: None } =
                 self.tcx.opaque_ty_origin(def_id)
         {
             let variances = self.tcx.variances_of(def_id);
-            for (idx, (arg, variance)) in std::iter::zip(opaque.args, variances).enumerate() {
+            for (idx, (arg, variance)) in std::iter::zip(args, variances).enumerate() {
                 // Skip uncaptured args.
                 if *variance == ty::Bivariant {
                     continue;
@@ -276,12 +276,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CheckExplicitRegionMentionAndCollectGen
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         match *ty.kind() {
-            ty::Alias(opaque @ ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                 if self.seen_opaques.insert(def_id) {
                     for (bound, _) in self
                         .tcx
                         .explicit_item_bounds(def_id)
-                        .iter_instantiated_copied(self.tcx, opaque.args)
+                        .iter_instantiated_copied(self.tcx, args)
                     {
                         bound.visit_with(self)?;
                     }

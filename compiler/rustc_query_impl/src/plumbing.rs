@@ -5,7 +5,7 @@ use rustc_hir::limit::Limit;
 use rustc_middle::bug;
 #[expect(unused_imports, reason = "used by doc comments")]
 use rustc_middle::dep_graph::DepKindVTable;
-use rustc_middle::dep_graph::{DepNode, DepNodeIndex, DepNodeKey, SerializedDepNodeIndex};
+use rustc_middle::dep_graph::{DepNode, DepNodeKey, SerializedDepNodeIndex};
 use rustc_middle::query::erase::{Erasable, Erased};
 use rustc_middle::query::on_disk_cache::{CacheDecoder, CacheEncoder};
 use rustc_middle::query::{QueryCache, QueryJobId, QueryMode, QueryVTable, erase};
@@ -184,23 +184,14 @@ pub(crate) fn loadable_from_disk<'tcx>(tcx: TyCtxt<'tcx>, id: SerializedDepNodeI
 pub(crate) fn try_load_from_disk<'tcx, V>(
     tcx: TyCtxt<'tcx>,
     prev_index: SerializedDepNodeIndex,
-    index: DepNodeIndex,
 ) -> Option<V>
 where
     V: for<'a> Decodable<CacheDecoder<'a, 'tcx>>,
 {
     let on_disk_cache = tcx.query_system.on_disk_cache.as_ref()?;
 
-    let prof_timer = tcx.prof.incr_cache_loading();
-
     // The call to `with_query_deserialization` enforces that no new `DepNodes`
     // are created during deserialization. See the docs of that method for more
     // details.
-    let value = tcx
-        .dep_graph
-        .with_query_deserialization(|| on_disk_cache.try_load_query_value(tcx, prev_index));
-
-    prof_timer.finish_with_query_invocation_id(index.into());
-
-    value
+    tcx.dep_graph.with_query_deserialization(|| on_disk_cache.try_load_query_value(tcx, prev_index))
 }

@@ -18,9 +18,13 @@ wasm-bindgen = "0.2"
 wasm-bindgen-test = "0.3"
 
 [dev-dependencies.proptest]
-version = "0.10"
+workspace = true
+
+# Enable the `wasm_js` feature so that getrandom works on wasm32-unknown-unknown.
+[dev-dependencies.getrandom]
+version = "0.3.4"
 default-features = false
-features = ["alloc"]
+features = ["wasm_js"]
 
 [dev-dependencies.test_helpers]
 path = "../test_helpers"

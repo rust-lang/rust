@@ -441,6 +441,8 @@ pub(crate) enum PathSource<'a, 'ast, 'ra> {
     TraitItem(Namespace, &'a PathSource<'a, 'ast, 'ra>),
     /// Paths in delegation item
     Delegation,
+    /// Paths in externally implementable item declarations.
+    ExternItemImpl,
     /// An arg in a `use<'a, N>` precise-capturing bound.
     PreciseCapturingArg(Namespace),
     /// Paths that end with `(..)`, for return type notation.
@@ -465,6 +467,7 @@ impl PathSource<'_, '_, '_> {
             | PathSource::Pat
             | PathSource::TupleStruct(..)
             | PathSource::Delegation
+            | PathSource::ExternItemImpl
             | PathSource::ReturnTypeNotation => ValueNS,
             PathSource::TraitItem(ns, _) => ns,
             PathSource::PreciseCapturingArg(ns) => ns,
@@ -484,6 +487,7 @@ impl PathSource<'_, '_, '_> {
             | PathSource::TraitItem(..)
             | PathSource::DefineOpaques
             | PathSource::Delegation
+            | PathSource::ExternItemImpl
             | PathSource::PreciseCapturingArg(..)
             | PathSource::Macro
             | PathSource::Module => false,
@@ -527,6 +531,7 @@ impl PathSource<'_, '_, '_> {
                 _ => "value",
             },
             PathSource::ReturnTypeNotation | PathSource::Delegation => "function",
+            PathSource::ExternItemImpl => "function or static",
             PathSource::PreciseCapturingArg(..) => "type or const parameter",
             PathSource::Macro => "macro",
             PathSource::Module => "module",
@@ -618,6 +623,15 @@ impl PathSource<'_, '_, '_> {
                 _ => false,
             },
             PathSource::Delegation => matches!(res, Res::Def(DefKind::Fn | DefKind::AssocFn, _)),
+            PathSource::ExternItemImpl => {
+                matches!(
+                    res,
+                    Res::Def(
+                        DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) | DefKind::Static { .. },
+                        _
+                    )
+                )
+            }
             PathSource::PreciseCapturingArg(ValueNS) => {
                 matches!(res, Res::Def(DefKind::ConstParam, _))
             }
@@ -640,8 +654,12 @@ impl PathSource<'_, '_, '_> {
             (PathSource::Type | PathSource::DefineOpaques, false) => E0425,
             (PathSource::Struct(_), true) => E0574,
             (PathSource::Struct(_), false) => E0422,
-            (PathSource::Expr(..), true) | (PathSource::Delegation, true) => E0423,
-            (PathSource::Expr(..), false) | (PathSource::Delegation, false) => E0425,
+            (PathSource::Expr(..), true)
+            | (PathSource::Delegation, true)
+            | (PathSource::ExternItemImpl, true) => E0423,
+            (PathSource::Expr(..), false)
+            | (PathSource::Delegation, false)
+            | (PathSource::ExternItemImpl, false) => E0425,
             (PathSource::Pat | PathSource::TupleStruct(..), true) => E0532,
             (PathSource::Pat | PathSource::TupleStruct(..), false) => E0531,
             (PathSource::TraitItem(..) | PathSource::ReturnTypeNotation, true) => E0575,
@@ -1082,21 +1100,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         debug!("(resolving function) entering function");
 
         if let FnKind::Fn(_, _, f) = fn_kind {
-            for EiiImpl { node_id, eii_macro_path, known_eii_macro_resolution, .. } in &f.eii_impls
-            {
-                // See docs on the `known_eii_macro_resolution` field:
-                // if we already know the resolution statically, don't bother resolving it.
-                if let Some(target) = known_eii_macro_resolution {
-                    self.smart_resolve_path(
-                        *node_id,
-                        &None,
-                        &target.foreign_item,
-                        PathSource::Expr(None),
-                    );
-                } else {
-                    self.smart_resolve_path(*node_id, &None, &eii_macro_path, PathSource::Macro);
-                }
-            }
+            self.resolve_eii(&f.eii_impls);
         }
 
         // Create a value rib for the function.
@@ -2198,7 +2202,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 | PathSource::Struct(_)
                 | PathSource::TupleStruct(..)
                 | PathSource::DefineOpaques
-                | PathSource::Delegation => true,
+                | PathSource::Delegation
+                | PathSource::ExternItemImpl => true,
             };
             if inferred {
                 // Do not create a parameter for patterns and expressions: type checking can infer
@@ -2891,7 +2896,14 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.parent_scope.module = orig_module;
             }
 
-            ItemKind::Static(box ast::StaticItem { ident, ty, expr, define_opaque, .. }) => {
+            ItemKind::Static(box ast::StaticItem {
+                ident,
+                ty,
+                expr,
+                define_opaque,
+                eii_impls,
+                ..
+            }) => {
                 self.with_static_rib(def_kind, |this| {
                     this.with_lifetime_rib(LifetimeRibKind::Elided(LifetimeRes::Static), |this| {
                         this.visit_ty(ty);
@@ -2903,6 +2915,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     }
                 });
                 self.resolve_define_opaques(define_opaque);
+                self.resolve_eii(&eii_impls);
             }
 
             ItemKind::Const(box ast::ConstItem {
@@ -3004,7 +3017,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         item.id,
                         &None,
                         extern_item_path,
-                        PathSource::Expr(None),
+                        PathSource::ExternItemImpl,
                     );
                 }
             }
@@ -3859,8 +3872,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
         let Some(body) = &delegation.body else { return };
         self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
-            let span = delegation.path.segments.last().unwrap().ident.span;
-            let ident = Ident::new(kw::SelfLower, span.normalize_to_macro_rules());
+            let ident = Ident::new(kw::SelfLower, body.span.normalize_to_macro_rules());
             let res = Res::Local(delegation.id);
             this.innermost_rib_bindings(ValueNS).insert(ident, res);
 
@@ -5479,6 +5491,23 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         if let Some(define_opaque) = define_opaque {
             for (id, path) in define_opaque {
                 self.smart_resolve_path(*id, &None, path, PathSource::DefineOpaques);
+            }
+        }
+    }
+
+    fn resolve_eii(&mut self, eii_impls: &[EiiImpl]) {
+        for EiiImpl { node_id, eii_macro_path, known_eii_macro_resolution, .. } in eii_impls {
+            // See docs on the `known_eii_macro_resolution` field:
+            // if we already know the resolution statically, don't bother resolving it.
+            if let Some(target) = known_eii_macro_resolution {
+                self.smart_resolve_path(
+                    *node_id,
+                    &None,
+                    &target.foreign_item,
+                    PathSource::ExternItemImpl,
+                );
+            } else {
+                self.smart_resolve_path(*node_id, &None, &eii_macro_path, PathSource::Macro);
             }
         }
     }

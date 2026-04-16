@@ -32,8 +32,8 @@ pub fn foo() {}
 
 //@ has all_targets/fn.bar.html \
 //  '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
-//  'Available on AArch64 or AMG GPU or ARM or ARM64EC or AVR or BPF or C-SKY or \
-//  Hexagon or LoongArch64 or LoongArch32 or Motorola 680x0 or MIPS or MIPS release \
+//  'Available on AArch64 or AMD GPU or ARM or ARM64EC or AVR or BPF or C-SKY or \
+//  Hexagon or LoongArch32 or LoongArch64 or Motorola 680x0 or MIPS or MIPS release \
 //  6 or MIPS-64 or MIPS-64 release 6 or MSP430 or NVidia GPU or PowerPC or \
 //  PowerPC64 or RISC-V RV32 or RISC-V RV64 or s390x or SPARC or SPARC-64 or SPIR-V \
 //  or WebAssembly or WebAssembly or x86 or x86-64 or Xtensa or \

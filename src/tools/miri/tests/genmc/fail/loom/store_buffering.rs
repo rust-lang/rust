@@ -29,10 +29,6 @@ fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
         let x = AtomicUsize::new(0);
         let y = AtomicUsize::new(0);
 
-        // FIXME(genmc,HACK): remove these initializing writes once Miri-GenMC supports mixed atomic-non-atomic accesses.
-        x.store(0, Relaxed);
-        y.store(0, Relaxed);
-
         let mut a: usize = 1234;
         let mut b: usize = 1234;
         unsafe {

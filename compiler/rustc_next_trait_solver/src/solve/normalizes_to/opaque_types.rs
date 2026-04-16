@@ -93,7 +93,9 @@ where
                             });
                             self.eq(goal.param_env, expected, actual)?;
                         }
-                        _ => unreachable!(),
+                        TypingMode::Coherence
+                        | TypingMode::PostBorrowckAnalysis { .. }
+                        | TypingMode::PostAnalysis => unreachable!(),
                     }
                 }
 

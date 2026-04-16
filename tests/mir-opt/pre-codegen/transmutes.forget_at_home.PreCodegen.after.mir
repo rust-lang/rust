@@ -1,0 +1,20 @@
+// MIR for `forget_at_home` after PreCodegen
+
+fn forget_at_home(_1: String) -> () {
+    debug x => _1;
+    let mut _0: ();
+    scope 1 (inlined transmute_prefix::<String, ()>) {
+        scope 2 {
+        }
+        scope 3 {
+            scope 4 (inlined transmute_neo::<ManuallyDrop<()>, ()>) {
+            }
+        }
+        scope 5 (inlined transmute_neo::<String, ManuallyDrop<String>>) {
+        }
+    }
+
+    bb0: {
+        return;
+    }
+}

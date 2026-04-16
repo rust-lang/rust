@@ -16,10 +16,11 @@ use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, Subdiagnostic, listify, pluralize,
     struct_span_code_err,
 };
+use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{self as hir, Attribute, ExprKind, HirId, QPath, find_attr, is_range_literal};
+use rustc_hir::{ExprKind, HirId, QPath, find_attr, is_range_literal};
 use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::errors::NoFieldOnType;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer as _;
@@ -55,21 +56,26 @@ use crate::{
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
-        // For the purpose of rendering suggestions, disregard attributes
-        // that originate from desugaring of any kind. For example, `x?`
-        // desugars to `#[allow(unreachable_code)] match ...`. Failing to
-        // ignore the prefix attribute in the desugaring would cause this
-        // suggestion:
-        //
-        //     let y: u32 = x?.try_into().unwrap();
-        //                    ++++++++++++++++++++
-        //
-        // to be rendered as:
-        //
-        //     let y: u32 = (x?).try_into().unwrap();
-        //                  +  +++++++++++++++++++++
         let has_attr = |id: HirId| -> bool {
-            self.tcx.hir_attrs(id).iter().any(Attribute::has_span_without_desugaring_kind)
+            for attr in self.tcx.hir_attrs(id) {
+                // For the purpose of rendering suggestions, disregard attributes
+                // that originate from desugaring of any kind. For example, `x?`
+                // desugars to `#[allow(unreachable_code)] match ...`. Failing to
+                // ignore the prefix attribute in the desugaring would cause this
+                // suggestion:
+                //
+                //     let y: u32 = x?.try_into().unwrap();
+                //                    ++++++++++++++++++++
+                //
+                // to be rendered as:
+                //
+                //     let y: u32 = (x?).try_into().unwrap();
+                //                  +  +++++++++++++++++++++
+                if attr.span().desugaring_kind().is_none() {
+                    return true;
+                }
+            }
+            false
         };
 
         // Special case: range expressions are desugared to struct literals in HIR,
@@ -343,7 +349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let tcx = self.tcx;
         match expr.kind {
-            ExprKind::Lit(ref lit) => self.check_expr_lit(lit, expected),
+            ExprKind::Lit(ref lit) => self.check_expr_lit(lit, expr.hir_id, expected),
             ExprKind::Binary(op, lhs, rhs) => self.check_expr_binop(expr, op, lhs, rhs, expected),
             ExprKind::Assign(lhs, rhs, span) => {
                 self.check_expr_assign(expr, expected, lhs, rhs, span)
@@ -3551,6 +3557,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Register the impl's predicates. One of these predicates
             // must be unsatisfied, or else we wouldn't have gotten here
             // in the first place.
+            let unnormalized_predicates =
+                self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_args);
             ocx.register_obligations(traits::predicates_for_generics(
                 |idx, span| {
                     cause.clone().derived_cause(
@@ -3568,8 +3576,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         },
                     )
                 },
+                |pred| ocx.normalize(&cause, self.param_env, pred),
                 self.param_env,
-                self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_args),
+                unnormalized_predicates,
             ));
 
             // Normalize the output type, which we can use later on as the

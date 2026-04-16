@@ -1101,9 +1101,11 @@ impl<'ra> DeclData<'ra> {
         !(certainly_before_other_or_simultaneously || certainly_before_invoc_or_simultaneously)
     }
 
-    // Its purpose is to postpone the determination of a single binding because
-    // we can't predict whether it will be overwritten by recently expanded macros.
-    // FIXME: How can we integrate it with the `update_resolution`?
+    /// Returns whether this declaration may be shadowed or overwritten by something else later.
+    /// FIXME: this function considers `unexpanded_invocations`, but not `single_imports`, so
+    /// the declaration may not be as "determined" as we think.
+    /// FIXME: relationship between this function and similar `NameResolution::determined_decl`
+    /// is unclear.
     fn determined(&self) -> bool {
         match &self.kind {
             DeclKind::Import { source_decl, import, .. } if import.is_glob() => {

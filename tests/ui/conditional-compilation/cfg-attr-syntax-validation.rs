@@ -12,7 +12,7 @@ struct S2;
 
 #[cfg()]
 //~^ ERROR malformed `cfg` attribute
-//~| NOTE expected a single argument here
+//~| NOTE expected an argument here
 //~| NOTE for more information, visit
 struct S3;
 
