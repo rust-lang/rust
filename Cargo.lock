@@ -5650,9 +5650,8 @@ version = "0.1.0"
 
 [[package]]
 name = "tikv-jemalloc-sys"
-version = "0.6.1+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd8aa5b2ab86a2cefa406d889139c162cbb230092f7d1d7cbc1716405d852a3b"
+version = "0.6.1+5.3.1-0-g81034ce1f1373e37dc865038e1bc8eeecf559ce8"
+source = "git+https://github.com/tikv/jemallocator?rev=c7101ce04fda9652c41a641b35e3f5879751f496#c7101ce04fda9652c41a641b35e3f5879751f496"
 dependencies = [
  "cc",
  "libc",
