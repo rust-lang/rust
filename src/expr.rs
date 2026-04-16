@@ -127,7 +127,13 @@ pub(crate) fn format_expr(
         }
         ast::ExprKind::Move(ref subexpr, move_kw_span) => {
             let inner_span = mk_sp(move_kw_span.hi(), expr.span.hi());
-            rewrite_call(context, "move", std::slice::from_ref(subexpr), inner_span, shape)
+            rewrite_call(
+                context,
+                "move",
+                std::slice::from_ref(subexpr),
+                inner_span,
+                shape,
+            )
         }
         ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape, expr.span),
         ast::ExprKind::Binary(op, ref lhs, ref rhs) => {
