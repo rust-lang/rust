@@ -18,7 +18,7 @@ use rustc_expand::expand::{
 };
 use rustc_feature::Features;
 use rustc_hir::attrs::{AttributeKind, CfgEntry, StrippedCfgItem};
-use rustc_hir::def::{self, DefKind, MacroKinds, Namespace, NonMacroAttrKind};
+use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::{Attribute, StabilityLevel};
 use rustc_middle::middle::stability;
@@ -43,11 +43,9 @@ use crate::hygiene::Macros20NormalizedSyntaxContext;
 use crate::imports::Import;
 use crate::{
     BindingKey, CacheCell, CmResolver, Decl, DeclKind, DeriveData, Determinacy, Finalize, IdentKey,
-    InvocationParent, MacroData, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult,
+    InvocationParent, MacroData, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, Res,
     ResolutionError, Resolver, ScopeSet, Segment, Used,
 };
-
-type Res = def::Res<NodeId>;
 
 /// Name declaration produced by a `macro_rules` item definition.
 /// Not modularized, can shadow previous `macro_rules` definitions, etc.
@@ -880,7 +878,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let res = res?;
         let ext = match deleg_impl {
             Some((impl_def_id, star_span)) => match res {
-                def::Res::Def(DefKind::Trait, def_id) => {
+                Res::Def(DefKind::Trait, def_id) => {
                     let edition = self.tcx.sess.edition();
                     Some(Arc::new(SyntaxExtension::glob_delegation(
                         def_id,

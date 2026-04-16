@@ -1087,7 +1087,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 orig_ident_span,
                 binding,
                 parent_scope,
-                module,
                 finalize,
                 shadowing,
             );
@@ -1150,7 +1149,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 orig_ident_span,
                 binding,
                 parent_scope,
-                module,
                 finalize,
                 shadowing,
             );
@@ -1260,7 +1258,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         orig_ident_span: Span,
         binding: Option<Decl<'ra>>,
         parent_scope: &ParentScope<'ra>,
-        module: Module<'ra>,
         finalize: Finalize,
         shadowing: Shadowing,
     ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
@@ -1293,37 +1290,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && matches!(import.kind, ImportKind::MacroExport)
         {
             self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
-        }
-
-        // If we encounter a re-export for a type with private fields, it will not be able to
-        // be constructed through this re-export. We track that case here to expand later
-        // privacy errors with appropriate information.
-        if let Res::Def(_, def_id) = binding.res() {
-            let struct_ctor = match def_id.as_local() {
-                Some(def_id) => self.struct_constructors.get(&def_id).cloned(),
-                None => {
-                    let ctor = self.cstore().ctor_untracked(self.tcx(), def_id);
-                    ctor.map(|(ctor_kind, ctor_def_id)| {
-                        let ctor_res = Res::Def(
-                            DefKind::Ctor(rustc_hir::def::CtorOf::Struct, ctor_kind),
-                            ctor_def_id,
-                        );
-                        let ctor_vis = self.tcx.visibility(ctor_def_id);
-                        let field_visibilities = self
-                            .tcx
-                            .associated_item_def_ids(def_id)
-                            .iter()
-                            .map(|&field_id| self.tcx.visibility(field_id))
-                            .collect();
-                        (ctor_res, ctor_vis, field_visibilities)
-                    })
-                }
-            };
-            if let Some((_, _, fields)) = struct_ctor
-                && fields.iter().any(|vis| !self.is_accessible_from(*vis, module))
-            {
-                self.inaccessible_ctor_reexport.insert(path_span, binding.span);
-            }
         }
 
         self.record_use(ident, binding, used);

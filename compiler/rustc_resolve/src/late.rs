@@ -25,7 +25,7 @@ use rustc_errors::{
     StashKey, Suggestions, elided_lifetime_in_path_suggestion, pluralize,
 };
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
+use rustc_hir::def::{CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_bound_vars::Set1;
@@ -41,13 +41,11 @@ use tracing::{debug, instrument, trace};
 
 use crate::{
     BindingError, BindingKey, Decl, DelegationFnSig, Finalize, IdentKey, LateDecl, Module,
-    ModuleOrUniformRoot, ParentScope, PathResult, ResolutionError, Resolver, Segment, Stage,
+    ModuleOrUniformRoot, ParentScope, PathResult, Res, ResolutionError, Resolver, Segment, Stage,
     TyCtxt, UseError, Used, errors, path_names_to_string, rustdoc,
 };
 
 mod diagnostics;
-
-type Res = def::Res<NodeId>;
 
 use diagnostics::{ElisionFnParameter, LifetimeElisionCandidate, MissingLifetime};
 
