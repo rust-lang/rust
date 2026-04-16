@@ -19,9 +19,9 @@ use rustc_middle::traits::EvaluationResult;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
-    self, AdtDef, AliasTy, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig, GenericArg,
-    GenericArgKind, GenericArgsRef, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
+    self, AdtDef, AliasTy, AssocContainer, AssocItem, AssocTag, Binder, BoundRegion, BoundVarIndexKind, FnSig,
+    GenericArg, GenericArgKind, GenericArgsRef, IntTy, Region, RegionKind, TraitRef, Ty, TyCtxt,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, UintTy, Upcast, VariantDef, VariantDiscr,
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span, Symbol};
@@ -1023,11 +1023,13 @@ pub fn make_projection<'tcx>(
         #[cfg(debug_assertions)]
         assert_generic_args_match(tcx, assoc_item.def_id, args);
 
-        Some(AliasTy::new_from_args(
-            tcx,
-            ty::AliasTyKind::new_from_def_id(tcx, assoc_item.def_id),
-            args,
-        ))
+        let alias_kind = match assoc_item.container {
+            AssocContainer::Trait | AssocContainer::TraitImpl(_) => {
+                ty::Projection { def_id: assoc_item.def_id }
+            }
+            AssocContainer::InherentImpl => ty::Inherent { def_id: assoc_item.def_id },
+        };
+        Some(AliasTy::new_from_args(tcx, alias_kind, args))
     }
     helper(
         tcx,
