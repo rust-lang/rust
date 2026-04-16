@@ -298,7 +298,7 @@ pub enum PermitVariants {
 
 #[derive(Debug, Clone, Copy)]
 enum TypeRelativePath<'tcx> {
-    AssocItem(ty::AliasTyKind<'tcx>, GenericArgsRef<'tcx>),
+    AssocItem(ty::AliasTerm<'tcx>),
     Variant { adt: Ty<'tcx>, variant_did: DefId },
     Ctor { ctor_def_id: DefId, args: GenericArgsRef<'tcx> },
 }
@@ -1400,9 +1400,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             LowerTypeRelativePathMode::Type(permit_variants),
         )? {
-            TypeRelativePath::AssocItem(alias_kind, args) => {
-                let def_id = alias_kind.def_id();
-                let alias_ty = ty::AliasTy::new_from_args(tcx, alias_kind, args);
+            TypeRelativePath::AssocItem(alias_term) => {
+                let def_id = alias_term.def_id;
+                let alias_kind = ty::AliasTyKind::new_from_def_id(tcx, def_id);
+                let alias_ty = ty::AliasTy::new_from_args(tcx, alias_kind, alias_term.args);
                 let ty = Ty::new_alias(tcx, alias_ty);
                 let ty = self.check_param_uses_if_mcg(ty, span, false);
                 Ok((ty, tcx.def_kind(def_id), def_id))
@@ -1437,10 +1438,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             span,
             LowerTypeRelativePathMode::Const,
         )? {
-            TypeRelativePath::AssocItem(alias_kind, args) => {
-                let def_id = alias_kind.def_id();
+            TypeRelativePath::AssocItem(alias_term) => {
+                let def_id = alias_term.def_id;
                 self.require_type_const_attribute(def_id, span)?;
-                let ct = Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(def_id, args));
+                let ct =
+                    Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(def_id, alias_term.args));
                 let ct = self.check_param_uses_if_mcg(ct, span, false);
                 Ok(ct)
             }
@@ -1578,7 +1580,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 span,
                 mode.assoc_tag(),
             )? {
-                return Ok(TypeRelativePath::AssocItem(ty::Inherent { def_id }, args));
+                return Ok(TypeRelativePath::AssocItem(ty::AliasTerm::new_from_args(
+                    tcx, def_id, args,
+                )));
             }
         }
 
@@ -1612,7 +1616,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
         }
 
-        Ok(TypeRelativePath::AssocItem(ty::Projection { def_id: item_def_id }, args))
+        Ok(TypeRelativePath::AssocItem(ty::AliasTerm::new_from_args(tcx, item_def_id, args)))
     }
 
     /// Resolve a [type-relative](hir::QPath::TypeRelative) (and type-level) path.
