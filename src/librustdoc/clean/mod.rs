@@ -235,7 +235,8 @@ fn generate_item_with_correct_attrs(
             attrs.extend(get_all_import_attributes(cx, import_id, def_id, is_inline));
             is_inline = is_inline || import_is_inline;
         }
-        add_without_unwanted_attributes(&mut attrs, target_attrs, is_inline, None);
+        let keep_target_cfg = is_inline || matches!(kind, ItemKind::TypeAliasItem(..));
+        add_without_unwanted_attributes(&mut attrs, target_attrs, keep_target_cfg, None);
         attrs
     } else {
         // We only keep the item's attributes.
