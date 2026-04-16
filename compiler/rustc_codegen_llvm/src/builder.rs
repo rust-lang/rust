@@ -347,6 +347,56 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
+    fn indirect_br(
+        &mut self,
+        v: &'ll Value,
+        else_llbb: &'ll BasicBlock,
+        cases: impl ExactSizeIterator<Item = (u128, &'ll BasicBlock)>,
+    ) {
+        let len = cases.len() + 1;
+
+        let mut basic_blocks = Vec::with_capacity(cases.len());
+        let mut block_addresses = Vec::with_capacity(cases.len());
+
+        // Use the else_llbb as the default for each index. We don't know the exact index that
+        // corresponds to the else branch (it might correspond to many values).
+        let else_address = unsafe { llvm::LLVMBlockAddress(self.llfn(), else_llbb) };
+
+        // FIXME: this is a hack, ensuring that the jump table is big enough for all u8 values. For
+        // a scrutinee type that is bigger than a u8, the jump table might not contain all indices
+        // that else_llbb corresponds to.
+        block_addresses.resize(256, else_address);
+
+        for (index, bb) in cases {
+            let index = index as usize;
+            block_addresses.resize(Ord::max(block_addresses.len(), index + 1), else_address);
+            block_addresses[index as usize] = unsafe { llvm::LLVMBlockAddress(self.llfn(), bb) };
+            basic_blocks.push(bb);
+        }
+
+        // Create the lookup table.
+        let table_ty = self.type_array(self.type_ptr(), block_addresses.len() as u64);
+        let table = self.const_array(self.type_ptr(), &block_addresses);
+        let jump_table = gpu_offload::add_unnamed_global(
+            self.cx,
+            "jump_table",
+            table,
+            llvm::Linkage::PrivateLinkage,
+        );
+
+        let index = self.zext(v, self.cx.type_i64());
+        let ptr = self.inbounds_gep(table_ty, jump_table, &[self.const_usize(0), index]);
+        let addr = self.load(self.type_ptr(), ptr, Align::EIGHT); // fixme should be align of ptr
+
+        let indirect_br = unsafe { llvm::LLVMBuildIndirectBr(self.llbuilder, addr, len as c_uint) };
+
+        for llbb in basic_blocks {
+            unsafe { llvm::LLVMAddDestination(indirect_br, llbb) };
+        }
+
+        unsafe { llvm::LLVMAddDestination(indirect_br, else_llbb) };
+    }
+
     fn switch(
         &mut self,
         v: &'ll Value,
