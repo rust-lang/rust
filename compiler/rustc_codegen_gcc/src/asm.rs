@@ -670,27 +670,8 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
             unreachable!("clobber-only")
         }
-        InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::sgpr32)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::sgpr64)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::sgpr96)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::sgpr128)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::sgpr256)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::sgpr512) => "Sg",
-        InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr16)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr32)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr64)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr96)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr128)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr160)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr192)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr224)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr256)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr288)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr320)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr352)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr384)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr512)
-        | InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::vgpr1024) => "v",
+        InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::Sgpr(_)) => "Sg",
+        InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::Vgpr(_)) => "v",
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::Arm(ArmInlineAsmRegClass::sreg)
         | InlineAsmRegClass::Arm(ArmInlineAsmRegClass::dreg_low16)
