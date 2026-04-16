@@ -137,7 +137,6 @@ struct Desc {
 struct QueryModifiers {
     // tidy-alphabetical-start
     arena_cache: Option<Ident>,
-    sandbox_callfront: Option<Ident>,
     cache_on_disk: Option<Ident>,
     depth_limit: Option<Ident>,
     desc: Desc,
@@ -146,6 +145,7 @@ struct QueryModifiers {
     handle_cycle_error: Option<Ident>,
     no_force: Option<Ident>,
     no_hash: Option<Ident>,
+    sandbox_callfront: Option<Ident>,
     separate_provide_extern: Option<Ident>,
     // tidy-alphabetical-end
 }
@@ -153,7 +153,6 @@ struct QueryModifiers {
 fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     // tidy-alphabetical-start
     let mut arena_cache = None;
-    let mut sandbox_callfront = None;
     let mut cache_on_disk = None;
     let mut depth_limit = None;
     let mut desc = None;
@@ -162,6 +161,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut handle_cycle_error = None;
     let mut no_force = None;
     let mut no_hash = None;
+    let mut sandbox_callfront = None;
     let mut separate_provide_extern = None;
     // tidy-alphabetical-end
 
@@ -179,8 +179,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
 
         if modifier == "arena_cache" {
             try_insert!(arena_cache = modifier);
-        } else if modifier == "sandbox_callfront" {
-            try_insert!(sandbox_callfront = modifier);
         } else if modifier == "cache_on_disk" {
             try_insert!(cache_on_disk = modifier);
         } else if modifier == "depth_limit" {
@@ -202,6 +200,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(no_force = modifier);
         } else if modifier == "no_hash" {
             try_insert!(no_hash = modifier);
+        } else if modifier == "sandbox_callfront" {
+            try_insert!(sandbox_callfront = modifier);
         } else if modifier == "separate_provide_extern" {
             try_insert!(separate_provide_extern = modifier);
         } else {
@@ -214,7 +214,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     Ok(QueryModifiers {
         // tidy-alphabetical-start
         arena_cache,
-        sandbox_callfront,
         cache_on_disk,
         depth_limit,
         desc,
@@ -223,6 +222,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         handle_cycle_error,
         no_force,
         no_hash,
+        sandbox_callfront,
         separate_provide_extern,
         // tidy-alphabetical-end
     })
@@ -251,7 +251,6 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
     let QueryModifiers {
         // tidy-alphabetical-start
         arena_cache,
-        sandbox_callfront,
         cache_on_disk,
         depth_limit,
         desc,
@@ -260,13 +259,13 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         handle_cycle_error,
         no_force,
         no_hash,
+        sandbox_callfront,
         separate_provide_extern,
         // tidy-alphabetical-end
     } = &query.modifiers;
 
     // tidy-alphabetical-start
     let arena_cache = arena_cache.is_some();
-    let sandbox_callfront = sandbox_callfront.is_some();
     let cache_on_disk = cache_on_disk.is_some();
     let depth_limit = depth_limit.is_some();
     let desc = {
@@ -287,6 +286,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
     let no_force = no_force.is_some();
     let no_hash = no_hash.is_some();
     let returns_error_guaranteed = returns_error_guaranteed(&query.return_ty);
+    let sandbox_callfront = sandbox_callfront.is_some();
     let separate_provide_extern = separate_provide_extern.is_some();
     // tidy-alphabetical-end
 
@@ -299,7 +299,6 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         // Search for (QMODLIST) to find all occurrences of this query modifier list.
         // tidy-alphabetical-start
         arena_cache: #arena_cache,
-        sandbox_callfront: #sandbox_callfront,
         cache_on_disk: #cache_on_disk,
         depth_limit: #depth_limit,
         desc: #desc,
@@ -309,6 +308,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         no_force: #no_force,
         no_hash: #no_hash,
         returns_error_guaranteed: #returns_error_guaranteed,
+        sandbox_callfront: #sandbox_callfront,
         separate_provide_extern: #separate_provide_extern,
         // tidy-alphabetical-end
     }

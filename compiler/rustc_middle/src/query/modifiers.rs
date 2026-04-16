@@ -66,9 +66,6 @@ pub(crate) struct feedable;
 /// where `$name` is the query name.
 pub(crate) struct handle_cycle_error;
 
-/// # `sandbox_callfront` query modifier
-pub(crate) struct sandbox_callfront;
-
 /// # `no_force` query modifier
 ///
 /// Dep nodes of queries with this modifier will never be "forced" when trying
@@ -84,6 +81,9 @@ pub(crate) struct no_force;
 /// Do not hash the query's return value for incremental compilation. If the value needs to be
 /// recomputed, always mark its node as red (dirty).
 pub(crate) struct no_hash;
+
+/// # `sandbox_callfront` query modifier
+pub(crate) struct sandbox_callfront;
 
 /// # `separate_provide_extern` query modifier
 ///
