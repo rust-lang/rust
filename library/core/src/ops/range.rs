@@ -1132,9 +1132,11 @@ impl<T> const RangeBounds<T> for RangeInclusive<T> {
     }
     fn end_bound(&self) -> Bound<&T> {
         if self.exhausted {
-            // When the iterator is exhausted, we usually have start == end,
+            // When the iterator is exhausted, it might have overflowed,
             // but we want the range to appear empty, containing nothing.
-            Excluded(&self.end)
+            // So in that case, we return bounds which are always empty:
+            // Included(start)..Excluded(start)
+            Excluded(&self.start)
         } else {
             Included(&self.end)
         }

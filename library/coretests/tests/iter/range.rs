@@ -95,10 +95,12 @@ fn test_range_inclusive_exhaustion() {
 
     assert_eq!(*r.start(), 11);
     assert_eq!(*r.end(), 10);
-    assert_ne!(r, 10..=10);
+    assert_eq!(r.contains(&11), false);
+    assert_eq!(r.contains(&10), false);
+    assert_eq!(r, 11..=10);
     assert_eq!(r, r);
 
-    let mut r = 255_u8..=255;
+    let mut r = 255..=255_u8;
     assert_eq!(r.next(), Some(255));
     assert!(r.is_empty());
     assert_eq!(r.next(), None);
@@ -106,7 +108,10 @@ fn test_range_inclusive_exhaustion() {
 
     assert_eq!(*r.start(), 0);
     assert_eq!(*r.end(), 255);
-    assert_ne!(r, 255_u8..=255);
+    assert_eq!(r.contains(&0), false);
+    assert_eq!(r.contains(&255), false);
+    assert_ne!(r, 255..=255);
+    assert_ne!(r, 0..=255);
     assert_eq!(r, r);
 
     let mut r = 10..=10;
@@ -116,7 +121,9 @@ fn test_range_inclusive_exhaustion() {
 
     assert_eq!(*r.start(), 10);
     assert_eq!(*r.end(), 9);
-    assert_ne!(r, 10..=10);
+    assert_eq!(r.contains(&10), false);
+    assert_eq!(r.contains(&9), false);
+    assert_eq!(r, 10..=9);
 
     let mut r = 0..=0_u8;
     assert_eq!(r.next_back(), Some(0));
@@ -125,7 +132,10 @@ fn test_range_inclusive_exhaustion() {
 
     assert_eq!(*r.start(), 0);
     assert_eq!(*r.end(), 255);
-    assert_ne!(r, 0..=0_u8);
+    assert_eq!(r.contains(&0), false);
+    assert_eq!(r.contains(&255), false);
+    assert_ne!(r, 0..=0);
+    assert_ne!(r, 0..=255);
     assert_eq!(r, r);
 
     let mut r = 10..=12;
@@ -254,6 +264,8 @@ fn test_range_inclusive_nth() {
     assert_eq!(r.is_empty(), true);
     assert_eq!(*r.start(), 27);
     assert_eq!(*r.end(), 20);
+    assert_eq!(r.contains(&27), false);
+    assert_eq!(r.contains(&20), false);
     assert_eq!(r, r);
     assert_eq!(ExactSizeIterator::is_empty(&r), true);
 }
@@ -277,6 +289,8 @@ fn test_range_inclusive_nth_back() {
     assert_eq!(r.is_empty(), true);
     assert_eq!(*r.start(), 10);
     assert_eq!(*r.end(), 3);
+    assert_eq!(r.contains(&10), false);
+    assert_eq!(r.contains(&3), false);
     assert_eq!(r, r);
     assert_eq!(ExactSizeIterator::is_empty(&r), true);
 }
