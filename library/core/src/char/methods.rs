@@ -810,7 +810,7 @@ impl char {
         match self {
             'a'..='z' | 'A'..='Z' => true,
             '\0'..='\u{A9}' => false,
-            _ => unicode::Cased(self),
+            _ => unicode::Lowercase(self) || unicode::Uppercase(self) || unicode::Lt(self),
         }
     }
 
@@ -840,10 +840,10 @@ impl char {
             'a'..='z' => Some(CharCase::Lower),
             'A'..='Z' => Some(CharCase::Upper),
             '\0'..='\u{A9}' => None,
-            _ if !unicode::Cased(self) => None,
             _ if unicode::Lowercase(self) => Some(CharCase::Lower),
             _ if unicode::Uppercase(self) => Some(CharCase::Upper),
-            _ => Some(CharCase::Title),
+            _ if unicode::Lt(self) => Some(CharCase::Title),
+            _ => None,
         }
     }
 
@@ -919,7 +919,7 @@ impl char {
     pub fn is_titlecase(self) -> bool {
         match self {
             '\0'..='\u{01C4}' => false,
-            _ => self.is_cased() && !self.is_lowercase() && !self.is_uppercase(),
+            _ => unicode::Lt(self),
         }
     }
 
