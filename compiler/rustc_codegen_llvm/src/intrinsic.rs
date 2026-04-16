@@ -288,17 +288,16 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 match result.layout.backend_repr {
                     BackendRepr::Scalar(scalar) => {
                         match scalar.primitive() {
+                            // We reject types that would never be passed as varargs in C because
+                            // they get promoted to a larger type.
                             Primitive::Int(..) => {
                                 if self.cx().size_of(result.layout.ty).bytes() < 4 {
-                                    // `va_arg` should not be called on an integer type
-                                    // less than 4 bytes in length. If it is, promote
-                                    // the integer to an `i32` and truncate the result
-                                    // back to the smaller type.
-                                    let promoted_result = emit_va_arg(self, args[0], tcx.types.i32);
-                                    self.trunc(promoted_result, result.layout.llvm_type(self))
-                                } else {
-                                    emit_va_arg(self, args[0], result.layout.ty)
+                                    // `va_arg` should not be called on an integer type less than 4
+                                    // bytes in length.
+                                    bug!("the va_arg intrinsic does not work with \
+                                        integers smaller than 4 bytes");
                                 }
+                                emit_va_arg(self, args[0], result.layout.ty)
                             }
                             Primitive::Float(Float::F16) => {
                                 bug!("the va_arg intrinsic does not work with `f16`")
