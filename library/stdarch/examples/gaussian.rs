@@ -95,30 +95,30 @@ mod hvx {
             let below = *inp2.add(i);
 
             // Widen above + below to 16-bit using HvxVectorPair
-            // q6_wh_vadd_vubvub: adds two u8 vectors, producing u16 results in a pair
-            let above_plus_below: HvxVectorPair = q6_wh_vadd_vubvub(above, below);
+            // Q6_Wh_vadd_VubVub: adds two u8 vectors, producing u16 results in a pair
+            let above_plus_below: HvxVectorPair = Q6_Wh_vadd_VubVub(above, below);
 
             // Widen center * 2 (add center to itself)
-            let center_x2: HvxVectorPair = q6_wh_vadd_vubvub(center, center);
+            let center_x2: HvxVectorPair = Q6_Wh_vadd_VubVub(center, center);
 
             // Add them: (above + below) + (center * 2) = above + 2*center + below
-            let sum: HvxVectorPair = q6_wh_vadd_whwh(above_plus_below, center_x2);
+            let sum: HvxVectorPair = Q6_Wh_vadd_WhWh(above_plus_below, center_x2);
 
             // Extract high and low vectors from the pair (each contains u16 values)
-            let sum_lo = q6_v_lo_w(sum); // Lower 64 elements as i16
-            let sum_hi = q6_v_hi_w(sum); // Upper 64 elements as i16
+            let sum_lo = Q6_V_lo_W(sum); // Lower 64 elements as i16
+            let sum_hi = Q6_V_hi_W(sum); // Upper 64 elements as i16
 
             // Arithmetic right shift by 2 (divide by 4) with rounding
             // Add 2 for rounding before shift: (sum + 2) >> 2
-            let two = q6_vh_vsplat_r(2);
-            let sum_lo_rounded = q6_vh_vadd_vhvh(sum_lo, two);
-            let sum_hi_rounded = q6_vh_vadd_vhvh(sum_hi, two);
-            let shifted_lo = q6_vh_vasr_vhvh(sum_lo_rounded, two);
-            let shifted_hi = q6_vh_vasr_vhvh(sum_hi_rounded, two);
+            let two = Q6_Vh_vsplat_R(2);
+            let sum_lo_rounded = Q6_Vh_vadd_VhVh(sum_lo, two);
+            let sum_hi_rounded = Q6_Vh_vadd_VhVh(sum_hi, two);
+            let shifted_lo = Q6_Vh_vasr_VhVh(sum_lo_rounded, two);
+            let shifted_hi = Q6_Vh_vasr_VhVh(sum_hi_rounded, two);
 
             // Pack back to u8 with saturation: takes hi and lo halfword vectors,
             // saturates to u8, and interleaves them back to original order
-            let result = q6_vub_vsat_vhvh(shifted_hi, shifted_lo);
+            let result = Q6_Vub_vsat_VhVh(shifted_hi, shifted_lo);
 
             *outp.add(i) = result;
         }
@@ -142,44 +142,44 @@ mod hvx {
         let outp = dst as *mut HvxVector;
 
         let n_chunks = width / VLEN;
-        let mut prev = q6_v_vzero();
+        let mut prev = Q6_V_vzero();
 
         for i in 0..n_chunks {
             let curr = *inp.add(i);
             let next = if i + 1 < n_chunks {
                 *inp.add(i + 1)
             } else {
-                q6_v_vzero()
+                Q6_V_vzero()
             };
 
             // Left neighbor (x-1): shift curr right by 1 byte, filling from prev
-            let left = q6_v_vlalign_vvr(curr, prev, 1);
+            let left = Q6_V_vlalign_VVR(curr, prev, 1);
 
             // Right neighbor (x+1): shift curr left by 1 byte, filling from next
-            let right = q6_v_valign_vvr(next, curr, 1);
+            let right = Q6_V_valign_VVR(next, curr, 1);
 
             // Widen left + right to 16-bit
-            let left_plus_right: HvxVectorPair = q6_wh_vadd_vubvub(left, right);
+            let left_plus_right: HvxVectorPair = Q6_Wh_vadd_VubVub(left, right);
 
             // Widen center * 2
-            let center_x2: HvxVectorPair = q6_wh_vadd_vubvub(curr, curr);
+            let center_x2: HvxVectorPair = Q6_Wh_vadd_VubVub(curr, curr);
 
             // Add: left + 2*center + right
-            let sum: HvxVectorPair = q6_wh_vadd_whwh(left_plus_right, center_x2);
+            let sum: HvxVectorPair = Q6_Wh_vadd_WhWh(left_plus_right, center_x2);
 
             // Extract high and low vectors
-            let sum_lo = q6_v_lo_w(sum);
-            let sum_hi = q6_v_hi_w(sum);
+            let sum_lo = Q6_V_lo_W(sum);
+            let sum_hi = Q6_V_hi_W(sum);
 
             // Arithmetic right shift by 2 with rounding
-            let two = q6_vh_vsplat_r(2);
-            let sum_lo_rounded = q6_vh_vadd_vhvh(sum_lo, two);
-            let sum_hi_rounded = q6_vh_vadd_vhvh(sum_hi, two);
-            let shifted_lo = q6_vh_vasr_vhvh(sum_lo_rounded, two);
-            let shifted_hi = q6_vh_vasr_vhvh(sum_hi_rounded, two);
+            let two = Q6_Vh_vsplat_R(2);
+            let sum_lo_rounded = Q6_Vh_vadd_VhVh(sum_lo, two);
+            let sum_hi_rounded = Q6_Vh_vadd_VhVh(sum_hi, two);
+            let shifted_lo = Q6_Vh_vasr_VhVh(sum_lo_rounded, two);
+            let shifted_hi = Q6_Vh_vasr_VhVh(sum_hi_rounded, two);
 
             // Pack back to u8 with saturation
-            let result = q6_vub_vsat_vhvh(shifted_hi, shifted_lo);
+            let result = Q6_Vub_vsat_VhVh(shifted_hi, shifted_lo);
 
             *outp.add(i) = result;
 

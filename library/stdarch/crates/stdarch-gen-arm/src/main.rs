@@ -54,7 +54,7 @@ fn main() -> Result<(), String> {
                     vv.into_iter().flatten().collect_vec()
                 })?;
 
-            if filepath.ends_with("sve.spec.yml") || filepath.ends_with("sve2.spec.yml") {
+            if input.ctx.generate_load_store_tests {
                 let loads = intrinsics.iter()
                     .filter_map(|i| {
                         if matches!(i.test, Test::Load(..)) {

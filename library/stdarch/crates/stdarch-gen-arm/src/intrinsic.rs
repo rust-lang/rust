@@ -630,7 +630,7 @@ impl LLVMLink {
 
                     match (scope, kind.base_type()) {
                         (Argument, Some(Sized(Bool, bitsize))) if *bitsize != 8 => {
-                            Ok(convert("into", arg))
+                            Ok(convert("sve_into", arg))
                         }
                         (Argument, Some(Sized(UInt, _) | Unsized(UInt))) => {
                             if ctx.global.auto_llvm_sign_conversion {
@@ -647,27 +647,26 @@ impl LLVMLink {
             })
             .try_collect()?;
 
-        let return_type_conversion = if !ctx.global.auto_llvm_sign_conversion {
-            None
-        } else {
-            self.signature
-                .as_ref()
-                .and_then(|sig| sig.return_type.as_ref())
-                .and_then(|ty| {
-                    if let Some(Sized(Bool, bitsize)) = ty.base_type() {
-                        (*bitsize != 8).then_some(Bool)
-                    } else if let Some(Sized(UInt, _) | Unsized(UInt)) = ty.base_type() {
-                        Some(UInt)
-                    } else {
-                        None
-                    }
-                })
-        };
+        let return_type_conversion = self
+            .signature
+            .as_ref()
+            .and_then(|sig| sig.return_type.as_ref())
+            .and_then(|ty| {
+                if let Some(Sized(Bool, bitsize)) = ty.base_type() {
+                    (*bitsize != 8).then_some(Bool)
+                } else if let Some(Sized(UInt, _) | Unsized(UInt)) = ty.base_type() {
+                    Some(UInt)
+                } else {
+                    None
+                }
+            });
 
         let fn_call = Expression::FnCall(fn_call);
         match return_type_conversion {
-            Some(Bool) => Ok(convert("into", fn_call)),
-            Some(UInt) => Ok(convert("as_unsigned", fn_call)),
+            Some(Bool) => Ok(convert("sve_into", fn_call)),
+            Some(UInt) if ctx.global.auto_llvm_sign_conversion => {
+                Ok(convert("as_unsigned", fn_call))
+            }
             _ => Ok(fn_call),
         }
     }
@@ -872,8 +871,8 @@ impl fmt::Display for UnsafetyComment {
             Self::NoProvenance(arg) => write!(
                 f,
                 "Addresses passed in `{arg}` lack provenance, so this is similar to using a \
-                `usize as ptr` cast (or [`core::ptr::from_exposed_addr`]) on each lane before \
-                using it."
+                `usize as ptr` cast (or [`core::ptr::with_exposed_provenance`]) on each lane \
+                before  using it."
             ),
             Self::UnpredictableOnFault => write!(
                 f,
