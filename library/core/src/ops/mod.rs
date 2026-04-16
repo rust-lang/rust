@@ -145,7 +145,6 @@ mod control_flow;
 mod coroutine;
 mod deref;
 mod drop;
-mod field_projections;
 mod function;
 mod index;
 mod index_range;
@@ -154,6 +153,8 @@ mod reborrow;
 mod try_trait;
 mod unsize;
 
+#[unstable(feature = "field_projections", issue = "145383")]
+pub mod place;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::arith::{Add, Div, Mul, Neg, Rem, Sub};
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
@@ -178,11 +179,6 @@ pub use self::deref::Receiver;
 pub use self::deref::{Deref, DerefMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::drop::Drop;
-#[unstable(feature = "field_projections", issue = "145383")]
-pub use self::field_projections::{
-    DropHusk, Place, PlaceBorrow, PlaceDeref, PlaceDrop, PlaceMove, PlaceRead, PlaceWrapper,
-    PlaceWrite,
-};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::function::{Fn, FnMut, FnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]

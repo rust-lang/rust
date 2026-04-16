@@ -1,3 +1,5 @@
+//! Place Operations.
+
 use crate::field::Subplace;
 
 /// Marks a type as containing a place.
