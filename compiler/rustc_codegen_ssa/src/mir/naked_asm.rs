@@ -8,7 +8,7 @@ use rustc_middle::ty::{Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, ty};
 use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
-use rustc_target::spec::{Arch, BinaryFormat, Env};
+use rustc_target::spec::{Arch, BinaryFormat, Env, Os};
 
 use crate::common;
 use crate::mir::AsmCodegenMethods;
@@ -268,6 +268,8 @@ fn prefix_and_suffix<'tcx>(
             // `.subsections_via_symbols` global directive. LLVM already enables this directive.
             if let Some(section) = &link_section {
                 writeln!(begin, ".pushsection {section},regular,pure_instructions").unwrap();
+            } else {
+                writeln!(begin, ".section __TEXT,__text,regular,pure_instructions").unwrap();
             }
             writeln!(begin, ".balign {align_bytes}").unwrap();
             write_linkage(&mut begin).unwrap();
@@ -313,7 +315,13 @@ fn prefix_and_suffix<'tcx>(
                     Env::Msvc => {
                         writeln!(begin, ".section .text,\"xr\",one_only,{asm_name}").unwrap();
                     }
-                    other => bug!("invalid coff env {other:?}"),
+                    Env::Unspecified => match &tcx.sess.target.options.os {
+                        Os::Uefi => {
+                            writeln!(begin, ".section .text,\"xr\",one_only,{asm_name}").unwrap();
+                        }
+                        _ => bug!("unexpected coff target {}", tcx.sess.target.llvm_target),
+                    },
+                    other => bug!("unexpected coff env {other:?}"),
                 }
             }
             write_linkage(&mut begin).unwrap();
