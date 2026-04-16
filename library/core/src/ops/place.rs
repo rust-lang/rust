@@ -40,30 +40,30 @@ pub unsafe trait Subplace: Sized {
 /// for `x: Self`, but not enable any operations on `*x`. For those, one of the other place
 /// operation traits has to be implemented:
 ///
-/// - [`PlaceRead`]
-/// - [`PlaceWrite`]
-/// - [`PlaceDrop`]
-/// - [`PlaceMove`]
-/// - [`PlaceBorrow`]
-/// - [`PlaceDeref`]
+/// - [`ReadPlace`]
+/// - [`WritePlace`]
+/// - [`BorrowPlace`]
+/// - [`DropPlace`]
+/// - [`MovePlace`]
+/// - [`NestPlace`]
 #[unstable(feature = "field_projections", issue = "145383")]
-#[lang = "place"]
-pub trait Place {
+#[lang = "deref_place"]
+pub trait DerefPlace {
     /// The type of the contained place.
-    #[lang = "place_target"]
+    #[lang = "deref_place_target"]
     type Target: ?Sized;
 }
 
 /// Reading a place `let val = *x;`.
 ///
-/// When `x: Self`, then `let val = *x;` will be desugared into [`PlaceRead::read`].
+/// When `x: Self`, then `let val = *x;` will be desugared into [`ReadPlace::read`].
 ///
 /// # Safety
 ///
 /// FIXME
 #[unstable(feature = "field_projections", issue = "145383")]
-#[lang = "place_read"]
-pub unsafe trait PlaceRead<S>: Place
+#[lang = "read_place"]
+pub unsafe trait ReadPlace<S>: DerefPlace
 where
     S: Subplace<Source = Self::Target>,
     S::Target: Sized,
@@ -73,7 +73,7 @@ where
     /// When the operator is used, the borrow checker follows its usual rules to ensure that no
     /// other operation conflicts with this one. If that alone is sufficient to make this operation
     /// sound, then this should be `true`.
-    #[lang = "place_read_safety"]
+    #[lang = "read_place_safety"]
     const SAFETY: bool;
 
     /// Reads the subplace pointed to by `this`.
@@ -81,20 +81,20 @@ where
     /// # Safety
     ///
     /// FIXME
-    #[lang = "place_read_read"]
+    #[lang = "read_place_read"]
     unsafe fn read(this: *const Self, sub: S) -> S::Target;
 }
 
 /// Writing a place `*x = val;`.
 ///
-/// When `x: Self`, then `*x = val;` will be desugared into [`PlaceWrite::write`].
+/// When `x: Self`, then `*x = val;` will be desugared into [`WritePlace::write`].
 ///
 /// # Safety
 ///
 /// FIXME
 #[unstable(feature = "field_projections", issue = "145383")]
-#[lang = "place_write"]
-pub unsafe trait PlaceWrite<S>: Place
+#[lang = "write_place"]
+pub unsafe trait WritePlace<S>: DerefPlace
 where
     S: Subplace<Source = Self::Target>,
     S::Target: Sized,
@@ -104,7 +104,7 @@ where
     /// When the operator is used, the borrow checker follows its usual rules to ensure that no
     /// other operation conflicts with this one. If that alone is sufficient to make this operation
     /// sound, then this should be `true`.
-    #[lang = "place_write_safety"]
+    #[lang = "write_place_safety"]
     const SAFETY: bool;
 
     /// Writes to the subplace pointed to by `this`.
@@ -112,13 +112,13 @@ where
     /// # Safety
     ///
     /// FIXME
-    #[lang = "place_write_write"]
+    #[lang = "write_place_write"]
     unsafe fn write(this: *const Self, sub: S, value: S::Target);
 }
 
 /// Moving out of a place.
 ///
-/// When `x: Self` and one performs a [`PlaceRead::read`] where the target value is not [`Copy`],
+/// When `x: Self` and one performs a [`ReadPlace::read`] where the target value is not [`Copy`],
 /// then the compiler checks if this trait is implemented and if so, moves the value out by reading
 /// it and adjusting the borrow checker state of the place.
 ///
@@ -126,8 +126,8 @@ where
 ///
 /// FIXME
 #[unstable(feature = "field_projections", issue = "145383")]
-#[lang = "place_move"]
-pub unsafe trait PlaceMove<S>: PlaceRead<S>
+#[lang = "move_place"]
+pub unsafe trait MovePlace<S>: ReadPlace<S>
 where
     S: Subplace<Source = Self::Target>,
     S::Target: Sized,
@@ -143,8 +143,8 @@ where
 ///
 /// FIXME
 #[unstable(feature = "field_projections", issue = "145383")]
-#[lang = "place_drop"]
-pub unsafe trait PlaceDrop<S>: Place
+#[lang = "drop_place"]
+pub unsafe trait DropPlace<S>: DerefPlace
 where
     S: Subplace<Source = Self::Target>,
 {
@@ -153,7 +153,7 @@ where
     /// # Safety
     ///
     /// FIXME
-    #[lang = "place_drop_drop"]
+    #[lang = "drop_place_drop"]
     unsafe fn drop(this: *const Self, sub: S);
 }
 
@@ -167,7 +167,7 @@ where
 /// FIXME
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "drop_husk"]
-pub unsafe trait DropHusk: Place {
+pub unsafe trait DropHusk: DerefPlace {
     /// Drops the
     ///
     /// # Safety
@@ -179,24 +179,24 @@ pub unsafe trait DropHusk: Place {
 
 /// Borrowing a place with `X`.
 ///
-/// When `y: Self`, then `let x = @<X> *y;` will be desugared into [`PlaceBorrow::borrow`].
+/// When `y: Self`, then `let x = @<X> *y;` will be desugared into [`BorrowPlace::borrow`].
 ///
 /// # Safety
 ///
 /// FIXME
 #[unstable(feature = "field_projections", issue = "145383")]
-#[lang = "place_borrow"]
-pub unsafe trait PlaceBorrow<S, X>: Place
+#[lang = "borrow_place"]
+pub unsafe trait BorrowPlace<S, X>: DerefPlace
 where
     S: Subplace<Source = Self::Target>,
-    X: Place<Target = S::Target>,
+    X: DerefPlace<Target = S::Target>,
 {
     /// Whether the borrow operation is safe when used through the operator.
     ///
     /// When the operator is used, the borrow checker follows its usual rules to ensure that no
     /// other operation conflicts with this one. If that alone is sufficient to make this operation
     /// sound, then this should be `true`.
-    #[lang = "place_borrow_safety"]
+    #[lang = "borrow_place_safety"]
     const SAFETY: bool;
 
     // FIXME: this is missing some associated items related to controlling the
@@ -207,32 +207,32 @@ where
     /// # Safety
     ///
     /// FIXME
-    #[lang = "place_borrow_borrow"]
+    #[lang = "borrow_place_borrow"]
     unsafe fn borrow(this: *const Self, sub: S) -> X;
 }
 
 /// Accessing a nested pointer.
 ///
 /// When `x: Self`, then nested dereferences `let _ = **x;` is desugared into a combination of the
-/// corresponding operation and a [`PlaceDeref::deref`].
+/// corresponding operation and a [`NestPlace::nested`].
 ///
 /// # Safety
 ///
 /// FIXME
 #[unstable(feature = "field_projections", issue = "145383")]
-#[lang = "place_deref"]
-pub unsafe trait PlaceDeref<S>: Place
+#[lang = "nest_place"]
+pub unsafe trait NestPlace<S>: DerefPlace
 where
     S: Subplace<Source = Self::Target>,
-    S::Target: Place,
+    S::Target: DerefPlace,
 {
-    /// Obtain a raw pointer to the subplace pointed to by `this`.
+    /// Obtain a raw pointer to the subplace contained by `this`.
     ///
     /// # Safety
     ///
     /// FIXME
-    #[lang = "place_deref_deref"]
-    unsafe fn deref(this: *const Self, sub: S) -> *const S::Target;
+    #[lang = "nest_place_nested"]
+    unsafe fn nested(this: *const Self, sub: S) -> *const S::Target;
 }
 
 /// Forwards the subplace `S` of the place contained by this.
@@ -245,16 +245,16 @@ where
 ///
 /// FIXME
 #[unstable(feature = "field_projections", issue = "145383")]
-#[lang = "place_wrapper"]
-pub unsafe trait PlaceWrapper<S>: Place
+#[lang = "wrap_place"]
+pub unsafe trait WrapPlace<S>: DerefPlace
 where
     S: Subplace<Source = Self::Target>,
 {
     /// The subplace to use instead of `S` for any place operations on `Self`.
-    #[lang = "place_wrapper_wrapped"]
+    #[lang = "wrap_place_wrapped"]
     type Wrapped: Subplace<Source = Self>;
 
     /// Turn a subplace of type `S` into [`Self::Wrapped`].
-    #[lang = "place_wrapper_wrap"]
+    #[lang = "wrap_place_wrap"]
     fn wrap(sub: S) -> Self::Wrapped;
 }
