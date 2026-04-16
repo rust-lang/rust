@@ -955,6 +955,10 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_must_match_exhaustively,
         "enums with `#[rustc_must_match_exhaustively]` must be matched on with a match block that mentions all variants explicitly"
     ),
+    rustc_attr!(
+        rustc_no_writable,
+        "`#[rustc_no_writable]` stops the compiler from considering mutable reference arguments of this function as implicitly writable"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:

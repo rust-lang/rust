@@ -2,8 +2,8 @@ use std::{assert_matches, iter};
 
 use rustc_abi::Primitive::Pointer;
 use rustc_abi::{Align, BackendRepr, ExternAbi, PointerKind, Scalar, Size};
-use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{self as hir, find_attr};
 use rustc_middle::bug;
 use rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs;
 use rustc_middle::query::Providers;
@@ -355,6 +355,7 @@ fn arg_attrs_for_rust_scalar<'tcx>(
     offset: Size,
     is_return: bool,
     drop_target_pointee: Option<Ty<'tcx>>,
+    determined_fn_def_id: Option<DefId>,
 ) -> ArgAttributes {
     let mut attrs = ArgAttributes::new();
 
@@ -430,6 +431,21 @@ fn arg_attrs_for_rust_scalar<'tcx>(
             // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/385#issuecomment-1368055745>).
             if no_alias && !is_return {
                 attrs.set(ArgAttribute::NoAlias);
+            }
+
+            // Set writable if no_alias is set, it's a mutable reference and the feature is enabled.
+            if tcx.sess.opts.unstable_opts.llvm_writable
+                && matches!(kind, PointerKind::MutableRef { unpin: true })
+                && !is_return
+            {
+                let rustc_no_writable = match determined_fn_def_id {
+                    Some(def_id) => find_attr!(tcx, def_id, RustcNoWritable),
+                    None => true, // If no def_id exists, we make the conservative choice and disable the feature.
+                };
+
+                if !rustc_no_writable {
+                    attrs.set(ArgAttribute::Writable);
+                }
             }
 
             if matches!(kind, PointerKind::SharedRef { frozen: true }) && !is_return {
@@ -624,6 +640,7 @@ fn fn_abi_new_uncached<'tcx>(
                 // Only set `drop_target_pointee` for the data part of a wide pointer.
                 // See `arg_attrs_for_rust_scalar` docs for more information.
                 drop_target_pointee.filter(|_| offset == Size::ZERO),
+                determined_fn_def_id,
             )
         }))
     };
