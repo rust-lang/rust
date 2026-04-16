@@ -576,7 +576,7 @@ fn scope_def_docs(db: &RootDatabase, resolution: ScopeDef) -> Option<Documentati
 
 fn scope_def_is_deprecated(ctx: &RenderContext<'_>, resolution: ScopeDef) -> bool {
     match resolution {
-        ScopeDef::ModuleDef(it) => ctx.is_deprecated_assoc_item(it),
+        ScopeDef::ModuleDef(it) => ctx.is_deprecated(it) || ctx.is_deprecated_assoc_item(it),
         ScopeDef::GenericParam(it) => ctx.is_deprecated(it),
         ScopeDef::AdtSelfType(it) => ctx.is_deprecated(it),
         _ => false,
@@ -1577,6 +1577,7 @@ fn main() { som$0 }
                         kind: SymbolKind(
                             Module,
                         ),
+                        deprecated: true,
                     },
                 ]
             "#]],
@@ -1650,6 +1651,7 @@ fn main() { A$0 }
                             Struct,
                         ),
                         detail: "A",
+                        deprecated: true,
                     },
                 ]
             "#]],
@@ -1678,6 +1680,7 @@ fn main() { A$0 }
                             Enum,
                         ),
                         detail: "A",
+                        deprecated: true,
                     },
                 ]
             "#]],
@@ -1792,6 +1795,7 @@ fn main() { A$0 }
                             Const,
                         ),
                         detail: "i32",
+                        deprecated: true,
                     },
                 ]
             "#]],
@@ -1820,6 +1824,7 @@ fn main() { A$0 }
                             Static,
                         ),
                         detail: "i32",
+                        deprecated: true,
                     },
                 ]
             "#]],
@@ -1845,6 +1850,7 @@ impl A$0
                         kind: SymbolKind(
                             Trait,
                         ),
+                        deprecated: true,
                     },
                 ]
             "#]],
@@ -1870,6 +1876,7 @@ fn main() { A$0 }
                         kind: SymbolKind(
                             TypeAlias,
                         ),
+                        deprecated: true,
                     },
                 ]
             "#]],
