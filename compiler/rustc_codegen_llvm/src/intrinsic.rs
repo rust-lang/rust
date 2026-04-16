@@ -285,37 +285,47 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
             sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[], &[]),
             sym::va_arg => {
-                match result.layout.backend_repr {
-                    BackendRepr::Scalar(scalar) => {
-                        match scalar.primitive() {
-                            Primitive::Int(..) => {
-                                if self.cx().size_of(result.layout.ty).bytes() < 4 {
-                                    // `va_arg` should not be called on an integer type
-                                    // less than 4 bytes in length. If it is, promote
-                                    // the integer to an `i32` and truncate the result
-                                    // back to the smaller type.
-                                    let promoted_result = emit_va_arg(self, args[0], tcx.types.i32);
-                                    self.trunc(promoted_result, result.layout.llvm_type(self))
-                                } else {
-                                    emit_va_arg(self, args[0], result.layout.ty)
-                                }
-                            }
-                            Primitive::Float(Float::F16) => {
-                                bug!("the va_arg intrinsic does not work with `f16`")
-                            }
-                            Primitive::Float(Float::F64) | Primitive::Pointer(_) => {
-                                emit_va_arg(self, args[0], result.layout.ty)
-                            }
-                            // `va_arg` should never be used with the return type f32.
-                            Primitive::Float(Float::F32) => {
-                                bug!("the va_arg intrinsic does not work with `f32`")
-                            }
-                            Primitive::Float(Float::F128) => {
-                                bug!("the va_arg intrinsic does not work with `f128`")
-                            }
+                let BackendRepr::Scalar(scalar) = result.layout.backend_repr else {
+                    bug!("the va_arg intrinsic does not support non-scalar types")
+                };
+
+                match scalar.primitive() {
+                    Primitive::Pointer(_) => {
+                        // Pointers are always OK.
+                        emit_va_arg(self, args[0], result.layout.ty)
+                    }
+                    Primitive::Int(..) => {
+                        let int_width = self.cx().size_of(result.layout.ty).bits();
+                        let target_c_int_width = self.cx().sess().target.options.c_int_width;
+                        if int_width < u64::from(target_c_int_width) {
+                            // Smaller integer types are automatically promototed and `va_arg`
+                            // should not be called on them.
+                            bug!(
+                                "va_arg got i{} but needs at least c_int (an i{})",
+                                int_width,
+                                target_c_int_width
+                            );
+                        }
+                        emit_va_arg(self, args[0], result.layout.ty)
+                    }
+                    Primitive::Float(Float::F16) => {
+                        bug!("the va_arg intrinsic does not support `f16`")
+                    }
+                    Primitive::Float(Float::F32) => {
+                        if self.cx().sess().target.arch == Arch::Avr {
+                            // c_double is actually f32 on avr.
+                            emit_va_arg(self, args[0], result.layout.ty)
+                        } else {
+                            bug!("the va_arg intrinsic does not support `f32` on this target")
                         }
                     }
-                    _ => bug!("the va_arg intrinsic does not work with non-scalar types"),
+                    Primitive::Float(Float::F64) => {
+                        // 64-bit floats are always OK.
+                        emit_va_arg(self, args[0], result.layout.ty)
+                    }
+                    Primitive::Float(Float::F128) => {
+                        bug!("the va_arg intrinsic does not support `f128`")
+                    }
                 }
             }
 
