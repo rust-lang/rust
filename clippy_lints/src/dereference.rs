@@ -885,12 +885,21 @@ impl TyCoercionStability {
                     continue;
                 },
                 ty::Param(_) if for_return => Self::Deref,
-                ty::Alias(ty::Free | ty::Inherent, _) => unreachable!("should have been normalized away above"),
-                ty::Alias(ty::Projection, _) if !for_return && ty.has_non_region_param() => Self::Reborrow,
+                ty::Alias(ty::AliasTy {
+                    kind: ty::Free { .. } | ty::Inherent { .. },
+                    ..
+                }) => unreachable!("should have been normalized away above"),
+                ty::Alias(ty::AliasTy {
+                    kind: ty::Projection { .. },
+                    ..
+                }) if !for_return && ty.has_non_region_param() => Self::Reborrow,
                 ty::Infer(_)
                 | ty::Error(_)
                 | ty::Bound(..)
-                | ty::Alias(ty::Opaque, ..)
+                | ty::Alias(ty::AliasTy {
+                    kind: ty::Opaque { .. },
+                    ..
+                })
                 | ty::Placeholder(_)
                 | ty::Dynamic(..)
                 | ty::Param(_) => Self::Reborrow,
@@ -921,7 +930,10 @@ impl TyCoercionStability {
                 | ty::CoroutineClosure(..)
                 | ty::Never
                 | ty::Tuple(_)
-                | ty::Alias(ty::Projection, _)
+                | ty::Alias(ty::AliasTy {
+                    kind: ty::Projection { .. },
+                    ..
+                })
                 | ty::UnsafeBinder(_) => Self::Deref,
             };
         }

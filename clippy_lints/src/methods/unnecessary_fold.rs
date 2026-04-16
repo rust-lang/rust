@@ -41,7 +41,7 @@ fn needs_turbofish<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) ->
                 if !fn_return_ty
                     .skip_binder()
                     .walk()
-                    .any(|generic| generic.as_type().is_some_and(Ty::is_impl_trait)) =>
+                    .any(|generic| generic.as_type().is_some_and(Ty::is_opaque)) =>
             {
                 return false;
             },

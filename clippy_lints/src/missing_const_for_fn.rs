@@ -207,7 +207,7 @@ fn fn_inputs_has_impl_trait_ty(cx: &LateContext<'_>, def_id: LocalDefId) -> bool
     inputs.iter().any(|input| {
         matches!(
             input.kind(),
-            ty::Alias(ty::AliasTyKind::Free, alias_ty) if cx.tcx.type_of(alias_ty.def_id).skip_binder().is_impl_trait()
+            &ty::Alias(ty::AliasTy { kind: ty::Free{def_id} , ..}) if cx.tcx.type_of(def_id).skip_binder().is_opaque()
         )
     })
 }

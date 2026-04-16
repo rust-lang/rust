@@ -101,7 +101,11 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                     return true;
                 }
 
-                if let ty::Alias(ty::Opaque, AliasTy { def_id, .. }) = *inner_ty.kind() {
+                if let ty::Alias(AliasTy {
+                    kind: ty::Opaque { def_id },
+                    ..
+                }) = *inner_ty.kind()
+                {
                     if !seen.insert(def_id) {
                         return false;
                     }
@@ -324,7 +328,10 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             is_must_use_ty(cx, *ty)
         },
         ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
-        ty::Alias(ty::Opaque, AliasTy { def_id, .. }) => {
+        ty::Alias(AliasTy {
+            kind: ty::Opaque { def_id },
+            ..
+        }) => {
             for (predicate, _) in cx.tcx.explicit_item_self_bounds(*def_id).skip_binder() {
                 if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
                     && find_attr!(cx.tcx, trait_predicate.trait_ref.def_id, MustUse { .. })
@@ -617,7 +624,11 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.fn_sig(id).instantiate(cx.tcx, subs), Some(id))),
-        ty::Alias(ty::Opaque, AliasTy { def_id, args, .. }) => sig_from_bounds(
+        ty::Alias(AliasTy {
+            kind: ty::Opaque { def_id },
+            args,
+            ..
+        }) => sig_from_bounds(
             cx,
             ty,
             cx.tcx.item_self_bounds(def_id).iter_instantiated(cx.tcx, args),
@@ -641,7 +652,12 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
                 _ => None,
             }
         },
-        ty::Alias(ty::Projection, proj) => match cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty) {
+        ty::Alias(
+            proj @ AliasTy {
+                kind: ty::Projection { .. },
+                ..
+            },
+        ) => match cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty) {
             Ok(normalized_ty) if normalized_ty != ty => ty_sig(cx, normalized_ty),
             _ => sig_for_projection(cx, proj).or_else(|| sig_from_bounds(cx, ty, cx.param_env.caller_bounds(), None)),
         },
@@ -699,7 +715,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option
 
     for (pred, _) in cx
         .tcx
-        .explicit_item_bounds(ty.def_id)
+        .explicit_item_bounds(ty.kind.def_id())
         .iter_instantiated_copied(cx.tcx, ty.args)
     {
         match pred.kind().skip_binder() {
@@ -1007,7 +1023,11 @@ pub fn make_projection<'tcx>(
         #[cfg(debug_assertions)]
         assert_generic_args_match(tcx, assoc_item.def_id, args);
 
-        Some(AliasTy::new_from_args(tcx, assoc_item.def_id, args))
+        Some(AliasTy::new_from_args(
+            tcx,
+            ty::AliasTyKind::new_from_def_id(tcx, assoc_item.def_id),
+            args,
+        ))
     }
     helper(
         tcx,
@@ -1046,7 +1066,9 @@ pub fn make_normalized_projection<'tcx>(
             );
             return None;
         }
-        match tcx.try_normalize_erasing_regions(typing_env, Ty::new_projection_from_args(tcx, ty.def_id, ty.args)) {
+        match tcx
+            .try_normalize_erasing_regions(typing_env, Ty::new_projection_from_args(tcx, ty.kind.def_id(), ty.args))
+        {
             Ok(ty) => Some(ty),
             Err(e) => {
                 debug_assert!(false, "failed to normalize type `{ty}`: {e:#?}");
@@ -1148,7 +1170,10 @@ impl<'tcx> InteriorMut<'tcx> {
                         .find_map(|f| self.interior_mut_ty_chain_inner(cx, f.ty(cx.tcx, args), depth))
                 }
             },
-            ty::Alias(ty::Projection, _) => match cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty) {
+            ty::Alias(AliasTy {
+                kind: ty::Projection { .. },
+                ..
+            }) => match cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty) {
                 Ok(normalized_ty) if ty != normalized_ty => self.interior_mut_ty_chain_inner(cx, normalized_ty, depth),
                 _ => None,
             },
@@ -1196,7 +1221,7 @@ pub fn make_normalized_projection_with_regions<'tcx>(
         let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
         match infcx
             .at(&cause, param_env)
-            .query_normalize(Ty::new_projection_from_args(tcx, ty.def_id, ty.args))
+            .query_normalize(Ty::new_projection_from_args(tcx, ty.kind.def_id(), ty.args))
         {
             Ok(ty) => Some(ty.value),
             Err(e) => {
