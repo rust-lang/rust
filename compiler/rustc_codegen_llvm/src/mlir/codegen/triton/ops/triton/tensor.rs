@@ -479,6 +479,64 @@ impl<'a> TritonCodegen<'a> {
         Ok(Some(result.into()))
     }
 
+    /// `triton::Triton::cat` — concatenate two tensors along their only axis.
+    ///
+    /// args[0] = lhs tensor, args[1] = rhs tensor, args[2] = can_reorder (bool, unused in MLIR)
+    pub fn codegen_cat_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        use melior::ir::ShapedTypeLike;
+
+        let lhs_arg = &args[0].node;
+        let rhs_arg = &args[1].node;
+        let lhs = self.codegen_operand(
+            tcx, instance, lhs_arg, lhs_arg.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let rhs = self.codegen_operand(
+            tcx, instance, rhs_arg, rhs_arg.ty(mir, tcx), location, mlir_block, state,
+        )?;
+
+        // Compute result shape: sum of each dimension across lhs and rhs.
+        let lhs_tensor: RankedTensorType<'a> = lhs.r#type().try_into()
+            .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?;
+        let rhs_tensor: RankedTensorType<'a> = rhs.r#type().try_into()
+            .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?;
+        let lhs_dims = lhs_tensor.dims().map_err(|e| MlirError::InvalidType { msg: e.to_string() })?;
+        let rhs_dims = rhs_tensor.dims().map_err(|e| MlirError::InvalidType { msg: e.to_string() })?;
+
+        // For a 1D cat, result size = lhs_dim + rhs_dim.
+        let result_dims: Vec<i64> = lhs_dims.iter().zip(rhs_dims.iter())
+            .map(|(&l, &r)| l + r)
+            .collect();
+        let elem_ty = lhs_tensor.element();
+        let result_ty = tensor_type(&result_dims, elem_ty).into();
+
+        use melior::ir::operation::OperationBuilder;
+        let cat_op: Operation<'a> = OperationBuilder::new("tt.cat", location)
+            .add_operands(&[lhs, rhs])
+            .add_results(&[result_ty])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?
+            .into();
+        let result = cat_op.result(0).expect("cat result");
+        mlir_block.append_operation(cat_op);
+        Ok(Some(result.into()))
+    }
+
     /// `triton::Triton::cast` — element-wise type cast for tensors.
     ///
     /// args[0] = input tensor, args[1] = rounding mode (optional enum), args[2] = saturate (bool)

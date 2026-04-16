@@ -2486,7 +2486,7 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     let zl = T::zeros_like(z);
     let casted = T::cast::<D, D>(z, Some(FpDowncastRounding::Rtne), false);
     let _casted_rtz = T::cast::<D, D>(casted, Some(FpDowncastRounding::Rtz), true);
-    // let cat = T::cat(z, zl, true);
+    let cat = T::cat(z, zl, true);
     // let (ba, bb) = T::broadcast(cat, cat);
     // let bto = T::broadcast_to(ba, &[BLOCK_SIZE]);
     // let ex = T::expand_dims(bto, 0);

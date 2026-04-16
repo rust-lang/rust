@@ -215,6 +215,9 @@ impl<'a> TritonCodegen<'a> {
             "triton::Triton::cast" => {
                 TritonCodegen::codegen_cast_call as LocalCallHandler<'a, 'tcx>
             }
+            "triton::Triton::cat" => {
+                TritonCodegen::codegen_cat_call as LocalCallHandler<'a, 'tcx>
+            }
             _ => TritonCodegen::codegen_call as LocalCallHandler<'a, 'tcx>,
         };
 
