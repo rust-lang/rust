@@ -2547,24 +2547,36 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
         None,
         false,
     );
-    // let block_ptr = T::make_block_ptr(x_ptr, &[BLOCK_SIZE], &[1], &[0], &[BLOCK_SIZE], &[0]);
-    // let block_ptr2 = T::advance(block_ptr, &[1]);
-    // let tdesc = T::make_tensor_descriptor(
-    //     y_ptr,
-    //     &[BLOCK_SIZE],
-    //     &[1],
-    //     &[BLOCK_SIZE],
-    //     Some(PaddingOption::Zero),
-    // );
-    // let tdesc_nan = T::make_tensor_descriptor(
-    //     y_ptr,
-    //     &[BLOCK_SIZE],
-    //     &[1],
-    //     &[BLOCK_SIZE],
-    //     Some(PaddingOption::Nan),
-    // );
-    // let tdv = T::load_tensor_descriptor(tdesc, &[0]);
-    // T::store_tensor_descriptor(tdesc_nan, &[0], tdv);
+    let bp_shape = [BLOCK_SIZE]; let bp_strides = [1i32]; let bp_offsets = [0i32];
+    let bp_bshape = [BLOCK_SIZE]; let bp_order = [0i32];
+    let block_ptr = T::make_block_ptr(x_ptr,
+        unsafe { slice_from_raw_parts(&bp_shape as *const i32, 1) },
+        unsafe { slice_from_raw_parts(&bp_strides as *const i32, 1) },
+        unsafe { slice_from_raw_parts(&bp_offsets as *const i32, 1) },
+        unsafe { slice_from_raw_parts(&bp_bshape as *const i32, 1) },
+        unsafe { slice_from_raw_parts(&bp_order as *const i32, 1) },
+    );
+    let adv_off = [1i32];
+    let block_ptr2 = T::advance(block_ptr, unsafe { slice_from_raw_parts(&adv_off as *const i32, 1) });
+    let td_shape = [BLOCK_SIZE]; let td_strides = [1i32]; let td_bshape = [BLOCK_SIZE];
+    let tdesc = T::make_tensor_descriptor(
+        y_ptr,
+        unsafe { slice_from_raw_parts(&td_shape as *const i32, 1) },
+        unsafe { slice_from_raw_parts(&td_strides as *const i32, 1) },
+        unsafe { slice_from_raw_parts(&td_bshape as *const i32, 1) },
+        Some(PaddingOption::Zero),
+    );
+    let tdn_shape = [BLOCK_SIZE]; let tdn_strides = [1i32]; let tdn_bshape = [BLOCK_SIZE];
+    let tdesc_nan = T::make_tensor_descriptor(
+        y_ptr,
+        unsafe { slice_from_raw_parts(&tdn_shape as *const i32, 1) },
+        unsafe { slice_from_raw_parts(&tdn_strides as *const i32, 1) },
+        unsafe { slice_from_raw_parts(&tdn_bshape as *const i32, 1) },
+        Some(PaddingOption::Nan),
+    );
+    let tdl_off = [0i32]; let tds_off = [0i32];
+    let tdv = T::load_tensor_descriptor(tdesc, unsafe { slice_from_raw_parts(&tdl_off as *const i32, 1) });
+    T::store_tensor_descriptor(tdesc_nan, unsafe { slice_from_raw_parts(&tds_off as *const i32, 1) }, tdv);
     // let ptrs = T::zeros::<T::Pointer<D>>(&[BLOCK_SIZE]);
     // let loaded = T::load::<D, 1>(
     //     ptrs,

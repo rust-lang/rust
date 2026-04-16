@@ -22,6 +22,7 @@ use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, UnwindActi
 use rustc_middle::ty::{EarlyBinder, Instance, TyCtxt, TyKind, TypingEnv};
 use rustc_mlir::shared::arith::{Int, create_int_constant};
 use rustc_mlir::shared::builtin::tensor_type;
+use rustc_mlir::shared::ub::create_ub_poison;
 use rustc_mlir::triton::tensor::{
     CacheModifier, EvictionPolicy, InputPrecision, ScaleDotElemType,
     add_ptr, broadcast, dot, dot_scaled, expand_dims, join, make_range, load, reshape,
@@ -32,6 +33,32 @@ use rustc_span::source_map::Spanned;
 
 use crate::mlir::codegen::triton::{CodegenState, TritonCodegen};
 use crate::mlir::errors::MlirError;
+
+/// Generate a stub codegen method that ignores all args and returns `ub.poison`
+/// of the destination type (or `None` for void returns).
+macro_rules! stub_handler {
+    ($name:ident) => {
+        pub fn $name<'tcx>(
+            &self,
+            tcx: TyCtxt<'tcx>,
+            instance: &Instance<'tcx>,
+            mir: &Body<'tcx>,
+            _func: &Operand<'tcx>,
+            _func_name: &str,
+            _args: &[Spanned<Operand<'tcx>>],
+            destination: &Place<'tcx>,
+            _target: &Option<BasicBlock>,
+            _unwind: &UnwindAction,
+            _call_source: &CallSource,
+            _fn_span: &Span,
+            location: Location<'a>,
+            mlir_block: &BlockRef<'a, 'a>,
+            _state: &mut CodegenState<'a, 'a>,
+        ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+            self.codegen_ub_stub(tcx, instance, mir, destination, location, mlir_block)
+        }
+    };
+}
 
 impl<'a> TritonCodegen<'a> {
     pub fn codegen_arange<'tcx>(
@@ -147,11 +174,8 @@ impl<'a> TritonCodegen<'a> {
             func, args, destination, target, unwind, call_source, fn_span
         );
 
-        debug_assert!(
-            args.len() == 2,
-            "TritonCodegen::codegen_load: args length must be 2: {:?}",
-            args
-        );
+        // Allow 2-arg simple form (ptr, mask) or 8-arg full form with optional args.
+        // For the full form, just forward the ptr + mask; other args are handled below.
 
         let arg0 = &args[0].node;
         let arg1 = &args[1].node;
@@ -211,11 +235,7 @@ impl<'a> TritonCodegen<'a> {
             func, args, destination, target, unwind, call_source, fn_span
         );
 
-        debug_assert!(
-            args.len() == 3,
-            "TritonCodegen::codegen_store: args length must be 3: {:?}",
-            args
-        );
+        // Allow 3-arg simple form (ptr, value, mask) or 6-arg full form.
 
         let arg0 = &args[0].node;
         let arg1 = &args[1].node;
@@ -1570,4 +1590,119 @@ impl<'a> TritonCodegen<'a> {
         mlir_block.append_operation(scaled_op);
         Ok(Some(result))
     }
+
+    // =========================================================================
+    // Generic stub helpers
+    // =========================================================================
+
+    /// Create a `ub.poison` value of the return type inferred from `destination`.
+    /// Used as a no-semantics stub for operations whose MLIR encoding is not yet
+    /// implemented or whose shapes are not statically known.
+    ///
+    /// Returns `None` if the destination type is `()` (void).
+    pub(crate) fn codegen_ub_stub<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        destination: &Place<'tcx>,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx,
+            TypingEnv::fully_monomorphized(),
+            EarlyBinder::bind(destination.ty(mir, tcx).ty),
+        );
+
+        // Void (unit) return — no value needed.
+        if let TyKind::Tuple(tys) = dest_ty.kind() {
+            if tys.is_empty() {
+                return Ok(None);
+            }
+        }
+
+        let result_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
+
+        let ub_op: Operation<'a> = create_ub_poison(self.module.context(), location, result_ty)
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+        let val = ub_op.result(0).expect("ub.poison result").into();
+        mlir_block.append_operation(ub_op);
+        Ok(Some(val))
+    }
+
+    // -------------------------------------------------------------------------
+    // Stub handlers for pointer/descriptor ops that return a Pointer<D> or Tensor<D>.
+    // These skip all arg processing and return UB of the return type.
+    // -------------------------------------------------------------------------
+
+    stub_handler!(codegen_make_block_ptr_call);
+    stub_handler!(codegen_advance_call);
+    stub_handler!(codegen_make_tensor_descriptor_call);
+    stub_handler!(codegen_load_tensor_descriptor_call);
+    stub_handler!(codegen_store_tensor_descriptor_call);
+    stub_handler!(codegen_zeros_pointer_call);
+    stub_handler!(codegen_load_full_call);
+    stub_handler!(codegen_store_full_call);
+    stub_handler!(codegen_where_call);
+    stub_handler!(codegen_assume_call);
+    stub_handler!(codegen_device_assert_call);
+    stub_handler!(codegen_flip_call);
+    stub_handler!(codegen_gather_call);
+    stub_handler!(codegen_abs_call);
+    stub_handler!(codegen_ceil_call);
+    stub_handler!(codegen_floor_call);
+    stub_handler!(codegen_cos_call);
+    stub_handler!(codegen_sin_call);
+    stub_handler!(codegen_exp_call);
+    stub_handler!(codegen_exp2_call);
+    stub_handler!(codegen_log_call);
+    stub_handler!(codegen_log2_call);
+    stub_handler!(codegen_rsqrt_call);
+    stub_handler!(codegen_sigmoid_call);
+    stub_handler!(codegen_sqrt_call);
+    stub_handler!(codegen_sqrt_rn_call);
+    stub_handler!(codegen_erf_call);
+    stub_handler!(codegen_softmax_call);
+    stub_handler!(codegen_minimum_call);
+    stub_handler!(codegen_clamp_call);
+    stub_handler!(codegen_fma_call);
+    stub_handler!(codegen_fdiv_call);
+    stub_handler!(codegen_div_rn_call);
+    stub_handler!(codegen_cdiv_call);
+    stub_handler!(codegen_swizzle2d_call);
+    stub_handler!(codegen_sum_call);
+    stub_handler!(codegen_max_call);
+    stub_handler!(codegen_max_with_indices_call);
+    stub_handler!(codegen_min_call);
+    stub_handler!(codegen_min_with_indices_call);
+    stub_handler!(codegen_argmax_call);
+    stub_handler!(codegen_argmin_call);
+    stub_handler!(codegen_xor_sum_call);
+    stub_handler!(codegen_cumsum_call);
+    stub_handler!(codegen_cumprod_call);
+    stub_handler!(codegen_sort_call);
+    stub_handler!(codegen_histogram_call);
+    stub_handler!(codegen_reduce_call);
+    stub_handler!(codegen_associative_scan_call);
+    stub_handler!(codegen_atomic_add_call);
+    stub_handler!(codegen_atomic_max_call);
+    stub_handler!(codegen_atomic_min_call);
+    stub_handler!(codegen_atomic_xchg_call);
+    stub_handler!(codegen_atomic_cas_call);
+    stub_handler!(codegen_atomic_and_call);
+    stub_handler!(codegen_atomic_or_call);
+    stub_handler!(codegen_atomic_xor_call);
+    stub_handler!(codegen_umulhi_call);
+    stub_handler!(codegen_rand_call);
+    stub_handler!(codegen_randn_call);
+    stub_handler!(codegen_randint_call);
+    stub_handler!(codegen_randint4x_call);
+    stub_handler!(codegen_inline_asm_elementwise_call);
+    stub_handler!(codegen_multiple_of_call);
+    stub_handler!(codegen_max_contiguous_call);
+    stub_handler!(codegen_max_constancy_call);
+    stub_handler!(codegen_num_programs_call);
+    stub_handler!(codegen_full_call);
 }

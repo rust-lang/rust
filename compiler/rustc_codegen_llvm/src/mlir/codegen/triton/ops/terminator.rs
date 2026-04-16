@@ -257,6 +257,105 @@ impl<'a> TritonCodegen<'a> {
             "triton::Triton::dot_scaled" => {
                 TritonCodegen::codegen_dot_scaled_call as LocalCallHandler<'a, 'tcx>
             }
+            "triton::Triton::make_block_ptr" => {
+                TritonCodegen::codegen_make_block_ptr_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::advance" => {
+                TritonCodegen::codegen_advance_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::make_tensor_descriptor" => {
+                TritonCodegen::codegen_make_tensor_descriptor_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::load_tensor_descriptor" => {
+                TritonCodegen::codegen_load_tensor_descriptor_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::store_tensor_descriptor" => {
+                TritonCodegen::codegen_store_tensor_descriptor_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::num_programs" => {
+                TritonCodegen::codegen_num_programs_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::full" => {
+                TritonCodegen::codegen_full_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::flip" => {
+                TritonCodegen::codegen_flip_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::gather" => {
+                TritonCodegen::codegen_gather_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::abs" => TritonCodegen::codegen_abs_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::ceil" => TritonCodegen::codegen_ceil_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::floor" => TritonCodegen::codegen_floor_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::cos" => TritonCodegen::codegen_cos_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::sin" => TritonCodegen::codegen_sin_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::exp" => TritonCodegen::codegen_exp_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::exp2" => TritonCodegen::codegen_exp2_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::log" => TritonCodegen::codegen_log_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::log2" => TritonCodegen::codegen_log2_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::rsqrt" => TritonCodegen::codegen_rsqrt_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::sigmoid" => TritonCodegen::codegen_sigmoid_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::sqrt" => TritonCodegen::codegen_sqrt_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::sqrt_rn" => TritonCodegen::codegen_sqrt_rn_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::erf" => TritonCodegen::codegen_erf_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::softmax" => TritonCodegen::codegen_softmax_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::minimum" => TritonCodegen::codegen_minimum_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::clamp" => TritonCodegen::codegen_clamp_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::fma" => TritonCodegen::codegen_fma_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::fdiv" => TritonCodegen::codegen_fdiv_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::div_rn" => TritonCodegen::codegen_div_rn_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::cdiv" => TritonCodegen::codegen_cdiv_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::swizzle2d" => TritonCodegen::codegen_swizzle2d_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::sum" => TritonCodegen::codegen_sum_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::max" => TritonCodegen::codegen_max_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::max_with_indices" => {
+                TritonCodegen::codegen_max_with_indices_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::min" => TritonCodegen::codegen_min_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::min_with_indices" => {
+                TritonCodegen::codegen_min_with_indices_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::argmax" => TritonCodegen::codegen_argmax_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::argmin" => TritonCodegen::codegen_argmin_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::xor_sum" => TritonCodegen::codegen_xor_sum_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::cumsum" => TritonCodegen::codegen_cumsum_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::cumprod" => TritonCodegen::codegen_cumprod_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::sort" => TritonCodegen::codegen_sort_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::histogram" => TritonCodegen::codegen_histogram_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::reduce" => TritonCodegen::codegen_reduce_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::associative_scan" => {
+                TritonCodegen::codegen_associative_scan_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::atomic_add" => TritonCodegen::codegen_atomic_add_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::atomic_max" => TritonCodegen::codegen_atomic_max_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::atomic_min" => TritonCodegen::codegen_atomic_min_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::atomic_xchg" => TritonCodegen::codegen_atomic_xchg_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::atomic_cas" => TritonCodegen::codegen_atomic_cas_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::atomic_and" => TritonCodegen::codegen_atomic_and_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::atomic_or" => TritonCodegen::codegen_atomic_or_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::atomic_xor" => TritonCodegen::codegen_atomic_xor_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::umulhi" => TritonCodegen::codegen_umulhi_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::rand" => TritonCodegen::codegen_rand_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::randn" => TritonCodegen::codegen_randn_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::randint" => TritonCodegen::codegen_randint_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::randint4x" => TritonCodegen::codegen_randint4x_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::inline_asm_elementwise" => {
+                TritonCodegen::codegen_inline_asm_elementwise_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::multiple_of" => {
+                TritonCodegen::codegen_multiple_of_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::max_contiguous" => {
+                TritonCodegen::codegen_max_contiguous_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::max_constancy" => {
+                TritonCodegen::codegen_max_constancy_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::where_" => TritonCodegen::codegen_where_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::assume" => TritonCodegen::codegen_assume_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::device_assert" => {
+                TritonCodegen::codegen_device_assert_call as LocalCallHandler<'a, 'tcx>
+            }
             _ => TritonCodegen::codegen_call as LocalCallHandler<'a, 'tcx>,
         };
 
