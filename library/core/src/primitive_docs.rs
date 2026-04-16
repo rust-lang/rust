@@ -1915,7 +1915,7 @@ mod prim_ref {}
 ///
 /// This section only covers cases where CFI disagrees with [the ABI-compatibility rules for
 /// Rust-to-Rust calls][ABI compatibility]. It is not meant to be a complete explanation of how CFI
-/// works, and details important for to C-to-Rust or Rust-to-C calls are omitted.
+/// works, and details important for C-to-Rust or Rust-to-C calls are omitted.
 ///
 /// [cfi-docs]: https://doc.rust-lang.org/beta/unstable-book/compiler-flags/sanitizer.html#controlflowintegrity
 ///
