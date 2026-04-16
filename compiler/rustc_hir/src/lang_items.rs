@@ -437,14 +437,16 @@ language_item_table! {
     Reborrow,                sym::reborrow,            reborrow,                   Target::Trait,          GenericRequirement::Exact(0);
     CoerceShared,            sym::coerce_shared,       coerce_shared,              Target::Trait,          GenericRequirement::Exact(0);
 
-    // Field representing types.
+    // # Experimental lang-items for field projections <https://github.com/rust-lang/rust/issues/145383>.
+
+    // ## Field representing types.
     FieldRepresentingType,   sym::field_representing_type, field_representing_type,    Target::Struct,         GenericRequirement::Exact(3);
     Field,                   sym::field,                   field,                      Target::Trait,          GenericRequirement::Exact(0);
     FieldBase,               sym::field_base,              field_base,                 Target::AssocTy,        GenericRequirement::Exact(0);
     FieldType,               sym::field_type,              field_type,                 Target::AssocTy,        GenericRequirement::Exact(0);
     FieldOffset,             sym::field_offset,            field_offset,               Target::AssocConst,     GenericRequirement::Exact(0);
 
-    // Field projections lang-items.
+    // ## Virtual places.
     Subplace,               sym::subplace,              subplace,               Target::Trait,                                      GenericRequirement::Exact(0);
     SubplaceSource,         sym::subplace_source,       subplace_source,        Target::AssocTy,                                    GenericRequirement::Exact(0);
     SubplaceTarget,         sym::subplace_target,       subplace_target,        Target::AssocTy,                                    GenericRequirement::Exact(0);
