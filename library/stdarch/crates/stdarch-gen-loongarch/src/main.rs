@@ -571,21 +571,21 @@ fn gen_bind_body(
     } else if para_num == 3 && in_t[1] == "CVPOINTER" && in_t[2] == "SI" {
         call_params = match asm_fmts[2].as_str() {
             "si12" => format!(
-                "static_assert_simm_bits!(IMM_S12, 12);\n    {unsafe_start}transmute(__{current_name}(transmute(a), mem_addr, IMM_S12)){unsafe_end}"
+                "static_assert_simm_bits!(IMM_S12, 12);\n    {unsafe_start}__{current_name}(transmute(a), mem_addr, IMM_S12){unsafe_end}"
             ),
             _ => panic!("unsupported assembly format: {}", asm_fmts[2]),
         };
     } else if para_num == 3 && in_t[1] == "CVPOINTER" && in_t[2] == "DI" {
         call_params = match asm_fmts[2].as_str() {
             "rk" => format!(
-                "{unsafe_start}transmute(__{current_name}(transmute(a), mem_addr, transmute(b))){unsafe_end}"
+                "{unsafe_start}__{current_name}(transmute(a), mem_addr, transmute(b)){unsafe_end}"
             ),
             _ => panic!("unsupported assembly format: {}", asm_fmts[2]),
         };
     } else if para_num == 4 {
         call_params = match (asm_fmts[2].as_str(), current_name.chars().last().unwrap()) {
             ("si8", t) => format!(
-                "static_assert_simm_bits!(IMM_S8, 8);\n    static_assert_uimm_bits!(IMM{0}, {0});\n    {unsafe_start}transmute(__{current_name}(transmute(a), mem_addr, IMM_S8, IMM{0})){unsafe_end}",
+                "static_assert_simm_bits!(IMM_S8, 8);\n    static_assert_uimm_bits!(IMM{0}, {0});\n    {unsafe_start}__{current_name}(transmute(a), mem_addr, IMM_S8, IMM{0}){unsafe_end}",
                 type_to_imm(t)
             ),
             (_, _) => panic!(
@@ -597,7 +597,7 @@ fn gen_bind_body(
     let function = if !rustc_legacy_const_generics.is_empty() {
         format!(
             r#"
-#[inline]{target_feature}
+#[inline(always)]{target_feature}
 #[{rustc_legacy_const_generics}]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 {fn_decl}{{
@@ -609,7 +609,7 @@ fn gen_bind_body(
     } else {
         format!(
             r#"
-#[inline]{target_feature}
+#[inline(always)]{target_feature}
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 {fn_decl}{{
     {call_params}
@@ -847,6 +847,7 @@ union v4df
     out.push_str("    printf(\"    core_arch::{loongarch64::*, simd::*},\\n\");\n");
     out.push_str("    printf(\"    mem::transmute,\\n\");\n");
     out.push_str("    printf(\"};\\n\");\n");
+    out.push_str("    printf(\"use std::hint::black_box;\\n\");\n");
     out.push_str("    printf(\"use stdarch_test::simd_test;\\n\");\n");
     out.push_str(&call_function_str);
     out.push_str("    return 0;\n");
@@ -1323,10 +1324,10 @@ fn gen_test_body(
             _ => "unsupported parameter number".to_string(),
         };
         let mut as_params = match para_num {
-            1 => "(transmute(a))".to_string(),
-            2 => "(transmute(a), transmute(b))".to_string(),
-            3 => "(transmute(a), transmute(b), transmute(c))".to_string(),
-            4 => "(transmute(a), transmute(b), transmute(c), transmute(d))".to_string(),
+            1 => "(black_box(transmute(a)))".to_string(),
+            2 => "(black_box(transmute(a)), black_box(transmute(b)))".to_string(),
+            3 => "(black_box(transmute(a)), black_box(transmute(b)), black_box(transmute(c)))".to_string(),
+            4 => "(black_box(transmute(a)), black_box(transmute(b)), black_box(transmute(c)), black_box(transmute(d)))".to_string(),
             _ => panic!("unsupported parameter number"),
         };
         let mut as_args = String::new();
@@ -1356,9 +1357,9 @@ fn gen_test_body(
         {
             fn_params = "(a)".to_string();
             if in_t[0] == "SI" {
-                as_params = "(%d)".to_string();
+                as_params = "(black_box(%d))".to_string();
             } else {
-                as_params = "(%ld)".to_string();
+                as_params = "(black_box(%ld))".to_string();
             }
             as_args = ", a".to_string();
         } else if para_num == 2 && (in_t[1] == "UQI" || in_t[1] == "USI") {
@@ -1370,7 +1371,7 @@ fn gen_test_body(
                 );
                 let val = rand_u32(asm_fmts[2].get(2..).unwrap().parse::<u8>().unwrap());
                 fn_params = format!("(a.v, {val})");
-                as_params = format!("::<{val}>(transmute(a))");
+                as_params = format!("::<{val}>(black_box(transmute(a)))");
             } else {
                 panic!("unsupported assembly format: {}", asm_fmts[2]);
             }
@@ -1383,13 +1384,13 @@ fn gen_test_body(
                 );
                 let val = rand_i32(asm_fmts[2].get(2..).unwrap().parse::<u8>().unwrap());
                 fn_params = format!("(a.v, {val})");
-                as_params = format!("::<{val}>(transmute(a))");
+                as_params = format!("::<{val}>(black_box(transmute(a)))");
             } else {
                 panic!("unsupported assembly format: {}", asm_fmts[2]);
             }
         } else if para_num == 2 && in_t[1] == "SI" && asm_fmts[2].starts_with("rk") {
             fn_params = "(a.v, b)".to_string();
-            as_params = "(transmute(a), %d)".to_string();
+            as_params = "(black_box(transmute(a)), %d)".to_string();
             as_args = ", b".to_string();
         } else if para_num == 2 && in_t[0] == "CVPOINTER" && in_t[1] == "SI" {
             if asm_fmts[2].starts_with("si") {
@@ -1441,7 +1442,7 @@ fn gen_test_body(
                 let ival = rand_i32(32);
                 let uval = rand_u32(asm_fmts[2].get(2..).unwrap().parse::<u8>().unwrap());
                 fn_params = format!("(a.v, {ival}, {uval})");
-                as_params = format!("::<{uval}>(transmute(a), {ival})");
+                as_params = format!("::<{uval}>(black_box(transmute(a)), {ival})");
             } else {
                 panic!("unsupported assembly format: {}", asm_fmts[2]);
             }
@@ -1456,7 +1457,7 @@ fn gen_test_body(
                 );
                 let val = rand_u32(asm_fmts[2].get(2..).unwrap().parse::<u8>().unwrap());
                 fn_params = format!("(a.v, b.v, {val})");
-                as_params = format!("::<{val}>(transmute(a), transmute(b))");
+                as_params = format!("::<{val}>(black_box(transmute(a)), black_box(transmute(b)))");
             } else {
                 panic!("unsupported assembly format: {}", asm_fmts[2]);
             }
@@ -1478,7 +1479,7 @@ fn gen_test_body(
                     type_to_ct(in_t[1])
                 );
                 fn_params = "(a.v, b, 0)".to_string();
-                as_params = "::<0>(transmute(a), o.as_mut_ptr())".to_string();
+                as_params = "::<0>(black_box(transmute(a)), o.as_mut_ptr())".to_string();
             } else {
                 panic!("unsupported assembly format: {}", asm_fmts[2]);
             }
@@ -1500,7 +1501,7 @@ fn gen_test_body(
                     type_to_ct(in_t[1])
                 );
                 fn_params = "(a.v, b, 0)".to_string();
-                as_params = "(transmute(a), o.as_mut_ptr(), 0)".to_string();
+                as_params = "(black_box(transmute(a)), o.as_mut_ptr(), 0)".to_string();
             } else {
                 panic!("unsupported assembly format: {}", asm_fmts[2]);
             }
@@ -1524,7 +1525,7 @@ fn gen_test_body(
                     );
                     let val = rand_u32(type_to_imm(t).try_into().unwrap());
                     fn_params = format!("(a.v, b, 0, {val})");
-                    as_params = format!("::<0, {val}>(transmute(a), o.as_mut_ptr())");
+                    as_params = format!("::<0, {val}>(black_box(transmute(a)), o.as_mut_ptr())");
                 }
                 (_, _) => panic!(
                     "unsupported assembly format: {} for {}",
