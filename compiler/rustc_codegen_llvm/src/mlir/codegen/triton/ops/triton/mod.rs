@@ -34,8 +34,15 @@ impl<'a> TritonCodegen<'a> {
     ) -> Result<(), MlirError> {
         println!("[DEBUG] TritonCodegen::codegen_return: ssa_values: {:?}", state.ssa_values);
         println!("[DEBUG] TritonCodegen::codegen_return: terminator: {:?}", _terminator);
-        let value = state.ssa_values.get(&Local::ZERO).copied();
-        let return_op = create_return(self.module.context(), location, value.as_slice())
+
+        // If the return place _0 holds a tuple (multiple return values), return all fields.
+        let return_values: Vec<_> = if let Some(fields) = state.tuple_fields.get(&Local::ZERO) {
+            fields.to_vec()
+        } else {
+            state.ssa_values.get(&Local::ZERO).copied().into_iter().collect()
+        };
+
+        let return_op = create_return(self.module.context(), location, &return_values)
             .map_err(|e| MlirError::CreateOperation { err: e })?;
         eprintln!(
             "[DEBUG] AXM TritonCodegen::codegen_return: return_op: {:?}",

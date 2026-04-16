@@ -26,7 +26,8 @@ use melior::utility::register_all_llvm_translations;
 use rustc_abi::FieldIdx;
 use rustc_ast::{IntTy, MutTy, UintTy};
 use rustc_index::IndexVec;
-use rustc_middle::mir::interpret::Scalar;
+use rustc_abi::FieldsShape;
+use rustc_middle::mir::interpret::{GlobalAlloc, Scalar, alloc_range};
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::{
     AggregateKind, BasicBlock, BasicBlockData, BinOp, Body, CastKind, Const, ConstOperand,
@@ -65,15 +66,24 @@ type SsaValues<'c, 'p> = HashMap<Local, Value<'c, 'p>>;
 /// These locals are NEVER inserted into `SsaValues`.
 type OptionTable<'c, 'p> = HashMap<Local, Option<Value<'c, 'p>>>;
 
+/// Tracks tuple MIR locals (including the return place `_0` for tuple-returning functions).
+/// The vec contains the individual MLIR values for each tuple field in order.
+type TupleTable<'c, 'p> = HashMap<Local, Vec<Value<'c, 'p>>>;
+
 /// Codegen state threaded through all statement/terminator handlers.
 pub(crate) struct CodegenState<'c, 'p> {
     pub(crate) ssa_values: SsaValues<'c, 'p>,
     pub(crate) option_table: OptionTable<'c, 'p>,
+    pub(crate) tuple_fields: TupleTable<'c, 'p>,
 }
 
 impl<'c, 'p> CodegenState<'c, 'p> {
     fn new() -> Self {
-        Self { ssa_values: HashMap::new(), option_table: HashMap::new() }
+        Self {
+            ssa_values: HashMap::new(),
+            option_table: HashMap::new(),
+            tuple_fields: HashMap::new(),
+        }
     }
 }
 
@@ -188,22 +198,30 @@ impl<'a> TritonCodegen<'a> {
             friendly_name, func_name
         );
 
-        // Arguments
-        let arg_types: Vec<_> = fn_sig
-            .inputs()
+        // Arguments — Option<T> params are excluded from the MLIR signature; they
+        // are tracked in the option_table as None (absent) by default.
+        let inputs: Vec<Ty<'tcx>> = fn_sig.inputs().iter().copied().collect();
+        let arg_types: Vec<_> = inputs
             .iter()
+            .filter(|ty| !is_option_ty(tcx, **ty))
             .map(|ty| self.type_mapper.map_type(self.module.context(), &tcx, ty))
             .collect();
 
-        // Result type
+        // Result type — flatten top-level Rust tuples into multiple MLIR return types.
         let ret_type = fn_sig.output();
-        let ret_types = if !ret_type.is_unit() {
-            self.type_mapper.map_type(self.module.context(), &tcx, &ret_type).to_result().ok()
+        let ret_types: Vec<_> = if ret_type.is_unit() {
+            vec![]
+        } else if let TyKind::Tuple(elem_tys) = ret_type.kind() {
+            elem_tys
+                .iter()
+                .map(|ty| self.type_mapper.map_type(self.module.context(), &tcx, &ty))
+                .collect()
         } else {
-            None
+            match self.type_mapper.map_type(self.module.context(), &tcx, &ret_type).to_result() {
+                Ok(t) => vec![t],
+                Err(_) => vec![],
+            }
         };
-
-        let ret_types = ret_types.as_slice();
 
         // DEBUG output: print argument and result types
         eprintln!("[DEBUG] TritonCodegen: instance function signature (argument types):");
@@ -226,7 +244,7 @@ impl<'a> TritonCodegen<'a> {
             func_name,
             visibility,
             &arg_types,
-            ret_types,
+            &ret_types,
             16,
         )
         .map_err(|e| MlirError::CreateOperation { err: e })?
@@ -246,10 +264,18 @@ impl<'a> TritonCodegen<'a> {
         for (bb, _) in mir.basic_blocks.iter_enumerated() {
             let block = Block::new(&[]);
             if bb.index() == 0 {
-                // Add function arguments as block arguments to the entry block
-                for (i, ty) in arg_types.iter().enumerate() {
-                    let value = block.add_argument(*ty, location);
-                    state.ssa_values.insert(Local::from_usize(i + 1), value);
+                // Add non-Option function arguments as block arguments to the entry block.
+                // Option<T> params are pre-populated into option_table as None.
+                let mut mlir_arg_idx = 0;
+                for (param_idx, input_ty) in inputs.iter().enumerate() {
+                    let local = Local::from_usize(param_idx + 1);
+                    if is_option_ty(tcx, *input_ty) {
+                        state.option_table.insert(local, None);
+                    } else {
+                        let value = block.add_argument(arg_types[mlir_arg_idx], location);
+                        state.ssa_values.insert(local, value);
+                        mlir_arg_idx += 1;
+                    }
                 }
             }
 
@@ -392,6 +418,23 @@ impl<'a> TritonCodegen<'a> {
                     return Ok(());
                 }
 
+                // Route Tuple<T...> locals into tuple_fields.
+                if let TyKind::Tuple(elem_tys) = normalized_ty.kind() {
+                    let fields = match operand {
+                        Operand::Copy(src) | Operand::Move(src) => {
+                            state.tuple_fields.get(&src.local).cloned().unwrap_or_else(|| {
+                                panic!("Tuple local {:?} not found in tuple_fields", src.local)
+                            })
+                        }
+                        Operand::Constant(const_op) => self.codegen_tuple_constant(
+                            tcx, instance, const_op, elem_tys, location, mlir_block,
+                        )?,
+                        Operand::RuntimeChecks(_) => todo!("RuntimeChecks for tuple"),
+                    };
+                    state.tuple_fields.insert(place.local, fields);
+                    return Ok(());
+                }
+
                 let result = self.codegen_operand(
                     tcx,
                     instance,
@@ -441,6 +484,19 @@ impl<'a> TritonCodegen<'a> {
                             location, mlir_block, state,
                         );
                     }
+                }
+
+                // Route Tuple aggregates into tuple_fields (MLIR uses multiple return values).
+                if let AggregateKind::Tuple = aggregate_kind.as_ref() {
+                    let fields = index_vec
+                        .iter()
+                        .map(|op| match op {
+                            Operand::Copy(p) | Operand::Move(p) => self.codegen_copy(p, state),
+                            _ => todo!("Tuple aggregate with non-copy/move operand: {:?}", op),
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+                    state.tuple_fields.insert(place.local, fields);
+                    return Ok(());
                 }
 
                 let result = self.codegen_aggregate_create(
@@ -981,6 +1037,69 @@ impl<'a> TritonCodegen<'a> {
             let value = self.codegen_operand(tcx, instance, operand, ty, location, mlir_block, state)?;
             Ok(Some(value))
         }
+    }
+
+    /// Decode a constant tuple into individual MLIR scalar values.
+    /// Reads each element from the underlying memory allocation using layout offsets.
+    fn codegen_tuple_constant<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        const_op: &ConstOperand<'tcx>,
+        elem_tys: &[Ty<'tcx>],
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+    ) -> Result<Vec<Value<'a, 'a>>, MlirError> {
+        let normalized_const = match &const_op.const_ {
+            Const::Val(const_val, _) => *const_val,
+            other => todo!("codegen_tuple_constant: unexpected const kind {:?}", other),
+        };
+
+        let (alloc_id, base_offset) = match normalized_const {
+            ConstValue::Indirect { alloc_id, offset } => (alloc_id, offset),
+            other => todo!("codegen_tuple_constant: unexpected ConstValue {:?}", other),
+        };
+
+        let GlobalAlloc::Memory(const_alloc) = tcx.global_alloc(alloc_id) else {
+            todo!("codegen_tuple_constant: non-memory alloc for {:?}", alloc_id);
+        };
+        let alloc = const_alloc.inner();
+
+        // Get the layout of the full tuple to obtain per-field offsets.
+        let tuple_ty = const_op.const_.ty();
+        let tuple_layout = tcx
+            .layout_of(TypingEnv::fully_monomorphized().as_query_input(tuple_ty))
+            .map_err(|e| MlirError::CodegenFailed { err: format!("layout_of failed: {:?}", e) })?;
+
+        let FieldsShape::Arbitrary { ref offsets, .. } = tuple_layout.fields else {
+            todo!("codegen_tuple_constant: unexpected FieldsShape for tuple");
+        };
+
+        let mut values = Vec::with_capacity(elem_tys.len());
+        for (field_idx, field_ty) in elem_tys.iter().enumerate() {
+            let normalized_field_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                tcx,
+                TypingEnv::fully_monomorphized(),
+                EarlyBinder::bind(*field_ty),
+            );
+            let field_layout = tcx
+                .layout_of(TypingEnv::fully_monomorphized().as_query_input(normalized_field_ty))
+                .map_err(|e| MlirError::CodegenFailed {
+                    err: format!("layout_of field failed: {:?}", e),
+                })?;
+
+            let field_offset = base_offset + offsets[FieldIdx::from_usize(field_idx)];
+            let range = alloc_range(field_offset, field_layout.size);
+            let scalar = alloc
+                .read_scalar(&tcx, range, false)
+                .map_err(|e| MlirError::CodegenFailed { err: format!("read_scalar: {:?}", e) })?;
+
+            let value =
+                self.codegen_scalar(normalized_field_ty, scalar, location, mlir_block)?;
+            values.push(value);
+        }
+
+        Ok(values)
     }
 
     fn codegen_copy<'tcx>(

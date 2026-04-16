@@ -18,15 +18,21 @@ use melior::Context;
 use melior::ir::Type;
 use melior::ir::r#type::{IntegerType, TupleType};
 use rustc_ast::{FloatTy, IntTy, UintTy};
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     AdtDef, AliasTy, AliasTyKind, GenericArg, ParamTy, Ty, TyCtxt, TyKind, TypingEnv,
 };
-use rustc_middle::ty::print::with_no_trimmed_paths;
 
-/// Returns true if `ty` is `core::option::Option<_>`.
+/// Returns true if `ty` is `core::option::Option<_>` or any custom `Option<_>` ADT
+/// (e.g. the `pub enum Option<T>` defined directly in `no_core` crates like
+/// `triton_kitchen_sink`).
 pub fn is_option_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     if let TyKind::Adt(adt_def, _) = ty.kind() {
-        with_no_trimmed_paths!(tcx.def_path_str(adt_def.did())) == "core::option::Option"
+        let adt_path = with_no_trimmed_paths!(tcx.def_path_str(adt_def.did()));
+        adt_path == "core::option::Option"
+            || adt_path == "std::option::Option"
+            || adt_path == "Option"
+            || adt_path.ends_with("::Option")
     } else {
         false
     }
