@@ -1,9 +1,9 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-//@ check-pass
+//@[current] check-pass
 
-// Regression test for trait-system-refactor-initiative#176.
+// Test from trait-system-refactor-initiative#176.
 //
 // Normalizing `<Vec<T> as IntoIterator>::IntoIter` has two candidates
 // inside of the function:
@@ -13,11 +13,13 @@
 //     - where-clause requires `<Vec<T> as IntoIterator>::IntoIter eq Vec<T>`
 //       - normalize `<Vec<T> as IntoIterator>::IntoIter` again, cycle
 //
-// We need to treat this cycle as an error to be able to use the actual impl.
+// The blanket impl is unfortunately also a productive cycle, so we have to
+// break this code, see trait-system-refactor-initiative#273
 
 fn test<T>()
 where
     <Vec<T> as IntoIterator>::IntoIter: Iterator,
+    //[next]~^ ERROR type annotations needed: cannot satisfy `<Vec<T> as IntoIterator>::IntoIter: Iterator`
 {
 }
 

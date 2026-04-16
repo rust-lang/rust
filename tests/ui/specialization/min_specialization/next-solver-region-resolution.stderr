@@ -10,14 +10,13 @@ LL | | where
 LL | |     Self::Item: 'a,
    | |___________________^ missing `Item` in implementation
 
-error[E0277]: the trait bound `&'a T: Foo` is not satisfied
+error[E0283]: type annotations needed: cannot satisfy `&'a T: Foo`
   --> $DIR/next-solver-region-resolution.rs:12:21
    |
 LL | impl<'a, T> Foo for &'a T
-   |                     ^^^^^ the trait `Foo` is not implemented for `&'a T`
+   |                     ^^^^^
    |
-help: the trait `Foo` is not implemented for `&'a _`
-      but it is implemented for `&_`
+note: multiple `impl`s satisfying `&'a T: Foo` found
   --> $DIR/next-solver-region-resolution.rs:12:1
    |
 LL | / impl<'a, T> Foo for &'a T
@@ -25,22 +24,12 @@ LL | |
 LL | | where
 LL | |     Self::Item: 'a,
    | |___________________^
-
-error[E0277]: the trait bound `&'a T: Foo` is not satisfied
-  --> $DIR/next-solver-region-resolution.rs:15:17
-   |
-LL |     Self::Item: 'a,
-   |                 ^^ the trait `Foo` is not implemented for `&'a T`
-   |
-help: the trait `Foo` is not implemented for `&'a _`
-      but it is implemented for `&_`
-  --> $DIR/next-solver-region-resolution.rs:12:1
-   |
-LL | / impl<'a, T> Foo for &'a T
+...
+LL | / impl<'a, T> Foo for &T
 LL | |
 LL | | where
-LL | |     Self::Item: 'a,
-   | |___________________^
+LL | |     Self::Item: Baz,
+   | |____________________^
 
 error[E0046]: not all trait items implemented, missing: `Item`
   --> $DIR/next-solver-region-resolution.rs:19:1
@@ -63,7 +52,7 @@ LL | | where
 LL | |     Self::Item: Baz,
    | |____________________^
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0046, E0277.
+Some errors have detailed explanations: E0046, E0283.
 For more information about an error, try `rustc --explain E0046`.
