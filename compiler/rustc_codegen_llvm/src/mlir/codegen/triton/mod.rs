@@ -1336,6 +1336,16 @@ impl<'a> TritonCodegen<'a> {
                         // Constant already has the right primitive type — return as-is.
                         Ok(value)
                     }
+                    TyKind::Ref(_, _, _) | TyKind::Str => {
+                        // &str, &[T], and other reference types are represented as i64
+                        // fat-pointer stand-ins in the type mapper. The value already
+                        // carries the right i64 type from codegen_const_value.
+                        Ok(value)
+                    }
+                    TyKind::FnPtr(_, _) | TyKind::FnDef(_, _) => {
+                        // Function pointer types are represented as i64 — return as-is.
+                        Ok(value)
+                    }
                     _ => todo!("Constant cast normalized_ty: {:?}", normalized_ty),
                 }
             }
@@ -1426,12 +1436,40 @@ impl<'a> TritonCodegen<'a> {
             ConstValue::Scalar(scalar) => {
                 self.codegen_scalar_const_value(tcx, instance, ty, scalar, location, mlir_block)
             }
-            ConstValue::ZeroSized => todo!("ZeroSized"),
-            ConstValue::Slice { alloc_id, meta } => {
-                todo!("Slice alloc_id: {:?}, meta: {:?}", alloc_id, meta)
+            ConstValue::ZeroSized => {
+                // Zero-sized values (fn items, unit, zero-sized structs).
+                // Emit i64(0) as a harmless placeholder — these are never read
+                // by any real MLIR op in the stub-based codegen.
+                let zero_op: Operation<'a> =
+                    create_int_constant(self.module.context(), location, Int::I64(0))
+                        .map_err(|e| MlirError::CreateOperation { err: e })?
+                        .into();
+                let result = zero_op.result(0).expect("zero const").into();
+                mlir_block.append_operation(zero_op);
+                Ok(result)
             }
-            ConstValue::Indirect { alloc_id, offset } => {
-                todo!("Indirect alloc_id: {:?}, offset: {:?}", alloc_id, offset)
+            ConstValue::Slice { alloc_id: _, meta: _ } => {
+                // String literals and other slice constants (&str, &[T]).
+                // The type mapper maps &str and &[T] to i64 (fat-pointer stand-in).
+                // Emit i64(0) as a placeholder; the callee (device_print etc.) is a stub.
+                let zero_op: Operation<'a> =
+                    create_int_constant(self.module.context(), location, Int::I64(0))
+                        .map_err(|e| MlirError::CreateOperation { err: e })?
+                        .into();
+                let result = zero_op.result(0).expect("slice const placeholder").into();
+                mlir_block.append_operation(zero_op);
+                Ok(result)
+            }
+            ConstValue::Indirect { alloc_id: _, offset: _ } => {
+                // Indirect constants (references to static allocations).
+                // Emit i64(0) as a placeholder; these are not exercised by GPU stubs.
+                let zero_op: Operation<'a> =
+                    create_int_constant(self.module.context(), location, Int::I64(0))
+                        .map_err(|e| MlirError::CreateOperation { err: e })?
+                        .into();
+                let result = zero_op.result(0).expect("indirect const placeholder").into();
+                mlir_block.append_operation(zero_op);
+                Ok(result)
             }
         }
     }

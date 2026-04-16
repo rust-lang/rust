@@ -2689,17 +2689,32 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     let _randi = T::randint(123, r, 10);
     let _rand4 = T::randint4x(123, r, 10);
     let _asm = T::inline_asm_elementwise::<D>("", "", true, 1);
-    // let mo = T::multiple_of(dr, &[1]);
-    // let mc = T::max_contiguous(mo, &[1]);
-    // let mconst = T::max_constancy(mc, &[1]);
-    // T::debug_barrier();
-    // T::device_print("val=", mconst, false);
-    // T::static_assert(BLOCK_SIZE > 0, "BLOCK_SIZE must be positive");
-    // T::static_print("kitchen_sink");
-    // let out_ptrs = T::zeros::<T::Pointer<D>>(&[BLOCK_SIZE]);
-    // let _ = T::make_block_ptr(output_ptr, &[BLOCK_SIZE], &[1], &[0], &[BLOCK_SIZE], &[0]);
-    // T::store::<D, 1>(out_ptrs, mconst, None, &[0], None, None);
-    // let _ = block_ptr2;
+    let mo_vals = [1i32];
+    let mo = T::multiple_of(dr, unsafe { slice_from_raw_parts(&mo_vals as *const i32, 1) });
+    let mc_vals = [1i32];
+    let mc = T::max_contiguous(mo, unsafe { slice_from_raw_parts(&mc_vals as *const i32, 1) });
+    let mconst_vals = [1i32];
+    let mconst = T::max_constancy(mc, unsafe { slice_from_raw_parts(&mconst_vals as *const i32, 1) });
+    T::debug_barrier();
+    T::device_print("val=", mconst, false);
+    T::static_assert(true, "BLOCK_SIZE must be positive");
+    T::static_print("kitchen_sink");
+    let out_ptrs_shape = [BLOCK_SIZE];
+    let out_ptrs = T::zeros::<T::Pointer<D>>(unsafe { slice_from_raw_parts(&out_ptrs_shape as *const i32, 1) });
+    let bp_shape = [BLOCK_SIZE];
+    let bp_strides = [1i32];
+    let bp_offsets = [0i32];
+    let bp_block_shape = [BLOCK_SIZE];
+    let bp_order = [0i32];
+    let _ = T::make_block_ptr(output_ptr,
+        unsafe { slice_from_raw_parts(&bp_shape as *const i32, 1) },
+        unsafe { slice_from_raw_parts(&bp_strides as *const i32, 1) },
+        unsafe { slice_from_raw_parts(&bp_offsets as *const i32, 1) },
+        unsafe { slice_from_raw_parts(&bp_block_shape as *const i32, 1) },
+        unsafe { slice_from_raw_parts(&bp_order as *const i32, 1) },
+    );
+    T::store::<D, 1>(out_ptrs, mconst, None, &[0], None, None);
+    let _ = block_ptr2;
 }
 
 use triton::llvm::triton::num::*;

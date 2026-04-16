@@ -1580,6 +1580,7 @@ impl<'a> TritonCodegen<'a> {
     stub_handler!(codegen_where_call);
     stub_handler!(codegen_assume_call);
     stub_handler!(codegen_device_assert_call);
+    stub_handler!(codegen_device_print_call);
     stub_handler!(codegen_flip_call);
     stub_handler!(codegen_gather_call);
     stub_handler!(codegen_abs_call);

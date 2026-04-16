@@ -356,6 +356,11 @@ impl<'a> TritonCodegen<'a> {
             "triton::Triton::device_assert" => {
                 TritonCodegen::codegen_device_assert_call as LocalCallHandler<'a, 'tcx>
             }
+            // device_print is generic (has tensor<> params) so its monomorphization is
+            // skipped by codegen_function; intercept the call here to avoid dangling tt.call.
+            "triton::Triton::device_print" => {
+                TritonCodegen::codegen_device_print_call as LocalCallHandler<'a, 'tcx>
+            }
             _ => TritonCodegen::codegen_call as LocalCallHandler<'a, 'tcx>,
         };
 
