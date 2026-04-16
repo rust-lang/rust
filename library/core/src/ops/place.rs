@@ -135,7 +135,7 @@ use crate::ptr::Pointee;
 ///
 /// # Safety
 ///
-/// FIXME
+/// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[rustc_deny_explicit_impl]
 #[rustc_dyn_incompatible_trait]
@@ -183,7 +183,7 @@ pub trait DerefPlace {
 ///
 /// # Safety
 ///
-/// FIXME
+/// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "read_place"]
 pub unsafe trait ReadPlace<S>: DerefPlace
@@ -203,7 +203,7 @@ where
     ///
     /// # Safety
     ///
-    /// FIXME
+    /// See the module-level section on [safety](crate::ops::place#safety).
     #[lang = "read_place_read"]
     unsafe fn read(this: *const Self, sub: S) -> S::Target;
 }
@@ -214,7 +214,7 @@ where
 ///
 /// # Safety
 ///
-/// FIXME
+/// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "write_place"]
 pub unsafe trait WritePlace<S>: DerefPlace
@@ -234,7 +234,7 @@ where
     ///
     /// # Safety
     ///
-    /// FIXME
+    /// See the module-level section on [safety](crate::ops::place#safety).
     #[lang = "write_place_write"]
     unsafe fn write(this: *const Self, sub: S, value: S::Target);
 }
@@ -247,7 +247,7 @@ where
 ///
 /// # Safety
 ///
-/// FIXME
+/// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "move_place"]
 pub unsafe trait MovePlace<S>: ReadPlace<S>
@@ -264,7 +264,7 @@ where
 ///
 /// # Safety
 ///
-/// FIXME
+/// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "drop_place"]
 pub unsafe trait DropPlace<S>: DerefPlace
@@ -275,7 +275,7 @@ where
     ///
     /// # Safety
     ///
-    /// FIXME
+    /// See the module-level section on [safety](crate::ops::place#safety).
     #[lang = "drop_place_drop"]
     unsafe fn drop(this: *const Self, sub: S);
 }
@@ -287,7 +287,7 @@ where
 ///
 /// # Safety
 ///
-/// FIXME
+/// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "drop_husk"]
 pub unsafe trait DropHusk: DerefPlace {
@@ -295,7 +295,7 @@ pub unsafe trait DropHusk: DerefPlace {
     ///
     /// # Safety
     ///
-    /// FIXME
+    /// See the module-level section on [safety](crate::ops::place#safety).
     #[lang = "drop_husk_drop_husk"]
     unsafe fn drop_husk(this: *const Self);
 }
@@ -306,7 +306,7 @@ pub unsafe trait DropHusk: DerefPlace {
 ///
 /// # Safety
 ///
-/// FIXME
+/// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "borrow_place"]
 pub unsafe trait BorrowPlace<S, X>: DerefPlace
@@ -329,7 +329,7 @@ where
     ///
     /// # Safety
     ///
-    /// FIXME
+    /// See the module-level section on [safety](crate::ops::place#safety).
     #[lang = "borrow_place_borrow"]
     unsafe fn borrow(this: *const Self, sub: S) -> X;
 }
@@ -341,7 +341,7 @@ where
 ///
 /// # Safety
 ///
-/// FIXME
+/// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "nest_place"]
 pub unsafe trait NestPlace<S>: DerefPlace
@@ -353,7 +353,7 @@ where
     ///
     /// # Safety
     ///
-    /// FIXME
+    /// See the module-level section on [safety](crate::ops::place#safety).
     #[lang = "nest_place_nested"]
     unsafe fn nested(this: *const Self, sub: S) -> *const S::Target;
 }
@@ -366,7 +366,7 @@ where
 ///
 /// # Safety
 ///
-/// FIXME
+/// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "wrap_place"]
 pub unsafe trait WrapPlace<S>: DerefPlace
