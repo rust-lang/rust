@@ -87,8 +87,11 @@ impl TypeMapper {
                     _ => self.map_type(context, tcx, inner_ty),
                 }
             }
-            TyKind::FnDef(_def, _args) => todo!("FnDef: {:?} {:?}", _def, _args),
-            TyKind::FnPtr(_binder, _fn_header) => todo!("FnPtr: {:?} {:?}", _binder, _fn_header),
+            // Function items and function pointers are represented as opaque i64 pointers.
+            // They are used as higher-order arguments (e.g. combine_num in reduce/scan)
+            // but are never actually called by the MLIR codegen — stubs return ub.poison.
+            TyKind::FnDef(_def, _args) => IntegerType::new(context, 64).into(),
+            TyKind::FnPtr(_binder, _fn_header) => IntegerType::new(context, 64).into(),
             TyKind::UnsafeBinder(_unsafe_binder_inner) => {
                 todo!("UnsafeBinder: {:?}", _unsafe_binder_inner)
             }

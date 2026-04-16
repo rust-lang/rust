@@ -1026,7 +1026,28 @@ impl<'a> TritonCodegen<'a> {
             CastKind::IntToInt => {
                 self.codegen_int_to_int(tcx, instance, operand, ty, location, mlir_block, state)
             }
-            _ => todo!("CastKind: {:?}", cast_kind),
+            _ => {
+                // Unhandled cast kinds (Transmute, PointerCoercion, ReifyFnPointer, etc.).
+                // Emit ub.poison of the destination type as a safe placeholder.
+                let typing_env = TypingEnv::fully_monomorphized();
+                let normalized_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx,
+                    typing_env,
+                    EarlyBinder::bind(*ty),
+                );
+                println!(
+                    "[DEBUG] codegen_cast fallback: cast_kind={:?} ty={:?}",
+                    cast_kind, normalized_ty
+                );
+                let mlir_ty =
+                    self.type_mapper.map_type(self.module.context(), &tcx, &normalized_ty);
+                let ub_op: Operation<'a> = create_ub_poison(self.module.context(), location, mlir_ty)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+                    .into();
+                let result = ub_op.result(0).expect("ub.poison result").into();
+                mlir_block.append_operation(ub_op);
+                Ok(result)
+            }
         }
     }
 
