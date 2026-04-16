@@ -593,7 +593,7 @@ fn human_readable_target_env(env: Symbol) -> Option<&'static str> {
         // tidy-alphabetical-start
         Gnu => "GNU",
         MacAbi => "Catalyst",
-        Mlibc => "mac ABI",
+        Mlibc => "Managarm C Library",
         Msvc => "MSVC",
         Musl => "musl",
         Newlib => "Newlib",
