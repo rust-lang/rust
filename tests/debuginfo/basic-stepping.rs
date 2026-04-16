@@ -142,8 +142,8 @@
 fn main () {
     let a = (); // #break
     let b : [i32; 0] = [];
-    // FIXME(#97083): Should we be able to break on initialization of zero-sized types?
-    // FIXME(#97083): Right now the first breakable line is:
+    // The above lines initialize zero-sized types. That does not emit machine
+    // code, so the first breakable line is:
     let mut c = 27;
     let d = c = 99;
     let e = "hi bob";
