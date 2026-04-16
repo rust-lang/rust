@@ -1,7 +1,7 @@
 use ide_db::source_change::SourceChangeBuilder;
 use syntax::{
     AstNode, AstToken,
-    ast::{self, IsString, syntax_factory::SyntaxFactory},
+    ast::{self, IsString},
 };
 
 use crate::{
@@ -164,8 +164,8 @@ fn replace_literal(
 ) {
     let old_token = token.syntax();
     let parent = old_token.parent().expect("no parent token");
-    let make = SyntaxFactory::with_mappings();
     let editor = builder.make_editor(&parent);
+    let make = editor.make();
     let new_literal = make.expr_literal(new);
     let new_token = new_literal
         .syntax()
@@ -173,7 +173,6 @@ fn replace_literal(
         .and_then(|it| it.into_token())
         .expect("literal has no token child");
     editor.replace(old_token, new_token);
-    editor.add_mappings(make.finish_with_mappings());
     builder.add_file_edits(ctx.vfs_file_id(), editor);
 }
 
