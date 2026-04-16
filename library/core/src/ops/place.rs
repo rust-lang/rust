@@ -1,4 +1,127 @@
-//! Place Operations.
+//! Operations on places.
+//!
+//! # Operations on Places
+//!
+//! This module contains traits to customize the place operations of Rust:
+//! - reading,
+//! - writing, and
+//! - borrowing.
+//!
+//! This is part of the language experiment for field projections
+//! <https://github.com/rust-lang/rust/issues/145383>. The specific design that
+//! is currently being implemented is explained in detail in the latest [design
+//! meeting document](https://hackmd.io/H5d2-83ER2ymNPZVIWCYWg?view). Note that
+//! several types and traits have been renamed. Further modifications pending
+//! experiment results are expected to occur.
+//!
+//! ## Places
+//!
+//! A *place* in Rust is a particular location in memory. They are represented
+//! by [*place expressions*][ref-place-exprs], which take on the following form:
+//! - `$path`: paths that refer to locals variables (also parameters), statics,
+//!   constants, and functions.
+//! - `|$args...| $body`: closure expressions,
+//! - `$place as $ty`: certain `as`-casts of another place expression,
+//! - `*$place`: dereferences of another place expression,
+//! - `$place[$expr]`: indexing operation of another place expression,
+//! - `$place.$ident`: field access of another place expression,
+//! - `($place)`: parenthesized place expressions,
+//!
+//! Further reading:
+//! - <https://nadrieril.github.io/blog/2025/12/06/on-places-and-their-magic.html>
+//! - <https://www.ralfj.de/blog/2024/08/14/places.html>
+//!
+//! [ref-place-exprs]: https://doc.rust-lang.org/reference/expressions.html#r-expr.place-value.place-expr-kinds
+//!
+//! ## Operation Traits
+//!
+//! Place operations are implemented by types that reference/contain/represent a
+//! place. This is because places are not part of the type system of Rust; a
+//! place expression has the type of the values that are contained in the place.
+//! The [`DerefPlace`] trait marks a type as containing a place; it also records
+//! which type the values contained within the place have.
+//!
+//! When a type `X` implements [`DerefPlace`], values of type `X` can be
+//! dereferenced, which results in a place that can be read from, written to, or
+//! borrowed. Any of those place operations are implemented by the corresponding
+//! place operation trait on the value the place originated from. This means
+//! that the operations are only available if `X` implements the corresponding
+//! place operation trait:
+//! - reading [`ReadPlace`],
+//! - writing [`WritePlace`], and
+//! - borrowing [`BorrowPlace`].
+//!
+//! Examples of types that implement some of these operations are smart & dumb
+//! pointers like `Box<T>`, `Arc<T>`, [`&mut T`](primitive@reference),
+//! [`*mut T`](primitive@pointer), and [`NonNull<T>`](core::ptr::NonNull).
+//!
+//! ### Subplaces
+//!
+//! Place operations are allowed to target only a *subplace*. For example
+//! `my_struct.field = 42;` writes to only the `field` subplace. However,
+//! the operations traits are always applied to a type that references the
+//! *entire* place, since there is no type system level construct that
+//! represents only the subplace. For this reason, all operation traits have a
+//! generic argument implementing the [`Subplace`] trait that specifies the
+//! subplace that the operation should affect.
+//!
+//! This generic argument is supplied by the compiler when desugaring a place
+//! operation into the corresponding place operation trait function call. There
+//! is a direct translation from place expressions to types implementing the
+//! [`Subplace`] trait (these are compiler-internal).
+//!
+//! ### Implicit Operations
+//!
+//! In addition to the three visible operations, there are several other
+//! *implicit* operations that allow full customization of types implementing
+//! [`DerefPlace`]:
+//! - moving out of a subplace [`MovePlace`],
+//! - dropping a subplace [`DropPlace`] and dropping a fully moved-out pointer
+//!   [`DropHusk`], and
+//! - support for accessing a nested pointer [`NestPlace`].
+//!
+//! ### Place Wrappers
+//!
+//! Place wrappers are types that implement the [`WrapPlace`] trait. They modify
+//! subplaces contained by their value. For example [`MaybeUninit<T>`] has all
+//! fields that `T` has (it forwards all subplaces of `T`), but those subplaces
+//! have `MaybeUninit<U>` as the type instead of `U`. Given `Struct` with a
+//! field of type `Field` called `field`, we can write `val.field` (this has
+//! type `Field`) given `val: Struct`; we can also write `val.field` given `val:
+//! MaybeUninit<Struct>` and then `val.field: MaybeUninit<Field>`.
+//!
+//! [`MaybeUninit<T>`]: crate::mem::MaybeUninit
+//!
+//! ### Safety
+//!
+//! All operation functions are `unsafe`, since they have raw pointer arguments.
+//! The raw pointers are needed, because the values they point to might be
+//! partially moved out or borrowed at the same time.
+//!
+//! The safety requirements for the operation functions have not been figured
+//! out at this point in time. Since we expect several changes to the design, we
+//! do not want to commit to writing down good safety documentation before
+//! having finished the design.
+//!
+//! What is clear at the moment is that the safety requirements will heavily
+//! interact with the borrow checker. It will ensure that simultaneous place
+//! operations on the same value are allowed, since they either affect disjoint
+//! subplaces, or because they both only require shared access. For example:
+//! - reading `ptr.field.subfield` and borrowing `ptr.field` with `&T` are
+//!   allowed to happen at the same time,
+//! - writing `ptr.field` and borrowing `ptr.field.subfield` at the same time is
+//!   not allowed.
+//!
+//! The safety of using the place operations via the operators will depend on
+//! the value of the `SAFETY` constant in the operation traits. At the moment we
+//! will only permit a literal value of `true` or `false` in implementations. It
+//! will dictate if people have to write for example `unsafe { &*ptr }` or if
+//! `*ptr` is allowed. It should be set to `true` when the borrow checker's
+//! guarantees of either disjoint subplaces or "all concurrent operations are
+//! shared" are enough to calling the operations' function correctly. If there
+//! are additional requirements, such as "ptr is valid", then `SAFETY` should be
+//! set to `false`. For example, `&mut T` will have `SAFETY = true` in
+//! [`ReadPlace`], but `NonNull<T>` will set it to `false`.
 
 use crate::ptr::Pointee;
 
