@@ -138,6 +138,7 @@ struct QueryModifiers {
     // tidy-alphabetical-start
     arena_cache: Option<Ident>,
     cache_on_disk: Option<Ident>,
+    callfront: Option<Ident>,
     depth_limit: Option<Ident>,
     desc: Desc,
     eval_always: Option<Ident>,
@@ -145,7 +146,6 @@ struct QueryModifiers {
     handle_cycle_error: Option<Ident>,
     no_force: Option<Ident>,
     no_hash: Option<Ident>,
-    sandbox_callfront: Option<Ident>,
     separate_provide_extern: Option<Ident>,
     // tidy-alphabetical-end
 }
@@ -154,6 +154,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     // tidy-alphabetical-start
     let mut arena_cache = None;
     let mut cache_on_disk = None;
+    let mut callfront = None;
     let mut depth_limit = None;
     let mut desc = None;
     let mut eval_always = None;
@@ -161,7 +162,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut handle_cycle_error = None;
     let mut no_force = None;
     let mut no_hash = None;
-    let mut sandbox_callfront = None;
     let mut separate_provide_extern = None;
     // tidy-alphabetical-end
 
@@ -181,6 +181,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(arena_cache = modifier);
         } else if modifier == "cache_on_disk" {
             try_insert!(cache_on_disk = modifier);
+        } else if modifier == "callfront" {
+            try_insert!(callfront = modifier);
         } else if modifier == "depth_limit" {
             try_insert!(depth_limit = modifier);
         } else if modifier == "desc" {
@@ -200,8 +202,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(no_force = modifier);
         } else if modifier == "no_hash" {
             try_insert!(no_hash = modifier);
-        } else if modifier == "sandbox_callfront" {
-            try_insert!(sandbox_callfront = modifier);
         } else if modifier == "separate_provide_extern" {
             try_insert!(separate_provide_extern = modifier);
         } else {
@@ -215,6 +215,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         // tidy-alphabetical-start
         arena_cache,
         cache_on_disk,
+        callfront,
         depth_limit,
         desc,
         eval_always,
@@ -222,7 +223,6 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         handle_cycle_error,
         no_force,
         no_hash,
-        sandbox_callfront,
         separate_provide_extern,
         // tidy-alphabetical-end
     })
@@ -252,6 +252,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         // tidy-alphabetical-start
         arena_cache,
         cache_on_disk,
+        callfront,
         depth_limit,
         desc,
         eval_always,
@@ -259,7 +260,6 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         handle_cycle_error,
         no_force,
         no_hash,
-        sandbox_callfront,
         separate_provide_extern,
         // tidy-alphabetical-end
     } = &query.modifiers;
@@ -267,6 +267,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
     // tidy-alphabetical-start
     let arena_cache = arena_cache.is_some();
     let cache_on_disk = cache_on_disk.is_some();
+    let callfront = callfront.is_some();
     let depth_limit = depth_limit.is_some();
     let desc = {
         // Put a description closure in the `desc` modifier.
@@ -286,12 +287,11 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
     let no_force = no_force.is_some();
     let no_hash = no_hash.is_some();
     let returns_error_guaranteed = returns_error_guaranteed(&query.return_ty);
-    let sandbox_callfront = sandbox_callfront.is_some();
     let separate_provide_extern = separate_provide_extern.is_some();
     // tidy-alphabetical-end
 
     // Giving an input span to the modifier names in the modifier list seems
-    // to give slightly more helpful errors when one of the sandbox_callfront macros
+    // to give slightly more helpful errors when one of the callfront macros
     // fails to parse the modifier list.
     let query_name_span = query.name.span();
     quote_spanned! {
@@ -300,6 +300,7 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         // tidy-alphabetical-start
         arena_cache: #arena_cache,
         cache_on_disk: #cache_on_disk,
+        callfront: #callfront,
         depth_limit: #depth_limit,
         desc: #desc,
         eval_always: #eval_always,
@@ -308,7 +309,6 @@ fn make_modifiers_stream(query: &Query) -> proc_macro2::TokenStream {
         no_force: #no_force,
         no_hash: #no_hash,
         returns_error_guaranteed: #returns_error_guaranteed,
-        sandbox_callfront: #sandbox_callfront,
         separate_provide_extern: #separate_provide_extern,
         // tidy-alphabetical-end
     }

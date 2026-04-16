@@ -135,7 +135,7 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     /// [^1]: [`TyCtxt`], [`TyCtxtAt`], [`TyCtxtEnsureOk`], [`TyCtxtEnsureDone`]
     pub execute_query_fn: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
 
-    pub sandbox_callfront_fn: Option<fn(tcx: TyCtxt<'tcx>) -> ()>,
+    pub callfront_fn: Option<fn(tcx: TyCtxt<'tcx>) -> ()>,
 }
 
 impl<'tcx, C: QueryCache> QueryVTable<'tcx, C> {
@@ -328,6 +328,7 @@ macro_rules! define_callbacks {
                     // Search for (QMODLIST) to find all occurrences of this query modifier list.
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
+                    callfront: $callfront:literal,
                     depth_limit: $depth_limit:literal,
                     desc: $desc:expr,
                     eval_always: $eval_always:literal,
@@ -336,7 +337,6 @@ macro_rules! define_callbacks {
                     no_force: $no_force:literal,
                     no_hash: $no_hash:literal,
                     returns_error_guaranteed: $returns_error_guaranteed:literal,
-                    sandbox_callfront: $sandbox_callfront:literal,
                     separate_provide_extern: $separate_provide_extern:literal,
                 }
             )*
