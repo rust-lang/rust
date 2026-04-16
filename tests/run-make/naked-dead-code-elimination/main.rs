@@ -8,6 +8,16 @@ extern "C" fn used() {
 }
 
 #[unsafe(no_mangle)]
+extern "C" fn used_clothed() -> i32 {
+    41
+}
+
+pub fn main() {
+    std::hint::black_box(used());
+    std::hint::black_box(used_clothed());
+}
+
+#[unsafe(no_mangle)]
 extern "C" fn unused_clothed() -> i32 {
     42
 }
@@ -35,8 +45,4 @@ extern "C" fn unused_link_section() {
 #[unsafe(no_mangle)]
 extern "C" fn unused_link_section_clothed() -> i32 {
     43
-}
-
-fn main() {
-    used();
 }
