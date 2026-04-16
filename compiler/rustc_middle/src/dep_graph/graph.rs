@@ -2,7 +2,7 @@ use std::assert_matches;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::FxHashSet;
@@ -27,7 +27,6 @@ use super::{DepKind, DepNode, WorkProductId, read_deps, with_deps};
 use crate::dep_graph::edges::EdgesVec;
 use crate::ich::StableHashState;
 use crate::ty::TyCtxt;
-use crate::ty::tls::is_sandbox;
 use crate::verify_ich::incremental_verify_ich;
 
 /// Tracks 'side effects' for a particular query.
@@ -55,6 +54,7 @@ pub enum QuerySideEffect {
 
 #[derive(Clone)]
 pub struct DepGraph {
+    is_in_sandbox: Arc<AtomicBool>,
     data: Option<Arc<DepGraphData>>,
 
     /// This field is used for assigning DepNodeIndices when running in
@@ -178,16 +178,26 @@ impl DepGraph {
                 debug_loaded_from_disk: Default::default(),
             })),
             virtual_dep_node_index: Arc::new(AtomicU32::new(0)),
+            is_in_sandbox: Default::default(),
         }
     }
 
     pub fn new_disabled() -> DepGraph {
-        DepGraph { data: None, virtual_dep_node_index: Arc::new(AtomicU32::new(0)) }
+        DepGraph {
+            data: None,
+            virtual_dep_node_index: Arc::new(AtomicU32::new(0)),
+            is_in_sandbox: Default::default(),
+        }
     }
 
     #[inline]
     pub fn data(&self) -> Option<&DepGraphData> {
-        self.data.as_deref().filter(|_| !is_sandbox())
+        self.data.as_deref().filter(|_| !self.is_in_sandbox())
+    }
+
+    #[inline]
+    pub fn is_in_sandbox(&self) -> bool {
+        self.is_in_sandbox.load(Ordering::Relaxed)
     }
 
     /// Returns `true` if we are actually building the full dep-graph, and `false` otherwise.
@@ -282,6 +292,16 @@ impl DepGraph {
         OP: FnOnce() -> R,
     {
         with_deps(TaskDepsRef::Forbid, op)
+    }
+
+    pub fn with_sandbox(&self, op: impl FnOnce()) {
+        self.with_query_deserialization(|| {
+            self.is_in_sandbox.store(true, Ordering::Relaxed);
+
+            op();
+
+            self.is_in_sandbox.store(false, Ordering::Relaxed);
+        });
     }
 
     #[inline(always)]
@@ -1028,7 +1048,7 @@ impl DepGraph {
     }
 
     pub fn next_virtual_depnode_index(&self) -> DepNodeIndex {
-        debug_assert!(self.data().is_none() || is_sandbox());
+        debug_assert!(self.data().is_none());
         let index = self.virtual_dep_node_index.fetch_add(1, Ordering::Relaxed);
         DepNodeIndex::from_u32(index)
     }

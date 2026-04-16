@@ -8,7 +8,6 @@ use crate::dep_graph::DepNodeKey;
 use crate::query::erase::{self, Erasable, Erased};
 use crate::query::{EnsureMode, QueryCache, QueryMode, QueryVTable};
 use crate::ty::TyCtxt;
-use crate::ty::tls::is_sandbox;
 
 /// Checks whether there is already a value for this key in the in-memory
 /// query cache, returning that value if present.
@@ -21,7 +20,7 @@ where
 {
     match cache.lookup(&key) {
         Some((value, index)) => {
-            if !is_sandbox() {
+            if !tcx.is_in_sandbox() {
                 tcx.prof.query_cache_hit(index.into());
             }
 

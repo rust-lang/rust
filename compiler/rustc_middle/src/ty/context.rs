@@ -10,8 +10,9 @@ use std::cmp::Ordering;
 use std::env::VarError;
 use std::ffi::OsStr;
 use std::hash::{Hash, Hasher};
-use std::marker::PointeeSized;
-use std::ops::Deref;
+use std::marker::{PhantomData, PointeeSized};
+use std::ops::{Bound, Deref};
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, OnceLock};
 use std::{fmt, iter, mem};
 
@@ -66,7 +67,6 @@ use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, PredefinedOpaques};
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
-use crate::ty::tls::is_sandbox;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, FnSigKind, GenericArg,
     GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst,
@@ -736,6 +736,7 @@ pub struct GlobalCtxt<'tcx> {
     /// be called from rustc_middle.
     pub(crate) hooks: crate::hooks::Providers,
 
+    is_in_sandbox: AtomicBool,
     untracked: Untracked,
 
     pub query_system: QuerySystem<'tcx>,
@@ -835,6 +836,19 @@ impl CurrentGcx {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    #[inline]
+    pub fn is_in_sandbox(self) -> bool {
+        self.is_in_sandbox.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    pub fn with_sandbox(self, op: impl FnOnce()) {
+        self.is_in_sandbox.store(true, std::sync::atomic::Ordering::Relaxed);
+
+        op();
+
+        self.is_in_sandbox.store(false, std::sync::atomic::Ordering::Relaxed);
+    }
+
     pub fn has_typeck_results(self, def_id: LocalDefId) -> bool {
         // Closures' typeck results come from their outermost function,
         // as they are part of the same "inference environment".
@@ -975,6 +989,7 @@ impl<'tcx> TyCtxt<'tcx> {
             types: common_types,
             lifetimes: common_lifetimes,
             consts: common_consts,
+            is_in_sandbox: Default::default(),
             untracked,
             query_system,
             dep_kind_vtables,
@@ -1317,7 +1332,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
         // comp. engine itself.
         let def_id = self.untracked.definitions.write().create_def(parent, data, disambiguator);
-        if is_sandbox() {
+        if self.is_in_sandbox() {
             self.untracked.definitions.write().add_sandbox_def_id(def_id);
         }
 
