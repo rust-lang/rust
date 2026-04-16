@@ -132,6 +132,9 @@ mflags+=(--no-default-features)
 # change any implementations.
 mflags+=(--features unstable-float)
 
+# This is a host program that may not run in containers.
+mflags+=(--exclude update-api-list)
+
 # We need to specifically skip tests for musl-math-sys on systems that can't
 # build musl since otherwise `--all` will activate it.
 case "$target" in
@@ -192,7 +195,7 @@ else
 
     # Exclude the macros and utile crates from the rest of the tests to save CI
     # runtime, they shouldn't have anything feature- or opt-level-dependent.
-    cmd+=(--exclude util --exclude libm-macros --exclude update-api-list)
+    cmd+=(--exclude util --exclude libm-macros)
 
     # Test once with intrinsics enabled
     "${cmd[@]}" --features arch,unstable-intrinsics
