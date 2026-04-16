@@ -12,6 +12,7 @@ pub(crate) struct InlineParser;
 impl<S: Stage> SingleAttributeParser<S> for InlineParser {
     const PATH: &[Symbol] = &[sym::inline];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const GATED: AttributeGate = Ungated;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -68,6 +69,10 @@ pub(crate) struct RustcForceInlineParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
     const PATH: &[Symbol] = &[sym::rustc_force_inline];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const GATED: AttributeGate = gated_rustc_attr!(
+        rustc_force_inline,
+        "`#[rustc_force_inline]` forces a free function to be inlined"
+    );
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),

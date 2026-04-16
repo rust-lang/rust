@@ -1,17 +1,11 @@
-use rustc_hir::Target;
-use rustc_hir::attrs::AttributeKind;
-use rustc_span::{Span, Symbol, sym};
-
-use crate::attributes::{NoArgsAttributeParser, OnDuplicate};
-use crate::context::Stage;
-use crate::target_checking::AllowedTargets;
-use crate::target_checking::Policy::Allow;
+use super::prelude::*;
 
 pub(crate) struct PinV2Parser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for PinV2Parser {
     const PATH: &[Symbol] = &[sym::pin_v2];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const GATED: rustc_feature::AttributeGate = gated!(pin_ergonomics, experimental!(pin_v2));
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Enum),
         Allow(Target::Struct),

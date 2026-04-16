@@ -8,6 +8,7 @@ impl<S: Stage> NoArgsAttributeParser<S> for MacroEscapeParser {
     const PATH: &[Symbol] = &[sym::macro_escape];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = MACRO_USE_ALLOWED_TARGETS;
+    const GATED: AttributeGate = AttributeGate::Ungated;
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::MacroEscape;
 }
 
@@ -41,6 +42,7 @@ impl<S: Stage> AttributeParser<S> for MacroUseParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::macro_use],
         MACRO_USE_TEMPLATE,
+        Ungated,
         |group: &mut Self, cx: &mut AcceptContext<'_, '_, S>, args| {
             let span = cx.attr_span;
             group.first_span.get_or_insert(span);
@@ -117,6 +119,8 @@ pub(crate) struct AllowInternalUnsafeParser;
 impl<S: Stage> NoArgsAttributeParser<S> for AllowInternalUnsafeParser {
     const PATH: &[Symbol] = &[sym::allow_internal_unsafe];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
+    const GATED: AttributeGate =
+        gated!(allow_internal_unsafe, "allow_internal_unsafe side-steps the unsafe_code lint");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::MacroDef),
@@ -137,6 +141,7 @@ impl<S: Stage> SingleAttributeParser<S> for MacroExportParser {
         Error(Target::WherePredicate),
         Error(Target::Crate),
     ]);
+    const GATED: AttributeGate = AttributeGate::Ungated;
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let local_inner_macros = match args {
@@ -168,6 +173,7 @@ pub(crate) struct CollapseDebugInfoParser;
 impl<S: Stage> SingleAttributeParser<S> for CollapseDebugInfoParser {
     const PATH: &[Symbol] = &[sym::collapse_debuginfo];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const GATED: AttributeGate = Ungated;
     const TEMPLATE: AttributeTemplate = template!(
         List: &["no", "external", "yes"],
         "https://doc.rust-lang.org/reference/attributes/debugger.html#the-collapse_debuginfo-attribute"
@@ -204,6 +210,7 @@ pub(crate) struct RustcProcMacroDeclsParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcProcMacroDeclsParser {
     const PATH: &[Symbol] = &[sym::rustc_proc_macro_decls];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const GATED: AttributeGate = gated_rustc_attr!(rustc_proc_macro_decls);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Static)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcProcMacroDecls;
 }

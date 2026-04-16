@@ -1246,7 +1246,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         suggestions.extend(
                             BUILTIN_ATTRIBUTES
                                 .iter()
-                                .map(|attr| TypoSuggestion::typo_from_name(attr.name, res)),
+                                .copied()
+                                .map(|attr| TypoSuggestion::typo_from_name(attr, res)),
                         );
                     }
                 }

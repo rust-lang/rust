@@ -1709,10 +1709,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .collect(),
             builtin_attr_decls: BUILTIN_ATTRIBUTES
                 .iter()
+                .copied()
                 .map(|builtin_attr| {
-                    let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin(builtin_attr.name));
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin(builtin_attr));
                     let decl = arenas.new_pub_def_decl(res, DUMMY_SP, LocalExpnId::ROOT);
-                    (builtin_attr.name, decl)
+                    (builtin_attr, decl)
                 })
                 .collect(),
             registered_tool_decls: registered_tools

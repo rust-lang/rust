@@ -8,8 +8,9 @@ use rustc_ast::tokenstream::{
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, HasTokens};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::PResult;
+use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_session::parse::ParseSess;
-use rustc_span::{DUMMY_SP, sym};
+use rustc_span::{DUMMY_SP, Symbol, sym};
 use thin_vec::ThinVec;
 
 use super::{Capturing, ForceCollect, Parser, Trailing};
@@ -152,7 +153,7 @@ impl<'a> Parser<'a> {
         //   tokens by definition).
         let needs_collection = matches!(force_collect, ForceCollect::Yes)
             // - Any of our outer attributes require tokens.
-            || needs_tokens(&attrs.attrs)
+            || needs_tokens(&attrs.attrs, BUILTIN_ATTRIBUTES)
             // - Our target supports custom inner attributes (custom
             //   inner attribute invocation might require token capturing).
             || R::SUPPORTS_CUSTOM_INNER_ATTRS
@@ -239,7 +240,7 @@ impl<'a> Parser<'a> {
             //   outer and inner attributes. So this check is more precise than
             //   the earlier `needs_tokens` check, and we don't need to
             //   check `R::SUPPORTS_CUSTOM_INNER_ATTRS`.)
-            || needs_tokens(&ret_attrs)
+            || needs_tokens(&ret_attrs, BUILTIN_ATTRIBUTES)
             // - We are in "definite capture mode", which requires that there
             //   are `#[cfg]` or `#[cfg_attr]` attributes. (During normal
             //   non-`capture_cfg` parsing, we don't need any special capturing
@@ -397,9 +398,9 @@ impl<'a> Parser<'a> {
 /// - any `cfg_attr` attributes are present; or
 /// - any single-segment, non-builtin attributes are present, e.g. `derive`,
 ///   `test`, `global_allocator`.
-fn needs_tokens(attrs: &[ast::Attribute]) -> bool {
+fn needs_tokens(attrs: &[ast::Attribute], valid_names: &'static [Symbol]) -> bool {
     attrs.iter().any(|attr| match attr.name() {
         None => !attr.is_doc_comment(),
-        Some(name) => name == sym::cfg_attr || !rustc_feature::is_builtin_attr_name(name),
+        Some(name) => name == sym::cfg_attr || !valid_names.contains(&name),
     })
 }

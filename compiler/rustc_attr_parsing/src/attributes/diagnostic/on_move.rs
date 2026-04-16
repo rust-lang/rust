@@ -57,8 +57,12 @@ impl<S: Stage> AttributeParser<S> for OnMoveParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::diagnostic, sym::on_move],
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+        gated!(diagnostic_on_move, Ignore, experimental!(diagnostic, on_move)),
         |this, cx, args| {
             this.parse(cx, args, Mode::DiagnosticOnMove);
+            if cx.do_nothing_due_to_gate {
+                *this = OnMoveParser::default();
+            }
         },
     )];
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);

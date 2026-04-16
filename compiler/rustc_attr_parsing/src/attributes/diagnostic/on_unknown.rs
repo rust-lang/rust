@@ -54,6 +54,7 @@ impl<S: Stage> AttributeParser<S> for OnUnknownParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::diagnostic, sym::on_unknown],
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+        gated!(diagnostic_on_unknown, Ignore, experimental!(diagnostic, on_unknown)),
         |this, cx, args| {
             this.parse(cx, args, Mode::DiagnosticOnUnknown);
         },

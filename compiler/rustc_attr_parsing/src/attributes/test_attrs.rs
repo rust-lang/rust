@@ -10,6 +10,7 @@ impl<S: Stage> SingleAttributeParser<S> for IgnoreParser {
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Fn), Error(Target::WherePredicate)]);
+    const GATED: AttributeGate = AttributeGate::Ungated;
     const TEMPLATE: AttributeTemplate = template!(
         Word, NameValueStr: "reason",
         "https://doc.rust-lang.org/reference/attributes/testing.html#the-ignore-attribute"
@@ -54,6 +55,8 @@ impl<S: Stage> SingleAttributeParser<S> for ShouldPanicParser {
         Word, List: &[r#"expected = "reason""#], NameValueStr: "reason",
         "https://doc.rust-lang.org/reference/attributes/testing.html#the-should_panic-attribute"
     );
+
+    const GATED: AttributeGate = AttributeGate::Ungated;
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         Some(AttributeKind::ShouldPanic {
@@ -103,6 +106,8 @@ pub(crate) struct ReexportTestHarnessMainParser;
 impl<S: Stage> SingleAttributeParser<S> for ReexportTestHarnessMainParser {
     const PATH: &[Symbol] = &[sym::reexport_test_harness_main];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const GATED: AttributeGate =
+        gated!(custom_test_frameworks, "custom test frameworks are an unstable feature");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
@@ -130,6 +135,8 @@ pub(crate) struct RustcAbiParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcAbiParser {
     const PATH: &[Symbol] = &[sym::rustc_abi];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const GATED: AttributeGate = gated_rustc_attr!(TEST, rustc_abi);
+
     const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::debug, sym::assert_eq]);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::TyAlias),
@@ -180,6 +187,8 @@ pub(crate) struct RustcDelayedBugFromInsideQueryParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDelayedBugFromInsideQueryParser {
     const PATH: &[Symbol] = &[sym::rustc_delayed_bug_from_inside_query];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const GATED: AttributeGate = gated_rustc_attr!(TEST, rustc_delayed_bug_from_inside_query);
+
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDelayedBugFromInsideQuery;
 }
@@ -189,6 +198,8 @@ pub(crate) struct RustcEvaluateWhereClausesParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcEvaluateWhereClausesParser {
     const PATH: &[Symbol] = &[sym::rustc_evaluate_where_clauses];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const GATED: AttributeGate = gated_rustc_attr!(TEST, rustc_evaluate_where_clauses);
+
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -204,6 +215,8 @@ pub(crate) struct TestRunnerParser;
 impl<S: Stage> SingleAttributeParser<S> for TestRunnerParser {
     const PATH: &[Symbol] = &[sym::test_runner];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const GATED: AttributeGate =
+        gated!(custom_test_frameworks, "custom test frameworks are an unstable feature");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["path"]);
 
@@ -224,6 +237,11 @@ pub(crate) struct RustcTestMarkerParser;
 impl<S: Stage> SingleAttributeParser<S> for RustcTestMarkerParser {
     const PATH: &[Symbol] = &[sym::rustc_test_marker];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const GATED: AttributeGate = gated_rustc_attr!(
+        rustc_test_marker,
+        "the `#[rustc_test_marker]` attribute is used internally to track tests"
+    );
+
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Const),
         Allow(Target::Fn),

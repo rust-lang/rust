@@ -12,6 +12,7 @@ use rustc_session::Session;
 use rustc_session::lint::builtin::UNREACHABLE_CFG_SELECT_PREDICATES;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 
+use super::prelude::*;
 use crate::parser::{AllowExprMetavar, MetaItemOrLitParser};
 use crate::{AttributeParser, ParsedDescription, ShouldEmit, errors, parse_cfg_entry};
 
@@ -105,6 +106,8 @@ pub fn parse_cfg_select(
                 AttrStyle::Inner,
                 AttrPath { segments: vec![sym::cfg_select].into_boxed_slice(), span: cfg_span },
                 None,
+                AttributeSafety::Normal,
+                Ungated,
                 ParsedDescription::Macro,
                 cfg_span,
                 lint_node_id,

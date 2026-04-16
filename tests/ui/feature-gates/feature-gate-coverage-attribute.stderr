@@ -8,10 +8,10 @@ LL | #![feature(no_coverage)]
    = note: renamed to `coverage_attribute`
 
 error[E0658]: the `#[coverage]` attribute is an experimental feature
-  --> $DIR/feature-gate-coverage-attribute.rs:10:1
+  --> $DIR/feature-gate-coverage-attribute.rs:10:3
    |
 LL | #[coverage(off)]
-   | ^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^
    |
    = note: see issue #84605 <https://github.com/rust-lang/rust/issues/84605> for more information
    = help: add `#![feature(coverage_attribute)]` to the crate attributes to enable

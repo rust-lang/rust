@@ -1,8 +1,8 @@
 error[E0658]: the `#[force_target_feature]` attribute is an experimental feature
-  --> $DIR/feature-gate-effective-target-features.rs:14:5
+  --> $DIR/feature-gate-effective-target-features.rs:14:14
    |
 LL |     #[unsafe(force_target_feature(enable = "avx2"))]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #143352 <https://github.com/rust-lang/rust/issues/143352> for more information
    = help: add `#![feature(effective_target_features)]` to the crate attributes to enable

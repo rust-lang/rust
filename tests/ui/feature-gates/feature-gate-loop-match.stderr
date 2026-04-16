@@ -1,28 +1,28 @@
 error[E0658]: the `#[loop_match]` attribute is an experimental feature
-  --> $DIR/feature-gate-loop-match.rs:12:5
+  --> $DIR/feature-gate-loop-match.rs:12:7
    |
 LL |     #[loop_match]
-   |     ^^^^^^^^^^^^^
+   |       ^^^^^^^^^^
    |
    = note: see issue #132306 <https://github.com/rust-lang/rust/issues/132306> for more information
    = help: add `#![feature(loop_match)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `#[const_continue]` attribute is an experimental feature
-  --> $DIR/feature-gate-loop-match.rs:17:21
+  --> $DIR/feature-gate-loop-match.rs:17:23
    |
 LL |                     #[const_continue]
-   |                     ^^^^^^^^^^^^^^^^^
+   |                       ^^^^^^^^^^^^^^
    |
    = note: see issue #132306 <https://github.com/rust-lang/rust/issues/132306> for more information
    = help: add `#![feature(loop_match)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `#[const_continue]` attribute is an experimental feature
-  --> $DIR/feature-gate-loop-match.rs:22:21
+  --> $DIR/feature-gate-loop-match.rs:22:23
    |
 LL |                     #[const_continue]
-   |                     ^^^^^^^^^^^^^^^^^
+   |                       ^^^^^^^^^^^^^^
    |
    = note: see issue #132306 <https://github.com/rust-lang/rust/issues/132306> for more information
    = help: add `#![feature(loop_match)]` to the crate attributes to enable

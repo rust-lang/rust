@@ -11,6 +11,7 @@ impl<S: Stage> AttributeParser<S> for ConfusablesParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::rustc_confusables],
         template!(List: &[r#""name1", "name2", ..."#]),
+        gated_rustc_attr!(rustc_confusables),
         |this, cx, args| {
             let Some(list) = args.list() else {
                 let attr_span = cx.attr_span;

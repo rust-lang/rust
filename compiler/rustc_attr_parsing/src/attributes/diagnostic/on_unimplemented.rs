@@ -60,6 +60,7 @@ impl<S: Stage> AttributeParser<S> for OnUnimplementedParser {
         (
             &[sym::diagnostic, sym::on_unimplemented],
             template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+            Ungated,
             |this, cx, args| {
                 this.parse(cx, args, Mode::DiagnosticOnUnimplemented);
             },
@@ -67,6 +68,10 @@ impl<S: Stage> AttributeParser<S> for OnUnimplementedParser {
         (
             &[sym::rustc_on_unimplemented],
             template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+            gated_rustc_attr!(
+                rustc_on_unimplemented,
+                "see `#[diagnostic::on_unimplemented]` for the stable equivalent of this attribute"
+            ),
             |this, cx, args| {
                 this.parse(cx, args, Mode::RustcOnUnimplemented);
             },

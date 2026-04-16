@@ -2,7 +2,7 @@ use std::num::IntErrorKind;
 
 use rustc_ast::LitKind;
 use rustc_ast::attr::AttributeExt;
-use rustc_feature::is_builtin_attr_name;
+use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::RustcVersion;
 use rustc_hir::limit::Limit;
 use rustc_span::Symbol;
@@ -28,7 +28,12 @@ pub fn parse_version(s: Symbol) -> Option<RustcVersion> {
 }
 
 pub fn is_builtin_attr(attr: &impl AttributeExt) -> bool {
-    attr.is_doc_comment().is_some() || attr.name().is_some_and(|name| is_builtin_attr_name(name))
+    attr.name().is_some_and(|name| BUILTIN_ATTRIBUTES.contains(&name))
+        || attr.is_doc_comment().is_some()
+}
+
+pub fn is_builtin_attr_name(attr_name: Symbol) -> bool {
+    BUILTIN_ATTRIBUTES.contains(&attr_name)
 }
 
 /// Parse a single integer.

@@ -1,6 +1,6 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
 use rustc_errors::msg;
-use rustc_feature::template;
+use rustc_feature::{BUILTIN_ATTRIBUTES, template};
 use rustc_hir::Target;
 use rustc_hir::attrs::{
     AttributeKind, CfgEntry, CfgHideShow, CfgInfo, DocAttribute, DocInline, HideOrShow,
@@ -10,8 +10,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, edition, sym};
 use thin_vec::ThinVec;
 
-use super::prelude::{ALL_TARGETS, AllowedTargets};
-use super::{AcceptMapping, AttributeParser};
+use super::prelude::*;
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
@@ -39,7 +38,7 @@ fn check_attribute<S: Stage>(
     span: Span,
 ) -> bool {
     // FIXME: This should support attributes with namespace like `diagnostic::do_not_recommend`.
-    if rustc_feature::BUILTIN_ATTRIBUTE_MAP.contains_key(&attribute) {
+    if BUILTIN_ATTRIBUTES.contains(&attribute) {
         return true;
     }
     cx.emit_err(DocAttributeNotAttribute { span, attribute });
@@ -732,6 +731,7 @@ impl<S: Stage> AttributeParser<S> for DocParser {
             ],
             NameValueStr: "string"
         ),
+        Ungated,
         |this, cx, args| {
             this.accept_single_doc_attr(cx, args);
         },

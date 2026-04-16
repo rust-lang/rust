@@ -1,8 +1,8 @@
 error[E0658]: allow_internal_unstable side-steps feature gating and stability checks
-  --> $DIR/feature-gate-check-nested-macro-invocation.rs:8:9
+  --> $DIR/feature-gate-check-nested-macro-invocation.rs:8:11
    |
 LL |         #[allow_internal_unstable()]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | foo!();
    | ------ in this macro invocation

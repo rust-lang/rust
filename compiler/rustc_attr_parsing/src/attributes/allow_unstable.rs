@@ -7,6 +7,10 @@ pub(crate) struct AllowInternalUnstableParser;
 impl<S: Stage> CombineAttributeParser<S> for AllowInternalUnstableParser {
     const PATH: &[Symbol] = &[sym::allow_internal_unstable];
     type Item = (Symbol, Span);
+    const GATED: AttributeGate = gated!(
+        allow_internal_unstable,
+        "allow_internal_unstable side-steps feature gating and stability checks"
+    );
     const CONVERT: ConvertFn<Self::Item> =
         |items, span| AttributeKind::AllowInternalUnstable(items, span);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
@@ -31,6 +35,7 @@ pub(crate) struct UnstableFeatureBoundParser;
 impl<S: Stage> CombineAttributeParser<S> for UnstableFeatureBoundParser {
     const PATH: &[rustc_span::Symbol] = &[sym::unstable_feature_bound];
     type Item = (Symbol, Span);
+    const GATED: AttributeGate = Ungated;
     const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::UnstableFeatureBound(items);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
@@ -56,6 +61,10 @@ pub(crate) struct RustcAllowConstFnUnstableParser;
 impl<S: Stage> CombineAttributeParser<S> for RustcAllowConstFnUnstableParser {
     const PATH: &[Symbol] = &[sym::rustc_allow_const_fn_unstable];
     type Item = Symbol;
+    const GATED: AttributeGate = gated_rustc_attr!(
+        rustc_allow_const_fn_unstable,
+        "rustc_allow_const_fn_unstable side-steps feature gating and stability checks"
+    );
     const CONVERT: ConvertFn<Self::Item> =
         |items, first_span| AttributeKind::RustcAllowConstFnUnstable(items, first_span);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[

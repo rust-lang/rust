@@ -15,6 +15,7 @@ impl<S: Stage> AttributeParser<S> for OnConstParser {
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         &[sym::diagnostic, sym::on_const],
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
+        gated!(diagnostic_on_const, Ignore, experimental!(diagnostic, on_const)),
         |this, cx, args| {
             if !cx.features().diagnostic_on_const() {
                 // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs

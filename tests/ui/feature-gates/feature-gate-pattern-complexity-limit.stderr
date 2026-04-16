@@ -1,8 +1,8 @@
 error[E0658]: use of an internal attribute
-  --> $DIR/feature-gate-pattern-complexity-limit.rs:3:1
+  --> $DIR/feature-gate-pattern-complexity-limit.rs:3:4
    |
 LL | #![pattern_complexity_limit = "42"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: the `#[pattern_complexity_limit]` attribute is an internal implementation detail that will never be stable

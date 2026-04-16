@@ -6,6 +6,7 @@ pub(crate) struct DebuggerViualizerParser;
 
 impl<S: Stage> CombineAttributeParser<S> for DebuggerViualizerParser {
     const PATH: &[Symbol] = &[sym::debugger_visualizer];
+    const GATED: AttributeGate = Ungated;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowList(&[Allow(Target::Mod), Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(

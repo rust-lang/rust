@@ -14,7 +14,7 @@ use rustc_attr_parsing::{AttributeParser, Late};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
-use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
+use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::attrs::diagnostic::Directive;
 use rustc_hir::attrs::{
     AttributeKind, DocAttribute, DocInline, EiiDecl, EiiImpl, EiiImplResolution, InlineAttr,
@@ -399,21 +399,19 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             ..
                         ] => {}
                         [name, rest@..] => {
-                            match BUILTIN_ATTRIBUTE_MAP.get(name) {
-                                Some(_) => {
-                                    if rest.len() > 0 && AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(name)) {
-                                        // Check if we tried to use a builtin attribute as an attribute namespace, like `#[must_use::skip]`.
-                                        // This check is here to solve https://github.com/rust-lang/rust/issues/137590
-                                        // An error is already produced for this case elsewhere
-                                        continue
-                                    }
-
-                                    span_bug!(
-                                        attr.span(),
-                                        "builtin attribute {name:?} not handled by `CheckAttrVisitor`"
-                                    )
+                            if BUILTIN_ATTRIBUTES.contains(&name) {
+                                if rest.len() > 0 && AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(name)) {
+                                    // Check if we tried to use a builtin attribute as an attribute namespace, like `#[must_use::skip]`.
+                                    // This check is here to solve https://github.com/rust-lang/rust/issues/137590
+                                    // An error is already produced for this case elsewhere
+                                    continue
                                 }
-                                None => (),
+
+                                // FIXME: bring this back when we do whole name parsing on BUILTIN_ATTR_NAMES
+                                span_bug!(
+                                    attr.span(),
+                                    "builtin attribute {name:?} not handled by `CheckAttrVisitor`"
+                                )
                             }
                         }
                         [] => unreachable!(),

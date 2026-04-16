@@ -1,13 +1,3 @@
-error[E0658]: use of an internal attribute
-  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:11:1
-   |
-LL | #![rustc_main]
-   | ^^^^^^^^^^^^^^
-   |
-   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
-   = note: the `#[rustc_main]` attribute is an internal implementation detail that will never be stable
-   = note: the `#[rustc_main]` attribute is used internally to specify test entry point function
-
 error: `#[macro_export]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:9:1
    |
@@ -15,6 +5,16 @@ LL | #![macro_export]
    | ^^^^^^^^^^^^^^^^
    |
    = help: `#[macro_export]` can only be applied to macro defs
+
+error[E0658]: use of an internal attribute
+  --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:11:4
+   |
+LL | #![rustc_main]
+   |    ^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: the `#[rustc_main]` attribute is an internal implementation detail that will never be stable
+   = note: the `#[rustc_main]` attribute is used internally to specify test entry point function
 
 error: `#[rustc_main]` attribute cannot be used on crates
   --> $DIR/issue-43106-gating-of-builtin-attrs-error.rs:11:1

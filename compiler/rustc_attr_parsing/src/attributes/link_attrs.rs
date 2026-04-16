@@ -5,6 +5,7 @@ use rustc_hir::attrs::*;
 use rustc_session::Session;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::feature_err;
+use rustc_span::edition::Edition::Edition2024;
 use rustc_span::kw;
 use rustc_target::spec::{Arch, BinaryFormat};
 
@@ -27,6 +28,8 @@ impl<S: Stage> SingleAttributeParser<S> for LinkNameParser {
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
     ]);
+    const GATED: AttributeGate = Ungated;
+
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",
         "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_name-attribute"
@@ -61,7 +64,7 @@ impl<S: Stage> CombineAttributeParser<S> for LinkParser {
             r#"name = "...", kind = "dylib|static|...", wasm_import_module = "...", import_name_type = "decorated|noprefix|undecorated""#,
         ], "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link-attribute");
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
-
+    const GATED: AttributeGate = Ungated;
     fn extend(
         cx: &mut AcceptContext<'_, '_, S>,
         args: &ArgParser,
@@ -463,6 +466,7 @@ pub(crate) struct LinkSectionParser;
 impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
     const PATH: &[Symbol] = &[sym::link_section];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: Some(Edition2024) };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Static),
         Allow(Target::Fn),
@@ -470,6 +474,8 @@ impl<S: Stage> SingleAttributeParser<S> for LinkSectionParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
     ]);
+    const GATED: AttributeGate = Ungated;
+
     const TEMPLATE: AttributeTemplate = template!(
         NameValueStr: "name",
         "https://doc.rust-lang.org/reference/abi.html#the-link_section-attribute"
@@ -500,6 +506,7 @@ pub(crate) struct ExportStableParser;
 impl<S: Stage> NoArgsAttributeParser<S> for ExportStableParser {
     const PATH: &[Symbol] = &[sym::export_stable];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const GATED: AttributeGate = gated!(export_stable);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS); //FIXME Still checked fully in `check_attr.rs`
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::ExportStable;
 }
@@ -508,6 +515,8 @@ pub(crate) struct FfiConstParser;
 impl<S: Stage> NoArgsAttributeParser<S> for FfiConstParser {
     const PATH: &[Symbol] = &[sym::ffi_const];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const GATED: AttributeGate = gated!(ffi_const);
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiConst;
 }
@@ -516,6 +525,8 @@ pub(crate) struct FfiPureParser;
 impl<S: Stage> NoArgsAttributeParser<S> for FfiPureParser {
     const PATH: &[Symbol] = &[sym::ffi_pure];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const GATED: AttributeGate = gated!(ffi_pure);
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe { unsafe_since: None };
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
 }
@@ -524,6 +535,7 @@ pub(crate) struct RustcStdInternalSymbolParser;
 impl<S: Stage> NoArgsAttributeParser<S> for RustcStdInternalSymbolParser {
     const PATH: &[Symbol] = &[sym::rustc_std_internal_symbol];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const GATED: AttributeGate = gated_rustc_attr!(rustc_std_internal_symbol);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::ForeignFn),
@@ -543,6 +555,8 @@ impl<S: Stage> SingleAttributeParser<S> for LinkOrdinalParser {
         Allow(Target::ForeignStatic),
         Warn(Target::MacroCall),
     ]);
+    const GATED: AttributeGate = Ungated;
+
     const TEMPLATE: AttributeTemplate = template!(
         List: &["ordinal"],
         "https://doc.rust-lang.org/reference/items/external-blocks.html#the-link_ordinal-attribute"
@@ -579,6 +593,10 @@ impl<S: Stage> SingleAttributeParser<S> for LinkageParser {
     const PATH: &[Symbol] = &[sym::linkage];
 
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const GATED: AttributeGate = gated!(
+        linkage,
+        "the `linkage` attribute is experimental and not portable across platforms"
+    );
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -662,6 +680,7 @@ pub(crate) struct NeedsAllocatorParser;
 impl<S: Stage> NoArgsAttributeParser<S> for NeedsAllocatorParser {
     const PATH: &[Symbol] = &[sym::needs_allocator];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const GATED: AttributeGate = gated!(allocator_internals, experimental!(needs_allocator));
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::NeedsAllocator;
 }
@@ -671,6 +690,11 @@ pub(crate) struct CompilerBuiltinsParser;
 impl<S: Stage> NoArgsAttributeParser<S> for CompilerBuiltinsParser {
     const PATH: &[Symbol] = &[sym::compiler_builtins];
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
+    const GATED: AttributeGate = gated!(
+        compiler_builtins,
+        "the `#[compiler_builtins]` attribute is used to identify the `compiler_builtins` crate \
+        which contains compiler-rt intrinsics and will never be stable"
+    );
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::CompilerBuiltins;
 }

@@ -1,8 +1,8 @@
 error[E0658]: use of an internal attribute
-  --> $DIR/malformed-never-type-options.rs:4:1
+  --> $DIR/malformed-never-type-options.rs:4:4
    |
 LL | #![rustc_never_type_options(: Unsize<U> = "hi")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: the `#[rustc_never_type_options]` attribute is an internal implementation detail that will never be stable

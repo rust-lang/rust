@@ -2,7 +2,7 @@ use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{self as ast, AttrVec, GenericBound, NodeId, PatKind, attr, token};
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::msg;
-use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features};
+use rustc_feature::Features;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
@@ -155,15 +155,6 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        let attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name));
-        // Check feature gates for built-in attributes.
-        if let Some(BuiltinAttribute {
-            gate: AttributeGate::Gated { feature, message, check, notes, .. },
-            ..
-        }) = attr_info
-        {
-            gate_alt!(self, check(self.features), *feature, attr.span, *message, *notes);
-        }
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.has_name(sym::doc) {
             for meta_item_inner in attr.meta_item_list().unwrap_or_default() {

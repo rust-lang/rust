@@ -1,6 +1,6 @@
 // data structures
 #[doc(hidden)]
-pub(super) use rustc_feature::{AttributeTemplate, template};
+pub(super) use rustc_feature::{AttributeGate, AttributeGate::*, AttributeTemplate, template};
 #[doc(hidden)]
 pub(super) use rustc_hir::attrs::AttributeKind;
 #[doc(hidden)]
@@ -12,8 +12,8 @@ pub(super) use thin_vec::ThinVec;
 
 #[doc(hidden)]
 pub(super) use crate::attributes::{
-    AcceptMapping, AttributeParser, CombineAttributeParser, ConvertFn, NoArgsAttributeParser,
-    OnDuplicate, SingleAttributeParser,
+    AcceptMapping, AttributeParser, AttributeSafety, CombineAttributeParser, ConvertFn,
+    NoArgsAttributeParser, OnDuplicate, SingleAttributeParser,
 };
 // contexts
 #[doc(hidden)]
@@ -25,3 +25,5 @@ pub(super) use crate::parser::*;
 pub(super) use crate::target_checking::Policy::{Allow, Error, Warn};
 #[doc(hidden)]
 pub(super) use crate::target_checking::{ALL_TARGETS, AllowedTargets};
+#[doc(hidden)]
+pub(super) use crate::{experimental, gated, gated_rustc_attr};

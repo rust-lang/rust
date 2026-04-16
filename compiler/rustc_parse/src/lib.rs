@@ -90,12 +90,12 @@ pub fn unwrap_or_emit_fatal<T>(expr: Result<T, Vec<Diag<'_>>>) -> T {
 ///
 /// On failure, the errors must be consumed via `unwrap_or_emit_fatal`, `emit`, `cancel`,
 /// etc., otherwise a panic will occur when they are dropped.
-pub fn new_parser_from_source_str(
-    psess: &ParseSess,
+pub fn new_parser_from_source_str<'sess>(
+    psess: &'sess ParseSess,
     name: FileName,
     source: String,
     strip_tokens: StripTokens,
-) -> Result<Parser<'_>, Vec<Diag<'_>>> {
+) -> Result<Parser<'sess>, Vec<Diag<'sess>>> {
     let source_file = psess.source_map().new_source_file(name, source);
     new_parser_from_source_file(psess, source_file, strip_tokens)
 }
@@ -186,11 +186,11 @@ pub fn utf8_error<E: EmissionGuarantee>(
 
 /// Given a session and a `source_file`, return a parser. Returns any buffered errors from lexing
 /// the initial token stream.
-fn new_parser_from_source_file(
-    psess: &ParseSess,
+fn new_parser_from_source_file<'sess>(
+    psess: &'sess ParseSess,
     source_file: Arc<SourceFile>,
     strip_tokens: StripTokens,
-) -> Result<Parser<'_>, Vec<Diag<'_>>> {
+) -> Result<Parser<'sess>, Vec<Diag<'sess>>> {
     let end_pos = source_file.end_position();
     let stream = source_file_to_stream(psess, source_file, None, strip_tokens)?;
     let mut parser = Parser::new(psess, stream, None);

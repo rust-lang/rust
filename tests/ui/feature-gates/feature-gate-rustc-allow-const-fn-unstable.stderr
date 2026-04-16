@@ -1,8 +1,8 @@
 error[E0658]: use of an internal attribute
-  --> $DIR/feature-gate-rustc-allow-const-fn-unstable.rs:3:1
+  --> $DIR/feature-gate-rustc-allow-const-fn-unstable.rs:3:3
    |
 LL | #[rustc_allow_const_fn_unstable()]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: the `#[rustc_allow_const_fn_unstable]` attribute is an internal implementation detail that will never be stable

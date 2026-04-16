@@ -16,8 +16,9 @@
 
 use std::marker::PhantomData;
 
-use rustc_feature::{AttributeTemplate, template};
+use rustc_feature::{AttributeGate, AttributeTemplate, template};
 use rustc_hir::attrs::AttributeKind;
+use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
@@ -70,7 +71,8 @@ pub(crate) mod transparency;
 pub(crate) mod util;
 
 type AcceptFn<T, S> = for<'sess> fn(&mut T, &mut AcceptContext<'_, 'sess, S>, &ArgParser);
-type AcceptMapping<T, S> = &'static [(&'static [Symbol], AttributeTemplate, AcceptFn<T, S>)];
+type AcceptMapping<T, S> =
+    &'static [(&'static [Symbol], AttributeTemplate, AttributeGate, AcceptFn<T, S>)];
 
 /// An [`AttributeParser`] is a type which searches for syntactic attributes.
 ///
@@ -97,6 +99,7 @@ pub(crate) trait AttributeParser<S: Stage>: Default + 'static {
     /// If an attribute has this symbol, the `accept` function will be called on it.
     const ATTRIBUTES: AcceptMapping<Self, S>;
     const ALLOWED_TARGETS: AllowedTargets;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
 
     /// The parser has gotten a chance to accept the attributes on an item,
     /// here it can produce an attribute.
@@ -127,6 +130,8 @@ pub(crate) trait SingleAttributeParser<S: Stage>: 'static {
     /// Configures what to do when when the same attribute is
     /// applied more than once on the same syntax node.
     const ON_DUPLICATE: OnDuplicate<S>;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
+    const GATED: AttributeGate;
 
     const ALLOWED_TARGETS: AllowedTargets;
 
@@ -154,6 +159,7 @@ impl<T: SingleAttributeParser<S>, S: Stage> AttributeParser<S> for Single<T, S> 
     const ATTRIBUTES: AcceptMapping<Self, S> = &[(
         T::PATH,
         <T as SingleAttributeParser<S>>::TEMPLATE,
+        T::GATED,
         |group: &mut Single<T, S>, cx, args| {
             if let Some(pa) = T::convert(cx, args) {
                 if let Some((_, used)) = group.1 {
@@ -165,6 +171,7 @@ impl<T: SingleAttributeParser<S>, S: Stage> AttributeParser<S> for Single<T, S> 
         },
     )];
     const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
+    const SAFETY: AttributeSafety = T::SAFETY;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         Some(self.1?.0)
@@ -217,6 +224,18 @@ impl<S: Stage> OnDuplicate<S> {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum AttributeSafety {
+    /// Normal attribute that does not need `#[unsafe(...)]`
+    Normal,
+    /// Unsafe attribute that requires safety obligations to be discharged.
+    ///
+    /// An error is emitted when `#[unsafe(...)]` is omitted, except when the attribute's edition
+    /// is less than the one stored in `unsafe_since`. This handles attributes that were safe in
+    /// earlier editions, but become unsafe in later ones.
+    Unsafe { unsafe_since: Option<Edition> },
+}
+
 /// An even simpler version of [`SingleAttributeParser`]:
 /// now automatically check that there are no arguments provided to the attribute.
 ///
@@ -226,7 +245,8 @@ pub(crate) trait NoArgsAttributeParser<S: Stage>: 'static {
     const PATH: &[Symbol];
     const ON_DUPLICATE: OnDuplicate<S>;
     const ALLOWED_TARGETS: AllowedTargets;
-
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
+    const GATED: AttributeGate;
     /// Create the [`AttributeKind`] given attribute's [`Span`].
     const CREATE: fn(Span) -> AttributeKind;
 }
@@ -242,6 +262,8 @@ impl<T: NoArgsAttributeParser<S>, S: Stage> Default for WithoutArgs<T, S> {
 impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for WithoutArgs<T, S> {
     const PATH: &[Symbol] = T::PATH;
     const ON_DUPLICATE: OnDuplicate<S> = T::ON_DUPLICATE;
+    const SAFETY: AttributeSafety = T::SAFETY;
+    const GATED: AttributeGate = T::GATED;
     const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
     const TEMPLATE: AttributeTemplate = template!(Word);
 
@@ -271,6 +293,8 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
     /// For example, individual representations from `#[repr(...)]` attributes into an `AttributeKind::Repr(x)`,
     ///  where `x` is a vec of these individual reprs.
     const CONVERT: ConvertFn<Self::Item>;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
+    const GATED: AttributeGate;
 
     const ALLOWED_TARGETS: AllowedTargets;
 
@@ -306,12 +330,13 @@ impl<T: CombineAttributeParser<S>, S: Stage> Default for Combine<T, S> {
 
 impl<T: CombineAttributeParser<S>, S: Stage> AttributeParser<S> for Combine<T, S> {
     const ATTRIBUTES: AcceptMapping<Self, S> =
-        &[(T::PATH, T::TEMPLATE, |group: &mut Combine<T, S>, cx, args| {
+        &[(T::PATH, T::TEMPLATE, T::GATED, |group: &mut Combine<T, S>, cx, args| {
             // Keep track of the span of the first attribute, for diagnostics
             group.first_span.get_or_insert(cx.attr_span);
             group.items.extend(T::extend(cx, args))
         })];
     const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
+    const SAFETY: AttributeSafety = T::SAFETY;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if let Some(first_span) = self.first_span {
@@ -320,4 +345,74 @@ impl<T: CombineAttributeParser<S>, S: Stage> AttributeParser<S> for Combine<T, S
             None
         }
     }
+}
+
+#[macro_export]
+macro_rules! gated {
+    ($attr:ident) => {
+        gated!($attr, Error, experimental!($attr))
+    };
+    ($attr:ident, $kind:ident) => {
+        gated!($attr, $kind, experimental!($attr))
+    };
+    ($gate:ident, $message:expr) => {
+        gated!($gate, Error, $message)
+    };
+    ($gate:ident, $kind:ident, $message:expr) => {
+        rustc_feature::AttributeGate::Gated {
+            gated_attr: rustc_feature::GatedAttribute {
+                feature: rustc_span::sym::$gate,
+                message: $message,
+                check: rustc_feature::Features::$gate,
+                notes: &[],
+            },
+            kind: rustc_feature::GateKind::$kind,
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! experimental {
+    ($attr:ident) => {
+        concat!("the `#[", stringify!($attr), "]` attribute is an experimental feature")
+    };
+    ($attr_part_1:ident, $attr_part_2:ident) => {
+        concat!(
+            "the `#[",
+            stringify!($attr_part_1),
+            "::",
+            stringify!($attr_part_2),
+            "]` attribute is an experimental feature"
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! gated_rustc_attr {
+    (TEST, $attr:ident $(,)?) => {
+        gated_rustc_attr!(
+            $attr,
+            concat!(
+                "the `#[",
+                stringify!($attr),
+                "]` attribute is used for rustc unit tests"
+            ),
+        )
+    };
+    ($attr:ident $(, $notes:expr)* $(,)?) => {
+        rustc_feature::AttributeGate::Gated {
+            gated_attr: rustc_feature::GatedAttribute {
+                feature: rustc_span::sym::rustc_attrs,
+                message: "use of an internal attribute",
+                check: rustc_feature::Features::rustc_attrs,
+                notes: &[
+                    concat!("the `#[",
+                    stringify!($attr),
+                    "]` attribute is an internal implementation detail that will never be stable"),
+                    $($notes),*
+                ]
+            },
+            kind: rustc_feature::GateKind::Error
+        }
+    };
 }

@@ -4,7 +4,7 @@ use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrItemKind, AttrStyle, NodeId, Safety};
 use rustc_errors::{DiagCtxtHandle, MultiSpan};
-use rustc_feature::{AttributeTemplate, Features};
+use rustc_feature::{AttributeGate, AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
@@ -12,6 +12,7 @@ use rustc_session::Session;
 use rustc_session::lint::LintId;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
+use crate::attributes::AttributeSafety;
 use crate::context::{AcceptContext, FinalizeContext, FinalizeFn, SharedContext, Stage};
 use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
@@ -135,6 +136,8 @@ impl<'sess> AttributeParser<'sess, Early> {
         parse_fn: fn(cx: &mut AcceptContext<'_, '_, Early>, item: &ArgParser) -> Option<T>,
         template: &AttributeTemplate,
         allow_expr_metavar: AllowExprMetavar,
+        expected_safety: AttributeSafety,
+        gated: AttributeGate,
     ) -> Option<T> {
         let ast::AttrKind::Normal(normal_attr) = &attr.kind else {
             panic!("parse_single called on a doc attr")
@@ -157,6 +160,8 @@ impl<'sess> AttributeParser<'sess, Early> {
             attr.style,
             path,
             Some(normal_attr.item.unsafety),
+            expected_safety,
+            gated,
             ParsedDescription::Attribute,
             target_span,
             target_node_id,
@@ -178,6 +183,8 @@ impl<'sess> AttributeParser<'sess, Early> {
         attr_style: AttrStyle,
         attr_path: AttrPath,
         attr_safety: Option<Safety>,
+        expected_safety: AttributeSafety,
+        gated: AttributeGate,
         parsed_description: ParsedDescription,
         target_span: Span,
         target_node_id: NodeId,
@@ -199,8 +206,16 @@ impl<'sess> AttributeParser<'sess, Early> {
             sess.psess.buffer_lint(lint_id.lint, span, target_node_id, kind)
         };
         if let Some(safety) = attr_safety {
-            parser.check_attribute_safety(&attr_path, inner_span, safety, &mut emit_lint)
+            parser.check_attribute_safety(
+                &attr_path,
+                inner_span,
+                safety,
+                expected_safety,
+                &mut emit_lint,
+            )
         }
+        let gate_kind = parser.check_attribute_gate(gated, inner_span);
+
         let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
             shared: SharedContext {
                 cx: &mut parser,
@@ -214,6 +229,8 @@ impl<'sess> AttributeParser<'sess, Early> {
             parsed_description,
             template,
             attr_path,
+            do_nothing_due_to_gate: gate_kind
+                .is_some_and(|gate| matches!(gate, rustc_feature::GateKind::Ignore)),
         };
         parse_fn(&mut cx, args)
     }
@@ -314,17 +331,19 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                         }
                     };
 
-                    self.check_attribute_safety(
-                        &attr_path,
-                        lower_span(n.item.span()),
-                        n.item.unsafety,
-                        &mut emit_lint,
-                    );
-
                     let parts =
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
 
                     if let Some(accept) = S::parsers().accepters.get(parts.as_slice()) {
+                        self.check_attribute_safety(
+                            &attr_path,
+                            lower_span(n.item.span()),
+                            n.item.unsafety,
+                            accept.safety,
+                            &mut emit_lint,
+                        );
+                        let gate_kind = self.check_attribute_gate(accept.gated, n.item.span());
+
                         let Some(args) = ArgParser::from_attr_args(
                             args,
                             &parts,
@@ -379,6 +398,9 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             parsed_description: ParsedDescription::Attribute,
                             template: &accept.template,
                             attr_path: attr_path.clone(),
+                            do_nothing_due_to_gate: gate_kind.is_some_and(|gate| {
+                                matches!(gate, rustc_feature::GateKind::Ignore)
+                            }),
                         };
 
                         (accept.accept_fn)(&mut cx, &args);
@@ -396,6 +418,14 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                             style: attr.style,
                             span: attr_span,
                         };
+
+                        self.check_attribute_safety(
+                            &attr_path,
+                            lower_span(n.item.span()),
+                            n.item.unsafety,
+                            AttributeSafety::Normal,
+                            &mut emit_lint,
+                        );
 
                         if !matches!(self.stage.should_emit(), ShouldEmit::Nothing)
                             && target == Target::Crate
