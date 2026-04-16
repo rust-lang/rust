@@ -112,7 +112,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_triton_kitchen_sink() {
+    fn test_triton_relu() -> Result<(), Box<dyn std::error::Error>> {
         // Set RUST_LOG=debug in environment to see debug output
         let _ = fmt()
             .with_env_filter(
@@ -121,10 +121,12 @@ mod tests {
             .try_init();
 
         let compiler = LlvmCompiler::new();
-        let tensor_add = env::current_dir().unwrap().join("tests/data/triton_kitchen_sink.rs");
+        let tensor_add = env::current_dir().unwrap().join("tests/data/triton_relu.rs");
         let target = "nvptx64-nvidia-cuda";
+
         println!("Compiling tensor add with target: {}", tensor_add.display());
-        let result = compiler.compile(&tensor_add, target);
-        assert!(result.is_ok());
+        let result = compiler.compile(&tensor_add, target)?;
+
+        Ok(())
     }
 }

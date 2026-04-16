@@ -134,9 +134,9 @@ impl TypeMapper {
         // Try the registered handler first; fall back to i32 for fieldless enums.
         let map = ADT_HANDLER_MAP.get_or_init(|| {
             let entries: Vec<(&'static str, AdtHandler)> = vec![
-                ("triton::llvm::triton::tensor::Tensor", triton_tensor_handler),
-                ("triton::llvm::triton::pointer::Pointer", triton_pointer_handler),
-                ("triton::llvm::triton::types::Bool", triton_bool_handler),
+                ("triton::llvm::triton::tensor::LlvmTensor", triton_tensor_handler),
+                ("triton::llvm::triton::pointer::LlvmPointer", triton_pointer_handler),
+                ("triton::llvm::triton::types::LlvmBool", triton_bool_handler),
                 ("triton::Axis", triton_program_axis_handler),
             ];
             entries.into_iter().collect()
@@ -255,7 +255,6 @@ impl TypeMapper {
         pointer_type(ty)
     }
 }
-
 
 pub fn triton_tensor_handler<'tcx, 'c>(
     type_mapper: &TypeMapper,

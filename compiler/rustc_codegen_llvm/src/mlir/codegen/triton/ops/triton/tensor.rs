@@ -157,28 +157,77 @@ impl<'a> TritonCodegen<'a> {
         tcx: TyCtxt<'tcx>,
         instance: &Instance<'tcx>,
         mir: &Body<'tcx>,
-        func: &Operand<'tcx>,
+        _func: &Operand<'tcx>,
         _func_name: &str,
         args: &[Spanned<Operand<'tcx>>],
         destination: &Place<'tcx>,
-        target: &Option<BasicBlock>,
-        unwind: &UnwindAction,
-        call_source: &CallSource,
-        fn_span: &Span,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
-        println!(
-            "[DEBUG] TritonCodegen::codegen_load: func: {:?} args: {:?} destination: {:?} target: {:?} unwind: {:?} call_source: {:?} fn_span: {:?}",
-            func, args, destination, target, unwind, call_source, fn_span
-        );
+        // args: [ptr_tensor, Option<mask>, Option<other>, &[i32], Option<PaddingOption>,
+        //        Option<CacheModifier>, Option<EvictionPolicy>, bool]
+        let ptr = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let mask = self.codegen_option_operand(
+            tcx, instance, mir, &args[1].node, location, mlir_block, state,
+        )?;
+        let other = self.codegen_option_operand(
+            tcx, instance, mir, &args[2].node, location, mlir_block, state,
+        )?;
 
-        // Derive result type from destination to return ub.poison.
-        // We avoid emitting a real tt.load op here because the ptr operand may be defined
-        // in a prior MIR/MLIR block, creating invalid cross-block SSA references.
-        // The loaded value is ub.poison, which is semantically equivalent for stubs.
-        self.codegen_ub_stub(tcx, instance, mir, destination, location, mlir_block)
+        // Derive result type from the ptr operand's MLIR type.
+        // ptr is `tensor<Nx!tt.ptr<T>>` — extract shape [N] and element type T from
+        // the destination Rust type (which gives us `tensor<?xT>`; we take the element).
+        let result_ty = {
+            let dest_ty = destination.ty(mir, tcx).ty;
+            let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                tcx,
+                TypingEnv::fully_monomorphized(),
+                EarlyBinder::bind(dest_ty),
+            );
+            let dest_mlir_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
+
+            if let Ok(ptr_tensor_ty) = RankedTensorType::try_from(ptr.r#type()) {
+                // ptr is tensor<Nx!tt.ptr<ElemTy>> — use the ptr's concrete shape.
+                let shape: Vec<i64> = ptr_tensor_ty
+                    .dims()
+                    .map_err(|e| MlirError::InvalidType { msg: e.to_string() })?;
+                // Element type of result: unwrap outer tensor<> wrapper from dest_mlir_ty if present.
+                let elem_ty = if let Ok(dest_tensor_ty) = RankedTensorType::try_from(dest_mlir_ty) {
+                    dest_tensor_ty.element()
+                } else {
+                    dest_mlir_ty
+                };
+                tensor_type(&shape, elem_ty).into()
+            } else {
+                // Scalar pointer — result type is exactly the destination type.
+                dest_mlir_ty
+            }
+        };
+
+        let load_op: Operation<'a> = load(
+            self.module.context(),
+            location,
+            ptr,
+            mask,
+            other,
+            result_ty,
+            CacheModifier::None,
+            EvictionPolicy::Normal,
+            false,
+        )
+        .map_err(|e| MlirError::CreateOperation { err: e })?
+        .into();
+
+        let result = load_op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(load_op);
+        Ok(Some(result.into()))
     }
 
     pub fn codegen_store<'tcx>(
@@ -186,26 +235,43 @@ impl<'a> TritonCodegen<'a> {
         tcx: TyCtxt<'tcx>,
         instance: &Instance<'tcx>,
         mir: &Body<'tcx>,
-        func: &Operand<'tcx>,
+        _func: &Operand<'tcx>,
         _func_name: &str,
         args: &[Spanned<Operand<'tcx>>],
-        destination: &Place<'tcx>,
-        target: &Option<BasicBlock>,
-        unwind: &UnwindAction,
-        call_source: &CallSource,
-        fn_span: &Span,
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
-        println!(
-            "[DEBUG] TritonCodegen::codegen_store: func: {:?} args: {:?} destination: {:?} target: {:?} unwind: {:?} call_source: {:?} fn_span: {:?}",
-            func, args, destination, target, unwind, call_source, fn_span
-        );
+        // args: [ptr_tensor, value_tensor, Option<mask>, &[i32],
+        //        Option<CacheModifier>, Option<EvictionPolicy>]
+        let ptr = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let value = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let mask = self.codegen_option_operand(
+            tcx, instance, mir, &args[2].node, location, mlir_block, state,
+        )?;
 
-        // Avoid emitting a real tt.store op: the ptr and value operands may be from prior
-        // MIR/MLIR blocks, creating invalid cross-block SSA references. Return early.
-        let _ = (func, args, destination, target, unwind, call_source, fn_span, location, mlir_block, state);
+        let store_op: Operation<'a> = store(
+            self.module.context(),
+            location,
+            ptr,
+            value,
+            mask,
+            CacheModifier::None,
+            EvictionPolicy::Normal,
+        )
+        .map_err(|e| MlirError::CreateOperation { err: e })?
+        .into();
+
+        mlir_block.append_operation(store_op);
         Ok(None)
     }
 
@@ -214,25 +280,37 @@ impl<'a> TritonCodegen<'a> {
         tcx: TyCtxt<'tcx>,
         instance: &Instance<'tcx>,
         mir: &Body<'tcx>,
-        func: &Operand<'tcx>,
+        _func: &Operand<'tcx>,
         _func_name: &str,
         args: &[Spanned<Operand<'tcx>>],
-        destination: &Place<'tcx>,
-        target: &Option<BasicBlock>,
-        unwind: &UnwindAction,
-        call_source: &CallSource,
-        fn_span: &Span,
-        _location: Location<'a>,
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
-        println!(
-            "[DEBUG] TritonCodegen::codegen_maximum: func: {:?} args: {:?} destination: {:?} target: {:?} unwind: {:?} call_source: {:?} fn_span: {:?}",
-            func, args, destination, target, unwind, call_source, fn_span
-        );
+        // args: [lhs_tensor, rhs_tensor]
+        let lhs = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let rhs = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
 
-        let _ = (func, args, target, unwind, call_source, fn_span, state);
-        self.codegen_ub_stub(tcx, instance, mir, destination, _location, mlir_block)
+        // arith.maximumf for element-wise float maximum (works on scalars and tensors).
+        let result_ty = lhs.r#type();
+        let max_op: Operation<'a> = OperationBuilder::new("arith.maximumf", location)
+            .add_operands(&[lhs, rhs])
+            .add_results(&[result_ty])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+
+        let result = max_op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(max_op);
+        Ok(Some(result.into()))
     }
 
     /// `triton::Triton::transmute`-as-slice: `transmute<(*const T, usize), &[T]>((ptr, len))`
