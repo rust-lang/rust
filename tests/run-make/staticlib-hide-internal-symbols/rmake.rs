@@ -11,8 +11,7 @@ use run_make_support::{cc, extra_c_flags, object, rfs, run, rustc, static_lib_na
 type FileHeader64 = run_make_support::object::elf::FileHeader64<Endianness>;
 type SymbolTable<'data> = run_make_support::object::read::elf::SymbolTable<'data, FileHeader64>;
 
-const EXPORTED: &[&str] =
-    &["my_add", "my_hash_lookup", "call_internal", "my_safe_div", "rust_eh_personality"];
+const EXPORTED: &[&str] = &["my_add", "my_hash_lookup", "call_internal", "my_safe_div"];
 
 fn main() {
     let lib_name = static_lib_name("lib");

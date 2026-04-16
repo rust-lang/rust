@@ -530,15 +530,9 @@ fn link_staticlib(
             sess.dcx().emit_warn(errors::StaticlibHideInternalSymbolsUnsupported {
                 archive_format: sess.target.archive_format.to_string(),
             });
-        } else if let Some(symbols) =
-            codegen_results.crate_info.exported_symbols.get(&CrateType::Staticlib)
-        {
+        } else if let Some(symbols) = crate_info.exported_symbols.get(&CrateType::StaticLib) {
             use rustc_data_structures::fx::FxHashSet;
-            let mut keep: FxHashSet<String> = symbols.iter().map(|(s, _)| s.clone()).collect();
-            // rust_eh_personality cannot be mangled and hidden.
-            // See discussions in https://github.com/rust-lang/rust/issues/104707
-            // Keep it visible so that .eh_frame references from other object files
-            keep.insert("rust_eh_personality".to_owned());
+            let keep: FxHashSet<String> = symbols.iter().map(|(s, _)| s.clone()).collect();
             ab.set_keep_symbols(keep);
         }
     }

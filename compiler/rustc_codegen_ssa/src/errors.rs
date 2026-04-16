@@ -676,7 +676,9 @@ pub(crate) struct UnknownArchiveKind<'a> {
 pub(crate) struct BpfStaticlibNotSupported;
 
 #[derive(Diagnostic)]
-#[diag("-Zstaticlib-hide-internal-symbols only supports ELF archive formats (gnu/bsd), but the target uses `{$archive_format}`")]
+#[diag(
+    "-Zstaticlib-hide-internal-symbols only supports ELF archive formats (gnu/bsd), but the target uses `{$archive_format}`"
+)]
 pub(crate) struct StaticlibHideInternalSymbolsUnsupported {
     pub archive_format: String,
 }
