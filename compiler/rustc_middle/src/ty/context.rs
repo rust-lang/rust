@@ -909,6 +909,15 @@ impl<'tcx> TyCtxt<'tcx> {
         op();
 
         self.is_in_sandbox.store(false, std::sync::atomic::Ordering::Relaxed);
+
+        self.clauses_cache.borrow_mut().clear();
+        self.highest_var_in_clauses_cache.borrow_mut().clear();
+        self.canonical_param_env_cache.clear();
+        self.new_solver_canonical_param_env_cache.borrow_mut().clear();
+        self.new_solver_evaluation_cache.borrow_mut().clear();
+        self.evaluation_cache.clear();
+        self.selection_cache.clear();
+        self.ty_rcache.borrow_mut().clear();
     }
 
     pub fn has_typeck_results(self, def_id: LocalDefId) -> bool {

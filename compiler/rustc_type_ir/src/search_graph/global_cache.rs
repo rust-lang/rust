@@ -107,4 +107,8 @@ impl<X: Cx> GlobalCache<X> {
 
         None
     }
+
+    pub fn clear(&mut self) {
+        self.map.clear();
+    }
 }

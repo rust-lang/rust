@@ -201,4 +201,8 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
             }
         }
     }
+
+    pub fn clear(&self) {
+        self.map.borrow_mut().clear();
+    }
 }
