@@ -43,6 +43,10 @@ pub struct GlobalContext {
     /// Should all LLVM wrappers convert their arguments to a signed type
     #[serde(default)]
     pub auto_llvm_sign_conversion: bool,
+
+    /// Should SVE load/store tests be generated?
+    #[serde(default)]
+    pub generate_load_store_tests: bool,
 }
 
 /// Context of an intrinsic group
@@ -218,7 +222,7 @@ impl LocalContext {
             } => Ok(Expression::MacroCall(
                 "static_assert_range".to_string(),
                 format!(
-                    "{variable}, {min}, {max}",
+                    "{variable}, {min}..={max}",
                     min = range.start(),
                     max = range.end()
                 ),
@@ -246,7 +250,7 @@ impl LocalContext {
                             |bitsize| Ok(higher_limit / bitsize - 1))?;
                     Ok(Expression::MacroCall(
                         "static_assert_range".to_string(),
-                        format!("{variable}, 0, {max}"),
+                        format!("{variable}, 0..={max}"),
                     ))
                 } else {
                     Err(format!(
