@@ -219,8 +219,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             delegate.capture_information.push((
                 place,
                 ty::CaptureInfo {
-                    capture_kind_expr_id: Some(capture.var_hir_id),
-                    path_expr_id: Some(capture.var_hir_id),
+                    capture_kind_expr_id: Some(closure_hir_id),
+                    path_expr_id: Some(closure_hir_id),
                     capture_kind: UpvarCapture::ByValue,
                 },
             ));

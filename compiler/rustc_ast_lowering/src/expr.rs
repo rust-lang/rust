@@ -251,10 +251,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 ExprKind::Await(expr, await_kw_span) => self.lower_expr_await(*await_kw_span, expr),
                 ExprKind::Move(_, move_kw_span) => {
                     if !self.tcx.features().move_expr() {
-                        return self.expr_err(
-                            *move_kw_span,
-                            self.dcx().span_delayed_bug(*move_kw_span, "invalid move(expr)"),
-                        );
+                        return self.expr_err(*move_kw_span, self.dcx().has_errors().unwrap());
                     }
                     if let Some((ident, binding)) = self
                         .move_expr_bindings
@@ -277,10 +274,10 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                             }),
                         ))
                     } else {
-                        self.dcx().emit_err(MoveExprOnlyInPlainClosures { span: *move_kw_span });
-                        hir::ExprKind::Err(
-                            self.dcx().span_delayed_bug(*move_kw_span, "invalid move(expr)"),
-                        )
+                        let guar = self
+                            .dcx()
+                            .emit_err(MoveExprOnlyInPlainClosures { span: *move_kw_span });
+                        hir::ExprKind::Err(guar)
                     }
                 }
                 ExprKind::Use(expr, use_kw_span) => self.lower_expr_use(*use_kw_span, expr),
@@ -1096,6 +1093,8 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         let attrs = self.lower_attrs(expr_hir_id, &e.attrs, e.span, Target::from_expr(e));
 
         match closure.coroutine_kind {
+            // FIXME(TaKO8Ki): Support `move(expr)` in coroutine closures too.
+            // For the first step, we only support plain closures.
             Some(coroutine_kind) => hir::Expr {
                 hir_id: expr_hir_id,
                 kind: self.lower_expr_coroutine_closure(
@@ -1188,12 +1187,11 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             ));
         }
 
-        let explicit_captures = self.arena.alloc_from_iter(lowered_occurrences.iter().map(
-            |(occurrence, _, binding)| hir::ExplicitCapture {
-                var_hir_id: *binding,
-                origin_span: self.lower_span(occurrence.move_kw_span),
-            },
-        ));
+        let explicit_captures = self.arena.alloc_from_iter(
+            lowered_occurrences
+                .iter()
+                .map(|(_, _, binding)| hir::ExplicitCapture { var_hir_id: *binding }),
+        );
 
         let closure_expr = self.arena.alloc(hir::Expr {
             hir_id: expr_hir_id,
@@ -1395,9 +1393,10 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             // knows that a `FnDecl` output type like `-> &str` actually means
             // "coroutine that returns &str", rather than directly returning a `&str`.
             kind: hir::ClosureKind::CoroutineClosure(coroutine_desugaring),
-            constness: hir::Constness::NotConst,
+            constness: self.lower_constness(constness),
             explicit_captures: &[],
         });
+
         hir::ExprKind::Closure(c)
     }
 
