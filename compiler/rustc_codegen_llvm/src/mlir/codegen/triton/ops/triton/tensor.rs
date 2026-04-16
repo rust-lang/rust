@@ -17,17 +17,22 @@
 use melior::ir::attribute::FloatAttribute;
 use melior::ir::operation::{OperationBuilder, OperationLike};
 use melior::ir::r#type::RankedTensorType;
-use melior::ir::{BlockLike, BlockRef, Location, Operation, ShapedTypeLike, TypeLike, Value, ValueLike};
+use melior::ir::{Block, BlockLike, BlockRef, Location, Operation, Region, RegionLike, ShapedTypeLike, TypeLike, Value, ValueLike};
 use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, UnwindAction};
 use rustc_middle::ty::{EarlyBinder, Instance, TyCtxt, TyKind, TypingEnv};
 use rustc_mlir::shared::arith::{Int, create_int_constant};
 use rustc_mlir::shared::builtin::tensor_type;
 use rustc_mlir::shared::ub::create_ub_poison;
 use rustc_mlir::triton::tensor::{
-    CacheModifier, EvictionPolicy, InputPrecision, ScaleDotElemType,
-    add_ptr, broadcast, dot, dot_scaled, expand_dims, join, make_range, load, reshape,
-    split, splat, store, trans,
+    CacheModifier, EvictionPolicy, InputPrecision, MemSemantic, MemSyncScope, PropagateNan,
+    RmwOp, ScaleDotElemType,
+    add_ptr, advance, assert_op, atomic_cas, atomic_rmw, broadcast, clampf, descriptor_load,
+    descriptor_store, dot, dot_scaled, expand_dims, gather, histogram, join, load, make_range,
+    make_tensor_descriptor, make_tensor_ptr, mulhiui, precise_divf, precise_sqrt,
+    print as triton_print, reduce, reduce_return, reshape, scan, scan_return, split, splat,
+    store, trans, zeros_like,
 };
+use rustc_mlir::triton::program::{ProgramAxis, create_get_num_programs};
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 
@@ -1602,6 +1607,208 @@ impl<'a> TritonCodegen<'a> {
     }
 
     // =========================================================================
+    // Region-building helpers (for reduce / scan combine ops)
+    // =========================================================================
+
+    /// Build a `tt.reduce` combine region whose body is a single binary MLIR op.
+    ///
+    /// The region has one block with two arguments of `elem_ty`.  The block
+    /// applies `combine_op` (e.g. `"arith.addf"`) to those two values and
+    /// terminates with `tt.reduce.return`.
+    fn build_reduce_region(
+        &self,
+        location: Location<'a>,
+        elem_ty: melior::ir::Type<'a>,
+        combine_op: &str,
+    ) -> Region<'a> {
+        let region = Region::new();
+        let block = Block::new(&[(elem_ty, location), (elem_ty, location)]);
+        let lhs: Value = block.argument(0).unwrap().into();
+        let rhs: Value = block.argument(1).unwrap().into();
+        let op = OperationBuilder::new(combine_op, location)
+            .add_operands(&[lhs, rhs])
+            .add_results(&[elem_ty])
+            .build()
+            .expect("reduce combine op");
+        let result: Value = op.result(0).unwrap().into();
+        block.append_operation(op);
+        let ret: Operation<'a> = reduce_return(self.module.context(), location, &[result])
+            .expect("reduce_return")
+            .into();
+        block.append_operation(ret);
+        region.append_block(block);
+        region
+    }
+
+    /// Build a `tt.scan` combine region whose body is a single binary MLIR op.
+    ///
+    /// Same structure as `build_reduce_region` but uses `tt.scan.return`.
+    fn build_scan_region(
+        &self,
+        location: Location<'a>,
+        elem_ty: melior::ir::Type<'a>,
+        combine_op: &str,
+    ) -> Region<'a> {
+        let region = Region::new();
+        let block = Block::new(&[(elem_ty, location), (elem_ty, location)]);
+        let lhs: Value = block.argument(0).unwrap().into();
+        let rhs: Value = block.argument(1).unwrap().into();
+        let op = OperationBuilder::new(combine_op, location)
+            .add_operands(&[lhs, rhs])
+            .add_results(&[elem_ty])
+            .build()
+            .expect("scan combine op");
+        let result: Value = op.result(0).unwrap().into();
+        block.append_operation(op);
+        let ret: Operation<'a> = scan_return(self.module.context(), location, &[result])
+            .expect("scan_return")
+            .into();
+        block.append_operation(ret);
+        region.append_block(block);
+        region
+    }
+
+    /// Derive the result type for a reduction: the source tensor with its
+    /// `axis` dimension removed.  For a 1-D tensor the result is the element
+    /// type (a scalar).
+    fn reduce_result_ty(
+        &self,
+        src: Value<'a, 'a>,
+        axis: i32,
+    ) -> melior::ir::Type<'a> {
+        if let Ok(t) = RankedTensorType::try_from(src.r#type()) {
+            let elem = t.element();
+            let dims: Vec<i64> = t.dims().unwrap_or_default();
+            let out_dims: Vec<i64> = dims
+                .iter()
+                .enumerate()
+                .filter(|&(i, _)| i as i32 != axis)
+                .map(|(_, &d)| d)
+                .collect();
+            if out_dims.is_empty() {
+                elem
+            } else {
+                tensor_type(&out_dims, elem).into()
+            }
+        } else {
+            src.r#type() // scalar source → scalar result
+        }
+    }
+
+    /// Return the element type of a tensor value (or the type itself if scalar).
+    fn elem_ty(&self, v: Value<'a, 'a>) -> melior::ir::Type<'a> {
+        if let Ok(t) = RankedTensorType::try_from(v.r#type()) {
+            t.element()
+        } else {
+            v.r#type()
+        }
+    }
+
+    /// Choose the right binary combine op based on element type (float vs int).
+    fn choose_float_int_op(
+        elem_ty: melior::ir::Type<'_>,
+        float_op: &'static str,
+        int_op: &'static str,
+    ) -> &'static str {
+        if elem_ty.is_integer() || elem_ty.is_index() { int_op } else { float_op }
+    }
+
+    /// Emit `arith.constant 0.0 / 0` of `elem_ty` and splat to a tensor matching
+    /// the shape of `like_val` (which may be scalar or tensor).  Used by
+    /// `zeros_pointer` and `full`.
+    fn splat_scalar_const(
+        &self,
+        location: Location<'a>,
+        scalar_val: Value<'a, 'a>,
+        result_ty: melior::ir::Type<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+    ) -> Result<Value<'a, 'a>, MlirError> {
+        if result_ty.is_tensor() {
+            let splat_op: Operation<'a> =
+                splat(self.module.context(), location, scalar_val, result_ty)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+                    .into();
+            let r = splat_op.result(0).unwrap().into();
+            mlir_block.append_operation(splat_op);
+            Ok(r)
+        } else {
+            Ok(scalar_val)
+        }
+    }
+
+    /// Collect MLIR i64 constants from the `slice_shape` side-table for the
+    /// given arg operand.  Used to reconstruct tensor shapes / strides / offsets
+    /// for block-pointer ops.
+    fn slice_as_i64_values<'tcx>(
+        &self,
+        arg: &Operand<'tcx>,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &CodegenState<'a, 'a>,
+    ) -> Result<Vec<Value<'a, 'a>>, MlirError> {
+        let local = match arg {
+            Operand::Move(p) | Operand::Copy(p) => p.local,
+            _ => return Err(MlirError::CodegenFailed {
+                err: "slice arg is not a place".into(),
+            }),
+        };
+        let vals = state
+            .slice_shape
+            .get(&local)
+            .ok_or_else(|| MlirError::CodegenFailed {
+                err: format!("slice_shape not found for {:?}", local),
+            })?
+            .clone();
+        let mut out = Vec::with_capacity(vals.len());
+        for v in vals {
+            let c: Operation<'a> = create_int_constant(
+                self.module.context(), location, Int::I64(v as u64),
+            )
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+            let r = c.result(0).unwrap().into();
+            mlir_block.append_operation(c);
+            out.push(r);
+        }
+        Ok(out)
+    }
+
+    /// Same as `slice_as_i64_values` but emits i32 constants.
+    fn slice_as_i32_values<'tcx>(
+        &self,
+        arg: &Operand<'tcx>,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &CodegenState<'a, 'a>,
+    ) -> Result<Vec<Value<'a, 'a>>, MlirError> {
+        let local = match arg {
+            Operand::Move(p) | Operand::Copy(p) => p.local,
+            _ => return Err(MlirError::CodegenFailed {
+                err: "slice arg is not a place".into(),
+            }),
+        };
+        let vals = state
+            .slice_shape
+            .get(&local)
+            .ok_or_else(|| MlirError::CodegenFailed {
+                err: format!("slice_shape not found for {:?}", local),
+            })?
+            .clone();
+        let mut out = Vec::with_capacity(vals.len());
+        for v in vals {
+            let c: Operation<'a> = create_int_constant(
+                self.module.context(), location, Int::I32(v as u32),
+            )
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+            let r = c.result(0).unwrap().into();
+            mlir_block.append_operation(c);
+            out.push(r);
+        }
+        Ok(out)
+    }
+
+    // =========================================================================
     // Generic stub helpers
     // =========================================================================
 
@@ -1642,78 +1849,1517 @@ impl<'a> TritonCodegen<'a> {
         Ok(Some(val))
     }
 
-    // -------------------------------------------------------------------------
-    // Stub handlers for pointer/descriptor ops that return a Pointer<D> or Tensor<D>.
-    // These skip all arg processing and return UB of the return type.
-    // -------------------------------------------------------------------------
+    // =========================================================================
+    // Block-pointer and descriptor ops
+    // =========================================================================
 
-    stub_handler!(codegen_make_block_ptr_call);
-    stub_handler!(codegen_advance_call);
-    stub_handler!(codegen_make_tensor_descriptor_call);
-    stub_handler!(codegen_load_tensor_descriptor_call);
-    stub_handler!(codegen_store_tensor_descriptor_call);
-    stub_handler!(codegen_zeros_pointer_call);
-    stub_handler!(codegen_load_full_call);
-    stub_handler!(codegen_store_full_call);
-    stub_handler!(codegen_where_call);
-    stub_handler!(codegen_assume_call);
-    stub_handler!(codegen_device_assert_call);
-    stub_handler!(codegen_device_print_call);
+    pub fn codegen_make_block_ptr_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // args: [base_ptr, &[shape_i64], &[strides_i64], &[offsets_i32], &[order_i32]]
+        let base = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let shape = self.slice_as_i64_values(&args[1].node, location, mlir_block, state)?;
+        let strides = self.slice_as_i64_values(&args[2].node, location, mlir_block, state)?;
+        let offsets = self.slice_as_i32_values(&args[3].node, location, mlir_block, state)?;
+        let order_vals = state
+            .slice_shape
+            .get(&match &args[4].node {
+                Operand::Move(p) | Operand::Copy(p) => p.local,
+                _ => {
+                    return self.codegen_ub_stub(tcx, instance, mir, destination, location, mlir_block);
+                }
+            })
+            .cloned()
+            .unwrap_or_default();
+        let order: Vec<i32> = order_vals.iter().map(|&v| v as i32).collect();
+
+        let dest_ty = destination.ty(mir, tcx).ty;
+        let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(dest_ty),
+        );
+        let result_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
+
+        let op: Operation<'a> = make_tensor_ptr(
+            self.module.context(), location,
+            base, &shape, &strides, &offsets, &order, result_ty,
+        )
+        .map_err(|e| MlirError::CreateOperation { err: e })?
+        .into();
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    pub fn codegen_advance_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // args: [ptr, &[offsets_i32]]
+        let ptr = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let offsets = match self.slice_as_i32_values(&args[1].node, location, mlir_block, state) {
+            Ok(v) => v,
+            Err(_) => return self.codegen_ub_stub(tcx, instance, mir, destination, location, mlir_block),
+        };
+        let result_ty = ptr.r#type();
+        let op: Operation<'a> = advance(self.module.context(), location, ptr, &offsets, result_ty)
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+        let result = op.result(0).map_err(|e: melior::Error| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    pub fn codegen_make_tensor_descriptor_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // args: [base_ptr, &[shape_i64], &[strides_i64], padding]
+        let base = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let shape = match self.slice_as_i64_values(&args[1].node, location, mlir_block, state) {
+            Ok(v) => v,
+            Err(_) => return self.codegen_ub_stub(tcx, instance, mir, destination, location, mlir_block),
+        };
+        let strides = match self.slice_as_i64_values(&args[2].node, location, mlir_block, state) {
+            Ok(v) => v,
+            Err(_) => return self.codegen_ub_stub(tcx, instance, mir, destination, location, mlir_block),
+        };
+
+        let dest_ty = destination.ty(mir, tcx).ty;
+        let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(dest_ty),
+        );
+        let result_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
+
+        use rustc_mlir::triton::tensor::PaddingOption;
+        let op: Operation<'a> = make_tensor_descriptor(
+            self.module.context(), location, base, &shape, &strides,
+            PaddingOption::PadZero, result_ty,
+        )
+        .map_err(|e| MlirError::CreateOperation { err: e })?
+        .into();
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    pub fn codegen_load_tensor_descriptor_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // args: [desc, &[indices_i32]]
+        let desc = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let indices = match self.slice_as_i32_values(&args[1].node, location, mlir_block, state) {
+            Ok(v) => v,
+            Err(_) => return self.codegen_ub_stub(tcx, instance, mir, destination, location, mlir_block),
+        };
+        let dest_ty = destination.ty(mir, tcx).ty;
+        let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(dest_ty),
+        );
+        let result_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
+
+        let op: Operation<'a> = descriptor_load(
+            self.module.context(), location, desc, &indices, result_ty,
+            CacheModifier::None, EvictionPolicy::Normal,
+        )
+        .map_err(|e| MlirError::CreateOperation { err: e })?
+        .into();
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    pub fn codegen_store_tensor_descriptor_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // args: [desc, src_tensor, &[indices_i32]]
+        let desc = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let src = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let indices = match self.slice_as_i32_values(&args[2].node, location, mlir_block, state) {
+            Ok(v) => v,
+            Err(_) => return Ok(None),
+        };
+
+        let op: Operation<'a> = descriptor_store(self.module.context(), location, desc, src, &indices)
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+        mlir_block.append_operation(op);
+        Ok(None)
+    }
+
+    /// `triton::Triton::zeros_pointer` — a null/zero-valued tensor of pointer type.
+    pub fn codegen_zeros_pointer_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // Try to use an existing tensor arg as the "like" template via tt.zeros_like.
+        if let Some(spanned) = args.first() {
+            if let Ok(v) = self.codegen_operand(
+                tcx, instance, &spanned.node, spanned.node.ty(mir, tcx), location, mlir_block, state,
+            ) {
+                let op: Operation<'a> = zeros_like(self.module.context(), location, v)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+                    .into();
+                let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+                mlir_block.append_operation(op);
+                return Ok(Some(result.into()));
+            }
+        }
+        self.codegen_ub_stub(tcx, instance, mir, destination, location, mlir_block)
+    }
+
+    /// `triton::Triton::load_full` — block-pointer load; delegates to the same
+    /// MLIR operation as a regular `tt.load`.
+    pub fn codegen_load_full_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        func: &Operand<'tcx>,
+        func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        target: &Option<BasicBlock>,
+        unwind: &UnwindAction,
+        call_source: &CallSource,
+        fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_load(tcx, instance, mir, func, func_name, args, destination, target, unwind, call_source, fn_span, location, mlir_block, state)
+    }
+
+    /// `triton::Triton::store_full` — block-pointer store; delegates to `tt.store`.
+    pub fn codegen_store_full_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        func: &Operand<'tcx>,
+        func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        target: &Option<BasicBlock>,
+        unwind: &UnwindAction,
+        call_source: &CallSource,
+        fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_store(tcx, instance, mir, func, func_name, args, destination, target, unwind, call_source, fn_span, location, mlir_block, state)
+    }
+
+    // =========================================================================
+    // Control-flow / debug ops
+    // =========================================================================
+
+    /// `triton::Triton::where_` — conditional element-wise select (`arith.select`).
+    pub fn codegen_where_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // args: [condition, true_val, false_val]
+        let cond = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let true_val = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let false_val = self.codegen_operand(
+            tcx, instance, &args[2].node, args[2].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let result_ty = true_val.r#type();
+        let op: Operation<'a> = OperationBuilder::new("arith.select", location)
+            .add_operands(&[cond, true_val, false_val])
+            .add_results(&[result_ty])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    /// `triton::Triton::assume` — a no-op hint for the compiler.
+    pub fn codegen_assume_call<'tcx>(
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        _instance: &Instance<'tcx>,
+        _mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        _args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        _location: Location<'a>,
+        _mlir_block: &BlockRef<'a, 'a>,
+        _state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        Ok(None)
+    }
+
+    /// `triton::Triton::device_assert` — runtime assertion (`tt.assert`).
+    pub fn codegen_device_assert_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let cond = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let op: Operation<'a> = assert_op(self.module.context(), location, cond, "device_assert")
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+        mlir_block.append_operation(op);
+        Ok(None)
+    }
+
+    /// `triton::Triton::device_print` — debug print (`tt.print`).
+    pub fn codegen_device_print_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // args: [prefix_str (i64 placeholder), args...]
+        // Collect printable tensor args (skip the first string arg).
+        let mut print_vals: Vec<Value<'a, 'a>> = Vec::new();
+        for spanned in args.iter().skip(1) {
+            if let Ok(v) = self.codegen_operand(
+                tcx, instance, &spanned.node, spanned.node.ty(mir, tcx), location, mlir_block, state,
+            ) {
+                print_vals.push(v);
+            }
+        }
+        let is_signed: Vec<i32> = print_vals.iter().map(|_| 0i32).collect();
+        let op: Operation<'a> = triton_print(
+            self.module.context(), location, "device_print:", false,
+            &print_vals, &is_signed,
+        )
+        .map_err(|e| MlirError::CreateOperation { err: e })?
+        .into();
+        mlir_block.append_operation(op);
+        Ok(None)
+    }
+
+    // =========================================================================
+    // Tensor manipulation (flip, gather)
+    // =========================================================================
+
+    // `triton::Triton::flip` — no `tt.flip` op in this version; fall back to UB stub.
     stub_handler!(codegen_flip_call);
-    stub_handler!(codegen_gather_call);
-    stub_handler!(codegen_abs_call);
-    stub_handler!(codegen_ceil_call);
-    stub_handler!(codegen_floor_call);
-    stub_handler!(codegen_cos_call);
-    stub_handler!(codegen_sin_call);
-    stub_handler!(codegen_exp_call);
-    stub_handler!(codegen_exp2_call);
-    stub_handler!(codegen_log_call);
-    stub_handler!(codegen_log2_call);
-    stub_handler!(codegen_rsqrt_call);
-    stub_handler!(codegen_sigmoid_call);
-    stub_handler!(codegen_sqrt_call);
-    stub_handler!(codegen_sqrt_rn_call);
-    stub_handler!(codegen_erf_call);
+
+    /// `triton::Triton::gather` — indexed gather along an axis (`tt.gather`).
+    pub fn codegen_gather_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // args: [src, indices, axis]
+        let src = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let indices = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let axis = self
+            .to_scalar_int(tcx, instance, &args[2].node)
+            .map(|s| s.to_i32())
+            .unwrap_or(0);
+
+        let dest_ty = destination.ty(mir, tcx).ty;
+        let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(dest_ty),
+        );
+        let result_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
+
+        let op: Operation<'a> = gather(
+            self.module.context(), location, src, indices, axis, false, result_ty,
+        )
+        .map_err(|e| MlirError::CreateOperation { err: e })?
+        .into();
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    // =========================================================================
+    // Unary elementwise math ops  (math.*)
+    // =========================================================================
+    //
+    // All take a single tensor/scalar operand and return the same type.
+
+    /// Emit a unary `math.*` or `tt.*` op.
+    fn codegen_math_unary<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        args: &[Spanned<Operand<'tcx>>],
+        mlir_op: &str,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let x = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let result_ty = x.r#type();
+        let op: Operation<'a> = OperationBuilder::new(mlir_op, location)
+            .add_operands(&[x])
+            .add_results(&[result_ty])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    /// Emit a binary `arith.*` / `math.*` op with two equal-typed operands.
+    fn codegen_binary_elementwise<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        args: &[Spanned<Operand<'tcx>>],
+        mlir_op: &str,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let lhs = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let rhs = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let result_ty = lhs.r#type();
+        let op: Operation<'a> = OperationBuilder::new(mlir_op, location)
+            .add_operands(&[lhs, rhs])
+            .add_results(&[result_ty])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    pub fn codegen_abs_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_math_unary(tcx, instance, mir, args, "math.absf", location, mlir_block, state)
+    }
+
+    pub fn codegen_ceil_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_math_unary(tcx, instance, mir, args, "math.ceil", location, mlir_block, state)
+    }
+
+    pub fn codegen_floor_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_math_unary(tcx, instance, mir, args, "math.floor", location, mlir_block, state)
+    }
+
+    pub fn codegen_cos_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_math_unary(tcx, instance, mir, args, "math.cos", location, mlir_block, state)
+    }
+
+    pub fn codegen_sin_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_math_unary(tcx, instance, mir, args, "math.sin", location, mlir_block, state)
+    }
+
+    pub fn codegen_exp_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_math_unary(tcx, instance, mir, args, "math.exp", location, mlir_block, state)
+    }
+
+    pub fn codegen_exp2_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_math_unary(tcx, instance, mir, args, "math.exp2", location, mlir_block, state)
+    }
+
+    pub fn codegen_log_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_math_unary(tcx, instance, mir, args, "math.log", location, mlir_block, state)
+    }
+
+    pub fn codegen_log2_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_math_unary(tcx, instance, mir, args, "math.log2", location, mlir_block, state)
+    }
+
+    pub fn codegen_rsqrt_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_math_unary(tcx, instance, mir, args, "math.rsqrt", location, mlir_block, state)
+    }
+
+    pub fn codegen_sqrt_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_math_unary(tcx, instance, mir, args, "math.sqrt", location, mlir_block, state)
+    }
+
+    /// `triton::Triton::sqrt_rn` — IEEE-precise sqrt (`tt.precise_sqrt`).
+    pub fn codegen_sqrt_rn_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let x = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let op: Operation<'a> = precise_sqrt(self.module.context(), location, x)
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    pub fn codegen_erf_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_math_unary(tcx, instance, mir, args, "math.erf", location, mlir_block, state)
+    }
+
+    /// `triton::Triton::sigmoid` — uses CUDA libdevice via `tt.extern_elementwise`.
+    pub fn codegen_sigmoid_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let x = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let result_ty = x.r#type();
+        let op: Operation<'a> = OperationBuilder::new("tt.extern_elementwise", location)
+            .add_operands(&[x])
+            .add_results(&[result_ty])
+            .add_attributes(&[
+                (
+                    melior::ir::Identifier::new(self.module.context(), "libname"),
+                    melior::ir::Attribute::parse(self.module.context(), r#""libdevice""#).unwrap(),
+                ),
+                (
+                    melior::ir::Identifier::new(self.module.context(), "libpath"),
+                    melior::ir::Attribute::parse(self.module.context(), r#""""#).unwrap(),
+                ),
+                (
+                    melior::ir::Identifier::new(self.module.context(), "symbol"),
+                    melior::ir::Attribute::parse(self.module.context(), r#""__nv_sigmoidf""#).unwrap(),
+                ),
+                (
+                    melior::ir::Identifier::new(self.module.context(), "pure"),
+                    melior::ir::Attribute::parse(self.module.context(), "true").unwrap(),
+                ),
+            ])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    // `triton::Triton::softmax` — multi-step op; no single Triton IR equivalent.
     stub_handler!(codegen_softmax_call);
-    stub_handler!(codegen_minimum_call);
-    stub_handler!(codegen_clamp_call);
-    stub_handler!(codegen_fma_call);
-    stub_handler!(codegen_fdiv_call);
-    stub_handler!(codegen_div_rn_call);
-    stub_handler!(codegen_cdiv_call);
+
+    // =========================================================================
+    // Binary elementwise math ops
+    // =========================================================================
+
+    /// `triton::Triton::minimum` — element-wise minimum.
+    pub fn codegen_minimum_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let lhs = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let rhs = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let elem = self.elem_ty(lhs);
+        let op_name = Self::choose_float_int_op(elem, "arith.minimumf", "arith.minsi");
+        let result_ty = lhs.r#type();
+        let op: Operation<'a> = OperationBuilder::new(op_name, location)
+            .add_operands(&[lhs, rhs])
+            .add_results(&[result_ty])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    /// `triton::Triton::clamp` — clamped elementwise (`tt.clampf`).
+    pub fn codegen_clamp_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // args: [x, min_val, max_val]
+        let x = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let min_val = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let max_val = self.codegen_operand(
+            tcx, instance, &args[2].node, args[2].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let result_ty = x.r#type();
+        let op: Operation<'a> = clampf(
+            self.module.context(), location, x, min_val, max_val,
+            PropagateNan::None, result_ty,
+        )
+        .map_err(|e| MlirError::CreateOperation { err: e })?
+        .into();
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    /// `triton::Triton::fma` — fused multiply-add (`math.fma`).
+    pub fn codegen_fma_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // args: [a, b, c]  result = a*b + c
+        let a = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let b = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let c = self.codegen_operand(
+            tcx, instance, &args[2].node, args[2].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let result_ty = a.r#type();
+        let op: Operation<'a> = OperationBuilder::new("math.fma", location)
+            .add_operands(&[a, b, c])
+            .add_results(&[result_ty])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    /// `triton::Triton::fdiv` — float division (`arith.divf`).
+    pub fn codegen_fdiv_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_binary_elementwise(tcx, instance, mir, args, "arith.divf", location, mlir_block, state)
+    }
+
+    /// `triton::Triton::div_rn` — IEEE-precise float division (`tt.precise_divf`).
+    pub fn codegen_div_rn_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let x = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let y = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let op: Operation<'a> = precise_divf(self.module.context(), location, x, y)
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    /// `triton::Triton::cdiv` — integer ceiling division: `(a + b - 1) / b`.
+    pub fn codegen_cdiv_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // cdiv(a, b) = (a + b - 1) / b
+        let a = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let b = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let ty = a.r#type();
+
+        // Emit `one = arith.constant 1 : <ty>`
+        let one_attr = melior::ir::Attribute::parse(
+            self.module.context(), &format!("1 : {}", ty),
+        )
+        .ok_or_else(|| MlirError::CodegenFailed { err: "cdiv: cannot parse 1 const".into() })?;
+        let one_op: Operation<'a> = OperationBuilder::new("arith.constant", location)
+            .add_attributes(&[(
+                melior::ir::Identifier::new(self.module.context(), "value"),
+                one_attr,
+            )])
+            .add_results(&[ty])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        let one: Value<'a, 'a> = one_op.result(0).unwrap().into();
+        mlir_block.append_operation(one_op);
+
+        // a + b - 1
+        let add_op: Operation<'a> = OperationBuilder::new("arith.addi", location)
+            .add_operands(&[a, b])
+            .add_results(&[ty])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        let sum: Value<'a, 'a> = add_op.result(0).unwrap().into();
+        mlir_block.append_operation(add_op);
+
+        let sub_op: Operation<'a> = OperationBuilder::new("arith.subi", location)
+            .add_operands(&[sum, one])
+            .add_results(&[ty])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        let numerator: Value<'a, 'a> = sub_op.result(0).unwrap().into();
+        mlir_block.append_operation(sub_op);
+
+        let div_op: Operation<'a> = OperationBuilder::new("arith.divsi", location)
+            .add_operands(&[numerator, b])
+            .add_results(&[ty])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        let result: Value<'a, 'a> = div_op.result(0).unwrap().into();
+        mlir_block.append_operation(div_op);
+        Ok(Some(result))
+    }
+
+    // `triton::Triton::swizzle2d` — no direct Triton IR equivalent.
     stub_handler!(codegen_swizzle2d_call);
-    stub_handler!(codegen_sum_call);
-    stub_handler!(codegen_max_call);
+
+    // =========================================================================
+    // Reductions (tt.reduce)
+    // =========================================================================
+
+    fn codegen_reduce_unary<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        args: &[Spanned<Operand<'tcx>>],
+        combine_op_float: &'static str,
+        combine_op_int: &'static str,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let src = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let axis = if args.len() > 1 {
+            self.to_scalar_int(tcx, instance, &args[1].node)
+                .map(|s| s.to_i32())
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        let elem = self.elem_ty(src);
+        let combine_op = Self::choose_float_int_op(elem, combine_op_float, combine_op_int);
+        let region = self.build_reduce_region(location, elem, combine_op);
+        let result_ty = self.reduce_result_ty(src, axis);
+        let op: Operation<'a> = reduce(
+            self.module.context(), location, &[src], &[result_ty], axis, region,
+        )
+        .map_err(|e| MlirError::CreateOperation { err: e })?
+        .into();
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    /// `triton::Triton::sum` — reduction sum.
+    pub fn codegen_sum_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_reduce_unary(tcx, instance, mir, args, "arith.addf", "arith.addi", location, mlir_block, state)
+    }
+
+    /// `triton::Triton::max` — reduction max.
+    pub fn codegen_max_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_reduce_unary(tcx, instance, mir, args, "arith.maximumf", "arith.maxsi", location, mlir_block, state)
+    }
+
+    /// `triton::Triton::min` — reduction min.
+    pub fn codegen_min_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_reduce_unary(tcx, instance, mir, args, "arith.minimumf", "arith.minsi", location, mlir_block, state)
+    }
+
+    /// `triton::Triton::xor_sum` — reduction XOR.
+    pub fn codegen_xor_sum_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_reduce_unary(tcx, instance, mir, args, "arith.xori", "arith.xori", location, mlir_block, state)
+    }
+
+    // argmax/argmin/max_with_indices/min_with_indices require multi-value reduce
+    // regions with (value, index) pairs — kept as stubs until index-tracking is
+    // implemented.
     stub_handler!(codegen_max_with_indices_call);
-    stub_handler!(codegen_min_call);
     stub_handler!(codegen_min_with_indices_call);
     stub_handler!(codegen_argmax_call);
     stub_handler!(codegen_argmin_call);
-    stub_handler!(codegen_xor_sum_call);
-    stub_handler!(codegen_cumsum_call);
-    stub_handler!(codegen_cumprod_call);
+
+    // =========================================================================
+    // Scans (tt.scan)
+    // =========================================================================
+
+    fn codegen_scan_unary<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        args: &[Spanned<Operand<'tcx>>],
+        combine_op_float: &'static str,
+        combine_op_int: &'static str,
+        reverse: bool,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let src = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let axis = if args.len() > 1 {
+            self.to_scalar_int(tcx, instance, &args[1].node)
+                .map(|s| s.to_i32())
+                .unwrap_or(0)
+        } else {
+            0
+        };
+        let elem = self.elem_ty(src);
+        let combine_op = Self::choose_float_int_op(elem, combine_op_float, combine_op_int);
+        let region = self.build_scan_region(location, elem, combine_op);
+        let result_ty = src.r#type();
+        let op: Operation<'a> = scan(
+            self.module.context(), location, &[src], &[result_ty], axis, reverse, region,
+        )
+        .map_err(|e| MlirError::CreateOperation { err: e })?
+        .into();
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    /// `triton::Triton::cumsum` — prefix sum scan.
+    pub fn codegen_cumsum_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_scan_unary(tcx, instance, mir, args, "arith.addf", "arith.addi", false, location, mlir_block, state)
+    }
+
+    /// `triton::Triton::cumprod` — prefix product scan.
+    pub fn codegen_cumprod_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_scan_unary(tcx, instance, mir, args, "arith.mulf", "arith.muli", false, location, mlir_block, state)
+    }
+
+    // `triton::Triton::sort` — no direct Triton IR equivalent.
     stub_handler!(codegen_sort_call);
-    stub_handler!(codegen_histogram_call);
+
+    /// `triton::Triton::histogram` — `tt.histogram`.
+    pub fn codegen_histogram_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // args: [src, Option<mask>]
+        let src = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let mask = if args.len() > 1 {
+            self.codegen_option_operand(tcx, instance, mir, &args[1].node, location, mlir_block, state)?
+        } else {
+            None
+        };
+
+        let dest_ty = destination.ty(mir, tcx).ty;
+        let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(dest_ty),
+        );
+        let result_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
+
+        let op: Operation<'a> = histogram(self.module.context(), location, src, mask, result_ty)
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    // `triton::Triton::reduce` and `associative_scan` require user-provided closure
+    // regions which cannot be generated without inlining the closure body.
     stub_handler!(codegen_reduce_call);
     stub_handler!(codegen_associative_scan_call);
-    stub_handler!(codegen_atomic_add_call);
-    stub_handler!(codegen_atomic_max_call);
-    stub_handler!(codegen_atomic_min_call);
-    stub_handler!(codegen_atomic_xchg_call);
-    stub_handler!(codegen_atomic_cas_call);
-    stub_handler!(codegen_atomic_and_call);
-    stub_handler!(codegen_atomic_or_call);
-    stub_handler!(codegen_atomic_xor_call);
-    stub_handler!(codegen_umulhi_call);
+
+    // =========================================================================
+    // Atomic ops (tt.atomic_rmw / tt.atomic_cas)
+    // =========================================================================
+
+    fn codegen_atomic_rmw_impl<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        args: &[Spanned<Operand<'tcx>>],
+        rmw_op: RmwOp,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // args: [ptr, val, Option<mask>]
+        let ptr = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let val = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let mask = if args.len() > 2 {
+            self.codegen_option_operand(tcx, instance, mir, &args[2].node, location, mlir_block, state)?
+        } else {
+            None
+        };
+        let result_ty = val.r#type();
+        let op: Operation<'a> = atomic_rmw(
+            self.module.context(), location, ptr, val, mask, result_ty,
+            rmw_op, MemSemantic::Relaxed, MemSyncScope::Gpu,
+        )
+        .map_err(|e| MlirError::CreateOperation { err: e })?
+        .into();
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    pub fn codegen_atomic_add_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // Use Fadd for floats; Add for ints.  Default to Fadd if type can't be inferred.
+        let rmw = match self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        ) {
+            Ok(v) => {
+                let elem = self.elem_ty(v);
+                if elem.is_integer() || elem.is_index() { RmwOp::Add } else { RmwOp::Fadd }
+            }
+            Err(_) => RmwOp::Fadd,
+        };
+        self.codegen_atomic_rmw_impl(tcx, instance, mir, args, rmw, location, mlir_block, state)
+    }
+
+    pub fn codegen_atomic_max_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_atomic_rmw_impl(tcx, instance, mir, args, RmwOp::Max, location, mlir_block, state)
+    }
+
+    pub fn codegen_atomic_min_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_atomic_rmw_impl(tcx, instance, mir, args, RmwOp::Min, location, mlir_block, state)
+    }
+
+    pub fn codegen_atomic_xchg_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_atomic_rmw_impl(tcx, instance, mir, args, RmwOp::Xchg, location, mlir_block, state)
+    }
+
+    pub fn codegen_atomic_and_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_atomic_rmw_impl(tcx, instance, mir, args, RmwOp::And, location, mlir_block, state)
+    }
+
+    pub fn codegen_atomic_or_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_atomic_rmw_impl(tcx, instance, mir, args, RmwOp::Or, location, mlir_block, state)
+    }
+
+    pub fn codegen_atomic_xor_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_atomic_rmw_impl(tcx, instance, mir, args, RmwOp::Xor, location, mlir_block, state)
+    }
+
+    /// `triton::Triton::atomic_cas` — `tt.atomic_cas`.
+    pub fn codegen_atomic_cas_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // args: [ptr, cmp, val]
+        let ptr = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let cmp = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let val = self.codegen_operand(
+            tcx, instance, &args[2].node, args[2].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let result_ty = val.r#type();
+        let op: Operation<'a> = atomic_cas(
+            self.module.context(), location, ptr, cmp, val, result_ty,
+            MemSemantic::Relaxed, MemSyncScope::Gpu,
+        )
+        .map_err(|e| MlirError::CreateOperation { err: e })?
+        .into();
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    // =========================================================================
+    // Miscellaneous ops
+    // =========================================================================
+
+    /// `triton::Triton::umulhi` — unsigned integer multiply high (`tt.mulhiui`).
+    pub fn codegen_umulhi_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let x = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let y = self.codegen_operand(
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let op: Operation<'a> = mulhiui(self.module.context(), location, x, y)
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    // rand/randn/randint/randint4x use Triton's Philox RNG which requires
+    // special argument handling; kept as stubs.
     stub_handler!(codegen_rand_call);
     stub_handler!(codegen_randn_call);
     stub_handler!(codegen_randint_call);
     stub_handler!(codegen_randint4x_call);
+
+    // inline_asm_elementwise requires extracting string constants from MIR which
+    // is not yet implemented.
     stub_handler!(codegen_inline_asm_elementwise_call);
-    stub_handler!(codegen_multiple_of_call);
-    stub_handler!(codegen_max_contiguous_call);
-    stub_handler!(codegen_max_constancy_call);
-    stub_handler!(codegen_num_programs_call);
-    stub_handler!(codegen_full_call);
+
+    /// `triton::Triton::multiple_of` / `max_contiguous` / `max_constancy` —
+    /// compiler hint annotations; return the input tensor unchanged.
+    pub fn codegen_multiple_of_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let v = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        Ok(Some(v))
+    }
+
+    pub fn codegen_max_contiguous_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let v = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        Ok(Some(v))
+    }
+
+    pub fn codegen_max_constancy_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let v = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        Ok(Some(v))
+    }
+
+    /// `triton::Triton::num_programs` — `tt.get_num_programs`.
+    pub fn codegen_num_programs_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        _mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        _state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let axis_val = self
+            .to_scalar_int(tcx, instance, &args[0].node)
+            .map(|s| s.to_i32())
+            .unwrap_or(0);
+        let axis = ProgramAxis::from(axis_val);
+        let op: Operation<'a> = create_get_num_programs(self.module.context(), location, axis)
+            .map_err(|e| MlirError::CreateOperation { err: e })?
+            .into();
+        let result = op.result(0).map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        mlir_block.append_operation(op);
+        Ok(Some(result.into()))
+    }
+
+    /// `triton::Triton::full` — splat a scalar value to a tensor shape.
+    pub fn codegen_full_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // args: [scalar_value] — shape comes from the destination tensor type.
+        let scalar = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+
+        let dest_ty = destination.ty(mir, tcx).ty;
+        let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(dest_ty),
+        );
+        let result_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
+
+        self.splat_scalar_const(location, scalar, result_ty, mlir_block).map(Some)
+    }
+
+    // =========================================================================
+    // Helper: element type from a Type value (non-method, used in atomic_add)
+    // =========================================================================
+
+    fn elem_ty_from_type(&self, ty: melior::ir::Type<'a>) -> melior::ir::Type<'a> {
+        if let Ok(t) = RankedTensorType::try_from(ty) {
+            t.element()
+        } else {
+            ty
+        }
+    }
 }
