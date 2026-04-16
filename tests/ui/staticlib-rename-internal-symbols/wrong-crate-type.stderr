@@ -1,0 +1,2 @@
+error: -Zstaticlib-rename-internal-symbols can only be used with `--crate-type staticlib`
+

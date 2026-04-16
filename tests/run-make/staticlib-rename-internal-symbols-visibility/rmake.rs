@@ -19,7 +19,7 @@ fn main() {
     rustc()
         .input("lib.rs")
         .crate_type("staticlib")
-        .arg("-Zstaticlib-hide-internal-symbols")
+        .arg("-Zstaticlib-rename-internal-symbols")
         .opt()
         .run();
 
@@ -83,7 +83,7 @@ fn check_symbols(archive_data: &[u8], with_flag: bool) {
                     assert_eq!(
                         vis,
                         expected,
-                        "with -Z: `{name}` should be {}, got {}",
+                        "with -Z rename: `{name}` should be {}, got {}",
                         visibility_name(expected),
                         visibility_name(vis)
                     );

@@ -2474,10 +2474,11 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
 
-    if unstable_opts.staticlib_hide_internal_symbols && !crate_types.contains(&CrateType::StaticLib)
+    if unstable_opts.staticlib_rename_internal_symbols
+        && !crate_types.contains(&CrateType::StaticLib)
     {
         early_dcx.early_fatal(
-            "-Zstaticlib-hide-internal-symbols can only be used with `--crate-type staticlib`",
+            "-Zstaticlib-rename-internal-symbols can only be used with `--crate-type staticlib`",
         );
     }
 

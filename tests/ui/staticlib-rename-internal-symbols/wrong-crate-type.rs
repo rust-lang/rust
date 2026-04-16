@@ -1,4 +1,4 @@
-//@ compile-flags: -Zstaticlib-hide-internal-symbols --crate-type bin
+//@ compile-flags: -Zstaticlib-rename-internal-symbols --crate-type bin
 
 #![feature(no_core)]
 #![no_core]

@@ -1,2 +1,0 @@
-error: -Zstaticlib-hide-internal-symbols can only be used with `--crate-type staticlib`
-
