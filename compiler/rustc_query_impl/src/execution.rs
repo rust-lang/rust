@@ -277,6 +277,20 @@ fn wait_for_query<'tcx, C: QueryCache>(
     }
 }
 
+fn execute_query_and_callback<'tcx, R, C: QueryCache>(
+    tcx: TyCtxt<'tcx>,
+    query: &'tcx QueryVTable<'tcx, C>,
+    action: impl FnOnce() -> R,
+) -> R {
+    if let Some(callback_fn) = query.sandbox_callfront_fn
+        && !is_sandbox()
+    {
+        (callback_fn)(tcx);
+    }
+
+    action()
+}
+
 /// Shared main part of both [`execute_query_incr_inner`] and [`execute_query_non_incr_inner`].
 #[inline(never)]
 fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
@@ -625,7 +639,9 @@ pub(super) fn execute_query_non_incr_inner<'tcx, C: QueryCache>(
     span: Span,
     key: C::Key,
 ) -> C::Value {
-    ensure_sufficient_stack(|| try_execute_query::<C, false>(query, tcx, span, key, None).0)
+    execute_query_and_callback(tcx, query, || {
+        ensure_sufficient_stack(|| try_execute_query::<C, false>(query, tcx, span, key, None).0)
+    })
 }
 
 /// Called by a macro-generated impl of [`QueryVTable::execute_query_fn`],
@@ -647,13 +663,16 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
         return None;
     }
 
-    let (result, dep_node_index) = ensure_sufficient_stack(|| {
-        try_execute_query::<C, true>(query, tcx, span, key, Some(dep_node))
-    });
-    if let Some(dep_node_index) = dep_node_index {
-        tcx.dep_graph.read_index(dep_node_index)
-    }
-    Some(result)
+    execute_query_and_callback(tcx, query, || {
+        let (result, dep_node_index) = ensure_sufficient_stack(|| {
+            try_execute_query::<C, true>(query, tcx, span, key, Some(dep_node))
+        });
+        if let Some(dep_node_index) = dep_node_index {
+            tcx.dep_graph.read_index(dep_node_index)
+        }
+
+        Some(result)
+    })
 }
 
 /// Inner implementation of [`DepKindVTable::force_from_dep_node_fn`][force_fn]
@@ -671,8 +690,10 @@ pub(crate) fn force_query_dep_node<'tcx, C: QueryCache>(
         return false;
     };
 
-    ensure_sufficient_stack(|| {
-        try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node))
+    execute_query_and_callback(tcx, query, || {
+        ensure_sufficient_stack(|| {
+            try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node))
+        });
     });
 
     // We did manage to recover a key and force the node, though it's up to

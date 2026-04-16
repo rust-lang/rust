@@ -66,6 +66,9 @@ pub(crate) struct feedable;
 /// where `$name` is the query name.
 pub(crate) struct handle_cycle_error;
 
+/// # `sandbox_callfront` query modifier
+pub(crate) struct sandbox_callfront;
+
 /// # `no_force` query modifier
 ///
 /// Dep nodes of queries with this modifier will never be "forced" when trying
