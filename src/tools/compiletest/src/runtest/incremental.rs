@@ -1,5 +1,4 @@
-use super::{FailMode, TestCx, WillExecute};
-use crate::errors;
+use super::{FailMode, ProcRes, TestCx, WillExecute};
 
 impl TestCx<'_> {
     pub(super) fn run_incremental_test(&self) {
@@ -57,10 +56,7 @@ impl TestCx<'_> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("build-pass tests with expected warnings should be moved to ui/");
-        }
+        self.check_compiler_output_for_incr(&proc_res);
     }
 
     fn run_rpass_test(&self) {
@@ -72,10 +68,7 @@ impl TestCx<'_> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("run-pass tests with expected warnings should be moved to ui/");
-        }
+        self.check_compiler_output_for_incr(&proc_res);
 
         if let WillExecute::Disabled = should_run {
             return;
@@ -93,16 +86,20 @@ impl TestCx<'_> {
         self.check_if_test_should_compile(Some(FailMode::Build), pm, &proc_res);
         self.check_no_compiler_crash(&proc_res, self.props.should_ice);
 
-        let output_to_check = self.get_output(&proc_res);
-        self.check_expected_errors(&proc_res);
-        self.check_all_error_patterns(&output_to_check, &proc_res);
+        self.check_compiler_output_for_incr(&proc_res);
+
         if self.props.should_ice {
             match proc_res.status.code() {
                 Some(101) => (),
                 _ => self.fatal("expected ICE"),
             }
         }
+    }
 
-        self.check_forbid_output(&output_to_check, &proc_res);
+    fn check_compiler_output_for_incr(&self, proc_res: &ProcRes) {
+        let output_to_check = self.get_output(proc_res);
+        self.check_expected_errors(&proc_res);
+        self.check_all_error_patterns(&output_to_check, proc_res);
+        self.check_forbid_output(&output_to_check, proc_res);
     }
 }
