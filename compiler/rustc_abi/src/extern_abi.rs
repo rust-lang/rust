@@ -131,7 +131,6 @@ macro_rules! abi_impls {
                     $($e_name::$variant $( { unwind: $uw } )* => $tok,)*
                 }
             }
-            // ALL_VARIANTS.iter().position(|v| v == self), but const
             // FIXME(FnSigKind): when PartialEq is stably const, use it instead
             const fn internal_const_eq(&self, other: &Self) -> bool {
                 match (self, other) {
@@ -139,6 +138,7 @@ macro_rules! abi_impls {
                     _ => false,
                 }
             }
+            // ALL_VARIANTS.iter().position(|v| v == self), but const
             pub const fn as_packed(&self) -> u8 {
                 let mut index = 0;
                 while index < $e_name::ALL_VARIANTS.len() {
