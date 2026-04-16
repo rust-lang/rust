@@ -1560,6 +1560,31 @@ fn main() { let _: m::Spam = S$0 }
         check(
             r#"
 #[deprecated]
+mod something_deprecated {}
+
+fn main() { som$0 }
+"#,
+            SymbolKind::Module,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "something_deprecated",
+                        detail_left: None,
+                        detail_right: None,
+                        source_range: 55..58,
+                        delete: 55..58,
+                        insert: "something_deprecated",
+                        kind: SymbolKind(
+                            Module,
+                        ),
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+#[deprecated]
 fn something_deprecated() {}
 
 fn main() { som$0 }
@@ -1604,8 +1629,287 @@ fn main() { som$0 }
 
         check(
             r#"
+#[deprecated]
+struct A;
+
+fn main() { A$0 }
+"#,
+            SymbolKind::Struct,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "A",
+                        detail_left: None,
+                        detail_right: Some(
+                            "A",
+                        ),
+                        source_range: 37..38,
+                        delete: 37..38,
+                        insert: "A",
+                        kind: SymbolKind(
+                            Struct,
+                        ),
+                        detail: "A",
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+#[deprecated]
+enum A {}
+
+fn main() { A$0 }
+"#,
+            SymbolKind::Enum,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "A",
+                        detail_left: None,
+                        detail_right: Some(
+                            "A",
+                        ),
+                        source_range: 37..38,
+                        delete: 37..38,
+                        insert: "A",
+                        kind: SymbolKind(
+                            Enum,
+                        ),
+                        detail: "A",
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+enum A {
+    Okay,
+    #[deprecated]
+    Old,
+}
+
+fn main() { A::$0 }
+"#,
+            SymbolKind::Variant,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "Okay",
+                        detail_left: None,
+                        detail_right: Some(
+                            "Okay",
+                        ),
+                        source_range: 64..64,
+                        delete: 64..64,
+                        insert: "Okay$0",
+                        kind: SymbolKind(
+                            Variant,
+                        ),
+                        detail: "Okay",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: false,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                        },
+                        trigger_call_info: true,
+                    },
+                    CompletionItem {
+                        label: "Old",
+                        detail_left: None,
+                        detail_right: Some(
+                            "Old",
+                        ),
+                        source_range: 64..64,
+                        delete: 64..64,
+                        insert: "Old$0",
+                        kind: SymbolKind(
+                            Variant,
+                        ),
+                        detail: "Old",
+                        deprecated: true,
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: false,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                        },
+                        trigger_call_info: true,
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+#[deprecated]
+const A: i32 = 0;
+
+fn main() { A$0 }
+"#,
+            SymbolKind::Const,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "A",
+                        detail_left: None,
+                        detail_right: Some(
+                            "i32",
+                        ),
+                        source_range: 45..46,
+                        delete: 45..46,
+                        insert: "A",
+                        kind: SymbolKind(
+                            Const,
+                        ),
+                        detail: "i32",
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+#[deprecated]
+static A: i32 = 0;
+
+fn main() { A$0 }
+"#,
+            SymbolKind::Static,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "A",
+                        detail_left: None,
+                        detail_right: Some(
+                            "i32",
+                        ),
+                        source_range: 46..47,
+                        delete: 46..47,
+                        insert: "A",
+                        kind: SymbolKind(
+                            Static,
+                        ),
+                        detail: "i32",
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+#[deprecated]
+trait A {}
+
+impl A$0
+"#,
+            SymbolKind::Trait,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "A",
+                        detail_left: None,
+                        detail_right: None,
+                        source_range: 31..32,
+                        delete: 31..32,
+                        insert: "A",
+                        kind: SymbolKind(
+                            Trait,
+                        ),
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+#[deprecated]
+type A = i32;
+
+fn main() { A$0 }
+"#,
+            SymbolKind::TypeAlias,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "A",
+                        detail_left: None,
+                        detail_right: None,
+                        source_range: 41..42,
+                        delete: 41..42,
+                        insert: "A",
+                        kind: SymbolKind(
+                            TypeAlias,
+                        ),
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+#[deprecated]
+macro_rules! a { _ => {}}
+
+fn main() { a$0 }
+"#,
+            SymbolKind::Macro,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "a!(…)",
+                        detail_left: None,
+                        detail_right: Some(
+                            "macro_rules! a",
+                        ),
+                        source_range: 53..54,
+                        delete: 53..54,
+                        insert: "a!($0)",
+                        kind: SymbolKind(
+                            Macro,
+                        ),
+                        lookup: "a!",
+                        detail: "macro_rules! a",
+                        deprecated: true,
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
 struct A { #[deprecated] the_field: u32 }
-fn foo() { A { the$0 } }
+
+fn main() { A { the$0 } }
 "#,
             SymbolKind::Field,
             expect![[r#"
@@ -1616,8 +1920,8 @@ fn foo() { A { the$0 } }
                         detail_right: Some(
                             "u32",
                         ),
-                        source_range: 57..60,
-                        delete: 57..60,
+                        source_range: 59..62,
+                        delete: 59..62,
                         insert: "the_field",
                         kind: SymbolKind(
                             Field,
