@@ -2449,7 +2449,11 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
         lhs + rhs
     }
     #[allow(clippy::empty_loop)]
-    fn dummy_bool<TT: Triton>() -> TT::BoolTensor {
+    fn dummy_value<DD: Dtype>() -> DD {
+        loop {}
+    }
+    #[allow(clippy::empty_loop)]
+    fn dummy_bool_tensor<TT: Triton>() -> TT::BoolTensor {
         loop {}
     }
     // START HERE
@@ -2463,6 +2467,7 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     let _ = r * 2;
     let z = T::zeros::<D>(&[BLOCK_SIZE]);
     let zl = T::zeros_like(z);
+    let _ = T::full::<D>(&[BLOCK_SIZE], dummy_value::<D>());
     let casted = T::cast::<D, D>(z, Some(FpDowncastRounding::Rtne), false);
     let _casted_rtz = T::cast::<D, D>(casted, Some(FpDowncastRounding::Rtz), true);
     let cat = T::cat(z, zl, true);
@@ -2581,7 +2586,7 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     );
     T::store::<D, 1>(ptrs, loaded, None, &[0], Some(CacheModifier::Cs), None);
     if false {
-        let cond: T::BoolTensor = dummy_bool::<T>();
+        let cond: T::BoolTensor = dummy_bool_tensor::<T>();
         let _ = T::where_(cond, loaded, loaded);
         T::assume(cond);
         T::device_assert(cond, "kitchen_sink", Some(cond));
