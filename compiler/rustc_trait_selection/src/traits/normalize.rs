@@ -469,16 +469,20 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
         // feature gate causes a parse error.
         let ct = match tcx.def_kind(uv.def) {
             DefKind::AssocConst { .. } => match tcx.def_kind(tcx.parent(uv.def)) {
-                DefKind::Trait => self.normalize_trait_projection(uv.into()).expect_const(),
-                DefKind::Impl { of_trait: false } => {
-                    self.normalize_inherent_projection(uv.into()).expect_const()
-                }
+                DefKind::Trait => self
+                    .normalize_trait_projection(ty::AliasTerm::from_unevaluated_const(tcx, uv))
+                    .expect_const(),
+                DefKind::Impl { of_trait: false } => self
+                    .normalize_inherent_projection(ty::AliasTerm::from_unevaluated_const(tcx, uv))
+                    .expect_const(),
                 kind => unreachable!(
                     "unexpected `DefKind` for const alias' resolution's parent def: {:?}",
                     kind
                 ),
             },
-            DefKind::Const { .. } => self.normalize_free_alias(uv.into()).expect_const(),
+            DefKind::Const { .. } => self
+                .normalize_free_alias(ty::AliasTerm::from_unevaluated_const(tcx, uv))
+                .expect_const(),
             DefKind::AnonConst => {
                 let ct = ct.super_fold_with(self);
                 super::with_replaced_escaping_bound_vars(

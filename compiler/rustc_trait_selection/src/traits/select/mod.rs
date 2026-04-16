@@ -891,8 +891,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     // `generic_const_exprs`
                                     .eq(
                                         DefineOpaqueTypes::Yes,
-                                        ty::AliasTerm::from(a),
-                                        ty::AliasTerm::from(b),
+                                        ty::AliasTerm::from_unevaluated_const(tcx, a),
+                                        ty::AliasTerm::from_unevaluated_const(tcx, b),
                                     )
                                 {
                                     return self.evaluate_predicates_recursively(

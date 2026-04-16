@@ -285,7 +285,9 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                 constant,
                 |constant| crate::traits::evaluate_const(&self.infcx, constant, self.param_env),
             ),
-            _ => self.try_fold_free_or_assoc(ty::AliasTerm::from(uv))?.expect_const(),
+            _ => self
+                .try_fold_free_or_assoc(ty::AliasTerm::from_unevaluated_const(self.cx(), uv))?
+                .expect_const(),
         };
         debug!(?constant, ?self.param_env);
         constant.try_super_fold_with(self)

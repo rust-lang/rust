@@ -1077,7 +1077,9 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                     if matches!(tcx.def_kind(uv.def), DefKind::AssocConst { .. })
                         && tcx.def_kind(tcx.parent(uv.def)) == (DefKind::Impl { of_trait: false })
                     {
-                        self.add_wf_preds_for_inherent_projection(uv.into());
+                        self.add_wf_preds_for_inherent_projection(
+                            ty::AliasTerm::from_unevaluated_const(tcx, uv),
+                        );
                         return; // Subtree is handled by above function
                     } else {
                         let obligations = self.nominal_obligations(uv.def, uv.args);

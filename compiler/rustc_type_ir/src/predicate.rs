@@ -721,6 +721,11 @@ impl<I: Interner> AliasTerm<I> {
         Self::new_from_args(interner, kind, args)
     }
 
+    pub fn from_unevaluated_const(interner: I, ct: ty::UnevaluatedConst<I>) -> Self {
+        let kind = interner.alias_term_kind_from_def_id(ct.def.into());
+        AliasTerm::new_from_args(interner, kind, ct.args)
+    }
+
     pub fn expect_ty(self, interner: I) -> ty::AliasTy<I> {
         let kind = match self.kind(interner) {
             AliasTermKind::ProjectionTy { def_id } => AliasTyKind::Projection { def_id },
@@ -857,16 +862,6 @@ impl<I: Interner> From<ty::AliasTy<I>> for AliasTerm<I> {
         AliasTerm {
             args: ty.args,
             kind: AliasTermKind::from(ty.kind),
-            _use_alias_term_new_instead: (),
-        }
-    }
-}
-
-impl<I: Interner> From<ty::UnevaluatedConst<I>> for AliasTerm<I> {
-    fn from(ct: ty::UnevaluatedConst<I>) -> Self {
-        AliasTerm {
-            args: ct.args,
-            kind: AliasTermKind::UnevaluatedConst { def_id: ct.def.into() },
             _use_alias_term_new_instead: (),
         }
     }
