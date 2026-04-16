@@ -1221,7 +1221,7 @@ rustc_queries! {
     /// Caches `CoerceShared` kinds for impls on custom types.
     query coerce_shared_info(key: DefId) -> Result<(), ErrorGuaranteed> {
         desc { "computing CoerceShared info for `{}`", tcx.def_path_str(key) }
-        cache_on_disk_if { key.is_local() }
+        cache_on_disk
         separate_provide_extern
     }
 
