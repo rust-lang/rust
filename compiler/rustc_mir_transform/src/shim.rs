@@ -298,35 +298,17 @@ fn local_decls_for_sig<'tcx>(
 fn dropee_emit_retag<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
-    mut dropee_ptr: Place<'tcx>,
+    dropee_ptr: Place<'tcx>,
     span: Span,
-) -> Place<'tcx> {
+) {
     if tcx.sess.opts.unstable_opts.mir_emit_retag {
         let source_info = SourceInfo::outermost(span);
-        // We want to treat the function argument as if it was passed by `&mut`. As such, we
-        // generate
-        // ```
-        // temp = &mut *arg;
-        // Retag(temp, FnEntry)
-        // ```
-        // It's important that we do this first, before anything that depends on `dropee_ptr`
-        // has been put into the body.
-        let reborrow = Rvalue::Ref(
-            tcx.lifetimes.re_erased,
-            BorrowKind::Mut { kind: MutBorrowKind::Default },
-            tcx.mk_place_deref(dropee_ptr),
-        );
-        let ref_ty = reborrow.ty(body.local_decls(), tcx);
-        dropee_ptr = body.local_decls.push(LocalDecl::new(ref_ty, span)).into();
-        let new_statements = [
-            StatementKind::Assign(Box::new((dropee_ptr, reborrow))),
-            StatementKind::Retag(RetagKind::FnEntry, Box::new(dropee_ptr)),
-        ];
-        for s in new_statements {
-            body.basic_blocks_mut()[START_BLOCK].statements.push(Statement::new(source_info, s));
-        }
+        let new_statement = StatementKind::Retag(RetagKind::FnEntry, Box::new(dropee_ptr));
+
+        body.basic_blocks_mut()[START_BLOCK]
+            .statements
+            .push(Statement::new(source_info, new_statement));
     }
-    dropee_ptr
 }
 
 fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>) -> Body<'tcx> {
@@ -350,18 +332,58 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     let block = |blocks: &mut IndexVec<_, _>, kind| {
         blocks.push(BasicBlockData::new(Some(Terminator { source_info, kind }), false))
     };
-    block(&mut blocks, TerminatorKind::Goto { target: return_block });
+    if ty.is_some() {
+        block(&mut blocks, TerminatorKind::Goto { target: return_block });
+    }
     block(&mut blocks, TerminatorKind::Return);
 
     let source = MirSource::from_instance(ty::InstanceKind::DropGlue(def_id, ty));
     let mut body =
         new_body(source, blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
 
+    let Some(ty) = ty else {
+        return body;
+    };
+
     // The first argument (index 0), but add 1 for the return value.
     let dropee_ptr = Place::from(Local::new(1 + 0));
-    let dropee_ptr = dropee_emit_retag(tcx, &mut body, dropee_ptr, span);
+    dropee_emit_retag(tcx, &mut body, dropee_ptr, span);
 
-    if ty.is_some() {
+    if let ty::Array(ety, _len) = *ty.kind() {
+        // Don't write out the elaboration for each array type.
+        // Instead, just delegate to the slice version.
+        let slice_ty = Ty::new_slice(tcx, ety);
+        let mut_slice_ty = Ty::new_ref(tcx, tcx.lifetimes.re_erased, slice_ty, ty::Mutability::Mut);
+        let erased_local = body.local_decls.push(LocalDecl::new(mut_slice_ty, span));
+
+        let start = &mut body.basic_blocks_mut()[START_BLOCK];
+        start.statements.push(Statement::new(
+            source_info,
+            StatementKind::Assign(Box::new((
+                Place::from(erased_local),
+                Rvalue::Cast(
+                    CastKind::PointerCoercion(
+                        ty::adjustment::PointerCoercion::Unsize,
+                        CoercionSource::Implicit,
+                    ),
+                    Operand::Move(dropee_ptr),
+                    mut_slice_ty,
+                ),
+            ))),
+        ));
+        start.terminator = Some(Terminator {
+            source_info,
+            kind: TerminatorKind::Call {
+                func: Operand::function_handle(tcx, def_id, [ty::GenericArg::from(slice_ty)], span),
+                args: Box::new([Spanned { span, node: Operand::Move(Place::from(erased_local)) }]),
+                destination: Place::from(RETURN_PLACE),
+                target: Some(return_block),
+                unwind: UnwindAction::Continue,
+                call_source: CallSource::Misc,
+                fn_span: span,
+            },
+        });
+    } else {
         let patch = {
             let typing_env = ty::TypingEnv::post_analysis(tcx, def_id);
             let mut elaborator = DropShimElaborator {

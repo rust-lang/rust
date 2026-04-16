@@ -315,8 +315,8 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::Expr(parent_expr) => {
                 match parent_expr.kind {
                     // Addr-of, field projections, and LHS of assignment don't constitute reads.
-                    // Assignment does call `drop_in_place`, though, but its safety
-                    // requirements are not the same.
+                    // Assignment does call `drop_glue`, though, but its safety requirements are
+                    // not the same.
                     ExprKind::AddrOf(..) | ExprKind::Field(..) => false,
 
                     // Place-preserving expressions only constitute reads if their
