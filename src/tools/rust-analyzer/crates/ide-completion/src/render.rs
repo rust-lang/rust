@@ -111,8 +111,7 @@ impl<'a> RenderContext<'a> {
         is_assoc_deprecated
             || assoc
                 .container_or_implemented_trait(db)
-                .map(|trait_| self.is_deprecated(trait_))
-                .unwrap_or(false)
+                .is_some_and(|trait_| self.is_deprecated(trait_))
     }
 
     // FIXME: remove this
