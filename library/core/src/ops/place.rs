@@ -1,6 +1,38 @@
 //! Place Operations.
 
-use crate::field::Subplace;
+use crate::ptr::Pointee;
+
+/// A subplace of [`Self::Source`] with the type [`Self::Target`].
+///
+/// A subplace is always within the same allocation as the base place. Current subplaces are:
+/// - field accesses,
+/// - array/slice indexes.
+///
+/// This represents an arbitrary chaining of these; it can also be empty.
+///
+/// # Safety
+///
+/// FIXME
+#[unstable(feature = "field_projections", issue = "145383")]
+#[rustc_deny_explicit_impl]
+#[rustc_dyn_incompatible_trait]
+#[lang = "subplace"]
+pub unsafe trait Subplace: Sized + Copy {
+    /// The type of the base place this subplace is a part of.
+    #[lang = "subplace_source"]
+    type Source: ?Sized;
+
+    /// The type of this subplace.
+    #[lang = "subplace_target"]
+    type Target: ?Sized;
+
+    /// The offset of this subplace.
+    #[lang = "subplace_offset"]
+    fn offset(
+        self,
+        metadata: <Self::Source as Pointee>::Metadata,
+    ) -> (usize, <Self::Target as Pointee>::Metadata);
+}
 
 /// Marks a type as containing a place.
 ///
