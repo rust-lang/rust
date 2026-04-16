@@ -231,31 +231,8 @@ impl<'a> TritonCodegen<'a> {
             func, args, destination, target, unwind, call_source, fn_span
         );
 
-        debug_assert!(
-            args.len() == 2,
-            "TritonCodegen::codegen_maximum: args length must be 2: {:?}",
-            args
-        );
-
-        let arg0 = &args[0].node;
-        let arg1 = &args[1].node;
-
-        let _x = self.codegen_operand(
-            tcx, instance, arg0, arg0.ty(mir, tcx), _location, mlir_block, state,
-        )?;
-        let _y = self.codegen_operand(
-            tcx, instance, arg1, arg1.ty(mir, tcx), _location, mlir_block, state,
-        )?;
-
-        todo!()
-        // let maximum_op: Operation<'a> =
-        //     maximumf(self.module.context(), _location, x, y)
-        //         .map_err(|e| MlirError::CreateOperation { err: e })?
-        //         .into();
-        // let result = maximum_op.result(0).expect("Maximum operation result not found");
-        // eprintln!("[DEBUG] AXM TritonCodegen::codegen_maximum: {:?}", maximum_op.to_string());
-        // mlir_block.append_operation(maximum_op);
-        // Ok(Some(result.into()))
+        let _ = (func, args, target, unwind, call_source, fn_span, state);
+        self.codegen_ub_stub(tcx, instance, mir, destination, _location, mlir_block)
     }
 
     /// `triton::Triton::transmute`-as-slice: `transmute<(*const T, usize), &[T]>((ptr, len))`

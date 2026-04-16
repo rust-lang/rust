@@ -2619,35 +2619,35 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
         Some(EvictionPolicy::NoEvict),
     );
     T::store::<D, 1>(ptrs, loaded, None, &[0], Some(CacheModifier::Cs), None);
-    // if false {
-    //     let cond: T::BoolTensor = dummy_bool::<T>();
-    //     let _ = T::where_(cond, loaded, loaded);
-    //     T::assume(cond);
-    //     T::device_assert(cond, "kitchen_sink", Some(cond));
-    // }
-    // let fl = T::flip(loaded, Some(0));
-    // let _ = T::gather(fl, r, 0);
-    // let _abs = T::abs(loaded);
-    // let ceil = T::ceil(loaded);
-    // let floor = T::floor(ceil);
-    // let cos = T::cos(floor);
-    // let sin = T::sin(cos);
-    // let exp = T::exp(sin);
-    // let exp2 = T::exp2(exp);
-    // let log = T::log(exp2);
-    // let log2 = T::log2(log);
-    // let rsqrt = T::rsqrt(log2);
-    // let sig = T::sigmoid(rsqrt);
-    // let sqrt = T::sqrt(sig);
-    // let sqrt_rn = T::sqrt_rn(sqrt);
-    // let erf = T::erf(sqrt_rn);
-    // let smax = T::softmax(erf, Some(0), true, true);
-    // let mx = T::maximum(smax, smax);
-    // let mn = T::minimum(mx, smax);
-    // let cl = T::clamp(mn, smax, mx);
-    // let fm = T::fma(cl, smax, mx);
-    // let fd = T::fdiv(fm, smax, true);
-    // let dr = T::div_rn(fd, smax);
+    if false {
+        let cond: T::BoolTensor = dummy_bool::<T>();
+        let _ = T::where_(cond, loaded, loaded);
+        T::assume(cond);
+        T::device_assert(cond, "kitchen_sink", Some(cond));
+    }
+    let fl = T::flip(loaded, Some(0));
+    let _ = T::gather(fl, r, 0);
+    let _abs = T::abs(loaded);
+    let ceil = T::ceil(loaded);
+    let floor = T::floor(ceil);
+    let cos = T::cos(floor);
+    let sin = T::sin(cos);
+    let exp = T::exp(sin);
+    let exp2 = T::exp2(exp);
+    let log = T::log(exp2);
+    let log2 = T::log2(log);
+    let rsqrt = T::rsqrt(log2);
+    let sig = T::sigmoid(rsqrt);
+    let sqrt = T::sqrt(sig);
+    let sqrt_rn = T::sqrt_rn(sqrt);
+    let erf = T::erf(sqrt_rn);
+    let smax = T::softmax(erf, Some(0), true, true);
+    let mx = T::maximum(smax, smax);
+    let mn = T::minimum(mx, smax);
+    let cl = T::clamp(mn, smax, mx);
+    let fm = T::fma(cl, smax, mx);
+    let fd = T::fdiv(fm, smax, true);
+    let dr = T::div_rn(fd, smax);
     // let _cd = T::cdiv(n_elements, BLOCK_SIZE);
     // let _swz = T::swizzle2d(0, 0, BLOCK_SIZE, BLOCK_SIZE, 1);
     // let _sum = T::sum(dr, Some(0), true);
