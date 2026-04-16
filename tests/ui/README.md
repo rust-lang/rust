@@ -1308,6 +1308,10 @@ See [Tracking Issue for stabilizing stack smashing protection (i.e., `-Z stack-p
 
 Tests on static items.
 
+## `tests/ui/staticlib-hide-internal-symbols/`: `-Zstaticlib-hide-internal-symbols` command line flag
+
+Tests for the `-Zstaticlib-hide-internal-symbols` flag, which hides non-exported symbols in ELF static libraries.
+
 ## `tests/ui/statics/`
 
 **FIXME**: should probably be merged with `tests/ui/static/`.
