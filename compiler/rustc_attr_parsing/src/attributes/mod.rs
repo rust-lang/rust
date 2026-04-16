@@ -18,6 +18,7 @@ use std::marker::PhantomData;
 
 use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::AttributeKind;
+use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
@@ -97,6 +98,7 @@ pub(crate) trait AttributeParser<S: Stage>: Default + 'static {
     /// If an attribute has this symbol, the `accept` function will be called on it.
     const ATTRIBUTES: AcceptMapping<Self, S>;
     const ALLOWED_TARGETS: AllowedTargets;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
 
     /// The parser has gotten a chance to accept the attributes on an item,
     /// here it can produce an attribute.
@@ -127,6 +129,7 @@ pub(crate) trait SingleAttributeParser<S: Stage>: 'static {
     /// Configures what to do when when the same attribute is
     /// applied more than once on the same syntax node.
     const ON_DUPLICATE: OnDuplicate<S>;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
 
     const ALLOWED_TARGETS: AllowedTargets;
 
@@ -165,6 +168,7 @@ impl<T: SingleAttributeParser<S>, S: Stage> AttributeParser<S> for Single<T, S> 
         },
     )];
     const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
+    const SAFETY: AttributeSafety = T::SAFETY;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         Some(self.1?.0)
@@ -217,6 +221,18 @@ impl<S: Stage> OnDuplicate<S> {
     }
 }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum AttributeSafety {
+    /// Normal attribute that does not need `#[unsafe(...)]`
+    Normal,
+    /// Unsafe attribute that requires safety obligations to be discharged.
+    ///
+    /// An error is emitted when `#[unsafe(...)]` is omitted, except when the attribute's edition
+    /// is less than the one stored in `unsafe_since`. This handles attributes that were safe in
+    /// earlier editions, but become unsafe in later ones.
+    Unsafe { unsafe_since: Option<Edition> },
+}
+
 /// An even simpler version of [`SingleAttributeParser`]:
 /// now automatically check that there are no arguments provided to the attribute.
 ///
@@ -226,6 +242,7 @@ pub(crate) trait NoArgsAttributeParser<S: Stage>: 'static {
     const PATH: &[Symbol];
     const ON_DUPLICATE: OnDuplicate<S>;
     const ALLOWED_TARGETS: AllowedTargets;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
 
     /// Create the [`AttributeKind`] given attribute's [`Span`].
     const CREATE: fn(Span) -> AttributeKind;
@@ -242,6 +259,7 @@ impl<T: NoArgsAttributeParser<S>, S: Stage> Default for WithoutArgs<T, S> {
 impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for WithoutArgs<T, S> {
     const PATH: &[Symbol] = T::PATH;
     const ON_DUPLICATE: OnDuplicate<S> = T::ON_DUPLICATE;
+    const SAFETY: AttributeSafety = T::SAFETY;
     const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
     const TEMPLATE: AttributeTemplate = template!(Word);
 
@@ -271,6 +289,7 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
     /// For example, individual representations from `#[repr(...)]` attributes into an `AttributeKind::Repr(x)`,
     ///  where `x` is a vec of these individual reprs.
     const CONVERT: ConvertFn<Self::Item>;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
 
     const ALLOWED_TARGETS: AllowedTargets;
 
@@ -312,6 +331,7 @@ impl<T: CombineAttributeParser<S>, S: Stage> AttributeParser<S> for Combine<T, S
             group.items.extend(T::extend(cx, args))
         })];
     const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
+    const SAFETY: AttributeSafety = T::SAFETY;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if let Some(first_span) = self.first_span {
