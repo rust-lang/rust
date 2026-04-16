@@ -70,6 +70,11 @@ pub trait Unsize<T: ?Sized> {}
 #[lang = "coerce_unsized"]
 pub trait CoerceUnsized<T: ?Sized> {}
 
+// Enable &[T; N] → &[T] coercions without unsafe slice_from_raw_parts.
+// The compiler automatically implements Unsize<[T]> for [T; N]; this impl
+// wires up the syntactic coercion for shared references.
+impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
@@ -2478,8 +2483,7 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     let _ = r + n_elements;
     let _ = r - 1;
     let _ = r * 2;
-    let z_shape = [BLOCK_SIZE];
-    let z = T::zeros::<D>(unsafe { slice_from_raw_parts(&z_shape as *const i32, 1) });
+    let z = T::zeros::<D>(&[BLOCK_SIZE]);
     // if false {
     //     let _ = T::full::<D>(&[BLOCK_SIZE], dummy_value::<D>());
     // }
@@ -2488,18 +2492,13 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     let _casted_rtz = T::cast::<D, D>(casted, Some(FpDowncastRounding::Rtz), true);
     let cat = T::cat(z, zl, true);
     let (ba, bb) = T::broadcast(cat, cat);
-    let bto_shape = [BLOCK_SIZE];
-    let bto = T::broadcast_to(ba, unsafe { slice_from_raw_parts(&bto_shape as *const i32, 1) });
+    let bto = T::broadcast_to(ba, &[BLOCK_SIZE]);
     let ex = T::expand_dims(bto, 0);
-    let perm0 = [0i32];
-    let p = T::permute(ex, unsafe { slice_from_raw_parts(&perm0 as *const i32, 1) });
-    let rs_shape = [BLOCK_SIZE];
-    let rs = T::reshape(p, unsafe { slice_from_raw_parts(&rs_shape as *const i32, 1) }, false);
-    let trans0 = [0i32];
-    let tr = T::trans(rs, unsafe { slice_from_raw_parts(&trans0 as *const i32, 1) });
+    let p = T::permute(ex, &[0i32]);
+    let rs = T::reshape(p, &[BLOCK_SIZE], false);
+    let tr = T::trans(rs, &[0i32]);
     let rv = T::ravel(tr, false);
-    let vw_shape = [BLOCK_SIZE];
-    let vw = T::view(rv, unsafe { slice_from_raw_parts(&vw_shape as *const i32, 1) });
+    let vw = T::view(rv, &[BLOCK_SIZE]);
     let jn = T::join(vw, bb);
     let il = T::interleave(jn, jn);
     let (sp0, sp1) = T::split(il);
@@ -2547,43 +2546,35 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
         None,
         false,
     );
-    let bp_shape = [BLOCK_SIZE]; let bp_strides = [1i32]; let bp_offsets = [0i32];
-    let bp_bshape = [BLOCK_SIZE]; let bp_order = [0i32];
     let block_ptr = T::make_block_ptr(x_ptr,
-        unsafe { slice_from_raw_parts(&bp_shape as *const i32, 1) },
-        unsafe { slice_from_raw_parts(&bp_strides as *const i32, 1) },
-        unsafe { slice_from_raw_parts(&bp_offsets as *const i32, 1) },
-        unsafe { slice_from_raw_parts(&bp_bshape as *const i32, 1) },
-        unsafe { slice_from_raw_parts(&bp_order as *const i32, 1) },
+        &[BLOCK_SIZE],
+        &[1i32],
+        &[0i32],
+        &[BLOCK_SIZE],
+        &[0i32],
     );
-    let adv_off = [1i32];
-    let block_ptr2 = T::advance(block_ptr, unsafe { slice_from_raw_parts(&adv_off as *const i32, 1) });
-    let td_shape = [BLOCK_SIZE]; let td_strides = [1i32]; let td_bshape = [BLOCK_SIZE];
+    let block_ptr2 = T::advance(block_ptr, &[1i32]);
     let tdesc = T::make_tensor_descriptor(
         y_ptr,
-        unsafe { slice_from_raw_parts(&td_shape as *const i32, 1) },
-        unsafe { slice_from_raw_parts(&td_strides as *const i32, 1) },
-        unsafe { slice_from_raw_parts(&td_bshape as *const i32, 1) },
+        &[BLOCK_SIZE],
+        &[1i32],
+        &[BLOCK_SIZE],
         Some(PaddingOption::Zero),
     );
-    let tdn_shape = [BLOCK_SIZE]; let tdn_strides = [1i32]; let tdn_bshape = [BLOCK_SIZE];
     let tdesc_nan = T::make_tensor_descriptor(
         y_ptr,
-        unsafe { slice_from_raw_parts(&tdn_shape as *const i32, 1) },
-        unsafe { slice_from_raw_parts(&tdn_strides as *const i32, 1) },
-        unsafe { slice_from_raw_parts(&tdn_bshape as *const i32, 1) },
+        &[BLOCK_SIZE],
+        &[1i32],
+        &[BLOCK_SIZE],
         Some(PaddingOption::Nan),
     );
-    let tdl_off = [0i32]; let tds_off = [0i32];
-    let tdv = T::load_tensor_descriptor(tdesc, unsafe { slice_from_raw_parts(&tdl_off as *const i32, 1) });
-    T::store_tensor_descriptor(tdesc_nan, unsafe { slice_from_raw_parts(&tds_off as *const i32, 1) }, tdv);
-    let ptrs_shape = [BLOCK_SIZE];
-    let ptrs = T::zeros::<T::Pointer<D>>(unsafe { slice_from_raw_parts(&ptrs_shape as *const i32, 1) });
-    let z0_shape = [BLOCK_SIZE];
+    let tdv = T::load_tensor_descriptor(tdesc, &[0i32]);
+    T::store_tensor_descriptor(tdesc_nan, &[0i32], tdv);
+    let ptrs = T::zeros::<T::Pointer<D>>(&[BLOCK_SIZE]);
     let loaded = T::load::<D, 1>(
         ptrs,
         None,
-        Some(T::zeros::<D>(unsafe { slice_from_raw_parts(&z0_shape as *const i32, 1) })),
+        Some(T::zeros::<D>(&[BLOCK_SIZE])),
         &[0],
         Some(PaddingOption::Zero),
         Some(CacheModifier::Ca),
@@ -2657,61 +2648,46 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     let (_minv, _mini) = T::min_with_indices(dr, 0, true, false);
     let _argmax = T::argmax(dr, 0, true, false);
     let _argmin = T::argmin(dr, 0, true, false);
-    let xors_shape = [BLOCK_SIZE];
-    let _xors = T::xor_sum(T::zeros::<i32>(unsafe { slice_from_raw_parts(&xors_shape as *const i32, 1) }), Some(0), false);
+    let _xors = T::xor_sum(T::zeros::<i32>(&[BLOCK_SIZE]), Some(0), false);
     let _cumsum = T::cumsum(dr, 0, false);
     let _cumprod = T::cumprod(dr, 0, true);
     let _sort = T::sort(dr, Some(0), true);
     let _hist = T::histogram(r, BLOCK_SIZE, None);
     let _reduced = T::reduce::<D, D>(dr, 0, combine_num::<T, D>, false);
     let _scan = T::associative_scan::<D>(dr, 0, combine_num::<T, D>, true);
-    let aptrs_shape = [BLOCK_SIZE];
-    let aptrs = T::zeros::<T::Pointer<D>>(unsafe { slice_from_raw_parts(&aptrs_shape as *const i32, 1) });
+    let aptrs = T::zeros::<T::Pointer<D>>(&[BLOCK_SIZE]);
     let _ = T::atomic_add(aptrs, dr, None, Some(MemSem::Relaxed), Some(MemScope::Cta));
     let _ = T::atomic_max(aptrs, dr, None, Some(MemSem::Acquire), Some(MemScope::Gpu));
     let _ = T::atomic_min(aptrs, dr, None, Some(MemSem::Release), Some(MemScope::Sys));
     let _ = T::atomic_xchg(aptrs, dr, None, Some(MemSem::AcqRel), Some(MemScope::Gpu));
     let _ = T::atomic_cas(aptrs, dr, dr, Some(MemSem::AcqRel), Some(MemScope::Gpu));
-    let iptrs_shape = [BLOCK_SIZE];
-    let iptrs = T::zeros::<T::Pointer<i32>>(unsafe { slice_from_raw_parts(&iptrs_shape as *const i32, 1) });
-    let ival_shape = [BLOCK_SIZE];
-    let ival = T::zeros::<i32>(unsafe { slice_from_raw_parts(&ival_shape as *const i32, 1) });
+    let iptrs = T::zeros::<T::Pointer<i32>>(&[BLOCK_SIZE]);
+    let ival = T::zeros::<i32>(&[BLOCK_SIZE]);
     let _ = T::atomic_and(iptrs, ival, None, Some(MemSem::Relaxed), Some(MemScope::Cta));
     let _ = T::atomic_or(iptrs, ival, None, Some(MemSem::Acquire), Some(MemScope::Gpu));
     let _ = T::atomic_xor(iptrs, ival, None, Some(MemSem::Release), Some(MemScope::Sys));
-    let u32a_shape = [BLOCK_SIZE];
-    let u32a = T::zeros::<u32>(unsafe { slice_from_raw_parts(&u32a_shape as *const i32, 1) });
-    let u32b_shape = [BLOCK_SIZE];
-    let u32b = T::zeros::<u32>(unsafe { slice_from_raw_parts(&u32b_shape as *const i32, 1) });
+    let u32a = T::zeros::<u32>(&[BLOCK_SIZE]);
+    let u32b = T::zeros::<u32>(&[BLOCK_SIZE]);
     let _umulhi = T::umulhi(u32a, u32b);
     let _rand = T::rand(123, r, 10);
     let _randn = T::randn(123, r, 10);
     let _randi = T::randint(123, r, 10);
     let _rand4 = T::randint4x(123, r, 10);
     let _asm = T::inline_asm_elementwise::<D>("", "", true, 1);
-    let mo_vals = [1i32];
-    let mo = T::multiple_of(dr, unsafe { slice_from_raw_parts(&mo_vals as *const i32, 1) });
-    let mc_vals = [1i32];
-    let mc = T::max_contiguous(mo, unsafe { slice_from_raw_parts(&mc_vals as *const i32, 1) });
-    let mconst_vals = [1i32];
-    let mconst = T::max_constancy(mc, unsafe { slice_from_raw_parts(&mconst_vals as *const i32, 1) });
+    let mo = T::multiple_of(dr, &[1i32]);
+    let mc = T::max_contiguous(mo, &[1i32]);
+    let mconst = T::max_constancy(mc, &[1i32]);
     T::debug_barrier();
     T::device_print("val=", mconst, false);
     T::static_assert(true, "BLOCK_SIZE must be positive");
     T::static_print("kitchen_sink");
-    let out_ptrs_shape = [BLOCK_SIZE];
-    let out_ptrs = T::zeros::<T::Pointer<D>>(unsafe { slice_from_raw_parts(&out_ptrs_shape as *const i32, 1) });
-    let bp_shape = [BLOCK_SIZE];
-    let bp_strides = [1i32];
-    let bp_offsets = [0i32];
-    let bp_block_shape = [BLOCK_SIZE];
-    let bp_order = [0i32];
+    let out_ptrs = T::zeros::<T::Pointer<D>>(&[BLOCK_SIZE]);
     let _ = T::make_block_ptr(output_ptr,
-        unsafe { slice_from_raw_parts(&bp_shape as *const i32, 1) },
-        unsafe { slice_from_raw_parts(&bp_strides as *const i32, 1) },
-        unsafe { slice_from_raw_parts(&bp_offsets as *const i32, 1) },
-        unsafe { slice_from_raw_parts(&bp_block_shape as *const i32, 1) },
-        unsafe { slice_from_raw_parts(&bp_order as *const i32, 1) },
+        &[BLOCK_SIZE],
+        &[1i32],
+        &[0i32],
+        &[BLOCK_SIZE],
+        &[0i32],
     );
     T::store::<D, 1>(out_ptrs, mconst, None, &[0], None, None);
     let _ = block_ptr2;
