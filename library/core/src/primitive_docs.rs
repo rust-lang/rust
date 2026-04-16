@@ -1893,6 +1893,9 @@ mod prim_ref {}
 /// #### Control Flow Integrity
 /// [Control Flow Integrity]: #control-flow-integrity
 ///
+/// <div class="stab unstable"><span class="emoji">&#128300;</span><span>This is a nightly-only experimental API.
+/// (<code>-Zsanitizer=cfi</code>&nbsp;<a href="https://github.com/rust-lang/rust/issues/89653">#89653</a>)</span></div>
+///
 /// There are some caveats to the above ABI-compatibility rules due to how the [CFI (control flow
 /// integrity)][cfi-docs] sanitizer is implemented. CFI is a tool that can be used to validate
 /// that dynamic function calls respect the ABI, but due to its C/C++ origins, it disagrees with the
@@ -1901,11 +1904,8 @@ mod prim_ref {}
 /// When running the CFI sanitizer, pointer types are only ABI-compatible if the target type and
 /// mutability is the same. This means that `*mut String` and `*mut i32` are incompatible when using
 /// CFI. It also means that `*mut i32` is incompatible with `*const i32`. The `NonNull<_>` and
-/// `Box<_>` pointer types are currently considered immutable.
-///
-/// Furthermore, CFI will also compare the *name* of aggregate types. This means that even if two
-/// `#[repr(C)]` structs have the same fields in the same order, CFI does not consider them to be
-/// ABI-compatible unless they have the same name.
+/// `Box<_>` pointer types are currently considered immutable under CFI. For non-primitive types,
+/// CFI uses the name of the type for its compatibility check.
 ///
 /// When not using the `-Zsanitizer-cfi-normalize-integers` flag, the CFI sanitizer further
 /// restricts the rules by considering `usize` incompatible with the `uN` integer type of the same
