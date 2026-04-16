@@ -27,7 +27,7 @@ pub struct Y {
 }
 
 #[rustc_clean(except="typeck_root", cfg="cfail2")]
-pub fn use_X() -> u32 {
+pub fn use_x() -> u32 {
     let x: X = X { x: 22 };
     //[cfail2]~^ ERROR struct `X` has no field named `x`
     x.x as u32
@@ -35,13 +35,13 @@ pub fn use_X() -> u32 {
 }
 
 #[rustc_clean(except="typeck_root", cfg="cfail2")]
-pub fn use_EmbedX(embed: EmbedX) -> u32 {
+pub fn use_embed_x(embed: EmbedX) -> u32 {
     embed.x.x as u32
     //[cfail2]~^ ERROR no field `x` on type `X`
 }
 
 #[rustc_clean(cfg="cfail2")]
-pub fn use_Y() {
+pub fn use_y() {
     let x: Y = Y { y: 'c' };
 }
 
