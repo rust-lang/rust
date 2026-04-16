@@ -1410,10 +1410,12 @@ impl<'tcx> TyCtxt<'tcx> {
         // - has been created by this call to `create_def`.
         // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
         // comp. engine itself.
-        let def_id = self.untracked.definitions.write().create_def(parent, data, disambiguator);
-        if self.is_in_sandbox() {
-            self.untracked.definitions.write().add_sandbox_def_id(def_id);
-        }
+        let def_id = self.untracked.definitions.write().create_def(
+            parent,
+            data,
+            disambiguator,
+            self.is_in_sandbox(),
+        );
 
         // This function modifies `self.definitions` using a side-effect.
         // We need to ensure that these side effects are re-run by the incr. comp. engine.

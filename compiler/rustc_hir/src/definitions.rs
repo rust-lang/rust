@@ -45,7 +45,7 @@ impl DefPathTable {
         }
     }
 
-    fn allocate(&mut self, key: DefKey, def_path_hash: DefPathHash) -> DefIndex {
+    fn allocate(&mut self, key: DefKey, def_path_hash: DefPathHash, in_sandbox: bool) -> DefIndex {
         // Assert that all DefPathHashes correctly contain the local crate's StableCrateId.
         debug_assert_eq!(self.stable_crate_id, def_path_hash.stable_crate_id());
         let local_hash = def_path_hash.local_hash();
@@ -54,7 +54,7 @@ impl DefPathTable {
         // Check for hash collisions of DefPathHashes. These should be
         // exceedingly rare.
         if let Some(existing) = self.def_path_hash_to_index.insert(&local_hash, &index) {
-            if !self.allow_overwrite.is_empty() && self.allow_overwrite.swap_remove(&existing) {
+            if !in_sandbox && self.allow_overwrite.swap_remove(&existing) {
                 self.def_path_hash_to_index.insert(&local_hash, &existing);
                 return existing;
             } else {
@@ -383,7 +383,7 @@ impl Definitions {
 
         // Create the root definition.
         let mut table = DefPathTable::new(stable_crate_id);
-        let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash) };
+        let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash, false) };
         assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
         Definitions { table }
@@ -399,6 +399,7 @@ impl Definitions {
         parent: LocalDefId,
         data: DefPathData,
         disambiguator: &mut DisambiguatorState,
+        in_sandbox: bool,
     ) -> LocalDefId {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
@@ -427,12 +428,14 @@ impl Definitions {
 
         debug!("create_def: after disambiguation, key = {:?}", key);
 
-        // Create the definition.
-        LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) }
-    }
+        let local_def_index = self.table.allocate(key, def_path_hash, in_sandbox);
 
-    pub fn add_sandbox_def_id(&mut self, id: LocalDefId) {
-        assert_eq!(self.table.allow_overwrite.insert(id.local_def_index), true);
+        if in_sandbox {
+            assert_eq!(self.table.allow_overwrite.insert(local_def_index), true);
+        }
+
+        // Create the definition.
+        LocalDefId { local_def_index }
     }
 
     #[inline(always)]
