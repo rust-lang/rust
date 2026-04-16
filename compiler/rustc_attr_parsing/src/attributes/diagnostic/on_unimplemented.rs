@@ -1,6 +1,4 @@
 use rustc_hir::attrs::diagnostic::Directive;
-use rustc_hir::lints::AttributeLintKind;
-use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
@@ -29,25 +27,7 @@ impl OnUnimplementedParser {
             return;
         }
 
-        let items = match args {
-            ArgParser::List(items) if items.len() != 0 => items,
-            ArgParser::NoArgs | ArgParser::List(_) => {
-                cx.emit_lint(
-                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    AttributeLintKind::MissingOptionsForOnUnimplemented,
-                    span,
-                );
-                return;
-            }
-            ArgParser::NameValue(_) => {
-                cx.emit_lint(
-                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    AttributeLintKind::MalformedOnUnimplementedAttr { span },
-                    span,
-                );
-                return;
-            }
-        };
+        let Some(items) = parse_list(cx, args, mode) else { return };
 
         if let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) {
             merge_directives(cx, &mut self.directive, (span, directive));

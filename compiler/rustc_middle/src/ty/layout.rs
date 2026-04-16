@@ -508,8 +508,21 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
-            // Pattern types are always the same size as their base.
-            ty::Pat(base, _) => SizeSkeleton::compute(base, tcx, typing_env),
+            ty::Pat(base, pat) => {
+                // Pattern types are always the same size as their base.
+                let base = SizeSkeleton::compute(base, tcx, typing_env);
+                match *pat {
+                    ty::PatternKind::Range { .. } | ty::PatternKind::Or(_) => base,
+                    // But in the case of `!null` patterns we need to note that in the
+                    // raw pointer.
+                    ty::PatternKind::NotNull => match base? {
+                        SizeSkeleton::Known(..) | SizeSkeleton::Generic(_) => base,
+                        SizeSkeleton::Pointer { non_zero: _, tail } => {
+                            Ok(SizeSkeleton::Pointer { non_zero: true, tail })
+                        }
+                    },
+                }
+            }
 
             _ => Err(err),
         }

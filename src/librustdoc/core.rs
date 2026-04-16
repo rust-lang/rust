@@ -211,6 +211,7 @@ pub(crate) fn create_config(
         lint_cap,
         scrape_examples_options,
         remap_path_prefix,
+        remap_path_scope,
         target_modifiers,
         ..
     }: RustdocOptions,
@@ -270,6 +271,7 @@ pub(crate) fn create_config(
         crate_name,
         test,
         remap_path_prefix,
+        remap_path_scope,
         output_types: if let Some(file) = render_options.dep_info() {
             OutputTypes::new(&[(OutputType::DepInfo, file.cloned())])
         } else {

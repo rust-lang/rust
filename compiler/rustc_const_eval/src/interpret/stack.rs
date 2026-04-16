@@ -223,7 +223,7 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
 }
 
 impl<'tcx> FrameInfo<'tcx> {
-    pub fn as_note(&self, tcx: TyCtxt<'tcx>) -> errors::FrameNote {
+    pub(crate) fn as_note(&self, tcx: TyCtxt<'tcx>) -> errors::FrameNote {
         let span = self.span;
         if tcx.def_key(self.instance.def_id()).disambiguated_data.data == DefPathData::Closure {
             errors::FrameNote {

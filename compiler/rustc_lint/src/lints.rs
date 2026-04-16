@@ -3584,47 +3584,11 @@ pub(crate) struct IgnoredDiagnosticOption {
 }
 
 #[derive(Diagnostic)]
-#[diag("missing options for `on_unimplemented` attribute")]
-#[help("at least one of the `message`, `note` and `label` options are expected")]
-pub(crate) struct MissingOptionsForOnUnimplementedAttr;
-
-#[derive(Diagnostic)]
-#[diag("missing options for `on_unknown` attribute")]
-#[help("at least one of the `message`, `note` and `label` options are expected")]
-pub(crate) struct MissingOptionsForOnUnknownAttr;
-
-#[derive(Diagnostic)]
-#[diag("missing options for `on_const` attribute")]
-#[help("at least one of the `message`, `note` and `label` options are expected")]
-pub(crate) struct MissingOptionsForOnConstAttr;
-
-#[derive(Diagnostic)]
-#[diag("missing options for `on_move` attribute")]
-#[help("at least one of the `message`, `note` and `label` options are expected")]
-pub(crate) struct MissingOptionsForOnMoveAttr;
-
-#[derive(Diagnostic)]
-#[diag("malformed `on_unimplemented` attribute")]
-#[help("only `message`, `note` and `label` are allowed as options")]
-pub(crate) struct MalformedOnUnimplementedAttrLint {
-    #[label("invalid option found here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("malformed `on_unknown` attribute")]
-#[help("only `message`, `note` and `label` are allowed as options")]
-pub(crate) struct MalformedOnUnknownAttrLint {
-    #[label("invalid option found here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("malformed `on_const` attribute")]
-#[help("only `message`, `note` and `label` are allowed as options")]
-pub(crate) struct MalformedOnConstAttrLint {
-    #[label("invalid option found here")]
-    pub span: Span,
+#[diag("missing options for `{$attribute}` attribute")]
+#[help("{$options}")]
+pub(crate) struct MissingOptionsForDiagnosticAttribute {
+    pub attribute: &'static str,
+    pub options: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -3633,25 +3597,18 @@ pub(crate) struct MalformedOnConstAttrLint {
 pub(crate) struct EqInternalMethodImplemented;
 
 #[derive(Diagnostic)]
-#[diag("unknown or malformed `on_move` attribute")]
-#[help(
-    "only `message`, `note` and `label` are allowed as options. Their values must be string literals"
-)]
-pub(crate) struct MalformedOnMoveAttrLint {
-    #[label("invalid option found here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("unknown parameter `{$name}`")]
-#[help("expect `Self` as format argument")]
-pub(crate) struct OnMoveMalformedFormatLiterals {
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("expected a literal or missing delimiter")]
 #[help(
     "only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma"
 )]
-pub(crate) struct OnMoveMalformedAttrExpectedLiteralOrDelimiter;
+pub(crate) struct NonMetaItemDiagnosticAttribute;
+
+#[derive(Diagnostic)]
+#[diag("malformed `{$attribute}` attribute")]
+#[help("{$options}")]
+pub(crate) struct MalFormedDiagnosticAttributeLint {
+    pub attribute: &'static str,
+    pub options: &'static str,
+    #[label("invalid option found here")]
+    pub span: Span,
+}

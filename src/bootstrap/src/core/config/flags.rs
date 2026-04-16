@@ -46,9 +46,12 @@ pub struct Flags {
     #[command(subcommand)]
     pub cmd: Subcommand,
 
-    #[arg(global = true, short, long, action = clap::ArgAction::Count)]
+    #[arg(global = true, short, long, action = clap::ArgAction::Count, conflicts_with = "quiet")]
     /// use verbose output (-vv for very verbose)
     pub verbose: u8, // each extra -v after the first is passed to Cargo
+    #[arg(global = true, short, long, conflicts_with = "verbose")]
+    /// use quiet output
+    pub quiet: bool,
     #[arg(global = true, short, long)]
     /// use incremental compilation
     pub incremental: bool,

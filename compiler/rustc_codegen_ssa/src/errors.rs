@@ -1069,7 +1069,7 @@ pub(crate) struct TargetFeatureSafeTrait {
 
 #[derive(Diagnostic)]
 #[diag("target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}")]
-pub struct ForbiddenTargetFeatureAttr<'a> {
+pub(crate) struct ForbiddenTargetFeatureAttr<'a> {
     #[primary_span]
     pub span: Span,
     pub feature: &'a str,
@@ -1211,7 +1211,7 @@ pub(crate) struct ForbiddenCTargetFeature<'a> {
     pub reason: &'a str,
 }
 
-pub struct TargetFeatureDisableOrEnable<'a> {
+pub(crate) struct TargetFeatureDisableOrEnable<'a> {
     pub features: &'a [&'a str],
     pub span: Option<Span>,
     pub missing_features: Option<MissingFeatures>,
@@ -1219,7 +1219,7 @@ pub struct TargetFeatureDisableOrEnable<'a> {
 
 #[derive(Subdiagnostic)]
 #[help("add the missing features in a `target_feature` attribute")]
-pub struct MissingFeatures;
+pub(crate) struct MissingFeatures;
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
