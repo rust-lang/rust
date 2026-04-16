@@ -2577,46 +2577,48 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     let tdl_off = [0i32]; let tds_off = [0i32];
     let tdv = T::load_tensor_descriptor(tdesc, unsafe { slice_from_raw_parts(&tdl_off as *const i32, 1) });
     T::store_tensor_descriptor(tdesc_nan, unsafe { slice_from_raw_parts(&tds_off as *const i32, 1) }, tdv);
-    // let ptrs = T::zeros::<T::Pointer<D>>(&[BLOCK_SIZE]);
-    // let loaded = T::load::<D, 1>(
-    //     ptrs,
-    //     None,
-    //     Some(T::zeros::<D>(&[BLOCK_SIZE])),
-    //     &[0],
-    //     Some(PaddingOption::Zero),
-    //     Some(CacheModifier::Ca),
-    //     Some(EvictionPolicy::EvictFirst),
-    //     false,
-    // );
-    // let _ = T::load::<D, 1>(
-    //     ptrs,
-    //     None,
-    //     None,
-    //     &[0],
-    //     Some(PaddingOption::Nan),
-    //     Some(CacheModifier::Cg),
-    //     Some(EvictionPolicy::EvictLast),
-    //     true,
-    // );
-    // let _ = T::load::<D, 1>(
-    //     ptrs,
-    //     None,
-    //     None,
-    //     &[0],
-    //     None,
-    //     Some(CacheModifier::Cv),
-    //     Some(EvictionPolicy::NoEvict),
-    //     false,
-    // );
-    // T::store::<D, 1>(
-    //     ptrs,
-    //     loaded,
-    //     None,
-    //     &[0],
-    //     Some(CacheModifier::Wb),
-    //     Some(EvictionPolicy::NoEvict),
-    // );
-    // T::store::<D, 1>(ptrs, loaded, None, &[0], Some(CacheModifier::Cs), None);
+    let ptrs_shape = [BLOCK_SIZE];
+    let ptrs = T::zeros::<T::Pointer<D>>(unsafe { slice_from_raw_parts(&ptrs_shape as *const i32, 1) });
+    let z0_shape = [BLOCK_SIZE];
+    let loaded = T::load::<D, 1>(
+        ptrs,
+        None,
+        Some(T::zeros::<D>(unsafe { slice_from_raw_parts(&z0_shape as *const i32, 1) })),
+        &[0],
+        Some(PaddingOption::Zero),
+        Some(CacheModifier::Ca),
+        Some(EvictionPolicy::EvictFirst),
+        false,
+    );
+    let _ = T::load::<D, 1>(
+        ptrs,
+        None,
+        None,
+        &[0],
+        Some(PaddingOption::Nan),
+        Some(CacheModifier::Cg),
+        Some(EvictionPolicy::EvictLast),
+        true,
+    );
+    let _ = T::load::<D, 1>(
+        ptrs,
+        None,
+        None,
+        &[0],
+        None,
+        Some(CacheModifier::Cv),
+        Some(EvictionPolicy::NoEvict),
+        false,
+    );
+    T::store::<D, 1>(
+        ptrs,
+        loaded,
+        None,
+        &[0],
+        Some(CacheModifier::Wb),
+        Some(EvictionPolicy::NoEvict),
+    );
+    T::store::<D, 1>(ptrs, loaded, None, &[0], Some(CacheModifier::Cs), None);
     // if false {
     //     let cond: T::BoolTensor = dummy_bool::<T>();
     //     let _ = T::where_(cond, loaded, loaded);

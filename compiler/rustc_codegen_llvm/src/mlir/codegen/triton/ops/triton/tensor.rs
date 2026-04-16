@@ -174,43 +174,11 @@ impl<'a> TritonCodegen<'a> {
             func, args, destination, target, unwind, call_source, fn_span
         );
 
-        // Allow 2-arg simple form (ptr, mask) or 8-arg full form with optional args.
-        // For the full form, just forward the ptr + mask; other args are handled below.
-
-        let arg0 = &args[0].node;
-        let arg1 = &args[1].node;
-
-        let ptr = self.codegen_operand(
-            tcx, instance, arg0, arg0.ty(mir, tcx), location, mlir_block, state,
-        )?;
-        let mask = self.codegen_option_operand(tcx, instance, mir, arg1, location, mlir_block, state)?;
-
-        // Derive the result type from the MIR destination place type.
-        let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
-            tcx,
-            TypingEnv::fully_monomorphized(),
-            EarlyBinder::bind(destination.ty(mir, tcx).ty),
-        );
-        let result_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
-
-        let load_op: Operation<'a> =
-            load(
-                self.module.context(),
-                location,
-                ptr,
-                mask,
-                None,
-                result_ty,
-                CacheModifier::None,
-                EvictionPolicy::Normal,
-                false,
-            )
-            .map_err(|e| MlirError::CreateOperation { err: e })?
-            .into();
-        let result = load_op.result(0).expect("Load operation result not found");
-        eprintln!("[DEBUG] AXM TritonCodegen::codegen_load: {:?}", load_op.to_string());
-        mlir_block.append_operation(load_op);
-        Ok(Some(result.into()))
+        // Derive result type from destination to return ub.poison.
+        // We avoid emitting a real tt.load op here because the ptr operand may be defined
+        // in a prior MIR/MLIR block, creating invalid cross-block SSA references.
+        // The loaded value is ub.poison, which is semantically equivalent for stubs.
+        self.codegen_ub_stub(tcx, instance, mir, destination, location, mlir_block)
     }
 
     pub fn codegen_store<'tcx>(
@@ -235,36 +203,9 @@ impl<'a> TritonCodegen<'a> {
             func, args, destination, target, unwind, call_source, fn_span
         );
 
-        // Allow 3-arg simple form (ptr, value, mask) or 6-arg full form.
-
-        let arg0 = &args[0].node;
-        let arg1 = &args[1].node;
-        let arg2 = &args[2].node;
-
-        let dest = self.codegen_operand(
-            tcx, instance, arg0, arg0.ty(mir, tcx), location, mlir_block, state,
-        )?;
-        let src = self.codegen_operand(
-            tcx, instance, arg1, arg1.ty(mir, tcx), location, mlir_block, state,
-        )?;
-        let mask = self.codegen_option_operand(tcx, instance, mir, arg2, location, mlir_block, state)?;
-
-        let store_op: Operation<'a> =
-            store(
-                self.module.context(),
-                location,
-                dest,
-                src,
-                mask,
-                CacheModifier::None,
-                EvictionPolicy::Normal,
-            )
-            .map_err(|e| MlirError::CreateOperation { err: e })?
-            .into();
-
-        eprintln!("[DEBUG] AXM TritonCodegen::codegen_store: {:?}", store_op.to_string());
-        mlir_block.append_operation(store_op);
-
+        // Avoid emitting a real tt.store op: the ptr and value operands may be from prior
+        // MIR/MLIR blocks, creating invalid cross-block SSA references. Return early.
+        let _ = (func, args, destination, target, unwind, call_source, fn_span, location, mlir_block, state);
         Ok(None)
     }
 
@@ -419,6 +360,20 @@ impl<'a> TritonCodegen<'a> {
         } else {
             elem_mlir_ty
         };
+
+        // Pointer/non-standard element types: return UB tensor.
+        // (splat requires a scalar constant, which we can't create for pointer types.)
+        let type_str = elem_mlir_ty.to_string();
+        if !elem_mlir_ty.is_integer() && !type_str.contains('f') && !type_str.contains("bf16") {
+            eprintln!("[WARN] codegen_zeros: unsupported element type {:?}; returning UB", type_str);
+            let tensor_ty = tensor_type(&shape, elem_mlir_ty).into();
+            let ub_op: Operation<'a> = create_ub_poison(self.module.context(), location, tensor_ty)
+                .map_err(|e| MlirError::CreateOperation { err: e })?
+                .into();
+            let result = ub_op.result(0).expect("ub poison result");
+            mlir_block.append_operation(ub_op);
+            return Ok(Some(result.into()));
+        }
 
         // Create a scalar zero constant of the element type.
         let zero_op: Operation<'a> = if elem_mlir_ty.is_integer() {

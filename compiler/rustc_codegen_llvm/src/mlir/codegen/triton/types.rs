@@ -66,11 +66,12 @@ impl TypeMapper {
             TyKind::Uint(uint_ty) => self.create_uint_type(context, tcx, uint_ty),
             TyKind::Float(float_ty) => self.create_float_type(context, tcx, float_ty),
             TyKind::Bool => self.create_bool_type(context),
-            TyKind::Array(_elem_ty, _len) => todo!("Array: {:?} {:?}", _elem_ty, _len),
+            TyKind::Array(elem_ty, _len) => self.map_type(context, tcx, elem_ty),
             TyKind::Char => todo!("Char"),
             TyKind::Adt(def, args) => self.map_adt_ty(context, tcx, def, args.as_slice()),
             TyKind::Foreign(_id) => todo!("Foreign: {:?}", _id),
-            TyKind::Str => todo!("Str"),
+            // `str` is an unsized type (like `[u8]`); treat as i64 fat-pointer stand-in.
+            TyKind::Str => IntegerType::new(context, 64).into(),
             TyKind::Pat(_ty, _pat) => todo!("Pat: {:?} {:?}", _ty, _pat),
             TyKind::Slice(_ty) => todo!("Slice: {:?}", _ty),
             TyKind::RawPtr(ty, _mutability) => self.create_raw_ptr_type(context, tcx, ty),
@@ -81,7 +82,8 @@ impl TypeMapper {
                 // calls are intercepted at call-site by the codegen dispatch table.
                 // For type-mapping purposes, return i64 as a stand-in.
                 match inner_ty.kind() {
-                    TyKind::Slice(_) => IntegerType::new(context, 64).into(),
+                    // &[T] (slice) and &str are fat pointers — represent as i64 stand-in.
+                    TyKind::Slice(_) | TyKind::Str => IntegerType::new(context, 64).into(),
                     _ => self.map_type(context, tcx, inner_ty),
                 }
             }
