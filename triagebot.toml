@@ -1451,6 +1451,12 @@ code; adding it needs t-lang approval.
 """
 cc = ["@rust-lang/wg-const-eval"]
 
+[mentions."compiler/rustc_attr_parsing/src/attributes/diagnostic"]
+message = "Some changes occurred to diagnostic attributes."
+cc = ["@mejrs"]
+[mentions."compiler/rustc_hir/src/attrs/diagnostic.rs"]
+message = "Some changes occurred to diagnostic attributes."
+cc = ["@mejrs"]
 
 # ------------------------------------------------------------------------------
 # PR assignments
