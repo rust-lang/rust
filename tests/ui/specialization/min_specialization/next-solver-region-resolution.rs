@@ -3,7 +3,7 @@
 
 #![feature(min_specialization)]
 
-trait Foo {
+trait Foo { //~ ERROR cycle detected when coherence checking all impls of trait `Foo`
     type Item;
 }
 
@@ -16,7 +16,6 @@ where
 }
 
 impl<'a, T> Foo for &T
-//~^ ERROR: cycle detected when computing normalized predicates of `<impl at $DIR/next-solver-region-resolution.rs:18:1: 21:21>`
 where
     Self::Item: Baz,
 {
