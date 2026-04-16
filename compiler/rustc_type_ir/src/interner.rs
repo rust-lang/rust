@@ -197,11 +197,9 @@ pub trait Interner:
     type VariancesOf: Copy + Debug + SliceLike<Item = ty::Variance>;
     fn variances_of(self, def_id: Self::DefId) -> Self::VariancesOf;
 
-    // TODO: remove `def_id` param after `AliasTermKind` contains `def_id` within
     fn opt_alias_variances(
         self,
         kind: impl Into<ty::AliasTermKind<Self>>,
-        def_id: Self::DefId,
     ) -> Option<Self::VariancesOf>;
 
     fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;

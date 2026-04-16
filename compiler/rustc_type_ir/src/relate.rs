@@ -220,7 +220,7 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
             )))
         } else {
             let cx = relation.cx();
-            let args = if let Some(variances) = cx.opt_alias_variances(a.kind, a.kind.def_id()) {
+            let args = if let Some(variances) = cx.opt_alias_variances(a.kind) {
                 relate_args_with_variances(relation, variances, a.args, b.args)?
             } else {
                 relate_args_invariantly(relation, a.args, b.args)?

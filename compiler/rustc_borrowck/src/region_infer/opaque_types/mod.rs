@@ -501,7 +501,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ToArgRegionsFolder<'_, 'tcx> {
             }
 
             ty::Alias(ty::AliasTy { kind, args, .. })
-                if let Some(variances) = tcx.opt_alias_variances(kind, kind.def_id()) =>
+                if let Some(variances) = tcx.opt_alias_variances(kind) =>
             {
                 let args = tcx.mk_args_from_iter(std::iter::zip(variances, args.iter()).map(
                     |(&v, s)| {

@@ -940,7 +940,6 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn opt_alias_variances(
         self,
         kind: impl Into<ty::AliasTermKind<'tcx>>,
-        _def_id: DefId,
     ) -> Option<&'tcx [ty::Variance]> {
         match kind.into() {
             ty::AliasTermKind::ProjectionTy { def_id } => {
