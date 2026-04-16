@@ -17,7 +17,7 @@ use crate::ptr::Pointee;
 #[rustc_deny_explicit_impl]
 #[rustc_dyn_incompatible_trait]
 #[lang = "subplace"]
-pub unsafe trait Subplace: Sized + Copy {
+pub unsafe trait Subplace: Sized {
     /// The type of the base place this subplace is a part of.
     #[lang = "subplace_source"]
     type Source: ?Sized;
@@ -29,7 +29,7 @@ pub unsafe trait Subplace: Sized + Copy {
     /// The offset of this subplace.
     #[lang = "subplace_offset"]
     fn offset(
-        self,
+        &self,
         metadata: <Self::Source as Pointee>::Metadata,
     ) -> (usize, <Self::Target as Pointee>::Metadata);
 }
