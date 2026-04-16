@@ -188,6 +188,12 @@ pub(crate) enum Token {
     End,
 }
 
+impl Token {
+    pub(crate) fn is_hardbreak_tok(&self) -> bool {
+        *self == Printer::hardbreak_tok_offset(0)
+    }
+}
+
 #[derive(Copy, Clone)]
 enum PrintFrame {
     Fits,
