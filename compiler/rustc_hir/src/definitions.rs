@@ -53,6 +53,7 @@ pub struct Definitions {
     // We do only store the local hash, as all the definitions are from the current crate.
     def_path_hashes: IndexVec<LocalDefId, Hash64>,
     def_path_hash_to_index: DefPathHashMap,
+    allow_overwrite: IndexSet<DefIndex>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -299,6 +300,7 @@ impl Definitions {
             def_path_hashes: Default::default(),
             def_id_to_key: Default::default(),
             def_path_hash_to_index: Default::default(),
+            allow_overwrite: Default::default(),
         };
 
         // Create the root definition.
@@ -317,7 +319,7 @@ impl Definitions {
         // Check for hash collisions of DefPathHashes. These should be
         // exceedingly rare.
         if let Some(existing) = self.def_path_hash_to_index.insert(&local_hash, &index) {
-            if !self.allow_overwrite.is_empty() && self.allow_overwrite.swap_remove(&existing) {
+            if !in_sandbox && self.allow_overwrite.swap_remove(&existing) {
                 self.def_path_hash_to_index.insert(&local_hash, &existing);
                 return existing;
             } else {
@@ -366,6 +368,7 @@ impl Definitions {
         parent: LocalDefId,
         data: DefPathData,
         disambiguator: &mut PerParentDisambiguatorState,
+        in_sandbox: bool,
     ) -> LocalDefId {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
@@ -401,12 +404,14 @@ impl Definitions {
 
         debug!("create_def: after disambiguation, key = {:?}", key);
 
-        // Create the definition.
-        self.allocate(key, def_path_hash)
-    }
+        let local_def_index = self.table.allocate(key, def_path_hash, in_sandbox);
 
-    pub fn add_sandbox_def_id(&mut self, id: LocalDefId) {
-        assert_eq!(self.table.allow_overwrite.insert(id.local_def_index), true);
+        if in_sandbox {
+            assert_eq!(self.table.allow_overwrite.insert(local_def_index), true);
+        }
+
+        // Create the definition.
+        LocalDefId { local_def_index }
     }
 
     #[inline(always)]
