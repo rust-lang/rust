@@ -352,9 +352,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
                 _ => (),
             },
-            ast::ExprKind::Move(_, move_kw_span) => {
-                gate!(&self, move_expr, move_kw_span, "`move(expr)` syntax is experimental");
-            }
             _ => {}
         }
         visit::walk_expr(self, e)
@@ -505,6 +502,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(impl_restriction, "`impl` restrictions are experimental");
     gate_all!(min_generic_const_args, "unbraced const blocks as const args are experimental");
     gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
+    gate_all!(move_expr, "`move(expr)` syntax is experimental");
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
     gate_all!(pin_ergonomics, "pinned reference syntax is experimental");
     gate_all!(postfix_match, "postfix match is experimental");
