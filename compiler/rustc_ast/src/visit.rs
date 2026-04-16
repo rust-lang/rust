@@ -1024,7 +1024,9 @@ macro_rules! common_visitor_and_walkers {
                     visit_visitable!($($mut)? vis, block, opt_label),
                 ExprKind::Gen(capt, body, kind, decl_span) =>
                     visit_visitable!($($mut)? vis, capt, body, kind, decl_span),
-                ExprKind::Await(expr, span) | ExprKind::Use(expr, span) =>
+                ExprKind::Await(expr, span)
+                | ExprKind::Move(expr, span)
+                | ExprKind::Use(expr, span) =>
                     visit_visitable!($($mut)? vis, expr, span),
                 ExprKind::Assign(lhs, rhs, span) =>
                     visit_visitable!($($mut)? vis, lhs, rhs, span),

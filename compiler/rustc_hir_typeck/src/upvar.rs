@@ -210,6 +210,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let _ = euv::ExprUseVisitor::new(&closure_fcx, &mut delegate).consume_body(body);
 
+        let explicit_captures = match self.tcx.hir_node(closure_hir_id).expect_expr().kind {
+            hir::ExprKind::Closure(closure) => closure.explicit_captures,
+            _ => bug!("expected closure expr for {:?}", closure_hir_id),
+        };
+        for capture in explicit_captures {
+            let place = closure_fcx.place_for_root_variable(closure_def_id, capture.var_hir_id);
+            delegate.capture_information.push((
+                place,
+                ty::CaptureInfo {
+                    capture_kind_expr_id: Some(closure_hir_id),
+                    path_expr_id: Some(closure_hir_id),
+                    capture_kind: UpvarCapture::ByValue,
+                },
+            ));
+        }
+
         // There are several curious situations with coroutine-closures where
         // analysis is too aggressive with borrows when the coroutine-closure is
         // marked `move`. Specifically:

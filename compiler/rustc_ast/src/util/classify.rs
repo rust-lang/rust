@@ -108,6 +108,7 @@ pub fn leading_labeled_expr(mut expr: &ast::Expr) -> bool {
             Assign(e, _, _)
             | AssignOp(_, e, _)
             | Await(e, _)
+            | Move(e, _)
             | Use(e, _)
             | Binary(_, e, _)
             | Call(e, _)
@@ -183,6 +184,7 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
             | Ret(Some(e))
             | Unary(_, e)
             | Yeet(Some(e))
+            | Move(e, _)
             | Become(e) => {
                 expr = e;
             }

@@ -563,6 +563,12 @@ impl<'a> Parser<'a> {
             token::Ident(..) if this.token.is_keyword(kw::Box) => {
                 make_it!(this, attrs, |this, _| this.parse_expr_box(lo))
             }
+            token::Ident(..)
+                if this.token.is_keyword(kw::Move)
+                    && this.look_ahead(1, |t| *t == token::OpenParen) =>
+            {
+                make_it!(this, attrs, |this, _| this.parse_expr_move(lo))
+            }
             token::Ident(..) if this.may_recover() && this.is_mistaken_not_ident_negation() => {
                 make_it!(this, attrs, |this, _| this.recover_not_expr(lo))
             }
@@ -604,6 +610,16 @@ impl<'a> Parser<'a> {
         let sugg = errors::AddBoxNew { box_kw_and_lo, hi };
         let guar = self.dcx().emit_err(errors::BoxSyntaxRemoved { span, sugg });
         Ok((span, ExprKind::Err(guar)))
+    }
+
+    fn parse_expr_move(&mut self, move_kw: Span) -> PResult<'a, (Span, ExprKind)> {
+        self.bump();
+        self.psess.gated_spans.gate(sym::move_expr, move_kw);
+        self.expect(exp!(OpenParen))?;
+        let expr = self.parse_expr()?;
+        self.expect(exp!(CloseParen))?;
+        let span = move_kw.to(self.prev_token.span);
+        Ok((span, ExprKind::Move(expr, move_kw)))
     }
 
     fn is_mistaken_not_ident_negation(&self) -> bool {
@@ -4383,6 +4399,7 @@ impl MutVisitor for CondChecker<'_> {
             }
             ExprKind::Unary(_, _)
             | ExprKind::Await(_, _)
+            | ExprKind::Move(_, _)
             | ExprKind::Use(_, _)
             | ExprKind::AssignOp(_, _, _)
             | ExprKind::Range(_, _, _)
