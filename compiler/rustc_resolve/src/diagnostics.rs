@@ -17,11 +17,11 @@ use rustc_errors::{
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::attrs::{CfgEntry, StrippedCfgItem};
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, MacroKinds, NonMacroAttrKind, PerNS};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, MacroKinds, NonMacroAttrKind, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{PrimTy, Stability, StabilityLevel, find_attr};
 use rustc_middle::bug;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{TyCtxt, Visibility};
 use rustc_session::Session;
 use rustc_session::lint::builtin::{
     ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE, AMBIGUOUS_GLOB_IMPORTS, AMBIGUOUS_IMPORT_VISIBILITIES,
@@ -49,12 +49,10 @@ use crate::late::{DiagMetadata, PatternSource, Rib};
 use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingError, BindingKey, Decl, DeclKind,
     Finalize, ForwardGenericParamBanReason, HasGenericParams, IdentKey, LateDecl, MacroRulesScope,
-    Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError,
+    Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, Res,
     ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used, VisResolutionError,
     errors as errs, path_names_to_string,
 };
-
-type Res = def::Res<ast::NodeId>;
 
 /// A vector of spans and replacements, a message and applicability.
 pub(crate) type Suggestion = (Vec<(Span, String)>, String, Applicability);
@@ -62,6 +60,19 @@ pub(crate) type Suggestion = (Vec<(Span, String)>, String, Applicability);
 /// Potential candidate for an undeclared or out-of-scope label - contains the ident of a
 /// similarly named label and whether or not it is reachable.
 pub(crate) type LabelSuggestion = (Ident, bool);
+
+#[derive(Clone)]
+pub(crate) struct StructCtor {
+    pub res: Res,
+    pub vis: Visibility<DefId>,
+    pub field_visibilities: Vec<Visibility<DefId>>,
+}
+
+impl StructCtor {
+    pub(crate) fn has_private_fields<'ra>(&self, m: Module<'ra>, r: &Resolver<'ra, '_>) -> bool {
+        self.field_visibilities.iter().any(|&vis| !r.is_accessible_from(vis, m))
+    }
+}
 
 #[derive(Debug)]
 pub(crate) enum SuggestionTarget {
@@ -3174,6 +3185,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             let note = errors::FoundItemConfigureOut { span: ident.span, item_was };
             err.subdiagnostic(note);
+        }
+    }
+
+    pub(crate) fn struct_ctor(&self, def_id: DefId) -> Option<StructCtor> {
+        match def_id.as_local() {
+            Some(def_id) => self.struct_ctors.get(&def_id).cloned(),
+            None => {
+                self.cstore().ctor_untracked(self.tcx, def_id).map(|(ctor_kind, ctor_def_id)| {
+                    let res = Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
+                    let vis = self.tcx.visibility(ctor_def_id);
+                    let field_visibilities = self
+                        .tcx
+                        .associated_item_def_ids(def_id)
+                        .iter()
+                        .map(|&field_id| self.tcx.visibility(field_id))
+                        .collect();
+                    StructCtor { res, vis, field_visibilities }
+                })
+            }
         }
     }
 }

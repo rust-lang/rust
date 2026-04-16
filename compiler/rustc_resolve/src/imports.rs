@@ -37,11 +37,9 @@ use crate::errors::{
 use crate::ref_mut::CmCell;
 use crate::{
     AmbiguityError, BindingKey, CmResolver, Decl, DeclData, DeclKind, Determinacy, Finalize,
-    IdentKey, ImportSuggestion, Module, ModuleOrUniformRoot, ParentScope, PathResult, PerNS,
+    IdentKey, ImportSuggestion, Module, ModuleOrUniformRoot, ParentScope, PathResult, PerNS, Res,
     ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string, names_to_string,
 };
-
-type Res = def::Res<NodeId>;
 
 /// A potential import declaration in the process of being planted into a module.
 /// Also used for lazily planting names from `--extern` flags to extern prelude.

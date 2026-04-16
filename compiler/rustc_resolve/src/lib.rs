@@ -26,7 +26,7 @@ use std::fmt;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
-use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
+use diagnostics::{ImportSuggestion, LabelSuggestion, StructCtor, Suggestion};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
 use errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use hygiene::Macros20NormalizedSyntaxContext;
@@ -1285,11 +1285,6 @@ pub struct Resolver<'ra, 'tcx> {
     /// Crate-local macro expanded `macro_export` referred to by a module-relative path.
     macro_expanded_macro_export_errors: BTreeSet<(Span, Span)> = BTreeSet::new(),
 
-    /// When a type is re-exported that has an inaccessible constructor because it has fields that
-    /// are inaccessible from the import's scope, we mark that as the type won't be able to be built
-    /// through the re-export. We use this information to extend the existing diagnostic.
-    inaccessible_ctor_reexport: FxHashMap<Span, Span> = default::fx_hash_map(),
-
     arenas: &'ra ResolverArenas<'ra>,
     dummy_decl: Decl<'ra>,
     builtin_type_decls: FxHashMap<Symbol, Decl<'ra>>,
@@ -1346,7 +1341,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Table for mapping struct IDs into struct constructor IDs,
     /// it's not used during normal resolution, only for better error reporting.
     /// Also includes of list of each fields visibility
-    struct_constructors: LocalDefIdMap<(Res, Visibility<DefId>, Vec<Visibility<DefId>>)> = Default::default(),
+    struct_ctors: LocalDefIdMap<StructCtor> = Default::default(),
 
     /// for all the struct
     /// it's not used during normal resolution, only for better error reporting.
