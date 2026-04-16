@@ -835,13 +835,16 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     changed = true;
                     let num_words = num_words(*chunk_domain_size as usize);
                     debug_assert!(num_words > 0 && num_words <= CHUNK_WORDS);
-                    let mut tail_mask =
-                        1 << (*chunk_domain_size - ((num_words - 1) * WORD_BITS) as u16) - 1;
+                    // Set `self_chunk_words` to `other_chunk_words`, then invert all bits and
+                    // clear any excess bits in the final word.
                     let mut self_chunk_words = **other_chunk_words;
-                    for word in self_chunk_words[0..num_words].iter_mut().rev() {
-                        *word = !*word & tail_mask;
-                        tail_mask = Word::MAX;
+                    for word in self_chunk_words[0..num_words].iter_mut() {
+                        *word = !*word;
                     }
+                    clear_excess_bits_in_final_word(
+                        *chunk_domain_size as usize,
+                        &mut self_chunk_words[..num_words],
+                    );
                     let self_chunk_ones_count = *chunk_domain_size - *other_chunk_ones_count;
                     debug_assert_eq!(
                         self_chunk_ones_count,

@@ -343,8 +343,8 @@ fn chunked_bitset() {
 
     b64.subtract(&b64b);
     assert!(!b64.contains(0));
-    assert!(!b64.contains(10)); // FIXME
-    assert!(!b64.contains(50)); // FIXME
+    assert!(b64.contains(10));
+    assert!(b64.contains(50));
     assert!(b64.contains(63));
     assert_eq!(
         b64.chunks(),
@@ -353,8 +353,8 @@ fn chunked_bitset() {
             Mixed {
                 chunk_domain_size: 64,
                 ones_count: 63,
-                words: Rc::new([ // FIXME
-                    0x8000000000000000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                words: Rc::new([
+                    0xfffffffffffffffe, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 ])
             },
