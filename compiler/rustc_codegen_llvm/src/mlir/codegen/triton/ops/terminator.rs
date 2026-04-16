@@ -251,6 +251,12 @@ impl<'a> TritonCodegen<'a> {
             "triton::Triton::split" => {
                 TritonCodegen::codegen_split_call as LocalCallHandler<'a, 'tcx>
             }
+            "triton::Triton::dot" => {
+                TritonCodegen::codegen_dot_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::dot_scaled" => {
+                TritonCodegen::codegen_dot_scaled_call as LocalCallHandler<'a, 'tcx>
+            }
             _ => TritonCodegen::codegen_call as LocalCallHandler<'a, 'tcx>,
         };
 

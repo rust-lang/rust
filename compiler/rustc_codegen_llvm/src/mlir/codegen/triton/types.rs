@@ -126,8 +126,26 @@ impl TypeMapper {
         let name = with_no_trimmed_paths!(tcx.def_path_str(def.did()));
         println!("map_adt_ty: name:{:?} {:?} {:?}", name, def, args);
 
-        let handler = get_adt_handler(&name);
-        handler(self, context, tcx, args)
+        // Try the registered handler first; fall back to i32 for fieldless enums.
+        let map = ADT_HANDLER_MAP.get_or_init(|| {
+            let entries: Vec<(&'static str, AdtHandler)> = vec![
+                ("triton::llvm::triton::tensor::Tensor", triton_tensor_handler),
+                ("triton::llvm::triton::pointer::Pointer", triton_pointer_handler),
+                ("triton::llvm::triton::types::Bool", triton_bool_handler),
+                ("triton::Axis", triton_program_axis_handler),
+            ];
+            entries.into_iter().collect()
+        });
+
+        if let Some(handler) = map.get(name.as_str()) {
+            handler(self, context, tcx, args)
+        } else if def.is_enum() {
+            // Fieldless enums (DotFormat, InputPrecision, FpDowncastRounding, etc.)
+            // are represented as their discriminant integer, which is i32.
+            IntegerType::new(context, 32).into()
+        } else {
+            panic!("Handler not found for ADT: {:?}", name)
+        }
     }
 
     fn map_alias_ty<'tcx, 'c>(
@@ -233,19 +251,6 @@ impl TypeMapper {
     }
 }
 
-fn get_adt_handler(adt: &str) -> AdtHandler {
-    let map = ADT_HANDLER_MAP.get_or_init(|| {
-        let entries: Vec<(&'static str, AdtHandler)> = vec![
-            ("triton::llvm::triton::tensor::Tensor", triton_tensor_handler),
-            ("triton::llvm::triton::pointer::Pointer", triton_pointer_handler),
-            ("triton::llvm::triton::types::Bool", triton_bool_handler),
-            ("triton::Axis", triton_program_axis_handler),
-        ];
-        entries.into_iter().collect()
-    });
-
-    map.get(adt).copied().unwrap_or_else(|| panic!("Handler not found: {:?}", adt))
-}
 
 pub fn triton_tensor_handler<'tcx, 'c>(
     type_mapper: &TypeMapper,

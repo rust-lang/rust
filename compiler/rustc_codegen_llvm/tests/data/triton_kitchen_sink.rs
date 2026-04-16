@@ -2503,50 +2503,50 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     let jn = T::join(vw, bb);
     let il = T::interleave(jn, jn);
     let (sp0, sp1) = T::split(il);
-    // let dot = T::dot::<D, D>(sp0, sp1, None, Some(InputPrecision::TF32), Some(1));
-    // let _dot_tf32x3 = T::dot::<D, D>(dot, dot, None, Some(InputPrecision::TF32x3), None);
-    // let _dot_ieee = T::dot::<D, D>(dot, dot, None, Some(InputPrecision::IEEE), None);
-    // let scale = zl;
-    // let _dot_scaled = T::dot_scaled::<D, D, D>(
-    //     dot,
-    //     scale,
-    //     DotFormat::E4M3,
-    //     dot,
-    //     scale,
-    //     DotFormat::E5M2,
-    //     None,
-    //     true,
-    // );
-    // let _ = T::dot_scaled::<D, D, D>(
-    //     dot,
-    //     scale,
-    //     DotFormat::E2M1x2,
-    //     dot,
-    //     scale,
-    //     DotFormat::E2M1x4,
-    //     None,
-    //     false,
-    // );
-    // let _ = T::dot_scaled::<D, D, D>(
-    //     dot,
-    //     scale,
-    //     DotFormat::BF16x2,
-    //     dot,
-    //     scale,
-    //     DotFormat::Int8,
-    //     None,
-    //     false,
-    // );
-    // let _ = T::dot_scaled::<D, D, D>(
-    //     dot,
-    //     scale,
-    //     DotFormat::UInt8,
-    //     dot,
-    //     scale,
-    //     DotFormat::E4M3,
-    //     None,
-    //     false,
-    // );
+    let dot = T::dot::<D, D>(sp0, sp1, None, Some(InputPrecision::TF32), Some(1));
+    let _dot_tf32x3 = T::dot::<D, D>(dot, dot, None, Some(InputPrecision::TF32x3), None);
+    let _dot_ieee = T::dot::<D, D>(dot, dot, None, Some(InputPrecision::IEEE), None);
+    let scale = zl;
+    let _dot_scaled = T::dot_scaled::<D, D, D>(
+        dot,
+        scale,
+        DotFormat::E4M3,
+        dot,
+        scale,
+        DotFormat::E5M2,
+        None,
+        true,
+    );
+    let _ = T::dot_scaled::<D, D, D>(
+        dot,
+        scale,
+        DotFormat::E2M1x2,
+        dot,
+        scale,
+        DotFormat::E2M1x4,
+        None,
+        false,
+    );
+    let _ = T::dot_scaled::<D, D, D>(
+        dot,
+        scale,
+        DotFormat::BF16x2,
+        dot,
+        scale,
+        DotFormat::Int8,
+        None,
+        false,
+    );
+    let _ = T::dot_scaled::<D, D, D>(
+        dot,
+        scale,
+        DotFormat::UInt8,
+        dot,
+        scale,
+        DotFormat::E4M3,
+        None,
+        false,
+    );
     // let block_ptr = T::make_block_ptr(x_ptr, &[BLOCK_SIZE], &[1], &[0], &[BLOCK_SIZE], &[0]);
     // let block_ptr2 = T::advance(block_ptr, &[1]);
     // let tdesc = T::make_tensor_descriptor(
