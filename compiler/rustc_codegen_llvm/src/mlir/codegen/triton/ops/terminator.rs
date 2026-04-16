@@ -197,14 +197,23 @@ impl<'a> TritonCodegen<'a> {
             "triton::Triton::maximum" => {
                 TritonCodegen::codegen_maximum as LocalCallHandler<'a, 'tcx>
             }
+            "triton::Triton::zeros" => {
+                TritonCodegen::codegen_zeros as LocalCallHandler<'a, 'tcx>
+            }
             "triton::Triton::zeros_like" => {
                 TritonCodegen::codegen_zeros_like as LocalCallHandler<'a, 'tcx>
+            }
+            "transmute" | "triton_kitchen_sink::transmute" => {
+                TritonCodegen::codegen_transmute_slice as LocalCallHandler<'a, 'tcx>
             }
             "triton::types::Comparison::lt" => {
                 TritonCodegen::codegen_lt_call as LocalCallHandler<'a, 'tcx>
             }
             "triton::types::AddOffsets::add_offsets" => {
                 TritonCodegen::codegen_add_ptr as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::cast" => {
+                TritonCodegen::codegen_cast_call as LocalCallHandler<'a, 'tcx>
             }
             _ => TritonCodegen::codegen_call as LocalCallHandler<'a, 'tcx>,
         };

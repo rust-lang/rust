@@ -478,4 +478,130 @@ impl<'a> TritonCodegen<'a> {
 
         Ok(Some(result.into()))
     }
+
+    /// `triton::Triton::cast` — element-wise type cast for tensors.
+    ///
+    /// args[0] = input tensor, args[1] = rounding mode (optional enum), args[2] = saturate (bool)
+    ///
+    /// For the common case where src and dst element types are the same, returns the input as-is.
+    /// For type conversions, emits the appropriate `arith` cast operation.
+    pub fn codegen_cast_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        use melior::ir::ShapedTypeLike;
+
+        let arg0 = &args[0].node;
+        let src_value = self.codegen_operand(
+            tcx, instance, arg0, arg0.ty(mir, tcx), location, mlir_block, state,
+        )?;
+
+        // Determine the destination element type from the destination place type.
+        let dest_rust_ty = destination.ty(mir, tcx).ty;
+        let dest_rust_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx,
+            TypingEnv::fully_monomorphized(),
+            EarlyBinder::bind(dest_rust_ty),
+        );
+        let dest_mlir_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_rust_ty);
+
+        // If destination type is dynamic (unknown-shape tensor), use the input's actual type.
+        // Triton cast is always shape-preserving; the function signature just doesn't know
+        // the shape statically.
+        let dest_mlir_ty = if dest_mlir_ty.is_tensor() {
+            let is_dynamic = dest_mlir_ty
+                .try_into()
+                .ok()
+                .and_then(|t: RankedTensorType<'a>| t.dims().ok())
+                .map(|dims| dims.iter().any(|&d| d == i64::MIN))
+                .unwrap_or(true);
+            if is_dynamic {
+                // Construct target type: same shape as input, but with the destination element type
+                let src_tensor: RankedTensorType<'a> = src_value.r#type().try_into()
+                    .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?;
+                let src_dims = src_tensor.dims().map_err(|e| MlirError::InvalidType { msg: e.to_string() })?;
+                // Get destination element type from the generic tensor handler result
+                let dest_elem_ty = {
+                    let mapped = dest_mlir_ty.try_into()
+                        .map(|t: RankedTensorType<'a>| t.element())
+                        .unwrap_or(src_tensor.element());
+                    mapped
+                };
+                tensor_type(&src_dims, dest_elem_ty).into()
+            } else {
+                dest_mlir_ty
+            }
+        } else {
+            dest_mlir_ty
+        };
+
+        // If source and destination MLIR types are the same, the cast is a no-op.
+        if src_value.r#type() == dest_mlir_ty {
+            return Ok(Some(src_value));
+        }
+
+        // Otherwise emit the appropriate arith conversion op.
+        let src_elem_ty = if src_value.r#type().is_tensor() {
+            src_value.r#type().try_into()
+                .map(|t: RankedTensorType<'a>| t.element())
+                .unwrap_or(src_value.r#type())
+        } else {
+            src_value.r#type()
+        };
+        let dst_elem_ty = if dest_mlir_ty.is_tensor() {
+            dest_mlir_ty.try_into()
+                .map(|t: RankedTensorType<'a>| t.element())
+                .unwrap_or(dest_mlir_ty)
+        } else {
+            dest_mlir_ty
+        };
+
+        // melior typed_unary_operations signature: (in_value, out_type, location)
+        let cast_op: Operation<'a> = if src_elem_ty.is_float() && dst_elem_ty.is_float() {
+            // Float → float: extf (widening) or truncf-family (narrowing).
+            // Determine by comparing bit widths via the string representation.
+            // f16 < f32 < f64
+            let float_bits = |ty: melior::ir::Type<'a>| -> u32 {
+                let s = ty.to_string();
+                if s.contains("f16") { 16 } else if s.contains("f32") { 32 }
+                else if s.contains("f64") { 64 } else { 128 }
+            };
+            if float_bits(dst_elem_ty) < float_bits(src_elem_ty) {
+                // Narrowing: use ODS builder directly since the melior wrapper
+                // for truncf is only a same-type unary; fall back to OperationBuilder.
+                use melior::ir::operation::OperationBuilder;
+                OperationBuilder::new("arith.truncf", location)
+                    .add_operands(&[src_value])
+                    .add_results(&[dest_mlir_ty])
+                    .build()
+                    .map_err(|e| MlirError::CreateOperation { err: rustc_mlir::errors::Error::IncompatibleTypes { lhs: e.to_string(), rhs: String::new() } })?
+                    .into()
+            } else {
+                // Widening
+                melior::dialect::arith::extf(src_value, dest_mlir_ty, location).into()
+            }
+        } else if src_elem_ty.is_integer() && dst_elem_ty.is_float() {
+            melior::dialect::arith::sitofp(src_value, dest_mlir_ty, location).into()
+        } else if src_elem_ty.is_float() && dst_elem_ty.is_integer() {
+            melior::dialect::arith::fptosi(src_value, dest_mlir_ty, location).into()
+        } else {
+            melior::dialect::arith::trunci(src_value, dest_mlir_ty, location).into()
+        };
+        let result = cast_op.result(0).expect("cast result");
+        mlir_block.append_operation(cast_op);
+        Ok(Some(result.into()))
+    }
 }

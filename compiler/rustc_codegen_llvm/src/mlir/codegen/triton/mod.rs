@@ -17,6 +17,7 @@
 use std::collections::HashMap;
 
 use melior::ir::operation::OperationLike;
+use melior::ir::attribute::IntegerAttribute;
 use melior::ir::r#type::IntegerType;
 use melior::ir::{
     Attribute, Block, BlockLike, BlockRef, Location, Operation, RegionLike, TypeLike, Value,
@@ -218,6 +219,19 @@ impl<'a> TritonCodegen<'a> {
             friendly_name, func_name
         );
 
+        // Skip Triton intrinsic function bodies — calls to these are intercepted at call-sites
+        // by the codegen dispatch table, so the actual body is never compiled for GPU execution.
+        // Their signatures may contain types (like `&[T]`) that have no valid static MLIR form.
+        if fn_sig.inputs().iter().any(|ty| {
+            matches!(ty.kind(), TyKind::Ref(_, inner, _) if matches!(inner.kind(), TyKind::Slice(_)))
+        }) {
+            eprintln!(
+                "[DEBUG] TritonCodegen codegen_function: skipping intrinsic stub (has &[T] param): {}",
+                friendly_name
+            );
+            return Ok(());
+        }
+
         // Arguments — Option<T> params are excluded from the MLIR signature; they
         // are tracked in the option_table as None (absent) by default.
         let inputs: Vec<Ty<'tcx>> = fn_sig.inputs().iter().copied().collect();
@@ -242,6 +256,18 @@ impl<'a> TritonCodegen<'a> {
                 Err(_) => vec![],
             }
         };
+
+        // Skip functions whose MLIR signature contains dynamic tensor types (tensor<?x...>).
+        // These are Triton intrinsic stubs whose call-sites are intercepted by the dispatch table;
+        // their generic tensor parameters have no statically-known shape and cannot be verified.
+        let has_dynamic_tensor = arg_types.iter().chain(ret_types.iter()).any(|ty| ty.is_tensor());
+        if has_dynamic_tensor {
+            eprintln!(
+                "[DEBUG] TritonCodegen codegen_function: skipping stub (has tensor<> param): {}",
+                friendly_name
+            );
+            return Ok(());
+        }
 
         // DEBUG output: print argument and result types
         eprintln!("[DEBUG] TritonCodegen: instance function signature (argument types):");
@@ -1443,6 +1469,22 @@ impl<'a> TritonCodegen<'a> {
                         create_int_constant(self.module.context(), location, int_val)
                             .map_err(|e| MlirError::CreateOperation { err: e })?
                             .into();
+                    let result = const_op.result(0).unwrap();
+                    mlir_block.append_operation(const_op);
+                    Ok(result.into())
+                }
+                TyKind::Bool => {
+                    // bool → i1 constant (0 = false, 1 = true)
+                    let val = scalar_int.to_u8();
+                    let i1_ty = IntegerType::new(self.module.context(), 1);
+                    let attr = IntegerAttribute::new(i1_ty.into(), val as i64);
+                    let const_op: Operation<'a> =
+                        melior::dialect::arith::constant(
+                            self.module.context(),
+                            attr.into(),
+                            location,
+                        )
+                        .into();
                     let result = const_op.result(0).unwrap();
                     mlir_block.append_operation(const_op);
                     Ok(result.into())
