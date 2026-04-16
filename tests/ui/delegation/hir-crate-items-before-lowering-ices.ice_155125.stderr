@@ -1,0 +1,23 @@
+error[E0428]: the name `foo` is defined multiple times
+  --> $DIR/hir-crate-items-before-lowering-ices.rs:13:17
+   |
+LL |                 fn foo() {}
+   |                 -------- previous definition of the value `foo` here
+LL |                 reuse foo;
+   |                 ^^^^^^^^^^ `foo` redefined here
+   |
+   = note: `foo` must be defined only once in the value namespace of this block
+
+error: complex const arguments must be placed inside of a `const` block
+  --> $DIR/hir-crate-items-before-lowering-ices.rs:11:13
+   |
+LL | /             {
+LL | |                 fn foo() {}
+LL | |                 reuse foo;
+LL | |                 2
+LL | |             },
+   | |_____________^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0428`.

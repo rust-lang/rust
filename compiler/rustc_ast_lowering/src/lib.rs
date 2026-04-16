@@ -39,6 +39,7 @@ use std::mem;
 use std::sync::Arc;
 
 use rustc_ast::node_id::NodeMap;
+use rustc_ast::visit::Visitor;
 use rustc_ast::{self as ast, *};
 use rustc_attr_parsing::{AttributeParser, Late, OmitDoc};
 use rustc_data_structures::fingerprint::Fingerprint;
@@ -2219,14 +2220,22 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 // since later compiler stages cannot handle them (and shouldn't need to be able to).
                 let default = default
                     .as_ref()
-                    .filter(|_| match source {
+                    .filter(|anon_const| match source {
                         hir::GenericParamSource::Generics => true,
                         hir::GenericParamSource::Binder => {
-                            self.dcx().emit_err(errors::GenericParamDefaultInBinder {
-                                span: param.span(),
-                            });
-
-                            false
+                            let err = errors::GenericParamDefaultInBinder { span: param.span() };
+                            if expr::WillCreateDefIdsVisitor
+                                .visit_expr(&anon_const.value)
+                                .is_break()
+                            {
+                                // FIXME(mgca): make this non-fatal once we have a better way
+                                // to handle nested items in anno const from binder
+                                // Issue: https://github.com/rust-lang/rust/issues/123629
+                                self.dcx().emit_fatal(err)
+                            } else {
+                                self.dcx().emit_err(err);
+                                false
+                            }
                         }
                     })
                     .map(|def| self.lower_anon_const_to_const_arg_and_alloc(def));
@@ -2563,12 +2572,17 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         let span = self.lower_span(expr.span);
 
         let overly_complex_const = |this: &mut Self| {
-            let e = this.dcx().struct_span_err(
-                expr.span,
-                "complex const arguments must be placed inside of a `const` block",
-            );
+            let msg = "complex const arguments must be placed inside of a `const` block";
+            let e = if expr::WillCreateDefIdsVisitor.visit_expr(expr).is_break() {
+                // FIXME(mgca): make this non-fatal once we have a better way to handle
+                // nested items in const args
+                // Issue: https://github.com/rust-lang/rust/issues/154539
+                this.dcx().struct_span_fatal(expr.span, msg).emit()
+            } else {
+                this.dcx().struct_span_err(expr.span, msg).emit()
+            };
 
-            ConstArg { hir_id: this.next_id(), kind: hir::ConstArgKind::Error(e.emit()), span }
+            ConstArg { hir_id: this.next_id(), kind: hir::ConstArgKind::Error(e), span }
         };
 
         match &expr.kind {
