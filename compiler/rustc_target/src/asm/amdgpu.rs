@@ -5,32 +5,10 @@ use rustc_span::Symbol;
 use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
 
 // Types are listed as SGPR_*/VGPR_* in llvm/lib/Target/AMDGPU/SIRegisterInfo.td
-def_reg_class! {
-    Amdgpu AmdgpuInlineAsmRegClass {
-        sgpr32,
-        sgpr64,
-        sgpr96,
-        sgpr128,
-        sgpr256,
-        sgpr512,
-        vgpr16,
-        vgpr32,
-        vgpr64,
-        vgpr96,
-        vgpr128,
-        vgpr160,
-        vgpr192,
-        vgpr224,
-        vgpr256,
-        vgpr288,
-        vgpr320,
-        vgpr352,
-        vgpr384,
-        vgpr512,
-        vgpr1024,
-    }
-}
 
+/// Amdgpu register classes
+///
+/// The number is the size of the register class in bits.
 #[derive(
     Copy,
     Clone,
@@ -43,91 +21,140 @@ def_reg_class! {
     Hash,
     rustc_macros::HashStable_Generic
 )]
-pub enum AmdgpuInlineAsmRegClassType {
-    Sgpr,
-    Vgpr,
+#[allow(non_camel_case_types)]
+pub enum AmdgpuInlineAsmRegClass {
+    Sgpr(u16),
+    Vgpr(u16),
+}
+
+pub(super) fn regclass_map() -> rustc_data_structures::fx::FxHashMap<
+    super::InlineAsmRegClass,
+    rustc_data_structures::fx::FxIndexSet<super::InlineAsmReg>,
+> {
+    use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+
+    use super::InlineAsmRegClass;
+    let mut map = FxHashMap::default();
+
+    // SGPR and VGPR sizes
+    for i in [32, 64, 96, 128, 256, 512] {
+        map.insert(
+            InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::Sgpr(i)),
+            FxIndexSet::default(),
+        );
+        map.insert(
+            InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::Vgpr(i)),
+            FxIndexSet::default(),
+        );
+    }
+
+    // VGPR-only sizes
+    for i in [16, 160, 192, 224, 288, 320, 352, 384, 1024] {
+        map.insert(
+            InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::Vgpr(i)),
+            FxIndexSet::default(),
+        );
+    }
+
+    map
 }
 
 // See https://llvm.org/docs/AMDGPUOperandSyntax.html
 impl AmdgpuInlineAsmRegClass {
-    pub fn get_type(self) -> AmdgpuInlineAsmRegClassType {
+    /// Prefix when printed and register constraint in LLVM
+    fn prefix(self) -> &'static str {
         match self {
-            Self::sgpr32
-            | Self::sgpr64
-            | Self::sgpr96
-            | Self::sgpr128
-            | Self::sgpr256
-            | Self::sgpr512 => AmdgpuInlineAsmRegClassType::Sgpr,
-            Self::vgpr16
-            | Self::vgpr32
-            | Self::vgpr64
-            | Self::vgpr96
-            | Self::vgpr128
-            | Self::vgpr160
-            | Self::vgpr192
-            | Self::vgpr224
-            | Self::vgpr256
-            | Self::vgpr288
-            | Self::vgpr320
-            | Self::vgpr352
-            | Self::vgpr384
-            | Self::vgpr512
-            | Self::vgpr1024 => AmdgpuInlineAsmRegClassType::Vgpr,
+            Self::Sgpr(_) => "s",
+            Self::Vgpr(_) => "v",
         }
     }
 
     /// Return size of the register class in bytes
-    pub fn bytes(self) -> u32 {
-        match self {
-            Self::vgpr16 => 16 / 8,
-            Self::sgpr32 | Self::vgpr32 => 32 / 8,
-            Self::sgpr64 | Self::vgpr64 => 64 / 8,
-            Self::sgpr96 | Self::vgpr96 => 96 / 8,
-            Self::sgpr128 | Self::vgpr128 => 128 / 8,
-            Self::vgpr160 => 160 / 8,
-            Self::vgpr192 => 192 / 8,
-            Self::vgpr224 => 224 / 8,
-            Self::sgpr256 | Self::vgpr256 => 256 / 8,
-            Self::vgpr288 => 288 / 8,
-            Self::vgpr320 => 320 / 8,
-            Self::vgpr352 => 352 / 8,
-            Self::vgpr384 => 384 / 8,
-            Self::sgpr512 | Self::vgpr512 => 512 / 8,
-            Self::vgpr1024 => 1024 / 8,
-        }
+    fn bytes(self) -> u16 {
+        let (Self::Sgpr(i) | Self::Vgpr(i)) = self;
+        i / 8
     }
 
-    fn from_type(ty: AmdgpuInlineAsmRegClassType, bytes: u32) -> Option<Self> {
-        let class = match ty {
-            AmdgpuInlineAsmRegClassType::Sgpr => match bytes * 8 {
-                32 => Self::sgpr32,
-                64 => Self::sgpr64,
-                96 => Self::sgpr96,
-                128 => Self::sgpr128,
-                256 => Self::sgpr256,
-                512 => Self::sgpr512,
-                _ => return None,
-            },
-            AmdgpuInlineAsmRegClassType::Vgpr => match bytes * 8 {
-                16 => Self::vgpr16,
-                32 => Self::vgpr32,
-                64 => Self::vgpr64,
-                96 => Self::vgpr96,
-                128 => Self::vgpr128,
-                160 => Self::vgpr160,
-                192 => Self::vgpr192,
-                224 => Self::vgpr224,
-                256 => Self::vgpr256,
-                288 => Self::vgpr288,
-                320 => Self::vgpr320,
-                352 => Self::vgpr352,
-                384 => Self::vgpr384,
-                512 => Self::vgpr512,
-                1024 => Self::vgpr1024,
-                _ => return None,
-            },
+    /// Returns the name or `None` if this is not a valid register class
+    fn try_get_name(self) -> Option<rustc_span::Symbol> {
+        let s = match self {
+            Self::Sgpr(32) => rustc_span::sym::sgpr32,
+            Self::Sgpr(64) => rustc_span::sym::sgpr64,
+            Self::Sgpr(96) => rustc_span::sym::sgpr96,
+            Self::Sgpr(128) => rustc_span::sym::sgpr128,
+            Self::Sgpr(256) => rustc_span::sym::sgpr256,
+            Self::Sgpr(512) => rustc_span::sym::sgpr512,
+            Self::Vgpr(16) => rustc_span::sym::vgpr16,
+            Self::Vgpr(32) => rustc_span::sym::vgpr32,
+            Self::Vgpr(64) => rustc_span::sym::vgpr64,
+            Self::Vgpr(96) => rustc_span::sym::vgpr96,
+            Self::Vgpr(128) => rustc_span::sym::vgpr128,
+            Self::Vgpr(160) => rustc_span::sym::vgpr160,
+            Self::Vgpr(192) => rustc_span::sym::vgpr192,
+            Self::Vgpr(224) => rustc_span::sym::vgpr224,
+            Self::Vgpr(256) => rustc_span::sym::vgpr256,
+            Self::Vgpr(288) => rustc_span::sym::vgpr288,
+            Self::Vgpr(320) => rustc_span::sym::vgpr320,
+            Self::Vgpr(352) => rustc_span::sym::vgpr352,
+            Self::Vgpr(384) => rustc_span::sym::vgpr384,
+            Self::Vgpr(512) => rustc_span::sym::vgpr512,
+            Self::Vgpr(1024) => rustc_span::sym::vgpr1024,
+            _ => return None,
         };
-        Some(class)
+        Some(s)
+    }
+
+    pub fn name(self) -> rustc_span::Symbol {
+        self.try_get_name().expect("Invalid amdgpu register class")
+    }
+
+    pub fn parse(name: rustc_span::Symbol) -> Result<Self, &'static [rustc_span::Symbol]> {
+        match name {
+            rustc_span::sym::sgpr32 => Ok(Self::Sgpr(32)),
+            rustc_span::sym::sgpr64 => Ok(Self::Sgpr(64)),
+            rustc_span::sym::sgpr96 => Ok(Self::Sgpr(96)),
+            rustc_span::sym::sgpr128 => Ok(Self::Sgpr(128)),
+            rustc_span::sym::sgpr256 => Ok(Self::Sgpr(256)),
+            rustc_span::sym::sgpr512 => Ok(Self::Sgpr(512)),
+            rustc_span::sym::vgpr16 => Ok(Self::Vgpr(16)),
+            rustc_span::sym::vgpr32 => Ok(Self::Vgpr(32)),
+            rustc_span::sym::vgpr64 => Ok(Self::Vgpr(64)),
+            rustc_span::sym::vgpr96 => Ok(Self::Vgpr(96)),
+            rustc_span::sym::vgpr128 => Ok(Self::Vgpr(128)),
+            rustc_span::sym::vgpr160 => Ok(Self::Vgpr(160)),
+            rustc_span::sym::vgpr192 => Ok(Self::Vgpr(192)),
+            rustc_span::sym::vgpr224 => Ok(Self::Vgpr(224)),
+            rustc_span::sym::vgpr256 => Ok(Self::Vgpr(256)),
+            rustc_span::sym::vgpr288 => Ok(Self::Vgpr(288)),
+            rustc_span::sym::vgpr320 => Ok(Self::Vgpr(320)),
+            rustc_span::sym::vgpr352 => Ok(Self::Vgpr(352)),
+            rustc_span::sym::vgpr384 => Ok(Self::Vgpr(384)),
+            rustc_span::sym::vgpr512 => Ok(Self::Vgpr(512)),
+            rustc_span::sym::vgpr1024 => Ok(Self::Vgpr(1024)),
+            _ => Err(&[
+                rustc_span::sym::sgpr32,
+                rustc_span::sym::sgpr64,
+                rustc_span::sym::sgpr96,
+                rustc_span::sym::sgpr128,
+                rustc_span::sym::sgpr256,
+                rustc_span::sym::sgpr512,
+                rustc_span::sym::vgpr16,
+                rustc_span::sym::vgpr32,
+                rustc_span::sym::vgpr64,
+                rustc_span::sym::vgpr96,
+                rustc_span::sym::vgpr128,
+                rustc_span::sym::vgpr160,
+                rustc_span::sym::vgpr192,
+                rustc_span::sym::vgpr224,
+                rustc_span::sym::vgpr256,
+                rustc_span::sym::vgpr288,
+                rustc_span::sym::vgpr320,
+                rustc_span::sym::vgpr352,
+                rustc_span::sym::vgpr384,
+                rustc_span::sym::vgpr512,
+                rustc_span::sym::vgpr1024,
+            ]),
+        }
     }
 
     pub fn valid_modifiers(self, _arch: InlineAsmArch) -> &'static [char] {
@@ -135,29 +162,18 @@ impl AmdgpuInlineAsmRegClass {
     }
 
     pub fn suggest_class(self, _arch: InlineAsmArch, ty: InlineAsmType) -> Option<Self> {
-        // Suggest VGPR for everything as VGPRs have more uses
-        Some(match ty {
-            InlineAsmType::I16 => Self::vgpr16,
-            InlineAsmType::I32 => Self::vgpr32,
-            InlineAsmType::I64 => Self::vgpr64,
-            InlineAsmType::I128 => Self::vgpr128,
-            InlineAsmType::F16 => Self::vgpr16,
-            InlineAsmType::F32 => Self::vgpr32,
-            InlineAsmType::F64 => Self::vgpr64,
-            _ => {
-                let bytes = match ty {
-                    InlineAsmType::VecI16(n) => n * (16 / 8),
-                    InlineAsmType::VecI32(n) => n * (32 / 8),
-                    InlineAsmType::VecI64(n) => n * (64 / 8),
-                    InlineAsmType::VecI128(n) => n * (128 / 8),
-                    InlineAsmType::VecF16(n) => n * (16 / 8),
-                    InlineAsmType::VecF32(n) => n * (32 / 8),
-                    InlineAsmType::VecF64(n) => n * (64 / 8),
-                    _ => return None,
-                };
-                return Self::from_type(AmdgpuInlineAsmRegClassType::Vgpr, bytes as u32);
-            }
-        })
+        // 8-bit types and f128 are not supported
+        if matches!(
+            ty,
+            InlineAsmType::I8
+                | InlineAsmType::VecI8(_)
+                | InlineAsmType::F128
+                | InlineAsmType::VecF128(_)
+        ) {
+            return None;
+        }
+
+        Some(Self::Vgpr(ty.size().bits().try_into().ok()?))
     }
 
     pub fn suggest_modifier(
@@ -177,84 +193,85 @@ impl AmdgpuInlineAsmRegClass {
         _arch: InlineAsmArch,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
-            Self::vgpr16 => types! { _: I16, F16; },
-            Self::sgpr32 | Self::vgpr32 => types! { _: I16, I32, F16, F32,
+            Self::Vgpr(16) => types! { _: I16, F16; },
+            Self::Sgpr(32) | Self::Vgpr(32) => types! { _: I16, I32, F16, F32,
                 VecI16(32 / 16),
                 VecF16(32 / 16);
             },
-            Self::sgpr64 | Self::vgpr64 => types! {
+            Self::Sgpr(64) | Self::Vgpr(64) => types! {
                 _: I64, F64, VecI16(64 / 16), VecI32(64 / 32),
                 VecF16(64 / 16), VecF32(64 / 32);
             },
-            Self::sgpr96 | Self::vgpr96 => types! { _: VecI32(96 / 32), VecF32(96 / 32); },
-            Self::sgpr128 | Self::vgpr128 => types! { _: I128,
+            Self::Sgpr(96) | Self::Vgpr(96) => types! { _: VecI32(96 / 32), VecF32(96 / 32); },
+            Self::Sgpr(128) | Self::Vgpr(128) => types! { _: I128,
                 VecI16(128 / 16), VecI32(128 / 32), VecI64(128 / 64),
                 VecF16(128 / 16), VecF32(128 / 32), VecF64(128 / 64);
             },
-            Self::vgpr160 => types! { _: VecI32(160 / 32), VecF32(160 / 32); },
-            Self::vgpr192 => types! { _:
+            Self::Vgpr(160) => types! { _: VecI32(160 / 32), VecF32(160 / 32); },
+            Self::Vgpr(192) => types! { _:
                 VecI32(192 / 32), VecI64(192 / 64),
                 VecF32(192 / 32), VecF64(192 / 64);
             },
-            Self::vgpr224 => types! { _: VecI32(224 / 32), VecF32(224 / 32); },
-            Self::sgpr256 => types! { _:
+            Self::Vgpr(224) => types! { _: VecI32(224 / 32), VecF32(224 / 32); },
+            Self::Sgpr(256) => types! { _:
                 VecI16(256 / 16), VecI32(256 / 32), VecI64(256 / 64),
                 VecF16(256 / 16), VecF32(256 / 32), VecF64(256 / 64);
             },
-            Self::vgpr256 => types! { _:
+            Self::Vgpr(256) => types! { _:
                 VecI16(256 / 16), VecI32(256 / 32),
                 VecF16(256 / 16), VecF32(256 / 32), VecF64(256 / 64);
             },
-            Self::vgpr288 => types! { _: VecI32(288 / 32), VecF32(288 / 32); },
-            Self::vgpr320 => types! { _: VecI32(320 / 32), VecF32(320 / 32); },
-            Self::vgpr352 => types! { _: VecI32(352 / 32), VecF32(352 / 32); },
-            Self::vgpr384 => types! { _: VecI32(384 / 32), VecF32(384 / 32); },
-            Self::sgpr512 => types! { _:
+            Self::Vgpr(288) => types! { _: VecI32(288 / 32), VecF32(288 / 32); },
+            Self::Vgpr(320) => types! { _: VecI32(320 / 32), VecF32(320 / 32); },
+            Self::Vgpr(352) => types! { _: VecI32(352 / 32), VecF32(352 / 32); },
+            Self::Vgpr(384) => types! { _: VecI32(384 / 32), VecF32(384 / 32); },
+            Self::Sgpr(512) => types! { _:
                 VecI16(512 / 16), VecI32(512 / 32), VecI64(512 / 64),
                 VecF16(512 / 16), VecF32(512 / 32), VecF64(512 / 64);
             },
-            Self::vgpr512 => types! { _:
+            Self::Vgpr(512) => types! { _:
                 VecI16(512 / 16), VecI32(512 / 32),
                 VecF16(512 / 16), VecF32(512 / 32);
             },
-            Self::vgpr1024 => types! { _: VecF32(1024 / 32); },
+            Self::Vgpr(1024) => types! { _: VecF32(1024 / 32); },
+            _ => panic!("Invalid amdgpu register class"),
         }
     }
 
     /// The number of supported registers in this class.
     /// The returned number is the length, so supported register
     /// indices are 0 to max_num()-1.
-    fn max_num(self) -> u32 {
-        if self == AmdgpuInlineAsmRegClass::vgpr16 {
+    fn max_num(self) -> u16 {
+        if self == Self::Vgpr(16) {
             return 512;
         }
         let size = self.bytes();
-        match self.get_type() {
-            AmdgpuInlineAsmRegClassType::Sgpr => 106 - (size / 4 - 1),
-            AmdgpuInlineAsmRegClassType::Vgpr => 256 - (size / 4 - 1),
-        }
-    }
-
-    /// Get register class from prefix.
-    fn parse_prefix(prefix: char) -> Result<AmdgpuInlineAsmRegClassType, &'static str> {
-        match prefix {
-            's' => Ok(AmdgpuInlineAsmRegClassType::Sgpr),
-            'v' => Ok(AmdgpuInlineAsmRegClassType::Vgpr),
-            _ => Err("unknown register prefix"),
-        }
-    }
-}
-
-impl AmdgpuInlineAsmRegClassType {
-    /// Prefix when printed and register constraint in LLVM.
-    fn prefix(self) -> &'static str {
         match self {
-            AmdgpuInlineAsmRegClassType::Sgpr => "s",
-            AmdgpuInlineAsmRegClassType::Vgpr => "v",
+            Self::Sgpr(_) => 106 - (size / 4 - 1),
+            Self::Vgpr(_) => 256 - (size / 4 - 1),
         }
+    }
+
+    /// Get register class from prefix and size.
+    fn parse_with_prefix(prefix: char, bits: u16) -> Result<Self, &'static str> {
+        let res = match prefix {
+            's' => Self::Sgpr(bits),
+            'v' => Self::Vgpr(bits),
+            _ => return Err("unknown register prefix"),
+        };
+
+        // Check that the size is valid by converting it to a symbol
+        if res.try_get_name().is_none() {
+            return Err("invalid register size for this class");
+        }
+
+        Ok(res)
     }
 }
 
+/// Start index of a register.
+///
+/// Together with the register size this gives the range occupied by a register.
 #[derive(
     Copy,
     Clone,
@@ -267,13 +284,13 @@ impl AmdgpuInlineAsmRegClassType {
     Hash,
     rustc_macros::HashStable_Generic
 )]
-enum AmdgpuRegRange {
-    /// Low 16-bit of a register
-    Low(u32),
-    /// High 16-bit of a register
-    High(u32),
-    /// One or more 32-bit registers, in the inclusive range
-    Range { start: u32, end: u32 },
+enum AmdgpuRegStart {
+    /// Low 16-bit of the register at this index
+    Low(u16),
+    /// High 16-bit of the register at this index
+    High(u16),
+    /// One or more 32-bit registers, starting at this index
+    Full(u16),
 }
 
 #[derive(
@@ -290,39 +307,31 @@ enum AmdgpuRegRange {
 )]
 #[allow(non_camel_case_types)]
 pub struct AmdgpuInlineAsmReg {
-    class: AmdgpuInlineAsmRegClassType,
-    range: AmdgpuRegRange,
+    class: AmdgpuInlineAsmRegClass,
+    range: AmdgpuRegStart,
 }
 
 impl AmdgpuInlineAsmReg {
     pub fn name(self) -> String {
         let c = self.class.prefix();
         match self.range {
-            AmdgpuRegRange::Low(n) => format!("{c}{n}.l"),
-            AmdgpuRegRange::High(n) => format!("{c}{n}.h"),
-            AmdgpuRegRange::Range { start, end } if start == end => format!("{c}{start}"),
-            AmdgpuRegRange::Range { start, end } => format!("{c}[{start}:{end}]"),
-        }
-    }
-
-    /// Size of the register in bytes
-    fn bytes(self) -> u32 {
-        match self.range {
-            AmdgpuRegRange::Low(_) | AmdgpuRegRange::High(_) => 2,
-            AmdgpuRegRange::Range { start, end } => ((end - start) + 1) * 4,
+            AmdgpuRegStart::Low(n) => format!("{c}{n}.l"),
+            AmdgpuRegStart::High(n) => format!("{c}{n}.h"),
+            AmdgpuRegStart::Full(n) if self.class.bytes() == 4 => format!("{c}{n}"),
+            AmdgpuRegStart::Full(n) => format!("{c}[{n}:{}]", n + self.class.bytes() / 4 - 1),
         }
     }
 
     pub fn reg_class(self) -> AmdgpuInlineAsmRegClass {
-        AmdgpuInlineAsmRegClass::from_type(self.class, self.bytes())
-            .expect("Failed to emit invalid amdgpu register class")
+        self.class
     }
 
     pub fn parse(name: &str) -> Result<Self, &'static str> {
         if name.is_empty() {
             return Err("invalid empty register");
         }
-        let class = AmdgpuInlineAsmRegClass::parse_prefix(name.chars().next().unwrap())?;
+        // s or v
+        let prefix = name.chars().next().unwrap();
         // Form with range, e.g. s[2:3]
         let res;
         if name[1..].starts_with('[') {
@@ -342,16 +351,12 @@ impl AmdgpuInlineAsmReg {
                     return Err("invalid reversed register range");
                 }
 
-                if let Some(class) =
-                    AmdgpuInlineAsmRegClass::from_type(class, ((end - start) + 1) * 4)
-                {
-                    if end >= class.max_num() {
-                        return Err("too large register for this class");
-                    }
-                } else {
-                    return Err("invalid register size for this class");
+                let class =
+                    AmdgpuInlineAsmRegClass::parse_with_prefix(prefix, ((end - start) + 1) * 32)?;
+                if end >= class.max_num() {
+                    return Err("too large register for this class");
                 }
-                res = Self { class, range: AmdgpuRegRange::Range { start, end } };
+                res = Self { class, range: AmdgpuRegStart::Full(start) };
             } else {
                 return Err("invalid register range");
             }
@@ -361,31 +366,32 @@ impl AmdgpuInlineAsmReg {
                     return Err("invalid register number");
                 };
 
-                if let Some(class) = AmdgpuInlineAsmRegClass::from_type(class, 4) {
-                    if start >= class.max_num() {
-                        return Err("too large register for this class");
-                    }
-                } else {
-                    return Err("invalid register size for this class");
+                let class = AmdgpuInlineAsmRegClass::parse_with_prefix(prefix, 32)?;
+                if start >= class.max_num() {
+                    return Err("too large register for this class");
                 }
 
                 Ok(start)
             };
 
             let name = &name[1..];
+            let class;
             let range = if let Some(name) = name.strip_suffix(".l") {
-                if class == AmdgpuInlineAsmRegClassType::Sgpr {
+                class = AmdgpuInlineAsmRegClass::parse_with_prefix(prefix, 16)?;
+                if matches!(class, AmdgpuInlineAsmRegClass::Sgpr(_)) {
                     return Err("invalid 16-bit SGPR register");
                 }
-                AmdgpuRegRange::Low(parse_num(name)?)
+                AmdgpuRegStart::Low(parse_num(name)?)
             } else if let Some(name) = name.strip_suffix(".h") {
-                if class == AmdgpuInlineAsmRegClassType::Sgpr {
+                class = AmdgpuInlineAsmRegClass::parse_with_prefix(prefix, 16)?;
+                if matches!(class, AmdgpuInlineAsmRegClass::Sgpr(_)) {
                     return Err("invalid 16-bit SGPR register");
                 }
-                AmdgpuRegRange::High(parse_num(name)?)
+                AmdgpuRegStart::High(parse_num(name)?)
             } else {
+                class = AmdgpuInlineAsmRegClass::parse_with_prefix(prefix, 32)?;
                 let start = parse_num(name)?;
-                AmdgpuRegRange::Range { start, end: start }
+                AmdgpuRegStart::Full(start)
             };
             res = Self { class, range };
         }
@@ -420,22 +426,22 @@ pub(super) fn fill_reg_map(
     for class in regclass_map().keys() {
         let InlineAsmRegClass::Amdgpu(class) = *class else { unreachable!("Must be amdgpu class") };
         if let Some(set) = map.get_mut(&InlineAsmRegClass::Amdgpu(class)) {
-            if class == AmdgpuInlineAsmRegClass::vgpr16 {
+            if class == AmdgpuInlineAsmRegClass::Vgpr(16) {
                 for i in 0..(class.max_num() / 2) {
                     set.insert(InlineAsmReg::Amdgpu(AmdgpuInlineAsmReg {
-                        class: AmdgpuInlineAsmRegClassType::Vgpr,
-                        range: AmdgpuRegRange::Low(i),
+                        class,
+                        range: AmdgpuRegStart::Low(i),
                     }));
                     set.insert(InlineAsmReg::Amdgpu(AmdgpuInlineAsmReg {
-                        class: AmdgpuInlineAsmRegClassType::Vgpr,
-                        range: AmdgpuRegRange::High(i),
+                        class,
+                        range: AmdgpuRegStart::High(i),
                     }));
                 }
             } else {
                 for i in 0..class.max_num() {
                     set.insert(InlineAsmReg::Amdgpu(AmdgpuInlineAsmReg {
-                        class: class.get_type(),
-                        range: AmdgpuRegRange::Range { start: i, end: i + class.bytes() / 4 },
+                        class,
+                        range: AmdgpuRegStart::Full(i),
                     }));
                 }
             }
@@ -454,32 +460,36 @@ impl AmdgpuInlineAsmReg {
     }
 
     pub fn overlapping_regs(self, mut cb: impl FnMut(AmdgpuInlineAsmReg)) {
-        if self.class != AmdgpuInlineAsmRegClassType::Sgpr {
+        if matches!(self.class, AmdgpuInlineAsmRegClass::Vgpr(_)) {
             // Overlapping 16-bit registers (not supported for sgprs)
-            if let AmdgpuRegRange::Range { start, end } = self.range {
-                for i in start..=end {
-                    cb(AmdgpuInlineAsmReg { class: self.class, range: AmdgpuRegRange::Low(i) });
-                    cb(AmdgpuInlineAsmReg { class: self.class, range: AmdgpuRegRange::High(i) });
+            if let AmdgpuRegStart::Full(start) = self.range {
+                for i in start..(start + self.class.bytes().div_ceil(4) - 1) {
+                    cb(AmdgpuInlineAsmReg {
+                        class: AmdgpuInlineAsmRegClass::Vgpr(16),
+                        range: AmdgpuRegStart::Low(i),
+                    });
+                    cb(AmdgpuInlineAsmReg {
+                        class: AmdgpuInlineAsmRegClass::Vgpr(16),
+                        range: AmdgpuRegStart::High(i),
+                    });
                 }
             }
         }
 
         // Overlapping 32-bit registers, up to size 32
         for size in 1..=32 {
-            let (start, end) = match self.range {
-                AmdgpuRegRange::Low(start) | AmdgpuRegRange::High(start) => (start, start),
-                AmdgpuRegRange::Range { start, end } => (start, end),
-            };
+            let (AmdgpuRegStart::Low(start)
+            | AmdgpuRegStart::High(start)
+            | AmdgpuRegStart::Full(start)) = self.range;
 
             let size_range = size - 1;
-            for overlap_start in (start - size_range)..=end {
-                cb(AmdgpuInlineAsmReg {
-                    class: self.class,
-                    range: AmdgpuRegRange::Range {
-                        start: overlap_start,
-                        end: overlap_start + size_range,
-                    },
-                });
+            for overlap_start in (start - size_range)..=(start + self.class.bytes().div_ceil(4) - 1)
+            {
+                let class = match self.class {
+                    AmdgpuInlineAsmRegClass::Sgpr(_) => AmdgpuInlineAsmRegClass::Sgpr(size * 32),
+                    AmdgpuInlineAsmRegClass::Vgpr(_) => AmdgpuInlineAsmRegClass::Vgpr(size * 32),
+                };
+                cb(AmdgpuInlineAsmReg { class, range: AmdgpuRegStart::Full(overlap_start) });
             }
         }
     }

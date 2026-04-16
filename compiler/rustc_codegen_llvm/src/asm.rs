@@ -699,27 +699,8 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
             | Arm(ArmInlineAsmRegClass::dreg_low8)
             | Arm(ArmInlineAsmRegClass::qreg_low4) => "x",
             Arm(ArmInlineAsmRegClass::dreg) | Arm(ArmInlineAsmRegClass::qreg) => "w",
-            Amdgpu(AmdgpuInlineAsmRegClass::sgpr32)
-            | Amdgpu(AmdgpuInlineAsmRegClass::sgpr64)
-            | Amdgpu(AmdgpuInlineAsmRegClass::sgpr96)
-            | Amdgpu(AmdgpuInlineAsmRegClass::sgpr128)
-            | Amdgpu(AmdgpuInlineAsmRegClass::sgpr256)
-            | Amdgpu(AmdgpuInlineAsmRegClass::sgpr512) => "s",
-            Amdgpu(AmdgpuInlineAsmRegClass::vgpr16)
-            | Amdgpu(AmdgpuInlineAsmRegClass::vgpr32)
-            | Amdgpu(AmdgpuInlineAsmRegClass::vgpr64)
-            | Amdgpu(AmdgpuInlineAsmRegClass::vgpr96)
-            | Amdgpu(AmdgpuInlineAsmRegClass::vgpr128)
-            | Amdgpu(AmdgpuInlineAsmRegClass::vgpr160)
-            | Amdgpu(AmdgpuInlineAsmRegClass::vgpr192)
-            | Amdgpu(AmdgpuInlineAsmRegClass::vgpr224)
-            | Amdgpu(AmdgpuInlineAsmRegClass::vgpr256)
-            | Amdgpu(AmdgpuInlineAsmRegClass::vgpr288)
-            | Amdgpu(AmdgpuInlineAsmRegClass::vgpr320)
-            | Amdgpu(AmdgpuInlineAsmRegClass::vgpr352)
-            | Amdgpu(AmdgpuInlineAsmRegClass::vgpr384)
-            | Amdgpu(AmdgpuInlineAsmRegClass::vgpr512)
-            | Amdgpu(AmdgpuInlineAsmRegClass::vgpr1024) => "v",
+            Amdgpu(AmdgpuInlineAsmRegClass::Sgpr(_)) => "s",
+            Amdgpu(AmdgpuInlineAsmRegClass::Vgpr(_)) => "v",
             Hexagon(HexagonInlineAsmRegClass::reg) => "r",
             Hexagon(HexagonInlineAsmRegClass::reg_pair) => "r",
             Hexagon(HexagonInlineAsmRegClass::preg) => unreachable!("clobber-only"),
