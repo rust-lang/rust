@@ -32,7 +32,8 @@ use rustc_middle::mir::interpret::{GlobalAlloc, Scalar, alloc_range};
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::{
     AggregateKind, BasicBlock, BasicBlockData, BinOp, Body, CastKind, Const, ConstOperand,
-    ConstValue, Local, NonDivergingIntrinsic, Operand, Place, Rvalue, Statement, StatementKind,
+    ConstValue, Local, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, Statement,
+    StatementKind,
 };
 use rustc_middle::ty::layout::MaybeResult;
 use rustc_middle::ty::{
@@ -572,7 +573,7 @@ impl<'a> TritonCodegen<'a> {
                     let fields = index_vec
                         .iter()
                         .map(|op| match op {
-                            Operand::Copy(p) | Operand::Move(p) => self.codegen_copy(p, state),
+                            Operand::Copy(p) | Operand::Move(p) => self.codegen_copy(&p, state),
                             _ => todo!("Tuple aggregate with non-copy/move operand: {:?}", op),
                         })
                         .collect::<Result<Vec<_>, _>>()?;
@@ -1229,8 +1230,8 @@ impl<'a> TritonCodegen<'a> {
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
         println!(
-            "[DEBUG] TritonCodegen::codegen_copy: Local: {:?}, ssa_values: {:?}",
-            place.local, state.ssa_values
+            "[DEBUG] TritonCodegen::codegen_copy: Local: {:?}, projection: {:?}, ssa_values: {:?}",
+            place.local, place.projection, state.ssa_values
         );
 
         debug_assert!(
@@ -1238,6 +1239,16 @@ impl<'a> TritonCodegen<'a> {
             "BUG: Option local {:?} used as a direct MLIR value; use codegen_option_operand instead",
             place.local
         );
+
+        // Handle a single Field projection on a tuple local stored in tuple_fields.
+        if let [ProjectionElem::Field(field_idx, _)] = place.projection.as_slice() {
+            if let Some(fields) = state.tuple_fields.get(&place.local) {
+                let idx = field_idx.index();
+                return Ok(*fields.get(idx).unwrap_or_else(|| {
+                    panic!("Tuple field {} not found for local {:?}", idx, place.local)
+                }));
+            }
+        }
 
         Ok(state.ssa_values
             .get(&place.local)

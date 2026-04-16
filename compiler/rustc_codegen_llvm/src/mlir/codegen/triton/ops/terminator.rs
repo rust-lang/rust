@@ -218,6 +218,39 @@ impl<'a> TritonCodegen<'a> {
             "triton::Triton::cat" => {
                 TritonCodegen::codegen_cat_call as LocalCallHandler<'a, 'tcx>
             }
+            "triton::Triton::broadcast" => {
+                TritonCodegen::codegen_broadcast_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::broadcast_to" => {
+                TritonCodegen::codegen_broadcast_to_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::expand_dims" => {
+                TritonCodegen::codegen_expand_dims_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::permute" => {
+                TritonCodegen::codegen_permute_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::reshape" => {
+                TritonCodegen::codegen_reshape_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::trans" => {
+                TritonCodegen::codegen_trans_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::ravel" => {
+                TritonCodegen::codegen_ravel_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::view" => {
+                TritonCodegen::codegen_view_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::join" => {
+                TritonCodegen::codegen_join_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::interleave" => {
+                TritonCodegen::codegen_interleave_call as LocalCallHandler<'a, 'tcx>
+            }
+            "triton::Triton::split" => {
+                TritonCodegen::codegen_split_call as LocalCallHandler<'a, 'tcx>
+            }
             _ => TritonCodegen::codegen_call as LocalCallHandler<'a, 'tcx>,
         };
 
