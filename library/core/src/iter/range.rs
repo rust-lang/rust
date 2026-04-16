@@ -1534,7 +1534,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
 
         let (n, o) = Step::forward_overflowing(self.start.clone(), 1);
 
-        self.exhausted |= o;
+        self.exhausted = o;
         Some(mem::replace(&mut self.start, n))
     }
 
@@ -1570,7 +1570,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         let (plus_1, o1) = Step::forward_overflowing(plus_n.clone(), 1);
 
         self.start = plus_1;
-        self.exhausted |= on | o1;
+        self.exhausted = on | o1;
 
         if !on && plus_n <= self.end { Some(plus_n) } else { None }
     }
@@ -1624,7 +1624,7 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
 
         let (n, o) = Step::backward_overflowing(self.end.clone(), 1);
 
-        self.exhausted |= o;
+        self.exhausted = o;
         Some(mem::replace(&mut self.end, n))
     }
 
@@ -1638,7 +1638,7 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         let (minus_1, o1) = Step::backward_overflowing(minus_n.clone(), 1);
 
         self.end = minus_1;
-        self.exhausted |= on | o1;
+        self.exhausted = on | o1;
 
         if !on && minus_n >= self.start { Some(minus_n) } else { None }
     }
