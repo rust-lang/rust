@@ -335,12 +335,18 @@ impl str {
 
     /// Returns the lowercase equivalent of this string slice, as a new [`String`].
     ///
-    /// 'Lowercase' is defined according to the terms of the Unicode Derived Core Property
-    /// `Lowercase`.
+    /// 'Lowercase' is defined according to the terms of
+    /// [Chapter 3 (Conformance)](https://www.unicode.org/versions/latest/core-spec/chapter-3/#G34432)
+    /// of the Unicode standard.
     ///
     /// Since some characters can expand into multiple characters when changing
     /// the case, this function returns a [`String`] instead of modifying the
     /// parameter in-place.
+    ///
+    /// Unlike [`char::to_lowercase()`], this method fully handles the context-dependent
+    /// casing of Greek sigma. However, like that method, it does not handle locale-specific
+    /// casing, like Turkish and Azeri I/ı/İ/i. See that method's documentation
+    /// for more information.
     ///
     /// # Examples
     ///
@@ -426,12 +432,17 @@ impl str {
 
     /// Returns the uppercase equivalent of this string slice, as a new [`String`].
     ///
-    /// 'Uppercase' is defined according to the terms of the Unicode Derived Core Property
-    /// `Uppercase`.
+    /// 'Uppercase' is defined according to the terms of
+    /// [Chapter 3 (Conformance)](https://www.unicode.org/versions/latest/core-spec/chapter-3/#G34431)
+    /// of the Unicode standard.
     ///
     /// Since some characters can expand into multiple characters when changing
     /// the case, this function returns a [`String`] instead of modifying the
     /// parameter in-place.
+    ///
+    /// Like [`char::to_uppercase()`] this method does not handle language-specific
+    /// casing, like Turkish and Azeri I/ı/İ/i. See that method's documentation
+    /// for more information.
     ///
     /// # Examples
     ///
