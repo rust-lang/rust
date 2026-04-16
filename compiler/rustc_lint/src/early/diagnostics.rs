@@ -176,15 +176,11 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::ExpectedNoArgs => lints::ExpectedNoArgs.into_diag(dcx, level),
 
             &AttributeLintKind::ExpectedNameValue => lints::ExpectedNameValue.into_diag(dcx, level),
-            &AttributeLintKind::MalformedOnUnimplementedAttr { span } => {
-                lints::MalformedOnUnimplementedAttrLint { span }.into_diag(dcx, level)
+            &AttributeLintKind::MalFormedDiagnosticAttribute { attribute, options, span } => {
+                lints::MalFormedDiagnosticAttributeLint { attribute, options, span }
+                    .into_diag(dcx, level)
             }
-            &AttributeLintKind::MalformedOnUnknownAttr { span } => {
-                lints::MalformedOnUnknownAttrLint { span }.into_diag(dcx, level)
-            }
-            &AttributeLintKind::MalformedOnConstAttr { span } => {
-                lints::MalformedOnConstAttrLint { span }.into_diag(dcx, level)
-            }
+
             AttributeLintKind::MalformedDiagnosticFormat { warning } => match warning {
                 FormatWarning::PositionalArgument { .. } => {
                     lints::DisallowedPositionalArgument.into_diag(dcx, level)
@@ -203,26 +199,12 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                 lints::IgnoredDiagnosticOption { option_name, first_span, later_span }
                     .into_diag(dcx, level)
             }
-            &AttributeLintKind::MissingOptionsForOnUnimplemented => {
-                lints::MissingOptionsForOnUnimplementedAttr.into_diag(dcx, level)
+            &AttributeLintKind::MissingOptionsForDiagnosticAttribute { attribute, options } => {
+                lints::MissingOptionsForDiagnosticAttribute { attribute, options }
+                    .into_diag(dcx, level)
             }
-            &AttributeLintKind::MissingOptionsForOnConst => {
-                lints::MissingOptionsForOnConstAttr.into_diag(dcx, level)
-            }
-            &AttributeLintKind::MalformedOnMoveAttr { span } => {
-                lints::MalformedOnMoveAttrLint { span }.into_diag(dcx, level)
-            }
-            &AttributeLintKind::OnMoveMalformedFormatLiterals { name } => {
-                lints::OnMoveMalformedFormatLiterals { name }.into_diag(dcx, level)
-            }
-            &AttributeLintKind::OnMoveMalformedAttrExpectedLiteralOrDelimiter => {
-                lints::OnMoveMalformedAttrExpectedLiteralOrDelimiter.into_diag(dcx, level)
-            }
-            &AttributeLintKind::MissingOptionsForOnMove => {
-                lints::MissingOptionsForOnMoveAttr.into_diag(dcx, level)
-            }
-            &AttributeLintKind::MissingOptionsForOnUnknown => {
-                lints::MissingOptionsForOnUnknownAttr.into_diag(dcx, level)
+            &AttributeLintKind::NonMetaItemDiagnosticAttribute => {
+                lints::NonMetaItemDiagnosticAttribute.into_diag(dcx, level)
             }
         }
     }
