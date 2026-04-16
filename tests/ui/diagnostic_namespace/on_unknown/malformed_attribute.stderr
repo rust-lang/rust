@@ -6,7 +6,7 @@ LL | use std::str::NotExisting;
    |
    = note: unresolved import `std::str::NotExisting`
 
-warning: missing options for `on_unknown` attribute
+warning: missing options for `diagnostic::on_unknown` attribute
   --> $DIR/malformed_attribute.rs:2:1
    |
 LL | #[diagnostic::on_unknown]
@@ -15,7 +15,7 @@ LL | #[diagnostic::on_unknown]
    = help: at least one of the `message`, `note` and `label` options are expected
    = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
-warning: malformed `on_unknown` attribute
+warning: malformed `diagnostic::on_unknown` attribute
   --> $DIR/malformed_attribute.rs:6:26
    |
 LL | #[diagnostic::on_unknown(foo = "bar", message = "foo")]

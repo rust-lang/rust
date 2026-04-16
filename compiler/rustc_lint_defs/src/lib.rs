@@ -733,16 +733,9 @@ pub enum AttributeLintKind {
     MalformedDoc,
     ExpectedNoArgs,
     ExpectedNameValue,
-    MalformedOnUnimplementedAttr {
-        span: Span,
-    },
-    MalformedOnUnknownAttr {
-        span: Span,
-    },
-    MalformedOnConstAttr {
-        span: Span,
-    },
-    MalformedOnMoveAttr {
+    MalFormedDiagnosticAttribute {
+        attribute: &'static str,
+        options: &'static str,
         span: Span,
     },
     MalformedDiagnosticFormat {
@@ -758,14 +751,11 @@ pub enum AttributeLintKind {
         first_span: Span,
         later_span: Span,
     },
-    MissingOptionsForOnUnimplemented,
-    MissingOptionsForOnConst,
-    MissingOptionsForOnUnknown,
-    MissingOptionsForOnMove,
-    OnMoveMalformedFormatLiterals {
-        name: Symbol,
+    MissingOptionsForDiagnosticAttribute {
+        attribute: &'static str,
+        options: &'static str,
     },
-    OnMoveMalformedAttrExpectedLiteralOrDelimiter,
+    NonMetaItemDiagnosticAttribute,
 }
 
 #[derive(Debug, Clone, HashStable_Generic)]
