@@ -1908,10 +1908,8 @@ mod prim_ref {}
 /// CFI uses the name of the type for its compatibility check.
 ///
 /// When not using the `-Zsanitizer-cfi-normalize-integers` flag, the CFI sanitizer further
-/// restricts the rules by considering `usize` incompatible with the `uN` integer type of the same
-/// size, and similarly for `isize`. In addition, different C integer types are also given
-/// incompatible CFI types even if they boil down to the same size/signedness. Without this flag,
-/// there are some C integers that do not correspond to *any* Rust integer type.
+/// restricts the rules by considering `usize`/`isize` incompatible with the `uN`/`iN` integer type
+/// of the same size.
 ///
 /// As sanitizers are unstable, these rules may change in the future. This section only documents
 /// cases where CFI disagrees with the usual Rust ABI-compatibility rules, and is not meant to be a
