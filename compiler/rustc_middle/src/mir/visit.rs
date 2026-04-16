@@ -726,6 +726,8 @@ macro_rules! make_mir_visitor {
                             ),
                             BorrowKind::Mut { .. } =>
                                 PlaceContext::MutatingUse(MutatingUseContext::Borrow),
+                            BorrowKind::Pinned(Mutability::Not) => PlaceContext::NonMutatingUse(NonMutatingUseContext::PinnedBorrow),
+                            BorrowKind::Pinned(Mutability::Mut) => PlaceContext::MutatingUse(MutatingUseContext::PinnedBorrow),
                         };
                         self.visit_place(path, ctx, location);
                     }
@@ -1334,6 +1336,8 @@ pub enum NonMutatingUseContext {
     FakeBorrow,
     /// `&raw const`.
     RawBorrow,
+    /// `&pin const`.
+    PinnedBorrow,
     /// PlaceMention statement.
     ///
     /// This statement is executed as a check that the `Place` is live without reading from it,
@@ -1366,6 +1370,8 @@ pub enum MutatingUseContext {
     Borrow,
     /// `&raw mut`.
     RawBorrow,
+    /// `&pin mut`.
+    PinnedBorrow,
     /// Used as base for another place, e.g., `x` in `x.y`. Could potentially mutate the place.
     /// For example, the projection `x.y` is marked as a mutation in these cases:
     /// ```ignore (illustrative)
@@ -1486,7 +1492,7 @@ impl PlaceContext {
             ) => ty::Invariant,
             PlaceContext::NonMutatingUse(
                 Inspect | Copy | Move | PlaceMention | SharedBorrow | FakeBorrow | RawBorrow
-                | Projection,
+                | Projection | PinnedBorrow,
             ) => ty::Covariant,
             PlaceContext::NonUse(AscribeUserTy(variance)) => variance,
         }

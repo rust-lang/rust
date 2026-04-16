@@ -399,7 +399,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 return Err(Unpromotable);
             }
 
-            BorrowKind::Shared => {
+            BorrowKind::Shared | BorrowKind::Pinned(Mutability::Not) => {
                 let has_mut_interior = self.qualif_local::<qualifs::HasMutInterior>(place.local);
                 if has_mut_interior {
                     return Err(Unpromotable);
@@ -408,7 +408,8 @@ impl<'tcx> Validator<'_, 'tcx> {
 
             // FIXME: consider changing this to only promote &mut [] for default borrows,
             // also forbidding two phase borrows
-            BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow } => {
+            BorrowKind::Mut { kind: MutBorrowKind::Default | MutBorrowKind::TwoPhaseBorrow }
+            | BorrowKind::Pinned(Mutability::Mut) => {
                 let ty = place.ty(self.body, self.tcx).ty;
 
                 // In theory, any zero-sized value could be borrowed

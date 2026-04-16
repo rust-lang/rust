@@ -56,11 +56,13 @@ pub(crate) fn categorize(context: PlaceContext) -> Option<DefUse> {
         PlaceContext::NonUse(NonUseContext::AscribeUserTy(_)) |
 
         PlaceContext::MutatingUse(MutatingUseContext::RawBorrow) |
+        PlaceContext::MutatingUse(MutatingUseContext::PinnedBorrow) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) |
-        PlaceContext::MutatingUse(MutatingUseContext::Retag) =>
+        PlaceContext::MutatingUse(MutatingUseContext::Retag) |
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::PinnedBorrow) =>
             Some(DefUse::Use),
 
         ///////////////////////////////////////////////////////////////////////////

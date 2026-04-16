@@ -946,8 +946,11 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             | NonMutatingUse(NonMutatingUseContext::SharedBorrow)
             | NonMutatingUse(NonMutatingUseContext::FakeBorrow)
             | NonMutatingUse(NonMutatingUseContext::RawBorrow)
+            | NonMutatingUse(NonMutatingUseContext::PinnedBorrow)
             | MutatingUse(MutatingUseContext::Borrow)
-            | MutatingUse(MutatingUseContext::RawBorrow) => {
+            | MutatingUse(MutatingUseContext::RawBorrow)
+            | MutatingUse(MutatingUseContext::PinnedBorrow)
+            => {
                 trace!("local {:?} can't be propagated because it's used: {:?}", local, context);
                 self.can_const_prop[local] = ConstPropMode::NoPropagation;
             }

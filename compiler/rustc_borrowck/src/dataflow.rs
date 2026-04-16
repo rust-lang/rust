@@ -14,9 +14,7 @@ use rustc_mir_dataflow::impls::{
 use rustc_mir_dataflow::{Analysis, GenKill, JoinSemiLattice};
 use tracing::debug;
 
-use crate::{
-    BorrowSet, PinSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, places_conflict,
-};
+use crate::{BorrowSet, PlaceConflictBias, PlaceExt, RegionInferenceContext, places_conflict};
 
 // This analysis is different to most others. Its results aren't computed with
 // `iterate_to_fixpoint`, but are instead composed from the results of three sub-analyses that are
@@ -208,7 +206,6 @@ pub(crate) struct Pins<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     body: &'a Body<'tcx>,
     borrow_set: &'a BorrowSet<'tcx>,
-    pin_set: &'a PinSet,
 }
 
 struct OutOfScopePrecomputer<'a, 'tcx> {
@@ -655,9 +652,21 @@ impl<'a, 'tcx> Pins<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         body: &'a Body<'tcx>,
         borrow_set: &'a BorrowSet<'tcx>,
-        pin_set: &'a PinSet,
     ) -> Self {
-        Pins { tcx, body, borrow_set, pin_set }
+        Pins { tcx, body, borrow_set }
+    }
+
+    fn gen_pins_on_place(&self, state: &mut <Self as Analysis<'tcx>>::Domain, place: Place<'tcx>) {
+        self.borrow_set
+            .local_map
+            .get(&place.local)
+            .into_iter()
+            .flat_map(|bs| bs.iter())
+            .copied()
+            .filter(|&index| self.borrow_set[index].borrowed_place == place)
+            .for_each(|index| {
+                state.gen_(index);
+            });
     }
 
     /// Kill any pins whose original pinned place conflicts with `place`.
@@ -742,29 +751,16 @@ impl<'tcx> rustc_mir_dataflow::Analysis<'tcx> for Pins<'_, 'tcx> {
         &self,
         state: &mut Self::Domain,
         stmt: &mir::Statement<'tcx>,
-        location: Location,
+        _location: Location,
     ) {
         match &stmt.kind {
             mir::StatementKind::Assign(box (lhs, rhs)) => {
                 self.kill_pins_on_place(state, *lhs);
 
-                // Check if this is a Pin aggregate creation
-                if let mir::Rvalue::Aggregate(box agg_kind, _) = rhs
-                    && let mir::AggregateKind::Adt(adt_did, _, args, _, _) = agg_kind
-                    && self.tcx.adt_def(*adt_did).is_pin()
-                    && args.type_at(0).is_ref()
-                {
+                // Check if this is a pinned borrow
+                if let mir::Rvalue::Ref(_, mir::BorrowKind::Pinned(_), place) = rhs {
                     // Generate the pin
-                    for index in self
-                        .pin_set
-                        .pin_location_map
-                        .get(&location)
-                        .into_iter()
-                        .flat_map(|bs| bs.iter())
-                        .copied()
-                    {
-                        state.gen_(index);
-                    }
+                    self.gen_pins_on_place(state, *place);
                 }
             }
 

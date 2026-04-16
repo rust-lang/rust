@@ -192,10 +192,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             }
             Adjust::Borrow(AutoBorrow::Pin(mutbl)) => {
                 // expr = &pin (mut|const|) arget
-                let borrow_kind = match mutbl {
-                    hir::Mutability::Mut => BorrowKind::Mut { kind: mir::MutBorrowKind::Default },
-                    hir::Mutability::Not => BorrowKind::Shared,
-                };
+                let borrow_kind = BorrowKind::Pinned(mutbl);
                 let new_pin_target =
                     Ty::new_ref(self.tcx, self.tcx.lifetimes.re_erased, expr.ty, mutbl);
                 let arg = self.thir.exprs.push(expr);
@@ -446,7 +443,9 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
             // Make `&pin mut $expr` and `&pin const $expr` into
             // `Pin { __pointer: &mut { $expr } }` and `Pin { __pointer: &$expr }`.
-            hir::ExprKind::AddrOf(hir::BorrowKind::Pin, mutbl, arg_expr) => match expr_ty.kind() {
+            hir::ExprKind::AddrOf(hir::BorrowKind::Pin, mutability, arg_expr) => match expr_ty
+                .kind()
+            {
                 &ty::Adt(adt_def, args) if tcx.is_lang_item(adt_def.did(), hir::LangItem::Pin) => {
                     let ty = args.type_at(0);
                     let arg = self.mirror_expr(arg_expr);
@@ -454,7 +453,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         temp_scope_id: expr.hir_id.local_id,
                         ty,
                         span: expr.span,
-                        kind: ExprKind::Borrow { borrow_kind: mutbl.to_borrow_kind(), arg },
+                        kind: ExprKind::Borrow { borrow_kind: BorrowKind::Pinned(mutability), arg },
                     });
                     ExprKind::Adt(Box::new(AdtExpr {
                         adt_def,

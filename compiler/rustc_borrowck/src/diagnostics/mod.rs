@@ -866,13 +866,15 @@ impl UseSpans<'_> {
                 err.subdiagnostic(match kind {
                     Some(kd) => match kd {
                         rustc_middle::mir::BorrowKind::Shared
-                        | rustc_middle::mir::BorrowKind::Fake(_) => {
-                            CaptureVarKind::Immut { kind_span: capture_kind_span }
-                        }
+                        | rustc_middle::mir::BorrowKind::Fake(_)
+                        | rustc_middle::mir::BorrowKind::Pinned(
+                            rustc_middle::mir::Mutability::Not,
+                        ) => CaptureVarKind::Immut { kind_span: capture_kind_span },
 
-                        rustc_middle::mir::BorrowKind::Mut { .. } => {
-                            CaptureVarKind::Mut { kind_span: capture_kind_span }
-                        }
+                        rustc_middle::mir::BorrowKind::Mut { .. }
+                        | rustc_middle::mir::BorrowKind::Pinned(
+                            rustc_middle::mir::Mutability::Mut,
+                        ) => CaptureVarKind::Mut { kind_span: capture_kind_span },
                     },
                     None => CaptureVarKind::Move { kind_span: capture_kind_span },
                 });

@@ -178,6 +178,9 @@ pub enum BorrowKind {
 
     /// Data is mutable and not aliasable.
     Mut { kind: MutBorrowKind },
+
+    /// Data is pinned and cannot be moved or mutably borrowed until dropped or reassigned.
+    Pinned(Mutability),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
