@@ -123,13 +123,14 @@
 //! side-effects, and writes must become visible to other threads using the usual synchronization
 //! primitives.
 //!
-//! For any allocation with `base` address, `size`, and a set of `addresses`,
-//! the following are guaranteed (using infinite-precision arithmetic):
+//! For any allocation with `base` address, `size`, and a set of
+//! `addresses`, the following are guaranteed:
 //! - For all addresses `a` in `addresses`, `a` is in the range `base .. (base +
 //!   size)` (note that this requires `a < base + size`, not `a <= base + size`)
 //! - `base` is not equal to [`null()`] (i.e., the address with the numerical
 //!   value 0)
-//! - `base + size <= usize::MAX`
+//! - `base + size <= usize::MAX`; `base + size` will not wrap around the
+//!   address space (in other words, will not overflow)
 //! - `size <= isize::MAX`
 //!
 //! As a consequence of these guarantees, given any address `a` within the set
@@ -137,8 +138,7 @@
 //! - It is guaranteed that `a - base` does not overflow `isize`
 //! - It is guaranteed that `a - base` is non-negative
 //! - It is guaranteed that, given `o = a - base` (i.e., the offset of `a` within
-//!   the allocation), `base + o` will not wrap around the address space (in
-//!   other words, will not overflow `usize`)
+//!   the allocation), `base + o` will not wrap around the address space
 //!
 //! [`null()`]: null
 //!
