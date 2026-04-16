@@ -9,7 +9,8 @@ trait Foo {
 
 trait Baz {}
 
-impl<'a, T> Foo for &'a T
+impl<'a, T> Foo for &'a T //~ ERROR not all trait items implemented, missing: `Item`
+//~| ERROR type annotations needed: cannot satisfy `&'a T: Foo`
 where
     Self::Item: 'a,
 {

@@ -1,0 +1,11 @@
+error[E0283]: type annotations needed: cannot satisfy `<Vec<T> as IntoIterator>::IntoIter: Iterator`
+  --> $DIR/normalizes-to-is-not-productive-2.rs:21:41
+   |
+LL |     <Vec<T> as IntoIterator>::IntoIter: Iterator,
+   |                                         ^^^^^^^^
+   |
+   = note: cannot satisfy `<Vec<T> as IntoIterator>::IntoIter: Iterator`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.
