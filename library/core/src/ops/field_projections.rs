@@ -165,6 +165,9 @@ where
     #[lang = "place_borrow_safety"]
     const SAFETY: bool;
 
+    // FIXME: this is missing some associated items related to controlling the
+    // borrow checker. The details need to still be worked out in a-mir-formality.
+
     /// Borrow the subplace pointed to by `this` with `X`.
     ///
     /// # Safety
