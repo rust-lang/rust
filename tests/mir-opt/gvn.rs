@@ -6,7 +6,7 @@
 #![feature(rustc_attrs)]
 #![feature(custom_mir)]
 #![feature(core_intrinsics)]
-#![feature(freeze)]
+#![feature(freeze, pattern_type_range_trait, const_trait_impl, pattern_types, pattern_type_macro)]
 #![allow(ambiguous_wide_pointer_comparisons)]
 #![allow(unconditional_panic)]
 #![allow(unnecessary_transmutes)]
@@ -947,9 +947,12 @@ fn cast_pointer_eq(p1: *mut u8, p2: *mut u32, p3: *mut u32, p4: *mut [u32]) {
     // CHECK: _0 = const ();
 }
 
+// CHECK: fn aggregate_struct_then_transmute
 unsafe fn aggregate_struct_then_transmute(id: u16, thin: *const u8) {
-    // CHECK: opaque::<u16>(copy _1)
-    let a = MyId(id);
+    // CHECK: [[PAT:_[0-9]+]] = copy _1 as (u16) is 0..=55554 (Transmute);
+    // CHECK: [[TEMP:_[0-9]+]] = copy [[PAT]] as u16 (Transmute);
+    // CHECK: opaque::<u16>(move [[TEMP]])
+    let a = MyId(std::intrinsics::transmute(id));
     opaque(std::intrinsics::transmute::<_, u16>(a));
 
     // CHECK: opaque::<u16>(copy _1)
@@ -967,9 +970,9 @@ unsafe fn aggregate_struct_then_transmute(id: u16, thin: *const u8) {
     opaque(std::intrinsics::transmute::<_, u32>(d));
 
     // Still need the transmute, but the aggregate can be skipped
-    // CHECK: [[TEMP:_[0-9]+]] = copy _1 as i16 (Transmute);
+    // CHECK: [[TEMP:_[0-9]+]] = copy [[PAT]] as i16 (Transmute);
     // CHECK: opaque::<i16>(move [[TEMP]])
-    let e = MyId(id);
+    let e = MyId(std::intrinsics::transmute(id));
     opaque(std::intrinsics::transmute::<_, i16>(e));
 
     // CHECK: [[PAIR:_[0-9]+]] = Pair(copy _1, copy _1);
@@ -1193,8 +1196,7 @@ fn identity<T>(x: T) -> T {
 fn takes_const_ptr<T>(_: *const T) {}
 
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_end(55555)]
-struct MyId(u16);
+struct MyId(std::pat::pattern_type!(u16 is 0..55555));
 
 #[repr(transparent)]
 struct TypedId<T>(u16, PhantomData<T>);
