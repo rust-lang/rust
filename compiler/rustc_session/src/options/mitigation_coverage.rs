@@ -133,7 +133,6 @@ macro_rules! intersperse {
 
 macro_rules! denied_partial_mitigations {
     ([$self:ident] enum $kind:ident {$(($name:ident, $text:expr, $since:ident, $code:expr)),*}) => {
-        #[allow(non_camel_case_types)]
         #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Encodable, BlobDecodable)]
         pub enum DeniedPartialMitigationKind {
             $($name),*
@@ -204,8 +203,8 @@ denied_partial_mitigations! {
     enum DeniedPartialMitigationKind {
         // The mitigation name should match the option name in rustc_session::options,
         // to allow for resetting the mitigation
-        (stack_protector, "stack-protector", EditionFuture, self.stack_protector()),
-        (control_flow_guard, "control-flow-guard", EditionFuture, self.opts.cg.control_flow_guard == CFGuard::Checks)
+        (StackProtector, "stack-protector", EditionFuture, self.stack_protector()),
+        (ControlFlowGuard, "control-flow-guard", EditionFuture, self.opts.cg.control_flow_guard == CFGuard::Checks)
     }
 }
 
