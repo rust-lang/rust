@@ -198,22 +198,6 @@ pub enum Option<T> {
 
 use Option::*;
 
-/// Raw memory transmute — maps to the compiler `transmute` intrinsic.
-#[rustc_intrinsic]
-pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst {
-    loop {}
-}
-
-/// Create a `&[T]` from a raw pointer and a length.
-/// Works in `no_core` where the array→slice coercion is unavailable.
-///
-/// # Safety
-/// `data` must point to at least `len` consecutive initialized `T` values.
-#[inline(always)]
-pub unsafe fn slice_from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
-    // A `&[T]` is a fat pointer `(*const T, usize)` on all current Rust targets.
-    unsafe { transmute::<(*const T, usize), &[T]>((data, len)) }
-}
 
 pub const trait Into<T>: Sized {
     /// Converts this type into the (usually inferred) input type.
@@ -2469,11 +2453,6 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     fn dummy_bool<TT: Triton>() -> TT::BoolTensor {
         loop {}
     }
-    #[allow(clippy::empty_loop)]
-    fn dummy_value<DD: Dtype>() -> DD {
-        loop {}
-    }
-
     // START HERE
     let _pid_x = T::program_id(Axis::X);
     let _pid_y = T::program_id(Axis::Y);
@@ -2484,9 +2463,6 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     let _ = r - 1;
     let _ = r * 2;
     let z = T::zeros::<D>(&[BLOCK_SIZE]);
-    // if false {
-    //     let _ = T::full::<D>(&[BLOCK_SIZE], dummy_value::<D>());
-    // }
     let zl = T::zeros_like(z);
     let casted = T::cast::<D, D>(z, Some(FpDowncastRounding::Rtne), false);
     let _casted_rtz = T::cast::<D, D>(casted, Some(FpDowncastRounding::Rtz), true);
@@ -2546,13 +2522,8 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
         None,
         false,
     );
-    let block_ptr = T::make_block_ptr(x_ptr,
-        &[BLOCK_SIZE],
-        &[1i32],
-        &[0i32],
-        &[BLOCK_SIZE],
-        &[0i32],
-    );
+    let block_ptr =
+        T::make_block_ptr(x_ptr, &[BLOCK_SIZE], &[1i32], &[0i32], &[BLOCK_SIZE], &[0i32]);
     let block_ptr2 = T::advance(block_ptr, &[1i32]);
     let tdesc = T::make_tensor_descriptor(
         y_ptr,
@@ -2682,7 +2653,8 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     T::static_assert(true, "BLOCK_SIZE must be positive");
     T::static_print("kitchen_sink");
     let out_ptrs = T::zeros::<T::Pointer<D>>(&[BLOCK_SIZE]);
-    let _ = T::make_block_ptr(output_ptr,
+    let _ = T::make_block_ptr(
+        output_ptr,
         &[BLOCK_SIZE],
         &[1i32],
         &[0i32],
