@@ -74,8 +74,16 @@ impl TypeMapper {
             TyKind::Pat(_ty, _pat) => todo!("Pat: {:?} {:?}", _ty, _pat),
             TyKind::Slice(_ty) => todo!("Slice: {:?}", _ty),
             TyKind::RawPtr(ty, _mutability) => self.create_raw_ptr_type(context, tcx, ty),
-            TyKind::Ref(_region, _ty, _mutability) => {
-                todo!("Ref: {:?} {:?} {:?}", _region, _ty, _mutability)
+            TyKind::Ref(_region, inner_ty, _mutability) => {
+                // A reference to a slice (&[T]) is a fat pointer (ptr + len).
+                // We represent it as a pair of i64 values (opaque); the function body
+                // of Triton intrinsics that take &[T] is never actually executed on GPU —
+                // calls are intercepted at call-site by the codegen dispatch table.
+                // For type-mapping purposes, return i64 as a stand-in.
+                match inner_ty.kind() {
+                    TyKind::Slice(_) => IntegerType::new(context, 64).into(),
+                    _ => self.map_type(context, tcx, inner_ty),
+                }
             }
             TyKind::FnDef(_def, _args) => todo!("FnDef: {:?} {:?}", _def, _args),
             TyKind::FnPtr(_binder, _fn_header) => todo!("FnPtr: {:?} {:?}", _binder, _fn_header),

@@ -14,11 +14,15 @@
  * limitations under the License.
  */
 
+use melior::ir::attribute::FloatAttribute;
 use melior::ir::operation::OperationLike;
-use melior::ir::{BlockLike, BlockRef, Location, Operation, TypeLike, Value, ValueLike};
+use melior::ir::r#type::RankedTensorType;
+use melior::ir::{BlockLike, BlockRef, Location, Operation, ShapedTypeLike, TypeLike, Value, ValueLike};
 use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, UnwindAction};
-use rustc_middle::ty::{EarlyBinder, Instance, TyCtxt, TypingEnv};
-use rustc_mlir::triton::tensor::{CacheModifier, EvictionPolicy, add_ptr, make_range, load, store};
+use rustc_middle::ty::{EarlyBinder, Instance, TyCtxt, TyKind, TypingEnv};
+use rustc_mlir::shared::arith::{Int, create_int_constant};
+use rustc_mlir::shared::builtin::tensor_type;
+use rustc_mlir::triton::tensor::{CacheModifier, EvictionPolicy, add_ptr, make_range, load, splat, store};
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 
@@ -289,28 +293,151 @@ impl<'a> TritonCodegen<'a> {
         // Ok(Some(result.into()))
     }
 
+    /// `triton::Triton::transmute`-as-slice: `transmute<(*const T, usize), &[T]>((ptr, len))`
+    ///
+    /// This is used in `no_core` to build a `&[i32]` shape descriptor from a constant array.
+    /// We extract the shape from `state.const_arrays` / `state.ptr_to_const_array` and store it
+    /// in `state.slice_shape`.  No MLIR operation is emitted.
+    pub fn codegen_transmute_slice<'tcx>(
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        _instance: &Instance<'tcx>,
+        _mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        _location: Location<'a>,
+        _mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        eprintln!("[DEBUG] codegen_transmute_slice: {func_name}, args: {args:?}");
+
+        // The single argument is the fat-pointer tuple `(*const T, usize)` whose first field
+        // is a const-array pointer.  The Tuple aggregate handler already stored the shape in
+        // `slice_shape` keyed by the tuple local.  Propagate it to the destination.
+        if let Some(Spanned { node: Operand::Move(src_place) | Operand::Copy(src_place), .. }) =
+            args.first()
+        {
+            if let Some(shape) = state.slice_shape.get(&src_place.local).cloned() {
+                state.slice_shape.insert(destination.local, shape.clone());
+                eprintln!("[DEBUG] codegen_transmute_slice: shape={shape:?} → {:?}", destination.local);
+                return Ok(None);
+            }
+        }
+
+        eprintln!("[DEBUG] codegen_transmute_slice: could not extract shape; args={args:?}");
+        Ok(None)
+    }
+
+    /// `triton::Triton::zeros` — creates a tensor filled with zeros.
+    ///
+    /// The shape is recovered from `state.slice_shape` (populated by `codegen_transmute_slice`).
+    /// The element type comes from the MIR return-place type.
+    pub fn codegen_zeros<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // Get shape from the slice argument.
+        let shape: Vec<i64> = if let Some(Spanned {
+            node: Operand::Move(slice_place) | Operand::Copy(slice_place),
+            ..
+        }) = args.first()
+        {
+            state
+                .slice_shape
+                .get(&slice_place.local)
+                .cloned()
+                .unwrap_or_else(|| {
+                    eprintln!("[WARN] codegen_zeros: slice_shape not found for {:?}; using [1]", slice_place.local);
+                    vec![1]
+                })
+        } else {
+            vec![1]
+        };
+
+        // Get the element Rust type from the destination.
+        let dest_ty = destination.ty(mir, tcx).ty;
+        let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx,
+            TypingEnv::fully_monomorphized(),
+            EarlyBinder::bind(dest_ty),
+        );
+
+        // Extract the element MLIR type:
+        // - For `Tensor<D>` (ADT), map through the type mapper
+        // - For direct scalar (unlikely), use directly
+        let elem_mlir_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
+
+        // Unwrap: if we got a tensor type back, extract its element type.
+        let elem_mlir_ty = if elem_mlir_ty.is_tensor() {
+            let tensor_ty: RankedTensorType<'a> = elem_mlir_ty
+                .try_into()
+                .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?;
+            tensor_ty.element()
+        } else {
+            elem_mlir_ty
+        };
+
+        // Create a scalar zero constant of the element type.
+        let zero_op: Operation<'a> = if elem_mlir_ty.is_integer() {
+            create_int_constant(self.module.context(), location, Int::I32(0))
+                .map_err(|e| MlirError::CreateOperation { err: e })?
+                .into()
+        } else {
+            // Float zero: emit `arith.constant 0.0 : <float_ty>`
+            let zero_attr = FloatAttribute::new(self.module.context(), elem_mlir_ty, 0.0);
+            melior::dialect::arith::constant(self.module.context(), zero_attr.into(), location)
+        };
+        let zero_val = zero_op.result(0).expect("zero constant result");
+        mlir_block.append_operation(zero_op);
+
+        // Splat the scalar zero to a tensor of the requested shape.
+        let tensor_ty = tensor_type(&shape, elem_mlir_ty).into();
+        let splat_op: Operation<'a> =
+            splat(self.module.context(), location, zero_val.into(), tensor_ty)
+                .map_err(|e| MlirError::CreateOperation { err: e })?
+                .into();
+        let result = splat_op.result(0).expect("splat result");
+        mlir_block.append_operation(splat_op);
+
+        Ok(Some(result.into()))
+    }
+
     pub fn codegen_zeros_like<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
         instance: &Instance<'tcx>,
         mir: &Body<'tcx>,
-        func: &Operand<'tcx>,
+        _func: &Operand<'tcx>,
         _func_name: &str,
         args: &[Spanned<Operand<'tcx>>],
-        destination: &Place<'tcx>,
-        target: &Option<BasicBlock>,
-        unwind: &UnwindAction,
-        call_source: &CallSource,
-        fn_span: &Span,
-        _location: Location<'a>,
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
-        println!(
-            "[DEBUG] TritonCodegen::codegen_zeros_like: func: {:?} args: {:?} destination: {:?} target: {:?} unwind: {:?} call_source: {:?} fn_span: {:?}",
-            func, args, destination, target, unwind, call_source, fn_span
-        );
-
         debug_assert!(
             args.len() == 1,
             "TritonCodegen::codegen_zeros_like: args length must be 1: {:?}",
@@ -318,18 +445,37 @@ impl<'a> TritonCodegen<'a> {
         );
 
         let arg0 = &args[0].node;
-        let _tensor = self.codegen_operand(
-            tcx, instance, arg0, arg0.ty(mir, tcx), _location, mlir_block, state,
+        let tensor = self.codegen_operand(
+            tcx, instance, arg0, arg0.ty(mir, tcx), location, mlir_block, state,
         )?;
 
-        todo!()
-        // let zeros_like_op: Operation<'a> =
-        //     zeros_like(self.module.context(), _location, tensor)
-        //         .map_err(|e| MlirError::CreateOperation { err: e })?
-        //         .into();
-        // let result = zeros_like_op.result(0).expect("ZerosLike operation result not found");
-        // eprintln!("[DEBUG] AXM TritonCodegen::codegen_zeros_like: {:?}", zeros_like_op.to_string());
-        // mlir_block.append_operation(zeros_like_op);
-        // Ok(Some(result.into()))
+        // Extract tensor type from the input tensor's MLIR type.
+        let tensor_ty: RankedTensorType<'a> = tensor
+            .r#type()
+            .try_into()
+            .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?;
+        let elem_ty = tensor_ty.element();
+
+        // Create a zero constant of the element type.
+        let zero_op: Operation<'a> = if elem_ty.is_integer() {
+            create_int_constant(self.module.context(), location, Int::I32(0))
+                .map_err(|e| MlirError::CreateOperation { err: e })?
+                .into()
+        } else {
+            let zero_attr = FloatAttribute::new(self.module.context(), elem_ty, 0.0);
+            melior::dialect::arith::constant(self.module.context(), zero_attr.into(), location)
+        };
+        let zero_val = zero_op.result(0).expect("zero constant result");
+        mlir_block.append_operation(zero_op);
+
+        // Splat to the same tensor type as the input.
+        let splat_op: Operation<'a> =
+            splat(self.module.context(), location, zero_val.into(), tensor.r#type())
+                .map_err(|e| MlirError::CreateOperation { err: e })?
+                .into();
+        let result = splat_op.result(0).expect("splat result");
+        mlir_block.append_operation(splat_op);
+
+        Ok(Some(result.into()))
     }
 }

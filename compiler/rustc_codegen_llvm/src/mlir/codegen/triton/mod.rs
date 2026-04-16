@@ -70,11 +70,28 @@ type OptionTable<'c, 'p> = HashMap<Local, Option<Value<'c, 'p>>>;
 /// The vec contains the individual MLIR values for each tuple field in order.
 type TupleTable<'c, 'p> = HashMap<Local, Vec<Value<'c, 'p>>>;
 
+/// Constant integer arrays (e.g. shape arrays like `[BLOCK_SIZE]`).
+/// Keyed by the MIR `Local` that holds the array; value is the elements as `i64`.
+type ConstArrays = HashMap<Local, Vec<i64>>;
+
+/// Maps a raw-pointer local (from `&raw const arr`) to the `ConstArrays` key it was derived from.
+type PtrToConstArray = HashMap<Local, Local>;
+
+/// Maps a MIR local that holds `&[i32]` (built from a const array via `slice_from_raw_parts` /
+/// `transmute`) to the shape extracted from the underlying `ConstArrays` entry.
+type SliceShape = HashMap<Local, Vec<i64>>;
+
 /// Codegen state threaded through all statement/terminator handlers.
 pub(crate) struct CodegenState<'c, 'p> {
     pub(crate) ssa_values: SsaValues<'c, 'p>,
     pub(crate) option_table: OptionTable<'c, 'p>,
     pub(crate) tuple_fields: TupleTable<'c, 'p>,
+    /// Constant integer arrays derived from aggregate literals.
+    pub(crate) const_arrays: ConstArrays,
+    /// `local → array_local`: a raw pointer derived from a const-array alloca.
+    pub(crate) ptr_to_const_array: PtrToConstArray,
+    /// `local → shape`: a fat-pointer slice `&[i32]` whose shape is statically known.
+    pub(crate) slice_shape: SliceShape,
 }
 
 impl<'c, 'p> CodegenState<'c, 'p> {
@@ -83,6 +100,9 @@ impl<'c, 'p> CodegenState<'c, 'p> {
             ssa_values: HashMap::new(),
             option_table: HashMap::new(),
             tuple_fields: HashMap::new(),
+            const_arrays: HashMap::new(),
+            ptr_to_const_array: HashMap::new(),
+            slice_shape: HashMap::new(),
         }
     }
 }
@@ -452,6 +472,28 @@ impl<'a> TritonCodegen<'a> {
             }
             Rvalue::Cast(cast_kind, operand, ty) => {
                 println!("Cast cast_kind: {:?}, operand: {:?}, ty: {:?}", cast_kind, operand, ty);
+
+                // PtrToPtr cast on a const-array pointer — propagate the side-table entry
+                // without emitting an MLIR op (const arrays have no MLIR value).
+                if matches!(cast_kind, CastKind::PtrToPtr) {
+                    if let Operand::Copy(src_place) | Operand::Move(src_place) = operand {
+                        if let Some(&arr_local) = state.ptr_to_const_array.get(&src_place.local) {
+                            state.ptr_to_const_array.insert(place.local, arr_local);
+                            return Ok(());
+                        }
+                    }
+                }
+
+                // Transmute of a slice-shape tuple ((*const T, usize) → &[T]) — propagate shape.
+                if matches!(cast_kind, CastKind::Transmute) {
+                    if let Operand::Copy(src_place) | Operand::Move(src_place) = operand {
+                        if let Some(shape) = state.slice_shape.get(&src_place.local).cloned() {
+                            state.slice_shape.insert(place.local, shape);
+                            return Ok(());
+                        }
+                    }
+                }
+
                 let result = self.codegen_cast(
                     tcx, instance, cast_kind, operand, ty, location, mlir_block, state,
                 )?;
@@ -488,6 +530,19 @@ impl<'a> TritonCodegen<'a> {
 
                 // Route Tuple aggregates into tuple_fields (MLIR uses multiple return values).
                 if let AggregateKind::Tuple = aggregate_kind.as_ref() {
+                    // Special case: `(*const T, usize)` fat-pointer tuple where the pointer
+                    // comes from a const array.  Route to `slice_shape` instead — no MLIR value.
+                    if let Some(first_op) = index_vec.iter().next() {
+                        if let Operand::Copy(p) | Operand::Move(p) = first_op {
+                            if let Some(&arr_local) = state.ptr_to_const_array.get(&p.local) {
+                                if let Some(shape) = state.const_arrays.get(&arr_local) {
+                                    state.slice_shape.insert(place.local, shape.clone());
+                                    return Ok(());
+                                }
+                            }
+                        }
+                    }
+
                     let fields = index_vec
                         .iter()
                         .map(|op| match op {
@@ -497,6 +552,31 @@ impl<'a> TritonCodegen<'a> {
                         .collect::<Result<Vec<_>, _>>()?;
                     state.tuple_fields.insert(place.local, fields);
                     return Ok(());
+                }
+
+                // Constant integer arrays (e.g. shape arrays `[BLOCK_SIZE]` for zeros/reshape).
+                // We only track them as constant metadata; no MLIR value is emitted.
+                if let AggregateKind::Array(_elem_ty) = aggregate_kind.as_ref() {
+                    let elems: Option<Vec<i64>> = index_vec
+                        .iter()
+                        .map(|op| {
+                            self.to_scalar_int(tcx, instance, op).ok().map(|s| {
+                                match s.size().bytes() {
+                                    1 => s.to_u8() as i64,
+                                    2 => s.to_i16() as i64,
+                                    4 => s.to_i32() as i64,
+                                    8 => s.to_i64(),
+                                    n => todo!("ScalarInt size {} bytes", n),
+                                }
+                            })
+                        })
+                        .collect();
+                    if let Some(elems) = elems {
+                        state.const_arrays.insert(place.local, elems);
+                        return Ok(());
+                    }
+                    // Not all-constant: fall through to todo!() below.
+                    todo!("AggregateKind::Array (non-constant elements): {:?}", index_vec);
                 }
 
                 let result = self.codegen_aggregate_create(
@@ -532,7 +612,17 @@ impl<'a> TritonCodegen<'a> {
                 todo!("Ref: {:?} {:?} {:?}", region, borrow_kind, place)
             }
             Rvalue::ThreadLocalRef(def_id) => todo!("ThreadLocalRef: {:?}", def_id),
-            Rvalue::RawPtr(raw_ptr_kind, place) => todo!("RawPtr: {:?} {:?}", raw_ptr_kind, place),
+            Rvalue::RawPtr(_raw_ptr_kind, src_place) => {
+                // If this is `&raw const const_array_local`, record the mapping so that
+                // downstream `zeros` / `slice_from_raw_parts` calls can recover the shape.
+                if src_place.projection.is_empty()
+                    && state.const_arrays.contains_key(&src_place.local)
+                {
+                    state.ptr_to_const_array.insert(place.local, src_place.local);
+                    return Ok(());
+                }
+                todo!("RawPtr: {:?} {:?}", _raw_ptr_kind, src_place)
+            }
             Rvalue::BinaryOp(bin_op, operands) => {
                 let value = self.codegen_binary_op(
                     tcx, instance, mir, place, bin_op, operands, location, mlir_block, state,

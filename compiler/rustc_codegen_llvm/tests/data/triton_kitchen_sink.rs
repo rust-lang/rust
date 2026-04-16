@@ -19,7 +19,7 @@
 #![allow(non_snake_case)]
 #![allow(dead_code)]
 #![feature(no_core)]
-#![feature(intrinsics, lang_items)]
+#![feature(intrinsics, lang_items, rustc_attrs)]
 #![feature(arbitrary_self_types)]
 #![feature(const_trait_impl)]
 #![feature(auto_traits)]
@@ -62,6 +62,13 @@ impl<T> Clone for *mut T {
 
 #[lang = "legacy_receiver"]
 pub trait LegacyReceiver {}
+
+// Required for array-to-slice coercions: &[T; N] → &[T]
+#[lang = "unsize"]
+pub trait Unsize<T: ?Sized> {}
+
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T: ?Sized> {}
 
 #[lang = "drop_in_place"]
 #[allow(unconditional_recursion)]
@@ -185,6 +192,23 @@ pub enum Option<T> {
 }
 
 use Option::*;
+
+/// Raw memory transmute — maps to the compiler `transmute` intrinsic.
+#[rustc_intrinsic]
+pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst {
+    loop {}
+}
+
+/// Create a `&[T]` from a raw pointer and a length.
+/// Works in `no_core` where the array→slice coercion is unavailable.
+///
+/// # Safety
+/// `data` must point to at least `len` consecutive initialized `T` values.
+#[inline(always)]
+pub unsafe fn slice_from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
+    // A `&[T]` is a fat pointer `(*const T, usize)` on all current Rust targets.
+    unsafe { transmute::<(*const T, usize), &[T]>((data, len)) }
+}
 
 pub const trait Into<T>: Sized {
     /// Converts this type into the (usually inferred) input type.
@@ -2454,7 +2478,8 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     let _ = r + n_elements;
     let _ = r - 1;
     let _ = r * 2;
-    // let z = T::zeros::<D>(&[BLOCK_SIZE]);
+    let z_shape = [BLOCK_SIZE];
+    let z = T::zeros::<D>(unsafe { slice_from_raw_parts(&z_shape as *const i32, 1) });
     // if false {
     //     let _ = T::full::<D>(&[BLOCK_SIZE], dummy_value::<D>());
     // }
