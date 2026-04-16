@@ -198,7 +198,6 @@ pub enum Option<T> {
 
 use Option::*;
 
-
 pub const trait Into<T>: Sized {
     /// Converts this type into the (usually inferred) input type.
     fn into(self) -> T;
@@ -2653,14 +2652,7 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     T::static_assert(true, "BLOCK_SIZE must be positive");
     T::static_print("kitchen_sink");
     let out_ptrs = T::zeros::<T::Pointer<D>>(&[BLOCK_SIZE]);
-    let _ = T::make_block_ptr(
-        output_ptr,
-        &[BLOCK_SIZE],
-        &[1i32],
-        &[0i32],
-        &[BLOCK_SIZE],
-        &[0i32],
-    );
+    let _ = T::make_block_ptr(output_ptr, &[BLOCK_SIZE], &[1i32], &[0i32], &[BLOCK_SIZE], &[0i32]);
     T::store::<D, 1>(out_ptrs, mconst, None, &[0], None, None);
     let _ = block_ptr2;
 }
