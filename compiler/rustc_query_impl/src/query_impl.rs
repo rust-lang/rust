@@ -57,6 +57,12 @@ macro_rules! define_queries {
                         key: Key<'tcx>,
                         mode: QueryMode,
                     ) -> Option<Erased<Value<'tcx>>> {
+                        #[cfg($callfront)]
+                        {
+                            let vtable = &tcx.query_system.query_vtables.$name;
+                            vtable.callfront_fn.filter(|_| !tcx.is_in_sandbox()).inspect(|f| (f)(tcx));
+                        }
+
                         #[cfg(debug_assertions)]
                         let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
                         crate::execution::execute_query_incr_inner(
@@ -80,6 +86,12 @@ macro_rules! define_queries {
                         key: Key<'tcx>,
                         __mode: QueryMode,
                     ) -> Option<Erased<Value<'tcx>>> {
+                        #[cfg($callfront)]
+                        {
+                            let vtable = &tcx.query_system.query_vtables.$name;
+                            vtable.callfront_fn.filter(|_| !tcx.is_in_sandbox()).inspect(|f| (f)(tcx));
+                        }
+
                         Some(crate::execution::execute_query_non_incr_inner(
                             &tcx.query_system.query_vtables.$name,
                             tcx,
@@ -204,7 +216,7 @@ macro_rules! define_queries {
 
                         #[cfg($callfront)]
                         callfront_fn: Some(|tcx| {
-                            $crate::callback::$name(tcx);
+                            $crate::callfront::$name(tcx);
                         }),
 
                         #[cfg(not($callfront))]
