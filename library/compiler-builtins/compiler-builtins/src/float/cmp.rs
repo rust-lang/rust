@@ -2,7 +2,13 @@
 
 use crate::support::{Float, MinInt, cfg_if};
 
-// Taken from LLVM config [1], which should match GCC's `CMPtype` [2].
+// These definitions should be consistent with LLVM's definition from `getCmpLibcallReturnType`,
+// compiler-rt's definitions [1], GCC's `CMPtype` [2], and `libgcc`. To find the definitions
+// in GCC, there are a few things to grep for:
+//
+// * `default_libgcc_cmp_return_mode` for the default (word sized)
+// * `TARGET_LIBGCC_CMP_RETURN_MODE` for the target hook to override the default
+// * `# *define *CMPtype` as a last resort, for overrides that don't use the hook (AVR)
 //
 // [1]: https://github.com/llvm/llvm-project/blob/0cf3c437c18ed27d9663d87804a9a15ff6874af2/compiler-rt/lib/builtins/fp_compare_impl.inc#L11-L27
 // [2]: https://gcc.gnu.org/onlinedocs/gccint/Soft-float-library-routines.html#Comparison-functions-1
@@ -14,8 +20,8 @@ cfg_if! {
         // AVR uses a single byte.
         pub type CmpResult = i8;
     } else {
-        // In compiler-rt, LLP64 ABIs use `long long` and everything else uses `long`. In effect,
-        // this means the return value is always pointer-sized.
+        // The default is word-sized. In LLVM's compiler-rt, this is done by using `long long` on
+        // LLP64 ABIs and `long` on everything else.
         pub type CmpResult = isize;
     }
 }
