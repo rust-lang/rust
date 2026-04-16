@@ -1900,8 +1900,8 @@ mod prim_ref {}
 ///
 /// When running the CFI sanitizer, pointer types are only ABI-compatible if the target type and
 /// mutability is the same. This means that `*mut String` and `*mut i32` are incompatible when using
-/// CFI. It also means that `*mut i32` is incompatible with `*const i32`. The `NonNull<_>` pointer
-/// type is considered immutable.
+/// CFI. It also means that `*mut i32` is incompatible with `*const i32`. The `NonNull<_>` and
+/// `Box<_>` pointer types are currently considered immutable.
 ///
 /// Furthermore, CFI will also compare the *name* of aggregate types. This means that even if two
 /// `#[repr(C)]` structs have the same fields in the same order, CFI does not consider them to be
