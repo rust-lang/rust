@@ -61,3 +61,26 @@ fn issue13028() {
     // don't lint, because `s` and `u` are different variables, albeit with the same value
     let _ = (x << s) | (x >> (32 - u));
 }
+
+fn wrongly_unmangled_macros() {
+    macro_rules! test_expr {
+        ($val:expr) => {
+            $val.inner
+        };
+    }
+
+    struct Wrapper {
+        inner: u32,
+    }
+
+    let x = Wrapper { inner: 42 };
+    let _ = test_expr!(x).rotate_left(3);
+    //~^ manual_rotate
+
+    let y = Wrapper { inner: 100 };
+
+    let _ = x.inner.rotate_left(test_expr!(y));
+    //~^ manual_rotate
+
+    let _ = (test_expr!(x) << 3) | (x.inner >> 29);
+}

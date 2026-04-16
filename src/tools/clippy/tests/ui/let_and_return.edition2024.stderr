@@ -224,5 +224,19 @@ LL +         None => Ok(Ok(0)),
 LL +     }?
    |
 
-error: aborting due to 15 previous errors
+error: returning the result of a `let` binding from a block
+  --> tests/ui/let_and_return.rs:291:5
+   |
+LL |     let y = plus_one!(x);
+   |     --------------------- unnecessary `let` binding
+LL |     y
+   |     ^
+   |
+help: return the expression directly
+   |
+LL ~     
+LL ~     plus_one!(x)
+   |
+
+error: aborting due to 16 previous errors
 

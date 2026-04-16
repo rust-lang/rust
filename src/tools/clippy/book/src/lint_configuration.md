@@ -928,6 +928,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`manual_let_else`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else)
 * [`manual_midpoint`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_midpoint)
 * [`manual_non_exhaustive`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_non_exhaustive)
+* [`manual_noop_waker`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_noop_waker)
 * [`manual_option_as_slice`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_option_as_slice)
 * [`manual_pattern_char_comparison`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_pattern_char_comparison)
 * [`manual_range_contains`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_range_contains)
