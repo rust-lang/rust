@@ -1896,7 +1896,7 @@ mod prim_ref {}
 /// There are some caveats to the above ABI-compatibility rules due to how the [CFI (control flow
 /// integrity)][cfi-docs] sanitizer is implemented. CFI is a tool that can be used to validate
 /// that dynamic function calls respect the ABI, but due to its C/C++ origins, it disagrees with the
-/// above documented guarantees in the following manner:
+/// above documented guarantees in a few ways.
 ///
 /// When running the CFI sanitizer, pointer types are only ABI-compatible if the target type and
 /// mutability is the same. This means that `*mut String` and `*mut i32` are incompatible when using
