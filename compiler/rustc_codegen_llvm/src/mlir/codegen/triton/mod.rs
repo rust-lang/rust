@@ -758,7 +758,7 @@ impl<'a> TritonCodegen<'a> {
             BinOp::Sub => todo!(),
             BinOp::SubUnchecked => todo!(),
             BinOp::SubWithOverflow => todo!(),
-            BinOp::Mul => self.codegen_mul(location, lhs, rhs, mlir_block),
+            BinOp::Mul => self.codegen_mul(tcx, location, lhs, rhs, mlir_block),
             BinOp::MulUnchecked => todo!(),
             BinOp::MulWithOverflow => todo!(),
             BinOp::Div => todo!(),

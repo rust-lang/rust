@@ -15,12 +15,13 @@
  */
 
 use melior::Context;
+use melior::dialect::arith::{muli, subf, subi};
 use melior::dialect::ods::arith::{
     AddFOperation, AddIOperation, CmpIOperation, ConstantOperation, ExtSIOperation, MulIOperation,
 };
 use melior::ir::attribute::IntegerAttribute;
 use melior::ir::r#type::{IntegerType, RankedTensorType};
-use melior::ir::{Attribute, Location, Type, TypeLike, Value, ValueLike};
+use melior::ir::{Attribute, Location, Operation, Type, TypeLike, Value, ValueLike};
 use rustc_ast::{IntTy, UintTy};
 use rustc_middle::ty::{ScalarInt, Ty, TyKind};
 
@@ -188,6 +189,34 @@ pub fn create_addf<'ctx>(
     rhs: Value<'ctx, 'ctx>,
 ) -> Result<AddFOperation<'ctx>, Error> {
     Ok(AddFOperation::builder(context, location).lhs(lhs).rhs(rhs).build())
+}
+
+/// Like `create_muli` but accepts tensor types (no type validation).
+pub fn create_muli_tensor<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'ctx>,
+    rhs: Value<'ctx, 'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    Ok(muli(lhs, rhs, location))
+}
+
+pub fn create_subi<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'ctx>,
+    rhs: Value<'ctx, 'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    Ok(subi(lhs, rhs, location))
+}
+
+pub fn create_subf<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'ctx>,
+    rhs: Value<'ctx, 'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    Ok(subf(lhs, rhs, location))
 }
 
 pub fn create_extsi<'ctx>(

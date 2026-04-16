@@ -2450,10 +2450,10 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     let _pid_y = T::program_id(Axis::Y);
     let _pid_z = T::program_id(Axis::Z);
     let _nprog_x = T::num_programs(Axis::X);
-    // let r = T::arange(0, BLOCK_SIZE);
-    // let _ = r + n_elements;
-    // let _ = r - 1;
-    // let _ = r * 2;
+    let r = T::arange(0, BLOCK_SIZE);
+    let _ = r + n_elements;
+    let _ = r - 1;
+    let _ = r * 2;
     // let z = T::zeros::<D>(&[BLOCK_SIZE]);
     // if false {
     //     let _ = T::full::<D>(&[BLOCK_SIZE], dummy_value::<D>());
