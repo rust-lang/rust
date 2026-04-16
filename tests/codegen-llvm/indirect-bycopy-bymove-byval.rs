@@ -46,15 +46,17 @@ pub fn normal() {
     opaque(VALUE);
 }
 
-// FIXME: closure#0 and closure#1 are missing memcpy.
+// The argument of the second call is a by-move argument.
 
 // CHECK-LABEL: @untupled
+// CHECK: call void @llvm.memcpy{{.*}}(ptr{{.*}} [[untupled_V1:%.*]], ptr{{.*}} %value
 // CHECK: call indirect_bycopy_bymove_byval::untupled::{closure#0}
-// CHECK-NEXT: call void @{{.*}}(ptr {{.*}}, ptr{{.*}} %value)
+// CHECK-NEXT: call void @{{.*}}(ptr {{.*}}, ptr{{.*}} [[untupled_V1]])
 // CHECK: call indirect_bycopy_bymove_byval::untupled::{closure#1}
 // CHECK-NEXT: call void @{{.*}}(ptr {{.*}}, ptr{{.*}} %value)
+// CHECK: call void @llvm.memcpy{{.*}}(ptr{{.*}} [[untupled_V3:%.*]], ptr{{.*}} @anon{{.*}}
 // CHECK: call indirect_bycopy_bymove_byval::untupled::{closure#2}
-// CHECK-NEXT: call void @{{.*}}(ptr {{.*}}, ptr{{.*}} @anon{{.*}})
+// CHECK-NEXT: call void @{{.*}}(ptr {{.*}}, ptr{{.*}} [[untupled_V3]])
 #[unsafe(no_mangle)]
 pub fn untupled() {
     let value = (Thing(0, 0, 0),);
@@ -76,14 +78,12 @@ pub fn untupled() {
     .call(VALUE);
 }
 
-// FIXME: all memcpy calls are redundant for byval.
+// All memcpy calls are redundant for byval.
 
 // CHECK-LABEL: @byval
-// CHECK: call void @llvm.memcpy{{.*}}(ptr{{.*}} [[byval_V1:%.*]], ptr{{.*}} %value,
-// CHECK: call void @opaque_byval(ptr{{.*}} byval([24 x i8]){{.*}} [[byval_V1]])
 // CHECK: call void @opaque_byval(ptr{{.*}} byval([24 x i8]){{.*}} %value)
-// CHECK: call void @llvm.memcpy{{.*}}(ptr{{.*}} [[byval_V3:%.*]], ptr{{.*}} @anon{{.*}},
-// CHECK: call void @opaque_byval(ptr{{.*}} byval([24 x i8]){{.*}} [[byval_V3]])
+// CHECK: call void @opaque_byval(ptr{{.*}} byval([24 x i8]){{.*}} %value)
+// CHECK: call void @opaque_byval(ptr{{.*}} byval([24 x i8]){{.*}} @anon{{.*}})
 #[unsafe(no_mangle)]
 pub fn byval() {
     #[repr(C)]

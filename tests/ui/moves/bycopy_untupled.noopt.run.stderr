@@ -1,6 +1,0 @@
-
-thread 'main' ($TID) panicked at $DIR/bycopy_untupled.rs:25:5:
-assertion `left == right` failed
-  left: 1
- right: 0
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

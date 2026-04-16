@@ -74,7 +74,8 @@ pub fn do_call() {
         // CHECK: call void @test_simd(<4 x i32> <i32 2, i32 4, i32 6, i32 8>
         test_simd(const { Simd::<i32, 4>([2, 4, 6, 8]) });
 
-        // CHECK: call void @test_simd_unaligned(%"minisimd::PackedSimd<i32, 3>" %1
+        // CHECK: [[UNALIGNED_ARG:%.*]] = load %"minisimd::PackedSimd<i32, 3>", ptr @anon{{.*}}
+        // CHECK-NEXT: call void @test_simd_unaligned(%"minisimd::PackedSimd<i32, 3>" [[UNALIGNED_ARG]]
         test_simd_unaligned(const { Simd::<i32, 3>([2, 4, 6]) });
     }
 }
