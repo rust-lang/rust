@@ -469,6 +469,13 @@ impl RangeInclusive<usize> {
     /// The caller is responsible for dealing with `end == usize::MAX`.
     #[inline]
     pub(crate) const fn into_slice_range(self) -> Range<usize> {
+        // Typically users should not be indexing with exhausted instances,
+        // but this heuristic should apply to most cases. This doesn't
+        // handle reverse iteration well (`next_back` and `nth_back` can
+        // cause `end` to wrap around to values at or near `usize::MAX`),
+        // but using an exhausted `RangeInclusive` after reverse iteration
+        // is an exceedingly rare case.
+
         // If we're not exhausted, we want to simply slice `start..end + 1`.
         // If we are exhausted, then slicing with `end + 1..end + 1` gives us an
         // empty range that is still subject to bounds-checks for that endpoint.
@@ -1147,16 +1154,12 @@ impl<T> const RangeBounds<T> for RangeInclusive<T> {
 #[rustc_const_unstable(feature = "const_range", issue = "none")]
 impl<T> const IntoBounds<T> for RangeInclusive<T> {
     fn into_bounds(self) -> (Bound<T>, Bound<T>) {
-        (
-            Included(self.start),
-            if self.exhausted {
-                // When the iterator is exhausted, we usually have start == end,
-                // but we want the range to appear empty, containing nothing.
-                Excluded(self.end)
-            } else {
-                Included(self.end)
-            },
-        )
+        assert!(
+            !self.exhausted,
+            "attempted to convert from an exhausted `RangeInclusive` (unspecified behavior)"
+        );
+
+        (Included(self.start), Included(self.end))
     }
 }
 
