@@ -1104,7 +1104,6 @@ dependencies = [
  "nohash-hasher",
  "parser",
  "profile",
- "query-group-macro",
  "rayon",
  "rustc-hash 2.1.1",
  "salsa",
