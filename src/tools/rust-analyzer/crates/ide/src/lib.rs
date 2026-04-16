@@ -64,9 +64,10 @@ use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
 use hir::{ChangeWithProcMacros, EditionedFileId, crate_def_map, sym};
 use ide_db::base_db::relevant_crates;
+use ide_db::line_index;
 use ide_db::ra_fixture::RaFixtureAnalysis;
 use ide_db::{
-    FxHashMap, FxIndexSet, LineIndexDatabase,
+    FxHashMap, FxIndexSet,
     base_db::{
         CrateOrigin, CrateWorkspaceData, Env, FileSet, SourceDatabase, VfsPath,
         salsa::{Cancelled, Database},
@@ -358,7 +359,7 @@ impl Analysis {
     /// Gets the file's `LineIndex`: data structure to convert between absolute
     /// offsets and line/column representation.
     pub fn file_line_index(&self, file_id: FileId) -> Cancellable<Arc<LineIndex>> {
-        self.with_db(|db| db.line_index(file_id))
+        self.with_db(|db| line_index(db, file_id).clone())
     }
 
     /// Selects the next syntactic nodes encompassing the range.
