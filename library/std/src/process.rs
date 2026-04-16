@@ -2565,6 +2565,10 @@ pub fn abort() -> ! {
     crate::sys::abort_internal();
 }
 
+#[doc(inline)]
+#[unstable(feature = "abort_immediate", issue = "154601")]
+pub use core::process::abort_immediate;
+
 /// Returns the OS-assigned process identifier associated with this process.
 ///
 /// # Examples
