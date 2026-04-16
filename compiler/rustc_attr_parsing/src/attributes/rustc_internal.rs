@@ -6,11 +6,11 @@ use rustc_hir::attrs::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, DivergingBlockBehavior,
     DivergingFallbackBehavior, RustcCleanAttribute, RustcCleanQueries, RustcMirKind,
 };
-use rustc_session::errors;
 use rustc_span::Symbol;
 
 use super::prelude::*;
 use super::util::parse_single_integer;
+use crate::errors;
 use crate::session_diagnostics::{
     AttributeRequiresOpt, CguFieldsMissing, RustcScalableVectorCountOutOfRange, UnknownLangItem,
 };

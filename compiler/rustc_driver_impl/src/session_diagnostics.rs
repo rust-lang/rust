@@ -4,7 +4,7 @@ use rustc_macros::{Diagnostic, Subdiagnostic};
 
 #[derive(Diagnostic)]
 #[diag("could not emit MIR: {$error}")]
-pub struct CantEmitMIR {
+pub(crate) struct CantEmitMIR {
     pub error: std::io::Error,
 }
 
