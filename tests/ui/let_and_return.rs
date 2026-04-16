@@ -292,4 +292,14 @@ fn wrongly_unmangled_macros() -> i32 {
     //~^ let_and_return
 }
 
+fn issue16820() -> Option<i32> {
+    let value = Some(42);
+
+    let v @ None = value else {
+        panic!("uh oh!");
+    };
+
+    v
+}
+
 fn main() {}
