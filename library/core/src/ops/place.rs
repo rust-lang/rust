@@ -167,10 +167,10 @@ pub unsafe trait Subplace: Sized {
 /// - [`WritePlace`]
 /// - [`BorrowPlace`]
 ///
-/// Further implicit operation traits are also available:
+/// Further operation traits are also available:
+/// - [`MovePlace`]
 /// - [`DropPlace`]
 /// - [`DropHusk`]
-/// - [`MovePlace`]
 /// - [`NestPlace`]
 /// - [`WrapPlace`]
 ///
@@ -249,6 +249,41 @@ where
     unsafe fn write(this: *const Self, sub: S, value: S::Target);
 }
 
+/// Borrowing a place with `X`.
+///
+/// When `y: Self`, then `let x = @<X> *y;` will be desugared into
+/// [`BorrowPlace::borrow`].
+///
+/// # Safety
+///
+/// See the module-level section on [safety](crate::ops::place#safety).
+#[unstable(feature = "field_projections", issue = "145383")]
+#[lang = "borrow_place"]
+pub unsafe trait BorrowPlace<S, X>: DerefPlace
+where
+    S: Subplace<Source = Self::Target>,
+    X: DerefPlace<Target = S::Target>,
+{
+    /// Whether the borrow operation is safe when used through the operator.
+    ///
+    /// When the operator is used, the borrow checker follows its usual rules to
+    /// ensure that no other operation conflicts with this one. If that alone is
+    /// sufficient to make this operation sound, then this should be `true`.
+    #[lang = "borrow_place_safety"]
+    const SAFETY: bool;
+
+    // FIXME: this is missing some associated items related to controlling the
+    // borrow checker. The details need to still be worked out in a-mir-formality.
+
+    /// Borrow the subplace pointed to by `this` with `X`.
+    ///
+    /// # Safety
+    ///
+    /// See the module-level section on [safety](crate::ops::place#safety).
+    #[lang = "borrow_place_borrow"]
+    unsafe fn borrow(this: *const Self, sub: S) -> X;
+}
+
 /// Moving out of a place.
 ///
 /// When `x: Self` and one performs a [`ReadPlace::read`] where the target value
@@ -318,41 +353,6 @@ pub unsafe trait DropHusk: DerefPlace {
     /// See the module-level section on [safety](crate::ops::place#safety).
     #[lang = "drop_husk_drop_husk"]
     unsafe fn drop_husk(this: *const Self);
-}
-
-/// Borrowing a place with `X`.
-///
-/// When `y: Self`, then `let x = @<X> *y;` will be desugared into
-/// [`BorrowPlace::borrow`].
-///
-/// # Safety
-///
-/// See the module-level section on [safety](crate::ops::place#safety).
-#[unstable(feature = "field_projections", issue = "145383")]
-#[lang = "borrow_place"]
-pub unsafe trait BorrowPlace<S, X>: DerefPlace
-where
-    S: Subplace<Source = Self::Target>,
-    X: DerefPlace<Target = S::Target>,
-{
-    /// Whether the borrow operation is safe when used through the operator.
-    ///
-    /// When the operator is used, the borrow checker follows its usual rules to
-    /// ensure that no other operation conflicts with this one. If that alone is
-    /// sufficient to make this operation sound, then this should be `true`.
-    #[lang = "borrow_place_safety"]
-    const SAFETY: bool;
-
-    // FIXME: this is missing some associated items related to controlling the
-    // borrow checker. The details need to still be worked out in a-mir-formality.
-
-    /// Borrow the subplace pointed to by `this` with `X`.
-    ///
-    /// # Safety
-    ///
-    /// See the module-level section on [safety](crate::ops::place#safety).
-    #[lang = "borrow_place_borrow"]
-    unsafe fn borrow(this: *const Self, sub: S) -> X;
 }
 
 /// Accessing a nested pointer.
