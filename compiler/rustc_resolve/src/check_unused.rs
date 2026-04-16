@@ -545,7 +545,7 @@ impl Resolver<'_, '_> {
         let unused_imports = visitor.unused_imports;
         let mut check_redundant_imports = FxIndexSet::default();
         for module in &self.local_modules {
-            for (_key, resolution) in self.resolutions(*module).borrow().iter() {
+            for (_key, resolution) in self.resolutions(module.to_module()).borrow().iter() {
                 if let Some(decl) = resolution.borrow().best_decl()
                     && let DeclKind::Import { import, .. } = decl.kind
                     && let ImportKind::Single { id, .. } = import.kind
