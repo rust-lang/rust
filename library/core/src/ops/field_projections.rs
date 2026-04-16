@@ -36,8 +36,9 @@ where
 {
     /// Whether the read operation is safe when used through the operator.
     ///
-    /// When the compiler emits the call to `read`, the borrow checker guarantees that no other
-    /// operation is conflicting with this one.
+    /// When the operator is used, the borrow checker follows its usual rules to ensure that no
+    /// other operation conflicts with this one. If that alone is sufficient to make this operation
+    /// sound, then this should be `true`.
     #[lang = "place_read_safety"]
     const SAFETY: bool;
 
@@ -66,8 +67,9 @@ where
 {
     /// Whether the write operation is safe when used through the operator.
     ///
-    /// When the compiler emits the call to `read`, the borrow checker guarantees that no other
-    /// operation is conflicting with this one.
+    /// When the operator is used, the borrow checker follows its usual rules to ensure that no
+    /// other operation conflicts with this one. If that alone is sufficient to make this operation
+    /// sound, then this should be `true`.
     #[lang = "place_write_safety"]
     const SAFETY: bool;
 
@@ -157,8 +159,9 @@ where
 {
     /// Whether the borrow operation is safe when used through the operator.
     ///
-    /// When the compiler emits the call to `read`, the borrow checker guarantees that no other
-    /// operation is conflicting with this one.
+    /// When the operator is used, the borrow checker follows its usual rules to ensure that no
+    /// other operation conflicts with this one. If that alone is sufficient to make this operation
+    /// sound, then this should be `true`.
     #[lang = "place_borrow_safety"]
     const SAFETY: bool;
 
