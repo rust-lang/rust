@@ -516,7 +516,7 @@ fn human_readable_target_os(os: Symbol) -> Option<&'static str> {
         Managarm => "Managarm",
         Motor => "Motor OS",
         NetBsd => "NetBSD",
-        None => "bare-metal", // FIXME(scrabsha): is this appropriate?
+        None => "bare-metal",
         Nto => "QNX Neutrino",
         NuttX => "NuttX",
         OpenBsd => "OpenBSD",
