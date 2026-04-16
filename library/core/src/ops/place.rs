@@ -127,11 +127,12 @@ use crate::ptr::Pointee;
 
 /// A subplace of [`Self::Source`] with the type [`Self::Target`].
 ///
-/// A subplace is always within the same allocation as the base place. Current subplaces are:
-/// - field accesses,
+/// A subplace is always within the same allocation as the base place. A
+/// subplace is described by a chain of
+/// - field accesses, and
 /// - array/slice indexes.
 ///
-/// This represents an arbitrary chaining of these; it can also be empty.
+/// Note that a subplace can also be the entire original place.
 ///
 /// # Safety
 ///
@@ -159,16 +160,21 @@ pub unsafe trait Subplace: Sized {
 
 /// Marks a type as containing a place.
 ///
-/// This is the new trait for the dereference operator `*`; implementing it will allow writing `*x`
-/// for `x: Self`, but not enable any operations on `*x`. For those, one of the other place
-/// operation traits has to be implemented:
-///
+/// Dereferencing a value of this type will result in a normal place expression
+/// that can be read from, written to, or borrowed. Each of these operations is
+/// only available if the corresponding trait is implemented:
 /// - [`ReadPlace`]
 /// - [`WritePlace`]
 /// - [`BorrowPlace`]
+///
+/// Further implicit operation traits are also available:
 /// - [`DropPlace`]
+/// - [`DropHusk`]
 /// - [`MovePlace`]
 /// - [`NestPlace`]
+/// - [`WrapPlace`]
+///
+/// Read the [module](self) description for more information.
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "deref_place"]
 pub trait DerefPlace {
@@ -193,9 +199,9 @@ where
 {
     /// Whether the read operation is safe when used through the operator.
     ///
-    /// When the operator is used, the borrow checker follows its usual rules to ensure that no
-    /// other operation conflicts with this one. If that alone is sufficient to make this operation
-    /// sound, then this should be `true`.
+    /// When the operator is used, the borrow checker follows its usual rules to
+    /// ensure that no other operation conflicts with this one. If that alone is
+    /// sufficient to make this operation sound, then this should be `true`.
     #[lang = "read_place_safety"]
     const SAFETY: bool;
 
@@ -210,7 +216,11 @@ where
 
 /// Writing a place `*x = val;`.
 ///
-/// When `x: Self`, then `*x = val;` will be desugared into [`WritePlace::write`].
+/// When `x: Self`, then `*x = val;` will be desugared into
+/// [`WritePlace::write`].
+///
+/// When a value already exists at the subplace, it is dropped with
+/// [`DropPlace`] before it is written to.
 ///
 /// # Safety
 ///
@@ -224,9 +234,9 @@ where
 {
     /// Whether the write operation is safe when used through the operator.
     ///
-    /// When the operator is used, the borrow checker follows its usual rules to ensure that no
-    /// other operation conflicts with this one. If that alone is sufficient to make this operation
-    /// sound, then this should be `true`.
+    /// When the operator is used, the borrow checker follows its usual rules to
+    /// ensure that no other operation conflicts with this one. If that alone is
+    /// sufficient to make this operation sound, then this should be `true`.
     #[lang = "write_place_safety"]
     const SAFETY: bool;
 
@@ -241,9 +251,10 @@ where
 
 /// Moving out of a place.
 ///
-/// When `x: Self` and one performs a [`ReadPlace::read`] where the target value is not [`Copy`],
-/// then the compiler checks if this trait is implemented and if so, moves the value out by reading
-/// it and adjusting the borrow checker state of the place.
+/// When `x: Self` and one performs a [`ReadPlace::read`] where the target value
+/// is not [`Copy`], then the compiler checks if this trait is implemented and
+/// if so, moves the value out by reading it and adjusting the borrow checker
+/// state of the place.
 ///
 /// # Safety
 ///
@@ -259,8 +270,10 @@ where
 
 /// Dropping a place.
 ///
-/// Emitted by the compiler when a place has been partially moved out and the pointer with ownership
-/// is being dropped.
+/// Emitted by the compiler before a new value is written ([`WritePlace`]) to
+/// this subplace, or when a pointer to a partially moved out place is dropped.
+/// See the documentation of [`DropHusk`] for more on the exact details of that
+/// last case.
 ///
 /// # Safety
 ///
@@ -282,8 +295,15 @@ where
 
 /// Dropping a pointer that points at a fully moved-out place.
 ///
-/// This operation is emitted by the compiler when a pointer is being dropped that had some fields
-/// moved out.
+/// This operation is emitted by the compiler when a pointer is being dropped
+/// that had all of its fields moved out.
+///
+/// If no fields or only some fields have been moved out, all not yet moved out
+/// fields are dropped with the [`DropPlace`] trait. After that this pointer is
+/// dropped by calling [`DropHusk::drop_husk`].
+///
+/// Note that a write operation ([`WritePlace`]) can move a value into a
+/// previously moved-out field.
 ///
 /// # Safety
 ///
@@ -302,7 +322,8 @@ pub unsafe trait DropHusk: DerefPlace {
 
 /// Borrowing a place with `X`.
 ///
-/// When `y: Self`, then `let x = @<X> *y;` will be desugared into [`BorrowPlace::borrow`].
+/// When `y: Self`, then `let x = @<X> *y;` will be desugared into
+/// [`BorrowPlace::borrow`].
 ///
 /// # Safety
 ///
@@ -316,9 +337,9 @@ where
 {
     /// Whether the borrow operation is safe when used through the operator.
     ///
-    /// When the operator is used, the borrow checker follows its usual rules to ensure that no
-    /// other operation conflicts with this one. If that alone is sufficient to make this operation
-    /// sound, then this should be `true`.
+    /// When the operator is used, the borrow checker follows its usual rules to
+    /// ensure that no other operation conflicts with this one. If that alone is
+    /// sufficient to make this operation sound, then this should be `true`.
     #[lang = "borrow_place_safety"]
     const SAFETY: bool;
 
@@ -336,8 +357,8 @@ where
 
 /// Accessing a nested pointer.
 ///
-/// When `x: Self`, then nested dereferences `let _ = **x;` is desugared into a combination of the
-/// corresponding operation and a [`NestPlace::nested`].
+/// When `x: Self`, then nested dereferences `let _ = **x;` is desugared into a
+/// combination of the corresponding operation and a [`NestPlace::nested`].
 ///
 /// # Safety
 ///
@@ -360,8 +381,9 @@ where
 
 /// Forwards the subplace `S` of the place contained by this.
 ///
-/// When `x: Self` and `Self::Target` has a subplace `S` accessible via `.foo.bar`, then `x.foo.bar`
-/// is also valid, has type `<Self::Wrapped as Subplace>::Target` and any place operation on it uses
+/// When `x: Self` and `Self::Target` has a subplace `S` accessible via
+/// `.foo.bar`, then `x.foo.bar` is also valid, has type `<Self::Wrapped as
+/// Subplace>::Target` and any place operation on it uses
 /// <code>[Self::wrap]\(sub\)</code> as the subplace instead of `S`.
 ///
 /// # Safety
