@@ -3,16 +3,20 @@
 # Downloads and builds the Fuchsia operating system using a toolchain installed
 # in $RUST_INSTALL_DIR.
 #
-# You may run this script locally using Docker with the following command:
+# You may run this script locally using Docker with the following command on
+# x86_64:
 #
-# $ src/ci/docker/run.sh x86_64-fuchsia
+#     $ src/ci/docker/run.sh test-aarch64-fuchsia
+#
+# Or if you are on aarch64:
+#
+#     $ src/ci/docker/run.sh test-aarch64-fuchsia
 #
 # Alternatively, from within the container with --dev, assuming you have made it
 # as far as building the toolchain with the above command:
 #
-# $ src/ci/docker/run.sh --dev x86_64-fuchsia
-# docker# git config --global --add safe.directory /checkout/obj/fuchsia
-# docker# ../src/ci/docker/host-x86_64/x86_64-fuchsia/build-fuchsia.sh
+#     $ src/ci/docker/run.sh --dev test-x86_64-fuchsia
+#     docker# ../src/ci/docker/scripts/build-fuchsia.sh
 #
 # Also see the docs in the rustc-dev-guide for more info:
 # https://github.com/rust-lang/rustc-dev-guide/pull/1989
@@ -21,7 +25,7 @@ set -euf -o pipefail
 
 # Set this variable to 1 to disable updating the Fuchsia checkout. This is
 # useful for making local changes. You can find the Fuchsia checkout in
-# `obj/x86_64-fuchsia/fuchsia` in your local checkout after running this
+# `obj/test-aarch64-fuchsia/fuchsia` in your local checkout after running this
 # job for the first time.
 KEEP_CHECKOUT=
 
@@ -35,7 +39,7 @@ PICK_REFS=()
 # commit hash of fuchsia.git and some other repos in the "monorepo" checkout, in
 # addition to versions of prebuilts. It should be bumped regularly by the
 # Fuchsia team – we aim for every 1-2 months.
-INTEGRATION_SHA=f6f83d3e3852209f7752be55694006afbe979e50
+INTEGRATION_SHA=be532c365aa6ba56b08ed684c0f8bb71960c18fd
 
 checkout=fuchsia
 jiri=.jiri_root/bin/jiri
@@ -46,14 +50,16 @@ if [ -z "$KEEP_CHECKOUT" ]; then
     # This script will:
     # - create a directory named "fuchsia" if it does not exist
     # - download "jiri" to "fuchsia/.jiri_root/bin"
-    curl -s "https://fuchsia.googlesource.com/jiri/+/HEAD/scripts/bootstrap_jiri?format=TEXT" \
+    curl \
+      --retry 10 \
+      -s "https://fuchsia.googlesource.com/jiri/+/HEAD/scripts/bootstrap_jiri?format=TEXT" \
         | base64 --decode \
         | bash -s $checkout
 
     cd $checkout
 
     $jiri init \
-        -partial=true \
+        -partial-filter=tree:0 \
         -analytics-opt=false \
         .
 
@@ -69,7 +75,19 @@ if [ -z "$KEEP_CHECKOUT" ]; then
         git checkout --force JIRI_HEAD
     fi
 
-    $jiri update -autoupdate=false
+    # Check out Fuchsia, and skip downloading Fuchsia's rust toolchain, since we want to use the one
+    # we just built.
+    $jiri -j=10 update \
+        -autoupdate=false \
+        -attempts 10 \
+        -package-to-skip 'fuchsia/third_party/rust/host/${platform}' \
+        -package-to-skip 'fuchsia/third_party/rust/target/aarch64-apple-darwin' \
+        -package-to-skip 'fuchsia/third_party/rust/target/aarch64-unknown-linux-gnu' \
+        -package-to-skip 'fuchsia/third_party/rust/target/fuchsia' \
+        -package-to-skip 'fuchsia/third_party/rust/target/riscv64gc-unknown-linux-gnu' \
+        -package-to-skip 'fuchsia/third_party/rust/target/wasm32-unknown-unknown' \
+        -package-to-skip 'fuchsia/third_party/rust/target/x86_64-apple-darwin' \
+        -package-to-skip 'fuchsia/third_party/rust/target/x86_64-unknown-linux-gnu'
 
     echo integration commit = $(git -C integration rev-parse HEAD)
 

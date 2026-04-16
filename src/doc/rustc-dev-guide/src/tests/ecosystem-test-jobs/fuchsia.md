@@ -19,7 +19,11 @@ is merged.
 
 If you are worried that a pull request might break the Fuchsia builder and want
 to test it out before submitting it to the bors queue, simply ask bors to run
-the try job that builds the Fuchsia integration: `@bors try jobs=x86_64-fuchsia`.
+the try job that builds the Fuchsia integration: 
+
+```text
+`@bors try jobs=test-aarch64-fuchsia,test-x86_64-fuchsia
+```
 
 ## Building Fuchsia locally
 
@@ -30,17 +34,23 @@ way][build-toolchain].
 The recommended way to build Fuchsia is to use the Docker scripts that check out
 and run a Fuchsia build for you. If you've run Docker tests before, you can
 simply run this command from your Rust checkout to download and build Fuchsia
-using your local Rust toolchain.
+using your local Rust toolchain. If you have an x86-64 host, run:
 
 ```
-src/ci/docker/run.sh x86_64-fuchsia
+src/ci/docker/run.sh test-x86_64-fuchsia
+```
+
+Or if you are on an aarch64 host, run:
+
+```
+src/ci/docker/run.sh test-aarch64-fuchsia
 ```
 
 See the [Testing with Docker](../docker.md) chapter for more details on how to run
 and debug jobs with Docker.
 
 Note that a Fuchsia checkout is *large* – as of this writing, a checkout and
-build takes 46G of space – and as you might imagine, it takes a while to
+build takes over 67G of space – and as you might imagine, it takes a while to
 complete.
 
 ### Modifying the Fuchsia checkout
@@ -158,8 +168,8 @@ rustc book][platform-support].
 
 [regressions]: https://gist.github.com/tmandry/7103eba4bd6a6fb0c439b5a90ae355fa
 [build-toolchain]: https://fuchsia.dev/fuchsia-src/development/build/rust_toolchain
-[build-fuchsia.sh]: https://github.com/rust-lang/rust/blob/221e2741c39515a5de6da42d8c76ee1e132c2c74/src/ci/docker/host-x86_64/x86_64-fuchsia/build-fuchsia.sh
-[build_fuchsia_from_rust_ci.sh]: https://cs.opensource.google/fuchsia/fuchsia/+/main:scripts/rust/build_fuchsia_from_rust_ci.sh?q=build_fuchsia_from_rust_ci&ss=fuchsia
+[build-fuchsia.sh]: https://github.com/rust-lang/rust/blob/main/src/ci/docker/scripts/build-fuchsia.sh
+[build_fuchsia_from_rust_ci.sh]: https://cs.opensource.google/fuchsia/fuchsia/+/main:scripts/rust/build_fuchsia_from_rust_ci.sh
 [platform-support]: https://doc.rust-lang.org/nightly/rustc/platform-support/fuchsia.html
 [GN]: https://gn.googlesource.com/gn/+/main#gn
 [Ninja]: https://ninja-build.org/

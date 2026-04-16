@@ -209,6 +209,14 @@ optional:
       CODEGEN_BACKENDS: llvm,cranelift
       DIST_TRY_BUILD: 1
 
+  - name: test-x86_64-fuchsia
+    # Only run this job on the nightly channel. Fuchsia requires
+    # nightly features to compile, and this job would fail if
+    # executed on beta and stable.
+    only_on_channel: nightly
+    doc_url: https://rustc-dev-guide.rust-lang.org/tests/fuchsia.html
+    <<: *job-linux-x86-8c-ec2
+
 # Main CI jobs that have to be green to merge a commit into the default branch.
 #
 # These jobs automatically inherit envs.auto, to avoid repeating it in each job
@@ -378,16 +386,13 @@ auto:
   - name: test-various
     <<: *job-linux-4c
 
-  # FIXME: temporarily disabled due to fuchsia server rate limits. See
-  # <https://rust-lang.zulipchat.com/#narrow/channel/242791-t-infra/topic/fuchsia.20failure/with/506637259>.
-  #
-  #- name: x86_64-fuchsia
-  #  # Only run this job on the nightly channel. Fuchsia requires
-  #  # nightly features to compile, and this job would fail if
-  #  # executed on beta and stable.
-  #  only_on_channel: nightly
-  #  doc_url: https://rustc-dev-guide.rust-lang.org/tests/fuchsia.html
-  #  <<: *job-linux-8c
+  - name: test-aarch64-fuchsia
+    # Only run this job on the nightly channel. Fuchsia requires
+    # nightly features to compile, and this job would fail if
+    # executed on beta and stable.
+    only_on_channel: nightly
+    doc_url: https://rustc-dev-guide.rust-lang.org/tests/fuchsia.html
+    <<: *job-linux-aarch64-8c-ec2
 
   # Tests integration with Rust for Linux.
   # Builds stage 1 compiler and tries to compile a few RfL examples with it.
