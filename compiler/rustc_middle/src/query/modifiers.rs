@@ -28,6 +28,9 @@ pub(crate) struct arena_cache;
 /// be loadable from crate metadata instead.
 pub(crate) struct cache_on_disk;
 
+/// # `callfront` query modifier
+pub(crate) struct callfront;
+
 /// # `depth_limit` query modifier
 ///
 /// Impose a recursion call depth limit on the query to prevent stack overflow.
@@ -81,9 +84,6 @@ pub(crate) struct no_force;
 /// Do not hash the query's return value for incremental compilation. If the value needs to be
 /// recomputed, always mark its node as red (dirty).
 pub(crate) struct no_hash;
-
-/// # `sandbox_callfront` query modifier
-pub(crate) struct sandbox_callfront;
 
 /// # `separate_provide_extern` query modifier
 ///

@@ -281,12 +281,7 @@ fn execute_query_and_callback<'tcx, R, C: QueryCache>(
     query: &'tcx QueryVTable<'tcx, C>,
     action: impl FnOnce() -> R,
 ) -> R {
-    if let Some(callback_fn) = query.sandbox_callfront_fn
-        && !tcx.is_in_sandbox()
-    {
-        (callback_fn)(tcx);
-    }
-
+    query.callfront_fn.filter(|_| !tcx.is_in_sandbox()).inspect(|f| (f)(tcx));
     action()
 }
 

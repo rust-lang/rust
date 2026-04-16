@@ -18,6 +18,7 @@ macro_rules! define_queries {
                     // Search for (QMODLIST) to find all occurrences of this query modifier list.
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
+                    callfront: $callfront:literal,
                     depth_limit: $depth_limit:literal,
                     desc: $desc:expr,
                     eval_always: $eval_always:literal,
@@ -26,7 +27,6 @@ macro_rules! define_queries {
                     no_force: $no_force:literal,
                     no_hash: $no_hash:literal,
                     returns_error_guaranteed: $returns_error_guaranteed:literal,
-                    sandbox_callfront: $sandbox_callfront:literal,
                     separate_provide_extern: $separate_provide_extern:literal,
                 }
             )*
@@ -202,13 +202,13 @@ macro_rules! define_queries {
                             crate::query_impl::$name::execute_query_non_incr::__rust_end_short_backtrace
                         },
 
-                        #[cfg($sandbox_callfront)]
-                        sandbox_callfront_fn: Some(|tcx| {
+                        #[cfg($callfront)]
+                        callfront_fn: Some(|tcx| {
                             $crate::callback::$name(tcx);
                         }),
 
-                        #[cfg(not($sandbox_callfront))]
-                        sandbox_callfront_fn: None,
+                        #[cfg(not($callfront))]
+                        callfront_fn: None,
                     }
                 }
 

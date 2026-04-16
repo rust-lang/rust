@@ -225,7 +225,7 @@ rustc_queries! {
     query hir_crate_items(_: ()) -> &'tcx rustc_middle::hir::ModuleItems {
         arena_cache
         eval_always
-        sandbox_callfront
+        callfront
         desc { "getting HIR crate items" }
     }
 
