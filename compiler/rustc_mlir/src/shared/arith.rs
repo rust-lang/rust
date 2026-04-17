@@ -15,7 +15,7 @@
  */
 
 use melior::Context;
-use melior::dialect::arith::{muli, subf, subi};
+use melior::dialect::arith::{mulf, muli, subf, subi};
 use melior::dialect::ods::arith::{
     AddFOperation, AddIOperation, CmpIOperation, ConstantOperation, ExtSIOperation, MulIOperation,
 };
@@ -50,6 +50,7 @@ impl std::fmt::Display for Predicate {
 /// This enum represents integers but we use unsigned integers for the values,
 /// as we use the signless variant of the integer type in MLIR.
 pub enum Int {
+    I1(u8),
     I8(u8),
     I16(u16),
     I32(u32),
@@ -67,6 +68,7 @@ pub enum Int {
 impl Int {
     pub fn from_scalar<'tcx>(ty: Ty<'tcx>, scalar: ScalarInt) -> Result<Self, Error> {
         let value = match ty.kind() {
+            TyKind::Bool => Int::I1(scalar.to_u8() & 1),
             TyKind::Int(int_ty) => match int_ty {
                 IntTy::I8 => Int::I8(scalar.to_u8()),
                 IntTy::I16 => Int::I16(scalar.to_u16()),
@@ -95,6 +97,7 @@ impl Int {
 
     pub fn ty<'ctx>(&self, context: &'ctx Context) -> IntegerType<'ctx> {
         let num_bits = match self {
+            Int::I1(_) => 1,
             Int::I8(_) => 8,
             Int::I16(_) => 16,
             Int::I32(_) => 32,
@@ -115,6 +118,7 @@ impl Int {
     pub fn attr<'ctx>(&self, context: &'ctx Context) -> Attribute<'ctx> {
         // NOTE: unsigned values are promotied of i64
         let source_attr = match self {
+            Int::I1(value) => format!("{} : i1", value),
             Int::I8(value) => format!("{} : i8", value),
             Int::I16(value) => format!("{} : i16", value),
             Int::I32(value) => format!("{} : i32", value),
@@ -217,6 +221,15 @@ pub fn create_subf<'ctx>(
     rhs: Value<'ctx, 'ctx>,
 ) -> Result<Operation<'ctx>, Error> {
     Ok(subf(lhs, rhs, location))
+}
+
+pub fn create_mulf<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'ctx>,
+    rhs: Value<'ctx, 'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    Ok(mulf(lhs, rhs, location))
 }
 
 pub fn create_extsi<'ctx>(

@@ -23,7 +23,7 @@ use melior::ir::{
 use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, UnwindAction};
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_mlir::shared::arith::{
-    Predicate, create_addf, create_addi, create_cmpi, create_extsi, create_muli,
+    Predicate, create_addf, create_addi, create_cmpi, create_extsi, create_mulf, create_muli,
     create_muli_tensor, create_subf, create_subi,
 };
 use rustc_mlir::shared::builtin::{tensor_type, tensor_type_like};
@@ -302,7 +302,8 @@ impl<'a> TritonCodegen<'a> {
                 create_muli_tensor(self.module.context(), location, lhs, rhs)
                     .map_err(|e| MlirError::CreateOperation { err: e })?
             } else {
-                todo!("TritonCodegen::codegen_mul float tensor: {:?} {:?}", lhs_ty, rhs_ty)
+                create_mulf(self.module.context(), location, lhs, rhs)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
             };
 
         let result = mul_op.result(0).expect("Mul operation result not found");
