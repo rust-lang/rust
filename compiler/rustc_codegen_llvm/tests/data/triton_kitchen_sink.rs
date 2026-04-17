@@ -2363,9 +2363,9 @@ pub trait Pointer<D: Dtype, const RANK: usize>:
 }
 }
 pub use triton::*;
-fn kitchen_sink < T : Triton, D : Float, const BLOCK_SIZE : i32 >
+fn kitchen_sink < T : Triton, D : Float, const BLOCK_SIZE : i32, const USE_BIAS : bool >
 (x_ptr : T :: Pointer < D > , y_ptr : T :: Pointer < D > , output_ptr : T ::
-Pointer < D > , n_elements : i32,)
+Pointer < D > , n_elements : i32, use_bias : bool,)
 {
     fn combine_num < TT : Triton, DD : Dtype >
     (lhs : TT :: Tensor < DD > , rhs : TT :: Tensor < DD > ,) -> TT :: Tensor
@@ -2483,6 +2483,10 @@ Pointer < D > , n_elements : i32,)
     make_block_ptr(output_ptr, & [BLOCK_SIZE], & [1], & [0], & [BLOCK_SIZE], &
     [0]); T :: store :: < D, 1 > (out_ptrs, mconst, None, & [0], None, None);
     let _ = block_ptr2;
+    // SwitchInt on a const bool generic (compile-time constant discriminant)
+    if USE_BIAS { let _ = loaded + z; }
+    // SwitchInt on a runtime bool SSA value (bool function parameter)
+    if use_bias { let _ = loaded + z; }
 }
 
 use triton::llvm::triton::num::*;
@@ -2494,5 +2498,5 @@ pub extern "C" fn entry_point(x_ptr: *mut f32, y_ptr: *mut f32, output_ptr: *mut
     let x_ptr = LlvmPointer(x_ptr as *mut _);
     let y_ptr = LlvmPointer(y_ptr as *mut _);
     let output_ptr = LlvmPointer(output_ptr as *mut _);
-    kitchen_sink::<LlvmTriton, f32, 1024>(x_ptr, y_ptr, output_ptr, n_elements);
+    kitchen_sink::<LlvmTriton, f32, 1024, true>(x_ptr, y_ptr, output_ptr, n_elements, false);
 }

@@ -16,12 +16,14 @@
 
 use std::collections::HashMap;
 
+use melior::ir::attribute::IntegerAttribute;
 use melior::ir::operation::OperationLike;
-use melior::ir::r#type::TupleType;
-use melior::ir::{BlockLike, BlockRef, Location, Operation, TypeLike, Value};
-use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, Terminator, UnwindAction};
+use melior::ir::r#type::{IntegerType, TupleType};
+use melior::ir::{BlockLike, BlockRef, Location, Operation, TypeLike, Value, ValueLike};
+use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, SwitchTargets, Terminator, UnwindAction};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, EarlyBinder, Instance, TyCtxt, TyKind, TypingEnv};
+use rustc_mlir::shared::arith::{Predicate, create_cmpi};
 use rustc_mlir::shared::cf::create_cf_br;
 use rustc_mlir::triton::call;
 use rustc_span::Span;
@@ -77,7 +79,7 @@ impl<'a> TritonCodegen<'a> {
                 self.codegen_goto(location, target, mlir_block, basic_blocks)
             }
             rustc_middle::mir::TerminatorKind::SwitchInt { discr, targets } => {
-                todo!("SwitchInt: {:?} {:?}", discr, targets)
+                self.codegen_switch_int(tcx, instance, mir, discr, targets, location, mlir_block, basic_blocks, state)
             }
             rustc_middle::mir::TerminatorKind::UnwindResume => todo!("UnwindResume"),
             rustc_middle::mir::TerminatorKind::UnwindTerminate(unwind_terminate_reason) => {
@@ -520,6 +522,72 @@ impl<'a> TritonCodegen<'a> {
 
         mlir_block.append_operation(call_op);
         Ok(result)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn codegen_switch_int<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        discr: &Operand<'tcx>,
+        targets: &SwitchTargets,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        basic_blocks: &HashMap<BasicBlock, BlockRef>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<(), MlirError> {
+        let discr_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx,
+            TypingEnv::fully_monomorphized(),
+            EarlyBinder::bind(discr.ty(mir, tcx)),
+        );
+
+        let discr_value =
+            self.codegen_operand(tcx, instance, discr, discr_ty, location, mlir_block, state)?;
+
+        let ctx = self.module.context();
+        let otherwise_bb = targets.otherwise();
+        let cases: Vec<(u128, BasicBlock)> = targets.iter().collect();
+
+        match cases.as_slice() {
+            [] => self.codegen_goto(location, &otherwise_bb, mlir_block, basic_blocks),
+            [(val, target_bb)] => {
+                // Emit: %const = arith.constant *val : T
+                //        %cmp  = arith.cmpi eq, %discr, %const : T
+                //        cf.cond_br %cmp, ^target_bb, ^otherwise_bb
+                let discr_mlir_ty = discr_value.r#type();
+                let val_attr = IntegerAttribute::new(discr_mlir_ty, *val as i64);
+                let const_op: Operation<'a> =
+                    melior::dialect::arith::constant(ctx, val_attr.into(), location).into();
+                let val_const: Value<'a, 'a> = const_op.result(0).expect("switch const").into();
+                mlir_block.append_operation(const_op);
+
+                let i1_ty = IntegerType::new(ctx, 1).into();
+                let cmp_op: Operation<'a> =
+                    create_cmpi(ctx, location, Predicate::EQ, discr_value, val_const, i1_ty)
+                        .map_err(|e| MlirError::CreateOperation { err: e })?
+                        .into();
+                let cmp_result: Value<'a, 'a> = cmp_op.result(0).expect("cmpi result").into();
+                mlir_block.append_operation(cmp_op);
+
+                let true_block = basic_blocks.get(target_bb).expect("switch target block");
+                let false_block = basic_blocks.get(&otherwise_bb).expect("switch otherwise block");
+
+                let cond_br_op = melior::dialect::cf::cond_br(
+                    ctx,
+                    cmp_result,
+                    true_block,
+                    false_block,
+                    &[],
+                    &[],
+                    location,
+                );
+                mlir_block.append_operation(cond_br_op);
+                Ok(())
+            }
+            _ => todo!("SwitchInt with {} cases: {:?}", cases.len(), targets),
+        }
     }
 
     fn codegen_goto(
