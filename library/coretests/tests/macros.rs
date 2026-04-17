@@ -1,5 +1,7 @@
 #![allow(unused_must_use)]
 
+use std::{assert_matches, debug_assert_matches};
+
 #[allow(dead_code)]
 trait Trait {
     fn blah(&self);
@@ -218,4 +220,25 @@ fn _expression() {
 fn _matches_does_not_trigger_non_exhaustive_omitted_patterns_lint(o: core::sync::atomic::Ordering) {
     // Ordering is a #[non_exhaustive] enum from a separate crate
     let _m = matches!(o, core::sync::atomic::Ordering::Relaxed);
+}
+
+struct MutRefWithDrop<'a>(&'a mut u32);
+
+// MutRefWithDrop needs to have a non-trivial drop to encounter potential lifetime issues if the
+// macros don't introduce a temporary scope.
+impl Drop for MutRefWithDrop<'_> {
+    fn drop(&mut self) {
+        *self.0 = u32::MAX;
+    }
+}
+
+#[test]
+fn temporary_scope_introduction() {
+    // Fails to compile if the macros don't introduce a temporary scope, since `&mut val` would
+    // create a second mutable borrow while `MutRefWithDrop` still holds a unique ref.
+    let mut val = 0;
+
+    (assert_matches!(*MutRefWithDrop(&mut val).0, 0), std::mem::take(&mut val));
+
+    (debug_assert_matches!(*MutRefWithDrop(&mut val).0, 0), std::mem::take(&mut val));
 }
