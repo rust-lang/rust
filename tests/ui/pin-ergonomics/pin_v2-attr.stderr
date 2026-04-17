@@ -116,6 +116,14 @@ LL | #[pin_v2]
    |
    = help: `#[pin_v2]` can only be applied to data types
 
+error: `#[pin_v2]` attribute cannot be used on delegations
+  --> $DIR/pin_v2-attr.rs:58:5
+   |
+LL |     #[pin_v2]
+   |     ^^^^^^^^^
+   |
+   = help: `#[pin_v2]` can only be applied to data types
+
 error: `#[pin_v2]` attribute cannot be used on inherent methods
   --> $DIR/pin_v2-attr.rs:61:5
    |
@@ -297,14 +305,6 @@ error: `#[pin_v2]` attribute cannot be used on macro defs
    |
 LL | #[pin_v2]
    | ^^^^^^^^^
-   |
-   = help: `#[pin_v2]` can only be applied to data types
-
-error: `#[pin_v2]` attribute cannot be used on delegations
-  --> $DIR/pin_v2-attr.rs:58:5
-   |
-LL |     #[pin_v2]
-   |     ^^^^^^^^^
    |
    = help: `#[pin_v2]` can only be applied to data types
 

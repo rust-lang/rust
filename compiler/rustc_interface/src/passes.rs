@@ -23,7 +23,7 @@ use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::limit::Limit;
 use rustc_hir::lints::DelayedLint;
-use rustc_hir::{Attribute, MaybeOwner, Target, find_attr};
+use rustc_hir::{Attribute, Target, find_attr};
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{
     BufferedEarlyLint, DecorateAttrLint, EarlyCheckNode, LintStore, unerased_lint_store,
@@ -402,7 +402,6 @@ fn print_macro_stats(ecx: &ExtCtxt<'_>) {
 fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
     let sess = tcx.sess;
     let (resolver, krate) = tcx.resolver_for_lowering();
-    let krate = &*krate.borrow();
     let mut lint_buffer = resolver.lint_buffer.steal();
 
     if sess.opts.unstable_opts.input_stats {
@@ -478,7 +477,7 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         tcx.registered_tools(()),
         Some(lint_buffer),
         rustc_lint::BuiltinCombinedEarlyLintPass::new(),
-        (&**krate, &*krate.attrs),
+        (krate, &*krate.attrs),
     )
 }
 
@@ -785,7 +784,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 fn resolver_for_lowering_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> (&'tcx (ty::ResolverAstLowering<'tcx>, Steal<Arc<ast::Crate>>), &'tcx ty::ResolverGlobalCtxt) {
+) -> (&'tcx ty::ResolverAstLowering<'tcx>, &'tcx ast::Crate, &'tcx ty::ResolverGlobalCtxt) {
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
@@ -806,8 +805,11 @@ fn resolver_for_lowering_raw<'tcx>(
         ast_lowering: untracked_resolver_for_lowering,
     } = resolver.into_outputs();
 
-    let resolutions = tcx.arena.alloc(untracked_resolutions);
-    (tcx.arena.alloc((untracked_resolver_for_lowering, Steal::new(Arc::new(krate)))), resolutions)
+    (
+        tcx.arena.alloc(untracked_resolver_for_lowering),
+        tcx.arena.alloc(krate),
+        tcx.arena.alloc(untracked_resolutions),
+    )
 }
 
 pub fn write_dep_info(tcx: TyCtxt<'_>) {
@@ -865,7 +867,6 @@ pub fn write_interface<'tcx>(tcx: TyCtxt<'tcx>) {
     }
     let _timer = tcx.sess.timer("write_interface");
     let (_, krate) = tcx.resolver_for_lowering();
-    let krate = &*krate.borrow();
 
     let krate = rustc_ast_pretty::pprust::print_crate_as_interface(
         krate,
@@ -882,14 +883,11 @@ pub fn write_interface<'tcx>(tcx: TyCtxt<'tcx>) {
 pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.queries.analysis = analysis;
-    providers.queries.hir_crate = rustc_ast_lowering::lower_to_hir;
-    providers.queries.lower_delayed_owner = rustc_ast_lowering::lower_delayed_owner;
-    // `delayed_owner` is fed during `lower_delayed_owner`, by default it returns phantom,
-    // as if this query was not fed it means that `MaybeOwner` does not exist for provided LocalDefId.
-    providers.queries.delayed_owner = |_, _| MaybeOwner::Phantom;
+    providers.queries.index_ast = rustc_ast_lowering::index_ast;
+    providers.queries.lower_to_hir = rustc_ast_lowering::lower_to_hir;
     providers.queries.resolver_for_lowering_raw = resolver_for_lowering_raw;
     providers.queries.stripped_cfg_items = |tcx, _| &tcx.resolutions(()).stripped_cfg_items[..];
-    providers.queries.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
+    providers.queries.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).2;
     providers.queries.early_lint_checks = early_lint_checks;
     providers.queries.env_var_os = env_var_os;
     limits::provide(&mut providers.queries);
@@ -1062,6 +1060,8 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
 /// This function never fails.
 fn run_required_analyses(tcx: TyCtxt<'_>) {
+    tcx.ensure_done().early_lint_checks(());
+
     if tcx.sess.opts.unstable_opts.input_stats {
         rustc_passes::input_stats::print_hir_stats(tcx);
     }
