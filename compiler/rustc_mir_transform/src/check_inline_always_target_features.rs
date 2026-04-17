@@ -1,5 +1,5 @@
 use rustc_hir::attrs::InlineAttr;
-use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
+use rustc_middle::middle::codegen_fn_attrs::TargetFeatureKind;
 use rustc_middle::mir::{Body, TerminatorKind};
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -51,36 +51,83 @@ fn check_inline_always_target_features<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx
 
                 // Scan the users defined target features and ensure they
                 // match the caller.
-                if tcx.is_target_feature_call_safe(
+                if tcx.is_call_inline_able_at_callsite(
                     &callee_codegen_fn_attrs.target_features,
-                    &caller_codegen_fn_attrs
-                        .target_features
-                        .iter()
-                        .cloned()
-                        .chain(tcx.sess.target_features.iter().map(|feat| TargetFeature {
-                            name: *feat,
-                            kind: TargetFeatureKind::Implied,
-                        }))
-                        .collect::<Vec<_>>(),
+                    &caller_codegen_fn_attrs.target_features,
                 ) {
                     continue;
                 }
 
-                let callee_only: Vec<_> = callee_codegen_fn_attrs
+                // Use the full target feature sets, including implied and
+                // command-line features, to classify the mismatch. Diagnostic
+                // messages should still only mention the non-implied features
+                // that the user actually enabled.
+                let caller_features =
+                    tcx.effective_inline_target_features(&caller_codegen_fn_attrs.target_features);
+                let callee_features =
+                    tcx.effective_inline_target_features(&callee_codegen_fn_attrs.target_features);
+
+                let explicit_caller_features: Vec<_> = caller_codegen_fn_attrs
                     .target_features
                     .iter()
-                    .filter(|it| !caller_codegen_fn_attrs.target_features.contains(it))
-                    .filter(|it| !matches!(it.kind, TargetFeatureKind::Implied))
-                    .map(|it| it.name.as_str())
+                    .cloned()
+                    .filter(|it| it.kind != TargetFeatureKind::Implied)
+                    .collect();
+                let explicit_callee_features: Vec<_> = callee_codegen_fn_attrs
+                    .target_features
+                    .iter()
+                    .cloned()
+                    .filter(|it| it.kind != TargetFeatureKind::Implied)
                     .collect();
 
-                crate::errors::emit_inline_always_target_feature_diagnostic(
-                    tcx,
-                    terminator.source_info.span,
-                    callee_def_id,
-                    caller_def_id.into(),
-                    &callee_only,
-                );
+                let explicit_caller_features =
+                    tcx.effective_inline_target_features(&explicit_caller_features);
+                let explicit_callee_features =
+                    tcx.effective_inline_target_features(&explicit_callee_features);
+
+                // If the callee's features are otherwise a subset of the
+                // caller's, then the mismatch is only due to the caller using a
+                // different vector ABI from the callee.
+                if callee_features.is_subset(&caller_features) {
+                    // We only want to display the target features the user
+                    // missed out. Not every feature that is possibly enabled.
+                    let caller_abi_features = tcx.abi_target_features(&explicit_caller_features);
+                    let callee_abi_features = tcx.abi_target_features(&explicit_callee_features);
+                    let caller_only = caller_abi_features
+                        .difference(&callee_abi_features)
+                        .map(|it| it.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+
+                    // Emit that the issue is caused by a vector ABI mismatch.
+                    crate::errors::emit_inline_always_target_feature_diagnostic(
+                        tcx,
+                        terminator.source_info.span,
+                        callee_def_id,
+                        caller_def_id.into(),
+                        &caller_only,
+                        caller_def_id.into(),
+                        callee_def_id,
+                    );
+                } else {
+                    let callee_only = explicit_callee_features
+                        .difference(&explicit_caller_features)
+                        .map(|it| it.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+
+                    // Emit that the issue stems from the callee having features
+                    // enabled that the caller does not have enabled.
+                    crate::errors::emit_inline_always_target_feature_diagnostic(
+                        tcx,
+                        terminator.source_info.span,
+                        callee_def_id,
+                        caller_def_id.into(),
+                        &callee_only,
+                        callee_def_id,
+                        caller_def_id.into(),
+                    );
+                }
             }
             _ => (),
         }
