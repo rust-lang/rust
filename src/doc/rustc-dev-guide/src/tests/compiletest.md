@@ -185,7 +185,7 @@ fn foo() {
 fn main() { foo(); }
 ```
 
-`cfail` tests support the `forbid-output` directive to specify that a certain
+Incremental tests support the `forbid-output` directive to specify that a certain
 substring must not appear anywhere in the compiler output.
 This can be useful to ensure certain errors do not appear, but this can be fragile as error messages
 change over time, and a test may no longer be checking the right thing but will still pass.
