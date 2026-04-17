@@ -190,11 +190,6 @@ substring must not appear anywhere in the compiler output.
 This can be useful to ensure certain errors do not appear, but this can be fragile as error messages
 change over time, and a test may no longer be checking the right thing but will still pass.
 
-`cfail` tests support the `should-ice` directive to specify that a test should
-cause an Internal Compiler Error (ICE).
-This is a highly specialized directive
-to check that the incremental cache continues to work after an ICE.
-
 Incremental tests may use the attribute `#[rustc_clean(...)]` attribute.
 This attribute compares the fingerprint from the current compilation session with the previous one.
 The first revision should never have an active `rustc_clean` attribute, since it will always be dirty.
