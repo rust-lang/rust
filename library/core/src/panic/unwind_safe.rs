@@ -317,7 +317,7 @@ impl<S: AsyncIterator> AsyncIterator for AssertUnwindSafe<S> {
 
 /// If a value's type is already `UnwindSafe`,
 /// wrapping it in `AssertUnwindSafe` is never incorrect.
-#[stable(feature = "from_wrapper_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "from_wrapper_impls", since = "1.96.0")]
 impl<T> From<T> for AssertUnwindSafe<T>
 where
     T: UnwindSafe,

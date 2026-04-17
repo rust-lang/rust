@@ -545,7 +545,7 @@ pub use core::option;
 pub use core::pin;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::ptr;
-#[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "new_range_api", since = "1.96.0")]
 pub use core::range;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;

@@ -266,12 +266,6 @@ impl<'test> TestCx<'test> {
     /// Code executed for each revision in turn (or, if there are no
     /// revisions, exactly once, with revision == None).
     fn run_revision(&self) {
-        if self.props.should_ice
-            && self.config.mode != TestMode::Incremental
-            && self.config.mode != TestMode::Crashes
-        {
-            self.fatal("cannot use should-ice in a test that is not cfail");
-        }
         // Run the test multiple times if requested.
         // This is useful for catching flaky tests under the parallel frontend.
         for _ in 0..self.config.iteration_count {
@@ -669,16 +663,6 @@ impl<'test> TestCx<'test> {
             } else {
                 missing_patterns.push(pattern.to_string());
             }
-        }
-    }
-
-    fn check_no_compiler_crash(&self, proc_res: &ProcRes, should_ice: bool) {
-        match proc_res.status.code() {
-            Some(101) if !should_ice => {
-                self.fatal_proc_rec("compiler encountered internal error", proc_res)
-            }
-            None => self.fatal_proc_rec("compiler terminated by signal", proc_res),
-            _ => (),
         }
     }
 
