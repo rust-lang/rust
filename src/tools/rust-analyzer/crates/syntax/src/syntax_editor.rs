@@ -591,8 +591,8 @@ mod tests {
         assert_eq!(edit.find_annotation(placeholder_snippet).len(), 2);
         assert!(
             edit.annotations
-                .iter()
-                .flat_map(|(_, elements)| elements)
+                .values()
+                .flatten()
                 .all(|element| element.ancestors().any(|it| &it == edit.new_root()))
         )
     }

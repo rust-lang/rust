@@ -495,6 +495,10 @@ impl<'a, T: SpanTransformer<Span = span::Span>> Writer<'a, '_, T, tt::iter::TtIt
         }
     }
 
+    #[expect(
+        clippy::explicit_counter_loop,
+        reason = "it looks better the current way since we use `first_tt` before the loop"
+    )]
     fn subtree(&mut self, idx: usize, n_tt: usize, subtree: tt::iter::TtIter<'a>) {
         let mut first_tt = self.token_tree.len();
         self.token_tree.resize(first_tt + n_tt, !0);

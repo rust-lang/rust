@@ -606,14 +606,14 @@ fn has_test_function_or_multiple_test_submodules(
                     return true;
                 }
             }
-            hir::ModuleDef::Module(submodule) => {
+            hir::ModuleDef::Module(submodule)
                 if has_test_function_or_multiple_test_submodules(
                     sema,
                     &submodule,
                     consider_exported_main,
-                ) {
-                    number_of_test_submodules += 1;
-                }
+                ) =>
+            {
+                number_of_test_submodules += 1;
             }
             _ => (),
         }

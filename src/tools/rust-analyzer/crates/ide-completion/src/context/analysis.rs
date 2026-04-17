@@ -1183,18 +1183,16 @@ fn classify_name_ref<'db>(
                                             let arg_name = arg_name.text();
                                             for item in trait_.items_with_supertraits(sema.db) {
                                                 match item {
-                                                    hir::AssocItem::TypeAlias(assoc_ty) => {
-                                                        if assoc_ty.name(sema.db).as_str() == arg_name {
+                                                    hir::AssocItem::TypeAlias(assoc_ty)
+                                                        if assoc_ty.name(sema.db).as_str() == arg_name => {
                                                             override_location = Some(TypeLocation::AssocTypeEq);
                                                             return None;
-                                                        }
-                                                    },
-                                                    hir::AssocItem::Const(const_) => {
-                                                        if const_.name(sema.db)?.as_str() == arg_name {
+                                                        },
+                                                    hir::AssocItem::Const(const_)
+                                                        if const_.name(sema.db)?.as_str() == arg_name => {
                                                             override_location =  Some(TypeLocation::AssocConstEq);
                                                             return None;
-                                                        }
-                                                    },
+                                                        },
                                                     _ => (),
                                                 }
                                             }

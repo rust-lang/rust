@@ -240,17 +240,14 @@ fn hints_(
                     is_trivial = false;
                     true
                 }
-                ast::Type::PathType(t) => {
+                ast::Type::PathType(t)
                     if t.path()
                         .and_then(|it| it.segment())
                         .and_then(|it| it.parenthesized_arg_list())
-                        .is_some()
-                    {
-                        is_trivial = false;
-                        true
-                    } else {
-                        false
-                    }
+                        .is_some() =>
+                {
+                    is_trivial = false;
+                    true
                 }
                 _ => false,
             })
@@ -339,17 +336,14 @@ fn hints_(
                 is_trivial = false;
                 true
             }
-            ast::Type::PathType(t) => {
+            ast::Type::PathType(t)
                 if t.path()
                     .and_then(|it| it.segment())
                     .and_then(|it| it.parenthesized_arg_list())
-                    .is_some()
-                {
-                    is_trivial = false;
-                    true
-                } else {
-                    false
-                }
+                    .is_some() =>
+            {
+                is_trivial = false;
+                true
             }
             _ => false,
         })

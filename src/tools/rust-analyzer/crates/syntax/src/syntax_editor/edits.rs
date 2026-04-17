@@ -301,10 +301,11 @@ fn normalize_ws_between_braces(editor: &SyntaxEditor, node: &SyntaxNode) -> Opti
     let indent = IndentLevel::from_node(node);
 
     match l.next_sibling_or_token() {
-        Some(ws) if ws.kind() == SyntaxKind::WHITESPACE => {
-            if ws.next_sibling_or_token()?.into_token()? == r {
-                editor.replace(ws, make.whitespace(&format!("\n{indent}")));
-            }
+        Some(ws)
+            if ws.kind() == SyntaxKind::WHITESPACE
+                && ws.next_sibling_or_token()?.into_token()? == r =>
+        {
+            editor.replace(ws, make.whitespace(&format!("\n{indent}")));
         }
         Some(ws) if ws.kind() == T!['}'] => {
             editor.insert(Position::after(l), make.whitespace(&format!("\n{indent}")));

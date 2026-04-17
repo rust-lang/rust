@@ -1362,26 +1362,26 @@ fn node_to_insert_after(body: &FunctionBody, anchor: Anchor) -> Option<SyntaxNod
     while let Some(next_ancestor) = ancestors.next() {
         match next_ancestor.kind() {
             SyntaxKind::SOURCE_FILE => break,
-            SyntaxKind::IMPL => {
-                if body.extracted_from_trait_impl() && matches!(anchor, Anchor::Method) {
-                    let impl_node = find_non_trait_impl(&next_ancestor);
-                    if let target_node @ Some(_) = impl_node.as_ref().and_then(last_impl_member) {
-                        return target_node;
-                    }
+            SyntaxKind::IMPL
+                if body.extracted_from_trait_impl() && matches!(anchor, Anchor::Method) =>
+            {
+                let impl_node = find_non_trait_impl(&next_ancestor);
+                if let target_node @ Some(_) = impl_node.as_ref().and_then(last_impl_member) {
+                    return target_node;
                 }
             }
             SyntaxKind::ITEM_LIST if !matches!(anchor, Anchor::Freestanding) => continue,
-            SyntaxKind::ITEM_LIST => {
-                if ancestors.peek().map(SyntaxNode::kind) == Some(SyntaxKind::MODULE) {
-                    break;
-                }
+            SyntaxKind::ITEM_LIST
+                if ancestors.peek().map(SyntaxNode::kind) == Some(SyntaxKind::MODULE) =>
+            {
+                break;
             }
             SyntaxKind::ASSOC_ITEM_LIST if !matches!(anchor, Anchor::Method) => continue,
             SyntaxKind::ASSOC_ITEM_LIST if body.extracted_from_trait_impl() => continue,
-            SyntaxKind::ASSOC_ITEM_LIST => {
-                if ancestors.peek().map(SyntaxNode::kind) == Some(SyntaxKind::IMPL) {
-                    break;
-                }
+            SyntaxKind::ASSOC_ITEM_LIST
+                if ancestors.peek().map(SyntaxNode::kind) == Some(SyntaxKind::IMPL) =>
+            {
+                break;
             }
             _ => (),
         }
@@ -2128,19 +2128,19 @@ fn update_external_control_flow(handler: &FlowHandler<'_>, syntax: &SyntaxNode) 
     for event in syntax.preorder() {
         match event {
             WalkEvent::Enter(e) => match e.kind() {
-                SyntaxKind::LOOP_EXPR | SyntaxKind::WHILE_EXPR | SyntaxKind::FOR_EXPR => {
-                    if nested_loop.is_none() {
-                        nested_loop = Some(e.clone());
-                    }
+                SyntaxKind::LOOP_EXPR | SyntaxKind::WHILE_EXPR | SyntaxKind::FOR_EXPR
+                    if nested_loop.is_none() =>
+                {
+                    nested_loop = Some(e.clone());
                 }
                 SyntaxKind::FN
                 | SyntaxKind::CONST
                 | SyntaxKind::STATIC
                 | SyntaxKind::IMPL
-                | SyntaxKind::MODULE => {
-                    if nested_scope.is_none() {
-                        nested_scope = Some(e.clone());
-                    }
+                | SyntaxKind::MODULE
+                    if nested_scope.is_none() =>
+                {
+                    nested_scope = Some(e.clone());
                 }
                 _ => {}
             },

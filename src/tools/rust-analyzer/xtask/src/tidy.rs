@@ -100,6 +100,10 @@ fn check_cargo_toml(path: &Path, text: String) {
         if !text.contains("path=") {
             continue;
         }
+        #[expect(
+            clippy::collapsible_match,
+            reason = "this changes meaning, as `dev-dependencies` includes `dependencies`"
+        )]
         match section {
             Some(s) if s.contains("dev-dependencies") => {
                 if text.contains("version") {

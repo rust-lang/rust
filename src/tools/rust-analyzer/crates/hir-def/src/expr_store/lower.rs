@@ -2737,17 +2737,17 @@ impl<'db> ExprCollector<'db> {
 
         for (rib_idx, rib) in self.label_ribs.iter().enumerate().rev() {
             match &rib.kind {
-                RibKind::Normal(label_name, id, label_hygiene) => {
-                    if *label_name == name && *label_hygiene == hygiene_id {
-                        return if self.is_label_valid_from_rib(rib_idx) {
-                            Ok(Some(*id))
-                        } else {
-                            Err(ExpressionStoreDiagnostics::UnreachableLabel {
-                                name,
-                                node: self.expander.in_file(AstPtr::new(&lifetime)),
-                            })
-                        };
-                    }
+                RibKind::Normal(label_name, id, label_hygiene)
+                    if *label_name == name && *label_hygiene == hygiene_id =>
+                {
+                    return if self.is_label_valid_from_rib(rib_idx) {
+                        Ok(Some(*id))
+                    } else {
+                        Err(ExpressionStoreDiagnostics::UnreachableLabel {
+                            name,
+                            node: self.expander.in_file(AstPtr::new(&lifetime)),
+                        })
+                    };
                 }
                 RibKind::MacroDef(macro_id) => {
                     if let Some((parent_ctx, label_macro_id)) = hygiene_info
