@@ -1156,9 +1156,9 @@ pub mod ops {
 // region:new_range
 pub mod range {
     #[lang = "RangeCopy"]
-    pub struct Range<Idx> {
-        pub start: Idx,
-        pub end: Idx,
+    pub struct Range<Start, End = Start> {
+        pub start: Start,
+        pub end: End,
     }
 
     #[lang = "RangeFromCopy"]
@@ -1167,9 +1167,9 @@ pub mod range {
     }
 
     #[lang = "RangeInclusiveCopy"]
-    pub struct RangeInclusive<Idx> {
-        pub start: Idx,
-        pub end: Idx,
+    pub struct RangeInclusive<Start, End = Start> {
+        pub start: Start,
+        pub end: End,
     }
 
     #[lang = "RangeToInclusiveCopy"]
