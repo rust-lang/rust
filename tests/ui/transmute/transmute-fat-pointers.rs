@@ -15,11 +15,11 @@ fn b<T: ?Sized, U: ?Sized>(x: &T) -> &U {
 }
 
 fn c<T, U>(x: &T) -> &U {
-    unsafe { transmute(x) }
+    unsafe { transmute(x) } // Ok!
 }
 
 fn d<T, U>(x: &[T]) -> &[U] {
-    unsafe { transmute(x) }
+    unsafe { transmute(x) } // Ok!
 }
 
 fn e<T: ?Sized, U>(x: &T) -> &U {
@@ -28,6 +28,10 @@ fn e<T: ?Sized, U>(x: &T) -> &U {
 
 fn f<T, U: ?Sized>(x: &T) -> &U {
     unsafe { transmute(x) } //~ ERROR cannot transmute between types of different sizes
+}
+
+fn g<T: ?Sized>(x: Box<T>) -> &'static T {
+    unsafe { transmute(x) } // Ok!
 }
 
 fn main() { }
