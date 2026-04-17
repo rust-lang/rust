@@ -413,7 +413,7 @@ use crate::num::NonZero;
 use crate::{fmt, hash, intrinsics, ub_checks};
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-#[deprecated(since = "CURRENT_RUSTC_VERSION", note = "moved from `ptr` to `mem`")]
+#[deprecated(since = "1.96.0", note = "moved from `ptr` to `mem`")]
 /// Deprecated re-export of [mem::Alignment].
 pub type Alignment = mem::Alignment;
 
