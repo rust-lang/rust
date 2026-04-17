@@ -745,7 +745,7 @@ error: layout_of(Option<char>) = Layout {
                        I32,
                        false,
                    ),
-                   valid_range: 0..=1114112,
+                   valid_range: (..=1114111) | (4294967295..),
                },
            ),
            fields: Arbitrary {
@@ -763,7 +763,7 @@ error: layout_of(Option<char>) = Layout {
                        I32,
                        false,
                    ),
-                   valid_range: 0..=1114112,
+                   valid_range: (..=1114111) | (4294967295..),
                },
            ),
            uninhabited: false,
@@ -773,12 +773,12 @@ error: layout_of(Option<char>) = Layout {
                        I32,
                        false,
                    ),
-                   valid_range: 0..=1114112,
+                   valid_range: (..=1114111) | (4294967295..),
                },
                tag_encoding: Niche {
                    untagged_variant: 1,
                    niche_variants: 0..=0,
-                   niche_start: 1114112,
+                   niche_start: 4294967295,
                },
                tag_field: 0,
                variants: [
