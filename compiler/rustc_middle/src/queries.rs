@@ -80,7 +80,6 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
 use rustc_target::spec::PanicStrategy;
 
-use crate::hir::Crate;
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
 use crate::metadata::ModChild;
@@ -181,12 +180,19 @@ rustc_queries! {
     }
 
     query resolver_for_lowering_raw(_: ()) -> (
-        &'tcx (ty::ResolverAstLowering<'tcx>, Steal<Arc<ast::Crate>>),
+        &'tcx ty::ResolverAstLowering<'tcx>,
+        &'tcx ast::Crate,
         &'tcx ty::ResolverGlobalCtxt,
     ) {
         eval_always
         no_hash
         desc { "getting the resolver for lowering" }
+    }
+
+    query index_ast(_: ()) -> &'tcx IndexVec<LocalDefId, ast::AstOwner<'tcx>> {
+        eval_always
+        no_hash
+        desc { "getting the AST for lowering" }
     }
 
     /// Return the span for a definition.
@@ -200,32 +206,14 @@ rustc_queries! {
         desc { "getting the source span" }
     }
 
-    /// Represents crate as a whole (as distinct from the top-level crate module).
-    ///
-    /// If you call `tcx.hir_crate(())` we will have to assume that any change
-    /// means that you need to be recompiled. This is because the `hir_crate`
-    /// query gives you access to all other items. To avoid this fate, do not
-    /// call `tcx.hir_crate(())`; instead, prefer wrappers like
-    /// [`TyCtxt::hir_visit_all_item_likes_in_crate`].
-    query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
-        arena_cache
+    query lower_to_hir(key: LocalDefId) -> hir::MaybeOwner<'tcx> {
         eval_always
-        desc { "getting the crate HIR" }
-    }
-
-    query lower_delayed_owner(def_id: LocalDefId) {
-        eval_always
-        desc { "lowering the delayed AST owner `{}`", tcx.def_path_str(def_id) }
+        desc { "lowering HIR for `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
     query hir_owner(def_id: LocalDefId) -> rustc_middle::hir::ProjectedMaybeOwner<'tcx> {
         desc { "getting owner for `{}`", tcx.def_path_str(def_id) }
         feedable
-    }
-
-    query hir_delayed_owner(def_id: LocalDefId) -> hir::MaybeOwner<'tcx>  {
-        feedable
-        desc { "getting child of lowered delayed AST owner `{}`", tcx.def_path_str(def_id) }
     }
 
     /// All items in the crate.
@@ -2070,12 +2058,6 @@ rustc_queries! {
 
     query delegation_user_specified_args(def_id: LocalDefId) -> (&'tcx [GenericArg<'tcx>], &'tcx [GenericArg<'tcx>]) {
         desc { "getting delegation user-specified args" }
-    }
-
-    query delegations_resolutions(_: ()) -> &'tcx FxIndexMap<LocalDefId, Result<DefId, ErrorGuaranteed>> {
-        arena_cache
-        eval_always
-        desc { "getting delegations resolutions" }
     }
 
     /// Does lifetime resolution on items. Importantly, we can't resolve

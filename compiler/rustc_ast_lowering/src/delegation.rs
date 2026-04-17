@@ -46,12 +46,12 @@ use rustc_abi::ExternAbi;
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::*;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
-use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, FnDeclFlags};
 use rustc_middle::span_bug;
-use rustc_middle::ty::{Asyncness, PerOwnerResolverData, TyCtxt};
+use rustc_middle::ty::{Asyncness, PerOwnerResolverData};
+use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::symbol::kw;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 
@@ -62,7 +62,6 @@ use crate::diagnostics::{
 };
 use crate::{
     AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
-    index_crate,
 };
 
 mod generics;
@@ -108,71 +107,38 @@ static ATTRS_ADDITIONS: &[AttrAdditionInfo] = &[
     },
 ];
 
-pub(crate) fn delegations_resolutions(
-    tcx: TyCtxt<'_>,
-    _: (),
-) -> FxIndexMap<LocalDefId, Result<DefId, ErrorGuaranteed>> {
-    let krate = tcx.hir_crate(());
-
-    let (resolver, _) = tcx.resolver_for_lowering();
-    let ast_crate = &*krate.ast_krate.borrow();
-
-    // FIXME!!!(fn_delegation): make ast index lifetime same as resolver,
-    // as it is too bad to reindex whole crate on each delegation lowering.
-    let ast_index = index_crate(resolver, ast_crate);
-
-    let mut result = FxIndexMap::<LocalDefId, Result<DefId, ErrorGuaranteed>>::default();
-
-    for &def_id in &krate.delayed_ids {
-        let delegation = ast_index[def_id].delegation().expect("processing delegations");
-        let span = delegation.last_segment_span();
-
-        if let Some(info) = tcx.resolutions(()).delegation_infos.get(&def_id) {
-            let res = info.resolution_id.map(|id| check_for_cycles(tcx, id, span).map(|_| id));
-            result.insert(def_id, res.flatten());
-        } else {
-            tcx.dcx().span_delayed_bug(
-                span,
-                format!("delegation resolution record was not found for {def_id:?}"),
-            );
-        }
-    }
-
-    result
-}
-
-fn check_for_cycles(tcx: TyCtxt<'_>, mut def_id: DefId, span: Span) -> Result<(), ErrorGuaranteed> {
-    let mut visited: FxHashSet<DefId> = Default::default();
-
-    loop {
-        visited.insert(def_id);
-
-        // If def_id is in local crate and it corresponds to another delegation
-        // it means that we refer to another delegation as a callee, so in order to obtain
-        // a signature DefId we obtain NodeId of the callee delegation and try to get signature from it.
-        if let Some(local_id) = def_id.as_local()
-            && let Some(info) = tcx.resolutions(()).delegation_infos.get(&local_id)
-            && let Ok(id) = info.resolution_id
-        {
-            def_id = id;
-            if visited.contains(&def_id) {
-                return Err(match visited.len() {
-                    1 => tcx.dcx().emit_err(UnresolvedDelegationCallee { span }),
-                    _ => tcx.dcx().emit_err(CycleInDelegationSignatureResolution { span }),
-                });
-            }
-        } else {
-            return Ok(());
-        }
-    }
-}
-
 impl<'hir> LoweringContext<'hir> {
     fn is_method(&self, def_id: DefId, span: Span) -> bool {
         match self.tcx.def_kind(def_id) {
             DefKind::Fn => false,
             DefKind::AssocFn => self.tcx.associated_item(def_id).is_method(),
             _ => span_bug!(span, "unexpected DefKind for delegation item"),
+        }
+    }
+
+    fn check_for_cycles(&self, mut def_id: DefId, span: Span) -> Result<(), ErrorGuaranteed> {
+        let mut visited: FxHashSet<DefId> = Default::default();
+
+        loop {
+            visited.insert(def_id);
+
+            // If def_id is in local crate and it corresponds to another delegation
+            // it means that we refer to another delegation as a callee, so in order to obtain
+            // a signature DefId we obtain NodeId of the callee delegation and try to get signature from it.
+            if let Some(local_id) = def_id.as_local()
+                && let Some(info) = self.tcx.resolutions(()).delegation_infos.get(&local_id)
+                && let Ok(id) = info.resolution_id
+            {
+                def_id = id;
+                if visited.contains(&def_id) {
+                    return Err(match visited.len() {
+                        1 => self.dcx().emit_err(UnresolvedDelegationCallee { span }),
+                        _ => self.dcx().emit_err(CycleInDelegationSignatureResolution { span }),
+                    });
+                }
+            } else {
+                return Ok(());
+            }
         }
     }
 
@@ -183,11 +149,20 @@ impl<'hir> LoweringContext<'hir> {
     ) -> DelegationResults<'hir> {
         let span = self.lower_span(delegation.last_segment_span());
 
-        let sig_id = self.tcx.delegations_resolutions(()).get(&self.owner.def_id).copied();
+        let Some(info) = self.tcx.resolutions(()).delegation_infos.get(&self.owner.def_id) else {
+            self.dcx().span_delayed_bug(
+                span,
+                format!("delegation resolution record was not found for {:?}", self.owner.def_id),
+            );
+
+            return self.generate_delegation_error(span, delegation);
+        };
+
+        let sig_id = info.resolution_id.and_then(|id| self.check_for_cycles(id, span).map(|_| id));
 
         // Delegation can be missing from the `delegations_resolutions` table
         // in illegal places such as function bodies in extern blocks (see #151356).
-        let Some(Ok(sig_id)) = sig_id else {
+        let Ok(sig_id) = sig_id else {
             self.dcx().span_delayed_bug(
                 span,
                 format!("LoweringContext: the delegation {:?} is unresolved", item_id),
