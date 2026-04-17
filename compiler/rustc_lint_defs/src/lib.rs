@@ -652,7 +652,7 @@ pub enum DeprecatedSinceKind {
     InVersion(String),
 }
 
-#[derive(Debug, HashStable_Generic)]
+#[derive(Debug)]
 pub enum AttributeLintKind {
     UnusedDuplicate {
         this: Span,
