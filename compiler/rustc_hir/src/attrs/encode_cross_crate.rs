@@ -59,6 +59,7 @@ impl AttributeKind {
             LoopMatch(..) => No,
             MacroEscape(..) => No,
             MacroExport { .. } => Yes,
+            MacroTokenLimit { .. } => No,
             MacroUse { .. } => No,
             Marker(..) => No,
             MayDangle(..) => No,

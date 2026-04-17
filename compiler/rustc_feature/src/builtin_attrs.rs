@@ -397,6 +397,11 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(
         type_length_limit,
     ),
+    ungated!(
+        macro_token_limit, CrateLevel,
+        template!(NameValueStr: "N"),
+        FutureWarnFollowing, EncodeCrossCrate::No
+    ),
     gated!(
         move_size_limit,
         large_assignments, experimental!(move_size_limit)
