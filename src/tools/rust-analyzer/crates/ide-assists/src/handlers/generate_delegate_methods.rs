@@ -108,8 +108,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
             |edit| {
                 let editor = edit.make_editor(strukt.syntax());
                 let make = editor.make();
-                let field = editor
-                    .make()
+                let field = make
                     .field_from_idents(["self", &field_name])
                     .expect("always be a valid expression");
                 // Create the function
@@ -149,16 +148,14 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     .map(|v| convert_param_list_to_arg_list(v, make))
                     .unwrap_or_else(|| make.arg_list([]));
 
-                let tail_expr =
-                    editor.make().expr_method_call(field, make.name_ref(&name), arg_list).into();
+                let tail_expr = make.expr_method_call(field, make.name_ref(&name), arg_list).into();
                 let tail_expr_finished =
                     if is_async { make.expr_await(tail_expr).into() } else { tail_expr };
                 let body = make.block_expr([], Some(tail_expr_finished));
 
                 let ret_type = method_source.ret_type();
 
-                let f = editor
-                    .make()
+                let f = make
                     .fn_(
                         None,
                         vis,

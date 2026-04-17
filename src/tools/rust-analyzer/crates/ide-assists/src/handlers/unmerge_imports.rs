@@ -55,9 +55,7 @@ pub(crate) fn unmerge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
         editor.insert_all(
             Position::after(use_.syntax()),
             vec![
-                editor
-                    .make()
-                    .whitespace(&format!("\n{}", IndentLevel::from_node(use_.syntax())))
+                make.whitespace(&format!("\n{}", IndentLevel::from_node(use_.syntax())))
                     .syntax_element(),
                 new_use.syntax().syntax_element(),
             ],

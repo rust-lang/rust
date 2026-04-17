@@ -69,8 +69,7 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             let make = editor.make();
             let sad_pat = match try_enum {
                 TryEnum::Option => make.path_pat(make.ident_path("None")),
-                TryEnum::Result => editor
-                    .make()
+                TryEnum::Result => make
                     .tuple_struct_pat(
                         make.ident_path("Err"),
                         iter::once(make.path_pat(make.ident_path("err"))),
@@ -90,8 +89,7 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
             let match_arm_list = make.match_arm_list([happy_arm, sad_arm]);
 
-            let expr_match = editor
-                .make()
+            let expr_match = make
                 .expr_match(expr.clone(), match_arm_list)
                 .indent(IndentLevel::from_node(try_expr.syntax()));
 
@@ -121,23 +119,16 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                         TryEnum::Result => make.ty_result(ty, make.ty_infer().into()).into(),
                     }),
                     expr,
-                    editor
-                        .make()
-                        .block_expr(
-                            iter::once(
-                                editor
-                                    .make()
-                                    .expr_stmt(
-                                        editor
-                                            .make()
-                                            .expr_return(Some(sad_expr(try_enum, make, fill_expr)))
-                                            .into(),
-                                    )
-                                    .into(),
-                            ),
-                            None,
-                        )
-                        .indent(indent_level),
+                    make.block_expr(
+                        iter::once(
+                            make.expr_stmt(
+                                make.expr_return(Some(sad_expr(try_enum, make, fill_expr))).into(),
+                            )
+                            .into(),
+                        ),
+                        None,
+                    )
+                    .indent(indent_level),
                 );
                 editor.replace(let_stmt.syntax(), new_let_stmt.syntax());
                 builder.add_file_edits(ctx.vfs_file_id(), editor);

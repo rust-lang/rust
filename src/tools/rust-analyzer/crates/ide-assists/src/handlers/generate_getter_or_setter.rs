@@ -463,10 +463,7 @@ fn build_source_change(
         None,
         ty_params,
         ty_args,
-        editor
-            .make()
-            .ty_path(make.ident_path(&assist_info.strukt.name().unwrap().to_string()))
-            .into(),
+        make.ty_path(make.ident_path(&assist_info.strukt.name().unwrap().to_string())).into(),
         None,
         Some(make.assoc_item_list(items)),
     );

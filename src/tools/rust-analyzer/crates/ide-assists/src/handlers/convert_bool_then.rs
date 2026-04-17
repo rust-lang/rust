@@ -215,8 +215,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
                 ast::Expr::ParenExpr(expr) => expr.expr().unwrap_or(receiver),
                 _ => receiver,
             };
-            let if_expr = editor
-                .make()
+            let if_expr = make
                 .expr_if(
                     cond,
                     closure_body,

@@ -173,9 +173,7 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             );
 
             let trait_gen_args = trait_.generic_param_list().map(|list| {
-                editor
-                    .make()
-                    .generic_arg_list(list.generic_params().map(|_| holder_arg.clone()), false)
+                make.generic_arg_list(list.generic_params().map(|_| holder_arg.clone()), false)
             });
 
             let make_impl_ = |body| {

@@ -55,16 +55,12 @@ fn expand_record_rest_pattern(
             let make = editor.make();
             let new_fields = old_field_list.fields().chain(matched_fields.iter().map(|(f, _)| {
                 make.record_pat_field_shorthand(
-                    editor
-                        .make()
-                        .ident_pat(
-                            false,
-                            false,
-                            editor
-                                .make()
-                                .name(&f.name(ctx.sema.db).display_no_db(edition).to_smolstr()),
-                        )
-                        .into(),
+                    make.ident_pat(
+                        false,
+                        false,
+                        make.name(&f.name(ctx.sema.db).display_no_db(edition).to_smolstr()),
+                    )
+                    .into(),
                 )
             }));
             let new_field_list = make.record_pat_field_list(new_fields, None);

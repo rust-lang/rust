@@ -149,9 +149,7 @@ fn replace_usages(
                 for tuple_pat in tuple_pats {
                     editor.replace(
                         tuple_pat.syntax(),
-                        editor
-                            .make()
-                            .tuple_struct_pat(make.path_from_text(struct_name), tuple_pat.fields())
+                        make.tuple_struct_pat(make.path_from_text(struct_name), tuple_pat.fields())
                             .syntax(),
                     );
                 }
