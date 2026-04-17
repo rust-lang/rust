@@ -1440,9 +1440,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         });
 
         if placeholder_ids.len() == type_variables.len() {
-            for (placeholder_id, type_variable) in
-                placeholder_ids.into_iter().zip(type_variables.into_iter())
-            {
+            for (placeholder_id, type_variable) in placeholder_ids.into_iter().zip(type_variables) {
                 self.write_type_placeholder_ty(placeholder_id, type_variable);
             }
         }

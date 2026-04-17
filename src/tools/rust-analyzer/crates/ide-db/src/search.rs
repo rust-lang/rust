@@ -1241,18 +1241,17 @@ impl<'a> FindUsages<'a> {
                 };
                 sink(file_id, reference)
             }
-            Some(NameRefClass::Definition(def, _)) if self.include_self_kw_refs.is_some() => {
-                if self.include_self_kw_refs == def_to_ty(self.sema, &def) {
-                    let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
-                    let reference = FileReference {
-                        range,
-                        name: FileReferenceNode::NameRef(name_ref.clone()),
-                        category: ReferenceCategory::new(self.sema, &def, name_ref),
-                    };
-                    sink(file_id, reference)
-                } else {
-                    false
-                }
+            Some(NameRefClass::Definition(def, _))
+                if self.include_self_kw_refs.is_some()
+                    && self.include_self_kw_refs == def_to_ty(self.sema, &def) =>
+            {
+                let FileRange { file_id, range } = self.sema.original_range(name_ref.syntax());
+                let reference = FileReference {
+                    range,
+                    name: FileReferenceNode::NameRef(name_ref.clone()),
+                    category: ReferenceCategory::new(self.sema, &def, name_ref),
+                };
+                sink(file_id, reference)
             }
             Some(NameRefClass::FieldShorthand {
                 local_ref: local,

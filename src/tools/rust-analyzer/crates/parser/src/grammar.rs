@@ -250,7 +250,8 @@ fn opt_visibility_inner(p: &mut Parser<'_>, in_tuple_field: bool) -> bool {
         // test pub_parens_typepath
         // struct B(pub (super::A));
         // struct B(pub (crate::A,));
-        T![crate] | T![self] | T![super] | T![ident] | T![')'] if p.nth(2) != T![:] => {
+        T![crate] | T![self] | T![super] | T![ident] | T![')']
+            if p.nth(2) != T![:]
             // If we are in a tuple struct, then the parens following `pub`
             // might be an tuple field, not part of the visibility. So in that
             // case we don't want to consume an identifier.
@@ -259,14 +260,14 @@ fn opt_visibility_inner(p: &mut Parser<'_>, in_tuple_field: bool) -> bool {
             // struct MyStruct(pub (u32, u32));
             // struct MyStruct(pub (u32));
             // struct MyStruct(pub ());
-            if !(in_tuple_field && matches!(p.nth(1), T![ident] | T![')'])) {
-                let m = p.start();
-                p.bump(T!['(']);
-                paths::vis_path(p);
-                p.expect(T![')']);
-                m.complete(p, VISIBILITY_INNER);
-                return true;
-            }
+            && !(in_tuple_field && matches!(p.nth(1), T![ident] | T![')'])) =>
+        {
+            let m = p.start();
+            p.bump(T!['(']);
+            paths::vis_path(p);
+            p.expect(T![')']);
+            m.complete(p, VISIBILITY_INNER);
+            return true;
         }
         // test crate_visibility_in
         // pub(in super::A) struct S;

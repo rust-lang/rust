@@ -95,7 +95,7 @@ fn gen_clone_impl(make: &SyntaxFactory, adt: &ast::Adt) -> Option<ast::BlockExpr
                             let f_path = make.expr_path(make.ident_path(&field_name));
                             fields.push(gen_clone_call(f_path));
                         }
-                        let pat = make.tuple_struct_pat(variant_name.clone(), pats.into_iter());
+                        let pat = make.tuple_struct_pat(variant_name.clone(), pats);
                         let struct_name = make.expr_path(variant_name);
                         let tuple_expr = make.expr_call(struct_name, make.arg_list(fields)).into();
                         arms.push(make.match_arm(pat.into(), None, tuple_expr));
@@ -236,7 +236,7 @@ fn gen_debug_impl(make: &SyntaxFactory, adt: &ast::Adt) -> Option<ast::BlockExpr
                         let expr = make.expr_method_call(expr, method, make.arg_list([])).into();
 
                         // => MyStruct (fields..) => f.debug_tuple("MyStruct")...finish(),
-                        let pat = make.tuple_struct_pat(variant_name.clone(), pats.into_iter());
+                        let pat = make.tuple_struct_pat(variant_name.clone(), pats);
                         arms.push(make.match_arm(pat.into(), None, expr));
                     }
                     None => {

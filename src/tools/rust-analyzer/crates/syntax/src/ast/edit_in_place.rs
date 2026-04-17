@@ -514,10 +514,11 @@ fn normalize_ws_between_braces(node: &SyntaxNode) -> Option<()> {
     let indent = IndentLevel::from_node(node);
 
     match l.next_sibling_or_token() {
-        Some(ws) if ws.kind() == SyntaxKind::WHITESPACE => {
-            if ws.next_sibling_or_token()?.into_token()? == r {
-                ted::replace(ws, make::tokens::whitespace(&format!("\n{indent}")));
-            }
+        Some(ws)
+            if ws.kind() == SyntaxKind::WHITESPACE
+                && ws.next_sibling_or_token()?.into_token()? == r =>
+        {
+            ted::replace(ws, make::tokens::whitespace(&format!("\n{indent}")));
         }
         Some(ws) if ws.kind() == T!['}'] => {
             ted::insert(ted::Position::after(l), make::tokens::whitespace(&format!("\n{indent}")));
