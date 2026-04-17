@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use thin_vec::thin_vec;
 
-use crate::{LoweringContext, ResolverAstLoweringExt};
+use crate::LoweringContext;
 
-impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
+impl<'hir> LoweringContext<'_, 'hir> {
     /// Lowered contracts are guarded with the `contract_checks` compiler flag,
     /// i.e. the flag turns into a boolean guard in the lowered HIR. The reason
     /// for not eliminating the contract code entirely when the `contract_checks`
