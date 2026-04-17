@@ -19,7 +19,7 @@ use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, Varia
 use rustc_ast as ast;
 use rustc_data_structures::defer;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -1319,6 +1319,58 @@ impl<'tcx> TyCtxt<'tcx> {
             || callee_features
                 .iter()
                 .all(|feature| body_features.iter().any(|f| f.name == feature.name))
+    }
+
+    /// Returns whether a callee can safely be always inlined into a caller at
+    /// this callsite.
+    ///
+    /// This requires more than "the caller has at least the callee's target
+    /// features". We also require the caller and callee to agree on any
+    /// target features that affect the vector ABI, otherwise inlining could
+    /// reinterpret arguments under a different calling convention.
+    pub fn is_call_inline_able_at_callsite(
+        self,
+        callee_features: &[TargetFeature],
+        caller_features: &[TargetFeature],
+    ) -> bool {
+        // Fold in globally enabled target features, since they are part of the
+        // effective feature set for both sides.
+        let callee_features = self.effective_inline_target_features(callee_features);
+        let caller_features = self.effective_inline_target_features(caller_features);
+
+        // A plain subset check is not sufficient. For example, `avx`
+        // implicitly enables `sse`, so a callee that only requires `sse`
+        // appears to be a subset of an `avx` caller. However, `avx` also
+        // changes how vector arguments are passed, so inlining that callee into
+        // the caller would cross an ABI boundary. Require both the feature
+        // subset relation and matching ABI-relevant vector features.
+        self.vector_abi_matches(&callee_features, &caller_features)
+            && callee_features.is_subset(&caller_features)
+    }
+
+    fn vector_abi_matches(
+        self,
+        callee_features: &FxIndexSet<Symbol>,
+        caller_features: &FxIndexSet<Symbol>,
+    ) -> bool {
+        self.abi_target_features(caller_features) == self.abi_target_features(callee_features)
+    }
+
+    pub fn abi_target_features(self, feature_names: &FxIndexSet<Symbol>) -> FxIndexSet<Symbol> {
+        feature_names
+            .iter()
+            .cloned()
+            .filter(|it| self.sess.target.feature_could_influence_vector_length(it.as_str()))
+            .collect()
+    }
+
+    pub fn effective_inline_target_features(
+        self,
+        features: &[TargetFeature],
+    ) -> FxIndexSet<Symbol> {
+        let mut all_features = self.sess.unstable_target_features.clone();
+        all_features.extend(features.iter().map(|it| it.name));
+        all_features
     }
 
     /// Returns the safe version of the signature of the given function, if calling it

@@ -1051,6 +1051,12 @@ impl Target {
         }
     }
 
+    /// Could the feature influence the vector length?
+    pub fn feature_could_influence_vector_length(&self, feature: &str) -> bool {
+        self.features_for_correct_fixed_length_vector_abi().iter().any(|(_, name)| *name == feature)
+            || self.features_for_correct_scalable_vector_abi() == Some(feature)
+    }
+
     pub fn tied_target_features(&self) -> &'static [&'static [&'static str]] {
         match &self.arch {
             Arch::AArch64 | Arch::Arm64EC => AARCH64_TIED_FEATURES,
