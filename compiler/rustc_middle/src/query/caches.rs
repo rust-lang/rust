@@ -1,6 +1,5 @@
-use std::sync::OnceLock;
-
 use rustc_data_structures::sharded::ShardedHashMap;
+use rustc_data_structures::sync::Lock;
 pub use rustc_data_structures::vec_cache::VecCache;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_index::Idx;
@@ -14,7 +13,7 @@ use crate::query::keys::QueryKey;
 ///
 /// Types implementing this trait are associated with actual key/value types
 /// by the `Cache` associated type of the `rustc_middle::query::Key` trait.
-pub trait QueryCache: Sized {
+pub trait QueryCache: Sized + Default {
     type Key: QueryKey;
     type Value: Copy;
 
@@ -36,6 +35,8 @@ pub trait QueryCache: Sized {
     /// Useful for reserving capacity in data structures that will hold the
     /// output of a call to [`Self::for_each`].
     fn len(&self) -> usize;
+
+    fn invalidate(&self, selector: impl Fn(Self::Key) -> bool);
 }
 
 /// In-memory cache for queries whose keys aren't suitable for any of the
@@ -81,17 +82,30 @@ where
     fn len(&self) -> usize {
         self.cache.len()
     }
+
+    fn invalidate(&self, selector: impl Fn(Self::Key) -> bool) {
+        let mut to_remove = vec![];
+        self.for_each(&mut |&key, _, _| {
+            if selector(key) {
+                to_remove.push(key);
+            }
+        });
+
+        for key in to_remove {
+            self.cache.remove(&key);
+        }
+    }
 }
 
 /// In-memory cache for queries whose key type only has one value (e.g. `()`).
 /// The cache therefore only needs to store one query return value.
 pub struct SingleCache<V> {
-    cache: OnceLock<(V, DepNodeIndex)>,
+    cache: Lock<Option<(V, DepNodeIndex)>>,
 }
 
 impl<V> Default for SingleCache<V> {
     fn default() -> Self {
-        SingleCache { cache: OnceLock::new() }
+        SingleCache { cache: Default::default() }
     }
 }
 
@@ -104,22 +118,28 @@ where
 
     #[inline(always)]
     fn lookup(&self, _key: &()) -> Option<(V, DepNodeIndex)> {
-        self.cache.get().copied()
+        self.cache.lock().clone()
     }
 
     #[inline]
     fn complete(&self, _key: (), value: V, index: DepNodeIndex) {
-        self.cache.set((value, index)).ok();
+        *self.cache.lock() = Some((value, index))
     }
 
     fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        if let Some(value) = self.cache.get() {
+        if let Some(value) = self.cache.lock().clone() {
             f(&(), &value.0, value.1)
         }
     }
 
     fn len(&self) -> usize {
-        self.cache.get().is_some().into()
+        self.cache.lock().is_some().into()
+    }
+
+    fn invalidate(&self, selector: impl Fn(Self::Key) -> bool) {
+        if selector(()) {
+            *self.cache.lock() = None;
+        }
     }
 }
 
@@ -175,6 +195,10 @@ where
     fn len(&self) -> usize {
         self.local.len() + self.foreign.len()
     }
+
+    fn invalidate(&self, selector: impl Fn(Self::Key) -> bool) {
+        self.local.invalidate(|idx| selector(DefId::local(idx)));
+    }
 }
 
 impl<K, V> QueryCache for VecCache<K, V, DepNodeIndex>
@@ -201,5 +225,9 @@ where
 
     fn len(&self) -> usize {
         self.len()
+    }
+
+    fn invalidate(&self, selector: impl Fn(Self::Key) -> bool) {
+        self.invalidate(selector);
     }
 }

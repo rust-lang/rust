@@ -42,6 +42,7 @@
 #![feature(extern_types)]
 #![feature(file_buffered)]
 #![feature(gen_blocks)]
+#![feature(lock_value_accessors)]
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]

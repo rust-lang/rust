@@ -12,6 +12,7 @@ use std::ffi::OsStr;
 use std::hash::{Hash, Hasher};
 use std::marker::{PhantomData, PointeeSized};
 use std::ops::{Bound, Deref};
+use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock};
 use std::{fmt, iter, mem};
 
@@ -66,6 +67,7 @@ use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, PredefinedOpaques};
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
+use crate::ty::print::with_no_trimmed_paths;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
     GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, Pattern,
@@ -797,6 +799,7 @@ pub struct GlobalCtxt<'tcx> {
     /// be called from rustc_middle.
     pub(crate) hooks: crate::hooks::Providers,
 
+    is_in_sandbox: AtomicBool,
     untracked: Untracked,
 
     pub query_system: QuerySystem<'tcx>,
@@ -896,6 +899,33 @@ impl CurrentGcx {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    pub fn is_in_sandbox(self) -> bool {
+        self.is_in_sandbox.load(AtomicOrdering::Relaxed)
+    }
+
+    pub fn with_sandbox(self, op: impl FnOnce()) {
+        self.is_in_sandbox.store(true, AtomicOrdering::Relaxed);
+        self.enter_query_sandbox();
+
+        self.dep_graph.with_sandbox(|| {
+            with_no_trimmed_paths!({
+                op();
+            });
+        });
+
+        self.leave_query_sandbox();
+        self.is_in_sandbox.store(false, AtomicOrdering::Relaxed);
+
+        self.clauses_cache.borrow_mut().clear();
+        self.highest_var_in_clauses_cache.borrow_mut().clear();
+        self.canonical_param_env_cache.clear();
+        self.new_solver_canonical_param_env_cache.borrow_mut().clear();
+        self.new_solver_evaluation_cache.borrow_mut().clear();
+        self.evaluation_cache.clear();
+        self.selection_cache.clear();
+        self.ty_rcache.borrow_mut().clear();
+    }
+
     pub fn has_typeck_results(self, def_id: LocalDefId) -> bool {
         // Closures' typeck results come from their outermost function,
         // as they are part of the same "inference environment".
@@ -1047,6 +1077,7 @@ impl<'tcx> TyCtxt<'tcx> {
             types: common_types,
             lifetimes: common_lifetimes,
             consts: common_consts,
+            is_in_sandbox: Default::default(),
             untracked,
             query_system,
             dep_kind_vtables,
@@ -1385,7 +1416,12 @@ impl<'tcx> TyCtxt<'tcx> {
         // - has been created by this call to `create_def`.
         // As a consequence, this LocalDefId is always re-created before it is needed by the incr.
         // comp. engine itself.
-        let def_id = self.untracked.definitions.write().create_def(parent, data, disambiguator);
+        let def_id = self.untracked.definitions.write().create_def(
+            parent,
+            data,
+            disambiguator,
+            self.is_in_sandbox(),
+        );
 
         // This function modifies `self.definitions` using a side-effect.
         // We need to ensure that these side effects are re-run by the incr. comp. engine.

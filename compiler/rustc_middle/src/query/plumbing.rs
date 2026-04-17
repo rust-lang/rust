@@ -1,8 +1,9 @@
 use std::fmt;
 use std::ops::Deref;
+use std::sync::Mutex;
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
@@ -24,11 +25,12 @@ use crate::ty::{self, TyCtxt};
 /// query's in-memory cache.)
 pub struct QueryState<'tcx, K> {
     pub active: Sharded<HashTable<(K, ActiveKeyStatus<'tcx>)>>,
+    pub saved_keys: Mutex<Option<FxHashSet<K>>>,
 }
 
 impl<'tcx, K> Default for QueryState<'tcx, K> {
     fn default() -> QueryState<'tcx, K> {
-        QueryState { active: Default::default() }
+        QueryState { active: Default::default(), saved_keys: Default::default() }
     }
 }
 
@@ -131,6 +133,26 @@ pub struct QueryVTable<'tcx, C: QueryCache> {
     ///
     /// [^1]: [`TyCtxt`], [`TyCtxtAt`], [`TyCtxtEnsureOk`], [`TyCtxtEnsureDone`]
     pub execute_query_fn: fn(TyCtxt<'tcx>, Span, C::Key, QueryMode) -> Option<C::Value>,
+
+    pub callfront_fn: Option<fn(tcx: TyCtxt<'tcx>) -> ()>,
+}
+
+impl<C: QueryCache> QueryVTable<'_, C> {
+    pub fn save_keys(&self) {
+        let mut keys = FxHashSet::default();
+        self.cache.for_each(&mut |key, _, _| {
+            keys.insert(*key);
+        });
+
+        self.state.saved_keys.set(Some(keys)).ok();
+    }
+
+    pub fn invalidate_saved_keys(&self) {
+        let keys =
+            self.state.saved_keys.replace(None).unwrap().expect("must save keys to invalidate");
+
+        self.cache.invalidate(|key| !keys.contains(&key));
+    }
 }
 
 impl<'tcx, C: QueryCache> fmt::Debug for QueryVTable<'tcx, C> {
@@ -301,6 +323,7 @@ macro_rules! define_callbacks {
                     // Search for (QMODLIST) to find all occurrences of this query modifier list.
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
+                    callfront: $callfront:literal,
                     depth_limit: $depth_limit:literal,
                     desc: $desc:expr,
                     eval_always: $eval_always:literal,

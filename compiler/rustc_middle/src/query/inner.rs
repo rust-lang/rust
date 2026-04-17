@@ -22,6 +22,7 @@ where
         Some((value, index)) => {
             tcx.prof.query_cache_hit(index.into());
             tcx.dep_graph.read_index(index);
+
             Some(value)
         }
         None => None,
@@ -165,6 +166,7 @@ pub(crate) fn query_feed<'tcx, C>(
                 query.hash_value_fn,
                 query.format_value,
             );
+
             query.cache.complete(key, value, dep_node_index);
         }
     }

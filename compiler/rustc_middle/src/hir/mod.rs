@@ -14,7 +14,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
+use rustc_data_structures::sync::{DynSend, DynSync, spawn, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lints::DelayedLint;
@@ -207,6 +207,30 @@ impl ModuleItems {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    pub fn force_delayed_owners_lowering(self) {
+        let krate = self.hir_crate(());
+
+        if !krate.delayed_ids.is_empty() {
+            self.with_sandbox(|| {
+                self.ensure_done().hir_crate_items(());
+                self.ensure_done().crate_inherent_impls(());
+
+                for &id in &krate.delayed_ids {
+                    self.ensure_done().lower_delayed_owner(id);
+                }
+            });
+        }
+
+        let (_, krate) = krate.delayed_resolver.steal();
+        let prof = self.sess.prof.clone();
+
+        // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.
+        spawn(move || {
+            let _timer = prof.verbose_generic_activity("drop_ast");
+            drop(krate);
+        });
+    }
+
     pub fn parent_module(self, id: HirId) -> LocalModDefId {
         if !id.is_owner() && self.def_kind(id.owner) == DefKind::Mod {
             LocalModDefId::new_unchecked(id.owner.def_id)

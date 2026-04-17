@@ -1,0 +1,109 @@
+error[E0107]: missing generics for struct `test_1::S`
+  --> $DIR/query-cycle-oom.rs:8:32
+   |
+LL |         fn foo(&self, x: T) -> S { x }
+   |                                ^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `T`
+  --> $DIR/query-cycle-oom.rs:13:12
+   |
+LL |     struct S<T>(F, T);
+   |            ^ -
+help: add missing generic argument
+   |
+LL |         fn foo(&self, x: T) -> S<T> { x }
+   |                                 +++
+
+error[E0107]: missing generics for trait `test_4::Trait`
+  --> $DIR/query-cycle-oom.rs:57:33
+   |
+LL |         fn foo<U>(&self, _: dyn Trait) {}
+   |                                 ^^^^^ expected 1 generic argument
+   |
+note: trait defined here, with 1 generic parameter: `T`
+  --> $DIR/query-cycle-oom.rs:56:11
+   |
+LL |     trait Trait<T> {
+   |           ^^^^^ -
+help: add missing generic argument
+   |
+LL |         fn foo<U>(&self, _: dyn Trait<T>) {}
+   |                                      +++
+
+error[E0220]: associated type `Assoc` not found for `Self`
+  --> $DIR/query-cycle-oom.rs:23:27
+   |
+LL |         fn foo() -> Self::Assoc;
+   |                           ^^^^^ associated type `Assoc` not found
+
+error[E0220]: associated type `Assoc` not found for `Self`
+  --> $DIR/query-cycle-oom.rs:44:32
+   |
+LL |         fn foo(&self) -> Self::Assoc<3> {
+   |                                ^^^^^ associated type `Assoc` not found
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/query-cycle-oom.rs:61:19
+   |
+LL |     reuse Trait::<_>::foo::<i32> as x;
+   |                   ^ not allowed in type signatures
+
+error[E0046]: not all trait items implemented, missing: `foo`
+  --> $DIR/query-cycle-oom.rs:28:5
+   |
+LL |         fn foo() -> Self::Assoc;
+   |         ------------------------ `foo` from trait
+...
+LL |     impl Trait for u8 {
+   |     ^^^^^^^^^^^^^^^^^ missing `foo` in implementation
+
+error[E0390]: cannot define inherent `impl` for primitive types
+  --> $DIR/query-cycle-oom.rs:49:5
+   |
+LL |     impl () {
+   |     ^^^^^^^
+   |
+   = help: consider using an extension trait instead
+
+error[E0433]: cannot find module or crate `to_reuse` in this scope
+  --> $DIR/query-cycle-oom.rs:16:15
+   |
+LL |         reuse to_reuse::foo { &self.0 }
+   |               ^^^^^^^^ use of unresolved module or unlinked crate `to_reuse`
+   |
+   = help: you might be missing a crate named `to_reuse`
+
+error[E0061]: this function takes 0 arguments but 1 argument was supplied
+  --> $DIR/query-cycle-oom.rs:36:22
+   |
+LL |         reuse Trait::* { &self.0 }
+   |                      ^   ------- unexpected argument
+   |
+note: associated function defined here
+  --> $DIR/query-cycle-oom.rs:23:12
+   |
+LL |         fn foo() -> Self::Assoc;
+   |            ^^^
+help: remove the extra argument
+   |
+LL -         reuse Trait::* { &self.0 }
+LL +         reuse Trait::&self.0 }
+   |
+
+error[E0599]: no method named `foo` found for reference `&()` in the current scope
+  --> $DIR/query-cycle-oom.rs:50:22
+   |
+LL |         reuse Trait::*;
+   |                      ^ method not found in `&()`
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following traits define an item `foo`, perhaps you need to implement one of them:
+           candidate #1: `test_1::Trait`
+           candidate #2: `test_2::Trait`
+           candidate #3: `test_3::Trait`
+           candidate #4: `test_4::Trait`
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0046, E0061, E0107, E0121, E0220, E0390, E0433, E0599.
+For more information about an error, try `rustc --explain E0046`.

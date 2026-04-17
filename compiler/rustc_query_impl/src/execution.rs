@@ -320,7 +320,11 @@ fn try_execute_query<'tcx, C: QueryCache, const INCR: bool>(
 
             // Delegate to another function to actually execute the query job.
             let (value, dep_node_index) = if INCR {
-                execute_job_incr(query, tcx, key, dep_node.unwrap(), id)
+                if tcx.is_in_sandbox() {
+                    execute_job_non_incr(query, tcx, key, id)
+                } else {
+                    execute_job_incr(query, tcx, key, dep_node.unwrap(), id)
+                }
             } else {
                 execute_job_non_incr(query, tcx, key, id)
             };
@@ -648,6 +652,7 @@ pub(super) fn execute_query_incr_inner<'tcx, C: QueryCache>(
     if let Some(dep_node_index) = dep_node_index {
         tcx.dep_graph.read_index(dep_node_index)
     }
+
     Some(result)
 }
 
@@ -666,6 +671,7 @@ pub(crate) fn force_query_dep_node<'tcx, C: QueryCache>(
         return false;
     };
 
+    query.callfront_fn.filter(|_| !tcx.is_in_sandbox()).inspect(|f| (f)(tcx));
     ensure_sufficient_stack(|| {
         try_execute_query::<C, true>(query, tcx, DUMMY_SP, key, Some(dep_node))
     });

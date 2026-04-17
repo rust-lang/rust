@@ -7,6 +7,7 @@
 use std::fmt::{self, Write};
 use std::hash::Hash;
 
+use rustc_data_structures::indexmap::IndexSet;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
@@ -30,6 +31,7 @@ pub struct DefPathTable {
     // We do only store the local hash, as all the definitions are from the current crate.
     def_path_hashes: IndexVec<DefIndex, Hash64>,
     def_path_hash_to_index: DefPathHashMap,
+    allow_overwrite: IndexSet<DefIndex>,
 }
 
 impl DefPathTable {
@@ -39,38 +41,45 @@ impl DefPathTable {
             index_to_key: Default::default(),
             def_path_hashes: Default::default(),
             def_path_hash_to_index: Default::default(),
+            allow_overwrite: Default::default(),
         }
     }
 
-    fn allocate(&mut self, key: DefKey, def_path_hash: DefPathHash) -> DefIndex {
+    fn allocate(&mut self, key: DefKey, def_path_hash: DefPathHash, in_sandbox: bool) -> DefIndex {
         // Assert that all DefPathHashes correctly contain the local crate's StableCrateId.
         debug_assert_eq!(self.stable_crate_id, def_path_hash.stable_crate_id());
         let local_hash = def_path_hash.local_hash();
-
-        let index = self.index_to_key.push(key);
-        debug!("DefPathTable::insert() - {key:?} <-> {index:?}");
-
-        self.def_path_hashes.push(local_hash);
-        debug_assert!(self.def_path_hashes.len() == self.index_to_key.len());
+        let index = self.index_to_key.next_index();
 
         // Check for hash collisions of DefPathHashes. These should be
         // exceedingly rare.
         if let Some(existing) = self.def_path_hash_to_index.insert(&local_hash, &index) {
-            let def_path1 = DefPath::make(LOCAL_CRATE, existing, |idx| self.def_key(idx));
-            let def_path2 = DefPath::make(LOCAL_CRATE, index, |idx| self.def_key(idx));
+            if !in_sandbox && self.allow_overwrite.swap_remove(&existing) {
+                self.def_path_hash_to_index.insert(&local_hash, &existing);
+                return existing;
+            } else {
+                let def_path1 = DefPath::make(LOCAL_CRATE, existing, |idx| self.def_key(idx));
+                let def_path2 = DefPath::make(LOCAL_CRATE, index, |idx| self.def_key(idx));
 
-            // Continuing with colliding DefPathHashes can lead to correctness
-            // issues. We must abort compilation.
-            //
-            // The likelihood of such a collision is very small, so actually
-            // running into one could be indicative of a poor hash function
-            // being used.
-            //
-            // See the documentation for DefPathHash for more information.
-            panic!(
-                "found DefPathHash collision between {def_path1:#?} and {def_path2:#?}. \
+                // Continuing with colliding DefPathHashes can lead to correctness
+                // issues. We must abort compilation.
+                //
+                // The likelihood of such a collision is very small, so actually
+                // running into one could be indicative of a poor hash function
+                // being used.
+                //
+                // See the documentation for DefPathHash for more information.
+                panic!(
+                    "found DefPathHash collision between {def_path1:#?} and {def_path2:#?}. \
                     Compilation cannot continue."
-            );
+                );
+            }
+        } else {
+            self.index_to_key.push(key);
+            debug!("DefPathTable::insert() - {key:?} <-> {index:?}");
+
+            self.def_path_hashes.push(local_hash);
+            debug_assert!(self.def_path_hashes.len() == self.index_to_key.len());
         }
 
         index
@@ -374,7 +383,7 @@ impl Definitions {
 
         // Create the root definition.
         let mut table = DefPathTable::new(stable_crate_id);
-        let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash) };
+        let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash, false) };
         assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
         Definitions { table }
@@ -390,6 +399,7 @@ impl Definitions {
         parent: LocalDefId,
         data: DefPathData,
         disambiguator: &mut DisambiguatorState,
+        in_sandbox: bool,
     ) -> LocalDefId {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
@@ -418,8 +428,14 @@ impl Definitions {
 
         debug!("create_def: after disambiguation, key = {:?}", key);
 
+        let local_def_index = self.table.allocate(key, def_path_hash, in_sandbox);
+
+        if in_sandbox {
+            assert_eq!(self.table.allow_overwrite.insert(local_def_index), true);
+        }
+
         // Create the definition.
-        LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) }
+        LocalDefId { local_def_index }
     }
 
     #[inline(always)]

@@ -32,6 +32,10 @@ impl<Key: Eq + Hash, Value: Clone> WithDepNodeCache<Key, Value> {
     pub fn insert(&self, key: Key, dep_node: DepNodeIndex, value: Value) {
         self.hashmap.borrow_mut().insert(key, WithDepNode::new(dep_node, value));
     }
+
+    pub fn clear(&self) {
+        self.hashmap.borrow_mut().clear();
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

@@ -134,6 +134,7 @@ macro_rules! define_dep_kind_vtables {
                     // Search for (QMODLIST) to find all occurrences of this query modifier list.
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
+                    callfront: $callfront:literal,
                     depth_limit: $depth_limit:literal,
                     desc: $desc:expr,
                     eval_always: $eval_always:literal,

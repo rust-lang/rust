@@ -18,6 +18,7 @@ macro_rules! define_queries {
                     // Search for (QMODLIST) to find all occurrences of this query modifier list.
                     arena_cache: $arena_cache:literal,
                     cache_on_disk: $cache_on_disk:literal,
+                    callfront: $callfront:literal,
                     depth_limit: $depth_limit:literal,
                     desc: $desc:expr,
                     eval_always: $eval_always:literal,
@@ -56,6 +57,12 @@ macro_rules! define_queries {
                         key: Key<'tcx>,
                         mode: QueryMode,
                     ) -> Option<Erased<Value<'tcx>>> {
+                        #[cfg($callfront)]
+                        {
+                            let vtable = &tcx.query_system.query_vtables.$name;
+                            vtable.callfront_fn.filter(|_| !tcx.is_in_sandbox()).inspect(|f| (f)(tcx));
+                        }
+
                         #[cfg(debug_assertions)]
                         let _guard = tracing::span!(tracing::Level::TRACE, stringify!($name), ?key).entered();
                         crate::execution::execute_query_incr_inner(
@@ -79,6 +86,12 @@ macro_rules! define_queries {
                         key: Key<'tcx>,
                         __mode: QueryMode,
                     ) -> Option<Erased<Value<'tcx>>> {
+                        #[cfg($callfront)]
+                        {
+                            let vtable = &tcx.query_system.query_vtables.$name;
+                            vtable.callfront_fn.filter(|_| !tcx.is_in_sandbox()).inspect(|f| (f)(tcx));
+                        }
+
                         Some(crate::execution::execute_query_non_incr_inner(
                             &tcx.query_system.query_vtables.$name,
                             tcx,
@@ -200,6 +213,14 @@ macro_rules! define_queries {
                         } else {
                             crate::query_impl::$name::execute_query_non_incr::__rust_end_short_backtrace
                         },
+
+                        #[cfg($callfront)]
+                        callfront_fn: Some(|tcx| {
+                            $crate::callfront::$name(tcx);
+                        }),
+
+                        #[cfg(not($callfront))]
+                        callfront_fn: None,
                     }
                 }
 
