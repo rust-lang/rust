@@ -96,10 +96,11 @@ pub(crate) struct WorkspaceInfo<'a> {
     /// The list of license exceptions.
     pub(crate) exceptions: ExceptionList,
     /// Optionally:
-    /// * A list of crates for which dependencies need to be explicitly allowed.
+    /// * A list of crates for which dependencies need to be explicitly allowed
+    ///   or None to check the entire workspace.
     /// * The list of allowed dependencies.
     /// * The source code location of the allowed dependencies list
-    crates_and_deps: Option<(&'a [&'a str], &'a [&'a str], ListLocation)>,
+    crates_and_deps: Option<(Option<&'a [&'a str]>, &'a [&'a str], ListLocation)>,
     /// Submodules required for the workspace
     pub(crate) submodules: &'a [&'a str],
 }
@@ -114,7 +115,7 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
         path: ".",
         exceptions: EXCEPTIONS,
         crates_and_deps: Some((
-            &["rustc-main"],
+            Some(&["rustc-main"]),
             PERMITTED_RUSTC_DEPENDENCIES,
             PERMITTED_RUSTC_DEPS_LOCATION,
         )),
@@ -124,7 +125,7 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
         path: "library",
         exceptions: EXCEPTIONS_STDLIB,
         crates_and_deps: Some((
-            &["sysroot"],
+            None,
             PERMITTED_STDLIB_DEPENDENCIES,
             PERMITTED_STDLIB_DEPS_LOCATION,
         )),
@@ -140,7 +141,7 @@ pub(crate) const WORKSPACES: &[WorkspaceInfo<'static>] = &[
         path: "compiler/rustc_codegen_cranelift",
         exceptions: EXCEPTIONS_CRANELIFT,
         crates_and_deps: Some((
-            &["rustc_codegen_cranelift"],
+            None,
             PERMITTED_CRANELIFT_DEPENDENCIES,
             PERMITTED_CRANELIFT_DEPS_LOCATION,
         )),
@@ -664,7 +665,7 @@ pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
         }
         check_license_exceptions(&metadata, path, exceptions, &mut check);
         if let Some((crates, permitted_deps, location)) = crates_and_deps {
-            let descr = crates.get(0).unwrap_or(&path);
+            let descr = crates.map_or(path, |crates| crates.get(0).unwrap_or(&path));
             check_permitted_dependencies(
                 &metadata,
                 descr,
@@ -927,15 +928,21 @@ fn check_permitted_dependencies(
     metadata: &Metadata,
     descr: &str,
     permitted_dependencies: &[&'static str],
-    restricted_dependency_crates: &[&'static str],
+    restricted_dependency_crates: Option<&[&'static str]>,
     permitted_location: ListLocation,
     check: &mut RunningCheck,
 ) {
     let mut has_permitted_dep_error = false;
     let mut deps = HashSet::new();
-    for to_check in restricted_dependency_crates {
-        let to_check = pkg_from_name(metadata, to_check);
-        deps_of(metadata, &to_check.id, &mut deps);
+    if let Some(restricted_dependency_crates) = restricted_dependency_crates {
+        for to_check in restricted_dependency_crates {
+            let to_check = pkg_from_name(metadata, to_check);
+            deps_of(metadata, &to_check.id, &mut deps);
+        }
+    } else {
+        for to_check in &metadata.packages {
+            deps_of(metadata, &to_check.id, &mut deps);
+        }
     }
 
     // Check that the PERMITTED_DEPENDENCIES does not have unused entries.
