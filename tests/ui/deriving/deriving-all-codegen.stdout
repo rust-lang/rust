@@ -1236,10 +1236,12 @@ impl ::core::fmt::Debug for Fieldless {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f,
-            match self {
-                Fieldless::A => "A",
-                Fieldless::B => "B",
-                Fieldless::C => "C",
+            {
+                const __NAMES: &str = "ABC";
+                const __OFFSET: [usize; 4] = [0usize, 1usize, 2usize, 3usize];
+                let __d =
+                    ::core::intrinsics::discriminant_value(self) as usize;
+                &__NAMES[__OFFSET[__d]..__OFFSET[__d + 1usize]]
             })
     }
 }
@@ -1291,6 +1293,23 @@ impl ::core::cmp::Ord for Fieldless {
         let __self_discr = ::core::intrinsics::discriminant_value(self);
         let __arg1_discr = ::core::intrinsics::discriminant_value(other);
         ::core::cmp::Ord::cmp(&__self_discr, &__arg1_discr)
+    }
+}
+
+// A C-like, fieldless enum with variants of varying name lengths.
+enum Fieldless0 { A, BBB, CC, }
+#[automatically_derived]
+impl ::core::fmt::Debug for Fieldless0 {
+    #[inline]
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        ::core::fmt::Formatter::write_str(f,
+            {
+                const __NAMES: &str = "ABBBCC";
+                const __OFFSET: [usize; 4] = [0usize, 1usize, 4usize, 6usize];
+                let __d =
+                    ::core::intrinsics::discriminant_value(self) as usize;
+                &__NAMES[__OFFSET[__d]..__OFFSET[__d + 1usize]]
+            })
     }
 }
 

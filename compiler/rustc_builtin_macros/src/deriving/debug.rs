@@ -1,4 +1,4 @@
-use rustc_ast::{self as ast, EnumDef, MetaItem, Safety};
+use rustc_ast::{self as ast, EnumDef, ExprKind, MetaItem, Safety, TyKind, token};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::config::FmtDebug;
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -166,15 +166,13 @@ fn show_substructure(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
         let path_debug = cx.path_global(span, cx.std_path(&[sym::fmt, sym::Debug]));
         let ty_dyn_debug = cx.ty(
             span,
-            ast::TyKind::TraitObject(
+            TyKind::TraitObject(
                 vec![cx.trait_bound(path_debug, false)],
                 ast::TraitObjectSyntax::Dyn,
             ),
         );
-        let ty_slice = cx.ty(
-            span,
-            ast::TyKind::Slice(cx.ty_ref(span, ty_dyn_debug, None, ast::Mutability::Not)),
-        );
+        let ty_slice =
+            cx.ty(span, TyKind::Slice(cx.ty_ref(span, ty_dyn_debug, None, ast::Mutability::Not)));
         let values_let = cx.stmt_let_ty(
             span,
             false,
@@ -230,6 +228,14 @@ fn show_fieldless_enum(
     substr: &Substructure<'_>,
 ) -> BlockOrExpr {
     let fmt = substr.nonselflike_args[0].clone();
+    let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
+    if let Some(name) = show_fieldless_enum_concat_str(cx, span, def) {
+        return BlockOrExpr::new_expr(cx.expr_call_global(
+            span,
+            fn_path_write_str,
+            thin_vec![fmt, name],
+        ));
+    }
     let arms = def
         .variants
         .iter()
@@ -250,6 +256,142 @@ fn show_fieldless_enum(
         })
         .collect::<ThinVec<_>>();
     let name = cx.expr_match(span, cx.expr_self(span), arms);
-    let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
     BlockOrExpr::new_expr(cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]))
+}
+
+/// Specialer case for fieldless enums with no discriminants. Builds
+/// ```text
+/// impl ::core::fmt::Debug for A {
+///     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+///         ::core::fmt::Formatter::write_str(f, {
+///             const __NAMES: &str = "ABBBCC";
+///             const __OFFSET: [usize; 4] =[0, 1, 4, 6];
+///             let __d = ::core::intrinsics::discriminant_value(self) as usize;
+///             __NAMES[__OFFSET[d]..__OFFSET[d + 1]]
+///         })
+///     }
+/// }
+/// ```
+fn show_fieldless_enum_concat_str(
+    cx: &ExtCtxt<'_>,
+    span: Span,
+    def: &EnumDef,
+) -> Option<Box<ast::Expr>> {
+    let variant_count = def.variants.len();
+    if variant_count >= cx.sess.target.pointer_width as usize {
+        return None;
+    }
+
+    let variant_names = def
+        .variants
+        .iter()
+        .map(|v| v.disr_expr.is_none().then_some(v.ident.name.as_str()))
+        .collect::<Option<ThinVec<_>>>()?;
+
+    let total_bytes: usize = variant_names.iter().map(|n| n.len()).sum();
+    let mut concatenated_names = String::with_capacity(total_bytes);
+    let mut offset_indices = Vec::with_capacity(variant_names.len() + 1);
+    offset_indices.push(0);
+
+    for name in variant_names.iter() {
+        concatenated_names.push_str(name);
+        offset_indices.push(concatenated_names.len());
+    }
+
+    // Create the constant concatenated string
+    let names_ident = Ident::from_str_and_span("__NAMES", span);
+    let str_ty = cx.ty(
+        span,
+        TyKind::Ref(
+            None,
+            ast::MutTy {
+                ty: cx.ty(
+                    span,
+                    TyKind::Path(None, ast::Path::from_ident(Ident::new(sym::str, span))),
+                ),
+                mutbl: ast::Mutability::Not,
+            },
+        ),
+    );
+    let names_str_expr =
+        ast::ConstItemRhsKind::new_body(cx.expr_str(span, Symbol::intern(&concatenated_names)));
+    let names_const_item = cx.item_const(span, names_ident, str_ty, names_str_expr);
+
+    // Create the constant offset array
+    let offset_ident = Ident::from_str_and_span("__OFFSET", span);
+    let offset_index_exprs =
+        offset_indices.iter().map(|s| cx.expr_usize(span, *s)).collect::<ThinVec<_>>();
+    let starts_array_expr =
+        ast::ConstItemRhsKind::new_body(cx.expr_array(span, offset_index_exprs));
+    let usize_ty =
+        cx.ty(span, TyKind::Path(None, ast::Path::from_ident(Ident::new(sym::usize, span))));
+    let offset_array_len_expr = cx.anon_const(
+        span,
+        ExprKind::Lit(token::Lit::new(
+            token::LitKind::Integer,
+            Symbol::intern(&(variant_count + 1).to_string()),
+            None,
+        )),
+    );
+    let offset_const_item = cx.item_const(
+        span,
+        offset_ident,
+        cx.ty(span, TyKind::Array(usize_ty, offset_array_len_expr)),
+        starts_array_expr,
+    );
+
+    // let __d = ::core::intrinsics::discriminant_value(self) as usize;
+    let discriminant_ident = Ident::from_str_and_span("__d", span);
+    let discriminant_intrinsic_path = cx.std_path(&[sym::intrinsics, sym::discriminant_value]);
+    let discriminant_cast_expr = cx.expr(
+        span,
+        ast::ExprKind::Cast(
+            cx.expr_call_global(span, discriminant_intrinsic_path, thin_vec![cx.expr_self(span)]),
+            cx.ty_path(ast::Path::from_ident(Ident::new(sym::usize, span))),
+        ),
+    );
+    let discriminant_let_stmt =
+        cx.stmt_let(span, false, discriminant_ident, discriminant_cast_expr);
+
+    // __OFFSET[__d]
+    let discriminant_expr = cx.expr_ident(span, discriminant_ident);
+    let start_index_expr = cx.expr(
+        span,
+        ExprKind::Index(cx.expr_ident(span, offset_ident), discriminant_expr.clone(), span),
+    );
+
+    // __OFFSET[__d + 1]
+    let one_expr = cx.expr_usize(span, 1);
+    let discriminant_plus_one_expr =
+        cx.expr_binary(span, ast::BinOpKind::Add, discriminant_expr, one_expr);
+    let end_index_expr = cx.expr(
+        span,
+        ExprKind::Index(cx.expr_ident(span, offset_ident), discriminant_plus_one_expr, span),
+    );
+
+    // __OFFSET[__d]..__OFFSET[__d + 1]
+    let slice_range_expr = cx.expr(
+        span,
+        ExprKind::Range(
+            Some(start_index_expr),
+            Some(end_index_expr),
+            rustc_ast::RangeLimits::HalfOpen,
+        ),
+    );
+
+    // &__NAMES[__STARTS[__d]..__STARTS[__d + 1]]
+    let name_slice_expr = cx.expr_addr_of(
+        span,
+        cx.expr(span, ExprKind::Index(cx.expr_ident(span, names_ident), slice_range_expr, span)),
+    );
+
+    Some(cx.expr_block(cx.block(
+        span,
+        thin_vec![
+            cx.stmt_item(span, names_const_item),
+            cx.stmt_item(span, offset_const_item),
+            discriminant_let_stmt,
+            cx.stmt_expr(name_slice_expr)
+        ],
+    )))
 }
