@@ -514,7 +514,7 @@ where
 ///
 /// * A Producer initializes the value of one of its fields of a specific type. (or is otherwise
 ///   prepared to generate a value requested). eg, `backtrace::Backtrace` or
-///   `std::backtrace::Backtrace`
+///   `std::backtrace::Backtrace`.
 /// * A Consumer requests an object of a specific type (say `std::backtrace::Backtrace`). In the
 ///   case of a `dyn Error` trait object (the Producer), there are functions called `request_ref` and
 ///   `request_value` to simplify obtaining an `Option<T>` for a given type.
