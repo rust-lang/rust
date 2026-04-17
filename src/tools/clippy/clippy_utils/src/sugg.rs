@@ -335,6 +335,11 @@ impl<'a> Sugg<'a> {
         Sugg::NonParen(Cow::Owned(format!("{{ {self} }}")))
     }
 
+    /// Convenience method to wrap the expression in an `unsafe` block.
+    pub fn unsafeify(self) -> Sugg<'static> {
+        Sugg::NonParen(Cow::Owned(format!("unsafe {{ {self} }}")))
+    }
+
     /// Convenience method to prefix the expression with the `async` keyword.
     /// Can be used after `blockify` to create an async block.
     pub fn asyncify(self) -> Sugg<'static> {

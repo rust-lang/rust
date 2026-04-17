@@ -227,3 +227,19 @@ fn issue12846() {
     let _x = if a { true } else { false }.then(|| todo!());
     //~^ needless_bool
 }
+
+fn wrongly_unmangled_macros() {
+    macro_rules! test_expr {
+        ($val:expr) => {
+            ($val + 1 > 0)
+        };
+    }
+
+    let x = 42;
+    if test_expr!(x) {
+        true
+    } else {
+        false
+    };
+    //~^^^^^ needless_bool
+}

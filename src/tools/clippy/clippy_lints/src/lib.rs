@@ -515,7 +515,6 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(|| Box::new(visibility::Visibility)),
         Box::new(|| Box::new(multiple_bound_locations::MultipleBoundLocations)),
         Box::new(|| Box::new(field_scoped_visibility_modifiers::FieldScopedVisibilityModifiers)),
-        Box::new(|| Box::new(byte_char_slices::ByteCharSlice)),
         Box::new(|| Box::new(cfg_not_test::CfgNotTest)),
         Box::new(|| Box::new(empty_line_after::EmptyLineAfter::new())),
         // add early passes here, used by `cargo dev new_lint`
@@ -866,7 +865,8 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
         Box::new(move |_| Box::new(manual_take::ManualTake::new(conf))),
         Box::new(|_| Box::new(manual_checked_ops::ManualCheckedOps)),
         Box::new(move |tcx| Box::new(manual_pop_if::ManualPopIf::new(tcx, conf))),
-        Box::new(|_| Box::new(manual_noop_waker::ManualNoopWaker)),
+        Box::new(move |_| Box::new(manual_noop_waker::ManualNoopWaker::new(conf))),
+        Box::new(|_| Box::new(byte_char_slices::ByteCharSlice)),
         // add late passes here, used by `cargo dev new_lint`
     ];
     store.late_passes.extend(late_lints);

@@ -112,7 +112,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
         {
             let reduce = |ret, not| {
                 let mut applicability = Applicability::MachineApplicable;
-                let snip = Sugg::hir_with_applicability(cx, cond, "<predicate>", &mut applicability);
+                let snip = Sugg::hir_with_context(cx, cond, e.span.ctxt(), "<predicate>", &mut applicability);
                 let mut snip = if not { !snip } else { snip };
 
                 if ret {

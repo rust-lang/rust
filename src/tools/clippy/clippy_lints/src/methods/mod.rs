@@ -163,6 +163,8 @@ use rustc_middle::ty::TraitRef;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol};
 
+use crate::matches::manual_filter;
+
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `_.and_then(|x| Some(y))`, `_.and_then(|x| Ok(y))`
@@ -5154,6 +5156,8 @@ impl Methods {
                             return_and_then::check(cx, expr, recv, arg);
                         }
                     }
+
+                    manual_filter::check_and_then_method(cx, recv, arg, call_span, expr);
                 },
                 (sym::any, [arg]) => {
                     needless_character_iteration::check(cx, expr, recv, arg, false);
