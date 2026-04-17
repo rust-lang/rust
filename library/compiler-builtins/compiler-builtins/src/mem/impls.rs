@@ -9,7 +9,7 @@
 // ptr::add in these loops will wrap. And if compiler-builtins is compiled with cfg(ub_checks),
 // this will fail a UB check at runtime.
 //
-// Since this scenario is UB, we are within our rights hit this check and halt execution...
+// Since this scenario is UB, we are within our rights to hit this check and halt execution...
 // But we are also within our rights to try to make it work.
 // We use wrapping_add/wrapping_sub for pointer arithmetic in this module in an attempt to support
 // this use. Of course this is not a guarantee that such use will work, it just means that this
