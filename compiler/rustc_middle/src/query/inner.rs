@@ -20,10 +20,7 @@ where
 {
     match cache.lookup(&key) {
         Some((value, index)) => {
-            if !tcx.is_in_sandbox() {
-                tcx.prof.query_cache_hit(index.into());
-            }
-
+            tcx.prof.query_cache_hit(index.into());
             tcx.dep_graph.read_index(index);
 
             Some(value)
