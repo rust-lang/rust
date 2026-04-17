@@ -1,0 +1,57 @@
+error[E0539]: malformed `export_visibility` attribute input
+  --> $DIR/export-visibility-with-unrecognized-arg.rs:5:1
+   |
+LL | #[export_visibility = "unrecognized visibility value"]
+   | ^^^^^^^^^^^^^^^^^^^^^^-------------------------------^
+   | |                     |
+   | |                     the only valid argument here is "target_default"
+   | help: must be of the form: `#[export_visibility = "visibility"]`
+
+error[E0539]: malformed `export_visibility` attribute input
+  --> $DIR/export-visibility-with-unrecognized-arg.rs:12:1
+   |
+LL | #[export_visibility = "hidden"]
+   | ^^^^^^^^^^^^^^^^^^^^^^--------^
+   | |                     |
+   | |                     the only valid argument here is "target_default"
+   | help: must be of the form: `#[export_visibility = "visibility"]`
+
+error[E0539]: malformed `export_visibility` attribute input
+  --> $DIR/export-visibility-with-unrecognized-arg.rs:16:1
+   |
+LL | #[export_visibility = "protected"]
+   | ^^^^^^^^^^^^^^^^^^^^^^-----------^
+   | |                     |
+   | |                     the only valid argument here is "target_default"
+   | help: must be of the form: `#[export_visibility = "visibility"]`
+
+error[E0539]: malformed `export_visibility` attribute input
+  --> $DIR/export-visibility-with-unrecognized-arg.rs:20:1
+   |
+LL | #[export_visibility = "interposable"]
+   | ^^^^^^^^^^^^^^^^^^^^^^--------------^
+   | |                     |
+   | |                     the only valid argument here is "target_default"
+   | help: must be of the form: `#[export_visibility = "visibility"]`
+
+error[E0539]: malformed `export_visibility` attribute input
+  --> $DIR/export-visibility-with-unrecognized-arg.rs:26:1
+   |
+LL | #[export_visibility = "default"]
+   | ^^^^^^^^^^^^^^^^^^^^^^---------^
+   | |                     |
+   | |                     the only valid argument here is "target_default"
+   | help: must be of the form: `#[export_visibility = "visibility"]`
+
+error[E0539]: malformed `export_visibility` attribute input
+  --> $DIR/export-visibility-with-unrecognized-arg.rs:30:1
+   |
+LL | #[export_visibility = "public"]
+   | ^^^^^^^^^^^^^^^^^^^^^^--------^
+   | |                     |
+   | |                     the only valid argument here is "target_default"
+   | help: must be of the form: `#[export_visibility = "visibility"]`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

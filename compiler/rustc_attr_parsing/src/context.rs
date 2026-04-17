@@ -191,6 +191,7 @@ attribute_parsers!(
         Single<DeprecatedParser>,
         Single<DoNotRecommendParser>,
         Single<ExportNameParser>,
+        Single<ExportVisibilityParser>,
         Single<IgnoreParser>,
         Single<InlineParser>,
         Single<InstructionSetParser>,

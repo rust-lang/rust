@@ -896,6 +896,7 @@ symbols! {
         export_name,
         export_stable,
         export_symbols: "export-symbols",
+        export_visibility,
         expr,
         expr_2021,
         expr_fragment_specifier_2024,

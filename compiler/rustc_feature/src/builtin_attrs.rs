@@ -369,6 +369,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(
         unsafe(Edition2024) export_name,
     ),
+    gated!(export_visibility, Normal, template!(NameValueStr: "visibility"), ErrorPreceding, EncodeCrossCrate::No, experimental!(export_visibility)),
     ungated!(
         unsafe(Edition2024) link_section,
     ),
