@@ -686,6 +686,16 @@ struct ModuleData<'ra> {
 #[rustc_pass_by_value]
 struct Module<'ra>(Interned<'ra, ModuleData<'ra>>);
 
+/// Same as `Module`, but is guaranteed to be from the current crate.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[rustc_pass_by_value]
+struct LocalModule<'ra>(Interned<'ra, ModuleData<'ra>>);
+
+/// Same as `Module`, but is guaranteed to be from an external crate.
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[rustc_pass_by_value]
+struct ExternModule<'ra>(Interned<'ra, ModuleData<'ra>>);
+
 // Allows us to use Interned without actually enforcing (via Hash/PartialEq/...) uniqueness of the
 // contained data.
 // FIXME: We may wish to actually have at least debug-level assertions that Interned's guarantees
@@ -726,6 +736,21 @@ impl<'ra> ModuleData<'ra> {
             span,
             expansion,
             self_decl,
+        }
+    }
+
+    fn opt_def_id(&self) -> Option<DefId> {
+        self.kind.opt_def_id()
+    }
+
+    fn def_id(&self) -> DefId {
+        self.opt_def_id().expect("`ModuleData::def_id` is called on a block module")
+    }
+
+    fn res(&self) -> Option<Res> {
+        match self.kind {
+            ModuleKind::Def(kind, def_id, _) => Some(Res::Def(kind, def_id)),
+            _ => None,
         }
     }
 }
@@ -779,21 +804,6 @@ impl<'ra> Module<'ra> {
         }
     }
 
-    fn res(self) -> Option<Res> {
-        match self.kind {
-            ModuleKind::Def(kind, def_id, _) => Some(Res::Def(kind, def_id)),
-            _ => None,
-        }
-    }
-
-    fn def_id(self) -> DefId {
-        self.opt_def_id().expect("`ModuleData::def_id` is called on a block module")
-    }
-
-    fn opt_def_id(self) -> Option<DefId> {
-        self.kind.opt_def_id()
-    }
-
     // `self` resolves to the first module ancestor that `is_normal`.
     fn is_normal(self) -> bool {
         matches!(self.kind, ModuleKind::Def(DefKind::Mod, _, _))
@@ -831,9 +841,57 @@ impl<'ra> Module<'ra> {
         }
         true
     }
+
+    #[track_caller]
+    fn expect_local(self) -> LocalModule<'ra> {
+        match self.kind {
+            ModuleKind::Def(_, def_id, _) if !def_id.is_local() => {
+                panic!("`Module::expect_local` is called on a non-local module: {self:?}")
+            }
+            ModuleKind::Def(..) | ModuleKind::Block => LocalModule(self.0),
+        }
+    }
+
+    #[track_caller]
+    fn expect_extern(self) -> ExternModule<'ra> {
+        match self.kind {
+            ModuleKind::Def(_, def_id, _) if !def_id.is_local() => ExternModule(self.0),
+            ModuleKind::Def(..) | ModuleKind::Block => {
+                panic!("`Module::expect_extern` is called on a local module: {self:?}")
+            }
+        }
+    }
+}
+
+impl<'ra> LocalModule<'ra> {
+    fn to_module(self) -> Module<'ra> {
+        Module(self.0)
+    }
+}
+
+impl<'ra> ExternModule<'ra> {
+    fn to_module(self) -> Module<'ra> {
+        Module(self.0)
+    }
 }
 
 impl<'ra> std::ops::Deref for Module<'ra> {
+    type Target = ModuleData<'ra>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'ra> std::ops::Deref for LocalModule<'ra> {
+    type Target = ModuleData<'ra>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'ra> std::ops::Deref for ExternModule<'ra> {
     type Target = ModuleData<'ra>;
 
     fn deref(&self) -> &Self::Target {
@@ -847,6 +905,12 @@ impl<'ra> fmt::Debug for Module<'ra> {
             ModuleKind::Block => write!(f, "block"),
             ModuleKind::Def(..) => write!(f, "{:?}", self.res()),
         }
+    }
+}
+
+impl<'ra> fmt::Debug for LocalModule<'ra> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.to_module().fmt(f)
     }
 }
 
@@ -1197,7 +1261,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     expn_that_defined: UnordMap<LocalDefId, ExpnId> = Default::default(),
 
-    graph_root: Module<'ra>,
+    graph_root: LocalModule<'ra>,
 
     /// Assert that we are in speculative resolution mode.
     assert_speculative: bool,
@@ -1256,17 +1320,17 @@ pub struct Resolver<'ra, 'tcx> {
     ///
     /// There will be an anonymous module created around `g` with the ID of the
     /// entry block for `f`.
-    block_map: NodeMap<Module<'ra>> = Default::default(),
+    block_map: NodeMap<LocalModule<'ra>> = Default::default(),
     /// A fake module that contains no definition and no prelude. Used so that
     /// some AST passes can generate identifiers that only resolve to local or
     /// lang items.
-    empty_module: Module<'ra>,
+    empty_module: LocalModule<'ra>,
     /// All local modules, including blocks.
-    local_modules: Vec<Module<'ra>>,
+    local_modules: Vec<LocalModule<'ra>>,
     /// Eagerly populated map of all local non-block modules.
-    local_module_map: FxIndexMap<LocalDefId, Module<'ra>>,
+    local_module_map: FxIndexMap<LocalDefId, LocalModule<'ra>>,
     /// Lazily populated cache of modules loaded from external crates.
-    extern_module_map: CacheRefCell<FxIndexMap<DefId, Module<'ra>>>,
+    extern_module_map: CacheRefCell<FxIndexMap<DefId, ExternModule<'ra>>>,
 
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
@@ -1301,8 +1365,8 @@ pub struct Resolver<'ra, 'tcx> {
     dummy_ext_bang: Arc<SyntaxExtension>,
     dummy_ext_derive: Arc<SyntaxExtension>,
     non_macro_attr: &'ra MacroData,
-    local_macro_def_scopes: FxHashMap<LocalDefId, Module<'ra>> = default::fx_hash_map(),
-    ast_transform_scopes: FxHashMap<LocalExpnId, Module<'ra>> = default::fx_hash_map(),
+    local_macro_def_scopes: FxHashMap<LocalDefId, LocalModule<'ra>> = default::fx_hash_map(),
+    ast_transform_scopes: FxHashMap<LocalExpnId, LocalModule<'ra>> = default::fx_hash_map(),
     unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident)>,
     /// A map from the macro to all its potentially unused arms.
     unused_macro_rules: FxIndexMap<NodeId, DenseBitSet<usize>>,
@@ -1650,6 +1714,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             crate_span,
             attr::contains_name(attrs, sym::no_implicit_prelude),
         );
+        let graph_root = graph_root.expect_local();
         let local_modules = vec![graph_root];
         let local_module_map = FxIndexMap::from_iter([(CRATE_DEF_ID, graph_root)]);
         let empty_module = arenas.new_module(
@@ -1660,6 +1725,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             DUMMY_SP,
             true,
         );
+        let empty_module = empty_module.expect_local();
 
         let mut node_id_to_def_id = NodeMap::default();
         let crate_feed = tcx.create_local_crate_def_id(crate_span);
@@ -1742,7 +1808,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ..
         };
 
-        let root_parent_scope = ParentScope::module(graph_root, resolver.arenas);
+        let root_parent_scope = ParentScope::module(graph_root.to_module(), resolver.arenas);
         resolver.invocation_parent_scopes.insert(LocalExpnId::ROOT, root_parent_scope);
         resolver.feed_visibility(crate_feed, Visibility::Public);
 
@@ -1751,15 +1817,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn new_local_module(
         &mut self,
-        parent: Option<Module<'ra>>,
+        parent: Option<LocalModule<'ra>>,
         kind: ModuleKind,
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
-    ) -> Module<'ra> {
+    ) -> LocalModule<'ra> {
+        let parent = parent.map(|m| m.to_module());
         let vis =
             kind.opt_def_id().map_or(Visibility::Public, |def_id| self.tcx.visibility(def_id));
-        let module = self.arenas.new_module(parent, kind, vis, expn_id, span, no_implicit_prelude);
+        let module = self
+            .arenas
+            .new_module(parent, kind, vis, expn_id, span, no_implicit_prelude)
+            .expect_local();
         self.local_modules.push(module);
         if let Some(def_id) = module.opt_def_id() {
             self.local_module_map.insert(def_id.expect_local(), module);
@@ -1769,15 +1839,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn new_extern_module(
         &self,
-        parent: Option<Module<'ra>>,
+        parent: Option<ExternModule<'ra>>,
         kind: ModuleKind,
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
-    ) -> Module<'ra> {
+    ) -> ExternModule<'ra> {
+        let parent = parent.map(|m| m.to_module());
         let vis =
             kind.opt_def_id().map_or(Visibility::Public, |def_id| self.tcx.visibility(def_id));
-        let module = self.arenas.new_module(parent, kind, vis, expn_id, span, no_implicit_prelude);
+        let module = self
+            .arenas
+            .new_module(parent, kind, vis, expn_id, span, no_implicit_prelude)
+            .expect_extern();
         self.extern_module_map.borrow_mut().insert(module.def_id(), module);
         module
     }
@@ -2063,7 +2137,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn resolutions(&self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
         if module.populate_on_access.get() {
             module.populate_on_access.set(false);
-            self.build_reduced_graph_external(module);
+            self.build_reduced_graph_external(module.expect_extern());
         }
         &module.0.0.lazy_resolutions
     }
@@ -2136,7 +2210,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // Do not report the lint if the macro name resolves in stdlib prelude
                 // even without the problematic `macro_use` import.
                 let found_in_stdlib_prelude = self.prelude.is_some_and(|prelude| {
-                    let empty_module = self.empty_module;
+                    let empty_module = self.empty_module.to_module();
                     let arenas = self.arenas;
                     self.cm()
                         .maybe_resolve_ident_in_module(
@@ -2248,7 +2322,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     "resolve_crate_root({:?}): found no mark (ident.span = {:?})",
                     ident, ident.span
                 );
-                return self.graph_root;
+                return self.graph_root.to_module();
             }
         };
         let module = self.expect_module(
@@ -2503,7 +2577,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return;
         }
 
-        let module = self.graph_root;
+        let module = self.graph_root.to_module();
         let ident = Ident::with_dummy_span(sym::main);
         let parent_scope = &ParentScope::module(module, self.arenas);
 

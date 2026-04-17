@@ -1585,7 +1585,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             lookup_ident,
             namespace,
             parent_scope,
-            self.graph_root,
+            self.graph_root.to_module(),
             crate_path,
             &filter_fn,
         );
@@ -2074,7 +2074,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             if kind != AmbiguityKind::GlobVsGlob {
                 if let Scope::ModuleNonGlobs(module, _) | Scope::ModuleGlobs(module, _) = scope {
-                    if module == self.graph_root {
+                    if module == self.graph_root.to_module() {
                         help_msgs.push(format!(
                             "use `crate::{ident}` to refer to this {thing} unambiguously"
                         ));
@@ -2452,7 +2452,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 self.local_module_map
                     .iter()
                     .filter(|(_, module)| {
-                        current_module.is_ancestor_of(**module) && current_module != **module
+                        let module = module.to_module();
+                        current_module.is_ancestor_of(module) && current_module != module
                     })
                     .flat_map(|(_, module)| module.kind.name()),
             )
@@ -2461,7 +2462,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .borrow()
                     .iter()
                     .filter(|(_, module)| {
-                        current_module.is_ancestor_of(**module) && current_module != **module
+                        let module = module.to_module();
+                        current_module.is_ancestor_of(module) && current_module != module
                     })
                     .flat_map(|(_, module)| module.kind.name()),
             )

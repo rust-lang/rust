@@ -37,8 +37,8 @@ use crate::errors::{
 use crate::ref_mut::CmCell;
 use crate::{
     AmbiguityError, BindingKey, CmResolver, Decl, DeclData, DeclKind, Determinacy, Finalize,
-    IdentKey, ImportSuggestion, Module, ModuleOrUniformRoot, ParentScope, PathResult, PerNS, Res,
-    ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string, names_to_string,
+    IdentKey, ImportSuggestion, LocalModule, ModuleOrUniformRoot, ParentScope, PathResult, PerNS,
+    Res, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string, names_to_string,
 };
 
 /// A potential import declaration in the process of being planted into a module.
@@ -471,7 +471,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         decl: Decl<'ra>,
         warn_ambiguity: bool,
     ) -> Result<(), Decl<'ra>> {
-        let module = decl.parent_module.unwrap();
+        let module = decl.parent_module.unwrap().expect_local();
         let res = decl.res();
         self.check_reserved_macro_name(ident.name, orig_ident_span, res);
         // Even if underscore names cannot be looked up, we still need to add them to modules,
@@ -513,7 +513,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     // If the resolution becomes a success, define it in the module's glob importers.
     fn update_local_resolution<T, F>(
         &mut self,
-        module: Module<'ra>,
+        module: LocalModule<'ra>,
         key: BindingKey,
         orig_ident_span: Span,
         warn_ambiguity: bool,
@@ -526,7 +526,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // during which the resolution might end up getting re-defined via a glob cycle.
         let (binding, t, warn_ambiguity) = {
             let resolution = &mut *self
-                .resolution_or_default(module, key, orig_ident_span)
+                .resolution_or_default(module.to_module(), key, orig_ident_span)
                 .borrow_mut_unchecked();
             let old_decl = resolution.determined_decl();
 
@@ -582,7 +582,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let dummy_decl = self.dummy_decl;
             let dummy_decl = self.new_import_decl(dummy_decl, import);
             self.per_ns(|this, ns| {
-                let module = import.parent_scope.module;
                 let ident = IdentKey::new(target);
                 // This can fail, dummies are inserted only in non-occupied slots.
                 let _ = this.try_plant_decl_into_local_module(
@@ -596,7 +595,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 if target.name != kw::Underscore {
                     let key = BindingKey::new(ident, ns);
                     this.update_local_resolution(
-                        module,
+                        import.parent_scope.module.expect_local(),
                         key,
                         target.span,
                         false,
@@ -734,7 +733,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     pub(crate) fn lint_reexports(&mut self, exported_ambiguities: FxHashSet<Decl<'ra>>) {
         for module in &self.local_modules {
-            for (key, resolution) in self.resolutions(*module).borrow().iter() {
+            for (key, resolution) in self.resolutions(module.to_module()).borrow().iter() {
                 let resolution = resolution.borrow();
                 let Some(binding) = resolution.best_decl() else { continue };
 
@@ -1027,7 +1026,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         if target.name != kw::Underscore {
                             let key = BindingKey::new(IdentKey::new(target), ns);
                             this.get_mut_unchecked().update_local_resolution(
-                                parent,
+                                parent.expect_local(),
                                 key,
                                 target.span,
                                 false,
@@ -1700,7 +1699,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     // reporting conflicts, and reporting unresolved imports.
     fn finalize_resolutions_in(
         &self,
-        module: Module<'ra>,
+        module: LocalModule<'ra>,
         module_children: &mut LocalDefIdMap<Vec<ModChild>>,
         ambig_module_children: &mut LocalDefIdMap<Vec<AmbigModChild>>,
     ) {
@@ -1712,7 +1711,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut children = Vec::new();
         let mut ambig_children = Vec::new();
 
-        module.for_each_child(self, |this, ident, orig_ident_span, _, binding| {
+        module.to_module().for_each_child(self, |this, ident, orig_ident_span, _, binding| {
             let res = binding.res().expect_non_local();
             if res != def::Res::Err {
                 let ident = ident.orig(orig_ident_span);

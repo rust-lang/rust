@@ -240,8 +240,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             )
         });
 
-        let parent_scope =
-            parent_module.map_or(self.empty_module, |def_id| self.expect_module(def_id));
+        let parent_scope = parent_module
+            .map_or(self.empty_module, |def_id| self.expect_module(def_id).expect_local());
         self.ast_transform_scopes.insert(expn_id, parent_scope);
 
         expn_id
