@@ -161,9 +161,9 @@ impl<T: SingleAttributeParser<S>, S: Stage> AttributeParser<S> for Single<T, S> 
             if let Some(pa) = T::convert(cx, args) {
                 if let Some((_, used)) = group.1 {
                     T::ON_DUPLICATE.exec::<T>(cx, used, cx.attr_span);
+                } else {
+                    group.1 = Some((pa, cx.attr_span));
                 }
-
-                group.1 = Some((pa, cx.attr_span));
             }
         },
     )];
