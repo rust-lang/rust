@@ -677,6 +677,14 @@ pub(crate) struct BpfStaticlibNotSupported;
 
 #[derive(Diagnostic)]
 #[diag(
+    "-Zstaticlib-hide-internal-symbols only supports ELF archive formats (gnu/bsd), but the target uses `{$archive_format}`"
+)]
+pub(crate) struct StaticlibHideInternalSymbolsUnsupported {
+    pub archive_format: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(
     "-Zstaticlib-rename-internal-symbols only supports ELF archive formats (gnu/bsd), but the target uses `{$archive_format}`"
 )]
 pub(crate) struct StaticlibRenameInternalSymbolsUnsupported {

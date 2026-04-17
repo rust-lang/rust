@@ -320,6 +320,8 @@ pub trait ArchiveBuilder {
 
     fn build(self: Box<Self>, output: &Path) -> bool;
 
+    fn set_hide_symbols(&mut self, keep: FxHashSet<String>);
+
     fn set_rename_symbols(&mut self, keep: FxHashSet<String>, suffix: String);
 }
 
@@ -340,6 +342,7 @@ pub struct ArArchiveBuilder<'a> {
     // Don't use an `HashMap` here, as the order is important. `lib.rmeta` needs
     // to be at the end of an archive in some cases for linkers to not get confused.
     entries: Vec<(Vec<u8>, ArchiveEntry)>,
+    hide_symbols: Option<FxHashSet<String>>,
     rename_symbols: Option<(FxHashSet<String>, String)>,
 }
 
@@ -356,8 +359,13 @@ impl<'a> ArArchiveBuilder<'a> {
             object_reader,
             src_archives: vec![],
             entries: vec![],
+            hide_symbols: None,
             rename_symbols: None,
         }
+    }
+
+    pub fn set_hide_symbols(&mut self, keep: FxHashSet<String>) {
+        self.hide_symbols = Some(keep);
     }
 
     pub fn set_rename_symbols(&mut self, keep: FxHashSet<String>, suffix: String) {
@@ -475,6 +483,10 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
         }
     }
 
+    fn set_hide_symbols(&mut self, keep: FxHashSet<String>) {
+        self.hide_symbols = Some(keep);
+    }
+
     fn set_rename_symbols(&mut self, keep: FxHashSet<String>, suffix: String) {
         self.rename_symbols = Some((keep, suffix));
     }
@@ -495,12 +507,26 @@ impl<'a> ArArchiveBuilder<'a> {
 
         let mut entries = Vec::new();
 
-        // When renaming symbols, we need a global two-pass approach:
-        // Pass 1: collect all non-exported defined symbol names across ALL .o files
-        // Pass 2: rename those symbols (both definitions and undefined references) in each .o file
-        // This ensures cross-object-file references remain consistent.
-        let global_rename_set: Option<(FxHashSet<String>, &String)> =
-            self.rename_symbols.as_ref().map(|(keep, suffix)| {
+        // When hiding or renaming symbols, we need a global two-pass approach:
+        // 1: collect all non-exported defined symbol names across ALL .o files
+        // 2: apply hide/rename to each .o file
+        // For rename, this ensures cross-object-file references remain consistent.
+        let should_hide = self.hide_symbols.is_some();
+        let should_rename = self.rename_symbols.is_some();
+
+        // Collect the internal symbol set in a dedicated scope so the borrow on
+        // self.hide_symbols / self.rename_symbols is released before the application loop.
+        let (global_internal_set, rename_suffix): (Option<FxHashSet<String>>, Option<String>) = {
+            if !should_hide && !should_rename {
+                (None, None)
+            } else {
+                let keep: &FxHashSet<String> = self
+                    .rename_symbols
+                    .as_ref()
+                    .map(|(k, _)| k)
+                    .or(self.hide_symbols.as_ref())
+                    .unwrap();
+                let suffix = self.rename_symbols.as_ref().map(|(_, s)| s.clone());
                 let mut all_names: FxHashSet<String> = FxHashSet::default();
                 for (_, entry) in &self.entries {
                     let data: Option<Box<dyn AsRef<[u8]>>> = match entry {
@@ -524,8 +550,9 @@ impl<'a> ArArchiveBuilder<'a> {
                         elf_collect_rename_set(data.as_ref().as_ref(), keep, &mut all_names);
                     }
                 }
-                (all_names, suffix)
-            });
+                (Some(all_names), suffix)
+            }
+        };
 
         for (entry_name, entry) in self.entries {
             let data: Box<dyn AsRef<[u8]>> =
@@ -548,14 +575,26 @@ impl<'a> ArArchiveBuilder<'a> {
                     },
                 };
 
-            let data: Box<dyn AsRef<[u8]>> = if let Some((ref rename_set, suffix)) =
-                global_rename_set
-            {
-                if let Some(renamed) = elf_apply_rename(data.as_ref().as_ref(), rename_set, suffix)
-                {
-                    Box::new(renamed)
+            let data: Box<dyn AsRef<[u8]>> = if let Some(ref internal_set) = global_internal_set {
+                if should_rename {
+                    // rename (+ optionally hide)
+                    if let Some(renamed) = elf_apply_rename(
+                        data.as_ref().as_ref(),
+                        internal_set,
+                        rename_suffix.as_ref().unwrap(),
+                        should_hide,
+                    ) {
+                        Box::new(renamed)
+                    } else {
+                        data
+                    }
                 } else {
-                    data
+                    // hide only (zero-overhead in-place modification)
+                    if let Some(hidden) = elf_apply_hide(data.as_ref().as_ref(), internal_set) {
+                        Box::new(hidden)
+                    } else {
+                        data
+                    }
                 }
             } else {
                 data
@@ -795,19 +834,51 @@ fn elf_collect_rename_set(
     }
 }
 
+/// For ELF object files, hide GLOBAL/WEAK symbols whose names are in
+/// `hide_set` by setting their visibility to `STV_HIDDEN`.
+fn elf_apply_hide(data: &[u8], hide_set: &FxHashSet<String>) -> Option<Vec<u8>> {
+    use object::elf;
+
+    let tab = elf_symtab_info(data)?;
+    if tab.sym_count <= 1 {
+        return None;
+    }
+
+    let mut result: Option<Vec<u8>> = None;
+    for i in 1..tab.sym_count {
+        let off = tab.sym_off(i);
+        if off + tab.layout.sym_entry_size > data.len() {
+            break;
+        }
+        let binding = tab.binding(data, i);
+        if binding != elf::STB_GLOBAL && binding != elf::STB_WEAK {
+            continue;
+        }
+        if !tab.is_defined(data, i) {
+            continue;
+        }
+        if let Some(name) = tab.read_name(data, i) {
+            if hide_set.contains(&name) {
+                let buf = result.get_or_insert_with(|| data.to_vec());
+                buf[off + tab.layout.st_other_offset] = elf::STV_HIDDEN;
+            }
+        }
+    }
+    result
+}
+
 /// For ELF object files, rename GLOBAL/WEAK symbols whose names are in
 /// `rename_set` by appending `suffix`, and set their visibility to `STV_HIDDEN`.
-/// This handles both definitions AND undefined references, so cross-object-file
-/// references remain consistent when the global rename_set was built from all
-/// .o files in the archive.
 ///
-/// Uses the "move strtab to end" approach: builds a new strtab with renamed
+/// move strtab to end: builds a new strtab with renamed
 /// names appended, places it at the end of the file, and patches the strtab
 /// section header + ELF header. No other section offsets change.
-///
-/// Returns `Some(modified_data)` if any changes were made, `None` if the data
-/// is not an ELF object or no symbols matched the rename_set.
-fn elf_apply_rename(data: &[u8], rename_set: &FxHashSet<String>, suffix: &str) -> Option<Vec<u8>> {
+fn elf_apply_rename(
+    data: &[u8],
+    rename_set: &FxHashSet<String>,
+    suffix: &str,
+    hide: bool,
+) -> Option<Vec<u8>> {
     use object::elf;
 
     let tab = elf_symtab_info(data)?;
@@ -836,7 +907,6 @@ fn elf_apply_rename(data: &[u8], rename_set: &FxHashSet<String>, suffix: &str) -
         return None;
     }
 
-    // Build new strtab
     let mut new_strtab: Vec<u8> = tab.strtab_data.to_vec();
     let mut rename_map: FxHashMap<String, u32> = FxHashMap::default();
 
@@ -879,7 +949,6 @@ fn elf_apply_rename(data: &[u8], rename_set: &FxHashSet<String>, suffix: &str) -
         return None;
     }
 
-    // Patch strtab section header
     let strtab_shdr_offset = new_e_shoff + strtab_si * e_shentsize;
     if is_64 {
         write_u64_at(&mut result, strtab_shdr_offset + 24, new_strtab_file_off as u64, tab.endian);
@@ -889,14 +958,12 @@ fn elf_apply_rename(data: &[u8], rename_set: &FxHashSet<String>, suffix: &str) -
         write_u32_at(&mut result, strtab_shdr_offset + 20, new_strtab_size as u32, tab.endian);
     }
 
-    // Patch ELF header e_shoff
     if is_64 {
         write_u64_at(&mut result, 40, new_e_shoff as u64, tab.endian);
     } else {
         write_u32_at(&mut result, 32, new_e_shoff as u32, tab.endian);
     }
 
-    // patch symtab entries (both defined AND undefined references)
     let sym_offset = tab.sym_offset;
     for i in 1..tab.sym_count {
         let off = sym_offset + i * tab.layout.sym_entry_size;
@@ -910,7 +977,9 @@ fn elf_apply_rename(data: &[u8], rename_set: &FxHashSet<String>, suffix: &str) -
         if let Some(name) = tab.read_name(&result, i) {
             if let Some(&new_st_name) = rename_map.get(&name) {
                 write_u32_at(&mut result, off, new_st_name, tab.endian);
-                result[off + tab.layout.st_other_offset] = elf::STV_HIDDEN;
+                if hide {
+                    result[off + tab.layout.st_other_offset] = elf::STV_HIDDEN;
+                }
             }
         }
     }

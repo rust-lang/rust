@@ -525,6 +525,18 @@ fn link_staticlib(
         sess.dcx().emit_fatal(e);
     }
 
+    if sess.opts.unstable_opts.staticlib_hide_internal_symbols {
+        if !matches!(&*sess.target.archive_format, "gnu" | "bsd") {
+            sess.dcx().emit_warn(errors::StaticlibHideInternalSymbolsUnsupported {
+                archive_format: sess.target.archive_format.to_string(),
+            });
+        } else if let Some(symbols) = crate_info.exported_symbols.get(&CrateType::StaticLib) {
+            use rustc_data_structures::fx::FxHashSet;
+            let keep: FxHashSet<String> = symbols.iter().map(|(s, _)| s.clone()).collect();
+            ab.set_hide_symbols(keep);
+        }
+    }
+
     if sess.opts.unstable_opts.staticlib_rename_internal_symbols {
         if !matches!(&*sess.target.archive_format, "gnu" | "bsd") {
             sess.dcx().emit_warn(errors::StaticlibRenameInternalSymbolsUnsupported {

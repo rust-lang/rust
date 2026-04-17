@@ -102,11 +102,6 @@ fn test_rs_suffix_present() {
                         name.contains("_rs"),
                         "internal symbol `{name}` should contain _rs suffix after rename"
                     );
-                    assert_ne!(
-                        vis,
-                        object::elf::STV_DEFAULT,
-                        "renamed internal symbol `{name}` should NOT be STV_DEFAULT"
-                    );
                     found_rs_suffix = true;
                 }
             }
