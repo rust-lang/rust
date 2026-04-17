@@ -1,6 +1,6 @@
-//@ revisions:cfail1 cfail2
-//@[cfail1] compile-flags: --crate-type=lib -Zassert-incr-state=not-loaded
-//@[cfail2] compile-flags: --crate-type=lib -Zassert-incr-state=loaded
+//@ revisions: bfail1 bfail2
+//@[bfail1] compile-flags: --crate-type=lib -Zassert-incr-state=not-loaded
+//@[bfail2] compile-flags: --crate-type=lib -Zassert-incr-state=loaded
 //@ edition: 2021
 //@ build-pass
 //@ ignore-backends: gcc

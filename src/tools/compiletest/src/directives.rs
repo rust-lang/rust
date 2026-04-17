@@ -442,8 +442,8 @@ impl TestProps {
             (TestMode::Incremental, _) => {
                 // FIXME(Zalathar): This only detects forbidden directives that are
                 // declared _after_ the incompatible `//@ revisions:` directive(s).
-                if self.revisions.iter().any(|r| !r.starts_with("cfail")) {
-                    panic!("`{s}` directive is only supported in `cfail` incremental tests")
+                if self.revisions.iter().any(|r| !r.starts_with("bfail")) {
+                    panic!("`{s}` directive is only supported in `bfail` incremental tests")
                 }
             }
             (mode, _) => panic!("`{s}` directive is not supported in `{mode}` tests"),
