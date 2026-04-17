@@ -12,7 +12,7 @@ use std::ffi::OsStr;
 use std::hash::{Hash, Hasher};
 use std::marker::{PhantomData, PointeeSized};
 use std::ops::{Bound, Deref};
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering as AtomicOrdering};
 use std::sync::{Arc, OnceLock};
 use std::{fmt, iter, mem};
 
@@ -67,6 +67,7 @@ use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, PredefinedOpaques};
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
+use crate::ty::print::with_no_trimmed_paths;
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
     GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, Pattern,
@@ -898,17 +899,22 @@ impl CurrentGcx {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    #[inline]
     pub fn is_in_sandbox(self) -> bool {
-        self.is_in_sandbox.load(std::sync::atomic::Ordering::Relaxed)
+        self.is_in_sandbox.load(AtomicOrdering::Relaxed)
     }
 
     pub fn with_sandbox(self, op: impl FnOnce()) {
-        self.is_in_sandbox.store(true, std::sync::atomic::Ordering::Relaxed);
+        self.is_in_sandbox.store(true, AtomicOrdering::Relaxed);
+        self.enter_query_sandbox();
 
-        op();
+        self.dep_graph.with_sandbox(|| {
+            with_no_trimmed_paths!({
+                op();
+            });
+        });
 
-        self.is_in_sandbox.store(false, std::sync::atomic::Ordering::Relaxed);
+        self.leave_query_sandbox();
+        self.is_in_sandbox.store(false, AtomicOrdering::Relaxed);
 
         self.clauses_cache.borrow_mut().clear();
         self.highest_var_in_clauses_cache.borrow_mut().clear();

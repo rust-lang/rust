@@ -56,7 +56,7 @@ pub enum QuerySideEffect {
 #[derive(Clone)]
 pub struct DepGraph {
     is_in_sandbox: Arc<AtomicBool>,
-    data: Option<Arc<DepGraphData>>,
+    data: [Option<Arc<DepGraphData>>; 2],
 
     /// This field is used for assigning DepNodeIndices when running in
     /// non-incremental mode. Even in non-incremental mode we make sure that
@@ -171,13 +171,16 @@ impl DepGraph {
         }
 
         DepGraph {
-            data: Some(Arc::new(DepGraphData {
-                previous_work_products: prev_work_products,
-                current,
-                previous: prev_graph,
-                colors,
-                debug_loaded_from_disk: Default::default(),
-            })),
+            data: [
+                Some(Arc::new(DepGraphData {
+                    previous_work_products: prev_work_products,
+                    current,
+                    previous: prev_graph,
+                    colors,
+                    debug_loaded_from_disk: Default::default(),
+                })),
+                None,
+            ],
             virtual_dep_node_index: Arc::new(AtomicU32::new(0)),
             is_in_sandbox: Default::default(),
         }
@@ -185,20 +188,14 @@ impl DepGraph {
 
     pub fn new_disabled() -> DepGraph {
         DepGraph {
-            data: None,
+            data: [None, None],
             virtual_dep_node_index: Arc::new(AtomicU32::new(0)),
             is_in_sandbox: Default::default(),
         }
     }
 
-    #[inline]
     pub fn data(&self) -> Option<&DepGraphData> {
-        self.data.as_deref().filter(|_| !self.is_in_sandbox())
-    }
-
-    #[inline]
-    pub fn is_in_sandbox(&self) -> bool {
-        self.is_in_sandbox.load(Ordering::Relaxed)
+        self.data[self.is_in_sandbox.load(Ordering::Relaxed) as usize].as_deref()
     }
 
     /// Returns `true` if we are actually building the full dep-graph, and `false` otherwise.

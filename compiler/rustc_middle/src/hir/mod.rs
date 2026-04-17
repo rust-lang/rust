@@ -24,7 +24,6 @@ use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, ExpnId, HashStableContext, Span};
 
 use crate::query::Providers;
-use crate::ty::print::with_no_trimmed_paths;
 use crate::ty::{ResolverAstLowering, TyCtxt};
 
 /// The top-level data structure that stores the entire contents of
@@ -208,25 +207,11 @@ impl ModuleItems {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    fn sandbox(self, action: impl FnOnce() -> ()) {
-        self.with_sandbox(|| {
-            self.enter_query_sandbox();
-
-            self.dep_graph.with_sandbox(|| {
-                with_no_trimmed_paths!({
-                    action();
-                });
-            });
-
-            self.leave_query_sandbox();
-        });
-    }
-
     pub fn force_delayed_owners_lowering(self) {
         let krate = self.hir_crate(());
 
         if !krate.delayed_ids.is_empty() {
-            self.sandbox(|| {
+            self.with_sandbox(|| {
                 self.ensure_done().hir_crate_items(());
                 self.ensure_done().crate_inherent_impls(());
 
