@@ -7,7 +7,7 @@ assert-text: ("#rustdoc-modnav .block.macro .current", "b")
 
 define-function: (
     "check_macro",
-    [name, info],
+    [name, info, kind],
     block {
         // It should be present twice in the sidebar.
         assert-count: ("#rustdoc-modnav a[href='macro." + |name| + ".html']", 2)
@@ -24,11 +24,16 @@ define-function: (
         assert-count: ("#rustdoc-modnav .current", 2)
         // We check it has the expected information.
         assert-text: ("h3.macro-info", "ⓘ This is " + |info| + "/function macro")
+        // We check how the item declaration looks like.
+        assert-text: (".item-decl", "macro_rules! " + |name| + " {
+    " + |kind| + "() () => { ... };
+    () => { ... };
+}")
     }
 )
 
-call-function: ("check_macro", {"name": "attr_macro", "info": "an attribute"})
-call-function: ("check_macro", {"name": "derive_macro", "info": "a derive"})
+call-function: ("check_macro", {"name": "attr_macro", "info": "an attribute", "kind": "attr"})
+call-function: ("check_macro", {"name": "derive_macro", "info": "a derive", "kind": "derive"})
 
 define-function: (
     "crate_page",
@@ -74,3 +79,13 @@ define-function: (
 go-to: "file://" + |DOC_PATH| + "/test_docs/all.html"
 call-function: ("all_items_page", {"name": "attr_macro", "section_id": "attribute-macros"})
 call-function: ("all_items_page", {"name": "derive_macro", "section_id": "derives"})
+
+// We now check a macro with all 3 different kinds.
+go-to: "file://" + |DOC_PATH| + "/test_docs/macro.one_for_all_macro.html"
+assert-text: (".item-decl", "macro_rules! one_for_all_macro {
+    attr() () => { ... };
+    derive() () => { ... };
+    () => { ... };
+}")
+// We check it has the expected information.
+assert-text: ("h3.macro-info", "ⓘ This is an attribute/derive/function macro")
