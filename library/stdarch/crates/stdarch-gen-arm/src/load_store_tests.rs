@@ -119,7 +119,7 @@ pub fn generate_load_store_tests(
 ///     let loaded == load_intrinsic([true_predicate], storage.as_ptr())
 ///     assert!(loaded == data);
 /// ```
-/// We intialise our data such that the value stored matches the index it's stored to.
+/// We initialise our data such that the value stored matches the index it's stored to.
 /// By doing this we can validate scatters by checking that each value in the storage
 /// array is either 0 or the same as its index.
 fn generate_single_test(
