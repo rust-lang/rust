@@ -140,8 +140,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
                 if_expr.syntax().parent().is_some_and(|it| ast::IfExpr::can_cast(it.kind()));
             let expr = if has_preceding_if_expr {
                 // make sure we replace the `else if let ...` with a block so we don't end up with `else expr`
-                let block_expr = editor
-                    .make()
+                let block_expr = make
                     .block_expr([], Some(match_expr.dedent(indent).indent(IndentLevel(1))))
                     .indent(indent);
                 block_expr.into()
@@ -301,8 +300,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
             let else_expr = else_expr.reset_indent();
             let then_block = make_block_expr(then_expr);
             let else_expr = if is_empty_expr(&else_expr) { None } else { Some(else_expr) };
-            let if_let_expr = editor
-                .make()
+            let if_let_expr = make
                 .expr_if(
                     condition,
                     then_block,

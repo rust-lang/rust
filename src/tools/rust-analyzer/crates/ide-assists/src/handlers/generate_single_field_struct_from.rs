@@ -98,8 +98,7 @@ pub(crate) fn generate_single_field_struct_from(
                 make_adt_constructor(names.as_deref(), constructors, &main_field_name, make);
             let body = make.block_expr([], Some(constructor));
 
-            let fn_ = editor
-                .make()
+            let fn_ = make
                 .fn_(
                     [],
                     None,

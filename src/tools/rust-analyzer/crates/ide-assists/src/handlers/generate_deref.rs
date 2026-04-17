@@ -151,8 +151,7 @@ fn generate_edit(
                 make.ty_ref(make.ty_path(make.path_from_text("Self::Target")).into(), false);
             let field_expr = make.expr_field(make.expr_path(make.ident_path("self")), field_name);
             let body = make.block_expr([], Some(make.expr_ref(field_expr.into(), false)));
-            let fn_ = editor
-                .make()
+            let fn_ = make
                 .fn_(
                     [],
                     None,
@@ -175,8 +174,7 @@ fn generate_edit(
                 make.ty_ref(make.ty_path(make.path_from_text("Self::Target")).into(), true);
             let field_expr = make.expr_field(make.expr_path(make.ident_path("self")), field_name);
             let body = make.block_expr([], Some(make.expr_ref(field_expr.into(), true)));
-            let fn_ = editor
-                .make()
+            let fn_ = make
                 .fn_(
                     [],
                     None,

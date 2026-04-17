@@ -152,9 +152,8 @@ impl StructEditData {
                 // If the binding is nested inside a record, we need to wrap the new
                 // destructured pattern in a non-shorthand record field
                 if self.need_record_field_name {
-                    let new_pat = editor
-                        .make()
-                        .record_pat_field(make.name_ref(&self.name.to_string()), new_pat);
+                    let new_pat =
+                        make.record_pat_field(make.name_ref(&self.name.to_string()), new_pat);
                     editor.replace(pat.syntax(), new_pat.syntax())
                 } else {
                     editor.replace(pat.syntax(), new_pat.syntax())
@@ -294,7 +293,7 @@ fn destructure_pat(
                 // Use shorthand syntax if possible
                 if old_name == new_name {
                     make.record_pat_field_shorthand(
-                        editor.make().ident_pat(is_ref, is_mut, make.name(old_name)).into(),
+                        make.ident_pat(is_ref, is_mut, make.name(old_name)).into(),
                     )
                 } else {
                     make.record_pat_field(

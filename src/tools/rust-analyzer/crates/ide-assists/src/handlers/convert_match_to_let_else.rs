@@ -137,9 +137,7 @@ fn rename_variable(pat: &ast::Pat, extracted: &[Name], binding: ast::Pat) -> Syn
             if let Some(name_ref) = record_pat_field.field_name() {
                 editor.replace(
                     record_pat_field.syntax(),
-                    editor
-                        .make()
-                        .record_pat_field(make.name_ref(&name_ref.text()), binding.clone())
+                    make.record_pat_field(make.name_ref(&name_ref.text()), binding.clone())
                         .syntax(),
                 );
             }

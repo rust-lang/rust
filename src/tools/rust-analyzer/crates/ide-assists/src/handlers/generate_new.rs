@@ -138,8 +138,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
 
         let ret_type = make.ret_type(make.ty_path(make.ident_path("Self")).into());
 
-        let fn_ = editor
-            .make()
+        let fn_ = make
             .fn_(
                 [],
                 strukt.visibility(),
@@ -165,10 +164,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                 editor.insert_all(
                     Position::after(l_curly),
                     vec![
-                        editor
-                            .make()
-                            .whitespace(&format!("\n{}", impl_def.indent_level() + 1))
-                            .into(),
+                        make.whitespace(&format!("\n{}", impl_def.indent_level() + 1)).into(),
                         fn_.syntax().clone().into(),
                         make.whitespace("\n").into(),
                     ],

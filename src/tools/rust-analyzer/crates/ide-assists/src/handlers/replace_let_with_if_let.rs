@@ -59,10 +59,9 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
                     .map(|it| it.happy_case());
                 match happy_variant {
                     None => original_pat,
-                    Some(var_name) => editor
-                        .make()
-                        .tuple_struct_pat(make.ident_path(var_name), [original_pat])
-                        .into(),
+                    Some(var_name) => {
+                        make.tuple_struct_pat(make.ident_path(var_name), [original_pat]).into()
+                    }
                 }
             };
             let init_expr =

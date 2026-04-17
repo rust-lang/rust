@@ -55,8 +55,7 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) 
             let make = editor.make();
             let while_indent_level = IndentLevel::from_node(while_expr.syntax());
 
-            let break_block = editor
-                .make()
+            let break_block = make
                 .block_expr(
                     iter::once(make.expr_stmt(make.expr_break(None, None).into()).into()),
                     None,

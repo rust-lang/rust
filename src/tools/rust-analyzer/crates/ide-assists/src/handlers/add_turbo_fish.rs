@@ -103,7 +103,6 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                         );
                     }
 
-                    let make = editor.make();
                     let placeholder_ty = make.ty_placeholder();
 
                     if let Some(pat) = let_stmt.pat() {

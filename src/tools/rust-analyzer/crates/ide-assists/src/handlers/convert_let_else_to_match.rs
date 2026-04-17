@@ -181,15 +181,11 @@ fn remove_mut_and_collect_idents(
                     })
                 })
                 .collect::<Option<Vec<_>>>()?;
-            editor
-                .make()
-                .record_pat_with_fields(
-                    p.path()?,
-                    editor
-                        .make()
-                        .record_pat_field_list(fields, p.record_pat_field_list()?.rest_pat()),
-                )
-                .into()
+            make.record_pat_with_fields(
+                p.path()?,
+                make.record_pat_field_list(fields, p.record_pat_field_list()?.rest_pat()),
+            )
+            .into()
         }
         ast::Pat::RefPat(p) => {
             let inner = p.pat()?;
