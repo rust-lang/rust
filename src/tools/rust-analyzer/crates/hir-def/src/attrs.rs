@@ -200,7 +200,7 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: ast::Meta) -> ControlFlow<
                 let segment4 = segment4.and_then(|it| it.segment()?.name_ref());
                 segment1.text() == "test"
                     && segment3.is_none_or(|it| it.text() == "prelude")
-                    && segment4.is_none_or(|it| it.text() == "core")
+                    && segment4.is_none_or(|it| matches!(&*it.text(), "core" | "std"))
             });
             if is_test {
                 attr_flags.insert(AttrFlags::IS_TEST);
