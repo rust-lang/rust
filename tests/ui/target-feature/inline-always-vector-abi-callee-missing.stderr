@@ -1,0 +1,22 @@
+warning: call to `#[inline(always)]`-annotated `g` requires the same target features to be inlined
+  --> $DIR/inline-always-vector-abi-callee-missing.rs:30:5
+   |
+LL |     g(x, y)
+   |     ^^^^^^^
+   |
+   = note: function will not be inlined
+   = note: the following target features are on `h` but missing from `g`: avx
+note: `h` is defined here
+  --> $DIR/inline-always-vector-abi-callee-missing.rs:29:1
+   |
+LL | fn h(x: &__m256, y: bool) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: `#[warn(inline_always_mismatching_target_features)]` on by default
+help: add `#[target_feature]` attribute to `g`
+   |
+LL + #[target_feature(enable = "avx")]
+LL | fn g(x: &__m256, y: bool) {
+   |
+
+warning: 1 warning emitted
+
