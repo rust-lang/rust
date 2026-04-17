@@ -104,7 +104,6 @@ impl<Idx: Step> Range<Idx> {
     /// assert_eq!(i.next(), Some(25));
     /// ```
     #[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
-    #[inline]
     pub fn iter(&self) -> RangeIter<Idx> {
         self.clone().into_iter()
     }
@@ -131,7 +130,6 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// assert!(!Range::from(0.0..f32::NAN).contains(&0.5));
     /// assert!(!Range::from(f32::NAN..1.0).contains(&0.5));
     /// ```
-    #[inline]
     #[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_range", issue = "none")]
     pub const fn contains<U>(&self, item: &U) -> bool
@@ -163,7 +161,6 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// assert!( Range::from(3.0..f32::NAN).is_empty());
     /// assert!( Range::from(f32::NAN..5.0).is_empty());
     /// ```
-    #[inline]
     #[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_range", issue = "none")]
     pub const fn is_empty(&self) -> bool
@@ -213,7 +210,6 @@ impl<T> const IntoBounds<T> for Range<T> {
 #[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<Range<T>> for legacy::Range<T> {
-    #[inline]
     fn from(value: Range<T>) -> Self {
         Self { start: value.start, end: value.end }
     }
@@ -221,7 +217,6 @@ impl<T> const From<Range<T>> for legacy::Range<T> {
 #[stable(feature = "new_range_api", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<legacy::Range<T>> for Range<T> {
-    #[inline]
     fn from(value: legacy::Range<T>) -> Self {
         Self { start: value.start, end: value.end }
     }
@@ -289,7 +284,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// assert!(!RangeInclusive::from(0.0..=f32::NAN).contains(&0.0));
     /// assert!(!RangeInclusive::from(f32::NAN..=1.0).contains(&1.0));
     /// ```
-    #[inline]
     #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
     #[rustc_const_unstable(feature = "const_range", issue = "none")]
     pub const fn contains<U>(&self, item: &U) -> bool
@@ -322,7 +316,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// assert!( RangeInclusive::from(f32::NAN..=5.0).is_empty());
     /// ```
     #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
-    #[inline]
     #[rustc_const_unstable(feature = "const_range", issue = "none")]
     pub const fn is_empty(&self) -> bool
     where
@@ -348,7 +341,6 @@ impl<Idx: Step> RangeInclusive<Idx> {
     /// assert_eq!(i.next(), Some(25));
     /// ```
     #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
-    #[inline]
     pub fn iter(&self) -> RangeInclusiveIter<Idx> {
         self.clone().into_iter()
     }
@@ -394,7 +386,6 @@ impl<T> const IntoBounds<T> for RangeInclusive<T> {
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<RangeInclusive<T>> for legacy::RangeInclusive<T> {
-    #[inline]
     fn from(value: RangeInclusive<T>) -> Self {
         Self::new(value.start, value.last)
     }
@@ -402,7 +393,6 @@ impl<T> const From<RangeInclusive<T>> for legacy::RangeInclusive<T> {
 #[stable(feature = "new_range_inclusive_api", since = "1.95.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
 impl<T> const From<legacy::RangeInclusive<T>> for RangeInclusive<T> {
-    #[inline]
     fn from(value: legacy::RangeInclusive<T>) -> Self {
         assert!(
             !value.exhausted,
@@ -476,7 +466,6 @@ impl<Idx: Step> RangeFrom<Idx> {
     /// assert_eq!(i.next(), Some(25));
     /// ```
     #[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
-    #[inline]
     pub fn iter(&self) -> RangeFromIter<Idx> {
         self.clone().into_iter()
     }
@@ -498,7 +487,6 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     /// assert!(!RangeFrom::from(0.0..).contains(&f32::NAN));
     /// assert!(!RangeFrom::from(f32::NAN..).contains(&0.5));
     /// ```
-    #[inline]
     #[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_range", issue = "none")]
     pub const fn contains<U>(&self, item: &U) -> bool
@@ -560,7 +548,6 @@ where
 #[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 impl<T> const From<RangeFrom<T>> for legacy::RangeFrom<T> {
-    #[inline]
     fn from(value: RangeFrom<T>) -> Self {
         Self { start: value.start }
     }
@@ -568,7 +555,6 @@ impl<T> const From<RangeFrom<T>> for legacy::RangeFrom<T> {
 #[stable(feature = "new_range_from_api", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_const_unstable(feature = "const_index", issue = "143775")]
 impl<T> const From<legacy::RangeFrom<T>> for RangeFrom<T> {
-    #[inline]
     fn from(value: legacy::RangeFrom<T>) -> Self {
         Self { start: value.start }
     }
@@ -649,7 +635,6 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     /// assert!(!(..=1.0).contains(&f32::NAN));
     /// assert!(!(..=f32::NAN).contains(&0.5));
     /// ```
-    #[inline]
     #[stable(feature = "new_range_to_inclusive_api", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_range", issue = "none")]
     pub const fn contains<U>(&self, item: &U) -> bool
