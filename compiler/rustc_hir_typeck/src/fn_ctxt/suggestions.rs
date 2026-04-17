@@ -3107,14 +3107,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         let deref_kind = if checked_ty.is_box() {
                             // detect Box::new(..)
-                            // FIXME: use `box_new` diagnostic item instead?
                             if let ExprKind::Call(box_new, [_]) = expr.kind
                                 && let ExprKind::Path(qpath) = &box_new.kind
                                 && let Res::Def(DefKind::AssocFn, fn_id) =
                                     self.typeck_results.borrow().qpath_res(qpath, box_new.hir_id)
-                                && let Some(impl_id) = self.tcx.inherent_impl_of_assoc(fn_id)
-                                && self.tcx.type_of(impl_id).skip_binder().is_box()
-                                && self.tcx.item_name(fn_id) == sym::new
+                                && self.tcx.is_diagnostic_item(sym::box_new, fn_id)
                             {
                                 let l_paren = self.tcx.sess.source_map().next_point(box_new.span);
                                 let r_paren = self.tcx.sess.source_map().end_point(expr.span);
