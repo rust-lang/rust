@@ -132,6 +132,11 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
                     };
                 let arms = cond_bodies.into_iter().map(make_match_arm).chain([else_arm]);
                 let expr = scrutinee_to_be_expr.reset_indent();
+                let expr = if match_scrutinee_needs_paren(&expr) {
+                    make.expr_paren(expr).into()
+                } else {
+                    expr
+                };
                 let match_expr = make.expr_match(expr, make.match_arm_list(arms)).indent(indent);
                 match_expr.into()
             };
@@ -419,6 +424,17 @@ fn let_and_guard(cond: &ast::Expr) -> (Option<ast::LetExpr>, Option<ast::Expr>) 
     }
 }
 
+fn match_scrutinee_needs_paren(expr: &ast::Expr) -> bool {
+    let make = SyntaxFactory::without_mappings();
+    let fake_scrutinee = make.expr_unit();
+    let fake_match = make.expr_match(fake_scrutinee, make.match_arm_list(std::iter::empty()));
+    let Some(fake_expr) = fake_match.expr() else {
+        stdx::never!();
+        return false;
+    };
+    expr.needs_parens_in_place_of(fake_match.syntax(), fake_expr.syntax())
+}
+
 fn and_bin_expr_left(expr: &ast::BinExpr) -> ast::BinExpr {
     if expr.op_kind() == Some(ast::BinaryOp::LogicOp(ast::LogicOp::And))
         && let Some(ast::Expr::BinExpr(left)) = expr.lhs()
@@ -442,6 +458,26 @@ mod tests {
             r#"
 fn main() {
     if $0true {} else if false {} else {}
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_if_with_match_paren_jump_scrutinee() {
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+fn f() {
+    if $0(return) {}
+}
+"#,
+            r#"
+fn f() {
+    match (return) {
+        true => {}
+        false => (),
+    }
 }
 "#,
         )
