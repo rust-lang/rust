@@ -1631,6 +1631,10 @@ pub struct OwnerInfo<'hir> {
 
     /// Lints delayed during ast lowering to be emitted
     /// after hir has completely built
+    ///
+    /// WARNING: The delayed lints are not hashed as a part of the `OwnerInfo`, and therefore
+    ///          should only be accessed in `eval_always` queries.
+    #[stable_hasher(ignore)]
     pub delayed_lints: DelayedLints,
 }
 
