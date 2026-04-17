@@ -92,26 +92,32 @@ impl<'a> RenderContext<'a> {
             && self.completion.token.parent().is_some_and(|it| it.kind() == SyntaxKind::MACRO_CALL)
     }
 
-    fn is_deprecated(&self, def: impl HasAttrs) -> bool {
-        def.attrs(self.db()).is_deprecated()
-    }
-
-    fn is_deprecated_assoc_item(&self, as_assoc_item: impl AsAssocItem) -> bool {
+    /// Whether `def` is deprecated.
+    ///
+    /// This can happen for two reasons:
+    /// - the def is marked with `#[deprecated]`
+    /// - the def is an assoc item whose trait is deprecated
+    ///
+    /// In order to be able to check for the latter, we'd ideally want to `try_as_dyn<_, dyn AsAssocItem>(def)`
+    /// (see [`try_as_dyn`][]), but that function is currently unstable. Therefore, we employ a hack instead:
+    /// if `def` can be an assoc item, it should be passed to this method as follows:
+    /// ```ignore
+    /// self.is_deprecated(def, Some(def))
+    /// ```
+    /// otherwise, it should be passed as:
+    /// ```ignore
+    /// self.is_deprecated(def, None)
+    /// ```
+    ///
+    /// [`try_as_dyn`]: https://doc.rust-lang.org/std/any/fn.try_as_dyn.html
+    fn is_deprecated(&self, def: impl HasAttrs, def_as_assoc_item: Option<hir::AssocItem>) -> bool {
         let db = self.db();
-        let assoc = match as_assoc_item.as_assoc_item(db) {
-            Some(assoc) => assoc,
-            None => return false,
-        };
-
-        let is_assoc_deprecated = match assoc {
-            hir::AssocItem::Function(it) => self.is_deprecated(it),
-            hir::AssocItem::Const(it) => self.is_deprecated(it),
-            hir::AssocItem::TypeAlias(it) => self.is_deprecated(it),
-        };
-        is_assoc_deprecated
-            || assoc
-                .container_or_implemented_trait(db)
-                .is_some_and(|trait_| self.is_deprecated(trait_))
+        def.attrs(db).is_deprecated()
+            || def_as_assoc_item
+                .and_then(|assoc| assoc.container_or_implemented_trait(db))
+                .is_some_and(|trait_| {
+                    self.is_deprecated(trait_, None /* traits can't be assoc items */)
+                })
     }
 
     // FIXME: remove this
@@ -128,7 +134,7 @@ pub(crate) fn render_field(
     ty: &hir::Type<'_>,
 ) -> CompletionItem {
     let db = ctx.db();
-    let is_deprecated = ctx.is_deprecated(field);
+    let is_deprecated = ctx.is_deprecated(field, None /* fields can't be assoc items */);
     let name = field.name(db);
     let (name, escaped_name) =
         (name.as_str().to_smolstr(), name.display_no_db(ctx.completion.edition).to_smolstr());
@@ -575,10 +581,15 @@ fn scope_def_docs(db: &RootDatabase, resolution: ScopeDef) -> Option<Documentati
 }
 
 fn scope_def_is_deprecated(ctx: &RenderContext<'_>, resolution: ScopeDef) -> bool {
+    let db = ctx.db();
     match resolution {
-        ScopeDef::ModuleDef(it) => ctx.is_deprecated(it) || ctx.is_deprecated_assoc_item(it),
-        ScopeDef::GenericParam(it) => ctx.is_deprecated(it),
-        ScopeDef::AdtSelfType(it) => ctx.is_deprecated(it),
+        ScopeDef::ModuleDef(it) => ctx.is_deprecated(it, it.as_assoc_item(db)),
+        ScopeDef::GenericParam(it) => {
+            ctx.is_deprecated(it, None /* generic params can't be assoc items */)
+        }
+        ScopeDef::AdtSelfType(it) => {
+            ctx.is_deprecated(it, None /* `Self` can't be an assoc item */)
+        }
         _ => false,
     }
 }
