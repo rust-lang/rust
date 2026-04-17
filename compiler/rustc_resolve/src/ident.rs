@@ -24,9 +24,9 @@ use crate::late::{
 use crate::macros::{MacroRulesScope, sub_namespace_match};
 use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingKey, CmResolver, Decl, DeclKind,
-    Determinacy, Finalize, IdentKey, ImportKind, LateDecl, Module, ModuleKind, ModuleOrUniformRoot,
-    ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet,
-    Segment, Stage, Symbol, Used, errors,
+    Determinacy, Finalize, IdentKey, ImportKind, LateDecl, LocalModule, Module, ModuleKind,
+    ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver,
+    Scope, ScopeSet, Segment, Stage, Symbol, Used, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -346,7 +346,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } else if let RibKind::Block(Some(module)) = rib.kind
                 && let Ok(binding) = self.cm().resolve_ident_in_scope_set(
                     ident,
-                    ScopeSet::Module(ns, module),
+                    ScopeSet::Module(ns, module.to_module()),
                     parent_scope,
                     finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
                     ignore_decl,
@@ -357,7 +357,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 return Some(LateDecl::Decl(binding));
             } else if let RibKind::Module(module) = rib.kind {
                 // Encountered a module item, abandon ribs and look into that module and preludes.
-                let parent_scope = &ParentScope { module, ..*parent_scope };
+                let parent_scope = &ParentScope { module: module.to_module(), ..*parent_scope };
                 let finalize = finalize.map(|f| Finalize { stage: Stage::Late, ..f });
                 return self
                     .cm()
@@ -658,7 +658,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     )
                 };
                 let binding = self.reborrow().resolve_ident_in_module_globs_unadjusted(
-                    module,
+                    module.expect_local(),
                     ident,
                     orig_ident_span,
                     ns,
@@ -1122,7 +1122,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Attempts to resolve `ident` in namespace `ns` of glob bindings in `module`.
     fn resolve_ident_in_module_globs_unadjusted<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
-        module: Module<'ra>,
+        module: LocalModule<'ra>,
         ident: IdentKey,
         orig_ident_span: Span,
         ns: Namespace,
@@ -1137,7 +1137,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
         // the exclusive access infinite recursion will crash the compiler with stack overflow.
         let resolution = &*self
-            .resolution_or_default(module, key, orig_ident_span)
+            .resolution_or_default(module.to_module(), key, orig_ident_span)
             .try_borrow_mut_unchecked()
             .map_err(|_| ControlFlow::Continue(Determined))?;
 
