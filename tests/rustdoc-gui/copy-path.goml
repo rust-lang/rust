@@ -18,3 +18,19 @@ assert-size: ("#copy-path.clicked", {"width": |width|, "height": |height|})
 wait-for: "#copy-path:not(.clicked)"
 // We check that the size is still the same.
 assert-size: ("#copy-path:not(.clicked)", {"width": |width|, "height": |height|})
+
+// Check the path for a module.
+go-to: "file://" + |DOC_PATH| + "/test_docs/foreign_impl_order/index.html"
+click: "#copy-path"
+// We wait for the new text to appear.
+wait-for: "#copy-path.clicked"
+// We check that the clipboard value is the expected one.
+assert-clipboard: "test_docs::foreign_impl_order"
+
+// Check the path for the crate.
+go-to: "file://" + |DOC_PATH| + "/test_docs/index.html"
+click: "#copy-path"
+// We wait for the new text to appear.
+wait-for: "#copy-path.clicked"
+// We check that the clipboard value is the expected one.
+assert-clipboard: "test_docs"
