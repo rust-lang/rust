@@ -517,6 +517,12 @@ This is used for [RFCs], issues, and pull requests.
 [rfcbot]: https://github.com/anp/rfcbot-rs/
 [RFCs]: https://github.com/rust-lang/rfcs
 
+## LLM policy
+
+See [Forge][LLM policy].
+
+[LLM policy]: https://forge.rust-lang.org/policies/llm-usage.html
+
 ## Helpful links and information
 
 This section has moved to the ["About this guide"] chapter.

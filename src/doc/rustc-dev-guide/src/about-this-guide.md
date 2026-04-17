@@ -72,6 +72,7 @@ You might also find the following sites useful:
 
 - [rustc API docs] -- rustdoc documentation for the compiler, devtools, and internal tools
 - [Forge] -- contains documentation about Rust infrastructure, team procedures, and more
+- `rust-lang/rust`'s [LLM policy]
 - [compiler-team] -- the home-base for the Rust compiler team, with description
   of the team procedures, active working groups, and the team calendar.
 - [std-dev-guide] -- a similar guide for developing the standard library.
@@ -93,7 +94,7 @@ You might also find the following sites useful:
   For example, searching for `* -> vec` should find all functions that return a `Vec<T>`.
   _Hint:_ Find more tips and keyboard shortcuts by typing `?` on any Rustdoc page!
 
-
+[LLM policy]: https://forge.rust-lang.org/policies/llm-usage.html
 [rustc dev guide]: about-this-guide.md
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [stddocs]: https://doc.rust-lang.org/std
