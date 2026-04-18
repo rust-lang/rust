@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for LenWithoutIsEmpty {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if item.ident.name == sym::len
             && let ImplItemKind::Fn(sig, _) = &item.kind
-            && sig.decl.implicit_self.has_implicit_self()
+            && sig.decl.implicit_self().has_implicit_self()
             && sig.decl.inputs.len() == 1
             && cx.effective_visibilities.is_exported(item.owner_id.def_id)
             && matches!(sig.decl.output, FnRetTy::Return(_))
@@ -79,7 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for LenWithoutIsEmpty {
             check_for_is_empty(
                 cx,
                 sig.span,
-                sig.decl.implicit_self,
+                sig.decl.implicit_self(),
                 output,
                 ty_id,
                 name,

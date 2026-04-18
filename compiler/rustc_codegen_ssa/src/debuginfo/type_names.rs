@@ -364,10 +364,10 @@ fn push_debuginfo_type_name<'tcx>(
                 }
                 output.push_str(" (*)(");
             } else {
-                output.push_str(sig.safety.prefix_str());
+                output.push_str(sig.safety().prefix_str());
 
-                if sig.abi != rustc_abi::ExternAbi::Rust {
-                    let _ = write!(output, "extern {} ", sig.abi);
+                if sig.abi() != rustc_abi::ExternAbi::Rust {
+                    let _ = write!(output, "extern {} ", sig.abi());
                 }
 
                 output.push_str("fn(");
@@ -381,7 +381,7 @@ fn push_debuginfo_type_name<'tcx>(
                 pop_arg_separator(output);
             }
 
-            if sig.c_variadic {
+            if sig.c_variadic() {
                 if !sig.inputs().is_empty() {
                     output.push_str(", ...");
                 } else {

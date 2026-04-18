@@ -5064,7 +5064,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             let first_arg_ty_opt = method_sig.inputs().iter().next().copied();
             should_implement_trait::check_impl_item(cx, impl_item, self_ty, implements_trait, first_arg_ty_opt, sig);
 
-            if sig.decl.implicit_self.has_implicit_self()
+            if sig.decl.implicit_self().has_implicit_self()
                 && !(self.avoid_breaking_exported_api
                     && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id))
                 && let Some(first_arg) = iter_input_pats(sig.decl, cx.tcx.hir_body(id)).next()
@@ -5091,7 +5091,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         }
 
         if let TraitItemKind::Fn(ref sig, _) = item.kind {
-            if sig.decl.implicit_self.has_implicit_self()
+            if sig.decl.implicit_self().has_implicit_self()
                 && let Some(first_arg_hir_ty) = sig.decl.inputs.first()
                 && let Some(&first_arg_ty) = cx
                     .tcx

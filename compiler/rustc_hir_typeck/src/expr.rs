@@ -1489,12 +1489,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     method.sig.output(),
                     expected,
                     args,
-                    method.sig.c_variadic,
+                    method.sig.c_variadic(),
                     TupleArgumentsFlag::DontTupleArguments,
                     Some(method.def_id),
                 );
 
-                self.check_call_abi(method.sig.abi, expr.span);
+                self.check_call_abi(method.sig.abi(), expr.span);
 
                 method.sig.output()
             }

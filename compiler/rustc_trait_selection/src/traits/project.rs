@@ -1655,13 +1655,8 @@ fn confirm_closure_candidate<'cx, 'tcx>(
                         tupled_upvars_ty,
                     )
                 };
-                tcx.mk_fn_sig(
-                    [sig.tupled_inputs_ty],
-                    output_ty,
-                    sig.c_variadic,
-                    sig.safety,
-                    sig.abi,
-                )
+
+                tcx.mk_fn_sig([sig.tupled_inputs_ty], output_ty, sig.fn_sig_kind)
             })
         }
 

@@ -750,7 +750,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     if self.tcx().codegen_fn_attrs(def_id).safe_target_features {
                         write!(self, "#[target_features] ")?;
                         sig = sig.map_bound(|mut sig| {
-                            sig.safety = hir::Safety::Safe;
+                            sig.fn_sig_kind = sig.fn_sig_kind.set_safe(true);
                             sig
                         });
                     }
@@ -3130,14 +3130,14 @@ define_print! {
     (self, p):
 
     ty::FnSig<'tcx> {
-        write!(p, "{}", self.safety.prefix_str())?;
+        write!(p, "{}", self.safety().prefix_str())?;
 
-        if self.abi != ExternAbi::Rust {
-            write!(p, "extern {} ", self.abi)?;
+        if self.abi() != ExternAbi::Rust {
+            write!(p, "extern {} ", self.abi())?;
         }
 
         write!(p, "fn")?;
-        p.pretty_print_fn_sig(self.inputs(), self.c_variadic, self.output())?;
+        p.pretty_print_fn_sig(self.inputs(), self.c_variadic(), self.output())?;
     }
 
     ty::TraitRef<'tcx> {

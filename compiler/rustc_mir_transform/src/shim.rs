@@ -1020,7 +1020,7 @@ fn build_call_shim<'tcx>(
     let mut body =
         new_body(MirSource::from_instance(instance), blocks, local_decls, sig.inputs().len(), span);
 
-    if let ExternAbi::RustCall = sig.abi {
+    if let ExternAbi::RustCall = sig.abi() {
         body.spread_arg = Some(Local::new(sig.inputs().len()));
     }
 
@@ -1171,9 +1171,7 @@ fn build_construct_coroutine_by_move_shim<'tcx>(
                 args.as_coroutine_closure().tupled_upvars_ty(),
                 args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
             ),
-            sig.c_variadic,
-            sig.safety,
-            sig.abi,
+            sig.fn_sig_kind,
         )
     });
     let sig = tcx.liberate_late_bound_regions(coroutine_closure_def_id, poly_sig);

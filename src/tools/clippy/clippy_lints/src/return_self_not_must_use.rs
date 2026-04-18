@@ -70,7 +70,7 @@ declare_lint_pass!(ReturnSelfNotMustUse => [RETURN_SELF_NOT_MUST_USE]);
 fn check_method(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_def: LocalDefId, span: Span, owner_id: OwnerId) {
     if !span.in_external_macro(cx.sess().source_map())
         // If it comes from an external macro, better ignore it.
-        && decl.implicit_self.has_implicit_self()
+        && decl.implicit_self().has_implicit_self()
         // We only show this warning for public exported methods.
         && cx.effective_visibilities.is_exported(fn_def)
         // We don't want to emit this lint if the `#[must_use]` attribute is already there.

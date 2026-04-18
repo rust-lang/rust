@@ -15,7 +15,8 @@ use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{AnnotationSource, ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::{
-    self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitor, fold_regions,
+    self, FnSigKind, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitor,
+    fold_regions,
 };
 use rustc_span::{Ident, Span, kw};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -1083,14 +1084,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
 
         // Build a new closure where the return type is an owned value, instead of a ref.
+        let fn_sig_kind =
+            FnSigKind::default().set_safe(true).set_c_variadic(liberated_sig.c_variadic());
         let closure_sig_as_fn_ptr_ty = Ty::new_fn_ptr(
             tcx,
             ty::Binder::dummy(tcx.mk_fn_sig(
                 liberated_sig.inputs().iter().copied(),
                 peeled_ty,
-                liberated_sig.c_variadic,
-                hir::Safety::Safe,
-                rustc_abi::ExternAbi::Rust,
+                fn_sig_kind,
             )),
         );
         let closure_ty = Ty::new_closure(
