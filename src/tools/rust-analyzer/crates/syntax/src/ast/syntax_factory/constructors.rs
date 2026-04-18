@@ -193,6 +193,18 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn untyped_param(&self, pat: ast::Pat) -> ast::Param {
+        let ast = make::untyped_param(pat.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(pat.syntax().clone(), ast.pat().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn ty_fn_ptr<I: Iterator<Item = Param>>(
         &self,
         is_unsafe: bool,
