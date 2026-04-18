@@ -313,9 +313,6 @@ impl EarlyLintPass for UnsafeCode {
                         cx.builder.sess(),
                         &it.attrs,
                         &[sym::allow_internal_unsafe],
-                        it.span,
-                        DUMMY_NODE_ID,
-                        Some(cx.builder.features()),
                     )
                 {
                     self.report_unsafe(cx, span, BuiltinUnsafe::AllowInternalUnsafe);
