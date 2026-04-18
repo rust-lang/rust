@@ -573,10 +573,10 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     },
                 );
                 hir::ItemKind::Trait(
+                    impl_restriction,
                     constness,
                     *is_auto,
                     safety,
-                    impl_restriction,
                     ident,
                     generics,
                     bounds,

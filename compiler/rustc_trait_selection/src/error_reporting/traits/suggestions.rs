@@ -3888,7 +3888,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut is_auto_trait = false;
                 match tcx.hir_get_if_local(data.impl_or_alias_def_id) {
                     Some(Node::Item(hir::Item {
-                        kind: hir::ItemKind::Trait(_, is_auto, _, _, ident, _, _, _),
+                        kind: hir::ItemKind::Trait(_, _, is_auto, _, ident, _, _, _),
                         ..
                     })) => {
                         // FIXME: we should do something else so that it works even on crate foreign

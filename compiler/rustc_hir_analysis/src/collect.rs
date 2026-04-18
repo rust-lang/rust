@@ -894,7 +894,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let item = tcx.hir_expect_item(def_id);
 
     let (constness, is_alias, is_auto, safety, impl_restriction) = match item.kind {
-        hir::ItemKind::Trait(constness, is_auto, safety, impl_restriction, ..) => (
+        hir::ItemKind::Trait(impl_restriction, constness, is_auto, safety, ..) => (
             constness,
             false,
             is_auto == hir::IsAuto::Yes,
@@ -958,9 +958,9 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
 
     ty::TraitDef {
         def_id: def_id.to_def_id(),
+        impl_restriction,
         safety,
         constness,
-        impl_restriction,
         paren_sugar,
         has_auto_impl: is_auto,
         is_marker,

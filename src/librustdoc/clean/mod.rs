@@ -2916,7 +2916,7 @@ fn clean_maybe_renamed_item<'tcx>(
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
             // FIXME: rustdoc will need to handle `impl` restrictions at some point
-            ItemKind::Trait(_, _, _, _impl_restriction, _, generics, bounds, item_ids) => {
+            ItemKind::Trait(_impl_restriction, _, _, _, _, generics, bounds, item_ids) => {
                 let items = item_ids
                     .iter()
                     .map(|&ti| clean_trait_item(cx.tcx.hir_trait_item(ti), cx))

@@ -1886,7 +1886,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     entry.1.insert((self_ty.span, String::new()));
                 }
                 Some(Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait(_, rustc_ast::ast::IsAuto::Yes, ..),
+                    kind: hir::ItemKind::Trait(_, _, rustc_ast::ast::IsAuto::Yes, ..),
                     span: item_span,
                     ..
                 })) => {

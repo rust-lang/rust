@@ -20,13 +20,13 @@ use crate::ty::{Ident, Ty, TyCtxt};
 pub struct TraitDef {
     pub def_id: DefId,
 
+    /// Restrictions on trait implementations.
+    pub impl_restriction: ImplRestrictionKind,
+
     pub safety: hir::Safety,
 
     /// Whether this trait is `const`.
     pub constness: hir::Constness,
-
-    /// Restrictions on trait implementations.
-    pub impl_restriction: ImplRestrictionKind,
 
     /// If `true`, then this trait had the `#[rustc_paren_sugar]`
     /// attribute, indicating that it should be used with `Foo()`
