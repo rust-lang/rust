@@ -2,7 +2,7 @@ use std::convert::identity;
 
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
-use rustc_ast::{AttrItemKind, AttrStyle, NodeId, Safety};
+use rustc_ast::{AttrItemKind, AttrStyle, CRATE_NODE_ID, NodeId, Safety};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Level, MultiSpan};
 use rustc_feature::{AttributeTemplate, Features};
@@ -62,18 +62,16 @@ impl<'sess> AttributeParser<'sess, Early> {
         sess: &'sess Session,
         attrs: &[ast::Attribute],
         sym: &'static [Symbol],
-        target_span: Span,
-        target_node_id: NodeId,
-        features: Option<&'sess Features>,
     ) -> Option<Attribute> {
         Self::parse_limited_should_emit(
             sess,
             attrs,
             sym,
-            target_span,
-            target_node_id,
-            Target::Crate, // Does not matter, we're not going to emit errors anyways
-            features,
+            // Because we're not emitting warnings/errors, the target should not matter
+            DUMMY_SP,
+            CRATE_NODE_ID,
+            Target::Crate,
+            None,
             ShouldEmit::Nothing,
         )
     }

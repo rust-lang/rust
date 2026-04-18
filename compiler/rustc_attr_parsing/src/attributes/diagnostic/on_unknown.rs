@@ -16,7 +16,9 @@ impl OnUnknownParser {
         args: &ArgParser,
         mode: Mode,
     ) {
-        if !cx.features().diagnostic_on_unknown() {
+        if let Some(features) = cx.features
+            && !features.diagnostic_on_unknown()
+        {
             // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
             return;
         }
