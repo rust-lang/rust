@@ -451,7 +451,7 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
             (RePlaceholder(a_p), RePlaceholder(b_p)) => a_p.bound == b_p.bound,
             _ => a_region == b_region,
         };
-    let mut check = |c: &Constraint<'tcx>, cause: &SubregionOrigin<'tcx>, exact| match c.kind {
+    let mut check = |c: Constraint<'tcx>, cause: &SubregionOrigin<'tcx>, exact| match c.kind {
         ConstraintKind::RegSubReg
             if ((exact && c.sup == placeholder_region)
                 || (!exact && regions_the_same(c.sup, placeholder_region)))
@@ -467,13 +467,23 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
         {
             Some((c.sub, cause.clone()))
         }
-        _ => None,
+        ConstraintKind::VarSubVar
+        | ConstraintKind::RegSubVar
+        | ConstraintKind::VarSubReg
+        | ConstraintKind::RegSubReg => None,
+
+        ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => {
+            unreachable!()
+        }
     };
 
     let mut find_culprit = |exact_match: bool| {
         region_constraints
             .constraints
             .iter()
+            .flat_map(|(constraint, cause)| {
+                constraint.iter_outlives().map(move |constraint| (constraint, cause))
+            })
             .find_map(|(constraint, cause)| check(constraint, cause, exact_match))
     };
 

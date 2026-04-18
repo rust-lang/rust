@@ -702,6 +702,16 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().make_subregion(origin, a, b);
     }
 
+    #[instrument(skip(self), level = "debug")]
+    pub fn equate_regions(
+        &self,
+        origin: SubregionOrigin<'tcx>,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+    ) {
+        self.inner.borrow_mut().unwrap_region_constraints().make_eqregion(origin, a, b);
+    }
+
     /// Processes a `Coerce` predicate from the fulfillment context.
     /// This is NOT the preferred way to handle coercion, which is to
     /// invoke `FnCtxt::coerce` or a similar method (see `coercion.rs`).
