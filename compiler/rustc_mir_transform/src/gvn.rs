@@ -173,15 +173,16 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
                 storage_checker.visit_basic_block_data(bb, data);
             }
 
-            storage_checker.storage_to_remove
+            Some(storage_checker.storage_to_remove)
         } else {
-            // Remove the storage statements of all the reused locals.
-            state.reused_locals.clone()
+            None
         };
 
+        // If None, remove the storage statements of all the reused locals.
+        let storage_to_remove = storage_to_remove.as_ref().unwrap_or(&state.reused_locals);
         debug!(?storage_to_remove);
 
-        StorageRemover { tcx, reused_locals: state.reused_locals, storage_to_remove }
+        StorageRemover { tcx, reused_locals: &state.reused_locals, storage_to_remove }
             .visit_body_preserves_cfg(body);
     }
 
@@ -2055,13 +2056,13 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
     }
 }
 
-struct StorageRemover<'tcx> {
+struct StorageRemover<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    reused_locals: DenseBitSet<Local>,
-    storage_to_remove: DenseBitSet<Local>,
+    reused_locals: &'a DenseBitSet<Local>,
+    storage_to_remove: &'a DenseBitSet<Local>,
 }
 
-impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
+impl<'a, 'tcx> MutVisitor<'tcx> for StorageRemover<'a, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
