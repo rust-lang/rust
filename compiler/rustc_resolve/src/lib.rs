@@ -50,7 +50,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed, LintBuffer};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
-use rustc_hir::attrs::StrippedCfgItem;
+use rustc_hir::attrs::{AttrResolution, StrippedCfgItem};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{
     self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, MacroKinds, NonMacroAttrKind, PartialRes,
@@ -72,7 +72,7 @@ use rustc_middle::ty::{
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{AttrId, DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
@@ -1448,6 +1448,7 @@ pub struct Resolver<'ra, 'tcx> {
     effective_visibilities: EffectiveVisibilities,
     doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
+    attr_resolutions: FxIndexMap<AttrId, Vec<AttrResolution<ast::NodeId>>>,
     all_macro_rules: UnordSet<Symbol> = Default::default(),
 
     /// Invocation ids of all glob delegations.
@@ -1810,6 +1811,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             effective_visibilities: Default::default(),
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
+            attr_resolutions: Default::default(),
             current_crate_outer_attr_insert_span,
             per_parent_disambiguators: Default::default(),
             ..
@@ -1941,6 +1943,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             label_res_map: self.label_res_map,
             lifetimes_res_map: self.lifetimes_res_map,
             extra_lifetime_params_map: self.extra_lifetime_params_map,
+            attr_res_map: self.attr_resolutions,
             next_node_id: self.next_node_id,
             node_id_to_def_id: self
                 .node_id_to_def_id

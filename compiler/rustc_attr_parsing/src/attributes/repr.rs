@@ -1,9 +1,14 @@
 use rustc_abi::{Align, Size};
 use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
-use rustc_hir::attrs::{IntType, ReprAttr};
+use rustc_hir::attrs::{AttrIntValue, AttrResolutionKind, AttrResolved, IntType, ReprAttr};
+use rustc_hir::def::{DefKind, Res};
+use rustc_session::parse::feature_err;
 
 use super::prelude::*;
-use crate::session_diagnostics::{self, IncorrectReprFormatGenericCause};
+use crate::ShouldEmit;
+use crate::session_diagnostics::{
+    self, AttrConstGenericNotSupported, AttrConstPathNotConst, IncorrectReprFormatGenericCause,
+};
 
 /// Parse #[repr(...)] forms.
 ///
@@ -100,7 +105,10 @@ fn int_type_of_word(s: Symbol) -> Option<IntType> {
     }
 }
 
-fn parse_repr<S: Stage>(cx: &AcceptContext<'_, '_, S>, param: &MetaItemParser) -> Option<ReprAttr> {
+fn parse_repr<S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    param: &MetaItemParser,
+) -> Option<ReprAttr> {
     use ReprAttr::*;
 
     // FIXME(jdonszelmann): invert the parsing here to match on the word first and then the
@@ -122,7 +130,7 @@ fn parse_repr<S: Stage>(cx: &AcceptContext<'_, '_, S>, param: &MetaItemParser) -
             parse_repr_align(cx, l, param.span(), AlignKind::Align)
         }
 
-        (Some(sym::packed), ArgParser::NoArgs) => Some(ReprPacked(Align::ONE)),
+        (Some(sym::packed), ArgParser::NoArgs) => Some(ReprPacked(AttrIntValue::Lit(1))),
         (Some(sym::packed), ArgParser::List(l)) => {
             parse_repr_align(cx, l, param.span(), AlignKind::Packed)
         }
@@ -189,8 +197,13 @@ enum AlignKind {
     Align,
 }
 
+enum AlignmentParseError {
+    Message(String),
+    AlreadyErrored,
+}
+
 fn parse_repr_align<S: Stage>(
-    cx: &AcceptContext<'_, '_, S>,
+    cx: &mut AcceptContext<'_, '_, S>,
     list: &MetaItemListParser,
     param_span: Span,
     align_kind: AlignKind,
@@ -214,31 +227,21 @@ fn parse_repr_align<S: Stage>(
         return None;
     };
 
-    let Some(lit) = align.lit() else {
+    match parse_alignment_or_const_path(
+        cx,
+        align,
         match align_kind {
-            Packed => {
-                cx.emit_err(session_diagnostics::IncorrectReprFormatPackedExpectInteger {
-                    span: align.span(),
-                });
-            }
-            Align => {
-                cx.emit_err(session_diagnostics::IncorrectReprFormatExpectInteger {
-                    span: align.span(),
-                });
-            }
-        }
-
-        return None;
-    };
-
-    match parse_alignment(&lit.kind, cx) {
-        Ok(literal) => Some(match align_kind {
-            AlignKind::Packed => ReprAttr::ReprPacked(literal),
-            AlignKind::Align => ReprAttr::ReprAlign(literal),
+            Packed => "repr(packed)",
+            Align => "repr(align)",
+        },
+    ) {
+        Ok(value) => Some(match align_kind {
+            AlignKind::Packed => ReprAttr::ReprPacked(value),
+            AlignKind::Align => ReprAttr::ReprAlign(value),
         }),
-        Err(message) => {
+        Err(AlignmentParseError::Message(message)) => {
             cx.emit_err(session_diagnostics::InvalidReprGeneric {
-                span: lit.span,
+                span: align.span(),
                 repr_arg: match align_kind {
                     Packed => "packed".to_string(),
                     Align => "align".to_string(),
@@ -247,6 +250,7 @@ fn parse_repr_align<S: Stage>(
             });
             None
         }
+        Err(AlignmentParseError::AlreadyErrored) => None,
     }
 }
 
@@ -281,9 +285,74 @@ fn parse_alignment<S: Stage>(
     Ok(align)
 }
 
+fn parse_alignment_or_const_path<S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    arg: &MetaItemOrLitParser,
+    attr_name: &'static str,
+) -> Result<AttrIntValue, AlignmentParseError> {
+    if let Some(lit) = arg.lit() {
+        return parse_alignment(&lit.kind, cx)
+            .map(|align| AttrIntValue::Lit(u128::from(align.bytes())))
+            .map_err(AlignmentParseError::Message);
+    }
+
+    let Some(meta) = arg.meta_item() else {
+        return Err(AlignmentParseError::Message("not an unsuffixed integer".to_string()));
+    };
+
+    if !matches!(meta.args(), ArgParser::NoArgs) {
+        return Err(AlignmentParseError::Message("not an unsuffixed integer".to_string()));
+    }
+
+    let path_span = meta.path().span();
+    let feature_enabled = cx.features_option().is_some_and(|features| features.const_attr_paths())
+        || path_span.allows_unstable(sym::const_attr_paths);
+
+    if !feature_enabled {
+        if matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
+            return Ok(AttrIntValue::Lit(1));
+        }
+
+        feature_err(
+            cx.sess(),
+            sym::const_attr_paths,
+            meta.span(),
+            "const item paths in builtin attributes are experimental",
+        )
+        .emit();
+        return Err(AlignmentParseError::AlreadyErrored);
+    }
+
+    cx.record_attr_resolution_request(AttrResolutionKind::Const, meta.path().0.clone());
+
+    let Some(resolution) = cx.attr_resolution(AttrResolutionKind::Const, path_span) else {
+        // `parse_limited(sym::repr)` runs before lowering for callers that only care whether
+        // `repr(packed(...))` exists at all.
+        if matches!(cx.stage.should_emit(), ShouldEmit::Nothing) {
+            return Ok(AttrIntValue::Lit(1));
+        }
+        return Err(AlignmentParseError::Message("not an unsuffixed integer".to_string()));
+    };
+
+    match resolution {
+        AttrResolved::Resolved(Res::Def(DefKind::Const { .. }, def_id)) => {
+            Ok(AttrIntValue::Const { def_id, span: path_span })
+        }
+        AttrResolved::Resolved(Res::Def(DefKind::ConstParam, _)) => {
+            cx.emit_err(AttrConstGenericNotSupported { span: path_span, attr_name });
+            Err(AlignmentParseError::AlreadyErrored)
+        }
+        AttrResolved::Resolved(res) => {
+            cx.emit_err(AttrConstPathNotConst { span: path_span, attr_name, thing: res.descr() });
+            Err(AlignmentParseError::AlreadyErrored)
+        }
+        AttrResolved::Error => Err(AlignmentParseError::AlreadyErrored),
+    }
+}
+
 /// Parse #[align(N)].
 #[derive(Default)]
-pub(crate) struct RustcAlignParser(Option<(Align, Span)>);
+pub(crate) struct RustcAlignParser(ThinVec<(AttrIntValue, Span)>);
 
 impl RustcAlignParser {
     const PATH: &[Symbol] = &[sym::rustc_align];
@@ -301,22 +370,15 @@ impl RustcAlignParser {
                     return;
                 };
 
-                let Some(lit) = align.lit() else {
-                    cx.emit_err(session_diagnostics::IncorrectReprFormatExpectInteger {
-                        span: align.span(),
-                    });
-
-                    return;
-                };
-
-                match parse_alignment(&lit.kind, cx) {
-                    Ok(literal) => self.0 = Ord::max(self.0, Some((literal, cx.attr_span))),
-                    Err(message) => {
+                match parse_alignment_or_const_path(cx, align, "rustc_align") {
+                    Ok(literal) => self.0.push((literal, cx.attr_span)),
+                    Err(AlignmentParseError::Message(message)) => {
                         cx.emit_err(session_diagnostics::InvalidAlignmentValue {
-                            span: lit.span,
+                            span: align.span(),
                             error_part: message,
                         });
                     }
+                    Err(AlignmentParseError::AlreadyErrored) => {}
                 }
             }
         }
@@ -335,8 +397,7 @@ impl<S: Stage> AttributeParser<S> for RustcAlignParser {
     ]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
-        let (align, span) = self.0?;
-        Some(AttributeKind::RustcAlign { align, span })
+        (!self.0.is_empty()).then_some(AttributeKind::RustcAlign { aligns: self.0 })
     }
 }
 
@@ -358,7 +419,6 @@ impl<S: Stage> AttributeParser<S> for RustcAlignStaticParser {
         AllowedTargets::AllowList(&[Allow(Target::Static), Allow(Target::ForeignStatic)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
-        let (align, span) = self.0.0?;
-        Some(AttributeKind::RustcAlign { align, span })
+        (!self.0.0.is_empty()).then_some(AttributeKind::RustcAlign { aligns: self.0.0 })
     }
 }
