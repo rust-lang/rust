@@ -259,15 +259,17 @@ fn show_fieldless_enum(
     BlockOrExpr::new_expr(cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]))
 }
 
-/// Specialer case for fieldless enums with no discriminants. Builds
+/// Special case for fieldless enums with no discriminants. Builds
 /// ```text
 /// impl ::core::fmt::Debug for A {
 ///     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-///         ::core::fmt::Formatter::write_str(f, {
+///         ::core::fmt::Formatter::write_str(f, unsafe {
 ///             const __NAMES: &str = "ABBBCC";
 ///             const __OFFSET: [usize; 4] =[0, 1, 4, 6];
 ///             let __d = ::core::intrinsics::discriminant_value(self) as usize;
-///             __NAMES[__OFFSET[d]..__OFFSET[d + 1]]
+///             let __start = *__OFFSET.get_unchecked(__d);
+///             let __end = *__OFFSET.get_unchecked(__d + 1);
+///             __NAMES.get_unchecked(__start..__end)
 ///         })
 ///     }
 /// }
@@ -278,9 +280,6 @@ fn show_fieldless_enum_concat_str(
     def: &EnumDef,
 ) -> Option<Box<ast::Expr>> {
     let variant_count = def.variants.len();
-    if variant_count >= cx.sess.target.pointer_width as usize {
-        return None;
-    }
 
     let variant_names = def
         .variants
@@ -353,23 +352,40 @@ fn show_fieldless_enum_concat_str(
     let discriminant_let_stmt =
         cx.stmt_let(span, false, discriminant_ident, discriminant_cast_expr);
 
-    // __OFFSET[__d]
+    // __d & __d + 1 expressions
     let discriminant_expr = cx.expr_ident(span, discriminant_ident);
-    let start_index_expr = cx.expr(
+    let discriminant_plus_one_expr = cx.expr_binary(
         span,
-        ExprKind::Index(cx.expr_ident(span, offset_ident), discriminant_expr.clone(), span),
+        ast::BinOpKind::Add,
+        discriminant_expr.clone(),
+        cx.expr_usize(span, 1),
     );
 
-    // __OFFSET[__d + 1]
-    let one_expr = cx.expr_usize(span, 1);
-    let discriminant_plus_one_expr =
-        cx.expr_binary(span, ast::BinOpKind::Add, discriminant_expr, one_expr);
-    let end_index_expr = cx.expr(
+    // let __start = *__OFFSET.get_unchecked(__d);
+    let start_ident = Ident::from_str_and_span("__start", span);
+    let start_index_expr = cx.expr_method_call(
         span,
-        ExprKind::Index(cx.expr_ident(span, offset_ident), discriminant_plus_one_expr, span),
+        cx.expr_ident(span, offset_ident),
+        Ident::from_str_and_span("get_unchecked", span),
+        thin_vec![discriminant_expr],
     );
+    let deref_start_index_expr = cx.expr_deref(span, start_index_expr);
+    let start_let_stmt = cx.stmt_let(span, false, start_ident, deref_start_index_expr);
 
-    // __OFFSET[__d]..__OFFSET[__d + 1]
+    // let __end = *__OFFSET.get_unchecked(__d + 1);
+    let end_ident = Ident::from_str_and_span("__end", span);
+    let end_index_expr = cx.expr_method_call(
+        span,
+        cx.expr_ident(span, offset_ident),
+        Ident::from_str_and_span("get_unchecked", span),
+        thin_vec![discriminant_plus_one_expr],
+    );
+    let deref_end_index_expr = cx.expr_deref(span, end_index_expr);
+    let end_let_stmt = cx.stmt_let(span, false, end_ident, deref_end_index_expr);
+
+    // __start..__end
+    let start_index_expr = cx.expr_ident(span, start_ident);
+    let end_index_expr = cx.expr_ident(span, end_ident);
     let slice_range_expr = cx.expr(
         span,
         ExprKind::Range(
@@ -379,19 +395,26 @@ fn show_fieldless_enum_concat_str(
         ),
     );
 
-    // &__NAMES[__STARTS[__d]..__STARTS[__d + 1]]
-    let name_slice_expr = cx.expr_addr_of(
+    // __NAMES.get_unchecked(__start..__end]
+    let name_get_unchecked_call_expr = cx.expr_method_call(
         span,
-        cx.expr(span, ExprKind::Index(cx.expr_ident(span, names_ident), slice_range_expr, span)),
+        cx.expr_ident(span, names_ident),
+        Ident::from_str_and_span("get_unchecked", span),
+        thin_vec![slice_range_expr],
     );
 
-    Some(cx.expr_block(cx.block(
-        span,
-        thin_vec![
+    Some(cx.expr_block(Box::new(ast::Block {
+        stmts: thin_vec![
             cx.stmt_item(span, names_const_item),
             cx.stmt_item(span, offset_const_item),
             discriminant_let_stmt,
-            cx.stmt_expr(name_slice_expr)
+            start_let_stmt,
+            end_let_stmt,
+            cx.stmt_expr(name_get_unchecked_call_expr),
         ],
-    )))
+        id: ast::DUMMY_NODE_ID,
+        rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
+        span,
+        tokens: None,
+    })))
 }

@@ -1236,12 +1236,14 @@ impl ::core::fmt::Debug for Fieldless {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f,
-            {
+            unsafe {
                 const __NAMES: &str = "ABC";
                 const __OFFSET: [usize; 4] = [0usize, 1usize, 2usize, 3usize];
                 let __d =
                     ::core::intrinsics::discriminant_value(self) as usize;
-                &__NAMES[__OFFSET[__d]..__OFFSET[__d + 1usize]]
+                let __start = *__OFFSET.get_unchecked(__d);
+                let __end = *__OFFSET.get_unchecked(__d + 1usize);
+                __NAMES.get_unchecked(__start..__end)
             })
     }
 }
@@ -1303,12 +1305,14 @@ impl ::core::fmt::Debug for Fieldless0 {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f,
-            {
+            unsafe {
                 const __NAMES: &str = "ABBBCC";
                 const __OFFSET: [usize; 4] = [0usize, 1usize, 4usize, 6usize];
                 let __d =
                     ::core::intrinsics::discriminant_value(self) as usize;
-                &__NAMES[__OFFSET[__d]..__OFFSET[__d + 1usize]]
+                let __start = *__OFFSET.get_unchecked(__d);
+                let __end = *__OFFSET.get_unchecked(__d + 1usize);
+                __NAMES.get_unchecked(__start..__end)
             })
     }
 }
