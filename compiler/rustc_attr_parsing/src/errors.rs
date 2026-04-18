@@ -131,3 +131,23 @@ pub(crate) struct EmptyAttributeList<'a> {
     pub attr_path: &'a str,
     pub valid_without_list: bool,
 }
+
+#[derive(Diagnostic)]
+#[diag("`#[{$name}]` attribute cannot be used on {$target}")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+#[help("`#[{$name}]` can {$only}be applied to {$applied}")]
+pub(crate) struct InvalidTargetLint {
+    pub name: String,
+    pub target: &'static str,
+    pub applied: DiagArgValue,
+    pub only: &'static str,
+    #[suggestion(
+        "remove the attribute",
+        code = "",
+        applicability = "machine-applicable",
+        style = "tool-only"
+    )]
+    pub attr_span: Span,
+}

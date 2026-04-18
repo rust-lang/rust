@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
+    Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
     EmissionGuarantee, Level, Subdiagnostic, SuggestionStyle, msg,
 };
 use rustc_hir as hir;
@@ -3280,26 +3280,6 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
             }
         }
     }
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[{$name}]` attribute cannot be used on {$target}")]
-#[warning(
-    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-)]
-#[help("`#[{$name}]` can {$only}be applied to {$applied}")]
-pub(crate) struct InvalidTargetLint {
-    pub name: String,
-    pub target: &'static str,
-    pub applied: DiagArgValue,
-    pub only: &'static str,
-    #[suggestion(
-        "remove the attribute",
-        code = "",
-        applicability = "machine-applicable",
-        style = "tool-only"
-    )]
-    pub attr_span: Span,
 }
 
 #[derive(Diagnostic)]

@@ -1,8 +1,7 @@
 use std::any::Any;
-use std::borrow::Cow;
 
 use rustc_data_structures::sync::DynSend;
-use rustc_errors::{Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, Level};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::lints::{AttributeLintKind, FormatWarning};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -35,18 +34,6 @@ pub struct DecorateAttrLint<'a, 'sess, 'tcx> {
 impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
-            AttributeLintKind::InvalidTarget { name, target, applied, only, attr_span } => {
-                lints::InvalidTargetLint {
-                    name: name.clone(),
-                    target,
-                    applied: DiagArgValue::StrListSepByAnd(
-                        applied.into_iter().map(|i| Cow::Owned(i.to_string())).collect(),
-                    ),
-                    only,
-                    attr_span: *attr_span,
-                }
-                .into_diag(dcx, level)
-            }
             &AttributeLintKind::InvalidStyle {
                 ref name,
                 is_used_as_inner,
