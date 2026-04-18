@@ -6,7 +6,7 @@
 
 The `rustc_private` feature allows external crates to use compiler internals.
 
-### Using `rustc-private` with Official Toolchains
+### Using `rustc_private` with Official Toolchains
 
 When using the `rustc_private` feature with official Rust toolchains distributed via rustup, you need to install two additional components:
 
