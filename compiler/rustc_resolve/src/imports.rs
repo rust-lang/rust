@@ -149,15 +149,13 @@ pub(crate) struct OnUnknownData {
 
 impl OnUnknownData {
     pub(crate) fn from_attrs<'tcx>(tcx: TyCtxt<'tcx>, item: &Item) -> Option<OnUnknownData> {
-        if let Some(Attribute::Parsed(AttributeKind::OnUnknown { directive, .. })) =
-            AttributeParser::parse_limited(
-                tcx.sess,
-                &item.attrs,
-                &[sym::diagnostic, sym::on_unknown],
-                item.span,
-                item.id,
-                Some(tcx.features()),
-            )
+        if tcx.features().diagnostic_on_unknown()
+            && let Some(Attribute::Parsed(AttributeKind::OnUnknown { directive, .. })) =
+                AttributeParser::parse_limited(
+                    tcx.sess,
+                    &item.attrs,
+                    &[sym::diagnostic, sym::on_unknown],
+                )
         {
             Some(Self { directive: Box::new(*directive?) })
         } else {
@@ -216,6 +214,8 @@ pub(crate) struct ImportData<'ra> {
     /// A `#[diagnostic::on_unknown]` attribute applied
     /// to the given import. This allows crates to specify
     /// custom error messages for a specific import
+    ///
+    /// This is `None` if the feature flag for `diagnostic::on_unknown` is disabled.
     pub on_unknown_attr: Option<OnUnknownData>,
 }
 
@@ -845,24 +845,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             .collect::<Vec<_>>();
         let default_message =
             format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
-        let (message, label, notes) = if self.tcx.features().diagnostic_on_unknown()
-            && let Some(directive) = errors[0].1.on_unknown_attr.as_ref().map(|a| &a.directive)
-        {
-            let args = FormatArgs {
-                this: paths.join(", "),
-                // Unused
-                this_sugared: String::new(),
-                // Unused
-                item_context: "",
-                // Unused
-                generic_args: Vec::new(),
-            };
-            let CustomDiagnostic { message, label, notes, .. } = directive.eval(None, &args);
+        let (message, label, notes) =
+            // Feature gating for `on_unknown_attr` happens initialization of the field
+            if let Some(directive) = errors[0].1.on_unknown_attr.as_ref().map(|a| &a.directive) {
+                let args = FormatArgs {
+                    this: paths.join(", "),
+                    // Unused
+                    this_sugared: String::new(),
+                    // Unused
+                    item_context: "",
+                    // Unused
+                    generic_args: Vec::new(),
+                };
+                let CustomDiagnostic { message, label, notes, .. } = directive.eval(None, &args);
 
-            (message, label, notes)
-        } else {
-            (None, None, Vec::new())
-        };
+                (message, label, notes)
+            } else {
+                (None, None, Vec::new())
+            };
         let has_custom_message = message.is_some();
         let message = message.as_deref().unwrap_or(default_message.as_str());
 
