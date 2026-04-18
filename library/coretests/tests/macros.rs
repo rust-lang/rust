@@ -236,9 +236,12 @@ impl Drop for MutRefWithDrop<'_> {
 fn temporary_scope_introduction() {
     // Fails to compile if the macros don't introduce a temporary scope, since `&mut val` would
     // create a second mutable borrow while `MutRefWithDrop` still holds a unique ref.
+    // See https://github.com/rust-lang/rust/issues/154406 for reference.
     let mut val = 0;
 
     (assert_matches!(*MutRefWithDrop(&mut val).0, 0), std::mem::take(&mut val));
+    (assert_matches!(*MutRefWithDrop(&mut val).0, 0, "msg"), std::mem::take(&mut val));
 
     (debug_assert_matches!(*MutRefWithDrop(&mut val).0, 0), std::mem::take(&mut val));
+    (debug_assert_matches!(*MutRefWithDrop(&mut val).0, 0, "msg"), std::mem::take(&mut val));
 }
