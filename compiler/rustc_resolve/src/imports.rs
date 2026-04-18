@@ -157,7 +157,7 @@ impl OnUnknownData {
                     &[sym::diagnostic, sym::on_unknown],
                 )
         {
-            Some(Self { directive: Box::new(*directive?) })
+            Some(Self { directive: directive? })
         } else {
             None
         }
