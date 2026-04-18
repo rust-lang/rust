@@ -228,14 +228,10 @@ fn show_fieldless_enum(
     substr: &Substructure<'_>,
 ) -> BlockOrExpr {
     let fmt = substr.nonselflike_args[0].clone();
-    let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
-    if let Some(name) = show_fieldless_enum_concat_str(cx, span, def) {
-        return BlockOrExpr::new_expr(cx.expr_call_global(
-            span,
-            fn_path_write_str,
-            thin_vec![fmt, name],
-        ));
+    if let Some((stmts, expr)) = show_fieldless_enum_concat_str(cx, span, def, fmt.clone()) {
+        return BlockOrExpr::new_mixed(stmts, Some(expr));
     }
+    let fn_path_write_str = cx.std_path(&[sym::fmt, sym::Formatter, sym::write_str]);
     let arms = def
         .variants
         .iter()
@@ -259,16 +255,14 @@ fn show_fieldless_enum(
     BlockOrExpr::new_expr(cx.expr_call_global(span, fn_path_write_str, thin_vec![fmt, name]))
 }
 
-/// Specialer case for fieldless enums with no discriminants. Builds
+/// Special case for fieldless enums with no discriminants. Builds
 /// ```text
 /// impl ::core::fmt::Debug for A {
 ///     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-///         ::core::fmt::Formatter::write_str(f, {
-///             const __NAMES: &str = "ABBBCC";
-///             const __OFFSET: [usize; 4] =[0, 1, 4, 6];
-///             let __d = ::core::intrinsics::discriminant_value(self) as usize;
-///             __NAMES[__OFFSET[d]..__OFFSET[d + 1]]
-///         })
+///         const __NAMES: &str = "ABBBCC";
+///         const __OFFSET: [usize; 4] =[0, 1, 4, 6];
+///         let __d = ::core::intrinsics::discriminant_value(self) as usize;
+///         ::core::fmt::Formatter::debug_c_like_enums_write_str(f, __NAMES, &__OFFSET, __d)
 ///     }
 /// }
 /// ```
@@ -276,11 +270,9 @@ fn show_fieldless_enum_concat_str(
     cx: &ExtCtxt<'_>,
     span: Span,
     def: &EnumDef,
-) -> Option<Box<ast::Expr>> {
+    fmt: Box<ast::Expr>,
+) -> Option<(ThinVec<ast::Stmt>, Box<ast::Expr>)> {
     let variant_count = def.variants.len();
-    if variant_count >= cx.sess.target.pointer_width as usize {
-        return None;
-    }
 
     let variant_names = def
         .variants
@@ -353,45 +345,29 @@ fn show_fieldless_enum_concat_str(
     let discriminant_let_stmt =
         cx.stmt_let(span, false, discriminant_ident, discriminant_cast_expr);
 
-    // __OFFSET[__d]
+    // __d expression
     let discriminant_expr = cx.expr_ident(span, discriminant_ident);
-    let start_index_expr = cx.expr(
+
+    // __NAMES expression
+    let names_expr = cx.expr_ident(span, names_ident);
+
+    // &__OFFSET expression
+    let offset_ref_expr = cx.expr_addr_of(span, cx.expr_ident(span, offset_ident));
+
+    // ::core::fmt::Formatter::debug_c_like_enum_write_str(f, __NAMES, &__OFFSET, __d)
+    let fn_path = cx.std_path(&[sym::fmt, sym::Formatter, sym::debug_c_like_enum_write_str]);
+    let call_expr = cx.expr_call_global(
         span,
-        ExprKind::Index(cx.expr_ident(span, offset_ident), discriminant_expr.clone(), span),
+        fn_path,
+        thin_vec![fmt, names_expr, offset_ref_expr, discriminant_expr],
     );
 
-    // __OFFSET[__d + 1]
-    let one_expr = cx.expr_usize(span, 1);
-    let discriminant_plus_one_expr =
-        cx.expr_binary(span, ast::BinOpKind::Add, discriminant_expr, one_expr);
-    let end_index_expr = cx.expr(
-        span,
-        ExprKind::Index(cx.expr_ident(span, offset_ident), discriminant_plus_one_expr, span),
-    );
-
-    // __OFFSET[__d]..__OFFSET[__d + 1]
-    let slice_range_expr = cx.expr(
-        span,
-        ExprKind::Range(
-            Some(start_index_expr),
-            Some(end_index_expr),
-            rustc_ast::RangeLimits::HalfOpen,
-        ),
-    );
-
-    // &__NAMES[__STARTS[__d]..__STARTS[__d + 1]]
-    let name_slice_expr = cx.expr_addr_of(
-        span,
-        cx.expr(span, ExprKind::Index(cx.expr_ident(span, names_ident), slice_range_expr, span)),
-    );
-
-    Some(cx.expr_block(cx.block(
-        span,
+    Some((
         thin_vec![
             cx.stmt_item(span, names_const_item),
             cx.stmt_item(span, offset_const_item),
             discriminant_let_stmt,
-            cx.stmt_expr(name_slice_expr)
         ],
-    )))
+        call_expr,
+    ))
 }
