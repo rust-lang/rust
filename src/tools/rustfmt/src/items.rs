@@ -1155,10 +1155,10 @@ pub(crate) fn format_trait(
     offset: Indent,
 ) -> RewriteResult {
     let ast::Trait {
+        ref impl_restriction,
         constness,
         is_auto,
         safety,
-        ref impl_restriction,
         ident,
         ref generics,
         ref bounds,
