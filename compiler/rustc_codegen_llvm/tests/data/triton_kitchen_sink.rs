@@ -2607,11 +2607,12 @@ pub mod triton {
     }
 }
 pub use triton::*;
-fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
+fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32, const USE_BIAS: bool>(
     x_ptr: T::Pointer<D>,
     y_ptr: T::Pointer<D>,
     output_ptr: T::Pointer<D>,
     n_elements: i32,
+    use_bias: bool,
 ) {
     fn combine_num<TT: Triton, DD: Dtype>(
         lhs: TT::Tensor<DD>,
@@ -2844,6 +2845,24 @@ fn kitchen_sink<T: Triton, D: Float, const BLOCK_SIZE: i32>(
     let _le_sel = T::where_(le_mask, mconst, zl);
     let _eq_sel = T::where_(eq_mask, mconst, zl);
     let _ne_sel = T::where_(ne_mask, mconst, zl);
+    // Scalar comparison ops — tensor vs scalar constant (second arg is a scalar D value).
+    let scalar_val = dummy_value::<D>();
+    let gt_s = T::gt_scalar(mconst, scalar_val);
+    let ge_s = T::ge_scalar(mconst, scalar_val);
+    let lt_s = T::lt_scalar(mconst, scalar_val);
+    let le_s = T::le_scalar(mconst, scalar_val);
+    let eq_s = T::eq_scalar(mconst, scalar_val);
+    let ne_s = T::ne_scalar(mconst, scalar_val);
+    let _gt_s_sel = T::where_(gt_s, mconst, zl);
+    let _ge_s_sel = T::where_(ge_s, mconst, zl);
+    let _lt_s_sel = T::where_(lt_s, mconst, zl);
+    let _le_s_sel = T::where_(le_s, mconst, zl);
+    let _eq_s_sel = T::where_(eq_s, mconst, zl);
+    let _ne_s_sel = T::where_(ne_s, mconst, zl);
+    // SwitchInt on a const bool generic (compile-time constant discriminant).
+    if USE_BIAS { let _ = loaded + z; }
+    // SwitchInt on a runtime bool SSA value (bool function parameter).
+    if use_bias { let _ = loaded + z; }
     let out_ptrs = T::zeros::<T::Pointer<D>>(&[BLOCK_SIZE]);
     let _ = T::make_block_ptr(output_ptr, &[BLOCK_SIZE], &[1], &[0], &[BLOCK_SIZE], &[0]);
     T::store::<D, 1>(out_ptrs, mconst, None, &[0], None, None);
@@ -2864,5 +2883,5 @@ pub extern "C" fn entry_point(
     let x_ptr = LlvmPointer(x_ptr as *mut _);
     let y_ptr = LlvmPointer(y_ptr as *mut _);
     let output_ptr = LlvmPointer(output_ptr as *mut _);
-    kitchen_sink::<LlvmTriton, f32, 1024>(x_ptr, y_ptr, output_ptr, n_elements);
+    kitchen_sink::<LlvmTriton, f32, 1024, true>(x_ptr, y_ptr, output_ptr, n_elements, false);
 }

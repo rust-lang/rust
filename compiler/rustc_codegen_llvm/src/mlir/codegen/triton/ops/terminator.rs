@@ -217,6 +217,12 @@ impl<'a> TritonCodegen<'a> {
             "triton::Triton::le" => TritonCodegen::codegen_le_call as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::eq" => TritonCodegen::codegen_eq_call as LocalCallHandler<'a, 'tcx>,
             "triton::Triton::ne" => TritonCodegen::codegen_ne_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::lt_scalar" => TritonCodegen::codegen_lt_scalar_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::le_scalar" => TritonCodegen::codegen_le_scalar_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::gt_scalar" => TritonCodegen::codegen_gt_scalar_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::ge_scalar" => TritonCodegen::codegen_ge_scalar_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::eq_scalar" => TritonCodegen::codegen_eq_scalar_call as LocalCallHandler<'a, 'tcx>,
+            "triton::Triton::ne_scalar" => TritonCodegen::codegen_ne_scalar_call as LocalCallHandler<'a, 'tcx>,
             "triton::types::AddOffsets::add_offsets" => {
                 TritonCodegen::codegen_add_ptr as LocalCallHandler<'a, 'tcx>
             }
