@@ -17,7 +17,8 @@
 use melior::Context;
 use melior::dialect::arith::{mulf, muli, subf, subi};
 use melior::dialect::ods::arith::{
-    AddFOperation, AddIOperation, CmpIOperation, ConstantOperation, ExtSIOperation, MulIOperation,
+    AddFOperation, AddIOperation, CmpFOperation, CmpIOperation, ConstantOperation, ExtSIOperation,
+    MulIOperation,
 };
 use melior::ir::attribute::IntegerAttribute;
 use melior::ir::r#type::{IntegerType, RankedTensorType};
@@ -258,6 +259,43 @@ pub fn create_cmpi<'ctx>(
         .result(result_ty)
         .build())
 }
+
+/// Ordered float-comparison predicates for `arith.cmpf`.
+/// Values match the MLIR arith dialect predicate numbering.
+pub struct FpPredicate(i32);
+impl FpPredicate {
+    pub const OEQ: FpPredicate = Self(1);
+    pub const OGT: FpPredicate = Self(2);
+    pub const OGE: FpPredicate = Self(3);
+    pub const OLT: FpPredicate = Self(4);
+    pub const OLE: FpPredicate = Self(5);
+    pub const ONE: FpPredicate = Self(6);
+}
+
+impl std::fmt::Display for FpPredicate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+pub fn create_cmpf<'ctx>(
+    context: &'ctx Context,
+    location: Location<'ctx>,
+    predicate: FpPredicate,
+    lhs: Value<'ctx, 'ctx>,
+    rhs: Value<'ctx, 'ctx>,
+    result_ty: Type<'ctx>,
+) -> Result<CmpFOperation<'ctx>, Error> {
+    let predicate = Attribute::parse(context, &predicate.to_string()).unwrap();
+
+    Ok(CmpFOperation::builder(context, location)
+        .predicate(predicate)
+        .lhs(lhs)
+        .rhs(rhs)
+        .result(result_ty)
+        .build())
+}
+
 #[cfg(test)]
 mod tests {
 

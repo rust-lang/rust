@@ -23,8 +23,8 @@ use melior::ir::{
 use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, UnwindAction};
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_mlir::shared::arith::{
-    Predicate, create_addf, create_addi, create_cmpi, create_extsi, create_mulf, create_muli,
-    create_muli_tensor, create_subf, create_subi,
+    FpPredicate, Predicate, create_addf, create_addi, create_cmpf, create_cmpi, create_extsi,
+    create_mulf, create_muli, create_muli_tensor, create_subf, create_subi,
 };
 use rustc_mlir::shared::builtin::{tensor_type, tensor_type_like};
 use rustc_mlir::triton::tensor::add_ptr;
@@ -253,6 +253,200 @@ impl<'a> TritonCodegen<'a> {
         let result = lt_op.result(0).expect("LT operation result not found");
         mlir_block.append_operation(lt_op);
         Ok(Some(result.into()))
+    }
+
+    pub fn codegen_cmpf<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        predicate: FpPredicate,
+        location: Location<'a>,
+        lhs: Value<'a, 'a>,
+        rhs: Value<'a, 'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let lhs_is_tensor = lhs.r#type().is_tensor();
+        let rhs_is_tensor = rhs.r#type().is_tensor();
+
+        let (lhs, rhs) = match (lhs_is_tensor, rhs_is_tensor) {
+            (true, true) => (lhs, rhs),
+            (true, false) => (lhs, self.like_tensor(tcx, location, lhs, rhs, mlir_block)?),
+            (false, true) => (self.like_tensor(tcx, location, rhs, lhs, mlir_block)?, rhs),
+            (false, false) => {
+                todo!("TritonCodegen::codegen_cmpf scalar: {:?} {:?}", lhs.r#type(), rhs.r#type())
+            }
+        };
+
+        let result_ty = tensor_type_like(
+            lhs.r#type()
+                .try_into()
+                .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?,
+            IntegerType::new(self.module.context(), 1).into(),
+        )
+        .map_err(|e| MlirError::InvalidType { msg: e.to_string() })?;
+
+        let cmp_op: Operation<'a> =
+            create_cmpf(self.module.context(), location, predicate, lhs, rhs, result_ty.into())
+                .map_err(|e| MlirError::CreateOperation { err: e })?
+                .into();
+        let result = cmp_op.result(0).expect("cmpf operation result not found");
+        mlir_block.append_operation(cmp_op);
+        Ok(Some(result.into()))
+    }
+
+    /// Dispatch a two-operand comparison to `arith.cmpf` (floats) or `arith.cmpi` (integers).
+    fn codegen_binary_cmp<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        args: &[Spanned<Operand<'tcx>>],
+        fp_pred: FpPredicate,
+        int_pred: Predicate,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        debug_assert!(args.len() == 2, "comparison requires 2 args");
+        let arg0 = &args[0].node;
+        let arg1 = &args[1].node;
+        let lhs = self.codegen_operand(tcx, instance, arg0, arg0.ty(mir, tcx), location, mlir_block, state)?;
+        let rhs = self.codegen_operand(tcx, instance, arg1, arg1.ty(mir, tcx), location, mlir_block, state)?;
+
+        // Determine element type (unwrap tensor if needed).
+        let lhs_ty = lhs.r#type();
+        let elem_ty = if lhs_ty.is_tensor() {
+            RankedTensorType::try_from(lhs_ty)
+                .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?
+                .element()
+        } else {
+            lhs_ty
+        };
+
+        if elem_ty.is_float() {
+            self.codegen_cmpf(tcx, fp_pred, location, lhs, rhs, mlir_block)
+        } else {
+            self.codegen_cmpi(tcx, int_pred, location, lhs, rhs, mlir_block)
+        }
+    }
+
+    pub fn codegen_gt_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_binary_cmp(tcx, instance, mir, args, FpPredicate::OGT, Predicate::SGT, location, mlir_block, state)
+    }
+
+    pub fn codegen_ge_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_binary_cmp(tcx, instance, mir, args, FpPredicate::OGE, Predicate::SGE, location, mlir_block, state)
+    }
+
+    pub fn codegen_triton_lt_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_binary_cmp(tcx, instance, mir, args, FpPredicate::OLT, Predicate::SLT, location, mlir_block, state)
+    }
+
+    pub fn codegen_le_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_binary_cmp(tcx, instance, mir, args, FpPredicate::OLE, Predicate::SLE, location, mlir_block, state)
+    }
+
+    pub fn codegen_eq_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_binary_cmp(tcx, instance, mir, args, FpPredicate::OEQ, Predicate::EQ, location, mlir_block, state)
+    }
+
+    pub fn codegen_ne_call<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        _func: &Operand<'tcx>,
+        _func_name: &str,
+        args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>,
+        _target: &Option<BasicBlock>,
+        _unwind: &UnwindAction,
+        _call_source: &CallSource,
+        _fn_span: &Span,
+        location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+        state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        self.codegen_binary_cmp(tcx, instance, mir, args, FpPredicate::ONE, Predicate::NE, location, mlir_block, state)
     }
 
     pub fn codegen_mul<'tcx>(
