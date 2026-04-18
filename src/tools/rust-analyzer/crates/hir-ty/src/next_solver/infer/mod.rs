@@ -843,7 +843,7 @@ impl<'db> InferCtxt<'db> {
         GenericArgs::for_item(self.interner, def_id, |_index, kind, _| self.var_for_def(kind, span))
     }
 
-    /// Like `fresh_args_for_item()`, but first uses the args from `first`.
+    /// Like [`Self::fresh_args_for_item`], but first uses the args from `first`.
     pub fn fill_rest_fresh_args(
         &self,
         span: Span,

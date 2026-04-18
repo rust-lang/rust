@@ -2372,7 +2372,7 @@ impl S {
 }
 fn foo(s: S) { s.$0 }
 "#,
-            CompletionItemKind::SymbolKind(SymbolKind::Method),
+            SymbolKind::Method,
             expect![[r#"
                 [
                     CompletionItem {
