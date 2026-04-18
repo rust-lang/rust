@@ -2883,7 +2883,7 @@ impl str {
     /// assert_eq!(decomp, "A\u{0301}");
     ///
     /// // Their case-foldings are likewise unequal:
-    /// assert_eq!(!comp.eq_ignore_case(decomp));
+    /// assert!(!comp.eq_ignore_case(decomp));
     /// ```
     ///
     /// [normalization]: https://www.unicode.org/faq/normalization
