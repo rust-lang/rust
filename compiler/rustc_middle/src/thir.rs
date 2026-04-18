@@ -881,12 +881,6 @@ pub enum PatKind<'tcx> {
     Error(ErrorGuaranteed),
 }
 
-impl<'tcx> PatKind<'tcx> {
-    pub fn is_guard(&self) -> bool {
-        if let Self::Guard { .. } = self { true } else { false }
-    }
-}
-
 #[derive(Copy, Clone, Debug, HashStable)]
 pub enum DerefPatBorrowMode {
     Borrow(Mutability),
