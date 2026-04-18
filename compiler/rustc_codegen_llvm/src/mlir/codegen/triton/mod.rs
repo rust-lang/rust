@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
+use melior::dialect::scf;
 use melior::ir::attribute::IntegerAttribute;
-use melior::ir::operation::OperationLike;
+use melior::ir::operation::{OperationBuilder, OperationLike};
 use melior::ir::r#type::IntegerType;
 use melior::ir::{
-    Attribute, Block, BlockLike, BlockRef, Location, Operation, RegionLike, TypeLike, Value,
-    ValueLike,
+    Attribute, Block, BlockLike, BlockRef, Location, Operation, Region, RegionLike, TypeLike,
+    Value, ValueLike,
 };
 use melior::utility::register_all_llvm_translations;
 use rustc_abi::{FieldIdx, FieldsShape, Size as AbiSize};
@@ -93,6 +94,14 @@ type PtrToDynArray = HashMap<Local, Local>;
 /// the dynamic case.
 type SliceDynValues<'c, 'p> = HashMap<Local, Vec<Value<'c, 'p>>>;
 
+/// Maps a descriptor local to its block shape (the tile dimensions it loads).
+type DescBlockShapes = HashMap<Local, Vec<i64>>;
+
+/// Maps a MIR local to its statically-known discriminant value (u64).
+/// Built by pre-scanning for `SetDiscriminant` and `Discriminant` assignments
+/// so that SwitchInt on Option<T> locals can be constant-folded during codegen.
+type ConstDiscLocals = HashMap<Local, u64>;
+
 /// Codegen state threaded through all statement/terminator handlers.
 pub(crate) struct CodegenState<'c, 'p> {
     pub(crate) ssa_values: SsaValues<'c, 'p>,
@@ -110,6 +119,19 @@ pub(crate) struct CodegenState<'c, 'p> {
     pub(crate) ptr_to_dyn_array: PtrToDynArray,
     /// Fat-pointer slices whose elements are runtime MLIR values.
     pub(crate) slice_dyn_values: SliceDynValues<'c, 'p>,
+    /// Block shapes for tensor descriptors: `desc_local → [dim0, dim1, ...]`.
+    pub(crate) desc_block_shapes: DescBlockShapes,
+    /// When generating inside a `scf.for` body: the MIR basic block that is the loop header.
+    /// `codegen_goto` checks this and emits `scf.yield` instead of `cf.br` on the back edge.
+    pub(crate) loop_header_bb: Option<BasicBlock>,
+    /// The MIR locals whose values must be yielded at the back edge of the active `scf.for`.
+    pub(crate) loop_iter_carry_locals: Vec<Local>,
+    /// MIR body blocks that are merged into the single scf.for body MLIR block.
+    /// `codegen_goto` skips `cf.br` when the target is in this set (within-body jumps).
+    pub(crate) loop_body_bbs: HashSet<BasicBlock>,
+    /// Statically-known discriminant values for Option<T> locals (from SetDiscriminant).
+    /// Used by `codegen_switch_int` to constant-fold branches on Option discriminants.
+    pub(crate) const_disc_locals: ConstDiscLocals,
 }
 
 impl<'c, 'p> CodegenState<'c, 'p> {
@@ -124,7 +146,535 @@ impl<'c, 'p> CodegenState<'c, 'p> {
             dyn_arrays: HashMap::new(),
             ptr_to_dyn_array: HashMap::new(),
             slice_dyn_values: HashMap::new(),
+            desc_block_shapes: HashMap::new(),
+            loop_header_bb: None,
+            loop_iter_carry_locals: Vec::new(),
+            loop_body_bbs: HashSet::new(),
+            const_disc_locals: HashMap::new(),
         }
+    }
+}
+
+/// Information about a detected Range-based `for` loop in the MIR.
+#[derive(Debug)]
+struct RangeLoopInfo {
+    /// The loop header block (checks the Lt condition and branches).
+    header_bb: BasicBlock,
+    /// First block of the loop body (taken when the Lt condition is true).
+    body_entry_bb: BasicBlock,
+    /// All loop body blocks in execution order (body_entry through back_edge).
+    body_bbs: Vec<BasicBlock>,
+    /// The block whose `Goto` back-edge targets the header.
+    back_edge_bb: BasicBlock,
+    /// The block taken when the loop exits (Lt condition is false).
+    exit_bb: BasicBlock,
+    /// The Range.start local that is incremented each iteration.
+    counter_local: Local,
+    /// The loop upper-bound local (Range.end / k_tiles).
+    bound_local: Local,
+    /// The "k" induction local (pre-increment counter, extracted from Some).
+    induction_local: Local,
+    /// Locals that carry values across iterations (loop-carried values).
+    iter_carry_locals: Vec<Local>,
+}
+
+/// Pre-scan all MIR blocks to collect statically-known discriminant values.
+///
+/// Handles two patterns:
+/// 1. `SetDiscriminant { place, variant_index }` → `place.local` has variant_index as discriminant
+/// 2. `_d = Discriminant(_opt)` where `_opt` already has a known discriminant → `_d` inherits it
+/// 3. `_local = const VALUE` where VALUE is a scalar constant (e.g. `_149 = const USE_BIAS`)
+///
+/// Constants are instantiated via `instance` so that const generic parameters (e.g. `USE_BIAS`)
+/// get their concrete values (e.g. `false`) after monomorphization.
+fn compute_const_disc_locals<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: &Instance<'tcx>,
+    mir: &Body<'tcx>,
+) -> HashMap<Local, u64> {
+    use rustc_middle::mir::interpret::Scalar;
+    let mut result: HashMap<Local, u64> = HashMap::new();
+
+    let extract_scalar_const = |c: &ConstOperand<'tcx>| -> Option<u64> {
+        // Instantiate the constant (substitutes generic params like USE_BIAS → false).
+        let instantiated = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx,
+            TypingEnv::fully_monomorphized(),
+            EarlyBinder::bind(c.const_),
+        );
+        match instantiated {
+            Const::Val(ConstValue::Scalar(Scalar::Int(s)), _) => {
+                Some(s.to_bits_unchecked() as u64)
+            }
+            Const::Ty(_, ref ck) => {
+                if let ConstKind::Value(cv) = ck.kind() {
+                    cv.valtree.try_to_leaf().map(|s| s.to_bits_unchecked() as u64)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    };
+
+    // Pass 1: collect SetDiscriminant statements and plain scalar const assignments.
+    for (_, bb_data) in mir.basic_blocks.iter_enumerated() {
+        for stmt in &bb_data.statements {
+            match &stmt.kind {
+                StatementKind::SetDiscriminant { place, variant_index } => {
+                    if place.projection.is_empty() {
+                        result.insert(place.local, variant_index.as_u32() as u64);
+                    }
+                }
+                StatementKind::Assign(assign) => {
+                    let (place, rvalue) = assign.as_ref();
+                    if place.projection.is_empty() {
+                        if let Rvalue::Use(Operand::Constant(c)) = rvalue {
+                            if let Some(v) = extract_scalar_const(c) {
+                                result.insert(place.local, v);
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    // Pass 2: propagate through Discriminant-taking and copy assignments.
+    let mut changed = true;
+    while changed {
+        changed = false;
+        for (_, bb_data) in mir.basic_blocks.iter_enumerated() {
+            for stmt in &bb_data.statements {
+                if let StatementKind::Assign(assign) = &stmt.kind {
+                    let (place, rvalue) = assign.as_ref();
+                    if place.projection.is_empty() {
+                        let known = match rvalue {
+                            Rvalue::Discriminant(src) => result.get(&src.local).copied(),
+                            Rvalue::Use(Operand::Copy(p) | Operand::Move(p))
+                                if p.projection.is_empty() =>
+                            {
+                                result.get(&p.local).copied()
+                            }
+                            _ => None,
+                        };
+                        if let Some(v) = known {
+                            if result.insert(place.local, v).is_none() {
+                                changed = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    result
+}
+
+/// Extract a constant integer value from a SwitchInt discriminant operand, if statically known.
+///
+/// Handles:
+/// 1. `Operand::Constant` with a scalar integer value (e.g. `BIAS = false`)
+/// 2. `Operand::Copy/Move` of a local in `const_disc_locals` (from SetDiscriminant / Discriminant)
+pub(crate) fn extract_switch_const<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: &Instance<'tcx>,
+    discr: &Operand<'tcx>,
+    const_disc_locals: &HashMap<Local, u64>,
+) -> Option<u64> {
+    use rustc_middle::mir::interpret::Scalar;
+    let result = match discr {
+        Operand::Constant(c) => {
+            // Instantiate generic const params (e.g. USE_BIAS → false) before extracting value.
+            let instantiated = instance.instantiate_mir_and_normalize_erasing_regions(
+                tcx,
+                TypingEnv::fully_monomorphized(),
+                EarlyBinder::bind(c.const_),
+            );
+            match instantiated {
+                Const::Val(ConstValue::Scalar(Scalar::Int(s)), _) => {
+                    Some(s.to_bits_unchecked() as u64)
+                }
+                Const::Ty(_, ref ck) => {
+                    if let ConstKind::Value(cv) = ck.kind() {
+                        cv.valtree.try_to_leaf().map(|s| s.to_bits_unchecked() as u64)
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            }
+        }
+        Operand::Copy(p) | Operand::Move(p) if p.projection.is_empty() => {
+            const_disc_locals.get(&p.local).copied()
+        }
+        _ => None,
+    };
+    println!("[SWITCH-CONST] discr={:?} → {:?}", discr, result);
+    result
+}
+
+/// BFS reachability analysis from bb0, constant-folding `SwitchInt` when the discriminant
+/// is statically known.  Returns the set of reachable `BasicBlock` indices.
+fn compute_reachable_blocks<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: &Instance<'tcx>,
+    mir: &Body<'tcx>,
+    const_disc_locals: &HashMap<Local, u64>,
+) -> HashSet<BasicBlock> {
+    use rustc_middle::mir::TerminatorKind;
+
+    let mut reachable: HashSet<BasicBlock> = HashSet::new();
+    let mut queue: Vec<BasicBlock> = vec![BasicBlock::from_u32(0)];
+
+    while let Some(bb) = queue.pop() {
+        if !reachable.insert(bb) {
+            continue;
+        }
+        let bb_data = &mir.basic_blocks[bb];
+        match &bb_data.terminator().kind {
+            TerminatorKind::Goto { target } => {
+                queue.push(*target);
+            }
+            TerminatorKind::SwitchInt { discr, targets } => {
+                // Constant-fold when the discriminant is statically known.
+                if let Some(const_val) = extract_switch_const(tcx, instance, discr, const_disc_locals) {
+                    let target = targets
+                        .iter()
+                        .find(|(val, _)| *val == const_val as u128)
+                        .map(|(_, bb)| bb)
+                        .unwrap_or_else(|| targets.otherwise());
+                    println!(
+                        "[REACH] constant-folding SwitchInt: discr const={} → {:?}",
+                        const_val, target
+                    );
+                    queue.push(target);
+                    continue;
+                }
+                // Non-constant: all successors are reachable.
+                for (_, target) in targets.iter() {
+                    queue.push(target);
+                }
+                queue.push(targets.otherwise());
+            }
+            TerminatorKind::Return | TerminatorKind::Unreachable => {}
+            TerminatorKind::Call { target, .. } => {
+                if let Some(t) = target {
+                    queue.push(*t);
+                }
+            }
+            TerminatorKind::Drop { target, .. } => {
+                queue.push(*target);
+            }
+            TerminatorKind::Assert { target, .. } => {
+                queue.push(*target);
+            }
+            _ => {
+                for succ in bb_data.terminator().successors() {
+                    queue.push(succ);
+                }
+            }
+        }
+    }
+
+    reachable
+}
+
+/// Detect a Range-based `for` loop in the MIR body.
+/// Returns `None` if no such loop is found.
+fn detect_range_loop<'tcx>(mir: &Body<'tcx>) -> Option<RangeLoopInfo> {
+    use rustc_middle::mir::TerminatorKind;
+
+    for (bb, bb_data) in mir.basic_blocks.iter_enumerated() {
+        if let TerminatorKind::Goto { target } = &bb_data.terminator().kind {
+            if target.index() < bb.index() {
+                // Back edge: bb → target (target is the loop header)
+                let header_bb = *target;
+                let back_edge_bb = bb;
+                if let Some(info) = try_build_range_loop_info(mir, header_bb, back_edge_bb) {
+                    return Some(info);
+                }
+            }
+        }
+    }
+    None
+}
+
+fn try_build_range_loop_info<'tcx>(
+    mir: &Body<'tcx>,
+    header_bb: BasicBlock,
+    back_edge_bb: BasicBlock,
+) -> Option<RangeLoopInfo> {
+    use rustc_middle::mir::TerminatorKind;
+
+    let header_data = &mir.basic_blocks[header_bb];
+
+    // Header must end with SwitchInt
+    let (discr_local, body_entry_bb, exit_bb) = match &header_data.terminator().kind {
+        TerminatorKind::SwitchInt { discr, targets } => {
+            let cases: Vec<(u128, BasicBlock)> = targets.iter().collect();
+            println!("[LOOP-DETECT] header={:?} back_edge={:?} SwitchInt cases={:?} otherwise={:?} discr={:?}",
+                header_bb, back_edge_bb, cases, targets.otherwise(), discr);
+            // Expect exactly one case: [0: exit, otherwise: body_entry]
+            if cases.len() != 1 || cases[0].0 != 0 {
+                println!("[LOOP-DETECT] FAIL: cases check: len={} val={}", cases.len(), if cases.is_empty() { 999 } else { cases[0].0 });
+                return None;
+            }
+            let exit_bb = cases[0].1;
+            let body_entry_bb = targets.otherwise();
+            let discr_local = match discr {
+                Operand::Move(p) | Operand::Copy(p) if p.projection.is_empty() => p.local,
+                _ => {
+                    println!("[LOOP-DETECT] FAIL: discr projection not empty");
+                    return None;
+                }
+            };
+            (discr_local, body_entry_bb, exit_bb)
+        }
+        other => {
+            println!("[LOOP-DETECT] header={:?} back_edge={:?} terminator is not SwitchInt: {:?}", header_bb, back_edge_bb, other.name());
+            return None;
+        }
+    };
+
+    // Find the Lt in the header that assigns discr_local: _discr = Lt(_counter_copy, _bound)
+    let lt_result = find_lt_locals_in_stmts(&header_data.statements, discr_local);
+    println!("[LOOP-DETECT] find_lt_locals discr={:?} result={:?}", discr_local, lt_result);
+    let (counter_local, bound_local) = lt_result?;
+
+    // Collect body blocks in topological (execution) order
+    let body_bbs = collect_body_blocks_ordered(mir, body_entry_bb, header_bb);
+    println!("[LOOP-DETECT] body_bbs={:?} back_edge_in_body={}", body_bbs, body_bbs.contains(&back_edge_bb));
+    if !body_bbs.contains(&back_edge_bb) {
+        return None;
+    }
+
+    // Find the induction local (_51): extracted from Option::Some via downcast projection
+    let induction_result = find_induction_local_in_bbs(mir, &body_bbs);
+    println!("[LOOP-DETECT] induction_local={:?}", induction_result);
+    let induction_local = induction_result?;
+
+    // Find loop-carried locals (used before assigned in topological order)
+    let iter_carry_locals = find_iter_carry_locals(mir, &body_bbs);
+    println!("[LOOP-DETECT] iter_carry_locals={:?}", iter_carry_locals);
+
+    Some(RangeLoopInfo {
+        header_bb,
+        body_entry_bb,
+        body_bbs,
+        back_edge_bb,
+        exit_bb,
+        counter_local,
+        bound_local,
+        induction_local,
+        iter_carry_locals,
+    })
+}
+
+/// Find the Lt statement that assigns `discr_local` and extract (counter_local, bound_local).
+fn find_lt_locals_in_stmts<'tcx>(
+    stmts: &[Statement<'tcx>],
+    discr_local: Local,
+) -> Option<(Local, Local)> {
+    for stmt in stmts {
+        if let StatementKind::Assign(assign) = &stmt.kind {
+            let (dest, rvalue) = assign.as_ref();
+            if dest.local == discr_local && dest.projection.is_empty() {
+                if let Rvalue::BinaryOp(BinOp::Lt, operands) = rvalue {
+                    let (lhs, rhs) = operands.as_ref();
+                    let counter_copy = match lhs {
+                        Operand::Move(p) | Operand::Copy(p) if p.projection.is_empty() => p.local,
+                        _ => return None,
+                    };
+                    let bound_local = match rhs {
+                        Operand::Move(p) | Operand::Copy(p) if p.projection.is_empty() => p.local,
+                        _ => return None,
+                    };
+                    // Resolve the counter_copy (might be a copy of the real counter)
+                    let counter_local = find_copy_source_in_stmts(stmts, counter_copy)
+                        .unwrap_or(counter_copy);
+                    return Some((counter_local, bound_local));
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Find the source local if `local` is assigned `copy src` in the statements.
+fn find_copy_source_in_stmts<'tcx>(stmts: &[Statement<'tcx>], local: Local) -> Option<Local> {
+    for stmt in stmts.iter().rev() {
+        if let StatementKind::Assign(assign) = &stmt.kind {
+            let (dest, rvalue) = assign.as_ref();
+            if dest.local == local && dest.projection.is_empty() {
+                if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {
+                    if src.projection.is_empty() {
+                        return Some(src.local);
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Collect body blocks in execution order (from body_entry_bb, stopping before header_bb).
+fn collect_body_blocks_ordered<'tcx>(
+    mir: &Body<'tcx>,
+    body_entry_bb: BasicBlock,
+    header_bb: BasicBlock,
+) -> Vec<BasicBlock> {
+    use rustc_middle::mir::TerminatorKind;
+
+    let mut result = Vec::new();
+    let mut visited = HashSet::new();
+    let mut queue = vec![body_entry_bb];
+
+    while let Some(bb) = queue.first().copied() {
+        queue.remove(0);
+        if visited.contains(&bb) || bb == header_bb {
+            continue;
+        }
+        visited.insert(bb);
+        result.push(bb);
+
+        let bb_data = &mir.basic_blocks[bb];
+        match &bb_data.terminator().kind {
+            TerminatorKind::Goto { target } if *target != header_bb => {
+                queue.push(*target);
+            }
+            TerminatorKind::Call { target: Some(target), .. } if *target != header_bb => {
+                queue.push(*target);
+            }
+            _ => {}
+        }
+    }
+    result
+}
+
+/// Find the induction local: a local assigned via a downcast+field projection on an Option local.
+fn find_induction_local_in_bbs<'tcx>(
+    mir: &Body<'tcx>,
+    body_bbs: &[BasicBlock],
+) -> Option<Local> {
+    for &bb in body_bbs {
+        for stmt in &mir.basic_blocks[bb].statements {
+            if let StatementKind::Assign(assign) = &stmt.kind {
+                let (dest, rvalue) = assign.as_ref();
+                if dest.projection.is_empty() {
+                    if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {
+                        // Downcast+field projection = Option::Some unwrap
+                        let has_downcast = src.projection.iter().any(|p| {
+                            matches!(p, ProjectionElem::Downcast(_, _))
+                        });
+                        if has_downcast {
+                            return Some(dest.local);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Find loop-carried locals: call-destination locals that are used before their first assignment
+/// in the topological order of the body blocks.
+fn find_iter_carry_locals<'tcx>(mir: &Body<'tcx>, body_bbs: &[BasicBlock]) -> Vec<Local> {
+    use rustc_middle::mir::TerminatorKind;
+
+    // All locals assigned by calls in the body
+    let mut call_assigned: Vec<Local> = Vec::new();
+    for &bb in body_bbs {
+        if let TerminatorKind::Call { destination, .. } =
+            &mir.basic_blocks[bb].terminator().kind
+        {
+            call_assigned.push(destination.local);
+        }
+    }
+
+    let mut iter_carry = Vec::new();
+
+    for candidate in call_assigned {
+        let mut assigned = false;
+        let mut use_before_assign = false;
+
+        'scan: for &bb in body_bbs {
+            let bb_data = &mir.basic_blocks[bb];
+            for stmt in &bb_data.statements {
+                if !assigned && local_used_in_stmt(stmt, candidate) {
+                    use_before_assign = true;
+                    break 'scan;
+                }
+                if local_assigned_in_stmt(stmt, candidate) {
+                    assigned = true;
+                }
+            }
+            // Check terminator args (use before call assignment)
+            if !assigned {
+                if let TerminatorKind::Call { args, .. } = &bb_data.terminator().kind {
+                    if args.iter().any(|a| operand_uses_local(&a.node, candidate)) {
+                        use_before_assign = true;
+                        break 'scan;
+                    }
+                }
+            }
+            // Call destination counts as assignment
+            if let TerminatorKind::Call { destination, .. } = &bb_data.terminator().kind {
+                if destination.local == candidate {
+                    assigned = true;
+                }
+            }
+        }
+
+        if use_before_assign {
+            iter_carry.push(candidate);
+        }
+    }
+    iter_carry
+}
+
+fn local_used_in_stmt(stmt: &Statement<'_>, local: Local) -> bool {
+    match &stmt.kind {
+        StatementKind::Assign(assign) => {
+            let (_, rvalue) = assign.as_ref();
+            rvalue_uses_local(rvalue, local)
+        }
+        _ => false,
+    }
+}
+
+fn local_assigned_in_stmt(stmt: &Statement<'_>, local: Local) -> bool {
+    match &stmt.kind {
+        StatementKind::Assign(assign) => {
+            let (dest, _) = assign.as_ref();
+            dest.local == local && dest.projection.is_empty()
+        }
+        _ => false,
+    }
+}
+
+fn rvalue_uses_local(rvalue: &Rvalue<'_>, local: Local) -> bool {
+    match rvalue {
+        Rvalue::Use(op) | Rvalue::Repeat(op, _) => operand_uses_local(op, local),
+        Rvalue::Cast(_, op, _) => operand_uses_local(op, local),
+        Rvalue::BinaryOp(_, operands) => {
+            let (l, r) = operands.as_ref();
+            operand_uses_local(l, local) || operand_uses_local(r, local)
+        }
+        Rvalue::UnaryOp(_, op) => operand_uses_local(op, local),
+        Rvalue::Aggregate(_, fields) => fields.iter().any(|f| operand_uses_local(f, local)),
+        Rvalue::Ref(_, _, place) | Rvalue::RawPtr(_, place) => place.local == local,
+        _ => false,
+    }
+}
+
+fn operand_uses_local(op: &Operand<'_>, local: Local) -> bool {
+    match op {
+        Operand::Copy(p) | Operand::Move(p) => p.local == local,
+        Operand::Constant(_) | Operand::RuntimeChecks(_) => false,
     }
 }
 
@@ -296,6 +846,149 @@ impl<'a> TritonCodegen<'a> {
         Ok(result.into())
     }
 
+    /// Generate a `scf.for` loop for a detected Range-based loop, emitting the op into
+    /// `init_mlir_block`. After the loop, control branches to `loop_info.exit_bb`.
+    #[allow(clippy::too_many_arguments)]
+    fn codegen_scf_for_loop<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        instance: &Instance<'tcx>,
+        mir: &Body<'tcx>,
+        loop_info: &RangeLoopInfo,
+        init_mlir_block: &BlockRef<'a, 'a>,
+        func_op: &Operation<'a>,
+        state: &mut CodegenState<'a, 'a>,
+        outer_basic_blocks: &HashMap<BasicBlock, BlockRef<'a, 'a>>,
+        location: Location<'a>,
+    ) -> Result<(), MlirError> {
+        let ctx = self.module.context();
+        let i32_ty: melior::ir::Type<'_> = IntegerType::new(ctx, 32).into();
+
+        // Emit lb = 0 and step = 1
+        let lb_op: Operation<'a> =
+            melior::dialect::arith::constant(ctx, IntegerAttribute::new(i32_ty, 0).into(), location)
+                .into();
+        let lb: Value<'a, 'a> = lb_op.result(0).unwrap().into();
+        init_mlir_block.append_operation(lb_op);
+
+        let step_op: Operation<'a> =
+            melior::dialect::arith::constant(ctx, IntegerAttribute::new(i32_ty, 1).into(), location)
+                .into();
+        let step: Value<'a, 'a> = step_op.result(0).unwrap().into();
+        init_mlir_block.append_operation(step_op);
+
+        // Upper bound (k_tiles)
+        let ub = *state.ssa_values.get(&loop_info.bound_local).unwrap_or_else(|| {
+            panic!("scf.for: bound local {:?} not in ssa_values", loop_info.bound_local)
+        });
+
+        // Iter-arg initial values and types
+        let iter_arg_inits: Vec<Value<'a, 'a>> = loop_info
+            .iter_carry_locals
+            .iter()
+            .map(|local| {
+                *state.ssa_values.get(local).unwrap_or_else(|| {
+                    panic!("scf.for: iter-carry local {:?} not in ssa_values", local)
+                })
+            })
+            .collect();
+        let iter_arg_types: Vec<melior::ir::Type<'a>> =
+            iter_arg_inits.iter().map(|v| v.r#type()).collect();
+
+        // Build the scf.for op with an empty body region; we fill the region afterwards.
+        let for_op: Operation<'a> = OperationBuilder::new("scf.for", location)
+            .add_operands(&[lb, ub, step])
+            .add_operands(&iter_arg_inits)
+            .add_results(&iter_arg_types)
+            .add_regions([Region::new()])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+
+        // Create a SINGLE body block for the entire scf.for body.
+        // scf.for requires the body region to have exactly one block.
+        let body_region = for_op.region(0).expect("scf.for must have a body region");
+
+        // Build a combined block map: outer + loop body blocks.
+        let mut combined_blocks: HashMap<BasicBlock, BlockRef<'a, 'a>> =
+            outer_basic_blocks.clone();
+
+        // The entry block gets: (induction_var: i32, iter_arg_0: T0, ...)
+        let mut entry_block_args: Vec<(melior::ir::Type<'a>, Location<'a>)> =
+            vec![(i32_ty, location)];
+        for &ty in &iter_arg_types {
+            entry_block_args.push((ty, location));
+        }
+
+        // One single block; all body MIR blocks map to it.
+        let body_block = Block::new(&entry_block_args);
+        let body_block_ref = body_region.append_block(body_block);
+        for &body_bb in &loop_info.body_bbs {
+            combined_blocks.insert(body_bb, body_block_ref);
+        }
+
+        // Map induction variable and iter-carry locals to body entry block arguments.
+        {
+            let entry_block_ref = *combined_blocks.get(&loop_info.body_entry_bb).unwrap();
+            let iv: Value<'a, 'a> = entry_block_ref.argument(0).unwrap().into();
+            // Both the "k" local and the counter local map to the scf.for IV.
+            state.ssa_values.insert(loop_info.induction_local, iv);
+            state.ssa_values.insert(loop_info.counter_local, iv);
+            for (i, &local) in loop_info.iter_carry_locals.iter().enumerate() {
+                let arg: Value<'a, 'a> = entry_block_ref.argument(i + 1).unwrap().into();
+                state.ssa_values.insert(local, arg);
+            }
+        }
+
+        // Set loop context so codegen_goto emits scf.yield at the back edge
+        // and skips cf.br between body blocks (which share a single MLIR block).
+        state.loop_header_bb = Some(loop_info.header_bb);
+        state.loop_iter_carry_locals = loop_info.iter_carry_locals.clone();
+        state.loop_body_bbs = loop_info.body_bbs.iter().copied().collect();
+
+        // Process each body block in execution order.
+        for &body_bb in &loop_info.body_bbs {
+            let bb_data = &mir.basic_blocks[body_bb];
+            self.codegen_basic_block(
+                tcx,
+                instance,
+                mir,
+                body_bb,
+                bb_data,
+                func_op,
+                state,
+                &combined_blocks,
+            )?;
+        }
+
+        // Clear loop context.
+        state.loop_header_bb = None;
+        state.loop_iter_carry_locals.clear();
+        state.loop_body_bbs.clear();
+
+        // Collect scf.for results before moving the op.
+        let for_results: Vec<Value<'a, 'a>> = (0..loop_info.iter_carry_locals.len())
+            .map(|i| for_op.result(i).unwrap().into())
+            .collect();
+
+        // Append the scf.for to the init block.
+        init_mlir_block.append_operation(for_op.into());
+
+        // Map results back to iter-carry locals (post-loop values).
+        for (i, &local) in loop_info.iter_carry_locals.iter().enumerate() {
+            state.ssa_values.insert(local, for_results[i]);
+        }
+
+        // Branch to the exit block.
+        let exit_block = *outer_basic_blocks.get(&loop_info.exit_bb).unwrap_or_else(|| {
+            panic!("scf.for: exit block {:?} not in basic_blocks", loop_info.exit_bb)
+        });
+        let br_op = rustc_mlir::shared::cf::create_cf_br(ctx, location, &exit_block)
+            .map_err(|e| MlirError::CreateOperation { err: e })?;
+        init_mlir_block.append_operation(br_op.into());
+
+        Ok(())
+    }
+
     fn codegen_function<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -416,7 +1109,66 @@ impl<'a> TritonCodegen<'a> {
             println!("[DEBUG] TritonCodegen::codegen_function: mir: {:?}", mir);
         }
 
+        // Pre-scan for statically-known discriminant values (e.g. Option locals set to None
+        // by const generics).  Used to constant-fold SwitchInt and prune dead blocks.
+        let const_disc_locals = compute_const_disc_locals(tcx, instance, mir);
+        state.const_disc_locals = const_disc_locals.clone();
+
+        // BFS reachability analysis: only reachable blocks get MLIR blocks.
+        let reachable_bbs = compute_reachable_blocks(tcx, instance, mir, &const_disc_locals);
+        println!(
+            "[DEBUG] TritonCodegen: reachable_bbs: {:?} (total MIR blocks: {})",
+            reachable_bbs,
+            mir.basic_blocks.len()
+        );
+
+        // Detect Range-based `for` loops. Loop body blocks live in the scf.for region, not
+        // in the function region, so we skip creating MLIR blocks for them here.
+        let loop_info = detect_range_loop(mir);
+
+        // The set of MIR blocks that belong to the scf.for region (header + all body blocks).
+        let loop_region_blocks: HashSet<BasicBlock> = loop_info
+            .as_ref()
+            .map(|l| {
+                let mut s = HashSet::new();
+                s.insert(l.header_bb);
+                for &b in &l.body_bbs {
+                    s.insert(b);
+                }
+                s
+            })
+            .unwrap_or_default();
+
+        // The "init block" ends with `goto → header_bb`; we intercept it to emit scf.for.
+        let loop_init_bb: Option<BasicBlock> = loop_info.as_ref().and_then(|l| {
+            mir.basic_blocks.indices().find(|&bb| {
+                if loop_region_blocks.contains(&bb) {
+                    return false;
+                }
+                if bb >= l.header_bb {
+                    return false;
+                }
+                matches!(
+                    &mir.basic_blocks[bb].terminator().kind,
+                    rustc_middle::mir::TerminatorKind::Goto { target } if *target == l.header_bb
+                )
+            })
+        });
+
+        println!(
+            "[DEBUG] TritonCodegen: loop_info: {:?}, loop_init_bb: {:?}",
+            loop_info, loop_init_bb
+        );
+
+        // Create MLIR blocks for all non-loop-region, reachable MIR blocks.
         for (bb, _) in mir.basic_blocks.iter_enumerated() {
+            if loop_region_blocks.contains(&bb) {
+                continue; // Loop body blocks are created inside the scf.for region.
+            }
+            if !reachable_bbs.contains(&bb) {
+                continue; // Dead code: skip block creation to avoid dominance violations.
+            }
+
             let block = Block::new(&[]);
             if bb.index() == 0 {
                 // Add non-Option function arguments as block arguments to the entry block.
@@ -439,7 +1191,42 @@ impl<'a> TritonCodegen<'a> {
             basic_blocks.insert(bb, block_ref);
         }
 
+        // Process all non-loop-region, reachable MIR blocks.
         for (bb, bb_data) in mir.basic_blocks.iter_enumerated() {
+            if loop_region_blocks.contains(&bb) {
+                continue; // Handled inside codegen_scf_for_loop.
+            }
+            if !reachable_bbs.contains(&bb) {
+                continue; // Dead code: skip processing to avoid overwriting ssa_values.
+            }
+
+            if Some(bb) == loop_init_bb {
+                // Process init-block statements only, then build the scf.for in-place.
+                let init_mlir_block = *basic_blocks.get(&bb).expect("init block");
+                for stmt in &bb_data.statements {
+                    self.codegen_statement(
+                        tcx,
+                        instance,
+                        mir,
+                        stmt,
+                        &init_mlir_block,
+                        &mut state,
+                    )?;
+                }
+                self.codegen_scf_for_loop(
+                    tcx,
+                    instance,
+                    mir,
+                    loop_info.as_ref().unwrap(),
+                    &init_mlir_block,
+                    &func_op,
+                    &mut state,
+                    &basic_blocks,
+                    location,
+                )?;
+                continue;
+            }
+
             self.codegen_basic_block(
                 tcx,
                 instance,
@@ -654,6 +1441,31 @@ impl<'a> TritonCodegen<'a> {
                             state.slice_shape.insert(place.local, shape);
                             // Fall through to codegen_cast to emit the i64 placeholder value.
                         }
+                    } else if let Operand::Copy(p) | Operand::Move(p) = operand {
+                        println!(
+                            "[DEBUG-UNSIZE] PointerCoercion dynamic: place={:?} p.local={:?} proj_empty={} ptr_to_dyn={:?} ptr_to_const={:?}",
+                            place.local, p.local, p.projection.is_empty(),
+                            state.ptr_to_dyn_array.get(&p.local),
+                            state.ptr_to_const_array.get(&p.local),
+                        );
+                        if p.projection.is_empty() {
+                            // Dynamic pointer (from a dyn_array via Ref) → slice_dyn_values.
+                            if let Some(&arr_local) = state.ptr_to_dyn_array.get(&p.local) {
+                                if let Some(vals) = state.dyn_arrays.get(&arr_local).cloned() {
+                                    println!("[DEBUG-UNSIZE] inserting slice_dyn_values[{:?}] = {} vals", place.local, vals.len());
+                                    state.slice_dyn_values.insert(place.local, vals);
+                                } else {
+                                    println!("[DEBUG-UNSIZE] arr_local={:?} NOT in dyn_arrays", arr_local);
+                                }
+                            }
+                            // Static pointer (from a const_array via Ref) → slice_shape.
+                            if let Some(&arr_local) = state.ptr_to_const_array.get(&p.local) {
+                                if let Some(shape) = state.const_arrays.get(&arr_local).cloned() {
+                                    println!("[DEBUG-UNSIZE] inserting slice_shape[{:?}] = {:?}", place.local, shape);
+                                    state.slice_shape.insert(place.local, shape);
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -773,7 +1585,9 @@ impl<'a> TritonCodegen<'a> {
                             }
                         })
                         .collect();
-                    state.dyn_arrays.insert(place.local, dyn_elems?);
+                    let dyn_elems = dyn_elems?;
+                    println!("[DEBUG-ARR] dyn_arrays[{:?}] = {} elems", place.local, dyn_elems.len());
+                    state.dyn_arrays.insert(place.local, dyn_elems);
                     return Ok(());
                 }
 
@@ -844,10 +1658,12 @@ impl<'a> TritonCodegen<'a> {
                 // downstream slice-coercion and `make_tensor_descriptor` can recover the values.
                 if src_place.projection.is_empty() {
                     if state.const_arrays.contains_key(&src_place.local) {
+                        println!("[DEBUG-REF] ptr_to_const_array[{:?}] = {:?}", place.local, src_place.local);
                         state.ptr_to_const_array.insert(place.local, src_place.local);
                         return Ok(());
                     }
                     if state.dyn_arrays.contains_key(&src_place.local) {
+                        println!("[DEBUG-REF] ptr_to_dyn_array[{:?}] = {:?}", place.local, src_place.local);
                         state.ptr_to_dyn_array.insert(place.local, src_place.local);
                         return Ok(());
                     }
@@ -1481,6 +2297,20 @@ impl<'a> TritonCodegen<'a> {
             "[DEBUG] TritonCodegen::codegen_copy: Local: {:?}, projection: {:?}, ssa_values: {:?}",
             place.local, place.projection, state.ssa_values
         );
+
+        // Handle Option downcast+field projection: `(_opt as Some).0` — extract the inner value.
+        if let [ProjectionElem::Downcast(_, _), ProjectionElem::Field(_, _)]
+        | [ProjectionElem::Field(_, _)] = place.projection.as_slice()
+        {
+            if let Some(opt_val) = state.option_table.get(&place.local) {
+                return Ok(opt_val.unwrap_or_else(|| {
+                    panic!(
+                        "Accessing field of None Option local {:?}",
+                        place.local
+                    )
+                }));
+            }
+        }
 
         debug_assert!(
             !state.option_table.contains_key(&place.local),

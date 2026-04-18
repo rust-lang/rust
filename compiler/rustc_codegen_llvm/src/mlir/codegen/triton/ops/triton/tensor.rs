@@ -18,9 +18,11 @@ use melior::ir::attribute::FloatAttribute;
 use melior::ir::operation::{OperationBuilder, OperationLike};
 use melior::ir::r#type::RankedTensorType;
 use melior::ir::{Block, BlockLike, BlockRef, Location, Operation, Region, RegionLike, ShapedTypeLike, TypeLike, Value, ValueLike};
+use rustc_ast::{FloatTy, IntTy};
 use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, UnwindAction};
 use rustc_middle::ty::{EarlyBinder, Instance, TyCtxt, TyKind, TypingEnv};
-use rustc_mlir::shared::arith::{Int, create_int_constant};
+use melior::ir::r#type::IntegerType;
+use rustc_mlir::shared::arith::{Int, create_extsi, create_int_constant};
 use rustc_mlir::shared::builtin::tensor_type;
 use rustc_mlir::shared::ub::create_ub_poison;
 use rustc_mlir::triton::tensor::{
@@ -729,6 +731,28 @@ impl<'a> TritonCodegen<'a> {
             }
             other => Err(MlirError::CodegenFailed {
                 err: format!("{ctx}: unexpected operand for shape arg: {other:?}"),
+            }),
+        }
+    }
+
+    /// Like `shape_from_slice_arg` but returns `Vec<i32>`, checking both `slice_shape` and
+    /// `const_arrays` (the block_shape arg to `make_tensor_descriptor` is `&[i32]`).
+    fn shape_from_slice_arg_i32<'tcx>(
+        &self,
+        arg: &Operand<'tcx>,
+        state: &CodegenState<'a, 'a>,
+    ) -> Result<Vec<i32>, MlirError> {
+        match arg {
+            Operand::Copy(p) | Operand::Move(p) => {
+                if let Some(shape) = state.slice_shape.get(&p.local) {
+                    return Ok(shape.iter().map(|&v| v as i32).collect());
+                }
+                Err(MlirError::CodegenFailed {
+                    err: format!("shape_from_slice_arg_i32: slice_shape not found for {:?}", p.local),
+                })
+            }
+            other => Err(MlirError::CodegenFailed {
+                err: format!("shape_from_slice_arg_i32: unexpected operand: {other:?}"),
             }),
         }
     }
@@ -1757,11 +1781,16 @@ impl<'a> TritonCodegen<'a> {
                 err: "slice arg is not a place".into(),
             }),
         };
+        // Dynamic values (runtime SSA): return them directly.
+        if let Some(vals) = state.slice_dyn_values.get(&local) {
+            return Ok(vals.clone());
+        }
+        // Static shape: create i64 constants.
         let vals = state
             .slice_shape
             .get(&local)
             .ok_or_else(|| MlirError::CodegenFailed {
-                err: format!("slice_shape not found for {:?}", local),
+                err: format!("slice_shape/slice_dyn_values not found for {:?}", local),
             })?
             .clone();
         let mut out = Vec::with_capacity(vals.len());
@@ -1792,11 +1821,16 @@ impl<'a> TritonCodegen<'a> {
                 err: "slice arg is not a place".into(),
             }),
         };
+        // Dynamic values (runtime SSA): return them directly.
+        if let Some(vals) = state.slice_dyn_values.get(&local) {
+            return Ok(vals.clone());
+        }
+        // Static shape: create i32 constants.
         let vals = state
             .slice_shape
             .get(&local)
             .ok_or_else(|| MlirError::CodegenFailed {
-                err: format!("slice_shape not found for {:?}", local),
+                err: format!("slice_shape/slice_dyn_values not found for {:?}", local),
             })?
             .clone();
         let mut out = Vec::with_capacity(vals.len());
@@ -1962,24 +1996,92 @@ impl<'a> TritonCodegen<'a> {
         mlir_block: &BlockRef<'a, 'a>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
-        // args: [base_ptr, &[shape_i64], &[strides_i64], padding]
+        // args: [base_ptr, &[shape_i64], &[strides_i64], &[block_shape_i32], padding]
+        // Extract and record the block shape FIRST (before any early returns) so that
+        // even if shape/strides are dynamic and we fall back to ub.poison for the descriptor,
+        // we still know the block shape for subsequent descriptor_load calls.
+        if let Some(block_shape_arg) = args.get(3) {
+            println!("[DEBUG-DESC] make_tensor_descriptor: args[3]={:?}", block_shape_arg.node);
+            match self.shape_from_slice_arg_i32(&block_shape_arg.node, state) {
+                Ok(block_shape) => {
+                    let block_shape_i64: Vec<i64> = block_shape.iter().map(|&v| v as i64).collect();
+                    println!("[DEBUG-DESC] make_tensor_descriptor: dest={:?} block_shape={:?}", destination.local, block_shape_i64);
+                    state.desc_block_shapes.insert(destination.local, block_shape_i64);
+                }
+                Err(e) => {
+                    println!("[DEBUG-DESC] make_tensor_descriptor: block_shape FAILED: {:?}", e);
+                    if let Operand::Copy(p) | Operand::Move(p) = &block_shape_arg.node {
+                        println!("[DEBUG-DESC] local={:?} slice_shape={:?} const_arrays={:?}",
+                            p.local,
+                            state.slice_shape.get(&p.local),
+                            state.const_arrays.get(&p.local));
+                    }
+                }
+            }
+        } else {
+            println!("[DEBUG-DESC] make_tensor_descriptor: no args[3] (only {} args)", args.len());
+        }
+
         let base = self.codegen_operand(
             tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
         )?;
-        let shape = match self.slice_as_i64_values(&args[1].node, location, mlir_block, state) {
+        // shape: Variadic<I32> — use i32 values directly.
+        let shape = match self.slice_as_i32_values(&args[1].node, location, mlir_block, state) {
             Ok(v) => v,
             Err(_) => return self.codegen_ub_stub(tcx, instance, mir, destination, location, mlir_block),
         };
-        let strides = match self.slice_as_i64_values(&args[2].node, location, mlir_block, state) {
+        // strides: Variadic<I64> — get i32 values and sign-extend to i64.
+        let strides_i32 = match self.slice_as_i32_values(&args[2].node, location, mlir_block, state) {
             Ok(v) => v,
             Err(_) => return self.codegen_ub_stub(tcx, instance, mir, destination, location, mlir_block),
         };
+        let i64_ty: melior::ir::Type<'_> = IntegerType::new(self.module.context(), 64).into();
+        let strides: Vec<Value<'a, 'a>> = strides_i32
+            .into_iter()
+            .map(|v| {
+                let ext_op: Operation<'a> = create_extsi(self.module.context(), location, v, i64_ty)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+                    .into();
+                let r = ext_op.result(0).unwrap().into();
+                mlir_block.append_operation(ext_op);
+                Ok(r)
+            })
+            .collect::<Result<Vec<_>, MlirError>>()?;
 
-        let dest_ty = destination.ty(mir, tcx).ty;
-        let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
-            tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(dest_ty),
-        );
-        let result_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
+        // Build the correct !tt.tensordesc<tensor<BM x BN x T>> result type.
+        // Use the block shape stored during this call (desc_block_shapes was set above).
+        let result_ty = if let Some(block_shape) = state.desc_block_shapes.get(&destination.local) {
+            // Extract element type from the Rust generic type T in LlvmPointer<T>.
+            let dest_ty = destination.ty(mir, tcx).ty;
+            let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(dest_ty),
+            );
+            // Determine the scalar element type (e.g. f32).
+            let elem_ty_str = match dest_ty.kind() {
+                TyKind::Adt(_, args) if !args.is_empty() => {
+                    match args[0].expect_ty().kind() {
+                        TyKind::Float(FloatTy::F32) => "f32",
+                        TyKind::Float(FloatTy::F64) => "f64",
+                        TyKind::Int(IntTy::I32) => "i32",
+                        TyKind::Int(IntTy::I64) => "i64",
+                        _ => "f32",
+                    }
+                }
+                _ => "f32",
+            };
+            let shape_str: String = block_shape.iter().map(|d| d.to_string()).collect::<Vec<_>>().join("x");
+            let type_str = format!("!tt.tensordesc<tensor<{}x{}>>", shape_str, elem_ty_str);
+            println!("[DEBUG-DESC] make_tensor_descriptor: result_ty={}", type_str);
+            melior::ir::Type::parse(self.module.context(), &type_str)
+                .expect("valid tensordesc type")
+        } else {
+            // Fallback: type mapper (returns !tt.ptr<T>, will likely fail MLIR verification).
+            let dest_ty = destination.ty(mir, tcx).ty;
+            let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(dest_ty),
+            );
+            self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty)
+        };
 
         use rustc_mlir::triton::tensor::PaddingOption;
         let op: Operation<'a> = make_tensor_descriptor(
@@ -2011,18 +2113,61 @@ impl<'a> TritonCodegen<'a> {
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
         // args: [desc, &[indices_i32]]
+        {
+            use rustc_middle::mir::Local;
+            let local = match &args[1].node {
+                Operand::Move(p) | Operand::Copy(p) => p.local,
+                _ => Local::from_usize(0),
+            };
+            println!(
+                "[DEBUG-LOAD] load_tensor_descriptor: args[1]={:?} local={:?} slice_dyn={:?} slice_shape={:?}",
+                args[1].node, local,
+                state.slice_dyn_values.get(&local).map(|v| v.len()),
+                state.slice_shape.get(&local),
+            );
+        }
+        // Get the descriptor local so we can look up its block shape.
+        let desc_local = match &args[0].node {
+            Operand::Move(p) | Operand::Copy(p) if p.projection.is_empty() => Some(p.local),
+            _ => None,
+        };
         let desc = self.codegen_operand(
             tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
         )?;
         let indices = match self.slice_as_i32_values(&args[1].node, location, mlir_block, state) {
             Ok(v) => v,
-            Err(_) => return self.codegen_ub_stub(tcx, instance, mir, destination, location, mlir_block),
+            Err(e) => {
+                println!("[DEBUG-LOAD] slice_as_i32_values FAILED: {:?}", e);
+                return self.codegen_ub_stub(tcx, instance, mir, destination, location, mlir_block);
+            }
         };
         let dest_ty = destination.ty(mir, tcx).ty;
         let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
             tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(dest_ty),
         );
-        let result_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
+
+        // Use the descriptor's block shape (set at make_tensor_descriptor time) for the result
+        // type. This gives us a statically-shaped tensor (e.g. tensor<32x32xf32>) instead of
+        // the dynamically-shaped tensor<?xf32> that the type_mapper would infer from LlvmTensor<T>.
+        let result_ty = if let Some(local) = desc_local {
+            if let Some(block_shape) = state.desc_block_shapes.get(&local) {
+                let elem_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
+                // elem_ty is the mapped type of LlvmTensor<T>, which is tensor<?xT>.
+                // Extract the element type from it (f32, i32, etc.) or use dest_ty element type.
+                let scalar_ty = if let Ok(tt) = RankedTensorType::try_from(elem_ty) {
+                    tt.element()
+                } else {
+                    elem_ty
+                };
+                let bs: Vec<i64> = block_shape.clone();
+                println!("[DEBUG-LOAD] using block_shape={:?} for descriptor_load result type", bs);
+                tensor_type(&bs, scalar_ty).into()
+            } else {
+                self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty)
+            }
+        } else {
+            self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty)
+        };
 
         let op: Operation<'a> = descriptor_load(
             self.module.context(), location, desc, &indices, result_ty,
@@ -2052,17 +2197,17 @@ impl<'a> TritonCodegen<'a> {
         mlir_block: &BlockRef<'a, 'a>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
-        // args: [desc, src_tensor, &[indices_i32]]
+        // args: [desc, &[offsets_i32], src_tensor]
         let desc = self.codegen_operand(
             tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
         )?;
-        let src = self.codegen_operand(
-            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
-        )?;
-        let indices = match self.slice_as_i32_values(&args[2].node, location, mlir_block, state) {
+        let indices = match self.slice_as_i32_values(&args[1].node, location, mlir_block, state) {
             Ok(v) => v,
             Err(_) => return Ok(None),
         };
+        let src = self.codegen_operand(
+            tcx, instance, &args[2].node, args[2].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
 
         let op: Operation<'a> = descriptor_store(self.module.context(), location, desc, src, &indices)
             .map_err(|e| MlirError::CreateOperation { err: e })?

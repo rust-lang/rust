@@ -16,6 +16,7 @@
 
 use std::collections::HashMap;
 
+use melior::dialect::scf;
 use melior::ir::attribute::IntegerAttribute;
 use melior::ir::operation::OperationLike;
 use melior::ir::r#type::{IntegerType, TupleType};
@@ -76,7 +77,7 @@ impl<'a> TritonCodegen<'a> {
                 self.codegen_return(location, terminator, mlir_block, state)
             }
             rustc_middle::mir::TerminatorKind::Goto { target } => {
-                self.codegen_goto(location, target, mlir_block, basic_blocks)
+                self.codegen_goto(location, target, mlir_block, basic_blocks, state)
             }
             rustc_middle::mir::TerminatorKind::SwitchInt { discr, targets } => {
                 self.codegen_switch_int(tcx, instance, mir, discr, targets, location, mlir_block, basic_blocks, state)
@@ -88,7 +89,7 @@ impl<'a> TritonCodegen<'a> {
             rustc_middle::mir::TerminatorKind::Unreachable => todo!("Unreachable"),
             rustc_middle::mir::TerminatorKind::Drop { target, .. } => {
                 // All kernel types are Copy with no destructors; treat as goto target.
-                self.codegen_goto(location, target, mlir_block, basic_blocks)
+                self.codegen_goto(location, target, mlir_block, basic_blocks, state)
             }
             rustc_middle::mir::TerminatorKind::Call {
                 func,
@@ -124,7 +125,7 @@ impl<'a> TritonCodegen<'a> {
             rustc_middle::mir::TerminatorKind::Assert { target, .. } => {
                 // GPU kernels have no panic infrastructure — treat Assert as an unconditional
                 // branch to the success target (the assertion is assumed to hold).
-                self.codegen_goto(location, target, mlir_block, basic_blocks)
+                self.codegen_goto(location, target, mlir_block, basic_blocks, state)
             }
             rustc_middle::mir::TerminatorKind::Yield { .. } => todo!("Yield"),
             rustc_middle::mir::TerminatorKind::CoroutineDrop => todo!("CoroutineDrop"),
@@ -401,7 +402,7 @@ impl<'a> TritonCodegen<'a> {
         if let Some(value) = value {
             state.ssa_values.insert(destination.local, value);
         }
-        self.codegen_goto(location, &target.expect("target must be Some"), mlir_block, basic_blocks)?;
+        self.codegen_goto(location, &target.expect("target must be Some"), mlir_block, basic_blocks, state)?;
         Ok(())
     }
 
@@ -551,6 +552,22 @@ impl<'a> TritonCodegen<'a> {
         basic_blocks: &HashMap<BasicBlock, BlockRef>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<(), MlirError> {
+        // Constant-fold SwitchInt when the discriminant is statically known.
+        // This avoids emitting cf.cond_br referencing pruned dead MLIR blocks.
+        use crate::mlir::codegen::triton::extract_switch_const;
+        if let Some(const_val) = extract_switch_const(tcx, instance, discr, &state.const_disc_locals) {
+            let target = targets
+                .iter()
+                .find(|(val, _)| *val == const_val as u128)
+                .map(|(_, bb)| bb)
+                .unwrap_or_else(|| targets.otherwise());
+            println!(
+                "[DEBUG] codegen_switch_int: constant-folding discriminant (val={}) → {:?}",
+                const_val, target
+            );
+            return self.codegen_goto(location, &target, mlir_block, basic_blocks, state);
+        }
+
         let discr_ty = instance.instantiate_mir_and_normalize_erasing_regions(
             tcx,
             TypingEnv::fully_monomorphized(),
@@ -565,7 +582,7 @@ impl<'a> TritonCodegen<'a> {
         let cases: Vec<(u128, BasicBlock)> = targets.iter().collect();
 
         match cases.as_slice() {
-            [] => self.codegen_goto(location, &otherwise_bb, mlir_block, basic_blocks),
+            [] => self.codegen_goto(location, &otherwise_bb, mlir_block, basic_blocks, state),
             [(val, target_bb)] => {
                 // Emit: %const = arith.constant *val : T
                 //        %cmp  = arith.cmpi eq, %discr, %const : T
@@ -604,13 +621,36 @@ impl<'a> TritonCodegen<'a> {
         }
     }
 
-    fn codegen_goto(
+    pub(crate) fn codegen_goto(
         &self,
         location: Location<'a>,
         target: &BasicBlock,
         mlir_block: &BlockRef<'a, 'a>,
         basic_blocks: &HashMap<BasicBlock, BlockRef>,
+        state: &CodegenState<'a, 'a>,
     ) -> Result<(), MlirError> {
+        // Back-edge detection: emit scf.yield instead of cf.br when inside a loop body.
+        if let Some(header_bb) = state.loop_header_bb {
+            if *target == header_bb {
+                let yield_vals: Vec<Value<'a, 'a>> = state
+                    .loop_iter_carry_locals
+                    .iter()
+                    .map(|local| {
+                        *state.ssa_values.get(local).unwrap_or_else(|| {
+                            panic!("scf.yield: iter-carry local {:?} not in ssa_values", local)
+                        })
+                    })
+                    .collect();
+                let yield_op = scf::r#yield(&yield_vals, location);
+                mlir_block.append_operation(yield_op);
+                return Ok(());
+            }
+            // Within-body jump: all body BBs share a single MLIR block, so skip cf.br.
+            if state.loop_body_bbs.contains(target) {
+                return Ok(());
+            }
+        }
+
         let target_block = basic_blocks.get(target).unwrap();
         let br_op = create_cf_br(self.module.context(), location, target_block)
             .map_err(|e| MlirError::CreateOperation { err: e })?;
