@@ -4,7 +4,7 @@
 use std::mem;
 use std::sync::Arc;
 
-use rustc_ast::{self as ast, Crate, DUMMY_NODE_ID, DelegationSuffixes, NodeId};
+use rustc_ast::{self as ast, Crate, DelegationSuffixes, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
@@ -16,7 +16,6 @@ use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{
     AstFragment, AstFragmentKind, Invocation, InvocationKind, SupportsMacroExpansion,
 };
-use rustc_feature::Features;
 use rustc_hir::attrs::{AttributeKind, CfgEntry, StrippedCfgItem};
 use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
@@ -123,26 +122,18 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
 
 pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
     let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
-    registered_tools_ast(tcx.dcx(), pre_configured_attrs, tcx.sess, tcx.features())
+    registered_tools_ast(tcx.dcx(), pre_configured_attrs, tcx.sess)
 }
 
 pub fn registered_tools_ast(
     dcx: DiagCtxtHandle<'_>,
     pre_configured_attrs: &[ast::Attribute],
     sess: &Session,
-    features: &Features,
 ) -> RegisteredTools {
     let mut registered_tools = RegisteredTools::default();
 
     if let Some(Attribute::Parsed(AttributeKind::RegisterTool(tools, _))) =
-        AttributeParser::parse_limited(
-            sess,
-            pre_configured_attrs,
-            &[sym::register_tool],
-            DUMMY_SP,
-            DUMMY_NODE_ID,
-            Some(features),
-        )
+        AttributeParser::parse_limited(sess, pre_configured_attrs, &[sym::register_tool])
     {
         for tool in tools {
             if let Some(old_tool) = registered_tools.replace(tool) {
