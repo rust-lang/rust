@@ -81,7 +81,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
                 continue;
             }
 
-            // The feature is also removed, but a different error message is issued
+            // The old name is deprecated in favor of a new one, point the user at it
             if let Some(f) =
                 RENAMED_LANG_FEATURES.iter().find(|f| feature_ident.name == f.feature.name)
             {
