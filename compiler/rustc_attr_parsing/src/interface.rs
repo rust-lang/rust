@@ -3,7 +3,8 @@ use std::convert::identity;
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
 use rustc_ast::{AttrItemKind, AttrStyle, NodeId, Safety};
-use rustc_errors::{DiagCtxtHandle, MultiSpan};
+use rustc_data_structures::sync::{DynSend, DynSync};
+use rustc_errors::{Diag, DiagCtxtHandle, Level, MultiSpan};
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
@@ -18,6 +19,15 @@ use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
 use crate::{Early, Late, OmitDoc, ShouldEmit};
+
+pub enum EmitAttribute {
+    Static(AttributeLintKind),
+    Dynamic(
+        Box<
+            dyn for<'a> Fn(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + DynSync + 'static,
+        >,
+    ),
+}
 
 /// Context created once, for example as part of the ast lowering
 /// context, through which all attributes can be lowered.
@@ -119,7 +129,14 @@ impl<'sess> AttributeParser<'sess, Early> {
             target,
             OmitDoc::Skip,
             std::convert::identity,
-            |lint_id, span, kind| sess.psess.buffer_lint(lint_id.lint, span, target_node_id, kind),
+            |lint_id, span, kind| match kind {
+                EmitAttribute::Static(kind) => {
+                    sess.psess.buffer_lint(lint_id.lint, span, target_node_id, kind)
+                }
+                EmitAttribute::Dynamic(callback) => {
+                    sess.psess.dyn_buffer_lint(lint_id.lint, span, target_node_id, callback)
+                }
+            },
         )
     }
 
@@ -199,8 +216,13 @@ impl<'sess> AttributeParser<'sess, Early> {
             sess,
             stage: Early { emit_errors },
         };
-        let mut emit_lint = |lint_id: LintId, span: MultiSpan, kind: AttributeLintKind| {
-            sess.psess.buffer_lint(lint_id.lint, span, target_node_id, kind)
+        let mut emit_lint = |lint_id: LintId, span: MultiSpan, kind: EmitAttribute| match kind {
+            EmitAttribute::Static(kind) => {
+                sess.psess.buffer_lint(lint_id.lint, span, target_node_id, kind)
+            }
+            EmitAttribute::Dynamic(callback) => {
+                sess.psess.dyn_buffer_lint(lint_id.lint, span, target_node_id, callback)
+            }
         };
         if let Some(safety) = attr_safety {
             parser.check_attribute_safety(
@@ -209,7 +231,7 @@ impl<'sess> AttributeParser<'sess, Early> {
                 safety,
                 expected_safety,
                 &mut emit_lint,
-            )
+            );
         }
         let mut cx: AcceptContext<'_, 'sess, Early> = AcceptContext {
             shared: SharedContext {
@@ -266,7 +288,7 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
         target: Target,
         omit_doc: OmitDoc,
         lower_span: impl Copy + Fn(Span) -> Span,
-        mut emit_lint: impl FnMut(LintId, MultiSpan, AttributeLintKind),
+        mut emit_lint: impl FnMut(LintId, MultiSpan, EmitAttribute),
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
         // We store the attributes we intend to discard at the end of this function in order to

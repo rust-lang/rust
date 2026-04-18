@@ -654,11 +654,6 @@ pub enum DeprecatedSinceKind {
 
 #[derive(Debug)]
 pub enum AttributeLintKind {
-    UnusedDuplicate {
-        this: Span,
-        other: Span,
-        warning: bool,
-    },
     IllFormedAttributeInput {
         suggestions: Vec<String>,
         docs: Option<&'static str>,
@@ -681,10 +676,6 @@ pub enum AttributeLintKind {
         is_used_as_inner: bool,
         target: &'static str,
         target_span: Span,
-    },
-    UnsafeAttrOutsideUnsafe {
-        attribute_name_span: Span,
-        sugg_spans: Option<(Span, Span)>,
     },
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
