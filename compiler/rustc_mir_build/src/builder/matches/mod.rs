@@ -783,27 +783,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     fn pat_has_guard(&self, pat: &Pat<'tcx>) -> bool {
-        match &pat.kind {
-            PatKind::Guard { .. } => return true,
-            PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
-                return prefix.iter().any(|subpat| self.pat_has_guard(subpat))
-                    || slice.as_deref().is_some_and(|subpat| self.pat_has_guard(subpat))
-                    || suffix.iter().any(|subpat| self.pat_has_guard(subpat));
-            }
-            PatKind::Variant { subpatterns, .. } | PatKind::Leaf { subpatterns } => {
-                subpatterns.iter().any(|subpat| self.pat_has_guard(&subpat.pattern))
-            }
-            PatKind::Or { pats: subpatterns } => {
-                subpatterns.iter().any(|subpat| self.pat_has_guard(subpat))
-            }
-            PatKind::Binding { subpattern, .. } => {
-                return subpattern.as_deref().is_some_and(|subpat| self.pat_has_guard(subpat));
-            }
-            PatKind::Deref { subpattern, .. } | PatKind::DerefPattern { subpattern, .. } => {
-                return self.pat_has_guard(subpattern.as_ref());
-            }
-            _ => false,
-        }
+        let mut has_guard = false;
+        pat.walk(|pat| {
+            if matches!(pat.kind, PatKind::Guard { .. }) {
+                has_guard = true;
+            };
+            // If has_guard is true, we just stop walking other patterns
+            !has_guard
+        });
+        has_guard
     }
 
     /// Emits a [`StatementKind::StorageLive`] for the given var, and also
