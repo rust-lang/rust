@@ -49,7 +49,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcMustImplementOneOfParser {
 
         let mut errored = false;
         for argument in inputs {
-            let Some(meta) = argument.meta_item() else {
+            let Some(meta) = argument.meta_item_no_args() else {
                 cx.adcx().expected_identifier(argument.span());
                 return None;
             };
@@ -960,7 +960,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcIfThisChangedParser {
                     cx.adcx().expected_single_argument(attr_span, list.len());
                     return None;
                 };
-                let Some(ident) = item.meta_item().and_then(|item| item.ident()) else {
+                let Some(ident) = item.meta_item_no_args().and_then(|item| item.ident()) else {
                     cx.adcx().expected_identifier(item.span());
                     return None;
                 };
@@ -1018,7 +1018,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcThenThisWouldNeedParser {
             cx.emit_err(AttributeRequiresOpt { span: cx.attr_span, opt: "-Z query-dep-graph" });
         }
         let item = cx.single_element_list(args, cx.attr_span)?;
-        let Some(ident) = item.meta_item().and_then(|item| item.ident()) else {
+        let Some(ident) = item.meta_item_no_args().and_then(|item| item.ident()) else {
             cx.adcx().expected_identifier(item.span());
             return None;
         };

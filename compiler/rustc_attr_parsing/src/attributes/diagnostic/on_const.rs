@@ -16,6 +16,7 @@ impl<S: Stage> AttributeParser<S> for OnConstParser {
         |this, cx, args| {
             if !cx.features().diagnostic_on_const() {
                 // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
+                args.ignore_args();
                 return;
             }
 

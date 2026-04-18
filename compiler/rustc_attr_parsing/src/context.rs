@@ -467,6 +467,8 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
         kind: AttributeLintKind,
         span: M,
     ) {
+        #[cfg(debug_assertions)]
+        self.has_lint_been_emitted.store(true, std::sync::atomic::Ordering::Relaxed);
         if !matches!(
             self.stage.should_emit(),
             ShouldEmit::ErrorsAndLints { .. } | ShouldEmit::EarlyFatal { also_emit_lints: true }
@@ -570,6 +572,11 @@ pub struct SharedContext<'p, 'sess, S: Stage> {
     /// The second argument of the closure is a [`NodeId`] if `S` is `Early` and a [`HirId`] if `S`
     /// is `Late` and is the ID of the syntactical component this attribute was applied to.
     pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, AttributeLintKind),
+
+    /// This atomic bool keeps track of whether any lint has been emitted.
+    /// This is used for the arguments-used check.
+    #[cfg(debug_assertions)]
+    pub(crate) has_lint_been_emitted: std::sync::atomic::AtomicBool,
 }
 
 /// Context given to every attribute parser during finalization.

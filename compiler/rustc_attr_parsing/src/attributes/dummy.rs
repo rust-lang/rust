@@ -14,7 +14,8 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDummyParser {
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
     const TEMPLATE: AttributeTemplate = template!(Word); // Anything, really
 
-    fn convert(_: &mut AcceptContext<'_, '_, S>, _: &ArgParser) -> Option<AttributeKind> {
+    fn convert(_: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
+        args.ignore_args();
         Some(AttributeKind::RustcDummy)
     }
 }
