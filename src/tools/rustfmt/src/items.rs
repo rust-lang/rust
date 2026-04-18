@@ -1169,10 +1169,10 @@ pub(crate) fn format_trait(
     let header = format!(
         "{}{}{}{}{}trait ",
         format_visibility(context, &item.vis),
+        format_impl_restriction(context, impl_restriction),
         format_constness(constness),
         format_safety(safety),
         format_auto(is_auto),
-        format_impl_restriction(context, impl_restriction),
     );
     result.push_str(&header);
 
