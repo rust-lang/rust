@@ -695,6 +695,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
+        // FIXME(guard_patterns)
         let match_scope = self.local_scope();
         self.bind_pattern(
             self.source_info(irrefutable_pat.span),
@@ -2429,6 +2430,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
+        // FIXME(guard_patterns)
         let match_scope = self.local_scope();
         let success = self.bind_pattern(
             self.source_info(pat.span),
