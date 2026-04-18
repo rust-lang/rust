@@ -3025,32 +3025,6 @@ pub(crate) mod unexpected_cfg_value {
     }
 }
 
-// FIXME(jdonszelmann): duplicated in rustc_attr_parsing, should be moved there completely.
-#[derive(Diagnostic)]
-#[diag(
-    "{$num_suggestions ->
-        [1] attribute must be of the form {$suggestions}
-        *[other] valid forms for the attribute are {$suggestions}
-    }"
-)]
-pub(crate) struct IllFormedAttributeInput {
-    pub num_suggestions: usize,
-    pub suggestions: DiagArgValue,
-    #[note("for more information, visit <{$docs}>")]
-    pub has_docs: bool,
-    pub docs: &'static str,
-    #[subdiagnostic]
-    pub help: Option<IllFormedAttributeInputHelp>,
-}
-
-#[derive(Subdiagnostic)]
-#[help(
-    "if you meant to silence a warning, consider using #![allow({$lint})] or #![expect({$lint})]"
-)]
-pub(crate) struct IllFormedAttributeInputHelp {
-    pub lint: String,
-}
-
 #[derive(Diagnostic)]
 #[diag("creating a {$shared_label}reference to mutable static")]
 pub(crate) struct RefOfMutStatic<'a> {

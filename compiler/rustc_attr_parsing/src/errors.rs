@@ -1,4 +1,4 @@
-use rustc_errors::MultiSpan;
+use rustc_errors::{DiagArgValue, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -65,4 +65,47 @@ pub(crate) struct UnsafeAttrOutsideUnsafeLint {
     pub span: Span,
     #[subdiagnostic]
     pub suggestion: Option<crate::session_diagnostics::UnsafeAttrOutsideUnsafeSuggestion>,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "{$num_suggestions ->
+        [1] attribute must be of the form {$suggestions}
+        *[other] valid forms for the attribute are {$suggestions}
+    }"
+)]
+pub(crate) struct IllFormedAttributeInput {
+    pub num_suggestions: usize,
+    pub suggestions: DiagArgValue,
+    #[note("for more information, visit <{$docs}>")]
+    pub has_docs: bool,
+    pub docs: &'static str,
+    #[subdiagnostic]
+    help: Option<IllFormedAttributeInputHelp>,
+}
+
+impl IllFormedAttributeInput {
+    pub(crate) fn new(
+        suggestions: &[String],
+        docs: Option<&'static str>,
+        help: Option<&str>,
+    ) -> Self {
+        Self {
+            num_suggestions: suggestions.len(),
+            suggestions: DiagArgValue::StrListSepByAnd(
+                suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
+            ),
+            has_docs: docs.is_some(),
+            docs: docs.unwrap_or(""),
+            help: help.map(|h| IllFormedAttributeInputHelp { lint: h.to_string() }),
+        }
+    }
+}
+
+#[derive(Subdiagnostic)]
+#[help(
+    "if you meant to silence a warning, consider using #![allow({$lint})] or #![expect({$lint})]"
+)]
+struct IllFormedAttributeInputHelp {
+    pub lint: String,
 }

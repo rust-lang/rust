@@ -666,12 +666,11 @@ impl DocParser {
             ArgParser::NoArgs => {
                 let suggestions = cx.adcx().suggestions();
                 let span = cx.attr_span;
-                cx.emit_lint(
+                cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::IllFormedAttributeInput {
-                        suggestions,
-                        docs: None,
-                        help: None,
+                    move |dcx, level| {
+                        crate::errors::IllFormedAttributeInput::new(&suggestions, None, None)
+                            .into_diag(dcx, level)
                     },
                     span,
                 );

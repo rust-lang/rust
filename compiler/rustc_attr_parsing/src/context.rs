@@ -916,9 +916,12 @@ where
     ) {
         let suggestions = self.suggestions();
         let span = self.attr_span;
-        self.emit_lint(
+        self.emit_dyn_lint(
             lint,
-            AttributeLintKind::IllFormedAttributeInput { suggestions, docs: None, help },
+            move |dcx, level| {
+                crate::errors::IllFormedAttributeInput::new(&suggestions, None, help.as_deref())
+                    .into_diag(dcx, level)
+            },
             span,
         );
     }

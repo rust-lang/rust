@@ -35,18 +35,6 @@ pub struct DecorateAttrLint<'a, 'sess, 'tcx> {
 impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
-            AttributeLintKind::IllFormedAttributeInput { suggestions, docs, help } => {
-                lints::IllFormedAttributeInput {
-                    num_suggestions: suggestions.len(),
-                    suggestions: DiagArgValue::StrListSepByAnd(
-                        suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
-                    ),
-                    has_docs: docs.is_some(),
-                    docs: docs.unwrap_or(""),
-                    help: help.clone().map(|h| lints::IllFormedAttributeInputHelp { lint: h }),
-                }
-                .into_diag(dcx, level)
-            }
             AttributeLintKind::EmptyAttribute { first_span, attr_path, valid_without_list } => {
                 lints::EmptyAttributeList {
                     attr_span: *first_span,
