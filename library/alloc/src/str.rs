@@ -510,7 +510,8 @@ impl str {
     /// Since some characters can expand into multiple characters when case folding,
     /// this function returns a [`String`] instead of modifying the parameter in-place.
     ///
-    /// This function does not perform any normalization (e.g. NFC).
+    /// This function does not perform any [normalization] (e.g. NFC),
+    /// so semantically and visually identical strings may compare unequal.
     ///
     /// Like [`char::to_casefold()`] this method does not handle language-specific
     /// casing, like Turkish and Azeri I/ı/İ/i. See that method's documentation
@@ -551,7 +552,7 @@ impl str {
     /// assert_eq!(s0.to_casefold(), "tschüss");
     /// ```
     ///
-    /// No NFC normalization is performed:
+    /// No NFC [normalization] is performed:
     ///
     /// ```rust
     /// #![feature(casefold)]
@@ -560,15 +561,15 @@ impl str {
     /// let decomp = "Á";
     ///
     /// // ... but not codepoint-for-codepoint equal.
-    ///
     /// assert_eq!(comp, "\u{C1}");
     /// assert_eq!(decomp, "A\u{0301}");
     ///
     /// // Their case-foldings are likewise unequal:
-    ///
     /// assert_eq!(comp.to_casefold(), "\u{E1}");
     /// assert_eq!(decomp.to_casefold(), "a\u{0301}");
     /// ```
+    ///
+    /// [normalization]: https://www.unicode.org/faq/normalization
     #[cfg(not(no_global_oom_handling))]
     #[rustc_allow_incoherent_impl]
     #[must_use = "this returns the case-folded string as a new String, \

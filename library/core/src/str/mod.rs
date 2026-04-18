@@ -2851,14 +2851,14 @@ impl str {
     ///
     /// Same as `a.to_casefold() == b.to_casefold()`,
     /// but without allocating. See that method's documentation,
-    /// and [`char::to_casefold()`],
+    /// as well as [`char::to_casefold()`],
     /// for more information about case folding.
     ///
-    /// No normalization (e.g. NFC) is performed,
+    /// No [normalization] (e.g. NFC) is performed,
     /// so visually and semantically identical strings
     /// might still compare unequal. In addition,
     /// this method is independent of language/locale,
-    /// so the special behavior of  I/ı/İ/i
+    /// so the special behavior of I/ı/İ/i
     /// in Turkish and Azeri is not handled.
     ///
     /// # Examples
@@ -2869,6 +2869,24 @@ impl str {
     /// assert!("Ferrös".eq_ignore_case("FERRÖS"));
     /// assert!("ẞ".eq_ignore_case("ss"));
     /// ```
+    ///
+    /// No NFC [normalization] is performed:
+    ///
+    /// ```rust
+    /// #![feature(casefold)]
+    /// // These two strings are visually and semantically identical...
+    /// let comp = "Á";
+    /// let decomp = "Á";
+    ///
+    /// // ... but not codepoint-for-codepoint equal.
+    /// assert_eq!(comp, "\u{C1}");
+    /// assert_eq!(decomp, "A\u{0301}");
+    ///
+    /// // Their case-foldings are likewise unequal:
+    /// assert_eq!(!comp.eq_ignore_case(decomp));
+    /// ```
+    ///
+    /// [normalization]: https://www.unicode.org/faq/normalization
     #[unstable(feature = "casefold", issue = "none")]
     #[must_use]
     #[inline]
