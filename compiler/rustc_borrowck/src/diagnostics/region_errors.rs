@@ -686,6 +686,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             || (*category == ConstraintCategory::Assignment
                 && self.regioncx.universal_regions().defining_ty.is_fn_def())
             || self.regioncx.universal_regions().defining_ty.is_const()
+            || (fr_name_and_span.is_none()
+                && self.regioncx.universal_regions().defining_ty.is_fn_def())
         {
             return self.report_general_error(errci);
         }
