@@ -1,6 +1,6 @@
 //! Method lookup: the secret sauce of Rust. See the [rustc dev guide] for more information.
 //!
-//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/method-lookup.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir-typeck/method-lookup.html
 
 mod confirm;
 mod prelude_edition_lints;

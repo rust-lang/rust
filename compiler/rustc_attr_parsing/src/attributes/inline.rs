@@ -67,7 +67,6 @@ pub(crate) struct RustcForceInlineParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
     const PATH: &[Symbol] = &[sym::rustc_force_inline];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),

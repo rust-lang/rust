@@ -68,6 +68,18 @@ LL - #![no_core("bar")]
 LL + #![no_core]
    |
 
+error: multiple `no_core` attributes
+  --> $DIR/malformed-no-std.rs:13:1
+   |
+LL | #![no_core("bar")]
+   | ^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/malformed-no-std.rs:11:1
+   |
+LL | #![no_core = "foo"]
+   | ^^^^^^^^^^^^^^^^^^^
+
 error[E0565]: malformed `no_core` attribute input
   --> $DIR/malformed-no-std.rs:16:1
    |
@@ -81,6 +93,18 @@ help: must be of the form
 LL - #![no_core(foo = "bar")]
 LL + #![no_core]
    |
+
+error: multiple `no_core` attributes
+  --> $DIR/malformed-no-std.rs:16:1
+   |
+LL | #![no_core(foo = "bar")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/malformed-no-std.rs:11:1
+   |
+LL | #![no_core = "foo"]
+   | ^^^^^^^^^^^^^^^^^^^
 
 error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![no_std]`
   --> $DIR/malformed-no-std.rs:21:1
@@ -136,30 +160,6 @@ note: attribute also specified here
 LL | #![no_std = "foo"]
    | ^^^^^^^^^^^^^^^^^^
 
-warning: unused attribute
-  --> $DIR/malformed-no-std.rs:13:1
-   |
-LL | #![no_core("bar")]
-   | ^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/malformed-no-std.rs:11:1
-   |
-LL | #![no_core = "foo"]
-   | ^^^^^^^^^^^^^^^^^^^
-
-warning: unused attribute
-  --> $DIR/malformed-no-std.rs:16:1
-   |
-LL | #![no_core(foo = "bar")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
-  --> $DIR/malformed-no-std.rs:11:1
-   |
-LL | #![no_core = "foo"]
-   | ^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 8 previous errors; 4 warnings emitted
+error: aborting due to 10 previous errors; 2 warnings emitted
 
 For more information about this error, try `rustc --explain E0565`.
