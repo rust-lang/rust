@@ -49,8 +49,6 @@
           StorageLive(_4);
           _4 = copy _1;
           StorageLive(_10);
-          StorageLive(_11);
-          StorageLive(_12);
           _10 = discriminant(_4);
           switchInt(move _10) -> [0: bb7, 1: bb6, otherwise: bb1];
       }
@@ -76,18 +74,18 @@
           StorageLive(_8);
           _8 = copy _6;
           StorageLive(_14);
-          StorageLive(_15);
           StorageLive(_17);
           _14 = discriminant(_8);
           _17 = Eq(copy _14, const 1_isize);
           assume(move _17);
+          StorageLive(_15);
           _15 = move ((_8 as Err).0: i32);
           StorageLive(_16);
           _16 = move _15;
           _0 = Result::<i32, i32>::Err(move _16);
           StorageDead(_16);
-          StorageDead(_17);
           StorageDead(_15);
+          StorageDead(_17);
           StorageDead(_14);
           StorageDead(_8);
           StorageDead(_6);
@@ -101,8 +99,6 @@
       }
   
       bb5: {
-          StorageDead(_12);
-          StorageDead(_11);
           StorageDead(_10);
           StorageDead(_4);
           _5 = discriminant(_3);
@@ -110,25 +106,27 @@
       }
   
       bb6: {
+          StorageLive(_12);
           _12 = move ((_4 as Err).0: i32);
           StorageLive(_13);
           _13 = Result::<Infallible, i32>::Err(copy _12);
           _3 = ControlFlow::<Result<Infallible, i32>, i32>::Break(move _13);
           StorageDead(_13);
+          StorageDead(_12);
 -         goto -> bb5;
 +         goto -> bb8;
       }
   
       bb7: {
+          StorageLive(_11);
           _11 = move ((_4 as Ok).0: i32);
           _3 = ControlFlow::<Result<Infallible, i32>, i32>::Continue(copy _11);
+          StorageDead(_11);
 -         goto -> bb5;
 +         goto -> bb9;
 +     }
 + 
 +     bb8: {
-+         StorageDead(_12);
-+         StorageDead(_11);
 +         StorageDead(_10);
 +         StorageDead(_4);
 +         _5 = discriminant(_3);
@@ -136,8 +134,6 @@
 +     }
 + 
 +     bb9: {
-+         StorageDead(_12);
-+         StorageDead(_11);
 +         StorageDead(_10);
 +         StorageDead(_4);
 +         _5 = discriminant(_3);
