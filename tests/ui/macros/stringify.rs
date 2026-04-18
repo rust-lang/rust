@@ -864,56 +864,56 @@ fn test_impl_restriction() {
     );
 
     assert_eq!(
-        stringify!(pub auto impl(crate) trait Foo {}),
-        "pub auto impl(crate) trait Foo {}"
+        stringify!(pub impl(crate) auto trait Foo {}),
+        "pub impl(crate) auto trait Foo {}"
     );
     assert_eq!(
-        stringify!(pub auto impl(in crate::path::to) trait Foo {}),
-        "pub auto impl(in crate::path::to) trait Foo {}"
+        stringify!(pub impl(in crate::path::to) auto trait Foo {}),
+        "pub impl(in crate::path::to) auto trait Foo {}"
     );
     assert_eq!(
-        stringify!(pub unsafe impl(crate) trait Foo {}),
-        "pub unsafe impl(crate) trait Foo {}"
+        stringify!(pub impl(crate) unsafe trait Foo {}),
+        "pub impl(crate) unsafe trait Foo {}"
     );
     assert_eq!(
-        stringify!(pub unsafe impl(in crate::path::to) trait Foo {}),
-        "pub unsafe impl(in crate::path::to) trait Foo {}"
+        stringify!(pub impl(in crate::path::to) unsafe trait Foo {}),
+        "pub impl(in crate::path::to) unsafe trait Foo {}"
     );
     assert_eq!(
-        stringify!(pub const impl(crate) trait Foo {}),
-        "pub const impl(crate) trait Foo {}"
+        stringify!(pub impl(crate) const trait Foo {}),
+        "pub impl(crate) const trait Foo {}"
     );
     assert_eq!(
-        stringify!(pub const impl(in crate::path::to) trait Foo {}),
-        "pub const impl(in crate::path::to) trait Foo {}"
+        stringify!(pub impl(in crate::path::to) const trait Foo {}),
+        "pub impl(in crate::path::to) const trait Foo {}"
     );
     assert_eq!(
-        stringify!(pub unsafe auto impl(crate) trait Foo {}),
-        "pub unsafe auto impl(crate) trait Foo {}"
+        stringify!(pub impl(crate) unsafe auto trait Foo {}),
+        "pub impl(crate) unsafe auto trait Foo {}"
     );
     assert_eq!(
-        stringify!(pub unsafe auto impl(in crate::path::to) trait Foo {}),
-        "pub unsafe auto impl(in crate::path::to) trait Foo {}"
+        stringify!(pub impl(in crate::path::to) unsafe auto trait Foo {}),
+        "pub impl(in crate::path::to) unsafe auto trait Foo {}"
     );
     assert_eq!(
-        stringify!(pub const auto impl(crate) trait Foo {}),
-        "pub const auto impl(crate) trait Foo {}"
+        stringify!(pub impl(crate) const auto trait Foo {}),
+        "pub impl(crate) const auto trait Foo {}"
     );
     assert_eq!(
-        stringify!(pub const auto impl(in crate::path::to) trait Foo {}),
-        "pub const auto impl(in crate::path::to) trait Foo {}"
+        stringify!(pub impl(in crate::path::to) const auto trait Foo {}),
+        "pub impl(in crate::path::to) const auto trait Foo {}"
     );
     assert_eq!(
-        stringify!(pub const unsafe impl(crate) trait Foo {}),
-        "pub const unsafe impl(crate) trait Foo {}"
+        stringify!(pub impl(crate) const unsafe trait Foo {}),
+        "pub impl(crate) const unsafe trait Foo {}"
     );
     assert_eq!(
-        stringify!(pub const unsafe impl(in crate::path::to) trait Foo {}),
-        "pub const unsafe impl(in crate::path::to) trait Foo {}"
+        stringify!(pub impl(in crate::path::to) const unsafe trait Foo {}),
+        "pub impl(in crate::path::to) const unsafe trait Foo {}"
     );
     assert_eq!(
-        stringify!(pub const unsafe auto impl(crate) trait Foo {}),
-        "pub const unsafe auto impl(crate) trait Foo {}"
+        stringify!(pub impl(crate) const unsafe auto trait Foo {}),
+        "pub impl(crate) const unsafe auto trait Foo {}"
     );
     assert_eq!(
         stringify!(pub const unsafe auto impl(in crate::path::to) trait Foo {}),

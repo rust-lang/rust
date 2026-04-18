@@ -1,5 +1,5 @@
 error: incorrect `impl` restriction
-  --> $DIR/recover-incorrect-impl-restriction.rs:9:14
+  --> $DIR/recover-incorrect-impl-restriction.rs:5:14
    |
 LL |     pub impl(crate::foo) trait Baz {}
    |              ^^^^^^^^^^
@@ -15,10 +15,10 @@ LL |     pub impl(in crate::foo) trait Baz {}
    |              ++
 
 error: incorrect `impl` restriction
-  --> $DIR/recover-incorrect-impl-restriction.rs:11:21
+  --> $DIR/recover-incorrect-impl-restriction.rs:6:14
    |
-LL |     pub unsafe impl(crate::foo) trait BazUnsafe {}
-   |                     ^^^^^^^^^^
+LL |     pub impl(crate::foo) unsafe trait BazUnsafe {}
+   |              ^^^^^^^^^^
    |
    = help: some possible `impl` restrictions are:
            `impl(crate)`: can only be implemented in the current crate
@@ -27,14 +27,14 @@ LL |     pub unsafe impl(crate::foo) trait BazUnsafe {}
            `impl(in path::to::module)`: can only be implemented in the specified path
 help: help: use `in` to restrict implementations to the path `crate::foo`
    |
-LL |     pub unsafe impl(in crate::foo) trait BazUnsafe {}
-   |                     ++
+LL |     pub impl(in crate::foo) unsafe trait BazUnsafe {}
+   |              ++
 
 error: incorrect `impl` restriction
-  --> $DIR/recover-incorrect-impl-restriction.rs:13:19
+  --> $DIR/recover-incorrect-impl-restriction.rs:7:14
    |
-LL |     pub auto impl(crate::foo) trait BazAuto {}
-   |                   ^^^^^^^^^^
+LL |     pub impl(crate::foo) auto trait BazAuto {}
+   |              ^^^^^^^^^^
    |
    = help: some possible `impl` restrictions are:
            `impl(crate)`: can only be implemented in the current crate
@@ -43,14 +43,14 @@ LL |     pub auto impl(crate::foo) trait BazAuto {}
            `impl(in path::to::module)`: can only be implemented in the specified path
 help: help: use `in` to restrict implementations to the path `crate::foo`
    |
-LL |     pub auto impl(in crate::foo) trait BazAuto {}
-   |                   ++
+LL |     pub impl(in crate::foo) auto trait BazAuto {}
+   |              ++
 
 error: incorrect `impl` restriction
-  --> $DIR/recover-incorrect-impl-restriction.rs:15:20
+  --> $DIR/recover-incorrect-impl-restriction.rs:8:14
    |
-LL |     pub const impl(crate::foo) trait BazConst {}
-   |                    ^^^^^^^^^^
+LL |     pub impl(crate::foo) const trait BazConst {}
+   |              ^^^^^^^^^^
    |
    = help: some possible `impl` restrictions are:
            `impl(crate)`: can only be implemented in the current crate
@@ -59,14 +59,14 @@ LL |     pub const impl(crate::foo) trait BazConst {}
            `impl(in path::to::module)`: can only be implemented in the specified path
 help: help: use `in` to restrict implementations to the path `crate::foo`
    |
-LL |     pub const impl(in crate::foo) trait BazConst {}
-   |                    ++
+LL |     pub impl(in crate::foo) const trait BazConst {}
+   |              ++
 
 error: incorrect `impl` restriction
-  --> $DIR/recover-incorrect-impl-restriction.rs:17:27
+  --> $DIR/recover-incorrect-impl-restriction.rs:9:14
    |
-LL |     pub const unsafe impl(crate::foo) trait BazConstUnsafe {}
-   |                           ^^^^^^^^^^
+LL |     pub impl(crate::foo) const unsafe trait BazConstUnsafe {}
+   |              ^^^^^^^^^^
    |
    = help: some possible `impl` restrictions are:
            `impl(crate)`: can only be implemented in the current crate
@@ -75,14 +75,14 @@ LL |     pub const unsafe impl(crate::foo) trait BazConstUnsafe {}
            `impl(in path::to::module)`: can only be implemented in the specified path
 help: help: use `in` to restrict implementations to the path `crate::foo`
    |
-LL |     pub const unsafe impl(in crate::foo) trait BazConstUnsafe {}
-   |                           ++
+LL |     pub impl(in crate::foo) const unsafe trait BazConstUnsafe {}
+   |              ++
 
 error: incorrect `impl` restriction
-  --> $DIR/recover-incorrect-impl-restriction.rs:19:26
+  --> $DIR/recover-incorrect-impl-restriction.rs:10:14
    |
-LL |     pub unsafe auto impl(crate::foo) trait BazUnsafeAuto {}
-   |                          ^^^^^^^^^^
+LL |     pub impl(crate::foo) unsafe auto trait BazUnsafeAuto {}
+   |              ^^^^^^^^^^
    |
    = help: some possible `impl` restrictions are:
            `impl(crate)`: can only be implemented in the current crate
@@ -91,21 +91,14 @@ LL |     pub unsafe auto impl(crate::foo) trait BazUnsafeAuto {}
            `impl(in path::to::module)`: can only be implemented in the specified path
 help: help: use `in` to restrict implementations to the path `crate::foo`
    |
-LL |     pub unsafe auto impl(in crate::foo) trait BazUnsafeAuto {}
-   |                          ++
+LL |     pub impl(in crate::foo) unsafe auto trait BazUnsafeAuto {}
+   |              ++
 
-warning: the feature `impl_restriction` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/recover-incorrect-impl-restriction.rs:4:32
+error: expected one of `for`, `where`, or `{`, found keyword `trait`
+  --> $DIR/recover-incorrect-impl-restriction.rs:17:33
    |
-LL | #![cfg_attr(with_gate, feature(impl_restriction))]
-   |                                ^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #105077 <https://github.com/rust-lang/rust/issues/105077> for more information
-note: the lint level is defined here
-  --> $DIR/recover-incorrect-impl-restriction.rs:3:9
-   |
-LL | #![warn(incomplete_features)]
-   |         ^^^^^^^^^^^^^^^^^^^
+LL |     pub unsafe impl(crate::foo) trait BadOrder1 {}
+   |                                 ^^^^^ expected one of `for`, `where`, or `{`
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 7 previous errors
 
