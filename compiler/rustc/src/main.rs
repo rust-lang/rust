@@ -3,6 +3,7 @@
 // Several crates are depended upon but unused so that they are present in the sysroot
 #![expect(unused_crate_dependencies)]
 
+use std::alloc::{GlobalAlloc, Layout, System};
 use std::process::ExitCode;
 
 // A note about jemalloc: rustc uses jemalloc when built for CI and
@@ -39,6 +40,28 @@ use std::process::ExitCode;
 // for an example of how to do so.
 #[cfg(feature = "jemalloc")]
 use tikv_jemalloc_sys as _;
+
+struct MyAllocator;
+
+unsafe impl GlobalAlloc for MyAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        unsafe { System.alloc(layout) }
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        #[cfg(feature = "jemalloc")]
+        unsafe {
+            tikv_jemalloc_sys::free_sized(ptr as *mut std::ffi::c_void, layout.size())
+        };
+        #[cfg(not(feature = "jemalloc"))]
+        unsafe {
+            System.dealloc(ptr, layout)
+        }
+    }
+}
+
+#[global_allocator]
+static GLOBAL: MyAllocator = MyAllocator;
 
 fn main() -> ExitCode {
     rustc_driver::main()
