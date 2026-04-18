@@ -654,11 +654,6 @@ pub enum DeprecatedSinceKind {
 
 #[derive(Debug)]
 pub enum AttributeLintKind {
-    EmptyAttribute {
-        first_span: Span,
-        attr_path: String,
-        valid_without_list: bool,
-    },
     InvalidTarget {
         name: String,
         target: &'static str,

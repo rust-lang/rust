@@ -109,3 +109,25 @@ impl IllFormedAttributeInput {
 struct IllFormedAttributeInputHelp {
     pub lint: String,
 }
+
+#[derive(Diagnostic)]
+#[diag("unused attribute")]
+#[note(
+    "{$valid_without_list ->
+        [true] using `{$attr_path}` with an empty list is equivalent to not using a list at all
+        *[other] using `{$attr_path}` with an empty list has no effect
+    }"
+)]
+pub(crate) struct EmptyAttributeList<'a> {
+    #[suggestion(
+        "{$valid_without_list ->
+            [true] remove these parentheses
+            *[other] remove this attribute
+        }",
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    pub attr_span: Span,
+    pub attr_path: &'a str,
+    pub valid_without_list: bool,
+}

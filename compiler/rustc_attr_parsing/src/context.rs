@@ -897,11 +897,18 @@ where
     }
 
     pub(crate) fn warn_empty_attribute(&mut self, span: Span) {
-        let attr_path = self.attr_path.clone().to_string();
+        let attr_path = self.attr_path.to_string();
         let valid_without_list = self.template.word;
-        self.emit_lint(
+        self.emit_dyn_lint(
             rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            AttributeLintKind::EmptyAttribute { first_span: span, attr_path, valid_without_list },
+            move |dcx, level| {
+                crate::errors::EmptyAttributeList {
+                    attr_span: span,
+                    attr_path: &attr_path,
+                    valid_without_list,
+                }
+                .into_diag(dcx, level)
+            },
             span,
         );
     }

@@ -35,14 +35,6 @@ pub struct DecorateAttrLint<'a, 'sess, 'tcx> {
 impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
-            AttributeLintKind::EmptyAttribute { first_span, attr_path, valid_without_list } => {
-                lints::EmptyAttributeList {
-                    attr_span: *first_span,
-                    attr_path: attr_path.clone(),
-                    valid_without_list: *valid_without_list,
-                }
-                .into_diag(dcx, level)
-            }
             AttributeLintKind::InvalidTarget { name, target, applied, only, attr_span } => {
                 lints::InvalidTargetLint {
                     name: name.clone(),

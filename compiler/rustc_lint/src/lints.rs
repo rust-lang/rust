@@ -3283,28 +3283,6 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("unused attribute")]
-#[note(
-    "{$valid_without_list ->
-        [true] using `{$attr_path}` with an empty list is equivalent to not using a list at all
-        *[other] using `{$attr_path}` with an empty list has no effect
-    }"
-)]
-pub(crate) struct EmptyAttributeList {
-    #[suggestion(
-        "{$valid_without_list ->
-            [true] remove these parentheses
-            *[other] remove this attribute
-        }",
-        code = "",
-        applicability = "machine-applicable"
-    )]
-    pub attr_span: Span,
-    pub attr_path: String,
-    pub valid_without_list: bool,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[{$name}]` attribute cannot be used on {$target}")]
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
