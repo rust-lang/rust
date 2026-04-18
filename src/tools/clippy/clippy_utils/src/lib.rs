@@ -1,3 +1,4 @@
+#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(box_patterns)]
 #![feature(macro_metavar_expr)]
 #![feature(never_type)]

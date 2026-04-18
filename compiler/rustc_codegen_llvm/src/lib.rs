@@ -5,6 +5,7 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(extern_types)]
 #![feature(file_buffered)]
 #![feature(impl_trait_in_assoc_type)]

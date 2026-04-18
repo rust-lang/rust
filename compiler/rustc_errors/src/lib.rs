@@ -5,6 +5,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::direct_use_of_rustc_type_ir)]
+#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(associated_type_defaults)]
 #![feature(default_field_values)]
 #![feature(macro_metavar_expr_concat)]

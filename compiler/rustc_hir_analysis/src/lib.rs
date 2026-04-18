@@ -56,6 +56,7 @@ This API is completely unstable and subject to change.
 */
 
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(default_field_values)]
 #![feature(gen_blocks)]
 #![feature(iter_intersperse)]

@@ -10,6 +10,7 @@
 #![allow(internal_features)]
 #![allow(rustc::default_hash_types)]
 #![allow(rustc::potential_query_instability)]
+#![cfg_attr(bootstrap, feature(assert_matches))]
 #![cfg_attr(test, feature(test))]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![feature(allocator_api)]
