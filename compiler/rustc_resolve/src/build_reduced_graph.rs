@@ -1127,14 +1127,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         let mut import_all = None;
         let mut single_imports = ThinVec::new();
         if let Some(Attribute::Parsed(AttributeKind::MacroUse { span, arguments })) =
-            AttributeParser::parse_limited(
-                self.r.tcx.sess,
-                &item.attrs,
-                &[sym::macro_use],
-                item.span,
-                item.id,
-                None,
-            )
+            AttributeParser::parse_limited(self.r.tcx.sess, &item.attrs, &[sym::macro_use])
         {
             if self.parent_scope.module.parent.is_some() {
                 self.r
