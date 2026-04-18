@@ -771,7 +771,10 @@ where
             // =============================
             (RerunCondition::Always, _) => RerunDecision::Yes,
             // =============================
-            (RerunCondition::OpaqueInStorage(..), TypingMode::PostAnalysis) => RerunDecision::Yes,
+            (
+                RerunCondition::OpaqueInStorage(..),
+                TypingMode::PostAnalysis | TypingMode::Codegen,
+            ) => RerunDecision::Yes,
             (
                 RerunCondition::OpaqueInStorage(defids),
                 TypingMode::PostBorrowckAnalysis { defined_opaque_types: opaques }
@@ -786,12 +789,13 @@ where
                 RerunCondition::AnyOpaqueHasInferAsHidden,
                 TypingMode::PostBorrowckAnalysis { .. }
                 | TypingMode::PostAnalysis
+                | TypingMode::Codegen
                 | TypingMode::Borrowck { .. },
             ) => RerunDecision::No,
             // =============================
             (
                 RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_),
-                TypingMode::PostAnalysis,
+                TypingMode::PostAnalysis | TypingMode::Codegen,
             ) => RerunDecision::No,
             (
                 RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),

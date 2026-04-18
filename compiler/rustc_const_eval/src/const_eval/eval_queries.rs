@@ -369,33 +369,49 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: ty::PseudoCanonicalInput<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
+    let ty::PseudoCanonicalInput { typing_env, value } = key;
+
     // This shouldn't be used for statics, since statics are conceptually places,
     // not values -- so what we do here could break pointer identity.
     assert!(key.value.promoted.is_some() || !tcx.is_static(key.value.instance.def_id()));
 
-    if cfg!(debug_assertions) {
-        match key.typing_env.typing_mode().assert_not_erased() {
-            ty::TypingMode::PostAnalysis => {}
-            ty::TypingMode::Coherence
-            | ty::TypingMode::Analysis { .. }
-            | ty::TypingMode::Borrowck { .. }
-            | ty::TypingMode::PostBorrowckAnalysis { .. } => {
+    match key.typing_env.typing_mode().assert_not_erased() {
+        ty::TypingMode::PostAnalysis => {}
+        // We are in codegen. It's very likely this constant has been evaluated in PostAnalysis before.
+        // Try to reuse this evaluation, and only re-run if we hit a `TooGeneric` error.
+        ty::TypingMode::Codegen => {
+            let with_postanalysis =
+                ty::TypingEnv::new(typing_env.param_env, ty::TypingMode::PostAnalysis);
+            let with_postanalysis =
+                tcx.eval_to_allocation_raw(with_postanalysis.as_query_input(value));
+            match with_postanalysis {
+                Ok(_) | Err(ErrorHandled::Reported(..)) => return with_postanalysis,
+                Err(ErrorHandled::TooGeneric(_)) => {}
+            }
+        }
+        ty::TypingMode::Coherence
+        | ty::TypingMode::Analysis { .. }
+        | ty::TypingMode::Borrowck { .. }
+        | ty::TypingMode::PostBorrowckAnalysis { .. } => {
+            if cfg!(debug_assertions) {
                 bug!(
-                    "Const eval should always happens in PostAnalysis mode. See the comment in `InterpCx::new` for more details."
+                    "Const eval should always happens in PostAnalysis or Codegen mode. See the comment in `InterpCx::new` for more details."
                 )
             }
         }
+    }
 
+    if cfg!(debug_assertions) {
         // Make sure we format the instance even if we do not print it.
         // This serves as a regression test against an ICE on printing.
         // The next two lines concatenated contain some discussion:
         // https://rust-lang.zulipchat.com/#narrow/stream/146212-t-compiler.2Fconst-eval/
         // subject/anon_const_instance_printing/near/135980032
-        let instance = with_no_trimmed_paths!(key.value.instance.to_string());
-        trace!("const eval: {:?} ({})", key, instance);
+        let instance = with_no_trimmed_paths!(value.instance.to_string());
+        trace!("const eval: {:?} ({}) inside {:?}", value, instance, typing_env);
     }
 
-    eval_in_interpreter(tcx, key.value, key.typing_env)
+    eval_in_interpreter(tcx, value, typing_env)
 }
 
 fn eval_in_interpreter<'tcx, R: InterpretationResult<'tcx>>(

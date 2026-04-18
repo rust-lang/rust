@@ -243,13 +243,13 @@ pub(crate) fn eval_to_valtree<'tcx>(
 ) -> EvalToValTreeResult<'tcx> {
     if cfg!(debug_assertions) {
         match typing_env.typing_mode().assert_not_erased() {
-            ty::TypingMode::PostAnalysis => {}
+            ty::TypingMode::PostAnalysis | ty::TypingMode::Codegen => {}
             ty::TypingMode::Coherence
             | ty::TypingMode::Analysis { .. }
             | ty::TypingMode::Borrowck { .. }
             | ty::TypingMode::PostBorrowckAnalysis { .. } => {
                 bug!(
-                    "Const eval should always happens in PostAnalysis mode. See the comment in `InterpCx::new` for more details."
+                    "Const eval should always happens in PostAnalysis or Codegen mode. See the comment in `InterpCx::new` for more details."
                 )
             }
         }

@@ -244,12 +244,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // already been revealed, so we'd be able to at least partially observe the hidden types anyways.
         if cfg!(debug_assertions) {
             match typing_env.typing_mode().assert_not_erased() {
-                TypingMode::PostAnalysis => {}
+                TypingMode::PostAnalysis | TypingMode::Codegen => {}
                 TypingMode::Coherence
                 | TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. } => {
-                    bug!("Const eval should always happens in PostAnalysis mode.");
+                    bug!("Const eval should always happens in PostAnalysis or Codegen mode.");
                 }
             }
         }

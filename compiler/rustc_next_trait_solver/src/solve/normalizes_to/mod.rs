@@ -325,7 +325,8 @@ where
                         ty::TypingMode::Analysis { .. }
                         | ty::TypingMode::Borrowck { .. }
                         | ty::TypingMode::PostBorrowckAnalysis { .. }
-                        | ty::TypingMode::PostAnalysis => {
+                        | ty::TypingMode::PostAnalysis
+                        | ty::TypingMode::Codegen => {
                             ecx.structurally_instantiate_normalizes_to_term(
                                 goal,
                                 goal.predicate.alias,

@@ -1085,7 +1085,7 @@ impl<'tcx> TypingEnv<'tcx> {
     /// use `TypingMode::PostAnalysis`, they may still have where-clauses
     /// in scope.
     pub fn fully_monomorphized() -> TypingEnv<'tcx> {
-        Self::new(ParamEnv::empty(), TypingMode::PostAnalysis)
+        Self::new(ParamEnv::empty(), TypingMode::Codegen)
     }
 
     /// Create a typing environment for use during analysis outside of a body.
@@ -1106,8 +1106,8 @@ impl<'tcx> TypingEnv<'tcx> {
         tcx.typing_env_normalized_for_post_analysis(def_id)
     }
 
-    /// Modify the `typing_mode` to `PostAnalysis` and eagerly reveal all
-    /// opaque types in the `param_env`.
+    /// Modify the `typing_mode` to `PostAnalysis` or `Codegen` and eagerly reveal all opaque types
+    /// in the `param_env`.
     pub fn with_post_analysis_normalized(self, tcx: TyCtxt<'tcx>) -> TypingEnv<'tcx> {
         let TypingEnv { typing_mode, param_env } = self;
 
@@ -1121,7 +1121,7 @@ impl<'tcx> TypingEnv<'tcx> {
                 | TypingMode::Analysis { .. }
                 | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. } => {}
-                TypingMode::PostAnalysis => return self,
+                TypingMode::PostAnalysis | TypingMode::Codegen => return self,
             }
 
             ParamEnv::new(tcx.reveal_opaque_types_in_bounds(param_env.caller_bounds()))
