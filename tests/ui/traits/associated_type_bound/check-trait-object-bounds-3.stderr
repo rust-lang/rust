@@ -11,6 +11,12 @@ LL |         z = f::<dyn X<Y = &str>>(&s);
 LL |
 LL |     }
    |     - `s` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $DIR/check-trait-object-bounds-3.rs:7:13
+   |
+LL | fn f<'a, T: X<'a> + ?Sized>(s: &'a str) -> &'static str {
+   |             ^^^^^
 
 error: aborting due to 1 previous error
 

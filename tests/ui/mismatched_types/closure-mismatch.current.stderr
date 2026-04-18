@@ -4,8 +4,8 @@ error: implementation of `FnOnce` is not general enough
 LL |     baz(|_| ());
    |     ^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
+   = note: closure with signature `fn(&'0 ())` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&(),)>`
 
 error: implementation of `Fn` is not general enough
   --> $DIR/closure-mismatch.rs:12:5
@@ -13,8 +13,8 @@ error: implementation of `Fn` is not general enough
 LL |     baz(|_| ());
    |     ^^^^^^^^^^^ implementation of `Fn` is not general enough
    |
-   = note: closure with signature `fn(&'2 ())` must implement `Fn<(&'1 (),)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `Fn<(&'2 (),)>`, for some specific lifetime `'2`
+   = note: closure with signature `fn(&'0 ())` must implement `Fn<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `Fn<(&(),)>`
 
 error: implementation of `FnOnce` is not general enough
   --> $DIR/closure-mismatch.rs:16:5
@@ -22,8 +22,8 @@ error: implementation of `FnOnce` is not general enough
 LL |     baz(|x| ());
    |     ^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
+   = note: closure with signature `fn(&'0 ())` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&(),)>`
 
 error: implementation of `Fn` is not general enough
   --> $DIR/closure-mismatch.rs:16:5
@@ -31,8 +31,8 @@ error: implementation of `Fn` is not general enough
 LL |     baz(|x| ());
    |     ^^^^^^^^^^^ implementation of `Fn` is not general enough
    |
-   = note: closure with signature `fn(&'2 ())` must implement `Fn<(&'1 (),)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `Fn<(&'2 (),)>`, for some specific lifetime `'2`
+   = note: closure with signature `fn(&'0 ())` must implement `Fn<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `Fn<(&(),)>`
 
 error: aborting due to 4 previous errors
 

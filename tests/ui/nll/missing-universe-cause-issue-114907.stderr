@@ -4,8 +4,8 @@ error: implementation of `FnOnce` is not general enough
 LL |     accept(callback);
    |     ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
+   = note: closure with signature `fn(&'0 ())` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&(),)>`
 
 error: implementation of `FnOnce` is not general enough
   --> $DIR/missing-universe-cause-issue-114907.rs:33:5
@@ -13,8 +13,8 @@ error: implementation of `FnOnce` is not general enough
 LL |     accept(callback);
    |     ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
+   = note: closure with signature `fn(&'0 ())` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&(),)>`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: implementation of `FnOnce` is not general enough
@@ -23,8 +23,8 @@ error: implementation of `FnOnce` is not general enough
 LL |     accept(callback);
    |     ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
+   = note: closure with signature `fn(&'0 ())` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&(),)>`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: implementation of `FnOnce` is not general enough
@@ -33,8 +33,8 @@ error: implementation of `FnOnce` is not general enough
 LL |     accept(callback);
    |     ^^^^^^^^^^^^^^^^ implementation of `FnOnce` is not general enough
    |
-   = note: closure with signature `fn(&'2 ())` must implement `FnOnce<(&'1 (),)>`, for any lifetime `'1`...
-   = note: ...but it actually implements `FnOnce<(&'2 (),)>`, for some specific lifetime `'2`
+   = note: closure with signature `fn(&'0 ())` must implement `FnOnce<(&'1 (),)>`, for any two lifetimes `'0` and `'1`...
+   = note: ...but it actually implements `FnOnce<(&(),)>`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: higher-ranked subtype error

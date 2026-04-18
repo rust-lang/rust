@@ -229,7 +229,8 @@ impl CanonicalizeMode for CanonicalizeUserTypeAnnotation {
             | ty::ReErased
             | ty::ReStatic
             | ty::ReError(_) => r,
-            ty::ReVar(_) => canonicalizer.canonical_var_for_region_in_root_universe(r),
+            ty::ReVar(_) => canonicalizer
+                .canonical_var_for_region(CanonicalVarKind::Region(ty::UniverseIndex::ROOT), r),
             ty::RePlaceholder(..) | ty::ReBound(..) => {
                 // We only expect region names that the user can type.
                 bug!("unexpected region in query response: `{:?}`", r)
@@ -707,23 +708,26 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     }
 
     /// Shorthand helper that creates a canonical region variable for
-    /// `r` (always in the root universe). The reason that we always
-    /// put these variables into the root universe is because this
-    /// method is used during **query construction:** in that case, we
-    /// are taking all the regions and just putting them into the most
-    /// generic context we can. This may generate solutions that don't
-    /// fit (e.g., that equate some region variable with a placeholder
-    /// it can't name) on the caller side, but that's ok, the caller
-    /// can figure that out. In the meantime, it maximizes our
+    /// `r` (always as a placeholder in the root universe). The reason
+    /// that we always put these variables into the root universe as a
+    /// placeholder is because this method is used during
+    /// **query construction:** in that case, we are taking all the
+    /// free regions and just putting them into the most generic context
+    /// we can. This makes any region constraints between them, including
+    /// region equalities, to be preserved and propagated to the caller
+    /// instead of unifying them. In the meantime, it maximizes our
     /// caching.
-    ///
-    /// (This works because unification never fails -- and hence trait
-    /// selection is never affected -- due to a universe mismatch.)
     fn canonical_var_for_region_in_root_universe(
         &mut self,
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
-        self.canonical_var_for_region(CanonicalVarKind::Region(ty::UniverseIndex::ROOT), r)
+        self.canonical_var_for_region(
+            CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion::new_anon(
+                ty::UniverseIndex::ROOT,
+                self.var_kinds.len().into(),
+            )),
+            r,
+        )
     }
 
     /// Creates a canonical variable (with the given `info`)

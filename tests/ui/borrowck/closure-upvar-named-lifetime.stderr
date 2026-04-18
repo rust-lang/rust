@@ -73,6 +73,9 @@ LL |         f(value);
    |         -------- argument requires that `map` is borrowed for `'a`
 LL |     }
    |     - `map` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'a` introduced here
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/closure-upvar-named-lifetime.rs:34:21
@@ -87,6 +90,9 @@ LL |         let value = map.borrow_mut().entry("foo".to_string());
 ...
 LL |         f(value);
    |         -------- argument requires that borrow lasts for `'a`
+   |
+note: requirement that the value outlives `'a` introduced here
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error[E0700]: hidden type for `impl Fn(RefCell<HashMap<String, String>>)` captures lifetime that does not appear in bounds
   --> $DIR/closure-upvar-named-lifetime.rs:32:5
