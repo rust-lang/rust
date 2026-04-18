@@ -79,8 +79,7 @@ Get the Git commit hash for that nightly:
 
 ```sh
 rustup toolchain install nightly-2025-11-08
-rustup default nightly-2025-11-08
-rustc -Vv
+rustc +nightly-2025-11-08 --version --verbose
 ```
 
 The output will include a `commit-hash` line identifying the exact source revision. Check out `rust-lang/rust` at that commit, then follow the steps in [compiler documentation](../building/compiler-documenting.md).
