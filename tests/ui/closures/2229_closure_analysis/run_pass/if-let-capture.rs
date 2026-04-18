@@ -47,5 +47,9 @@ fn main() {
 
     assert_eq!(if_let_size, match_size);
     assert_eq!(if_let_size, let_size);
-    assert_ne!(if_let_size, size_of::<Thing>());
+
+    // The closure should capture only the moved field, so its size should be
+    // less than the size of `Thing`, which would indicate that it captures the
+    // entire struct.
+    assert!(if_let_size <= size_of::<Thing>());
 }
