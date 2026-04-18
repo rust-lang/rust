@@ -55,9 +55,6 @@ fn skeleton_string<'tcx>(
                 bug!("{:?} overflow for u128", size)
             }
         }
-        Ok(SizeSkeleton::Generic(size)) => {
-            format!("generic size {size}")
-        }
         Err(LayoutError::TooGeneric(bad)) => {
             if *bad == ty {
                 "this type does not have a fixed size".to_owned()
