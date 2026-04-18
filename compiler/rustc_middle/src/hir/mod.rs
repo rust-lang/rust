@@ -8,19 +8,21 @@ pub mod place;
 
 use std::sync::Arc;
 
+//use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_ast::{self as ast};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
+use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{DynSend, DynSync, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable};
-use rustc_span::{ErrorGuaranteed, ExpnId, HashStableContext, Span};
+use rustc_span::{ErrorGuaranteed, ExpnId, Span};
 
 use crate::query::Providers;
 use crate::ty::{ResolverAstLowering, TyCtxt};
@@ -31,8 +33,8 @@ use crate::ty::{ResolverAstLowering, TyCtxt};
 /// For more details, see the [rustc dev guide].
 ///
 /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir.html
-#[derive(Debug)]
 pub struct Crate<'hir> {
+    //    tcx: TyCtxt<'hir>,
     // This field is private by intention, access it through `owner` method.
     owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
     // Ids of delayed AST owners which are lowered through `lower_delayed_owner` query.
@@ -41,7 +43,17 @@ pub struct Crate<'hir> {
     // and then stolen and dropped in `force_delayed_owners_lowering`.
     pub delayed_resolver: Steal<(ResolverAstLowering<'hir>, Arc<ast::Crate>)>,
     // Only present when incr. comp. is enabled.
-    pub opt_hir_hash: Option<Fingerprint>,
+    pub opt_hash: Option<Svh>,
+}
+
+impl std::fmt::Debug for Crate<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Crate")
+            .field("owners", &self.owners)
+            .field("delayed_ids", &self.delayed_ids)
+            .field("delayed_resolver", &self.delayed_resolver)
+            .finish()
+    }
 }
 
 impl<'hir> Crate<'hir> {
@@ -49,9 +61,9 @@ impl<'hir> Crate<'hir> {
         owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
         delayed_ids: FxIndexSet<LocalDefId>,
         delayed_resolver: Steal<(ResolverAstLowering<'hir>, Arc<ast::Crate>)>,
-        opt_hir_hash: Option<Fingerprint>,
+        opt_hash: Option<Svh>,
     ) -> Crate<'hir> {
-        Crate { owners, delayed_ids, delayed_resolver, opt_hir_hash }
+        Crate { owners, delayed_ids, delayed_resolver, opt_hash }
     }
 
     /// Serves as an entry point for getting `MaybeOwner`. As owner can either be in
@@ -76,12 +88,11 @@ impl<'hir> Crate<'hir> {
     }
 }
 
-impl<Hcx: HashStableContext> HashStable<Hcx> for Crate<'_> {
+/*impl<Hcx: HashStableContext> HashStable<Hcx> for Crate<'_> {
     fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        let Crate { opt_hir_hash, .. } = self;
-        opt_hir_hash.unwrap().hash_stable(hcx, hasher)
+        self.tcx.crate_hash(LOCAL_CRATE).hash_stable(hcx, hasher)
     }
-}
+}*/
 
 /// Gather the LocalDefId for each item-like within a module, including items contained within
 /// bodies. The Ids are in visitor order. This is used to partition a pass between modules.
@@ -454,7 +465,6 @@ pub struct Hashes {
 
 pub fn provide(providers: &mut Providers) {
     providers.hir_crate_items = map::hir_crate_items;
-    providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
     providers.local_def_id_to_hir_id = |tcx, def_id| match tcx.hir_crate(()).owner(tcx, def_id) {
         MaybeOwner::Owner(_) => HirId::make_owner(def_id),
