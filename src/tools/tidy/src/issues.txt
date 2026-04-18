@@ -2554,8 +2554,6 @@ ui/suggestions/issue-109991.rs
 ui/suggestions/issue-112590-suggest-import.rs
 ui/suggestions/issue-114701.rs
 ui/suggestions/issue-114797-bad-parentheses-dyn-trait.rs
-ui/suggestions/issue-116434-2015.rs
-ui/suggestions/issue-116434-2021.rs
 ui/suggestions/issue-117669.rs
 ui/suggestions/issue-21673.rs
 ui/suggestions/issue-51055-missing-semicolon-between-call-and-tuple.rs
