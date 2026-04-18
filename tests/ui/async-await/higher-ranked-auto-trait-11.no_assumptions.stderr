@@ -13,8 +13,8 @@ error: implementation of `Send` is not general enough
 LL |         Box::pin(async move { <T as Foo<'a>>::foo().await })
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Send` is not general enough
    |
-   = note: `Send` would have to be implemented for the type `<T as Foo<'0>>::Future`, for any lifetime `'0`...
-   = note: ...but `Send` is actually implemented for the type `<T as Foo<'1>>::Future`, for some specific lifetime `'1`
+   = note: `<T as Foo<'0>>::Future` must implement `Send`, for any lifetime `'0`...
+   = note: ...but `Send` is actually implemented for the type `<T as Foo<'_>>::Future`
 
 error: aborting due to 2 previous errors
 

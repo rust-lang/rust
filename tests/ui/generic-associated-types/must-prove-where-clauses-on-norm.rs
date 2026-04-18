@@ -21,7 +21,7 @@ fn foo<'a, 'b, T: Trait>(_: <T as Trait>::Assoc<'a, 'b>, x: &'b str) -> &'a str 
 
 fn main() {
     let func: for<'a, 'b> fn((), &'b str) -> &'static str = foo::<()>;
-    //[current]~^ ERROR higher-ranked lifetime error
+    //[current]~^ ERROR lifetime bound not satisfied
     //[next]~^^ ERROR mismatched types
     let x: &'static str = func((), &String::from("temporary"));
     println!("{x}");

@@ -1,10 +1,10 @@
-error: higher-ranked lifetime error
+error: lifetime bound not satisfied
   --> $DIR/must-prove-where-clauses-on-norm.rs:23:61
    |
 LL |     let func: for<'a, 'b> fn((), &'b str) -> &'static str = foo::<()>;
    |                                                             ^^^^^^^^^
    |
-   = note: could not normalize `for<'b> fn(<() as Trait>::Assoc<'_, 'b>, &'b str) -> &str`
+   = note: this is a known limitation that will be removed in the future (see issue #100013 <https://github.com/rust-lang/rust/issues/100013> for more information)
 
 error: aborting due to 1 previous error
 

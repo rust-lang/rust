@@ -11,6 +11,9 @@ LL |     FOO(&n);
 LL |
 LL | }
    | - `n` dropped here while still borrowed
+   |
+note: requirement that the value outlives `'static` introduced here
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: aborting due to 1 previous error
 
