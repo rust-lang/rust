@@ -131,17 +131,17 @@ pub(crate) fn find_all_refs(
     let exclude_library_refs = !is_library_file(sema.db, position.file_id);
     let make_searcher = |literal_search: bool| {
         move |def: Definition| {
-            let mut excluded_categories = ReferenceCategory::empty();
+            let mut included_categories = ReferenceCategory::all();
             if config.exclude_imports {
-                excluded_categories |= ReferenceCategory::IMPORT;
+                included_categories.remove(ReferenceCategory::IMPORT);
             }
             if config.exclude_tests {
-                excluded_categories |= ReferenceCategory::TEST;
+                included_categories.remove(ReferenceCategory::TEST);
             }
             let mut usages = def
                 .usages(sema)
                 .set_scope(config.search_scope.as_ref())
-                .set_excluded_categories(excluded_categories)
+                .set_included_categories(included_categories)
                 .set_exclude_library_files(exclude_library_refs)
                 .include_self_refs()
                 .all();
@@ -182,8 +182,7 @@ pub(crate) fn find_all_refs(
                     is_mut: matches!(def, Definition::Local(l) if l.is_mut(sema.db)),
                     nav,
                 }
-            })
-            .filter(|decl| !(exclude_library_refs && is_library_file(sema.db, decl.nav.file_id)));
+            });
             ReferenceSearchResult { declaration, references }
         }
     };
@@ -582,6 +581,8 @@ pub fn also_calls_foo() {
             false,
             false,
             expect![[r#"
+                foo Function FileId(1) 0..15 7..10
+
                 FileId(0) 9..12 import
                 FileId(0) 31..34
             "#]],
@@ -598,6 +599,8 @@ fn main() {
             false,
             false,
             expect![[r#"
+                Some Variant FileId(1) 5999..6031 6024..6028
+
                 FileId(0) 46..50
             "#]],
         );
@@ -2244,6 +2247,8 @@ use proc_macros::identity;
 fn func() {}
 "#,
             expect![[r#"
+                identity Attribute FileId(1) 1..107 32..40
+
                 FileId(0) 17..25 import
                 FileId(0) 43..51
             "#]],
@@ -2273,6 +2278,8 @@ use proc_macros::mirror;
 mirror$0! {}
 "#,
             expect![[r#"
+                mirror ProcMacro FileId(1) 1..77 22..28
+
                 FileId(0) 17..23 import
                 FileId(0) 26..32
             "#]],
@@ -2291,6 +2298,8 @@ use proc_macros::DeriveIdentity;
 struct Foo;
 "#,
             expect![[r#"
+                derive_identity Derive FileId(2) 1..107 45..60
+
                 FileId(0) 17..31 import
                 FileId(0) 56..70
             "#]],
