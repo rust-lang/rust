@@ -15,7 +15,6 @@ impl<S: Stage> SingleAttributeParser<S> for InstructionSetParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
     ]);
     const TEMPLATE: AttributeTemplate = template!(List: &["set"], "https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute");
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         const POSSIBLE_SYMBOLS: &[Symbol] = &[sym::arm_a32, sym::arm_t32];
