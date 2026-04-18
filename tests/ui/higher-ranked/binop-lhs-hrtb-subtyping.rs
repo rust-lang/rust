@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/45425>
 //@ check-pass
 #![allow(dead_code)]
 use std::ops::Add;
