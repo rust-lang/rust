@@ -40,7 +40,7 @@ use rustc_middle::ty::{
     TyKind, TypingEnv, adjustment::PointerCoercion,
 };
 use rustc_mlir::load_all_dialects;
-use rustc_mlir::shared::arith::{Int, create_constant, create_int_constant};
+use rustc_mlir::shared::arith::{Int, Predicate, create_constant, create_int_constant};
 use rustc_mlir::shared::attr::create_scalar_attr;
 use rustc_mlir::shared::builtin::{tensor_type, tensor_type_like};
 use rustc_mlir::shared::ub::create_ub_poison;
@@ -83,6 +83,16 @@ type PtrToConstArray = HashMap<Local, Local>;
 /// `transmute`) to the shape extracted from the underlying `ConstArrays` entry.
 type SliceShape = HashMap<Local, Vec<i64>>;
 
+/// Runtime (non-constant) arrays: elements are SSA `Value`s instead of `i64` literals.
+type DynArrays<'c, 'p> = HashMap<Local, Vec<Value<'c, 'p>>>;
+
+/// Maps a raw-pointer local derived from a `dyn_array` to the source array local.
+type PtrToDynArray = HashMap<Local, Local>;
+
+/// Slice (fat pointer) whose elements are runtime SSA values — parallel to `SliceShape` for
+/// the dynamic case.
+type SliceDynValues<'c, 'p> = HashMap<Local, Vec<Value<'c, 'p>>>;
+
 /// Codegen state threaded through all statement/terminator handlers.
 pub(crate) struct CodegenState<'c, 'p> {
     pub(crate) ssa_values: SsaValues<'c, 'p>,
@@ -94,6 +104,12 @@ pub(crate) struct CodegenState<'c, 'p> {
     pub(crate) ptr_to_const_array: PtrToConstArray,
     /// `local → shape`: a fat-pointer slice `&[i32]` whose shape is statically known.
     pub(crate) slice_shape: SliceShape,
+    /// Runtime arrays whose elements are MLIR SSA values.
+    pub(crate) dyn_arrays: DynArrays<'c, 'p>,
+    /// `ptr_local → array_local`: pointer derived from a `dyn_arrays` entry.
+    pub(crate) ptr_to_dyn_array: PtrToDynArray,
+    /// Fat-pointer slices whose elements are runtime MLIR values.
+    pub(crate) slice_dyn_values: SliceDynValues<'c, 'p>,
 }
 
 impl<'c, 'p> CodegenState<'c, 'p> {
@@ -105,6 +121,9 @@ impl<'c, 'p> CodegenState<'c, 'p> {
             const_arrays: HashMap::new(),
             ptr_to_const_array: HashMap::new(),
             slice_shape: HashMap::new(),
+            dyn_arrays: HashMap::new(),
+            ptr_to_dyn_array: HashMap::new(),
+            slice_dyn_values: HashMap::new(),
         }
     }
 }
@@ -696,6 +715,12 @@ impl<'a> TritonCodegen<'a> {
                                     return Ok(());
                                 }
                             }
+                            if let Some(&arr_local) = state.ptr_to_dyn_array.get(&p.local) {
+                                if let Some(vals) = state.dyn_arrays.get(&arr_local).cloned() {
+                                    state.slice_dyn_values.insert(place.local, vals);
+                                    return Ok(());
+                                }
+                            }
                         }
                     }
 
@@ -731,8 +756,58 @@ impl<'a> TritonCodegen<'a> {
                         state.const_arrays.insert(place.local, elems);
                         return Ok(());
                     }
-                    // Not all-constant: fall through to todo!() below.
-                    todo!("AggregateKind::Array (non-constant elements): {:?}", index_vec);
+                    // Non-constant elements: look up each as an SSA value.
+                    let dyn_elems: Result<Vec<Value<'_, '_>>, MlirError> = index_vec
+                        .iter()
+                        .map(|op| match op {
+                            Operand::Copy(p) | Operand::Move(p) => self.codegen_copy(p, state),
+                            Operand::Constant(_) | Operand::RuntimeChecks(_) => {
+                                let ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                                    tcx,
+                                    TypingEnv::fully_monomorphized(),
+                                    EarlyBinder::bind(op.ty(mir, tcx)),
+                                );
+                                self.codegen_operand(
+                                    tcx, instance, op, ty, location, mlir_block, state,
+                                )
+                            }
+                        })
+                        .collect();
+                    state.dyn_arrays.insert(place.local, dyn_elems?);
+                    return Ok(());
+                }
+
+                // Generic ADT structs (e.g. core::ops::Range, custom structs): treat fields as
+                // a "tuple" stored in tuple_fields so that field-projection reads work.
+                // Known Triton types are handled inside codegen_aggregate_create.
+                if let AggregateKind::Adt(def_id, _, _, _, _) = aggregate_kind.as_ref() {
+                    let adt_def = tcx.adt_def(*def_id);
+                    let adt_name = format!("{:?}", adt_def);
+                    let is_triton_type = adt_name == "triton::llvm::triton::tensor::LlvmTensor"
+                        || adt_name == "triton::llvm::triton::pointer::LlvmPointer";
+                    if !is_triton_type {
+                        let fields: Result<Vec<Value<'_, '_>>, MlirError> = index_vec
+                            .iter()
+                            .map(|op| match op {
+                                Operand::Copy(p) | Operand::Move(p) => {
+                                    self.codegen_copy(p, state)
+                                }
+                                Operand::Constant(_) | Operand::RuntimeChecks(_) => {
+                                    let ty =
+                                        instance.instantiate_mir_and_normalize_erasing_regions(
+                                            tcx,
+                                            TypingEnv::fully_monomorphized(),
+                                            EarlyBinder::bind(op.ty(mir, tcx)),
+                                        );
+                                    self.codegen_operand(
+                                        tcx, instance, op, ty, location, mlir_block, state,
+                                    )
+                                }
+                            })
+                            .collect();
+                        state.tuple_fields.insert(place.local, fields?);
+                        return Ok(());
+                    }
                 }
 
                 let result = self.codegen_aggregate_create(
@@ -764,18 +839,34 @@ impl<'a> TritonCodegen<'a> {
                 }
             }
             Rvalue::Repeat(operand, _) => todo!("Repeat: {:?}", operand),
-            Rvalue::Ref(region, borrow_kind, place) => {
-                todo!("Ref: {:?} {:?} {:?}", region, borrow_kind, place)
+            Rvalue::Ref(_region, _borrow_kind, src_place) => {
+                // Treat `&arr` the same as `&raw const arr` for const/dyn arrays so that
+                // downstream slice-coercion and `make_tensor_descriptor` can recover the values.
+                if src_place.projection.is_empty() {
+                    if state.const_arrays.contains_key(&src_place.local) {
+                        state.ptr_to_const_array.insert(place.local, src_place.local);
+                        return Ok(());
+                    }
+                    if state.dyn_arrays.contains_key(&src_place.local) {
+                        state.ptr_to_dyn_array.insert(place.local, src_place.local);
+                        return Ok(());
+                    }
+                }
+                todo!("Ref: {:?} {:?} {:?}", _region, _borrow_kind, src_place)
             }
             Rvalue::ThreadLocalRef(def_id) => todo!("ThreadLocalRef: {:?}", def_id),
             Rvalue::RawPtr(_raw_ptr_kind, src_place) => {
                 // If this is `&raw const const_array_local`, record the mapping so that
                 // downstream `zeros` / `slice_from_raw_parts` calls can recover the shape.
-                if src_place.projection.is_empty()
-                    && state.const_arrays.contains_key(&src_place.local)
-                {
-                    state.ptr_to_const_array.insert(place.local, src_place.local);
-                    return Ok(());
+                if src_place.projection.is_empty() {
+                    if state.const_arrays.contains_key(&src_place.local) {
+                        state.ptr_to_const_array.insert(place.local, src_place.local);
+                        return Ok(());
+                    }
+                    if state.dyn_arrays.contains_key(&src_place.local) {
+                        state.ptr_to_dyn_array.insert(place.local, src_place.local);
+                        return Ok(());
+                    }
                 }
                 todo!("RawPtr: {:?} {:?}", _raw_ptr_kind, src_place)
             }
@@ -1000,32 +1091,38 @@ impl<'a> TritonCodegen<'a> {
             self.codegen_operand(tcx, instance, rhs_op, rhs_ty, location, mlir_block, state)?;
 
         match bin_op {
-            BinOp::Add => todo!(),
-            BinOp::AddUnchecked => todo!(),
-            BinOp::AddWithOverflow => todo!(),
-            BinOp::Sub => todo!(),
-            BinOp::SubUnchecked => todo!(),
-            BinOp::SubWithOverflow => todo!(),
-            BinOp::Mul => self.codegen_mul(tcx, location, lhs, rhs, mlir_block),
-            BinOp::MulUnchecked => todo!(),
-            BinOp::MulWithOverflow => todo!(),
-            BinOp::Div => todo!(),
-            BinOp::Rem => todo!(),
-            BinOp::BitXor => todo!(),
-            BinOp::BitAnd => todo!(),
-            BinOp::BitOr => todo!(),
-            BinOp::Shl => todo!(),
-            BinOp::ShlUnchecked => todo!(),
-            BinOp::Shr => todo!(),
-            BinOp::ShrUnchecked => todo!(),
-            BinOp::Eq => todo!(),
-            BinOp::Lt => todo!(),
-            BinOp::Le => todo!(),
-            BinOp::Ne => todo!(),
-            BinOp::Ge => todo!(),
-            BinOp::Gt => todo!(),
-            BinOp::Cmp => todo!(),
-            BinOp::Offset => todo!(),
+            BinOp::Add | BinOp::AddUnchecked => {
+                self.codegen_add(tcx, location, lhs, rhs, mlir_block)
+            }
+            BinOp::AddWithOverflow => todo!("BinOp::AddWithOverflow"),
+            BinOp::Sub | BinOp::SubUnchecked => {
+                self.codegen_sub(tcx, location, lhs, rhs, mlir_block)
+            }
+            BinOp::SubWithOverflow => todo!("BinOp::SubWithOverflow"),
+            BinOp::Mul | BinOp::MulUnchecked => {
+                self.codegen_mul(tcx, location, lhs, rhs, mlir_block)
+            }
+            BinOp::MulWithOverflow => todo!("BinOp::MulWithOverflow"),
+            BinOp::Div => self.codegen_div(tcx, location, lhs, rhs, mlir_block),
+            BinOp::Rem => self.codegen_rem(tcx, location, lhs, rhs, mlir_block),
+            BinOp::BitXor => self.codegen_xor(tcx, location, lhs, rhs, mlir_block),
+            BinOp::BitAnd => self.codegen_and(tcx, location, lhs, rhs, mlir_block),
+            BinOp::BitOr => self.codegen_or(tcx, location, lhs, rhs, mlir_block),
+            BinOp::Shl | BinOp::ShlUnchecked => {
+                self.codegen_shl(tcx, location, lhs, rhs, mlir_block)
+            }
+            BinOp::Shr | BinOp::ShrUnchecked => {
+                let signed = matches!(lhs_ty.kind(), TyKind::Int(_));
+                self.codegen_shr(tcx, signed, location, lhs, rhs, mlir_block)
+            }
+            BinOp::Eq => self.codegen_cmpi(tcx, Predicate::EQ, location, lhs, rhs, mlir_block),
+            BinOp::Lt => self.codegen_cmpi(tcx, Predicate::SLT, location, lhs, rhs, mlir_block),
+            BinOp::Le => self.codegen_cmpi(tcx, Predicate::SLE, location, lhs, rhs, mlir_block),
+            BinOp::Ne => self.codegen_cmpi(tcx, Predicate::NE, location, lhs, rhs, mlir_block),
+            BinOp::Ge => self.codegen_cmpi(tcx, Predicate::SGE, location, lhs, rhs, mlir_block),
+            BinOp::Gt => self.codegen_cmpi(tcx, Predicate::SGT, location, lhs, rhs, mlir_block),
+            BinOp::Cmp => todo!("BinOp::Cmp"),
+            BinOp::Offset => todo!("BinOp::Offset"),
         }
     }
 

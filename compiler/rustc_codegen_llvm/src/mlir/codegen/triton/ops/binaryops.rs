@@ -23,8 +23,9 @@ use melior::ir::{
 use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, UnwindAction};
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_mlir::shared::arith::{
-    FpPredicate, Predicate, create_addf, create_addi, create_cmpf, create_cmpi, create_extsi,
-    create_mulf, create_muli, create_muli_tensor, create_subf, create_subi,
+    FpPredicate, Predicate, create_addf, create_addi, create_andi, create_cmpf, create_cmpi,
+    create_divsi, create_extsi, create_mulf, create_muli, create_muli_tensor, create_ori,
+    create_remsi, create_shrsi, create_shrui, create_shli, create_subf, create_subi, create_xori,
 };
 use rustc_mlir::shared::builtin::{tensor_type, tensor_type_like};
 use rustc_mlir::triton::tensor::add_ptr;
@@ -234,7 +235,15 @@ impl<'a> TritonCodegen<'a> {
             (true, false) => (lhs, self.like_tensor(tcx, location, lhs, rhs, mlir_block)?),
             (false, true) => (self.like_tensor(tcx, location, rhs, lhs, mlir_block)?, rhs),
             (false, false) => {
-                todo!("TritonCodegen::codegen_lt: {:?}-> {:?} {:?}", lhs, lhs.r#type(), rhs,)
+                // Scalar integer comparison — result is i1.
+                let result_ty = IntegerType::new(self.module.context(), 1).into();
+                let cmp_op: Operation<'a> =
+                    create_cmpi(self.module.context(), location, predicate, lhs, rhs, result_ty)
+                        .map_err(|e| MlirError::CreateOperation { err: e })?
+                        .into();
+                let result = cmp_op.result(0).expect("cmpi result not found");
+                mlir_block.append_operation(cmp_op);
+                return Ok(Some(result.into()));
             }
         };
 
@@ -699,13 +708,24 @@ impl<'a> TritonCodegen<'a> {
             (true, true) => (lhs, rhs),
             (true, false) => (lhs, self.like_tensor(tcx, location, lhs, rhs, mlir_block)?),
             (false, true) => (self.like_tensor(tcx, location, rhs, lhs, mlir_block)?, rhs),
-            (false, false) => todo!(
-                "TritonCodegen::codegen_add: {:?}-> {:?} {:?}-> {:?}",
-                lhs,
-                lhs_ty,
-                rhs,
-                rhs_ty
-            ),
+            (false, false) => {
+                if lhs_ty.is_integer() {
+                    let add_op: Operation<'a> =
+                        create_addi(self.module.context(), location, lhs, rhs)
+                            .map_err(|e| MlirError::CreateOperation { err: e })?
+                            .into();
+                    let result = add_op.result(0).expect("Add operation result not found");
+                    mlir_block.append_operation(add_op);
+                    return Ok(Some(result.into()));
+                }
+                todo!(
+                    "TritonCodegen::codegen_add scalar float: {:?}-> {:?} {:?}-> {:?}",
+                    lhs,
+                    lhs_ty,
+                    rhs,
+                    rhs_ty
+                )
+            }
         };
 
         let lhs_ty: RankedTensorType<'a> = lhs
@@ -733,5 +753,172 @@ impl<'a> TritonCodegen<'a> {
 
         mlir_block.append_operation(add_op);
         Ok(Some(result.into()))
+    }
+
+    pub fn codegen_div<'tcx>(
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        location: Location<'a>,
+        lhs: Value<'a, 'a>,
+        rhs: Value<'a, 'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let lhs_ty = lhs.r#type();
+        if lhs_ty.is_tensor() || rhs.r#type().is_tensor() {
+            todo!("TritonCodegen::codegen_div tensor not yet supported")
+        }
+        if lhs_ty.is_integer() {
+            let div_op: Operation<'a> =
+                create_divsi(self.module.context(), location, lhs, rhs)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?;
+            let result = div_op.result(0).expect("Div operation result not found");
+            mlir_block.append_operation(div_op);
+            return Ok(Some(result.into()));
+        }
+        todo!("TritonCodegen::codegen_div scalar float: {:?}", lhs_ty)
+    }
+
+    pub fn codegen_rem<'tcx>(
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        location: Location<'a>,
+        lhs: Value<'a, 'a>,
+        rhs: Value<'a, 'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let lhs_ty = lhs.r#type();
+        if lhs_ty.is_tensor() || rhs.r#type().is_tensor() {
+            todo!("TritonCodegen::codegen_rem tensor not yet supported")
+        }
+        if lhs_ty.is_integer() {
+            let rem_op: Operation<'a> =
+                create_remsi(self.module.context(), location, lhs, rhs)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?;
+            let result = rem_op.result(0).expect("Rem operation result not found");
+            mlir_block.append_operation(rem_op);
+            return Ok(Some(result.into()));
+        }
+        todo!("TritonCodegen::codegen_rem scalar float: {:?}", lhs_ty)
+    }
+
+    pub fn codegen_shl<'tcx>(
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        location: Location<'a>,
+        lhs: Value<'a, 'a>,
+        rhs: Value<'a, 'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let lhs_ty = lhs.r#type();
+        if lhs_ty.is_tensor() || rhs.r#type().is_tensor() {
+            todo!("TritonCodegen::codegen_shl tensor not yet supported")
+        }
+        if lhs_ty.is_integer() {
+            let op: Operation<'a> =
+                create_shli(self.module.context(), location, lhs, rhs)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?;
+            let result = op.result(0).expect("Shl operation result not found");
+            mlir_block.append_operation(op);
+            return Ok(Some(result.into()));
+        }
+        todo!("TritonCodegen::codegen_shl non-integer: {:?}", lhs_ty)
+    }
+
+    /// Right-shift; `signed` determines arithmetic (shrsi) vs logical (shrui).
+    pub fn codegen_shr<'tcx>(
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        signed: bool,
+        location: Location<'a>,
+        lhs: Value<'a, 'a>,
+        rhs: Value<'a, 'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let lhs_ty = lhs.r#type();
+        if lhs_ty.is_tensor() || rhs.r#type().is_tensor() {
+            todo!("TritonCodegen::codegen_shr tensor not yet supported")
+        }
+        if lhs_ty.is_integer() {
+            let op: Operation<'a> = if signed {
+                create_shrsi(self.module.context(), location, lhs, rhs)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+            } else {
+                create_shrui(self.module.context(), location, lhs, rhs)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?
+            };
+            let result = op.result(0).expect("Shr operation result not found");
+            mlir_block.append_operation(op);
+            return Ok(Some(result.into()));
+        }
+        todo!("TritonCodegen::codegen_shr non-integer: {:?}", lhs_ty)
+    }
+
+    pub fn codegen_and<'tcx>(
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        location: Location<'a>,
+        lhs: Value<'a, 'a>,
+        rhs: Value<'a, 'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let lhs_ty = lhs.r#type();
+        if lhs_ty.is_tensor() || rhs.r#type().is_tensor() {
+            todo!("TritonCodegen::codegen_and tensor not yet supported")
+        }
+        if lhs_ty.is_integer() {
+            let op: Operation<'a> =
+                create_andi(self.module.context(), location, lhs, rhs)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?;
+            let result = op.result(0).expect("And operation result not found");
+            mlir_block.append_operation(op);
+            return Ok(Some(result.into()));
+        }
+        todo!("TritonCodegen::codegen_and non-integer: {:?}", lhs_ty)
+    }
+
+    pub fn codegen_or<'tcx>(
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        location: Location<'a>,
+        lhs: Value<'a, 'a>,
+        rhs: Value<'a, 'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let lhs_ty = lhs.r#type();
+        if lhs_ty.is_tensor() || rhs.r#type().is_tensor() {
+            todo!("TritonCodegen::codegen_or tensor not yet supported")
+        }
+        if lhs_ty.is_integer() {
+            let op: Operation<'a> =
+                create_ori(self.module.context(), location, lhs, rhs)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?;
+            let result = op.result(0).expect("Or operation result not found");
+            mlir_block.append_operation(op);
+            return Ok(Some(result.into()));
+        }
+        todo!("TritonCodegen::codegen_or non-integer: {:?}", lhs_ty)
+    }
+
+    pub fn codegen_xor<'tcx>(
+        &self,
+        _tcx: TyCtxt<'tcx>,
+        location: Location<'a>,
+        lhs: Value<'a, 'a>,
+        rhs: Value<'a, 'a>,
+        mlir_block: &BlockRef<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let lhs_ty = lhs.r#type();
+        if lhs_ty.is_tensor() || rhs.r#type().is_tensor() {
+            todo!("TritonCodegen::codegen_xor tensor not yet supported")
+        }
+        if lhs_ty.is_integer() {
+            let op: Operation<'a> =
+                create_xori(self.module.context(), location, lhs, rhs)
+                    .map_err(|e| MlirError::CreateOperation { err: e })?;
+            let result = op.result(0).expect("Xor operation result not found");
+            mlir_block.append_operation(op);
+            return Ok(Some(result.into()));
+        }
+        todo!("TritonCodegen::codegen_xor non-integer: {:?}", lhs_ty)
     }
 }

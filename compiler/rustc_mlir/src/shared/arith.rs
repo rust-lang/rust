@@ -15,7 +15,7 @@
  */
 
 use melior::Context;
-use melior::dialect::arith::{mulf, muli, subf, subi};
+use melior::dialect::arith::{andi, divsi, mulf, muli, ori, remsi, shli, shrsi, shrui, subf, subi, xori};
 use melior::dialect::ods::arith::{
     AddFOperation, AddIOperation, CmpFOperation, CmpIOperation, ConstantOperation, ExtSIOperation,
     MulIOperation,
@@ -231,6 +231,78 @@ pub fn create_mulf<'ctx>(
     rhs: Value<'ctx, 'ctx>,
 ) -> Result<Operation<'ctx>, Error> {
     Ok(mulf(lhs, rhs, location))
+}
+
+pub fn create_shli<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'ctx>,
+    rhs: Value<'ctx, 'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    Ok(shli(lhs, rhs, location))
+}
+
+pub fn create_shrsi<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'ctx>,
+    rhs: Value<'ctx, 'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    Ok(shrsi(lhs, rhs, location))
+}
+
+pub fn create_shrui<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'ctx>,
+    rhs: Value<'ctx, 'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    Ok(shrui(lhs, rhs, location))
+}
+
+pub fn create_andi<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'ctx>,
+    rhs: Value<'ctx, 'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    Ok(andi(lhs, rhs, location))
+}
+
+pub fn create_ori<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'ctx>,
+    rhs: Value<'ctx, 'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    Ok(ori(lhs, rhs, location))
+}
+
+pub fn create_xori<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'ctx>,
+    rhs: Value<'ctx, 'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    Ok(xori(lhs, rhs, location))
+}
+
+pub fn create_divsi<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'ctx>,
+    rhs: Value<'ctx, 'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    Ok(divsi(lhs, rhs, location))
+}
+
+pub fn create_remsi<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'ctx>,
+    rhs: Value<'ctx, 'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    Ok(remsi(lhs, rhs, location))
 }
 
 pub fn create_extsi<'ctx>(

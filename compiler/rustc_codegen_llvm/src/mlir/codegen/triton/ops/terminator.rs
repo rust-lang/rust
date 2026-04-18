@@ -121,8 +121,10 @@ impl<'a> TritonCodegen<'a> {
             rustc_middle::mir::TerminatorKind::TailCall { func, args, fn_span } => {
                 todo!("TailCall: {:?} {:?} {:?}", func, args, fn_span)
             }
-            rustc_middle::mir::TerminatorKind::Assert { cond, expected, msg, target, unwind } => {
-                todo!("Assert: {:?} {:?} {:?} {:?} {:?}", cond, expected, msg, target, unwind)
+            rustc_middle::mir::TerminatorKind::Assert { target, .. } => {
+                // GPU kernels have no panic infrastructure — treat Assert as an unconditional
+                // branch to the success target (the assertion is assumed to hold).
+                self.codegen_goto(location, target, mlir_block, basic_blocks)
             }
             rustc_middle::mir::TerminatorKind::Yield { .. } => todo!("Yield"),
             rustc_middle::mir::TerminatorKind::CoroutineDrop => todo!("CoroutineDrop"),

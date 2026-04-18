@@ -106,7 +106,7 @@ impl TypeMapper {
             TyKind::CoroutineWitness(_def, _args) => {
                 todo!("CoroutineWitness: {:?} {:?}", _def, _args)
             }
-            TyKind::Never => todo!("Never"),
+            TyKind::Never => IntegerType::new(context, 64).into(),
             TyKind::Tuple(tys) => self.create_tuple_type(context, tcx, tys.as_slice()),
             TyKind::Alias(alias_ty_kind, alias_ty) => {
                 self.map_alias_ty(context, tcx, ty, alias_ty_kind, alias_ty)

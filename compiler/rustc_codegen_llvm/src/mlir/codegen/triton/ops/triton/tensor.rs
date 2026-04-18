@@ -353,6 +353,11 @@ impl<'a> TritonCodegen<'a> {
                 eprintln!("[DEBUG] codegen_transmute_slice: shape={shape:?} → {:?}", destination.local);
                 return Ok(None);
             }
+            if let Some(vals) = state.slice_dyn_values.get(&src_place.local).cloned() {
+                state.slice_dyn_values.insert(destination.local, vals);
+                eprintln!("[DEBUG] codegen_transmute_slice: dyn_values → {:?}", destination.local);
+                return Ok(None);
+            }
         }
 
         eprintln!("[DEBUG] codegen_transmute_slice: could not extract shape; args={args:?}");
