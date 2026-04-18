@@ -1457,19 +1457,30 @@ impl<'a> TritonCodegen<'a> {
             }
         };
 
-        // Extract input_precision integer (Option<InputPrecision> → default TF32 = 0).
+        // Extract input_precision integer (Option<InputPrecision> → default IEEE for correctness).
         let precision_int = self.codegen_option_operand(
             tcx, instance, mir, &args[3].node, location, mlir_block, state,
         )?;
+        eprintln!("[DOT-PREC] precision_int={}", precision_int.as_ref().map(|v| v.to_string()).unwrap_or("None".to_string()));
         let precision = precision_int
             .and_then(|v| {
-                // The value is an i32 constant; try to extract it.
+                // v is an arith.constant i32; extract the integer discriminant.
                 use melior::ir::attribute::IntegerAttribute;
-                let attr_str = v.to_string(); // e.g. "%0 = arith.constant 0 ..."
-                let _ = attr_str;
-                None::<InputPrecision> // fall through to default
+                use melior::ir::operation::{OperationLike, OperationResult};
+                OperationResult::try_from(v).ok()
+                    .and_then(|res| res.owner().attribute("value").ok())
+                    .and_then(|attr| IntegerAttribute::try_from(attr).ok())
+                    .and_then(|int_attr| match int_attr.value() as i32 {
+                        0 => Some(InputPrecision::TF32),
+                        1 => Some(InputPrecision::TF32x3),
+                        2 => Some(InputPrecision::IEEE),
+                        3 => Some(InputPrecision::BF16x3),
+                        4 => Some(InputPrecision::BF16x6),
+                        _ => None,
+                    })
             })
-            .unwrap_or(InputPrecision::TF32);
+            .unwrap_or(InputPrecision::IEEE);
+        eprintln!("[DOT-PREC] final precision={:?}", precision as i32);
 
         // max_num_imprecise_acc (Option<i32> → default 0).
         let _max_imprecise_opt = self.codegen_option_operand(

@@ -132,6 +132,10 @@ pub(crate) struct CodegenState<'c, 'p> {
     /// Statically-known discriminant values for Option<T> locals (from SetDiscriminant).
     /// Used by `codegen_switch_int` to constant-fold branches on Option discriminants.
     pub(crate) const_disc_locals: ConstDiscLocals,
+    /// Join blocks (2+ predecessors) → list of MIR locals that need phi block args there.
+    pub(crate) phi_join_locals: HashMap<BasicBlock, Vec<Local>>,
+    /// (join_block, local) → the MLIR block argument value representing the phi node.
+    pub(crate) phi_block_args: HashMap<(BasicBlock, Local), Value<'c, 'p>>,
 }
 
 impl<'c, 'p> CodegenState<'c, 'p> {
@@ -151,6 +155,8 @@ impl<'c, 'p> CodegenState<'c, 'p> {
             loop_iter_carry_locals: Vec::new(),
             loop_body_bbs: HashSet::new(),
             const_disc_locals: HashMap::new(),
+            phi_join_locals: HashMap::new(),
+            phi_block_args: HashMap::new(),
         }
     }
 }
@@ -326,6 +332,7 @@ fn compute_reachable_blocks<'tcx>(
 ) -> HashSet<BasicBlock> {
     use rustc_middle::mir::TerminatorKind;
 
+    println!("[REACH-START] total blocks={}", mir.basic_blocks.len());
     let mut reachable: HashSet<BasicBlock> = HashSet::new();
     let mut queue: Vec<BasicBlock> = vec![BasicBlock::from_u32(0)];
 
@@ -334,11 +341,22 @@ fn compute_reachable_blocks<'tcx>(
             continue;
         }
         let bb_data = &mir.basic_blocks[bb];
+        println!("[REACH-TERM] bb={:?} kind={}", bb, match &bb_data.terminator().kind {
+            TerminatorKind::Goto { .. } => "Goto",
+            TerminatorKind::SwitchInt { .. } => "SwitchInt",
+            TerminatorKind::Return => "Return",
+            TerminatorKind::Unreachable => "Unreachable",
+            TerminatorKind::Call { .. } => "Call",
+            TerminatorKind::Drop { .. } => "Drop",
+            TerminatorKind::Assert { .. } => "Assert",
+            _ => "Other",
+        });
         match &bb_data.terminator().kind {
             TerminatorKind::Goto { target } => {
                 queue.push(*target);
             }
             TerminatorKind::SwitchInt { discr, targets } => {
+                println!("[REACH-BFS] SwitchInt at {:?}: discr={:?}", bb, discr);
                 // Constant-fold when the discriminant is statically known.
                 if let Some(const_val) = extract_switch_const(tcx, instance, discr, const_disc_locals) {
                     let target = targets
@@ -380,6 +398,128 @@ fn compute_reachable_blocks<'tcx>(
     }
 
     reachable
+}
+
+/// For each join block (2+ reachable non-loop predecessors), collect the set of MIR locals
+/// that are assigned via simple `Assign` statements in any direct predecessor block.
+/// These locals need MLIR block arguments (phi nodes) at the join block so that the SSA
+/// value used after the join is dominated by its definition regardless of the taken path.
+///
+/// Locals tracked as Option or tuple are excluded — those are managed via separate tables.
+///
+/// This function traces backward through single-predecessor linear chains from each
+/// predecessor of the join block, so it catches assignments that are a few hops back.
+fn compute_phi_join_locals<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mir: &Body<'tcx>,
+    reachable_bbs: &HashSet<BasicBlock>,
+    loop_region_blocks: &HashSet<BasicBlock>,
+) -> HashMap<BasicBlock, Vec<Local>> {
+    // Build a predecessor map restricted to non-loop reachable blocks.
+    let mut pred_map: HashMap<BasicBlock, HashSet<BasicBlock>> = HashMap::new();
+    for &bb in reachable_bbs {
+        if loop_region_blocks.contains(&bb) {
+            continue;
+        }
+        for succ in mir.basic_blocks[bb].terminator().successors() {
+            if reachable_bbs.contains(&succ) && !loop_region_blocks.contains(&succ) {
+                pred_map.entry(succ).or_default().insert(bb);
+            }
+        }
+    }
+
+    // Helper: collect all locals assigned in the linear chain starting at `start`,
+    // tracing backward through single-predecessor blocks.  Stops when we reach:
+    //   • a block that is also a direct predecessor of the join block (the divergence pt)
+    //   • a block with multiple forward successors (another branch point)
+    //   • a block with multiple predecessors (another join point)
+    //   • an already-visited block
+    let collect_chain_locals = |start: BasicBlock, join_preds: &HashSet<BasicBlock>| -> HashSet<Local> {
+        let mut locals: HashSet<Local> = HashSet::new();
+        let mut current = start;
+        let mut visited: HashSet<BasicBlock> = HashSet::new();
+        loop {
+            if !visited.insert(current) {
+                break;
+            }
+            // Collect all assignments in this block.
+            for stmt in &mir.basic_blocks[current].statements {
+                if let StatementKind::Assign(assign) = &stmt.kind {
+                    let (place, _) = assign.as_ref();
+                    if place.projection.is_empty() {
+                        locals.insert(place.local);
+                    }
+                }
+            }
+            // Count forward successors (in the filtered graph).
+            let succ_count = mir.basic_blocks[current]
+                .terminator()
+                .successors()
+                .filter(|&s| reachable_bbs.contains(&s) && !loop_region_blocks.contains(&s))
+                .count();
+            if succ_count != 1 {
+                // Divergence point — stop.
+                break;
+            }
+            // Follow the single backward predecessor.
+            let filtered_preds: Vec<BasicBlock> = pred_map
+                .get(&current)
+                .map(|ps| {
+                    ps.iter()
+                        .filter(|&&b| {
+                            reachable_bbs.contains(&b) && !loop_region_blocks.contains(&b)
+                        })
+                        .copied()
+                        .collect()
+                })
+                .unwrap_or_default();
+            if filtered_preds.len() != 1 {
+                break; // Another join point or entry — stop.
+            }
+            let prev = filtered_preds[0];
+            // Stop when we reach another direct predecessor of the join block
+            // (that is the divergence point shared by all paths).
+            if join_preds.contains(&prev) {
+                break;
+            }
+            current = prev;
+        }
+        locals
+    };
+
+    let mut result: HashMap<BasicBlock, Vec<Local>> = HashMap::new();
+    for (join_bb, preds) in &pred_map {
+        if preds.len() < 2 {
+            continue;
+        }
+        let mut seen: HashSet<Local> = HashSet::new();
+        let mut phi_locals: Vec<Local> = Vec::new();
+        for &pred_bb in preds {
+            for local in collect_chain_locals(pred_bb, preds) {
+                let raw_ty = mir.local_decls[local].ty;
+                // Skip Option and Tuple locals — tracked in separate tables.
+                if is_option_ty(tcx, raw_ty) {
+                    continue;
+                }
+                if matches!(raw_ty.kind(), rustc_middle::ty::TyKind::Tuple(_)) {
+                    continue;
+                }
+                if seen.insert(local) {
+                    phi_locals.push(local);
+                }
+            }
+        }
+        if !phi_locals.is_empty() {
+            println!(
+                "[PHI] join block {:?} has {} phi locals: {:?}",
+                join_bb,
+                phi_locals.len(),
+                phi_locals
+            );
+            result.insert(*join_bb, phi_locals);
+        }
+    }
+    result
 }
 
 /// Detect a Range-based `for` loop in the MIR body.
@@ -1106,7 +1246,7 @@ impl<'a> TritonCodegen<'a> {
                 "[DEBUG] TritonCodegen::codegen_function: func_name: {:?}, arg_types: {:?}",
                 func_name, arg_types
             );
-            println!("[DEBUG] TritonCodegen::codegen_function: mir: {:?}", mir);
+            //println!("[DEBUG] TritonCodegen::codegen_function: mir: {:?}", mir);
         }
 
         // Pre-scan for statically-known discriminant values (e.g. Option locals set to None
@@ -1160,6 +1300,11 @@ impl<'a> TritonCodegen<'a> {
             loop_info, loop_init_bb
         );
 
+        // Compute phi (block-argument) locals for join blocks in the non-loop CFG.
+        let phi_join_locals =
+            compute_phi_join_locals(tcx, mir, &reachable_bbs, &loop_region_blocks);
+        state.phi_join_locals = phi_join_locals;
+
         // Create MLIR blocks for all non-loop-region, reachable MIR blocks.
         for (bb, _) in mir.basic_blocks.iter_enumerated() {
             if loop_region_blocks.contains(&bb) {
@@ -1185,6 +1330,10 @@ impl<'a> TritonCodegen<'a> {
                     }
                 }
             }
+
+            // Phi block args for join blocks are created lazily in codegen_goto /
+            // codegen_switch_int so that tensor locals get their concrete shape type
+            // (known only at codegen time) rather than the generic tensor<?xf32>.
 
             let block_ref =
                 func_op.region(0).expect("tt.func must have a body region").append_block(block);
@@ -1258,6 +1407,17 @@ impl<'a> TritonCodegen<'a> {
     ) -> Result<(), MlirError> {
         let mlir_block = basic_blocks.get(&bb).expect("block not found");
 
+        // At join blocks, the phi block args represent merged values for locals.
+        // Update ssa_values so subsequent statements see the phi value, not the stale
+        // predecessor-specific value.
+        if let Some(phi_locals) = state.phi_join_locals.get(&bb).cloned() {
+            for phi_local in &phi_locals {
+                if let Some(&phi_val) = state.phi_block_args.get(&(bb, *phi_local)) {
+                    state.ssa_values.insert(*phi_local, phi_val);
+                }
+            }
+        }
+
         // Codegen each MIR statement in order.
         for stmt in &bb_data.statements {
             self.codegen_statement(tcx, instance, mir, stmt, mlir_block, state)?;
@@ -1286,15 +1446,12 @@ impl<'a> TritonCodegen<'a> {
         mlir_block: &BlockRef<'a, 'a>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<(), MlirError> {
-        println!("[DEBUG] TritonCodegen::codegen_statement: ssa_values: {:?}", state.ssa_values);
+        //println!("[DEBUG] TritonCodegen::codegen_statement: ssa_values: {:?}", state.ssa_values);
         let location = span_to_location(self.module.context(), tcx, stmt.source_info.span);
         match &stmt.kind {
             StatementKind::Assign(assign) => {
                 let (place, rvalue) = assign.as_ref();
-                println!(
-                    "[DEBUG] TritonCodegen::codegen_statement: Assign: {:?}, {:?} {:?}",
-                    stmt, place, rvalue
-                );
+                //println!("[DEBUG] TritonCodegen::codegen_statement: Assign: {:?}, {:?} {:?}", stmt, place, rvalue);
                 self.codegen_assign(tcx, instance, mir, place, rvalue, location, mlir_block, state)
             }
             StatementKind::SetDiscriminant { place, variant_index } => self
@@ -1323,7 +1480,7 @@ impl<'a> TritonCodegen<'a> {
             | StatementKind::Retag(..) => Ok(()),
         }?;
 
-        println!("[DEBUG] TritonCodegen::codegen_statement: ssa_values: {:?}", state.ssa_values);
+        //println!("[DEBUG] TritonCodegen::codegen_statement: ssa_values: {:?}", state.ssa_values);
         Ok(())
     }
 
@@ -2168,10 +2325,7 @@ impl<'a> TritonCodegen<'a> {
         mlir_block: &BlockRef<'a, 'a>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
-        println!(
-            "[DEBUG] TritonCodegen::codegen_operand: ssa_values: {:?} operand: {:?}",
-            state.ssa_values, operand
-        );
+        //println!("[DEBUG] TritonCodegen::codegen_operand: ssa_values: {:?} operand: {:?}", state.ssa_values, operand);
 
         // For MLIR move is the same as copy
         match operand {
@@ -2293,10 +2447,7 @@ impl<'a> TritonCodegen<'a> {
         place: &Place<'tcx>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
-        println!(
-            "[DEBUG] TritonCodegen::codegen_copy: Local: {:?}, projection: {:?}, ssa_values: {:?}",
-            place.local, place.projection, state.ssa_values
-        );
+        //println!("[DEBUG] TritonCodegen::codegen_copy: Local: {:?}, projection: {:?}, ssa_values: {:?}", place.local, place.projection, state.ssa_values);
 
         // Handle Option downcast+field projection: `(_opt as Some).0` — extract the inner value.
         if let [ProjectionElem::Downcast(_, _), ProjectionElem::Field(_, _)]

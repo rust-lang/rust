@@ -62,12 +62,9 @@ impl<'a> TritonCodegen<'a> {
         terminator: &Terminator<'tcx>,
         mlir_block: &BlockRef<'a, 'a>,
         state: &mut CodegenState<'a, 'a>,
-        basic_blocks: &HashMap<BasicBlock, BlockRef>,
+        basic_blocks: &HashMap<BasicBlock, BlockRef<'a, 'a>>,
     ) -> Result<(), MlirError> {
-        println!(
-            "[DEBUG] TritonCodegen::codegen_terminator: ssa_values: {:?} terminator: {:?}",
-            state.ssa_values, terminator
-        );
+        //println!("[DEBUG] TritonCodegen::codegen_terminator: ssa_values: {:?} terminator: {:?}", state.ssa_values, terminator);
 
         let location =
             span_to_location(self.module.context(), tcx, terminator.source_info.span);
@@ -170,7 +167,7 @@ impl<'a> TritonCodegen<'a> {
         fn_span: &Span,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        basic_blocks: &HashMap<BasicBlock, BlockRef>,
+        basic_blocks: &HashMap<BasicBlock, BlockRef<'a, 'a>>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<(), MlirError> {
         let func_name = match func {
@@ -549,7 +546,7 @@ impl<'a> TritonCodegen<'a> {
         targets: &SwitchTargets,
         location: Location<'a>,
         mlir_block: &BlockRef<'a, 'a>,
-        basic_blocks: &HashMap<BasicBlock, BlockRef>,
+        basic_blocks: &HashMap<BasicBlock, BlockRef<'a, 'a>>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<(), MlirError> {
         // Constant-fold SwitchInt when the discriminant is statically known.
@@ -602,16 +599,43 @@ impl<'a> TritonCodegen<'a> {
                 let cmp_result: Value<'a, 'a> = cmp_op.result(0).expect("cmpi result").into();
                 mlir_block.append_operation(cmp_op);
 
-                let true_block = basic_blocks.get(target_bb).expect("switch target block");
-                let false_block = basic_blocks.get(&otherwise_bb).expect("switch otherwise block");
+                let true_block = *basic_blocks.get(target_bb).expect("switch target block");
+                let false_block = *basic_blocks.get(&otherwise_bb).expect("switch otherwise block");
+
+                // Collect phi args with lazy block-arg creation (same as codegen_goto).
+                let make_phi_args = |target: &BasicBlock,
+                                     target_block: BlockRef<'a, 'a>,
+                                     state: &mut CodegenState<'a, 'a>|
+                 -> Vec<Value<'a, 'a>> {
+                    if let Some(phi_locals) = state.phi_join_locals.get(target).cloned() {
+                        phi_locals
+                            .iter()
+                            .map(|local| {
+                                let ssa_val = *state.ssa_values.get(local).unwrap_or_else(|| {
+                                    panic!("cond_br: phi local {:?} not in ssa_values", local)
+                                });
+                                if !state.phi_block_args.contains_key(&(*target, *local)) {
+                                    let phi_val =
+                                        target_block.add_argument(ssa_val.r#type(), location);
+                                    state.phi_block_args.insert((*target, *local), phi_val);
+                                }
+                                ssa_val
+                            })
+                            .collect()
+                    } else {
+                        vec![]
+                    }
+                };
+                let true_phi_args = make_phi_args(target_bb, true_block, state);
+                let false_phi_args = make_phi_args(&otherwise_bb, false_block, state);
 
                 let cond_br_op = melior::dialect::cf::cond_br(
                     ctx,
                     cmp_result,
-                    true_block,
-                    false_block,
-                    &[],
-                    &[],
+                    &*true_block,
+                    &*false_block,
+                    &true_phi_args,
+                    &false_phi_args,
                     location,
                 );
                 mlir_block.append_operation(cond_br_op);
@@ -626,8 +650,8 @@ impl<'a> TritonCodegen<'a> {
         location: Location<'a>,
         target: &BasicBlock,
         mlir_block: &BlockRef<'a, 'a>,
-        basic_blocks: &HashMap<BasicBlock, BlockRef>,
-        state: &CodegenState<'a, 'a>,
+        basic_blocks: &HashMap<BasicBlock, BlockRef<'a, 'a>>,
+        state: &mut CodegenState<'a, 'a>,
     ) -> Result<(), MlirError> {
         // Back-edge detection: emit scf.yield instead of cf.br when inside a loop body.
         if let Some(header_bb) = state.loop_header_bb {
@@ -651,15 +675,53 @@ impl<'a> TritonCodegen<'a> {
             }
         }
 
-        let target_block = basic_blocks.get(target).unwrap();
-        let br_op = create_cf_br(self.module.context(), location, target_block)
-            .map_err(|e| MlirError::CreateOperation { err: e })?;
+        let target_block = *basic_blocks.get(target).unwrap();
 
-        eprintln!(
-            "[DEBUG] AXM TritonCodegen::codegen_goto: br_op: {:?}",
-            br_op.as_operation().to_string()
-        );
-        mlir_block.append_operation(br_op.into());
+        // Collect phi values when branching to a join block.
+        // Phi block args are created lazily here (first predecessor wins) so tensor locals
+        // get their concrete shape type from the actual SSA value rather than the generic
+        // tensor<?xf32> that the MIR type declaration would produce.
+        let phi_args: Vec<Value<'a, 'a>> =
+            if let Some(phi_locals) = state.phi_join_locals.get(target).cloned() {
+                phi_locals
+                    .iter()
+                    .map(|local| {
+                        let ssa_val = *state.ssa_values.get(local).unwrap_or_else(|| {
+                            panic!(
+                                "codegen_goto: phi local {:?} not in ssa_values at branch to {:?}",
+                                local, target
+                            )
+                        });
+                        // Lazily add the block argument on the first predecessor that reaches here.
+                        if !state.phi_block_args.contains_key(&(*target, *local)) {
+                            let phi_val = target_block.add_argument(ssa_val.r#type(), location);
+                            state.phi_block_args.insert((*target, *local), phi_val);
+                            println!(
+                                "[PHI] lazy: added arg for local {:?} at {:?} type {:?}",
+                                local, target, ssa_val.r#type()
+                            );
+                        }
+                        ssa_val
+                    })
+                    .collect()
+            } else {
+                vec![]
+            };
+
+        let br_op: Operation<'a> = if phi_args.is_empty() {
+            create_cf_br(self.module.context(), location, &*target_block)
+                .map_err(|e| MlirError::CreateOperation { err: e })?
+                .into()
+        } else {
+            println!(
+                "[PHI] codegen_goto: br to {:?} with {} phi args",
+                target,
+                phi_args.len()
+            );
+            melior::dialect::cf::br(&*target_block, &phi_args, location)
+        };
+
+        mlir_block.append_operation(br_op);
         Ok(())
     }
 }
