@@ -35,7 +35,8 @@ use crate::{
     lower::{GenericPredicates, lower_mutability},
     method_resolution::{self, CandidateId, MethodCallee, MethodError},
     next_solver::{
-        ErrorGuaranteed, FnSig, GenericArg, GenericArgs, TraitRef, Ty, TyKind, TypeError,
+        ClauseKind, ErrorGuaranteed, FnSig, GenericArg, GenericArgs, TraitRef, Ty, TyKind,
+        TypeError,
         infer::{
             BoundRegionConversionTime, InferOk,
             traits::{Obligation, ObligationCause},
@@ -1898,6 +1899,15 @@ impl<'db> InferenceContext<'_, 'db> {
         // Whether the function is variadic, for example when imported from C
         c_variadic: bool,
     ) {
+        let formal_input_tys: Vec<_> = formal_input_tys
+            .iter()
+            .map(|&ty| {
+                let generalized_ty = self.table.next_ty_var();
+                let _ = self.demand_eqtype(call_expr.into(), ty, generalized_ty);
+                generalized_ty
+            })
+            .collect();
+
         // First, let's unify the formal method signature with the expectation eagerly.
         // We use this to guide coercion inference; it's output is "fudged" which means
         // any remaining type variables are assigned to new, unrelated variables. This
@@ -1917,18 +1927,23 @@ impl<'db> InferenceContext<'_, 'db> {
                         // No argument expectations are produced if unification fails.
                         let origin = ObligationCause::new();
                         ocx.sup(&origin, self.table.param_env, expected_output, formal_output)?;
+
+                        for &ty in &formal_input_tys {
+                            ocx.register_obligation(Obligation::new(
+                                self.interner(),
+                                ObligationCause::new(),
+                                self.table.param_env,
+                                ClauseKind::WellFormed(ty.into()),
+                            ));
+                        }
+
                         if !ocx.try_evaluate_obligations().is_empty() {
                             return Err(TypeError::Mismatch);
                         }
 
                         // Record all the argument types, with the args
                         // produced from the above subtyping unification.
-                        Ok(Some(
-                            formal_input_tys
-                                .iter()
-                                .map(|&ty| self.table.infer_ctxt.resolve_vars_if_possible(ty))
-                                .collect(),
-                        ))
+                        Ok(Some(formal_input_tys.clone()))
                     })
                     .ok()
             })
@@ -1939,7 +1954,7 @@ impl<'db> InferenceContext<'_, 'db> {
             assert_eq!(expected_input_tys.len(), formal_input_tys.len());
             expected_input_tys
         } else {
-            formal_input_tys
+            &formal_input_tys
         };
 
         let minimum_input_count = expected_input_tys.len();
