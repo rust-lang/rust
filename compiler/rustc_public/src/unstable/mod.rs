@@ -55,6 +55,11 @@ pub trait InternalCx<'tcx>: Copy + Clone {
     fn mk_place_elems(self, v: &[mir::PlaceElem<'tcx>]) -> &'tcx List<mir::PlaceElem<'tcx>>;
 
     fn adt_def(self, def_id: rustc_hir::def_id::DefId) -> ty::AdtDef<'tcx>;
+
+    fn mk_patterns_from_iter<I, T>(self, iter: I) -> T::Output
+    where
+        I: Iterator<Item = T>,
+        T: ty::CollectAndApply<ty::Pattern<'tcx>, &'tcx List<ty::Pattern<'tcx>>>;
 }
 
 /// Trait used to convert between an internal MIR type to a rustc_public's IR type.

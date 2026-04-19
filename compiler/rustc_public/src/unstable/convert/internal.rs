@@ -125,9 +125,13 @@ impl RustcInternal for Pattern {
     ) -> Self::T<'tcx> {
         tcx.mk_pat(match self {
             Pattern::Range { start, end, include_end: _ } => rustc_ty::PatternKind::Range {
-                start: start.as_ref().unwrap().internal(tables, tcx),
-                end: end.as_ref().unwrap().internal(tables, tcx),
+                start: start.internal(tables, tcx),
+                end: end.internal(tables, tcx),
             },
+            Pattern::NotNull => rustc_ty::PatternKind::NotNull,
+            Pattern::Or(patterns) => rustc_ty::PatternKind::Or(
+                tcx.mk_patterns_from_iter(patterns.iter().map(|p| p.internal(tables, tcx))),
+            ),
         })
     }
 }
