@@ -5,8 +5,8 @@ use rustc_span::edition::Edition::Edition2024;
 use super::prelude::*;
 use crate::attributes::AttributeSafety;
 use crate::session_diagnostics::{
-    NakedFunctionIncompatibleAttribute, NullOnExport, NullOnObjcClass, NullOnObjcSelector,
-    ObjcClassExpectedStringLiteral, ObjcSelectorExpectedStringLiteral,
+    EmptyExportName, NakedFunctionIncompatibleAttribute, NullOnExport, NullOnObjcClass,
+    NullOnObjcSelector, ObjcClassExpectedStringLiteral, ObjcSelectorExpectedStringLiteral,
 };
 use crate::target_checking::Policy::AllowSilent;
 
@@ -131,6 +131,12 @@ impl<S: Stage> SingleAttributeParser<S> for ExportNameParser {
             // `#[export_name = ...]` will be converted to a null-terminated string,
             // so it may not contain any null characters.
             cx.emit_err(NullOnExport { span: cx.attr_span });
+            return None;
+        }
+        if name.is_empty() {
+            // LLVM will make up a name if the empty string is given, but that name will be
+            // inconsistent between compilation units, causing linker errors.
+            cx.emit_err(EmptyExportName { span: cx.attr_span });
             return None;
         }
         Some(AttributeKind::ExportName { name, span: cx.attr_span })
