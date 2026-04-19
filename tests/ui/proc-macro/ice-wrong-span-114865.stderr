@@ -22,5 +22,11 @@ error: 1 positional argument in format string, but no arguments were given
 LL |     foo2!("r字字");
    |           ^^^^^^^
 
-error: aborting due to 4 previous errors
+error: 1 positional argument in format string, but no arguments were given
+  --> $DIR/ice-wrong-span-114865.rs:22:11
+   |
+LL |     foo3!(r"abc" 字);
+   |           ^^^^^^^^^
+
+error: aborting due to 5 previous errors
 

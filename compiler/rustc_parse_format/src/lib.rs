@@ -314,12 +314,15 @@ impl<'input> Parser<'input> {
                 let prefix_len = nr_hashes + 2; // r + hashes + opening "
                 let suffix_len = nr_hashes + 1; // closing " + hashes
                 let snippet_bytes = snippet.as_bytes();
+                let content_end = snippet.len() - suffix_len;
                 if snippet.len() >= prefix_len + suffix_len // is sufficiently long
                     && snippet_bytes[0] == b'r'
                     && snippet_bytes[1..1 + nr_hashes].iter().all(|&c| c == b'#')
                     && snippet_bytes[1 + nr_hashes] == b'"'
+                    && snippet_bytes[content_end] == b'"'
+                    && snippet_bytes[content_end + 1..].iter().all(|&c| c == b'#')
                 {
-                    let snippet_without_quotes = &snippet[prefix_len..snippet.len() - suffix_len];
+                    let snippet_without_quotes = &snippet[prefix_len..content_end];
                     let input_without_newline =
                         if appended_newline { &input[..input.len() - 1] } else { input };
                     if snippet_without_quotes == input_without_newline {

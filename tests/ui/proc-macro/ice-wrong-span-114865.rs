@@ -10,7 +10,7 @@
 
 extern crate ice_wrong_span_114865;
 
-use ice_wrong_span_114865::{foo, foo2};
+use ice_wrong_span_114865::{foo, foo2, foo3};
 
 fn main() {
     foo!("字"); //~ ERROR 1 positional argument in format string, but no arguments were given
@@ -18,4 +18,6 @@ fn main() {
 
     foo2!("字"); //~ ERROR 1 positional argument in format string, but no arguments were given
     foo2!("r字字"); //~ ERROR 1 positional argument in format string, but no arguments were given
+
+    foo3!(r"abc" 字); //~ ERROR 1 positional argument in format string, but no arguments were given
 }
