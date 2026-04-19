@@ -35,7 +35,8 @@ pub fn foo2(input: TokenStream) -> TokenStream {
 
 
 /// Same as `foo` but respans to a combination of two consecutive tokens.
-/// This makes possible scenarios where
+/// This makes possible scenarios where you can land on the second token
+/// which is a multi-byte char
 #[proc_macro]
 pub fn foo3(input: TokenStream) -> TokenStream {
     let mut iter = input.into_iter();
