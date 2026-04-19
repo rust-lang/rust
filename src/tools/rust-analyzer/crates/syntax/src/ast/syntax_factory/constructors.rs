@@ -193,6 +193,18 @@ impl SyntaxFactory {
         ast
     }
 
+    pub fn untyped_param(&self, pat: ast::Pat) -> ast::Param {
+        let ast = make::untyped_param(pat.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(pat.syntax().clone(), ast.pat().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn ty_fn_ptr<I: Iterator<Item = Param>>(
         &self,
         is_unsafe: bool,
@@ -1088,13 +1100,15 @@ impl SyntaxFactory {
         let ast = make::expr_closure(args, expr.clone()).clone_for_update();
 
         if let Some(mut mapping) = self.mappings() {
-            let mut builder = SyntaxMappingBuilder::new(ast.syntax.clone());
-            builder.map_children(
-                input,
-                ast.param_list().unwrap().params().map(|param| param.syntax().clone()),
-            );
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
             builder.map_node(expr.syntax().clone(), ast.body().unwrap().syntax().clone());
             builder.finish(&mut mapping);
+
+            let param_list = ast.param_list().unwrap();
+            let mut params_builder = SyntaxMappingBuilder::new(param_list.syntax().clone());
+            params_builder
+                .map_children(input, param_list.params().map(|param| param.syntax().clone()));
+            params_builder.finish(&mut mapping);
         }
 
         ast
