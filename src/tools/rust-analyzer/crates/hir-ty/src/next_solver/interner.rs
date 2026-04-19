@@ -1487,7 +1487,7 @@ impl<'db> Interner for DbInterner<'db> {
     fn require_lang_item(self, lang_item: SolverLangItem) -> Self::DefId {
         let lang_items = self.lang_items();
         let lang_item = match lang_item {
-            SolverLangItem::AsyncFnKindUpvars => unimplemented!(),
+            SolverLangItem::AsyncFnKindUpvars => lang_items.AsyncFnKindUpvars,
             SolverLangItem::AsyncFnOnceOutput => lang_items.AsyncFnOnceOutput,
             SolverLangItem::CallOnceFuture => lang_items.CallOnceFuture,
             SolverLangItem::CallRefFuture => lang_items.CallRefFuture,
@@ -1498,8 +1498,8 @@ impl<'db> Interner for DbInterner<'db> {
             SolverLangItem::DynMetadata => {
                 return lang_items.DynMetadata.expect("Lang item required but not found.").into();
             }
-            SolverLangItem::FieldBase => unimplemented!(),
-            SolverLangItem::FieldType => unimplemented!(),
+            SolverLangItem::FieldBase => lang_items.FieldBase,
+            SolverLangItem::FieldType => lang_items.FieldType,
         };
         lang_item.expect("Lang item required but not found.").into()
     }
@@ -1508,13 +1508,13 @@ impl<'db> Interner for DbInterner<'db> {
         let lang_items = self.lang_items();
         let lang_item = match lang_item {
             SolverTraitLangItem::AsyncFn => lang_items.AsyncFn,
-            SolverTraitLangItem::AsyncFnKindHelper => unimplemented!(),
+            SolverTraitLangItem::AsyncFnKindHelper => lang_items.AsyncFnKindHelper,
             SolverTraitLangItem::AsyncFnMut => lang_items.AsyncFnMut,
             SolverTraitLangItem::AsyncFnOnce => lang_items.AsyncFnOnce,
             SolverTraitLangItem::AsyncFnOnceOutput => unimplemented!(
                 "This is incorrectly marked as `SolverTraitLangItem`, and is not used by the solver."
             ),
-            SolverTraitLangItem::AsyncIterator => unimplemented!(),
+            SolverTraitLangItem::AsyncIterator => lang_items.AsyncIterator,
             SolverTraitLangItem::Clone => lang_items.Clone,
             SolverTraitLangItem::Copy => lang_items.Copy,
             SolverTraitLangItem::Coroutine => lang_items.Coroutine,
@@ -1525,7 +1525,7 @@ impl<'db> Interner for DbInterner<'db> {
             SolverTraitLangItem::FnMut => lang_items.FnMut,
             SolverTraitLangItem::FnOnce => lang_items.FnOnce,
             SolverTraitLangItem::FnPtrTrait => lang_items.FnPtrTrait,
-            SolverTraitLangItem::FusedIterator => unimplemented!(),
+            SolverTraitLangItem::FusedIterator => lang_items.FusedIterator,
             SolverTraitLangItem::Future => lang_items.Future,
             SolverTraitLangItem::Iterator => lang_items.Iterator,
             SolverTraitLangItem::PointeeTrait => lang_items.PointeeTrait,
@@ -1536,11 +1536,9 @@ impl<'db> Interner for DbInterner<'db> {
             SolverTraitLangItem::Tuple => lang_items.Tuple,
             SolverTraitLangItem::Unpin => lang_items.Unpin,
             SolverTraitLangItem::Unsize => lang_items.Unsize,
-            SolverTraitLangItem::BikeshedGuaranteedNoDrop => {
-                unimplemented!()
-            }
+            SolverTraitLangItem::BikeshedGuaranteedNoDrop => lang_items.BikeshedGuaranteedNoDrop,
             SolverTraitLangItem::TrivialClone => lang_items.TrivialClone,
-            SolverTraitLangItem::Field => unimplemented!(),
+            SolverTraitLangItem::Field => lang_items.Field,
         };
         lang_item.expect("Lang item required but not found.").into()
     }

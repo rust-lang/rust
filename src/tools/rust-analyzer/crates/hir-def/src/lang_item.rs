@@ -324,6 +324,7 @@ language_item_table! { LangItems =>
 
     Drop,                    sym::drop,                TraitId;
     Destruct,                sym::destruct,            TraitId;
+    BikeshedGuaranteedNoDrop,sym::bikeshed_guaranteed_no_drop, TraitId;
 
     CoerceUnsized,           sym::coerce_unsized,      TraitId;
     DispatchFromDyn,         sym::dispatch_from_dyn,   TraitId;
@@ -373,6 +374,8 @@ language_item_table! { LangItems =>
     AsyncFn,                 sym::async_fn,            TraitId;
     AsyncFnMut,              sym::async_fn_mut,        TraitId;
     AsyncFnOnce,             sym::async_fn_once,       TraitId;
+    AsyncFnKindHelper,       sym::async_fn_kind_helper,TraitId;
+    AsyncFnKindUpvars,       sym::async_fn_kind_upvars,TypeAliasId;
 
     CallRefFuture,           sym::call_ref_future,     TypeAliasId;
     CallOnceFuture,          sym::call_once_future,    TypeAliasId;
@@ -489,6 +492,8 @@ language_item_table! { LangItems =>
     IntoIterIntoIter,        sym::into_iter,           FunctionId;
     IteratorNext,            sym::next,                FunctionId;
     Iterator,                sym::iterator,            TraitId;
+    FusedIterator,           sym::fused_iterator,      TraitId;
+    AsyncIterator,           sym::async_iterator,      TraitId;
 
     PinNewUnchecked,         sym::new_unchecked,       FunctionId;
 
@@ -508,6 +513,10 @@ language_item_table! { LangItems =>
     String,                  sym::String,              StructId;
     CStr,                    sym::CStr,                StructId;
     Ordering,                sym::Ordering,            EnumId;
+
+    Field,                   sym::field,               TraitId;
+    FieldBase,               sym::field_base,          TypeAliasId;
+    FieldType,               sym::field_type,          TypeAliasId;
 
     @non_lang_core_traits:
     core::default, Default;
