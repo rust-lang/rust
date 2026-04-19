@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/33202>
 //@ run-pass
 #[repr(C)]
 pub enum CPOption<T> {
