@@ -18,6 +18,7 @@ LL |     establish_relationships(&cell_a, &cell_b, |_outlives, x, y| {
    = note: late-bound region is '?3
    = note: number of external vids: 4
    = note: where '?1: '?0
+   = note: where '?1: '?0
 
 note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-no-bound.rs:31:1
