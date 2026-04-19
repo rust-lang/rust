@@ -1,8 +1,7 @@
 use std::any::Any;
-use std::borrow::Cow;
 
 use rustc_data_structures::sync::DynSend;
-use rustc_errors::{Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, Level};
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::lints::{AttributeLintKind, FormatWarning};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -35,50 +34,6 @@ pub struct DecorateAttrLint<'a, 'sess, 'tcx> {
 impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
-            AttributeLintKind::IllFormedAttributeInput { suggestions, docs, help } => {
-                lints::IllFormedAttributeInput {
-                    num_suggestions: suggestions.len(),
-                    suggestions: DiagArgValue::StrListSepByAnd(
-                        suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
-                    ),
-                    has_docs: docs.is_some(),
-                    docs: docs.unwrap_or(""),
-                    help: help.clone().map(|h| lints::IllFormedAttributeInputHelp { lint: h }),
-                }
-                .into_diag(dcx, level)
-            }
-            AttributeLintKind::EmptyAttribute { first_span, attr_path, valid_without_list } => {
-                lints::EmptyAttributeList {
-                    attr_span: *first_span,
-                    attr_path: attr_path.clone(),
-                    valid_without_list: *valid_without_list,
-                }
-                .into_diag(dcx, level)
-            }
-            AttributeLintKind::InvalidTarget { name, target, applied, only, attr_span } => {
-                lints::InvalidTargetLint {
-                    name: name.clone(),
-                    target,
-                    applied: DiagArgValue::StrListSepByAnd(
-                        applied.into_iter().map(|i| Cow::Owned(i.to_string())).collect(),
-                    ),
-                    only,
-                    attr_span: *attr_span,
-                }
-                .into_diag(dcx, level)
-            }
-            &AttributeLintKind::InvalidStyle {
-                ref name,
-                is_used_as_inner,
-                target,
-                target_span,
-            } => lints::InvalidAttrStyle {
-                name: name.clone(),
-                is_used_as_inner,
-                target_span: (!is_used_as_inner).then_some(target_span),
-                target,
-            }
-            .into_diag(dcx, level),
             &AttributeLintKind::UnexpectedCfgName(name, value) => {
                 check_cfg::unexpected_cfg_name(self.sess, self.tcx, name, value)
                     .into_diag(dcx, level)
@@ -86,13 +41,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::UnexpectedCfgValue(name, value) => {
                 check_cfg::unexpected_cfg_value(self.sess, self.tcx, name, value)
                     .into_diag(dcx, level)
-            }
-            &AttributeLintKind::DuplicateDocAlias { first_definition } => {
-                lints::DocAliasDuplicated { first_defn: first_definition }.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocAutoCfgExpectsHideOrShow => {
-                lints::DocAutoCfgExpectsHideOrShow.into_diag(dcx, level)
             }
 
             &AttributeLintKind::AmbiguousDeriveHelpers => {
