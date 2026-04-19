@@ -3304,10 +3304,6 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
-#[diag("only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`")]
-pub(crate) struct DocAutoCfgExpectsHideOrShow;
-
-#[derive(Diagnostic)]
 #[diag("there exists a built-in attribute with the same name")]
 pub(crate) struct AmbiguousDeriveHelpers;
 

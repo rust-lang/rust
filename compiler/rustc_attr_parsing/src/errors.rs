@@ -173,3 +173,7 @@ pub(crate) struct DocAliasDuplicated {
     #[label("first defined here")]
     pub first_definition: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`")]
+pub(crate) struct DocAutoCfgExpectsHideOrShow;

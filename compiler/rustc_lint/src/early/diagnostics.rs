@@ -43,10 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            &AttributeLintKind::DocAutoCfgExpectsHideOrShow => {
-                lints::DocAutoCfgExpectsHideOrShow.into_diag(dcx, level)
-            }
-
             &AttributeLintKind::AmbiguousDeriveHelpers => {
                 lints::AmbiguousDeriveHelpers.into_diag(dcx, level)
             }
