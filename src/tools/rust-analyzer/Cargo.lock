@@ -1974,9 +1974,9 @@ dependencies = [
 
 [[package]]
 name = "protobuf"
-version = "3.7.1"
+version = "3.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3a7c64d9bf75b1b8d981124c14c179074e8caa7dfe7b6a12e6222ddcd0c8f72"
+checksum = "d65a1d4ddae7d8b5de68153b48f6aa3bba8cb002b243dbdbc55a5afbc98f99f4"
 dependencies = [
  "once_cell",
  "protobuf-support",
@@ -1985,9 +1985,9 @@ dependencies = [
 
 [[package]]
 name = "protobuf-support"
-version = "3.7.1"
+version = "3.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b088fd20b938a875ea00843b6faf48579462630015c3788d397ad6a786663252"
+checksum = "3e36c2f31e0a47f9280fb347ef5e461ffcd2c52dd520d8e216b52f93b0b0d7d6"
 dependencies = [
  "thiserror 1.0.69",
 ]
@@ -2505,9 +2505,9 @@ dependencies = [
 
 [[package]]
 name = "scip"
-version = "0.5.2"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb2b449a5e4660ce817676a0871cd1b4e2ff1023e33a1ac046670fa594b543a2"
+checksum = "f4d0e81b39f590b2edbe2369760641511898ed34062aed2e18e6d05eead3d6b7"
 dependencies = [
  "protobuf",
 ]
