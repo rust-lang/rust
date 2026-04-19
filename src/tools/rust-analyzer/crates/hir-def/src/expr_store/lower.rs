@@ -1407,9 +1407,11 @@ impl<'db> ExprCollector<'db> {
                 }
             }
             ast::Expr::ClosureExpr(e) => self.with_label_rib(RibKind::Closure, |this| {
-                this.with_binding_owner(|this| {
+                this.with_binding_owner_and_return(|this| {
                     let mut args = Vec::new();
                     let mut arg_types = Vec::new();
+                    // For coroutine closures, the body, aka. the coroutine is the bindings owner, and not the closure.
+                    let mut body_is_bindings_owner = false;
                     if let Some(pl) = e.param_list() {
                         let num_params = pl.params().count();
                         args.reserve_exact(num_params);
@@ -1460,6 +1462,7 @@ impl<'db> ExprCollector<'db> {
                             // It will be fixed in capture analysis.
                             capture_by: CaptureBy::Ref,
                         });
+                        body_is_bindings_owner = true;
 
                         ClosureKind::AsyncClosure
                     } else {
@@ -1469,7 +1472,7 @@ impl<'db> ExprCollector<'db> {
                         if e.move_token().is_some() { CaptureBy::Value } else { CaptureBy::Ref };
                     this.is_lowering_coroutine = prev_is_lowering_coroutine;
                     this.current_try_block = prev_try_block;
-                    this.alloc_expr(
+                    let closure = this.alloc_expr(
                         Expr::Closure {
                             args: args.into(),
                             arg_types: arg_types.into(),
@@ -1479,7 +1482,9 @@ impl<'db> ExprCollector<'db> {
                             capture_by,
                         },
                         syntax_ptr,
-                    )
+                    );
+
+                    (if body_is_bindings_owner { body } else { closure }, closure)
                 })
             }),
             ast::Expr::BinExpr(e) => {
@@ -1781,13 +1786,24 @@ impl<'db> ExprCollector<'db> {
         }
     }
 
-    fn with_binding_owner(&mut self, create_expr: impl FnOnce(&mut Self) -> ExprId) -> ExprId {
+    /// The callback should return two exprs: the first is the bindings owner, the second is the expr to return.
+    fn with_binding_owner_and_return(
+        &mut self,
+        create_expr: impl FnOnce(&mut Self) -> (ExprId, ExprId),
+    ) -> ExprId {
         let prev_unowned_bindings_len = self.unowned_bindings.len();
-        let expr_id = create_expr(self);
+        let (bindings_owner, expr_to_return) = create_expr(self);
         for binding in self.unowned_bindings.drain(prev_unowned_bindings_len..) {
-            self.store.binding_owners.insert(binding, expr_id);
+            self.store.binding_owners.insert(binding, bindings_owner);
         }
-        expr_id
+        expr_to_return
+    }
+
+    fn with_binding_owner(&mut self, create_expr: impl FnOnce(&mut Self) -> ExprId) -> ExprId {
+        self.with_binding_owner_and_return(move |this| {
+            let expr = create_expr(this);
+            (expr, expr)
+        })
     }
 
     /// Desugar `try { <stmts>; <expr> }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(<expr>) }`,
