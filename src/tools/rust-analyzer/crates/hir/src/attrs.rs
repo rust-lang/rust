@@ -38,7 +38,11 @@ pub enum AttrsOwner {
     Field(FieldId),
     LifetimeParam(LifetimeParamId),
     TypeOrConstParam(TypeOrConstParamId),
-    /// Things that do not have attributes. Used for builtin derives.
+    /// Things that do not have attributes.
+    ///
+    /// Used for:
+    /// - builtin derives
+    /// - builtin types (as those do not have attributes)
     Dummy,
 }
 

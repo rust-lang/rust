@@ -189,8 +189,12 @@ impl Variant {
 
     fn is_deprecated(self, ctx: &RenderContext<'_>) -> bool {
         match self {
-            Variant::Struct(it) => ctx.is_deprecated(it),
-            Variant::EnumVariant(it) => ctx.is_deprecated(it),
+            Variant::Struct(it) => {
+                ctx.is_deprecated(it, None /* structs can't be assoc items */)
+            }
+            Variant::EnumVariant(it) => {
+                ctx.is_deprecated(it, None /* enum variants can't be assoc items */)
+            }
         }
     }
 

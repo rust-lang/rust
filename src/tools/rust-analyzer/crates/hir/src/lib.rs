@@ -556,6 +556,23 @@ impl HasCrate for ModuleDef {
     }
 }
 
+impl HasAttrs for ModuleDef {
+    fn attr_id(self, db: &dyn HirDatabase) -> attrs::AttrsOwner {
+        match self {
+            ModuleDef::Module(it) => it.attr_id(db),
+            ModuleDef::Function(it) => it.attr_id(db),
+            ModuleDef::Adt(it) => it.attr_id(db),
+            ModuleDef::EnumVariant(it) => it.attr_id(db),
+            ModuleDef::Const(it) => it.attr_id(db),
+            ModuleDef::Static(it) => it.attr_id(db),
+            ModuleDef::Trait(it) => it.attr_id(db),
+            ModuleDef::TypeAlias(it) => it.attr_id(db),
+            ModuleDef::Macro(it) => it.attr_id(db),
+            ModuleDef::BuiltinType(_) => attrs::AttrsOwner::Dummy,
+        }
+    }
+}
+
 impl HasVisibility for ModuleDef {
     fn visibility(&self, db: &dyn HirDatabase) -> Visibility {
         match *self {
