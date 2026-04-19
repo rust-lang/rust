@@ -788,6 +788,12 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
 
+            sym::return_address => {
+                let ty = self.type_ix(32);
+                let val = self.const_int(ty, 0);
+                self.call_intrinsic("llvm.returnaddress", &[], &[val])
+            }
+
             _ => {
                 debug!("unknown intrinsic '{}' -- falling back to default body", name);
                 // Call the fallback body instead of generating the intrinsic code
