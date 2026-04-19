@@ -643,6 +643,7 @@ impl f128 {
     #[doc(alias = "sincos")]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn sin_cos(self) -> (f128, f128) {
         (self.sin(), self.cos())
     }
