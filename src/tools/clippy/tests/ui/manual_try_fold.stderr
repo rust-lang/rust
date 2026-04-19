@@ -1,5 +1,5 @@
 error: usage of `Iterator::fold` on a type that implements `Try`
-  --> tests/ui/manual_try_fold.rs:72:10
+  --> tests/ui/manual_try_fold.rs:75:10
    |
 LL |         .fold(Some(0i32), |sum, i| sum?.checked_add(*i))
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `try_fold` instead: `try_fold(0i32, |sum, i| ...)`
@@ -8,19 +8,19 @@ LL |         .fold(Some(0i32), |sum, i| sum?.checked_add(*i))
    = help: to override `-D warnings` add `#[allow(clippy::manual_try_fold)]`
 
 error: usage of `Iterator::fold` on a type that implements `Try`
-  --> tests/ui/manual_try_fold.rs:77:10
+  --> tests/ui/manual_try_fold.rs:80:10
    |
 LL |         .fold(NotOption(0i32, 0i32), |sum, i| NotOption(0i32, 0i32));
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `try_fold` instead: `try_fold(..., |sum, i| ...)`
 
 error: usage of `Iterator::fold` on a type that implements `Try`
-  --> tests/ui/manual_try_fold.rs:81:10
+  --> tests/ui/manual_try_fold.rs:84:10
    |
 LL |         .fold(NotOptionButWorse(0i32), |sum, i| NotOptionButWorse(0i32));
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `try_fold` instead: `try_fold(0i32, |sum, i| ...)`
 
 error: usage of `Iterator::fold` on a type that implements `Try`
-  --> tests/ui/manual_try_fold.rs:112:10
+  --> tests/ui/manual_try_fold.rs:115:10
    |
 LL |         .fold(Some(0i32), |sum, i| sum?.checked_add(*i))
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `try_fold` instead: `try_fold(0i32, |sum, i| ...)`

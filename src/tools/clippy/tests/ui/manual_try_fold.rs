@@ -4,7 +4,7 @@
 #![feature(try_trait_v2)]
 #![feature(try_trait_v2_residual)]
 //@no-rustfix
-use std::ops::{ControlFlow, FromResidual, Residual, Try};
+use std::ops::{ControlFlow, FromResidual, Residual, Try, FromOutput, Branch};
 
 #[macro_use]
 extern crate proc_macros;
@@ -24,19 +24,20 @@ impl Residual<()> for NotOptionResidual {
     type TryType = NotOption;
 }
 
-impl Try for NotOption {
+impl Branch for NotOption {
     type Output = ();
     type Residual = NotOptionResidual;
-
-    fn from_output(_: Self::Output) -> Self {
-        todo!()
-    }
 
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         todo!()
     }
 }
 
+impl FromOutput for NotOption {
+    fn from_output(_: Self::Output) -> Self {
+        todo!()
+    }
+}
 // Test custom `Try` with only 1 argument
 #[derive(Default)]
 struct NotOptionButWorse(i32);
@@ -53,15 +54,17 @@ impl Residual<()> for NotOptionButWorseResidual {
     type TryType = NotOptionButWorse;
 }
 
-impl Try for NotOptionButWorse {
+impl Branch for NotOptionButWorse {
     type Output = ();
     type Residual = NotOptionButWorseResidual;
 
-    fn from_output(_: Self::Output) -> Self {
+    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
         todo!()
     }
+}
 
-    fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {
+impl FromOutput for NotOptionButWorse {
+    fn from_output(_: Self::Output) -> Self {
         todo!()
     }
 }
