@@ -34,18 +34,6 @@ pub struct DecorateAttrLint<'a, 'sess, 'tcx> {
 impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
-            &AttributeLintKind::InvalidStyle {
-                ref name,
-                is_used_as_inner,
-                target,
-                target_span,
-            } => lints::InvalidAttrStyle {
-                name: name.clone(),
-                is_used_as_inner,
-                target_span: (!is_used_as_inner).then_some(target_span),
-                target,
-            }
-            .into_diag(dcx, level),
             &AttributeLintKind::UnexpectedCfgName(name, value) => {
                 check_cfg::unexpected_cfg_name(self.sess, self.tcx, name, value)
                     .into_diag(dcx, level)

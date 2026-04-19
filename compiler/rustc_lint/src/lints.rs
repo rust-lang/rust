@@ -3283,21 +3283,6 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "{$is_used_as_inner ->
-        [false] crate-level attribute should be an inner attribute: add an exclamation mark: `#![{$name}]`
-        *[other] the `#![{$name}]` attribute can only be used at the crate root
-    }"
-)]
-pub(crate) struct InvalidAttrStyle {
-    pub name: String,
-    pub is_used_as_inner: bool,
-    #[note("this attribute does not have an `!`, which means it is applied to this {$target}")]
-    pub target_span: Option<Span>,
-    pub target: &'static str,
-}
-
-#[derive(Diagnostic)]
 #[diag("malformed `doc` attribute input")]
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"

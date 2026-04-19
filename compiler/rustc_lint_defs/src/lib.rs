@@ -654,7 +654,6 @@ pub enum DeprecatedSinceKind {
 
 #[derive(Debug)]
 pub enum AttributeLintKind {
-    InvalidStyle { name: String, is_used_as_inner: bool, target: &'static str, target_span: Span },
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
     DuplicateDocAlias { first_definition: Span },
