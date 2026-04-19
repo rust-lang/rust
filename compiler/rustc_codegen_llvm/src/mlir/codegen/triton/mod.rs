@@ -169,24 +169,30 @@ impl<'c, 'p> CodegenState<'c, 'p> {
 /// Information about a detected Range-based `for` loop in the MIR.
 #[derive(Debug)]
 struct RangeLoopInfo {
-    /// The loop header block (checks the Lt condition and branches).
+    /// The loop header block (checks the Lt condition and branches, OR calls Range::next).
     header_bb: BasicBlock,
-    /// First block of the loop body (taken when the Lt condition is true).
+    /// First block of the loop body (taken when the condition is true / Some).
     body_entry_bb: BasicBlock,
     /// All loop body blocks in execution order (body_entry through back_edge).
     body_bbs: Vec<BasicBlock>,
     /// The block whose `Goto` back-edge targets the header.
     back_edge_bb: BasicBlock,
-    /// The block taken when the loop exits (Lt condition is false).
+    /// The block taken when the loop exits.
     exit_bb: BasicBlock,
     /// The Range.start local that is incremented each iteration.
     counter_local: Local,
-    /// The loop upper-bound local (Range.end / k_tiles).
-    bound_local: Local,
+    /// The loop upper-bound local (Range.end / k_tiles). None when bound is a constant.
+    bound_local: Option<Local>,
+    /// The loop upper-bound as a compile-time constant. None when bound is a runtime local.
+    bound_const: Option<i64>,
     /// The "k" induction local (pre-increment counter, extracted from Some).
     induction_local: Local,
     /// Locals that carry values across iterations (loop-carried values).
     iter_carry_locals: Vec<Local>,
+    /// For Call-header pattern (Rust 1.93+): the SwitchInt block after Range::next.
+    switch_bb: Option<BasicBlock>,
+    /// For Call-header pattern: the destination local of the Range::next call (Option<i32>).
+    next_result_local: Option<Local>,
 }
 
 /// Pre-scan all MIR blocks to collect statically-known discriminant values.
@@ -572,66 +578,180 @@ fn try_build_range_loop_info<'tcx>(
 
     let header_data = &mir.basic_blocks[header_bb];
 
-    // Header must end with SwitchInt
-    let (discr_local, body_entry_bb, exit_bb) = match &header_data.terminator().kind {
-        TerminatorKind::SwitchInt { discr, targets } => {
+    struct HeaderInfo {
+        body_entry_bb: BasicBlock,
+        exit_bb: BasicBlock,
+        counter_local_hint: Option<Local>,
+        bound_local: Option<Local>,
+        bound_const: Option<i64>,
+        switch_bb: Option<BasicBlock>,
+        next_result_local: Option<Local>,
+    }
+
+    let hinfo: HeaderInfo = 'detect: {
+        // Pattern 1: SwitchInt header with explicit Lt comparison (older Rust MIR).
+        if let TerminatorKind::SwitchInt { discr, targets } = &header_data.terminator().kind {
             let cases: Vec<(u128, BasicBlock)> = targets.iter().collect();
             println!("[LOOP-DETECT] header={:?} back_edge={:?} SwitchInt cases={:?} otherwise={:?} discr={:?}",
                 header_bb, back_edge_bb, cases, targets.otherwise(), discr);
-            // Expect exactly one case: [0: exit, otherwise: body_entry]
-            if cases.len() != 1 || cases[0].0 != 0 {
-                println!("[LOOP-DETECT] FAIL: cases check: len={} val={}", cases.len(), if cases.is_empty() { 999 } else { cases[0].0 });
-                return None;
-            }
-            let exit_bb = cases[0].1;
-            let body_entry_bb = targets.otherwise();
-            let discr_local = match discr {
-                Operand::Move(p) | Operand::Copy(p) if p.projection.is_empty() => p.local,
-                _ => {
-                    println!("[LOOP-DETECT] FAIL: discr projection not empty");
-                    return None;
+            if cases.len() == 1 && cases[0].0 == 0 {
+                let exit_bb = cases[0].1;
+                let body_entry_bb = targets.otherwise();
+                if let Operand::Move(p) | Operand::Copy(p) = discr {
+                    if p.projection.is_empty() {
+                        let discr_local = p.local;
+                        if let Some((counter_local, bl)) =
+                            find_lt_locals_in_stmts(&header_data.statements, discr_local)
+                        {
+                            println!("[LOOP-DETECT] Pattern1 detected: counter={:?} bound_local={:?}", counter_local, bl);
+                            break 'detect HeaderInfo {
+                                body_entry_bb,
+                                exit_bb,
+                                counter_local_hint: Some(counter_local),
+                                bound_local: Some(bl),
+                                bound_const: None,
+                                switch_bb: None,
+                                next_result_local: None,
+                            };
+                        }
+                    }
                 }
-            };
-            (discr_local, body_entry_bb, exit_bb)
+            }
+            println!("[LOOP-DETECT] FAIL Pattern1: cases={:?}", cases);
         }
-        other => {
-            println!("[LOOP-DETECT] header={:?} back_edge={:?} terminator is not SwitchInt: {:?}", header_bb, back_edge_bb, other.name());
-            return None;
+
+        // Pattern 2: Call header (Range::next) followed by SwitchInt on discriminant (Rust 1.93+).
+        if let TerminatorKind::Call { target: Some(switch_bb_cand), destination, .. } =
+            &header_data.terminator().kind
+        {
+            let switch_data = &mir.basic_blocks[*switch_bb_cand];
+            if let TerminatorKind::SwitchInt { targets, .. } = &switch_data.terminator().kind {
+                let cases: Vec<(u128, BasicBlock)> = targets.iter().collect();
+                println!("[LOOP-DETECT] header={:?} back_edge={:?} Call+SwitchInt cases={:?} otherwise={:?}",
+                    header_bb, back_edge_bb, cases, targets.otherwise());
+                // Discriminant 0 = None (exit), discriminant 1 = Some (body)
+                if cases.len() == 2 && cases[0].0 == 0 && cases[1].0 == 1
+                    && destination.projection.is_empty()
+                {
+                    let exit_bb = cases[0].1;
+                    let body_entry_bb = cases[1].1;
+                    let next_result_local = destination.local;
+                    if let Some((bc, bl)) = find_range_bound(mir, header_bb) {
+                        println!("[LOOP-DETECT] Pattern2 detected: bound_const={:?} bound_local={:?}", bc, bl);
+                        break 'detect HeaderInfo {
+                            body_entry_bb,
+                            exit_bb,
+                            counter_local_hint: None,
+                            bound_local: bl,
+                            bound_const: bc,
+                            switch_bb: Some(*switch_bb_cand),
+                            next_result_local: Some(next_result_local),
+                        };
+                    }
+                }
+            }
+            println!("[LOOP-DETECT] FAIL Pattern2: switch_bb={:?}", switch_bb_cand);
         }
+
+        println!("[LOOP-DETECT] header={:?} back_edge={:?}: no pattern matched", header_bb, back_edge_bb);
+        return None;
     };
 
-    // Find the Lt in the header that assigns discr_local: _discr = Lt(_counter_copy, _bound)
-    let lt_result = find_lt_locals_in_stmts(&header_data.statements, discr_local);
-    println!("[LOOP-DETECT] find_lt_locals discr={:?} result={:?}", discr_local, lt_result);
-    let (counter_local, bound_local) = lt_result?;
-
     // Collect body blocks in topological (execution) order
-    let body_bbs = collect_body_blocks_ordered(mir, body_entry_bb, header_bb);
+    let body_bbs = collect_body_blocks_ordered(mir, hinfo.body_entry_bb, header_bb);
     println!("[LOOP-DETECT] body_bbs={:?} back_edge_in_body={}", body_bbs, body_bbs.contains(&back_edge_bb));
     if !body_bbs.contains(&back_edge_bb) {
         return None;
     }
 
-    // Find the induction local (_51): extracted from Option::Some via downcast projection
+    // Find the induction local: extracted from Option::Some via downcast projection
     let induction_result = find_induction_local_in_bbs(mir, &body_bbs);
     println!("[LOOP-DETECT] induction_local={:?}", induction_result);
     let induction_local = induction_result?;
 
-    // Find loop-carried locals (used before assigned in topological order)
-    let iter_carry_locals = find_iter_carry_locals(mir, &body_bbs);
-    println!("[LOOP-DETECT] iter_carry_locals={:?}", iter_carry_locals);
+    let counter_local = hinfo.counter_local_hint.unwrap_or(induction_local);
+
+    // Find loop-carried locals (used before assigned in topological order).
+    let mut iter_carry_locals = find_iter_carry_locals(mir, &body_bbs);
+    println!("[LOOP-DETECT] iter_carry_locals (before filter)={:?}", iter_carry_locals);
+
+    // For the Call-header pattern, exclude the Range::next result local (next_result_local)
+    // from iter-carry: it is synthesised by scf.for, not a user-defined loop-carried value.
+    if let Some(nrl) = hinfo.next_result_local {
+        iter_carry_locals.retain(|&l| l != nrl);
+    }
+    println!("[LOOP-DETECT] iter_carry_locals (final)={:?}", iter_carry_locals);
 
     Some(RangeLoopInfo {
         header_bb,
-        body_entry_bb,
+        body_entry_bb: hinfo.body_entry_bb,
         body_bbs,
         back_edge_bb,
-        exit_bb,
+        exit_bb: hinfo.exit_bb,
         counter_local,
-        bound_local,
+        bound_local: hinfo.bound_local,
+        bound_const: hinfo.bound_const,
         induction_local,
         iter_carry_locals,
+        switch_bb: hinfo.switch_bb,
+        next_result_local: hinfo.next_result_local,
     })
+}
+
+/// Extract the loop upper bound from the Range aggregate that feeds the iterator in the
+/// blocks preceding `header_bb`. Returns `(bound_const, bound_local)` where exactly one
+/// of the two `Option`s is `Some`.
+fn find_range_bound<'tcx>(
+    mir: &Body<'tcx>,
+    header_bb: BasicBlock,
+) -> Option<(Option<i64>, Option<Local>)> {
+    use rustc_middle::mir::StatementKind;
+    for bb_idx in 0..header_bb.index() {
+        let bb = BasicBlock::from_usize(bb_idx);
+        for stmt in &mir.basic_blocks[bb].statements {
+            if let StatementKind::Assign(assign) = &stmt.kind {
+                let (_, rvalue) = assign.as_ref();
+                if let Rvalue::Aggregate(box AggregateKind::Adt(..), fields) = rvalue {
+                    if fields.len() == 2 {
+                        // Treat [start, end] → look at index 1 (end).
+                        let end_op = &fields[FieldIdx::from_usize(1)];
+                        match end_op {
+                            Operand::Constant(c) => {
+                                if let Some(v) = try_const_operand_as_i64(c) {
+                                    return Some((Some(v), None));
+                                }
+                            }
+                            Operand::Copy(p) | Operand::Move(p)
+                                if p.projection.is_empty() =>
+                            {
+                                return Some((None, Some(p.local)));
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Try to extract a constant integer value from a `ConstOperand` without needing tcx/instance.
+/// Works for monomorphized scalar constants (`Const::Val`) and simple `Const::Ty` value-tree consts.
+fn try_const_operand_as_i64(c: &ConstOperand<'_>) -> Option<i64> {
+    use rustc_middle::mir::interpret::{ConstValue, Scalar};
+    use rustc_middle::ty::Const;
+    match c.const_ {
+        Const::Val(ConstValue::Scalar(Scalar::Int(s)), _) => Some(s.to_bits_unchecked() as i64),
+        Const::Ty(_, ref ck) => {
+            if let ConstKind::Value(cv) = ck.kind() {
+                cv.valtree.try_to_leaf().map(|s| s.to_bits_unchecked() as i64)
+            } else {
+                None
+            }
+        }
+        _ => None,
+    }
 }
 
 /// Find the Lt statement that assigns `discr_local` and extract (counter_local, bound_local).
@@ -707,6 +827,9 @@ fn collect_body_blocks_ordered<'tcx>(
                 queue.push(*target);
             }
             TerminatorKind::Call { target: Some(target), .. } if *target != header_bb => {
+                queue.push(*target);
+            }
+            TerminatorKind::Assert { target, .. } if *target != header_bb => {
                 queue.push(*target);
             }
             _ => {}
@@ -1048,10 +1171,24 @@ impl<'a> TritonCodegen<'a> {
         let step: Value<'a, 'a> = step_op.result(0).unwrap().into();
         init_mlir_block.append_operation(step_op);
 
-        // Upper bound (k_tiles)
-        let ub = *state.ssa_values.get(&loop_info.bound_local).unwrap_or_else(|| {
-            panic!("scf.for: bound local {:?} not in ssa_values", loop_info.bound_local)
-        });
+        // Upper bound: either a compile-time constant or a runtime local.
+        let ub: Value<'a, 'a> = if let Some(const_val) = loop_info.bound_const {
+            let op: Operation<'a> = melior::dialect::arith::constant(
+                ctx,
+                IntegerAttribute::new(i32_ty, const_val).into(),
+                location,
+            )
+            .into();
+            let v: Value<'a, 'a> = op.result(0).unwrap().into();
+            init_mlir_block.append_operation(op);
+            v
+        } else if let Some(bound_local) = loop_info.bound_local {
+            *state.ssa_values.get(&bound_local).unwrap_or_else(|| {
+                panic!("scf.for: bound local {:?} not in ssa_values", bound_local)
+            })
+        } else {
+            panic!("RangeLoopInfo has neither bound_local nor bound_const")
+        };
 
         // Iter-arg initial values and types
         let iter_arg_inits: Vec<Value<'a, 'a>> = loop_info
@@ -1107,6 +1244,11 @@ impl<'a> TritonCodegen<'a> {
             for (i, &local) in loop_info.iter_carry_locals.iter().enumerate() {
                 let arg: Value<'a, 'a> = entry_block_ref.argument(i + 1).unwrap().into();
                 state.ssa_values.insert(local, arg);
+            }
+            // For the Call-header pattern (Rust 1.93+): pre-populate the Range::next result local
+            // as Some(iv) in the option_table so that `_induction = ((_next as Some).0)` resolves.
+            if let Some(nrl) = loop_info.next_result_local {
+                state.option_table.insert(nrl, Some(iv));
             }
         }
 
@@ -1305,6 +1447,9 @@ impl<'a> TritonCodegen<'a> {
         let mut loop_region_blocks: HashSet<BasicBlock> = HashSet::new();
         for l in &loop_infos {
             loop_region_blocks.insert(l.header_bb);
+            if let Some(switch_bb) = l.switch_bb {
+                loop_region_blocks.insert(switch_bb);
+            }
             for &b in &l.body_bbs {
                 loop_region_blocks.insert(b);
             }
@@ -1610,6 +1755,11 @@ impl<'a> TritonCodegen<'a> {
                         // slice_shape copy.
                         if let Some(shape) = state.slice_shape.get(&src.local).cloned() {
                             state.slice_shape.insert(place.local, shape);
+                            return Ok(());
+                        }
+                        // ADT/Range locals stored in tuple_fields (e.g. Range moves for for-loops).
+                        if let Some(fields) = state.tuple_fields.get(&src.local).cloned() {
+                            state.tuple_fields.insert(place.local, fields);
                             return Ok(());
                         }
                     }

@@ -411,7 +411,7 @@ impl<'a> TritonCodegen<'a> {
         func: &Operand<'tcx>,
         func_name: &str,
         args: &[Spanned<Operand<'tcx>>],
-        _destination: &Place<'tcx>,
+        destination: &Place<'tcx>,
         _target: &Option<BasicBlock>,
         _unwind: &UnwindAction,
         _call_source: &CallSource,
@@ -420,6 +420,19 @@ impl<'a> TritonCodegen<'a> {
         mlir_block: &BlockRef<'a, 'a>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        // Pass-through for Range/ADT locals in tuple_fields (e.g., Range::into_iter).
+        // This avoids crashing when codegen_operand tries to evaluate a Range aggregate local.
+        if args.len() == 1 {
+            if let Operand::Move(p) | Operand::Copy(p) = &args[0].node {
+                if p.projection.is_empty() && destination.projection.is_empty() {
+                    if let Some(fields) = state.tuple_fields.get(&p.local).cloned() {
+                        state.tuple_fields.insert(destination.local, fields);
+                        return Ok(None);
+                    }
+                }
+            }
+        }
+
         let args = args
             .iter()
             .map(|arg| {
