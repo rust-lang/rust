@@ -2481,8 +2481,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         if !sub_branch.guard_patterns.is_empty() || arm.is_some_and(|arm| arm.guard.is_some()) {
             let tcx = self.tcx;
 
-            let (arm_span, arm_scope) = self.extract_arm_span_scope(&mut sub_branch, arm);
-            let guards = sub_branch.guard_patterns;
+            let (arm_span, arm_scope) = self.extract_arm_span_scope(sub_branch.span, arm);
 
             // Bindings for guards require some extra handling to automatically
             // insert implicit references/dereferences.
@@ -2596,22 +2595,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     fn extract_arm_span_scope(
-        &mut self,
-        sub_branch: &mut MatchTreeSubBranch<'tcx>,
+        &self,
+        sub_branch_span: Span,
         arm: Option<&Arm<'tcx>>,
     ) -> (Span, Scope) {
-        if let Some(arm) = arm {
-            let mut span = arm.span;
-            if let Some(arm_guard) = arm.guard {
-                span = self.thir[arm_guard].span;
-                sub_branch.guard_patterns.push(arm_guard);
-            };
-            return (span, arm.scope);
-        } else {
-            let span = sub_branch.span;
-            let arm_scope = self.local_scope();
-            return (span, arm_scope);
-        };
+        arm.map(|arm| {
+            let span = arm.guard.map(|guard| self.thir[guard].span).unwrap_or(arm.span);
+            (span, arm.scope)
+        })
+        // FIXME(guard_patterns)
+        .unwrap_or_else(|| (sub_branch_span, self.local_scope()))
     }
 
     /// Append `AscribeUserType` statements onto the end of `block`
