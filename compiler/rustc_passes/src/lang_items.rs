@@ -29,6 +29,11 @@ pub(crate) enum Duplicate {
     CrateDepends,
 }
 
+enum CollectWeak {
+    Allowed,
+    Ignore,
+}
+
 struct LanguageItemCollector<'ast, 'tcx> {
     items: LanguageItems,
     tcx: TyCtxt<'tcx>,
@@ -60,19 +65,23 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
         attrs: &'ast [ast::Attribute],
         item_span: Span,
         generics: Option<&'ast ast::Generics>,
+        collect_weak: CollectWeak,
     ) {
         if let Some((name, attr_span)) = extract_ast(attrs) {
             match LangItem::from_name(name) {
                 // Known lang item with attribute on correct target.
                 Some(lang_item) if actual_target == lang_item.target() => {
-                    self.collect_item_extended(
-                        lang_item,
-                        def_id,
-                        item_span,
-                        attr_span,
-                        generics,
-                        actual_target,
-                    );
+                    // Weak lang items are handled separately
+                    if !lang_item.is_weak() || matches!(collect_weak, CollectWeak::Allowed) {
+                        self.collect_item_extended(
+                            lang_item,
+                            def_id,
+                            item_span,
+                            attr_span,
+                            generics,
+                            actual_target,
+                        );
+                    }
                 }
                 // Known lang item with attribute on incorrect target.
                 Some(lang_item) => {
@@ -299,11 +308,23 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             &i.attrs,
             i.span,
             i.opt_generics(),
+            CollectWeak::Allowed,
         );
 
         let parent_item = self.parent_item.replace(i);
         visit::walk_item(self, i);
         self.parent_item = parent_item;
+    }
+
+    fn visit_foreign_item(&mut self, i: &'ast ast::ForeignItem) {
+        self.check_for_lang(
+            Target::Fn,
+            self.resolver.node_id_to_def_id[&i.id],
+            &i.attrs,
+            i.span,
+            None,
+            CollectWeak::Ignore,
+        );
     }
 
     fn visit_variant(&mut self, variant: &'ast ast::Variant) {
@@ -313,6 +334,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             &variant.attrs,
             variant.span,
             None,
+            CollectWeak::Allowed,
         );
     }
 
@@ -352,6 +374,7 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             &i.attrs,
             i.span,
             generics,
+            CollectWeak::Allowed,
         );
 
         visit::walk_assoc_item(self, i, ctxt);

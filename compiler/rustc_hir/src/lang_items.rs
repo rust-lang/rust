@@ -447,6 +447,14 @@ language_item_table! {
 
     // Used to fallback `{float}` to `f32` when `f32: From<{float}>`
     From,                    sym::From,                from_trait,                 Target::Trait,          GenericRequirement::Exact(1);
+
+    // Runtime symbols
+    MemCpy,                  sym::memcpy_fn,           memcpy_fn,                  Target::Fn,             GenericRequirement::None;
+    MemMove,                 sym::memmove_fn,          memmove_fn,                 Target::Fn,             GenericRequirement::None;
+    MemSet,                  sym::memset_fn,           memset_fn,                  Target::Fn,             GenericRequirement::None;
+    MemCmp,                  sym::memcmp_fn,           memcmp_fn,                  Target::Fn,             GenericRequirement::None;
+    Bcmp,                    sym::bcmp_fn,             bcmp_fn,                    Target::Fn,             GenericRequirement::None;
+    StrLen,                  sym::strlen_fn,           strlen_fn,                  Target::Fn,             GenericRequirement::None;
 }
 
 /// The requirement imposed on the generics of a lang item
