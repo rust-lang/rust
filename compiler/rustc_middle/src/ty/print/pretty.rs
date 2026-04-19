@@ -3260,9 +3260,9 @@ define_print! {
     }
 
     ty::ExistentialTraitRef<'tcx> {
-        // Use a type that can't appear in defaults of type parameters.
-        let dummy_self = Ty::new_fresh(p.tcx(), 0);
-        let trait_ref = self.with_self_ty(p.tcx(), dummy_self);
+        // Dummy Self is safe to use as it can't appear in generic param defaults which is important
+        // later on for correctly eliding generic args that coincide with their default.
+        let trait_ref = self.with_self_ty(p.tcx(), p.tcx().types.trait_object_dummy_self);
         trait_ref.print_only_trait_path().print(p)?;
     }
 
