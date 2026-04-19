@@ -659,7 +659,6 @@ pub enum AttributeLintKind {
     DocAutoCfgHideShowUnexpectedItem { attr_name: Symbol },
     DocAutoCfgHideShowExpectsList { attr_name: Symbol },
     DocInvalid,
-    AmbiguousDeriveHelpers,
     DocUnknownInclude { span: Span, inner: &'static str, value: Symbol },
     DocUnknownSpotlight { span: Span },
     DocUnknownPasses { name: Symbol, span: Span },
