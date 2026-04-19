@@ -136,6 +136,10 @@ pub(crate) struct CodegenState<'c, 'p> {
     pub(crate) phi_join_locals: HashMap<BasicBlock, Vec<Local>>,
     /// (join_block, local) → the MLIR block argument value representing the phi node.
     pub(crate) phi_block_args: HashMap<(BasicBlock, Local), Value<'c, 'p>>,
+    /// Saves the ssa_values for phi locals just before the join block is processed.
+    /// Later predecessors (processed after the join in DFS) use these saved values
+    /// instead of the stale join-block arg values that are now in ssa_values.
+    pub(crate) pre_join_ssa_values: HashMap<(BasicBlock, Local), Value<'c, 'p>>,
 }
 
 impl<'c, 'p> CodegenState<'c, 'p> {
@@ -157,6 +161,7 @@ impl<'c, 'p> CodegenState<'c, 'p> {
             const_disc_locals: HashMap::new(),
             phi_join_locals: HashMap::new(),
             phi_block_args: HashMap::new(),
+            pre_join_ssa_values: HashMap::new(),
         }
     }
 }
@@ -323,23 +328,27 @@ pub(crate) fn extract_switch_const<'tcx>(
 }
 
 /// BFS reachability analysis from bb0, constant-folding `SwitchInt` when the discriminant
-/// is statically known.  Returns the set of reachable `BasicBlock` indices.
+/// is statically known.  Returns (set, vec) where the vec preserves BFS order — the correct
+/// topological order for SSA value availability.  Use the vec for block *processing* order
+/// and the set for O(1) membership tests.
 fn compute_reachable_blocks<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: &Instance<'tcx>,
     mir: &Body<'tcx>,
     const_disc_locals: &HashMap<Local, u64>,
-) -> HashSet<BasicBlock> {
+) -> (HashSet<BasicBlock>, Vec<BasicBlock>) {
     use rustc_middle::mir::TerminatorKind;
 
     println!("[REACH-START] total blocks={}", mir.basic_blocks.len());
     let mut reachable: HashSet<BasicBlock> = HashSet::new();
+    let mut ordered: Vec<BasicBlock> = Vec::new();
     let mut queue: Vec<BasicBlock> = vec![BasicBlock::from_u32(0)];
 
     while let Some(bb) = queue.pop() {
         if !reachable.insert(bb) {
             continue;
         }
+        ordered.push(bb);
         let bb_data = &mir.basic_blocks[bb];
         println!("[REACH-TERM] bb={:?} kind={}", bb, match &bb_data.terminator().kind {
             TerminatorKind::Goto { .. } => "Goto",
@@ -397,7 +406,7 @@ fn compute_reachable_blocks<'tcx>(
         }
     }
 
-    reachable
+    (reachable, ordered)
 }
 
 /// For each join block (2+ reachable non-loop predecessors), collect the set of MIR locals
@@ -492,22 +501,34 @@ fn compute_phi_join_locals<'tcx>(
         if preds.len() < 2 {
             continue;
         }
-        let mut seen: HashSet<Local> = HashSet::new();
-        let mut phi_locals: Vec<Local> = Vec::new();
+        // Count how many predecessor chains each local appears in.
+        // A local is only a valid phi if it's redefined on 2+ distinct paths — otherwise
+        // it has no value on the "other" path and can't be passed as a block arg.
+        let mut chain_count: HashMap<Local, usize> = HashMap::new();
+        let mut local_order: Vec<Local> = Vec::new();
         for &pred_bb in preds {
             for local in collect_chain_locals(pred_bb, preds) {
-                let raw_ty = mir.local_decls[local].ty;
-                // Skip Option and Tuple locals — tracked in separate tables.
-                if is_option_ty(tcx, raw_ty) {
-                    continue;
+                let entry = chain_count.entry(local).or_insert(0);
+                if *entry == 0 {
+                    local_order.push(local);
                 }
-                if matches!(raw_ty.kind(), rustc_middle::ty::TyKind::Tuple(_)) {
-                    continue;
-                }
-                if seen.insert(local) {
-                    phi_locals.push(local);
-                }
+                *entry += 1;
             }
+        }
+        let mut phi_locals: Vec<Local> = Vec::new();
+        for local in local_order {
+            if chain_count[&local] < 2 {
+                continue; // Only redefined on one path — no phi needed.
+            }
+            let raw_ty = mir.local_decls[local].ty;
+            // Skip Option and Tuple locals — tracked in separate tables.
+            if is_option_ty(tcx, raw_ty) {
+                continue;
+            }
+            if matches!(raw_ty.kind(), rustc_middle::ty::TyKind::Tuple(_)) {
+                continue;
+            }
+            phi_locals.push(local);
         }
         if !phi_locals.is_empty() {
             println!(
@@ -522,11 +543,11 @@ fn compute_phi_join_locals<'tcx>(
     result
 }
 
-/// Detect a Range-based `for` loop in the MIR body.
-/// Returns `None` if no such loop is found.
-fn detect_range_loop<'tcx>(mir: &Body<'tcx>) -> Option<RangeLoopInfo> {
+/// Detect all Range-based `for` loops in the MIR body.
+fn detect_range_loop<'tcx>(mir: &Body<'tcx>) -> Vec<RangeLoopInfo> {
     use rustc_middle::mir::TerminatorKind;
 
+    let mut loops = Vec::new();
     for (bb, bb_data) in mir.basic_blocks.iter_enumerated() {
         if let TerminatorKind::Goto { target } = &bb_data.terminator().kind {
             if target.index() < bb.index() {
@@ -534,12 +555,12 @@ fn detect_range_loop<'tcx>(mir: &Body<'tcx>) -> Option<RangeLoopInfo> {
                 let header_bb = *target;
                 let back_edge_bb = bb;
                 if let Some(info) = try_build_range_loop_info(mir, header_bb, back_edge_bb) {
-                    return Some(info);
+                    loops.push(info);
                 }
             }
         }
     }
-    None
+    loops
 }
 
 fn try_build_range_loop_info<'tcx>(
@@ -1255,33 +1276,35 @@ impl<'a> TritonCodegen<'a> {
         state.const_disc_locals = const_disc_locals.clone();
 
         // BFS reachability analysis: only reachable blocks get MLIR blocks.
-        let reachable_bbs = compute_reachable_blocks(tcx, instance, mir, &const_disc_locals);
+        // The returned vec preserves BFS order — use it for *processing* so that each
+        // block is processed only after all blocks that dominate it (i.e., SSA values
+        // from predecessor blocks are already in state.ssa_values).
+        let (reachable_bbs, bfs_ordered_bbs) =
+            compute_reachable_blocks(tcx, instance, mir, &const_disc_locals);
         println!(
             "[DEBUG] TritonCodegen: reachable_bbs: {:?} (total MIR blocks: {})",
             reachable_bbs,
             mir.basic_blocks.len()
         );
 
-        // Detect Range-based `for` loops. Loop body blocks live in the scf.for region, not
+        // Detect all Range-based `for` loops. Loop body blocks live in the scf.for region, not
         // in the function region, so we skip creating MLIR blocks for them here.
-        let loop_info = detect_range_loop(mir);
+        let loop_infos = detect_range_loop(mir);
 
-        // The set of MIR blocks that belong to the scf.for region (header + all body blocks).
-        let loop_region_blocks: HashSet<BasicBlock> = loop_info
-            .as_ref()
-            .map(|l| {
-                let mut s = HashSet::new();
-                s.insert(l.header_bb);
-                for &b in &l.body_bbs {
-                    s.insert(b);
-                }
-                s
-            })
-            .unwrap_or_default();
+        // The set of MIR blocks that belong to any scf.for region.
+        let mut loop_region_blocks: HashSet<BasicBlock> = HashSet::new();
+        for l in &loop_infos {
+            loop_region_blocks.insert(l.header_bb);
+            for &b in &l.body_bbs {
+                loop_region_blocks.insert(b);
+            }
+        }
 
+        // Map from init_bb → index into loop_infos for each loop.
         // The "init block" ends with `goto → header_bb`; we intercept it to emit scf.for.
-        let loop_init_bb: Option<BasicBlock> = loop_info.as_ref().and_then(|l| {
-            mir.basic_blocks.indices().find(|&bb| {
+        let mut loop_init_bb_map: HashMap<BasicBlock, usize> = HashMap::new();
+        for (loop_idx, l) in loop_infos.iter().enumerate() {
+            if let Some(init_bb) = mir.basic_blocks.indices().find(|&bb| {
                 if loop_region_blocks.contains(&bb) {
                     return false;
                 }
@@ -1292,12 +1315,14 @@ impl<'a> TritonCodegen<'a> {
                     &mir.basic_blocks[bb].terminator().kind,
                     rustc_middle::mir::TerminatorKind::Goto { target } if *target == l.header_bb
                 )
-            })
-        });
+            }) {
+                loop_init_bb_map.insert(init_bb, loop_idx);
+            }
+        }
 
         println!(
-            "[DEBUG] TritonCodegen: loop_info: {:?}, loop_init_bb: {:?}",
-            loop_info, loop_init_bb
+            "[DEBUG] TritonCodegen: loop_infos count={}, loop_init_bb_map: {:?}",
+            loop_infos.len(), loop_init_bb_map
         );
 
         // Compute phi (block-argument) locals for join blocks in the non-loop CFG.
@@ -1306,12 +1331,12 @@ impl<'a> TritonCodegen<'a> {
         state.phi_join_locals = phi_join_locals;
 
         // Create MLIR blocks for all non-loop-region, reachable MIR blocks.
-        for (bb, _) in mir.basic_blocks.iter_enumerated() {
+        // Index order is fine for block *creation* — MLIR blocks just need to exist before
+        // they are branched to; actual codegen (where SSA values must be available) uses BFS order.
+        for bb in &bfs_ordered_bbs {
+            let bb = *bb;
             if loop_region_blocks.contains(&bb) {
                 continue; // Loop body blocks are created inside the scf.for region.
-            }
-            if !reachable_bbs.contains(&bb) {
-                continue; // Dead code: skip block creation to avoid dominance violations.
             }
 
             let block = Block::new(&[]);
@@ -1340,16 +1365,16 @@ impl<'a> TritonCodegen<'a> {
             basic_blocks.insert(bb, block_ref);
         }
 
-        // Process all non-loop-region, reachable MIR blocks.
-        for (bb, bb_data) in mir.basic_blocks.iter_enumerated() {
+        // Process all non-loop-region, reachable MIR blocks in BFS order so that SSA values
+        // defined in a block are always available when successor blocks are processed,
+        // even when a successor has a lower MIR block index than its predecessor.
+        for &bb in &bfs_ordered_bbs {
+            let bb_data = &mir.basic_blocks[bb];
             if loop_region_blocks.contains(&bb) {
                 continue; // Handled inside codegen_scf_for_loop.
             }
-            if !reachable_bbs.contains(&bb) {
-                continue; // Dead code: skip processing to avoid overwriting ssa_values.
-            }
 
-            if Some(bb) == loop_init_bb {
+            if let Some(&loop_idx) = loop_init_bb_map.get(&bb) {
                 // Process init-block statements only, then build the scf.for in-place.
                 let init_mlir_block = *basic_blocks.get(&bb).expect("init block");
                 for stmt in &bb_data.statements {
@@ -1366,7 +1391,7 @@ impl<'a> TritonCodegen<'a> {
                     tcx,
                     instance,
                     mir,
-                    loop_info.as_ref().unwrap(),
+                    &loop_infos[loop_idx],
                     &init_mlir_block,
                     &func_op,
                     &mut state,
@@ -1408,11 +1433,18 @@ impl<'a> TritonCodegen<'a> {
         let mlir_block = basic_blocks.get(&bb).expect("block not found");
 
         // At join blocks, the phi block args represent merged values for locals.
-        // Update ssa_values so subsequent statements see the phi value, not the stale
-        // predecessor-specific value.
+        // Before overwriting, save the current ssa_values for each phi local so that
+        // any predecessor block processed *after* this join (in DFS order) can still
+        // find the correct "pre-join" value when building its branch to this block.
+        // Then update ssa_values so subsequent statements in this and successor blocks
+        // see the phi block arg value.
         if let Some(phi_locals) = state.phi_join_locals.get(&bb).cloned() {
             for phi_local in &phi_locals {
                 if let Some(&phi_val) = state.phi_block_args.get(&(bb, *phi_local)) {
+                    // Save old value before overwriting.
+                    if let Some(&old_val) = state.ssa_values.get(phi_local) {
+                        state.pre_join_ssa_values.entry((bb, *phi_local)).or_insert(old_val);
+                    }
                     state.ssa_values.insert(*phi_local, phi_val);
                 }
             }
@@ -1539,6 +1571,38 @@ impl<'a> TritonCodegen<'a> {
                     };
                     state.tuple_fields.insert(place.local, fields);
                     return Ok(());
+                }
+
+                // Propagate side-table entries for locals tracked outside ssa_values.
+                // Copy/Move of an array/pointer/slice local just aliases the side-table entry.
+                if let Operand::Copy(src) | Operand::Move(src) = operand {
+                    if src.projection.is_empty() {
+                        // dyn_array copy: _dest = copy _src where _src is in dyn_arrays.
+                        if let Some(elems) = state.dyn_arrays.get(&src.local).cloned() {
+                            state.dyn_arrays.insert(place.local, elems);
+                            return Ok(());
+                        }
+                        // const_array copy.
+                        if let Some(&arr_local) = state.ptr_to_const_array.get(&src.local) {
+                            state.ptr_to_const_array.insert(place.local, arr_local);
+                            return Ok(());
+                        }
+                        // dyn_array pointer copy.
+                        if let Some(&arr_local) = state.ptr_to_dyn_array.get(&src.local) {
+                            state.ptr_to_dyn_array.insert(place.local, arr_local);
+                            return Ok(());
+                        }
+                        // slice_dyn_values copy.
+                        if let Some(vals) = state.slice_dyn_values.get(&src.local).cloned() {
+                            state.slice_dyn_values.insert(place.local, vals);
+                            return Ok(());
+                        }
+                        // slice_shape copy.
+                        if let Some(shape) = state.slice_shape.get(&src.local).cloned() {
+                            state.slice_shape.insert(place.local, shape);
+                            return Ok(());
+                        }
+                    }
                 }
 
                 let result = self.codegen_operand(
@@ -2447,7 +2511,12 @@ impl<'a> TritonCodegen<'a> {
         place: &Place<'tcx>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Value<'a, 'a>, MlirError> {
-        //println!("[DEBUG] TritonCodegen::codegen_copy: Local: {:?}, projection: {:?}, ssa_values: {:?}", place.local, place.projection, state.ssa_values);
+        eprintln!("[DEBUG-COPY] codegen_copy: Local: {:?}, proj_len={}, in_ssa={}, in_dyn={}, in_ptr_dyn={}, in_slice_dyn={}",
+            place.local, place.projection.len(),
+            state.ssa_values.contains_key(&place.local),
+            state.dyn_arrays.contains_key(&place.local),
+            state.ptr_to_dyn_array.contains_key(&place.local),
+            state.slice_dyn_values.contains_key(&place.local));
 
         // Handle Option downcast+field projection: `(_opt as Some).0` — extract the inner value.
         if let [ProjectionElem::Downcast(_, _), ProjectionElem::Field(_, _)]

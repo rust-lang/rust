@@ -686,22 +686,43 @@ impl<'a> TritonCodegen<'a> {
                 phi_locals
                     .iter()
                     .map(|local| {
-                        let ssa_val = *state.ssa_values.get(local).unwrap_or_else(|| {
-                            panic!(
-                                "codegen_goto: phi local {:?} not in ssa_values at branch to {:?}",
-                                local, target
-                            )
-                        });
-                        // Lazily add the block argument on the first predecessor that reaches here.
-                        if !state.phi_block_args.contains_key(&(*target, *local)) {
+                        if let Some(&existing_arg) = state.phi_block_args.get(&(*target, *local)) {
+                            // Block arg already created by an earlier predecessor.
+                            // We are a later predecessor (processed after the join block in DFS).
+                            // ssa_values may hold the join block's own arg (stale) — use the
+                            // saved pre-join value instead if available.
+                            let current = state.ssa_values.get(local).copied();
+                            if current == Some(existing_arg) {
+                                // Stale: ssa_values has the join block's own arg.
+                                // Use the pre-join saved value from before the join was processed.
+                                *state.pre_join_ssa_values.get(&(*target, *local))
+                                    .unwrap_or_else(|| panic!(
+                                        "codegen_goto: stale phi local {:?} at {:?} but no pre-join save",
+                                        local, target
+                                    ))
+                            } else {
+                                // The predecessor redefined this local on its path — use that.
+                                current.unwrap_or_else(|| panic!(
+                                    "codegen_goto: phi local {:?} not in ssa_values at branch to {:?}",
+                                    local, target
+                                ))
+                            }
+                        } else {
+                            // First predecessor to reach this join block — create the block arg.
+                            let ssa_val = *state.ssa_values.get(local).unwrap_or_else(|| {
+                                panic!(
+                                    "codegen_goto: phi local {:?} not in ssa_values at branch to {:?}",
+                                    local, target
+                                )
+                            });
                             let phi_val = target_block.add_argument(ssa_val.r#type(), location);
                             state.phi_block_args.insert((*target, *local), phi_val);
                             println!(
                                 "[PHI] lazy: added arg for local {:?} at {:?} type {:?}",
                                 local, target, ssa_val.r#type()
                             );
+                            ssa_val
                         }
-                        ssa_val
                     })
                     .collect()
             } else {
