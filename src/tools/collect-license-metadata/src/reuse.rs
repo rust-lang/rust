@@ -15,18 +15,15 @@ pub(crate) fn collect(
     let raw = &obtain_spdx_document(reuse_exe)?;
     println!("finished gathering the license information from REUSE in {:.2?}", start.elapsed());
 
-    let document = spdx_rs::parsers::spdx_from_tag_value(&raw)?;
+    let files = crate::spdx::parse_tag_value(raw)?;
 
     let mut result = Vec::new();
-    for file in document.file_information {
-        let concluded_license = file.concluded_license.expect("File should have licence info");
-        let copyright_text = file.copyright_text.expect("File should have copyright text");
+    for file in files {
         let license = interner.intern(License {
-            spdx: concluded_license.to_string(),
-            copyright: copyright_text.split('\n').map(|s| s.into()).collect(),
+            spdx: file.concluded_license,
+            copyright: file.copyright_text.split('\n').map(|s| s.into()).collect(),
         });
-
-        result.push((file.file_name.into(), license));
+        result.push((file.name.into(), license));
     }
 
     Ok(result)
