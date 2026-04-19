@@ -746,19 +746,29 @@ fn find_induction_local_in_bbs<'tcx>(
 fn find_iter_carry_locals<'tcx>(mir: &Body<'tcx>, body_bbs: &[BasicBlock]) -> Vec<Local> {
     use rustc_middle::mir::TerminatorKind;
 
-    // All locals assigned by calls in the body
-    let mut call_assigned: Vec<Local> = Vec::new();
+    // Collect all locals that are assigned anywhere in the loop body (statements or calls).
+    let mut all_assigned: HashSet<Local> = HashSet::new();
+    let mut ordered_candidates: Vec<Local> = Vec::new();
     for &bb in body_bbs {
-        if let TerminatorKind::Call { destination, .. } =
-            &mir.basic_blocks[bb].terminator().kind
-        {
-            call_assigned.push(destination.local);
+        let bb_data = &mir.basic_blocks[bb];
+        for stmt in &bb_data.statements {
+            if let StatementKind::Assign(assign) = &stmt.kind {
+                let (dest, _) = assign.as_ref();
+                if dest.projection.is_empty() && all_assigned.insert(dest.local) {
+                    ordered_candidates.push(dest.local);
+                }
+            }
+        }
+        if let TerminatorKind::Call { destination, .. } = &bb_data.terminator().kind {
+            if destination.projection.is_empty() && all_assigned.insert(destination.local) {
+                ordered_candidates.push(destination.local);
+            }
         }
     }
 
     let mut iter_carry = Vec::new();
 
-    for candidate in call_assigned {
+    for candidate in ordered_candidates {
         let mut assigned = false;
         let mut use_before_assign = false;
 
