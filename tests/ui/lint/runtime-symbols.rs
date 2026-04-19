@@ -47,7 +47,7 @@ fn valid() {
 
         fn bcmp(s1: *const c_void, s2: *const c_void, n: usize) -> c_int;
 
-        fn strlen(s: *const c_char) -> usize;
+        static strlen: Option<unsafe extern "C" fn(s: *const c_char) -> usize>;
     }
 }
 

@@ -87,9 +87,8 @@ impl<'tcx> LateLintPass<'tcx> for RuntimeSymbols {
                 };
 
                 let def_id = item.owner_id.def_id;
-                let static_ty = cx.tcx.type_of(def_id).instantiate_identity();
 
-                check_static(cx, &symbol_name, static_ty, item.span);
+                check_static(cx, &symbol_name, def_id, item.span);
             }
             hir::ItemKind::ForeignMod { abi: _, items } => {
                 for item in items {
@@ -107,9 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for RuntimeSymbols {
                             check_fn(cx, &symbol_name.name, fn_sig, did);
                         }
                         ForeignItemKind::Static(..) => {
-                            let def_id = item.owner_id.def_id;
-                            let static_ty = cx.tcx.type_of(def_id).instantiate_identity();
-                            check_static(cx, &symbol_name.name, static_ty, item.span);
+                            check_static(cx, &symbol_name.name, did, item.span);
                         }
                         ForeignItemKind::Type => return,
                     }
@@ -163,7 +160,7 @@ fn check_fn(cx: &LateContext<'_>, symbol_name: &str, sig: FnSig<'_>, did: LocalD
     }
 }
 
-fn check_static<'tcx>(cx: &LateContext<'tcx>, symbol_name: &str, static_ty: Ty<'tcx>, sp: Span) {
+fn check_static<'tcx>(cx: &LateContext<'tcx>, symbol_name: &str, did: LocalDefId, sp: Span) {
     let Some(expected_symbol) = EXPECTED_SYMBOLS.iter().find(|es| es.symbol == symbol_name) else {
         // The symbol name does not correspond to a runtime symbols, bail out
         return;
@@ -174,8 +171,18 @@ fn check_static<'tcx>(cx: &LateContext<'tcx>, symbol_name: &str, static_ty: Ty<'
         return;
     };
 
-    // Unconditionally report a mismatch, a static cannot ever be a function definition
+    // Get the static type
+    let static_ty = cx.tcx.type_of(did).instantiate_identity().skip_norm_wip();
 
+    // Peel Option<...> and get the inner type (see std weak! macro with #[linkage = "extern_weak"])
+    let inner_static_ty: Ty<'_> = match static_ty.kind() {
+        ty::Adt(def, args) if Some(def.did()) == cx.tcx.lang_items().option_type() => {
+            args.type_at(0)
+        }
+        _ => static_ty,
+    };
+
+    // Get the expected symbol function signature
     let lang_sig = cx.tcx.normalize_erasing_regions(
         cx.typing_env(),
         cx.tcx.fn_sig(expected_def_id).instantiate_identity(),
@@ -183,13 +190,16 @@ fn check_static<'tcx>(cx: &LateContext<'tcx>, symbol_name: &str, static_ty: Ty<'
 
     let expected = Ty::new_fn_ptr(cx.tcx, lang_sig);
 
-    cx.emit_span_lint(
-        INVALID_RUNTIME_SYMBOL_DEFINITIONS,
-        sp,
-        RedefiningRuntimeSymbolsDiag::Static {
-            static_ty,
-            symbol_name: symbol_name.to_string(),
-            expected_fn_sig: expected,
-        },
-    );
+    // Compare the expected function signature with the static type, report an error if they don't match
+    if expected != inner_static_ty {
+        cx.emit_span_lint(
+            INVALID_RUNTIME_SYMBOL_DEFINITIONS,
+            sp,
+            RedefiningRuntimeSymbolsDiag::Static {
+                static_ty,
+                symbol_name: symbol_name.to_string(),
+                expected_fn_sig: expected,
+            },
+        );
+    }
 }
