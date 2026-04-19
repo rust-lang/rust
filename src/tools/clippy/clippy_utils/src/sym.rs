@@ -50,7 +50,6 @@ generate! {
     Cargo_toml: "Cargo.toml",
     Child,
     Command,
-    Cow,
     Current,
     DOUBLE_QUOTE: "\"",
     DebugStruct,

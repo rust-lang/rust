@@ -294,6 +294,8 @@ pub(crate) enum MacroExport {
 pub(crate) enum UnusedNote {
     #[note("attribute `{$name}` with an empty list has no effect")]
     EmptyList { name: Symbol },
+    #[note("attribute `{$name}` without any lints has no effect")]
+    NoLints { name: Symbol },
     #[note("`default_method_body_is_const` has been replaced with `const` on traits")]
     DefaultMethodBodyConst,
     #[note(
@@ -432,47 +434,6 @@ pub(crate) struct DuplicateDiagnosticItemInCrate {
     pub crate_name: Symbol,
     pub orig_crate_name: Symbol,
     pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag("abi: {$abi}")]
-pub(crate) struct LayoutAbi {
-    #[primary_span]
-    pub span: Span,
-    pub abi: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("align: {$align}")]
-pub(crate) struct LayoutAlign {
-    #[primary_span]
-    pub span: Span,
-    pub align: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("size: {$size}")]
-pub(crate) struct LayoutSize {
-    #[primary_span]
-    pub span: Span,
-    pub size: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("homogeneous_aggregate: {$homogeneous_aggregate}")]
-pub(crate) struct LayoutHomogeneousAggregate {
-    #[primary_span]
-    pub span: Span,
-    pub homogeneous_aggregate: String,
-}
-
-#[derive(Diagnostic)]
-#[diag("layout_of({$normalized_ty}) = {$ty_layout}")]
-pub(crate) struct LayoutOf<'tcx> {
-    #[primary_span]
-    pub span: Span,
-    pub normalized_ty: Ty<'tcx>,
-    pub ty_layout: String,
 }
 
 #[derive(Diagnostic)]
@@ -911,6 +872,20 @@ pub(crate) struct ImpliedFeatureNotExist {
 }
 
 #[derive(Diagnostic)]
+#[diag("feature `{$feature}` has been removed", code = E0557)]
+#[note("removed in {$since}; see <{$link}> for more information")]
+#[note("{$reason}")]
+pub(crate) struct FeatureRemoved {
+    #[primary_span]
+    #[label("feature has been removed")]
+    pub span: Span,
+    pub feature: Symbol,
+    pub reason: Symbol,
+    pub since: String,
+    pub link: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag(
     "attributes `#[rustc_const_unstable]`, `#[rustc_const_stable]` and `#[rustc_const_stable_indirect]` require the function or method to be `const`"
 )]
@@ -1190,8 +1165,8 @@ pub(crate) struct ReprAlignShouldBeAlignStatic {
 }
 
 #[derive(Diagnostic)]
-#[diag("`eii_macro_for` is only valid on functions")]
-pub(crate) struct EiiImplNotFunction {
+#[diag("`eii_macro_for` is only valid on functions and statics")]
+pub(crate) struct EiiImplTarget {
     #[primary_span]
     pub span: Span,
 }

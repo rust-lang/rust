@@ -15,7 +15,7 @@ use crate::shims::unix::*;
 use crate::*;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub(crate) enum FlockOp {
+pub enum FlockOp {
     SharedLock { nonblocking: bool },
     ExclusiveLock { nonblocking: bool },
     Unlock,

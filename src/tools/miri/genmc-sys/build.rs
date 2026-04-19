@@ -31,8 +31,8 @@ mod downloading {
     pub(crate) const GENMC_COMMIT: &str = "22d3d0b44dedb4e8e1aae3330e546465e4664529";
 
     /// Ensure that a local GenMC repo is present and set to the correct commit.
-    /// Return the path of the GenMC repo and whether the checked out commit was changed.
-    pub(crate) fn download_genmc() -> (PathBuf, bool) {
+    /// Return the path of the GenMC repo clone.
+    pub(crate) fn download_genmc() -> PathBuf {
         let Ok(genmc_download_path) = PathBuf::from_str(GENMC_DOWNLOAD_PATH);
         let commit_oid = Oid::from_str(GENMC_COMMIT).expect("Commit should be valid.");
 
@@ -44,7 +44,7 @@ mod downloading {
                     && head_commit.id() == commit_oid
                 {
                     // Fast path: The expected commit is already checked out.
-                    return (genmc_download_path, false);
+                    return genmc_download_path;
                 }
                 // Check if the local repository already contains the commit we need, download it otherwise.
                 let commit = update_local_repo(&repo, commit_oid);
@@ -61,7 +61,7 @@ mod downloading {
             }
         };
 
-        (genmc_download_path, true)
+        genmc_download_path
     }
 
     fn get_remote(repo: &Repository) -> Remote<'_> {
@@ -141,7 +141,7 @@ mod downloading {
 }
 
 /// Build the GenMC model checker library and the Rust-C++ interop library with cxx.rs
-fn compile_cpp_dependencies(genmc_path: &Path, always_configure: bool) {
+fn compile_cpp_dependencies(genmc_path: &Path) {
     // Give each step a separate build directory to prevent interference.
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").as_deref().unwrap());
     let genmc_build_dir = out_dir.join("genmc");
@@ -156,7 +156,6 @@ fn compile_cpp_dependencies(genmc_path: &Path, always_configure: bool) {
 
     let mut config = cmake::Config::new(genmc_path);
     config
-        .always_configure(always_configure) // We force running the configure step when the GenMC commit changed.
         .out_dir(genmc_build_dir)
         .profile(GENMC_CMAKE_PROFILE)
         .define("BUILD_LLI", "OFF")
@@ -208,8 +207,7 @@ fn main() {
     }
 
     // Select which path to use for the GenMC repo:
-    let (genmc_path, always_configure) = if let Some(genmc_src_path) = option_env!("GENMC_SRC_PATH")
-    {
+    let genmc_path = if let Some(genmc_src_path) = option_env!("GENMC_SRC_PATH") {
         let genmc_src_path =
             PathBuf::from_str(&genmc_src_path).expect("GENMC_SRC_PATH should contain a valid path");
         assert!(
@@ -219,18 +217,14 @@ fn main() {
         );
         // Rebuild files in the given path change.
         println!("cargo::rerun-if-changed={}", genmc_src_path.display());
-        // We disable `always_configure` when working with a local repository,
-        // since it increases compile times when working on `genmc-sys`.
-        (genmc_src_path, false)
+        genmc_src_path
     } else {
         // Download GenMC if required and ensure that the correct commit is checked out.
-        // If anything changed in the downloaded repository (e.g., the commit),
-        // we set `always_configure` to ensure there are no weird configs from previous builds.
         downloading::download_genmc()
     };
 
     // Build all required components:
-    compile_cpp_dependencies(&genmc_path, always_configure);
+    compile_cpp_dependencies(&genmc_path);
 
     // Only rebuild if anything changes:
     // Note that we don't add the downloaded GenMC repo, since that should never be modified

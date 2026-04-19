@@ -452,6 +452,7 @@ impl<'test> TestCx<'test> {
         rustc
             .arg(input)
             .args(&["-Z", &format!("unpretty={}", pretty_type)])
+            .arg("-Zunstable-options")
             .args(&["--target", &self.config.target])
             .arg("-L")
             .arg(&aux_dir)
@@ -557,6 +558,7 @@ impl<'test> TestCx<'test> {
         rustc
             .arg("-")
             .arg("-Zno-codegen")
+            .arg("-Zunstable-options")
             .arg("--out-dir")
             .arg(&out_dir)
             .arg(&format!("--target={}", target))

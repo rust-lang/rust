@@ -4,21 +4,21 @@ error: unions cannot have zero fields
 LL | union EmptyUnion {}
    | ^^^^^^^^^^^^^^^^^^^
 
-error: `#[rustc_layout]` attribute cannot be used on constants
+error: `#[rustc_dump_layout]` attribute cannot be used on constants
   --> $DIR/debug.rs:71:1
    |
-LL | #[rustc_layout(debug)]
-   | ^^^^^^^^^^^^^^^^^^^^^^
+LL | #[rustc_dump_layout(debug)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_layout]` can be applied to data types and type aliases
+   = help: `#[rustc_dump_layout]` can be applied to data types and type aliases
 
-error: `#[rustc_layout]` attribute cannot be used on associated consts
+error: `#[rustc_dump_layout]` attribute cannot be used on associated consts
   --> $DIR/debug.rs:75:5
    |
-LL |     #[rustc_layout(debug)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[rustc_dump_layout(debug)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_layout]` can be applied to data types and type aliases
+   = help: `#[rustc_dump_layout]` can be applied to data types and type aliases
 
 error: layout_of(E) = Layout {
            size: Size(12 bytes),

@@ -523,8 +523,8 @@ fn sanity_check_found_hidden_type<'tcx>(
         // Nothing was actually constrained.
         return Ok(());
     }
-    if let &ty::Alias(alias @ ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = ty.ty.kind() {
-        if def_id == key.def_id.to_def_id() && alias.args == key.args {
+    if let &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = ty.ty.kind() {
+        if def_id == key.def_id.to_def_id() && args == key.args {
             // Nothing was actually constrained, this is an opaque usage that was
             // only discovered to be opaque after inference vars resolved.
             return Ok(());

@@ -1,5 +1,4 @@
 //@ run-pass
-//@ check-run-results
 
 #![feature(supertrait_item_shadowing)]
 #![warn(resolving_to_items_shadowing_supertrait_items)]
@@ -7,21 +6,21 @@
 #![allow(dead_code)]
 
 trait A {
-    fn hello(&self) {
-        println!("A");
+    fn hello(&self) -> &'static str {
+        "A"
     }
 }
 impl<T> A for T {}
 
 trait B: A {
-    fn hello(&self) {
+    fn hello(&self) -> &'static str {
         //~^ WARN trait item `hello` from `B` shadows identically named item
-        println!("B");
+        "B"
     }
 }
 impl<T> B for T {}
 
 fn main() {
-    ().hello();
+    assert_eq!(().hello(), "B");
     //~^ WARN trait item `hello` from `B` shadows identically named item from supertrait
 }

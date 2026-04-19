@@ -15,7 +15,7 @@ use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
 use rustc_infer::traits::{Obligation, PolyTraitObligation, PredicateObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, FieldInfo, SizedTraitKind, TraitRef, Ty, TypeVisitableExt, TypingMode, elaborate,
+    self, FieldInfo, SizedTraitKind, TraitRef, Ty, TypeVisitableExt, elaborate,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::DUMMY_SP;
@@ -849,7 +849,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         //
                         // Note that this is only sound as projection candidates of opaque types
                         // are always applicable for auto traits.
-                    } else if let TypingMode::Coherence = self.infcx.typing_mode() {
+                    } else if self.infcx.typing_mode().is_coherence() {
                         // We do not emit auto trait candidates for opaque types in coherence.
                         // Doing so can result in weird dependency cycles.
                         candidates.ambiguous = true;

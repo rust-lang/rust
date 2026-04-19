@@ -1421,7 +1421,7 @@ where
         mut candidates: Vec<Candidate<I>>,
         failed_candidate_info: FailedCandidateInfo,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
-        if let TypingMode::Coherence = self.typing_mode() {
+        if self.typing_mode().is_coherence() {
             return if let Some((response, _)) = self.try_merge_candidates(&candidates) {
                 Ok((response, Some(TraitGoalProvenVia::Misc)))
             } else {

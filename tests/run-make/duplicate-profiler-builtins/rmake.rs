@@ -2,6 +2,7 @@
 // together without getting an error about duplicate profiler_builtins.
 
 //@ needs-profiler-runtime
+//@ needs-dynamic-linking
 
 use run_make_support::{dynamic_lib_name, rustc};
 

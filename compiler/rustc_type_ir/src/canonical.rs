@@ -11,7 +11,7 @@ use rustc_type_ir_macros::{
 
 use crate::data_structures::HashMap;
 use crate::inherent::*;
-use crate::{self as ty, Interner, TypingMode, UniverseIndex};
+use crate::{self as ty, Interner, TypingModeEqWrapper, UniverseIndex};
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, V)]
 #[derive_where(Copy; I: Interner, V: Copy)]
@@ -21,7 +21,7 @@ use crate::{self as ty, Interner, TypingMode, UniverseIndex};
 )]
 pub struct CanonicalQueryInput<I: Interner, V> {
     pub canonical: Canonical<I, V>,
-    pub typing_mode: TypingMode<I>,
+    pub typing_mode: TypingModeEqWrapper<I>,
 }
 
 impl<I: Interner, V: Eq> Eq for CanonicalQueryInput<I, V> {}

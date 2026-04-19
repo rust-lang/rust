@@ -155,6 +155,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             target_os = "aix",
             target_vendor = "apple",
             target_os = "cygwin",
+            target_os = "wasi",
         ) => {
             #[allow(unused_assignments)]
             #[allow(unused_mut)]

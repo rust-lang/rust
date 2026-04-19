@@ -6,7 +6,7 @@ use rustc_abi::FieldIdx;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, PatternKind, Ty, TyCtxt};
 
 use crate::patch::MirPatch;
 
@@ -137,8 +137,10 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
                             build_ptr_tys(tcx, boxed_ty, unique_def, nonnull_def);
 
                         new_projections.extend_from_slice(&build_projection(unique_ty, nonnull_ty));
-                        // While we can't project into `NonNull<_>` in a basic block
-                        // due to MCP#807, this is debug info where it's fine.
+                        // While we can't project into a pattern type in a basic block,
+                        // this is debug info where it's fine.
+                        let pat_ty = Ty::new_pat(tcx, ptr_ty, tcx.mk_pat(PatternKind::NotNull));
+                        new_projections.push(PlaceElem::Field(FieldIdx::ZERO, pat_ty));
                         new_projections.push(PlaceElem::Field(FieldIdx::ZERO, ptr_ty));
                         new_projections.push(PlaceElem::Deref);
                     } else if let Some(new_projections) = new_projections.as_mut() {

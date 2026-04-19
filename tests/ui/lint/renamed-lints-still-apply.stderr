@@ -1,3 +1,11 @@
+warning: lint `single_use_lifetime` has been renamed to `single_use_lifetimes`
+  --> $DIR/renamed-lints-still-apply.rs:2:9
+   |
+LL | #![deny(single_use_lifetime)]
+   |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `single_use_lifetimes`
+   |
+   = note: `#[warn(renamed_and_removed_lints)]` on by default
+
 error: lifetime parameter `'a` only used once
   --> $DIR/renamed-lints-still-apply.rs:6:9
    |
@@ -16,14 +24,6 @@ help: elide the single-use lifetime
 LL - fn _foo<'a>(_x: &'a u32) {}
 LL + fn _foo(_x: &u32) {}
    |
-
-warning: lint `single_use_lifetime` has been renamed to `single_use_lifetimes`
-  --> $DIR/renamed-lints-still-apply.rs:2:9
-   |
-LL | #![deny(single_use_lifetime)]
-   |         ^^^^^^^^^^^^^^^^^^^ help: use the new name: `single_use_lifetimes`
-   |
-   = note: `#[warn(renamed_and_removed_lints)]` on by default
 
 error: aborting due to 1 previous error; 1 warning emitted
 

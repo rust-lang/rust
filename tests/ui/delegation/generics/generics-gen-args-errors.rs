@@ -36,6 +36,7 @@ mod test_1 {
         //~| ERROR can't use generic parameters from outer item
         //~| ERROR can't use generic parameters from outer item
         //~| ERROR: unresolved item provided when a constant was expected
+        //~| ERROR: function takes 2 lifetime arguments but 0 lifetime arguments were supplied
     }
 }
 
@@ -47,6 +48,7 @@ mod test_2 {
 
     reuse foo::<String, String> as bar2;
     //~^ ERROR: function takes 3 generic arguments but 2 generic arguments were supplied
+    //~| ERROR: function takes 2 lifetime arguments but 0 lifetime arguments were supplied
 
     reuse foo::<'static, _, 'asdasd, 'static, 'static, 'static, _> as bar3;
     //~^ ERROR: use of undeclared lifetime name `'asdasd`
@@ -58,10 +60,12 @@ mod test_2 {
 
     reuse foo::<1, 2, _, 4, 5, _> as bar5;
     //~^ ERROR: function takes 3 generic arguments but 6 generic arguments were supplied
+    //~| ERROR: function takes 2 lifetime arguments but 0 lifetime arguments were supplied
 
     reuse foo::<1, 2,asd,String, { let x = 0; }> as bar6;
     //~^ ERROR: cannot find type `asd` in this scope
     //~| ERROR: function takes 3 generic arguments but 5 generic arguments were supplied
+    //~| ERROR: function takes 2 lifetime arguments but 0 lifetime arguments were supplied
 
     reuse foo::<"asdasd", asd, "askdn", 'static, 'a> as bar7;
     //~^ ERROR: use of undeclared lifetime name `'a`
@@ -70,6 +74,7 @@ mod test_2 {
 
     reuse foo::<{}, {}, {}> as bar8;
     //~^ ERROR: constant provided when a type was expected
+    //~| ERROR: function takes 2 lifetime arguments but 0 lifetime arguments were supplied
 }
 
 mod test_3 {
@@ -107,12 +112,14 @@ mod test_3 {
     //~| ERROR: trait takes 3 lifetime arguments but 1 lifetime argument was supplied
     //~| ERROR: trait takes 2 generic arguments but 3 generic arguments were supplied
     //~| ERROR: method takes 2 generic arguments but 6 generic arguments were supplied
+    //~| ERROR: method takes 1 lifetime argument but 0 lifetime arguments were supplied
 
     reuse Trait::<Trait, Clone, _, 'static, dyn Send, _>::foo::<1, 2, 3, _, 6> as bar7;
     //~^ ERROR: missing lifetime specifiers [E0106]
     //~| ERROR: trait takes 3 lifetime arguments but 1 lifetime argument was supplied
     //~| ERROR: trait takes 2 generic arguments but 5 generic arguments were supplied
     //~| ERROR: method takes 2 generic arguments but 5 generic arguments were supplied
+    //~| ERROR: method takes 1 lifetime argument but 0 lifetime arguments were supplied
 }
 
 fn main() {}

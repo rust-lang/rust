@@ -98,7 +98,7 @@ impl<'tcx> CValue<'tcx> {
 
     /// Create an instance of a ZST
     ///
-    /// The is represented by a dangling pointer of suitable alignment.
+    /// The ZST is represented by a dangling pointer of suitable alignment.
     pub(crate) fn zst(layout: TyAndLayout<'tcx>) -> CValue<'tcx> {
         assert!(layout.is_zst());
         CValue::by_ref(crate::Pointer::dangling(layout.align.abi), layout)

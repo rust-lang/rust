@@ -460,6 +460,15 @@ However, revisions or building auxiliary via directives are not currently suppor
 `rmake.rs` and `run-make-support` may *not* use any nightly/unstable features,
 as they must be compilable by a stage 0 rustc that may be a beta or even stable rustc.
 
+By default, run-make tests print each subprocess command and its stdout/stderr.
+When running with `--no-capture` on `panic=abort` test suites (such as `cg_clif`),
+this can flood the terminal. Omit `--verbose-run-make-subprocess-output` to
+suppress this output for passing tests — failing tests always print regardless:
+
+```bash
+./x test tests/run-make --no-capture --verbose-run-make-subprocess-output=false
+```
+
 #### Quickly check if `rmake.rs` tests can be compiled
 
 You can quickly check if `rmake.rs` tests can be compiled without having to

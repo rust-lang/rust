@@ -1,8 +1,9 @@
 use rustc_hir::def::DefKind;
 use rustc_infer::traits::ObligationCause;
+use rustc_middle::bug;
 use rustc_middle::ty::{
     self, DefiningScopeKind, DefinitionSiteHiddenType, OpaqueTypeKey, ProvisionalHiddenType,
-    TypeVisitableExt, TypingMode,
+    TypeVisitableExt,
 };
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::opaque_types::{
@@ -97,9 +98,16 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         debug!(?opaque_types);
 
         let tcx = self.tcx;
-        let TypingMode::Analysis { defining_opaque_types_and_generators } = self.typing_mode()
-        else {
-            unreachable!();
+        let defining_opaque_types_and_generators = match self.typing_mode() {
+            ty::TypingMode::Analysis { defining_opaque_types_and_generators } => {
+                defining_opaque_types_and_generators
+            }
+            ty::TypingMode::Coherence
+            | ty::TypingMode::Borrowck { .. }
+            | ty::TypingMode::PostBorrowckAnalysis { .. }
+            | ty::TypingMode::PostAnalysis => {
+                bug!()
+            }
         };
 
         for def_id in defining_opaque_types_and_generators {

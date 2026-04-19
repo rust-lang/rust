@@ -20,7 +20,7 @@ LL | struct S;
    | -------- method `baz` not found for this struct
 ...
 LL |     s.baz(10);
-   |       ^^^ method not found in `S`
+   |       ^^^
    |
 help: you might have meant to use `qux`
    |

@@ -234,16 +234,6 @@ pub struct ConflictingAllocErrorHandler {
 pub struct GlobalAllocRequired;
 
 #[derive(Diagnostic)]
-#[diag(
-    "the crate `{$crate_name}` cannot depend on a crate that needs {$needs_crate_name}, but it depends on `{$deps_crate_name}`"
-)]
-pub struct NoTransitiveNeedsDep<'a> {
-    pub crate_name: Symbol,
-    pub needs_crate_name: &'a str,
-    pub deps_crate_name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("failed to write {$filename}: {$err}")]
 pub struct FailedWriteError {
     pub filename: PathBuf,
@@ -695,4 +685,22 @@ pub struct RawDylibMalformed {
 pub(crate) struct UnusedCrateDependency {
     pub extern_crate: Symbol,
     pub local_crate: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "your program uses the crate `{$extern_crate}`, that is not compiled with `{$mitigation_name}{$mitigation_level}` enabled"
+)]
+#[note(
+    "recompile `{$extern_crate}` with `{$mitigation_name}{$mitigation_level}` enabled, or use `-Z allow-partial-mitigations={$mitigation_name}` to allow creating an artifact that has the mitigation partially enabled "
+)]
+#[help(
+    "it is possible to disable `-Z allow-partial-mitigations={$mitigation_name}` via `-Z deny-partial-mitigations={$mitigation_name}`"
+)]
+pub struct MitigationLessStrictInDependency {
+    #[primary_span]
+    pub span: Span,
+    pub mitigation_name: String,
+    pub mitigation_level: String,
+    pub extern_crate: Symbol,
 }

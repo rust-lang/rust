@@ -7,7 +7,7 @@ use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_span::sym;
 
 pub(crate) fn opaque_hidden_types(tcx: TyCtxt<'_>) {
-    if !find_attr!(tcx, crate, RustcHiddenTypeOfOpaques) {
+    if !find_attr!(tcx, crate, RustcDumpHiddenTypeOfOpaques) {
         return;
     }
     for id in tcx.hir_crate_items(()).opaques() {

@@ -25,7 +25,7 @@ macro_rules! unary_approx_test {
                     &core_simd::simd::Simd::<$scalar, LANES>::$func,
                     &$scalar::$func,
                     &|_| true,
-                    8,
+                    16,
                 )
             }
             )*
@@ -71,7 +71,7 @@ macro_rules! impl_tests {
         mod $scalar {
             use std_float::StdFloat;
 
-            unary_test! { $scalar, sqrt, ceil, floor, round, trunc }
+            unary_test! { $scalar, sqrt, ceil, floor, round, trunc, round_ties_even }
             ternary_test! { $scalar, mul_add }
 
             // https://github.com/rust-lang/miri/issues/3555

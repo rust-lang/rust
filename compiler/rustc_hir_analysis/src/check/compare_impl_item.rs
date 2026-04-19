@@ -820,24 +820,25 @@ where
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let &ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }) = ty.kind()
+        if let &ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args: proj_args, .. }) =
+            ty.kind()
             && self.cx().is_impl_trait_in_trait(def_id)
         {
             if let Some((ty, _)) = self.types.get(&def_id) {
                 return *ty;
             }
             //FIXME(RPITIT): Deny nested RPITIT in args too
-            if proj.args.has_escaping_bound_vars() {
+            if proj_args.has_escaping_bound_vars() {
                 bug!("FIXME(RPITIT): error here");
             }
             // Replace with infer var
             let infer_ty = self.ocx.infcx.next_ty_var(self.span);
-            self.types.insert(def_id, (infer_ty, proj.args));
+            self.types.insert(def_id, (infer_ty, proj_args));
             // Recurse into bounds
             for (pred, pred_span) in self
                 .cx()
                 .explicit_item_bounds(def_id)
-                .iter_instantiated_copied(self.cx(), proj.args)
+                .iter_instantiated_copied(self.cx(), proj_args)
             {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
@@ -2707,8 +2708,8 @@ fn param_env_with_gat_bounds<'tcx>(
         let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);
 
         match normalize_impl_ty.kind() {
-            &ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. })
-                if def_id == trait_ty.def_id && proj.args == rebased_args =>
+            &ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. })
+                if def_id == trait_ty.def_id && args == rebased_args =>
             {
                 // Don't include this predicate if the projected type is
                 // exactly the same as the projection. This can occur in

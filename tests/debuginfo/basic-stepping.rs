@@ -9,9 +9,20 @@
 // Debugger tests need debuginfo
 //@ compile-flags: -g
 
-// FIXME(#128945): SingleUseConsts shouldn't need to be disabled.
-//@ revisions: default-mir-passes no-SingleUseConsts-mir-pass
-//@ [no-SingleUseConsts-mir-pass] compile-flags: -Zmir-enable-passes=-SingleUseConsts
+// Some optimization passes _improve_ compile times [1]. So we want to run some
+// passes even with `-Copt-level=0`. That means that some of the lines below can
+// be optimized away. To make regression testing more robust, we also want to
+// run this test with such passes disabled. The solution is to use two
+// revisions. One with default `-Copt-level=0` passes, and one "even less
+// optimized", with enough optimization passes disabled to keep the maximum
+// number of lines steppable.
+//
+// If `-Zmir-enable-passes=-...` ends up being annoying to maintain, we can try
+// switching to `-Zmir-opt-level=0` instead.
+//
+// [1]: https://github.com/rust-lang/compiler-team/issues/319
+//@ revisions: opt-level-0 maximally-steppable
+//@ [maximally-steppable] compile-flags: -Zmir-enable-passes=-SingleUseConsts
 
 // === GDB TESTS ===================================================================================
 
@@ -20,12 +31,12 @@
 //@ gdb-command: next
 //@ gdb-check:   let d = c = 99;
 //@ gdb-command: next
-//@ [no-SingleUseConsts-mir-pass] gdb-check:   let e = "hi bob";
-//@ [no-SingleUseConsts-mir-pass] gdb-command: next
-//@ [no-SingleUseConsts-mir-pass] gdb-check:   let f = b"hi bob";
-//@ [no-SingleUseConsts-mir-pass] gdb-command: next
-//@ [no-SingleUseConsts-mir-pass] gdb-check:   let g = b'9';
-//@ [no-SingleUseConsts-mir-pass] gdb-command: next
+//@ [maximally-steppable] gdb-check:   let e = "hi bob";
+//@ [maximally-steppable] gdb-command: next
+//@ [maximally-steppable] gdb-check:   let f = b"hi bob";
+//@ [maximally-steppable] gdb-command: next
+//@ [maximally-steppable] gdb-check:   let g = b'9';
+//@ [maximally-steppable] gdb-command: next
 //@ gdb-check:   let h = ["whatever"; 8];
 //@ gdb-command: next
 //@ gdb-check:   let i = [1,2,3,4];
@@ -61,15 +72,15 @@
 //@ lldb-check:   [...]let d = c = 99;[...]
 //@ lldb-command: next
 //@ lldb-command: frame select
-//@ [no-SingleUseConsts-mir-pass] lldb-check:   [...]let e = "hi bob";[...]
-//@ [no-SingleUseConsts-mir-pass] lldb-command: next
-//@ [no-SingleUseConsts-mir-pass] lldb-command: frame select
-//@ [no-SingleUseConsts-mir-pass] lldb-check:   [...]let f = b"hi bob";[...]
-//@ [no-SingleUseConsts-mir-pass] lldb-command: next
-//@ [no-SingleUseConsts-mir-pass] lldb-command: frame select
-//@ [no-SingleUseConsts-mir-pass] lldb-check:   [...]let g = b'9';[...]
-//@ [no-SingleUseConsts-mir-pass] lldb-command: next
-//@ [no-SingleUseConsts-mir-pass] lldb-command: frame select
+//@ [maximally-steppable] lldb-check:   [...]let e = "hi bob";[...]
+//@ [maximally-steppable] lldb-command: next
+//@ [maximally-steppable] lldb-command: frame select
+//@ [maximally-steppable] lldb-check:   [...]let f = b"hi bob";[...]
+//@ [maximally-steppable] lldb-command: next
+//@ [maximally-steppable] lldb-command: frame select
+//@ [maximally-steppable] lldb-check:   [...]let g = b'9';[...]
+//@ [maximally-steppable] lldb-command: next
+//@ [maximally-steppable] lldb-command: frame select
 //@ lldb-check:   [...]let h = ["whatever"; 8];[...]
 //@ lldb-command: next
 //@ lldb-command: frame select
@@ -107,12 +118,12 @@
 //@ cdb-check:   [...]:     let mut c = 27;
 //@ cdb-command: p
 //@ cdb-check:   [...]:     let d = c = 99;
-//@ [no-SingleUseConsts-mir-pass] cdb-command: p
-//@ [no-SingleUseConsts-mir-pass] cdb-check:   [...]:     let e = "hi bob";
-//@ [no-SingleUseConsts-mir-pass] cdb-command: p
-//@ [no-SingleUseConsts-mir-pass] cdb-check:   [...]:     let f = b"hi bob";
-//@ [no-SingleUseConsts-mir-pass] cdb-command: p
-//@ [no-SingleUseConsts-mir-pass] cdb-check:   [...]:     let g = b'9';
+//@ [maximally-steppable] cdb-command: p
+//@ [maximally-steppable] cdb-check:   [...]:     let e = "hi bob";
+//@ [maximally-steppable] cdb-command: p
+//@ [maximally-steppable] cdb-check:   [...]:     let f = b"hi bob";
+//@ [maximally-steppable] cdb-command: p
+//@ [maximally-steppable] cdb-check:   [...]:     let g = b'9';
 //@ cdb-command: p
 //@ cdb-check:   [...]:     let h = ["whatever"; 8];
 //@ cdb-command: p
