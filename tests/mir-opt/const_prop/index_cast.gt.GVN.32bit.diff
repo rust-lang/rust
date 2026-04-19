@@ -1,0 +1,49 @@
+- // MIR for `gt` before GVN
++ // MIR for `gt` after GVN
+  
+  fn gt(_1: u8) -> () {
+      debug input => _1;
+      let mut _0: ();
+      let _2: bool;
+      let mut _3: u16;
+      let mut _4: u8;
+      let mut _6: u16;
+      let mut _7: u8;
+      scope 1 {
+          debug yes => _2;
+          let _5: bool;
+          scope 2 {
+              debug no => _5;
+          }
+      }
+  
+      bb0: {
+          StorageLive(_2);
+-         StorageLive(_3);
++         nop;
+          StorageLive(_4);
+          _4 = copy _1;
+-         _3 = move _4 as u16 (IntToInt);
++         _3 = copy _1 as u16 (IntToInt);
+          StorageDead(_4);
+-         _2 = Gt(const 256_u16, move _3);
+-         StorageDead(_3);
++         _2 = const true;
++         nop;
+          StorageLive(_5);
+          StorageLive(_6);
+          StorageLive(_7);
+          _7 = copy _1;
+-         _6 = move _7 as u16 (IntToInt);
++         _6 = copy _3;
+          StorageDead(_7);
+-         _5 = Gt(move _6, const 256_u16);
++         _5 = const false;
+          StorageDead(_6);
+          _0 = const ();
+          StorageDead(_5);
+          StorageDead(_2);
+          return;
+      }
+  }
+  

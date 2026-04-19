@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
+use rustc_middle::mir::interpret::PointerArithmetic;
 use rustc_session::config::FmtDebug;
 use rustc_span::{ByteSymbol, DesugaringKind, Ident, Span, Symbol, sym};
 
@@ -56,7 +57,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     /// Get the maximum value of int_ty. It is platform-dependent due to the byte size of isize
     fn int_ty_max(&self, int_ty: IntTy) -> u128 {
         match int_ty {
-            IntTy::Isize => self.tcx.data_layout.pointer_size().signed_int_max() as u128,
+            IntTy::Isize => self.tcx.target_isize_max() as u128,
             IntTy::I8 => i8::MAX as u128,
             IntTy::I16 => i16::MAX as u128,
             IntTy::I32 => i32::MAX as u128,
@@ -68,7 +69,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     /// Get the maximum value of uint_ty. It is platform-dependent due to the byte size of usize
     fn uint_ty_max(&self, uint_ty: UintTy) -> u128 {
         match uint_ty {
-            UintTy::Usize => self.tcx.data_layout.pointer_size().unsigned_int_max(),
+            UintTy::Usize => self.tcx.target_usize_max() as u128,
             UintTy::U8 => u8::MAX as u128,
             UintTy::U16 => u16::MAX as u128,
             UintTy::U32 => u32::MAX as u128,

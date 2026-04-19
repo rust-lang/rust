@@ -98,7 +98,9 @@ use std::hash::{Hash, Hasher};
 
 use either::Either;
 use itertools::Itertools as _;
-use rustc_abi::{self as abi, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, VariantIdx};
+use rustc_abi::{
+    self as abi, BackendRepr, FIRST_VARIANT, FieldIdx, Integer, Primitive, Size, VariantIdx,
+};
 use rustc_arena::DroplessArena;
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{
@@ -115,7 +117,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::layout::HasTypingEnv;
+use rustc_middle::ty::layout::{HasTypingEnv, IntegerExt};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::DUMMY_SP;
@@ -1514,6 +1516,33 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             (BinOp::Eq, a, b) if a == b => self.insert_bool(true),
             (BinOp::Ne, Left(a), Left(b)) => self.insert_bool(a != b),
             (BinOp::Ne, a, b) if a == b => self.insert_bool(false),
+            // When casting from a value, and comparing with a literal
+            // compare the maximum value with this literal
+            // to see if it's possible omit the runtime check
+            (BinOp::Lt, Right(a), Left(b)) if self.max_value_of_cast(a).is_some_and(|a| a < b) => {
+                self.insert_bool(true)
+            }
+            (BinOp::Lt, Left(a), Right(b)) if self.max_value_of_cast(b).is_some_and(|b| a >= b) => {
+                self.insert_bool(false)
+            }
+            (BinOp::Le, Right(a), Left(b)) if self.max_value_of_cast(a).is_some_and(|a| a <= b) => {
+                self.insert_bool(true)
+            }
+            (BinOp::Le, Left(a), Right(b)) if self.max_value_of_cast(b).is_some_and(|b| a > b) => {
+                self.insert_bool(false)
+            }
+            (BinOp::Gt, Left(a), Right(b)) if self.max_value_of_cast(b).is_some_and(|b| a > b) => {
+                self.insert_bool(true)
+            }
+            (BinOp::Gt, Right(a), Left(b)) if self.max_value_of_cast(a).is_some_and(|a| a <= b) => {
+                self.insert_bool(false)
+            }
+            (BinOp::Ge, Left(a), Right(b)) if self.max_value_of_cast(b).is_some_and(|b| a >= b) => {
+                self.insert_bool(true)
+            }
+            (BinOp::Ge, Right(a), Left(b)) if self.max_value_of_cast(a).is_some_and(|a| a < b) => {
+                self.insert_bool(false)
+            }
             _ => return None,
         };
 
@@ -1523,6 +1552,16 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
             Some(self.insert_tuple(ty, &[result, false_val]))
         } else {
             Some(result)
+        }
+    }
+
+    fn max_value_of_cast(&self, value: VnIndex) -> Option<u128> {
+        if let Value::Cast { kind: CastKind::IntToInt, value } = self.get(value) {
+            self.max_value_of_cast(value)
+        } else if let ty::Uint(uty) = self.ty(value).kind() {
+            Some(Integer::from_uint_ty(&self.tcx, *uty).size().unsigned_int_max())
+        } else {
+            None
         }
     }
 
