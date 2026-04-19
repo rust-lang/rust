@@ -79,7 +79,7 @@ impl<'db> SingleGenerics<'db> {
     fn iter_lifetimes(&self) -> impl Iterator<Item = (LifetimeParamId, &'db LifetimeParamData)> {
         let parent = self.def;
         self.params
-            .iter_lt()
+            .iter_early_bound_lt()
             .map(move |(local_id, data)| (LifetimeParamId { parent, local_id }, data))
     }
 
@@ -136,6 +136,19 @@ impl<'db> SingleGenerics<'db> {
     pub(crate) fn iter_id(&self) -> impl Iterator<Item = GenericParamId> {
         self.iter().map(|(id, _)| id)
     }
+
+    pub(crate) fn iter_late_bound(
+        &self,
+    ) -> impl Iterator<Item = (GenericParamId, GenericParamDataRef<'db>)> {
+        // we don't handle late bound types or const now, so it is ignored for now
+        let parent = self.def;
+        self.params.iter_late_bound_lt().map(move |(local_id, data)| {
+            (
+                GenericParamId::LifetimeParamId(LifetimeParamId { parent, local_id }),
+                GenericParamDataRef::LifetimeParamData(data),
+            )
+        })
+    }
 }
 
 impl<'db> Generics<'db> {
@@ -176,6 +189,12 @@ impl<'db> Generics<'db> {
         &self,
     ) -> impl Iterator<Item = (u32, GenericParamId, GenericParamDataRef<'db>)> {
         self.owner().iter_with_idx()
+    }
+
+    pub(crate) fn iter_self_late_bound(
+        &self,
+    ) -> impl Iterator<Item = (GenericParamId, GenericParamDataRef<'db>)> {
+        self.owner().iter_late_bound()
     }
 
     pub(crate) fn iter_parent_id(&self) -> impl Iterator<Item = GenericParamId> {
@@ -275,12 +294,19 @@ impl<'db> Generics<'db> {
         }
     }
 
-    pub(crate) fn lifetime_param_idx(&self, param: LifetimeParamId) -> u32 {
+    // Rename this?
+    pub(crate) fn lifetime_param_idx(&self, param: LifetimeParamId) -> (u32, bool) {
         let owner = self.find_owner(param.parent);
+        if let Some(late_bound_idx) = owner.params.late_bound_lifetime_idx(&param.local_id) {
+            return (late_bound_idx as u32, true);
+        }
         let has_trait_self = matches!(owner.def, GenericDefId::TraitId(_));
-        owner.preceding_params_len
-            + u32::from(has_trait_self)
-            + param.local_id.into_raw().into_u32()
+        (
+            owner.preceding_params_len
+                + u32::from(has_trait_self)
+                + param.local_id.into_raw().into_u32(),
+            false,
+        )
     }
 
     #[deprecated = "don't use this; it's easy to expose an erroneous `Generics` with this"]

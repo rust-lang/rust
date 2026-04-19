@@ -1797,7 +1797,7 @@ impl Adt {
         resolver
             .generic_params()
             .and_then(|gp| {
-                gp.iter_lt()
+                gp.iter_early_bound_lt()
                     // there should only be a single lifetime
                     // but `Arena` requires to use an iterator
                     .nth(0)

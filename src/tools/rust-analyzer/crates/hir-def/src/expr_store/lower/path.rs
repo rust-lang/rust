@@ -54,6 +54,17 @@ pub(super) fn lower_path(
         ast_segments.push(_segment.clone());
         segments.push(name);
     };
+
+    let type_alias_constrained_lifetimes = collector.get_constrained_lifetimes_if_type_alias(&path);
+    let mut old_lifetime_bound_scope = None;
+    if collector.is_argument_lt_bound_scope()
+        && let Some(lifetimes) = type_alias_constrained_lifetimes
+    {
+        collector.extend_type_alias_lifetime(lifetimes.into_iter());
+        // we are disabling lifetime bound collector for the entire path
+        old_lifetime_bound_scope = collector.named_lifetime_store.lifetime_bound_scope.take();
+    }
+
     loop {
         let Some(segment) = path.segment() else {
             segments.push(Name::missing());
@@ -112,7 +123,10 @@ pub(super) fn lower_path(
             ast::PathSegmentKind::Type { type_ref, trait_ref } => {
                 debug_assert!(path.qualifier().is_none()); // this can only occur at the first segment
 
-                let self_type = collector.lower_type_ref(type_ref?, impl_trait_lower_fn);
+                let type_ref = type_ref?;
+                let self_type = collector.for_path_type_projection(|collector| {
+                    collector.lower_type_ref(type_ref, impl_trait_lower_fn)
+                });
 
                 match trait_ref {
                     // <T>::foo
@@ -122,7 +136,9 @@ pub(super) fn lower_path(
                     }
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                     Some(trait_ref) => {
-                        let path = collector.lower_path(trait_ref.path()?, impl_trait_lower_fn)?;
+                        let path = collector.for_path_type_projection(|collector| {
+                            collector.lower_path(trait_ref.path()?, impl_trait_lower_fn)
+                        })?;
                         // FIXME: Unnecessary clone
                         collector.alloc_type_ref(
                             TypeRef::Path(path.clone()),
@@ -195,6 +211,9 @@ pub(super) fn lower_path(
             Some(it) => it,
             None => break,
         };
+    }
+    if let Some(old_scope) = old_lifetime_bound_scope {
+        collector.named_lifetime_store.lifetime_bound_scope = Some(old_scope)
     }
     segments.reverse();
     if !generic_args.is_empty() || type_anchor.is_some() {

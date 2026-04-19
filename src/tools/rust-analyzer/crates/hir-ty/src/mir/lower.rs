@@ -2358,8 +2358,14 @@ pub fn lower_body_to_mir<'db>(
 ) -> Result<'db, MirBody> {
     // Extract params and self_param only when lowering the body's root expression for a function.
     if let Some(fid) = owner.as_function() {
-        let callable_sig =
-            db.callable_item_signature(fid.into()).instantiate_identity().skip_binder();
+        let callable_sig = {
+            let resolver = owner.resolver(db);
+            let interner = DbInterner::new_with(db, resolver.krate());
+            interner.liberate_late_bound_regions(
+                fid.into(),
+                db.callable_item_signature(fid.into()).instantiate_identity().skip_norm_wip(),
+            )
+        };
         let mut param_tys = callable_sig.inputs().iter().copied();
         let self_param = self_param.and_then(|id| Some((id, param_tys.next()?)));
 

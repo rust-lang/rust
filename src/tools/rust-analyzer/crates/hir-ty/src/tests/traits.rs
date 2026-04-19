@@ -1634,10 +1634,10 @@ fn test<'lifetime>(
 ) {}
 "#,
         expect![[r#"
-            39..40 'a': impl Trait + 'lifetime
-            70..71 'b': impl 'lifetime
+            39..40 'a': impl Trait + '?0.0
+            70..71 'b': impl '?0.0
             93..94 'c': impl Trait
-            114..115 'd': impl 'lifetime
+            114..115 'd': impl '?0.0
             139..140 'e': impl ?Sized
             159..160 'f': impl Trait + ?Sized
             184..186 '{}': ()
@@ -4317,9 +4317,9 @@ fn f<'a>(v: &dyn Trait<Assoc<i32> = &'a i32>) {
     "#,
         expect![[r#"
             90..94 'self': &'? Self
-            127..128 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + 'static)
+            127..128 'v': &'? (dyn Trait<Assoc<i32> = &'<late-param> i32> + 'static)
             164..195 '{     ...f(); }': ()
-            170..171 'v': &'? (dyn Trait<Assoc<i32> = &'a i32> + 'static)
+            170..171 'v': &'? (dyn Trait<Assoc<i32> = &'<late-param> i32> + 'static)
             170..184 'v.get::<i32>()': <{unknown} as Trait>::Assoc<i32>
             170..192 'v.get:...eref()': {unknown}
         "#]],
@@ -4875,7 +4875,7 @@ fn allowed3(baz: impl Baz<Assoc = Qux<impl Foo>>) {}
             431..433 '{}': ()
             447..450 'baz': impl Baz<Assoc = impl Foo>
             480..482 '{}': ()
-            500..503 'baz': impl Baz<Assoc = &'a (impl Foo + 'a)>
+            500..503 'baz': impl Baz<Assoc = &'?0.0 (impl Foo + '?0.0)>
             544..546 '{}': ()
             560..563 'baz': impl Baz<Assoc = Qux<impl Foo>>
             598..600 '{}': ()

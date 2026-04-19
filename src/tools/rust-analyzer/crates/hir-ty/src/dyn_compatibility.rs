@@ -395,7 +395,7 @@ where
 }
 
 fn receiver_is_dispatchable<'db>(
-    db: &dyn HirDatabase,
+    db: &'db dyn HirDatabase,
     trait_: TraitId,
     func: FunctionId,
     sig: &EarlyBinder<'db, Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>>,
@@ -417,9 +417,8 @@ fn receiver_is_dispatchable<'db>(
         return true;
     }
 
-    let Some(&receiver_ty) = sig.inputs().skip_binder().first() else {
-        return false;
-    };
+    // FIXME: sig.input(0) has unwrap and might panic
+    let receiver_ty = interner.liberate_late_bound_regions(func.into(), sig.input(0));
 
     let lang_items = interner.lang_items();
     let traits = (lang_items.Unsize, lang_items.DispatchFromDyn);

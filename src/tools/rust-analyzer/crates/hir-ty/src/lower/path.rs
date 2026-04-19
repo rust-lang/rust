@@ -34,8 +34,9 @@ use crate::{
         LifetimeElisionKind, PathDiagnosticCallbackData, const_param_ty,
     },
     next_solver::{
-        AliasTermKind, Binder, Clause, Const, DbInterner, EarlyBinder, ErrorGuaranteed, GenericArg,
-        GenericArgs, Predicate, ProjectionPredicate, Region, TraitRef, Ty,
+        AliasTermKind, Binder, BoundVarKinds, Clause, Const, DbInterner, EarlyBinder,
+        ErrorGuaranteed, GenericArg, GenericArgs, Predicate, ProjectionPredicate, Region, TraitRef,
+        Ty,
     },
 };
 
@@ -956,16 +957,22 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 ImplTraitLoweringMode::Disallowed | ImplTraitLoweringMode::Opaque,
                             ) => {
                                 let ty = this.ctx.lower_ty(type_ref);
+                                let bound_vars = BoundVarKinds::new_from_slice(
+                                    this.ctx.bound_vars.last().unwrap().as_slice(),
+                                );
                                 let pred = Clause(Predicate::new(
                                     interner,
-                                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                                        rustc_type_ir::ClauseKind::Projection(
-                                            ProjectionPredicate {
-                                                projection_term,
-                                                term: ty.into(),
-                                            },
+                                    Binder::bind_with_vars(
+                                        rustc_type_ir::PredicateKind::Clause(
+                                            rustc_type_ir::ClauseKind::Projection(
+                                                ProjectionPredicate {
+                                                    projection_term,
+                                                    term: ty.into(),
+                                                },
+                                            ),
                                         ),
-                                    )),
+                                        bound_vars,
+                                    ),
                                 ));
                                 predicates.push((pred, GenericPredicateSource::SelfOnly));
                             }

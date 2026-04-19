@@ -3253,9 +3253,9 @@ fn main() {
         "#,
         expect![[r#"
             104..108 'self': &'? Box<T>
-            188..192 'self': &'a Box<Foo<T>>
+            188..192 'self': &'<late-param> Box<Foo<T>>
             218..220 '{}': &'? T
-            242..246 'self': &'a Box<Foo<T>>
+            242..246 'self': &'<late-param> Box<Foo<T>>
             275..277 '{}': &'? Foo<T>
             297..301 'self': Box<Foo<T>>
             322..324 '{}': Foo<T>
@@ -3270,7 +3270,7 @@ fn main() {
             389..394 'boxed': Box<Foo<i32>>
             389..406 'boxed....nner()': &'? i32
             416..421 'good1': &'? i32
-            424..438 'Foo::get_inner': fn get_inner<i32, '?>(&'? Box<Foo<i32>>) -> &'? i32
+            424..438 'Foo::get_inner': fn get_inner<i32>(&'?0.0 Box<Foo<i32>>) -> &'?0.0 i32
             424..446 'Foo::g...boxed)': &'? i32
             439..445 '&boxed': &'? Box<Foo<i32>>
             440..445 'boxed': Box<Foo<i32>>
@@ -3278,7 +3278,7 @@ fn main() {
             464..469 'boxed': Box<Foo<i32>>
             464..480 'boxed....self()': &'? Foo<i32>
             490..495 'good2': &'? Foo<i32>
-            498..511 'Foo::get_self': fn get_self<i32, '?>(&'? Box<Foo<i32>>) -> &'? Foo<i32>
+            498..511 'Foo::get_self': fn get_self<i32>(&'?0.0 Box<Foo<i32>>) -> &'?0.0 Foo<i32>
             498..519 'Foo::g...boxed)': &'? Foo<i32>
             512..518 '&boxed': &'? Box<Foo<i32>>
             513..518 'boxed': Box<Foo<i32>>

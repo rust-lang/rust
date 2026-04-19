@@ -75,6 +75,15 @@ impl<'db> Region<'db> {
         Region::new(interner, RegionKind::ReBound(BoundVarIndexKind::Bound(index), bound))
     }
 
+    pub fn new_late_param(
+        interner: DbInterner<'db>,
+        scope: SolverDefId,
+        bound_region: BoundRegionKind<'db>,
+    ) -> Region<'db> {
+        let late_bound_region = LateParamRegion { scope, bound_region };
+        Region::new(interner, RegionKind::ReLateParam(late_bound_region))
+    }
+
     pub fn is_placeholder(&self) -> bool {
         matches!(self.inner(), RegionKind::RePlaceholder(..))
     }
