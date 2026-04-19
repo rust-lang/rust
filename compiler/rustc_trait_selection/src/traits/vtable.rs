@@ -8,7 +8,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, Upcast, VtblEntry,
 };
-use rustc_span::DUMMY_SP;
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
@@ -285,15 +284,22 @@ fn vtable_entries<'tcx>(
                         return VtblEntry::Vacant;
                     }
 
-                    let instance = ty::Instance::expect_resolve_for_vtable(
+                    match ty::Instance::try_resolve_for_vtable(
                         tcx,
                         ty::TypingEnv::fully_monomorphized(),
                         def_id,
                         args,
-                        DUMMY_SP,
-                    );
-
-                    VtblEntry::Method(instance)
+                    ) {
+                        Ok(instance) => VtblEntry::Method(instance),
+                        Err(_guar) => {
+                            // This can happen when building a vtable for a type
+                            // whose impl has unsatisfied supertrait bounds (an
+                            // error for which has already been emitted). In that
+                            // case the supertrait's methods can't be resolved,
+                            // so we mark the entry as vacant.
+                            VtblEntry::Vacant
+                        }
+                    }
                 });
 
                 entries.extend(own_entries);
