@@ -166,3 +166,10 @@ pub(crate) struct InvalidAttrStyle<'a> {
     pub target_span: Option<Span>,
     pub target: &'static str,
 }
+
+#[derive(Diagnostic)]
+#[diag("doc alias is duplicated")]
+pub(crate) struct DocAliasDuplicated {
+    #[label("first defined here")]
+    pub first_definition: Span,
+}

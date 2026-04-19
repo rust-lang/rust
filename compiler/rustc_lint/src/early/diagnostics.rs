@@ -42,9 +42,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                 check_cfg::unexpected_cfg_value(self.sess, self.tcx, name, value)
                     .into_diag(dcx, level)
             }
-            &AttributeLintKind::DuplicateDocAlias { first_definition } => {
-                lints::DocAliasDuplicated { first_defn: first_definition }.into_diag(dcx, level)
-            }
 
             &AttributeLintKind::DocAutoCfgExpectsHideOrShow => {
                 lints::DocAutoCfgExpectsHideOrShow.into_diag(dcx, level)

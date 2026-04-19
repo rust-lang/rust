@@ -3304,13 +3304,6 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
-#[diag("doc alias is duplicated")]
-pub(crate) struct DocAliasDuplicated {
-    #[label("first defined here")]
-    pub first_defn: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`")]
 pub(crate) struct DocAutoCfgExpectsHideOrShow;
 

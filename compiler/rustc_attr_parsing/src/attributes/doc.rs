@@ -255,9 +255,11 @@ impl DocParser {
         }
 
         if let Some(first_definition) = self.attribute.aliases.get(&alias).copied() {
-            cx.emit_lint(
+            cx.emit_dyn_lint(
                 rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-                AttributeLintKind::DuplicateDocAlias { first_definition },
+                move |dcx, level| {
+                    crate::errors::DocAliasDuplicated { first_definition }.into_diag(dcx, level)
+                },
                 span,
             );
         }
