@@ -58,11 +58,10 @@ impl Arena {
         // Also ensure that this chunk can fit `additional`.
         new_cap = cmp::max(additional, new_cap);
 
-        let mut chunk = Box::new_uninit_slice(new_cap);
+        let chunk = chunks.push_mut(Box::new_uninit_slice(new_cap));
         let Range { start, end } = chunk.as_mut_ptr_range();
         self.start.set(start);
         self.end.set(end);
-        chunks.push(chunk);
     }
 
     /// Allocates a byte slice with specified size from the current memory

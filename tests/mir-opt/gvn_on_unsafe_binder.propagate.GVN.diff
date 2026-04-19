@@ -14,8 +14,7 @@
       }
   
       bb0: {
--         StorageLive(_1);
-+         nop;
+          StorageLive(_1);
           _1 = const 1_i32;
           StorageLive(_2);
           StorageLive(_3);
@@ -27,8 +26,7 @@
 -         _0 = move _2;
 +         _0 = const {transmute(0x00000001): unsafe<> i32};
           StorageDead(_2);
--         StorageDead(_1);
-+         nop;
+          StorageDead(_1);
           return;
       }
   }

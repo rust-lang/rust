@@ -1,6 +1,4 @@
 use rustc_hir::attrs::diagnostic::Directive;
-use rustc_hir::lints::AttributeLintKind;
-use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
@@ -17,35 +15,17 @@ impl<S: Stage> AttributeParser<S> for OnConstParser {
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
         |this, cx, args| {
             if !cx.features().diagnostic_on_const() {
+                // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
                 return;
             }
 
             let span = cx.attr_span;
             this.span = Some(span);
+            let mode = Mode::DiagnosticOnConst;
 
-            let items = match args {
-                ArgParser::List(items) if items.len() != 0 => items,
-                ArgParser::NoArgs | ArgParser::List(_) => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MissingOptionsForOnConst,
-                        span,
-                    );
-                    return;
-                }
-                ArgParser::NameValue(_) => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnConstAttr { span },
-                        span,
-                    );
-                    return;
-                }
-            };
+            let Some(items) = parse_list(cx, args, mode) else { return };
 
-            let Some(directive) =
-                parse_directive_items(cx, Mode::DiagnosticOnConst, items.mixed(), true)
-            else {
+            let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) else {
                 return;
             };
             merge_directives(cx, &mut this.directive, (span, directive));

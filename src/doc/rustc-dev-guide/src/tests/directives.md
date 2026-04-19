@@ -80,8 +80,7 @@ See [Controlling pass/fail expectations](ui.md#controlling-passfail-expectations
 | `run-fail-or-crash`         | Program must `run-fail` or `run-crash`      | `ui`                                      | N/A             |
 | `ignore-pass`               | Ignore `--pass` flag                        | `ui`, `crashes`, `codegen`, `incremental` | N/A             |
 | `dont-check-failure-status` | Don't check exact failure status (i.e. `1`) | `ui`, `incremental`                       | N/A             |
-| `failure-status`            | Check                                       | `ui`, `crashes`                           | Any `u16`       |
-| `should-ice`                | Check failure status is `101`               | `coverage`, `incremental`                 | N/A             |
+| `failure-status`            | On failure, the compiler must exit with this status code. To expect an ICE, use `//@ failure-status: 101`. | `ui`, `crashes`, `incremental`            | Any `u16`       |
 | `should-fail`               | Compiletest self-test                       | All                                       | N/A             |
 
 ### Controlling output snapshots and normalizations
@@ -318,7 +317,6 @@ See [Pretty-printer](compiletest.md#pretty-printer-tests).
 - [`revisions`](compiletest.md#revisions) — compile multiple times
 -[`forbid-output`](compiletest.md#incremental-tests) — incremental cfail rejects
       output pattern
-- [`should-ice`](compiletest.md#incremental-tests) — incremental cfail should ICE
 - [`reference`] — an annotation linking to a rule in the reference
 - `disable-gdb-pretty-printers` — disable gdb pretty printers for debuginfo tests
 

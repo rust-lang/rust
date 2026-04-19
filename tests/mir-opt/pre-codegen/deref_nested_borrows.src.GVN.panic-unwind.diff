@@ -15,8 +15,7 @@
       }
   
       bb0: {
--         StorageLive(_2);
-+         nop;
+          StorageLive(_2);
           _6 = copy (*_1);
           _2 = copy (*_6);
           _3 = unknown() -> [return: bb1, unwind continue];
@@ -32,8 +31,7 @@
 +         _0 = Eq(move _4, copy _2);
           StorageDead(_5);
           StorageDead(_4);
--         StorageDead(_2);
-+         nop;
+          StorageDead(_2);
           return;
       }
   }

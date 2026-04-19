@@ -141,7 +141,7 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
     // FIXME: We should use `explicit_predicates_of` here, which hasn't been implemented to
     // rust-analyzer yet
     // https://github.com/rust-lang/rust/blob/ddaf12390d3ffb7d5ba74491a48f3cd528e5d777/compiler/rustc_hir_analysis/src/collect/predicates_of.rs#L490
-    elaborate::elaborate(interner, predicates.iter_identity_copied()).any(|pred| {
+    elaborate::elaborate(interner, predicates.iter_identity()).any(|pred| {
         match pred.kind().skip_binder() {
             ClauseKind::Trait(trait_pred) => {
                 if sized == trait_pred.def_id().0
@@ -164,7 +164,7 @@ pub fn generics_require_sized_self(db: &dyn HirDatabase, def: GenericDefId) -> b
 // So, just return single boolean value for existence of such `Self` reference
 fn predicates_reference_self(db: &dyn HirDatabase, trait_: TraitId) -> bool {
     GenericPredicates::query_explicit(db, trait_.into())
-        .iter_identity_copied()
+        .iter_identity()
         .any(|pred| predicate_references_self(db, trait_, pred, AllowSelfProjection::No))
 }
 
@@ -360,8 +360,8 @@ where
         cb(MethodViolationCode::UndispatchableReceiver)?;
     }
 
-    let predicates = GenericPredicates::query_own(db, func.into());
-    for pred in predicates.iter_identity_copied() {
+    let predicates = GenericPredicates::query_own_explicit(db, func.into());
+    for pred in predicates.iter_identity() {
         let pred = pred.kind().skip_binder();
 
         if matches!(pred, ClauseKind::TypeOutlives(_)) {
@@ -459,7 +459,7 @@ fn receiver_is_dispatchable<'db>(
             clauses: Clauses::new_from_iter(
                 interner,
                 generic_predicates
-                    .iter_identity_copied()
+                    .iter_identity()
                     .chain([unsize_predicate.upcast(interner), trait_predicate.upcast(interner)])
                     .chain(meta_sized_predicate),
             ),

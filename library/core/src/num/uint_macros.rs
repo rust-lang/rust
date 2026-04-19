@@ -232,14 +232,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(uint_bit_width)]
-        ///
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".bit_width(), 0);")]
         #[doc = concat!("assert_eq!(0b111_", stringify!($SelfT), ".bit_width(), 3);")]
         #[doc = concat!("assert_eq!(0b1110_", stringify!($SelfT), ".bit_width(), 4);")]
         #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.bit_width(), ", stringify!($BITS), ");")]
         /// ```
-        #[unstable(feature = "uint_bit_width", issue = "142326")]
+        #[stable(feature = "uint_bit_width", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "uint_bit_width", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -253,14 +252,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(isolate_most_least_significant_one)]
-        ///
         #[doc = concat!("let n: ", stringify!($SelfT), " = 0b_01100100;")]
         ///
         /// assert_eq!(n.isolate_highest_one(), 0b_01000000);
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_highest_one(), 0);")]
         /// ```
-        #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+        #[stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -274,14 +272,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(isolate_most_least_significant_one)]
-        ///
         #[doc = concat!("let n: ", stringify!($SelfT), " = 0b_01100100;")]
         ///
         /// assert_eq!(n.isolate_lowest_one(), 0b_00000100);
         #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_lowest_one(), 0);")]
         /// ```
-        #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+        #[stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -295,14 +292,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_lowest_highest_one)]
-        ///
         #[doc = concat!("assert_eq!(0b0_", stringify!($SelfT), ".highest_one(), None);")]
         #[doc = concat!("assert_eq!(0b1_", stringify!($SelfT), ".highest_one(), Some(0));")]
         #[doc = concat!("assert_eq!(0b1_0000_", stringify!($SelfT), ".highest_one(), Some(4));")]
         #[doc = concat!("assert_eq!(0b1_1111_", stringify!($SelfT), ".highest_one(), Some(4));")]
         /// ```
-        #[unstable(feature = "int_lowest_highest_one", issue = "145203")]
+        #[stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -319,14 +315,13 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```
-        /// #![feature(int_lowest_highest_one)]
-        ///
         #[doc = concat!("assert_eq!(0b0_", stringify!($SelfT), ".lowest_one(), None);")]
         #[doc = concat!("assert_eq!(0b1_", stringify!($SelfT), ".lowest_one(), Some(0));")]
         #[doc = concat!("assert_eq!(0b1_0000_", stringify!($SelfT), ".lowest_one(), Some(4));")]
         #[doc = concat!("assert_eq!(0b1_1111_", stringify!($SelfT), ".lowest_one(), Some(0));")]
         /// ```
-        #[unstable(feature = "int_lowest_highest_one", issue = "145203")]
+        #[stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]
@@ -871,7 +866,7 @@ macro_rules! uint_impl {
         /// # Safety
         ///
         /// This results in undefined behavior when
-        #[doc = concat!("`self + rhs > ", stringify!($SelfT), "::MAX` or `self + rhs < ", stringify!($SelfT), "::MIN`,")]
+        #[doc = concat!("`self + rhs > ", stringify!($SelfT), "::MAX`,")]
         /// i.e. when [`checked_add`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
@@ -1050,7 +1045,7 @@ macro_rules! uint_impl {
         /// # Safety
         ///
         /// This results in undefined behavior when
-        #[doc = concat!("`self - rhs > ", stringify!($SelfT), "::MAX` or `self - rhs < ", stringify!($SelfT), "::MIN`,")]
+        #[doc = concat!("`self - rhs < ", stringify!($SelfT), "::MIN`,")]
         /// i.e. when [`checked_sub`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
@@ -1259,7 +1254,7 @@ macro_rules! uint_impl {
         /// # Safety
         ///
         /// This results in undefined behavior when
-        #[doc = concat!("`self * rhs > ", stringify!($SelfT), "::MAX` or `self * rhs < ", stringify!($SelfT), "::MIN`,")]
+        #[doc = concat!("`self * rhs > ", stringify!($SelfT), "::MAX`,")]
         /// i.e. when [`checked_mul`] would return `None`.
         ///
         /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked

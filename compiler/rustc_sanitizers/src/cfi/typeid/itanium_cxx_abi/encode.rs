@@ -183,7 +183,7 @@ fn encode_fnsig<'tcx>(
 
     let mut encode_ty_options = EncodeTyOptions::from_bits(options.bits())
         .unwrap_or_else(|| bug!("encode_fnsig: invalid option(s) `{:?}`", options.bits()));
-    match fn_sig.abi {
+    match fn_sig.abi() {
         ExternAbi::C { .. } => {
             encode_ty_options.insert(EncodeTyOptions::GENERALIZE_REPR_C);
         }
@@ -207,10 +207,10 @@ fn encode_fnsig<'tcx>(
             s.push_str(&encode_ty(tcx, ty, dict, encode_ty_options));
         }
 
-        if fn_sig.c_variadic {
+        if fn_sig.c_variadic() {
             s.push('z');
         }
-    } else if fn_sig.c_variadic {
+    } else if fn_sig.c_variadic() {
         s.push('z');
     } else {
         // Empty parameter lists, whether declared as () or conventionally as (void), are
@@ -680,7 +680,6 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             hir::definitions::DefPathData::Closure => "C",
             hir::definitions::DefPathData::Ctor => "c",
             hir::definitions::DefPathData::AnonConst => "K",
-            hir::definitions::DefPathData::LateAnonConst => "k",
             hir::definitions::DefPathData::OpaqueTy => "i",
             hir::definitions::DefPathData::SyntheticCoroutineBody => "s",
             hir::definitions::DefPathData::NestedStatic => "n",
@@ -690,7 +689,6 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             | hir::definitions::DefPathData::MacroNs(..)
             | hir::definitions::DefPathData::OpaqueLifetime(..)
             | hir::definitions::DefPathData::LifetimeNs(..)
-            | hir::definitions::DefPathData::DesugaredAnonymousLifetime
             | hir::definitions::DefPathData::AnonAssocTy(..) => {
                 bug!("encode_ty_name: unexpected `{:?}`", disambiguated_data.data);
             }

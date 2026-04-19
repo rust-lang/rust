@@ -1162,6 +1162,18 @@ pub(crate) struct ImplicitSysrootCrateImportDiag<'a> {
 #[help("remove `AttributeKind`")]
 pub(crate) struct AttributeKindInFindAttr;
 
+#[derive(Diagnostic)]
+#[diag("match is not exhaustive")]
+#[help("explicitly list all variants of the enum in a `match`")]
+pub(crate) struct RustcMustMatchExhaustivelyNotExhaustive {
+    #[label("required because of this attribute")]
+    pub attr_span: Span,
+
+    #[note("{$message}")]
+    pub pat_span: Span,
+    pub message: &'static str,
+}
+
 // let_underscore.rs
 #[derive(Diagnostic)]
 pub(crate) enum NonBindingLet {
@@ -1238,11 +1250,11 @@ pub(crate) struct OverruledAttributeLint<'a> {
 
 #[derive(Diagnostic)]
 #[diag("lint name `{$name}` is deprecated and may not have an effect in the future")]
-pub(crate) struct DeprecatedLintName {
-    pub name: Symbol,
+pub(crate) struct DeprecatedLintName<'a> {
+    pub name: String,
     #[suggestion("change it to", code = "{replace}", applicability = "machine-applicable")]
     pub suggestion: Span,
-    pub replace: Symbol,
+    pub replace: &'a str,
 }
 
 #[derive(Diagnostic)]
@@ -1257,32 +1269,32 @@ pub(crate) struct DeprecatedLintNameFromCommandLine<'a> {
 
 #[derive(Diagnostic)]
 #[diag("lint `{$name}` has been renamed to `{$replace}`")]
-pub(crate) struct RenamedLint {
-    pub name: Symbol,
-    pub replace: Symbol,
+pub(crate) struct RenamedLint<'a> {
+    pub name: &'a str,
+    pub replace: &'a str,
     #[subdiagnostic]
-    pub suggestion: RenamedLintSuggestion,
+    pub suggestion: RenamedLintSuggestion<'a>,
 }
 
 #[derive(Subdiagnostic)]
-pub(crate) enum RenamedLintSuggestion {
+pub(crate) enum RenamedLintSuggestion<'a> {
     #[suggestion("use the new name", code = "{replace}", applicability = "machine-applicable")]
     WithSpan {
         #[primary_span]
         suggestion: Span,
-        replace: Symbol,
+        replace: &'a str,
     },
     #[help("use the new name `{$replace}`")]
-    WithoutSpan { replace: Symbol },
+    WithoutSpan { replace: &'a str },
 }
 
 #[derive(Diagnostic)]
 #[diag("lint `{$name}` has been renamed to `{$replace}`")]
 pub(crate) struct RenamedLintFromCommandLine<'a> {
     pub name: &'a str,
-    pub replace: Symbol,
+    pub replace: &'a str,
     #[subdiagnostic]
-    pub suggestion: RenamedLintSuggestion,
+    pub suggestion: RenamedLintSuggestion<'a>,
     #[subdiagnostic]
     pub requested_level: RequestedLevel<'a>,
 }
@@ -1290,7 +1302,7 @@ pub(crate) struct RenamedLintFromCommandLine<'a> {
 #[derive(Diagnostic)]
 #[diag("lint `{$name}` has been removed: {$reason}")]
 pub(crate) struct RemovedLint<'a> {
-    pub name: Symbol,
+    pub name: &'a str,
     pub reason: &'a str,
 }
 
@@ -1306,7 +1318,7 @@ pub(crate) struct RemovedLintFromCommandLine<'a> {
 #[derive(Diagnostic)]
 #[diag("unknown lint: `{$name}`")]
 pub(crate) struct UnknownLint {
-    pub name: Symbol,
+    pub name: String,
     #[subdiagnostic]
     pub suggestion: Option<UnknownLintSuggestion>,
 }
@@ -1348,8 +1360,8 @@ pub(crate) struct UnknownLintFromCommandLine<'a> {
 
 #[derive(Diagnostic)]
 #[diag("{$level}({$name}) is ignored unless specified at crate level")]
-pub(crate) struct IgnoredUnlessCrateSpecified {
-    pub level: Symbol,
+pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
+    pub level: &'a str,
     pub name: Symbol,
 }
 
@@ -3354,19 +3366,6 @@ pub(crate) struct InvalidAttrStyle {
 }
 
 #[derive(Diagnostic)]
-#[diag("unused attribute")]
-pub(crate) struct UnusedDuplicate {
-    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
-    pub this: Span,
-    #[note("attribute also specified here")]
-    pub other: Span,
-    #[warning(
-        "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-    )]
-    pub warning: bool,
-}
-
-#[derive(Diagnostic)]
 #[diag("malformed `doc` attribute input")]
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
@@ -3386,24 +3385,6 @@ pub(crate) struct ExpectedNoArgs;
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
 )]
 pub(crate) struct ExpectedNameValue;
-
-#[derive(Diagnostic)]
-#[diag("unsafe attribute used without unsafe")]
-pub(crate) struct UnsafeAttrOutsideUnsafeLint {
-    #[label("usage of unsafe attribute")]
-    pub span: Span,
-    #[subdiagnostic]
-    pub suggestion: Option<UnsafeAttrOutsideUnsafeSuggestion>,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion("wrap the attribute in `unsafe(...)`", applicability = "machine-applicable")]
-pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
-    #[suggestion_part(code = "unsafe(")]
-    pub left: Span,
-    #[suggestion_part(code = ")")]
-    pub right: Span,
-}
 
 #[derive(Diagnostic)]
 #[diag("doc alias is duplicated")]
@@ -3543,6 +3524,11 @@ pub(crate) struct UnknownCrateTypesSuggestion {
 pub(crate) struct DisallowedPositionalArgument;
 
 #[derive(Diagnostic)]
+#[diag("format arguments are not allowed here")]
+#[help("consider removing this format argument")]
+pub(crate) struct DisallowedPlaceholder;
+
+#[derive(Diagnostic)]
 #[diag("invalid format specifier")]
 #[help("no format specifier are supported in this position")]
 pub(crate) struct InvalidFormatSpecifier;
@@ -3567,34 +3553,11 @@ pub(crate) struct IgnoredDiagnosticOption {
 }
 
 #[derive(Diagnostic)]
-#[diag("missing options for `on_unimplemented` attribute")]
-#[help("at least one of the `message`, `note` and `label` options are expected")]
-pub(crate) struct MissingOptionsForOnUnimplementedAttr;
-
-#[derive(Diagnostic)]
-#[diag("missing options for `on_const` attribute")]
-#[help("at least one of the `message`, `note` and `label` options are expected")]
-pub(crate) struct MissingOptionsForOnConstAttr;
-
-#[derive(Diagnostic)]
-#[diag("missing options for `on_move` attribute")]
-#[help("at least one of the `message`, `note` and `label` options are expected")]
-pub(crate) struct MissingOptionsForOnMoveAttr;
-
-#[derive(Diagnostic)]
-#[diag("malformed `on_unimplemented` attribute")]
-#[help("only `message`, `note` and `label` are allowed as options")]
-pub(crate) struct MalformedOnUnimplementedAttrLint {
-    #[label("invalid option found here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("malformed `on_const` attribute")]
-#[help("only `message`, `note` and `label` are allowed as options")]
-pub(crate) struct MalformedOnConstAttrLint {
-    #[label("invalid option found here")]
-    pub span: Span,
+#[diag("missing options for `{$attribute}` attribute")]
+#[help("{$options}")]
+pub(crate) struct MissingOptionsForDiagnosticAttribute {
+    pub attribute: &'static str,
+    pub options: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -3603,25 +3566,18 @@ pub(crate) struct MalformedOnConstAttrLint {
 pub(crate) struct EqInternalMethodImplemented;
 
 #[derive(Diagnostic)]
-#[diag("unknown or malformed `on_move` attribute")]
-#[help(
-    "only `message`, `note` and `label` are allowed as options. Their values must be string literals"
-)]
-pub(crate) struct MalformedOnMoveAttrLint {
-    #[label("invalid option found here")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("unknown parameter `{$name}`")]
-#[help("expect `Self` as format argument")]
-pub(crate) struct OnMoveMalformedFormatLiterals {
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("expected a literal or missing delimiter")]
 #[help(
     "only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma"
 )]
-pub(crate) struct OnMoveMalformedAttrExpectedLiteralOrDelimiter;
+pub(crate) struct NonMetaItemDiagnosticAttribute;
+
+#[derive(Diagnostic)]
+#[diag("malformed `{$attribute}` attribute")]
+#[help("{$options}")]
+pub(crate) struct MalFormedDiagnosticAttributeLint {
+    pub attribute: &'static str,
+    pub options: &'static str,
+    #[label("invalid option found here")]
+    pub span: Span,
+}

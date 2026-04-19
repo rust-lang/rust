@@ -470,7 +470,7 @@ fn construct_fn<'tcx>(
         .output
         .span();
 
-    let mut abi = fn_sig.abi;
+    let mut abi = fn_sig.abi();
     if let DefKind::Closure = tcx.def_kind(fn_def) {
         // HACK(eddyb) Avoid having RustCall on closures,
         // as it adds unnecessary (and wrong) auto-tupling.

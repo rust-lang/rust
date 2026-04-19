@@ -450,6 +450,7 @@ impl CompletionItem {
             ref_match: None,
             imports_to_add: Default::default(),
             doc_aliases: vec![],
+            adds_text: None,
             edition,
         }
     }
@@ -480,12 +481,13 @@ impl CompletionItem {
 
 /// A helper to make `CompletionItem`s.
 #[must_use]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub(crate) struct Builder {
     source_range: TextRange,
     imports_to_add: SmallVec<[LocatedImport; 1]>,
     trait_name: Option<SmolStr>,
     doc_aliases: Vec<SmolStr>,
+    adds_text: Option<SmolStr>,
     label: SmolStr,
     insert_text: Option<String>,
     is_snippet: bool,
@@ -526,9 +528,16 @@ impl Builder {
         let insert_text = self.insert_text.unwrap_or_else(|| label.to_string());
 
         let mut detail_left = None;
+        let mut to_detail_left = |args: fmt::Arguments<'_>| {
+            let detail_left = detail_left.get_or_insert_with(String::new);
+            if !detail_left.is_empty() {
+                detail_left.push(' ');
+            }
+            format_to!(detail_left, "{args}")
+        };
         if !self.doc_aliases.is_empty() {
             let doc_aliases = self.doc_aliases.iter().join(", ");
-            detail_left = Some(format!("(alias {doc_aliases})"));
+            to_detail_left(format_args!("(alias {doc_aliases})"));
             let lookup_doc_aliases = self
                 .doc_aliases
                 .iter()
@@ -548,22 +557,17 @@ impl Builder {
                 lookup = format_smolstr!("{lookup}{lookup_doc_aliases}");
             }
         }
+        if let Some(adds_text) = self.adds_text {
+            to_detail_left(format_args!("(adds {})", adds_text.trim()));
+        }
         if let [import_edit] = &*self.imports_to_add {
             // snippets can have multiple imports, but normal completions only have up to one
-            let detail_left = detail_left.get_or_insert_with(String::new);
-            format_to!(
-                detail_left,
-                "{}(use {})",
-                if detail_left.is_empty() { "" } else { " " },
+            to_detail_left(format_args!(
+                "(use {})",
                 import_edit.import_path.display(db, self.edition)
-            );
+            ));
         } else if let Some(trait_name) = self.trait_name {
-            let detail_left = detail_left.get_or_insert_with(String::new);
-            format_to!(
-                detail_left,
-                "{}(as {trait_name})",
-                if detail_left.is_empty() { "" } else { " " },
-            );
+            to_detail_left(format_args!("(as {trait_name})"));
         }
 
         let text_edit = match self.text_edit {
@@ -611,6 +615,10 @@ impl Builder {
     }
     pub(crate) fn doc_aliases(&mut self, doc_aliases: Vec<SmolStr>) -> &mut Builder {
         self.doc_aliases = doc_aliases;
+        self
+    }
+    pub(crate) fn adds_text(&mut self, adds_text: SmolStr) -> &mut Builder {
+        self.adds_text = Some(adds_text);
         self
     }
     pub(crate) fn insert_text(&mut self, insert_text: impl Into<String>) -> &mut Builder {

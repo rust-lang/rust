@@ -1243,6 +1243,39 @@ impl Bar for Foo {
 }
 
 #[test]
+fn no_flyimports_type_anchor() {
+    check(
+        r#"
+mod m {
+    pub fn foo() {}
+}
+struct Bar;
+trait Foo {}
+impl Foo for Bar {}
+fn main() {
+    <Bar as Foo>::foo$0
+}
+    "#,
+        expect![[r#""#]],
+    );
+
+    check(
+        r#"
+mod m {
+    pub fn foo() {}
+}
+struct Bar;
+trait Foo {}
+impl Foo for Bar {}
+fn main() {
+    <Bar>::foo$0
+}
+    "#,
+        expect![[r#""#]],
+    );
+}
+
+#[test]
 fn no_inherent_candidates_proposed() {
     check(
         r#"

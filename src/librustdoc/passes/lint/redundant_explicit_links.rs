@@ -90,12 +90,23 @@ fn check_redundant_explicit_link<'md>(
     .into_offset_iter();
 
     while let Some((event, link_range)) = offset_iter.next() {
-        if let Event::Start(Tag::Link { link_type, dest_url, .. }) = event {
+        if let Event::Start(Tag::Link { link_type, dest_url, title, .. }) = event {
+            if !title.is_empty() {
+                // Skips if the link specifies a title, e.g. `[Option](Option "title")`,
+                // in which case the explicit link cannot be removed without also
+                // removing the title.
+                continue;
+            }
+
             let link_data = collect_link_data(&mut offset_iter);
 
-            if let Some(resolvable_link) = link_data.resolvable_link.as_ref()
-                && &link_data.display_link.replace('`', "") != resolvable_link
-            {
+            let Some(resolvable_link) = link_data.resolvable_link.as_ref() else {
+                // collect_link_data didn't return a resolvable_link
+                // most likely due to the displayed link containing inline markup
+                continue;
+            };
+
+            if &link_data.display_link.replace('`', "") != resolvable_link {
                 // Skips if display link does not match to actual
                 // resolvable link, usually happens if display link
                 // has several segments, e.g.
@@ -103,10 +114,7 @@ fn check_redundant_explicit_link<'md>(
                 continue;
             }
 
-            let explicit_link = dest_url.to_string();
-            let display_link = link_data.resolvable_link.clone()?;
-
-            if explicit_link.ends_with(&display_link) || display_link.ends_with(&explicit_link) {
+            if dest_url.ends_with(resolvable_link) || resolvable_link.ends_with(&*dest_url) {
                 match link_type {
                     LinkType::Inline | LinkType::ReferenceUnknown => {
                         check_inline_or_reference_unknown_redundancy(

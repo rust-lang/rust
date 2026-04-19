@@ -119,7 +119,7 @@ LL |     label = "{float}{_Self}{crate_local}{Trait}{ItemContext}{This}"
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
-warning: malformed `on_unimplemented` attribute
+warning: malformed `diagnostic::on_unimplemented` attribute
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:6:5
    |
 LL |     on(Self = "&str"),
@@ -128,7 +128,7 @@ LL |     on(Self = "&str"),
    = help: only `message`, `note` and `label` are allowed as options
    = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
-warning: malformed `on_unimplemented` attribute
+warning: malformed `diagnostic::on_unimplemented` attribute
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:11:5
    |
 LL |     parent_label = "in this scope",
@@ -136,7 +136,7 @@ LL |     parent_label = "in this scope",
    |
    = help: only `message`, `note` and `label` are allowed as options
 
-warning: malformed `on_unimplemented` attribute
+warning: malformed `diagnostic::on_unimplemented` attribute
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:13:5
    |
 LL |     append_const_msg
@@ -144,7 +144,7 @@ LL |     append_const_msg
    |
    = help: only `message`, `note` and `label` are allowed as options
 
-warning: malformed `on_unimplemented` attribute
+warning: malformed `diagnostic::on_unimplemented` attribute
   --> $DIR/do_not_accept_options_of_the_internal_rustc_attribute.rs:18:1
    |
 LL | #[diagnostic::on_unimplemented = "Message"]

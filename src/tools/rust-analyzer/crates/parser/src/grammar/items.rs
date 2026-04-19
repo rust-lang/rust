@@ -422,7 +422,12 @@ fn fn_(p: &mut Parser<'_>, m: Marker) {
     // test function_ret_type
     // fn foo() {}
     // fn bar() -> () {}
-    opt_ret_type(p);
+    if !opt_ret_type(p) {
+        // test_err function_ret_type_missing_arrow
+        // fn foo() usize {}
+        // fn bar() super::Foo {}
+        opt_no_arrow_ret_type(p);
+    }
 
     // test_err fn_ret_recovery
     // fn foo() -> A>]) { let x = 1; }

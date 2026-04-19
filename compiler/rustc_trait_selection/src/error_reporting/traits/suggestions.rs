@@ -29,7 +29,8 @@ use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::{
     PrintPolyTraitPredicateExt as _, PrintPolyTraitRefExt, PrintTraitPredicateExt as _,
-    with_forced_trimmed_paths, with_no_trimmed_paths, with_types_for_suggestion,
+    PrintTraitRefExt as _, with_forced_trimmed_paths, with_no_trimmed_paths,
+    with_types_for_suggestion,
 };
 use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InferTy, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeFolder,
@@ -484,7 +485,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let node = self.tcx.hir_node_by_def_id(body_id);
             match node {
                 hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait(_, _, _, ident, generics, bounds, _),
+                    kind: hir::ItemKind::Trait(_, _, _, _, ident, generics, bounds, _),
                     ..
                 }) if self_ty == self.tcx.types.self_param => {
                     assert!(param_ty);
@@ -547,7 +548,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 hir::Node::Item(hir::Item {
                     kind:
-                        hir::ItemKind::Trait(_, _, _, _, generics, ..)
+                        hir::ItemKind::Trait(_, _, _, _, _, generics, ..)
                         | hir::ItemKind::Impl(hir::Impl { generics, .. }),
                     ..
                 }) if projection.is_some() => {
@@ -571,7 +572,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         hir::ItemKind::Struct(_, generics, _)
                         | hir::ItemKind::Enum(_, generics, _)
                         | hir::ItemKind::Union(_, generics, _)
-                        | hir::ItemKind::Trait(_, _, _, _, generics, ..)
+                        | hir::ItemKind::Trait(_, _, _, _, _, generics, ..)
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn { generics, .. }
                         | hir::ItemKind::TyAlias(_, generics, _)
@@ -651,7 +652,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         hir::ItemKind::Struct(_, generics, _)
                         | hir::ItemKind::Enum(_, generics, _)
                         | hir::ItemKind::Union(_, generics, _)
-                        | hir::ItemKind::Trait(_, _, _, _, generics, ..)
+                        | hir::ItemKind::Trait(_, _, _, _, _, generics, ..)
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn { generics, .. }
                         | hir::ItemKind::TyAlias(_, generics, _)
@@ -1139,6 +1140,62 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             };
             err.help(format!("{msg}: `{name}({args})`"));
         }
+        true
+    }
+
+    pub(super) fn suggest_cast_to_fn_pointer(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diag<'_>,
+        leaf_trait_predicate: ty::PolyTraitPredicate<'tcx>,
+        main_trait_predicate: ty::PolyTraitPredicate<'tcx>,
+        span: Span,
+    ) -> bool {
+        let &[candidate] = &self.find_similar_impl_candidates(leaf_trait_predicate)[..] else {
+            return false;
+        };
+        let candidate = candidate.trait_ref;
+
+        if !matches!(
+            (candidate.self_ty().kind(), main_trait_predicate.self_ty().skip_binder().kind(),),
+            (ty::FnPtr(..), ty::FnDef(..))
+        ) {
+            return false;
+        }
+
+        let parenthesized_cast = |span: Span| {
+            vec![
+                (span.shrink_to_lo(), "(".to_string()),
+                (span.shrink_to_hi(), format!(" as {})", candidate.self_ty())),
+            ]
+        };
+        // Wrap method receivers and `&`-references in parens.
+        let suggestion = if self.tcx.sess.source_map().span_followed_by(span, ".").is_some() {
+            parenthesized_cast(span)
+        } else if let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) {
+            let mut expr_finder = FindExprBySpan::new(span, self.tcx);
+            expr_finder.visit_expr(body.value);
+            if let Some(expr) = expr_finder.result
+                && let hir::ExprKind::AddrOf(_, _, expr) = expr.kind
+            {
+                parenthesized_cast(expr.span)
+            } else {
+                vec![(span.shrink_to_hi(), format!(" as {}", candidate.self_ty()))]
+            }
+        } else {
+            vec![(span.shrink_to_hi(), format!(" as {}", candidate.self_ty()))]
+        };
+
+        let trait_ = self.tcx.short_string(candidate.print_trait_sugared(), err.long_ty_path());
+        let self_ty = self.tcx.short_string(candidate.self_ty(), err.long_ty_path());
+        err.multipart_suggestion(
+            format!(
+                "the trait `{trait_}` is implemented for fn pointer \
+                 `{self_ty}`, try casting using `as`",
+            ),
+            suggestion,
+            Applicability::MaybeIncorrect,
+        );
         true
     }
 
@@ -2287,21 +2344,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let inputs = trait_ref.args.type_at(1);
             let sig = match inputs.kind() {
                 ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id) => {
-                    infcx.tcx.mk_fn_sig(
-                        *inputs,
-                        infcx.next_ty_var(DUMMY_SP),
-                        false,
-                        hir::Safety::Safe,
-                        ExternAbi::Rust,
-                    )
+                    infcx.tcx.mk_fn_sig_safe_rust_abi(*inputs, infcx.next_ty_var(DUMMY_SP))
                 }
-                _ => infcx.tcx.mk_fn_sig(
-                    [inputs],
-                    infcx.next_ty_var(DUMMY_SP),
-                    false,
-                    hir::Safety::Safe,
-                    ExternAbi::Rust,
-                ),
+                _ => infcx.tcx.mk_fn_sig_safe_rust_abi([inputs], infcx.next_ty_var(DUMMY_SP)),
             };
 
             Ty::new_fn_ptr(infcx.tcx, ty::Binder::dummy(sig))
@@ -3831,7 +3876,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut is_auto_trait = false;
                 match tcx.hir_get_if_local(data.impl_or_alias_def_id) {
                     Some(Node::Item(hir::Item {
-                        kind: hir::ItemKind::Trait(_, is_auto, _, ident, ..),
+                        kind: hir::ItemKind::Trait(_, is_auto, _, _, ident, _, _, _),
                         ..
                     })) => {
                         // FIXME: we should do something else so that it works even on crate foreign
@@ -4612,11 +4657,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let [self_ty, found_ty] = trait_ref.args.as_slice()
             && let Some(fn_ty) = self_ty.as_type().filter(|ty| ty.is_fn())
             && let fn_sig @ ty::FnSig {
-                abi: ExternAbi::Rust,
-                c_variadic: false,
-                safety: hir::Safety::Safe,
                 ..
             } = fn_ty.fn_sig(tcx).skip_binder()
+            && fn_sig.abi() == ExternAbi::Rust
+            && !fn_sig.c_variadic()
+            && fn_sig.safety() == hir::Safety::Safe
 
             // Extract first param of fn sig with peeled refs, e.g. `fn(&T)` -> `T`
             && let Some(&ty::Ref(_, target_ty, needs_mut)) = fn_sig.inputs().first().map(|t| t.kind())
@@ -6074,7 +6119,16 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
     let ty::ClauseKind::Projection(proj) = clause else {
         return;
     };
-    let name = tcx.item_name(proj.projection_term.def_id);
+    let Some(name) = tcx
+        .opt_rpitit_info(proj.projection_term.def_id)
+        .and_then(|data| match data {
+            ty::ImplTraitInTraitData::Trait { fn_def_id, .. } => Some(tcx.item_name(fn_def_id)),
+            ty::ImplTraitInTraitData::Impl { .. } => None,
+        })
+        .or_else(|| tcx.opt_item_name(proj.projection_term.def_id))
+    else {
+        return;
+    };
     let mut predicates = generics.predicates.iter().peekable();
     let mut prev: Option<(&hir::WhereBoundPredicate<'_>, Span)> = None;
     while let Some(pred) = predicates.next() {

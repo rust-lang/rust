@@ -3538,6 +3538,24 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
             }
+
+            if let Some(cow_did) = tcx.get_diagnostic_item(sym::Cow)
+                && let ty::Adt(adt_def, _) = return_ty.kind()
+                && adt_def.did() == cow_did
+            {
+                if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(return_span) {
+                    if let Some(pos) = snippet.rfind(".to_owned") {
+                        let byte_pos = BytePos(pos as u32 + 1u32);
+                        let to_owned_span = return_span.with_hi(return_span.lo() + byte_pos);
+                        err.span_suggestion_short(
+                            to_owned_span.shrink_to_hi(),
+                            "try using `.into_owned()` if you meant to convert a `Cow<'_, T>` to an owned `T`",
+                            "in",
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
         }
 
         Err(err)
@@ -4022,23 +4040,74 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if let Some(decl) = local_decl
             && decl.can_be_made_mutable()
         {
-            let is_for_loop = matches!(
-                            decl.local_info(),
-                            LocalInfo::User(BindingForm::Var(VarBindingForm {
-                                opt_match_place: Some((_, match_span)),
-                                ..
-                            })) if matches!(match_span.desugaring_kind(), Some(DesugaringKind::ForLoop))
-            );
-            let message = if is_for_loop
+            let mut is_for_loop = false;
+            let mut is_ref_pattern = false;
+            if let LocalInfo::User(BindingForm::Var(VarBindingForm {
+                opt_match_place: Some((_, match_span)),
+                ..
+            })) = *decl.local_info()
+            {
+                if matches!(match_span.desugaring_kind(), Some(DesugaringKind::ForLoop)) {
+                    is_for_loop = true;
+
+                    if let Some(body) = self.infcx.tcx.hir_maybe_body_owned_by(self.mir_def_id()) {
+                        struct RefPatternFinder<'tcx> {
+                            tcx: TyCtxt<'tcx>,
+                            binding_span: Span,
+                            is_ref_pattern: bool,
+                        }
+
+                        impl<'tcx> Visitor<'tcx> for RefPatternFinder<'tcx> {
+                            type NestedFilter = OnlyBodies;
+
+                            fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                                self.tcx
+                            }
+
+                            fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
+                                if !self.is_ref_pattern
+                                    && let hir::PatKind::Binding(_, _, ident, _) = pat.kind
+                                    && ident.span == self.binding_span
+                                {
+                                    self.is_ref_pattern =
+                                        self.tcx.hir_parent_iter(pat.hir_id).any(|(_, node)| {
+                                            matches!(
+                                                node,
+                                                hir::Node::Pat(hir::Pat {
+                                                    kind: hir::PatKind::Ref(..),
+                                                    ..
+                                                })
+                                            )
+                                        });
+                                }
+                                hir::intravisit::walk_pat(self, pat);
+                            }
+                        }
+
+                        let mut finder = RefPatternFinder {
+                            tcx: self.infcx.tcx,
+                            binding_span: decl.source_info.span,
+                            is_ref_pattern: false,
+                        };
+
+                        finder.visit_body(body);
+                        is_ref_pattern = finder.is_ref_pattern;
+                    }
+                }
+            }
+
+            let (span, message) = if is_for_loop
+                && is_ref_pattern
                 && let Ok(binding_name) =
                     self.infcx.tcx.sess.source_map().span_to_snippet(decl.source_info.span)
             {
-                format!("(mut {}) ", binding_name)
+                (decl.source_info.span, format!("(mut {})", binding_name))
             } else {
-                "mut ".to_string()
+                (decl.source_info.span.shrink_to_lo(), "mut ".to_string())
             };
+
             err.span_suggestion_verbose(
-                decl.source_info.span.shrink_to_lo(),
+                span,
                 "consider making this binding mutable",
                 message,
                 Applicability::MachineApplicable,

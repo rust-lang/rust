@@ -332,7 +332,7 @@ pub(crate) fn handle_view_crate_graph(
     params: ViewCrateGraphParams,
 ) -> anyhow::Result<String> {
     let _p = tracing::info_span!("handle_view_crate_graph").entered();
-    let dot = snap.analysis.view_crate_graph(params.full)?.map_err(anyhow::Error::msg)?;
+    let dot = snap.analysis.view_crate_graph(params.full)?;
     Ok(dot)
 }
 
@@ -1264,11 +1264,15 @@ pub(crate) fn handle_folding_range(
     params: FoldingRangeParams,
 ) -> anyhow::Result<Option<Vec<FoldingRange>>> {
     let _p = tracing::info_span!("handle_folding_range").entered();
+
     let file_id = try_default!(from_proto::file_id(&snap, &params.text_document.uri)?);
-    let folds = snap.analysis.folding_ranges(file_id)?;
+    let collapsed_text = snap.config.folding_range_collapsed_text();
+    let folds = snap.analysis.folding_ranges(file_id, collapsed_text)?;
+
     let text = snap.analysis.file_text(file_id)?;
     let line_index = snap.file_line_index(file_id)?;
     let line_folding_only = snap.config.line_folding_only();
+
     let res = folds
         .into_iter()
         .map(|it| to_proto::folding_range(&text, &line_index, line_folding_only, it))
@@ -1395,7 +1399,10 @@ pub(crate) fn handle_references(
 
     let Some(refs) = snap.analysis.find_all_refs(
         position,
-        &FindAllRefsConfig { search_scope: None, minicore: snap.minicore() },
+        &FindAllRefsConfig {
+            search_scope: None,
+            ra_fixture: snap.config.ra_fixture(snap.minicore()),
+        },
     )?
     else {
         return Ok(None);
@@ -2202,7 +2209,10 @@ fn show_ref_command_link(
             .analysis
             .find_all_refs(
                 *position,
-                &FindAllRefsConfig { search_scope: None, minicore: snap.minicore() },
+                &FindAllRefsConfig {
+                    search_scope: None,
+                    ra_fixture: snap.config.ra_fixture(snap.minicore()),
+                },
             )
             .unwrap_or(None)
     {
@@ -2432,8 +2442,7 @@ fn run_rustfmt(
         }
         RustfmtConfig::CustomCommand { command, args } => {
             let cmd = Utf8PathBuf::from(&command);
-            let target_spec =
-                crates.first().and_then(|&crate_id| snap.target_spec_for_file(file_id, crate_id));
+            let target_spec = TargetSpec::for_file(snap, file_id).ok().flatten();
             let extra_env = snap.config.extra_env(source_root_id);
             let mut cmd = match target_spec {
                 Some(TargetSpec::Cargo(_)) => {
@@ -2443,7 +2452,14 @@ fn run_rustfmt(
                     let cmd_path = if command.contains(std::path::MAIN_SEPARATOR)
                         || (cfg!(windows) && command.contains('/'))
                     {
-                        snap.config.root_path().join(cmd).into()
+                        let project_root = Utf8PathBuf::from_path_buf(current_dir.clone())
+                            .ok()
+                            .and_then(|p| AbsPathBuf::try_from(p).ok());
+                        let project_root = project_root
+                            .as_ref()
+                            .map(|dir| snap.config.workspace_root_for(dir))
+                            .unwrap_or(snap.config.default_root_path());
+                        project_root.join(cmd).into()
                     } else {
                         cmd
                     };

@@ -12,10 +12,10 @@
 
 // Testing types in parent, none in child,
 // user-specified args in parent, checking predicates inheritance,
-// with additional generic params in delegation parent
+// with additional generic params in delegation parent, with impl traits
 mod test_1 {
     trait Trait<T: ToString> {
-        fn foo(&self) {}
+        fn foo(&self, _f: impl FnOnce(T) -> String) {}
     }
 
     struct F;
@@ -29,8 +29,8 @@ mod test_1 {
 
     pub fn check() {
         let s = S(F, &123, &123, &123);
-        S::<'static, 'static, 'static, i32, i32>::foo(&s);
-        s.foo();
+        S::<'static, 'static, 'static, i32, i32>::foo(&s, |t| t.to_string());
+        s.foo(|t| t.to_string());
     }
 }
 

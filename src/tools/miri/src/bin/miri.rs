@@ -7,7 +7,6 @@
 )]
 
 // The rustc crates we need
-extern crate rustc_abi;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -47,7 +46,6 @@ use miri::{
     BacktraceStyle, BorrowTrackerMethod, GenmcConfig, GenmcCtx, MiriConfig, MiriEntryFnType,
     ProvenanceMode, TreeBorrowsParams, ValidationMode, run_genmc_mode,
 };
-use rustc_abi::ExternAbi;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::sync::{self, DynSync};
 use rustc_driver::Compilation;
@@ -98,12 +96,9 @@ fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, MiriEntryFnType) {
         let start_def_id = id.expect_local();
         let start_span = tcx.def_span(start_def_id);
 
-        let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
+        let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi(
             [tcx.types.isize, Ty::new_imm_ptr(tcx, Ty::new_imm_ptr(tcx, tcx.types.u8))],
             tcx.types.isize,
-            false,
-            hir::Safety::Safe,
-            ExternAbi::Rust,
         ));
 
         let correct_func_sig = check_function_signature(

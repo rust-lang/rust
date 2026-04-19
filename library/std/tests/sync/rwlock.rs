@@ -917,18 +917,22 @@ fn test_rwlock_max_readers() {
             target_os = "fuchsia",
             all(target_family = "wasm", target_feature = "atomics"),
             target_os = "hermit",
-        target_os = "motor",
+            target_os = "motor",
         ) => {
             (1 << 30) - 2
         },
         any(
             target_family = "unix",
-            all(target_os = "windows", target_vendor = "win7"),
+            all(target_os = "windows", target_vendor = "win7", target_pointer_width = "64"),
             all(target_vendor = "fortanix", target_env = "sgx"),
             target_os = "xous",
             target_os = "teeos",
         ) => {
             u32::MAX
+        },
+        // Otherwise a form of deadlock is observed.
+        all(target_os = "windows", target_vendor = "win7", target_pointer_width = "32") => {
+            (1 << 28) - 1
         },
         target_os = "solid_asp3" => {
             (1 << 30)

@@ -79,7 +79,7 @@ pub struct QueryResponse<'tcx, R> {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 #[derive(HashStable, TypeFoldable, TypeVisitable)]
 pub struct QueryRegionConstraints<'tcx> {
-    pub outlives: Vec<QueryOutlivesConstraint<'tcx>>,
+    pub constraints: Vec<QueryRegionConstraint<'tcx>>,
     pub assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
 }
 
@@ -91,7 +91,8 @@ impl QueryRegionConstraints<'_> {
     /// discharge a requirement from another query, which is a potential problem if we did throw
     /// away these assumptions because there were no constraints.
     pub fn is_empty(&self) -> bool {
-        self.outlives.is_empty() && self.assumptions.is_empty()
+        let QueryRegionConstraints { constraints, assumptions } = self;
+        constraints.is_empty() && assumptions.is_empty()
     }
 }
 
@@ -134,7 +135,7 @@ impl<'tcx, R> QueryResponse<'tcx, R> {
     }
 }
 
-pub type QueryOutlivesConstraint<'tcx> = (ty::ArgOutlivesPredicate<'tcx>, ConstraintCategory<'tcx>);
+pub type QueryRegionConstraint<'tcx> = (ty::RegionConstraint<'tcx>, ConstraintCategory<'tcx>);
 
 #[derive(Default)]
 pub struct CanonicalParamEnvCache<'tcx> {

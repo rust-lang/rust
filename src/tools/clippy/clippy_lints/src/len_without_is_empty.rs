@@ -44,7 +44,7 @@ declare_lint_pass!(LenWithoutIsEmpty => [LEN_WITHOUT_IS_EMPTY]);
 
 impl<'tcx> LateLintPass<'tcx> for LenWithoutIsEmpty {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Trait(_, _, _, ident, _, _, trait_items) = item.kind
+        if let ItemKind::Trait(_, _, _, _, ident, _, _, trait_items) = item.kind
             && !item.span.from_expansion()
         {
             check_trait_items(cx, item, ident, trait_items);
@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for LenWithoutIsEmpty {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if item.ident.name == sym::len
             && let ImplItemKind::Fn(sig, _) = &item.kind
-            && sig.decl.implicit_self.has_implicit_self()
+            && sig.decl.implicit_self().has_implicit_self()
             && sig.decl.inputs.len() == 1
             && cx.effective_visibilities.is_exported(item.owner_id.def_id)
             && matches!(sig.decl.output, FnRetTy::Return(_))
@@ -79,7 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for LenWithoutIsEmpty {
             check_for_is_empty(
                 cx,
                 sig.span,
-                sig.decl.implicit_self,
+                sig.decl.implicit_self(),
                 output,
                 ty_id,
                 name,

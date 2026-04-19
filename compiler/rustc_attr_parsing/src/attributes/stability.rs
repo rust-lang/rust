@@ -2,6 +2,7 @@ use std::num::NonZero;
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_feature::ACCEPTED_LANG_FEATURES;
+use rustc_hir::attrs::UnstableRemovedFeature;
 use rustc_hir::target::GenericParamKind;
 use rustc_hir::{
     DefaultBodyStability, MethodKind, PartialConstStability, Stability, StabilityLevel,
@@ -474,5 +475,91 @@ pub(crate) fn parse_unstability<S: Stage>(
             Some((feature, level))
         }
         (Err(ErrorGuaranteed { .. }), _) | (_, Err(ErrorGuaranteed { .. })) => None,
+    }
+}
+
+pub(crate) struct UnstableRemovedParser;
+
+impl<S: Stage> CombineAttributeParser<S> for UnstableRemovedParser {
+    type Item = UnstableRemovedFeature;
+    const PATH: &[Symbol] = &[sym::unstable_removed];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const TEMPLATE: AttributeTemplate =
+        template!(List: &[r#"feature = "name", reason = "...", link = "...", since = "version""#]);
+
+    const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::UnstableRemoved(items);
+
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
+        let mut feature = None;
+        let mut reason = None;
+        let mut link = None;
+        let mut since = None;
+
+        if !cx.features().staged_api() {
+            cx.emit_err(session_diagnostics::StabilityOutsideStd { span: cx.attr_span });
+            return None;
+        }
+
+        let ArgParser::List(list) = args else {
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
+            return None;
+        };
+
+        for param in list.mixed() {
+            let Some(param) = param.meta_item() else {
+                cx.adcx().expected_not_literal(param.span());
+                return None;
+            };
+
+            let Some(word) = param.path().word() else {
+                cx.adcx().expected_specific_argument(
+                    param.span(),
+                    &[sym::feature, sym::reason, sym::link, sym::since],
+                );
+                return None;
+            };
+            match word.name {
+                sym::feature => insert_value_into_option_or_error(cx, &param, &mut feature, word)?,
+                sym::since => insert_value_into_option_or_error(cx, &param, &mut since, word)?,
+                sym::reason => insert_value_into_option_or_error(cx, &param, &mut reason, word)?,
+                sym::link => insert_value_into_option_or_error(cx, &param, &mut link, word)?,
+                _ => {
+                    cx.adcx().expected_specific_argument(
+                        param.span(),
+                        &[sym::feature, sym::reason, sym::link, sym::since],
+                    );
+                    return None;
+                }
+            }
+        }
+
+        // Check all the arguments are present
+        let Some(feature) = feature else {
+            cx.adcx().missing_name_value(list.span, sym::feature);
+            return None;
+        };
+        let Some(reason) = reason else {
+            cx.adcx().missing_name_value(list.span, sym::reason);
+            return None;
+        };
+        let Some(link) = link else {
+            cx.adcx().missing_name_value(list.span, sym::link);
+            return None;
+        };
+        let Some(since) = since else {
+            cx.adcx().missing_name_value(list.span, sym::since);
+            return None;
+        };
+
+        let Some(version) = parse_version(since) else {
+            cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
+            return None;
+        };
+
+        Some(UnstableRemovedFeature { feature, reason, link, since: version })
     }
 }

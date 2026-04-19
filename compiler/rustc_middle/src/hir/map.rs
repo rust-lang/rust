@@ -707,7 +707,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::ImplItem(ii) => {
                 let kind = match ii.kind {
                     ImplItemKind::Const(..) => "associated constant",
-                    ImplItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self {
+                    ImplItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self() {
                         ImplicitSelfKind::None => "associated function",
                         _ => "method",
                     },
@@ -718,7 +718,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::TraitItem(ti) => {
                 let kind = match ti.kind {
                     TraitItemKind::Const(..) => "associated constant",
-                    TraitItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self {
+                    TraitItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self() {
                         ImplicitSelfKind::None => "associated function",
                         _ => "trait method",
                     },
@@ -945,7 +945,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }) => until_within(*outer_span, ty.span),
             // With generics and bounds.
             Node::Item(Item {
-                kind: ItemKind::Trait(_, _, _, _, generics, bounds, _),
+                kind: ItemKind::Trait(_, _, _, _, _, generics, bounds, _),
                 span: outer_span,
                 ..
             })

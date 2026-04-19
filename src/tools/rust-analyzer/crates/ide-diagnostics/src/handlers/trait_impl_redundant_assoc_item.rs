@@ -5,8 +5,10 @@ use ide_db::{
     label::Label,
     source_change::SourceChangeBuilder,
 };
-use syntax::ToSmolStr;
-use syntax::ast::edit::AstNodeEdit;
+use syntax::{
+    AstNode, ToSmolStr,
+    ast::{HasName, edit::AstNodeEdit},
+};
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
@@ -82,16 +84,18 @@ fn quickfix_for_redundant_assoc_item(
         let db = ctx.sema.db;
         let root = db.parse_or_expand(d.file_id);
         // don't modify trait def in outer crate
-        let current_crate = ctx.sema.scope(&d.impl_.syntax_node_ptr().to_node(&root))?.krate();
+        let impl_def = d.impl_.to_node(&root);
+        let current_crate = ctx.sema.scope(impl_def.syntax())?.krate();
         let trait_def_crate = d.trait_.module(db).krate(db);
         if trait_def_crate != current_crate {
             return None;
         }
 
         let trait_def = d.trait_.source(db)?.value;
-        let l_curly = trait_def.assoc_item_list()?.l_curly_token()?.text_range();
+        let insert_after = find_insert_after(range, &impl_def, &trait_def)?;
+
         let where_to_insert =
-            hir::InFile::new(d.file_id, l_curly).original_node_file_range_rooted_opt(db)?;
+            hir::InFile::new(d.file_id, insert_after).original_node_file_range_rooted_opt(db)?;
         if where_to_insert.file_id != file_id {
             return None;
         }
@@ -110,6 +114,41 @@ fn quickfix_for_redundant_assoc_item(
         source_change: Some(source_change_builder.finish()),
         command: None,
     }])
+}
+
+fn find_insert_after(
+    redundant_range: TextRange,
+    impl_def: &syntax::ast::Impl,
+    trait_def: &syntax::ast::Trait,
+) -> Option<TextRange> {
+    let impl_items_before_redundant = impl_def
+        .assoc_item_list()?
+        .assoc_items()
+        .take_while(|it| it.syntax().text_range().start() < redundant_range.start())
+        .filter_map(|it| name_of(&it))
+        .collect::<Vec<_>>();
+
+    let after_item = trait_def
+        .assoc_item_list()?
+        .assoc_items()
+        .filter(|it| {
+            name_of(it).is_some_and(|name| {
+                impl_items_before_redundant.iter().any(|it| it.text() == name.text())
+            })
+        })
+        .last()
+        .map(|it| it.syntax().text_range());
+
+    return after_item.or_else(|| Some(trait_def.assoc_item_list()?.l_curly_token()?.text_range()));
+
+    fn name_of(it: &syntax::ast::AssocItem) -> Option<syntax::ast::Name> {
+        match it {
+            syntax::ast::AssocItem::Const(it) => it.name(),
+            syntax::ast::AssocItem::Fn(it) => it.name(),
+            syntax::ast::AssocItem::TypeAlias(it) => it.name(),
+            syntax::ast::AssocItem::MacroCall(_) => None,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -269,6 +308,69 @@ mod indent {
     impl Marker for Foo {
         type T = i32;
     }
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn quickfix_order() {
+        check_fix(
+            r#"
+trait Marker {
+    fn foo();
+    fn baz();
+}
+struct Foo;
+impl Marker for Foo {
+    fn foo() {}
+    fn missing() {}$0
+    fn baz() {}
+}
+            "#,
+            r#"
+trait Marker {
+    fn foo();
+    fn missing();
+    fn baz();
+}
+struct Foo;
+impl Marker for Foo {
+    fn foo() {}
+    fn missing() {}
+    fn baz() {}
+}
+            "#,
+        );
+
+        check_fix(
+            r#"
+trait Marker {
+    type Item;
+    fn bar();
+    fn baz();
+}
+struct Foo;
+impl Marker for Foo {
+    type Item = Foo;
+    fn missing() {}$0
+    fn bar() {}
+    fn baz() {}
+}
+            "#,
+            r#"
+trait Marker {
+    type Item;
+    fn missing();
+    fn bar();
+    fn baz();
+}
+struct Foo;
+impl Marker for Foo {
+    type Item = Foo;
+    fn missing() {}
+    fn bar() {}
+    fn baz() {}
 }
             "#,
         );

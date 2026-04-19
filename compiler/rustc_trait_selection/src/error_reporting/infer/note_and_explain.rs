@@ -523,7 +523,7 @@ impl<T> Trait<T> for X {
                     }
                     (ty::FnPtr(_, hdr), ty::FnDef(def_id, _))
                     | (ty::FnDef(def_id, _), ty::FnPtr(_, hdr)) => {
-                        if tcx.fn_sig(def_id).skip_binder().safety() < hdr.safety {
+                        if tcx.fn_sig(def_id).skip_binder().safety() < hdr.safety() {
                             if !tcx.codegen_fn_attrs(def_id).safe_target_features {
                                 diag.note(
                                 "unsafe functions cannot be coerced into safe function pointers",

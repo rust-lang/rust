@@ -51,7 +51,7 @@ impl ManualIsPowerOfTwo {
         }
 
         let mut applicability = Applicability::MachineApplicable;
-        let snippet = Sugg::hir_with_applicability(cx, receiver, "_", &mut applicability);
+        let snippet = Sugg::hir_with_context(cx, receiver, expr.span.ctxt(), "_", &mut applicability);
 
         span_lint_and_sugg(
             cx,

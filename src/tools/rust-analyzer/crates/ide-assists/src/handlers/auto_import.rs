@@ -1928,4 +1928,33 @@ fn f() {
         "#;
         check_auto_import_order(before, &["Import `foo::wanted`", "Import `quux::wanted`"]);
     }
+
+    #[test]
+    fn consider_definition_kind() {
+        check_assist(
+            auto_import,
+            r#"
+//- /eyre.rs crate:eyre
+#[macro_export]
+macro_rules! eyre {
+    () => {};
+}
+
+//- /color-eyre.rs crate:color-eyre deps:eyre
+pub use eyre;
+
+//- /main.rs crate:main deps:color-eyre
+fn main() {
+    ey$0re!();
+}
+        "#,
+            r#"
+use color_eyre::eyre::eyre;
+
+fn main() {
+    eyre!();
+}
+        "#,
+        );
+    }
 }

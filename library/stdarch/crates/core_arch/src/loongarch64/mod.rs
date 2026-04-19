@@ -11,7 +11,7 @@ pub use self::lsx::*;
 use crate::arch::asm;
 
 /// Reads the 64-bit stable counter value and the counter ID
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn rdtime_d() -> (i64, isize) {
     let (val, tid): (i64, isize);
@@ -48,21 +48,21 @@ unsafe extern "unadjusted" {
 }
 
 /// Calculate the CRC value using the IEEE 802.3 polynomial (0xEDB88320)
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn crc_w_d_w(a: i64, b: i32) -> i32 {
     unsafe { __crc_w_d_w(a, b) }
 }
 
 /// Calculate the CRC value using the Castagnoli polynomial (0x82F63B78)
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn crcc_w_d_w(a: i64, b: i32) -> i32 {
     unsafe { __crcc_w_d_w(a, b) }
 }
 
 /// Generates the cache operation instruction
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn cacop<const IMM5: i64, const IMM_S12: i64>(b: i64) {
     static_assert_uimm_bits!(IMM5, 5);
@@ -71,7 +71,7 @@ pub unsafe fn cacop<const IMM5: i64, const IMM_S12: i64>(b: i64) {
 }
 
 /// Reads the CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn csrrd<const IMM14: i32>() -> i64 {
     static_assert_uimm_bits!(IMM14, 14);
@@ -79,7 +79,7 @@ pub unsafe fn csrrd<const IMM14: i32>() -> i64 {
 }
 
 /// Writes the CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn csrwr<const IMM14: i32>(a: i64) -> i64 {
     static_assert_uimm_bits!(IMM14, 14);
@@ -87,7 +87,7 @@ pub unsafe fn csrwr<const IMM14: i32>(a: i64) -> i64 {
 }
 
 /// Exchanges the CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn csrxchg<const IMM14: i32>(a: i64, b: i64) -> i64 {
     static_assert_uimm_bits!(IMM14, 14);
@@ -95,35 +95,35 @@ pub unsafe fn csrxchg<const IMM14: i32>(a: i64, b: i64) -> i64 {
 }
 
 /// Reads the 64-bit IO-CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn iocsrrd_d(a: i32) -> i64 {
     __iocsrrd_d(a)
 }
 
 /// Writes the 64-bit IO-CSR
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn iocsrwr_d(a: i64, b: i32) {
     __iocsrwr_d(a, b)
 }
 
 /// Generates the less-than-or-equal asseration instruction
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn asrtle(a: i64, b: i64) {
     __asrtle(a, b);
 }
 
 /// Generates the greater-than asseration instruction
-#[inline]
+#[inline(always)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn asrtgt(a: i64, b: i64) {
     __asrtgt(a, b);
 }
 
 /// Loads the page table directory entry
-#[inline]
+#[inline(always)]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn lddir<const IMM8: i64>(a: i64) -> i64 {
@@ -132,7 +132,7 @@ pub unsafe fn lddir<const IMM8: i64>(a: i64) -> i64 {
 }
 
 /// Loads the page table entry
-#[inline]
+#[inline(always)]
 #[rustc_legacy_const_generics(1)]
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub unsafe fn ldpte<const IMM8: i64>(a: i64) {

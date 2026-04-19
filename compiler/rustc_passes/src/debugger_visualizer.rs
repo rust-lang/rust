@@ -1,7 +1,6 @@
 //! Detecting usage of the `#[debugger_visualizer]` attribute.
 
-use rustc_ast::ast::NodeId;
-use rustc_ast::{HasNodeId, ItemKind, ast};
+use rustc_ast::{ItemKind, ast};
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::resolve_path;
 use rustc_hir::Attribute;
@@ -10,26 +9,14 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::{DUMMY_SP, Span, sym};
+use rustc_span::sym;
 
 use crate::errors::DebugVisualizerUnreadable;
 
 impl DebuggerVisualizerCollector<'_> {
-    fn check_for_debugger_visualizer(
-        &mut self,
-        attrs: &[ast::Attribute],
-        span: Span,
-        node_id: NodeId,
-    ) {
+    fn check_for_debugger_visualizer(&mut self, attrs: &[ast::Attribute]) {
         if let Some(Attribute::Parsed(AttributeKind::DebuggerVisualizer(visualizers))) =
-            AttributeParser::parse_limited(
-                &self.sess,
-                attrs,
-                sym::debugger_visualizer,
-                span,
-                node_id,
-                None,
-            )
+            AttributeParser::parse_limited(&self.sess, attrs, &[sym::debugger_visualizer])
         {
             for DebugVisualizer { span, visualizer_type, path } in visualizers {
                 let file = match resolve_path(&self.sess, path.as_str(), span) {
@@ -69,12 +56,12 @@ struct DebuggerVisualizerCollector<'a> {
 impl<'ast> rustc_ast::visit::Visitor<'ast> for DebuggerVisualizerCollector<'_> {
     fn visit_item(&mut self, item: &'ast rustc_ast::Item) -> Self::Result {
         if let ItemKind::Mod(..) = item.kind {
-            self.check_for_debugger_visualizer(&item.attrs, item.span, item.node_id());
+            self.check_for_debugger_visualizer(&item.attrs);
         }
         rustc_ast::visit::walk_item(self, item);
     }
     fn visit_crate(&mut self, krate: &'ast ast::Crate) -> Self::Result {
-        self.check_for_debugger_visualizer(&krate.attrs, DUMMY_SP, krate.id);
+        self.check_for_debugger_visualizer(&krate.attrs);
         rustc_ast::visit::walk_crate(self, krate);
     }
 }

@@ -204,7 +204,7 @@ impl<'tcx, 'a> ExportableItemsChecker<'tcx, 'a> {
         }
 
         let sig = self.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
-        if !matches!(sig.abi, ExternAbi::C { .. }) {
+        if !matches!(sig.abi(), ExternAbi::C { .. }) {
             self.tcx.dcx().emit_err(UnexportableItem::FnAbi(span));
             return;
         }

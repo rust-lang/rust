@@ -423,6 +423,13 @@ impl fmt::Display for Display<'_> {
                     (sym::unix, None) => "Unix",
                     (sym::windows, None) => "Windows",
                     (sym::debug_assertions, None) => "debug-assertions enabled",
+                    (sym::target_object_format, Some(format)) => match self.1 {
+                        Format::LongHtml => {
+                            return write!(fmt, "object format <code>{format}</code>");
+                        }
+                        Format::LongPlain => return write!(fmt, "object format `{format}`"),
+                        Format::ShortHtml => return write!(fmt, "<code>{format}</code>"),
+                    },
                     (sym::target_os, Some(os)) => human_readable_target_os(*os).unwrap_or_default(),
                     (sym::target_arch, Some(arch)) => {
                         human_readable_target_arch(*arch).unwrap_or_default()
@@ -545,15 +552,15 @@ fn human_readable_target_arch(os: Symbol) -> Option<&'static str> {
     Some(match arch {
         // tidy-alphabetical-start
         AArch64 => "AArch64",
-        AmdGpu => "AMG GPU",
+        AmdGpu => "AMD GPU",
         Arm => "ARM",
         Arm64EC => "ARM64EC",
         Avr => "AVR",
         Bpf => "BPF",
         CSky => "C-SKY",
         Hexagon => "Hexagon",
-        LoongArch32 => "LoongArch64",
-        LoongArch64 => "LoongArch32",
+        LoongArch32 => "LoongArch32",
+        LoongArch64 => "LoongArch64",
         M68k => "Motorola 680x0",
         Mips => "MIPS",
         Mips32r6 => "MIPS release 6",

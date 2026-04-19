@@ -944,7 +944,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug_assert!(self.shallow_resolve(b) == b);
 
         match b.kind() {
-            ty::FnPtr(_, b_hdr) if a_sig.safety().is_safe() && b_hdr.safety.is_unsafe() => {
+            ty::FnPtr(_, b_hdr) if a_sig.safety().is_safe() && b_hdr.safety().is_unsafe() => {
                 let a = self.tcx.safe_to_unsafe_fn_ty(a_sig);
                 let adjust = Adjust::Pointer(PointerCoercion::UnsafeFnPointer);
                 self.unify_and(a, b, [], adjust, ForceLeakCheck::Yes)
@@ -960,13 +960,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         match b.kind() {
             ty::FnPtr(_, b_hdr) => {
-                let a_sig = self.sig_for_fn_def_coercion(a, Some(b_hdr.safety))?;
+                let a_sig = self.sig_for_fn_def_coercion(a, Some(b_hdr.safety()))?;
 
                 let InferOk { value: a_sig, mut obligations } =
                     self.at(&self.cause, self.param_env).normalize(a_sig);
                 let a = Ty::new_fn_ptr(self.tcx, a_sig);
 
-                let adjust = Adjust::Pointer(PointerCoercion::ReifyFnPointer(b_hdr.safety));
+                let adjust = Adjust::Pointer(PointerCoercion::ReifyFnPointer(b_hdr.safety()));
                 let InferOk { value, obligations: o2 } =
                     self.unify_and(a, b, [], adjust, ForceLeakCheck::Yes)?;
 
@@ -985,9 +985,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         match b.kind() {
             ty::FnPtr(_, hdr) => {
-                let safety = hdr.safety;
+                let safety = hdr.safety();
                 let terr = TypeError::Sorts(ty::error::ExpectedFound::new(a, b));
-                let closure_sig = self.sig_for_closure_coercion(a, Some(hdr.safety), terr)?;
+                let closure_sig = self.sig_for_closure_coercion(a, Some(hdr.safety()), terr)?;
                 let pointer_ty = Ty::new_fn_ptr(self.tcx, closure_sig);
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})", a, b, pointer_ty);
 

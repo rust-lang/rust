@@ -6,7 +6,7 @@ use base_db::Crate;
 use span::{Edition, Span, SyntaxContext};
 use stdx::TupleExt;
 use syntax::{
-    AstNode, AstToken,
+    AstNode,
     ast::{self, HasAttrs},
 };
 use syntax_bridge::DocCommentDesugarMode;
@@ -15,7 +15,7 @@ use triomphe::Arc;
 use crate::{
     AstId, ExpandError, ExpandErrorKind, ExpandResult, HirFileId, Lookup, MacroCallId,
     MacroCallStyle,
-    attrs::{Meta, expand_cfg_attr},
+    attrs::{AstKeyValueMetaExt, AstPathExt, expand_cfg_attr},
     db::ExpandDatabase,
     hygiene::{Transparency, apply_mark},
     tt,
@@ -92,11 +92,10 @@ impl DeclarativeMacroExpander {
             expand_cfg_attr(
                 node.attrs(),
                 || cfg_options.get_or_init(|| def_crate.cfg_options(db)),
-                |attr, _, _, _| {
-                    if let Meta::NamedKeyValue { name: Some(name), value, .. } = attr
-                        && name.text() == "rustc_macro_transparency"
-                        && let Some(value) = value.and_then(ast::String::cast)
-                        && let Ok(value) = value.value()
+                |attr, _| {
+                    if let ast::Meta::KeyValueMeta(attr) = attr
+                        && attr.path().is1("rustc_macro_transparency")
+                        && let Some(value) = attr.value_string()
                     {
                         match &*value {
                             "transparent" => ControlFlow::Break(Transparency::Transparent),

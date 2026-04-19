@@ -12,6 +12,7 @@ DSP architecture.
 ## Target maintainers
 
 [@androm3da](https://github.com/androm3da)
+[@quic-mliebel](https://github.com/quic-mliebel)
 
 ## Requirements
 The target is cross-compiled. This target supports `std`.  By default, code

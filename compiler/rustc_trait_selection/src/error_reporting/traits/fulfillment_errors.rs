@@ -4,7 +4,6 @@ use std::borrow::Cow;
 use std::collections::hash_set;
 use std::path::PathBuf;
 
-use rustc_abi::ExternAbi;
 use rustc_ast::ast::LitKind;
 use rustc_ast::{LitIntType, TraitObjectSyntax};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -39,9 +38,7 @@ use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use super::suggestions::get_explanation_based_on_obligation;
-use super::{
-    ArgKind, CandidateSimilarity, FindExprBySpan, GetSafeTransmuteErrorAndReason, ImplCandidate,
-};
+use super::{ArgKind, CandidateSimilarity, GetSafeTransmuteErrorAndReason, ImplCandidate};
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::TyCategory;
 use crate::error_reporting::traits::report_dyn_incompatibility;
@@ -452,50 +449,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self.suggest_dereferencing_index(&obligation, &mut err, leaf_trait_predicate);
                         suggested |= self.suggest_dereferences(&obligation, &mut err, leaf_trait_predicate);
                         suggested |= self.suggest_fn_call(&obligation, &mut err, leaf_trait_predicate);
-                        let impl_candidates = self.find_similar_impl_candidates(leaf_trait_predicate);
-                        suggested = if let &[cand] = &impl_candidates[..] {
-                            let cand = cand.trait_ref;
-                            if let (ty::FnPtr(..), ty::FnDef(..)) =
-                                (cand.self_ty().kind(), main_trait_predicate.self_ty().skip_binder().kind())
-                            {
-                                // Wrap method receivers and `&`-references in parens
-                                let suggestion = if self.tcx.sess.source_map().span_followed_by(span, ".").is_some() {
-                                    vec![
-                                        (span.shrink_to_lo(), format!("(")),
-                                        (span.shrink_to_hi(), format!(" as {})", cand.self_ty())),
-                                    ]
-                                } else if let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) {
-                                    let mut expr_finder = FindExprBySpan::new(span, self.tcx);
-                                    expr_finder.visit_expr(body.value);
-                                    if let Some(expr) = expr_finder.result &&
-                                        let hir::ExprKind::AddrOf(_, _, expr) = expr.kind {
-                                        vec![
-                                            (expr.span.shrink_to_lo(), format!("(")),
-                                            (expr.span.shrink_to_hi(), format!(" as {})", cand.self_ty())),
-                                        ]
-                                    } else {
-                                        vec![(span.shrink_to_hi(), format!(" as {}", cand.self_ty()))]
-                                    }
-                                } else {
-                                    vec![(span.shrink_to_hi(), format!(" as {}", cand.self_ty()))]
-                                };
-                                let trait_ = self.tcx.short_string(cand.print_trait_sugared(), err.long_ty_path());
-                                let ty = self.tcx.short_string(cand.self_ty(), err.long_ty_path());
-                                err.multipart_suggestion(
-                                    format!(
-                                        "the trait `{trait_}` is implemented for fn pointer \
-                                         `{ty}`, try casting using `as`",
-                                    ),
-                                    suggestion,
-                                    Applicability::MaybeIncorrect,
-                                );
-                                true
-                            } else {
-                                false
-                            }
-                        } else {
-                            false
-                        } || suggested;
+                        suggested |= self.suggest_cast_to_fn_pointer(
+                            &obligation,
+                            &mut err,
+                            leaf_trait_predicate,
+                            main_trait_predicate,
+                            span,
+                        );
                         suggested |=
                             self.suggest_remove_reference(&obligation, &mut err, leaf_trait_predicate);
                         suggested |= self.suggest_semicolon_removal(
@@ -874,7 +834,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
 
         if let Ok(Some(ImplSource::UserDefined(impl_data))) =
-            SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref.skip_binder()))
+            self.enter_forall(trait_ref, |trait_ref_for_select| {
+                SelectionContext::new(self).select(&obligation.with(self.tcx, trait_ref_for_select))
+            })
         {
             let impl_did = impl_data.impl_def_id;
             let trait_did = trait_ref.def_id();
@@ -3240,23 +3202,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let given_ty = Ty::new_fn_ptr(
             self.tcx,
-            params.rebind(self.tcx.mk_fn_sig(
-                given,
-                self.tcx.types.unit,
-                false,
-                hir::Safety::Safe,
-                ExternAbi::Rust,
-            )),
+            params.rebind(self.tcx.mk_fn_sig_safe_rust_abi(given, self.tcx.types.unit)),
         );
         let expected_ty = Ty::new_fn_ptr(
             self.tcx,
-            trait_pred.rebind(self.tcx.mk_fn_sig(
-                expected,
-                self.tcx.types.unit,
-                false,
-                hir::Safety::Safe,
-                ExternAbi::Rust,
-            )),
+            trait_pred.rebind(self.tcx.mk_fn_sig_safe_rust_abi(expected, self.tcx.types.unit)),
         );
 
         if !self.same_type_modulo_infer(given_ty, expected_ty) {

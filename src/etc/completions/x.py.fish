@@ -1,6 +1,6 @@
 # Print an optspec for argparse to handle cmd's options that are independent of any subcommand.
 function __fish_x.py_global_optspecs
-	string join \n v/verbose i/incremental config= build-dir= build= host= target= exclude= skip= include-default-paths rustc-error-format= on-fail= dry-run dump-bootstrap-shims stage= keep-stage= keep-stage-std= src= j/jobs= warnings= json-output compile-time-deps color= bypass-bootstrap-lock rust-profile-generate= rust-profile-use= llvm-profile-use= llvm-profile-generate enable-bolt-settings skip-stage0-validation reproducible-artifact= set= ci= skip-std-check-if-no-download-rustc h/help
+	string join \n v/verbose q/quiet i/incremental config= build-dir= build= host= target= exclude= skip= include-default-paths rustc-error-format= on-fail= dry-run dump-bootstrap-shims stage= keep-stage= keep-stage-std= src= j/jobs= warnings= json-output compile-time-deps color= bypass-bootstrap-lock rust-profile-generate= rust-profile-use= llvm-profile-use= llvm-profile-generate enable-bolt-settings skip-stage0-validation reproducible-artifact= set= ci= skip-std-check-if-no-download-rustc h/help
 end
 
 function __fish_x.py_needs_command
@@ -47,6 +47,7 @@ complete -c x.py -n "__fish_x.py_needs_command" -l reproducible-artifact -d 'Add
 complete -c x.py -n "__fish_x.py_needs_command" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_needs_command" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_needs_command" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_needs_command" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_needs_command" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_needs_command" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_needs_command" -l dry-run -d 'dry run; don\'t build anything'
@@ -104,6 +105,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand build" -l set -d 'override opt
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l timings -d 'Pass `--timings` to Cargo to get crate build timings'
 complete -c x.py -n "__fish_x.py_using_subcommand build" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand build" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand build" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l dry-run -d 'dry run; don\'t build anything'
@@ -140,6 +142,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand b" -l set -d 'override options
 complete -c x.py -n "__fish_x.py_using_subcommand b" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand b" -l timings -d 'Pass `--timings` to Cargo to get crate build timings'
 complete -c x.py -n "__fish_x.py_using_subcommand b" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand b" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand b" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand b" -l dry-run -d 'dry run; don\'t build anything'
@@ -177,6 +180,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand check" -l ci -d 'Make bootstra
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l all-targets -d 'Check all targets'
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l timings -d 'Pass `--timings` to Cargo to get crate build timings'
 complete -c x.py -n "__fish_x.py_using_subcommand check" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand check" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand check" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l dry-run -d 'dry run; don\'t build anything'
@@ -214,6 +218,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand c" -l ci -d 'Make bootstrap to
 complete -c x.py -n "__fish_x.py_using_subcommand c" -l all-targets -d 'Check all targets'
 complete -c x.py -n "__fish_x.py_using_subcommand c" -l timings -d 'Pass `--timings` to Cargo to get crate build timings'
 complete -c x.py -n "__fish_x.py_using_subcommand c" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand c" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand c" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand c" -l dry-run -d 'dry run; don\'t build anything'
@@ -256,6 +261,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l fix
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l allow-dirty
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l allow-staged
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand clippy" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l dry-run -d 'dry run; don\'t build anything'
@@ -291,6 +297,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand fix" -l reproducible-artifact 
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand fix" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l dry-run -d 'dry run; don\'t build anything'
@@ -328,6 +335,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l ci -d 'Make bootstrap 
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l check -d 'check formatting instead of applying'
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l all -d 'apply to all appropriate files, not just those that have been modified'
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand fmt" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l dry-run -d 'dry run; don\'t build anything'
@@ -365,6 +373,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand doc" -l ci -d 'Make bootstrap 
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l open -d 'open the docs in a browser'
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l json -d 'render the documentation in JSON format in addition to the usual HTML format'
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand doc" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l dry-run -d 'dry run; don\'t build anything'
@@ -402,6 +411,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand d" -l ci -d 'Make bootstrap to
 complete -c x.py -n "__fish_x.py_using_subcommand d" -l open -d 'open the docs in a browser'
 complete -c x.py -n "__fish_x.py_using_subcommand d" -l json -d 'render the documentation in JSON format in addition to the usual HTML format'
 complete -c x.py -n "__fish_x.py_using_subcommand d" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand d" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand d" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand d" -l dry-run -d 'dry run; don\'t build anything'
@@ -420,6 +430,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand test" -l extra-checks -d 'comm
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l compare-mode -d 'mode describing what file the actual ui output will be compared to' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l pass -d 'force {check,build,run}-pass tests to this mode' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l run -d 'whether to execute run-* tests' -r
+complete -c x.py -n "__fish_x.py_using_subcommand test" -l verbose-run-make-subprocess-output -d 'whether to show verbose subprocess output for run-make tests; set to false to suppress output for passing tests (e.g. for cg_clif with --no-capture)' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l test-codegen-backend -d 'Use a different codegen backend when running tests' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
@@ -455,6 +466,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand test" -l no-capture -d 'don\'t
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l bypass-ignore-backends -d 'Ignore `//@ ignore-backends` directives'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l no-doc -d 'Deprecated. Use `--all-targets` or `--tests` instead'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand test" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l dry-run -d 'dry run; don\'t build anything'
@@ -473,6 +485,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand t" -l extra-checks -d 'comma-s
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l compare-mode -d 'mode describing what file the actual ui output will be compared to' -r
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l pass -d 'force {check,build,run}-pass tests to this mode' -r
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l run -d 'whether to execute run-* tests' -r
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l verbose-run-make-subprocess-output -d 'whether to show verbose subprocess output for run-make tests; set to false to suppress output for passing tests (e.g. for cg_clif with --no-capture)' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l test-codegen-backend -d 'Use a different codegen backend when running tests' -r
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
@@ -508,6 +521,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand t" -l no-capture -d 'don\'t ca
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l bypass-ignore-backends -d 'Ignore `//@ ignore-backends` directives'
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l no-doc -d 'Deprecated. Use `--all-targets` or `--tests` instead'
 complete -c x.py -n "__fish_x.py_using_subcommand t" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand t" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand t" -l dry-run -d 'dry run; don\'t build anything'
@@ -549,6 +563,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand miri" -l doc -d 'Only run doc 
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l tests -d 'Only run unit and integration tests'
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l no-doc -d 'Deprecated. Use `--all-targets` or `--tests` instead'
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand miri" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l dry-run -d 'dry run; don\'t build anything'
@@ -585,6 +600,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand bench" -l reproducible-artifac
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand bench" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l dry-run -d 'dry run; don\'t build anything'
@@ -621,6 +637,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand clean" -l set -d 'override opt
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -l all -d 'Clean the entire build directory (not used by default)'
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand clean" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -l dry-run -d 'dry run; don\'t build anything'
@@ -656,6 +673,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand dist" -l reproducible-artifact
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand dist" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l dry-run -d 'dry run; don\'t build anything'
@@ -691,6 +709,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand install" -l reproducible-artif
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand install" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand install" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand install" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l dry-run -d 'dry run; don\'t build anything'
@@ -727,6 +746,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand run" -l reproducible-artifact 
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand run" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand run" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand run" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l dry-run -d 'dry run; don\'t build anything'
@@ -763,6 +783,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand r" -l reproducible-artifact -d
 complete -c x.py -n "__fish_x.py_using_subcommand r" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand r" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand r" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand r" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand r" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand r" -l dry-run -d 'dry run; don\'t build anything'
@@ -798,6 +819,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand setup" -l reproducible-artifac
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand setup" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l dry-run -d 'dry run; don\'t build anything'
@@ -835,6 +857,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l set -d 'override op
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l versioned-dirs -d 'Always include version in subdir name'
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand vendor" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l dry-run -d 'dry run; don\'t build anything'
@@ -870,6 +893,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subc
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -l dry-run -d 'dry run; don\'t build anything'
@@ -913,6 +937,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcomma
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l dry-run -d 'dry run; don\'t build anything'
@@ -951,6 +976,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcomma
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l dry-run -d 'dry run; don\'t build anything'
@@ -989,6 +1015,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcomma
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l dry-run -d 'dry run; don\'t build anything'
@@ -1027,6 +1054,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcomma
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l dry-run -d 'dry run; don\'t build anything'
@@ -1062,6 +1090,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcomma
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from compare" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from compare" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from compare" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from compare" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from compare" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from compare" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from compare" -l dry-run -d 'dry run; don\'t build anything'

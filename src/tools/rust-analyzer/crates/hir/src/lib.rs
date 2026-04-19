@@ -45,7 +45,7 @@ use std::{
 };
 
 use arrayvec::ArrayVec;
-use base_db::{CrateDisplayName, CrateOrigin, LangCrateOrigin};
+use base_db::{CrateDisplayName, CrateOrigin, LangCrateOrigin, all_crates};
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, AssocItemLoc, BuiltinDeriveImplId, CallableDefId, ConstId, ConstParamId,
@@ -243,7 +243,7 @@ impl Crate {
     }
 
     pub fn reverse_dependencies(self, db: &dyn HirDatabase) -> Vec<Crate> {
-        let all_crates = db.all_crates();
+        let all_crates = all_crates(db);
         all_crates
             .iter()
             .copied()
@@ -310,7 +310,7 @@ impl Crate {
     }
 
     pub fn all(db: &dyn HirDatabase) -> Vec<Crate> {
-        db.all_crates().iter().map(|&id| Crate { id }).collect()
+        all_crates(db).iter().map(|&id| Crate { id }).collect()
     }
 
     /// Try to get the root URL of the documentation of a crate.
@@ -334,7 +334,7 @@ impl Crate {
     }
 
     fn core(db: &dyn HirDatabase) -> Option<Crate> {
-        db.all_crates()
+        all_crates(db)
             .iter()
             .copied()
             .find(|&krate| {
@@ -547,7 +547,7 @@ impl HasCrate for ModuleDef {
     fn krate(&self, db: &dyn HirDatabase) -> Crate {
         match self.module(db) {
             Some(module) => module.krate(db),
-            None => Crate::core(db).unwrap_or_else(|| db.all_crates()[0].into()),
+            None => Crate::core(db).unwrap_or_else(|| all_crates(db)[0].into()),
         }
     }
 }
@@ -1239,11 +1239,15 @@ fn emit_def_diagnostic_<'db>(
             );
         }
         DefDiagnosticKind::InvalidDeriveTarget { ast, id } => {
-            let derive = id.find_attr_range(db, krate, *ast).3.path_range();
+            let (_, attr) = id.find_attr_range(db, krate, *ast);
+            let derive = attr
+                .path()
+                .map(|path| path.syntax().text_range())
+                .unwrap_or_else(|| attr.syntax().text_range());
             acc.push(InvalidDeriveTarget { range: ast.with_value(derive) }.into());
         }
         DefDiagnosticKind::MalformedDerive { ast, id } => {
-            let derive = id.find_attr_range(db, krate, *ast).2;
+            let derive = id.find_attr_range(db, krate, *ast).1.syntax().text_range();
             acc.push(MalformedDerive { range: ast.with_value(derive) }.into());
         }
         DefDiagnosticKind::MacroDefError { ast, message } => {
@@ -1283,7 +1287,8 @@ fn precise_macro_call_location(
             ast_id.with_value(range)
         }
         MacroCallKind::Attr { ast_id, censored_attr_ids: attr_ids, .. } => {
-            let attr_range = attr_ids.invoc_attr().find_attr_range(db, krate, *ast_id).2;
+            let attr_range =
+                attr_ids.invoc_attr().find_attr_range(db, krate, *ast_id).1.syntax().text_range();
             ast_id.with_value(attr_range)
         }
     }
@@ -3394,7 +3399,7 @@ impl BuiltinType {
     }
 
     pub fn ty<'db>(self, db: &'db dyn HirDatabase) -> Type<'db> {
-        let core = Crate::core(db).map(|core| core.id).unwrap_or_else(|| db.all_crates()[0]);
+        let core = Crate::core(db).map(|core| core.id).unwrap_or_else(|| all_crates(db)[0]);
         let interner = DbInterner::new_no_crate(db);
         Type::new_for_crate(core, Ty::from_builtin_type(interner, self.inner))
     }
@@ -4680,7 +4685,7 @@ impl TypeParam {
     pub fn trait_bounds(self, db: &dyn HirDatabase) -> Vec<Trait> {
         let self_ty = self.ty(db).ty;
         GenericPredicates::query_explicit(db, self.id.parent())
-            .iter_identity_copied()
+            .iter_identity()
             .filter_map(|pred| match &pred.kind().skip_binder() {
                 ClauseKind::Trait(trait_ref) if trait_ref.self_ty() == self_ty => {
                     Some(Trait::from(trait_ref.def_id().0))
@@ -4898,12 +4903,12 @@ impl Impl {
             std::iter::successors(module.block(db), |block| block.loc(db).module.block(db))
                 .filter_map(|block| TraitImpls::for_block(db, block).as_deref())
                 .for_each(|impls| impls.for_self_ty(&simplified_ty, &mut extend_with_impls));
-            for &krate in &**db.all_crates() {
+            for &krate in &*all_crates(db) {
                 TraitImpls::for_crate(db, krate)
                     .for_self_ty(&simplified_ty, &mut extend_with_impls);
             }
         } else {
-            for &krate in &**db.all_crates() {
+            for &krate in &*all_crates(db) {
                 TraitImpls::for_crate(db, krate)
                     .for_self_ty(&simplified_ty, &mut extend_with_impls);
             }
@@ -7175,7 +7180,7 @@ pub fn resolve_absolute_path<'a, I: Iterator<Item = Symbol> + Clone + 'a>(
         .next()
         .into_iter()
         .flat_map(move |crate_name| {
-            db.all_crates()
+            all_crates(db)
                 .iter()
                 .filter(|&krate| {
                     krate

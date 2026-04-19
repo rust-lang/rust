@@ -89,11 +89,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match *autoderef.final_ty().kind() {
             ty::FnDef(def_id, _) => {
-                let abi = self.tcx.fn_sig(def_id).skip_binder().skip_binder().abi;
+                let abi = self.tcx.fn_sig(def_id).skip_binder().skip_binder().abi();
                 self.check_call_abi(abi, call_expr.span);
             }
             ty::FnPtr(_, header) => {
-                self.check_call_abi(header.abi, call_expr.span);
+                self.check_call_abi(header.abi(), call_expr.span);
             }
             _ => { /* cannot have a non-rust abi */ }
         }
@@ -275,9 +275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx.coroutine_for_closure(def_id),
                         tupled_upvars_ty,
                     ),
-                    coroutine_closure_sig.c_variadic,
-                    coroutine_closure_sig.safety,
-                    coroutine_closure_sig.abi,
+                    coroutine_closure_sig.fn_sig_kind,
                 );
                 let adjustments = self.adjust_steps(autoderef);
                 self.record_deferred_call_resolution(
@@ -595,12 +593,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn_sig.output(),
             expected,
             arg_exprs,
-            fn_sig.c_variadic,
+            fn_sig.c_variadic(),
             TupleArgumentsFlag::DontTupleArguments,
             def_id,
         );
 
-        if fn_sig.abi == rustc_abi::ExternAbi::RustCall {
+        if fn_sig.abi() == rustc_abi::ExternAbi::RustCall {
             let sp = arg_exprs.last().map_or(call_expr.span, |expr| expr.span);
             if let Some(ty) = fn_sig.inputs().last().copied() {
                 self.register_bound(
@@ -905,7 +903,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn_sig.output(),
             expected,
             arg_exprs,
-            fn_sig.c_variadic,
+            fn_sig.c_variadic(),
             TupleArgumentsFlag::TupleArguments,
             Some(closure_def_id.to_def_id()),
         );
@@ -921,6 +919,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_did: DefId,
         callee_args: GenericArgsRef<'tcx>,
     ) {
+        // FIXME(const_trait_impl): We should be enforcing these effects unconditionally.
+        // This can be done as soon as we convert the standard library back to
+        // using const traits, since if we were to enforce these conditions now,
+        // we'd fail on basically every builtin trait call (i.e. `1 + 2`).
+        if !self.tcx.features().const_trait_impl() {
+            return;
+        }
+
         // If we have `rustc_do_not_const_check`, do not check `[const]` bounds.
         if self.has_rustc_attrs && find_attr!(self.tcx, self.body_id, RustcDoNotConstCheck) {
             return;
@@ -976,7 +982,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             method.sig.output(),
             expected,
             arg_exprs,
-            method.sig.c_variadic,
+            method.sig.c_variadic(),
             TupleArgumentsFlag::TupleArguments,
             Some(method.def_id),
         );

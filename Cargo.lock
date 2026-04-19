@@ -649,11 +649,11 @@ checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 
 [[package]]
 name = "clippy"
-version = "0.1.96"
+version = "0.1.97"
 dependencies = [
  "anstream",
  "askama",
- "cargo_metadata 0.18.1",
+ "cargo_metadata 0.23.1",
  "clippy_config",
  "clippy_lints",
  "clippy_lints_internal",
@@ -676,7 +676,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.96"
+version = "0.1.97"
 dependencies = [
  "clippy_utils",
  "itertools",
@@ -700,10 +700,10 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.96"
+version = "0.1.97"
 dependencies = [
  "arrayvec",
- "cargo_metadata 0.18.1",
+ "cargo_metadata 0.23.1",
  "clippy_config",
  "clippy_utils",
  "declare_clippy_lint",
@@ -732,7 +732,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.96"
+version = "0.1.97"
 dependencies = [
  "arrayvec",
  "itertools",
@@ -1136,7 +1136,7 @@ dependencies = [
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.96"
+version = "0.1.97"
 
 [[package]]
 name = "derive-where"
@@ -1678,6 +1678,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "hashbrown"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f467dd6dccf739c208452f8014c75c18bb8301b050ad1cfb27153803edb0f51"
+dependencies = [
+ "foldhash 0.2.0",
+]
+
+[[package]]
 name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1953,12 +1962,12 @@ checksum = "964de6e86d545b246d84badc0fef527924ace5134f30641c203ef52ba83f58d5"
 
 [[package]]
 name = "indexmap"
-version = "2.13.0"
+version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7714e70437a7dc3ac8eb7e6f8df75fd8eb422675fc7678aff7364301092b1017"
+checksum = "d466e9454f08e4a911e14806c24e16fba1b4c121d1ea474396f396069cf949d9"
 dependencies = [
  "equivalent",
- "hashbrown 0.16.1",
+ "hashbrown 0.17.0",
  "serde",
  "serde_core",
 ]
@@ -3505,6 +3514,7 @@ dependencies = [
  "rand_xoshiro",
  "rustc_data_structures",
  "rustc_error_messages",
+ "rustc_errors",
  "rustc_hashes",
  "rustc_index",
  "rustc_macros",
@@ -3805,7 +3815,7 @@ dependencies = [
  "either",
  "elsa",
  "ena",
- "hashbrown 0.16.1",
+ "hashbrown 0.17.0",
  "indexmap",
  "jobserver",
  "libc",
@@ -3909,7 +3919,6 @@ dependencies = [
  "anstream",
  "anstyle",
  "derive_setters",
- "rustc_abi",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_error_codes",
@@ -3995,6 +4004,7 @@ dependencies = [
  "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_error_messages",
+ "rustc_errors",
  "rustc_hashes",
  "rustc_hir_id",
  "rustc_index",
@@ -4224,6 +4234,7 @@ dependencies = [
 name = "rustc_lint_defs"
 version = "0.0.0"
 dependencies = [
+ "rustc_ast",
  "rustc_data_structures",
  "rustc_error_messages",
  "rustc_hir_id",
@@ -4568,7 +4579,6 @@ name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
  "measureme",
- "rustc_abi",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hir",
@@ -4691,7 +4701,6 @@ dependencies = [
  "rustc-demangle",
  "rustc_abi",
  "rustc_data_structures",
- "rustc_errors",
  "rustc_hashes",
  "rustc_hir",
  "rustc_middle",
@@ -5540,9 +5549,9 @@ dependencies = [
 
 [[package]]
 name = "thin-vec"
-version = "0.2.14"
+version = "0.2.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "144f754d318415ac792f9d69fc87abbbfc043ce2ef041c60f16ad828f638717d"
+checksum = "da322882471314edc77fa5232c587bcb87c9df52bfd0d7d4826f8868ead61899"
 
 [[package]]
 name = "thiserror"

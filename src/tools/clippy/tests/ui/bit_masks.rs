@@ -89,3 +89,13 @@ fn ineffective() {
     x | 3 > 4; // not an error (yet), better written as x >= 4
     x | 4 <= 19;
 }
+
+mod issue16781 {
+    fn unsigned(x: u8) -> bool {
+        x & 0xf0 == 0x11 << 4
+    }
+
+    fn signed(x: i8) -> bool {
+        x & 0x70 == 0x11 << 4
+    }
+}

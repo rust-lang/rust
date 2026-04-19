@@ -465,7 +465,7 @@ fn virtual_call_violations_for_method<'tcx>(
     if let Some(error) = contains_illegal_impl_trait_in_trait(tcx, method.def_id, sig.output()) {
         errors.push(error);
     }
-    if sig.skip_binder().c_variadic {
+    if sig.skip_binder().c_variadic() {
         errors.push(MethodViolation::CVariadic);
     }
 

@@ -3,9 +3,9 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html#selection
 
 use std::cell::{Cell, RefCell};
+use std::cmp;
 use std::fmt::{self, Display};
 use std::ops::ControlFlow;
-use std::{assert_matches, cmp};
 
 use hir::def::DefKind;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -210,8 +210,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Enables tracking of intercrate ambiguity causes. See
     /// the documentation of [`Self::intercrate_ambiguity_causes`] for more.
     pub fn enable_tracking_intercrate_ambiguity_causes(&mut self) {
-        assert_matches!(self.infcx.typing_mode(), TypingMode::Coherence);
+        assert!(self.infcx.typing_mode().is_coherence());
         assert!(self.intercrate_ambiguity_causes.is_none());
+
         self.intercrate_ambiguity_causes = Some(FxIndexSet::default());
         debug!("selcx: enable_tracking_intercrate_ambiguity_causes");
     }
@@ -222,7 +223,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn take_intercrate_ambiguity_causes(
         &mut self,
     ) -> FxIndexSet<IntercrateAmbiguityCause<'tcx>> {
-        assert_matches!(self.infcx.typing_mode(), TypingMode::Coherence);
+        assert!(self.infcx.typing_mode().is_coherence());
+
         self.intercrate_ambiguity_causes.take().unwrap_or_default()
     }
 
@@ -1016,7 +1018,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         previous_stack: TraitObligationStackList<'o, 'tcx>,
         mut obligation: PolyTraitObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
-        if !matches!(self.infcx.typing_mode(), TypingMode::Coherence)
+        if !self.infcx.typing_mode().is_coherence()
             && obligation.is_global()
             && obligation.param_env.caller_bounds().iter().all(|bound| bound.has_param())
         {
@@ -2548,7 +2550,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         nested_obligations.extend(obligations);
 
         if impl_trait_header.polarity == ty::ImplPolarity::Reservation
-            && !matches!(self.infcx.typing_mode(), TypingMode::Coherence)
+            && !self.infcx.typing_mode().is_coherence()
         {
             debug!("reservation impls only apply in intercrate mode");
             return Err(());

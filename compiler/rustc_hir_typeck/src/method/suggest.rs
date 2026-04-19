@@ -1898,7 +1898,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(
                     Node::Item(hir::Item {
                         kind:
-                            hir::ItemKind::Trait(_, _, _, ident, ..)
+                            hir::ItemKind::Trait(_, _, _, _, ident, ..)
                             | hir::ItemKind::TraitAlias(_, ident, ..),
                         ..
                     })
@@ -2276,8 +2276,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for inherent_method in
                     self.tcx.associated_items(inherent_impl_did).in_definition_order()
                 {
-                    if let Some(candidates) = find_attr!(self.tcx, inherent_method.def_id, RustcConfusables{symbols, ..} => symbols)
-                        && candidates.contains(&item_name.name)
+                    if let Some(confusables) = find_attr!(self.tcx, inherent_method.def_id, RustcConfusables{confusables} => confusables)
+                        && confusables.contains(&item_name.name)
                         && inherent_method.is_fn()
                     {
                         let args =
@@ -4366,7 +4366,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         _ => false,
                                     };
 
-                                    if !fn_sig.decl.implicit_self.has_implicit_self()
+                                    if !fn_sig.decl.implicit_self().has_implicit_self()
                                         && self_first_arg
                                     {
                                         if let Some(ty) = fn_sig.decl.inputs.get(0) {
@@ -4545,7 +4545,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return;
                         }
                         Node::Item(hir::Item {
-                            kind: hir::ItemKind::Trait(_, _, _, ident, _, bounds, _),
+                            kind: hir::ItemKind::Trait(_, _, _, _, ident, _, bounds, _),
                             ..
                         }) => {
                             let (sp, sep, article) = if bounds.is_empty() {

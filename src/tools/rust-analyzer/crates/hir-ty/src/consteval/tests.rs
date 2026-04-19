@@ -1,4 +1,4 @@
-use base_db::RootQueryDb;
+use base_db::all_crates;
 use hir_def::signatures::ConstSignature;
 use hir_expand::EditionedFileId;
 use rustc_apfloat::{
@@ -108,7 +108,7 @@ fn pretty_print_err(e: ConstEvalError, db: &TestDB) -> String {
     let mut err = String::new();
     let span_formatter = |file, range| format!("{file:?} {range:?}");
     let display_target =
-        DisplayTarget::from_crate(db, *db.all_crates().last().expect("no crate graph present"));
+        DisplayTarget::from_crate(db, *all_crates(db).last().expect("no crate graph present"));
     match e {
         ConstEvalError::MirLowerError(e) => {
             e.pretty_print(&mut err, db, span_formatter, display_target)

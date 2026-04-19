@@ -87,6 +87,22 @@ mod ok {
     #[test]
     fn cast_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/cast_expr.rs"); }
     #[test]
+    fn cfg_attr() { run_and_expect_no_errors("test_data/parser/inline/ok/cfg_attr.rs"); }
+    #[test]
+    fn cfg_composite_pred() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/cfg_composite_pred.rs");
+    }
+    #[test]
+    fn cfg_key_value_pred() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/cfg_key_value_pred.rs");
+    }
+    #[test]
+    fn cfg_meta() { run_and_expect_no_errors("test_data/parser/inline/ok/cfg_meta.rs"); }
+    #[test]
+    fn cfg_true_false_pred() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/cfg_true_false_pred.rs");
+    }
+    #[test]
     fn closure_binder() {
         run_and_expect_no_errors("test_data/parser/inline/ok/closure_binder.rs");
     }
@@ -793,6 +809,10 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/fn_ret_recovery.rs");
     }
     #[test]
+    fn function_ret_type_missing_arrow() {
+        run_and_expect_errors("test_data/parser/inline/err/function_ret_type_missing_arrow.rs");
+    }
+    #[test]
     fn gen_fn() {
         run_and_expect_errors_with_edition(
             "test_data/parser/inline/err/gen_fn.rs",
@@ -820,6 +840,10 @@ mod err {
         run_and_expect_errors(
             "test_data/parser/inline/err/invalid_question_for_type_trait_bound.rs",
         );
+    }
+    #[test]
+    fn key_ident_cfg_predicate() {
+        run_and_expect_errors("test_data/parser/inline/err/key_ident_cfg_predicate.rs");
     }
     #[test]
     fn let_else_right_curly_brace() {

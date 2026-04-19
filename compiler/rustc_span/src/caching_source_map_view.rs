@@ -141,7 +141,7 @@ impl<'sm> CachingSourceMapView<'sm> {
             lo_line_number,
             span_data.lo - lo_line_bounds.start,
             hi_line_number,
-            span_data.hi,
+            span_data.hi - hi_line_bounds.start,
         ))
     }
 

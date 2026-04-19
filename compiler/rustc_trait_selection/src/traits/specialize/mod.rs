@@ -185,12 +185,13 @@ fn fulfill_implication<'tcx>(
     // Now check that the source trait ref satisfies all the where clauses of the target impl.
     // This is not just for correctness; we also need this to constrain any params that may
     // only be referenced via projection predicates.
-    let predicates = ocx.normalize(
-        cause,
+    let predicates = infcx.tcx.predicates_of(target_impl).instantiate(infcx.tcx, target_args);
+    let obligations = predicates_for_generics(
+        |_, _| cause.clone(),
+        |pred| ocx.normalize(cause, param_env, pred),
         param_env,
-        infcx.tcx.predicates_of(target_impl).instantiate(infcx.tcx, target_args),
+        predicates,
     );
-    let obligations = predicates_for_generics(|_, _| cause.clone(), param_env, predicates);
     ocx.register_obligations(obligations);
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
@@ -315,12 +316,14 @@ pub(super) fn specializes(
     // Now check that the source trait ref satisfies all the where clauses of the target impl.
     // This is not just for correctness; we also need this to constrain any params that may
     // only be referenced via projection predicates.
-    let predicates = ocx.normalize(
-        cause,
+    let predicates =
+        infcx.tcx.predicates_of(parent_impl_def_id).instantiate(infcx.tcx, parent_args);
+    let obligations = predicates_for_generics(
+        |_, _| cause.clone(),
+        |pred| ocx.normalize(cause, param_env, pred),
         param_env,
-        infcx.tcx.predicates_of(parent_impl_def_id).instantiate(infcx.tcx, parent_args),
+        predicates,
     );
-    let obligations = predicates_for_generics(|_, _| cause.clone(), param_env, predicates);
     ocx.register_obligations(obligations);
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();

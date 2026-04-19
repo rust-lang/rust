@@ -13,7 +13,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, AmbigArg, ExprKind, GenericArg, HirId, Node, QPath, intravisit};
 use rustc_hir_analysis::hir_ty_lowering::errors::GenericsArgsErrExtend;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
-    check_generic_arg_count_for_call, lower_generic_args,
+    check_generic_arg_count_for_value_path, lower_generic_args,
 };
 use rustc_hir_analysis::hir_ty_lowering::{
     ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgsLowerer,
@@ -423,20 +423,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Instantiates and normalizes the bounds for a given item
-    pub(crate) fn instantiate_bounds(
-        &self,
-        span: Span,
-        def_id: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> ty::InstantiatedPredicates<'tcx> {
-        let bounds = self.tcx.predicates_of(def_id);
-        let result = bounds.instantiate(self.tcx, args);
-        let result = self.normalize(span, result);
-        debug!("instantiate_bounds(bounds={:?}, args={:?}) = {:?}", bounds, args, result);
-        result
-    }
-
     pub(crate) fn normalize<T>(&self, span: Span, value: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -673,9 +659,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // being stalled on a coroutine.
         self.select_obligations_where_possible(|_| {});
 
-        let ty::TypingMode::Analysis { defining_opaque_types_and_generators } = self.typing_mode()
-        else {
-            bug!();
+        let defining_opaque_types_and_generators = match self.typing_mode() {
+            ty::TypingMode::Analysis { defining_opaque_types_and_generators } => {
+                defining_opaque_types_and_generators
+            }
+            ty::TypingMode::Coherence
+            | ty::TypingMode::Borrowck { .. }
+            | ty::TypingMode::PostBorrowckAnalysis { .. }
+            | ty::TypingMode::PostAnalysis => {
+                bug!()
+            }
         };
 
         if defining_opaque_types_and_generators
@@ -1098,8 +1091,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // parameter internally, but we don't allow users to specify the
             // parameter's value explicitly, so we have to do some error-
             // checking here.
-            let arg_count =
-                check_generic_arg_count_for_call(self, def_id, generics, seg, IsMethodCall::No);
+            let arg_count = check_generic_arg_count_for_value_path(
+                self,
+                def_id,
+                generics,
+                seg,
+                IsMethodCall::No,
+            );
 
             if let ExplicitLateBound::Yes = arg_count.explicit_late_bound {
                 explicit_late_bound = ExplicitLateBound::Yes;
@@ -1421,10 +1419,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let param_env = self.param_env;
 
-        let bounds = self.instantiate_bounds(span, def_id, args);
+        let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, args);
 
         for obligation in traits::predicates_for_generics(
             |idx, predicate_span| self.cause(span, code(idx, predicate_span)),
+            |pred| self.normalize(span, pred),
             param_env,
             bounds,
         ) {

@@ -4,6 +4,7 @@ use syntax::{
     AstNode, AstToken, SyntaxKind, T,
     ast::{
         self, HasDocComments, HasGenericParams, HasName, HasVisibility, edit::AstNodeEdit, make,
+        syntax_factory::SyntaxFactory,
     },
     syntax_editor::{Position, SyntaxEditor},
 };
@@ -98,8 +99,8 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
         impl_ast.syntax().text_range(),
         |builder| {
             let trait_items: ast::AssocItemList = {
-                let trait_items = impl_assoc_items.clone_subtree();
-                let mut trait_items_editor = SyntaxEditor::new(trait_items.syntax().clone());
+                let (mut trait_items_editor, trait_items) =
+                    SyntaxEditor::with_ast_node(&impl_assoc_items);
 
                 trait_items.assoc_items().for_each(|item| {
                     strip_body(&mut trait_items_editor, &item);
@@ -107,17 +108,18 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
                 });
                 ast::AssocItemList::cast(trait_items_editor.finish().new_root().clone()).unwrap()
             };
-            let trait_ast = make::trait_(
+
+            let factory = SyntaxFactory::with_mappings();
+            let trait_ast = factory.trait_(
                 false,
                 &trait_name(&impl_assoc_items).text(),
                 impl_ast.generic_param_list(),
                 impl_ast.where_clause(),
                 trait_items,
-            )
-            .clone_for_update();
+            );
 
             let trait_name = trait_ast.name().expect("new trait should have a name");
-            let trait_name_ref = make::name_ref(&trait_name.to_string()).clone_for_update();
+            let trait_name_ref = factory.name_ref(&trait_name.to_string());
 
             // Change `impl Foo` to `impl NewTrait for Foo`
             let mut elements = vec![
@@ -128,7 +130,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
             ];
 
             if let Some(params) = impl_ast.generic_param_list() {
-                let gen_args = &params.to_generic_args().clone_for_update();
+                let gen_args = &params.to_generic_args();
                 elements.insert(1, gen_args.syntax().clone().into());
             }
 
@@ -156,6 +158,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
                 editor.add_annotation(trait_name_ref.syntax(), placeholder);
             }
 
+            editor.add_mappings(factory.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     );

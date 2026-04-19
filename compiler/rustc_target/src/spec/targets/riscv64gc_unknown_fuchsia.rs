@@ -6,7 +6,7 @@ pub(crate) fn target() -> Target {
     let mut base = base::fuchsia::opts();
     base.code_model = Some(CodeModel::Medium);
     base.cpu = "generic-rv64".into();
-    base.features = "+m,+a,+f,+d,+c,+zicsr,+zifencei".into();
+    base.features = "+m,+a,+f,+d,+c,+v,+zicsr,+zifencei".into();
     base.llvm_abiname = LlvmAbi::Lp64d;
     base.max_atomic_width = Some(64);
     base.stack_probes = StackProbeType::Inline;

@@ -3,11 +3,15 @@ error[E0539]: malformed `instruction_set` attribute input
    |
 LL | #[instruction_set(arm)]
    | ^^^^^^^^^^^^^^^^^^---^^
-   | |                 |
-   | |                 valid arguments are `arm::a32` or `arm::t32`
-   | help: must be of the form: `#[instruction_set(set)]`
+   |                   |
+   |                   valid arguments are `arm::a32` or `arm::t32`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
+help: must be of the form
+   |
+LL - #[instruction_set(arm)]
+LL + #[instruction_set(set)]
+   |
 
 error: expected identifier, found `<eof>`
   --> $DIR/instruction-set.rs:26:22
@@ -20,11 +24,15 @@ error[E0539]: malformed `instruction_set` attribute input
    |
 LL | #[instruction_set(arm::magic)]
    | ^^^^^^^^^^^^^^^^^^^^^^^-----^^
-   | |                      |
-   | |                      valid arguments are `a32` or `t32`
-   | help: must be of the form: `#[instruction_set(set)]`
+   |                        |
+   |                        valid arguments are `a32` or `t32`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-instruction_set-attribute>
+help: must be of the form
+   |
+LL - #[instruction_set(arm::magic)]
+LL + #[instruction_set(set)]
+   |
 
 error: aborting due to 3 previous errors
 

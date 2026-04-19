@@ -4,11 +4,12 @@
 use arrayvec::ArrayVec;
 use hir::{Crate, Module, Semantics, db::HirDatabase};
 use ide_db::{
-    FileId, FileRange, FxHashMap, FxHashSet, MiniCore, RootDatabase,
-    base_db::{RootQueryDb, SourceDatabase, VfsPath},
+    FileId, FileRange, FxHashMap, FxHashSet, RootDatabase,
+    base_db::{SourceDatabase, VfsPath},
     defs::{Definition, IdentClass},
     documentation::Documentation,
     famous_defs::FamousDefs,
+    ra_fixture::RaFixtureConfig,
 };
 use syntax::{AstNode, SyntaxNode, SyntaxToken, TextRange};
 
@@ -16,7 +17,7 @@ use crate::navigation_target::UpmappingResult;
 use crate::{
     Analysis, Fold, HoverConfig, HoverResult, InlayHint, InlayHintsConfig, TryToNav,
     hover::{SubstTyLen, hover_for_definition},
-    inlay_hints::{AdjustmentHintsMode, InlayFieldsToResolve},
+    inlay_hints::{AdjustmentHintsMode, InlayFieldsToResolve, TypeHintsPlacement},
     moniker::{MonikerResult, SymbolInformationKind, def_to_kind, def_to_moniker},
     parent_module::crates_for,
 };
@@ -123,16 +124,8 @@ fn documentation_for_definition(
         _ => None,
     };
 
-    def.docs(
-        sema.db,
-        famous_defs.as_ref(),
-        def.krate(sema.db)
-            .unwrap_or_else(|| {
-                (*sema.db.all_crates().last().expect("no crate graph present")).into()
-            })
-            .to_display_target(sema.db),
-    )
-    .map(Documentation::into_owned)
+    def.docs(sema.db, famous_defs.as_ref(), def.krate(sema.db)?.to_display_target(sema.db))
+        .map(Documentation::into_owned)
 }
 
 // FIXME: This is a weird function
@@ -159,7 +152,7 @@ pub enum VendoredLibrariesConfig<'a> {
 impl StaticIndex<'_> {
     fn add_file(&mut self, file_id: FileId) {
         let current_crate = crates_for(self.db, file_id).pop().map(Into::into);
-        let folds = self.analysis.folding_ranges(file_id).unwrap();
+        let folds = self.analysis.folding_ranges(file_id, true).unwrap();
         let inlay_hints = self
             .analysis
             .inlay_hints(
@@ -167,6 +160,7 @@ impl StaticIndex<'_> {
                     render_colons: true,
                     discriminant_hints: crate::DiscriminantHints::Fieldless,
                     type_hints: true,
+                    type_hints_placement: TypeHintsPlacement::Inline,
                     sized_bound: false,
                     parameter_hints: true,
                     parameter_hints_for_missing_arguments: false,
@@ -196,7 +190,7 @@ impl StaticIndex<'_> {
                     closing_brace_hints_min_lines: Some(25),
                     fields_to_resolve: InlayFieldsToResolve::empty(),
                     range_exclusive_hints: false,
-                    minicore: MiniCore::default(),
+                    ra_fixture: RaFixtureConfig::default(),
                 },
                 file_id,
                 None,
@@ -225,7 +219,7 @@ impl StaticIndex<'_> {
             max_enum_variants_count: Some(5),
             max_subst_ty_len: SubstTyLen::Unlimited,
             show_drop_glue: true,
-            minicore: MiniCore::default(),
+            ra_fixture: RaFixtureConfig::default(),
         };
         let mut result = StaticIndexedFile { file_id, inlay_hints, folds, tokens: vec![] };
 

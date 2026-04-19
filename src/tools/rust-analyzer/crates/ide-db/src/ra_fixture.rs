@@ -52,6 +52,18 @@ impl RootDatabase {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct RaFixtureConfig<'a> {
+    pub minicore: MiniCore<'a>,
+    pub disable_ra_fixture: bool,
+}
+
+impl<'a> RaFixtureConfig<'a> {
+    pub const fn default() -> Self {
+        Self { minicore: MiniCore::default(), disable_ra_fixture: false }
+    }
+}
+
 pub struct RaFixtureAnalysis {
     pub db: RootDatabase,
     tmp_file_ids: Vec<(FileId, usize)>,
@@ -69,9 +81,14 @@ impl RaFixtureAnalysis {
         sema: &Semantics<'_, RootDatabase>,
         literal: ast::String,
         expanded: &ast::String,
-        minicore: MiniCore<'_>,
+        config: &RaFixtureConfig<'_>,
         on_cursor: &mut dyn FnMut(TextRange),
     ) -> Option<RaFixtureAnalysis> {
+        if config.disable_ra_fixture {
+            return None;
+        }
+        let minicore = config.minicore;
+
         if !literal.is_raw() {
             return None;
         }

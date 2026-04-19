@@ -140,6 +140,7 @@ pub struct Config {
     pub config: Option<PathBuf>,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
+    pub quiet: bool,
     pub incremental: bool,
     pub dump_bootstrap_shims: bool,
     /// Arguments appearing after `--` to be forwarded to tools,
@@ -369,6 +370,7 @@ impl Config {
         let Flags {
             cmd: flags_cmd,
             verbose: flags_verbose,
+            quiet: flags_quiet,
             incremental: flags_incremental,
             config: flags_config,
             build_dir: flags_build_dir,
@@ -1433,6 +1435,7 @@ impl Config {
             print_step_timings: build_print_step_timings.unwrap_or(false),
             profiler: build_profiler.unwrap_or(false),
             python: build_python.map(PathBuf::from),
+            quiet: flags_quiet,
             reproducible_artifacts: flags_reproducible_artifact,
             reuse: build_reuse.map(PathBuf::from),
             rust_analyzer_info,

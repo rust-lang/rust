@@ -103,11 +103,11 @@ fn edit_struct_def(
     names: Vec<ast::Name>,
 ) {
     let record_fields = tuple_fields.fields().zip(names).filter_map(|(f, name)| {
-        let field = ast::make::record_field(f.visibility(), name, f.ty()?);
-        let mut field_editor = SyntaxEditor::new(field.syntax().clone());
+        let (mut field_editor, field) =
+            SyntaxEditor::with_ast_node(&ast::make::record_field(f.visibility(), name, f.ty()?));
         field_editor.insert_all(
             Position::first_child_of(field.syntax()),
-            f.attrs().map(|attr| attr.syntax().clone_subtree().clone_for_update().into()).collect(),
+            f.attrs().map(|attr| attr.syntax().clone().into()).collect(),
         );
         ast::RecordField::cast(field_editor.finish().new_root().clone())
     });
@@ -120,7 +120,7 @@ fn edit_struct_def(
             editor.delete(w.syntax());
             let mut insert_element = Vec::new();
             insert_element.push(ast::make::tokens::single_newline().syntax_element());
-            insert_element.push(w.syntax().clone_for_update().syntax_element());
+            insert_element.push(w.syntax().syntax_element());
             if w.syntax().last_token().is_none_or(|t| t.kind() != SyntaxKind::COMMA) {
                 insert_element.push(ast::make::token(T![,]).into());
             }

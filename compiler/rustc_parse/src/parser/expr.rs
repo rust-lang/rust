@@ -3464,11 +3464,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(crate) fn eat_metavar_guard(&mut self) -> Option<Box<Guard>> {
-        self.eat_metavar_seq_with_matcher(
-            |mv_kind| matches!(mv_kind, MetaVarKind::Guard),
-            |this| this.parse_match_arm_guard(),
-        )
-        .flatten()
+        self.eat_metavar_seq(MetaVarKind::Guard, |this| this.parse_match_arm_guard()).flatten()
     }
 
     fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<Box<Guard>>> {
