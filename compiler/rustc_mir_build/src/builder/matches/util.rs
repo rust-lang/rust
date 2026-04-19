@@ -72,7 +72,7 @@ pub(super) fn collect_fake_borrows<'tcx>(
     temp_span: Span,
     scrutinee_base: PlaceBase,
 ) -> Vec<(Place<'tcx>, Local, FakeBorrowKind)> {
-    if candidates.iter().all(|candidate| !candidate.has_guard) {
+    if candidates.iter().all(|candidate| candidate.guards.is_empty()) {
         // Fake borrows are only used when there is a guard.
         return Vec::new();
     }

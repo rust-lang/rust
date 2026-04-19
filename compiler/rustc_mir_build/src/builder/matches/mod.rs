@@ -365,8 +365,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .iter()
             .map(|&arm| {
                 let arm = &self.thir[arm];
-                let has_match_guard =
-                    if arm.guard.is_some() { HasMatchGuard::Yes } else { HasMatchGuard::No };
+                let has_match_guard = if let Some(guard) = arm.guard {
+                    HasMatchGuard::Yes(guard)
+                } else {
+                    HasMatchGuard::No
+                };
                 (&*arm.pattern, has_match_guard)
             })
             .collect();
@@ -504,7 +507,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// For a top-level `match` arm or a `let` binding, binds the variables and
-    /// ascribes types, and also checks the match arm guard (if present).
+    /// ascribes types, and also checks the match arm/pattern guards (if present).
     ///
     /// `arm_scope` should be `Some` if and only if this is called for a
     /// `match` arm.
@@ -1099,12 +1102,11 @@ struct Candidate<'tcx> {
     /// - See [`Builder::remove_never_subcandidates`].
     subcandidates: Vec<Candidate<'tcx>>,
 
-    /// ...and if there is a guard it must be evaluated; if it's `false` then branch to `otherwise_block`.
+    /// ...and if there are guards they must be evaluated; if they're `false` then branch to `otherwise_block`.
     ///
     /// ---
-    /// For subcandidates, this is copied from the parent candidate, so it indicates
-    /// whether the enclosing match arm has a guard.
-    has_guard: bool,
+    /// For subcandidates, this is copied from the parent candidate
+    guards: Vec<OrderedPatternData<ExprId>>,
 
     /// Holds extra pattern data that was prepared by [`FlatPat`], including bindings and
     /// ascriptions that must be established if this candidate succeeds.
@@ -1136,23 +1138,25 @@ impl<'tcx> Candidate<'tcx> {
     fn new(
         place: PlaceBuilder<'tcx>,
         pattern: &Pat<'tcx>,
-        has_guard: HasMatchGuard,
+        guard: HasMatchGuard,
         cx: &mut Builder<'_, 'tcx>,
     ) -> Self {
         // Use `FlatPat` to build simplified match pairs, then immediately
         // incorporate them into a new candidate.
         let flat_pat = FlatPat::new(place, pattern, cx);
-        let has_guard = matches!(has_guard, HasMatchGuard::Yes)
-            || !flat_pat.extra_data.guard_patterns.is_empty();
-        Self::from_flat_pat(flat_pat, has_guard)
+        let mut guards = flat_pat.extra_data.guard_patterns.clone();
+        if let HasMatchGuard::Yes(g) = guard {
+            guards.push(OrderedPatternData::One(g));
+        };
+        Self::from_flat_pat(flat_pat, guards)
     }
 
     /// Incorporates an already-simplified [`FlatPat`] into a new candidate.
-    fn from_flat_pat(flat_pat: FlatPat<'tcx>, has_guard: bool) -> Self {
+    fn from_flat_pat(flat_pat: FlatPat<'tcx>, guards: Vec<OrderedPatternData<ExprId>>) -> Self {
         let mut this = Candidate {
             match_pairs: flat_pat.match_pairs,
             extra_data: flat_pat.extra_data,
-            has_guard,
+            guards,
             subcandidates: Vec::new(),
             or_span: None,
             otherwise_block: None,
@@ -1451,8 +1455,8 @@ struct MatchTreeSubBranch<'tcx> {
     bindings: Vec<Binding<'tcx>>,
     /// The ascriptions to set up in this sub-branch.
     ascriptions: Vec<Ascription<'tcx>>,
-    /// The guard patterns present in this sub-branch
-    guard_patterns: Vec<ExprId>,
+    /// The guards from arms and patterns combined present in this sub-branch.
+    guards: Vec<ExprId>,
     /// Whether the sub-branch corresponds to a never pattern.
     is_never: bool,
 }
@@ -1507,9 +1511,9 @@ impl<'tcx> MatchTreeSubBranch<'tcx> {
                 .cloned()
                 .chain(candidate.extra_data.ascriptions)
                 .collect(),
-            guard_patterns: sub_branch_ordered_pat_data(
+            guards: sub_branch_ordered_pat_data(
                 parent_data.iter().map(|parent| parent.guard_patterns.as_slice()),
-                &candidate.extra_data.guard_patterns,
+                &candidate.guards,
             ),
             is_never: candidate.extra_data.is_never,
         }
@@ -1605,7 +1609,7 @@ fn push_sub_branch_ordered_pat_data<'c, T: Copy>(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum HasMatchGuard {
-    Yes,
+    Yes(ExprId),
     No,
 }
 
@@ -1659,7 +1663,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // false edge to the final failure block.
         let mut next_candidate_start_block = if refutable { Some(otherwise_block) } else { None };
         for candidate in candidates.iter_mut().rev() {
-            let has_guard = candidate.has_guard;
+            let has_guard = !candidate.guards.is_empty();
             candidate.visit_leaves_rev(|leaf_candidate| {
                 if let Some(next_candidate_start_block) = next_candidate_start_block {
                     let source_info = self.source_info(leaf_candidate.extra_data.span);
@@ -2006,7 +2010,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate.or_span = Some(match_pair.pattern_span);
         candidate.subcandidates = pats
             .into_iter()
-            .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
+            .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.guards.clone()))
             .collect();
         candidate.subcandidates[0].false_edge_start_block = candidate.false_edge_start_block;
     }
@@ -2070,7 +2074,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// in match tree lowering.
     fn merge_trivial_subcandidates(&mut self, candidate: &mut Candidate<'tcx>) {
         assert!(!candidate.subcandidates.is_empty());
-        if candidate.has_guard {
+        if !candidate.guards.is_empty() {
             // FIXME(or_patterns; matthewjasper) Don't give up if we have a guard.
             return;
         }
@@ -2190,7 +2194,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // directly to `last_otherwise`. If there is a guard,
             // `leaf_candidate.otherwise_block` can be reached by guard failure as well, so we
             // can't skip `Q`.
-            let or_otherwise = if leaf_candidate.has_guard {
+            let or_otherwise = if !leaf_candidate.guards.is_empty() {
                 leaf_candidate.otherwise_block.unwrap()
             } else {
                 last_otherwise.unwrap()
@@ -2448,7 +2452,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Initializes each of the bindings from the candidate by
-    /// moving/copying/ref'ing the source as appropriate. Tests the guard, if
+    /// moving/copying/ref'ing the source as appropriate. Tests the guards, if
     /// any, and then branches to the arm. Returns the block for the case where
     /// the guard succeeds.
     ///
@@ -2457,7 +2461,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// moving the binding once the guard has evaluated to true (see below).
     fn bind_and_guard_matched_candidate(
         &mut self,
-        mut sub_branch: MatchTreeSubBranch<'tcx>,
+        sub_branch: MatchTreeSubBranch<'tcx>,
         fake_borrows: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
         arm: Option<&Arm<'tcx>>,
@@ -2476,9 +2480,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return self.cfg.start_new_block();
         }
 
-        self.ascribe_types(block, mem::take(&mut sub_branch.ascriptions));
+        self.ascribe_types(block, sub_branch.ascriptions);
 
-        if !sub_branch.guard_patterns.is_empty() || arm.is_some_and(|arm| arm.guard.is_some()) {
+        let guards = sub_branch.guards;
+
+        // Lower guards of this sub-branch (if present) for this candidate,
+        // and then perform bindings for the arm body.
+        if !guards.is_empty() {
             let tcx = self.tcx;
 
             let (arm_span, arm_scope) = self.extract_arm_span_scope(sub_branch.span, arm);
