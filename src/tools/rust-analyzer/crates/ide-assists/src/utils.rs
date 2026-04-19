@@ -15,7 +15,6 @@ use ide_db::{
     syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
 };
 use itertools::Itertools;
-use stdx::format_to;
 use syntax::{
     AstNode, AstToken, Direction, NodeOrToken, SourceFile,
     SyntaxKind::*,
@@ -530,102 +529,6 @@ fn has_any_fn(imp: &ast::Impl, names: &[String]) -> bool {
     false
 }
 
-/// Find the end of the `impl` block for the given `ast::Impl`.
-//
-// FIXME: this partially overlaps with `find_struct_impl`
-pub(crate) fn find_impl_block_end(impl_def: ast::Impl, buf: &mut String) -> Option<TextSize> {
-    buf.push('\n');
-    let end = impl_def
-        .assoc_item_list()
-        .and_then(|it| it.r_curly_token())?
-        .prev_sibling_or_token()?
-        .text_range()
-        .end();
-    Some(end)
-}
-
-/// Generates the surrounding `impl Type { <code> }` including type and lifetime
-/// parameters.
-// FIXME: migrate remaining uses to `generate_impl`
-pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
-    generate_impl_text_inner(adt, None, true, code)
-}
-
-fn generate_impl_text_inner(
-    adt: &ast::Adt,
-    trait_text: Option<&str>,
-    trait_is_transitive: bool,
-    code: &str,
-) -> String {
-    // Ensure lifetime params are before type & const params
-    let generic_params = adt.generic_param_list().map(|generic_params| {
-        let lifetime_params =
-            generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
-        let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
-            let param = match param {
-                ast::TypeOrConstParam::Type(param) => {
-                    // remove defaults since they can't be specified in impls
-                    let mut bounds =
-                        param.type_bound_list().map_or_else(Vec::new, |it| it.bounds().collect());
-                    if let Some(trait_) = trait_text {
-                        // Add the current trait to `bounds` if the trait is transitive,
-                        // meaning `impl<T> Trait for U<T>` requires `T: Trait`.
-                        if trait_is_transitive {
-                            bounds.push(make::type_bound_text(trait_));
-                        }
-                    };
-                    // `{ty_param}: {bounds}`
-                    let param = make::type_param(param.name()?, make::type_bound_list(bounds));
-                    ast::GenericParam::TypeParam(param)
-                }
-                ast::TypeOrConstParam::Const(param) => {
-                    // remove defaults since they can't be specified in impls
-                    let param = make::const_param(param.name()?, param.ty()?);
-                    ast::GenericParam::ConstParam(param)
-                }
-            };
-            Some(param)
-        });
-
-        make::generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
-    });
-
-    // FIXME: use syntax::make & mutable AST apis instead
-    // `trait_text` and `code` can't be opaque blobs of text
-    let mut buf = String::with_capacity(code.len());
-
-    // Copy any cfg attrs from the original adt
-    buf.push_str("\n\n");
-    let cfg_attrs = adt.attrs().filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))));
-    cfg_attrs.for_each(|attr| buf.push_str(&format!("{attr}\n")));
-
-    // `impl{generic_params} {trait_text} for {name}{generic_params.to_generic_args()}`
-    buf.push_str("impl");
-    if let Some(generic_params) = &generic_params {
-        format_to!(buf, "{generic_params}");
-    }
-    buf.push(' ');
-    if let Some(trait_text) = trait_text {
-        buf.push_str(trait_text);
-        buf.push_str(" for ");
-    }
-    buf.push_str(&adt.name().unwrap().text());
-    if let Some(generic_params) = generic_params {
-        format_to!(buf, "{}", generic_params.to_generic_args());
-    }
-
-    match adt.where_clause() {
-        Some(where_clause) => {
-            format_to!(buf, "\n{where_clause}\n{{\n{code}\n}}");
-        }
-        None => {
-            format_to!(buf, " {{\n{code}\n}}");
-        }
-    }
-
-    buf
-}
-
 /// Generates the corresponding `impl Type {}` including type and lifetime
 /// parameters.
 pub(crate) fn generate_impl_with_item(
@@ -915,28 +818,6 @@ fn generic_param_associated_bounds_with_factory(
         .unique_by(|it| it.syntax().to_string())
         .peekable();
     trait_where_clause.peek().is_some().then(|| make.where_clause(trait_where_clause))
-}
-
-pub(crate) fn add_method_to_adt(
-    builder: &mut SourceChangeBuilder,
-    adt: &ast::Adt,
-    impl_def: Option<ast::Impl>,
-    method: &str,
-) {
-    let mut buf = String::with_capacity(method.len() + 2);
-    if impl_def.is_some() {
-        buf.push('\n');
-    }
-    buf.push_str(method);
-
-    let start_offset = impl_def
-        .and_then(|impl_def| find_impl_block_end(impl_def, &mut buf))
-        .unwrap_or_else(|| {
-            buf = generate_impl_text(adt, &buf);
-            adt.syntax().text_range().end()
-        });
-
-    builder.insert(start_offset, buf);
 }
 
 #[derive(Debug)]
