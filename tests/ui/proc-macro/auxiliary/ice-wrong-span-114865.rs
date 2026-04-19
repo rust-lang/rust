@@ -51,3 +51,20 @@ pub fn foo3(input: TokenStream) -> TokenStream {
         Group::new(Delimiter::Parenthesis, TokenTree::from(lit).into()).into(),
     ])
 }
+
+
+/// Same as `foo3` but with hashes in the raw string literal
+#[proc_macro]
+pub fn foo4(input: TokenStream) -> TokenStream {
+    let mut iter = input.into_iter();
+    let first = iter.next().unwrap();
+    let second = iter.next().unwrap();
+    let joined_span = first.span().join(second.span()).unwrap();
+    let mut lit: Literal = r###"r##"{}"##"###.parse().unwrap();
+    lit.set_span(joined_span);
+    FromIterator::<TokenTree>::from_iter([
+        Ident::new("println", Span::mixed_site()).into(),
+        Punct::new('!', Spacing::Alone).into(),
+        Group::new(Delimiter::Parenthesis, TokenTree::from(lit).into()).into(),
+    ])
+}
