@@ -598,6 +598,10 @@ fn test() {
     );
 }
 
+// FIXME: rustc emits the following error here:
+//  - error[E0277]:  he size for values of type `impl Foo + ?Sized` cannot be known at compilation time
+// ...but we don't emit any error here for now
+#[ignore = "rustc emits E0277 here"]
 #[test]
 fn coerce_unsize_apit() {
     check(

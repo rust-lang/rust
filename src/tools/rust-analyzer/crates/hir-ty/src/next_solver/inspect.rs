@@ -458,9 +458,10 @@ impl<'a, 'db> InspectGoal<'a, 'db> {
     pub(crate) fn visit_with<V: ProofTreeVisitor<'db>>(&self, visitor: &mut V) -> V::Result {
         if self.depth < visitor.config().max_depth {
             try_visit!(visitor.visit_goal(self));
+            V::Result::output()
+        } else {
+            visitor.on_recursion_limit()
         }
-
-        V::Result::output()
     }
 }
 
@@ -473,6 +474,10 @@ pub(crate) trait ProofTreeVisitor<'db> {
     }
 
     fn visit_goal(&mut self, goal: &InspectGoal<'_, 'db>) -> Self::Result;
+
+    fn on_recursion_limit(&mut self) -> Self::Result {
+        Self::Result::output()
+    }
 }
 
 impl<'db> InferCtxt<'db> {
