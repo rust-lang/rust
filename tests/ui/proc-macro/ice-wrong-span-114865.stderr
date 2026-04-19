@@ -29,7 +29,7 @@ LL |     foo3!(r"abc" 字);
    |           ^^^^^^^^^
 
 error: 1 positional argument in format string, but no arguments were given
-  --> $DIR/ice-wrong-span-114865.rs:23:11
+  --> $DIR/ice-wrong-span-114865.rs:24:11
    |
 LL |     foo4!(r##"abcd"## 字);
    |           ^^^^^^^^^^^^^^

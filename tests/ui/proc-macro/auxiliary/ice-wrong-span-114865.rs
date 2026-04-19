@@ -5,66 +5,44 @@ extern crate proc_macro;
 use proc_macro::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
 use std::iter::FromIterator;
 
-/// Expands to a call to `println!` having a format string as its argument
-/// but with the format string's span set to that of the proc macro's input token
+/// Builds a `println!(<fmt_str>)` token stream with the given span on the format string literal.
+fn make_println(fmt_str: &str, span: Span) -> TokenStream {
+    let mut lit: Literal = fmt_str.parse().unwrap();
+    lit.set_span(span);
+    FromIterator::<TokenTree>::from_iter([
+        Ident::new("println", Span::mixed_site()).into(),
+        Punct::new('!', Spacing::Alone).into(),
+        Group::new(Delimiter::Parenthesis, TokenTree::from(lit).into()).into(),
+    ])
+}
+
+/// Expands to `println!(r"{}")` with the span of the first input token.
 #[proc_macro]
 pub fn foo(input: TokenStream) -> TokenStream {
-    let token = input.into_iter().next().unwrap();
-    let mut lit: Literal = r#"r"{}""#.parse().unwrap();
-    lit.set_span(token.span());
-    FromIterator::<TokenTree>::from_iter([
-        Ident::new("println", Span::mixed_site()).into(),
-        Punct::new('!', Spacing::Alone).into(),
-        Group::new(Delimiter::Parenthesis, TokenTree::from(lit).into()).into(),
-    ])
+    let span = input.into_iter().next().unwrap().span();
+    make_println(r#"r"{}""#, span)
 }
 
-
-/// Same as `foo` but with the format string containing multiple `#`s
+/// Same as `foo` but with hashes: expands to `println!(r##"{}"##)`.
 #[proc_macro]
 pub fn foo2(input: TokenStream) -> TokenStream {
-    let token = input.into_iter().next().unwrap();
-    let mut lit: Literal = r###"r##"{}"##"###.parse().unwrap();
-    lit.set_span(token.span());
-    FromIterator::<TokenTree>::from_iter([
-        Ident::new("println", Span::mixed_site()).into(),
-        Punct::new('!', Spacing::Alone).into(),
-        Group::new(Delimiter::Parenthesis, TokenTree::from(lit).into()).into(),
-    ])
+    let span = input.into_iter().next().unwrap().span();
+    make_println(r###"r##"{}"##"###, span)
 }
 
-
-/// Same as `foo` but respans to a combination of two consecutive tokens.
-/// This makes possible scenarios where you can land on the second token
-/// which is a multi-byte char
+/// Expands to `println!(r"{}")` with a span joining two input tokens,
+/// creating a span whose source text may not be a valid raw string.
 #[proc_macro]
 pub fn foo3(input: TokenStream) -> TokenStream {
     let mut iter = input.into_iter();
-    let first = iter.next().unwrap();
-    let second = iter.next().unwrap();
-    let joined_span = first.span().join(second.span()).unwrap();
-    let mut lit: Literal = r#"r"{}""#.parse().unwrap();
-    lit.set_span(joined_span);
-    FromIterator::<TokenTree>::from_iter([
-        Ident::new("println", Span::mixed_site()).into(),
-        Punct::new('!', Spacing::Alone).into(),
-        Group::new(Delimiter::Parenthesis, TokenTree::from(lit).into()).into(),
-    ])
+    let span = iter.next().unwrap().span().join(iter.next().unwrap().span()).unwrap();
+    make_println(r#"r"{}""#, span)
 }
 
-
-/// Same as `foo3` but with hashes in the raw string literal
+/// Same as `foo3` but with hashes: expands to `println!(r##"{}"##)`.
 #[proc_macro]
 pub fn foo4(input: TokenStream) -> TokenStream {
     let mut iter = input.into_iter();
-    let first = iter.next().unwrap();
-    let second = iter.next().unwrap();
-    let joined_span = first.span().join(second.span()).unwrap();
-    let mut lit: Literal = r###"r##"{}"##"###.parse().unwrap();
-    lit.set_span(joined_span);
-    FromIterator::<TokenTree>::from_iter([
-        Ident::new("println", Span::mixed_site()).into(),
-        Punct::new('!', Spacing::Alone).into(),
-        Group::new(Delimiter::Parenthesis, TokenTree::from(lit).into()).into(),
-    ])
+    let span = iter.next().unwrap().span().join(iter.next().unwrap().span()).unwrap();
+    make_println(r###"r##"{}"##"###, span)
 }

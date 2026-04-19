@@ -20,5 +20,6 @@ fn main() {
     foo2!("r字字"); //~ ERROR 1 positional argument in format string, but no arguments were given
 
     foo3!(r"abc" 字); //~ ERROR 1 positional argument in format string, but no arguments were given
+
     foo4!(r##"abcd"## 字); //~ ERROR 1 positional argument in format string, but no arguments were given
 }
