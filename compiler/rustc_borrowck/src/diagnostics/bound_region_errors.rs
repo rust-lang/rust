@@ -14,7 +14,7 @@ use rustc_infer::traits::query::{
 };
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
-    self, RePlaceholder, Region, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex,
+    self, RePlaceholder, Region, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex, Unnormalized,
 };
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -275,7 +275,7 @@ where
         // the former fails to normalize the `nll/relate_tys/impl-fn-ignore-binder-via-bottom.rs`
         // test. Check after #85499 lands to see if its fixes have erased this difference.
         let ty::ParamEnvAnd { param_env, value } = key;
-        let _ = ocx.normalize(&cause, param_env, value.value);
+        let _ = ocx.normalize(&cause, param_env, Unnormalized::new_wip(value.value));
 
         let diag = try_extract_error_from_fulfill_cx(
             &ocx,
@@ -322,7 +322,7 @@ where
         let ocx = ObligationCtxt::new(&infcx);
 
         let ty::ParamEnvAnd { param_env, value } = key;
-        let _ = ocx.deeply_normalize(&cause, param_env, value.value);
+        let _ = ocx.deeply_normalize(&cause, param_env, Unnormalized::new_wip(value.value));
 
         let diag = try_extract_error_from_fulfill_cx(
             &ocx,

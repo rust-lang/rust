@@ -7,7 +7,7 @@ use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::print::with_forced_trimmed_paths;
-use rustc_middle::ty::{self, ExistentialPredicate, Ty};
+use rustc_middle::ty::{self, ExistentialPredicate, Ty, Unnormalized};
 use rustc_span::Span;
 
 /// Checks if the given type is `dyn Any`, or a trait object that has `Any` as a supertrait.
@@ -27,6 +27,7 @@ fn is_subtrait_of_any(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
                         .tcx
                         .explicit_super_predicates_of(tr.def_id)
                         .iter_identity_copied()
+                        .map(Unnormalized::skip_norm_wip)
                         .any(|(clause, _)| {
                             matches!(clause.kind().skip_binder(), ty::ClauseKind::Trait(super_tr)
                             if cx.tcx.is_diagnostic_item(sym::Any, super_tr.def_id()))

@@ -480,7 +480,7 @@ fn construct_fn<'tcx>(
     let arguments = &thir.params;
 
     let return_ty = fn_sig.output();
-    let coroutine = match tcx.type_of(fn_def).instantiate_identity().kind() {
+    let coroutine = match tcx.type_of(fn_def).instantiate_identity().skip_norm_wip().kind() {
         ty::Coroutine(_, args) => Some(Box::new(CoroutineInfo::initial(
             tcx.coroutine_kind(fn_def).unwrap(),
             args.as_coroutine().yield_ty(),
@@ -622,16 +622,18 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::Static { .. }
-        | DefKind::GlobalAsm => (vec![], tcx.type_of(def_id).instantiate_identity(), None),
+        | DefKind::GlobalAsm => {
+            (vec![], tcx.type_of(def_id).instantiate_identity().skip_norm_wip(), None)
+        }
         DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => {
             let sig = tcx.liberate_late_bound_regions(
                 def_id.to_def_id(),
-                tcx.fn_sig(def_id).instantiate_identity(),
+                tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip(),
             );
             (sig.inputs().to_vec(), sig.output(), None)
         }
         DefKind::Closure => {
-            let closure_ty = tcx.type_of(def_id).instantiate_identity();
+            let closure_ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
             match closure_ty.kind() {
                 ty::Closure(_, args) => {
                     let args = args.as_closure();
@@ -855,9 +857,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // https://github.com/rust-lang/rust/issues/149571
                     && self
                         .tcx
-                        .fn_sig(self.def_id)
-                        .instantiate_identity()
-                        .skip_binder()
+                        .fn_sig(self.def_id).instantiate_identity().skip_binder()
                         .output()
                         .is_inhabited_from(
                             self.tcx,

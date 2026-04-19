@@ -640,8 +640,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // Check whether one of the where-bounds requires the closure to impl `Fn[Mut]`
         // or `AsyncFn[Mut]`.
         for (pred, span) in predicates.predicates.iter().zip(predicates.spans.iter()) {
+            let pred = pred.skip_norm_wip();
             let dominated_by_fn_trait = self
-                .closure_clause_kind(*pred, def_id, asyncness)
+                .closure_clause_kind(pred, def_id, asyncness)
                 .is_some_and(|kind| matches!(kind, ty::ClosureKind::Fn | ty::ClosureKind::FnMut));
             if dominated_by_fn_trait {
                 // Found `<TyOfCapturingClosure as FnMut>` or

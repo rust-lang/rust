@@ -182,7 +182,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             }
         },
 
-        Node::OpaqueTy(..) => tcx.type_of_opaque(def_id).instantiate_identity(),
+        Node::OpaqueTy(..) => tcx.type_of_opaque(def_id).instantiate_identity().skip_norm_wip(),
 
         Node::ForeignItem(foreign_item) => match foreign_item.kind {
             ForeignItemKind::Fn(..) => {
@@ -205,7 +205,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
 
         Node::Ctor(def) | Node::Variant(Variant { data: def, .. }) => match def {
             VariantData::Unit(..) | VariantData::Struct { .. } => {
-                tcx.type_of(tcx.hir_get_parent_item(hir_id)).instantiate_identity()
+                tcx.type_of(tcx.hir_get_parent_item(hir_id)).instantiate_identity().skip_norm_wip()
             }
             VariantData::Tuple(_, _, ctor) => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
@@ -356,7 +356,7 @@ fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx
         Node::Field(&hir::FieldDef { default: Some(c), def_id: field_def_id, .. })
             if c.hir_id == hir_id =>
         {
-            tcx.type_of(field_def_id).instantiate_identity()
+            tcx.type_of(field_def_id).instantiate_identity().skip_norm_wip()
         }
 
         _ => Ty::new_error_with_message(
@@ -418,7 +418,7 @@ fn infer_placeholder_type<'tcx>(
     // which `type const`s don't.
     let ty = if tcx.is_type_const(def_id.to_def_id()) {
         if let Some(trait_item_def_id) = tcx.trait_item_of(def_id.to_def_id()) {
-            tcx.type_of(trait_item_def_id).instantiate_identity()
+            tcx.type_of(trait_item_def_id).instantiate_identity().skip_norm_wip()
         } else {
             Ty::new_error_with_message(
                 tcx,

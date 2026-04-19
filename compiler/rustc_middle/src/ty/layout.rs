@@ -24,7 +24,7 @@ use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::traits::ObligationCause;
 use crate::ty::normalize_erasing_regions::NormalizationError;
-use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{self, CoroutineArgsExt, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 
 #[extension(pub trait IntegerExt)]
 impl abi::Integer {
@@ -364,7 +364,9 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 let tail = tcx.struct_tail_raw(
                     pointee,
                     &ObligationCause::dummy(),
-                    |ty| match tcx.try_normalize_erasing_regions(typing_env, ty) {
+                    |ty| match tcx
+                        .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty))
+                    {
                         Ok(ty) => ty,
                         Err(e) => Ty::new_error_with_message(
                             tcx,
@@ -491,7 +493,8 @@ impl<'tcx> SizeSkeleton<'tcx> {
             }
 
             ty::Alias(..) => {
-                let normalized = tcx.normalize_erasing_regions(typing_env, ty);
+                let normalized =
+                    tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty));
                 if ty == normalized {
                     Err(err)
                 } else {
@@ -864,7 +867,7 @@ where
                     {
                         let metadata = tcx.normalize_erasing_regions(
                             cx.typing_env(),
-                            Ty::new_projection(tcx, metadata_def_id, [pointee]),
+                            Unnormalized::new(Ty::new_projection(tcx, metadata_def_id, [pointee])),
                         );
 
                         // Map `Metadata = DynMetadata<dyn Trait>` back to a vtable, since it

@@ -9,7 +9,7 @@ use rustc_type_ir::solve::{
 };
 use rustc_type_ir::{
     self as ty, FieldInfo, Interner, Movability, PredicatePolarity, TraitPredicate, TraitRef,
-    TypeVisitableExt as _, TypingMode, Upcast as _, elaborate,
+    TypeVisitableExt as _, TypingMode, Unnormalized, Upcast as _, elaborate,
 };
 use tracing::{debug, instrument, trace};
 
@@ -96,12 +96,13 @@ where
         ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id.into());
             ecx.record_impl_args(impl_args);
-            let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args);
+            let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args).skip_norm_wip();
 
             ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
             let where_clause_bounds = cx
                 .predicates_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
+                .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
 
@@ -112,6 +113,7 @@ where
                 GoalSource::Misc,
                 cx.impl_super_outlives(impl_def_id)
                     .iter_instantiated(cx, impl_args)
+                    .map(Unnormalized::skip_norm_wip)
                     .map(|pred| goal.with(cx, pred)),
             );
 
@@ -270,6 +272,7 @@ where
             let nested_obligations = cx
                 .predicates_of(goal.predicate.def_id().into())
                 .iter_instantiated(cx, goal.predicate.trait_ref.args)
+                .map(Unnormalized::skip_norm_wip)
                 .map(|p| goal.with(cx, p));
             // While you could think of trait aliases to have a single builtin impl
             // which uses its implied trait bounds as where-clauses, using
@@ -1181,8 +1184,8 @@ where
 
         let tail_field_ty = def.struct_tail_ty(cx).unwrap();
 
-        let a_tail_ty = tail_field_ty.instantiate(cx, a_args);
-        let b_tail_ty = tail_field_ty.instantiate(cx, b_args);
+        let a_tail_ty = tail_field_ty.instantiate(cx, a_args).skip_norm_wip();
+        let b_tail_ty = tail_field_ty.instantiate(cx, b_args).skip_norm_wip();
 
         // Instantiate just the unsizing params from B into A. The type after
         // this instantiation must be equal to B. This is so we don't unsize

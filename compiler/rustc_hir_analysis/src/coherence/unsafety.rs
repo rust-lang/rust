@@ -18,7 +18,7 @@ pub(super) fn check_item(
 ) -> Result<(), ErrorGuaranteed> {
     let unsafe_attr =
         tcx.generics_of(def_id).own_params.iter().find(|p| p.pure_wrt_drop).map(|_| "may_dangle");
-    let trait_ref = trait_header.trait_ref.instantiate_identity();
+    let trait_ref = trait_header.trait_ref.instantiate_identity().skip_norm_wip();
 
     let is_copy = tcx.is_lang_item(trait_def.def_id, LangItem::Copy);
     let trait_def_safety = if is_copy {

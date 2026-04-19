@@ -75,7 +75,8 @@ fn generic_arg_mismatch_err(
             Res::Def(DefKind::TyParam, src_def_id) => {
                 if let Some(param_local_id) = param.def_id.as_local() {
                     let param_name = tcx.hir_ty_param_name(param_local_id);
-                    let param_type = tcx.type_of(param.def_id).instantiate_identity();
+                    let param_type =
+                        tcx.type_of(param.def_id).instantiate_identity().skip_norm_wip();
                     if param_type.is_suggestable(tcx, false) {
                         err.span_suggestion_verbose(
                             tcx.def_span(src_def_id),

@@ -170,8 +170,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     {
                         let fn_sig = this.tcx.instantiate_bound_regions_with_erased(
                             this.tcx
-                                .fn_sig(instance.def_id())
-                                .instantiate(*this.tcx, instance.args),
+                                .fn_sig(instance.def_id()).instantiate(*this.tcx, instance.args).skip_norm_wip(),
                         );
                         let fn_ptr = crate::shims::native_lib::build_libffi_closure(this, fn_sig)?;
 

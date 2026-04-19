@@ -14,7 +14,7 @@ use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{
     self, ClosureKind, FnSigKind, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    TypeVisitableExt, TypeVisitor, Unnormalized,
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span};
@@ -302,6 +302,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx
                         .explicit_item_self_bounds(def_id)
                         .iter_instantiated_copied(self.tcx, args)
+                        .map(Unnormalized::skip_norm_wip)
                         .map(|(c, s)| (c.as_predicate(), s)),
                 ),
             ty::Dynamic(object_type, ..) => {
@@ -364,11 +365,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 let inferred_sig = self.normalize(
                     span,
-                    self.deduce_sig_from_projection(
+                    Unnormalized::new_wip(self.deduce_sig_from_projection(
                         Some(span),
                         closure_kind,
                         bound_predicate.rebind(proj_predicate),
-                    ),
+                    )),
                 );
 
                 // Make sure that we didn't infer a signature that mentions itself.
@@ -945,7 +946,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
 
         // Normalize only after registering in `user_provided_sigs`.
-        self.normalize(self.tcx.def_span(expr_def_id), result)
+        self.normalize(self.tcx.def_span(expr_def_id), Unnormalized::new_wip(result))
     }
 
     /// Invoked when we are translating the coroutine that results
@@ -1001,6 +1002,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .tcx
                 .explicit_item_self_bounds(def_id)
                 .iter_instantiated_copied(self.tcx, args)
+                .map(Unnormalized::skip_norm_wip)
                 .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             ty::Error(_) => return Some(ret_ty),
             _ => {
@@ -1008,7 +1010,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        let output_ty = self.normalize(closure_span, output_ty);
+        let output_ty = self.normalize(closure_span, Unnormalized::new_wip(output_ty));
 
         // async fn that have opaque types in their return type need to redo the conversion to inference variables
         // as they fetch the still opaque version from the signature.
@@ -1113,7 +1115,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> ClosureSignatures<'tcx> {
         let liberated_sig =
             self.tcx().liberate_late_bound_regions(expr_def_id.to_def_id(), bound_sig);
-        let liberated_sig = self.normalize(self.tcx.def_span(expr_def_id), liberated_sig);
+        let liberated_sig =
+            self.normalize(self.tcx.def_span(expr_def_id), Unnormalized::new_wip(liberated_sig));
         ClosureSignatures { bound_sig, liberated_sig }
     }
 }

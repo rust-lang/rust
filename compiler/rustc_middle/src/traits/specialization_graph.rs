@@ -248,7 +248,9 @@ pub fn ancestors(
 ) -> Result<Ancestors<'_>, ErrorGuaranteed> {
     let specialization_graph = tcx.specialization_graph_of(trait_def_id)?;
 
-    if let Err(reported) = tcx.type_of(start_from_impl).instantiate_identity().error_reported() {
+    if let Err(reported) =
+        tcx.type_of(start_from_impl).instantiate_identity().skip_normalization().error_reported()
+    {
         Err(reported)
     } else {
         Ok(Ancestors {

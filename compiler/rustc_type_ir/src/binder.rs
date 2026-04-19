@@ -16,7 +16,7 @@ use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldabl
 use crate::inherent::*;
 use crate::lift::Lift;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex};
+use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex, Unnormalized};
 
 /// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
@@ -459,8 +459,8 @@ where
 
     /// Similar to [`instantiate_identity`](EarlyBinder::instantiate_identity),
     /// but on an iterator of `TypeFoldable` values.
-    pub fn iter_identity(self) -> Iter::IntoIter {
-        self.value.into_iter()
+    pub fn iter_identity(self) -> impl Iterator<Item = Unnormalized<I, Iter::Item>> {
+        self.value.into_iter().map(Unnormalized::new)
     }
 }
 
@@ -475,7 +475,7 @@ where
     Iter::Item: TypeFoldable<I>,
     A: SliceLike<Item = I::GenericArg>,
 {
-    type Item = Iter::Item;
+    type Item = Unnormalized<I, Iter::Item>;
 
     fn next(&mut self) -> Option<Self::Item> {
         Some(
@@ -526,8 +526,8 @@ where
 
     /// Similar to [`instantiate_identity`](EarlyBinder::instantiate_identity),
     /// but on an iterator of values that deref to a `TypeFoldable`.
-    pub fn iter_identity_copied(self) -> IterIdentityCopied<Iter> {
-        IterIdentityCopied { it: self.value.into_iter() }
+    pub fn iter_identity_copied(self) -> IterIdentityCopied<I, Iter> {
+        IterIdentityCopied { it: self.value.into_iter(), _tcx: PhantomData }
     }
 }
 
@@ -542,7 +542,7 @@ where
     Iter::Item: Deref,
     <Iter::Item as Deref>::Target: Copy + TypeFoldable<I>,
 {
-    type Item = <Iter::Item as Deref>::Target;
+    type Item = Unnormalized<I, <Iter::Item as Deref>::Target>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.it.next().map(|value| {
@@ -576,19 +576,20 @@ where
 {
 }
 
-pub struct IterIdentityCopied<Iter: IntoIterator> {
+pub struct IterIdentityCopied<I: Interner, Iter: IntoIterator> {
     it: Iter::IntoIter,
+    _tcx: PhantomData<fn() -> I>,
 }
 
-impl<Iter: IntoIterator> Iterator for IterIdentityCopied<Iter>
+impl<I: Interner, Iter: IntoIterator> Iterator for IterIdentityCopied<I, Iter>
 where
     Iter::Item: Deref,
     <Iter::Item as Deref>::Target: Copy,
 {
-    type Item = <Iter::Item as Deref>::Target;
+    type Item = Unnormalized<I, <Iter::Item as Deref>::Target>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.it.next().map(|i| *i)
+        self.it.next().map(|i| Unnormalized::new(*i))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -596,18 +597,18 @@ where
     }
 }
 
-impl<Iter: IntoIterator> DoubleEndedIterator for IterIdentityCopied<Iter>
+impl<I: Interner, Iter: IntoIterator> DoubleEndedIterator for IterIdentityCopied<I, Iter>
 where
     Iter::IntoIter: DoubleEndedIterator,
     Iter::Item: Deref,
     <Iter::Item as Deref>::Target: Copy,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.it.next_back().map(|i| *i)
+        self.it.next_back().map(|i| Unnormalized::new(*i))
     }
 }
 
-impl<Iter: IntoIterator> ExactSizeIterator for IterIdentityCopied<Iter>
+impl<I: Interner, Iter: IntoIterator> ExactSizeIterator for IterIdentityCopied<I, Iter>
 where
     Iter::IntoIter: ExactSizeIterator,
     Iter::Item: Deref,
@@ -638,7 +639,7 @@ impl<I: Interner, T: Iterator> Iterator for EarlyBinderIter<I, T> {
 }
 
 impl<I: Interner, T: TypeFoldable<I>> ty::EarlyBinder<I, T> {
-    pub fn instantiate<A>(self, cx: I, args: A) -> T
+    pub fn instantiate<A>(self, cx: I, args: A) -> Unnormalized<I, T>
     where
         A: SliceLike<Item = I::GenericArg>,
     {
@@ -651,10 +652,10 @@ impl<I: Interner, T: TypeFoldable<I>> ty::EarlyBinder<I, T> {
                 "{:?} has parameters, but no args were provided in instantiate",
                 self.value,
             );
-            return self.value;
+            return Unnormalized::new(self.value);
         }
         let mut folder = ArgFolder { cx, args: args.as_slice(), binders_passed: 0 };
-        self.value.fold_with(&mut folder)
+        Unnormalized::new(self.value.fold_with(&mut folder))
     }
 
     /// Makes the identity replacement `T0 => T0, ..., TN => TN`.
@@ -665,8 +666,16 @@ impl<I: Interner, T: TypeFoldable<I>> ty::EarlyBinder<I, T> {
     /// - Outside of `foo`, `T` is bound (represented by the presence of `EarlyBinder`).
     /// - Inside of the body of `foo`, we treat `T` as a placeholder by calling
     /// `instantiate_identity` to discharge the `EarlyBinder`.
-    pub fn instantiate_identity(self) -> T {
-        self.value
+    pub fn instantiate_identity(self) -> Unnormalized<I, T> {
+        // FIXME(#155345): In case the bound value was already normalized, this
+        // is unnecessary. We may want to track explicitly whether `EarlyBinder`
+        // contains something that has been normalized already.
+        // Also do that for other types who have `instantiate_identity` method,
+        // e.g., `GenericPredicates` and `ConstConditions`.
+        //
+        // This is annoying, as e.g. `type_of` for opaque types is normalized,
+        // while `type_of` for free type aliases is not.
+        Unnormalized::new(self.value)
     }
 
     /// Returns the inner value, but only if it contains no bound vars.

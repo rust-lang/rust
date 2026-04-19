@@ -27,7 +27,7 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, Instance, PatternKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, PatternKind, Ty, TyCtxt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType};
@@ -519,9 +519,10 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = cx
-            .tcx()
-            .normalize_erasing_regions(cx.typing_env(), main_ret_ty.no_bound_vars().unwrap());
+        let main_ret_ty = cx.tcx().normalize_erasing_regions(
+            cx.typing_env(),
+            Unnormalized::new_wip(main_ret_ty.no_bound_vars().unwrap()),
+        );
 
         let Some(llfn) = cx.declare_c_main(llfty) else {
             // FIXME: We should be smart and show a better diagnostic here.

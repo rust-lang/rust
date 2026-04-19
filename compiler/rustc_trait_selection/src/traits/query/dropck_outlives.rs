@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_infer::traits::query::type_op::DropckOutlives;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
-use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt, Unnormalized};
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
@@ -208,7 +208,7 @@ where
                 // reason that we could use to report an error in borrowck. In order to turn
                 // this into a reportable error, we deeply normalize again. We don't expect
                 // this to succeed, so delay a bug if it does.
-                match ocx.deeply_normalize(&cause, param_env, ty) {
+                match ocx.deeply_normalize(&cause, param_env, Unnormalized::new_wip(ty)) {
                     Ok(_) => {
                         tcx.dcx().span_delayed_bug(
                             span,
@@ -388,15 +388,21 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
                 tcx.at(span).adt_dtorck_constraint(def.did());
             // FIXME: we can try to recursively `dtorck_constraint_on_ty`
             // there, but that needs some way to handle cycles.
-            constraints
-                .dtorck_types
-                .extend(dtorck_types.iter().map(|t| EarlyBinder::bind(*t).instantiate(tcx, args)));
-            constraints
-                .outlives
-                .extend(outlives.iter().map(|t| EarlyBinder::bind(*t).instantiate(tcx, args)));
-            constraints
-                .overflows
-                .extend(overflows.iter().map(|t| EarlyBinder::bind(*t).instantiate(tcx, args)));
+            constraints.dtorck_types.extend(
+                dtorck_types
+                    .iter()
+                    .map(|t| EarlyBinder::bind(*t).instantiate(tcx, args).skip_norm_wip()),
+            );
+            constraints.outlives.extend(
+                outlives
+                    .iter()
+                    .map(|t| EarlyBinder::bind(*t).instantiate(tcx, args).skip_norm_wip()),
+            );
+            constraints.overflows.extend(
+                overflows
+                    .iter()
+                    .map(|t| EarlyBinder::bind(*t).instantiate(tcx, args).skip_norm_wip()),
+            );
         }
 
         // Objects must be alive in order for their destructor

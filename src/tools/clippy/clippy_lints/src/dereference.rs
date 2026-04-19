@@ -6,6 +6,7 @@ use clippy_utils::ty::{adjust_derefs_manually_drop, implements_trait, is_manuall
 use clippy_utils::{
     DefinedTy, ExprUseNode, get_expr_use_site, get_parent_expr, is_block_like, is_from_proc_macro, is_lint_allowed, sym,
 };
+use rustc_middle::ty::Unnormalized;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
@@ -381,7 +382,7 @@ impl<'tcx> LateLintPass<'tcx> for Dereferencing<'tcx> {
                                     && let args =
                                         typeck.node_args_opt(hir_id).map(|args| &args[1..]).unwrap_or_default()
                                     && let impl_ty =
-                                        if cx.tcx.fn_sig(fn_id).instantiate_identity().skip_binder().inputs()[0]
+                                        if cx.tcx.fn_sig(fn_id).instantiate_identity().skip_norm_wip().skip_binder().inputs()[0]
                                             .is_ref()
                                         {
                                             // Trait methods taking `&self`
@@ -876,7 +877,7 @@ impl TyCoercionStability {
 
         if let Some(def_id) = def_site_def_id {
             let typing_env = ty::TypingEnv::non_body_analysis(tcx, def_id);
-            ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+            ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
         }
         loop {
             break match *ty.kind() {

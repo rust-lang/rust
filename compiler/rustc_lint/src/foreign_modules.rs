@@ -123,7 +123,7 @@ impl ClashingExternDeclarations {
         let Some(existing_did) = self.insert(tcx, this_fi) else { return };
 
         let existing_decl_ty = tcx.type_of(existing_did).skip_binder();
-        let this_decl_ty = tcx.type_of(this_fi.owner_id).instantiate_identity();
+        let this_decl_ty = tcx.type_of(this_fi.owner_id).instantiate_identity().skip_norm_wip();
         debug!(
             "ClashingExternDeclarations: Comparing existing {:?}: {:?} to this {:?}: {:?}",
             existing_did, existing_decl_ty, this_fi.owner_id, this_decl_ty
@@ -297,8 +297,8 @@ fn structurally_same_type_impl<'tcx>(
                                 seen_types,
                                 tcx,
                                 typing_env,
-                                tcx.type_of(a_did).instantiate(tcx, a_gen_args),
-                                tcx.type_of(b_did).instantiate(tcx, b_gen_args),
+                                tcx.type_of(a_did).instantiate(tcx, a_gen_args).skip_norm_wip(),
+                                tcx.type_of(b_did).instantiate(tcx, b_gen_args).skip_norm_wip(),
                             )
                         },
                     )
