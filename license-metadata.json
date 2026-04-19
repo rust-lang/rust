@@ -28,7 +28,7 @@
                     "license": {
                       "copyright": [
                         "2007-2011 Atheros Communications Inc",
-                        "2011-2012,2017 Qualcomm Atheros, Inc",
+                        "2011-2012, 2017 Qualcomm Atheros, Inc",
                         "2016-2017 Erik Stromdahl <erik.stromdahl@gmail.com>"
                       ],
                       "spdx": "ISC"
@@ -256,6 +256,17 @@
               "spdx": "Apache-2.0 WITH LLVM-exception AND NCSA"
             },
             "name": "src/llvm-project",
+            "type": "directory"
+          },
+          {
+            "children": [],
+            "license": {
+              "copyright": [
+                "The syscalls Project Developers"
+              ],
+              "spdx": "BSD-2-Clause"
+            },
+            "name": "vendor",
             "type": "directory"
           }
         ],
