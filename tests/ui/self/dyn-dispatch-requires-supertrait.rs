@@ -3,8 +3,8 @@
 #![feature(derive_coerce_pointee)]
 #![feature(arbitrary_self_types)]
 
-use std::ops::Deref;
 use std::marker::CoercePointee;
+use std::ops::{Deref, Receiver};
 use std::sync::Arc;
 
 trait MyTrait {}
@@ -15,7 +15,7 @@ struct MyArc<T>
 where
     T: MyTrait + ?Sized,
 {
-    inner: Arc<T>
+    inner: Arc<T>,
 }
 
 impl<T: MyTrait + ?Sized> Deref for MyArc<T> {
@@ -23,6 +23,9 @@ impl<T: MyTrait + ?Sized> Deref for MyArc<T> {
     fn deref(&self) -> &T {
         &self.inner
     }
+}
+impl<T: MyTrait + ?Sized> Receiver for MyArc<T> {
+    type Target = T;
 }
 
 // Proving that `MyArc<Self>` is dyn-dispatchable requires proving `MyArc<T>` implements
