@@ -43,10 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            &AttributeLintKind::DocAutoCfgHideShowUnexpectedItem { attr_name } => {
-                lints::DocAutoCfgHideShowUnexpectedItem { attr_name }.into_diag(dcx, level)
-            }
-
             &AttributeLintKind::DocAutoCfgHideShowExpectsList { attr_name } => {
                 lints::DocAutoCfgHideShowExpectsList { attr_name }.into_diag(dcx, level)
             }

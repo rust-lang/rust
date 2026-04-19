@@ -656,7 +656,6 @@ pub enum DeprecatedSinceKind {
 pub enum AttributeLintKind {
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
-    DocAutoCfgHideShowUnexpectedItem { attr_name: Symbol },
     DocAutoCfgHideShowExpectsList { attr_name: Symbol },
     DocInvalid,
     DocUnknownInclude { span: Span, inner: &'static str, value: Symbol },

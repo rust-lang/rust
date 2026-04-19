@@ -13,7 +13,10 @@ use thin_vec::ThinVec;
 use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
-use crate::errors::{DocAliasDuplicated, DocAutoCfgExpectsHideOrShow, IllFormedAttributeInput};
+use crate::errors::{
+    DocAliasDuplicated, DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowUnexpectedItem,
+    IllFormedAttributeInput,
+};
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
     DocAliasBadChar, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd, DocAttrNotCrateLevel,
@@ -376,9 +379,12 @@ impl DocParser {
 
                     for item in list.mixed() {
                         let MetaItemOrLitParser::MetaItemParser(sub_item) = item else {
-                            cx.emit_lint(
+                            cx.emit_dyn_lint(
                                 rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                                AttributeLintKind::DocAutoCfgHideShowUnexpectedItem { attr_name },
+                                move |dcx, level| {
+                                    DocAutoCfgHideShowUnexpectedItem { attr_name }
+                                        .into_diag(dcx, level)
+                                },
                                 item.span(),
                             );
                             continue;
@@ -416,10 +422,11 @@ impl DocParser {
                                 }
                             }
                             _ => {
-                                cx.emit_lint(
+                                cx.emit_dyn_lint(
                                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                                    AttributeLintKind::DocAutoCfgHideShowUnexpectedItem {
-                                        attr_name,
+                                    move |dcx, level| {
+                                        DocAutoCfgHideShowUnexpectedItem { attr_name }
+                                            .into_diag(dcx, level)
                                     },
                                     sub_item.span(),
                                 );
