@@ -413,7 +413,10 @@ fn completion_item(
         item.import_to_add
             .clone()
             .into_iter()
-            .map(|import_path| lsp_ext::CompletionImport { full_import_path: import_path })
+            .map(|import| lsp_ext::CompletionImport {
+                full_import_path: import.path,
+                as_underscore: import.as_underscore,
+            })
             .collect()
     } else {
         Vec::new()

@@ -258,6 +258,9 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: ast::Meta) -> ControlFlow<
                 Some(second_segment) => match &*first_segment {
                     "rust_analyzer" => match &*second_segment {
                         "skip" => attr_flags.insert(AttrFlags::RUST_ANALYZER_SKIP),
+                        "prefer_underscore_import" => {
+                            attr_flags.insert(AttrFlags::PREFER_UNDERSCORE_IMPORT)
+                        }
                         _ => {}
                     },
                     _ => {}
@@ -330,6 +333,8 @@ bitflags::bitflags! {
         const MACRO_STYLE_BRACES = 1 << 46;
         const MACRO_STYLE_BRACKETS = 1 << 47;
         const MACRO_STYLE_PARENTHESES = 1 << 48;
+
+        const PREFER_UNDERSCORE_IMPORT = 1 << 49;
     }
 }
 
