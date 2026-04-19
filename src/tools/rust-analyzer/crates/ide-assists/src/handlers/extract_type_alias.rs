@@ -1,6 +1,6 @@
 use either::Either;
 use hir::HirDisplay;
-use ide_db::syntax_helpers::node_ext::walk_ty;
+use ide_db::syntax_helpers::{node_ext::walk_ty, suggest_name::NameGenerator};
 use syntax::{
     ast::{self, AstNode, HasGenericArgs, HasGenericParams, HasName, edit::IndentLevel},
     syntax_editor,
@@ -40,9 +40,10 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     );
     let target = ty.syntax().text_range();
 
+    let scope = ctx.sema.scope(ty.syntax())?;
     let resolved_ty = ctx.sema.resolve_type(&ty)?;
     let resolved_ty = if !resolved_ty.contains_unknown() {
-        let module = ctx.sema.scope(ty.syntax())?.module();
+        let module = scope.module();
         resolved_ty.display_source_code(ctx.db(), module.into(), false).ok()?
     } else {
         ty.to_string()
@@ -57,6 +58,7 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             let make = editor.make();
 
             let resolved_ty = make.ty(&resolved_ty);
+            let name = &NameGenerator::new_from_scope_non_locals(Some(scope)).suggest_name("Type");
 
             let mut known_generics = match item.generic_param_list() {
                 Some(it) => it.generic_params().collect(),
@@ -75,15 +77,15 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
             // Replace original type with the alias
             let ty_args = generic_params.as_ref().map(|it| it.to_generic_args().generic_args());
             let new_ty = if let Some(ty_args) = ty_args {
-                make.generic_ty_path_segment(make.name_ref("Type"), ty_args)
+                make.generic_ty_path_segment(make.name_ref(name), ty_args)
             } else {
-                make.path_segment(make.name_ref("Type"))
+                make.path_segment(make.name_ref(name))
             };
             editor.replace(ty.syntax(), new_ty.syntax());
 
             // Insert new alias
             let ty_alias =
-                make.ty_alias(None, "Type", generic_params, None, None, Some((resolved_ty, None)));
+                make.ty_alias(None, name, generic_params, None, None, Some((resolved_ty, None)));
 
             if let Some(cap) = ctx.config.snippet_cap
                 && let Some(name) = ty_alias.name()
@@ -446,5 +448,42 @@ fn main() {
 }
             "#,
         )
+    }
+
+    #[test]
+    fn duplicate_names() {
+        check_assist(
+            extract_type_alias,
+            r"
+struct Type;
+struct S {
+    field: $0u8$0,
+}
+            ",
+            r#"
+struct Type;
+type $0Type1 = u8;
+
+struct S {
+    field: Type1,
+}
+            "#,
+        );
+
+        check_assist(
+            extract_type_alias,
+            r"
+struct S<Type> {
+    field: $0u8$0,
+}
+            ",
+            r#"
+type $0Type1 = u8;
+
+struct S<Type> {
+    field: Type1,
+}
+            "#,
+        );
     }
 }
