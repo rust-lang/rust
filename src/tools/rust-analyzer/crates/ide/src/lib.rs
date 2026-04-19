@@ -64,6 +64,7 @@ use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
 use hir::{ChangeWithProcMacros, EditionedFileId, crate_def_map, sym};
 use ide_db::base_db::relevant_crates;
+use ide_db::base_db::salsa::Durability;
 use ide_db::line_index;
 use ide_db::ra_fixture::RaFixtureAnalysis;
 use ide_db::{
@@ -203,10 +204,18 @@ impl AnalysisHost {
         self.db.per_query_memory_usage()
     }
     pub fn trigger_cancellation(&mut self) {
-        self.db.trigger_cancellation();
+        // We need to do a synthetic write right now due to how fixpoint cycles handle cancellation
+        // the revision bump there is a reset marker for clearing fixpoint poisoning.
+        // That is `trigger_cancellation` is currently bugged wrt to cancellation.
+        // self.db.trigger_cancellation();
+        self.db.synthetic_write(Durability::LOW);
     }
     pub fn trigger_garbage_collection(&mut self) {
-        self.db.trigger_lru_eviction();
+        // We need to do a synthetic write right now due to how fixpoint cycles handle cancellation
+        // the revision bump there is a reset marker for clearing fixpoint poisoning.
+        // That is `trigger_lru_eviction` is currently bugged wrt to cancellation.
+        // self.db.trigger_lru_eviction();
+        self.db.synthetic_write(Durability::LOW);
         // SAFETY: `trigger_lru_eviction` triggers cancellation, so all running queries were canceled.
         unsafe { hir::collect_ty_garbage() };
     }
