@@ -6,7 +6,7 @@
 
 The `rustc_private` feature allows external crates to use compiler internals.
 
-### Using `rustc-private` with Official Toolchains
+### Using `rustc_private` with Official Toolchains
 
 When using the `rustc_private` feature with official Rust toolchains distributed via rustup, you need to install two additional components:
 
@@ -70,6 +70,20 @@ When developing out-of-tree projects that use `rustc_private` crates, you can co
    ```
 
 This configuration allows `rust-analyzer` to properly recognize and provide IDE support for `rustc_private` crates in out-of-tree projects. 
+
+### Getting Specific Nightly Documentation for `rustc_private`
+
+The nightly-rustc internal crates' documentation is only available for the latest nightly. If you depend on compiler internals from an older nightly, you may want to refer to the internal documentation from that particular nightly. The only way to do this is to generate the documentation locally. For example, to get documentation for `nightly-2025-11-08`:
+
+Get the Git commit hash for that nightly:
+
+```sh
+rustup toolchain install nightly-2025-11-08
+rustc +nightly-2025-11-08 --version --verbose
+```
+
+The output will include a `commit-hash` line identifying the exact source revision. Check out `rust-lang/rust` at that commit, then follow the steps in [compiler documentation](../building/compiler-documenting.md).
+
 
 ### Additional Resources
 
