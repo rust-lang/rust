@@ -232,19 +232,15 @@ where
         None => String::new(),
     };
 
-    anyhow::ensure!(
-        result,
-        "\
-        \n    input:    {input:?} {ibits}\
-        \n    expected: {expected:<22?} {expbits}\
-        \n    actual:   {actual:<22?} {actbits}\
-        \n    {msg}\
-        ",
-        actbits = Hex(actual),
-        expbits = Hex(expected),
-        ibits = Hex(input),
-        msg = make_xfail_msg()
-    );
+    if !result {
+        bail!(make_error_message(
+            input,
+            expected,
+            actual,
+            "",
+            &make_xfail_msg()
+        ));
+    }
 
     Ok(())
 }
@@ -360,23 +356,7 @@ where
         }
     }
 
-    res.with_context(|| {
-        format!(
-            "\
-            \n    input:    {input:?}\
-            \n    as hex:   {ihex}\
-            \n    as bits:  {ibits}\
-            \n    expected: {expected:<22?} {exphex} {expbits}\
-            \n    actual:   {actual:<22?} {acthex} {actbits}\
-            ",
-            ihex = Hex(input),
-            ibits = Hex(input),
-            exphex = Hex(expected),
-            expbits = Hex(expected),
-            actbits = Hex(actual),
-            acthex = Hex(actual),
-        )
-    })
+    res.with_context(|| make_error_message(input, expected, actual, "", ""))
 }
 
 impl_float!(f32, f64);
@@ -397,28 +377,25 @@ macro_rules! impl_tuples {
             where
                 Input: Copy + DisplayHex + fmt::Debug,
                 SpecialCase: MaybeOverride<Input>,
-              {
+            {
                 fn validate<'a>(
                     self,
                     expected: Self,
                     input: Input,
                     ctx: &CheckCtx,
                 ) -> TestResult {
-                    self.0.validate(expected.0, input, ctx)
+                    self.0
+                        .validate(expected.0, input, ctx)
                         .and_then(|()| self.1.validate(expected.1, input, ctx))
-                        .with_context(|| format!(
-                            "full context:\
-                            \n    input:    {input:?} {ibits}\
-                            \n    as hex:   {ihex}\
-                            \n    as bits:  {ibits}\
-                            \n    expected: {expected:?} {expbits}\
-                            \n    actual:   {self:?} {actbits}\
-                            ",
-                            ihex = Hex(input),
-                            ibits = Hex(input),
-                            expbits = Hex(expected),
-                            actbits = Hex(self),
-                        ))
+                        .with_context(|| {
+                            make_error_message(
+                                input,
+                                expected,
+                                self,
+                                "full context:",
+                                "",
+                            )
+                        })
                 }
             }
         )*
@@ -459,3 +436,33 @@ impl_tuples!(
     (f128, i32);
     (f128, f128);
 );
+
+fn make_error_message<I, E, A>(
+    input: I,
+    expected: E,
+    actual: A,
+    pre_msg: &str,
+    post_msg: &str,
+) -> String
+where
+    I: Copy + fmt::Debug + DisplayHex,
+    E: Copy + fmt::Debug + DisplayHex,
+    A: Copy + fmt::Debug + DisplayHex,
+{
+    let pre_pad = if pre_msg.is_empty() { "" } else { "\n    " };
+    let post_pad = if post_msg.is_empty() { "" } else { "\n    " };
+    format!(
+        "\
+        {pre_pad}{pre_msg}\
+        \n    input:    {input:?}\
+        \n    as hex:   {ihex}\
+        \n    as bits:  {ihex:-}\
+        \n    expected: {expected:<16?}    {exphex}   {exphex:-}\
+        \n    actual:   {actual:<16?}    {acthex}   {acthex:-}\
+        {post_pad}{post_msg}\
+        ",
+        ihex = Hex(input),
+        exphex = Hex(expected),
+        acthex = Hex(actual),
+    )
+}

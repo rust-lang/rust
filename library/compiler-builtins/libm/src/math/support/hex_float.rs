@@ -378,7 +378,8 @@ mod hex_fmt {
     }
 
     /// Types that can be formatted as hex via `Hex`. For ints we always print with a fixed
-    /// number of leading zeros. For floats we use the IEEE hex (`%a`) representation.
+    /// number of leading zeros. For floats we use the IEEE hex (`%a`) representation. The `-`
+    /// format modifier is used to print the integer hex representation rather than hex float.
     pub trait DisplayHex {
         #[allow(unused)] // Only used for tests and public test internals
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result;
@@ -408,7 +409,11 @@ mod hex_fmt {
 
     impl<F: Float> DisplayHex for F {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            fmt_any_hex(self, f)
+            if f.sign_minus() {
+                self.to_bits().fmt(f)
+            } else {
+                fmt_any_hex(self, f)
+            }
         }
     }
 
@@ -459,7 +464,9 @@ mod hex_fmt {
         T1: Copy + DisplayHex,
     {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "({},)", Hex(self.0))
+            write!(f, "(")?;
+            self.0.fmt(f)?;
+            write!(f, ",)")
         }
     }
 
@@ -469,7 +476,11 @@ mod hex_fmt {
         T2: Copy + DisplayHex,
     {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "({}, {})", Hex(self.0), Hex(self.1))
+            write!(f, "(")?;
+            self.0.fmt(f)?;
+            write!(f, ", ")?;
+            self.1.fmt(f)?;
+            write!(f, ")")
         }
     }
 
@@ -480,7 +491,13 @@ mod hex_fmt {
         T3: Copy + DisplayHex,
     {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "({}, {}, {})", Hex(self.0), Hex(self.1), Hex(self.2))
+            write!(f, "(")?;
+            self.0.fmt(f)?;
+            write!(f, ", ")?;
+            self.1.fmt(f)?;
+            write!(f, ", ")?;
+            self.2.fmt(f)?;
+            write!(f, ")")
         }
     }
 }
