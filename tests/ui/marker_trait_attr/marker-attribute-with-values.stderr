@@ -3,27 +3,42 @@ error[E0565]: malformed `marker` attribute input
    |
 LL | #[marker(always)]
    | ^^^^^^^^--------^
-   | |       |
-   | |       didn't expect any arguments here
-   | help: must be of the form: `#[marker]`
+   |         |
+   |         didn't expect any arguments here
+   |
+help: must be of the form
+   |
+LL - #[marker(always)]
+LL + #[marker]
+   |
 
 error[E0565]: malformed `marker` attribute input
   --> $DIR/marker-attribute-with-values.rs:6:1
    |
 LL | #[marker("never")]
    | ^^^^^^^^---------^
-   | |       |
-   | |       didn't expect any arguments here
-   | help: must be of the form: `#[marker]`
+   |         |
+   |         didn't expect any arguments here
+   |
+help: must be of the form
+   |
+LL - #[marker("never")]
+LL + #[marker]
+   |
 
 error[E0565]: malformed `marker` attribute input
   --> $DIR/marker-attribute-with-values.rs:9:1
    |
 LL | #[marker(key = "value")]
    | ^^^^^^^^---------------^
-   | |       |
-   | |       didn't expect any arguments here
-   | help: must be of the form: `#[marker]`
+   |         |
+   |         didn't expect any arguments here
+   |
+help: must be of the form
+   |
+LL - #[marker(key = "value")]
+LL + #[marker]
+   |
 
 error: aborting due to 3 previous errors
 

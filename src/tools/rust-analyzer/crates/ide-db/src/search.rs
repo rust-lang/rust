@@ -7,7 +7,7 @@
 use std::mem;
 use std::{cell::LazyCell, cmp::Reverse};
 
-use base_db::{RootQueryDb, SourceDatabase};
+use base_db::{SourceDatabase, all_crates};
 use either::Either;
 use hir::{
     Adt, AsAssocItem, DefWithBody, EditionedFileId, ExpressionStoreOwner, FileRange,
@@ -161,7 +161,7 @@ impl SearchScope {
     fn crate_graph(db: &RootDatabase) -> SearchScope {
         let mut entries = FxHashMap::default();
 
-        let all_crates = db.all_crates();
+        let all_crates = all_crates(db);
         for &krate in all_crates.iter() {
             let crate_data = krate.data(db);
             let source_root = db.file_source_root(crate_data.root_file_id).source_root_id(db);

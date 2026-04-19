@@ -8,7 +8,7 @@ use rustc_middle::span_bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::elaborate::elaborate;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, Ty, TypingMode};
+use rustc_middle::ty::{self, Ty};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::SelectionContext;
@@ -25,7 +25,7 @@ pub fn evaluate_host_effect_obligation<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
-    if selcx.infcx.typing_mode() == TypingMode::Coherence {
+    if selcx.infcx.typing_mode().is_coherence() {
         span_bug!(
             obligation.cause.span,
             "should not select host obligation in old solver in intercrate mode"

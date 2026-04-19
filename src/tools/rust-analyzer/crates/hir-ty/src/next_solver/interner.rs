@@ -1439,81 +1439,55 @@ impl<'db> Interner for DbInterner<'db> {
         }
     }
 
-    #[tracing::instrument(level = "debug", skip(self), ret)]
     fn predicates_of(
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        predicates_of(self.db, def_id).all_predicates().map_bound(|it| it.iter().copied())
+        predicates_of(self.db, def_id).all_predicates()
     }
 
-    #[tracing::instrument(level = "debug", skip(self), ret)]
     fn own_predicates_of(
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>> {
-        predicates_of(self.db, def_id).own_predicates().map_bound(|it| it.iter().copied())
+        predicates_of(self.db, def_id).own_explicit_predicates()
     }
 
-    #[tracing::instrument(skip(self), ret)]
     fn explicit_super_predicates_of(
         self,
         def_id: Self::TraitId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>> {
-        let is_self = |ty: Ty<'db>| match ty.kind() {
-            rustc_type_ir::TyKind::Param(param) => param.index == 0,
-            _ => false,
-        };
-
-        GenericPredicates::query_explicit(self.db, def_id.0.into()).map_bound(move |predicates| {
-            predicates
-                .iter()
-                .copied()
-                .filter(move |p| match p.kind().skip_binder() {
-                    // rustc has the following assertion:
-                    // https://github.com/rust-lang/rust/blob/52618eb338609df44978b0ca4451ab7941fd1c7a/compiler/rustc_hir_analysis/src/hir_ty_lowering/bounds.rs#L525-L608
-                    ClauseKind::Trait(it) => is_self(it.self_ty()),
-                    ClauseKind::TypeOutlives(it) => is_self(it.0),
-                    ClauseKind::Projection(it) => is_self(it.self_ty()),
-                    ClauseKind::HostEffect(it) => is_self(it.self_ty()),
-                    _ => false,
-                })
-                .map(|p| (p, Span::dummy()))
-        })
+        GenericPredicates::query(self.db, def_id.0.into())
+            .explicit_non_assoc_types_predicates()
+            .map_bound(move |predicates| {
+                predicates.filter(|p| is_clause_at_ty(p, is_ty_self)).map(|p| (p, Span::dummy()))
+            })
     }
 
-    #[tracing::instrument(skip(self), ret)]
     fn explicit_implied_predicates_of(
         self,
         def_id: Self::DefId,
     ) -> EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>> {
-        fn is_self_or_assoc(ty: Ty<'_>) -> bool {
-            match ty.kind() {
-                rustc_type_ir::TyKind::Param(param) => param.index == 0,
-                rustc_type_ir::TyKind::Alias(rustc_type_ir::AliasTyKind::Projection, alias) => {
-                    is_self_or_assoc(alias.self_ty())
-                }
-                _ => false,
+        fn is_ty_assoc_of_self(ty: Ty<'_>) -> bool {
+            // FIXME: Is this correct wrt. combined kind of assoc type bounds, i.e. `where Self::Assoc: Trait<Assoc2: Trait>`
+            // wrt. `Assoc2`, which we should exclude?
+            if let TyKind::Alias(AliasTyKind::Projection, alias) = ty.kind() {
+                is_ty_assoc_of_self(alias.self_ty())
+            } else {
+                is_ty_self(ty)
             }
         }
 
-        predicates_of(self.db, def_id).explicit_implied_predicates().map_bound(|predicates| {
-            predicates
-                .iter()
-                .copied()
-                .filter(|p| match p.kind().skip_binder() {
-                    ClauseKind::Trait(it) => is_self_or_assoc(it.self_ty()),
-                    ClauseKind::TypeOutlives(it) => is_self_or_assoc(it.0),
-                    ClauseKind::Projection(it) => is_self_or_assoc(it.self_ty()),
-                    ClauseKind::HostEffect(it) => is_self_or_assoc(it.self_ty()),
-                    // FIXME: Not sure is this correct to allow other clauses but we might replace
-                    // `generic_predicates_ns` query here with something closer to rustc's
-                    // `implied_bounds_with_filter`, which is more granular lowering than this
-                    // "lower at once and then filter" implementation.
-                    _ => true,
-                })
-                .map(|p| (p, Span::dummy()))
-        })
+        let predicates = predicates_of(self.db, def_id);
+        let non_assoc_types = predicates
+            .explicit_non_assoc_types_predicates()
+            .skip_binder()
+            .filter(|p| is_clause_at_ty(p, is_ty_self));
+        let assoc_types = predicates
+            .explicit_assoc_types_predicates()
+            .skip_binder()
+            .filter(|p| is_clause_at_ty(p, is_ty_assoc_of_self));
+        EarlyBinder::bind(non_assoc_types.chain(assoc_types).map(|it| (it, Span::dummy())))
     }
 
     fn impl_super_outlives(
@@ -2294,6 +2268,24 @@ impl<'db> Interner for DbInterner<'db> {
     }
 }
 
+fn is_ty_self(ty: Ty<'_>) -> bool {
+    match ty.kind() {
+        TyKind::Param(param) => param.index == 0,
+        _ => false,
+    }
+}
+fn is_clause_at_ty(p: &Clause<'_>, filter: impl FnOnce(Ty<'_>) -> bool) -> bool {
+    match p.kind().skip_binder() {
+        // rustc has the following assertion:
+        // https://github.com/rust-lang/rust/blob/52618eb338609df44978b0ca4451ab7941fd1c7a/compiler/rustc_hir_analysis/src/hir_ty_lowering/bounds.rs#L525-L608
+        ClauseKind::Trait(it) => filter(it.self_ty()),
+        ClauseKind::TypeOutlives(it) => filter(it.0),
+        ClauseKind::Projection(it) => filter(it.self_ty()),
+        ClauseKind::HostEffect(it) => filter(it.self_ty()),
+        _ => false,
+    }
+}
+
 impl<'db> DbInterner<'db> {
     pub fn shift_bound_var_indices<T>(self, bound_vars: usize, value: T) -> T
     where
@@ -2364,6 +2356,22 @@ impl<'db> DbInterner<'db> {
             c_variadic,
             safety,
             abi,
+        }
+    }
+
+    /// `mk_fn_sig`, but with a safe Rust ABI, and no C-variadic argument.
+    pub fn mk_fn_sig_safe_rust_abi<I>(self, inputs: I, output: Ty<'db>) -> FnSig<'db>
+    where
+        I: IntoIterator<Item = Ty<'db>>,
+    {
+        FnSig {
+            inputs_and_output: Tys::new_from_iter(
+                self,
+                inputs.into_iter().chain(std::iter::once(output)),
+            ),
+            c_variadic: false,
+            safety: Safety::Safe,
+            abi: FnAbi::Rust,
         }
     }
 }

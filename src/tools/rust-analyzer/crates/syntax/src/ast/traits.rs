@@ -73,9 +73,6 @@ pub trait HasAttrs: AstNode {
     fn attrs(&self) -> AstChildren<ast::Attr> {
         support::children(self.syntax())
     }
-    fn has_atom_attr(&self, atom: &str) -> bool {
-        self.attrs().filter_map(|x| x.as_simple_atom()).any(|x| x == atom)
-    }
 
     /// This may return the same node as called with (with `SourceFile`). The caller has the responsibility
     /// to avoid duplicate attributes.

@@ -645,7 +645,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             | hir::ItemKind::Enum(_, generics, _)
             | hir::ItemKind::Struct(_, generics, _)
             | hir::ItemKind::Union(_, generics, _)
-            | hir::ItemKind::Trait(_, _, _, _, generics, ..)
+            | hir::ItemKind::Trait(_, _, _, _, _, generics, ..)
             | hir::ItemKind::TraitAlias(_, _, generics, ..)
             | hir::ItemKind::Impl(hir::Impl { generics, .. }) => {
                 // These kinds of items have only early-bound lifetime parameters.
@@ -1523,7 +1523,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     None,
                     DefKind::LifetimeParam,
                     Some(DefPathData::OpaqueLifetime(ident.name)),
-                    &mut self.disambiguator,
+                    self.disambiguator,
                 );
                 feed.def_span(ident.span);
                 feed.def_ident_span(Some(ident.span));

@@ -209,5 +209,15 @@ error: this if-then-else expression returns a bool literal
 LL |     let _x = if a { true } else { false }.then(|| todo!());
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `a`
 
-error: aborting due to 24 previous errors
+error: this if-then-else expression returns a bool literal
+  --> tests/ui/needless_bool/fixable.rs:239:5
+   |
+LL | /     if test_expr!(x) {
+LL | |         true
+LL | |     } else {
+LL | |         false
+LL | |     };
+   | |_____^ help: you can reduce it to: `test_expr!(x)`
+
+error: aborting due to 25 previous errors
 

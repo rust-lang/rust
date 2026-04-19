@@ -8,6 +8,7 @@ use std::{borrow::Cow, fmt, iter::successors};
 use itertools::Itertools;
 use parser::SyntaxKind;
 use rowan::{GreenNodeData, GreenTokenData};
+use smallvec::{SmallVec, smallvec};
 
 use crate::{
     NodeOrToken, SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxToken, T, TokenText,
@@ -75,6 +76,15 @@ fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
         Cow::Borrowed(green_ref) => TokenText::borrowed(first_token(green_ref).text()),
         Cow::Owned(green) => TokenText::owned(first_token(&green).to_owned()),
     }
+}
+
+fn into_comma(it: NodeOrToken<SyntaxNode, SyntaxToken>) -> Option<SyntaxToken> {
+    let token = match it {
+        NodeOrToken::Token(it) => it,
+        NodeOrToken::Node(node) if node.kind() == SyntaxKind::ERROR => node.first_token()?,
+        NodeOrToken::Node(_) => return None,
+    };
+    (token.kind() == T![,]).then_some(token)
 }
 
 impl ast::Abi {
@@ -192,34 +202,80 @@ impl AttrKind {
     }
 }
 
-impl ast::Attr {
+impl ast::Meta {
     pub fn as_simple_atom(&self) -> Option<SmolStr> {
-        let meta = self.meta()?;
-        if meta.eq_token().is_some() || meta.token_tree().is_some() {
-            return None;
-        }
-        self.simple_name()
+        Some(self.as_simple_path()?.as_single_name_ref()?.text().into())
     }
 
     pub fn as_simple_call(&self) -> Option<(SmolStr, ast::TokenTree)> {
-        let tt = self.meta()?.token_tree()?;
-        Some((self.simple_name()?, tt))
+        let ast::Meta::TokenTreeMeta(meta) = self else { return None };
+        Some((meta.path()?.as_single_name_ref()?.text().into(), meta.token_tree()?))
     }
 
     pub fn as_simple_path(&self) -> Option<ast::Path> {
-        let meta = self.meta()?;
-        if meta.eq_token().is_some() || meta.token_tree().is_some() {
-            return None;
-        }
-        self.path()
+        let ast::Meta::PathMeta(meta) = self else { return None };
+        meta.path()
     }
 
     pub fn simple_name(&self) -> Option<SmolStr> {
-        let path = self.meta()?.path()?;
-        match (path.segment(), path.qualifier()) {
-            (Some(segment), None) => Some(segment.syntax().first_token()?.text().into()),
-            _ => None,
+        match self {
+            ast::Meta::CfgAttrMeta(_) => Some(SmolStr::new_static("cfg_attr")),
+            ast::Meta::CfgMeta(_) => Some(SmolStr::new_static("cfg")),
+            _ => {
+                let path = self.path()?;
+                match (path.segment(), path.qualifier()) {
+                    (Some(segment), None) => Some(segment.syntax().first_token()?.text().into()),
+                    _ => None,
+                }
+            }
         }
+    }
+
+    pub fn path(&self) -> Option<ast::Path> {
+        match self {
+            ast::Meta::CfgAttrMeta(_) | ast::Meta::CfgMeta(_) => None,
+            ast::Meta::KeyValueMeta(it) => it.path(),
+            ast::Meta::PathMeta(it) => it.path(),
+            ast::Meta::TokenTreeMeta(it) => it.path(),
+            ast::Meta::UnsafeMeta(it) => it.meta()?.path(),
+        }
+    }
+
+    /// Includes `cfg_attr()` inner metas (without considering the predicate).
+    pub fn skip_cfg_attrs(self) -> SmallVec<[ast::Meta; 1]> {
+        match self {
+            ast::Meta::CfgAttrMeta(meta) => {
+                meta.metas().flat_map(|meta| meta.skip_cfg_attrs()).collect()
+            }
+            _ => smallvec![self],
+        }
+    }
+
+    /// FIXME: Calling this is almost always incorrect, as `cfg_attr` can contains multiple `Meta`s.
+    pub fn parent_attr(&self) -> Option<ast::Attr> {
+        self.syntax().ancestors().find_map(ast::Attr::cast)
+    }
+}
+
+impl ast::Attr {
+    pub fn as_simple_atom(&self) -> Option<SmolStr> {
+        self.meta().and_then(|meta| meta.as_simple_atom())
+    }
+
+    pub fn as_simple_call(&self) -> Option<(SmolStr, ast::TokenTree)> {
+        self.meta().and_then(|meta| meta.as_simple_call())
+    }
+
+    pub fn as_simple_path(&self) -> Option<ast::Path> {
+        self.meta().and_then(|meta| meta.as_simple_path())
+    }
+
+    pub fn simple_name(&self) -> Option<SmolStr> {
+        self.meta().and_then(|meta| meta.simple_name())
+    }
+
+    pub fn path(&self) -> Option<ast::Path> {
+        self.meta().and_then(|meta| meta.path())
     }
 
     pub fn kind(&self) -> AttrKind {
@@ -229,16 +285,12 @@ impl ast::Attr {
         }
     }
 
-    pub fn path(&self) -> Option<ast::Path> {
-        self.meta()?.path()
-    }
-
-    pub fn expr(&self) -> Option<ast::Expr> {
-        self.meta()?.expr()
-    }
-
-    pub fn token_tree(&self) -> Option<ast::TokenTree> {
-        self.meta()?.token_tree()
+    /// Includes `cfg_attr()` inner metas (without considering the predicate).
+    pub fn skip_cfg_attrs(&self) -> SmallVec<[ast::Meta; 1]> {
+        match self.meta() {
+            Some(meta) => meta.skip_cfg_attrs(),
+            None => SmallVec::new(),
+        }
     }
 }
 
@@ -1006,12 +1058,6 @@ impl ast::TokenTree {
     }
 }
 
-impl ast::Meta {
-    pub fn parent_attr(&self) -> Option<ast::Attr> {
-        self.syntax().parent().and_then(ast::Attr::cast)
-    }
-}
-
 impl ast::GenericArgList {
     pub fn lifetime_args(&self) -> impl Iterator<Item = ast::LifetimeArg> {
         self.generic_args().filter_map(|arg| match arg {
@@ -1033,6 +1079,21 @@ impl ast::GenericParamList {
             ast::GenericParam::TypeParam(it) => Some(ast::TypeOrConstParam::Type(it)),
             ast::GenericParam::LifetimeParam(_) => None,
             ast::GenericParam::ConstParam(it) => Some(ast::TypeOrConstParam::Const(it)),
+        })
+    }
+}
+
+impl ast::ArgList {
+    /// Comma separated args, argument may be empty
+    pub fn args_maybe_empty(&self) -> impl Iterator<Item = Option<ast::Expr>> {
+        // (Expr? ','?)*
+        let mut after_arg = false;
+        self.syntax().children_with_tokens().filter_map(move |it| {
+            if into_comma(it.clone()).is_some() {
+                if std::mem::take(&mut after_arg) { None } else { Some(None) }
+            } else {
+                Some(ast::Expr::cast(it.into_node()?).inspect(|_| after_arg = true))
+            }
         })
     }
 }
@@ -1137,6 +1198,25 @@ impl ast::OrPat {
             .find(|it| !it.kind().is_trivia())
             .and_then(NodeOrToken::into_token)
             .filter(|it| it.kind() == T![|])
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum CfgAtomKey {
+    True,
+    False,
+    Ident(SyntaxToken),
+}
+
+impl ast::CfgAtom {
+    pub fn key(&self) -> Option<CfgAtomKey> {
+        if self.true_token().is_some() {
+            Some(CfgAtomKey::True)
+        } else if self.false_token().is_some() {
+            Some(CfgAtomKey::False)
+        } else {
+            self.ident_token().map(CfgAtomKey::Ident)
+        }
     }
 }
 

@@ -35,9 +35,6 @@ pub struct DecorateAttrLint<'a, 'sess, 'tcx> {
 impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         match self.diagnostic {
-            &AttributeLintKind::UnusedDuplicate { this, other, warning } => {
-                lints::UnusedDuplicate { this, other, warning }.into_diag(dcx, level)
-            }
             AttributeLintKind::IllFormedAttributeInput { suggestions, docs, help } => {
                 lints::IllFormedAttributeInput {
                     num_suggestions: suggestions.len(),
@@ -82,15 +79,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                 target,
             }
             .into_diag(dcx, level),
-            &AttributeLintKind::UnsafeAttrOutsideUnsafe { attribute_name_span, sugg_spans } => {
-                lints::UnsafeAttrOutsideUnsafeLint {
-                    span: attribute_name_span,
-                    suggestion: sugg_spans.map(|(left, right)| {
-                        lints::UnsafeAttrOutsideUnsafeSuggestion { left, right }
-                    }),
-                }
-                .into_diag(dcx, level)
-            }
             &AttributeLintKind::UnexpectedCfgName(name, value) => {
                 check_cfg::unexpected_cfg_name(self.sess, self.tcx, name, value)
                     .into_diag(dcx, level)
@@ -176,18 +164,20 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::ExpectedNoArgs => lints::ExpectedNoArgs.into_diag(dcx, level),
 
             &AttributeLintKind::ExpectedNameValue => lints::ExpectedNameValue.into_diag(dcx, level),
-            &AttributeLintKind::MalformedOnUnimplementedAttr { span } => {
-                lints::MalformedOnUnimplementedAttrLint { span }.into_diag(dcx, level)
+            &AttributeLintKind::MalFormedDiagnosticAttribute { attribute, options, span } => {
+                lints::MalFormedDiagnosticAttributeLint { attribute, options, span }
+                    .into_diag(dcx, level)
             }
-            &AttributeLintKind::MalformedOnConstAttr { span } => {
-                lints::MalformedOnConstAttrLint { span }.into_diag(dcx, level)
-            }
+
             AttributeLintKind::MalformedDiagnosticFormat { warning } => match warning {
                 FormatWarning::PositionalArgument { .. } => {
                     lints::DisallowedPositionalArgument.into_diag(dcx, level)
                 }
                 FormatWarning::InvalidSpecifier { .. } => {
                     lints::InvalidFormatSpecifier.into_diag(dcx, level)
+                }
+                FormatWarning::DisallowedPlaceholder { .. } => {
+                    lints::DisallowedPlaceholder.into_diag(dcx, level)
                 }
             },
             AttributeLintKind::DiagnosticWrappedParserError { description, label, span } => {
@@ -197,45 +187,12 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                 lints::IgnoredDiagnosticOption { option_name, first_span, later_span }
                     .into_diag(dcx, level)
             }
-            &AttributeLintKind::MissingOptionsForOnUnimplemented => {
-                lints::MissingOptionsForOnUnimplementedAttr.into_diag(dcx, level)
+            &AttributeLintKind::MissingOptionsForDiagnosticAttribute { attribute, options } => {
+                lints::MissingOptionsForDiagnosticAttribute { attribute, options }
+                    .into_diag(dcx, level)
             }
-            &AttributeLintKind::MissingOptionsForOnConst => {
-                lints::MissingOptionsForOnConstAttr.into_diag(dcx, level)
-            }
-            &AttributeLintKind::MalformedOnMoveAttr { span } => {
-                lints::MalformedOnMoveAttrLint { span }.into_diag(dcx, level)
-            }
-            &AttributeLintKind::OnMoveMalformedFormatLiterals { name } => {
-                lints::OnMoveMalformedFormatLiterals { name }.into_diag(dcx, level)
-            }
-            &AttributeLintKind::OnMoveMalformedAttrExpectedLiteralOrDelimiter => {
-                lints::OnMoveMalformedAttrExpectedLiteralOrDelimiter.into_diag(dcx, level)
-            }
-            &AttributeLintKind::MissingOptionsForOnMove => {
-                lints::MissingOptionsForOnMoveAttr.into_diag(dcx, level)
-            }
-            &AttributeLintKind::RenamedLint { name, replace, suggestion } => lints::RenamedLint {
-                name,
-                replace,
-                suggestion: lints::RenamedLintSuggestion::WithSpan { suggestion, replace },
-            }
-            .into_diag(dcx, level),
-            &AttributeLintKind::DeprecatedLintName { name, suggestion, replace } => {
-                lints::DeprecatedLintName { name, suggestion, replace }.into_diag(dcx, level)
-            }
-            &AttributeLintKind::RemovedLint { name, ref reason } => {
-                lints::RemovedLint { name, reason }.into_diag(dcx, level)
-            }
-            &AttributeLintKind::UnknownLint { name, span, suggestion } => lints::UnknownLint {
-                name,
-                suggestion: suggestion.map(|(replace, from_rustc)| {
-                    lints::UnknownLintSuggestion::WithSpan { suggestion: span, replace, from_rustc }
-                }),
-            }
-            .into_diag(dcx, level),
-            &AttributeLintKind::IgnoredUnlessCrateSpecified { level: attr_level, name } => {
-                lints::IgnoredUnlessCrateSpecified { level: attr_level, name }.into_diag(dcx, level)
+            &AttributeLintKind::NonMetaItemDiagnosticAttribute => {
+                lints::NonMetaItemDiagnosticAttribute.into_diag(dcx, level)
             }
         }
     }

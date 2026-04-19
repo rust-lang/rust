@@ -1,7 +1,7 @@
 use std::{mem, slice};
 
 use rustc_ast::visit::{self, Visitor};
-use rustc_ast::{self as ast, HasNodeId, NodeId, attr};
+use rustc_ast::{self as ast, NodeId, attr};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::DiagCtxtHandle;
@@ -108,10 +108,7 @@ impl<'a> CollectProcMacros<'a> {
         })) = AttributeParser::parse_limited(
             self.session,
             slice::from_ref(attr),
-            sym::proc_macro_derive,
-            item.span,
-            item.node_id(),
-            None,
+            &[sym::proc_macro_derive],
         )
         else {
             return;

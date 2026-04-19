@@ -2,37 +2,51 @@ error[E0539]: malformed `unstable` attribute input
   --> $DIR/stability-attribute-sanity-4.rs:8:5
    |
 LL |     #[unstable]
-   |     ^^^^^^^^^^^
-   |     |
-   |     expected this to be a list
-   |     help: must be of the form: `#[unstable(feature = "name", reason = "...", issue = "N")]`
+   |     ^^^^^^^^^^^ expected this to be a list
+   |
+help: must be of the form
+   |
+LL |     #[unstable(feature = "name", reason = "...", issue = "N")]
+   |               +++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0539]: malformed `unstable` attribute input
   --> $DIR/stability-attribute-sanity-4.rs:11:5
    |
 LL |     #[unstable = "b"]
    |     ^^^^^^^^^^^-----^
-   |     |          |
-   |     |          expected this to be a list
-   |     help: must be of the form: `#[unstable(feature = "name", reason = "...", issue = "N")]`
+   |                |
+   |                expected this to be a list
+   |
+help: must be of the form
+   |
+LL -     #[unstable = "b"]
+LL +     #[unstable(feature = "name", reason = "...", issue = "N")]
+   |
 
 error[E0539]: malformed `stable` attribute input
   --> $DIR/stability-attribute-sanity-4.rs:14:5
    |
 LL |     #[stable]
-   |     ^^^^^^^^^
-   |     |
-   |     expected this to be a list
-   |     help: must be of the form: `#[stable(feature = "name", since = "version")]`
+   |     ^^^^^^^^^ expected this to be a list
+   |
+help: must be of the form
+   |
+LL |     #[stable(feature = "name", since = "version")]
+   |             +++++++++++++++++++++++++++++++++++++
 
 error[E0539]: malformed `stable` attribute input
   --> $DIR/stability-attribute-sanity-4.rs:17:5
    |
 LL |     #[stable = "a"]
    |     ^^^^^^^^^-----^
-   |     |        |
-   |     |        expected this to be a list
-   |     help: must be of the form: `#[stable(feature = "name", since = "version")]`
+   |              |
+   |              expected this to be a list
+   |
+help: must be of the form
+   |
+LL -     #[stable = "a"]
+LL +     #[stable(feature = "name", since = "version")]
+   |
 
 error[E0542]: missing 'since'
   --> $DIR/stability-attribute-sanity-4.rs:21:5

@@ -32,7 +32,7 @@ use rustc_data_structures::sync::{
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::definitions::{DefPathData, Definitions, DisambiguatorState};
+use rustc_hir::definitions::{DefPathData, Definitions, Disambiguator};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
@@ -44,10 +44,12 @@ use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
-use rustc_type_ir::{CollectAndApply, TypeFlags, WithCachedTypeInfo, elaborate, search_graph};
+use rustc_type_ir::{
+    CollectAndApply, FnSigKind, TypeFlags, WithCachedTypeInfo, elaborate, search_graph,
+};
 use tracing::{debug, instrument};
 
 use crate::arena::Arena;
@@ -84,7 +86,33 @@ impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
     }
 }
 
+impl<'tcx> rustc_type_ir::inherent::FSigKind<TyCtxt<'tcx>> for FnSigKind {
+    fn fn_sig_kind(self) -> Self {
+        self
+    }
+
+    fn new(abi: ExternAbi, safety: hir::Safety, c_variadic: bool) -> Self {
+        FnSigKind::default().set_abi(abi).set_safe(safety.is_safe()).set_c_variadic(c_variadic)
+    }
+
+    fn abi(self) -> ExternAbi {
+        self.abi()
+    }
+
+    fn safety(self) -> hir::Safety {
+        if self.is_safe() { hir::Safety::Safe } else { hir::Safety::Unsafe }
+    }
+
+    fn c_variadic(self) -> bool {
+        self.c_variadic()
+    }
+}
+
 impl<'tcx> rustc_type_ir::inherent::Abi<TyCtxt<'tcx>> for ExternAbi {
+    fn abi(self) -> Self {
+        self
+    }
+
     fn rust() -> Self {
         ExternAbi::Rust
     }
@@ -92,11 +120,23 @@ impl<'tcx> rustc_type_ir::inherent::Abi<TyCtxt<'tcx>> for ExternAbi {
     fn is_rust(self) -> bool {
         matches!(self, ExternAbi::Rust)
     }
+
+    fn pack_abi(self) -> u8 {
+        self.as_packed()
+    }
+
+    fn unpack_abi(abi_index: u8) -> Self {
+        Self::from_packed(abi_index)
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Safety<TyCtxt<'tcx>> for hir::Safety {
     fn safe() -> Self {
         hir::Safety::Safe
+    }
+
+    fn unsafe_mode() -> Self {
+        hir::Safety::Unsafe
     }
 
     fn is_safe(self) -> bool {
@@ -708,7 +748,7 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
         let attrs = hir::AttributeMap::EMPTY;
 
         let rustc_middle::hir::Hashes { opt_hash_including_bodies, .. } =
-            self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, &[], attrs.define_opaque);
+            self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, attrs.define_opaque);
         let node = node.into();
         self.opt_hir_owner_nodes(Some(self.tcx.arena.alloc(hir::OwnerNodes {
             opt_hash_including_bodies,
@@ -1332,7 +1372,10 @@ impl<'tcx> TyCtxt<'tcx> {
         let fun_features = &self.codegen_fn_attrs(fun_def).target_features;
         let caller_features = &self.body_codegen_attrs(caller).target_features;
         if self.is_target_feature_call_safe(&fun_features, &caller_features) {
-            return Some(fun_sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Safe, ..sig }));
+            return Some(fun_sig.map_bound(|sig| ty::FnSig {
+                fn_sig_kind: fun_sig.fn_sig_kind().set_safe(true),
+                ..sig
+            }));
         }
         None
     }
@@ -1355,7 +1398,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
         name: Option<Symbol>,
         def_kind: DefKind,
         override_def_path_data: Option<DefPathData>,
-        disambiguator: &mut DisambiguatorState,
+        disambiguator: &mut impl Disambiguator,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let feed =
             self.tcx.create_def(parent, name, def_kind, override_def_path_data, disambiguator);
@@ -1373,7 +1416,7 @@ impl<'tcx> TyCtxt<'tcx> {
         name: Option<Symbol>,
         def_kind: DefKind,
         override_def_path_data: Option<DefPathData>,
-        disambiguator: &mut DisambiguatorState,
+        disambiguator: &mut impl Disambiguator,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let data = override_def_path_data.unwrap_or_else(|| def_kind.def_path_data(name));
         // The following call has the side effect of modifying the tables inside `definitions`.
@@ -1705,6 +1748,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 // in downstream crates. It should never be linted, but should we
                 // hack this in the linter to ignore it?
                 && f.as_str() != "restricted_std"
+                // `doc_cfg` affects rustdoc behavior: rustdoc checks it via
+                // `tcx.features().doc_cfg()`, but a normal rustc compilation may
+                // never observe that use. Do not lint it as unused here.
+                && *f != sym::doc_cfg
             })
             .collect::<Vec<_>>();
 
@@ -2092,7 +2139,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// unsafe.
     pub fn safe_to_unsafe_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
         assert!(sig.safety().is_safe());
-        Ty::new_fn_ptr(self, sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Unsafe, ..sig }))
+        Ty::new_fn_ptr(
+            self,
+            sig.map_bound(|sig| ty::FnSig { fn_sig_kind: sig.fn_sig_kind.set_safe(false), ..sig }),
+        )
     }
 
     /// Given a `fn` sig, returns an equivalent `unsafe fn` sig;
@@ -2100,7 +2150,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// unsafe.
     pub fn safe_to_unsafe_sig(self, sig: PolyFnSig<'tcx>) -> PolyFnSig<'tcx> {
         assert!(sig.safety().is_safe());
-        sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Unsafe, ..sig })
+        sig.map_bound(|sig| ty::FnSig { fn_sig_kind: sig.fn_sig_kind.set_safe(false), ..sig })
     }
 
     /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`
@@ -2142,7 +2192,11 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Tuple(params) => *params,
                 _ => bug!(),
             };
-            self.mk_fn_sig(params, s.output(), s.c_variadic, safety, ExternAbi::Rust)
+            self.mk_fn_sig(
+                params,
+                s.output(),
+                s.fn_sig_kind.set_safe(safety.is_safe()).set_abi(ExternAbi::Rust),
+            )
         })
     }
 
@@ -2415,24 +2469,38 @@ impl<'tcx> TyCtxt<'tcx> {
     // IntoIterator` instead of `I: Iterator`, and it doesn't have a slice
     // variant, because of the need to combine `inputs` and `output`. This
     // explains the lack of `_from_iter` suffix.
-    pub fn mk_fn_sig<I, T>(
-        self,
-        inputs: I,
-        output: I::Item,
-        c_variadic: bool,
-        safety: hir::Safety,
-        abi: ExternAbi,
-    ) -> T::Output
+    pub fn mk_fn_sig<I, T>(self, inputs: I, output: I::Item, fn_sig_kind: FnSigKind) -> T::Output
     where
         I: IntoIterator<Item = T>,
         T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
     {
         T::collect_and_apply(inputs.into_iter().chain(iter::once(output)), |xs| ty::FnSig {
             inputs_and_output: self.mk_type_list(xs),
-            c_variadic,
-            safety,
-            abi,
+            fn_sig_kind,
         })
+    }
+
+    /// `mk_fn_sig`, but with a Rust ABI, and no C-variadic argument.
+    pub fn mk_fn_sig_rust_abi<I, T>(
+        self,
+        inputs: I,
+        output: I::Item,
+        safety: hir::Safety,
+    ) -> T::Output
+    where
+        I: IntoIterator<Item = T>,
+        T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
+    {
+        self.mk_fn_sig(inputs, output, FnSigKind::default().set_safe(safety.is_safe()))
+    }
+
+    /// `mk_fn_sig`, but with a safe Rust ABI, and no C-variadic argument.
+    pub fn mk_fn_sig_safe_rust_abi<I, T>(self, inputs: I, output: I::Item) -> T::Output
+    where
+        I: IntoIterator<Item = T>,
+        T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
+    {
+        self.mk_fn_sig(inputs, output, FnSigKind::default().set_safe(true))
     }
 
     pub fn mk_poly_existential_predicates_from_iter<I, T>(self, iter: I) -> T::Output

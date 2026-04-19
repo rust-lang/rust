@@ -13,6 +13,7 @@ use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal, par_fns};
 use rustc_data_structures::thousands;
+use rustc_errors::DiagCallback;
 use rustc_errors::timings::TimingSection;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
@@ -119,10 +120,11 @@ impl LintStoreExpand for LintStoreExpandImpl<'_> {
         features: &Features,
         registered_tools: &RegisteredTools,
         node_id: ast::NodeId,
+        attrs: &[ast::Attribute],
         items: &[Box<ast::Item>],
         name: Symbol,
     ) {
-        pre_expansion_lint(sess, features, self.0, registered_tools, (node_id, items), name);
+        pre_expansion_lint(sess, features, self.0, registered_tools, (node_id, attrs, items), name);
     }
 }
 
@@ -303,8 +305,7 @@ fn configure_and_expand(
 
     resolver.resolve_crate(&krate);
 
-    CStore::from_tcx(tcx).report_incompatible_target_modifiers(tcx, &krate);
-    CStore::from_tcx(tcx).report_incompatible_async_drop_feature(tcx, &krate);
+    CStore::from_tcx(tcx).report_session_incompatibilities(tcx, &krate);
     krate
 }
 
@@ -1030,13 +1031,13 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
 pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
     for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
         if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
-            for lint in &delayed_lints.lints {
+            for lint in delayed_lints {
                 match lint {
                     DelayedLint::AttributeParsing(attribute_lint) => {
                         tcx.emit_node_span_lint(
                             attribute_lint.lint_id.lint,
                             attribute_lint.id,
-                            attribute_lint.span,
+                            attribute_lint.span.clone(),
                             DecorateAttrLint {
                                 sess: tcx.sess,
                                 tcx: Some(tcx),
@@ -1044,6 +1045,12 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
                             },
                         );
                     }
+                    DelayedLint::Dynamic(attribute_lint) => tcx.emit_node_span_lint(
+                        attribute_lint.lint_id.lint,
+                        attribute_lint.id,
+                        attribute_lint.span.clone(),
+                        DiagCallback(&attribute_lint.callback),
+                    ),
                 }
             }
         }
@@ -1113,11 +1120,11 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         {
             let hir_items = tcx.hir_crate_items(());
             for owner_id in hir_items.owners() {
-                if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
-                    if !delayed_lints.lints.is_empty() {
-                        // Assert that delayed_lint_items also picked up this item to have lints.
-                        assert!(hir_items.delayed_lint_items().any(|i| i == owner_id));
-                    }
+                if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id)
+                    && !delayed_lints.is_empty()
+                {
+                    // Assert that delayed_lint_items also picked up this item to have lints.
+                    assert!(hir_items.delayed_lint_items().any(|i| i == owner_id));
                 }
             }
         }
@@ -1273,7 +1280,7 @@ pub(crate) fn start_codegen<'tcx>(
     // Don't run this test assertions when not doing codegen. Compiletest tries to build
     // build-fail tests in check mode first and expects it to not give an error in that case.
     if tcx.sess.opts.output_types.should_codegen() {
-        rustc_symbol_mangling::test::report_symbol_names(tcx);
+        rustc_symbol_mangling::test::dump_symbol_names_and_def_paths(tcx);
     }
 
     // Don't do code generation if there were any errors. Likewise if
@@ -1369,7 +1376,7 @@ pub(crate) fn parse_crate_name(
         AttributeParser::parse_limited_should_emit(
             sess,
             attrs,
-            sym::crate_name,
+            &[sym::crate_name],
             DUMMY_SP,
             rustc_ast::node_id::CRATE_NODE_ID,
             Target::Crate,
@@ -1419,7 +1426,7 @@ pub fn collect_crate_types(
             AttributeParser::<Early>::parse_limited_should_emit(
                 session,
                 attrs,
-                sym::crate_type,
+                &[sym::crate_type],
                 crate_span,
                 CRATE_NODE_ID,
                 Target::Crate,
@@ -1476,7 +1483,7 @@ fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit 
     let attr = AttributeParser::parse_limited_should_emit(
         sess,
         &krate_attrs,
-        sym::recursion_limit,
+        &[sym::recursion_limit],
         DUMMY_SP,
         rustc_ast::node_id::CRATE_NODE_ID,
         Target::Crate,

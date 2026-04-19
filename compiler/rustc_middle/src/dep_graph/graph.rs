@@ -52,6 +52,7 @@ pub enum QuerySideEffect {
     /// the side effect dep node as a dependency.
     CheckFeature { symbol: Symbol },
 }
+
 #[derive(Clone)]
 pub struct DepGraph {
     data: Option<Arc<DepGraphData>>,
@@ -274,17 +275,19 @@ impl DepGraph {
     }
 
     #[inline(always)]
-    pub fn with_task<'tcx, A: Debug, R>(
+    pub fn with_task<'tcx, OP, R>(
         &self,
         dep_node: DepNode,
         tcx: TyCtxt<'tcx>,
-        task_arg: A,
-        task_fn: fn(tcx: TyCtxt<'tcx>, task_arg: A) -> R,
+        op: OP,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
-    ) -> (R, DepNodeIndex) {
+    ) -> (R, DepNodeIndex)
+    where
+        OP: FnOnce() -> R,
+    {
         match self.data() {
-            Some(data) => data.with_task(dep_node, tcx, task_arg, task_fn, hash_result),
-            None => (task_fn(tcx, task_arg), self.next_virtual_depnode_index()),
+            Some(data) => data.with_task(dep_node, tcx, op, hash_result),
+            None => (op(), self.next_virtual_depnode_index()),
         }
     }
 
@@ -309,44 +312,27 @@ impl DepGraph {
 }
 
 impl DepGraphData {
-    /// Starts a new dep-graph task. Dep-graph tasks are specified
-    /// using a free function (`task`) and **not** a closure -- this
-    /// is intentional because we want to exercise tight control over
-    /// what state they have access to. In particular, we want to
-    /// prevent implicit 'leaks' of tracked state into the task (which
-    /// could then be read without generating correct edges in the
-    /// dep-graph -- see the [rustc dev guide] for more details on
-    /// the dep-graph).
-    ///
-    /// Therefore, the task function takes a `TyCtxt`, plus exactly one
-    /// additional argument, `task_arg`. The additional argument type can be
-    /// `()` if no argument is needed, or a tuple if multiple arguments are
-    /// needed.
-    ///
-    /// [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/queries/incremental-compilation.html
     #[inline(always)]
-    pub fn with_task<'tcx, A: Debug, R>(
+    pub fn with_task<'tcx, OP, R>(
         &self,
         dep_node: DepNode,
         tcx: TyCtxt<'tcx>,
-        task_arg: A,
-        task_fn: fn(tcx: TyCtxt<'tcx>, task_arg: A) -> R,
+        op: OP,
         hash_result: Option<fn(&mut StableHashingContext<'_>, &R) -> Fingerprint>,
-    ) -> (R, DepNodeIndex) {
+    ) -> (R, DepNodeIndex)
+    where
+        OP: FnOnce() -> R,
+    {
         // If the following assertion triggers, it can have two reasons:
         // 1. Something is wrong with DepNode creation, either here or
         //    in `DepGraph::try_mark_green()`.
         // 2. Two distinct query keys get mapped to the same `DepNode`
         //    (see for example #48923).
         self.assert_dep_node_not_yet_allocated_in_current_session(tcx.sess, &dep_node, || {
-            format!(
-                "forcing query with already existing `DepNode`\n\
-                 - query-key: {task_arg:?}\n\
-                 - dep-node: {dep_node:?}"
-            )
+            format!("forcing query with already existing `DepNode`: {dep_node:?}")
         });
 
-        let with_deps = |task_deps| with_deps(task_deps, || task_fn(tcx, task_arg));
+        let with_deps = |task_deps| with_deps(task_deps, op);
         let (result, edges) = if tcx.is_eval_always(dep_node.kind) {
             (with_deps(TaskDepsRef::EvalAlways), EdgesVec::new())
         } else {

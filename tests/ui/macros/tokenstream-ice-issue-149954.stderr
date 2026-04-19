@@ -41,24 +41,26 @@ error[E0539]: malformed `cfg` attribute input
   --> $DIR/tokenstream-ice-issue-149954.rs:10:36
    |
 LL |             A: A<{ struct A<A: A<{ #[cfg] () }>> ; enum A  }
-   |                                    ^^^^^^
-   |                                    |
-   |                                    expected this to be a list
-   |                                    help: must be of the form: `#[cfg(predicate)]`
+   |                                    ^^^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
+help: must be of the form
+   |
+LL |             A: A<{ struct A<A: A<{ #[cfg(predicate)] () }>> ; enum A  }
+   |                                         +++++++++++
 
 error[E0539]: malformed `cfg` attribute input
   --> $DIR/tokenstream-ice-issue-149954.rs:10:36
    |
 LL |             A: A<{ struct A<A: A<{ #[cfg] () }>> ; enum A  }
-   |                                    ^^^^^^
-   |                                    |
-   |                                    expected this to be a list
-   |                                    help: must be of the form: `#[cfg(predicate)]`
+   |                                    ^^^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg-attribute>
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: must be of the form
+   |
+LL |             A: A<{ struct A<A: A<{ #[cfg(predicate)] () }>> ; enum A  }
+   |                                         +++++++++++
 
 error[E0404]: expected trait, found struct `A`
   --> $DIR/tokenstream-ice-issue-149954.rs:10:16

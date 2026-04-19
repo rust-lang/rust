@@ -1,7 +1,5 @@
 use rustc_feature::template;
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::lints::AttributeLintKind;
-use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::sym;
 
 use crate::attributes::diagnostic::*;
@@ -24,30 +22,16 @@ impl OnMoveParser {
         mode: Mode,
     ) {
         if !cx.features().diagnostic_on_move() {
+            // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
             return;
         }
 
         let span = cx.attr_span;
         self.span = Some(span);
-        let Some(list) = args.list() else {
-            cx.emit_lint(
-                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                AttributeLintKind::MissingOptionsForOnMove,
-                span,
-            );
-            return;
-        };
 
-        if list.is_empty() {
-            cx.emit_lint(
-                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                AttributeLintKind::OnMoveMalformedAttrExpectedLiteralOrDelimiter,
-                list.span,
-            );
-            return;
-        }
+        let Some(items) = parse_list(cx, args, mode) else { return };
 
-        if let Some(directive) = parse_directive_items(cx, mode, list.mixed(), true) {
+        if let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) {
             merge_directives(cx, &mut self.directive, (span, directive));
         }
     }

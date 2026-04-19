@@ -317,12 +317,6 @@ pub enum SizeSkeleton<'tcx> {
     /// Alignment can be `None` if unknown.
     Known(Size, Option<Align>),
 
-    /// This is a generic const expression (i.e. N * 2), which may contain some parameters.
-    /// It must be of type usize, and represents the size of a type in bytes.
-    /// It is not required to be evaluatable to a concrete value, but can be used to check
-    /// that another SizeSkeleton is of equal size.
-    Generic(ty::Const<'tcx>),
-
     /// A potentially-wide pointer.
     Pointer {
         /// If true, this pointer is never null.
@@ -426,7 +420,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                         }
                         Err(err)
                     }
-                    SizeSkeleton::Pointer { .. } | SizeSkeleton::Generic(_) => Err(err),
+                    SizeSkeleton::Pointer { .. } => Err(err),
                 }
             }
 
@@ -459,9 +453,6 @@ impl<'tcx> SizeSkeleton<'tcx> {
                                     return Err(err);
                                 }
                                 ptr = Some(field);
-                            }
-                            SizeSkeleton::Generic(_) => {
-                                return Err(err);
                             }
                         }
                     }
@@ -508,8 +499,21 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
-            // Pattern types are always the same size as their base.
-            ty::Pat(base, _) => SizeSkeleton::compute(base, tcx, typing_env),
+            ty::Pat(base, pat) => {
+                // Pattern types are always the same size as their base.
+                let base = SizeSkeleton::compute(base, tcx, typing_env);
+                match *pat {
+                    ty::PatternKind::Range { .. } | ty::PatternKind::Or(_) => base,
+                    // But in the case of `!null` patterns we need to note that in the
+                    // raw pointer.
+                    ty::PatternKind::NotNull => match base? {
+                        SizeSkeleton::Known(..) => base,
+                        SizeSkeleton::Pointer { non_zero: _, tail } => {
+                            Ok(SizeSkeleton::Pointer { non_zero: true, tail })
+                        }
+                    },
+                }
+            }
 
             _ => Err(err),
         }
@@ -521,9 +525,6 @@ impl<'tcx> SizeSkeleton<'tcx> {
             (SizeSkeleton::Pointer { tail: a, .. }, SizeSkeleton::Pointer { tail: b, .. }) => {
                 a == b
             }
-            // constants are always pre-normalized into a canonical form so this
-            // only needs to check if their pointers are identical.
-            (SizeSkeleton::Generic(a), SizeSkeleton::Generic(b)) => a == b,
             _ => false,
         }
     }

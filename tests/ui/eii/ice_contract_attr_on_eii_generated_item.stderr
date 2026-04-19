@@ -1,0 +1,14 @@
+error: contract annotations is only supported in functions with bodies
+  --> $DIR/ice_contract_attr_on_eii_generated_item.rs:8:1
+   |
+LL | #[core::contracts::ensures]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: contract annotations can only be used on functions
+  --> $DIR/ice_contract_attr_on_eii_generated_item.rs:8:1
+   |
+LL | #[core::contracts::ensures]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

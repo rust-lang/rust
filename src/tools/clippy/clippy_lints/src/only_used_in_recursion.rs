@@ -321,7 +321,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
             }) => (
                 owner_id.to_def_id(),
                 FnKind::TraitFn,
-                usize::from(sig.decl.implicit_self.has_implicit_self()),
+                usize::from(sig.decl.implicit_self().has_implicit_self()),
             ),
             Node::ImplItem(&ImplItem {
                 kind: ImplItemKind::Fn(ref sig, _),
@@ -339,7 +339,7 @@ impl<'tcx> LateLintPass<'tcx> for OnlyUsedInRecursion {
                         FnKind::ImplTraitFn(
                             std::ptr::from_ref(cx.tcx.erase_and_anonymize_regions(trait_ref.args)) as usize
                         ),
-                        usize::from(sig.decl.implicit_self.has_implicit_self()),
+                        usize::from(sig.decl.implicit_self().has_implicit_self()),
                     )
                 } else {
                     (owner_id.to_def_id(), FnKind::Fn, 0)

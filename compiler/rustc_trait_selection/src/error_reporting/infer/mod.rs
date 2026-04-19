@@ -783,12 +783,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         // ^^^^^^
         let safety = |fn_def, sig: ty::FnSig<'_>| match fn_def {
-            None => sig.safety.prefix_str(),
+            None => sig.safety().prefix_str(),
             Some((did, _)) => {
                 if self.tcx.codegen_fn_attrs(did).safe_target_features {
                     "#[target_features] "
                 } else {
-                    sig.safety.prefix_str()
+                    sig.safety().prefix_str()
                 }
             }
         };
@@ -799,11 +799,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //        ^^^^^^^^^^
-        if sig1.abi != ExternAbi::Rust {
-            values.0.push(format!("extern {} ", sig1.abi), sig1.abi != sig2.abi);
+        if sig1.abi() != ExternAbi::Rust {
+            values.0.push(format!("extern {} ", sig1.abi()), sig1.abi() != sig2.abi());
         }
-        if sig2.abi != ExternAbi::Rust {
-            values.1.push(format!("extern {} ", sig2.abi), sig1.abi != sig2.abi);
+        if sig2.abi() != ExternAbi::Rust {
+            values.1.push(format!("extern {} ", sig2.abi()), sig1.abi() != sig2.abi());
         }
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
@@ -843,17 +843,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
-        if sig1.c_variadic {
+        if sig1.c_variadic() {
             if len1 > 0 {
                 values.0.push_normal(", ");
             }
-            values.0.push("...", !sig2.c_variadic);
+            values.0.push("...", !sig2.c_variadic());
         }
-        if sig2.c_variadic {
+        if sig2.c_variadic() {
             if len2 > 0 {
                 values.1.push_normal(", ");
             }
-            values.1.push("...", !sig1.c_variadic);
+            values.1.push("...", !sig1.c_variadic());
         }
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
@@ -1826,7 +1826,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         debug!(?diag);
     }
 
-    pub fn type_error_additional_suggestions(
+    pub(crate) fn type_error_additional_suggestions(
         &self,
         trace: &TypeTrace<'tcx>,
         terr: TypeError<'tcx>,
@@ -2274,6 +2274,7 @@ impl<'tcx> ObligationCause<'tcx> {
             },
         }
     }
+
     fn as_failure_code_diag(
         &self,
         terr: TypeError<'tcx>,

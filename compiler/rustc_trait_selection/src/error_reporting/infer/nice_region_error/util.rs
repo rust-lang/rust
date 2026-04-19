@@ -71,7 +71,7 @@ pub fn find_param_with_region<'tcx>(
     let fn_sig = tcx.liberate_late_bound_regions(id, poly_fn_sig);
     body.params
         .iter()
-        .take(if fn_sig.c_variadic {
+        .take(if fn_sig.c_variadic() {
             fn_sig.inputs().len()
         } else {
             assert_eq!(fn_sig.inputs().len(), body.params.len());

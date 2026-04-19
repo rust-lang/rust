@@ -182,8 +182,6 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
 
     bb0: {
         StorageLive(_22);
-        StorageLive(_6);
-        StorageLive(_7);
         StorageLive(_11);
         StorageLive(_20);
         StorageLive(_5);
@@ -198,10 +196,12 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
         // DBG: _29 = &((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>);
         _4 = &raw const (((((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).2: std::alloc::Global);
         StorageDead(_4);
+        StorageLive(_6);
         // DBG: _32 = &_3;
         // DBG: _31 = &(((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>);
         _5 = copy ((((((_3.0: std::mem::MaybeDangling<std::vec::Vec<impl Sized>>).0: std::vec::Vec<impl Sized>).0: alloc::raw_vec::RawVec<impl Sized>).0: alloc::raw_vec::RawVecInner).0: std::ptr::Unique<u8>).0: std::ptr::NonNull<u8>);
         _6 = copy _5 as std::ptr::NonNull<impl Sized> (Transmute);
+        StorageLive(_7);
         _7 = copy _5 as *mut impl Sized (Transmute);
         switchInt(const <impl Sized as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
     }
@@ -278,13 +278,13 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
 
     bb7: {
         _22 = std::vec::IntoIter::<impl Sized> { buf: copy _6, phantom: const ZeroSized: PhantomData<impl Sized>, cap: move _20, alloc: const ManuallyDrop::<std::alloc::Global> {{ value: MaybeDangling::<std::alloc::Global>(std::alloc::Global) }}, ptr: copy _6, end: copy _11 };
+        StorageDead(_7);
+        StorageDead(_6);
         StorageDead(_3);
         StorageDead(_17);
         StorageDead(_5);
         StorageDead(_20);
         StorageDead(_11);
-        StorageDead(_7);
-        StorageDead(_6);
         StorageLive(_23);
         _23 = move _22;
         goto -> bb8;
@@ -292,6 +292,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
 
     bb8: {
         StorageLive(_25);
+        StorageLive(_24);
         _24 = &mut _23;
         _25 = <std::vec::IntoIter<impl Sized> as Iterator>::next(move _24) -> [return: bb9, unwind: bb15];
     }
@@ -302,6 +303,7 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     }
 
     bb10: {
+        StorageDead(_24);
         StorageDead(_25);
         drop(_23) -> [return: bb11, unwind continue];
     }
@@ -313,11 +315,14 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
     }
 
     bb12: {
+        StorageLive(_27);
         _27 = move ((_25 as Some).0: impl Sized);
         _28 = opaque::<impl Sized>(move _27) -> [return: bb13, unwind: bb15];
     }
 
     bb13: {
+        StorageDead(_27);
+        StorageDead(_24);
         StorageDead(_25);
         goto -> bb8;
     }

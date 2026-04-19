@@ -91,7 +91,7 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
 }
 
 pub fn check_custom_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, fn_sig: FnSig<'_>, fn_sig_span: Span) {
-    if fn_sig.abi == ExternAbi::Custom {
+    if fn_sig.abi() == ExternAbi::Custom {
         // Function definitions that use `extern "custom"` must be naked functions.
         if !find_attr!(tcx, def_id, Naked(_)) {
             tcx.dcx().emit_err(crate::errors::AbiCustomClothedFunction {
@@ -523,8 +523,8 @@ fn sanity_check_found_hidden_type<'tcx>(
         // Nothing was actually constrained.
         return Ok(());
     }
-    if let &ty::Alias(alias @ ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = ty.ty.kind() {
-        if def_id == key.def_id.to_def_id() && alias.args == key.args {
+    if let &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = ty.ty.kind() {
+        if def_id == key.def_id.to_def_id() && args == key.args {
             // Nothing was actually constrained, this is an opaque usage that was
             // only discovered to be opaque after inference vars resolved.
             return Ok(());

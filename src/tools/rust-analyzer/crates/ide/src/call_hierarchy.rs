@@ -4,9 +4,10 @@ use std::iter;
 
 use hir::Semantics;
 use ide_db::{
-    FileRange, FxIndexMap, MiniCore, RootDatabase,
+    FileRange, FxIndexMap, RootDatabase,
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
+    ra_fixture::RaFixtureConfig,
     search::FileReference,
 };
 use syntax::{AstNode, SyntaxKind::IDENT, ast};
@@ -25,7 +26,7 @@ pub struct CallItem {
 pub struct CallHierarchyConfig<'a> {
     /// Whether to exclude tests from the call hierarchy
     pub exclude_tests: bool,
-    pub minicore: MiniCore<'a>,
+    pub ra_fixture: RaFixtureConfig<'a>,
 }
 
 pub(crate) fn call_hierarchy(
@@ -36,7 +37,7 @@ pub(crate) fn call_hierarchy(
     goto_definition::goto_definition(
         db,
         position,
-        &GotoDefinitionConfig { minicore: config.minicore },
+        &GotoDefinitionConfig { ra_fixture: config.ra_fixture },
     )
 }
 
@@ -174,7 +175,7 @@ impl CallLocations {
 #[cfg(test)]
 mod tests {
     use expect_test::{Expect, expect};
-    use ide_db::{FilePosition, MiniCore};
+    use ide_db::{FilePosition, ra_fixture::RaFixtureConfig};
     use itertools::Itertools;
 
     use crate::fixture;
@@ -197,7 +198,8 @@ mod tests {
             )
         }
 
-        let config = crate::CallHierarchyConfig { exclude_tests, minicore: MiniCore::default() };
+        let config =
+            crate::CallHierarchyConfig { exclude_tests, ra_fixture: RaFixtureConfig::default() };
         let (analysis, pos) = fixture::position(ra_fixture);
 
         let mut navs = analysis.call_hierarchy(pos, &config).unwrap().unwrap().info;

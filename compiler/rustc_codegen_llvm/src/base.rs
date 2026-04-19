@@ -65,8 +65,7 @@ pub(crate) fn compile_codegen_unit(
     let (module, _) = tcx.dep_graph.with_task(
         dep_node,
         tcx,
-        cgu_name,
-        module_codegen,
+        || module_codegen(tcx, cgu_name),
         Some(dep_graph::hash_result),
     );
     let time_to_codegen = start_time.elapsed();

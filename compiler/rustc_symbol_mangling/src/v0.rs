@@ -551,10 +551,10 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                 let sig = sig_tys.with(hdr);
                 self.push("F");
                 self.wrap_binder(&sig, |p, sig| {
-                    if sig.safety.is_unsafe() {
+                    if sig.safety().is_unsafe() {
                         p.push("U");
                     }
-                    match sig.abi {
+                    match sig.abi() {
                         ExternAbi::Rust => {}
                         ExternAbi::C { unwind: false } => p.push("KC"),
                         abi => {
@@ -570,7 +570,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                     for &ty in sig.inputs() {
                         ty.print(p)?;
                     }
-                    if sig.c_variadic {
+                    if sig.c_variadic() {
                         p.push("v");
                     }
                     p.push("E");
@@ -888,7 +888,6 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             DefPathData::Closure => 'C',
             DefPathData::Ctor => 'c',
             DefPathData::AnonConst => 'K',
-            DefPathData::LateAnonConst => 'k',
             DefPathData::OpaqueTy => 'i',
             DefPathData::SyntheticCoroutineBody => 's',
             DefPathData::NestedStatic => 'n',
@@ -900,7 +899,6 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             | DefPathData::Impl
             | DefPathData::MacroNs(_)
             | DefPathData::LifetimeNs(_)
-            | DefPathData::DesugaredAnonymousLifetime
             | DefPathData::OpaqueLifetime(_)
             | DefPathData::AnonAssocTy(..) => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)

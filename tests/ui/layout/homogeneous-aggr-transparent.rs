@@ -21,23 +21,23 @@ union WrapperUnion<T: Copy> {
     something: T,
 }
 
-#[rustc_layout(homogeneous_aggregate)]
+#[rustc_dump_layout(homogeneous_aggregate)]
 pub type Test0 = Tuple;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
 
-#[rustc_layout(homogeneous_aggregate)]
+#[rustc_dump_layout(homogeneous_aggregate)]
 pub type Test1 = Wrapper1<Tuple>;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
 
-#[rustc_layout(homogeneous_aggregate)]
+#[rustc_dump_layout(homogeneous_aggregate)]
 pub type Test2 = Wrapper2<Tuple>;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
 
-#[rustc_layout(homogeneous_aggregate)]
+#[rustc_dump_layout(homogeneous_aggregate)]
 pub type Test3 = Wrapper3<Tuple>;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
 
-#[rustc_layout(homogeneous_aggregate)]
+#[rustc_dump_layout(homogeneous_aggregate)]
 pub type Test4 = WrapperUnion<Tuple>;
 //~^ ERROR homogeneous_aggregate: Ok(Homogeneous(Reg { kind: Float, size: Size(4 bytes) }))
 

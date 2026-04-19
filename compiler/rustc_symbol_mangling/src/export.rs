@@ -134,7 +134,7 @@ impl<'tcx> AbiHashStable<'tcx> for ty::FnSig<'tcx> {
         for ty in self.inputs_and_output {
             ty.abi_hash(tcx, hasher);
         }
-        self.safety.is_safe().abi_hash(tcx, hasher);
+        self.safety().is_safe().abi_hash(tcx, hasher);
     }
 }
 

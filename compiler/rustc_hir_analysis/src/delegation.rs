@@ -14,7 +14,7 @@ use rustc_middle::ty::{
 use rustc_span::{ErrorGuaranteed, Span, kw};
 
 use crate::collect::ItemCtxt;
-use crate::hir_ty_lowering::{GenericArgPosition, HirTyLowerer};
+use crate::hir_ty_lowering::HirTyLowerer;
 
 type RemapTable = FxHashMap<u32, u32>;
 
@@ -318,10 +318,14 @@ fn create_generic_args<'tcx>(
     let (caller_kind, callee_kind) = (fn_kind(tcx, delegation_id), fn_kind(tcx, sig_id));
 
     let delegation_args = ty::GenericArgs::identity_for_item(tcx, delegation_id);
-    let delegation_parent_args_count = tcx.generics_of(delegation_id).parent_count;
 
     let deleg_parent_args_without_self_count =
         get_delegation_parent_args_count_without_self(tcx, delegation_id, sig_id);
+
+    let delegation_generics = tcx.generics_of(delegation_id);
+    let real_args_count = delegation_args.len() - delegation_generics.own_synthetic_params_count();
+    let synth_args = &delegation_args[real_args_count..];
+    let delegation_args = &delegation_args[..real_args_count];
 
     let args = match (caller_kind, callee_kind) {
         (FnKind::Free, FnKind::Free)
@@ -339,14 +343,15 @@ fn create_generic_args<'tcx>(
 
             assert!(child_args.is_empty(), "Child args can not be used in trait impl case");
 
-            tcx.mk_args(&delegation_args[delegation_parent_args_count..])
+            tcx.mk_args(&delegation_args[delegation_generics.parent_count..])
         }
 
         (FnKind::AssocInherentImpl, FnKind::AssocTrait) => {
             let self_ty = tcx.type_of(tcx.local_parent(delegation_id)).instantiate_identity();
 
             tcx.mk_args_from_iter(
-                std::iter::once(ty::GenericArg::from(self_ty)).chain(delegation_args.iter()),
+                std::iter::once(ty::GenericArg::from(self_ty))
+                    .chain(delegation_args.iter().copied()),
             )
         }
 
@@ -411,7 +416,7 @@ fn create_generic_args<'tcx>(
 
         new_args.extend_from_slice(&child_args[child_lifetimes_count..]);
     } else if !parent_args.is_empty() {
-        let child_args = &delegation_args[delegation_parent_args_count..];
+        let child_args = &delegation_args[delegation_generics.parent_count..];
 
         let child_lifetimes_count =
             child_args.iter().take_while(|a| a.as_region().is_some()).count();
@@ -423,6 +428,8 @@ fn create_generic_args<'tcx>(
         let skip_self = matches!(self_pos_kind, SelfPositionKind::AfterLifetimes);
         new_args.extend(&child_args[child_lifetimes_count + skip_self as usize..]);
     }
+
+    new_args.extend(synth_args);
 
     new_args
 }
@@ -523,7 +530,7 @@ fn check_constraints<'tcx>(
         }));
     };
 
-    if tcx.fn_sig(sig_id).skip_binder().skip_binder().c_variadic {
+    if tcx.fn_sig(sig_id).skip_binder().skip_binder().c_variadic() {
         // See issue #127443 for explanation.
         emit("delegation to C-variadic functions is not allowed");
     }
@@ -581,14 +588,7 @@ fn get_delegation_user_specified_args<'tcx>(
         let self_ty = get_delegation_self_ty(tcx, delegation_id);
 
         lowerer
-            .lower_generic_args_of_path(
-                segment.ident.span,
-                def_id,
-                &[],
-                segment,
-                self_ty,
-                GenericArgPosition::Type,
-            )
+            .lower_generic_args_of_path(segment.ident.span, def_id, &[], segment, self_ty)
             .0
             .as_slice()
     });
@@ -610,17 +610,11 @@ fn get_delegation_user_specified_args<'tcx>(
             };
 
             let args = lowerer
-                .lower_generic_args_of_path(
-                    segment.ident.span,
-                    def_id,
-                    parent_args,
-                    segment,
-                    None,
-                    GenericArgPosition::Value,
-                )
+                .lower_generic_args_of_path(segment.ident.span, def_id, parent_args, segment, None)
                 .0;
 
-            &args[parent_args.len()..]
+            let synth_params_count = tcx.generics_of(def_id).own_synthetic_params_count();
+            &args[parent_args.len()..args.len() - synth_params_count]
         });
 
     (parent_args.unwrap_or_default(), child_args.unwrap_or_default())

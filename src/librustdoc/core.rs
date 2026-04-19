@@ -87,10 +87,7 @@ impl<'tcx> DocContext<'tcx> {
     }
 
     pub(crate) fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        ty::TypingEnv {
-            typing_mode: ty::TypingMode::non_body_analysis(),
-            param_env: self.param_env,
-        }
+        ty::TypingEnv::new(self.param_env, ty::TypingMode::non_body_analysis())
     }
 
     /// Call the closure with the given parameters set as
@@ -214,6 +211,7 @@ pub(crate) fn create_config(
         lint_cap,
         scrape_examples_options,
         remap_path_prefix,
+        remap_path_scope,
         target_modifiers,
         ..
     }: RustdocOptions,
@@ -273,6 +271,7 @@ pub(crate) fn create_config(
         crate_name,
         test,
         remap_path_prefix,
+        remap_path_scope,
         output_types: if let Some(file) = render_options.dep_info() {
             OutputTypes::new(&[(OutputType::DepInfo, file.cloned())])
         } else {

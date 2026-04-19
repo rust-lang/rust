@@ -10,6 +10,7 @@ pub struct X;
     note = "my other note"
 )]
 impl PartialEq for X {
+    //~^ NOTE: impl defined here, but it is not `const`
     fn eq(&self, _other: &X) -> bool {
         true
     }
@@ -18,8 +19,6 @@ impl PartialEq for X {
 const _: () = {
     let x = X;
     x == x;
-    //~^ ERROR: my message
-    //~| NOTE: my label
-    //~| NOTE: my note
-    //~| NOTE: my other note
+    //~^ ERROR: cannot call non-const operator in constants
+    //~| NOTE: limited to constant functions
 };

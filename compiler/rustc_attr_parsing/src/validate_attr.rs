@@ -1,6 +1,7 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
 use std::convert::identity;
+use std::slice;
 
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
@@ -8,7 +9,7 @@ use rustc_ast::{
     self as ast, AttrArgs, Attribute, DelimArgs, MetaItem, MetaItemInner, MetaItemKind, Safety,
 };
 use rustc_errors::{Applicability, PResult};
-use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
+use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, template};
 use rustc_hir::AttrPath;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_parse::parse_in;
@@ -17,23 +18,50 @@ use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_session::parse::ParseSess;
 use rustc_span::{Span, Symbol, sym};
 
-use crate::session_diagnostics as errors;
+use crate::{AttributeParser, Late, session_diagnostics as errors};
 
 pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
-    // Built-in attributes are parsed in their respective attribute parsers, so can be ignored here
-    if attr.is_doc_comment()
-        || attr.name().is_some_and(|name| BUILTIN_ATTRIBUTE_MAP.contains_key(&name))
+    if attr.is_doc_comment() || attr.has_name(sym::cfg_trace) || attr.has_name(sym::cfg_attr_trace)
     {
         return;
     }
 
-    let attr_item = attr.get_normal_item();
-    if let AttrArgs::Eq { .. } = attr_item.args.unparsed_ref().unwrap() {
-        // All key-value attributes are restricted to meta-item syntax.
-        match parse_meta(psess, attr) {
-            Ok(_) => {}
-            Err(err) => {
-                err.emit();
+    let builtin_attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name));
+
+    // Check input tokens for built-in and key-value attributes.
+    match builtin_attr_info {
+        Some(BuiltinAttribute { name, .. }) => {
+            if AttributeParser::<Late>::is_parsed_attribute(slice::from_ref(&name)) {
+                return;
+            }
+            match parse_meta(psess, attr) {
+                // Don't check safety again, we just did that
+                Ok(meta) => {
+                    // FIXME The only unparsed builtin attributes that are left are the lint attributes, so we can hardcode the template here
+                    let lint_attrs = [sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
+                    assert!(lint_attrs.contains(name));
+
+                    let template = template!(
+                        List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#],
+                        "https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes"
+                    );
+                    check_builtin_meta_item(psess, &meta, attr.style, *name, template, false)
+                }
+                Err(err) => {
+                    err.emit();
+                }
+            }
+        }
+        _ => {
+            let attr_item = attr.get_normal_item();
+            if let AttrArgs::Eq { .. } = attr_item.args.unparsed_ref().unwrap() {
+                // All key-value attributes are restricted to meta-item syntax.
+                match parse_meta(psess, attr) {
+                    Ok(_) => {}
+                    Err(err) => {
+                        err.emit();
+                    }
+                }
             }
         }
     }

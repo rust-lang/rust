@@ -101,14 +101,12 @@ impl ImportScope {
                 {
                     block = b.stmt_list();
                 }
-                if has_attrs
-                    .attrs()
-                    .any(|attr| attr.as_simple_call().is_some_and(|(ident, _)| ident == "cfg"))
+                if has_attrs.attrs().any(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))))
                 {
                     if let Some(b) = block.clone() {
-                        let current_cfgs = has_attrs.attrs().filter(|attr| {
-                            attr.as_simple_call().is_some_and(|(ident, _)| ident == "cfg")
-                        });
+                        let current_cfgs = has_attrs
+                            .attrs()
+                            .filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))));
 
                         let total_cfgs: Vec<_> =
                             required_cfgs.iter().cloned().chain(current_cfgs).collect();
@@ -118,7 +116,7 @@ impl ImportScope {
                         if let Some(parent) = parent {
                             can_merge = parent.children().filter_map(ast::Use::cast).any(|u| {
                                 let u_attrs = u.attrs().filter(|attr| {
-                                    attr.as_simple_call().is_some_and(|(ident, _)| ident == "cfg")
+                                    matches!(attr.meta(), Some(ast::Meta::CfgMeta(_)))
                                 });
                                 crate::imports::merge_imports::eq_attrs(
                                     u_attrs,
@@ -134,9 +132,11 @@ impl ImportScope {
                             });
                         }
                     }
-                    required_cfgs.extend(has_attrs.attrs().filter(|attr| {
-                        attr.as_simple_call().is_some_and(|(ident, _)| ident == "cfg")
-                    }));
+                    required_cfgs.extend(
+                        has_attrs
+                            .attrs()
+                            .filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_)))),
+                    );
                 }
             }
         }
@@ -305,10 +305,8 @@ fn insert_use_with_alias_option_with_editor(
     if mb == Some(MergeBehavior::One) && use_tree.path().is_some() {
         use_tree.wrap_in_tree_list();
     }
-    let use_item = make::use_(None, None, use_tree).clone_for_update();
-    for attr in
-        scope.required_cfgs.iter().map(|attr| attr.syntax().clone_subtree().clone_for_update())
-    {
+    let use_item = make::use_(None, None, use_tree);
+    for attr in scope.required_cfgs.iter().map(|attr| attr.syntax().clone()) {
         syntax_editor.insert(Position::first_child_of(use_item.syntax()), attr);
     }
 
@@ -711,7 +709,11 @@ fn insert_use_with_editor_(
             Some(b) => {
                 cov_mark::hit!(insert_empty_module);
                 syntax_editor.insert(Position::after(&b), syntax_factory.whitespace("\n"));
-                syntax_editor.insert(Position::after(&b), use_item.syntax());
+                syntax_editor.insert_with_whitespace(
+                    Position::after(&b),
+                    use_item.syntax(),
+                    syntax_factory,
+                );
             }
             None => {
                 cov_mark::hit!(insert_empty_file);

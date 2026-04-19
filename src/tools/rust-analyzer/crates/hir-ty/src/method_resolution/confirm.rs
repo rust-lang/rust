@@ -136,7 +136,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
         );
         let illegal_sized_bound = self.predicates_require_illegal_sized_bound(
             GenericPredicates::query_all(self.db(), self.candidate.into())
-                .iter_instantiated_copied(self.interner(), filler_args.as_slice()),
+                .iter_instantiated(self.interner(), filler_args.as_slice()),
         );
 
         // Unify the (adjusted) self type with what the method expects.
@@ -509,7 +509,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
         let def_id = self.candidate;
         let method_predicates = clauses_as_obligations(
             GenericPredicates::query_all(self.db(), def_id.into())
-                .iter_instantiated_copied(self.interner(), all_args),
+                .iter_instantiated(self.interner(), all_args),
             ObligationCause::new(),
             self.ctx.table.param_env,
         );

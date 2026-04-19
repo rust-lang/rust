@@ -1,0 +1,26 @@
+error[E0659]: `inline` is ambiguous
+  --> $DIR/shadow_builtin.rs:11:3
+   |
+LL | #[inline]
+   |   ^^^^^^ ambiguous name
+   |
+   = note: ambiguous because of a name conflict with a builtin attribute
+   = note: `inline` could refer to a built-in attribute
+note: `inline` could also refer to the attribute macro defined here
+  --> $DIR/shadow_builtin.rs:7:1
+   |
+LL | #[eii(inline)]
+   | ^^^^^^^^^^^^^^
+   = help: use `crate::inline` to refer to this attribute macro unambiguously
+
+error: `#[inline]` required, but not found
+  --> $DIR/shadow_builtin.rs:7:7
+   |
+LL | #[eii(inline)]
+   |       ^^^^^^ expected because `#[inline]` was declared here in crate `shadow_builtin`
+   |
+   = help: expected at least one implementation in crate `shadow_builtin` or any of its dependencies
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0659`.

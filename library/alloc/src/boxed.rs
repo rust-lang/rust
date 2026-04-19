@@ -1006,26 +1006,6 @@ impl<T> Box<[T]> {
         };
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, Global).into_box(len)) }
     }
-
-    /// Converts the boxed slice into a boxed array.
-    ///
-    /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
-    ///
-    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
-    #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
-    #[inline]
-    #[must_use]
-    pub fn into_array<const N: usize>(self) -> Option<Box<[T; N]>> {
-        if self.len() == N {
-            let ptr = Self::into_raw(self) as *mut [T; N];
-
-            // SAFETY: The underlying array of a slice has the exact same layout as an actual array `[T; N]` if `N` is equal to the slice's length.
-            let me = unsafe { Box::from_raw(ptr) };
-            Some(me)
-        } else {
-            None
-        }
-    }
 }
 
 impl<T, A: Allocator> Box<[T], A> {
@@ -1157,6 +1137,36 @@ impl<T, A: Allocator> Box<[T], A> {
         };
         unsafe { Ok(RawVec::from_raw_parts_in(ptr.as_ptr(), len, alloc).into_box(len)) }
     }
+
+    /// Converts the boxed slice into a boxed array.
+    ///
+    /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
+    ///
+    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(alloc_slice_into_array)]
+    /// let box_slice: Box<[i32]> = Box::new([1, 2, 3]);
+    ///
+    /// let box_array: Box<[i32; 3]> = box_slice.into_array().unwrap();
+    /// ```
+    #[unstable(feature = "alloc_slice_into_array", issue = "148082")]
+    #[inline]
+    #[must_use]
+    pub fn into_array<const N: usize>(self) -> Option<Box<[T; N], A>> {
+        if self.len() == N {
+            let (ptr, alloc) = Self::into_raw_with_allocator(self);
+            let ptr = ptr as *mut [T; N];
+
+            // SAFETY: The underlying array of a slice has the exact same layout as an actual array `[T; N]` if `N` is equal to the slice's length.
+            let me = unsafe { Box::from_raw_in(ptr, alloc) };
+            Some(me)
+        } else {
+            None
+        }
+    }
 }
 
 impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
@@ -1277,6 +1287,7 @@ impl<T: ?Sized> Box<T> {
     /// The raw pointer must point to a block of memory allocated by the global allocator.
     ///
     /// The safety conditions are described in the [memory layout] section.
+    /// Note that the [considerations for unsafe code] apply to all `Box<T>` values.
     ///
     /// # Examples
     ///
@@ -1302,6 +1313,7 @@ impl<T: ?Sized> Box<T> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
+    /// [considerations for unsafe code]: self#considerations-for-unsafe-code
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     #[must_use = "call `drop(Box::from_raw(ptr))` if you intend to drop the `Box`"]
@@ -1326,6 +1338,7 @@ impl<T: ?Sized> Box<T> {
     /// The non-null pointer must point to a block of memory allocated by the global allocator.
     ///
     /// The safety conditions are described in the [memory layout] section.
+    /// Note that the [considerations for unsafe code] apply to all `Box<T>` values.
     ///
     /// # Examples
     ///
@@ -1356,6 +1369,7 @@ impl<T: ?Sized> Box<T> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
+    /// [considerations for unsafe code]: self#considerations-for-unsafe-code
     #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]
     #[must_use = "call `drop(Box::from_non_null(ptr))` if you intend to drop the `Box`"]
@@ -1499,6 +1513,9 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// The raw pointer must point to a block of memory allocated by `alloc`.
     ///
+    /// The safety conditions are described in the [memory layout] section.
+    /// Note that the [considerations for unsafe code] apply to all `Box<T, A>` values.
+    ///
     /// # Examples
     ///
     /// Recreate a `Box` which was previously converted to a raw pointer
@@ -1530,6 +1547,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
+    /// [considerations for unsafe code]: self#considerations-for-unsafe-code
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
     pub unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {
@@ -1551,6 +1569,9 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// function is called twice on the same raw pointer.
     ///
     /// The non-null pointer must point to a block of memory allocated by `alloc`.
+    ///
+    /// The safety conditions are described in the [memory layout] section.
+    /// Note that the [considerations for unsafe code] apply to all `Box<T, A>` values.
     ///
     /// # Examples
     ///
@@ -1582,6 +1603,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
+    /// [considerations for unsafe code]: self#considerations-for-unsafe-code
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "box_vec_non_null", issue = "130364")]
     #[inline]

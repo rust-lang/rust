@@ -5,7 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::GenericArg;
 use rustc_hir::def_id::DefId;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
-    check_generic_arg_count_for_call, lower_generic_args,
+    check_generic_arg_count_for_value_path, lower_generic_args,
 };
 use rustc_hir_analysis::hir_ty_lowering::{
     GenericArgsLowerer, HirTyLowerer, IsMethodCall, RegionInferReason,
@@ -144,8 +144,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         );
         self.unify_receivers(self_ty, method_sig_rcvr, pick);
 
-        let (method_sig, method_predicates) =
-            self.normalize(self.span, (method_sig, method_predicates));
+        let method_sig = self.normalize(self.span, method_sig);
 
         // Make sure nobody calls `drop()` explicitly.
         self.check_for_illegal_method_calls(pick);
@@ -403,7 +402,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // variables.
         let generics = self.tcx.generics_of(pick.item.def_id);
 
-        let arg_count_correct = check_generic_arg_count_for_call(
+        let arg_count_correct = check_generic_arg_count_for_value_path(
             self.fcx,
             pick.item.def_id,
             generics,
@@ -626,6 +625,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 );
                 self.cause(self.span, code)
             },
+            |pred| self.normalize(self.call_expr.span, pred),
             self.param_env,
             method_predicates,
         ) {

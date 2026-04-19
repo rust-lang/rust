@@ -38,7 +38,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
             ArgParser::NoArgs => Some(AttributeKind::Inline(InlineAttr::Hint, cx.attr_span)),
             ArgParser::List(list) => {
                 let Some(l) = list.single() else {
-                    cx.adcx().expected_single_argument(list.span);
+                    cx.adcx().expected_single_argument(list.span, list.len());
                     return None;
                 };
 
@@ -67,7 +67,6 @@ pub(crate) struct RustcForceInlineParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
     const PATH: &[Symbol] = &[sym::rustc_force_inline];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -80,7 +79,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
             ArgParser::NoArgs => None,
             ArgParser::List(list) => {
                 let Some(l) = list.single() else {
-                    cx.adcx().expected_single_argument(list.span);
+                    cx.adcx().expected_single_argument(list.span, list.len());
                     return None;
                 };
 

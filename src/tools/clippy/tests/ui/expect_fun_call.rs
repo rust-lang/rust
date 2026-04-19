@@ -147,3 +147,13 @@ fn main() {
         return;
     });
 }
+
+fn issue16747() {
+    let x = 42;
+    let _c = char::from_u32(x).expect(&format!("Illegal: {x}")[..]);
+    //~^ expect_fun_call
+
+    let s = "hello";
+    let _c = char::from_u32(x).expect(&s.to_lowercase()[..2]);
+    //~^ expect_fun_call
+}

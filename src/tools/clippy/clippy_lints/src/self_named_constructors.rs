@@ -44,7 +44,7 @@ impl<'tcx> LateLintPass<'tcx> for SelfNamedConstructors {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         match impl_item.kind {
             ImplItemKind::Fn(ref sig, _) => {
-                if sig.decl.implicit_self.has_implicit_self() {
+                if sig.decl.implicit_self().has_implicit_self() {
                     return;
                 }
             },

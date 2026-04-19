@@ -893,11 +893,25 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let item = tcx.hir_expect_item(def_id);
 
-    let (constness, is_alias, is_auto, safety) = match item.kind {
-        hir::ItemKind::Trait(constness, is_auto, safety, ..) => {
-            (constness, false, is_auto == hir::IsAuto::Yes, safety)
-        }
-        hir::ItemKind::TraitAlias(constness, ..) => (constness, true, false, hir::Safety::Safe),
+    let (constness, is_alias, is_auto, safety, impl_restriction) = match item.kind {
+        hir::ItemKind::Trait(constness, is_auto, safety, impl_restriction, ..) => (
+            constness,
+            false,
+            is_auto == hir::IsAuto::Yes,
+            safety,
+            if let hir::RestrictionKind::Restricted(path) = impl_restriction.kind {
+                ty::trait_def::ImplRestrictionKind::Restricted(path.res, impl_restriction.span)
+            } else {
+                ty::trait_def::ImplRestrictionKind::Unrestricted
+            },
+        ),
+        hir::ItemKind::TraitAlias(constness, ..) => (
+            constness,
+            true,
+            false,
+            hir::Safety::Safe,
+            ty::trait_def::ImplRestrictionKind::Unrestricted,
+        ),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
@@ -946,6 +960,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         def_id: def_id.to_def_id(),
         safety,
         constness,
+        impl_restriction,
         paren_sugar,
         has_auto_impl: is_auto,
         is_marker,
@@ -1025,7 +1040,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
                 (Bound::Unbounded, Bound::Unbounded) => hir::Safety::Safe,
                 _ => hir::Safety::Unsafe,
             };
-            ty::Binder::dummy(tcx.mk_fn_sig(inputs, ty, false, safety, ExternAbi::Rust))
+            ty::Binder::dummy(tcx.mk_fn_sig_rust_abi(inputs, ty, safety))
         }
 
         Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
@@ -1218,9 +1233,7 @@ fn recover_infer_ret_ty<'tcx>(
     let fn_sig = tcx.mk_fn_sig(
         fn_sig.inputs().iter().copied(),
         recovered_ret_ty.unwrap_or_else(|| Ty::new_error(tcx, guar)),
-        fn_sig.c_variadic,
-        fn_sig.safety,
-        fn_sig.abi,
+        fn_sig.fn_sig_kind,
     );
 
     late_param_regions_to_bound(tcx, scope, bound_vars, fn_sig)

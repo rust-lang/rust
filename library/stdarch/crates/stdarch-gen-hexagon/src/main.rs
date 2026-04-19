@@ -515,12 +515,6 @@ fn parse_header(content: &str) -> Vec<IntrinsicInfo> {
     intrinsics
 }
 
-/// Convert Q6 name to Rust function name (lowercase with underscores)
-fn q6_to_rust_name(q6_name: &str) -> String {
-    // Q6_V_hi_W -> q6_v_hi_w
-    q6_name.to_lowercase()
-}
-
 /// Generate the module documentation
 fn generate_module_doc(mode: VectorMode) -> String {
     format!(
@@ -540,6 +534,18 @@ fn generate_module_doc(mode: VectorMode) -> String {
 //! - `HvxVectorPred` is {bits} bits ({bytes} bytes) for predicate operations
 //!
 //! To use this module, compile with `-C target-feature=+{target_feature}`.
+//!
+//! ## Naming Convention
+//!
+//! Function names preserve the original Q6 naming case because the convention
+//! uses case to distinguish register types:
+//! - `W` (uppercase) = vector pair (`HvxVectorPair`)
+//! - `V` (uppercase) = vector (`HvxVector`)
+//! - `Q` (uppercase) = predicate (`HvxVectorPred`)
+//! - `R` = scalar register (`i32`)
+//!
+//! For example, `Q6_W_vcombine_VV` operates on a vector pair while
+//! `Q6_V_hi_W` extracts a vector from a pair.
 //!
 //! ## Architecture Versions
 //!
@@ -577,6 +583,7 @@ fn generate_types(mode: VectorMode) -> String {
     format!(
         r#"
 #![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
@@ -1433,7 +1440,7 @@ fn generate_functions(intrinsics: &[IntrinsicInfo]) -> String {
 
     // Generate simple intrinsics
     for info in intrinsics.iter().filter(|i| !i.is_compound) {
-        let rust_name = q6_to_rust_name(&info.q6_name);
+        let rust_name = &info.q6_name;
 
         // Generate doc comment
         output.push_str(&format!("/// `{}`\n", info.asm_syntax));
@@ -1505,7 +1512,7 @@ fn generate_functions(intrinsics: &[IntrinsicInfo]) -> String {
     let overrides = get_compound_overrides();
     for info in intrinsics.iter().filter(|i| i.is_compound) {
         if let Some(ref compound_expr) = info.compound_expr {
-            let rust_name = q6_to_rust_name(&info.q6_name);
+            let rust_name = &info.q6_name;
 
             // Get the primary instruction for assert_instr
             let _primary_instr = get_compound_primary_instr(compound_expr)

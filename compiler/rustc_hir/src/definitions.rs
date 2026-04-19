@@ -97,9 +97,32 @@ impl DefPathTable {
     }
 }
 
-#[derive(Debug)]
+pub trait Disambiguator {
+    fn entry(&mut self, parent: LocalDefId, data: DefPathData) -> &mut u32;
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct PerParentDisambiguatorState {
+    next: UnordMap<DefPathData, u32>,
+}
+
+impl Disambiguator for PerParentDisambiguatorState {
+    #[inline]
+    fn entry(&mut self, _: LocalDefId, data: DefPathData) -> &mut u32 {
+        self.next.entry(data).or_insert(0)
+    }
+}
+
+#[derive(Debug, Default, Clone)]
 pub struct DisambiguatorState {
     next: UnordMap<(LocalDefId, DefPathData), u32>,
+}
+
+impl Disambiguator for DisambiguatorState {
+    #[inline]
+    fn entry(&mut self, parent: LocalDefId, data: DefPathData) -> &mut u32 {
+        self.next.entry((parent, data)).or_insert(0)
+    }
 }
 
 impl DisambiguatorState {
@@ -302,10 +325,6 @@ pub enum DefPathData {
     Ctor,
     /// A constant expression (see `{ast,hir}::AnonConst`).
     AnonConst,
-    /// A constant expression created during AST->HIR lowering..
-    LateAnonConst,
-    /// A fresh anonymous lifetime created by desugaring elided lifetimes.
-    DesugaredAnonymousLifetime,
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
@@ -389,7 +408,7 @@ impl Definitions {
         &mut self,
         parent: LocalDefId,
         data: DefPathData,
-        disambiguator: &mut DisambiguatorState,
+        disambiguator: &mut impl Disambiguator,
     ) -> LocalDefId {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
@@ -403,7 +422,7 @@ impl Definitions {
 
         // Find the next free disambiguator for this key.
         let disambiguator = {
-            let next_disamb = disambiguator.next.entry((parent, data)).or_insert(0);
+            let next_disamb = disambiguator.entry(parent, data);
             let disambiguator = *next_disamb;
             *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
             disambiguator
@@ -458,8 +477,6 @@ impl DefPathData {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name)
             | OpaqueLifetime(name) => Some(name),
 
-            DesugaredAnonymousLifetime => Some(kw::UnderscoreLifetime),
-
             Impl
             | ForeignMod
             | CrateRoot
@@ -468,7 +485,6 @@ impl DefPathData {
             | Closure
             | Ctor
             | AnonConst
-            | LateAnonConst
             | OpaqueTy
             | AnonAssocTy(..)
             | SyntheticCoroutineBody
@@ -482,8 +498,6 @@ impl DefPathData {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) | AnonAssocTy(name)
             | OpaqueLifetime(name) => Some(name),
 
-            DesugaredAnonymousLifetime => Some(kw::UnderscoreLifetime),
-
             Impl
             | ForeignMod
             | CrateRoot
@@ -492,7 +506,6 @@ impl DefPathData {
             | Closure
             | Ctor
             | AnonConst
-            | LateAnonConst
             | OpaqueTy
             | SyntheticCoroutineBody
             | NestedStatic => None,
@@ -512,8 +525,7 @@ impl DefPathData {
             GlobalAsm => DefPathDataName::Anon { namespace: sym::global_asm },
             Closure => DefPathDataName::Anon { namespace: sym::closure },
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
-            AnonConst | LateAnonConst => DefPathDataName::Anon { namespace: sym::constant },
-            DesugaredAnonymousLifetime => DefPathDataName::Named(kw::UnderscoreLifetime),
+            AnonConst => DefPathDataName::Anon { namespace: sym::constant },
             OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },
             AnonAssocTy(..) => DefPathDataName::Anon { namespace: sym::anon_assoc },
             SyntheticCoroutineBody => DefPathDataName::Anon { namespace: sym::synthetic },

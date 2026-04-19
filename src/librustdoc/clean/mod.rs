@@ -235,7 +235,8 @@ fn generate_item_with_correct_attrs(
             attrs.extend(get_all_import_attributes(cx, import_id, def_id, is_inline));
             is_inline = is_inline || import_is_inline;
         }
-        add_without_unwanted_attributes(&mut attrs, target_attrs, is_inline, None);
+        let keep_target_cfg = is_inline || matches!(kind, ItemKind::TypeAliasItem(..));
+        add_without_unwanted_attributes(&mut attrs, target_attrs, keep_target_cfg, None);
         attrs
     } else {
         // We only keep the item's attributes.
@@ -1172,7 +1173,7 @@ fn clean_fn_decl_with_params<'tcx>(
     {
         output = output.sugared_async_return_type();
     }
-    FnDecl { inputs: params, output, c_variadic: decl.c_variadic }
+    FnDecl { inputs: params, output, c_variadic: decl.c_variadic() }
 }
 
 fn clean_poly_fn_sig<'tcx>(
@@ -1210,7 +1211,7 @@ fn clean_poly_fn_sig<'tcx>(
         })
         .collect();
 
-    FnDecl { inputs: params, output, c_variadic: sig.skip_binder().c_variadic }
+    FnDecl { inputs: params, output, c_variadic: sig.skip_binder().c_variadic() }
 }
 
 fn clean_trait_ref<'tcx>(trait_ref: &hir::TraitRef<'tcx>, cx: &mut DocContext<'tcx>) -> Path {
@@ -2914,7 +2915,8 @@ fn clean_maybe_renamed_item<'tcx>(
             ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
-            ItemKind::Trait(_, _, _, _, generics, bounds, item_ids) => {
+            // FIXME: rustdoc will need to handle `impl` restrictions at some point
+            ItemKind::Trait(_, _, _, _impl_restriction, _, generics, bounds, item_ids) => {
                 let items = item_ids
                     .iter()
                     .map(|&ti| clean_trait_item(cx.tcx.hir_trait_item(ti), cx))

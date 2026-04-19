@@ -50,3 +50,19 @@ pub(crate) struct UnreachableCfgSelectPredicateWildcard {
     #[label("always matches")]
     pub wildcard_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("must be a name of an associated function")]
+pub(crate) struct MustBeNameOfAssociatedFunction {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("unsafe attribute used without unsafe")]
+pub(crate) struct UnsafeAttrOutsideUnsafeLint {
+    #[label("usage of unsafe attribute")]
+    pub span: Span,
+    #[subdiagnostic]
+    pub suggestion: Option<crate::session_diagnostics::UnsafeAttrOutsideUnsafeSuggestion>,
+}

@@ -6,7 +6,7 @@ mod tests;
 
 use std::iter;
 
-use base_db::RootQueryDb as _;
+use base_db::toolchain_channel;
 use hir::{
     DisplayTarget, HasAttrs, InFile, Local, ModuleDef, ModuleSource, Name, PathResolution,
     ScopeDef, Semantics, SemanticsScope, Symbol, Type, TypeInfo,
@@ -101,6 +101,28 @@ impl PathCompletionCtx<'_> {
                 ..
             }
         )
+    }
+
+    pub(crate) fn required_thin_arrow(&self) -> Option<(&'static str, TextSize)> {
+        let PathKind::Type {
+            location:
+                TypeLocation::TypeAscription(TypeAscriptionTarget::RetType {
+                    item: Some(ref fn_item),
+                    ..
+                }),
+        } = self.kind
+        else {
+            return None;
+        };
+        if fn_item.ret_type().is_some_and(|it| it.thin_arrow_token().is_some()) {
+            return None;
+        }
+        let ret_type = fn_item.ret_type().and_then(|it| it.ty());
+        match (ret_type, fn_item.param_list()) {
+            (Some(ty), _) => Some(("-> ", ty.syntax().text_range().start())),
+            (None, Some(param)) => Some((" ->", param.syntax().text_range().end())),
+            (None, None) => None,
+        }
     }
 }
 
@@ -231,7 +253,7 @@ impl TypeLocation {
 pub(crate) enum TypeAscriptionTarget {
     Let(Option<ast::Pat>),
     FnParam(Option<ast::Pat>),
-    RetType(Option<ast::Expr>),
+    RetType { body: Option<ast::Expr>, item: Option<ast::Fn> },
     Const(Option<ast::Expr>),
 }
 
@@ -386,9 +408,11 @@ pub(crate) enum CompletionAnalysis<'db> {
     /// Set if we are currently completing in an unexpanded attribute, this usually implies a builtin attribute like `allow($0)`
     UnexpandedAttrTT {
         colon_prefix: bool,
-        fake_attribute_under_caret: Option<ast::Attr>,
+        fake_attribute_under_caret: Option<ast::TokenTreeMeta>,
         extern_crate: Option<ast::ExternCrate>,
     },
+    /// Set if we are inside the predicate of a #[cfg] or #[cfg_attr].
+    CfgPredicate,
     MacroSegment,
 }
 
@@ -715,7 +739,7 @@ impl<'db> CompletionContext<'db> {
         // actual completion.
         let file_with_fake_ident = {
             let (_, edition) = editioned_file_id.unpack(db);
-            let parse = db.parse(editioned_file_id);
+            let parse = editioned_file_id.parse(db);
             parse.reparse(TextRange::empty(offset), COMPLETION_MARKER, edition).tree()
         };
 
@@ -768,7 +792,7 @@ impl<'db> CompletionContext<'db> {
         let containing_function = scope.containing_function();
         let edition = krate.edition(db);
 
-        let toolchain = db.toolchain_channel(krate.into());
+        let toolchain = toolchain_channel(db, krate.into());
         // `toolchain == None` means we're in some detached files. Since we have no information on
         // the toolchain being used, let's just allow unstable items to be listed.
         let is_nightly = matches!(toolchain, Some(base_db::ReleaseChannel::Nightly) | None);

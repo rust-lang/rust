@@ -228,7 +228,7 @@ impl<'db> InferenceContext<'_, 'db> {
         let predicates = GenericPredicates::query_all(self.db, def);
         let param_env = self.table.param_env;
         self.table.register_predicates(clauses_as_obligations(
-            predicates.iter_instantiated_copied(interner, subst.as_slice()),
+            predicates.iter_instantiated(interner, subst.as_slice()),
             ObligationCause::new(),
             param_env,
         ));

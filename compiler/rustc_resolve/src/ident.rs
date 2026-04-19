@@ -24,9 +24,9 @@ use crate::late::{
 use crate::macros::{MacroRulesScope, sub_namespace_match};
 use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingKey, CmResolver, Decl, DeclKind,
-    Determinacy, Finalize, IdentKey, ImportKind, LateDecl, Module, ModuleKind, ModuleOrUniformRoot,
-    ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver, Scope, ScopeSet,
-    Segment, Stage, Symbol, Used, errors,
+    Determinacy, Finalize, IdentKey, ImportKind, LateDecl, LocalModule, Module, ModuleKind,
+    ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError, Res, ResolutionError, Resolver,
+    Scope, ScopeSet, Segment, Stage, Symbol, Used, errors,
 };
 
 #[derive(Copy, Clone)]
@@ -346,7 +346,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             } else if let RibKind::Block(Some(module)) = rib.kind
                 && let Ok(binding) = self.cm().resolve_ident_in_scope_set(
                     ident,
-                    ScopeSet::Module(ns, module),
+                    ScopeSet::Module(ns, module.to_module()),
                     parent_scope,
                     finalize.map(|finalize| Finalize { used: Used::Scope, ..finalize }),
                     ignore_decl,
@@ -357,7 +357,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 return Some(LateDecl::Decl(binding));
             } else if let RibKind::Module(module) = rib.kind {
                 // Encountered a module item, abandon ribs and look into that module and preludes.
-                let parent_scope = &ParentScope { module, ..*parent_scope };
+                let parent_scope = &ParentScope { module: module.to_module(), ..*parent_scope };
                 let finalize = finalize.map(|f| Finalize { stage: Stage::Late, ..f });
                 return self
                     .cm()
@@ -658,7 +658,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     )
                 };
                 let binding = self.reborrow().resolve_ident_in_module_globs_unadjusted(
-                    module,
+                    module.expect_local(),
                     ident,
                     orig_ident_span,
                     ns,
@@ -959,12 +959,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Result<Decl<'ra>, Determinacy> {
         match module {
             ModuleOrUniformRoot::Module(module) => {
-                if ns == TypeNS
-                    && ident.name == kw::Super
-                    && let Some(module) =
-                        self.resolve_super_in_module(ident, Some(module), parent_scope)
-                {
-                    return Ok(module.self_decl.unwrap());
+                if ns == TypeNS {
+                    if ident.name == kw::SelfLower {
+                        return Ok(module.self_decl.unwrap());
+                    }
+                    if ident.name == kw::Super
+                        && let Some(module) =
+                            self.resolve_super_in_module(ident, Some(module), parent_scope)
+                    {
+                        return Ok(module.self_decl.unwrap());
+                    }
                 }
 
                 let (ident_key, def) = IdentKey::new_adjusted(ident, module.expansion);
@@ -1032,7 +1036,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     {
                         let module = self.resolve_crate_root(ident);
                         return Ok(module.self_decl.unwrap());
-                    } else if ident.name == kw::Super || ident.name == kw::SelfLower {
+                    } else if ident.name == kw::Super {
                         // FIXME: Implement these with renaming requirements so that e.g.
                         // `use super;` doesn't work, but `use super as name;` does.
                         // Fall through here to get an error from `early_resolve_...`.
@@ -1083,7 +1087,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 orig_ident_span,
                 binding,
                 parent_scope,
-                module,
                 finalize,
                 shadowing,
             );
@@ -1119,7 +1122,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Attempts to resolve `ident` in namespace `ns` of glob bindings in `module`.
     fn resolve_ident_in_module_globs_unadjusted<'r>(
         mut self: CmResolver<'r, 'ra, 'tcx>,
-        module: Module<'ra>,
+        module: LocalModule<'ra>,
         ident: IdentKey,
         orig_ident_span: Span,
         ns: Namespace,
@@ -1134,7 +1137,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // doesn't need to be mutable. It will fail when there is a cycle of imports, and without
         // the exclusive access infinite recursion will crash the compiler with stack overflow.
         let resolution = &*self
-            .resolution_or_default(module, key, orig_ident_span)
+            .resolution_or_default(module.to_module(), key, orig_ident_span)
             .try_borrow_mut_unchecked()
             .map_err(|_| ControlFlow::Continue(Determined))?;
 
@@ -1146,7 +1149,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 orig_ident_span,
                 binding,
                 parent_scope,
-                module,
                 finalize,
                 shadowing,
             );
@@ -1256,7 +1258,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         orig_ident_span: Span,
         binding: Option<Decl<'ra>>,
         parent_scope: &ParentScope<'ra>,
-        module: Module<'ra>,
         finalize: Finalize,
         shadowing: Shadowing,
     ) -> Result<Decl<'ra>, ControlFlow<Determinacy, Determinacy>> {
@@ -1289,37 +1290,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && matches!(import.kind, ImportKind::MacroExport)
         {
             self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
-        }
-
-        // If we encounter a re-export for a type with private fields, it will not be able to
-        // be constructed through this re-export. We track that case here to expand later
-        // privacy errors with appropriate information.
-        if let Res::Def(_, def_id) = binding.res() {
-            let struct_ctor = match def_id.as_local() {
-                Some(def_id) => self.struct_constructors.get(&def_id).cloned(),
-                None => {
-                    let ctor = self.cstore().ctor_untracked(self.tcx(), def_id);
-                    ctor.map(|(ctor_kind, ctor_def_id)| {
-                        let ctor_res = Res::Def(
-                            DefKind::Ctor(rustc_hir::def::CtorOf::Struct, ctor_kind),
-                            ctor_def_id,
-                        );
-                        let ctor_vis = self.tcx.visibility(ctor_def_id);
-                        let field_visibilities = self
-                            .tcx
-                            .associated_item_def_ids(def_id)
-                            .iter()
-                            .map(|&field_id| self.tcx.visibility(field_id))
-                            .collect();
-                        (ctor_res, ctor_vis, field_visibilities)
-                    })
-                }
-            };
-            if let Some((_, _, fields)) = struct_ctor
-                && fields.iter().any(|vis| !self.is_accessible_from(*vis, module))
-            {
-                self.inaccessible_ctor_reexport.insert(path_span, binding.span);
-            }
         }
 
         self.record_use(ident, binding, used);

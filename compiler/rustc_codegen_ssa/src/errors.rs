@@ -6,6 +6,7 @@ use std::io::Error;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
+use rustc_abi::NumScalableVectors;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, IntoDiagArg,
@@ -809,6 +810,17 @@ pub enum InvalidMonomorphization<'tcx> {
         out_len: u64,
     },
 
+    #[diag("invalid monomorphization of `{$name}` intrinsic: expected return type with {$in_num_vecs} vectors (same as input type `{$in_ty}`), found `{$ret_ty}` with length {$out_num_vecs}", code = E0511)]
+    ReturnNumVecsInputType {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+        in_num_vecs: NumScalableVectors,
+        in_ty: Ty<'tcx>,
+        ret_ty: Ty<'tcx>,
+        out_num_vecs: NumScalableVectors,
+    },
+
     #[diag("invalid monomorphization of `{$name}` intrinsic: expected second argument with length {$in_len} (same as input type `{$in_ty}`), found `{$arg_ty}` with length {$out_len}", code = E0511)]
     SecondArgumentLength {
         #[primary_span]
@@ -1057,7 +1069,7 @@ pub(crate) struct TargetFeatureSafeTrait {
 
 #[derive(Diagnostic)]
 #[diag("target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}")]
-pub struct ForbiddenTargetFeatureAttr<'a> {
+pub(crate) struct ForbiddenTargetFeatureAttr<'a> {
     #[primary_span]
     pub span: Span,
     pub feature: &'a str,
@@ -1199,7 +1211,7 @@ pub(crate) struct ForbiddenCTargetFeature<'a> {
     pub reason: &'a str,
 }
 
-pub struct TargetFeatureDisableOrEnable<'a> {
+pub(crate) struct TargetFeatureDisableOrEnable<'a> {
     pub features: &'a [&'a str],
     pub span: Option<Span>,
     pub missing_features: Option<MissingFeatures>,
@@ -1207,7 +1219,7 @@ pub struct TargetFeatureDisableOrEnable<'a> {
 
 #[derive(Subdiagnostic)]
 #[help("add the missing features in a `target_feature` attribute")]
-pub struct MissingFeatures;
+pub(crate) struct MissingFeatures;
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
