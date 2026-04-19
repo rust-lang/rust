@@ -133,7 +133,7 @@ impl Body {
         expr: ExprId,
         edition: Edition,
     ) -> String {
-        pretty::print_expr_hir(db, self, owner, expr, edition)
+        pretty::print_expr_hir(db, self, owner.into(), expr, edition)
     }
 
     pub fn pretty_print_pat(
@@ -144,7 +144,7 @@ impl Body {
         oneline: bool,
         edition: Edition,
     ) -> String {
-        pretty::print_pat_hir(db, self, owner, pat, oneline, edition)
+        pretty::print_pat_hir(db, self, owner.into(), pat, oneline, edition)
     }
 }
 
