@@ -1,13 +1,60 @@
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, RegionResolutionError};
 use rustc_macros::extension;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{self, Ty, elaborate};
 
 use crate::traits::ScrubbedTraitError;
 use crate::traits::outlives_bounds::InferCtxtExt;
+
+fn normalize_higher_ranked_assumptions<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> FxHashSet<ty::ArgOutlivesPredicate<'tcx>> {
+    let assumptions = infcx.take_registered_region_assumptions();
+    if !infcx.next_trait_solver() {
+        return elaborate::elaborate_outlives_assumptions(infcx.tcx, assumptions);
+    }
+
+    let mut normalized_assumptions = vec![];
+    let mut seen_assumptions = FxHashSet::default();
+
+    for assumption in assumptions {
+        if !seen_assumptions.insert(assumption) {
+            continue;
+        }
+
+        let assumption = infcx.resolve_vars_if_possible(assumption);
+        let outlives = ty::Binder::dummy(assumption);
+        let ty::OutlivesPredicate(kind, region) =
+            match crate::solve::deeply_normalize::<_, ScrubbedTraitError<'tcx>>(
+                infcx.at(&ObligationCause::dummy(), param_env),
+                outlives,
+            ) {
+                Ok(assumption) => assumption,
+                Err(_) => {
+                    infcx.dcx().delayed_bug(format!(
+                        "could not normalize higher-ranked assumption `{assumption}`"
+                    ));
+                    outlives
+                }
+            }
+            .no_bound_vars()
+            .expect("started with no bound vars, should end with no bound vars");
+
+        normalized_assumptions.push(ty::OutlivesPredicate(kind, region));
+    }
+
+    for assumption in infcx.take_registered_region_assumptions() {
+        if seen_assumptions.insert(assumption) {
+            normalized_assumptions.push(assumption);
+        }
+    }
+
+    elaborate::elaborate_outlives_assumptions(infcx.tcx, normalized_assumptions)
+}
 
 #[extension(pub trait OutlivesEnvironmentBuildExt<'tcx>)]
 impl<'tcx> OutlivesEnvironment<'tcx> {
@@ -46,10 +93,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
             }
         }
 
-        // FIXME(-Znext-trait-solver): Normalize these.
-        let higher_ranked_assumptions = infcx.take_registered_region_assumptions();
-        let higher_ranked_assumptions =
-            elaborate::elaborate_outlives_assumptions(infcx.tcx, higher_ranked_assumptions);
+        let higher_ranked_assumptions = normalize_higher_ranked_assumptions(infcx, param_env);
 
         // FIXME: This needs to be modified so that we normalize the known type
         // outlives obligations then elaborate them into their region/type components.
@@ -71,13 +115,7 @@ impl<'tcx> OutlivesEnvironment<'tcx> {
 
 #[extension(pub trait InferCtxtRegionExt<'tcx>)]
 impl<'tcx> InferCtxt<'tcx> {
-    /// Resolve regions, using the deep normalizer to normalize any type-outlives
-    /// obligations in the process. This is in `rustc_trait_selection` because
-    /// we need to normalize.
-    ///
-    /// Prefer this method over `resolve_regions_with_normalize`, unless you are
-    /// doing something specific for normalization.
-    ///
+    /// Resolve regions.
     /// This function assumes that all infer variables are already constrained.
     fn resolve_regions(
         &self,
@@ -91,28 +129,5 @@ impl<'tcx> InferCtxt<'tcx> {
             param_env,
             assumed_wf_tys,
         ))
-    }
-
-    /// Don't call this directly unless you know what you're doing.
-    fn resolve_regions_with_outlives_env(
-        &self,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-    ) -> Vec<RegionResolutionError<'tcx>> {
-        self.resolve_regions_with_normalize(&outlives_env, |ty, origin| {
-            let ty = self.resolve_vars_if_possible(ty);
-
-            if self.next_trait_solver() {
-                crate::solve::deeply_normalize(
-                    self.at(
-                        &ObligationCause::dummy_with_span(origin.span()),
-                        outlives_env.param_env,
-                    ),
-                    ty,
-                )
-                .map_err(|_: Vec<ScrubbedTraitError<'tcx>>| NoSolution)
-            } else {
-                Ok(ty)
-            }
-        })
     }
 }

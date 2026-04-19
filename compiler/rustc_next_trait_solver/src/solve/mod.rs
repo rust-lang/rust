@@ -22,9 +22,13 @@ mod search_graph;
 mod trait_goals;
 
 use derive_where::derive_where;
+use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Interner, TyVid, TypingMode};
+use rustc_type_ir::{
+    self as ty, FallibleTypeFolder, Interner, TyVid, TypeFoldable, TypeSuperFoldable,
+    TypeVisitableExt, TypingMode,
+};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -32,6 +36,7 @@ pub use self::eval_ctxt::{
     evaluate_root_goal_for_proof_tree_raw_provider,
 };
 use crate::delegate::SolverDelegate;
+use crate::placeholder::PlaceholderReplacer;
 use crate::solve::assembly::Candidate;
 
 /// How many fixpoint iterations we should attempt inside of the solver before bailing
@@ -91,6 +96,24 @@ where
         goal: Goal<I, ty::OutlivesPredicate<I, I::Ty>>,
     ) -> QueryResult<I> {
         let ty::OutlivesPredicate(ty, lt) = goal.predicate;
+
+        // With `-Znext-solver`, `TypeOutlives` goals normalize aliases before registering region
+        // obligations so that later processing does not have to structurally process aliases.
+        let ty = self.resolve_vars_if_possible(ty);
+        let ty = match self
+            .probe(|_| inspect::ProbeKind::NormalizedSelfTyAssembly)
+            .enter(|ecx| ecx.deeply_normalize_for_outlives(goal.param_env, ty))
+        {
+            Ok(ty) => ty,
+            Err(Ok(cause)) => {
+                return self.evaluate_added_goals_and_make_canonical_response(Certainty::Maybe {
+                    cause,
+                    opaque_types_jank: OpaqueTypesJank::AllGood,
+                });
+            }
+            Err(Err(NoSolution)) => return Err(NoSolution),
+        };
+
         self.register_ty_outlives(ty, lt);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
@@ -304,6 +327,151 @@ where
         } else {
             Ok(self.bail_with_ambiguity(candidates))
         }
+    }
+
+    /// This is the solver-internal equivalent of the `deeply_normalize` helper in
+    /// `compiler/rustc_trait_selection/src/solve/normalize.rs`.
+    fn deeply_normalize_for_outlives(
+        &mut self,
+        param_env: I::ParamEnv,
+        ty: I::Ty,
+    ) -> Result<I::Ty, Result<MaybeCause, NoSolution>> {
+        let ty = self.shallow_resolve(ty);
+        if !ty.has_aliases() && !ty.has_non_region_infer() {
+            return Ok(ty);
+        }
+
+        struct DeepNormalizer<'ecx, 'a, D, I>
+        where
+            D: SolverDelegate<Interner = I>,
+            I: Interner,
+        {
+            ecx: &'ecx mut EvalCtxt<'a, D, I>,
+            param_env: I::ParamEnv,
+            depth: usize,
+            universes: Vec<Option<ty::UniverseIndex>>,
+        }
+
+        impl<D, I> DeepNormalizer<'_, '_, D, I>
+        where
+            D: SolverDelegate<Interner = I>,
+            I: Interner,
+        {
+            fn normalize_alias_term(
+                &mut self,
+                alias_term: I::Term,
+                has_escaping_bound_vars: bool,
+            ) -> Result<I::Term, Result<MaybeCause, NoSolution>> {
+                debug_assert!(alias_term.to_alias_term().is_some());
+
+                // Avoid getting stuck on self-referential normalization.
+                if self.depth >= self.ecx.cx().recursion_limit() {
+                    return Err(Ok(MaybeCause::Overflow {
+                        suggest_increasing_limit: true,
+                        keep_constraints: false,
+                    }));
+                }
+
+                self.depth += 1;
+                let result = (|| {
+                    let (alias_term, mapped_bound_vars) = if has_escaping_bound_vars {
+                        let (term, mapped_regions, mapped_types, mapped_consts) =
+                            self.ecx.replace_escaping_bound_vars(alias_term, &mut self.universes);
+                        (term, Some((mapped_regions, mapped_types, mapped_consts)))
+                    } else {
+                        (alias_term, None)
+                    };
+
+                    let normalized_term = self
+                        .ecx
+                        .structurally_normalize_term(self.param_env, alias_term)
+                        .map_err(Err)?;
+                    let normalized_term = normalized_term.try_fold_with(self)?;
+
+                    if let Some((mapped_regions, mapped_types, mapped_consts)) = mapped_bound_vars {
+                        Ok(PlaceholderReplacer::replace_placeholders(
+                            self.ecx.cx(),
+                            mapped_regions,
+                            mapped_types,
+                            mapped_consts,
+                            &self.universes,
+                            normalized_term,
+                        ))
+                    } else {
+                        Ok(normalized_term)
+                    }
+                })();
+                self.depth -= 1;
+                result
+            }
+        }
+
+        impl<D, I> FallibleTypeFolder<I> for DeepNormalizer<'_, '_, D, I>
+        where
+            D: SolverDelegate<Interner = I>,
+            I: Interner,
+        {
+            type Error = Result<MaybeCause, NoSolution>;
+
+            fn cx(&self) -> I {
+                self.ecx.cx()
+            }
+
+            fn try_fold_binder<T: TypeFoldable<I>>(
+                &mut self,
+                t: ty::Binder<I, T>,
+            ) -> Result<ty::Binder<I, T>, Self::Error> {
+                self.universes.push(None);
+                let t = t.try_super_fold_with(self)?;
+                self.universes.pop();
+                Ok(t)
+            }
+
+            #[instrument(level = "trace", skip(self), ret)]
+            fn try_fold_ty(&mut self, ty: I::Ty) -> Result<I::Ty, Self::Error> {
+                let ty = self.ecx.shallow_resolve(ty);
+                if !ty.has_aliases() && !ty.has_non_region_infer() {
+                    return Ok(ty);
+                }
+                match ty.kind() {
+                    ty::Infer(_) => Err(Ok(MaybeCause::Ambiguity)),
+                    ty::Alias(..) => {
+                        let term = ensure_sufficient_stack(|| {
+                            self.normalize_alias_term(ty.into(), ty.has_escaping_bound_vars())
+                        })?;
+                        Ok(term.expect_ty())
+                    }
+                    _ => ty.try_super_fold_with(self),
+                }
+            }
+
+            #[instrument(level = "trace", skip(self), ret)]
+            fn try_fold_const(&mut self, ct: I::Const) -> Result<I::Const, Self::Error> {
+                let ct = self.ecx.shallow_resolve_const(ct);
+                if !ct.has_aliases() && !ct.has_non_region_infer() {
+                    return Ok(ct);
+                }
+                match ct.kind() {
+                    ty::ConstKind::Infer(_) => Err(Ok(MaybeCause::Ambiguity)),
+                    ty::ConstKind::Unevaluated(..) => {
+                        let term = ensure_sufficient_stack(|| {
+                            self.normalize_alias_term(ct.into(), ct.has_escaping_bound_vars())
+                        })?;
+                        Ok(term.expect_const())
+                    }
+                    _ => ct.try_super_fold_with(self),
+                }
+            }
+        }
+
+        let ty = ty.try_fold_with(&mut DeepNormalizer {
+            ecx: self,
+            param_env,
+            depth: 0,
+            universes: vec![],
+        })?;
+        debug_assert!(!ty.has_aliases());
+        Ok(ty)
     }
 
     /// Normalize a type for when it is structurally matched on.
