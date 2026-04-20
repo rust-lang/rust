@@ -140,11 +140,11 @@ enum ErrorData<C> {
     Custom(C),
 }
 
-/// The type of raw OS error codes returned by [`Error::raw_os_error`].
+/// The type of raw OS error codes.
 ///
 /// This is an [`i32`] on all currently supported platforms, but platforms
 /// added in the future (such as UEFI) may use a different primitive type like
-/// [`usize`]. Use `as`or [`into`] conversions where applicable to ensure maximum
+/// [`usize`]. Use `as` or [`into`] conversions where applicable to ensure maximum
 /// portability.
 ///
 /// [`into`]: Into::into
