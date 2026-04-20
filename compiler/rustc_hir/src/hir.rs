@@ -1631,6 +1631,10 @@ pub struct OwnerInfo<'hir> {
 
     /// Lints delayed during ast lowering to be emitted
     /// after hir has completely built
+    ///
+    /// WARNING: The delayed lints are not hashed as a part of the `OwnerInfo`, and therefore
+    ///          should only be accessed in `eval_always` queries.
+    #[stable_hasher(ignore)]
     pub delayed_lints: DelayedLints,
 }
 
@@ -3917,6 +3921,117 @@ pub struct Param<'hir> {
     pub span: Span,
 }
 
+/// Contains the packed non-type fields of a function declaration.
+// FIXME(splat): add the splatted argument index as a u16
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+pub struct FnDeclFlags {
+    /// Holds the c_variadic and lifetime_elision_allowed bitflags, and 3 bits for the `ImplicitSelfKind`.
+    flags: u8,
+}
+
+impl fmt::Debug for FnDeclFlags {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut f = f.debug_tuple("FnDeclFlags");
+        f.field(&format!("ImplicitSelfKind({:?})", self.implicit_self()));
+
+        if self.lifetime_elision_allowed() {
+            f.field(&"LifetimeElisionAllowed");
+        } else {
+            f.field(&"NoLifetimeElision");
+        };
+
+        if self.c_variadic() {
+            f.field(&"CVariadic");
+        };
+
+        f.finish()
+    }
+}
+
+impl FnDeclFlags {
+    /// Mask for the implicit self kind.
+    const IMPLICIT_SELF_MASK: u8 = 0b111;
+
+    /// Bitflag for a trailing C-style variadic argument.
+    const C_VARIADIC_FLAG: u8 = 1 << 3;
+
+    /// Bitflag for lifetime elision.
+    const LIFETIME_ELISION_ALLOWED_FLAG: u8 = 1 << 4;
+
+    /// Create a new FnDeclKind with no implicit self, no lifetime elision, and no C-style variadic argument.
+    /// To modify these flags, use the `set_*` methods, for readability.
+    // FIXME: use Default instead when that trait is const stable.
+    pub const fn default() -> Self {
+        Self { flags: 0 }
+            .set_implicit_self(ImplicitSelfKind::None)
+            .set_lifetime_elision_allowed(false)
+            .set_c_variadic(false)
+    }
+
+    /// Set the implicit self kind.
+    #[must_use = "this method does not modify the receiver"]
+    pub const fn set_implicit_self(mut self, implicit_self: ImplicitSelfKind) -> Self {
+        self.flags &= !Self::IMPLICIT_SELF_MASK;
+
+        match implicit_self {
+            ImplicitSelfKind::None => self.flags |= 0,
+            ImplicitSelfKind::Imm => self.flags |= 1,
+            ImplicitSelfKind::Mut => self.flags |= 2,
+            ImplicitSelfKind::RefImm => self.flags |= 3,
+            ImplicitSelfKind::RefMut => self.flags |= 4,
+        }
+
+        self
+    }
+
+    /// Set the C-style variadic argument flag.
+    #[must_use = "this method does not modify the receiver"]
+    pub const fn set_c_variadic(mut self, c_variadic: bool) -> Self {
+        if c_variadic {
+            self.flags |= Self::C_VARIADIC_FLAG;
+        } else {
+            self.flags &= !Self::C_VARIADIC_FLAG;
+        }
+
+        self
+    }
+
+    /// Set the lifetime elision allowed flag.
+    #[must_use = "this method does not modify the receiver"]
+    pub const fn set_lifetime_elision_allowed(mut self, allowed: bool) -> Self {
+        if allowed {
+            self.flags |= Self::LIFETIME_ELISION_ALLOWED_FLAG;
+        } else {
+            self.flags &= !Self::LIFETIME_ELISION_ALLOWED_FLAG;
+        }
+
+        self
+    }
+
+    /// Get the implicit self kind.
+    pub const fn implicit_self(self) -> ImplicitSelfKind {
+        match self.flags & Self::IMPLICIT_SELF_MASK {
+            0 => ImplicitSelfKind::None,
+            1 => ImplicitSelfKind::Imm,
+            2 => ImplicitSelfKind::Mut,
+            3 => ImplicitSelfKind::RefImm,
+            4 => ImplicitSelfKind::RefMut,
+            _ => unreachable!(),
+        }
+    }
+
+    /// Do the function arguments end with a C-style variadic argument?
+    pub const fn c_variadic(self) -> bool {
+        self.flags & Self::C_VARIADIC_FLAG != 0
+    }
+
+    /// Is lifetime elision allowed?
+    pub const fn lifetime_elision_allowed(self) -> bool {
+        self.flags & Self::LIFETIME_ELISION_ALLOWED_FLAG != 0
+    }
+}
+
 /// Represents the header (not the body) of a function declaration.
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub struct FnDecl<'hir> {
@@ -3925,11 +4040,8 @@ pub struct FnDecl<'hir> {
     /// Additional argument data is stored in the function's [body](Body::params).
     pub inputs: &'hir [Ty<'hir>],
     pub output: FnRetTy<'hir>,
-    pub c_variadic: bool,
-    /// Does the function have an implicit self?
-    pub implicit_self: ImplicitSelfKind,
-    /// Is lifetime elision allowed.
-    pub lifetime_elision_allowed: bool,
+    /// The packed function declaration attributes.
+    pub fn_decl_kind: FnDeclFlags,
 }
 
 impl<'hir> FnDecl<'hir> {
@@ -3951,6 +4063,26 @@ impl<'hir> FnDecl<'hir> {
         }
 
         None
+    }
+
+    pub fn implicit_self(&self) -> ImplicitSelfKind {
+        self.fn_decl_kind.implicit_self()
+    }
+
+    pub fn c_variadic(&self) -> bool {
+        self.fn_decl_kind.c_variadic()
+    }
+
+    pub fn lifetime_elision_allowed(&self) -> bool {
+        self.fn_decl_kind.lifetime_elision_allowed()
+    }
+
+    pub fn dummy(span: Span) -> Self {
+        Self {
+            inputs: &[],
+            output: FnRetTy::DefaultReturn(span),
+            fn_decl_kind: FnDeclFlags::default().set_lifetime_elision_allowed(true),
+        }
     }
 }
 

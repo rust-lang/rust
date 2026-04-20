@@ -1,5 +1,4 @@
-use super::{FailMode, TestCx, WillExecute};
-use crate::errors;
+use super::{FailMode, ProcRes, TestCx, WillExecute};
 
 impl TestCx<'_> {
     pub(super) fn run_incremental_test(&self) {
@@ -33,14 +32,8 @@ impl TestCx<'_> {
         }
 
         if revision.starts_with("cpass") {
-            if self.props.should_ice {
-                self.fatal("can only use should-ice in cfail tests");
-            }
             self.run_cpass_test();
         } else if revision.starts_with("rpass") {
-            if self.props.should_ice {
-                self.fatal("can only use should-ice in cfail tests");
-            }
             self.run_rpass_test();
         } else if revision.starts_with("cfail") {
             self.run_cfail_test();
@@ -57,10 +50,7 @@ impl TestCx<'_> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("build-pass tests with expected warnings should be moved to ui/");
-        }
+        self.check_compiler_output_for_incr(&proc_res);
     }
 
     fn run_rpass_test(&self) {
@@ -72,10 +62,7 @@ impl TestCx<'_> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        // FIXME(#41968): Move this check to tidy?
-        if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("run-pass tests with expected warnings should be moved to ui/");
-        }
+        self.check_compiler_output_for_incr(&proc_res);
 
         if let WillExecute::Disabled = should_run {
             return;
@@ -91,18 +78,13 @@ impl TestCx<'_> {
         let pm = self.pass_mode();
         let proc_res = self.compile_test(WillExecute::No, self.should_emit_metadata(pm));
         self.check_if_test_should_compile(Some(FailMode::Build), pm, &proc_res);
-        self.check_no_compiler_crash(&proc_res, self.props.should_ice);
+        self.check_compiler_output_for_incr(&proc_res);
+    }
 
-        let output_to_check = self.get_output(&proc_res);
+    fn check_compiler_output_for_incr(&self, proc_res: &ProcRes) {
+        let output_to_check = self.get_output(proc_res);
         self.check_expected_errors(&proc_res);
-        self.check_all_error_patterns(&output_to_check, &proc_res);
-        if self.props.should_ice {
-            match proc_res.status.code() {
-                Some(101) => (),
-                _ => self.fatal("expected ICE"),
-            }
-        }
-
-        self.check_forbid_output(&output_to_check, &proc_res);
+        self.check_all_error_patterns(&output_to_check, proc_res);
+        self.check_forbid_output(&output_to_check, proc_res);
     }
 }

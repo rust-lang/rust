@@ -61,12 +61,12 @@ LL |     let (a, b) = **arc; // suggests putting `&**arc` here; with that, fixed
    |          |  ...and here
    |          data moved here
    |
+help: destructuring assignment cannot borrow from this expression; consider using a `let` binding instead
+  --> $DIR/issue-102892.rs:11:18
+   |
+LL |     let (a, b) = **arc; // suggests putting `&**arc` here; with that, fixed!
+   |                  ^^^^^
    = note: move occurs because these variables have types that don't implement the `Copy` trait
-help: consider removing the dereference here
-   |
-LL -     let (a, b) = **arc; // suggests putting `&**arc` here; with that, fixed!
-LL +     let (a, b) = *arc; // suggests putting `&**arc` here; with that, fixed!
-   |
 
 error: aborting due to 4 previous errors
 

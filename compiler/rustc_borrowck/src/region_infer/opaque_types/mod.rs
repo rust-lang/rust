@@ -10,9 +10,9 @@ use rustc_infer::traits::ObligationCause;
 use rustc_macros::extension;
 use rustc_middle::mir::{Body, ConstraintCategory};
 use rustc_middle::ty::{
-    self, DefiningScopeKind, DefinitionSiteHiddenType, FallibleTypeFolder, GenericArg,
+    self, DefiningScopeKind, DefinitionSiteHiddenType, FallibleTypeFolder, Flags, GenericArg,
     GenericArgsRef, OpaqueTypeKey, ProvisionalHiddenType, Region, RegionVid, Ty, TyCtxt,
-    TypeFoldable, TypeSuperFoldable, TypeVisitableExt, fold_regions,
+    TypeFoldable, TypeSuperFoldable, TypeVisitableExt, Unnormalized, fold_regions,
 };
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
@@ -569,16 +569,17 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
         };
 
         // We erase all non-member region of the opaque and need to treat these as existentials.
-        let expected_ty =
-            ty::fold_regions(tcx, expected.ty.instantiate(tcx, key.args), |re, _dbi| {
-                match re.kind() {
-                    ty::ReErased => infcx.next_nll_region_var(
-                        NllRegionVariableOrigin::Existential { name: None },
-                        || crate::RegionCtxt::Existential(None),
-                    ),
-                    _ => re,
-                }
-            });
+        let expected_ty = ty::fold_regions(
+            tcx,
+            expected.ty.instantiate(tcx, key.args).skip_norm_wip(),
+            |re, _dbi| match re.kind() {
+                ty::ReErased => infcx.next_nll_region_var(
+                    NllRegionVariableOrigin::Existential { name: None },
+                    || crate::RegionCtxt::Existential(None),
+                ),
+                _ => re,
+            },
+        );
 
         // We now simply equate the expected with the actual hidden type.
         let locations = Locations::All(hidden_type.span);
@@ -598,8 +599,13 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
                         body.source.def_id().expect_local(),
                     );
                     // We need to normalize both types in the old solver before equatingt them.
-                    let actual_ty = ocx.normalize(&cause, infcx.param_env, hidden_type.ty);
-                    let expected_ty = ocx.normalize(&cause, infcx.param_env, expected_ty);
+                    let actual_ty = ocx.normalize(
+                        &cause,
+                        infcx.param_env,
+                        Unnormalized::new_wip(hidden_type.ty),
+                    );
+                    let expected_ty =
+                        ocx.normalize(&cause, infcx.param_env, Unnormalized::new_wip(expected_ty));
                     ocx.eq(&cause, infcx.param_env, actual_ty, expected_ty).map_err(|_| NoSolution)
                 },
                 "equating opaque types",

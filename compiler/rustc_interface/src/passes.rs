@@ -13,6 +13,7 @@ use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal, par_fns};
 use rustc_data_structures::thousands;
+use rustc_errors::DiagCallback;
 use rustc_errors::timings::TimingSection;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
@@ -304,8 +305,7 @@ fn configure_and_expand(
 
     resolver.resolve_crate(&krate);
 
-    CStore::from_tcx(tcx).report_incompatible_target_modifiers(tcx, &krate);
-    CStore::from_tcx(tcx).report_incompatible_async_drop_feature(tcx, &krate);
+    CStore::from_tcx(tcx).report_session_incompatibilities(tcx, &krate);
     krate
 }
 
@@ -1031,7 +1031,7 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
 pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
     for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
         if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
-            for lint in &delayed_lints.lints {
+            for lint in delayed_lints {
                 match lint {
                     DelayedLint::AttributeParsing(attribute_lint) => {
                         tcx.emit_node_span_lint(
@@ -1045,6 +1045,12 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
                             },
                         );
                     }
+                    DelayedLint::Dynamic(attribute_lint) => tcx.emit_node_span_lint(
+                        attribute_lint.lint_id.lint,
+                        attribute_lint.id,
+                        attribute_lint.span.clone(),
+                        DiagCallback(&attribute_lint.callback),
+                    ),
                 }
             }
         }
@@ -1114,11 +1120,11 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         {
             let hir_items = tcx.hir_crate_items(());
             for owner_id in hir_items.owners() {
-                if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
-                    if !delayed_lints.lints.is_empty() {
-                        // Assert that delayed_lint_items also picked up this item to have lints.
-                        assert!(hir_items.delayed_lint_items().any(|i| i == owner_id));
-                    }
+                if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id)
+                    && !delayed_lints.is_empty()
+                {
+                    // Assert that delayed_lint_items also picked up this item to have lints.
+                    assert!(hir_items.delayed_lint_items().any(|i| i == owner_id));
                 }
             }
         }
@@ -1165,7 +1171,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 // Eagerly check the unsubstituted layout for cycles.
                 tcx.ensure_ok().layout_of(
                     ty::TypingEnv::post_analysis(tcx, def_id.to_def_id())
-                        .as_query_input(tcx.type_of(def_id).instantiate_identity()),
+                        .as_query_input(tcx.type_of(def_id).instantiate_identity().skip_norm_wip()),
                 );
             }
         });

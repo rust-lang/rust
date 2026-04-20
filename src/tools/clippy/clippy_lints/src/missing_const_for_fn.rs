@@ -203,7 +203,7 @@ fn could_be_const_with_abi(cx: &LateContext<'_>, msrv: Msrv, abi: ExternAbi) -> 
 /// Return `true` when the given `def_id` is a function that has `impl Trait` ty as one of
 /// its parameter types.
 fn fn_inputs_has_impl_trait_ty(cx: &LateContext<'_>, def_id: LocalDefId) -> bool {
-    let inputs = cx.tcx.fn_sig(def_id).instantiate_identity().inputs().skip_binder();
+    let inputs = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().inputs().skip_binder();
     inputs.iter().any(|input| {
         matches!(
             input.kind(),

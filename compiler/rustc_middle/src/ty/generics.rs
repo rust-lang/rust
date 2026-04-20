@@ -5,7 +5,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::{Span, Symbol, kw};
 use tracing::instrument;
 
-use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
+use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt, Unnormalized};
 use crate::ty;
 use crate::ty::{EarlyBinder, GenericArgsRef};
 
@@ -304,7 +304,7 @@ impl<'tcx> Generics {
             .rev()
             .take_while(|param| {
                 param.default_value(tcx).is_some_and(|default| {
-                    default.instantiate(tcx, args) == args[param.index as usize]
+                    default.instantiate(tcx, args).skip_norm_wip() == args[param.index as usize]
                 })
             })
             .count();
@@ -334,8 +334,9 @@ impl<'tcx> Generics {
     ) -> bool {
         let mut default_param_seen = false;
         for param in self.own_params.iter() {
-            if let Some(inst) =
-                param.default_value(tcx).map(|default| default.instantiate(tcx, args))
+            if let Some(inst) = param
+                .default_value(tcx)
+                .map(|default| default.instantiate(tcx, args).skip_norm_wip())
             {
                 if inst == args[param.index as usize] {
                     default_param_seen = true;
@@ -382,14 +383,24 @@ impl<'tcx> GenericPredicates<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         args: GenericArgsRef<'tcx>,
-    ) -> impl Iterator<Item = (Clause<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator {
-        EarlyBinder::bind(self.predicates).iter_instantiated_copied(tcx, args)
+    ) -> impl Iterator<Item = (Unnormalized<'tcx, Clause<'tcx>>, Span)>
+    + DoubleEndedIterator
+    + ExactSizeIterator {
+        EarlyBinder::bind(self.predicates).iter_instantiated_copied(tcx, args).map(|u| {
+            let (clause, span) = u.unzip();
+            (clause, span.skip_normalization())
+        })
     }
 
     pub fn instantiate_own_identity(
         self,
-    ) -> impl Iterator<Item = (Clause<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator {
-        EarlyBinder::bind(self.predicates).iter_identity_copied()
+    ) -> impl Iterator<Item = (Unnormalized<'tcx, Clause<'tcx>>, Span)>
+    + DoubleEndedIterator
+    + ExactSizeIterator {
+        EarlyBinder::bind(self.predicates).iter_identity_copied().map(|u| {
+            let (clause, span) = u.unzip();
+            (clause, span.skip_normalization())
+        })
     }
 
     #[instrument(level = "debug", skip(self, tcx))]
@@ -422,7 +433,7 @@ impl<'tcx> GenericPredicates<'tcx> {
         if let Some(def_id) = self.parent {
             tcx.predicates_of(def_id).instantiate_identity_into(tcx, instantiated);
         }
-        instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| p));
+        instantiated.predicates.extend(self.predicates.iter().map(|(p, _)| Unnormalized::new(*p)));
         instantiated.spans.extend(self.predicates.iter().map(|(_, s)| s));
     }
 }
@@ -442,7 +453,7 @@ impl<'tcx> ConstConditions<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         args: GenericArgsRef<'tcx>,
-    ) -> Vec<(ty::PolyTraitRef<'tcx>, Span)> {
+    ) -> Vec<(Unnormalized<'tcx, ty::PolyTraitRef<'tcx>>, Span)> {
         let mut instantiated = vec![];
         self.instantiate_into(tcx, &mut instantiated, args);
         instantiated
@@ -452,23 +463,31 @@ impl<'tcx> ConstConditions<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         args: GenericArgsRef<'tcx>,
-    ) -> impl Iterator<Item = (ty::PolyTraitRef<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator
-    {
-        EarlyBinder::bind(self.predicates).iter_instantiated_copied(tcx, args)
+    ) -> impl Iterator<Item = (Unnormalized<'tcx, ty::PolyTraitRef<'tcx>>, Span)>
+    + DoubleEndedIterator
+    + ExactSizeIterator {
+        EarlyBinder::bind(self.predicates).iter_instantiated_copied(tcx, args).map(|u| {
+            let (trait_ref, span) = u.unzip();
+            (trait_ref, span.skip_normalization())
+        })
     }
 
     pub fn instantiate_own_identity(
         self,
-    ) -> impl Iterator<Item = (ty::PolyTraitRef<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator
-    {
-        EarlyBinder::bind(self.predicates).iter_identity_copied()
+    ) -> impl Iterator<Item = (Unnormalized<'tcx, ty::PolyTraitRef<'tcx>>, Span)>
+    + DoubleEndedIterator
+    + ExactSizeIterator {
+        EarlyBinder::bind(self.predicates).iter_identity_copied().map(|u| {
+            let (trait_ref, span) = u.unzip();
+            (trait_ref, span.skip_normalization())
+        })
     }
 
     #[instrument(level = "debug", skip(self, tcx))]
     fn instantiate_into(
         self,
         tcx: TyCtxt<'tcx>,
-        instantiated: &mut Vec<(ty::PolyTraitRef<'tcx>, Span)>,
+        instantiated: &mut Vec<(Unnormalized<'tcx, ty::PolyTraitRef<'tcx>>, Span)>,
         args: GenericArgsRef<'tcx>,
     ) {
         if let Some(def_id) = self.parent {
@@ -479,7 +498,10 @@ impl<'tcx> ConstConditions<'tcx> {
         );
     }
 
-    pub fn instantiate_identity(self, tcx: TyCtxt<'tcx>) -> Vec<(ty::PolyTraitRef<'tcx>, Span)> {
+    pub fn instantiate_identity(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Vec<(Unnormalized<'tcx, ty::PolyTraitRef<'tcx>>, Span)> {
         let mut instantiated = vec![];
         self.instantiate_identity_into(tcx, &mut instantiated);
         instantiated
@@ -488,11 +510,16 @@ impl<'tcx> ConstConditions<'tcx> {
     fn instantiate_identity_into(
         self,
         tcx: TyCtxt<'tcx>,
-        instantiated: &mut Vec<(ty::PolyTraitRef<'tcx>, Span)>,
+        instantiated: &mut Vec<(Unnormalized<'tcx, ty::PolyTraitRef<'tcx>>, Span)>,
     ) {
         if let Some(def_id) = self.parent {
             tcx.const_conditions(def_id).instantiate_identity_into(tcx, instantiated);
         }
-        instantiated.extend(self.predicates.iter().copied());
+        instantiated.extend(
+            self.predicates
+                .iter()
+                .copied()
+                .map(|(trait_ref, span)| (Unnormalized::new(trait_ref), span)),
+        );
     }
 }

@@ -9,11 +9,15 @@ error[E0539]: malformed `debugger_visualizer` attribute input
    |
 LL | #![debugger_visualizer(random_file = "../foo.random")]
    | ^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^^^^^^^^^^^^^^^^^
-   | |                      |
-   | |                      valid arguments are `natvis_file` or `gdb_script_file`
-   | help: must be of the form: `#![debugger_visualizer(natvis_file = "...", gdb_script_file = "...")]`
+   |                        |
+   |                        valid arguments are `natvis_file` or `gdb_script_file`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/debugger.html#the-debugger_visualizer-attribute>
+help: must be of the form
+   |
+LL - #![debugger_visualizer(random_file = "../foo.random")]
+LL + #![debugger_visualizer(natvis_file = "...", gdb_script_file = "...")]
+   |
 
 error: aborting due to 2 previous errors
 

@@ -1233,9 +1233,6 @@ pub enum AttributeKind {
     /// Represents `#[pin_v2]`
     PinV2(Span),
 
-    /// Represents `#[pointee]`
-    Pointee(Span),
-
     /// Represents `#[prelude_import]`
     PreludeImport,
 
@@ -1339,9 +1336,7 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_confusables]`.
     RustcConfusables {
-        symbols: ThinVec<Symbol>,
-        // FIXME(jdonszelmann): remove when target validation code is moved
-        first_span: Span,
+        confusables: ThinVec<Symbol>,
     },
     /// Represents `#[rustc_const_stable]` and `#[rustc_const_unstable]`.
     RustcConstStability {
@@ -1510,6 +1505,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_no_mir_inline]`
     RustcNoMirInline,
+
+    /// Represents `#[rustc_no_writable]`
+    RustcNoWritable,
 
     /// Represents `#[rustc_non_const_trait_method]`.
     RustcNonConstTraitMethod,

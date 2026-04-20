@@ -250,17 +250,22 @@ fn unify_query_var_values<D, I>(
 
 fn register_region_constraints<D, I>(
     delegate: &D,
-    outlives: &[ty::OutlivesPredicate<I, I::GenericArg>],
+    constraints: &[ty::RegionConstraint<I>],
     span: I::Span,
 ) where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    for &ty::OutlivesPredicate(lhs, rhs) in outlives {
-        match lhs.kind() {
-            ty::GenericArgKind::Lifetime(lhs) => delegate.sub_regions(rhs, lhs, span),
-            ty::GenericArgKind::Type(lhs) => delegate.register_ty_outlives(lhs, rhs, span),
-            ty::GenericArgKind::Const(_) => panic!("const outlives: {lhs:?}: {rhs:?}"),
+    for &constraint in constraints {
+        match constraint {
+            ty::RegionConstraint::Outlives(ty::OutlivesPredicate(lhs, rhs)) => match lhs.kind() {
+                ty::GenericArgKind::Lifetime(lhs) => delegate.sub_regions(rhs, lhs, span),
+                ty::GenericArgKind::Type(lhs) => delegate.register_ty_outlives(lhs, rhs, span),
+                ty::GenericArgKind::Const(_) => panic!("const outlives: {lhs:?}: {rhs:?}"),
+            },
+            ty::RegionConstraint::Eq(ty::RegionEqPredicate(lhs, rhs)) => {
+                delegate.equate_regions(lhs, rhs, span)
+            }
         }
     }
 }

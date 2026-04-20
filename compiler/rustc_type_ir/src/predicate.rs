@@ -1,5 +1,5 @@
-use std::fmt;
 use std::hash::Hash;
+use std::{fmt, iter};
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
@@ -39,6 +39,72 @@ where
 
     fn lift_to_interner(self, cx: U) -> Option<Self::Lifted> {
         Some(OutlivesPredicate(self.0.lift_to_interner(cx)?, self.1.lift_to_interner(cx)?))
+    }
+}
+
+/// `'a == 'b`.
+/// For the rationale behind having this instead of a pair of bidirectional
+/// `'a: 'b` and `'b: 'a`, see
+/// [this discusstion on Zulip](https://rust-lang.zulipchat.com/#narrow/channel/364551-t-types.2Ftrait-system-refactor/topic/A.20question.20on.20.23251/near/584167074).
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+)]
+pub struct RegionEqPredicate<I: Interner>(pub I::Region, pub I::Region);
+
+impl<I: Interner> RegionEqPredicate<I> {
+    /// Decompose `'a == 'b` into `['a: 'b, 'b: 'a]`
+    pub fn into_bidirectional_outlives(self) -> [OutlivesPredicate<I, I::GenericArg>; 2] {
+        [OutlivesPredicate(self.0.into(), self.1), OutlivesPredicate(self.1.into(), self.0)]
+    }
+}
+
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
+#[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+)]
+pub enum RegionConstraint<I: Interner> {
+    Outlives(OutlivesPredicate<I, I::GenericArg>),
+    Eq(RegionEqPredicate<I>),
+}
+
+impl<I: Interner> From<OutlivesPredicate<I, I::GenericArg>> for RegionConstraint<I> {
+    fn from(value: OutlivesPredicate<I, I::GenericArg>) -> Self {
+        RegionConstraint::Outlives(value)
+    }
+}
+
+impl<I: Interner> From<RegionEqPredicate<I>> for RegionConstraint<I> {
+    fn from(value: RegionEqPredicate<I>) -> Self {
+        RegionConstraint::Eq(value)
+    }
+}
+
+impl<I: Interner> RegionConstraint<I> {
+    /// Whether the given constraint is either `'a: 'a` or `'a == 'a`.
+    pub fn is_trivial(self) -> bool {
+        match self {
+            RegionConstraint::Outlives(outlives) => {
+                outlives.0.as_region().is_some_and(|re| re == outlives.1)
+            }
+            RegionConstraint::Eq(eq) => eq.0 == eq.1,
+        }
+    }
+
+    /// If `self` is an eq constraint, iterate through its decomposed bidirectional outlives
+    /// bounds and if not, just iterate once for the outlives bound itself.
+    pub fn iter_outlives(self) -> impl Iterator<Item = OutlivesPredicate<I, I::GenericArg>> {
+        match self {
+            RegionConstraint::Outlives(outlives) => iter::once(outlives).chain(None),
+            RegionConstraint::Eq(eq) => {
+                let [outlives1, outlives2] = eq.into_bidirectional_outlives();
+                iter::once(outlives1).chain(Some(outlives2))
+            }
+        }
     }
 }
 

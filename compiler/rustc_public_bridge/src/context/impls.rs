@@ -379,7 +379,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         def_id: DefId,
         args_ref: GenericArgsRef<'tcx>,
     ) -> Binder<'tcx, FnSig<'tcx>> {
-        let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args_ref);
+        let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args_ref).skip_norm_wip();
         sig
     }
 
@@ -541,7 +541,7 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
 
     /// Returns the type of given crate item.
     pub fn def_ty(&self, item: DefId) -> Ty<'tcx> {
-        self.tcx.type_of(item).instantiate_identity()
+        self.tcx.type_of(item).instantiate_identity().skip_norm_wip()
     }
 
     /// Returns the type of given definition instantiated with the given arguments.

@@ -15,8 +15,8 @@ use rustc_session::config::{
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::{EarlyDiagCtxt, getopts};
-use rustc_span::FileName;
 use rustc_span::edition::Edition;
+use rustc_span::{FileName, RemapPathScopeComponents};
 use rustc_target::spec::TargetTuple;
 
 use crate::core::new_dcx;
@@ -140,6 +140,8 @@ pub(crate) struct Options {
     pub(crate) no_run: bool,
     /// What sources are being mapped.
     pub(crate) remap_path_prefix: Vec<(PathBuf, PathBuf)>,
+    /// Which scope(s) to use with `--remap-path-prefix`
+    pub(crate) remap_path_scope: RemapPathScopeComponents,
 
     /// The path to a rustc-like binary to build tests with. If not set, we
     /// default to loading from `$sysroot/bin/rustc`.
@@ -222,6 +224,7 @@ impl fmt::Debug for Options {
             .field("no_run", &self.no_run)
             .field("test_builder_wrappers", &self.test_builder_wrappers)
             .field("remap-file-prefix", &self.remap_path_prefix)
+            .field("remap-file-scope", &self.remap_path_scope)
             .field("no_capture", &self.no_capture)
             .field("scrape_examples_options", &self.scrape_examples_options)
             .field("unstable_features", &self.unstable_features)
@@ -413,9 +416,9 @@ impl Options {
             config::parse_error_format(early_dcx, matches, color, json_color, json_rendered);
         let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
-        let mut target_modifiers = BTreeMap::<OptionsTargetModifiers, String>::new();
-        let codegen_options = CodegenOptions::build(early_dcx, matches, &mut target_modifiers);
-        let unstable_opts = UnstableOptions::build(early_dcx, matches, &mut target_modifiers);
+        let mut collected_options = Default::default();
+        let codegen_options = CodegenOptions::build(early_dcx, matches, &mut collected_options);
+        let unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
 
         let remap_path_prefix = match parse_remap_path_prefix(matches) {
             Ok(prefix_mappings) => prefix_mappings,
@@ -423,6 +426,8 @@ impl Options {
                 early_dcx.early_fatal(err);
             }
         };
+        let remap_path_scope =
+            rustc_session::config::parse_remap_path_scope(early_dcx, matches, &unstable_opts);
 
         let dcx = new_dcx(error_format, None, diagnostic_width, &unstable_opts);
         let dcx = dcx.handle();
@@ -756,10 +761,12 @@ impl Options {
         }
 
         let index_page = matches.opt_str("index-page").map(|s| PathBuf::from(&s));
-        if let Some(ref index_page) = index_page
-            && !index_page.is_file()
-        {
-            dcx.fatal("option `--index-page` argument must be a file");
+        if let Some(ref index_page) = index_page {
+            if index_page.is_file() {
+                loaded_paths.push(index_page.clone());
+            } else {
+                dcx.fatal("option `--index-page` argument must be a file");
+            }
         }
 
         let target = parse_target_triple(early_dcx, matches);
@@ -887,6 +894,7 @@ impl Options {
             no_run,
             test_builder_wrappers,
             remap_path_prefix,
+            remap_path_scope,
             no_capture,
             crate_name,
             output_format,
@@ -894,7 +902,7 @@ impl Options {
             scrape_examples_options,
             unstable_features,
             doctest_build_args,
-            target_modifiers,
+            target_modifiers: collected_options.target_modifiers,
         };
         let render_options = RenderOptions {
             output,

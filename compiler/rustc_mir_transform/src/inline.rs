@@ -13,7 +13,9 @@ use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt, TypeFlags, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, Instance, InstanceKind, Ty, TyCtxt, TypeFlags, TypeVisitableExt, Unnormalized,
+};
 use rustc_session::config::{DebugInfo, OptLevel};
 use rustc_span::Spanned;
 use tracing::{debug, instrument, trace, trace_span};
@@ -560,7 +562,9 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
             }
 
             // To resolve an instance its args have to be fully normalized.
-            let args = tcx.try_normalize_erasing_regions(inliner.typing_env(), args).ok()?;
+            let args = tcx
+                .try_normalize_erasing_regions(inliner.typing_env(), Unnormalized::new_wip(args))
+                .ok()?;
             let callee =
                 Instance::try_resolve(tcx, inliner.typing_env(), def_id, args).ok().flatten()?;
 
@@ -572,7 +576,7 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
                 return None;
             }
 
-            let fn_sig = tcx.fn_sig(def_id).instantiate(tcx, args);
+            let fn_sig = tcx.fn_sig(def_id).instantiate(tcx, args).skip_norm_wip();
 
             // Additionally, check that the body that we're inlining actually agrees
             // with the ABI of the trait that the item comes from.

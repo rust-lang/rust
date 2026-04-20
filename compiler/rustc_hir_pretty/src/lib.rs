@@ -2264,8 +2264,8 @@ impl<'a> State<'a> {
         assert!(arg_idents.is_empty() || body_id.is_none());
         let mut i = 0;
         let mut print_arg = |s: &mut Self, ty: Option<&hir::Ty<'_>>| {
-            if i == 0 && decl.implicit_self.has_implicit_self() {
-                s.print_implicit_self(&decl.implicit_self);
+            if i == 0 && decl.implicit_self().has_implicit_self() {
+                s.print_implicit_self(&decl.implicit_self());
             } else {
                 if let Some(arg_ident) = arg_idents.get(i) {
                     if let Some(arg_ident) = arg_ident {
@@ -2289,7 +2289,7 @@ impl<'a> State<'a> {
             print_arg(s, Some(ty));
             s.end(ib);
         });
-        if decl.c_variadic {
+        if decl.c_variadic() {
             if !decl.inputs.is_empty() {
                 self.word(", ");
             }

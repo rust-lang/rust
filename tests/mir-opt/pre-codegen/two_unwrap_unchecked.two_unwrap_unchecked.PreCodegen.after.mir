@@ -35,12 +35,14 @@ fn two_unwrap_unchecked(_1: &Option<i32>) -> i32 {
     }
 
     bb0: {
+        StorageLive(_5);
         _2 = copy (*_1);
         _3 = discriminant(_2);
         _4 = Eq(copy _3, const 1_isize);
         assume(move _4);
         _5 = copy ((_2 as Some).0: i32);
         _0 = Add(copy _5, copy _5);
+        StorageDead(_5);
         return;
     }
 }

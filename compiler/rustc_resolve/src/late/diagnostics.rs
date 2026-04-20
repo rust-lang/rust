@@ -19,14 +19,14 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, MacroKinds};
+use rustc_hir::def::{CtorKind, CtorOf, DefKind, MacroKinds};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy, find_attr};
 use rustc_middle::ty;
 use rustc_session::{Session, lint};
 use rustc_span::edit_distance::{edit_distance, find_best_match_for_name};
 use rustc_span::edition::Edition;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -38,11 +38,9 @@ use crate::late::{
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{
-    Finalize, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PathSource,
+    Finalize, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PathSource, Res,
     Resolver, ScopeSet, Segment, errors, path_names_to_string,
 };
-
-type Res = def::Res<ast::NodeId>;
 
 /// A field or associated item from self type suggested in case of resolution failure.
 enum AssocSuggestion {
@@ -980,12 +978,15 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     AssocSuggestion::Field(field_span) => {
                         if self_is_available {
                             let source_map = self.r.tcx.sess.source_map();
-                            // check if the field is used in a format string, such as `"{x}"`
-                            let field_is_format_named_arg = source_map
+                            let field_is_format_named_arg = matches!(
+                                span.desugaring_kind(),
+                                Some(DesugaringKind::FormatLiteral { .. })
+                            ) && source_map
                                 .span_to_source(span, |s, start, _| {
-                                    Ok(s.get(start - 1..start) == Some("{"))
-                                });
-                            if let Ok(true) = field_is_format_named_arg {
+                                    Ok(s.get(start.saturating_sub(1)..start) == Some("{"))
+                                })
+                                .unwrap_or(false);
+                            if field_is_format_named_arg {
                                 err.help(
                                     format!("you might have meant to use the available field in a format string: `\"{{}}\", self.{}`", segment.ident.name),
                                 );
@@ -1040,14 +1041,15 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
 
                 if let Some(Res::Def(DefKind::Struct, def_id)) = res {
-                    let private_fields = self.has_private_fields(def_id);
-                    let adjust_error_message =
-                        private_fields && self.is_struct_with_fn_ctor(def_id);
-                    if adjust_error_message {
-                        self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
-                    }
-
-                    if private_fields {
+                    if let Some(ctor) = self.r.struct_ctor(def_id)
+                        && ctor.has_private_fields(self.parent_scope.module, self.r)
+                    {
+                        if matches!(
+                            ctor.res,
+                            Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), _)
+                        ) {
+                            self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
+                        }
                         err.note("constructor is not visible here due to private fields");
                     }
                 } else {
@@ -1131,7 +1133,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             for rib in self.ribs[ns].iter().rev() {
                 let item = path[0].ident;
                 if let RibKind::Module(module) | RibKind::Block(Some(module)) = rib.kind
-                    && let Some(did) = find_doc_alias_name(self.r, module, item.name)
+                    && let Some(did) = find_doc_alias_name(self.r, module.to_module(), item.name)
                 {
                     return Some((did, item));
                 }
@@ -1892,10 +1894,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let ast::TyKind::Path(Some(qself), path) = &bounded_ty.kind else { return false };
         // use this to verify that ident is a type param.
         let Some(partial_res) = self.r.partial_res_map.get(&bounded_ty.id) else { return false };
-        if !matches!(
-            partial_res.full_res(),
-            Some(hir::def::Res::Def(hir::def::DefKind::AssocTy, _))
-        ) {
+        if !matches!(partial_res.full_res(), Some(Res::Def(DefKind::AssocTy, _))) {
             return false;
         }
 
@@ -1905,10 +1904,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let Some(partial_res) = self.r.partial_res_map.get(&peeled_ty.id) else {
             return false;
         };
-        if !matches!(
-            partial_res.full_res(),
-            Some(hir::def::Res::Def(hir::def::DefKind::TyParam, _))
-        ) {
+        if !matches!(partial_res.full_res(), Some(Res::Def(DefKind::TyParam, _))) {
             return false;
         }
         let ([ast::PathSegment { args: None, .. }], [ast::GenericBound::Trait(poly_trait_ref)]) =
@@ -1928,7 +1924,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             let Some(partial_res) = self.r.partial_res_map.get(&id) else {
                 return false;
             };
-            if !matches!(partial_res.full_res(), Some(hir::def::Res::Def(..))) {
+            if !matches!(partial_res.full_res(), Some(Res::Def(..))) {
                 return false;
             }
 
@@ -2013,19 +2009,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         } else {
             (false, None)
         }
-    }
-
-    fn is_struct_with_fn_ctor(&mut self, def_id: DefId) -> bool {
-        def_id
-            .as_local()
-            .and_then(|local_id| self.r.struct_constructors.get(&local_id))
-            .map(|struct_ctor| {
-                matches!(
-                    struct_ctor.0,
-                    def::Res::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), _)
-                )
-            })
-            .unwrap_or(false)
     }
 
     fn update_err_for_private_tuple_struct_fields(
@@ -2201,7 +2184,17 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         _ => (": val", "literal", Applicability::HasPlaceholders, None),
                     };
 
-                    if !this.has_private_fields(def_id) {
+                    // Imprecise for local structs without ctors, we don't keep fields for them.
+                    let has_private_fields = match def_id.as_local() {
+                        Some(def_id) => this.r.struct_ctors.get(&def_id).is_some_and(|ctor| {
+                            ctor.has_private_fields(this.parent_scope.module, this.r)
+                        }),
+                        None => this.r.tcx.associated_item_def_ids(def_id).iter().any(|field_id| {
+                            let vis = this.r.tcx.visibility(*field_id);
+                            !this.r.is_accessible_from(vis, this.parent_scope.module)
+                        }),
+                    };
+                    if !has_private_fields {
                         // If the fields of the type are private, we shouldn't be suggesting using
                         // the struct literal syntax at all, as that will cause a subsequent error.
                         let fields = this.r.field_idents(def_id);
@@ -2367,53 +2360,39 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 self.suggest_using_enum_variant(err, source, def_id, span);
             }
             (Res::Def(DefKind::Struct, def_id), source) if ns == ValueNS => {
-                let struct_ctor = match def_id.as_local() {
-                    Some(def_id) => self.r.struct_constructors.get(&def_id).cloned(),
-                    None => {
-                        let ctor = self.r.cstore().ctor_untracked(self.r.tcx(), def_id);
-                        ctor.map(|(ctor_kind, ctor_def_id)| {
-                            let ctor_res =
-                                Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
-                            let ctor_vis = self.r.tcx.visibility(ctor_def_id);
-                            let field_visibilities = self
-                                .r
-                                .tcx
-                                .associated_item_def_ids(def_id)
-                                .iter()
-                                .map(|&field_id| self.r.tcx.visibility(field_id))
-                                .collect();
-                            (ctor_res, ctor_vis, field_visibilities)
-                        })
-                    }
-                };
-
-                let (ctor_def, ctor_vis, fields) = if let Some(struct_ctor) = struct_ctor {
-                    if let PathSource::Expr(Some(parent)) = source
-                        && let ExprKind::Field(..) | ExprKind::MethodCall(..) = parent.kind
-                    {
-                        bad_struct_syntax_suggestion(self, err, def_id);
-                        return true;
-                    }
-                    struct_ctor
-                } else {
+                if let PathSource::Expr(Some(parent)) = source
+                    && let ExprKind::Field(..) | ExprKind::MethodCall(..) = parent.kind
+                {
+                    bad_struct_syntax_suggestion(self, err, def_id);
+                    return true;
+                }
+                let Some(ctor) = self.r.struct_ctor(def_id) else {
                     bad_struct_syntax_suggestion(self, err, def_id);
                     return true;
                 };
 
-                let is_accessible = self.r.is_accessible_from(ctor_vis, self.parent_scope.module);
-                if let Some(use_span) = self.r.inaccessible_ctor_reexport.get(&span)
-                    && is_accessible
+                // A type is re-exported and has an inaccessible constructor because it has fields
+                // that are inaccessible from the reexport's scope, extend the diagnostic.
+                let is_accessible = self.r.is_accessible_from(ctor.vis, self.parent_scope.module);
+                if is_accessible
+                    && let mod_path = &path[..path.len() - 1]
+                    && let PathResult::Module(ModuleOrUniformRoot::Module(import_mod)) =
+                        self.resolve_path(mod_path, Some(TypeNS), None, PathSource::Module)
+                    && ctor.has_private_fields(import_mod, self.r)
+                    && let Ok(import_decl) = self.r.cm().maybe_resolve_ident_in_module(
+                        ModuleOrUniformRoot::Module(import_mod),
+                        path.last().unwrap().ident,
+                        TypeNS,
+                        &self.parent_scope,
+                        None,
+                    )
                 {
                     err.span_note(
-                        *use_span,
+                        import_decl.span,
                         "the type is accessed through this re-export, but the type's constructor \
                          is not visible in this import's scope due to private fields",
                     );
-                    if is_accessible
-                        && fields
-                            .iter()
-                            .all(|vis| self.r.is_accessible_from(*vis, self.parent_scope.module))
-                    {
+                    if !ctor.has_private_fields(self.parent_scope.module, self.r) {
                         err.span_suggestion_verbose(
                             span,
                             "the type can be constructed directly, because its fields are \
@@ -2430,17 +2409,17 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     }
                     self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
                 }
-                if !is_expected(ctor_def) || is_accessible {
+                if !is_expected(ctor.res) || is_accessible {
                     return true;
                 }
 
                 let field_spans =
                     self.update_err_for_private_tuple_struct_fields(err, &source, def_id);
 
-                if let Some(spans) =
-                    field_spans.filter(|spans| spans.len() > 0 && fields.len() == spans.len())
+                if let Some(spans) = field_spans
+                    .filter(|spans| spans.len() > 0 && ctor.field_visibilities.len() == spans.len())
                 {
-                    let non_visible_spans: Vec<Span> = iter::zip(&fields, &spans)
+                    let non_visible_spans: Vec<Span> = iter::zip(&ctor.field_visibilities, &spans)
                         .filter(|(vis, _)| {
                             !self.r.is_accessible_from(**vis, self.parent_scope.module)
                         })
@@ -2715,24 +2694,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn has_private_fields(&self, def_id: DefId) -> bool {
-        let fields = match def_id.as_local() {
-            Some(def_id) => self.r.struct_constructors.get(&def_id).cloned().map(|(_, _, f)| f),
-            None => Some(
-                self.r
-                    .tcx
-                    .associated_item_def_ids(def_id)
-                    .iter()
-                    .map(|&field_id| self.r.tcx.visibility(field_id))
-                    .collect(),
-            ),
-        };
-
-        fields.is_some_and(|fields| {
-            fields.iter().any(|vis| !self.r.is_accessible_from(*vis, self.parent_scope.module))
-        })
-    }
-
     /// Given the target `ident` and `kind`, search for the similarly named associated item
     /// in `self.current_trait_ref`.
     pub(crate) fn find_similarly_named_assoc_item(
@@ -2903,10 +2864,16 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
 
                 if let RibKind::Block(Some(module)) = rib.kind {
-                    self.r.add_module_candidates(module, &mut names, &filter_fn, Some(ctxt));
+                    self.r.add_module_candidates(
+                        module.to_module(),
+                        &mut names,
+                        &filter_fn,
+                        Some(ctxt),
+                    );
                 } else if let RibKind::Module(module) = rib.kind {
                     // Encountered a module item, abandon ribs and look into that module and preludes.
-                    let parent_scope = &ParentScope { module, ..self.parent_scope };
+                    let parent_scope =
+                        &ParentScope { module: module.to_module(), ..self.parent_scope };
                     self.r.add_scope_set_candidates(
                         &mut names,
                         ScopeSet::All(ns),
@@ -3049,7 +3016,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let mut seen_modules = FxHashSet::default();
         let root_did = self.r.graph_root.def_id();
         let mut worklist = vec![(
-            self.r.graph_root,
+            self.r.graph_root.to_module(),
             ThinVec::new(),
             root_did.is_local() || !self.r.tcx.is_doc_hidden(root_did),
         )];

@@ -27,7 +27,7 @@ use crate::traits::ObligationCause;
 use crate::ty::InferTy::*;
 use crate::ty::{
     self, AdtDef, Const, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv, Region,
-    Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, ValTree,
+    Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, ValTree,
 };
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
@@ -37,8 +37,10 @@ pub type TypeAndMut<'tcx> = ir::TypeAndMut<TyCtxt<'tcx>>;
 pub type AliasTy<'tcx> = ir::AliasTy<TyCtxt<'tcx>>;
 pub type AliasTyKind<'tcx> = ir::AliasTyKind<TyCtxt<'tcx>>;
 pub type FnSig<'tcx> = ir::FnSig<TyCtxt<'tcx>>;
+pub type FnSigKind = ir::FnSigKind;
 pub type Binder<'tcx, T> = ir::Binder<TyCtxt<'tcx>, T>;
 pub type EarlyBinder<'tcx, T> = ir::EarlyBinder<TyCtxt<'tcx>, T>;
+pub type Unnormalized<'tcx, T> = ir::Unnormalized<TyCtxt<'tcx>, T>;
 pub type TypingMode<'tcx> = ir::TypingMode<TyCtxt<'tcx>>;
 pub type TypingModeEqWrapper<'tcx> = ir::TypingModeEqWrapper<TyCtxt<'tcx>>;
 pub type Placeholder<'tcx, T> = ir::Placeholder<TyCtxt<'tcx>, T>;
@@ -157,7 +159,9 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
                 if tcx.is_async_drop_in_place_coroutine(def_id) {
                     layout.field_tys[*field].ty
                 } else {
-                    ty::EarlyBinder::bind(layout.field_tys[*field].ty).instantiate(tcx, self.args)
+                    ty::EarlyBinder::bind(layout.field_tys[*field].ty)
+                        .instantiate(tcx, self.args)
+                        .skip_norm_wip()
                 }
             })
         })
@@ -873,7 +877,7 @@ impl<'tcx> Ty<'tcx> {
                     ty_param.into()
                 } else {
                     assert!(has_default);
-                    tcx.type_of(param.def_id).instantiate(tcx, args).into()
+                    tcx.type_of(param.def_id).instantiate(tcx, args).skip_norm_wip().into()
                 }
             }
         });
@@ -1121,12 +1125,6 @@ impl<'tcx> Ty<'tcx> {
         self.0.0
     }
 
-    // FIXME(compiler-errors): Think about removing this.
-    #[inline(always)]
-    pub fn flags(self) -> TypeFlags {
-        self.0.0.flags
-    }
-
     #[inline]
     pub fn is_unit(self) -> bool {
         match self.kind() {
@@ -1176,6 +1174,14 @@ impl<'tcx> Ty<'tcx> {
     pub fn ty_vid(self) -> Option<ty::TyVid> {
         match self.kind() {
             &Infer(TyVar(vid)) => Some(vid),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn float_vid(self) -> Option<ty::FloatVid> {
+        match self.kind() {
+            &Infer(FloatVar(vid)) => Some(vid),
             _ => None,
         }
     }
@@ -1757,7 +1763,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Dynamic(_, _) => {
                 let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, DUMMY_SP);
-                Ok(tcx.type_of(dyn_metadata).instantiate(tcx, &[tail.into()]))
+                Ok(tcx.type_of(dyn_metadata).instantiate(tcx, &[tail.into()]).skip_norm_wip())
             }
 
             // We don't know the metadata of `self`, but it must be equal to the
@@ -1948,9 +1954,9 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Tuple(tys) => tys.last().is_none_or(|ty| ty.has_trivial_sizedness(tcx, sizedness)),
 
-            ty::Adt(def, args) => def
-                .sizedness_constraint(tcx, sizedness)
-                .is_none_or(|ty| ty.instantiate(tcx, args).has_trivial_sizedness(tcx, sizedness)),
+            ty::Adt(def, args) => def.sizedness_constraint(tcx, sizedness).is_none_or(|ty| {
+                ty.instantiate(tcx, args).skip_norm_wip().has_trivial_sizedness(tcx, sizedness)
+            }),
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
 

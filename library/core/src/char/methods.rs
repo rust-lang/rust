@@ -810,7 +810,7 @@ impl char {
         match self {
             'a'..='z' | 'A'..='Z' => true,
             '\0'..='\u{A9}' => false,
-            _ => unicode::Cased(self),
+            _ => unicode::Lowercase(self) || unicode::Uppercase(self) || unicode::Lt(self),
         }
     }
 
@@ -840,10 +840,10 @@ impl char {
             'a'..='z' => Some(CharCase::Lower),
             'A'..='Z' => Some(CharCase::Upper),
             '\0'..='\u{A9}' => None,
-            _ if !unicode::Cased(self) => None,
             _ if unicode::Lowercase(self) => Some(CharCase::Lower),
             _ if unicode::Uppercase(self) => Some(CharCase::Upper),
-            _ => Some(CharCase::Title),
+            _ if unicode::Lt(self) => Some(CharCase::Title),
+            _ => None,
         }
     }
 
@@ -919,7 +919,7 @@ impl char {
     pub fn is_titlecase(self) -> bool {
         match self {
             '\0'..='\u{01C4}' => false,
-            _ => self.is_cased() && !self.is_lowercase() && !self.is_uppercase(),
+            _ => unicode::Lt(self),
         }
     }
 
@@ -1151,13 +1151,14 @@ impl char {
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
-    /// If this `char` requires special considerations (e.g. multiple `char`s) the iterator yields
-    /// the `char`(s) given by [`SpecialCasing.txt`].
+    /// If this `char` expands to multiple `char`s, the iterator yields the `char`s given by
+    /// [`SpecialCasing.txt`]. The maximum number of `char`s in a case mapping is 3.
     ///
     /// [`SpecialCasing.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt
     ///
     /// This operation performs an unconditional mapping without tailoring. That is, the conversion
-    /// is independent of context and language.
+    /// is independent of context and language. See [below](#notes-on-context-and-locale)
+    /// for more information.
     ///
     /// In the [Unicode Standard], Chapter 4 (Character Properties) discusses case mapping in
     /// general and Chapter 3 (Conformance) discusses the default algorithm for case conversion.
@@ -1199,6 +1200,48 @@ impl char {
     /// // convert into themselves.
     /// assert_eq!('山'.to_lowercase().to_string(), "山");
     /// ```
+    /// # Notes on context and locale
+    ///
+    /// As stated earlier, this method does not take into account language or context.
+    /// Below is a non-exhaustive list of situations where this can be relevant.
+    /// If you need to handle locale-depedendent casing in your code, consider using
+    /// an external crate, like [`icu_casemap`](https://crates.io/crates/icu_casemap)
+    /// which is developed by Unicode.
+    ///
+    /// ## Greek sigma
+    ///
+    /// In Greek, the letter simga (uppercase Σ) has two lowercase forms:
+    /// ς which is used only at the end of a word, and σ which is used everywhere else.
+    /// `to_lowercase()` always uses the second form:
+    ///
+    /// ```
+    /// assert_eq!('Σ'.to_lowercase().to_string(), "σ");
+    /// ```
+    ///
+    /// ## Turkish and Azeri I/ı/İ/i
+    ///
+    /// In Turkish and Azeri, the equivalent of 'i' in Latin has five forms instead of two:
+    ///
+    /// * 'Dotless': I / ı, sometimes written ï
+    /// * 'Dotted': İ / i
+    ///
+    /// Note that the uppercase undotted 'I' is the same as the Latin. Therefore:
+    ///
+    /// ```
+    /// let lower_i = 'I'.to_lowercase().to_string();
+    /// ```
+    ///
+    /// The value of `lower_i` here relies on the language of the text: if we're
+    /// in `en-US`, it should be `"i"`, but if we're in `tr-TR` or `az-AZ`, it should
+    /// be `"ı"`. `to_lowercase()` does not take this into account, and so:
+    ///
+    /// ```
+    /// let lower_i = 'I'.to_lowercase().to_string();
+    ///
+    /// assert_eq!(lower_i, "i");
+    /// ```
+    ///
+    /// holds across languages.
     #[must_use = "this returns the lowercased character as a new iterator, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1211,8 +1254,10 @@ impl char {
     /// `char`s.
     ///
     /// This is usually, but not always, equivalent to the uppercase mapping
-    /// returned by [`Self::to_uppercase`]. Prefer this method when seeking to capitalize
-    /// Only The First Letter of a word, but use [`Self::to_uppercase`] for ALL CAPS.
+    /// returned by [`to_uppercase()`]. Prefer this method when seeking to capitalize
+    /// Only The First Letter of a word, but use [`to_uppercase()`] for ALL CAPS.
+    /// See [below](#difference-from-uppercase) for a thorough explanation
+    /// of the difference between the two methods.
     ///
     /// If this `char` does not have a titlecase mapping, the iterator yields the same `char`.
     ///
@@ -1222,13 +1267,14 @@ impl char {
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
-    /// If this `char` requires special considerations (e.g. multiple `char`s) the iterator yields
-    /// the `char`(s) given by [`SpecialCasing.txt`].
+    /// If this `char` expands to multiple `char`s, the iterator yields the `char`s given by
+    /// [`SpecialCasing.txt`]. The maximum number of `char`s in a case mapping is 3.
     ///
     /// [`SpecialCasing.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt
     ///
     /// This operation performs an unconditional mapping without tailoring. That is, the conversion
-    /// is independent of context and language.
+    /// is independent of context and language. See [below](#note-on-locale)
+    /// for more information.
     ///
     /// In the [Unicode Standard], Chapter 4 (Character Properties) discusses case mapping in
     /// general and Chapter 3 (Conformance) discusses the default algorithm for case conversion.
@@ -1265,8 +1311,9 @@ impl char {
     /// ```
     /// #![feature(titlecase)]
     /// assert_eq!('c'.to_titlecase().to_string(), "C");
+    /// assert_eq!('ა'.to_titlecase().to_string(), "ა");
     /// assert_eq!('ǆ'.to_titlecase().to_string(), "ǅ");
-    /// assert_eq!('ῼ'.to_titlecase().to_string(), "ῼ");
+    /// assert_eq!('ᾨ'.to_titlecase().to_string(), "ᾨ");
     ///
     /// // Sometimes the result is more than one character:
     /// assert_eq!('ß'.to_titlecase().to_string(), "Ss");
@@ -1276,7 +1323,77 @@ impl char {
     /// assert_eq!('山'.to_titlecase().to_string(), "山");
     /// ```
     ///
+    /// # Difference from uppercase
+    ///
+    /// Currently, there are three classes of characters where [`to_uppercase()`]
+    /// and `to_titlecase()` give different results:
+    ///
+    /// ## Georgian script
+    ///
+    /// Each letter in the modern Georgian alphabet can be written in one of two forms:
+    /// the typical lowercase-like "mkhedruli" form, and a variant uppercase-like "mtavruli"
+    /// form. However, unlike uppercase in most cased scripts, mtavruli is not typically used
+    /// to start sentences, denote proper nouns, or for any other purpose
+    /// in running text. It is instead confined to titles and headings, which are written entirely
+    /// in mtavruli. For this reason, [`to_uppercase()`] applied to a Georgian letter
+    /// will return the mtavruli form, but `to_titlecase()` will return the mkhedruli form.
+    ///
+    /// ```
+    /// #![feature(titlecase)]
+    /// let ani = 'ა'; // First letter of the Georgian alphabet, in mkhedruli form
+    ///
+    /// // Titlecasing mkhedruli maps it to itself...
+    /// assert_eq!(ani.to_titlecase().to_string(), ani.to_string());
+    ///
+    /// // but uppercasing it maps it to mtavruli
+    /// assert_eq!(ani.to_uppercase().to_string(), "Ა");
+    /// ```
+    ///
+    /// ## Compatibility digraphs for Latin-alphabet Serbo-Croatian
+    ///
+    /// The standard Latin alphabet for the Serbo-Croatian language
+    /// (Bosnian, Croatian, Montenegrin, and Serbian) contains
+    /// three digraphs: Dž, Lj, and Nj. These are usually represented as
+    /// two characters. However, for compatibility with older character sets,
+    /// Unicode includes single-character versions of these digraphs.
+    /// Each has a uppercase, titlecase, and lowercase version:
+    ///
+    /// - `'Ǆ'`, `'ǅ'`, `'ǆ'`
+    /// - `'Ǉ'`, `'ǈ'`, `'ǉ'`
+    /// - `'Ǌ'`, `'ǋ'`, `'ǌ'`
+    ///
+    /// Unicode additionally encodes a casing triad for the Dz digraph
+    /// without the caron: `'Ǳ'`, `'ǲ'`, `'ǳ'`.
+    ///
+    /// ## Iota-subscritped Greek vowels
+    ///
+    /// In ancient Greek, the long vowels alpha (α), eta (η), and omega (ω)
+    /// were sometimes followed by an iota (ι), forming a diphthong. Over time,
+    /// the diphthong pronunciation was slowly lost, with the iota becoming mute.
+    /// Eventually, the ι disappeared from the spelling as well.
+    /// However, there remains a need to represent ancient texts faithfully.
+    ///
+    /// Modern editions of ancient Greek texts commonly use a reduced-sized
+    /// ι symbol to denote mute iotas, while distinguishing them from ιs
+    /// which continued to affect pronunciation. The exact standard differs
+    /// between different publications. Some render the mute ι below its associated
+    /// vowel (subscript), while others place it to the right of said vowel (adscript).
+    /// The interaction of mute ι symbols with casing also varies.
+    ///
+    /// The Unicode Standard, for its default casing rules, chose to make lowercase
+    /// Greek vowels with iota subscipt (e.g. `'ᾠ'`) titlecase to the uppercase vowel
+    /// with iota subscript (`'ᾨ'`) but uppercase to the uppercase vowel followed by
+    /// full-size uppercase iota (`"ὨΙ"`). This is just one convention among many
+    /// in common use, but it is the one Unicode settled on,
+    /// so it is what this method does also.
+    ///
     /// # Note on locale
+    ///
+    /// As stated above, this method is locale-insensitive.
+    /// If you need locale support, consider using an external crate,
+    /// like [`icu_casemap`](https://crates.io/crates/icu_casemap)
+    /// which is developed by Unicode. A description of a common
+    /// locale-dependent casing issue follows:
     ///
     /// In Turkish and Azeri, the equivalent of 'i' in Latin has five forms instead of two:
     ///
@@ -1302,6 +1419,8 @@ impl char {
     /// ```
     ///
     /// holds across languages.
+    ///
+    /// [`to_uppercase()`]: Self::to_uppercase()
     #[must_use = "this returns the titlecased character as a new iterator, \
                   without modifying the original"]
     #[unstable(feature = "titlecase", issue = "153892")]
@@ -1313,8 +1432,9 @@ impl char {
     /// Returns an iterator that yields the uppercase mapping of this `char` as one or more
     /// `char`s.
     ///
-    /// Prefer this method when converting a word into ALL CAPS, but consider [`Self::to_titlecase`]
-    /// instead if you seek to capitalize Only The First Letter.
+    /// Prefer this method when converting a word into ALL CAPS, but consider [`to_titlecase()`]
+    /// instead if you seek to capitalize Only The First Letter. See that method's documentation
+    /// for more information on the difference between the two.
     ///
     /// If this `char` does not have an uppercase mapping, the iterator yields the same `char`.
     ///
@@ -1324,13 +1444,14 @@ impl char {
     /// [ucd]: https://www.unicode.org/reports/tr44/
     /// [`UnicodeData.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt
     ///
-    /// If this `char` requires special considerations (e.g. multiple `char`s) the iterator yields
-    /// the `char`(s) given by [`SpecialCasing.txt`].
+    /// If this `char` expands to multiple `char`s, the iterator yields the `char`s given by
+    /// [`SpecialCasing.txt`]. The maximum number of `char`s in a case mapping is 3.
     ///
     /// [`SpecialCasing.txt`]: https://www.unicode.org/Public/UCD/latest/ucd/SpecialCasing.txt
     ///
     /// This operation performs an unconditional mapping without tailoring. That is, the conversion
-    /// is independent of context and language.
+    /// is independent of context and language. See [below](#note-on-locale)
+    /// for more information.
     ///
     /// In the [Unicode Standard], Chapter 4 (Character Properties) discusses case mapping in
     /// general and Chapter 3 (Conformance) discusses the default algorithm for case conversion.
@@ -1338,6 +1459,7 @@ impl char {
     /// [Unicode Standard]: https://www.unicode.org/versions/latest/
     ///
     /// # Examples
+    ///
     /// `'ﬅ'` (U+FB05) is a single Unicode code point (a ligature) that maps to "ST" in uppercase.
     ///
     /// As an iterator:
@@ -1365,11 +1487,12 @@ impl char {
     ///
     /// ```
     /// assert_eq!('c'.to_uppercase().to_string(), "C");
+    /// assert_eq!('ა'.to_uppercase().to_string(), "Ა");
     /// assert_eq!('ǆ'.to_uppercase().to_string(), "Ǆ");
     ///
     /// // Sometimes the result is more than one character:
     /// assert_eq!('ﬅ'.to_uppercase().to_string(), "ST");
-    /// assert_eq!('ῼ'.to_uppercase().to_string(), "ΩΙ");
+    /// assert_eq!('ᾨ'.to_uppercase().to_string(), "ὨΙ");
     ///
     /// // Characters that do not have both uppercase and lowercase
     /// // convert into themselves.
@@ -1377,6 +1500,12 @@ impl char {
     /// ```
     ///
     /// # Note on locale
+    ///
+    /// As stated above, this method is locale-insensitive.
+    /// If you need locale support, consider using an external crate,
+    /// like [`icu_casemap`](https://crates.io/crates/icu_casemap)
+    /// which is developed by Unicode. A description of a common
+    /// locale-dependent casing issue follows:
     ///
     /// In Turkish and Azeri, the equivalent of 'i' in Latin has five forms instead of two:
     ///
@@ -1400,6 +1529,8 @@ impl char {
     /// ```
     ///
     /// holds across languages.
+    ///
+    /// [`to_titlecase()`]: Self::to_titlecase()
     #[must_use = "this returns the uppercased character as a new iterator, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1931,6 +2062,9 @@ impl char {
     /// Checks if the value is an ASCII whitespace character:
     /// U+0020 SPACE, U+0009 HORIZONTAL TAB, U+000A LINE FEED,
     /// U+000C FORM FEED, or U+000D CARRIAGE RETURN.
+    ///
+    /// **Warning:** Because the list above excludes U+000B VERTICAL TAB,
+    /// `c.is_ascii_whitespace()` is **not** equivalent to `c.is_ascii() && c.is_whitespace()`.
     ///
     /// Rust uses the WhatWG Infra Standard's [definition of ASCII
     /// whitespace][infra-aw]. There are several other definitions in

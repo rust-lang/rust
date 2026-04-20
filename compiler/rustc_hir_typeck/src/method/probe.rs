@@ -18,7 +18,7 @@ use rustc_middle::ty::elaborate::supertrait_def_ids;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams, simplify_type};
 use rustc_middle::ty::{
     self, AssocContainer, AssocItem, GenericArgs, GenericArgsRef, GenericParamDefKind, ParamEnvAnd,
-    Ty, TyCtxt, TypeVisitableExt, Upcast,
+    Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -26,7 +26,7 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::edit_distance::{
     edit_distance_with_substrings, find_best_match_for_name_with_substrings,
 };
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::solve::Goal;
@@ -1073,7 +1073,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         match method.kind {
             ty::AssocKind::Fn { .. } => self.probe(|_| {
                 let args = self.fresh_args_for_item(self.span, method.def_id);
-                let fty = self.tcx.fn_sig(method.def_id).instantiate(self.tcx, args);
+                let fty =
+                    self.tcx.fn_sig(method.def_id).instantiate(self.tcx, args).skip_norm_wip();
                 let fty = self.instantiate_binder_with_fresh_vars(
                     self.span,
                     BoundRegionConversionTime::FnCall,
@@ -1971,10 +1972,15 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             match probe.kind {
                 InherentImplCandidate { impl_def_id, .. } => {
                     let impl_args = self.fresh_args_for_item(self.span, impl_def_id);
-                    let impl_ty = self.tcx.type_of(impl_def_id).instantiate(self.tcx, impl_args);
+                    let impl_ty = self
+                        .tcx
+                        .type_of(impl_def_id)
+                        .instantiate(self.tcx, impl_args)
+                        .skip_norm_wip();
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, impl_ty, impl_args);
-                    xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
+                    xform_self_ty =
+                        ocx.normalize(cause, self.param_env, Unnormalized::new_wip(xform_self_ty));
                     match ocx.relate(cause, self.param_env, self.variance(), self_ty, xform_self_ty)
                     {
                         Ok(()) => {}
@@ -1984,7 +1990,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         }
                     }
                     // FIXME: Weirdly, we normalize the ret ty in this candidate, but no other candidates.
-                    xform_ret_ty = ocx.normalize(cause, self.param_env, xform_ret_ty);
+                    xform_ret_ty =
+                        ocx.normalize(cause, self.param_env, Unnormalized::new_wip(xform_ret_ty));
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_def_id = probe.item.container_id(self.tcx);
                     let impl_bounds =
@@ -2033,10 +2040,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         BoundRegionConversionTime::FnCall,
                         poly_trait_ref,
                     );
-                    let trait_ref = ocx.normalize(cause, self.param_env, trait_ref);
+                    let trait_ref =
+                        ocx.normalize(cause, self.param_env, Unnormalized::new_wip(trait_ref));
                     (xform_self_ty, xform_ret_ty) =
                         self.xform_self_ty(probe.item, trait_ref.self_ty(), trait_ref.args);
-                    xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
+                    xform_self_ty =
+                        ocx.normalize(cause, self.param_env, Unnormalized::new_wip(xform_self_ty));
                     match self_ty.kind() {
                         // HACK: opaque types will match anything for which their bounds hold.
                         // Thus we need to prevent them from trying to match the `&_` autoref
@@ -2106,7 +2115,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         match ocx.structurally_normalize_ty(
                             cause,
                             self.param_env,
-                            trait_ref.self_ty(),
+                            Unnormalized::new_wip(trait_ref.self_ty()),
                         ) {
                             Ok(ty) => {
                                 if !matches!(ty.kind(), ty::Param(_)) {
@@ -2121,7 +2130,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         }
                     }
 
-                    xform_self_ty = ocx.normalize(cause, self.param_env, xform_self_ty);
+                    xform_self_ty =
+                        ocx.normalize(cause, self.param_env, Unnormalized::new_wip(xform_self_ty));
                     match ocx.relate(cause, self.param_env, self.variance(), self_ty, xform_self_ty)
                     {
                         Ok(()) => {}
@@ -2184,7 +2194,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 // but `self.return_type` is only set on the diagnostic-path, so we
                 // should be okay doing it here.
                 if !matches!(probe.kind, InherentImplCandidate { .. }) {
-                    xform_ret_ty = ocx.normalize(&cause, self.param_env, xform_ret_ty);
+                    xform_ret_ty =
+                        ocx.normalize(&cause, self.param_env, Unnormalized::new_wip(xform_ret_ty));
                 }
 
                 debug!("comparing return_ty {:?} with xform ret ty {:?}", return_ty, xform_ret_ty);
@@ -2377,8 +2388,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     continue;
                 }
 
-                // This pick is not a supertrait of the `child_pick`.
-                // Check if it's a subtrait of the `child_pick`, instead.
+                // This candidate is not a supertrait of the `child_trait`.
+                // Check if it's a subtrait of the `child_trait`, instead.
                 // If it is, then it must have been a subtrait of every
                 // other pick we've eliminated at this point. It will
                 // take over at this point.
@@ -2392,7 +2403,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     continue;
                 }
 
-                // `child_pick` is not a supertrait of this pick.
+                // Neither `child_trait` or the current candidate are
+                // supertraits of each other.
                 // Don't bail here, since we may be comparing two supertraits
                 // of a common subtrait. These two supertraits won't be related
                 // at all, but we will pick them up next round when we find their
@@ -2557,7 +2569,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         assert_eq!(args.len(), generics.parent_count);
 
         let xform_fn_sig = if generics.is_own_empty() {
-            fn_sig.instantiate(self.tcx, args)
+            fn_sig.instantiate(self.tcx, args).skip_norm_wip()
         } else {
             let args = GenericArgs::for_item(self.tcx, method, |param, _| {
                 let i = param.index as usize;
@@ -2575,7 +2587,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     }
                 }
             });
-            fn_sig.instantiate(self.tcx, args)
+            fn_sig.instantiate(self.tcx, args).skip_norm_wip()
         };
 
         self.tcx.instantiate_bound_regions_with_erased(xform_fn_sig)
@@ -2591,38 +2603,25 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     /// Determine if the associated item with the given DefId matches
-    /// the desired name via a doc alias.
+    /// the desired name via a doc alias or rustc_confusables
     fn matches_by_doc_alias(&self, def_id: DefId) -> bool {
         let Some(method) = self.method_name else {
             return false;
         };
-        let Some(local_def_id) = def_id.as_local() else {
-            return false;
-        };
-        let hir_id = self.fcx.tcx.local_def_id_to_hir_id(local_def_id);
-        let attrs = self.fcx.tcx.hir_attrs(hir_id);
 
-        if let Some(d) = find_attr!(attrs, Doc(d) => d)
+        if let Some(d) = find_attr!(self.tcx, def_id, Doc(d) => d)
             && d.aliases.contains_key(&method.name)
         {
             return true;
         }
 
-        for attr in attrs {
-            if attr.has_name(sym::rustc_confusables) {
-                let Some(confusables) = attr.meta_item_list() else {
-                    continue;
-                };
-                // #[rustc_confusables("foo", "bar"))]
-                for n in confusables {
-                    if let Some(lit) = n.lit()
-                        && method.name == lit.symbol
-                    {
-                        return true;
-                    }
-                }
-            }
+        if let Some(confusables) =
+            find_attr!(self.tcx, def_id, RustcConfusables{ confusables } => confusables)
+            && confusables.contains(&method.name)
+        {
+            return true;
         }
+
         false
     }
 

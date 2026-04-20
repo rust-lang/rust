@@ -185,8 +185,6 @@ pub(crate) struct TestProps {
     // If true, `rustfix` will only apply `MachineApplicable` suggestions.
     pub(crate) rustfix_only_machine_applicable: bool,
     pub(crate) assembly_output: Option<String>,
-    // If true, the test is expected to ICE
-    pub(crate) should_ice: bool,
     // If true, the stderr is expected to be different across bit-widths.
     pub(crate) stderr_per_bitwidth: bool,
     // The MIR opt to unit test, if any
@@ -220,7 +218,6 @@ mod directives {
     pub(crate) const COMPILE_FLAGS: &str = "compile-flags";
     pub(crate) const RUN_FLAGS: &str = "run-flags";
     pub(crate) const DOC_FLAGS: &str = "doc-flags";
-    pub(crate) const SHOULD_ICE: &str = "should-ice";
     pub(crate) const BUILD_AUX_DOCS: &str = "build-aux-docs";
     pub(crate) const UNIQUE_DOC_OUT_DIR: &str = "unique-doc-out-dir";
     pub(crate) const FORCE_HOST: &str = "force-host";
@@ -307,7 +304,6 @@ impl TestProps {
             run_rustfix: false,
             rustfix_only_machine_applicable: false,
             assembly_output: None,
-            should_ice: false,
             stderr_per_bitwidth: false,
             mir_unit_test: None,
             remap_src_base: false,
@@ -375,10 +371,6 @@ impl TestProps {
                     }
                 },
             );
-        }
-
-        if self.should_ice {
-            self.failure_status = Some(101);
         }
 
         if config.mode == TestMode::Incremental {

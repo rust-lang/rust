@@ -252,6 +252,23 @@ where
     }
 }
 
+// This internal type isn't publicly exposed, because it is an implementation detail.
+// But it's a public field of FnSig (which has a public mirror type), so allow conversions.
+impl<'tcx> Stable<'tcx> for ty::FnSigKind {
+    type T = (bool /*c_variadic*/, crate::mir::Safety, crate::ty::Abi);
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        (
+            self.c_variadic(),
+            if self.is_safe() { crate::mir::Safety::Safe } else { crate::mir::Safety::Unsafe },
+            self.abi().stable(tables, cx),
+        )
+    }
+}
+
 impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
     type T = crate::ty::FnSig;
     fn stable<'cx>(
@@ -260,6 +277,7 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use crate::ty::FnSig;
+        let (c_variadic, safety, abi) = self.fn_sig_kind.stable(tables, cx);
 
         FnSig {
             inputs_and_output: self
@@ -267,9 +285,9 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
                 .iter()
                 .map(|ty| ty.stable(tables, cx))
                 .collect(),
-            c_variadic: self.c_variadic,
-            safety: self.safety.stable(tables, cx),
-            abi: self.abi.stable(tables, cx),
+            c_variadic,
+            safety,
+            abi,
         }
     }
 }

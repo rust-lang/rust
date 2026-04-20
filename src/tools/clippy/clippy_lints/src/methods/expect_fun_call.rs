@@ -75,7 +75,13 @@ fn get_arg_root<'a>(cx: &LateContext<'_>, arg: &'a hir::Expr<'a>) -> &'a hir::Ex
     let mut arg_root = peel_blocks(arg);
     loop {
         arg_root = match &arg_root.kind {
-            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => expr,
+            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => {
+                let expr_ty = cx.typeck_results().expr_ty(expr);
+                if expr_ty.is_str() {
+                    break;
+                }
+                expr
+            },
             hir::ExprKind::MethodCall(method_name, receiver, [], ..) => {
                 if (method_name.ident.name == sym::as_str || method_name.ident.name == sym::as_ref) && {
                     let arg_type = cx.typeck_results().expr_ty(receiver);

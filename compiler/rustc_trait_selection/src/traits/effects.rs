@@ -8,7 +8,7 @@ use rustc_middle::span_bug;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::elaborate::elaborate;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, Unnormalized};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::SelectionContext;
@@ -190,6 +190,7 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
                 tcx,
                 tcx.explicit_implied_const_bounds(def_id)
                     .iter_instantiated_copied(tcx, alias_ty.args)
+                    .map(Unnormalized::skip_norm_wip)
                     .map(|(trait_ref, _)| {
                         trait_ref.to_host_effect_clause(tcx, obligation.predicate.constness)
                     }),
@@ -234,14 +235,22 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
         Ok(match_candidate(selcx, obligation, data, true, |selcx, nested| {
             // An alias bound only holds if we also check the const conditions
             // of the alias, so we need to register those, too.
-            let const_conditions = normalize_with_depth_to(
-                selcx,
-                obligation.param_env,
-                obligation.cause.clone(),
-                obligation.recursion_depth,
-                tcx.const_conditions(alias_ty.kind.def_id()).instantiate(tcx, alias_ty.args),
-                nested,
-            );
+            let const_conditions =
+                tcx.const_conditions(alias_ty.kind.def_id()).instantiate(tcx, alias_ty.args);
+            let const_conditions: Vec<_> = const_conditions
+                .into_iter()
+                .map(|(trait_ref, span)| {
+                    let trait_ref = normalize_with_depth_to(
+                        selcx,
+                        obligation.param_env,
+                        obligation.cause.clone(),
+                        obligation.recursion_depth,
+                        trait_ref.skip_norm_wip(),
+                        nested,
+                    );
+                    (trait_ref, span)
+                })
+                .collect();
             nested.extend(const_conditions.into_iter().map(|(trait_ref, _)| {
                 obligation
                     .with(tcx, trait_ref.to_host_effect_clause(tcx, obligation.predicate.constness))
@@ -272,7 +281,11 @@ fn evaluate_host_effect_from_item_bounds<'tcx>(
         },
     ) = *consider_ty.kind()
     {
-        for clause in tcx.item_bounds(def_id).iter_instantiated(tcx, alias_ty.args) {
+        for clause in tcx
+            .item_bounds(def_id)
+            .iter_instantiated(tcx, alias_ty.args)
+            .map(Unnormalized::skip_norm_wip)
+        {
             let bound_clause = clause.kind();
             let ty::ClauseKind::HostEffect(data) = bound_clause.skip_binder() else {
                 continue;
@@ -411,6 +424,7 @@ fn evaluate_host_effect_for_copy_clone_goal<'tcx>(
         ty::CoroutineWitness(def_id, args) => Ok(tcx
             .coroutine_hidden_types(def_id)
             .instantiate(tcx, args)
+            .skip_norm_wip()
             .map_bound(|bound| bound.types.to_vec())),
     }?;
 
@@ -570,7 +584,7 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
                     tcx,
                     cause,
                     obligation.param_env,
-                    c.to_host_effect_clause(tcx, obligation.predicate.constness),
+                    c.to_host_effect_clause(tcx, obligation.predicate.constness).skip_norm_wip(),
                 )
             })
             .collect()),
@@ -615,7 +629,8 @@ fn evaluate_host_effect_from_selection_candidate<'tcx>(
                                     ),
                                     obligation.param_env,
                                     trait_ref
-                                        .to_host_effect_clause(tcx, obligation.predicate.constness),
+                                        .to_host_effect_clause(tcx, obligation.predicate.constness)
+                                        .skip_norm_wip(),
                                 )
                             }),
                     );
@@ -656,7 +671,9 @@ fn evaluate_host_effect_from_trait_alias<'tcx>(
                     },
                 ),
                 obligation.param_env,
-                trait_ref.to_host_effect_clause(tcx, obligation.predicate.constness),
+                trait_ref
+                    .to_host_effect_clause(tcx, obligation.predicate.constness)
+                    .skip_norm_wip(),
             )
         })
         .collect())

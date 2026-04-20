@@ -9,8 +9,8 @@ use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 pub use rustc_middle::traits::query::NormalizationResult;
 use rustc_middle::ty::{
-    self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    self, FallibleTypeFolder, Flags, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
 };
 use rustc_span::DUMMY_SP;
 use tracing::{debug, info, instrument};
@@ -79,7 +79,9 @@ impl<'a, 'tcx> At<'a, 'tcx> {
 
         if self.infcx.next_trait_solver() {
             match crate::solve::deeply_normalize_with_skipped_universes::<_, ScrubbedTraitError<'tcx>>(
-                self, value, universes,
+                self,
+                Unnormalized::new_wip(value),
+                universes,
             ) {
                 Ok(value) => {
                     return Ok(Normalized { value, obligations: PredicateObligations::new() });
@@ -211,7 +213,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
         // See note in `rustc_trait_selection::traits::project` about why we
         // wait to fold the args.
         let res = match data.kind {
-            ty::Opaque { .. } => {
+            ty::Opaque { def_id } => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.infcx.typing_mode() {
                     TypingMode::Coherence
@@ -236,8 +238,9 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                             return Ok(Ty::new_error(self.cx(), guar));
                         }
 
-                        let generic_ty = self.cx().type_of(data.kind.def_id());
-                        let mut concrete_ty = generic_ty.instantiate(self.cx(), args);
+                        let generic_ty = self.cx().type_of(def_id);
+                        let mut concrete_ty =
+                            generic_ty.instantiate(self.cx(), args).skip_norm_wip();
                         self.anon_depth += 1;
                         if concrete_ty == ty {
                             concrete_ty = Ty::new_error_with_message(

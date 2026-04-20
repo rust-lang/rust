@@ -281,9 +281,9 @@ fn get_delegation_self_ty<'tcx>(tcx: TyCtxt<'tcx>, delegation_id: LocalDefId) ->
         }
 
         (FnKind::AssocTraitImpl, FnKind::AssocTrait)
-        | (FnKind::AssocInherentImpl, FnKind::AssocTrait) => {
-            Some(tcx.type_of(tcx.local_parent(delegation_id)).instantiate_identity())
-        }
+        | (FnKind::AssocInherentImpl, FnKind::AssocTrait) => Some(
+            tcx.type_of(tcx.local_parent(delegation_id)).instantiate_identity().skip_norm_wip(),
+        ),
 
         // For trait impl's `sig_id` is always equal to the corresponding trait method.
         // For inherent methods delegation is not yet supported.
@@ -339,7 +339,8 @@ fn create_generic_args<'tcx>(
             // them as parent args. We always generate a function whose generics match
             // child generics in trait.
             let parent = tcx.local_parent(delegation_id);
-            parent_args = tcx.impl_trait_header(parent).trait_ref.instantiate_identity().args;
+            parent_args =
+                tcx.impl_trait_header(parent).trait_ref.instantiate_identity().skip_norm_wip().args;
 
             assert!(child_args.is_empty(), "Child args can not be used in trait impl case");
 
@@ -347,7 +348,8 @@ fn create_generic_args<'tcx>(
         }
 
         (FnKind::AssocInherentImpl, FnKind::AssocTrait) => {
-            let self_ty = tcx.type_of(tcx.local_parent(delegation_id)).instantiate_identity();
+            let self_ty =
+                tcx.type_of(tcx.local_parent(delegation_id)).instantiate_identity().skip_norm_wip();
 
             tcx.mk_args_from_iter(
                 std::iter::once(ty::GenericArg::from(self_ty))
@@ -457,7 +459,10 @@ pub(crate) fn inherit_predicates_for_delegation_item<'tcx>(
 
             for pred in preds.predicates {
                 let new_pred = pred.0.fold_with(&mut self.folder);
-                self.preds.push((EarlyBinder::bind(new_pred).instantiate(self.tcx, args), pred.1));
+                self.preds.push((
+                    EarlyBinder::bind(new_pred).instantiate(self.tcx, args).skip_norm_wip(),
+                    pred.1,
+                ));
             }
 
             self
@@ -530,7 +535,7 @@ fn check_constraints<'tcx>(
         }));
     };
 
-    if tcx.fn_sig(sig_id).skip_binder().skip_binder().c_variadic {
+    if tcx.fn_sig(sig_id).skip_binder().skip_binder().c_variadic() {
         // See issue #127443 for explanation.
         emit("delegation to C-variadic functions is not allowed");
     }

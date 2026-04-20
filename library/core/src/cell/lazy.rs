@@ -367,7 +367,7 @@ impl<T: fmt::Debug, F> fmt::Debug for LazyCell<T, F> {
     }
 }
 
-#[stable(feature = "from_wrapper_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "from_wrapper_impls", since = "1.96.0")]
 impl<T, F> From<T> for LazyCell<T, F> {
     /// Constructs a `LazyCell` that starts already initialized
     /// with the provided value.

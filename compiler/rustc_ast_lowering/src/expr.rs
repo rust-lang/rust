@@ -8,7 +8,6 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::msg;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::definitions::DefPathData;
 use rustc_hir::{HirId, Target, find_attr};
 use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
@@ -29,7 +28,7 @@ use super::{
 use crate::errors::{InvalidLegacyConstGenericArg, UseConstGenericArg, YieldInClosure};
 use crate::{AllowReturnTypeNotation, FnDeclKind, ImplTraitPosition, TryBlockScope};
 
-struct WillCreateDefIdsVisitor {}
+pub(super) struct WillCreateDefIdsVisitor;
 
 impl<'v> rustc_ast::visit::Visitor<'v> for WillCreateDefIdsVisitor {
     type Result = ControlFlow<Span>;
@@ -472,25 +471,19 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         for (idx, arg) in args.iter().cloned().enumerate() {
             if legacy_args_idx.contains(&idx) {
                 let node_id = self.next_node_id();
-                self.create_def(
-                    node_id,
-                    None,
-                    DefKind::AnonConst,
-                    DefPathData::LateAnonConst,
-                    f.span,
-                );
-                let mut visitor = WillCreateDefIdsVisitor {};
-                let const_value = if let ControlFlow::Break(span) = visitor.visit_expr(&arg) {
-                    Box::new(Expr {
-                        id: self.next_node_id(),
-                        kind: ExprKind::Err(invalid_expr_error(self.tcx, span)),
-                        span: f.span,
-                        attrs: [].into(),
-                        tokens: None,
-                    })
-                } else {
-                    arg
-                };
+                self.create_def(node_id, None, DefKind::AnonConst, f.span);
+                let const_value =
+                    if let ControlFlow::Break(span) = WillCreateDefIdsVisitor.visit_expr(&arg) {
+                        Box::new(Expr {
+                            id: self.next_node_id(),
+                            kind: ExprKind::Err(invalid_expr_error(self.tcx, span)),
+                            span: f.span,
+                            attrs: [].into(),
+                            tokens: None,
+                        })
+                    } else {
+                        arg
+                    };
 
                 let anon_const = AnonConst {
                     id: node_id,
@@ -762,9 +755,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         let fn_decl = self.arena.alloc(hir::FnDecl {
             inputs,
             output,
-            c_variadic: false,
-            implicit_self: hir::ImplicitSelfKind::None,
-            lifetime_elision_allowed: false,
+            fn_decl_kind: hir::FnDeclFlags::default(),
         });
 
         let body = self.lower_body(move |this| {

@@ -134,3 +134,14 @@ mod issue15305 {
         unimplemented!("Implement task");
     }
 }
+
+mod issue16835 {
+    async fn todo_task(_arg: i32) {
+        todo!()
+    }
+
+    async fn unimplemented_task(_arg: i32) {
+        let a = 1;
+        unimplemented!()
+    }
+}

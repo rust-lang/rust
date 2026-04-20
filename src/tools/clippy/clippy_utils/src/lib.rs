@@ -1,6 +1,5 @@
 #![feature(box_patterns)]
 #![feature(macro_metavar_expr)]
-#![feature(never_type)]
 #![feature(rustc_private)]
 #![feature(unwrap_infallible)]
 #![recursion_limit = "512"]
@@ -94,11 +93,12 @@ use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{
-    self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, CoroutineDesugaring,
-    CoroutineKind, CoroutineSource, Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg, GenericArgs,
-    HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId,
-    OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem,
-    TraitItemKind, TraitRef, TyKind, UnOp, def, find_attr,
+    self as hir, AnonConst, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, CRATE_HIR_ID, Closure, ConstArg,
+    ConstArgKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Destination, Expr, ExprField, ExprKind,
+    FieldDef, FnDecl, FnRetTy, GenericArg, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem,
+    LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind, Path,
+    PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp, Variant, def,
+    find_attr,
 };
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -110,12 +110,12 @@ use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, DerefAdjustKi
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
     self as rustc_ty, Binder, BorrowKind, ClosureKind, EarlyBinder, GenericArgKind, GenericArgsRef, IntTy, Ty, TyCtxt,
-    TypeFlags, TypeVisitableExt, UintTy, UpvarCapture,
+    TypeFlags, TypeVisitableExt, TypeckResults, UintTy, UpvarCapture,
 };
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{Ident, Symbol, kw};
-use rustc_span::{InnerSpan, Span};
+use rustc_span::{InnerSpan, Span, SyntaxContext};
 use source::{SpanRangeExt, walk_span_to_context};
 use visitors::{Visitable, for_each_unconsumed_temporary};
 
@@ -548,7 +548,7 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
     if let QPath::TypeRelative(_, method) = path
         && method.ident.name == sym::new
         && let Some(impl_did) = cx.tcx.impl_of_assoc(def_id)
-        && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
+        && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().skip_norm_wip().ty_adt_def()
     {
         return Some(adt.did()) == cx.tcx.lang_items().string()
             || (cx.tcx.get_diagnostic_name(adt.did())).is_some_and(|adt_name| std_types_symbols.contains(&adt_name));
@@ -840,11 +840,10 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
         ExprKind::Path(QPath::Resolved(None, Path { res: Res::Local(_), .. }))
     ));
 
-    let mut child_id = e.hir_id;
     let mut capture = CaptureKind::Value;
     let mut capture_expr_ty = e;
 
-    for (parent_id, parent) in cx.tcx.hir_parent_iter(e.hir_id) {
+    for (parent, child_id) in hir_parent_with_src_iter(cx.tcx, e.hir_id) {
         if let [
             Adjustment {
                 kind: Adjust::Deref(_) | Adjust::Borrow(AutoBorrow::Ref(..)),
@@ -900,8 +899,6 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
             },
             _ => break,
         }
-
-        child_id = parent_id;
     }
 
     if capture == CaptureKind::Value && is_copy(cx, cx.typeck_results().expr_ty(capture_expr_ty)) {
@@ -1297,38 +1294,28 @@ pub fn is_else_clause(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 /// Checks if the given expression is a part of `let else`
 /// returns `true` for both the `init` and the `else` part
 pub fn is_inside_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
-    let mut child_id = expr.hir_id;
-    for (parent_id, node) in tcx.hir_parent_iter(child_id) {
-        if let Node::LetStmt(LetStmt {
-            init: Some(init),
-            els: Some(els),
-            ..
-        }) = node
-            && (init.hir_id == child_id || els.hir_id == child_id)
-        {
-            return true;
-        }
-
-        child_id = parent_id;
-    }
-
-    false
+    hir_parent_with_src_iter(tcx, expr.hir_id).any(|(node, child_id)| {
+        matches!(
+            node,
+            Node::LetStmt(LetStmt {
+                init: Some(init),
+                els: Some(els),
+                ..
+            })
+            if init.hir_id == child_id || els.hir_id == child_id
+        )
+    })
 }
 
 /// Checks if the given expression is the else clause of a `let else` expression
 pub fn is_else_clause_in_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
-    let mut child_id = expr.hir_id;
-    for (parent_id, node) in tcx.hir_parent_iter(child_id) {
-        if let Node::LetStmt(LetStmt { els: Some(els), .. }) = node
-            && els.hir_id == child_id
-        {
-            return true;
-        }
-
-        child_id = parent_id;
-    }
-
-    false
+    hir_parent_with_src_iter(tcx, expr.hir_id).any(|(node, child_id)| {
+        matches!(
+            node,
+            Node::LetStmt(LetStmt { els: Some(els), .. })
+            if els.hir_id == child_id
+        )
+    })
 }
 
 /// Checks whether the given `Expr` is a range equivalent to a `RangeFull`.
@@ -1496,13 +1483,13 @@ pub fn is_direct_expn_of(span: Span, name: Symbol) -> Option<Span> {
 
 /// Convenience function to get the return type of a function.
 pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_def_id: OwnerId) -> Ty<'tcx> {
-    let ret_ty = cx.tcx.fn_sig(fn_def_id).instantiate_identity().output();
+    let ret_ty = cx.tcx.fn_sig(fn_def_id).instantiate_identity().skip_norm_wip().output();
     cx.tcx.instantiate_bound_regions_with_erased(ret_ty)
 }
 
 /// Convenience function to get the nth argument type of a function.
 pub fn nth_arg<'tcx>(cx: &LateContext<'tcx>, fn_def_id: OwnerId, nth: usize) -> Ty<'tcx> {
-    let arg = cx.tcx.fn_sig(fn_def_id).instantiate_identity().input(nth);
+    let arg = cx.tcx.fn_sig(fn_def_id).instantiate_identity().skip_norm_wip().input(nth);
     cx.tcx.instantiate_bound_regions_with_erased(arg)
 }
 
@@ -2048,22 +2035,20 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
 /// Gets the node where an expression is either used, or it's type is unified with another branch.
 /// Returns both the node and the `HirId` of the closest child node.
 pub fn get_expr_use_or_unification_node<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<(Node<'tcx>, HirId)> {
-    let mut child_id = expr.hir_id;
-    let mut iter = tcx.hir_parent_iter(child_id);
-    loop {
-        match iter.next() {
-            None => break None,
-            Some((id, Node::Block(_))) => child_id = id,
-            Some((id, Node::Arm(arm))) if arm.body.hir_id == child_id => child_id = id,
-            Some((_, Node::Expr(expr))) => match expr.kind {
-                ExprKind::Match(_, [arm], _) if arm.hir_id == child_id => child_id = expr.hir_id,
-                ExprKind::Block(..) | ExprKind::DropTemps(_) => child_id = expr.hir_id,
-                ExprKind::If(_, then_expr, None) if then_expr.hir_id == child_id => break None,
-                _ => break Some((Node::Expr(expr), child_id)),
+    for (node, child_id) in hir_parent_with_src_iter(tcx, expr.hir_id) {
+        match node {
+            Node::Block(_) => {},
+            Node::Arm(arm) if arm.body.hir_id == child_id => {},
+            Node::Expr(expr) => match expr.kind {
+                ExprKind::Block(..) | ExprKind::DropTemps(_) => {},
+                ExprKind::Match(_, [arm], _) if arm.hir_id == child_id => {},
+                ExprKind::If(_, then_expr, None) if then_expr.hir_id == child_id => return None,
+                _ => return Some((Node::Expr(expr), child_id)),
             },
-            Some((_, node)) => break Some((node, child_id)),
+            node => return Some((node, child_id)),
         }
     }
+    None
 }
 
 /// Checks if the result of an expression is used, or it's type is unified with another branch.
@@ -2400,8 +2385,7 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
         && let Res::Def(_, def_id) = path.res
     {
-        #[allow(deprecated)]
-        return cx.tcx.has_attr(def_id, sym::cfg) || cx.tcx.has_attr(def_id, sym::cfg_attr);
+        return find_attr!(cx.tcx, def_id, CfgTrace(..) | CfgAttrTrace);
     }
     false
 }
@@ -2508,58 +2492,10 @@ pub fn is_in_test(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
 pub fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     find_attr!(tcx, def_id, CfgTrace(..))
         || find_attr!(
-            tcx.hir_parent_iter(tcx.local_def_id_to_hir_id(def_id))
-                .flat_map(|(parent_id, _)| tcx.hir_attrs(parent_id)),
+            tcx.hir_parent_id_iter(tcx.local_def_id_to_hir_id(def_id))
+                .flat_map(|parent_id| tcx.hir_attrs(parent_id)),
             CfgTrace(..)
         )
-}
-
-/// Walks up the HIR tree from the given expression in an attempt to find where the value is
-/// consumed.
-///
-/// Termination has three conditions:
-/// - The given function returns `Break`. This function will return the value.
-/// - The consuming node is found. This function will return `Continue(use_node, child_id)`.
-/// - No further parent nodes are found. This will trigger a debug assert or return `None`.
-///
-/// This allows walking through `if`, `match`, `break`, and block expressions to find where the
-/// value produced by the expression is consumed.
-pub fn walk_to_expr_usage<'tcx, T>(
-    cx: &LateContext<'tcx>,
-    e: &Expr<'tcx>,
-    mut f: impl FnMut(HirId, Node<'tcx>, HirId) -> ControlFlow<T>,
-) -> Option<ControlFlow<T, (Node<'tcx>, HirId)>> {
-    let mut iter = cx.tcx.hir_parent_iter(e.hir_id);
-    let mut child_id = e.hir_id;
-
-    while let Some((parent_id, parent)) = iter.next() {
-        if let ControlFlow::Break(x) = f(parent_id, parent, child_id) {
-            return Some(ControlFlow::Break(x));
-        }
-        let parent_expr = match parent {
-            Node::Expr(e) => e,
-            Node::Block(Block { expr: Some(body), .. }) | Node::Arm(Arm { body, .. }) if body.hir_id == child_id => {
-                child_id = parent_id;
-                continue;
-            },
-            Node::Arm(a) if a.body.hir_id == child_id => {
-                child_id = parent_id;
-                continue;
-            },
-            _ => return Some(ControlFlow::Continue((parent, child_id))),
-        };
-        match parent_expr.kind {
-            ExprKind::If(child, ..) | ExprKind::Match(child, ..) if child.hir_id != child_id => child_id = parent_id,
-            ExprKind::Break(Destination { target_id: Ok(id), .. }, _) => {
-                child_id = id;
-                iter = cx.tcx.hir_parent_iter(id);
-            },
-            ExprKind::Block(..) | ExprKind::DropTemps(_) => child_id = parent_id,
-            _ => return Some(ControlFlow::Continue((parent, child_id))),
-        }
-    }
-    debug_assert!(false, "no parent node found for `{child_id:?}`");
-    None
 }
 
 /// A type definition as it would be viewed from within a function.
@@ -2580,11 +2516,11 @@ pub enum DefinedTy<'tcx> {
     },
 }
 
-/// The context an expressions value is used in.
-pub struct ExprUseCtxt<'tcx> {
+/// The location that recives the value of an expression.
+pub struct ExprUseSite<'tcx> {
     /// The parent node which consumes the value.
     pub node: Node<'tcx>,
-    /// The child id of the node the value came from.
+    /// The ID of the immediate child of the use node.
     pub child_id: HirId,
     /// Any adjustments applied to the type.
     pub adjustments: &'tcx [Adjustment<'tcx>],
@@ -2595,7 +2531,7 @@ pub struct ExprUseCtxt<'tcx> {
     /// Whether the use site has the same `SyntaxContext` as the value.
     pub same_ctxt: bool,
 }
-impl<'tcx> ExprUseCtxt<'tcx> {
+impl<'tcx> ExprUseSite<'tcx> {
     pub fn use_node(&self, cx: &LateContext<'tcx>) -> ExprUseNode<'tcx> {
         match self.node {
             Node::LetStmt(l) => ExprUseNode::LetStmt(l),
@@ -2698,7 +2634,7 @@ impl<'tcx> ExprUseNode<'tcx> {
             Self::LetStmt(LetStmt { ty: Some(ty), .. }) => Some(DefinedTy::Hir(ty)),
             Self::ConstStatic(id) => Some(DefinedTy::Mir {
                 def_site_def_id: Some(id.def_id.to_def_id()),
-                ty: Binder::dummy(cx.tcx.type_of(id).instantiate_identity()),
+                ty: Binder::dummy(cx.tcx.type_of(id).instantiate_identity().skip_norm_wip()),
             }),
             Self::Return(id) => {
                 if let Node::Expr(Expr {
@@ -2711,7 +2647,7 @@ impl<'tcx> ExprUseNode<'tcx> {
                         FnRetTy::Return(ty) => Some(DefinedTy::Hir(ty)),
                     }
                 } else {
-                    let ty = cx.tcx.fn_sig(id).instantiate_identity().output();
+                    let ty = cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip().output();
                     Some(DefinedTy::Mir {
                         def_site_def_id: Some(id.def_id.to_def_id()),
                         ty,
@@ -2733,7 +2669,7 @@ impl<'tcx> ExprUseNode<'tcx> {
                     })
                     .map(|(adt, field_def)| DefinedTy::Mir {
                         def_site_def_id: Some(adt.did()),
-                        ty: Binder::dummy(cx.tcx.type_of(field_def.did).instantiate_identity()),
+                        ty: Binder::dummy(cx.tcx.type_of(field_def.did).instantiate_identity().skip_norm_wip()),
                     }),
                 _ => None,
             },
@@ -2761,54 +2697,178 @@ impl<'tcx> ExprUseNode<'tcx> {
     }
 }
 
-/// Gets the context an expression's value is used in.
-pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &Expr<'tcx>) -> ExprUseCtxt<'tcx> {
-    let mut adjustments = [].as_slice();
+struct ReplacingFilterMap<I, F>(I, F);
+impl<I, F, U> Iterator for ReplacingFilterMap<I, F>
+where
+    I: Iterator,
+    F: FnMut(&mut I, I::Item) -> Option<U>,
+{
+    type Item = U;
+    fn next(&mut self) -> Option<U> {
+        while let Some(x) = self.0.next() {
+            if let Some(x) = (self.1)(&mut self.0, x) {
+                return Some(x);
+            }
+        }
+        None
+    }
+}
+
+/// Returns an iterator which walks successive value using parent nodes skipping any node
+/// which simply moves a value.
+#[expect(clippy::too_many_lines)]
+pub fn expr_use_sites<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typeck: &'tcx TypeckResults<'tcx>,
+    mut ctxt: SyntaxContext,
+    e: &'tcx Expr<'tcx>,
+) -> impl Iterator<Item = ExprUseSite<'tcx>> {
+    let mut adjustments: &[_] = typeck.expr_adjustments(e);
     let mut is_ty_unified = false;
     let mut moved_before_use = false;
     let mut same_ctxt = true;
-    let ctxt = e.span.ctxt();
-    let node = walk_to_expr_usage(cx, e, &mut |parent_id, parent, child_id| -> ControlFlow<!> {
-        if adjustments.is_empty()
-            && let Node::Expr(e) = cx.tcx.hir_node(child_id)
-        {
-            adjustments = cx.typeck_results().expr_adjustments(e);
-        }
-        same_ctxt &= cx.tcx.hir_span(parent_id).ctxt() == ctxt;
-        if let Node::Expr(e) = parent {
-            match e.kind {
-                ExprKind::If(e, _, _) | ExprKind::Match(e, _, _) if e.hir_id != child_id => {
-                    is_ty_unified = true;
-                    moved_before_use = true;
+    ReplacingFilterMap(
+        hir_parent_with_src_iter(tcx, e.hir_id),
+        move |iter: &mut _, (parent, child_id)| {
+            let parent_ctxt;
+            let mut parent_adjustments: &[_] = &[];
+            match parent {
+                Node::Expr(parent_expr) => {
+                    parent_ctxt = parent_expr.span.ctxt();
+                    same_ctxt &= parent_ctxt == ctxt;
+                    parent_adjustments = typeck.expr_adjustments(parent_expr);
+                    match parent_expr.kind {
+                        ExprKind::Match(scrutinee, arms, _) if scrutinee.hir_id != child_id => {
+                            is_ty_unified |= arms.len() != 1;
+                            moved_before_use = true;
+                            if adjustments.is_empty() {
+                                adjustments = parent_adjustments;
+                            }
+                            return None;
+                        },
+                        ExprKind::If(cond, _, else_) if cond.hir_id != child_id => {
+                            is_ty_unified |= else_.is_some();
+                            moved_before_use = true;
+                            if adjustments.is_empty() {
+                                adjustments = parent_adjustments;
+                            }
+                            return None;
+                        },
+                        ExprKind::Break(Destination { target_id: Ok(id), .. }, _) => {
+                            is_ty_unified = true;
+                            moved_before_use = true;
+                            *iter = hir_parent_with_src_iter(tcx, id);
+                            if adjustments.is_empty() {
+                                adjustments = parent_adjustments;
+                            }
+                            return None;
+                        },
+                        ExprKind::Block(b, _) => {
+                            is_ty_unified |= b.targeted_by_break;
+                            moved_before_use = true;
+                            if adjustments.is_empty() {
+                                adjustments = parent_adjustments;
+                            }
+                            return None;
+                        },
+                        ExprKind::DropTemps(_) | ExprKind::Type(..) => {
+                            if adjustments.is_empty() {
+                                adjustments = parent_adjustments;
+                            }
+                            return None;
+                        },
+                        _ => {},
+                    }
                 },
-                ExprKind::Block(_, Some(_)) | ExprKind::Break(..) => {
-                    is_ty_unified = true;
-                    moved_before_use = true;
+                Node::Arm(arm) => {
+                    parent_ctxt = arm.span.ctxt();
+                    same_ctxt &= parent_ctxt == ctxt;
+                    if arm.body.hir_id == child_id {
+                        return None;
+                    }
                 },
-                ExprKind::Block(..) => moved_before_use = true,
-                _ => {},
+                Node::Block(b) => {
+                    same_ctxt &= b.span.ctxt() == ctxt;
+                    return None;
+                },
+                Node::ConstBlock(_) => parent_ctxt = ctxt,
+                Node::ExprField(&ExprField { span, .. }) => {
+                    parent_ctxt = span.ctxt();
+                    same_ctxt &= parent_ctxt == ctxt;
+                },
+                Node::AnonConst(&AnonConst { span, .. })
+                | Node::ConstArg(&ConstArg { span, .. })
+                | Node::Field(&FieldDef { span, .. })
+                | Node::ImplItem(&ImplItem { span, .. })
+                | Node::Item(&Item { span, .. })
+                | Node::LetStmt(&LetStmt { span, .. })
+                | Node::Stmt(&Stmt { span, .. })
+                | Node::TraitItem(&TraitItem { span, .. })
+                | Node::Variant(&Variant { span, .. }) => {
+                    parent_ctxt = span.ctxt();
+                    same_ctxt &= parent_ctxt == ctxt;
+                    *iter = hir_parent_with_src_iter(tcx, CRATE_HIR_ID);
+                },
+                Node::AssocItemConstraint(_)
+                | Node::ConstArgExprField(_)
+                | Node::Crate(_)
+                | Node::Ctor(_)
+                | Node::Err(_)
+                | Node::ForeignItem(_)
+                | Node::GenericParam(_)
+                | Node::Infer(_)
+                | Node::Lifetime(_)
+                | Node::OpaqueTy(_)
+                | Node::Param(_)
+                | Node::Pat(_)
+                | Node::PatExpr(_)
+                | Node::PatField(_)
+                | Node::PathSegment(_)
+                | Node::PreciseCapturingNonLifetimeArg(_)
+                | Node::Synthetic
+                | Node::TraitRef(_)
+                | Node::Ty(_)
+                | Node::TyPat(_)
+                | Node::WherePredicate(_) => {
+                    // This shouldn't be possible to hit; the inner iterator should have
+                    // been moved to the end before we hit any of these nodes.
+                    debug_assert!(false, "found {parent:?} which is after the final use node");
+                    return None;
+                },
             }
-        }
-        ControlFlow::Continue(())
-    });
-    match node {
-        Some(ControlFlow::Continue((node, child_id))) => ExprUseCtxt {
-            node,
-            child_id,
-            adjustments,
-            is_ty_unified,
-            moved_before_use,
-            same_ctxt,
+
+            ctxt = parent_ctxt;
+            Some(ExprUseSite {
+                node: parent,
+                child_id,
+                adjustments: mem::replace(&mut adjustments, parent_adjustments),
+                is_ty_unified: mem::replace(&mut is_ty_unified, false),
+                moved_before_use: mem::replace(&mut moved_before_use, false),
+                same_ctxt: mem::replace(&mut same_ctxt, true),
+            })
         },
-        None => ExprUseCtxt {
-            node: Node::Crate(cx.tcx.hir_root_module()),
-            child_id: HirId::INVALID,
+    )
+}
+
+pub fn get_expr_use_site<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typeck: &'tcx TypeckResults<'tcx>,
+    ctxt: SyntaxContext,
+    e: &'tcx Expr<'tcx>,
+) -> ExprUseSite<'tcx> {
+    // The value in `unwrap_or` doesn't actually matter; an expression always
+    // has a use site.
+    expr_use_sites(tcx, typeck, ctxt, e).next().unwrap_or_else(|| {
+        debug_assert!(false, "failed to find a use site for expr {e:?}");
+        ExprUseSite {
+            node: Node::Synthetic, // The crate root would also work.
+            child_id: CRATE_HIR_ID,
             adjustments: &[],
-            is_ty_unified: true,
-            moved_before_use: true,
+            is_ty_unified: false,
+            moved_before_use: false,
             same_ctxt: false,
-        },
-    }
+        }
+    })
 }
 
 /// Tokenizes the input while keeping the text associated with each token.
@@ -3222,7 +3282,7 @@ pub fn get_path_from_caller_to_method_type<'tcx>(
     match assoc_item.container {
         rustc_ty::AssocContainer::Trait => get_path_to_callee(tcx, from, def_id),
         rustc_ty::AssocContainer::InherentImpl | rustc_ty::AssocContainer::TraitImpl(_) => {
-            let ty = tcx.type_of(def_id).instantiate_identity();
+            let ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
             get_path_to_ty(tcx, from, ty, args)
         },
     }
@@ -3238,7 +3298,7 @@ fn get_path_to_ty<'tcx>(tcx: TyCtxt<'tcx>, from: LocalDefId, ty: Ty<'tcx>, args:
         | rustc_ty::RawPtr(_, _)
         | rustc_ty::Ref(..)
         | rustc_ty::Slice(_)
-        | rustc_ty::Tuple(_) => format!("<{}>", EarlyBinder::bind(ty).instantiate(tcx, args)),
+        | rustc_ty::Tuple(_) => format!("<{}>", EarlyBinder::bind(ty).instantiate(tcx, args).skip_norm_wip()),
         _ => ty.to_string(),
     }
 }
@@ -3418,7 +3478,7 @@ pub fn expr_requires_coercion<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -
     // actually have type adjustments.
     match expr.kind {
         ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) if let Some(def_id) = fn_def_id(cx, expr) => {
-            let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity();
+            let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
 
             if !fn_sig.output().skip_binder().has_type_flags(TypeFlags::HAS_TY_PARAM) {
                 return false;
@@ -3642,4 +3702,12 @@ pub fn is_expr_async_block(expr: &Expr<'_>) -> bool {
 /// Checks if the chosen edition and `msrv` allows using `if let` chains.
 pub fn can_use_if_let_chains(cx: &LateContext<'_>, msrv: Msrv) -> bool {
     cx.tcx.sess.edition().at_least_rust_2024() && msrv.meets(cx, msrvs::LET_CHAINS)
+}
+
+/// Returns an iterator over successive parent nodes paired with the ID of the node which
+/// immediatly preceeded them.
+#[inline]
+pub fn hir_parent_with_src_iter(tcx: TyCtxt<'_>, mut id: HirId) -> impl Iterator<Item = (Node<'_>, HirId)> {
+    tcx.hir_parent_id_iter(id)
+        .map(move |parent| (tcx.hir_node(parent), mem::replace(&mut id, parent)))
 }

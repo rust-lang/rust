@@ -524,7 +524,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     return Some((
                         expr_field.expr,
-                        self.tcx.type_of(field.did).instantiate_identity(),
+                        self.tcx.type_of(field.did).instantiate_identity().skip_norm_wip(),
                     ));
                 }
             }
@@ -552,7 +552,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         receiver: Option<&'tcx hir::Expr<'tcx>>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> bool {
-        let ty = self.tcx.type_of(def_id).instantiate_identity();
+        let ty = self.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
         if !ty.is_fn() {
             return false;
         }

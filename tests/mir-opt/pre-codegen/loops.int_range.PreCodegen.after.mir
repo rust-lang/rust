@@ -79,18 +79,22 @@ fn int_range(_1: usize, _2: usize) -> () {
     }
 
     bb3: {
+        StorageLive(_7);
         _7 = copy (_3.0: usize);
         StorageLive(_8);
         _8 = AddUnchecked(copy _7, const 1_usize);
         (_3.0: usize) = move _8;
         StorageDead(_8);
         _9 = Option::<usize>::Some(copy _7);
+        StorageDead(_7);
         StorageDead(_6);
+        StorageLive(_10);
         _10 = copy ((_9 as Some).0: usize);
         _11 = opaque::<usize>(move _10) -> [return: bb4, unwind continue];
     }
 
     bb4: {
+        StorageDead(_10);
         StorageDead(_9);
         goto -> bb1;
     }

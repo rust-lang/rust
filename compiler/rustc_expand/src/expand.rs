@@ -8,15 +8,15 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
     self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrItemKind, AttrStyle, AttrVec,
-    DUMMY_NODE_ID, EarlyParsedAttribute, ExprKind, ForeignItemKind, HasAttrs, HasNodeId, Inline,
-    ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind, NodeId, PatKind, StmtKind,
-    TyKind, token,
+    DUMMY_NODE_ID, DelegationSuffixes, EarlyParsedAttribute, ExprKind, ForeignItemKind, HasAttrs,
+    HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind, NodeId,
+    PatKind, StmtKind, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
-    AttributeParser, CFG_TEMPLATE, Early, EvalConfigResult, ShouldEmit, eval_config_entry,
-    parse_cfg, validate_attr,
+    AttributeParser, AttributeSafety, CFG_TEMPLATE, Early, EvalConfigResult, ShouldEmit,
+    eval_config_entry, parse_cfg, validate_attr,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -1050,7 +1050,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             return;
         }
         feature_err(
-            &self.cx.sess,
+            self.cx.sess,
             sym::proc_macro_hygiene,
             span,
             format!("custom attributes cannot be applied to {kind}"),
@@ -1085,7 +1085,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
 
         if !self.cx.ecfg.features.proc_macro_hygiene() {
-            annotatable.visit_with(&mut GateProcMacroInput { sess: &self.cx.sess });
+            annotatable.visit_with(&mut GateProcMacroInput { sess: self.cx.sess });
         }
     }
 
@@ -1474,7 +1474,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
                 }
             }
             let mut idents = Vec::new();
-            collect_use_tree_leaves(&ut, &mut idents);
+            collect_use_tree_leaves(ut, &mut idents);
             idents
         } else {
             self.kind.ident().into_iter().collect()
@@ -1482,7 +1482,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
     }
 
     fn as_target(&self) -> Target {
-        Target::from_ast_item(&*self)
+        Target::from_ast_item(self)
     }
 }
 
@@ -2331,6 +2331,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             parse_cfg,
             &CFG_TEMPLATE,
             AllowExprMetavar::Yes,
+            AttributeSafety::Normal,
         ) else {
             // Cfg attribute was not parsable, give up
             return EvalConfigResult::True;
@@ -2401,7 +2402,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     res
                 }
                 None if let Some((deleg, item)) = node.delegation() => {
-                    let Some(suffixes) = &deleg.suffixes else {
+                    let DelegationSuffixes::List(suffixes) = &deleg.suffixes else {
                         let traitless_qself =
                             matches!(&deleg.qself, Some(qself) if qself.position == 0);
                         let (item, of_trait) = match node.to_annotatable() {

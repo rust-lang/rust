@@ -288,27 +288,24 @@ pub(super) fn emit_frag_parse_err(
         _ => annotate_err_with_kind(&mut e, kind, site_span),
     };
 
-    let mut bindings_rules = vec![];
-    for rule in bindings {
-        let MacroRule::Func { lhs, .. } = rule else { continue };
-        for param in lhs {
-            let MatcherLoc::MetaVarDecl { bind, .. } = param else { continue };
-            bindings_rules.push(*bind);
-        }
-    }
-
-    let mut matched_rule_bindings_rules = vec![];
-    for param in matched_rule_bindings {
-        let MatcherLoc::MetaVarDecl { bind, .. } = param else { continue };
-        matched_rule_bindings_rules.push(*bind);
-    }
-
-    let matched_rule_bindings_names: Vec<_> =
-        matched_rule_bindings_rules.iter().map(|bind| bind.name).collect();
-    let bindings_name: Vec<_> = bindings_rules.iter().map(|bind| bind.name).collect();
     if parser.token.kind == token::Dollar {
         parser.bump();
         if let token::Ident(name, _) = parser.token.kind {
+            let mut bindings_names = vec![];
+            for rule in bindings {
+                let MacroRule::Func { lhs, .. } = rule else { continue };
+                for param in lhs {
+                    let MatcherLoc::MetaVarDecl { bind, .. } = param else { continue };
+                    bindings_names.push(bind.name);
+                }
+            }
+
+            let mut matched_rule_bindings_names = vec![];
+            for param in matched_rule_bindings {
+                let MatcherLoc::MetaVarDecl { bind, .. } = param else { continue };
+                matched_rule_bindings_names.push(bind.name);
+            }
+
             if let Some(matched_name) = rustc_span::edit_distance::find_best_match_for_name(
                 &matched_rule_bindings_names[..],
                 name,
@@ -316,24 +313,22 @@ pub(super) fn emit_frag_parse_err(
             ) {
                 e.span_suggestion_verbose(
                     parser.token.span,
-                    "there is a macro metavariable with similar name",
-                    format!("{matched_name}"),
+                    "there is a macro metavariable with a similar name",
+                    matched_name,
                     Applicability::MaybeIncorrect,
                 );
-            } else if bindings_name.contains(&name) {
+            } else if bindings_names.contains(&name) {
                 e.span_label(
                     parser.token.span,
-                    format!(
-                        "there is an macro metavariable with this name in another macro matcher"
-                    ),
+                    "there is an macro metavariable with this name in another macro matcher",
                 );
             } else if let Some(matched_name) =
-                rustc_span::edit_distance::find_best_match_for_name(&bindings_name[..], name, None)
+                rustc_span::edit_distance::find_best_match_for_name(&bindings_names[..], name, None)
             {
                 e.span_suggestion_verbose(
                     parser.token.span,
                     "there is a macro metavariable with a similar name in another macro matcher",
-                    format!("{matched_name}"),
+                    matched_name,
                     Applicability::MaybeIncorrect,
                 );
             } else {
@@ -343,7 +338,7 @@ pub(super) fn emit_frag_parse_err(
                     .collect::<Vec<_>>()
                     .join(", ");
 
-                e.span_label(parser.token.span, format!("macro metavariable not found"));
+                e.span_label(parser.token.span, "macro metavariable not found");
                 if !matched_rule_bindings_names.is_empty() {
                     e.note(format!("available metavariable names are: {msg}"));
                 }

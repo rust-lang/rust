@@ -4,7 +4,6 @@ pub(crate) struct MustNotSuspendParser;
 
 impl<S: Stage> SingleAttributeParser<S> for MustNotSuspendParser {
     const PATH: &[rustc_span::Symbol] = &[sym::must_not_suspend];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Struct),
         Allow(Target::Enum),

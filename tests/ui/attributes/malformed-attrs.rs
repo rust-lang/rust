@@ -140,7 +140,7 @@ pub fn test3() {}
 struct Test;
 
 #[diagnostic::on_unimplemented]
-//~^ WARN missing options for `on_unimplemented` attribute
+//~^ WARN missing options for `diagnostic::on_unimplemented` attribute
 #[diagnostic::on_unimplemented = 1]
 //~^ WARN malformed
 trait Hey {

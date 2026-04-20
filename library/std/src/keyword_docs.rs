@@ -418,7 +418,7 @@ mod else_keyword {}
 /// The first enum shown is the usual kind of enum you'd find in a C-style language. The second
 /// shows off a hypothetical example of something storing location data, with `Coord` being any
 /// other type that's needed, for example a struct. The third example demonstrates the kind of
-/// data a variant can store, ranging from nothing, to a tuple, to an anonymous struct.
+/// data a variant can store, ranging from nothing, to a tuple, to a struct-like variant.
 ///
 /// Instantiating enum variants involves explicitly using the enum's name as its namespace,
 /// followed by one of its variants. `SimpleEnum::SecondVariant` would be an example from above.
