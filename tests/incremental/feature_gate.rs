@@ -1,6 +1,6 @@
 // This test makes sure that we detect changed feature gates.
 
-//@ revisions:rpass1 cfail2
+//@ revisions: rpass1 bfail2
 //@ compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
@@ -10,4 +10,4 @@ fn main() {
 }
 
 extern "unadjusted" fn foo() {}
-//[cfail2]~^ ERROR: "unadjusted" ABI is an implementation detail and perma-unstable
+//[bfail2]~^ ERROR: "unadjusted" ABI is an implementation detail and perma-unstable

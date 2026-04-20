@@ -1,11 +1,11 @@
-//@ revisions: cfail1 cfail2
+//@ revisions: bfail1 bfail2
 //@ compile-flags: -Z query-dep-graph
 //@ build-pass (FIXME(62277): could be check-pass?)
 //@ ignore-backends: gcc
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
-#![rustc_partition_reused(module = "krate_inherent-x", cfg = "cfail2")]
+#![rustc_partition_reused(module = "krate_inherent-x", cfg = "bfail2")]
 #![crate_type = "rlib"]
 
 pub mod x {
@@ -20,5 +20,5 @@ pub mod x {
     }
 }
 
-#[cfg(cfail1)]
-pub fn bar() {} // remove this unrelated fn in cfail2, which should not affect `x::method`
+#[cfg(bfail1)]
+pub fn bar() {} // remove this unrelated fn in bfail2, which should not affect `x::method`

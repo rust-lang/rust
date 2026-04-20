@@ -1,4 +1,4 @@
-//@ revisions: cfail1 cfail2 cfail3
+//@ revisions: bfail1 bfail2 bfail3
 //@ build-pass (FIXME(62277): could be check-pass?)
 //@ ignore-backends: gcc
 

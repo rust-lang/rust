@@ -9,7 +9,7 @@
 // rev3 and make sure that the hash has not changed.
 
 //@ build-pass (FIXME(62277): could be check-pass?)
-//@ revisions: cfail1 cfail2 cfail3
+//@ revisions: bfail1 bfail2 bfail3
 //@ compile-flags: -Z query-dep-graph -C debug-assertions -O
 //@ ignore-backends: gcc
 
@@ -19,14 +19,14 @@
 
 
 // Indexing expression
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bfail3")]
 pub fn indexing(slice: &[u8]) -> u8 {
-    #[cfg(cfail1)]
+    #[cfg(bfail1)]
     {
         slice[100]
     }
-    #[cfg(not(cfail1))]
+    #[cfg(not(bfail1))]
     {
         slice[100]
     }
@@ -34,14 +34,14 @@ pub fn indexing(slice: &[u8]) -> u8 {
 
 
 // Arithmetic overflow plus
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bfail3")]
 pub fn arithmetic_overflow_plus(val: i32) -> i32 {
-    #[cfg(cfail1)]
+    #[cfg(bfail1)]
     {
         val + 1
     }
-    #[cfg(not(cfail1))]
+    #[cfg(not(bfail1))]
     {
         val + 1
     }
@@ -49,14 +49,14 @@ pub fn arithmetic_overflow_plus(val: i32) -> i32 {
 
 
 // Arithmetic overflow minus
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bfail3")]
 pub fn arithmetic_overflow_minus(val: i32) -> i32 {
-    #[cfg(cfail1)]
+    #[cfg(bfail1)]
     {
         val - 1
     }
-    #[cfg(not(cfail1))]
+    #[cfg(not(bfail1))]
     {
         val - 1
     }
@@ -64,14 +64,14 @@ pub fn arithmetic_overflow_minus(val: i32) -> i32 {
 
 
 // Arithmetic overflow mult
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bfail3")]
 pub fn arithmetic_overflow_mult(val: i32) -> i32 {
-    #[cfg(cfail1)]
+    #[cfg(bfail1)]
     {
         val * 2
     }
-    #[cfg(not(cfail1))]
+    #[cfg(not(bfail1))]
     {
         val * 2
     }
@@ -79,14 +79,14 @@ pub fn arithmetic_overflow_mult(val: i32) -> i32 {
 
 
 // Arithmetic overflow negation
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bfail3")]
 pub fn arithmetic_overflow_negation(val: i32) -> i32 {
-    #[cfg(cfail1)]
+    #[cfg(bfail1)]
     {
         -val
     }
-    #[cfg(not(cfail1))]
+    #[cfg(not(bfail1))]
     {
         -val
     }
@@ -94,28 +94,28 @@ pub fn arithmetic_overflow_negation(val: i32) -> i32 {
 
 
 // Division by zero
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bfail3")]
 pub fn division_by_zero(val: i32) -> i32 {
-    #[cfg(cfail1)]
+    #[cfg(bfail1)]
     {
         2 / val
     }
-    #[cfg(not(cfail1))]
+    #[cfg(not(bfail1))]
     {
         2 / val
     }
 }
 
 // Division by zero
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bfail3")]
 pub fn mod_by_zero(val: i32) -> i32 {
-    #[cfg(cfail1)]
+    #[cfg(bfail1)]
     {
         2 % val
     }
-    #[cfg(not(cfail1))]
+    #[cfg(not(bfail1))]
     {
         2 % val
     }
@@ -123,14 +123,14 @@ pub fn mod_by_zero(val: i32) -> i32 {
 
 
 // shift left
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bfail3")]
 pub fn shift_left(val: i32, shift: usize) -> i32 {
-    #[cfg(cfail1)]
+    #[cfg(bfail1)]
     {
         val << shift
     }
-    #[cfg(not(cfail1))]
+    #[cfg(not(bfail1))]
     {
         val << shift
     }
@@ -138,14 +138,14 @@ pub fn shift_left(val: i32, shift: usize) -> i32 {
 
 
 // shift right
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bfail3")]
 pub fn shift_right(val: i32, shift: usize) -> i32 {
-    #[cfg(cfail1)]
+    #[cfg(bfail1)]
     {
         val >> shift
     }
-    #[cfg(not(cfail1))]
+    #[cfg(not(bfail1))]
     {
         val >> shift
     }

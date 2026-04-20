@@ -6,11 +6,11 @@
 // rev3 and make sure that the hash has not changed.
 
 //@ build-pass (FIXME(62277): could be check-pass?)
-//@ revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
+//@ revisions: bfail1 bfail2 bfail3 bfail4 bfail5 bfail6
 //@ compile-flags: -Z query-dep-graph -O
-//@ [cfail1]compile-flags: -Zincremental-ignore-spans
-//@ [cfail2]compile-flags: -Zincremental-ignore-spans
-//@ [cfail3]compile-flags: -Zincremental-ignore-spans
+//@ [bfail1]compile-flags: -Zincremental-ignore-spans
+//@ [bfail2]compile-flags: -Zincremental-ignore-spans
+//@ [bfail3]compile-flags: -Zincremental-ignore-spans
 //@ ignore-backends: gcc
 
 #![allow(warnings)]
@@ -25,7 +25,7 @@ pub struct RegularStruct {
 }
 
 // Change field value (regular struct)
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 pub fn change_field_value_regular_struct() -> RegularStruct {
     RegularStruct {
         x: 0,
@@ -34,11 +34,11 @@ pub fn change_field_value_regular_struct() -> RegularStruct {
     }
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bfail3")]
+#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bfail6")]
 pub fn change_field_value_regular_struct() -> RegularStruct {
     RegularStruct {
         x: 0,
@@ -50,7 +50,7 @@ pub fn change_field_value_regular_struct() -> RegularStruct {
 
 
 // Change field order (regular struct)
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 pub fn change_field_order_regular_struct() -> RegularStruct {
     RegularStruct {
         x: 3,
@@ -59,11 +59,11 @@ pub fn change_field_order_regular_struct() -> RegularStruct {
     }
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck_root")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck_root")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,typeck_root")]
+#[rustc_clean(cfg="bfail3")]
+#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,typeck_root")]
+#[rustc_clean(cfg="bfail6")]
 pub fn change_field_order_regular_struct() -> RegularStruct {
     RegularStruct {
         y: 4,
@@ -75,7 +75,7 @@ pub fn change_field_order_regular_struct() -> RegularStruct {
 
 
 // Add field (regular struct)
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 pub fn add_field_regular_struct() -> RegularStruct {
     let struct1 = RegularStruct {
         x: 3,
@@ -90,11 +90,11 @@ pub fn add_field_regular_struct() -> RegularStruct {
     }
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bfail3")]
+#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bfail6")]
 pub fn add_field_regular_struct() -> RegularStruct {
     let struct1 = RegularStruct {
         x: 3,
@@ -112,7 +112,7 @@ pub fn add_field_regular_struct() -> RegularStruct {
 
 
 // Change field label (regular struct)
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 pub fn change_field_label_regular_struct() -> RegularStruct {
     let struct1 = RegularStruct {
         x: 3,
@@ -127,11 +127,11 @@ pub fn change_field_label_regular_struct() -> RegularStruct {
     }
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bfail3")]
+#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bfail6")]
 pub fn change_field_label_regular_struct() -> RegularStruct {
     let struct1 = RegularStruct {
         x: 3,
@@ -155,7 +155,7 @@ pub struct RegularStruct2 {
 }
 
 // Change constructor path (regular struct)
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 pub fn change_constructor_path_regular_struct() {
     let _ = RegularStruct  {
         x: 0,
@@ -164,11 +164,11 @@ pub fn change_constructor_path_regular_struct() {
     };
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck_root")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck_root")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,typeck_root")]
+#[rustc_clean(cfg="bfail3")]
+#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,typeck_root")]
+#[rustc_clean(cfg="bfail6")]
 pub fn change_constructor_path_regular_struct() {
     let _ = RegularStruct2 {
         x: 0,
@@ -181,15 +181,15 @@ pub fn change_constructor_path_regular_struct() {
 
 // Change constructor path indirectly (regular struct)
 pub mod change_constructor_path_indirectly_regular_struct {
-    #[cfg(any(cfail1,cfail4))]
+    #[cfg(any(bfail1,bfail4))]
     use super::RegularStruct as Struct;
-    #[cfg(not(any(cfail1,cfail4)))]
+    #[cfg(not(any(bfail1,bfail4)))]
     use super::RegularStruct2 as Struct;
 
-    #[rustc_clean(cfg="cfail2", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
-    #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(cfg="cfail5", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
-    #[rustc_clean(cfg="cfail6")]
+    #[rustc_clean(cfg="bfail2", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bfail3")]
+    #[rustc_clean(cfg="bfail5", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bfail6")]
     pub fn function() -> Struct {
         Struct {
             x: 0,
@@ -204,16 +204,16 @@ pub mod change_constructor_path_indirectly_regular_struct {
 pub struct TupleStruct(i32, i64, i16);
 
 // Change field value (tuple struct)
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 pub fn change_field_value_tuple_struct() -> TupleStruct {
     TupleStruct(0, 1, 2)
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bfail3")]
+#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bfail6")]
 pub fn change_field_value_tuple_struct() -> TupleStruct {
     TupleStruct(0, 1, 3)
 }
@@ -223,16 +223,16 @@ pub fn change_field_value_tuple_struct() -> TupleStruct {
 pub struct TupleStruct2(u16, u16, u16);
 
 // Change constructor path (tuple struct)
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 pub fn change_constructor_path_tuple_struct() {
     let _ = TupleStruct (0, 1, 2);
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg="cfail2", except="opt_hir_owner_nodes,typeck_root")]
-#[rustc_clean(cfg="cfail3")]
-#[rustc_clean(cfg="cfail5", except="opt_hir_owner_nodes,typeck_root")]
-#[rustc_clean(cfg="cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,typeck_root")]
+#[rustc_clean(cfg="bfail3")]
+#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,typeck_root")]
+#[rustc_clean(cfg="bfail6")]
 pub fn change_constructor_path_tuple_struct() {
     let _ = TupleStruct2(0, 1, 2);
 }
@@ -241,15 +241,15 @@ pub fn change_constructor_path_tuple_struct() {
 
 // Change constructor path indirectly (tuple struct)
 pub mod change_constructor_path_indirectly_tuple_struct {
-    #[cfg(any(cfail1,cfail4))]
+    #[cfg(any(bfail1,bfail4))]
     use super::TupleStruct as Struct;
-    #[cfg(not(any(cfail1,cfail4)))]
+    #[cfg(not(any(bfail1,bfail4)))]
     use super::TupleStruct2 as Struct;
 
-    #[rustc_clean(cfg="cfail5", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
-    #[rustc_clean(cfg="cfail6")]
-    #[rustc_clean(cfg="cfail2", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
-    #[rustc_clean(cfg="cfail3")]
+    #[rustc_clean(cfg="bfail5", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bfail6")]
+    #[rustc_clean(cfg="bfail2", except="fn_sig,opt_hir_owner_nodes,optimized_mir,typeck_root")]
+    #[rustc_clean(cfg="bfail3")]
     pub fn function() -> Struct {
         Struct(0, 1, 2)
     }

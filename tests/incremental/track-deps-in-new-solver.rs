@@ -1,4 +1,4 @@
-//@ revisions: cfail1 cfail2
+//@ revisions: bfail1 bfail2
 
 //@ compile-flags: -Znext-solver
 //@ check-pass
@@ -18,10 +18,10 @@ impl Future for S {
     }
 }
 
-#[cfg(cfail1)]
+#[cfg(bfail1)]
 pub struct Error(());
 
-#[cfg(cfail2)]
+#[cfg(bfail2)]
 pub struct Error();
 
 fn main() {}

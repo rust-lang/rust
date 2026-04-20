@@ -1,5 +1,5 @@
 //@ proc-macro: incremental_proc_macro_aux.rs
-//@ revisions: cfail1 cfail2
+//@ revisions: bfail1 bfail2
 //@ build-pass (FIXME(62277): could be check-pass?)
 //@ ignore-backends: gcc
 
