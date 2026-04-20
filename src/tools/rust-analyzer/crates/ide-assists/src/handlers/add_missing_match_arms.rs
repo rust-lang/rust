@@ -8,7 +8,7 @@ use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
 use syntax::ast::edit::IndentLevel;
 use syntax::ast::syntax_factory::SyntaxFactory;
-use syntax::ast::{self, AstNode, MatchArmList, MatchExpr, Pat, make};
+use syntax::ast::{self, AstNode, MatchArmList, MatchExpr, Pat};
 use syntax::syntax_editor::{Position, SyntaxEditor};
 use syntax::{SyntaxKind, SyntaxNode, ToSmolStr};
 
@@ -592,12 +592,12 @@ fn build_pat(
         ExtendedVariant::Variant { variant: var, use_self } => {
             let edition = module.krate(db).edition(db);
             let path = if use_self {
-                make::path_from_segments(
+                make.path_from_segments(
                     [
-                        make::path_segment(make::name_ref_self_ty()),
-                        make::path_segment(make::name_ref(
-                            &var.name(db).display(db, edition).to_smolstr(),
-                        )),
+                        make.path_segment(make.name_ref_self_ty()),
+                        make.path_segment(
+                            make.name_ref(&var.name(db).display(db, edition).to_smolstr()),
+                        ),
                     ],
                     false,
                 )
@@ -611,7 +611,7 @@ fn build_pat(
                     let pats = fields.into_iter().map(|f| {
                         let name = name_generator.for_type(&f.ty(db).to_type(db), db, edition);
                         match name {
-                            Some(name) => make::ext::simple_ident_pat(make.name(&name)).into(),
+                            Some(name) => make.ident_pat(false, false, make.name(&name)).into(),
                             None => make.wildcard_pat().into(),
                         }
                     });
