@@ -902,7 +902,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
-                if let Some(ctor_node_id) = vdata.ctor_node_id() {
+                if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(vdata) {
                     // If the structure is marked as non_exhaustive then lower the visibility
                     // to within the crate.
                     let mut ctor_vis = if vis.is_public()
@@ -927,6 +927,14 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                         }
                         field_visibilities.push(field_vis.to_def_id());
                     }
+                    // If this is a unit or tuple-like struct, register the constructor.
+                    self.create_def(
+                        ctor_node_id,
+                        None,
+                        DefKind::Ctor(CtorOf::Struct, ctor_kind),
+                        item.span,
+                    );
+
                     let feed = self.r.feed(ctor_node_id);
                     let ctor_def_id = feed.key();
                     let ctor_res = self.res(ctor_def_id);
