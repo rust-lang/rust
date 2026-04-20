@@ -906,7 +906,7 @@ fn fallible() -> ControlFlow<()> {
         check_with_config(
             InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
             r#"
-//- minicore: fn
+//- minicore: fn, add, builtin_impls
 fn main() {
     let x = || 2;
       //^ impl Fn() -> i32
@@ -928,7 +928,7 @@ fn main() {
                 ..DISABLED_CONFIG
             },
             r#"
-//- minicore: fn
+//- minicore: fn, add, builtin_impls
 fn main() {
     let x = || 2;
       //^ || -> i32
@@ -950,7 +950,7 @@ fn main() {
                 ..DISABLED_CONFIG
             },
             r#"
-//- minicore: fn
+//- minicore: fn, add, builtin_impls
 fn main() {
     let x = || 2;
       //^ …
@@ -1094,6 +1094,7 @@ fn test<F>(v: S<(S<i32>, S<()>)>, f: F) {
         check_edit(
             TEST_CONFIG,
             r#"
+//- minicore: fn
 fn test<T>(t: T) {
     let f = |a, b, c| {};
     let result = f(42, "", t);

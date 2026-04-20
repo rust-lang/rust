@@ -884,7 +884,7 @@ mod tests {
         let fsc = builder.build();
         let src = SourceRootConfig { fsc, local_filesets: vec![0, 1, 2, 3] };
         let mut vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
-        vc.sort_by(|x, y| x.0.0.cmp(&y.0.0));
+        vc.sort_by_key(|x| x.0.0);
 
         assert_eq!(vc, vec![(SourceRootId(2), SourceRootId(1)), (SourceRootId(3), SourceRootId(1))])
     }
@@ -899,7 +899,7 @@ mod tests {
         let fsc = builder.build();
         let src = SourceRootConfig { fsc, local_filesets: vec![0, 1, 3] };
         let mut vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
-        vc.sort_by(|x, y| x.0.0.cmp(&y.0.0));
+        vc.sort_by_key(|x| x.0.0);
 
         assert_eq!(vc, vec![(SourceRootId(3), SourceRootId(1)),])
     }
@@ -914,7 +914,7 @@ mod tests {
         let fsc = builder.build();
         let src = SourceRootConfig { fsc, local_filesets: vec![0, 1, 3] };
         let mut vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
-        vc.sort_by(|x, y| x.0.0.cmp(&y.0.0));
+        vc.sort_by_key(|x| x.0.0);
 
         assert_eq!(vc, vec![(SourceRootId(3), SourceRootId(1)),])
     }
@@ -930,7 +930,7 @@ mod tests {
         let fsc = builder.build();
         let src = SourceRootConfig { fsc, local_filesets: vec![0, 1] };
         let mut vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
-        vc.sort_by(|x, y| x.0.0.cmp(&y.0.0));
+        vc.sort_by_key(|x| x.0.0);
 
         assert_eq!(vc, vec![(SourceRootId(1), SourceRootId(0)),])
     }
@@ -946,7 +946,7 @@ mod tests {
         let fsc = builder.build();
         let src = SourceRootConfig { fsc, local_filesets: vec![0, 1] };
         let mut vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
-        vc.sort_by(|x, y| x.0.0.cmp(&y.0.0));
+        vc.sort_by_key(|x| x.0.0);
 
         assert_eq!(vc, vec![(SourceRootId(1), SourceRootId(0)),])
     }

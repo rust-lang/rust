@@ -87,7 +87,9 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
                 println!("`cargo miri {verb}` supports the same flags as `cargo {verb}`:\n");
                 let mut cmd = cargo();
                 cmd.arg(verb);
-                cmd.arg("--help");
+                // Forward all arguments (some of them can influence the help output, e.g.
+                // the nextest verb).
+                cmd.args(args);
                 exec(cmd);
             }
             _ => {

@@ -2057,3 +2057,38 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn prefer_underscore_import() {
+    check_edit(
+        "bar",
+        r#"
+mod foo {
+    #[rust_analyzer::prefer_underscore_import]
+    pub trait Ext {
+        fn bar(&self) {}
+    }
+    impl<T> Ext for T {}
+}
+
+fn baz() {
+    1.bar$0
+}
+    "#,
+        r#"
+use foo::Ext as _;
+
+mod foo {
+    #[rust_analyzer::prefer_underscore_import]
+    pub trait Ext {
+        fn bar(&self) {}
+    }
+    impl<T> Ext for T {}
+}
+
+fn baz() {
+    1.bar();$0
+}
+    "#,
+    );
+}

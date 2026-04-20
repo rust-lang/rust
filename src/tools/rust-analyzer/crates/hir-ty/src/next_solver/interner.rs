@@ -25,27 +25,28 @@ use rustc_abi::{ReprFlags, ReprOptions};
 use rustc_hash::FxHashSet;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_type_ir::{
-    AliasTermKind, AliasTyKind, BoundVar, CoroutineWitnessTypes, DebruijnIndex, EarlyBinder,
-    FlagComputation, Flags, GenericArgKind, GenericTypeVisitable, ImplPolarity, InferTy, Interner,
-    TraitRef, TypeFlags, TypeVisitableExt, UniverseIndex, Upcast, Variance,
+    AliasTermKind, AliasTy, AliasTyKind, BoundVar, CoroutineWitnessTypes, DebruijnIndex,
+    EarlyBinder, FlagComputation, Flags, GenericArgKind, GenericTypeVisitable, ImplPolarity,
+    InferTy, Interner, TraitRef, TypeFlags, TypeVisitableExt, Upcast, Variance,
     elaborate::elaborate,
     error::TypeError,
     fast_reject,
     inherent::{self, Const as _, GenericsOf, IntoKind, SliceLike as _, Span as _, Ty as _},
     lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem},
-    solve::SizedTraitKind,
+    solve::{AdtDestructorKind, SizedTraitKind},
 };
 
 use crate::{
     FnAbi,
-    db::{HirDatabase, InternedCoroutine, InternedCoroutineId},
+    db::{HirDatabase, InternedClosure, InternedCoroutineId},
     lower::GenericPredicates,
     method_resolution::TraitImpls,
     next_solver::{
         AdtIdWrapper, AnyImplId, BoundConst, CallableIdWrapper, CanonicalVarKind, ClosureIdWrapper,
-        CoroutineIdWrapper, Ctor, FnSig, FxIndexMap, GeneralConstIdWrapper, OpaqueTypeKey,
-        RegionAssumptions, SimplifiedType, SolverContext, SolverDefIds, TraitIdWrapper,
-        TypeAliasIdWrapper, UnevaluatedConst,
+        Consts, CoroutineClosureIdWrapper, CoroutineIdWrapper, Ctor, FnSig, FxIndexMap,
+        GeneralConstIdWrapper, LateParamRegion, OpaqueTypeKey, RegionAssumptions, ScalarInt,
+        SimplifiedType, SolverContext, SolverDefIds, TraitIdWrapper, TypeAliasIdWrapper,
+        UnevaluatedConst,
         util::{explicit_item_bounds, explicit_item_self_bounds},
     },
 };
@@ -53,14 +54,11 @@ use crate::{
 use super::{
     Binder, BoundExistentialPredicates, BoundTy, BoundTyKind, Clause, ClauseKind, Clauses, Const,
     ErrorGuaranteed, ExprConst, ExternalConstraints, GenericArg, GenericArgs, ParamConst, ParamEnv,
-    ParamTy, PlaceholderConst, PlaceholderTy, PredefinedOpaques, Predicate, SolverDefId, Term, Ty,
-    TyKind, Tys, Valtree, ValueConst,
+    ParamTy, PredefinedOpaques, Predicate, SolverDefId, Term, Ty, TyKind, Tys, ValTree, ValueConst,
     abi::Safety,
     fold::{BoundVarReplacer, BoundVarReplacerDelegate, FnMutDelegate},
     generics::{Generics, generics},
-    region::{
-        BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, PlaceholderRegion, Region,
-    },
+    region::{BoundRegion, BoundRegionKind, EarlyParamRegion, Region},
     util::sizedness_constraint_for_ty,
 };
 
@@ -329,6 +327,7 @@ unsafe impl Sync for DbInterner<'_> {}
 impl<'db> DbInterner<'db> {
     // FIXME(next-solver): remove this method
     pub fn conjure() -> DbInterner<'db> {
+        // Here we can not reinit the cache since we do that when we attach the db.
         crate::with_attached_db(|db| DbInterner {
             db: unsafe { std::mem::transmute::<&dyn HirDatabase, &'db dyn HirDatabase>(db) },
             krate: None,
@@ -341,10 +340,13 @@ impl<'db> DbInterner<'db> {
     ///
     /// Elaboration is a special kind: it needs lang items (for `Sized`), therefore it needs `new_with()`.
     pub fn new_no_crate(db: &'db dyn HirDatabase) -> Self {
+        // We do not reinit the cache here, since anything accessing the cache needs an InferCtxt,
+        // and we panic when trying to construct an InferCtxt for an Interner without a crate.
         DbInterner { db, krate: None, lang_items: None }
     }
 
     pub fn new_with(db: &'db dyn HirDatabase, krate: Crate) -> DbInterner<'db> {
+        tls_cache::reinit_cache(db);
         DbInterner {
             db,
             krate: Some(krate),
@@ -373,6 +375,11 @@ impl<'db> DbInterner<'db> {
     pub fn default_types<'a>(&self) -> &'a crate::next_solver::DefaultAny<'db> {
         crate::next_solver::default_types(self.db)
     }
+
+    #[inline]
+    pub(crate) fn expect_crate(&self) -> Crate {
+        self.krate.expect("should have a crate")
+    }
 }
 
 // This is intentionally left as `()`
@@ -390,43 +397,15 @@ interned_slice!(
     BoundVarKinds,
     StoredBoundVarKinds,
     bound_var_kinds,
-    BoundVarKind,
-    BoundVarKind,
+    BoundVariableKind<'db>,
+    BoundVariableKind<'static>,
 );
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum BoundVarKind {
-    Ty(BoundTyKind),
-    Region(BoundRegionKind),
-    Const,
-}
-
-impl BoundVarKind {
-    pub fn expect_region(self) -> BoundRegionKind {
-        match self {
-            BoundVarKind::Region(lt) => lt,
-            _ => panic!("expected a region, but found another kind"),
-        }
-    }
-
-    pub fn expect_ty(self) -> BoundTyKind {
-        match self {
-            BoundVarKind::Ty(ty) => ty,
-            _ => panic!("expected a type, but found another kind"),
-        }
-    }
-
-    pub fn expect_const(self) {
-        match self {
-            BoundVarKind::Const => (),
-            _ => panic!("expected a const, but found another kind"),
-        }
-    }
-}
+pub type BoundVariableKind<'db> = rustc_type_ir::BoundVariableKind<DbInterner<'db>>;
 
 interned_slice!(
     CanonicalVarsStorage,
-    CanonicalVars,
+    CanonicalVarKinds,
     StoredCanonicalVars,
     canonical_vars,
     CanonicalVarKind<'db>,
@@ -437,22 +416,6 @@ pub struct DepNodeIndex;
 
 #[derive(Debug)]
 pub struct Tracked<T: fmt::Debug + Clone>(T);
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Placeholder<T> {
-    pub universe: UniverseIndex,
-    pub bound: T,
-}
-
-impl<T: std::fmt::Debug> std::fmt::Debug for Placeholder<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
-        if self.universe == UniverseIndex::ROOT {
-            write!(f, "!{:?}", self.bound)
-        } else {
-            write!(f, "!{}_{:?}", self.universe.index(), self.bound)
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub struct AllocId;
@@ -762,16 +725,25 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
             .transpose()
     }
 
-    fn destructor(
-        self,
-        _interner: DbInterner<'db>,
-    ) -> Option<rustc_type_ir::solve::AdtDestructorKind> {
-        // FIXME(next-solver)
-        None
+    fn destructor(self, interner: DbInterner<'db>) -> Option<AdtDestructorKind> {
+        crate::drop::destructor(interner.db, self.def_id().0).map(|_| AdtDestructorKind::NotConst)
     }
 
     fn is_manually_drop(self) -> bool {
         self.inner().flags.is_manually_drop
+    }
+
+    fn is_packed(self) -> bool {
+        self.repr().packed()
+    }
+
+    fn field_representing_type_info(
+        self,
+        _interner: DbInterner<'db>,
+        _args: GenericArgs<'db>,
+    ) -> Option<rustc_type_ir::FieldInfo<DbInterner<'db>>> {
+        // FIXME
+        None
     }
 }
 
@@ -806,11 +778,16 @@ impl<'db> inherent::Features<DbInterner<'db>> for Features {
         false
     }
 
-    fn associated_const_equality(self) -> bool {
+    fn feature_bound_holds_in_crate(self, _symbol: Symbol) -> bool {
         false
     }
+}
 
-    fn feature_bound_holds_in_crate(self, _symbol: ()) -> bool {
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, GenericTypeVisitable)]
+pub struct Symbol;
+
+impl<'db> inherent::Symbol<DbInterner<'db>> for Symbol {
+    fn is_kw_underscore_lifetime(self) -> bool {
         false
     }
 }
@@ -1022,7 +999,7 @@ impl<'db> Interner for DbInterner<'db> {
     type ForeignId = TypeAliasIdWrapper;
     type FunctionId = CallableIdWrapper;
     type ClosureId = ClosureIdWrapper;
-    type CoroutineClosureId = CoroutineIdWrapper;
+    type CoroutineClosureId = CoroutineClosureIdWrapper;
     type CoroutineId = CoroutineIdWrapper;
     type AdtId = AdtIdWrapper;
     type ImplId = AnyImplId;
@@ -1036,7 +1013,6 @@ impl<'db> Interner for DbInterner<'db> {
     type Term = Term<'db>;
 
     type BoundVarKinds = BoundVarKinds<'db>;
-    type BoundVarKind = BoundVarKind;
 
     type PredefinedOpaques = PredefinedOpaques<'db>;
 
@@ -1047,13 +1023,13 @@ impl<'db> Interner for DbInterner<'db> {
         PredefinedOpaques::new_from_slice(data)
     }
 
-    type CanonicalVarKinds = CanonicalVars<'db>;
+    type CanonicalVarKinds = CanonicalVarKinds<'db>;
 
     fn mk_canonical_var_kinds(
         self,
         kinds: &[rustc_type_ir::CanonicalVarKind<Self>],
     ) -> Self::CanonicalVarKinds {
-        CanonicalVars::new_from_slice(kinds)
+        CanonicalVarKinds::new_from_slice(kinds)
     }
 
     type ExternalConstraints = ExternalConstraints<'db>;
@@ -1073,9 +1049,7 @@ impl<'db> Interner for DbInterner<'db> {
     type Tys = Tys<'db>;
     type FnInputTys = &'db [Ty<'db>];
     type ParamTy = ParamTy;
-    type BoundTy = BoundTy;
-    type PlaceholderTy = PlaceholderTy;
-    type Symbol = ();
+    type Symbol = Symbol;
 
     type ErrorGuaranteed = ErrorGuaranteed;
     type BoundExistentialPredicates = BoundExistentialPredicates<'db>;
@@ -1086,18 +1060,16 @@ impl<'db> Interner for DbInterner<'db> {
     type Abi = FnAbi;
 
     type Const = Const<'db>;
-    type PlaceholderConst = PlaceholderConst;
     type ParamConst = ParamConst;
-    type BoundConst = BoundConst;
     type ValueConst = ValueConst<'db>;
-    type ValTree = Valtree<'db>;
+    type ValTree = ValTree<'db>;
+    type Consts = Consts<'db>;
+    type ScalarInt = ScalarInt;
     type ExprConst = ExprConst;
 
     type Region = Region<'db>;
     type EarlyParamRegion = EarlyParamRegion;
-    type LateParamRegion = LateParamRegion;
-    type BoundRegion = BoundRegion;
-    type PlaceholderRegion = PlaceholderRegion;
+    type LateParamRegion = LateParamRegion<'db>;
 
     type RegionAssumptions = RegionAssumptions<'db>;
 
@@ -1148,7 +1120,8 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         f: impl FnOnce(&mut rustc_type_ir::search_graph::GlobalCache<Self>) -> R,
     ) -> R {
-        tls_cache::with_cache(self.db, f)
+        // We make sure to reinit the cache when constructing the Interner.
+        tls_cache::borrow_assume_valid(self.db, f)
     }
 
     fn canonical_param_env_cache_get_or_insert<R>(
@@ -1198,6 +1171,7 @@ impl<'db> Interner for DbInterner<'db> {
             | SolverDefId::BuiltinDeriveImplId(_)
             | SolverDefId::InternedClosureId(_)
             | SolverDefId::InternedCoroutineId(_)
+            | SolverDefId::InternedCoroutineClosureId(_)
             | SolverDefId::AnonConstId(_) => {
                 return VariancesOf::empty(self);
             }
@@ -1228,22 +1202,6 @@ impl<'db> Interner for DbInterner<'db> {
 
     fn adt_def(self, def_id: Self::AdtId) -> Self::AdtDef {
         AdtDef::new(def_id.0, self)
-    }
-
-    fn alias_ty_kind(self, alias: rustc_type_ir::AliasTy<Self>) -> AliasTyKind {
-        match alias.def_id {
-            SolverDefId::InternedOpaqueTyId(_) => AliasTyKind::Opaque,
-            SolverDefId::TypeAliasId(type_alias) => match type_alias.loc(self.db).container {
-                ItemContainerId::ImplId(impl_)
-                    if ImplSignature::of(self.db, impl_).target_trait.is_none() =>
-                {
-                    AliasTyKind::Inherent
-                }
-                ItemContainerId::TraitId(_) | ItemContainerId::ImplId(_) => AliasTyKind::Projection,
-                _ => AliasTyKind::Free,
-            },
-            _ => unimplemented!("Unexpected alias: {:?}", alias.def_id),
-        }
     }
 
     fn alias_term_kind(
@@ -1315,10 +1273,13 @@ impl<'db> Interner for DbInterner<'db> {
             SolverDefId::TypeAliasId(it) => it.lookup(self.db()).container,
             SolverDefId::ConstId(it) => it.lookup(self.db()).container,
             SolverDefId::InternedClosureId(it) => {
-                return self.db().lookup_intern_closure(it).0.generic_def(self.db()).into();
+                return it.loc(self.db).0.generic_def(self.db()).into();
             }
             SolverDefId::InternedCoroutineId(it) => {
-                return self.db().lookup_intern_coroutine(it).0.generic_def(self.db()).into();
+                return it.loc(self.db).0.generic_def(self.db()).into();
+            }
+            SolverDefId::InternedCoroutineClosureId(it) => {
+                return it.loc(self.db).0.generic_def(self.db()).into();
             }
             SolverDefId::StaticId(_)
             | SolverDefId::AdtId(_)
@@ -1342,7 +1303,7 @@ impl<'db> Interner for DbInterner<'db> {
         50
     }
 
-    fn features(self) -> Self::Features {
+    fn features(self) -> Features {
         Features
     }
 
@@ -1356,7 +1317,7 @@ impl<'db> Interner for DbInterner<'db> {
     fn coroutine_movability(self, def_id: Self::CoroutineId) -> rustc_ast_ir::Movability {
         // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
         // the current infer query, except with revealed opaques - is it rare enough to not matter?
-        let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
+        let InternedClosure(owner, expr_id) = def_id.0.loc(self.db);
         let store = ExpressionStore::of(self.db, owner);
         let expr = &store[expr_id];
         match *expr {
@@ -1365,16 +1326,17 @@ impl<'db> Interner for DbInterner<'db> {
                     hir_def::hir::Movability::Static => rustc_ast_ir::Movability::Static,
                     hir_def::hir::Movability::Movable => rustc_ast_ir::Movability::Movable,
                 },
-                hir_def::hir::ClosureKind::Async => rustc_ast_ir::Movability::Static,
+                hir_def::hir::ClosureKind::AsyncBlock { .. } => rustc_ast_ir::Movability::Static,
                 _ => panic!("unexpected expression for a coroutine: {expr:?}"),
             },
-            hir_def::hir::Expr::Async { .. } => rustc_ast_ir::Movability::Static,
             _ => panic!("unexpected expression for a coroutine: {expr:?}"),
         }
     }
 
     fn coroutine_for_closure(self, def_id: Self::CoroutineClosureId) -> Self::CoroutineId {
-        def_id
+        let InternedClosure(owner, coroutine_closure_expr) = def_id.0.loc(self.db);
+        let coroutine_expr = ExpressionStore::coroutine_for_closure(coroutine_closure_expr);
+        InternedCoroutineId::new(self.db, InternedClosure(owner, coroutine_expr)).into()
     }
 
     fn generics_require_sized_self(self, def_id: Self::DefId) -> bool {
@@ -1471,7 +1433,9 @@ impl<'db> Interner for DbInterner<'db> {
         fn is_ty_assoc_of_self(ty: Ty<'_>) -> bool {
             // FIXME: Is this correct wrt. combined kind of assoc type bounds, i.e. `where Self::Assoc: Trait<Assoc2: Trait>`
             // wrt. `Assoc2`, which we should exclude?
-            if let TyKind::Alias(AliasTyKind::Projection, alias) = ty.kind() {
+            if let TyKind::Alias(alias @ AliasTy { kind: AliasTyKind::Projection { .. }, .. }) =
+                ty.kind()
+            {
                 is_ty_assoc_of_self(alias.self_ty())
             } else {
                 is_ty_self(ty)
@@ -1524,7 +1488,7 @@ impl<'db> Interner for DbInterner<'db> {
     fn require_lang_item(self, lang_item: SolverLangItem) -> Self::DefId {
         let lang_items = self.lang_items();
         let lang_item = match lang_item {
-            SolverLangItem::AsyncFnKindUpvars => unimplemented!(),
+            SolverLangItem::AsyncFnKindUpvars => lang_items.AsyncFnKindUpvars,
             SolverLangItem::AsyncFnOnceOutput => lang_items.AsyncFnOnceOutput,
             SolverLangItem::CallOnceFuture => lang_items.CallOnceFuture,
             SolverLangItem::CallRefFuture => lang_items.CallRefFuture,
@@ -1535,6 +1499,8 @@ impl<'db> Interner for DbInterner<'db> {
             SolverLangItem::DynMetadata => {
                 return lang_items.DynMetadata.expect("Lang item required but not found.").into();
             }
+            SolverLangItem::FieldBase => lang_items.FieldBase,
+            SolverLangItem::FieldType => lang_items.FieldType,
         };
         lang_item.expect("Lang item required but not found.").into()
     }
@@ -1543,13 +1509,13 @@ impl<'db> Interner for DbInterner<'db> {
         let lang_items = self.lang_items();
         let lang_item = match lang_item {
             SolverTraitLangItem::AsyncFn => lang_items.AsyncFn,
-            SolverTraitLangItem::AsyncFnKindHelper => unimplemented!(),
+            SolverTraitLangItem::AsyncFnKindHelper => lang_items.AsyncFnKindHelper,
             SolverTraitLangItem::AsyncFnMut => lang_items.AsyncFnMut,
             SolverTraitLangItem::AsyncFnOnce => lang_items.AsyncFnOnce,
             SolverTraitLangItem::AsyncFnOnceOutput => unimplemented!(
                 "This is incorrectly marked as `SolverTraitLangItem`, and is not used by the solver."
             ),
-            SolverTraitLangItem::AsyncIterator => unimplemented!(),
+            SolverTraitLangItem::AsyncIterator => lang_items.AsyncIterator,
             SolverTraitLangItem::Clone => lang_items.Clone,
             SolverTraitLangItem::Copy => lang_items.Copy,
             SolverTraitLangItem::Coroutine => lang_items.Coroutine,
@@ -1560,7 +1526,7 @@ impl<'db> Interner for DbInterner<'db> {
             SolverTraitLangItem::FnMut => lang_items.FnMut,
             SolverTraitLangItem::FnOnce => lang_items.FnOnce,
             SolverTraitLangItem::FnPtrTrait => lang_items.FnPtrTrait,
-            SolverTraitLangItem::FusedIterator => unimplemented!(),
+            SolverTraitLangItem::FusedIterator => lang_items.FusedIterator,
             SolverTraitLangItem::Future => lang_items.Future,
             SolverTraitLangItem::Iterator => lang_items.Iterator,
             SolverTraitLangItem::PointeeTrait => lang_items.PointeeTrait,
@@ -1571,10 +1537,9 @@ impl<'db> Interner for DbInterner<'db> {
             SolverTraitLangItem::Tuple => lang_items.Tuple,
             SolverTraitLangItem::Unpin => lang_items.Unpin,
             SolverTraitLangItem::Unsize => lang_items.Unsize,
-            SolverTraitLangItem::BikeshedGuaranteedNoDrop => {
-                unimplemented!()
-            }
+            SolverTraitLangItem::BikeshedGuaranteedNoDrop => lang_items.BikeshedGuaranteedNoDrop,
             SolverTraitLangItem::TrivialClone => lang_items.TrivialClone,
+            SolverTraitLangItem::Field => lang_items.Field,
         };
         lang_item.expect("Lang item required but not found.").into()
     }
@@ -1602,6 +1567,7 @@ impl<'db> Interner for DbInterner<'db> {
                 AsyncIterator,
                 BikeshedGuaranteedNoDrop,
                 FusedIterator,
+                Field,
                 AsyncFnOnceOutput, // This is incorrectly marked as `SolverTraitLangItem`, and is not used by the solver.
             }
 
@@ -1647,6 +1613,8 @@ impl<'db> Interner for DbInterner<'db> {
                     ignore = {
                         AsyncFnKindUpvars,
                         DynMetadata,
+                        FieldBase,
+                        FieldType,
                     }
 
                     Metadata,
@@ -1671,6 +1639,8 @@ impl<'db> Interner for DbInterner<'db> {
                         CallRefFuture,
                         CallOnceFuture,
                         AsyncFnOnceOutput,
+                        FieldBase,
+                        FieldType,
                     }
 
                     DynMetadata,
@@ -1689,6 +1659,7 @@ impl<'db> Interner for DbInterner<'db> {
                 AsyncIterator,
                 BikeshedGuaranteedNoDrop,
                 FusedIterator,
+                Field,
                 AsyncFnOnceOutput, // This is incorrectly marked as `SolverTraitLangItem`, and is not used by the solver.
             }
 
@@ -1763,6 +1734,7 @@ impl<'db> Interner for DbInterner<'db> {
                     | SolverDefId::StaticId(_)
                     | SolverDefId::InternedClosureId(_)
                     | SolverDefId::InternedCoroutineId(_)
+                    | SolverDefId::InternedCoroutineClosureId(_)
                     | SolverDefId::InternedOpaqueTyId(_)
                     | SolverDefId::EnumVariantId(_)
                     | SolverDefId::AnonConstId(_)
@@ -1865,7 +1837,7 @@ impl<'db> Interner for DbInterner<'db> {
             //
             // Impls which apply to an alias after normalization are handled by
             // `assemble_candidates_after_normalizing_self_ty`.
-            TyKind::Alias(_, _) | TyKind::Placeholder(..) | TyKind::Error(_) => (),
+            TyKind::Alias(..) | TyKind::Placeholder(..) | TyKind::Error(_) => (),
 
             // FIXME: These should ideally not exist as a self type. It would be nice for
             // the builtin auto trait impls of coroutines to instead directly recurse
@@ -1958,12 +1930,6 @@ impl<'db> Interner for DbInterner<'db> {
         trait_data.flags.contains(TraitFlags::FUNDAMENTAL)
     }
 
-    fn trait_may_be_implemented_via_object(self, _trait_def_id: Self::TraitId) -> bool {
-        // FIXME(next-solver): should check the `TraitFlags` for
-        // the `#[rustc_do_not_implement_via_object]` flag
-        true
-    }
-
     fn is_impl_trait_in_trait(self, _def_id: Self::DefId) -> bool {
         // FIXME(next-solver)
         false
@@ -1976,7 +1942,7 @@ impl<'db> Interner for DbInterner<'db> {
     fn is_general_coroutine(self, def_id: Self::CoroutineId) -> bool {
         // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
         // the current infer query, except with revealed opaques - is it rare enough to not matter?
-        let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
+        let InternedClosure(owner, expr_id) = def_id.0.loc(self.db);
         let store = ExpressionStore::of(self.db, owner);
         matches!(
             store[expr_id],
@@ -1990,12 +1956,14 @@ impl<'db> Interner for DbInterner<'db> {
     fn coroutine_is_async(self, def_id: Self::CoroutineId) -> bool {
         // FIXME: Make this a query? I don't believe this can be accessed from bodies other than
         // the current infer query, except with revealed opaques - is it rare enough to not matter?
-        let InternedCoroutine(owner, expr_id) = def_id.0.loc(self.db);
+        let InternedClosure(owner, expr_id) = def_id.0.loc(self.db);
         let store = ExpressionStore::of(self.db, owner);
         matches!(
             store[expr_id],
-            hir_def::hir::Expr::Closure { closure_kind: hir_def::hir::ClosureKind::Async, .. }
-                | hir_def::hir::Expr::Async { .. }
+            hir_def::hir::Expr::Closure {
+                closure_kind: hir_def::hir::ClosureKind::AsyncBlock { .. },
+                ..
+            }
         )
     }
 
@@ -2060,32 +2028,33 @@ impl<'db> Interner for DbInterner<'db> {
     ) -> rustc_type_ir::Binder<Self, T> {
         struct Anonymize<'a, 'db> {
             interner: DbInterner<'db>,
-            map: &'a mut FxIndexMap<BoundVar, BoundVarKind>,
+            map: &'a mut FxIndexMap<BoundVar, BoundVariableKind<'db>>,
         }
         impl<'db> BoundVarReplacerDelegate<'db> for Anonymize<'_, 'db> {
-            fn replace_region(&mut self, br: BoundRegion) -> Region<'db> {
+            fn replace_region(&mut self, br: BoundRegion<'db>) -> Region<'db> {
                 let entry = self.map.entry(br.var);
                 let index = entry.index();
                 let var = BoundVar::from_usize(index);
-                let kind = (*entry.or_insert_with(|| BoundVarKind::Region(BoundRegionKind::Anon)))
-                    .expect_region();
+                let kind = (*entry
+                    .or_insert_with(|| BoundVariableKind::Region(BoundRegionKind::Anon)))
+                .expect_region();
                 let br = BoundRegion { var, kind };
                 Region::new_bound(self.interner, DebruijnIndex::ZERO, br)
             }
-            fn replace_ty(&mut self, bt: BoundTy) -> Ty<'db> {
+            fn replace_ty(&mut self, bt: BoundTy<'db>) -> Ty<'db> {
                 let entry = self.map.entry(bt.var);
                 let index = entry.index();
                 let var = BoundVar::from_usize(index);
-                let kind =
-                    (*entry.or_insert_with(|| BoundVarKind::Ty(BoundTyKind::Anon))).expect_ty();
+                let kind = (*entry.or_insert_with(|| BoundVariableKind::Ty(BoundTyKind::Anon)))
+                    .expect_ty();
                 Ty::new_bound(self.interner, DebruijnIndex::ZERO, BoundTy { var, kind })
             }
-            fn replace_const(&mut self, bv: BoundConst) -> Const<'db> {
+            fn replace_const(&mut self, bv: BoundConst<'db>) -> Const<'db> {
                 let entry = self.map.entry(bv.var);
                 let index = entry.index();
                 let var = BoundVar::from_usize(index);
-                let () = (*entry.or_insert_with(|| BoundVarKind::Const)).expect_const();
-                Const::new_bound(self.interner, DebruijnIndex::ZERO, BoundConst { var })
+                let () = (*entry.or_insert_with(|| BoundVariableKind::Const)).expect_const();
+                Const::new_bound(self.interner, DebruijnIndex::ZERO, BoundConst::new(var))
             }
         }
 
@@ -2118,16 +2087,15 @@ impl<'db> Interner for DbInterner<'db> {
         body.exprs().for_each(|(expr_id, expr)| {
             if matches!(
                 expr,
-                hir_def::hir::Expr::Async { .. }
-                    | hir_def::hir::Expr::Closure {
-                        closure_kind: hir_def::hir::ClosureKind::Async
-                            | hir_def::hir::ClosureKind::Coroutine(_),
-                        ..
-                    }
+                hir_def::hir::Expr::Closure {
+                    closure_kind: hir_def::hir::ClosureKind::AsyncBlock { .. }
+                        | hir_def::hir::ClosureKind::Coroutine(_),
+                    ..
+                }
             ) {
                 let coroutine = InternedCoroutineId::new(
                     self.db,
-                    InternedCoroutine(ExpressionStoreOwnerId::Body(def_id), expr_id),
+                    InternedClosure(ExpressionStoreOwnerId::Body(def_id), expr_id),
                 );
                 result.push(coroutine.into());
             }
@@ -2266,6 +2234,34 @@ impl<'db> Interner for DbInterner<'db> {
             UnevaluatedConst { def: GeneralConstIdWrapper(id), args: GenericArgs::empty(self) },
         ))
     }
+
+    fn anon_const_kind(self, _def_id: Self::DefId) -> rustc_type_ir::AnonConstKind {
+        // FIXME
+        rustc_type_ir::AnonConstKind::GCE
+    }
+
+    fn alias_ty_kind_from_def_id(self, def_id: Self::DefId) -> AliasTyKind<DbInterner<'db>> {
+        match def_id {
+            SolverDefId::TypeAliasId(type_alias) => match type_alias.loc(self.db).container {
+                ItemContainerId::ExternBlockId(_) | ItemContainerId::ModuleId(_) => {
+                    AliasTyKind::Free { def_id }
+                }
+                ItemContainerId::ImplId(_) => AliasTyKind::Inherent { def_id },
+                ItemContainerId::TraitId(_) => AliasTyKind::Projection { def_id },
+            },
+            SolverDefId::InternedOpaqueTyId(_) => AliasTyKind::Opaque { def_id },
+            _ => unreachable!(),
+        }
+    }
+
+    fn closure_is_const(self, _def_id: Self::ClosureId) -> bool {
+        // FIXME
+        false
+    }
+
+    fn item_name(self, _item_index: Self::DefId) -> Self::Symbol {
+        Symbol
+    }
 }
 
 fn is_ty_self(ty: Ty<'_>) -> bool {
@@ -2295,14 +2291,14 @@ impl<'db> DbInterner<'db> {
         self.replace_escaping_bound_vars_uncached(
             value,
             FnMutDelegate {
-                regions: &mut |r: BoundRegion| {
+                regions: &mut |r: BoundRegion<'db>| {
                     Region::new_bound(
                         self,
                         DebruijnIndex::ZERO,
                         BoundRegion { var: shift_bv(r.var), kind: r.kind },
                     )
                 },
-                types: &mut |t: BoundTy| {
+                types: &mut |t: BoundTy<'db>| {
                     Ty::new_bound(
                         self,
                         DebruijnIndex::ZERO,
@@ -2310,7 +2306,7 @@ impl<'db> DbInterner<'db> {
                     )
                 },
                 consts: &mut |c| {
-                    Const::new_bound(self, DebruijnIndex::ZERO, BoundConst { var: shift_bv(c.var) })
+                    Const::new_bound(self, DebruijnIndex::ZERO, BoundConst::new(shift_bv(c.var)))
                 },
             },
         )
@@ -2430,6 +2426,7 @@ TrivialTypeTraversalImpls! {
     CallableIdWrapper,
     ClosureIdWrapper,
     CoroutineIdWrapper,
+    CoroutineClosureIdWrapper,
     AdtIdWrapper,
     AnyImplId,
     GeneralConstIdWrapper,
@@ -2438,17 +2435,9 @@ TrivialTypeTraversalImpls! {
     Span,
     ParamConst,
     ParamTy,
-    BoundRegion,
-    Placeholder<BoundRegion>,
-    Placeholder<BoundTy>,
-    Placeholder<BoundVar>,
-    Placeholder<BoundConst>,
-    BoundVarKind,
     EarlyParamRegion,
-    LateParamRegion,
     AdtDef,
-    BoundTy,
-    BoundConst,
+    ScalarInt,
 }
 
 mod tls_db {
@@ -2501,6 +2490,7 @@ mod tls_db {
             }
 
             let _guard = DbGuard::new(self, db);
+            super::tls_cache::reinit_cache(db);
             op()
         }
 
@@ -2523,10 +2513,14 @@ mod tls_db {
                 #[inline]
                 fn drop(&mut self) {
                     self.state.database.set(self.prev);
+                    if let Some(prev) = self.prev {
+                        super::tls_cache::reinit_cache(unsafe { prev.as_ref() });
+                    }
                 }
             }
 
             let _guard = DbGuard::new(self, db);
+            super::tls_cache::reinit_cache(db);
             op()
         }
 
@@ -2581,22 +2575,38 @@ mod tls_cache {
         static GLOBAL_CACHE: RefCell<Option<Cache>> = const { RefCell::new(None) };
     }
 
-    pub(super) fn with_cache<'db, T>(
-        db: &'db dyn HirDatabase,
-        f: impl FnOnce(&mut GlobalCache<DbInterner<'db>>) -> T,
-    ) -> T {
+    pub(super) fn reinit_cache(db: &dyn HirDatabase) {
         GLOBAL_CACHE.with_borrow_mut(|handle| {
             let (db_nonce, revision) = db.nonce_and_revision();
-            let handle = match handle {
+            match handle {
                 Some(handle) => {
                     if handle.revision != revision || db_nonce != handle.db_nonce {
                         *handle = Cache { cache: GlobalCache::default(), revision, db_nonce };
                     }
-                    handle
                 }
-                None => handle.insert(Cache { cache: GlobalCache::default(), revision, db_nonce }),
-            };
+                None => *handle = Some(Cache { cache: GlobalCache::default(), revision, db_nonce }),
+            }
+        })
+    }
 
+    pub(super) fn borrow_assume_valid<'db, T>(
+        db: &'db dyn HirDatabase,
+        f: impl FnOnce(&mut GlobalCache<DbInterner<'db>>) -> T,
+    ) -> T {
+        if cfg!(debug_assertions) {
+            let get_state = || {
+                GLOBAL_CACHE.with_borrow(|handle| {
+                    handle.as_ref().map(|handle| (handle.db_nonce, handle.revision))
+                })
+            };
+            let old_state = get_state();
+            reinit_cache(db);
+            let new_state = get_state();
+            assert_eq!(old_state, new_state, "you assumed the cache is valid!");
+        }
+
+        GLOBAL_CACHE.with_borrow_mut(|handle| {
+            let handle = handle.as_mut().expect("you assumed the cache is valid!");
             // SAFETY: No idea
             f(unsafe {
                 std::mem::transmute::<
@@ -2641,13 +2651,15 @@ pub unsafe fn collect_ty_garbage() {
     let mut gc = intern::GarbageCollector::default();
 
     gc.add_storage::<super::consts::ConstInterned>();
-    gc.add_storage::<super::consts::ValtreeInterned>();
+    gc.add_storage::<super::consts::ValTreeInterned>();
+    gc.add_storage::<super::allocation::AllocationInterned>();
     gc.add_storage::<PatternInterned>();
     gc.add_storage::<super::opaques::ExternalConstraintsInterned>();
     gc.add_storage::<super::predicate::PredicateInterned>();
     gc.add_storage::<super::region::RegionInterned>();
     gc.add_storage::<super::ty::TyInterned>();
 
+    gc.add_slice_storage::<super::consts::ConstsStorage>();
     gc.add_slice_storage::<super::predicate::ClausesStorage>();
     gc.add_slice_storage::<super::generic_arg::GenericArgsStorage>();
     gc.add_slice_storage::<BoundVarKindsStorage>();
@@ -2682,7 +2694,8 @@ macro_rules! impl_gc_visit {
 
 impl_gc_visit!(
     super::consts::ConstInterned,
-    super::consts::ValtreeInterned,
+    super::consts::ValTreeInterned,
+    super::allocation::AllocationInterned,
     PatternInterned,
     super::opaques::ExternalConstraintsInterned,
     super::predicate::PredicateInterned,
@@ -2721,4 +2734,5 @@ impl_gc_visit_slice!(
     super::predicate::BoundExistentialPredicatesStorage,
     super::region::RegionAssumptionsStorage,
     super::ty::TysStorage,
+    super::consts::ConstsStorage,
 );

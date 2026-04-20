@@ -84,7 +84,15 @@ pub struct CompletionItem {
     pub ref_match: Option<(CompletionItemRefMode, TextSize)>,
 
     /// The import data to add to completion's edits.
-    pub import_to_add: SmallVec<[String; 1]>,
+    pub import_to_add: SmallVec<[CompletionItemImport; 1]>,
+}
+
+#[derive(Clone, UpmapFromRaFixture)]
+pub struct CompletionItemImport {
+    /// The path to import.
+    pub path: String,
+    /// Whether to import `as _`.
+    pub as_underscore: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -184,6 +192,8 @@ pub struct CompletionRelevance {
     pub function: Option<CompletionRelevanceFn>,
     /// true when there is an `await.method()` or `iter().method()` completion.
     pub is_skipping_completion: bool,
+    /// if inherent impl already exists in current module, user may not want to implement it again.
+    pub has_local_inherent_impl: bool,
 }
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CompletionRelevanceTraitInfo {
@@ -275,6 +285,7 @@ impl CompletionRelevance {
             trait_,
             function,
             is_skipping_completion,
+            has_local_inherent_impl,
         } = self;
 
         // only applicable for completions within use items
@@ -346,6 +357,10 @@ impl CompletionRelevance {
 
             score += fn_score;
         };
+
+        if has_local_inherent_impl {
+            score -= 5;
+        }
 
         score
     }
@@ -578,7 +593,18 @@ impl Builder {
         let import_to_add = self
             .imports_to_add
             .into_iter()
-            .map(|import| import.import_path.display(db, self.edition).to_string())
+            .map(|import| {
+                let path = import.import_path.display(db, self.edition).to_string();
+                let as_underscore =
+                    if let hir::ItemInNs::Types(hir::ModuleDef::Trait(trait_to_import)) =
+                        import.item_to_import
+                    {
+                        trait_to_import.prefer_underscore_import(db)
+                    } else {
+                        false
+                    };
+                CompletionItemImport { path, as_underscore }
+            })
             .collect();
 
         CompletionItem {

@@ -1,6 +1,9 @@
 use either::Either;
 use ide_db::syntax_helpers::suggest_name;
-use syntax::ast::{self, AstNode, HasArgList, prec::ExprPrecedence, syntax_factory::SyntaxFactory};
+use syntax::{
+    ast::{self, AstNode, HasArgList, prec::ExprPrecedence, syntax_factory::SyntaxFactory},
+    syntax_editor::SyntaxEditor,
+};
 
 use crate::{
     AssistContext, AssistId, Assists,
@@ -41,9 +44,9 @@ pub(crate) fn replace_is_method_with_if_let_method(
     let method_kind = token.text().strip_suffix("_and").unwrap_or(token.text());
     match method_kind {
         "is_some" | "is_ok" => {
+            let (editor, _) = SyntaxEditor::new(ctx.source_file().syntax().clone());
+            let make = editor.make();
             let receiver = call_expr.receiver()?;
-            let make = SyntaxFactory::with_mappings();
-
             let mut name_generator = suggest_name::NameGenerator::new_from_scope_locals(
                 ctx.sema.scope(has_cond.syntax()),
             );
@@ -52,7 +55,7 @@ pub(crate) fn replace_is_method_with_if_let_method(
             } else {
                 name_generator.for_variable(&receiver, &ctx.sema)
             };
-            let (pat, predicate) = method_predicate(&call_expr, &var_name, &make);
+            let (pat, predicate) = method_predicate(&call_expr, &var_name, make);
 
             let (assist_id, message, text) = if method_kind == "is_some" {
                 ("replace_is_some_with_if_let_some", "Replace `is_some` with `let Some`", "Some")
@@ -65,8 +68,7 @@ pub(crate) fn replace_is_method_with_if_let_method(
                 message,
                 call_expr.syntax().text_range(),
                 |edit| {
-                    let mut editor = edit.make_editor(call_expr.syntax());
-
+                    let make = editor.make();
                     let pat = make.tuple_struct_pat(make.ident_path(text), [pat]).into();
                     let let_expr = make.expr_let(pat, receiver);
 
@@ -81,14 +83,12 @@ pub(crate) fn replace_is_method_with_if_let_method(
 
                     let new_expr = if let Some(predicate) = predicate {
                         let op = ast::BinaryOp::LogicOp(ast::LogicOp::And);
-                        let predicate = wrap_paren(predicate, &make, ExprPrecedence::LAnd);
+                        let predicate = wrap_paren(predicate, make, ExprPrecedence::LAnd);
                         make.expr_bin(let_expr.into(), op, predicate).into()
                     } else {
                         ast::Expr::from(let_expr)
                     };
                     editor.replace(call_expr.syntax(), new_expr.syntax());
-
-                    editor.add_mappings(make.finish_with_mappings());
                     edit.add_file_edits(ctx.vfs_file_id(), editor);
                 },
             )

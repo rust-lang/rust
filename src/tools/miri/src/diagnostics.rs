@@ -18,7 +18,7 @@ pub enum TerminationInfo {
         leak_check: bool,
     },
     Abort(String),
-    /// Miri was interrupted by a Ctrl+C from the user
+    /// Miri was interrupted by a Ctrl+C from the user.
     Interrupted,
     UnsupportedInIsolation(String),
     StackedBorrowsUb {
@@ -32,6 +32,8 @@ pub enum TerminationInfo {
         history: tree_diagnostics::HistoryData,
     },
     Int2PtrWithStrictProvenance,
+    /// GenMC determined that the execution should stop.
+    GenmcSkip,
     /// All threads are blocked.
     GlobalDeadlock,
     /// Some thread discovered a deadlock condition (e.g. in a mutex with reentrancy checking).
@@ -81,6 +83,7 @@ impl fmt::Display for TerminationInfo {
             TreeBorrowsUb { title, .. } => write!(f, "{title}"),
             GlobalDeadlock => write!(f, "the evaluated program deadlocked"),
             LocalDeadlock => write!(f, "a thread deadlocked"),
+            GenmcSkip => write!(f, "GenMC wants to skip this execution"),
             MultipleSymbolDefinitions { link_name, .. } =>
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
@@ -240,6 +243,10 @@ pub fn report_result<'tcx>(
                 Some("unsupported operation"),
             StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } =>
                 Some("Undefined Behavior"),
+            GenmcSkip => {
+                assert!(ecx.machine.data_race.as_genmc_ref().is_some());
+                return Some((0, false));
+            }
             LocalDeadlock => {
                 labels.push(format!("thread got stuck here"));
                 None

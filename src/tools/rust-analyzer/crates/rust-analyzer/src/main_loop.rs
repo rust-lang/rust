@@ -144,12 +144,11 @@ impl fmt::Debug for Event {
         };
 
         match self {
-            Event::Lsp(lsp_server::Message::Notification(not)) => {
-                if notification_is::<lsp_types::notification::DidOpenTextDocument>(not)
-                    || notification_is::<lsp_types::notification::DidChangeTextDocument>(not)
-                {
-                    return debug_non_verbose(not, f);
-                }
+            Event::Lsp(lsp_server::Message::Notification(not))
+                if (notification_is::<lsp_types::notification::DidOpenTextDocument>(not)
+                    || notification_is::<lsp_types::notification::DidChangeTextDocument>(not)) =>
+            {
+                return debug_non_verbose(not, f);
             }
             Event::Task(Task::Response(resp)) => {
                 return f

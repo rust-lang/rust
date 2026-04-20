@@ -4,11 +4,9 @@ use std::iter;
 
 use hir::crate_def_map;
 use hir::{InFile, ModuleSource};
-use ide_db::base_db;
 use ide_db::text_edit::TextEdit;
-use ide_db::{
-    FileId, FileRange, LineIndexDatabase, base_db::SourceDatabase, source_change::SourceChange,
-};
+use ide_db::{FileId, FileRange, base_db::SourceDatabase, source_change::SourceChange};
+use ide_db::{base_db, line_index};
 use paths::Utf8Component;
 use syntax::{
     AstNode, TextRange,
@@ -26,7 +24,7 @@ pub(crate) fn unlinked_file(
     acc: &mut Vec<Diagnostic>,
     file_id: FileId,
 ) {
-    let mut range = TextRange::up_to(ctx.sema.db.line_index(file_id).len());
+    let mut range = TextRange::up_to(line_index(ctx.sema.db, file_id).len());
     let fixes = fixes(ctx, file_id, range);
     // FIXME: This is a hack for the vscode extension to notice whether there is an autofix or not before having to resolve diagnostics.
     // This is to prevent project linking popups from appearing when there is an autofix. https://github.com/rust-lang/rust-analyzer/issues/14523

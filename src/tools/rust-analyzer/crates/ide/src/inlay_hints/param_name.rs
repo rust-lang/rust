@@ -427,6 +427,7 @@ fn main() {
     fn param_hints_on_closure() {
         check_params(
             r#"
+//- minicore: fn
 fn main() {
     let clo = |a: u8, b: u8| a + b;
     clo(

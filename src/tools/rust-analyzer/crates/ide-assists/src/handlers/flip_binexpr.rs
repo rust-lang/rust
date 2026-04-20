@@ -1,6 +1,6 @@
 use syntax::{
     SyntaxKind, T,
-    ast::{self, AstNode, BinExpr, RangeItem, syntax_factory::SyntaxFactory},
+    ast::{self, AstNode, BinExpr, RangeItem},
     syntax_editor::Position,
 };
 
@@ -48,14 +48,13 @@ pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
         "Flip binary expression",
         op_token.text_range(),
         |builder| {
-            let mut editor = builder.make_editor(&expr.syntax().parent().unwrap());
-            let make = SyntaxFactory::with_mappings();
+            let editor = builder.make_editor(&expr.syntax().parent().unwrap());
+            let make = editor.make();
             if let FlipAction::FlipAndReplaceOp(binary_op) = action {
                 editor.replace(op_token, make.token(binary_op))
             };
             editor.replace(lhs.syntax(), rhs.syntax());
             editor.replace(rhs.syntax(), lhs.syntax());
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -133,25 +132,25 @@ pub(crate) fn flip_range_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
         "Flip range expression",
         op.text_range(),
         |builder| {
-            let mut edit = builder.make_editor(range_expr.syntax());
+            let editor = builder.make_editor(range_expr.syntax());
 
             match (start, end) {
                 (Some(start), Some(end)) => {
-                    edit.replace(start.syntax(), end.syntax());
-                    edit.replace(end.syntax(), start.syntax());
+                    editor.replace(start.syntax(), end.syntax());
+                    editor.replace(end.syntax(), start.syntax());
                 }
                 (Some(start), None) => {
-                    edit.delete(start.syntax());
-                    edit.insert(Position::after(&op), start.syntax());
+                    editor.delete(start.syntax());
+                    editor.insert(Position::after(&op), start.syntax());
                 }
                 (None, Some(end)) => {
-                    edit.delete(end.syntax());
-                    edit.insert(Position::before(&op), end.syntax());
+                    editor.delete(end.syntax());
+                    editor.insert(Position::before(&op), end.syntax());
                 }
                 (None, None) => (),
             }
 
-            builder.add_file_edits(ctx.vfs_file_id(), edit);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

@@ -147,7 +147,7 @@ fn render(
         detail(ctx.completion, func)
     };
     item.set_documentation(ctx.docs(func))
-        .set_deprecated(ctx.is_deprecated(func) || ctx.is_deprecated_assoc_item(func))
+        .set_deprecated(ctx.is_deprecated(func, func.as_assoc_item(db)))
         .detail(detail)
         .lookup_by(name.as_str().to_smolstr());
 

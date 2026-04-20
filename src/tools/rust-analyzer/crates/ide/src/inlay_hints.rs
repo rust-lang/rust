@@ -235,7 +235,7 @@ fn hints(
                         param_name::hints(hints, famous_defs, config, file_id, ast::Expr::from(it))
                     }
                     ast::Expr::ClosureExpr(it) => {
-                        closure_captures::hints(hints, famous_defs, config, it.clone());
+                        closure_captures::hints(hints, famous_defs, config, it.clone(), file_id.edition(sema.db));
                         closure_ret::hints(hints, famous_defs, config, display_target, it)
                     },
                     ast::Expr::RangeExpr(it) => range_exclusive::hints(hints, famous_defs, config, it),
@@ -1085,9 +1085,10 @@ fn foo() {
     fn closure_dependency_cycle_no_panic() {
         check(
             r#"
+//- minicore: fn
 fn foo() {
     let closure;
-     // ^^^^^^^ impl Fn()
+     // ^^^^^^^ impl FnOnce()
     closure = || {
         closure();
     };
@@ -1095,9 +1096,9 @@ fn foo() {
 
 fn bar() {
     let closure1;
-     // ^^^^^^^^ impl Fn()
+     // ^^^^^^^^ impl FnOnce()
     let closure2;
-     // ^^^^^^^^ impl Fn()
+     // ^^^^^^^^ impl FnOnce()
     closure1 = || {
         closure2();
     };
