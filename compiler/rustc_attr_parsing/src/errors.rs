@@ -259,3 +259,7 @@ pub(crate) struct DiagnosticOnConstOnlyForTraitImpls {
     #[label("not a trait impl")]
     pub target_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_move]` can only be applied to enums, structs or unions")]
+pub(crate) struct DiagnosticOnMoveOnlyForAdt;

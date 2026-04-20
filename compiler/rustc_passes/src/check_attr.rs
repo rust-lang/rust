@@ -62,10 +62,6 @@ struct DiagnosticOnConstOnlyForNonConstTraitImpls {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_move]` can only be applied to enums, structs or unions")]
-struct DiagnosticOnMoveOnlyForAdt;
-
-#[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_unknown]` can only be applied to `use` statements")]
 struct DiagnosticOnUnknownOnlyForImports {
     #[label("not an import")]
@@ -218,8 +214,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::OnUnimplemented{span, directive}) => {self.check_diagnostic_on_unimplemented(*span, hir_id, target,directive.as_deref())},
                 Attribute::Parsed(AttributeKind::OnUnknown { span, .. }) => { self.check_diagnostic_on_unknown(*span, hir_id, target) },
                 Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)}
-                Attribute::Parsed(AttributeKind::OnMove { span, directive }) => {
-                    self.check_diagnostic_on_move(*span, hir_id, target, directive.as_deref())
+                Attribute::Parsed(AttributeKind::OnMove { directive , .. }) => {
+                    self.check_diagnostic_on_move(hir_id, directive.as_deref())
                 },
                 Attribute::Parsed(
                     // tidy-alphabetical-start
@@ -613,23 +609,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // ...whose generics would that be, anyway? The traits' or the impls'?
     }
 
-    /// Checks if `#[diagnostic::on_move]` is applied to an ADT definition
-    fn check_diagnostic_on_move(
-        &self,
-        attr_span: Span,
-        hir_id: HirId,
-        target: Target,
-        directive: Option<&Directive>,
-    ) {
-        if !matches!(target, Target::Enum | Target::Struct | Target::Union) {
-            self.tcx.emit_node_span_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                DiagnosticOnMoveOnlyForAdt,
-            );
-        }
-
+    /// Checks use of generic formatting parameters in `#[diagnostic::on_move]`
+    fn check_diagnostic_on_move(&self, hir_id: HirId, directive: Option<&Directive>) {
         if let Some(directive) = directive {
             if let Node::Item(Item {
                 kind:
