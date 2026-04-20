@@ -523,7 +523,7 @@ impl<T> Trait<T> for X {
                     }
                     (ty::FnPtr(_, hdr), ty::FnDef(def_id, _))
                     | (ty::FnDef(def_id, _), ty::FnPtr(_, hdr)) => {
-                        if tcx.fn_sig(def_id).skip_binder().safety() < hdr.safety {
+                        if tcx.fn_sig(def_id).skip_binder().safety() < hdr.safety() {
                             if !tcx.codegen_fn_attrs(def_id).safe_target_features {
                                 diag.note(
                                 "unsafe functions cannot be coerced into safe function pointers",
@@ -842,7 +842,7 @@ fn foo(&self) -> Self::T { String::new() }
                     && !tcx.is_doc_hidden(item.def_id)
             })
             .filter_map(|item| {
-                let method = tcx.fn_sig(item.def_id).instantiate_identity();
+                let method = tcx.fn_sig(item.def_id).instantiate_identity().skip_norm_wip();
                 match *method.output().skip_binder().kind() {
                     ty::Alias(ty::AliasTy {
                         kind: ty::Projection { def_id: item_def_id }, ..
@@ -906,7 +906,7 @@ fn foo(&self) -> Self::T { String::new() }
                     // FIXME: account for returning some type in a trait fn impl that has
                     // an assoc type as a return type (#72076).
                     && let hir::Defaultness::Default { has_value: true } = assoc_item.defaultness(tcx)
-                    && let assoc_ty = tcx.type_of(assoc_item.def_id).instantiate_identity()
+                    && let assoc_ty = tcx.type_of(assoc_item.def_id).instantiate_identity().skip_norm_wip()
                     && self.infcx.can_eq(param_env, assoc_ty, found)
                 {
                     let msg = match assoc_item.container {

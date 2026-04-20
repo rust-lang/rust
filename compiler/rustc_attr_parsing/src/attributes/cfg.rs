@@ -19,6 +19,7 @@ use rustc_session::parse::{ParseSess, feature_err};
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
+use crate::attributes::AttributeSafety;
 use crate::context::{AcceptContext, ShouldEmit, Stage};
 use crate::parser::{
     AllowExprMetavar, ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser,
@@ -410,6 +411,7 @@ fn parse_cfg_attr_internal<'a>(
         attribute.style,
         AttrPath { segments: attribute.path().into_boxed_slice(), span: attribute.span },
         Some(attribute.get_normal_item().unsafety),
+        AttributeSafety::Normal,
         ParsedDescription::Attribute,
         pred_span,
         lint_node_id,

@@ -18,7 +18,7 @@ use rustc_index::IndexVec;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TypeTrace};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
@@ -95,8 +95,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // as otherwise we can wind up conservatively proving `Copy` which may
                 // infer the repeat expr count to something that never required `Copy` in
                 // the first place.
-                let count = self
-                    .structurally_resolve_const(element.span, self.normalize(element.span, count));
+                let count = self.structurally_resolve_const(
+                    element.span,
+                    self.normalize(element.span, Unnormalized::new_wip(count)),
+                );
 
                 // Avoid run on "`NotCopy: Copy` is not implemented" errors when the
                 // repeat expr count is erroneous/unknown. The user might wind up
@@ -183,6 +185,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // The expressions for each provided argument
         provided_args: &'tcx [hir::Expr<'tcx>],
         // Whether the function is variadic, for example when imported from C
+        // FIXME(splat): maybe change this to FnSigKind?
         c_variadic: bool,
         // Whether the arguments have been bundled in a tuple (ex: closures)
         tuple_arguments: TupleArgumentsFlag,
@@ -494,7 +497,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // There are a few types which get autopromoted when passed via varargs
                 // in C but we just error out instead and require explicit casts.
+                //
+                // We use implementations of VaArgSafe as the source of truth. On some embedded
+                // targets, c_double is f32 and c_int/c_uing are i16/u16, and these types implement
+                // VaArgSafe there. On all other targets, these types do not implement VaArgSafe.
+                //
+                // cfg(bootstrap): change the if let to an unwrap.
                 let arg_ty = self.structurally_resolve_type(arg.span, arg_ty);
+                if let Some(trait_def_id) = tcx.lang_items().va_arg_safe()
+                    && self
+                        .type_implements_trait(trait_def_id, [arg_ty], self.param_env)
+                        .must_apply_modulo_regions()
+                {
+                    continue;
+                }
+
                 match arg_ty.kind() {
                     ty::Float(ty::FloatTy::F32) => {
                         variadic_error(tcx.sess, arg.span, arg_ty, "c_double");
@@ -1391,7 +1408,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // fn-like predicates with different args, but callable types really never
                         // do that, so it's OK.
                         for (predicate, span) in instantiated {
-                            if let ty::ClauseKind::Trait(pred) = predicate.kind().skip_binder()
+                            if let ty::ClauseKind::Trait(pred) =
+                                predicate.skip_norm_wip().kind().skip_binder()
                                 && pred.self_ty().peel_refs() == callee_ty
                                 && self.tcx.is_fn_trait(pred.def_id())
                             {
@@ -1794,14 +1812,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (Some(_), Some(_)) | (None, None) => unreachable!(),
             (Some(body), None) => {
                 let params = self.tcx.hir_body(body).params;
-                let params =
-                    params.get(is_method as usize..params.len() - sig.decl.c_variadic as usize)?;
+                let params = params
+                    .get(is_method as usize..params.len() - sig.decl.c_variadic() as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());
                 Some((fn_inputs.zip(params.iter().map(FnParam::Param)).collect(), generics))
             }
             (None, Some(params)) => {
-                let params =
-                    params.get(is_method as usize..params.len() - sig.decl.c_variadic as usize)?;
+                let params = params
+                    .get(is_method as usize..params.len() - sig.decl.c_variadic() as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());
                 Some((
                     fn_inputs.zip(params.iter().map(|&ident| FnParam::Ident(ident))).collect(),
@@ -3015,7 +3033,8 @@ impl<'a, 'b, 'tcx> ArgsCtxt<'a, 'b, 'tcx> {
                 .fn_ctxt
                 .tcx
                 .fn_sig(assoc.def_id)
-                .instantiate(self.call_ctxt.fn_ctxt.tcx, args);
+                .instantiate(self.call_ctxt.fn_ctxt.tcx, args)
+                .skip_norm_wip();
 
             self.call_ctxt.fn_ctxt.instantiate_binder_with_fresh_vars(
                 call_name.span,

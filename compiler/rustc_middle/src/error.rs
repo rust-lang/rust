@@ -37,7 +37,7 @@ pub(crate) struct OpaqueHiddenTypeMismatch<'tcx> {
 }
 
 #[derive(Subdiagnostic)]
-pub enum TypeMismatchReason {
+pub(crate) enum TypeMismatchReason {
     #[label("this expression supplies two conflicting concrete types for the same opaque type")]
     ConflictType {
         #[primary_span]

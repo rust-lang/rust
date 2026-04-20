@@ -40,6 +40,7 @@ use rustc_hir as hir;
 use rustc_hir::attrs::StrippedCfgItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
+use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::{LangItem, attrs as attr, find_attr};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
@@ -96,7 +97,8 @@ pub use self::predicate::{
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
     PolyProjectionPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
     PolyTraitRef, PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,
-    RegionOutlivesPredicate, SubtypePredicate, TraitPredicate, TraitRef, TypeOutlivesPredicate,
+    RegionConstraint, RegionEqPredicate, RegionOutlivesPredicate, SubtypePredicate, TraitPredicate,
+    TraitRef, TypeOutlivesPredicate,
 };
 pub use self::region::{
     EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region, RegionKind, RegionVid,
@@ -104,9 +106,9 @@ pub use self::region::{
 pub use self::sty::{
     AliasTy, AliasTyKind, Article, Binder, BoundConst, BoundRegion, BoundRegionKind, BoundTy,
     BoundTyKind, BoundVariableKind, CanonicalPolyFnSig, CoroutineArgsExt, EarlyBinder, FnSig,
-    InlineConstArgs, InlineConstArgsParts, ParamConst, ParamTy, PlaceholderConst,
+    FnSigKind, InlineConstArgs, InlineConstArgsParts, ParamConst, ParamTy, PlaceholderConst,
     PlaceholderRegion, PlaceholderType, PolyFnSig, TyKind, TypeAndMut, TypingMode,
-    TypingModeEqWrapper, UpvarArgs,
+    TypingModeEqWrapper, Unnormalized, UpvarArgs,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -224,6 +226,8 @@ pub struct ResolverAstLowering<'tcx> {
 
     // Information about delegations which is used when handling recursive delegations
     pub delegation_infos: LocalDefIdMap<DelegationInfo>,
+
+    pub per_parent_disambiguators: LocalDefIdMap<Steal<PerParentDisambiguatorState>>,
 }
 
 #[derive(Debug)]
@@ -691,7 +695,7 @@ impl<'tcx> TermKind<'tcx> {
 /// [usize:Bar<isize>]]`.
 #[derive(Clone, Debug)]
 pub struct InstantiatedPredicates<'tcx> {
-    pub predicates: Vec<Clause<'tcx>>,
+    pub predicates: Vec<Unnormalized<'tcx, Clause<'tcx>>>,
     pub spans: Vec<Span>,
 }
 
@@ -710,9 +714,12 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
 }
 
 impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
-    type Item = (Clause<'tcx>, Span);
+    type Item = (Unnormalized<'tcx, Clause<'tcx>>, Span);
 
-    type IntoIter = std::iter::Zip<std::vec::IntoIter<Clause<'tcx>>, std::vec::IntoIter<Span>>;
+    type IntoIter = std::iter::Zip<
+        std::vec::IntoIter<Unnormalized<'tcx, Clause<'tcx>>>,
+        std::vec::IntoIter<Span>,
+    >;
 
     fn into_iter(self) -> Self::IntoIter {
         debug_assert_eq!(self.predicates.len(), self.spans.len());
@@ -721,10 +728,10 @@ impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
 }
 
 impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
-    type Item = (Clause<'tcx>, Span);
+    type Item = (Unnormalized<'tcx, Clause<'tcx>>, Span);
 
     type IntoIter = std::iter::Zip<
-        std::iter::Copied<std::slice::Iter<'a, Clause<'tcx>>>,
+        std::iter::Copied<std::slice::Iter<'a, Unnormalized<'tcx, Clause<'tcx>>>>,
         std::iter::Copied<std::slice::Iter<'a, Span>>,
     >;
 
@@ -878,8 +885,8 @@ impl<'tcx> DefinitionSiteHiddenType<'tcx> {
         other: &Self,
         tcx: TyCtxt<'tcx>,
     ) -> Result<Diag<'tcx>, ErrorGuaranteed> {
-        let self_ty = self.ty.instantiate_identity();
-        let other_ty = other.ty.instantiate_identity();
+        let self_ty = self.ty.instantiate_identity().skip_norm_wip();
+        let other_ty = other.ty.instantiate_identity().skip_norm_wip();
         (self_ty, other_ty).error_reported()?;
         // Found different concrete types for the opaque type.
         let sub_diag = if self.span == other.span {
@@ -1377,7 +1384,7 @@ impl<'tcx> FieldDef {
     /// Returns the type of this field. The resulting type is not normalized. The `arg` is
     /// typically obtained via the second field of [`TyKind::Adt`].
     pub fn ty(&self, tcx: TyCtxt<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
-        tcx.type_of(self.did).instantiate(tcx, args)
+        tcx.type_of(self.did).instantiate(tcx, args).skip_norm_wip()
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`
@@ -1777,7 +1784,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // If we have a `Coroutine` that comes from an coroutine-closure,
             // then it may be a by-move or by-ref body.
             let ty::Coroutine(_, identity_args) =
-                *self.type_of(def_id).instantiate_identity().kind()
+                *self.type_of(def_id).instantiate_identity().skip_norm_wip().kind()
             else {
                 unreachable!();
             };

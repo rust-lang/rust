@@ -12,6 +12,8 @@ use std::path::Path;
 #[serde(deny_unknown_fields)]
 struct ReturnType {
     value: String,
+    #[serde(rename = "element_bit_size")]
+    _element_bit_size: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -50,6 +52,8 @@ struct JsonIntrinsic {
     args_prep: Option<HashMap<String, Value>>,
     #[serde(rename = "Architectures")]
     architectures: Vec<String>,
+    #[serde(rename = "instructions")]
+    _instructions: Option<Vec<Vec<String>>>,
 }
 
 pub fn get_neon_intrinsics(

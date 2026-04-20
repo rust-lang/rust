@@ -98,6 +98,17 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    pub fn register_region_eq_constraint(
+        &self,
+        ty::RegionEqPredicate(r_a, r_b): ty::RegionEqPredicate<'tcx>,
+        cause: &ObligationCause<'tcx>,
+    ) {
+        let origin = SubregionOrigin::from_obligation_cause(cause, || {
+            SubregionOrigin::RelateRegionParamBound(cause.span, None)
+        });
+        self.equate_regions(origin, r_a, r_b);
+    }
+
     pub fn register_region_outlives_constraint(
         &self,
         ty::OutlivesPredicate(r_a, r_b): ty::RegionOutlivesPredicate<'tcx>,

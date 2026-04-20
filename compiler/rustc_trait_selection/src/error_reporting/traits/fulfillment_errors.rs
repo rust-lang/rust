@@ -4,7 +4,6 @@ use std::borrow::Cow;
 use std::collections::hash_set;
 use std::path::PathBuf;
 
-use rustc_abi::ExternAbi;
 use rustc_ast::ast::LitKind;
 use rustc_ast::{LitIntType, TraitObjectSyntax};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -31,7 +30,7 @@ use rustc_middle::ty::print::{
 };
 use rustc_middle::ty::{
     self, GenericArgKind, TraitRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeVisitableExt, Upcast,
+    TypeVisitableExt, Unnormalized, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::CrateNum;
@@ -1538,7 +1537,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // FIXME(-Znext-solver): For diagnostic purposes, it would be nice
                     // to deeply normalize this type.
                     let normalized_term =
-                        ocx.normalize(&obligation.cause, obligation.param_env, unnormalized_term);
+                        ocx.normalize(&obligation.cause, obligation.param_env, Unnormalized::new_wip(unnormalized_term));
 
                     // constrain inference variables a bit more to nested obligations from normalize so
                     // we can have more helpful errors.
@@ -1570,7 +1569,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             let Ok(normalized_term) = ocx.structurally_normalize_term(
                                 &ObligationCause::dummy(),
                                 obligation.param_env,
-                                alias_term.to_term(self.tcx),
+                                Unnormalized::new_wip(alias_term.to_term(self.tcx)),
                             ) else {
                                 return None;
                             };
@@ -1987,7 +1986,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 .filter_map(|(header, def_id)| {
                     (header.polarity == ty::ImplPolarity::Positive
                         || self.tcx.is_automatically_derived(def_id))
-                    .then(|| (header.trait_ref.instantiate_identity(), def_id))
+                    .then(|| (header.trait_ref.instantiate_identity().skip_norm_wip(), def_id))
                 })
                 .filter(|(trait_ref, _)| {
                     let self_ty = trait_ref.self_ty();
@@ -2056,7 +2055,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     self.tcx,
                                     ObligationCause::dummy(),
                                     param_env,
-                                    clause,
+                                    clause.skip_norm_wip(),
                                 )
                             }),
                     );
@@ -2393,7 +2392,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .tcx
                     .try_normalize_erasing_regions(
                         ty::TypingEnv::non_body_analysis(self.tcx, cand.impl_def_id),
-                        cand.trait_ref,
+                        Unnormalized::new_wip(cand.trait_ref),
                     )
                     .unwrap_or(cand.trait_ref);
                 cand
@@ -2714,8 +2713,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let cleaned_pred =
                 pred.fold_with(&mut ParamToVarFolder { infcx: self, var_map: Default::default() });
 
-            let InferOk { value: cleaned_pred, .. } =
-                self.infcx.at(&ObligationCause::dummy(), param_env).normalize(cleaned_pred);
+            let InferOk { value: cleaned_pred, .. } = self
+                .infcx
+                .at(&ObligationCause::dummy(), param_env)
+                .normalize(Unnormalized::new_wip(cleaned_pred));
 
             let obligation =
                 Obligation::new(self.tcx, ObligationCause::dummy(), param_env, cleaned_pred);
@@ -2818,7 +2819,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Ok(assume) = ocx.structurally_normalize_const(
             &obligation.cause,
             obligation.param_env,
-            trait_ref.args.const_at(2),
+            Unnormalized::new_wip(trait_ref.args.const_at(2)),
         ) else {
             return (obligation.clone(), trait_predicate);
         };
@@ -2871,7 +2872,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let Ok(assume) = ocx.structurally_normalize_const(
                 &obligation.cause,
                 obligation.param_env,
-                trait_pred.trait_ref.args.const_at(2),
+                Unnormalized::new_wip(trait_pred.trait_ref.args.const_at(2)),
             ) else {
                 self.dcx().span_delayed_bug(
                     span,
@@ -3203,23 +3204,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let given_ty = Ty::new_fn_ptr(
             self.tcx,
-            params.rebind(self.tcx.mk_fn_sig(
-                given,
-                self.tcx.types.unit,
-                false,
-                hir::Safety::Safe,
-                ExternAbi::Rust,
-            )),
+            params.rebind(self.tcx.mk_fn_sig_safe_rust_abi(given, self.tcx.types.unit)),
         );
         let expected_ty = Ty::new_fn_ptr(
             self.tcx,
-            trait_pred.rebind(self.tcx.mk_fn_sig(
-                expected,
-                self.tcx.types.unit,
-                false,
-                hir::Safety::Safe,
-                ExternAbi::Rust,
-            )),
+            trait_pred.rebind(self.tcx.mk_fn_sig_safe_rust_abi(expected, self.tcx.types.unit)),
         );
 
         if !self.same_type_modulo_infer(given_ty, expected_ty) {
@@ -3664,7 +3653,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         self.dcx().struct_span_err(span, "unconstrained generic constant");
                     let const_span = self.tcx.def_span(uv.def);
 
-                    let const_ty = self.tcx.type_of(uv.def).instantiate(self.tcx, uv.args);
+                    let const_ty =
+                        self.tcx.type_of(uv.def).instantiate(self.tcx, uv.args).skip_norm_wip();
                     let cast = if const_ty != self.tcx.types.usize { " as usize" } else { "" };
                     let msg = "try adding a `where` bound";
                     match self.tcx.sess.source_map().span_to_snippet(const_span) {

@@ -3,7 +3,9 @@ use std::fmt;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
 pub use rustc_middle::traits::query::type_op::{DeeplyNormalize, Normalize};
-use rustc_middle::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, Lift, ParamEnvAnd, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Unnormalized,
+};
 use rustc_span::Span;
 
 use crate::infer::canonical::{CanonicalQueryInput, CanonicalQueryResponse};
@@ -71,7 +73,7 @@ where
         ocx.deeply_normalize(
             &ObligationCause::dummy_with_span(span),
             key.param_env,
-            key.value.value,
+            Unnormalized::new_wip(key.value.value),
         )
         .map_err(|_| NoSolution)
     }

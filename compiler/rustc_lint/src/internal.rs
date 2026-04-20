@@ -141,7 +141,7 @@ fn has_unstable_into_iter_predicate<'tcx>(
         }
         // `IntoIterator::into_iter` has no additional method args.
         let into_iter_fn_args =
-            cx.tcx.instantiate_bound_regions_with_erased(trait_pred).trait_ref.args;
+            cx.tcx.instantiate_bound_regions_with_erased(trait_pred.skip_norm_wip()).trait_ref.args;
         let Ok(Some(instance)) = ty::Instance::try_resolve(
             cx.tcx,
             cx.typing_env(),
@@ -292,7 +292,8 @@ fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, path: &hir::Path<'_>) -> Option<String
         }
         // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
         Res::SelfTyAlias { alias_to: did, is_trait_impl: false, .. } => {
-            if let ty::Adt(adt, args) = cx.tcx.type_of(did).instantiate_identity().kind()
+            if let ty::Adt(adt, args) =
+                cx.tcx.type_of(did).instantiate_identity().skip_norm_wip().kind()
                 && let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(adt.did())
             {
                 return Some(format!("{}<{}>", name, args[0]));

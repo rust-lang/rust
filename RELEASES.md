@@ -1,5 +1,5 @@
-Version 1.95 (2026-04-16)
-==========================
+Version 1.95.0 (2026-04-16)
+===========================
 
 <a id="1.95-Language"></a>
 
@@ -18,8 +18,9 @@ Language
 
 Compiler
 --------
-- [Stabilize `--remap-path-scope` for controlling the scoping of how paths get remapped in the resulting binary](https://github.com/rust-lang/rust/pull/147611)
 
+- [Stabilize `--remap-path-scope` for controlling the scoping of how paths get remapped in the resulting binary](https://github.com/rust-lang/rust/pull/147611)
+- [Apply patches for CVE-2026-6042 and CVE-2026-40200 to vendored musl](https://github.com/rust-lang/rust/pull/155171)
 
 <a id="1.95-Platform-Support"></a>
 
@@ -78,7 +79,17 @@ Stabilized APIs
 - [`<*const T>::as_ref_unchecked`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.as_ref_unchecked)
 - [`<*mut T>::as_ref_unchecked`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.as_ref_unchecked-1)
 - [`<*mut T>::as_mut_unchecked`](https://doc.rust-lang.org/stable/std/primitive.pointer.html#method.as_mut_unchecked)
-
+- [`Vec::push_mut`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.push_mut)
+- [`Vec::insert_mut`](https://doc.rust-lang.org/stable/std/vec/struct.Vec.html#method.insert_mut)
+- [`VecDeque::push_front_mut`](https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.push_front_mut)
+- [`VecDeque::push_back_mut`](https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.push_back_mut)
+- [`VecDeque::insert_mut`](https://doc.rust-lang.org/stable/std/collections/struct.VecDeque.html#method.insert_mut)
+- [`LinkedList::push_front_mut`](https://doc.rust-lang.org/stable/std/collections/struct.LinkedList.html#method.push_front_mut)
+- [`LinkedList::push_back_mut`](https://doc.rust-lang.org/stable/std/collections/struct.LinkedList.html#method.push_back_mut)
+- [`Layout::dangling_ptr`](https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.dangling_ptr)
+- [`Layout::repeat`](https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.repeat)
+- [`Layout::repeat_packed`](https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.repeat_packed)
+- [`Layout::extend_packed`](https://doc.rust-lang.org/stable/std/alloc/struct.Layout.html#method.extend_packed)
 
 These previously stable APIs are now stable in const contexts:
 
@@ -86,17 +97,13 @@ These previously stable APIs are now stable in const contexts:
 - [`ControlFlow::is_break`](https://doc.rust-lang.org/stable/core/ops/enum.ControlFlow.html#method.is_break)
 - [`ControlFlow::is_continue`](https://doc.rust-lang.org/stable/core/ops/enum.ControlFlow.html#method.is_continue)
 
-
-<a id="1.95-Cargo"></a>
-
-Cargo
------
-- [docs(report): enhance man pages for `cargo report *`](https://github.com/rust-lang/cargo/pull/16430/)<a id="1.95-Rustdoc"></a>
+<a id="1.95-Rustdoc"></a>
 
 Rustdoc
 -----
 - [In search results, rank unstable items lower](https://github.com/rust-lang/rust/pull/149460)
 - [Add new "hide deprecated items" setting in rustdoc](https://github.com/rust-lang/rust/pull/151091)
+
 <a id="1.95-Compatibility-Notes"></a>
 
 Compatibility Notes
@@ -115,7 +122,6 @@ Compatibility Notes
 - [Add future-compatibility warning for derive helper attributes which conflict with built-in attributes](https://github.com/rust-lang/rust/pull/151152)
 - [JSON target specs](https://doc.rust-lang.org/rustc/targets/custom.html) have been destabilized and now require `-Z unstable-options` to use. Previously, they could not be used without the standard library, which has no stable build mechanism. In preparation for the `build-std` project adding that support, JSON target specs are being proactively gated to ensure they remain unstable even if `build-std` is stabilized. Cargo now includes the `-Z json-target-spec` CLI flag to automatically pass `-Z unstable-options` to the compiler when needed. See [#150151](https://github.com/rust-lang/rust/pull/150151), [#151534](https://github.com/rust-lang/rust/pull/150151), and [rust-lang/cargo#16557](https://github.com/rust-lang/cargo/pull/16557).
 - [The arguments of `#[feature]` attributes on invalid targets are now checked](https://github.com/rust-lang/rust/issues/153764)
-
 
 <a id="1.95-Internal-Changes"></a>
 

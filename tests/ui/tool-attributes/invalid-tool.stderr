@@ -3,9 +3,14 @@ error[E0539]: malformed `register_tool` attribute input
    |
 LL | #![register_tool(1)]
    | ^^^^^^^^^^^^^^^^^-^^
-   | |                |
-   | |                expected a valid identifier here
-   | help: must be of the form: `#![register_tool(tool1, tool2, ...)]`
+   |                  |
+   |                  expected a valid identifier here
+   |
+help: must be of the form
+   |
+LL - #![register_tool(1)]
+LL + #![register_tool(tool1, tool2, ...)]
+   |
 
 error: aborting due to 1 previous error
 

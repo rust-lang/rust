@@ -20,7 +20,9 @@ use rustc_middle::bug;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{
+    self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
+};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, sym};
 use specialization_graph::GraphExt;
@@ -117,7 +119,7 @@ pub fn translate_args_with_cause<'tcx>(
         param_env, source_impl, source_args, target_node
     );
     let source_trait_ref =
-        infcx.tcx.impl_trait_ref(source_impl).instantiate(infcx.tcx, source_args);
+        infcx.tcx.impl_trait_ref(source_impl).instantiate(infcx.tcx, source_args).skip_norm_wip();
 
     // translate the Self and Param parts of the generic parameters, since those
     // vary across impls
@@ -162,7 +164,7 @@ fn fulfill_implication<'tcx>(
     );
 
     let ocx = ObligationCtxt::new(infcx);
-    let source_trait_ref = ocx.normalize(cause, param_env, source_trait_ref);
+    let source_trait_ref = ocx.normalize(cause, param_env, Unnormalized::new_wip(source_trait_ref));
 
     if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
         infcx.dcx().span_delayed_bug(
@@ -348,11 +350,11 @@ pub(super) fn specializes(
             return false;
         }
 
-        let const_conditions = ocx.normalize(
-            cause,
-            param_env,
-            infcx.tcx.const_conditions(parent_impl_def_id).instantiate(infcx.tcx, parent_args),
-        );
+        let const_conditions =
+            infcx.tcx.const_conditions(parent_impl_def_id).instantiate(infcx.tcx, parent_args);
+        let const_conditions = const_conditions
+            .into_iter()
+            .map(|(trait_ref, span)| (ocx.normalize(cause, param_env, trait_ref), span));
         ocx.register_obligations(const_conditions.into_iter().map(|(trait_ref, _)| {
             Obligation::new(
                 infcx.tcx,

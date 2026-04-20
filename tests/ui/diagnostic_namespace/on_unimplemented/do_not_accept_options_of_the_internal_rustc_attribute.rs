@@ -4,19 +4,19 @@
 //@ reference: attributes.diagnostic.on_unimplemented.invalid-formats
 #[diagnostic::on_unimplemented(
     on(Self = "&str"),
-    //~^WARN malformed `on_unimplemented` attribute
+    //~^WARN malformed `diagnostic::on_unimplemented` attribute
     message = "trait has `{Self}` and `{T}` as params",
     label = "trait has `{Self}` and `{T}` as params",
     note  = "trait has `{Self}` and `{T}` as params",
     parent_label = "in this scope",
-    //~^WARN malformed `on_unimplemented` attribute
+    //~^WARN malformed `diagnostic::on_unimplemented` attribute
     append_const_msg
-    //~^WARN malformed `on_unimplemented` attribute
+    //~^WARN malformed `diagnostic::on_unimplemented` attribute
 )]
 trait Foo<T> {}
 
 #[diagnostic::on_unimplemented = "Message"]
-//~^WARN malformed `on_unimplemented` attribute
+//~^WARN malformed `diagnostic::on_unimplemented` attribute
 trait Bar {}
 
 #[diagnostic::on_unimplemented(message = "Not allowed to apply it on a impl")]

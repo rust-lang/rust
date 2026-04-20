@@ -25,7 +25,7 @@ use rustc_errors::{
     StashKey, Suggestions, elided_lifetime_in_path_suggestion, pluralize,
 };
 use rustc_hir::def::Namespace::{self, *};
-use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
+use rustc_hir::def::{CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate};
 use rustc_middle::middle::resolve_bound_vars::Set1;
@@ -40,14 +40,12 @@ use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
 
 use crate::{
-    BindingError, BindingKey, Decl, DelegationFnSig, Finalize, IdentKey, LateDecl, Module,
-    ModuleOrUniformRoot, ParentScope, PathResult, ResolutionError, Resolver, Segment, Stage,
-    TyCtxt, UseError, Used, errors, path_names_to_string, rustdoc,
+    BindingError, BindingKey, Decl, DelegationFnSig, Finalize, IdentKey, LateDecl, LocalModule,
+    Module, ModuleOrUniformRoot, ParentScope, PathResult, Res, ResolutionError, Resolver, Segment,
+    Stage, TyCtxt, UseError, Used, errors, path_names_to_string, rustdoc,
 };
 
 mod diagnostics;
-
-type Res = def::Res<NodeId>;
 
 use diagnostics::{ElisionFnParameter, LifetimeElisionCandidate, MissingLifetime};
 
@@ -198,7 +196,7 @@ pub(crate) enum RibKind<'ra> {
     /// `Block(None)` must be always processed in the same way as `Block(Some(module))`
     /// with empty `module`. The module can be `None` only because creation of some definitely
     /// empty modules is skipped as an optimization.
-    Block(Option<Module<'ra>>),
+    Block(Option<LocalModule<'ra>>),
 
     /// We passed through an impl or trait and are now in one of its
     /// methods or associated types. Allow references to ty params that impl or trait
@@ -219,7 +217,7 @@ pub(crate) enum RibKind<'ra> {
     ConstantItem(ConstantHasGenerics, Option<(Ident, ConstantItemKind)>),
 
     /// We passed through a module item.
-    Module(Module<'ra>),
+    Module(LocalModule<'ra>),
 
     /// We passed through a `macro_rules!` statement
     MacroDefinition(DefId),
@@ -1475,7 +1473,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // During late resolution we only track the module component of the parent scope,
         // although it may be useful to track other components as well for diagnostics.
         let graph_root = resolver.graph_root;
-        let parent_scope = ParentScope::module(graph_root, resolver.arenas);
+        let parent_scope = ParentScope::module(graph_root.to_module(), resolver.arenas);
         let start_rib_kind = RibKind::Module(graph_root);
         LateResolutionVisitor {
             r: resolver,
@@ -2877,8 +2875,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             ItemKind::Mod(..) => {
                 let module = self.r.expect_module(self.r.local_def_id(item.id).to_def_id());
                 let orig_module = replace(&mut self.parent_scope.module, module);
-                self.with_rib(ValueNS, RibKind::Module(module), |this| {
-                    this.with_rib(TypeNS, RibKind::Module(module), |this| {
+                self.with_rib(ValueNS, RibKind::Module(module.expect_local()), |this| {
+                    this.with_rib(TypeNS, RibKind::Module(module.expect_local()), |this| {
                         if mod_inner_docs {
                             this.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
                         }
@@ -5017,7 +5015,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             debug!("(resolving block) found anonymous module, moving down");
             self.ribs[ValueNS].push(Rib::new(RibKind::Block(Some(anonymous_module))));
             self.ribs[TypeNS].push(Rib::new(RibKind::Block(Some(anonymous_module))));
-            self.parent_scope.module = anonymous_module;
+            self.parent_scope.module = anonymous_module.to_module();
         } else {
             self.ribs[ValueNS].push(Rib::new(RibKind::Block(None)));
         }

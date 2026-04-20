@@ -54,7 +54,7 @@ pub(crate) fn check_drop_impl(
 
     tcx.ensure_result().orphan_check_impl(drop_impl_did)?;
 
-    let self_ty = tcx.type_of(drop_impl_did).instantiate_identity();
+    let self_ty = tcx.type_of(drop_impl_did).instantiate_identity().skip_norm_wip();
 
     match self_ty.kind() {
         ty::Adt(adt_def, adt_to_impl_args) => {
@@ -206,11 +206,13 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     // reference the params from the ADT instead of from the impl which is bad UX. To resolve
     // this we "rename" the ADT's params to be the impl's params which should not affect behaviour.
     let impl_adt_ty = Ty::new_adt(tcx, tcx.adt_def(adt_def_id), adt_to_impl_args);
-    let adt_env =
-        ty::EarlyBinder::bind(tcx.param_env(adt_def_id)).instantiate(tcx, adt_to_impl_args);
+    let adt_env = ty::EarlyBinder::bind(tcx.param_env(adt_def_id))
+        .instantiate(tcx, adt_to_impl_args)
+        .skip_norm_wip();
 
     let fresh_impl_args = infcx.fresh_args_for_item(impl_span, impl_def_id.to_def_id());
-    let fresh_adt_ty = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, fresh_impl_args).self_ty();
+    let fresh_adt_ty =
+        tcx.impl_trait_ref(impl_def_id).instantiate(tcx, fresh_impl_args).skip_norm_wip().self_ty();
 
     ocx.eq(&ObligationCause::dummy_with_span(impl_span), adt_env, fresh_adt_ty, impl_adt_ty)
         .expect("equating fully generic trait ref should never fail");

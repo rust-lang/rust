@@ -178,7 +178,7 @@ impl Alignment {
     /// Returns the alignment as a <code>[NonZero]<[usize]></code>.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[deprecated(
-        since = "CURRENT_RUSTC_VERSION",
+        since = "1.96.0",
         note = "renamed to `as_nonzero_usize`",
         suggestion = "as_nonzero_usize"
     )]
@@ -281,7 +281,7 @@ impl const TryFrom<usize> for Alignment {
 
     #[inline]
     fn try_from(align: usize) -> Result<Alignment, Self::Error> {
-        Self::new(align).ok_or(num::TryFromIntError(()))
+        Self::new(align).ok_or(num::TryFromIntError(num::IntErrorKind::NotAPowerOfTwo))
     }
 }
 

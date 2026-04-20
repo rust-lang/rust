@@ -116,12 +116,13 @@ use rustc_middle::mir::interpret::{AllocRange, GlobalAlloc};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::HasTypingEnv;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
+use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_span::DUMMY_SP;
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
-use crate::ssa::SsaLocals;
+use crate::ssa::{MaybeUninitializedLocals, SsaLocals};
 
 pub(super) struct GVN;
 
@@ -154,10 +155,34 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
             state.visit_basic_block_data(bb, data);
         }
 
-        // For each local that is reused (`y` above), we remove its storage statements do avoid any
-        // difficulty. Those locals are SSA, so should be easy to optimize by LLVM without storage
-        // statements.
-        StorageRemover { tcx, reused_locals: state.reused_locals }.visit_body_preserves_cfg(body);
+        // When emitting storage statements, we want to retain the reused locals' storage statements,
+        // as this enables better optimizations. For each local use location, we mark it for storage removal
+        // only if it might be uninitialized at that point.
+        let storage_to_remove = if tcx.sess.emit_lifetime_markers() {
+            let maybe_uninit = MaybeUninitializedLocals
+                .iterate_to_fixpoint(tcx, body, Some("mir_opt::gvn"))
+                .into_results_cursor(body);
+
+            let mut storage_checker = StorageChecker {
+                reused_locals: &state.reused_locals,
+                storage_to_remove: DenseBitSet::new_empty(body.local_decls.len()),
+                maybe_uninit,
+            };
+
+            for (bb, data) in traversal::reachable(body) {
+                storage_checker.visit_basic_block_data(bb, data);
+            }
+
+            storage_checker.storage_to_remove
+        } else {
+            // Remove the storage statements of all the reused locals.
+            state.reused_locals.clone()
+        };
+
+        debug!(?storage_to_remove);
+
+        StorageRemover { tcx, reused_locals: state.reused_locals, storage_to_remove }
+            .visit_body_preserves_cfg(body);
     }
 
     fn is_required(&self) -> bool {
@@ -1632,10 +1657,13 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         let right_meta_ty = right_ptr_ty.pointee_metadata_ty_or_projection(self.tcx);
         if left_meta_ty == right_meta_ty {
             true
-        } else if let Ok(left) =
-            self.tcx.try_normalize_erasing_regions(self.typing_env(), left_meta_ty)
-            && let Ok(right) =
-                self.tcx.try_normalize_erasing_regions(self.typing_env(), right_meta_ty)
+        } else if let Ok(left) = self
+            .tcx
+            .try_normalize_erasing_regions(self.typing_env(), Unnormalized::new_wip(left_meta_ty))
+            && let Ok(right) = self.tcx.try_normalize_erasing_regions(
+                self.typing_env(),
+                Unnormalized::new_wip(right_meta_ty),
+            )
         {
             left == right
         } else {
@@ -2033,6 +2061,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
 struct StorageRemover<'tcx> {
     tcx: TyCtxt<'tcx>,
     reused_locals: DenseBitSet<Local>,
+    storage_to_remove: DenseBitSet<Local>,
 }
 
 impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
@@ -2053,11 +2082,53 @@ impl<'tcx> MutVisitor<'tcx> for StorageRemover<'tcx> {
         match stmt.kind {
             // When removing storage statements, we need to remove both (#107511).
             StatementKind::StorageLive(l) | StatementKind::StorageDead(l)
-                if self.reused_locals.contains(l) =>
+                if self.storage_to_remove.contains(l) =>
             {
                 stmt.make_nop(true)
             }
             _ => self.super_statement(stmt, loc),
+        }
+    }
+}
+
+struct StorageChecker<'a, 'tcx> {
+    reused_locals: &'a DenseBitSet<Local>,
+    storage_to_remove: DenseBitSet<Local>,
+    maybe_uninit: ResultsCursor<'a, 'tcx, MaybeUninitializedLocals>,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for StorageChecker<'a, 'tcx> {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
+        match context {
+            // These mutating uses do not require the local to be initialized,
+            // so we cannot use our maybe-uninit check on them.
+            // However, GVN doesn't introduce or move mutations,
+            // so this local must already have valid storage at this location.
+            PlaceContext::MutatingUse(MutatingUseContext::AsmOutput)
+            | PlaceContext::MutatingUse(MutatingUseContext::Call)
+            | PlaceContext::MutatingUse(MutatingUseContext::Store)
+            | PlaceContext::MutatingUse(MutatingUseContext::Yield)
+            | PlaceContext::NonUse(_) => {
+                return;
+            }
+            // Must check validity for other mutating usages and all non-mutating uses.
+            PlaceContext::MutatingUse(_) | PlaceContext::NonMutatingUse(_) => {}
+        }
+
+        // We only need to check reused locals which we haven't already removed storage for.
+        if !self.reused_locals.contains(local) || self.storage_to_remove.contains(local) {
+            return;
+        }
+
+        self.maybe_uninit.seek_before_primary_effect(location);
+
+        if self.maybe_uninit.get().contains(local) {
+            debug!(
+                ?location,
+                ?local,
+                "local is reused and is maybe uninit at this location, marking it for storage statement removal"
+            );
+            self.storage_to_remove.insert(local);
         }
     }
 }

@@ -72,11 +72,15 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb4: {
+        StorageLive(_7);
         _7 = copy _4;
         _4 = AddUnchecked(copy _7, const 1_usize);
         _8 = Option::<usize>::Some(copy _7);
+        StorageDead(_7);
         StorageDead(_6);
+        StorageLive(_9);
         _9 = copy ((_8 as Some).0: usize);
+        StorageLive(_11);
         _10 = Lt(copy _9, copy _3);
         assert(move _10, "index out of bounds: the length is {} but the index is {}", copy _3, copy _9) -> [success: bb5, unwind: bb7];
     }
@@ -93,6 +97,8 @@ fn range_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     bb6: {
         StorageDead(_13);
         StorageDead(_12);
+        StorageDead(_11);
+        StorageDead(_9);
         StorageDead(_8);
         goto -> bb1;
     }

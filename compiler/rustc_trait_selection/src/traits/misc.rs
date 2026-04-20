@@ -4,7 +4,7 @@ use hir::LangItem;
 use rustc_ast::Mutability;
 use rustc_hir as hir;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
-use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
 use rustc_span::sym;
 
 use crate::regions::InferCtxtRegionExt;
@@ -234,7 +234,11 @@ pub fn all_fields_implement_trait<'tcx>(
             } else {
                 ObligationCause::dummy_with_span(field_ty_span)
             };
-            let ty = ocx.normalize(&normalization_cause, param_env, unnormalized_ty);
+            let ty = ocx.normalize(
+                &normalization_cause,
+                param_env,
+                Unnormalized::new_wip(unnormalized_ty),
+            );
             let normalization_errors = ocx.try_evaluate_obligations();
 
             // NOTE: The post-normalization type may also reference errors,

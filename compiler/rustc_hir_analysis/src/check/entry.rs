@@ -1,11 +1,10 @@
 use std::ops::Not;
 
-use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::{Node, find_attr};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, TyCtxt, TypingMode};
+use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized};
 use rustc_session::config::EntryFnType;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
@@ -24,12 +23,12 @@ pub(crate) fn check_for_entry_fn(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed>
 }
 
 fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) -> Result<(), ErrorGuaranteed> {
-    let main_fnsig = tcx.fn_sig(main_def_id).instantiate_identity();
+    let main_fnsig = tcx.fn_sig(main_def_id).instantiate_identity().skip_norm_wip();
     let main_span = tcx.def_span(main_def_id);
 
     fn main_fn_diagnostics_def_id(tcx: TyCtxt<'_>, def_id: DefId, sp: Span) -> LocalDefId {
         if let Some(local_def_id) = def_id.as_local() {
-            let hir_type = tcx.type_of(local_def_id).instantiate_identity();
+            let hir_type = tcx.type_of(local_def_id).instantiate_identity().skip_norm_wip();
             if !matches!(hir_type.kind(), ty::FnDef(..)) {
                 span_bug!(sp, "main has a non-function type: found `{}`", hir_type);
             }
@@ -130,7 +129,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) -> Result<(), ErrorGuar
             ObligationCauseCode::MainFunctionType,
         );
         let ocx = traits::ObligationCtxt::new_with_diagnostics(&infcx);
-        let norm_return_ty = ocx.normalize(&cause, param_env, return_ty);
+        let norm_return_ty = ocx.normalize(&cause, param_env, Unnormalized::new_wip(return_ty));
         ocx.register_bound(cause, param_env, norm_return_ty, term_did);
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
         if !errors.is_empty() {
@@ -152,13 +151,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) -> Result<(), ErrorGuar
         expected_return_type = tcx.types.unit;
     }
 
-    let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
-        [],
-        expected_return_type,
-        false,
-        hir::Safety::Safe,
-        ExternAbi::Rust,
-    ));
+    let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([], expected_return_type));
 
     check_function_signature(
         tcx,

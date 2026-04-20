@@ -589,6 +589,7 @@ impl str {
     #[rustc_as_ptr]
     #[must_use]
     #[inline(always)]
+    #[rustc_no_writable]
     pub const fn as_mut_ptr(&mut self) -> *mut u8 {
         self as *mut str as *mut u8
     }

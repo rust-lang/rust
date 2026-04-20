@@ -5,11 +5,12 @@
 #![feature(const_trait_impl)]
 #![feature(const_t_try)]
 #![feature(const_try)]
+#![feature(const_try_residual)]
 #![feature(try_trait_v2)]
-
+#![feature(try_trait_v2_residual)]
 #![stable(feature = "foo", since = "1.0")]
 
-use std::ops::{ControlFlow, FromResidual, Try};
+use std::ops::{ControlFlow, FromResidual, Residual, Try};
 
 #[stable(feature = "foo", since = "1.0")]
 pub struct T;
@@ -27,6 +28,12 @@ impl const Try for T {
     fn branch(self) -> ControlFlow<T, T> {
         ControlFlow::Continue(self)
     }
+}
+
+#[stable(feature = "foo", since = "1.0")]
+#[rustc_const_unstable(feature = "const_t_try", issue = "none")]
+impl const Residual<T> for T {
+    type TryType = T;
 }
 
 #[stable(feature = "foo", since = "1.0")]

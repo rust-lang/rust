@@ -19,7 +19,7 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Upcast,
+    self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
     suggest_constraining_type_params,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -965,7 +965,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let bound_vars =
                         self.tcx.late_bound_vars(self.tcx.local_def_id_to_hir_id(fn_id));
                     let ty = Binder::bind_with_vars(ty, bound_vars);
-                    let ty = self.normalize(hir_ty.span, ty);
+                    let ty = self.normalize(hir_ty.span, Unnormalized::new_wip(ty));
                     let ty = self.tcx.instantiate_bound_regions_with_erased(ty);
                     if self.may_coerce(expected, ty) {
                         err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other {
@@ -1231,7 +1231,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     ty::Asyncness::No => ty,
                 };
-                let ty = self.normalize(expr.span, ty);
+                let ty = self.normalize(expr.span, Unnormalized::new_wip(ty));
                 self.may_coerce(found, ty)
             }
             hir::FnRetTy::DefaultReturn(_) if in_closure => {
@@ -1839,7 +1839,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Same item
             return false;
         }
-        let item_ty = self.tcx.type_of(item.def_id).instantiate_identity();
+        let item_ty = self.tcx.type_of(item.def_id).instantiate_identity().skip_norm_wip();
         // FIXME(compiler-errors): This check is *so* rudimentary
         if item_ty.has_param() {
             return false;
@@ -3107,14 +3107,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         let deref_kind = if checked_ty.is_box() {
                             // detect Box::new(..)
-                            // FIXME: use `box_new` diagnostic item instead?
                             if let ExprKind::Call(box_new, [_]) = expr.kind
                                 && let ExprKind::Path(qpath) = &box_new.kind
                                 && let Res::Def(DefKind::AssocFn, fn_id) =
                                     self.typeck_results.borrow().qpath_res(qpath, box_new.hir_id)
-                                && let Some(impl_id) = self.tcx.inherent_impl_of_assoc(fn_id)
-                                && self.tcx.type_of(impl_id).skip_binder().is_box()
-                                && self.tcx.item_name(fn_id) == sym::new
+                                && self.tcx.is_diagnostic_item(sym::box_new, fn_id)
                             {
                                 let l_paren = self.tcx.sess.source_map().next_point(box_new.span);
                                 let r_paren = self.tcx.sess.source_map().end_point(expr.span);

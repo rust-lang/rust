@@ -8,7 +8,6 @@ impl<S: Stage> SingleAttributeParser<S> for CfiEncodingParser {
         Allow(Target::Enum),
         Allow(Target::Union),
     ]);
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "encoding");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {

@@ -131,12 +131,12 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
         let callee_sig =
             self.tcx.normalize_erasing_late_bound_regions(self.typing_env, ty.fn_sig(self.tcx));
 
-        if caller_sig.abi != callee_sig.abi {
-            self.report_abi_mismatch(expr.span, caller_sig.abi, callee_sig.abi);
+        if caller_sig.abi() != callee_sig.abi() {
+            self.report_abi_mismatch(expr.span, caller_sig.abi(), callee_sig.abi());
         }
 
-        if !callee_sig.abi.supports_guaranteed_tail_call() {
-            self.report_unsupported_abi(expr.span, callee_sig.abi);
+        if !callee_sig.abi().supports_guaranteed_tail_call() {
+            self.report_unsupported_abi(expr.span, callee_sig.abi());
         }
 
         // FIXME(explicit_tail_calls): this currently fails for cases where opaques are used.
@@ -180,11 +180,11 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             }
         }
 
-        if caller_sig.c_variadic {
+        if caller_sig.c_variadic() {
             self.report_c_variadic_caller(expr.span);
         }
 
-        if callee_sig.c_variadic {
+        if callee_sig.c_variadic() {
             self.report_c_variadic_callee(expr.span);
         }
     }

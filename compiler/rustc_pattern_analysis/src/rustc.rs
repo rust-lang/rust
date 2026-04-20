@@ -11,7 +11,8 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
+    self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized,
+    VariantDef,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -151,7 +152,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         self.typeck_results
             .hidden_types
             .get(&key.def_id)
-            .map(|x| x.ty.instantiate(self.tcx, key.args))
+            .map(|x| x.ty.instantiate(self.tcx, key.args).skip_norm_wip())
     }
     // This can take a non-revealed `Ty` because it reveals opaques itself.
     pub fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
@@ -195,7 +196,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             let ty = field.ty(self.tcx, args);
             // `field.ty()` doesn't normalize after instantiating.
             let ty =
-                self.tcx.try_normalize_erasing_regions(self.typing_env, ty).unwrap_or_else(|e| {
+                self.tcx.try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(ty)).unwrap_or_else(|e| {
                     self.tcx.dcx().span_delayed_bug(
                         self.scrut_span,
                         format!(

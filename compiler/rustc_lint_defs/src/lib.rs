@@ -652,120 +652,35 @@ pub enum DeprecatedSinceKind {
     InVersion(String),
 }
 
-#[derive(Debug, HashStable_Generic)]
+#[derive(Debug)]
 pub enum AttributeLintKind {
-    UnusedDuplicate {
-        this: Span,
-        other: Span,
-        warning: bool,
-    },
-    IllFormedAttributeInput {
-        suggestions: Vec<String>,
-        docs: Option<&'static str>,
-        help: Option<String>,
-    },
-    EmptyAttribute {
-        first_span: Span,
-        attr_path: String,
-        valid_without_list: bool,
-    },
-    InvalidTarget {
-        name: String,
-        target: &'static str,
-        applied: Vec<String>,
-        only: &'static str,
-        attr_span: Span,
-    },
-    InvalidStyle {
-        name: String,
-        is_used_as_inner: bool,
-        target: &'static str,
-        target_span: Span,
-    },
-    UnsafeAttrOutsideUnsafe {
-        attribute_name_span: Span,
-        sugg_spans: Option<(Span, Span)>,
-    },
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
-    DuplicateDocAlias {
-        first_definition: Span,
-    },
-    DocAutoCfgExpectsHideOrShow,
-    DocAutoCfgHideShowUnexpectedItem {
-        attr_name: Symbol,
-    },
-    DocAutoCfgHideShowExpectsList {
-        attr_name: Symbol,
-    },
+    DocAutoCfgHideShowUnexpectedItem { attr_name: Symbol },
+    DocAutoCfgHideShowExpectsList { attr_name: Symbol },
     DocInvalid,
     AmbiguousDeriveHelpers,
-    DocUnknownInclude {
-        span: Span,
-        inner: &'static str,
-        value: Symbol,
-    },
-    DocUnknownSpotlight {
-        span: Span,
-    },
-    DocUnknownPasses {
-        name: Symbol,
-        span: Span,
-    },
-    DocUnknownPlugins {
-        span: Span,
-    },
-    DocUnknownAny {
-        name: Symbol,
-    },
+    DocUnknownInclude { span: Span, inner: &'static str, value: Symbol },
+    DocUnknownSpotlight { span: Span },
+    DocUnknownPasses { name: Symbol, span: Span },
+    DocUnknownPlugins { span: Span },
+    DocUnknownAny { name: Symbol },
     DocAutoCfgWrongLiteral,
     DocTestTakesList,
-    DocTestUnknown {
-        name: Symbol,
-    },
+    DocTestUnknown { name: Symbol },
     DocTestLiteral,
     AttrCrateLevelOnly,
     DoNotRecommendDoesNotExpectArgs,
-    CrateTypeUnknown {
-        span: Span,
-        suggested: Option<Symbol>,
-    },
+    CrateTypeUnknown { span: Span, suggested: Option<Symbol> },
     MalformedDoc,
     ExpectedNoArgs,
     ExpectedNameValue,
-    MalformedOnUnimplementedAttr {
-        span: Span,
-    },
-    MalformedOnUnknownAttr {
-        span: Span,
-    },
-    MalformedOnConstAttr {
-        span: Span,
-    },
-    MalformedOnMoveAttr {
-        span: Span,
-    },
-    MalformedDiagnosticFormat {
-        warning: FormatWarning,
-    },
-    DiagnosticWrappedParserError {
-        description: String,
-        label: String,
-        span: Span,
-    },
-    IgnoredDiagnosticOption {
-        option_name: Symbol,
-        first_span: Span,
-        later_span: Span,
-    },
-    MissingOptionsForOnUnimplemented,
-    MissingOptionsForOnConst,
-    MissingOptionsForOnUnknown,
-    MissingOptionsForOnMove,
-    OnMoveMalformedFormatLiterals {
-        name: Symbol,
-    },
-    OnMoveMalformedAttrExpectedLiteralOrDelimiter,
+    MalFormedDiagnosticAttribute { attribute: &'static str, options: &'static str, span: Span },
+    MalformedDiagnosticFormat { warning: FormatWarning },
+    DiagnosticWrappedParserError { description: String, label: String, span: Span },
+    IgnoredDiagnosticOption { option_name: Symbol, first_span: Span, later_span: Span },
+    MissingOptionsForDiagnosticAttribute { attribute: &'static str, options: &'static str },
+    NonMetaItemDiagnosticAttribute,
 }
 
 #[derive(Debug, Clone, HashStable_Generic)]

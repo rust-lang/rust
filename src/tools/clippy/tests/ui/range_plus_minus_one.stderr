@@ -88,5 +88,11 @@ LL |     (1..=n - 1).sum()
    = note: `-D clippy::range-minus-one` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::range_minus_one)]`
 
-error: aborting due to 14 previous errors
+error: an inclusive range would be more readable
+  --> tests/ui/range_plus_minus_one.rs:192:14
+   |
+LL |     for _ in test!(x)..test!(x) + 1 {
+   |              ^^^^^^^^^^^^^^^^^^^^^^ help: use: `test!(x)..=test!(x)`
+
+error: aborting due to 15 previous errors
 

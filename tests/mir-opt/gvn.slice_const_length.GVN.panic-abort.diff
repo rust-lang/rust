@@ -17,8 +17,7 @@
       }
   
       bb0: {
--         StorageLive(_2);
-+         nop;
+          StorageLive(_2);
           StorageLive(_3);
           _3 = &(*_1);
           _2 = core::slice::<impl [i32]>::as_ptr(move _3) -> [return: bb1, unwind unreachable];
@@ -26,8 +25,7 @@
   
       bb1: {
           StorageDead(_3);
--         StorageLive(_4);
-+         nop;
+          StorageLive(_4);
           _4 = const 123_usize;
           StorageLive(_5);
           _5 = copy _2;
@@ -38,10 +36,8 @@
 +         _0 = *const [i32] from (copy _2, const 123_usize);
           StorageDead(_6);
           StorageDead(_5);
--         StorageDead(_4);
--         StorageDead(_2);
-+         nop;
-+         nop;
+          StorageDead(_4);
+          StorageDead(_2);
           return;
       }
   }
