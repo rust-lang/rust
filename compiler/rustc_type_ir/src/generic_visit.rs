@@ -210,4 +210,5 @@ trivial_impls!(
     rustc_hash::FxBuildHasher,
     crate::TypeFlags,
     crate::solve::GoalSource,
+    crate::FnSigKind,
 );
