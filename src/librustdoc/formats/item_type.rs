@@ -150,6 +150,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
 }
 
 impl ItemType {
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     pub(crate) fn from_def_id(def_id: DefId, tcx: TyCtxt<'_>) -> Self {
         let def_kind = tcx.def_kind(def_id);
         match def_kind {

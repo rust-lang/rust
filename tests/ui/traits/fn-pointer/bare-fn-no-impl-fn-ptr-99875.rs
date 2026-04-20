@@ -1,5 +1,6 @@
 // Sets some arbitrarily large width for more consistent output (see #135288).
 //@ compile-flags: --diagnostic-width=120
+#![allow(todo_macro_calls)]
 struct Argument;
 struct Return;
 

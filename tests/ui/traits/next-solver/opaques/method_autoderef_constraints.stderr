@@ -1,17 +1,17 @@
 error[E0277]: the trait bound `u32: Trait` is not satisfied
-  --> $DIR/method_autoderef_constraints.rs:29:16
+  --> $DIR/method_autoderef_constraints.rs:30:16
    |
 LL |         return x;
    |                ^ the trait `Trait` is not implemented for `u32`
    |
 help: the trait `Trait` is implemented for `i32`
-  --> $DIR/method_autoderef_constraints.rs:16:1
+  --> $DIR/method_autoderef_constraints.rs:17:1
    |
 LL | impl Trait for i32 {}
    | ^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/method_autoderef_constraints.rs:34:5
+  --> $DIR/method_autoderef_constraints.rs:35:5
    |
 LL | fn foo() -> Inv<impl Trait> {
    |             ---------------
@@ -26,13 +26,13 @@ LL |     x
               found struct `Inv<u32>`
 
 error[E0277]: the trait bound `u32: Trait` is not satisfied
-  --> $DIR/method_autoderef_constraints.rs:25:1
+  --> $DIR/method_autoderef_constraints.rs:26:1
    |
 LL | fn foo() -> Inv<impl Trait> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `u32`
    |
 help: the trait `Trait` is implemented for `i32`
-  --> $DIR/method_autoderef_constraints.rs:16:1
+  --> $DIR/method_autoderef_constraints.rs:17:1
    |
 LL | impl Trait for i32 {}
    | ^^^^^^^^^^^^^^^^^^

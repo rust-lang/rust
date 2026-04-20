@@ -1,5 +1,5 @@
 warning: non-local `impl` definition, `impl` blocks should be written at the same level as their item
-  --> $DIR/from-local-for-global.rs:8:5
+  --> $DIR/from-local-for-global.rs:9:5
    |
 LL | fn main() {
    | --------- move the `impl` block outside of this function `main`

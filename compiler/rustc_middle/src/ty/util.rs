@@ -1274,6 +1274,7 @@ impl<'tcx> Ty<'tcx> {
     ///
     /// Returning true means the type is known to be `!AsyncDrop`. Returning
     /// `false` means nothing -- could be `AsyncDrop`, might not be.
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn is_trivially_not_async_drop(self) -> bool {
         match self.kind() {
             ty::Int(_)

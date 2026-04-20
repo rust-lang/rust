@@ -2,7 +2,7 @@
 // and https://github.com/rust-lang/rust/issues/42868
 //@ run-pass
 
-#![allow(unused)]
+#![allow(unused, todo_macro_calls)]
 
 struct S;
 

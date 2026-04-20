@@ -1396,3 +1396,7 @@ pub(crate) struct FloatLiteralF32Fallback {
     )]
     pub span: Option<Span>,
 }
+
+#[derive(Diagnostic)]
+#[diag("`todo!()` macro used")]
+pub(crate) struct TodoMacroUse;

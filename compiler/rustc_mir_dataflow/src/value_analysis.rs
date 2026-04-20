@@ -603,6 +603,7 @@ impl<'tcx> Map<'tcx> {
     }
 
     #[tracing::instrument(level = "trace", skip(self, tcx, body), ret)]
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     pub fn register_place(
         &mut self,
         tcx: TyCtxt<'tcx>,

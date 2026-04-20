@@ -1,4 +1,5 @@
 //@ edition:2018
+#![allow(todo_macro_calls)]
 #[deny(bare_trait_objects)]
 
 fn function(x: &SomeTrait, y: Box<SomeTrait>) {

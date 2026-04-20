@@ -32,6 +32,7 @@ fn check_unop(op: mir::UnOp) -> bool {
     }
 }
 
+#[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
 fn recurse_build<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &thir::Thir<'tcx>,

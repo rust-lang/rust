@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/trait_upcasting_reference_mismatch.rs:7:35
+  --> $DIR/trait_upcasting_reference_mismatch.rs:8:35
    |
 LL | fn hello() -> &'static (dyn Trait<impl Sized> + Send) {
    |                                   ^^^^^^^^^^ cannot infer type

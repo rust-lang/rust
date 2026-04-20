@@ -188,6 +188,8 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
     type T = crate::mir::Rvalue;
+
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
@@ -413,6 +415,8 @@ impl<'tcx> Stable<'tcx> for mir::Place<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
     type T = crate::mir::ProjectionElem;
+
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,
@@ -700,6 +704,8 @@ impl<'tcx> Stable<'tcx> for mir::Terminator<'tcx> {
 
 impl<'tcx> Stable<'tcx> for mir::TerminatorKind<'tcx> {
     type T = crate::mir::TerminatorKind;
+
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn stable<'cx>(
         &self,
         tables: &mut Tables<'cx, BridgeTys>,

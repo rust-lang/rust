@@ -1,5 +1,5 @@
 #![feature(generic_const_exprs)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_calls)]
 
 fn add<const N: usize>() -> [u8; { N + 1; 5 }] {
     //~^ ERROR overly complex generic constant

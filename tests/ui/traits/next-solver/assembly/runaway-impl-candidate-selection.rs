@@ -1,4 +1,5 @@
 //@ compile-flags: -Znext-solver
+#![allow(todo_macro_calls)]
 
 // In the new solver, we are trying to select `<?0 as Iterator>::Item: Debug`,
 // which, naively can be unified with every impl of `Debug` if we're not careful.

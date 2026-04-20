@@ -1,6 +1,6 @@
 //@ revisions: rpass
 #![feature(generic_const_exprs)]
-#![allow(incomplete_features)]
+#![allow(incomplete_features, todo_macro_calls)]
 
 struct Z;
 const fn one() -> usize {

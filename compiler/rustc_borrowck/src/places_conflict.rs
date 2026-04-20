@@ -286,7 +286,8 @@ fn place_components_conflict<'tcx>(
 
 // Given that the bases of `elem1` and `elem2` are always either equal
 // or disjoint (and have the same type!), return the overlap situation
-// between `elem1` and `elem2`.
+// between `elem1` and `elem2`
+#[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
 fn place_projection_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,

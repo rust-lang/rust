@@ -2826,6 +2826,7 @@ fn add_without_unwanted_attributes<'hir>(
     }
 }
 
+#[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
 fn clean_maybe_renamed_item<'tcx>(
     cx: &mut DocContext<'tcx>,
     item: &hir::Item<'tcx>,

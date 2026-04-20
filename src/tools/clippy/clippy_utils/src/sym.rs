@@ -607,7 +607,6 @@ generate! {
     to_path_buf,
     to_string_method,
     to_uppercase,
-    todo_macro,
     tokio,
     trim,
     trim_end,

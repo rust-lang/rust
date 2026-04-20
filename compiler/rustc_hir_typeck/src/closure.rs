@@ -45,6 +45,7 @@ struct ClosureSignatures<'tcx> {
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[instrument(skip(self, closure), level = "debug")]
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     pub(crate) fn check_expr_closure(
         &self,
         closure: &hir::Closure<'tcx>,

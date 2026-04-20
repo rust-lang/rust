@@ -275,6 +275,7 @@ where
         })
     }
 
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn consider_builtin_fn_ptr_trait_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
@@ -331,6 +332,7 @@ where
         )
     }
 
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn consider_builtin_async_fn_trait_candidates(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
@@ -367,6 +369,7 @@ where
         unreachable!("Future is not const")
     }
 
+    #[cfg_attr(not(bootstrap), allow(todo_macro_calls))]
     fn consider_builtin_iterator_candidate(
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,

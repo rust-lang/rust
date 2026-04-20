@@ -93,6 +93,7 @@ where
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    #[allow(todo_macro_calls)]
     fn emulate_math_intrinsic(
         &mut self,
         intrinsic_name: &str,

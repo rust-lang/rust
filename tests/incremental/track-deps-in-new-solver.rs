@@ -3,7 +3,7 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
 
-#![allow(dead_code)]
+#![allow(dead_code, todo_macro_calls)]
 
 pub trait Future {
     type Error;
