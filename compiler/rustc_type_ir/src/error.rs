@@ -1,4 +1,5 @@
 use derive_where::derive_where;
+use rustc_abi::ExternAbi;
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::solve::NoSolution;
@@ -25,7 +26,7 @@ pub enum TypeError<I: Interner> {
     Mismatch,
     PolarityMismatch(#[type_visitable(ignore)] ExpectedFound<ty::PredicatePolarity>),
     SafetyMismatch(#[type_visitable(ignore)] ExpectedFound<I::Safety>),
-    AbiMismatch(#[type_visitable(ignore)] ExpectedFound<I::Abi>),
+    AbiMismatch(#[type_visitable(ignore)] ExpectedFound<ExternAbi>),
     Mutability,
     ArgumentMutability(usize),
     TupleSize(ExpectedFound<usize>),

@@ -15,6 +15,8 @@ use rustc_index::{Idx, IndexVec};
 use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
+use crate::Interner;
+
 /// This trait is implemented for every type that can be visited,
 /// providing the skeleton of the traversal.
 ///
@@ -210,5 +212,9 @@ trivial_impls!(
     rustc_hash::FxBuildHasher,
     crate::TypeFlags,
     crate::solve::GoalSource,
-    crate::FnSigKind,
+    rustc_abi::ExternAbi,
 );
+
+impl<I: Interner, V> GenericTypeVisitable<V> for crate::FnSigKind<I> {
+    fn generic_visit_with(&self, _visitor: &mut V) {}
+}

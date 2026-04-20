@@ -47,9 +47,7 @@ use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
-use rustc_type_ir::{
-    CollectAndApply, FnSigKind, TypeFlags, WithCachedTypeInfo, elaborate, search_graph,
-};
+use rustc_type_ir::{CollectAndApply, TypeFlags, WithCachedTypeInfo, elaborate, search_graph};
 use tracing::{debug, instrument};
 
 use crate::arena::Arena;
@@ -69,11 +67,11 @@ use crate::traits;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, PredefinedOpaques};
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
-    GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, Pattern,
-    PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, PredicatePolarity,
-    Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid, ValTree, ValTreeKind,
-    Visibility,
+    self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, FnSigKind, GenericArg,
+    GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst,
+    Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
+    PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
+    ValTree, ValTreeKind, Visibility,
 };
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
@@ -83,50 +81,6 @@ impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
 
     fn as_local(self) -> Option<LocalDefId> {
         self.as_local()
-    }
-}
-
-impl<'tcx> rustc_type_ir::inherent::FSigKind<TyCtxt<'tcx>> for FnSigKind {
-    fn fn_sig_kind(self) -> Self {
-        self
-    }
-
-    fn new(abi: ExternAbi, safety: hir::Safety, c_variadic: bool) -> Self {
-        FnSigKind::default().set_abi(abi).set_safe(safety.is_safe()).set_c_variadic(c_variadic)
-    }
-
-    fn abi(self) -> ExternAbi {
-        self.abi()
-    }
-
-    fn safety(self) -> hir::Safety {
-        if self.is_safe() { hir::Safety::Safe } else { hir::Safety::Unsafe }
-    }
-
-    fn c_variadic(self) -> bool {
-        self.c_variadic()
-    }
-}
-
-impl<'tcx> rustc_type_ir::inherent::Abi<TyCtxt<'tcx>> for ExternAbi {
-    fn abi(self) -> Self {
-        self
-    }
-
-    fn rust() -> Self {
-        ExternAbi::Rust
-    }
-
-    fn is_rust(self) -> bool {
-        matches!(self, ExternAbi::Rust)
-    }
-
-    fn pack_abi(self) -> u8 {
-        self.as_packed()
-    }
-
-    fn unpack_abi(abi_index: u8) -> Self {
-        Self::from_packed(abi_index)
     }
 }
 
@@ -1374,7 +1328,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let caller_features = &self.body_codegen_attrs(caller).target_features;
         if self.is_target_feature_call_safe(&fun_features, &caller_features) {
             return Some(fun_sig.map_bound(|sig| ty::FnSig {
-                fn_sig_kind: fun_sig.fn_sig_kind().set_safe(true),
+                fn_sig_kind: fun_sig.fn_sig_kind().set_safety(hir::Safety::Safe),
                 ..sig
             }));
         }
@@ -2143,7 +2097,10 @@ impl<'tcx> TyCtxt<'tcx> {
         assert!(sig.safety().is_safe());
         Ty::new_fn_ptr(
             self,
-            sig.map_bound(|sig| ty::FnSig { fn_sig_kind: sig.fn_sig_kind.set_safe(false), ..sig }),
+            sig.map_bound(|sig| ty::FnSig {
+                fn_sig_kind: sig.fn_sig_kind.set_safety(hir::Safety::Unsafe),
+                ..sig
+            }),
         )
     }
 
@@ -2152,7 +2109,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// unsafe.
     pub fn safe_to_unsafe_sig(self, sig: PolyFnSig<'tcx>) -> PolyFnSig<'tcx> {
         assert!(sig.safety().is_safe());
-        sig.map_bound(|sig| ty::FnSig { fn_sig_kind: sig.fn_sig_kind.set_safe(false), ..sig })
+        sig.map_bound(|sig| ty::FnSig {
+            fn_sig_kind: sig.fn_sig_kind.set_safety(hir::Safety::Unsafe),
+            ..sig
+        })
     }
 
     /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`
@@ -2197,7 +2157,7 @@ impl<'tcx> TyCtxt<'tcx> {
             self.mk_fn_sig(
                 params,
                 s.output(),
-                s.fn_sig_kind.set_safe(safety.is_safe()).set_abi(ExternAbi::Rust),
+                s.fn_sig_kind.set_safety(safety).set_abi(ExternAbi::Rust),
             )
         })
     }
@@ -2471,7 +2431,12 @@ impl<'tcx> TyCtxt<'tcx> {
     // IntoIterator` instead of `I: Iterator`, and it doesn't have a slice
     // variant, because of the need to combine `inputs` and `output`. This
     // explains the lack of `_from_iter` suffix.
-    pub fn mk_fn_sig<I, T>(self, inputs: I, output: I::Item, fn_sig_kind: FnSigKind) -> T::Output
+    pub fn mk_fn_sig<I, T>(
+        self,
+        inputs: I,
+        output: I::Item,
+        fn_sig_kind: FnSigKind<'tcx>,
+    ) -> T::Output
     where
         I: IntoIterator<Item = T>,
         T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
@@ -2493,7 +2458,7 @@ impl<'tcx> TyCtxt<'tcx> {
         I: IntoIterator<Item = T>,
         T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
     {
-        self.mk_fn_sig(inputs, output, FnSigKind::default().set_safe(safety.is_safe()))
+        self.mk_fn_sig(inputs, output, FnSigKind::default().set_safety(safety))
     }
 
     /// `mk_fn_sig`, but with a safe Rust ABI, and no C-variadic argument.
@@ -2502,7 +2467,7 @@ impl<'tcx> TyCtxt<'tcx> {
         I: IntoIterator<Item = T>,
         T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
     {
-        self.mk_fn_sig(inputs, output, FnSigKind::default().set_safe(true))
+        self.mk_fn_sig(inputs, output, FnSigKind::default().set_safety(hir::Safety::Safe))
     }
 
     pub fn mk_poly_existential_predicates_from_iter<I, T>(self, iter: I) -> T::Output
