@@ -199,7 +199,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::RustcMustImplementOneOf { attr_span, fn_names }) => {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
-                Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
                 Attribute::Parsed(AttributeKind::OnUnimplemented{directive,..}) => {self.check_diagnostic_on_unimplemented(hir_id, directive.as_deref())},
                 Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)}
                 Attribute::Parsed(AttributeKind::OnMove { directive , .. }) => {
@@ -222,6 +221,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::CustomMir(..)
                     | AttributeKind::DebuggerVisualizer(..)
                     | AttributeKind::DefaultLibAllocator
+                    | AttributeKind::DoNotRecommend {..}
                     // `#[doc]` is actually a lot more than just doc comments, so is checked below
                     | AttributeKind::DocComment {..}
                     | AttributeKind::EiiDeclaration { .. }
@@ -487,30 +487,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     },
                 });
             }
-        }
-    }
-
-    /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl
-    fn check_do_not_recommend(
-        &self,
-        attr_span: Span,
-        hir_id: HirId,
-        target: Target,
-        item: Option<ItemLike<'_>>,
-    ) {
-        if !matches!(target, Target::Impl { .. })
-            || matches!(
-                item,
-                Some(ItemLike::Item(hir::Item {  kind: hir::ItemKind::Impl(_impl),.. }))
-                    if _impl.of_trait.is_none()
-            )
-        {
-            self.tcx.emit_node_span_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                errors::IncorrectDoNotRecommendLocation,
-            );
         }
     }
 

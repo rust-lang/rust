@@ -274,3 +274,7 @@ pub(crate) struct DiagnosticOnUnknownOnlyForImports {
     #[label("not an import")]
     pub target_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::do_not_recommend]` can only be placed on trait implementations")]
+pub(crate) struct IncorrectDoNotRecommendLocation;
