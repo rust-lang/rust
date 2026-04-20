@@ -2,16 +2,16 @@
 // detected then -Zincremental-verify-ich will trigger an assertion.
 
 //@ needs-unwind
-//@ revisions:cfail1 cfail2
+//@ revisions: bfail1 bfail2
 //@ compile-flags: -Z query-dep-graph -Cpanic=unwind
 //@ needs-unwind
 //@ build-pass (FIXME(62277): could be check-pass?)
 //@ ignore-backends: gcc
 
-#![cfg_attr(cfail1, feature(panic_unwind))]
+#![cfg_attr(bfail1, feature(panic_unwind))]
 
 // Turn the panic_unwind crate from an explicit into an implicit query:
-#[cfg(cfail1)]
+#[cfg(bfail1)]
 extern crate panic_unwind;
 
 fn main() {}

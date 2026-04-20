@@ -1,4 +1,4 @@
-//@ revisions: cfail1 cfail2 cfail3
+//@ revisions: bfail1 bfail2 bfail3
 //@ compile-flags: -Coverflow-checks=on
 //@ build-pass
 //@ ignore-backends: gcc
