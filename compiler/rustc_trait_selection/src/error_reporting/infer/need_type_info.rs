@@ -27,7 +27,7 @@ use crate::errors::{
     AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
     SourceKindMultiSuggestion, SourceKindSubdiag,
 };
-use crate::infer::InferCtxt;
+use crate::infer::{InferCtxt, TyOrConstInferVar};
 
 pub enum TypeAnnotationNeeded {
     /// ```compile_fail,E0282
@@ -81,13 +81,27 @@ impl InferenceDiagnosticsData {
         !(self.name == "_" && matches!(self.kind, UnderspecifiedArgKind::Type { .. }))
     }
 
-    fn where_x_is_kind(&self, in_type: Ty<'_>) -> &'static str {
+    fn where_x_is_kind<'tcx>(&self, infcx: &InferCtxt<'tcx>, in_type: Ty<'tcx>) -> &'static str {
         if in_type.is_ty_or_numeric_infer() {
             ""
         } else if self.name == "_" {
-            // FIXME: Consider specializing this message if there is a single `_`
-            // in the type.
-            "underscore"
+            let displayed_ty = infcx
+                .resolve_vars_if_possible(in_type)
+                .fold_with(&mut ClosureEraser { infcx, depth: 0 });
+            if displayed_ty.is_ty_or_numeric_infer() {
+                ""
+            } else {
+                match displayed_ty
+                    .walk()
+                    .filter_map(TyOrConstInferVar::maybe_from_generic_arg)
+                    .take(2)
+                    .count()
+                {
+                    0 => "",
+                    1 => "underscore_single",
+                    _ => "underscore_multiple",
+                }
+            }
         } else {
             "has_name"
         }
@@ -554,7 +568,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags.push(SourceKindSubdiag::LetLike {
                     span: insert_span,
                     name: pattern_name.map(|name| name.to_string()).unwrap_or_else(String::new),
-                    x_kind: arg_data.where_x_is_kind(ty),
+                    x_kind: arg_data.where_x_is_kind(self.infcx, ty),
                     prefix_kind: arg_data.kind.clone(),
                     prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
                     arg_name: arg_data.name,
@@ -566,7 +580,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 infer_subdiags.push(SourceKindSubdiag::LetLike {
                     span: insert_span,
                     name: String::new(),
-                    x_kind: arg_data.where_x_is_kind(ty),
+                    x_kind: arg_data.where_x_is_kind(self.infcx, ty),
                     prefix_kind: arg_data.kind.clone(),
                     prefix: arg_data.kind.try_get_prefix().unwrap_or_default(),
                     arg_name: arg_data.name,

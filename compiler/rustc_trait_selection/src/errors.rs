@@ -277,7 +277,8 @@ pub enum SourceKindSubdiag<'a> {
                 [const_with_param] value of const parameter
                 [const] value of the constant
             } `{$arg_name}` is specified
-            [underscore] , where the placeholders `_` are specified
+            [underscore_single] , where the placeholder `_` is specified
+            [underscore_multiple] , where the placeholders `_` are specified
             *[empty] {\"\"}
         }",
         style = "verbose",
