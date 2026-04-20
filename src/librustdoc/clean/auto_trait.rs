@@ -22,7 +22,7 @@ pub(crate) fn synthesize_auto_trait_impls<'tcx>(
 ) -> Vec<clean::Item> {
     let tcx = cx.tcx;
     let typing_env = ty::TypingEnv::non_body_analysis(tcx, item_def_id);
-    let ty = tcx.type_of(item_def_id).instantiate_identity();
+    let ty = tcx.type_of(item_def_id).instantiate_identity().skip_norm_wip();
 
     let finder = auto_trait::AutoTraitFinder::new(tcx);
     let mut auto_trait_impls: Vec<_> = cx

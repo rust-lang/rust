@@ -441,7 +441,9 @@ fn generate_item_def_id_path(
         let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
         def_id = infcx
             .at(&ObligationCause::dummy(), tcx.param_env(def_id))
-            .query_normalize(ty::Binder::dummy(tcx.type_of(def_id).instantiate_identity()))
+            .query_normalize(ty::Binder::dummy(
+                tcx.type_of(def_id).instantiate_identity().skip_norm_wip(),
+            ))
             .map(|resolved| infcx.resolve_vars_if_possible(resolved.value))
             .ok()
             .and_then(|normalized| normalized.skip_binder().ty_adt_def())

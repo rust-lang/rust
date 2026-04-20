@@ -17,7 +17,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 };
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_infer::traits::{DynCompatibilityViolation, Obligation};
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_session::Session;
 use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
@@ -192,8 +192,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             typeck_results: Some(self.typeck_results.borrow()),
             diverging_fallback_has_occurred: self.diverging_fallback_has_occurred.get(),
             normalize_fn_sig: Box::new(|fn_sig| {
-                if fn_sig.has_escaping_bound_vars() {
-                    return fn_sig;
+                if fn_sig.skip_normalization().has_escaping_bound_vars() {
+                    return fn_sig.skip_normalization();
                 }
                 self.probe(|_| {
                     let ocx = ObligationCtxt::new(self);
@@ -205,7 +205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return normalized_fn_sig;
                         }
                     }
-                    fn_sig
+                    fn_sig.skip_normalization()
                 })
             }),
             autoderef_steps: Box::new(|ty| {
@@ -279,7 +279,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 
             self.trait_ascriptions.borrow_mut().entry(hir_id.local_id).or_default().push(clause);
 
-            let clause = self.normalize(span, clause);
+            let clause = self.normalize(span, Unnormalized::new_wip(clause));
             self.register_predicate(Obligation::new(
                 self.tcx,
                 self.misc(span),
@@ -326,7 +326,11 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 
         let mut filter_iat_candidate = |self_ty, impl_| {
             let ocx = ObligationCtxt::new_with_diagnostics(self);
-            let self_ty = ocx.normalize(&ObligationCause::dummy(), self.param_env, self_ty);
+            let self_ty = ocx.normalize(
+                &ObligationCause::dummy(),
+                self.param_env,
+                Unnormalized::new_wip(self_ty),
+            );
 
             let impl_args = infcx.fresh_args_for_item(span, impl_);
             let impl_ty = tcx.type_of(impl_).instantiate(tcx, impl_args);
@@ -410,7 +414,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                 if self.next_trait_solver() {
                     self.try_structurally_resolve_type(span, ty).ty_adt_def()
                 } else {
-                    self.normalize(span, ty).ty_adt_def()
+                    self.normalize(span, Unnormalized::new_wip(ty)).ty_adt_def()
                 }
             }
             _ => None,
@@ -433,7 +437,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
                 self.add_required_obligations_for_hir(span, *def_id, args, hir_id);
             }
 
-            self.normalize(span, ty)
+            self.normalize(span, Unnormalized::new_wip(ty))
         } else {
             ty
         };
@@ -488,7 +492,7 @@ impl<'tcx> LoweredTy<'tcx> {
         let normalized = if fcx.next_trait_solver() {
             fcx.try_structurally_resolve_type(span, raw)
         } else {
-            fcx.normalize(span, raw)
+            fcx.normalize(span, Unnormalized::new_wip(raw))
         };
         LoweredTy { raw, normalized }
     }

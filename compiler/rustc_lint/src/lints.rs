@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::codes::*;
 use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
+    Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
     EmissionGuarantee, Level, Subdiagnostic, SuggestionStyle, msg,
 };
 use rustc_hir as hir;
@@ -3025,32 +3025,6 @@ pub(crate) mod unexpected_cfg_value {
     }
 }
 
-// FIXME(jdonszelmann): duplicated in rustc_attr_parsing, should be moved there completely.
-#[derive(Diagnostic)]
-#[diag(
-    "{$num_suggestions ->
-        [1] attribute must be of the form {$suggestions}
-        *[other] valid forms for the attribute are {$suggestions}
-    }"
-)]
-pub(crate) struct IllFormedAttributeInput {
-    pub num_suggestions: usize,
-    pub suggestions: DiagArgValue,
-    #[note("for more information, visit <{$docs}>")]
-    pub has_docs: bool,
-    pub docs: &'static str,
-    #[subdiagnostic]
-    pub help: Option<IllFormedAttributeInputHelp>,
-}
-
-#[derive(Subdiagnostic)]
-#[help(
-    "if you meant to silence a warning, consider using #![allow({$lint})] or #![expect({$lint})]"
-)]
-pub(crate) struct IllFormedAttributeInputHelp {
-    pub lint: String,
-}
-
 #[derive(Diagnostic)]
 #[diag("creating a {$shared_label}reference to mutable static")]
 pub(crate) struct RefOfMutStatic<'a> {
@@ -3309,63 +3283,6 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("unused attribute")]
-#[note(
-    "{$valid_without_list ->
-        [true] using `{$attr_path}` with an empty list is equivalent to not using a list at all
-        *[other] using `{$attr_path}` with an empty list has no effect
-    }"
-)]
-pub(crate) struct EmptyAttributeList {
-    #[suggestion(
-        "{$valid_without_list ->
-            [true] remove these parentheses
-            *[other] remove this attribute
-        }",
-        code = "",
-        applicability = "machine-applicable"
-    )]
-    pub attr_span: Span,
-    pub attr_path: String,
-    pub valid_without_list: bool,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[{$name}]` attribute cannot be used on {$target}")]
-#[warning(
-    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-)]
-#[help("`#[{$name}]` can {$only}be applied to {$applied}")]
-pub(crate) struct InvalidTargetLint {
-    pub name: String,
-    pub target: &'static str,
-    pub applied: DiagArgValue,
-    pub only: &'static str,
-    #[suggestion(
-        "remove the attribute",
-        code = "",
-        applicability = "machine-applicable",
-        style = "tool-only"
-    )]
-    pub attr_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(
-    "{$is_used_as_inner ->
-        [false] crate-level attribute should be an inner attribute: add an exclamation mark: `#![{$name}]`
-        *[other] the `#![{$name}]` attribute can only be used at the crate root
-    }"
-)]
-pub(crate) struct InvalidAttrStyle {
-    pub name: String,
-    pub is_used_as_inner: bool,
-    #[note("this attribute does not have an `!`, which means it is applied to this {$target}")]
-    pub target_span: Option<Span>,
-    pub target: &'static str,
-}
-
-#[derive(Diagnostic)]
 #[diag("malformed `doc` attribute input")]
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
@@ -3385,17 +3302,6 @@ pub(crate) struct ExpectedNoArgs;
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
 )]
 pub(crate) struct ExpectedNameValue;
-
-#[derive(Diagnostic)]
-#[diag("doc alias is duplicated")]
-pub(crate) struct DocAliasDuplicated {
-    #[label("first defined here")]
-    pub first_defn: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`")]
-pub(crate) struct DocAutoCfgExpectsHideOrShow;
 
 #[derive(Diagnostic)]
 #[diag("there exists a built-in attribute with the same name")]

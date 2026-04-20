@@ -22,7 +22,9 @@ use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathD
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Mutability};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
-use rustc_middle::ty::{self, ExistentialProjection, GenericArgKind, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{
+    self, ExistentialProjection, GenericArgKind, GenericArgsRef, Ty, TyCtxt, Unnormalized,
+};
 use smallvec::SmallVec;
 
 use crate::debuginfo::wants_c_like_enum_debuginfo;
@@ -540,8 +542,10 @@ pub fn compute_debuginfo_vtable_name<'tcx>(
     }
 
     if let Some(trait_ref) = trait_ref {
-        let trait_ref =
-            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), trait_ref);
+        let trait_ref = tcx.normalize_erasing_regions(
+            ty::TypingEnv::fully_monomorphized(),
+            Unnormalized::new_wip(trait_ref),
+        );
         push_item_name(tcx, trait_ref.def_id, true, &mut vtable_name);
         visited.clear();
         push_generic_args_internal(tcx, trait_ref.args, &mut vtable_name, &mut visited);
@@ -654,7 +658,13 @@ fn push_generic_args_internal<'tcx>(
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
 ) -> bool {
-    assert_eq!(args, tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), args));
+    assert_eq!(
+        args,
+        tcx.normalize_erasing_regions(
+            ty::TypingEnv::fully_monomorphized(),
+            Unnormalized::new_wip(args)
+        )
+    );
     let mut args = args.non_erasable_generics().peekable();
     if args.peek().is_none() {
         return false;

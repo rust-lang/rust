@@ -1759,7 +1759,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
-                let unnormalized_ty = tcx.type_of(static_def_id).instantiate_identity();
+                let unnormalized_ty =
+                    tcx.type_of(static_def_id).instantiate_identity().skip_norm_wip();
                 let normalized_ty = self.normalize(unnormalized_ty, locations);
                 let literal_ty = constant.const_.ty().builtin_deref(true).unwrap();
 

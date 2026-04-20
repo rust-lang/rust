@@ -111,7 +111,7 @@ impl<'tcx> Visitor<'tcx> for CloneOrCopyVisitor<'_, 'tcx> {
                     ExprKind::MethodCall(.., args, _) => {
                         if args.iter().all(|arg| !self.is_binding(arg))
                             && let Some(method_def_id) = self.cx.typeck_results().type_dependent_def_id(parent.hir_id)
-                            && let method_ty = self.cx.tcx.type_of(method_def_id).instantiate_identity()
+                            && let method_ty = self.cx.tcx.type_of(method_def_id).instantiate_identity().skip_norm_wip()
                             && let self_ty = method_ty.fn_sig(self.cx.tcx).input(0).skip_binder()
                             && matches!(self_ty.kind(), ty::Ref(_, _, Mutability::Not))
                         {

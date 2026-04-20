@@ -632,7 +632,8 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
             match ex.kind {
                 hir::ExprKind::MethodCall(..) => {
                     if let Some(def_id) = typeck_results.type_dependent_def_id(ex.hir_id)
-                        && let method_ty = self.fcx.tcx.type_of(def_id).instantiate_identity()
+                        && let method_ty =
+                            self.fcx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip()
                         && let sig = method_ty.fn_sig(self.fcx.tcx)
                         && sig.safety().is_unsafe()
                     {

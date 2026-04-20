@@ -25,7 +25,7 @@ fn result_err_ty<'tcx>(
         && let hir::FnRetTy::Return(hir_ty) = decl.output
         && let ty = cx
             .tcx
-            .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(id).instantiate_identity().output())
+            .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip().output())
         && ty.is_diag_item(cx, sym::Result)
         && let ty::Adt(_, args) = ty.kind()
     {

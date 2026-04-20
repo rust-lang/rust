@@ -27,7 +27,7 @@
 //!    it's usually never invoked in this way.
 
 use rustc_middle::mir::{Body, START_BLOCK, TerminatorKind};
-use rustc_middle::ty::{TyCtxt, TypeFlags, TypeVisitableExt};
+use rustc_middle::ty::{TyCtxt, TypeFlags, TypeVisitableExt, Unnormalized};
 use rustc_span::def_id::DefId;
 use rustc_trait_selection::traits;
 use tracing::trace;
@@ -39,14 +39,15 @@ pub(crate) struct ImpossiblePredicates;
 fn has_impossible_predicates(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let predicates = tcx.predicates_of(def_id).instantiate_identity(tcx);
     tracing::trace!(?predicates);
-    let predicates = predicates.predicates.into_iter().filter(|p| {
-        !p.has_type_flags(
-            // Only consider global clauses to simplify.
-            TypeFlags::HAS_FREE_LOCAL_NAMES
+    let predicates =
+        predicates.predicates.into_iter().map(Unnormalized::skip_norm_wip).filter(|p| {
+            !p.has_type_flags(
+                // Only consider global clauses to simplify.
+                TypeFlags::HAS_FREE_LOCAL_NAMES
                 // Clauses that refer to unevaluated constants as they cause cycles.
                 | TypeFlags::HAS_CT_PROJECTION,
-        )
-    });
+            )
+        });
     let predicates: Vec<_> = traits::elaborate(tcx, predicates).collect();
     tracing::trace!(?predicates);
     predicates.references_error() || traits::impossible_predicates(tcx, predicates)

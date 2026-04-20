@@ -5,7 +5,9 @@ use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{CheckRegions, NotUniqueParam};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Unnormalized,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use tracing::{instrument, trace};
@@ -142,7 +144,12 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
                 // Collect opaque types nested within the associated type bounds of this opaque type.
                 // We use identity args here, because we already know that the opaque type uses
                 // only generic parameters, and thus instantiating would not give us more information.
-                for (pred, span) in self.tcx.explicit_item_bounds(def_id).iter_identity_copied() {
+                for (pred, span) in self
+                    .tcx
+                    .explicit_item_bounds(def_id)
+                    .iter_identity_copied()
+                    .map(Unnormalized::skip_norm_wip)
+                {
                     trace!(?pred);
                     self.visit_spanned(span, pred);
                 }
@@ -216,7 +223,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                 if !self.seen.insert(def_id) {
                     return;
                 }
-                self.tcx.type_of(def_id).instantiate(self.tcx, args).visit_with(self);
+                self.tcx
+                    .type_of(def_id)
+                    .instantiate(self.tcx, args)
+                    .skip_norm_wip()
+                    .visit_with(self);
             }
             ty::Alias(
                 alias_ty @ ty::AliasTy { kind: ty::Projection { def_id: alias_def_id }, .. },
@@ -225,7 +236,8 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                 // supporting the case of a method defining opaque types from assoc types
                 // in the same impl block.
                 if let Some(parent) = self.tcx.trait_impl_of_assoc(self.item.to_def_id()) {
-                    let impl_trait_ref = self.tcx.impl_trait_ref(parent).instantiate_identity();
+                    let impl_trait_ref =
+                        self.tcx.impl_trait_ref(parent).instantiate_identity().skip_norm_wip();
                     // If the trait ref of the associated item and the impl differs,
                     // then we can't use the impl's identity args below, so
                     // just skip.
@@ -256,6 +268,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                                 self.tcx
                                     .type_of(assoc.def_id)
                                     .instantiate(self.tcx, alias_args)
+                                    .skip_norm_wip()
                                     .visit_with(self);
                                 return;
                             } else {
@@ -281,7 +294,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                     // `Projection(<Self as Trait>::synthetic_assoc_ty, trait_def::opaque)`
                     // assumption to the `param_env` of the default method. We also separately
                     // rely on that assumption here.
-                    let ty = self.tcx.type_of(alias_def_id).instantiate(self.tcx, alias_ty.args);
+                    let ty = self
+                        .tcx
+                        .type_of(alias_def_id)
+                        .instantiate(self.tcx, alias_ty.args)
+                        .skip_norm_wip();
                     let ty::Alias(alias_ty @ ty::AliasTy { kind: ty::Opaque { .. }, .. }) =
                         *ty.kind()
                     else {

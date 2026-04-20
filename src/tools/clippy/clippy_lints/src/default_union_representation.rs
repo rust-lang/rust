@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultUnionRepresentation {
 /// of that field does not matter either.)
 fn is_union_with_two_non_zst_fields<'tcx>(cx: &LateContext<'tcx>, item: &Item<'tcx>) -> bool {
     if let ItemKind::Union(..) = &item.kind
-        && let ty::Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
+        && let ty::Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip().kind()
     {
         adt_def.all_fields().filter(|f| !is_zst(cx, f, args)).count() >= 2
     } else {

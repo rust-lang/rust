@@ -18,7 +18,7 @@ use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, PrintError, Printer};
 use rustc_middle::ty::{
     self, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, ReifyReason, Ty, TyCtxt,
-    TypeVisitable, TypeVisitableExt, UintTy,
+    TypeVisitable, TypeVisitableExt, UintTy, Unnormalized,
 };
 use rustc_span::sym;
 
@@ -30,7 +30,10 @@ pub(super) fn mangle<'tcx>(
 ) -> String {
     let def_id = instance.def_id();
     // FIXME(eddyb) this should ideally not be needed.
-    let args = tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), instance.args);
+    let args = tcx.normalize_erasing_regions(
+        ty::TypingEnv::fully_monomorphized(),
+        Unnormalized::new_wip(instance.args),
+    );
 
     let prefix = "_R";
     let mut p: V0SymbolMangler<'_> = V0SymbolMangler {
@@ -341,8 +344,9 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
         {
             (
                 ty::TypingEnv::post_analysis(self.tcx, impl_def_id),
-                self_ty.instantiate_identity(),
-                impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate_identity()),
+                self_ty.instantiate_identity().skip_norm_wip(),
+                impl_trait_ref
+                    .map(|impl_trait_ref| impl_trait_ref.instantiate_identity().skip_norm_wip()),
             )
         } else {
             assert!(
@@ -352,19 +356,24 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             );
             (
                 ty::TypingEnv::fully_monomorphized(),
-                self_ty.instantiate(self.tcx, args),
-                impl_trait_ref.map(|impl_trait_ref| impl_trait_ref.instantiate(self.tcx, args)),
+                self_ty.instantiate(self.tcx, args).skip_norm_wip(),
+                impl_trait_ref.map(|impl_trait_ref| {
+                    impl_trait_ref.instantiate(self.tcx, args).skip_norm_wip()
+                }),
             )
         };
 
         match &mut impl_trait_ref {
             Some(impl_trait_ref) => {
                 assert_eq!(impl_trait_ref.self_ty(), self_ty);
-                *impl_trait_ref = self.tcx.normalize_erasing_regions(typing_env, *impl_trait_ref);
+                *impl_trait_ref = self
+                    .tcx
+                    .normalize_erasing_regions(typing_env, Unnormalized::new_wip(*impl_trait_ref));
                 self_ty = impl_trait_ref.self_ty();
             }
             None => {
-                self_ty = self.tcx.normalize_erasing_regions(typing_env, self_ty);
+                self_ty =
+                    self.tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(self_ty));
             }
         }
 

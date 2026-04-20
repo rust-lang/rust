@@ -1,17 +1,17 @@
 use std::borrow::Cow;
 
 use rustc_ast::AttrStyle;
-use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
+use rustc_errors::{DiagArgValue, Diagnostic, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrItem, Attribute, MethodKind, Target};
 use rustc_span::{BytePos, Span, Symbol, sym};
 
 use crate::AttributeParser;
 use crate::context::{AcceptContext, Stage};
 use crate::errors::{
-    InvalidAttrAtCrateLevel, ItemFollowingInnerAttr, UnsupportedAttributesInWhere,
+    InvalidAttrAtCrateLevel, InvalidTargetLint, ItemFollowingInnerAttr,
+    UnsupportedAttributesInWhere,
 };
 use crate::session_diagnostics::InvalidTarget;
 use crate::target_checking::Policy::Allow;
@@ -142,14 +142,19 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
                 };
 
                 let attr_span = cx.attr_span;
-                cx.emit_lint(
+                cx.emit_dyn_lint(
                     lint,
-                    AttributeLintKind::InvalidTarget {
-                        name: name.to_string(),
-                        target: target.plural_name(),
-                        only: if only { "only " } else { "" },
-                        applied,
-                        attr_span,
+                    move |dcx, level| {
+                        InvalidTargetLint {
+                            name: name.to_string(),
+                            target: target.plural_name(),
+                            only: if only { "only " } else { "" },
+                            applied: DiagArgValue::StrListSepByAnd(
+                                applied.iter().map(|i| Cow::Owned(i.to_string())).collect(),
+                            ),
+                            attr_span,
+                        }
+                        .into_diag(dcx, level)
                     },
                     attr_span,
                 );
@@ -176,15 +181,24 @@ impl<'sess, S: Stage> AttributeParser<'sess, S> {
             return;
         }
 
-        let kind = AttributeLintKind::InvalidStyle {
-            name: cx.attr_path.to_string(),
-            is_used_as_inner: cx.attr_style == AttrStyle::Inner,
-            target: target.name(),
-            target_span: cx.target_span,
-        };
+        let name = cx.attr_path.to_string();
+        let is_used_as_inner = cx.attr_style == AttrStyle::Inner;
+        let target_span = cx.target_span;
         let attr_span = cx.attr_span;
 
-        cx.emit_lint(rustc_session::lint::builtin::UNUSED_ATTRIBUTES, kind, attr_span);
+        cx.emit_dyn_lint(
+            rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
+            move |dcx, level| {
+                crate::errors::InvalidAttrStyle {
+                    name: &name,
+                    is_used_as_inner,
+                    target_span: (!is_used_as_inner).then_some(target_span),
+                    target: target.name(),
+                }
+                .into_diag(dcx, level)
+            },
+            attr_span,
+        );
     }
 
     // FIXME: Fix "Cannot determine resolution" error and remove built-in macros
