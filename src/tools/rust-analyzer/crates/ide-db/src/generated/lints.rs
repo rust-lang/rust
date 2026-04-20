@@ -1804,13 +1804,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         warn_since: None,
         deny_since: None,
     },
-    Lint {
-        label: "warnings",
-        description: r##"lint group for: all lints that are set to issue warnings"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
 ];
 
 pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
