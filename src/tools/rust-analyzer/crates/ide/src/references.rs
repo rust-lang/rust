@@ -2740,6 +2740,7 @@ fn test() {
     fn goto_ref_fn_kw() {
         check(
             r#"
+//- minicore: fn
 macro_rules! N {
     ($i:ident, $x:expr, $blk:expr) => {
         for $i in 0..$x {

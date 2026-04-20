@@ -1051,6 +1051,7 @@ fn f() {
         check_assist(
             inline_local_variable,
             r#"
+//- minicore: fn
 fn main() {
     let $0f = || 2;
     let _ = f();

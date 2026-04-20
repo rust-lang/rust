@@ -392,6 +392,11 @@ impl<'db> Ty<'db> {
         matches!(self.kind(), TyKind::Char)
     }
 
+    #[inline]
+    pub fn is_coroutine_closure(self) -> bool {
+        matches!(self.kind(), TyKind::CoroutineClosure(..))
+    }
+
     /// A scalar type is one that denotes an atomic datum, with no sub-components.
     /// (A RawPtr is scalar because it represents a non-managed pointer, so its
     /// contents are abstract to rustc.)
@@ -439,6 +444,11 @@ impl<'db> Ty<'db> {
     #[inline]
     pub fn is_raw_ptr(self) -> bool {
         matches!(self.kind(), TyKind::RawPtr(..))
+    }
+
+    #[inline]
+    pub fn is_ref(self) -> bool {
+        matches!(self.kind(), TyKind::Ref(..))
     }
 
     #[inline]
@@ -503,6 +513,14 @@ impl<'db> Ty<'db> {
             TyKind::Adt(adt, substs) if adt.is_box() => Some(substs.as_slice()[0].expect_ty()),
             TyKind::Ref(_, ty, _) => Some(ty),
             TyKind::RawPtr(ty, _) if explicit => Some(ty),
+            _ => None,
+        }
+    }
+
+    /// Returns the type of `ty[i]`.
+    pub fn builtin_index(self) -> Option<Ty<'db>> {
+        match self.kind() {
+            TyKind::Array(ty, _) | TyKind::Slice(ty) => Some(ty),
             _ => None,
         }
     }

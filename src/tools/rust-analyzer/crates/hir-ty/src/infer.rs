@@ -14,6 +14,7 @@
 //! the `ena` crate, which is extracted from rustc.
 
 mod autoderef;
+mod callee;
 pub(crate) mod cast;
 pub(crate) mod closure;
 mod coerce;
@@ -28,9 +29,9 @@ mod path;
 mod place_op;
 pub(crate) mod unify;
 
-use std::{cell::OnceCell, convert::identity, iter};
+use std::{cell::OnceCell, convert::identity, fmt, iter, ops::Deref};
 
-use base_db::Crate;
+use base_db::{Crate, FxIndexMap};
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, ExpressionStoreOwnerId, FieldId,
@@ -54,15 +55,22 @@ use rustc_type_ir::{
     AliasTyKind, TypeFoldable,
     inherent::{AdtDef, IntoKind, Ty as _},
 };
+use smallvec::SmallVec;
 use span::Edition;
 use stdx::never;
 use thin_vec::ThinVec;
 
 use crate::{
     ImplTraitId, IncorrectGenericsLenKind, PathLoweringDiagnostic, TargetFeatures,
+    closure_analysis::PlaceBase,
     collect_type_inference_vars,
-    db::{HirDatabase, InternedClosureId, InternedOpaqueTyId},
+    db::{HirDatabase, InternedOpaqueTyId},
     infer::{
+        callee::DeferredCallResolution,
+        closure::analysis::{
+            BorrowKind,
+            expr_use_visitor::{FakeReadCause, Place},
+        },
         coerce::{CoerceMany, DynamicCoerceMany},
         diagnostics::{Diagnostics, InferenceTyLoweringContext as TyLoweringContext},
         expr::ExprIsRead,
@@ -71,14 +79,12 @@ use crate::{
         ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind, diagnostics::TyLoweringDiagnostic,
     },
     method_resolution::{CandidateId, MethodResolutionUnstableFeatures},
-    mir::MirSpan,
     next_solver::{
         AliasTy, Const, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs, Region,
         StoredGenericArgs, StoredTy, StoredTys, Ty, TyKind, Tys,
         abi::Safety,
         infer::{InferCtxt, ObligationInspector, traits::ObligationCause},
     },
-    traits::FnTrait,
     utils::TargetFeatureIsSafeInTarget,
 };
 
@@ -91,7 +97,6 @@ pub use coerce::could_coerce;
 pub use unify::{could_unify, could_unify_deeply};
 
 use cast::{CastCheck, CastError};
-pub(crate) use closure::analysis::{CaptureKind, CapturedItem, CapturedItemWithoutTy};
 
 /// The entry point of type inference.
 fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult {
@@ -266,7 +271,10 @@ fn infer_finalize(mut ctx: InferenceContext<'_, '_>) -> InferenceResult {
 
     ctx.table.select_obligations_where_possible();
 
-    ctx.infer_closures();
+    // Closure and coroutine analysis may run after fallback
+    // because they don't constrain other type variables.
+    ctx.closure_analyze();
+    assert!(ctx.deferred_call_resolutions.is_empty());
 
     ctx.table.select_obligations_where_possible();
 
@@ -498,7 +506,7 @@ pub enum Adjust {
 /// The target type is `U` in both cases, with the region and mutability
 /// being those shared by both the receiver and the returned reference.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct OverloadedDeref(pub Option<Mutability>);
+pub struct OverloadedDeref(pub Mutability);
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum AutoBorrowMutability {
@@ -533,15 +541,6 @@ pub enum AutoBorrow {
     Ref(AutoBorrowMutability),
     /// Converts from T to *T.
     RawPtr(Mutability),
-}
-
-impl AutoBorrow {
-    fn mutability(self) -> Mutability {
-        match self {
-            AutoBorrow::Ref(mutbl) => mutbl.into(),
-            AutoBorrow::RawPtr(mutbl) => mutbl,
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -637,11 +636,226 @@ pub struct InferenceResult {
     /// the first `rest` has implicit `ref` binding mode, but the second `rest` binding mode is `move`.
     pub(crate) binding_modes: ArenaMap<PatId, BindingMode>,
 
-    pub(crate) closure_info: FxHashMap<InternedClosureId, (Vec<CapturedItem>, FnTrait)>,
-    // FIXME: remove this field
-    pub mutated_bindings_in_closure: FxHashSet<BindingId>,
-
     pub(crate) coercion_casts: FxHashSet<ExprId>,
+
+    pub closures_data: FxHashMap<ExprId, ClosureData>,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
+pub struct ClosureData {
+    /// Tracks the minimum captures required for a closure;
+    /// see `MinCaptureInformationMap` for more details.
+    pub min_captures: RootVariableMinCaptureList,
+
+    /// Tracks the fake reads required for a closure and the reason for the fake read.
+    /// When performing pattern matching for closures, there are times we don't end up
+    /// reading places that are mentioned in a closure (because of _ patterns). However,
+    /// to ensure the places are initialized, we introduce fake reads.
+    /// Consider these two examples:
+    /// ```ignore (discriminant matching with only wildcard arm)
+    /// let x: u8;
+    /// let c = || match x { _ => () };
+    /// ```
+    /// In this example, we don't need to actually read/borrow `x` in `c`, and so we don't
+    /// want to capture it. However, we do still want an error here, because `x` should have
+    /// to be initialized at the point where c is created. Therefore, we add a "fake read"
+    /// instead.
+    /// ```ignore (destructured assignments)
+    /// let c = || {
+    ///     let (t1, t2) = t;
+    /// }
+    /// ```
+    /// In the second example, we capture the disjoint fields of `t` (`t.0` & `t.1`), but
+    /// we never capture `t`. This becomes an issue when we build MIR as we require
+    /// information on `t` in order to create place `t.0` and `t.1`. We can solve this
+    /// issue by fake reading `t`.
+    pub fake_reads: Box<[(Place, FakeReadCause, SmallVec<[CaptureSourceStack; 2]>)]>,
+}
+
+/// Part of `MinCaptureInformationMap`; Maps a root variable to the list of `CapturedPlace`.
+/// Used to track the minimum set of `Place`s that need to be captured to support all
+/// Places captured by the closure starting at a given root variable.
+///
+/// This provides a convenient and quick way of checking if a variable being used within
+/// a closure is a capture of a local variable.
+pub(crate) type RootVariableMinCaptureList = FxIndexMap<BindingId, MinCaptureList>;
+
+/// Part of `MinCaptureInformationMap`; List of `CapturePlace`s.
+pub(crate) type MinCaptureList = Vec<CapturedPlace>;
+
+/// A composite describing a `Place` that is captured by a closure.
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+pub struct CapturedPlace {
+    /// The `Place` that is captured.
+    pub place: Place,
+
+    /// `CaptureKind` and expression(s) that resulted in such capture of `place`.
+    pub info: CaptureInfo,
+
+    /// Represents if `place` can be mutated or not.
+    pub mutability: Mutability,
+}
+
+impl CapturedPlace {
+    pub fn is_by_ref(&self) -> bool {
+        match self.info.capture_kind {
+            UpvarCapture::ByValue | UpvarCapture::ByUse => false,
+            UpvarCapture::ByRef(..) => true,
+        }
+    }
+
+    pub fn captured_local(&self) -> BindingId {
+        match self.place.base {
+            PlaceBase::Upvar { var_id: local, .. } | PlaceBase::Local(local) => local,
+            PlaceBase::Rvalue | PlaceBase::StaticItem => {
+                unreachable!("only locals can be captured")
+            }
+        }
+    }
+
+    /// The type of the capture stored in the closure, which is different from the type of the captured place
+    /// if we capture by reference.
+    pub fn captured_ty<'db>(&self, db: &'db dyn HirDatabase) -> Ty<'db> {
+        let place_ty = self.place.ty();
+        let make_ref = |mutbl| {
+            let interner = DbInterner::new_no_crate(db);
+            let region = Region::new_erased(interner);
+            Ty::new_ref(interner, region, place_ty, mutbl)
+        };
+        match self.info.capture_kind {
+            UpvarCapture::ByUse | UpvarCapture::ByValue => place_ty,
+            UpvarCapture::ByRef(kind) => make_ref(kind.to_mutbl_lossy()),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct CaptureSourceStack(CaptureSourceStackRepr);
+
+#[derive(Clone)]
+enum CaptureSourceStackRepr {
+    One(ExprOrPatId),
+    Two([ExprOrPatId; 2]),
+    Many(ThinVec<ExprOrPatId>),
+}
+
+impl PartialEq for CaptureSourceStack {
+    fn eq(&self, other: &Self) -> bool {
+        **self == **other
+    }
+}
+
+impl Eq for CaptureSourceStack {}
+
+impl std::hash::Hash for CaptureSourceStack {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        (**self).hash(state);
+    }
+}
+
+const _: () = assert!(size_of::<CaptureSourceStack>() == 16);
+
+impl Deref for CaptureSourceStack {
+    type Target = [ExprOrPatId];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        match &self.0 {
+            CaptureSourceStackRepr::One(it) => std::slice::from_ref(it),
+            CaptureSourceStackRepr::Two(it) => it,
+            CaptureSourceStackRepr::Many(it) => it,
+        }
+    }
+}
+
+impl fmt::Debug for CaptureSourceStack {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("CaptureSourceStack").field(&&**self).finish()
+    }
+}
+
+impl CaptureSourceStack {
+    #[inline]
+    pub fn len(&self) -> usize {
+        match &self.0 {
+            CaptureSourceStackRepr::One(_) => 1,
+            CaptureSourceStackRepr::Two(_) => 2,
+            CaptureSourceStackRepr::Many(it) => it.len(),
+        }
+    }
+
+    #[inline]
+    pub(crate) fn from_single(id: ExprOrPatId) -> Self {
+        Self(CaptureSourceStackRepr::One(id))
+    }
+
+    #[inline]
+    pub fn final_source(&self) -> ExprOrPatId {
+        *self.last().expect("should always have a final source")
+    }
+
+    pub fn push(&mut self, new_id: ExprOrPatId) {
+        match &mut self.0 {
+            CaptureSourceStackRepr::One(old_id) => {
+                self.0 = CaptureSourceStackRepr::Two([*old_id, new_id])
+            }
+            CaptureSourceStackRepr::Two([old_id1, old_id2]) => {
+                self.0 = CaptureSourceStackRepr::Many(ThinVec::from([*old_id1, *old_id2, new_id]));
+            }
+            CaptureSourceStackRepr::Many(old_ids) => old_ids.push(new_id),
+        }
+    }
+
+    pub fn truncate(&mut self, new_len: usize) {
+        debug_assert!(new_len > 0);
+        match &mut self.0 {
+            CaptureSourceStackRepr::One(_) => {}
+            CaptureSourceStackRepr::Two([first, _]) => {
+                if new_len == 1 {
+                    self.0 = CaptureSourceStackRepr::One(*first)
+                }
+            }
+            CaptureSourceStackRepr::Many(ids) => ids.truncate(new_len),
+        }
+    }
+
+    pub fn shrink_to_fit(&mut self) {
+        match &mut self.0 {
+            CaptureSourceStackRepr::One(_) | CaptureSourceStackRepr::Two(_) => {}
+            CaptureSourceStackRepr::Many(ids) => match **ids {
+                [one] => self.0 = CaptureSourceStackRepr::One(one),
+                [first, second] => self.0 = CaptureSourceStackRepr::Two([first, second]),
+                _ => ids.shrink_to_fit(),
+            },
+        }
+    }
+}
+
+/// Part of `MinCaptureInformationMap`; describes the capture kind (&, &mut, move)
+/// for a particular capture as well as identifying the part of the source code
+/// that triggered this capture to occur.
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+pub struct CaptureInfo {
+    pub sources: SmallVec<[CaptureSourceStack; 2]>,
+
+    /// Capture mode that was selected
+    pub capture_kind: UpvarCapture,
+}
+
+/// Information describing the capture of an upvar. This is computed
+/// during `typeck`, specifically by `regionck`.
+#[derive(Eq, PartialEq, Clone, Debug, Copy, Hash)]
+pub enum UpvarCapture {
+    /// Upvar is captured by value. This is always true when the
+    /// closure is labeled `move`, but can also be true in other cases
+    /// depending on inference.
+    ByValue,
+
+    /// Upvar is captured by use. This is true when the closure is labeled `use`.
+    ByUse,
+
+    /// Upvar is captured by reference.
+    ByRef(BorrowKind),
 }
 
 #[salsa::tracked]
@@ -699,9 +913,8 @@ impl InferenceResult {
             pat_adjustments: Default::default(),
             binding_modes: Default::default(),
             expr_adjustments: Default::default(),
-            closure_info: Default::default(),
-            mutated_bindings_in_closure: Default::default(),
             coercion_casts: Default::default(),
+            closures_data: Default::default(),
         }
     }
 
@@ -770,9 +983,6 @@ impl InferenceResult {
     }
     pub fn type_of_type_placeholder<'db>(&self, type_ref: TypeRefId) -> Option<Ty<'db>> {
         self.type_of_type_placeholder.get(&type_ref).map(|ty| ty.as_ref())
-    }
-    pub fn closure_info(&self, closure: InternedClosureId) -> &(Vec<CapturedItem>, FnTrait) {
-        self.closure_info.get(&closure).unwrap()
     }
     pub fn type_of_expr_or_pat<'db>(&self, id: ExprOrPatId) -> Option<Ty<'db>> {
         match id {
@@ -870,6 +1080,26 @@ impl InferenceResult {
     pub fn binding_ty<'db>(&self, id: BindingId) -> Ty<'db> {
         self.type_of_binding.get(id).map_or(self.error_ty.as_ref(), |it| it.as_ref())
     }
+
+    /// This does not deduplicate, which means you'll get the types once per capture.
+    pub fn closure_captures_tys<'db>(&self, closure: ExprId) -> impl Iterator<Item = Ty<'db>> {
+        self.closures_data[&closure]
+            .min_captures
+            .values()
+            .flat_map(|captures| captures.iter().map(|capture| capture.place.ty()))
+    }
+
+    /// Like [`Self::closure_captures_tys()`], but using [`CapturedPlace::captured_ty()`].
+    pub fn closure_captures_captured_tys<'db>(
+        &self,
+        db: &'db dyn HirDatabase,
+        closure: ExprId,
+    ) -> impl Iterator<Item = Ty<'db>> {
+        self.closures_data[&closure]
+            .min_captures
+            .values()
+            .flat_map(|captures| captures.iter().map(|capture| capture.captured_ty(db)))
+    }
 }
 
 /// The inference context contains all information needed during type inference.
@@ -913,19 +1143,8 @@ pub(crate) struct InferenceContext<'body, 'db> {
 
     deferred_cast_checks: Vec<CastCheck<'db>>,
 
-    // fields related to closure capture
-    current_captures: Vec<CapturedItemWithoutTy>,
-    /// A stack that has an entry for each projection in the current capture.
-    ///
-    /// For example, in `a.b.c`, we capture the spans of `a`, `a.b`, and `a.b.c`.
-    /// We do that because sometimes we truncate projections (when a closure captures
-    /// both `a.b` and `a.b.c`), and we want to provide accurate spans in this case.
-    current_capture_span_stack: Vec<MirSpan>,
-    current_closure: Option<InternedClosureId>,
-    /// Stores the list of closure ids that need to be analyzed before this closure. See the
-    /// comment on `InferenceContext::sort_closures`
-    closure_dependencies: FxHashMap<InternedClosureId, Vec<InternedClosureId>>,
-    deferred_closures: FxHashMap<InternedClosureId, Vec<(Ty<'db>, Ty<'db>, Vec<Ty<'db>>, ExprId)>>,
+    /// The key is an expression defining a closure or a coroutine closure.
+    deferred_call_resolutions: FxHashMap<ExprId, Vec<DeferredCallResolution<'db>>>,
 
     diagnostics: Diagnostics,
 }
@@ -1017,13 +1236,9 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             diverges: Diverges::Maybe,
             breakables: Vec::new(),
             deferred_cast_checks: Vec::new(),
-            current_captures: Vec::new(),
-            current_capture_span_stack: Vec::new(),
-            current_closure: None,
-            deferred_closures: FxHashMap::default(),
-            closure_dependencies: FxHashMap::default(),
             inside_assignment: false,
             diagnostics: Diagnostics::default(),
+            deferred_call_resolutions: FxHashMap::default(),
         }
     }
 
@@ -1082,7 +1297,12 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     // there is no problem in it being `pub(crate)`, remove this comment.
     fn resolve_all(self) -> InferenceResult {
         let InferenceContext {
-            mut table, mut result, tuple_field_accesses_rev, diagnostics, ..
+            mut table,
+            mut result,
+            tuple_field_accesses_rev,
+            diagnostics,
+            types,
+            ..
         } = self;
         let mut diagnostics = diagnostics.finish();
         // Destructure every single field so whenever new fields are added to `InferenceResult` we
@@ -1098,16 +1318,12 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             type_of_type_placeholder,
             type_of_opaque,
             type_mismatches,
+            closures_data,
             has_errors,
             error_ty: _,
             pat_adjustments,
             binding_modes: _,
             expr_adjustments,
-            // Types in `closure_info` have already been `resolve_completely()`'d during
-            // `InferenceContext::infer_closures()` (in `HirPlace::ty()` specifically), so no need
-            // to resolve them here.
-            closure_info: _,
-            mutated_bindings_in_closure: _,
             tuple_field_access_types: _,
             coercion_casts: _,
             diagnostics: _,
@@ -1194,6 +1410,38 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             *has_errors = *has_errors || adjustment.as_ref().references_non_lt_error();
         }
         pat_adjustments.shrink_to_fit();
+        for closure_data in closures_data.values_mut() {
+            let ClosureData { min_captures, fake_reads } = closure_data;
+            let dummy_place = || Place {
+                base_ty: types.types.error.store(),
+                base: closure::analysis::expr_use_visitor::PlaceBase::Rvalue,
+                projections: Vec::new(),
+            };
+
+            for (place, _, sources) in fake_reads {
+                *place = table.resolve_completely(std::mem::replace(place, dummy_place()));
+                place.projections.shrink_to_fit();
+                for source in &mut *sources {
+                    source.shrink_to_fit();
+                }
+                sources.shrink_to_fit();
+            }
+
+            for min_capture in min_captures.values_mut() {
+                for captured in &mut *min_capture {
+                    let CapturedPlace { place, info, mutability: _ } = captured;
+                    *place = table.resolve_completely(std::mem::replace(place, dummy_place()));
+                    let CaptureInfo { sources, capture_kind: _ } = info;
+                    for source in &mut *sources {
+                        source.shrink_to_fit();
+                    }
+                    sources.shrink_to_fit();
+                }
+                min_capture.shrink_to_fit();
+            }
+            min_captures.shrink_to_fit();
+        }
+        closures_data.shrink_to_fit();
         result.tuple_field_access_types = tuple_field_accesses_rev
             .into_iter()
             .map(|subst| table.resolve_completely(subst).store())
@@ -1385,6 +1633,21 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     pub(crate) fn push_diagnostic(&self, diagnostic: InferenceDiagnostic) {
         self.diagnostics.push(diagnostic);
+    }
+
+    fn record_deferred_call_resolution(
+        &mut self,
+        closure_def_id: ExprId,
+        r: DeferredCallResolution<'db>,
+    ) {
+        self.deferred_call_resolutions.entry(closure_def_id).or_default().push(r);
+    }
+
+    fn remove_deferred_call_resolutions(
+        &mut self,
+        closure_def_id: ExprId,
+    ) -> Vec<DeferredCallResolution<'db>> {
+        self.deferred_call_resolutions.remove(&closure_def_id).unwrap_or_default()
     }
 
     fn with_ty_lowering<R>(
@@ -1644,6 +1907,23 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             // FIXME: Emit diagnostic.
         }
         result.unwrap_or(self.types.types.error)
+    }
+
+    pub(crate) fn type_must_be_known_at_this_point(
+        &self,
+        _id: ExprOrPatId,
+        _ty: Ty<'db>,
+    ) -> Ty<'db> {
+        // FIXME: Emit an diagnostic.
+        self.types.types.error
+    }
+
+    pub(crate) fn require_type_is_sized(&mut self, ty: Ty<'db>) {
+        if !ty.references_non_lt_error()
+            && let Some(sized_trait) = self.lang_items.Sized
+        {
+            self.table.register_bound(ty, sized_trait, ObligationCause::new());
+        }
     }
 
     fn expr_ty(&self, expr: ExprId) -> Ty<'db> {

@@ -87,7 +87,7 @@ async fn test() {
 fn infer_async_closure() {
     check_types(
         r#"
-//- minicore: future, option
+//- minicore: future, option, async_fn
 async fn test() {
     let f = async move |x: i32| x + 42;
     f;
@@ -3149,6 +3149,7 @@ impl<A: Step> core::iter::Iterator for core::ops::Range<A> {
 fn infer_closure_arg() {
     check_infer(
         r#"
+//- minicore: fn
 //- /lib.rs
 
 enum Option<T> {

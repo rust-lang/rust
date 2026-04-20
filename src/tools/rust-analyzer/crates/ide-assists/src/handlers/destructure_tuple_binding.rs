@@ -897,6 +897,7 @@ fn main() {
         check_assist(
             assist,
             r#"
+//- minicore: fn
 fn main() {
     let f = |$0t| t.0 + t.1;
     let v = f((1,2));
@@ -1101,6 +1102,7 @@ fn main() {
         check_assist(
             assist,
             r#"
+//- minicore: fn
 fn main() {
     let $0t = (1,2);
     let v = t.1;

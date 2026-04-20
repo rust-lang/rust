@@ -38,7 +38,7 @@ impl<'db> InferenceContext<'_, 'db> {
                             ) {
                                 self.table.register_predicates(infer_ok.obligations);
                             }
-                            *d = OverloadedDeref(Some(mutability));
+                            *d = OverloadedDeref(mutability);
                         }
                     }
                     Adjust::Borrow(b) => match b {

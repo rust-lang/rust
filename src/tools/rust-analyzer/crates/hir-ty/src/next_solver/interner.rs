@@ -33,7 +33,7 @@ use rustc_type_ir::{
     fast_reject,
     inherent::{self, Const as _, GenericsOf, IntoKind, SliceLike as _, Span as _, Ty as _},
     lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem},
-    solve::SizedTraitKind,
+    solve::{AdtDestructorKind, SizedTraitKind},
 };
 
 use crate::{
@@ -721,12 +721,8 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
             .transpose()
     }
 
-    fn destructor(
-        self,
-        _interner: DbInterner<'db>,
-    ) -> Option<rustc_type_ir::solve::AdtDestructorKind> {
-        // FIXME(next-solver)
-        None
+    fn destructor(self, interner: DbInterner<'db>) -> Option<AdtDestructorKind> {
+        crate::drop::destructor(interner.db, self.def_id().0).map(|_| AdtDestructorKind::NotConst)
     }
 
     fn is_manually_drop(self) -> bool {

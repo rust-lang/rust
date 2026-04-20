@@ -23,14 +23,13 @@ use crate::{
     infer::{BreakableKind, Diverges, coerce::CoerceMany},
     next_solver::{
         AliasTy, Binder, ClauseKind, DbInterner, ErrorGuaranteed, FnSig, GenericArgs, PolyFnSig,
-        PolyProjectionPredicate, Predicate, PredicateKind, SolverDefId, Ty, TyKind, Tys,
+        PolyProjectionPredicate, Predicate, PredicateKind, SolverDefId, Ty, TyKind,
         abi::Safety,
         infer::{
             BoundRegionConversionTime, InferOk, InferResult,
             traits::{ObligationCause, PredicateObligations},
         },
     },
-    traits::FnTrait,
 };
 
 use super::{Expectation, InferenceContext};
@@ -78,40 +77,14 @@ impl<'db> InferenceContext<'_, 'db> {
 
         let parent_args = GenericArgs::identity_for_item(interner, self.generic_def.into());
 
-        // FIXME: Do this when we infer closures correctly:
-        // let tupled_upvars_ty = self.table.next_ty_var();
-        let tupled_upvars_ty = self.types.types.unit;
+        let tupled_upvars_ty = self.table.next_ty_var();
 
-        let mut current_closure_id = None;
         // FIXME: We could probably actually just unify this further --
         // instead of having a `FnSig` and a `Option<CoroutineTypes>`,
         // we can have a `ClosureSignature { Coroutine { .. }, Closure { .. } }`,
         // similar to how `ty::GenSig` is a distinct data structure.
         let (closure_ty, resume_yield_tys) = match closure_kind {
             ClosureKind::Closure => {
-                let closure_id =
-                    InternedClosureId::new(self.db, InternedClosure(self.owner, closure_expr));
-                current_closure_id = Some(closure_id);
-                self.deferred_closures.entry(closure_id).or_default();
-                self.add_current_closure_dependency(closure_id);
-
-                match expected_kind {
-                    Some(kind) => {
-                        self.result.closure_info.insert(
-                            closure_id,
-                            (
-                                Vec::new(),
-                                match kind {
-                                    rustc_type_ir::ClosureKind::Fn => FnTrait::Fn,
-                                    rustc_type_ir::ClosureKind::FnMut => FnTrait::FnMut,
-                                    rustc_type_ir::ClosureKind::FnOnce => FnTrait::FnOnce,
-                                },
-                            ),
-                        );
-                    }
-                    None => {}
-                };
-
                 // Tuple up the arguments and insert the resulting function type into
                 // the `closures` table.
                 let sig = bound_sig.map_bound(|sig| {
@@ -130,9 +103,7 @@ impl<'db> InferenceContext<'_, 'db> {
                     Some(kind) => Ty::from_closure_kind(interner, kind),
                     // Create a type variable (for now) to represent the closure kind.
                     // It will be unified during the upvar inference phase (`upvar.rs`)
-                    // FIXME: This too should be the next line:
-                    // None => self.table.next_ty_var(),
-                    None => self.types.types.i8,
+                    None => self.table.next_ty_var(),
                 };
 
                 let closure_args = ClosureArgs::new(
@@ -144,6 +115,9 @@ impl<'db> InferenceContext<'_, 'db> {
                         tupled_upvars_ty,
                     },
                 );
+
+                let closure_id =
+                    InternedClosureId::new(self.db, InternedClosure(self.owner, closure_expr));
 
                 (Ty::new_closure(interner, closure_id.into(), closure_args.args), None)
             }
@@ -202,25 +176,11 @@ impl<'db> InferenceContext<'_, 'db> {
 
                     // Create a type variable (for now) to represent the closure kind.
                     // It will be unified during the upvar inference phase (`upvar.rs`)
-                    // FIXME: Here again the next line should be active.
-                    // None => self.table.next_ty_var(),
-                    None => self.types.types.i8,
+                    None => self.table.next_ty_var(),
                 };
 
-                // FIXME: Another line that should be enabled.
-                // let coroutine_captures_by_ref_ty = self.table.next_ty_var();
-                let coroutine_captures_by_ref_ty = Ty::new_fn_ptr(
-                    interner,
-                    Binder::bind_with_vars(
-                        FnSig {
-                            inputs_and_output: Tys::new_from_slice(&[self.types.types.unit]),
-                            c_variadic: false,
-                            safety: Safety::Safe,
-                            abi: FnAbi::Rust,
-                        },
-                        self.types.coroutine_captures_by_ref_bound_var_kinds,
-                    ),
-                );
+                let coroutine_captures_by_ref_ty = self.table.next_ty_var();
+
                 let closure_args = CoroutineClosureArgs::new(
                     interner,
                     CoroutineClosureArgsParts {
@@ -254,9 +214,7 @@ impl<'db> InferenceContext<'_, 'db> {
 
                     // Create a type variable (for now) to represent the closure kind.
                     // It will be unified during the upvar inference phase (`upvar.rs`)
-                    // FIXME: And here again.
-                    // None => self.table.next_ty_var(),
-                    None => self.types.types.i16,
+                    None => self.table.next_ty_var(),
                 };
 
                 let coroutine_upvars_ty = self.table.next_ty_var();
@@ -310,7 +268,6 @@ impl<'db> InferenceContext<'_, 'db> {
 
         // FIXME: lift these out into a struct
         let prev_diverges = mem::replace(&mut self.diverges, Diverges::Maybe);
-        let prev_closure = mem::replace(&mut self.current_closure, current_closure_id);
         let prev_ret_ty = mem::replace(&mut self.return_ty, liberated_sig.output());
         let prev_ret_coercion =
             self.return_coercion.replace(CoerceMany::new(liberated_sig.output()));
@@ -323,7 +280,6 @@ impl<'db> InferenceContext<'_, 'db> {
         self.diverges = prev_diverges;
         self.return_ty = prev_ret_ty;
         self.return_coercion = prev_ret_coercion;
-        self.current_closure = prev_closure;
         self.resume_yield_tys = prev_resume_yield_tys;
 
         closure_ty

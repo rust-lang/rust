@@ -306,6 +306,7 @@ language_item_table! { LangItems =>
     /// Trait injected by `#[derive(Eq)]`, (i.e. "Total EQ"; no, I will not apologize).
     StructuralTeq,           sym::structural_teq,      TraitId;
     Copy,                    sym::copy,                TraitId;
+    UseCloned,               sym::use_cloned,          TraitId;
     Clone,                   sym::clone,               TraitId;
     TrivialClone,            sym::trivial_clone,       TraitId;
     Sync,                    sym::sync,                TraitId;

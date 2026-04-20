@@ -1792,14 +1792,14 @@ const GOAL: i32 = {
 fn closure_capture_unsized_type() {
     check_number(
         r#"
-    //- minicore: fn, copy, slice, index, coerce_unsized
+    //- minicore: fn, copy, slice, index, coerce_unsized, sized
     fn f<T: A>(x: &<T as A>::Ty) -> &<T as A>::Ty {
         let c = || &*x;
         c()
     }
 
     trait A {
-        type Ty;
+        type Ty: ?Sized;
     }
 
     impl A for i32 {
@@ -1810,7 +1810,7 @@ fn closure_capture_unsized_type() {
         let k: &[u8] = &[1, 2, 3];
         let k = f::<i32>(k);
         k[0] + k[1] + k[2]
-    }
+    };
     "#,
         6,
     );

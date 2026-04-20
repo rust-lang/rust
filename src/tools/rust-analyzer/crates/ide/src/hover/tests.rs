@@ -423,7 +423,7 @@ fn main() {
 
             ## Captures
             * `x.f1` by move
-            * `(*x.f2.0.0).f` by mutable borrow
+            * `x.f2.0.0.f` by mutable borrow
         "#]],
     );
     check(

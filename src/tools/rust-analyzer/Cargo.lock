@@ -786,6 +786,7 @@ dependencies = [
  "hir-ty",
  "intern",
  "itertools 0.14.0",
+ "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra-ap-rustc_type_ir",
  "rustc-hash 2.1.1",
  "serde_json",

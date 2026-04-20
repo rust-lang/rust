@@ -177,6 +177,7 @@ define_symbols! {
     Continue,
     convert,
     copy,
+    use_cloned,
     Copy,
     core_panic,
     core,

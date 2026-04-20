@@ -929,6 +929,13 @@ impl ExpressionStore {
         // We keep the async closure exactly one expr before.
         ExprId::from_raw(la_arena::RawIdx::from_u32(coroutine_closure.into_raw().into_u32() - 1))
     }
+
+    /// The opposite of [`Self::coroutine_for_closure()`].
+    #[inline]
+    pub fn closure_for_coroutine(coroutine: ExprId) -> ExprId {
+        // We keep the async closure exactly one expr before.
+        ExprId::from_raw(la_arena::RawIdx::from_u32(coroutine.into_raw().into_u32() + 1))
+    }
 }
 
 impl Index<ExprId> for ExpressionStore {

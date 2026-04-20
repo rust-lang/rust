@@ -945,12 +945,19 @@ impl<'db> ExprCollector<'db> {
         })
     }
 
-    /// An `async fn` needs to capture all parameters in the generated `async` block, even if they have
-    /// non-captured patterns such as wildcards (to ensure consistent drop order).
-    fn lower_async_fn(&mut self, params: &mut Vec<PatId>, body: ExprId) -> ExprId {
+    /// Lowers a desugared coroutine body after moving all of the arguments
+    /// into the body. This is to make sure that the future actually owns the
+    /// arguments that are passed to the function, and to ensure things like
+    /// drop order are stable.
+    fn lower_async_block_with_moved_arguments(
+        &mut self,
+        params: &mut [PatId],
+        body: ExprId,
+        coroutine_source: CoroutineSource,
+    ) -> ExprId {
         let mut statements = Vec::new();
         for param in params {
-            let name = match self.store.pats[*param] {
+            let (name, hygiene) = match self.store.pats[*param] {
                 Pat::Bind { id, .. }
                     if matches!(
                         self.store.bindings[id].mode,
@@ -962,14 +969,16 @@ impl<'db> ExprCollector<'db> {
                 }
                 Pat::Bind { id, .. } => {
                     // If this is a `ref` binding, we can't leave it as is but we can at least reuse the name, for better display.
-                    self.store.bindings[id].name.clone()
+                    (self.store.bindings[id].name.clone(), self.store.bindings[id].hygiene)
                 }
-                _ => self.generate_new_name(),
+                _ => (self.generate_new_name(), HygieneId::ROOT),
             };
-            let binding_id =
-                self.alloc_binding(name.clone(), BindingAnnotation::Mutable, HygieneId::ROOT);
+            let binding_id = self.alloc_binding(name.clone(), BindingAnnotation::Mutable, hygiene);
             let pat_id = self.alloc_pat_desugared(Pat::Bind { id: binding_id, subpat: None });
             let expr = self.alloc_expr_desugared(Expr::Path(name.into()));
+            if !hygiene.is_root() {
+                self.store.ident_hygiene.insert(expr.into(), hygiene);
+            }
             statements.push(Statement::Let {
                 pat: *param,
                 type_ref: None,
@@ -980,12 +989,17 @@ impl<'db> ExprCollector<'db> {
         }
 
         let async_ = self.async_block(
-            CoroutineSource::Fn,
-            CaptureBy::Value,
+            coroutine_source,
+            // The default capture mode here is by-ref. Later on during upvar analysis,
+            // we will force the captured arguments to by-move, but for async closures,
+            // we want to make sure that we avoid unnecessarily moving captures, or else
+            // all async closures would default to `FnOnce` as their calling mode.
+            CaptureBy::Ref,
             None,
             statements.into_boxed_slice(),
             Some(body),
         );
+        // It's important that this comes last, see the lowering of async closures for why.
         self.alloc_expr_desugared(async_)
     }
 
@@ -1010,14 +1024,18 @@ impl<'db> ExprCollector<'db> {
 
     fn collect(
         &mut self,
-        params: &mut Vec<PatId>,
+        params: &mut [PatId],
         expr: Option<ast::Expr>,
         awaitable: Awaitable,
     ) -> ExprId {
         self.awaitable_context.replace(awaitable);
         self.with_label_rib(RibKind::Closure, |this| {
             let body = this.collect_expr_opt(expr);
-            if awaitable == Awaitable::Yes { this.lower_async_fn(params, body) } else { body }
+            if awaitable == Awaitable::Yes {
+                this.lower_async_block_with_moved_arguments(params, body, CoroutineSource::Fn)
+            } else {
+                body
+            }
         })
     }
 
@@ -1450,18 +1468,11 @@ impl<'db> ExprCollector<'db> {
                     } else if e.async_token().is_some() {
                         // It's important that this expr is allocated immediately before the closure.
                         // We rely on it for `coroutine_for_closure()`.
-                        body = this.alloc_expr_desugared(Expr::Closure {
-                            args: Box::default(),
-                            arg_types: Box::default(),
-                            ret_type: None,
+                        body = this.lower_async_block_with_moved_arguments(
+                            &mut args,
                             body,
-                            closure_kind: ClosureKind::AsyncBlock {
-                                source: CoroutineSource::Closure,
-                            },
-                            // The block may need to capture by move, but we cannot know it now.
-                            // It will be fixed in capture analysis.
-                            capture_by: CaptureBy::Ref,
-                        });
+                            CoroutineSource::Closure,
+                        );
                         body_is_bindings_owner = true;
 
                         ClosureKind::AsyncClosure
