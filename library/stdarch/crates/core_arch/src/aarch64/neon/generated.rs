@@ -4641,6 +4641,66 @@ pub fn vcopy_laneq_p16<const LANE1: i32, const LANE2: i32>(
     }
 }
 #[doc = "Insert vector element from another vector element"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_f64)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+pub fn vcopy_laneq_f64<const LANE1: i32, const LANE2: i32>(
+    _a: float64x1_t,
+    b: float64x2_t,
+) -> float64x1_t {
+    static_assert!(LANE1 == 0);
+    static_assert_uimm_bits!(LANE2, 1);
+    unsafe { transmute::<f64, _>(simd_extract!(b, LANE2 as u32)) }
+}
+#[doc = "Insert vector element from another vector element"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_s64)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+pub fn vcopy_laneq_s64<const LANE1: i32, const LANE2: i32>(
+    _a: int64x1_t,
+    b: int64x2_t,
+) -> int64x1_t {
+    static_assert!(LANE1 == 0);
+    static_assert_uimm_bits!(LANE2, 1);
+    unsafe { transmute::<i64, _>(simd_extract!(b, LANE2 as u32)) }
+}
+#[doc = "Insert vector element from another vector element"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_u64)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+pub fn vcopy_laneq_u64<const LANE1: i32, const LANE2: i32>(
+    _a: uint64x1_t,
+    b: uint64x2_t,
+) -> uint64x1_t {
+    static_assert!(LANE1 == 0);
+    static_assert_uimm_bits!(LANE2, 1);
+    unsafe { transmute::<u64, _>(simd_extract!(b, LANE2 as u32)) }
+}
+#[doc = "Insert vector element from another vector element"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_laneq_p64)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(test, assert_instr(nop, LANE1 = 0, LANE2 = 1))]
+#[rustc_legacy_const_generics(1, 3)]
+#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+pub fn vcopy_laneq_p64<const LANE1: i32, const LANE2: i32>(
+    _a: poly64x1_t,
+    b: poly64x2_t,
+) -> poly64x1_t {
+    static_assert!(LANE1 == 0);
+    static_assert_uimm_bits!(LANE2, 1);
+    unsafe { transmute::<u64, _>(simd_extract!(b, LANE2 as u32)) }
+}
+#[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopyq_lane_f32)"]
 #[inline]
 #[target_feature(enable = "neon")]
