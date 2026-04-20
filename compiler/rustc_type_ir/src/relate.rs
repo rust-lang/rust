@@ -7,7 +7,7 @@ use tracing::{instrument, trace};
 use crate::error::{ExpectedFound, TypeError};
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
-use crate::{self as ty, Interner};
+use crate::{self as ty, Interner, Region};
 
 pub mod combine;
 pub mod solver_relating;
@@ -100,7 +100,7 @@ pub trait TypeRelation<I: Interner>: Sized {
 
     fn tys(&mut self, a: I::Ty, b: I::Ty) -> RelateResult<I, I::Ty>;
 
-    fn regions(&mut self, a: I::Region, b: I::Region) -> RelateResult<I, I::Region>;
+    fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>>;
 
     fn consts(&mut self, a: I::Const, b: I::Const) -> RelateResult<I, I::Const>;
 

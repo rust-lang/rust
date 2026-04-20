@@ -18,7 +18,7 @@ pub use self::closure::*;
 use crate::inherent::*;
 #[cfg(feature = "nightly")]
 use crate::visit::TypeVisitable;
-use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, UintTy};
+use crate::{self as ty, BoundVarIndexKind, FloatTy, IntTy, Interner, Region, UintTy};
 
 mod closure;
 
@@ -150,7 +150,7 @@ pub enum TyKind<I: Interner> {
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
-    Ref(I::Region, I::Ty, Mutability),
+    Ref(Region<I>, I::Ty, Mutability),
 
     /// The anonymous type of a function declaration/definition.
     ///
@@ -194,7 +194,7 @@ pub enum TyKind<I: Interner> {
     UnsafeBinder(UnsafeBinderInner<I>),
 
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
-    Dynamic(I::BoundExistentialPredicates, I::Region),
+    Dynamic(I::BoundExistentialPredicates, Region<I>),
 
     /// The anonymous type of a closure. Used to represent the type of `|a| a`.
     ///

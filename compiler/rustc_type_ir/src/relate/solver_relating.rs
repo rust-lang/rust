@@ -5,7 +5,7 @@ use crate::data_structures::DelayedSet;
 use crate::relate::combine::combine_ty_args;
 pub use crate::relate::*;
 use crate::solve::Goal;
-use crate::{self as ty, InferCtxtLike, Interner};
+use crate::{self as ty, InferCtxtLike, Interner, Region};
 
 pub trait RelateExt: InferCtxtLike {
     fn relate<T: Relate<Self::Interner>>(
@@ -253,7 +253,7 @@ where
     }
 
     #[instrument(skip(self), level = "trace")]
-    fn regions(&mut self, a: I::Region, b: I::Region) -> RelateResult<I, I::Region> {
+    fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
         match self.ambient_variance {
             // Subtype(&'a u8, &'b u8) => Outlives('a: 'b) => SubRegion('b, 'a)
             ty::Covariant => self.infcx.sub_regions(b, a, self.span),

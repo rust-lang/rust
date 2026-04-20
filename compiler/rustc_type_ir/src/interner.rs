@@ -5,6 +5,8 @@ use std::ops::Deref;
 
 use rustc_ast_ir::Movability;
 use rustc_index::bit_set::DenseBitSet;
+#[cfg(feature = "nightly")]
+use rustc_serialize::Decoder;
 
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
@@ -13,7 +15,10 @@ use crate::lang_items::{SolverAdtLangItem, SolverLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
 use crate::solve::{CanonicalInput, Certainty, ExternalConstraintsData, QueryResult, inspect};
 use crate::visit::{Flags, TypeVisitable};
-use crate::{self as ty, CanonicalParamEnvCacheEntry, search_graph};
+use crate::{
+    self as ty, BoundRegion, BoundVar, CanonicalParamEnvCacheEntry, DebruijnIndex, Region,
+    RegionKind, search_graph,
+};
 
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
 pub trait Interner:
@@ -159,9 +164,15 @@ pub trait Interner:
     type ScalarInt: Copy + Debug + Hash + Eq;
 
     // Kinds of regions
-    type Region: Region<Self>;
     type EarlyParamRegion: ParamLike;
     type LateParamRegion: Copy + Debug + Hash + Eq;
+
+    type InternedRegionKind: Copy
+        + Debug
+        + Hash
+        + Eq
+        + PartialEq
+        + IntoKind<Kind = RegionKind<Self>>;
 
     type RegionAssumptions: Copy
         + Debug
@@ -416,6 +427,30 @@ pub trait Interner:
     ) -> (QueryResult<Self>, Self::Probe);
 
     fn item_name(self, item_index: Self::DefId) -> Self::Symbol;
+
+    fn get_anon_re_bounds_lifetime(self, idx: usize, var_idx: usize) -> Option<Region<Self>>;
+
+    fn get_anon_re_canonical_bounds_lifetime(self, idx: usize) -> Option<Region<Self>>;
+
+    fn get_re_static_lifetime(self) -> Region<Self>;
+
+    fn intern_region(self, region_kind: RegionKind<Self>) -> Region<Self>;
+
+    fn intern_bound_region(
+        self,
+        debruijn: DebruijnIndex,
+        bound_region: BoundRegion<Self>,
+    ) -> Region<Self>;
+
+    fn intern_canonical_bound(self, var: BoundVar) -> Region<Self>;
+}
+
+/// A decoder that can reconstruct interned IR values by supplying an interner.
+#[cfg(feature = "nightly")]
+pub trait InternerDecoder: Decoder {
+    type Interner: Interner;
+
+    fn interner(&self) -> Self::Interner;
 }
 
 /// Imagine you have a function `F: FnOnce(&[T]) -> R`, plus an iterator `iter`

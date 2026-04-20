@@ -4,7 +4,9 @@ use rustc_middle::mir::visit::{TyContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location, SourceInfo};
 use rustc_middle::span_bug;
 use rustc_middle::ty::relate::Relate;
-use rustc_middle::ty::{GenericArgsRef, Region, RegionVid, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{
+    GenericArgsRef, Region, RegionUtilitiesExt, RegionVid, Ty, TyCtxt, TypeVisitable,
+};
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use tracing::debug;

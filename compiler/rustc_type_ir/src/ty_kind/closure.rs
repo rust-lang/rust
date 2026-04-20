@@ -9,7 +9,7 @@ use crate::data_structures::DelayedMap;
 use crate::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable, shift_region};
 use crate::inherent::*;
 use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use crate::{self as ty, Interner};
+use crate::{self as ty, Interner, Region};
 
 /// A closure can be modeled as a struct that looks like:
 /// ```ignore (illustrative)
@@ -343,7 +343,7 @@ impl<I: Interner> TypeVisitor<I> for HasRegionsBoundAt {
         ControlFlow::Continue(())
     }
 
-    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, r: Region<I>) -> Self::Result {
         if matches!(r.kind(), ty::ReBound(ty::BoundVarIndexKind::Bound(binder), _) if self.binder == binder)
         {
             ControlFlow::Break(())
@@ -415,7 +415,7 @@ impl<I: Interner> CoroutineClosureSignature<I> {
         parent_args: I::GenericArgsSlice,
         coroutine_def_id: I::CoroutineId,
         goal_kind: ty::ClosureKind,
-        env_region: I::Region,
+        env_region: Region<I>,
         closure_tupled_upvars_ty: I::Ty,
         coroutine_captures_by_ref_ty: I::Ty,
     ) -> I::Ty {
@@ -452,7 +452,7 @@ impl<I: Interner> CoroutineClosureSignature<I> {
         tupled_inputs_ty: I::Ty,
         closure_tupled_upvars_ty: I::Ty,
         coroutine_captures_by_ref_ty: I::Ty,
-        env_region: I::Region,
+        env_region: Region<I>,
     ) -> I::Ty {
         match kind {
             ty::ClosureKind::Fn | ty::ClosureKind::FnMut => {
@@ -491,7 +491,7 @@ impl<I: Interner> CoroutineClosureSignature<I> {
 struct FoldEscapingRegions<I: Interner> {
     interner: I,
     debruijn: ty::DebruijnIndex,
-    region: I::Region,
+    region: Region<I>,
 
     // Depends on `debruijn` because we may have types with regions of different
     // debruijn depths depending on the binders we've entered.
@@ -525,7 +525,7 @@ impl<I: Interner> TypeFolder<I> for FoldEscapingRegions<I> {
         result
     }
 
-    fn fold_region(&mut self, r: <I as Interner>::Region) -> <I as Interner>::Region {
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         if let ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _) = r.kind() {
             assert!(
                 debruijn <= self.debruijn,

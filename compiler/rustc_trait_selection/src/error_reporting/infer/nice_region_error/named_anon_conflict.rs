@@ -2,6 +2,7 @@
 //! where one region is named and the other is anonymous.
 
 use rustc_errors::Diag;
+use rustc_middle::ty::RegionUtilitiesExt;
 use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;

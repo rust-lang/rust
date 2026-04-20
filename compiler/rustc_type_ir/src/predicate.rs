@@ -14,7 +14,7 @@ use crate::inherent::*;
 use crate::lift::Lift;
 use crate::upcast::{Upcast, UpcastFrom};
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, AliasTyKind, Interner};
+use crate::{self as ty, AliasTyKind, Interner, Region};
 
 /// `A: 'region`
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, A)]
@@ -24,7 +24,7 @@ use crate::{self as ty, AliasTyKind, Interner};
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
 )]
-pub struct OutlivesPredicate<I: Interner, A>(pub A, pub I::Region);
+pub struct OutlivesPredicate<I: Interner, A>(pub A, pub Region<I>);
 
 impl<I: Interner, A: Eq> Eq for OutlivesPredicate<I, A> {}
 
@@ -33,7 +33,7 @@ impl<I: Interner, A: Eq> Eq for OutlivesPredicate<I, A> {}
 impl<I: Interner, U: Interner, A> Lift<U> for OutlivesPredicate<I, A>
 where
     A: Lift<U>,
-    I::Region: Lift<U, Lifted = U::Region>,
+    Region<I>: Lift<U, Lifted = Region<U>>,
 {
     type Lifted = OutlivesPredicate<U, A::Lifted>;
 
@@ -52,7 +52,7 @@ where
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
 )]
-pub struct RegionEqPredicate<I: Interner>(pub I::Region, pub I::Region);
+pub struct RegionEqPredicate<I: Interner>(pub Region<I>, pub Region<I>);
 
 impl<I: Interner> RegionEqPredicate<I> {
     /// Decompose `'a == 'b` into `['a: 'b, 'b: 'a]`

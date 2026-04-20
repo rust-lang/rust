@@ -6,8 +6,8 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, SizedTraitKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Unnormalized,
-    Upcast, fold_regions,
+    self, RegionExt, SizedTraitKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    Unnormalized, Upcast, fold_regions,
 };
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};

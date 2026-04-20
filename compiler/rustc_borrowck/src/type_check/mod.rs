@@ -27,7 +27,8 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
     self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, CoroutineArgsExt,
-    GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
+    GenericArgsRef, RegionUtilitiesExt, Ty, TyCtxt, TypeVisitableExt, UserArgs,
+    UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;

@@ -24,7 +24,7 @@ mod trait_goals;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Interner, TyVid, TypingMode};
+use rustc_type_ir::{self as ty, Interner, Region, TyVid, TypingMode};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
@@ -98,7 +98,7 @@ where
     #[instrument(level = "trace", skip(self))]
     fn compute_region_outlives_goal(
         &mut self,
-        goal: Goal<I, ty::OutlivesPredicate<I, I::Region>>,
+        goal: Goal<I, ty::OutlivesPredicate<I, Region<I>>>,
     ) -> QueryResult<I> {
         let ty::OutlivesPredicate(a, b) = goal.predicate;
         self.register_region_outlives(a, b);

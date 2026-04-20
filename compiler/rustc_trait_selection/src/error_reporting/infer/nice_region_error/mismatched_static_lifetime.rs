@@ -6,7 +6,7 @@ use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::intravisit::VisitorExt;
 use rustc_middle::bug;
-use rustc_middle::ty::TypeVisitor;
+use rustc_middle::ty::{RegionUtilitiesExt, TypeVisitor};
 use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;

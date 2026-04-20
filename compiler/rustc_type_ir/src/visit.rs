@@ -52,7 +52,7 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
 use crate::inherent::*;
-use crate::{self as ty, Interner, TypeFlags};
+use crate::{self as ty, Interner, Region, TypeFlags};
 
 /// This trait is implemented for every type that can be visited,
 /// providing the skeleton of the traversal.
@@ -104,7 +104,7 @@ pub trait TypeVisitor<I: Interner>: Sized {
 
     // The default region visitor is a no-op because `Region` is non-recursive
     // and has no `super_visit_with` method to call.
-    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, r: Region<I>) -> Self::Result {
         if let ty::ReError(guar) = r.kind() {
             self.visit_error(guar)
         } else {
@@ -447,7 +447,7 @@ impl<I: Interner> TypeVisitor<I> for HasTypeFlagsVisitor {
     }
 
     #[inline]
-    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, r: Region<I>) -> Self::Result {
         // Note: no `super_visit_with` call, as usual for `Region`.
         let flags = r.flags();
         if flags.intersects(self.flags) {
@@ -555,7 +555,7 @@ impl<I: Interner> TypeVisitor<I> for HasEscapingVarsVisitor {
     }
 
     #[inline]
-    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, r: Region<I>) -> Self::Result {
         // If the region is bound by `outer_index` or anything outside
         // of outer index, then it escapes the binders we have
         // visited.
