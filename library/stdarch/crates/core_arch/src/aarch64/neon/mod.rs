@@ -94,56 +94,6 @@ macro_rules! shift_right_and_insert {
 
 pub(crate) use shift_right_and_insert;
 
-/// Duplicate vector element to vector or scalar
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop, N1 = 0, N2 = 0))]
-#[rustc_legacy_const_generics(1, 3)]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vcopy_lane_s64<const N1: i32, const N2: i32>(_a: int64x1_t, b: int64x1_t) -> int64x1_t {
-    static_assert!(N1 == 0);
-    static_assert!(N2 == 0);
-    b
-}
-
-/// Duplicate vector element to vector or scalar
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop, N1 = 0, N2 = 0))]
-#[rustc_legacy_const_generics(1, 3)]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vcopy_lane_u64<const N1: i32, const N2: i32>(_a: uint64x1_t, b: uint64x1_t) -> uint64x1_t {
-    static_assert!(N1 == 0);
-    static_assert!(N2 == 0);
-    b
-}
-
-/// Duplicate vector element to vector or scalar
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop, N1 = 0, N2 = 0))]
-#[rustc_legacy_const_generics(1, 3)]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vcopy_lane_p64<const N1: i32, const N2: i32>(_a: poly64x1_t, b: poly64x1_t) -> poly64x1_t {
-    static_assert!(N1 == 0);
-    static_assert!(N2 == 0);
-    b
-}
-
-/// Duplicate vector element to vector or scalar
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(nop, N1 = 0, N2 = 0))]
-#[rustc_legacy_const_generics(1, 3)]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vcopy_lane_f64<const N1: i32, const N2: i32>(
-    _a: float64x1_t,
-    b: float64x1_t,
-) -> float64x1_t {
-    static_assert!(N1 == 0);
-    static_assert!(N2 == 0);
-    b
-}
 
 /// Duplicate vector element to vector or scalar
 #[inline]
