@@ -43,6 +43,7 @@ extern crate rustc_target;
 extern crate rustc_type_ir;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
+#[expect(unused_extern_crates)]
 extern crate rustc_driver;
 
 mod abi;

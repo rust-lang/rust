@@ -20,6 +20,10 @@ extern crate rustc_ast;
 extern crate rustc_attr_parsing;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
+#[expect(
+    unused_extern_crates,
+    reason = "The `rustc_driver` crate seems to be required in order to use the `rust_ast` crate."
+)]
 extern crate rustc_driver;
 extern crate rustc_errors;
 extern crate rustc_hir;
