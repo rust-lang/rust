@@ -3,7 +3,8 @@ use ide_db::assists::AssistId;
 use syntax::{
     AstNode, AstToken, SyntaxKind, T,
     ast::{
-        self, HasDocComments, HasGenericParams, HasName, HasVisibility, edit::AstNodeEdit, make,
+        self, HasDocComments, HasGenericParams, HasName, HasVisibility, edit::AstNodeEdit,
+        syntax_factory::SyntaxFactory,
     },
     syntax_editor::{Position, SyntaxEditor},
 };
@@ -112,7 +113,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
             let make = editor.make();
             let trait_ast = make.trait_(
                 false,
-                &trait_name(&impl_assoc_items).text(),
+                &trait_name(&impl_assoc_items, make).text(),
                 impl_ast.generic_param_list(),
                 impl_ast.where_clause(),
                 trait_items,
@@ -124,9 +125,9 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
             // Change `impl Foo` to `impl NewTrait for Foo`
             let mut elements = vec![
                 trait_name_ref.syntax().clone().into(),
-                make::tokens::single_space().into(),
-                make::token(T![for]).into(),
-                make::tokens::single_space().into(),
+                make.whitespace(" ").into(),
+                make.token(T![for]).into(),
+                make.whitespace(" ").into(),
             ];
 
             if let Some(params) = impl_ast.generic_param_list() {
@@ -146,7 +147,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
                 Position::before(impl_ast.syntax()),
                 vec![
                     trait_ast.syntax().clone().into(),
-                    make::tokens::whitespace(&format!("\n\n{}", impl_ast.indent_level())).into(),
+                    make.whitespace(&format!("\n\n{}", impl_ast.indent_level())).into(),
                 ],
             );
 
@@ -163,16 +164,16 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
     Some(())
 }
 
-fn trait_name(items: &ast::AssocItemList) -> ast::Name {
+fn trait_name(items: &ast::AssocItemList, make: &SyntaxFactory) -> ast::Name {
     let mut fn_names = items
         .assoc_items()
         .filter_map(|x| if let ast::AssocItem::Fn(f) = x { f.name() } else { None });
     fn_names
         .next()
         .and_then(|name| {
-            fn_names.next().is_none().then(|| make::name(&stdx::to_camel_case(&name.text())))
+            fn_names.next().is_none().then(|| make.name(&stdx::to_camel_case(&name.text())))
         })
-        .unwrap_or_else(|| make::name("NewTrait"))
+        .unwrap_or_else(|| make.name("NewTrait"))
 }
 
 /// `E0449` Trait items always share the visibility of their trait
@@ -202,6 +203,7 @@ fn remove_doc_comments(editor: &SyntaxEditor, item: &ast::AssocItem) {
 }
 
 fn strip_body(editor: &SyntaxEditor, item: &ast::AssocItem) {
+    let make = editor.make();
     if let ast::AssocItem::Fn(f) = item
         && let Some(body) = f.body()
     {
@@ -213,7 +215,7 @@ fn strip_body(editor: &SyntaxEditor, item: &ast::AssocItem) {
             editor.delete(prev);
         }
 
-        editor.replace(body.syntax(), make::tokens::semicolon());
+        editor.replace(body.syntax(), make.token(T![;]));
     };
 }
 

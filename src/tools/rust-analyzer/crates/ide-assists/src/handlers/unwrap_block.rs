@@ -3,7 +3,6 @@ use syntax::{
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
-        make,
     },
     match_ast,
     syntax_editor::{Element, Position, SyntaxEditor},
@@ -83,7 +82,8 @@ pub(crate) fn unwrap_block(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     })
 }
 
-fn delete_else_before(container: SyntaxNode, edit: &SyntaxEditor) {
+fn delete_else_before(container: SyntaxNode, editor: &SyntaxEditor) {
+    let make = editor.make();
     let Some(else_token) = container
         .siblings_with_tokens(syntax::Direction::Prev)
         .skip(1)
@@ -94,10 +94,10 @@ fn delete_else_before(container: SyntaxNode, edit: &SyntaxEditor) {
     };
     itertools::chain(else_token.prev_token(), else_token.next_token())
         .filter(|it| it.kind() == SyntaxKind::WHITESPACE)
-        .for_each(|it| edit.delete(it));
+        .for_each(|it| editor.delete(it));
     let indent = IndentLevel::from_node(&container);
-    let newline = make::tokens::whitespace(&format!("\n{indent}"));
-    edit.replace(else_token, newline);
+    let newline = make.whitespace(&format!("\n{indent}"));
+    editor.replace(else_token, newline);
 }
 
 fn wrap_let(assign: &ast::LetStmt, replacement: ast::BlockExpr) -> ast::BlockExpr {

@@ -1,7 +1,7 @@
 use syntax::{
     AstNode, SyntaxKind,
-    ast::{self, HasAttrs, HasVisibility, edit::IndentLevel, make},
-    syntax_editor::{Element, Position, Removable},
+    ast::{self, HasAttrs, HasVisibility, edit::IndentLevel, syntax_factory::SyntaxFactory},
+    syntax_editor::{Element, Position, Removable, SyntaxEditor},
 };
 
 use crate::{
@@ -22,6 +22,8 @@ use crate::{
 // use std::fmt::Display;
 // ```
 pub(crate) fn unmerge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    let (editor, _) = SyntaxEditor::new(ctx.source_file().syntax().clone());
+    let make = editor.make();
     let tree = ctx.find_node_at_offset::<ast::UseTree>()?;
 
     let tree_list = tree.syntax().parent().and_then(ast::UseTreeList::cast)?;
@@ -31,7 +33,7 @@ pub(crate) fn unmerge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     }
 
     let use_ = tree_list.syntax().ancestors().find_map(ast::Use::cast)?;
-    let path = resolve_full_path(&tree)?;
+    let path = resolve_full_path(&tree, make)?;
 
     // If possible, explain what is going to be done.
     let label = match tree.path().and_then(|path| path.first_segment()) {
@@ -41,7 +43,6 @@ pub(crate) fn unmerge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
 
     let target = tree.syntax().text_range();
     acc.add(AssistId::refactor_rewrite("unmerge_imports"), label, target, |builder| {
-        let editor = builder.make_editor(use_.syntax());
         let make = editor.make();
         let new_use = make.use_(
             use_.attrs(),
@@ -64,7 +65,7 @@ pub(crate) fn unmerge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     })
 }
 
-fn resolve_full_path(tree: &ast::UseTree) -> Option<ast::Path> {
+fn resolve_full_path(tree: &ast::UseTree, make: &SyntaxFactory) -> Option<ast::Path> {
     let paths = tree
         .syntax()
         .ancestors()
@@ -72,7 +73,7 @@ fn resolve_full_path(tree: &ast::UseTree) -> Option<ast::Path> {
         .filter_map(ast::UseTree::cast)
         .filter_map(|t| t.path());
 
-    let final_path = paths.reduce(|prev, next| make::path_concat(next, prev))?;
+    let final_path = paths.reduce(|prev, next| make.path_concat(next, prev))?;
     if final_path.segment().is_some_and(|it| it.self_token().is_some()) {
         final_path.qualifier()
     } else {
