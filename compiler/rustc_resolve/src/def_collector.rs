@@ -179,7 +179,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             }
             ItemKind::MacCall(..) => {
                 self.visit_macro_invoc(i.id);
-                self.brg_visit_item(i);
+                self.brg_visit_mac_call_in_module(i.id);
                 return;
             }
             ItemKind::DelegationMac(..) => unreachable!(),
@@ -497,7 +497,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     fn visit_stmt(&mut self, stmt: &'a Stmt) {
         match stmt.kind {
             StmtKind::MacCall(..) => {
-                self.brg_visit_stmt_mac_call(stmt);
+                self.brg_visit_mac_call_in_module(stmt.id);
                 self.visit_macro_invoc(stmt.id)
             }
             // FIXME(impl_trait_in_bindings): We don't really have a good way of

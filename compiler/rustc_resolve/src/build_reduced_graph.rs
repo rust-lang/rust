@@ -1377,7 +1377,6 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 visit::walk_item(self, item);
                 macro_rules_scope
             }
-            ItemKind::MacCall(..) => self.visit_invoc_in_module(item.id),
             _ => {
                 let orig_macro_rules_scope = self.parent_scope.macro_rules;
                 self.build_reduced_graph_for_item(item);
@@ -1402,8 +1401,10 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         self.parent_scope.module = orig_module_scope;
     }
 
-    pub(crate) fn brg_visit_stmt_mac_call(&mut self, stmt: &'a ast::Stmt) {
-        self.parent_scope.macro_rules = self.visit_invoc_in_module(stmt.id);
+    /// Handle a macro call that itself can produce new `macro_rules` items
+    /// in the current module.
+    pub(crate) fn brg_visit_mac_call_in_module(&mut self, id: NodeId) {
+        self.parent_scope.macro_rules = self.visit_invoc_in_module(id);
     }
 
     pub(crate) fn brg_visit_block(&mut self, block: &'a Block) {
