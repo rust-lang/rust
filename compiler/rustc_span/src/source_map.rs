@@ -487,7 +487,7 @@ impl SourceMap {
     }
 
     pub fn filename_for_diagnostics<'a>(&self, filename: &'a FileName) -> FileNameDisplay<'a> {
-        filename.display(RemapPathScopeComponents::DIAGNOSTICS)
+        filename.display_normalized(RemapPathScopeComponents::DIAGNOSTICS)
     }
 
     pub fn is_multiline(&self, sp: Span) -> bool {

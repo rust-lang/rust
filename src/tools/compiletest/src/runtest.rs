@@ -2485,12 +2485,22 @@ impl<'test> TestCx<'test> {
         let parent_dir = self.testpaths.file.parent().unwrap();
         normalize_path(parent_dir, "$DIR");
 
+        // After #51349, rustc normalizes `tests/x/y/../aux/foo.rs` to
+        // `tests/x/aux/foo.rs`. Replace the grandparent with `$DIR/..` so
+        // stderrs keep the pre-normalization form.
+        if let Some(grandparent_dir) = parent_dir.parent() {
+            normalize_path(grandparent_dir, "$DIR/..");
+        }
+
         if self.props.remap_src_base {
             let mut remapped_parent_dir = Utf8PathBuf::from(FAKE_SRC_BASE);
             if self.testpaths.relative_dir != Utf8Path::new("") {
                 remapped_parent_dir.push(&self.testpaths.relative_dir);
             }
             normalize_path(&remapped_parent_dir, "$DIR");
+            if let Some(remapped_grandparent) = remapped_parent_dir.parent() {
+                normalize_path(remapped_grandparent, "$DIR/..");
+            }
         }
 
         let base_dir = Utf8Path::new("/rustc/FAKE_PREFIX");

@@ -440,6 +440,10 @@ Everything to do with `--diagnostic-width`.
 
 Exercises `#[diagnostic::*]` namespaced attributes. See [RFC 3368 Diagnostic attribute namespace](https://github.com/rust-lang/rfcs/blob/master/text/3368-diagnostic-attribute-namespace.md).
 
+## `tests/ui/diagnostics/`
+
+Tests for diagnostic output quality, such as path normalization in error messages.
+
 ## `tests/ui/did_you_mean/`
 
 Tests for miscellaneous suggestions.
