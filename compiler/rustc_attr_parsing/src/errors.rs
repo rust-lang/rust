@@ -242,3 +242,9 @@ pub(crate) struct DocUnknownPlugins {
     #[label("no longer functions")]
     pub label_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("unknown `doc` attribute `{$name}`")]
+pub(crate) struct DocUnknownAny {
+    pub name: Symbol,
+}

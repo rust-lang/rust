@@ -15,8 +15,8 @@ use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::errors::{
     DocAliasDuplicated, DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList,
-    DocAutoCfgHideShowUnexpectedItem, DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins,
-    DocUnknownSpotlight, IllFormedAttributeInput,
+    DocAutoCfgHideShowUnexpectedItem, DocUnknownAny, DocUnknownInclude, DocUnknownPasses,
+    DocUnknownPlugins, DocUnknownSpotlight, IllFormedAttributeInput,
 };
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
@@ -660,18 +660,19 @@ impl DocParser {
                 );
             }
             Some(name) => {
-                cx.emit_lint(
+                cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::DocUnknownAny { name },
+                    move |dcx, level| DocUnknownAny { name }.into_diag(dcx, level),
                     path.span(),
                 );
             }
             None => {
                 let full_name =
                     path.segments().map(|s| s.as_str()).intersperse("::").collect::<String>();
-                cx.emit_lint(
+                let name = Symbol::intern(&full_name);
+                cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::DocUnknownAny { name: Symbol::intern(&full_name) },
+                    move |dcx, level| DocUnknownAny { name }.into_diag(dcx, level),
                     path.span(),
                 );
             }
