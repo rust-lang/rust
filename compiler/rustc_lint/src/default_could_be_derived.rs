@@ -156,15 +156,15 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
     }
 }
 
-struct WrongDefaultImpl<'a, 'hir, 'tcx> {
+struct WrongDefaultImpl<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     type_def_id: DefId,
-    orig_fields: FxHashMap<Symbol, &'a hir::FieldDef<'hir>>,
-    fields: &'a [hir::ExprField<'hir>],
+    orig_fields: FxHashMap<Symbol, &'a hir::FieldDef<'tcx>>,
+    fields: &'a [hir::ExprField<'tcx>],
     impl_span: Span,
 }
 
-impl<'a, 'b, 'hir, 'tcx> Diagnostic<'a, ()> for WrongDefaultImpl<'b, 'hir, 'tcx> {
+impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for WrongDefaultImpl<'b, 'tcx> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         let Self { tcx, type_def_id, orig_fields, fields, impl_span } = self;
         let mut diag =

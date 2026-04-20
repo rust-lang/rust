@@ -37,14 +37,14 @@ newtype_index! {
 // Adjacency-list graph for statics using `StaticNodeIdx` as node type.
 // We cannot use `DefId` as the node type directly because each node must be
 // represented by an index in the range `0..num_nodes`.
-struct StaticRefGraph<'a, 'b, 'tcx> {
+struct StaticRefGraph<'a, 'tcx> {
     // maps from `StaticNodeIdx` to `DefId` and vice versa
     statics: &'a FxIndexSet<DefId>,
     // contains for each `MonoItem` the `MonoItem`s it uses
-    used_map: &'b UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
+    used_map: &'a UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 }
 
-impl<'a, 'b, 'tcx> DirectedGraph for StaticRefGraph<'a, 'b, 'tcx> {
+impl<'a, 'tcx> DirectedGraph for StaticRefGraph<'a, 'tcx> {
     type Node = StaticNodeIdx;
 
     fn num_nodes(&self) -> usize {
@@ -52,7 +52,7 @@ impl<'a, 'b, 'tcx> DirectedGraph for StaticRefGraph<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> Successors for StaticRefGraph<'a, 'b, 'tcx> {
+impl<'a, 'tcx> Successors for StaticRefGraph<'a, 'tcx> {
     fn successors(&self, node_idx: StaticNodeIdx) -> impl Iterator<Item = StaticNodeIdx> {
         let def_id = self.statics[node_idx.index()];
         self.used_map[&MonoItem::Static(def_id)].iter().filter_map(|&mono_item| match mono_item {

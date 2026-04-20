@@ -649,14 +649,14 @@ pub(crate) enum UnusedUnsafeEnclosing {
     },
 }
 
-pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
-    pub(crate) cx: &'m RustcPatCtxt<'p, 'tcx>,
+pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'a, 'tcx> {
+    pub(crate) cx: &'a RustcPatCtxt<'a, 'tcx>,
     pub(crate) scrut_span: Span,
     pub(crate) braces_span: Option<Span>,
     pub(crate) ty: Ty<'tcx>,
 }
 
-impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NonExhaustivePatternsTypeNotEmpty<'_, '_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         let mut diag =
             Diag::new(dcx, level, msg!("non-exhaustive patterns: type `{$ty}` is non-empty"));
