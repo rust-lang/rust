@@ -675,6 +675,9 @@ impl ExpressionStore {
                 f(*expr);
                 arms.iter().for_each(|arm| {
                     f(arm.expr);
+                    if let Some(guard) = arm.guard {
+                        f(guard);
+                    }
                     self.walk_exprs_in_pat(arm.pat, &mut f);
                 });
             }
