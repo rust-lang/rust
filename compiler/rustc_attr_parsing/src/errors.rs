@@ -205,3 +205,17 @@ pub(crate) struct DocUnknownInclude {
     )]
     pub sugg: (Span, Applicability),
 }
+
+#[derive(Diagnostic)]
+#[diag("unknown `doc` attribute `spotlight`")]
+#[note("`doc(spotlight)` was renamed to `doc(notable_trait)`")]
+#[note("`doc(spotlight)` is now a no-op")]
+pub(crate) struct DocUnknownSpotlight {
+    #[suggestion(
+        "use `notable_trait` instead",
+        style = "short",
+        applicability = "machine-applicable",
+        code = "notable_trait"
+    )]
+    pub sugg_span: Span,
+}

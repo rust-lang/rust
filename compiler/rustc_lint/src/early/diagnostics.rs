@@ -43,10 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            &AttributeLintKind::DocUnknownSpotlight { span } => {
-                lints::DocUnknownSpotlight { sugg_span: span }.into_diag(dcx, level)
-            }
-
             &AttributeLintKind::DocUnknownPasses { name, span } => {
                 lints::DocUnknownPasses { name, note_span: span }.into_diag(dcx, level)
             }

@@ -3304,20 +3304,6 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
-#[diag("unknown `doc` attribute `spotlight`")]
-#[note("`doc(spotlight)` was renamed to `doc(notable_trait)`")]
-#[note("`doc(spotlight)` is now a no-op")]
-pub(crate) struct DocUnknownSpotlight {
-    #[suggestion(
-        "use `notable_trait` instead",
-        style = "short",
-        applicability = "machine-applicable",
-        code = "notable_trait"
-    )]
-    pub sugg_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("unknown `doc` attribute `{$name}`")]
 #[note(
     "`doc` attribute `{$name}` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>"
