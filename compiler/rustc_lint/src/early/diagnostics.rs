@@ -1,7 +1,7 @@
 use std::any::Any;
 
 use rustc_data_structures::sync::DynSend;
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_hir::lints::{AttributeLintKind, FormatWarning};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -41,29 +41,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::UnexpectedCfgValue(name, value) => {
                 check_cfg::unexpected_cfg_value(self.sess, self.tcx, name, value)
                     .into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::AmbiguousDeriveHelpers => {
-                lints::AmbiguousDeriveHelpers.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocAutoCfgHideShowUnexpectedItem { attr_name } => {
-                lints::DocAutoCfgHideShowUnexpectedItem { attr_name }.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocAutoCfgHideShowExpectsList { attr_name } => {
-                lints::DocAutoCfgHideShowExpectsList { attr_name }.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocInvalid => lints::DocInvalid.into_diag(dcx, level),
-
-            &AttributeLintKind::DocUnknownInclude { span, inner, value } => {
-                lints::DocUnknownInclude {
-                    inner,
-                    value,
-                    sugg: (span, Applicability::MaybeIncorrect),
-                }
-                .into_diag(dcx, level)
             }
 
             &AttributeLintKind::DocUnknownSpotlight { span } => {

@@ -1,4 +1,4 @@
-//@ revisions: cfail1 cfail2
+//@ revisions: bfail1 bfail2
 //@ build-pass
 //@ needs-crate-type: cdylib
 
@@ -8,6 +8,6 @@
 #[allow(unused_imports)]
 use std::alloc::System;
 
-#[cfg(cfail1)]
+#[cfg(bfail1)]
 #[global_allocator]
 static ALLOC: System = System;

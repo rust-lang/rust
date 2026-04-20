@@ -1,4 +1,4 @@
-//@ revisions: cfail1 cfail2
+//@ revisions: bfail1 bfail2
 //@ compile-flags: -Z query-dep-graph -Copt-level=0
 //@ build-pass (FIXME(62277): could be check-pass?)
 
@@ -11,13 +11,13 @@
 // needed even for callers of `x`.
 
 pub mod x {
-    #[cfg(cfail1)]
+    #[cfg(bfail1)]
     pub fn x() {
         println!("{}", "1");
     }
 
-    #[cfg(cfail2)]
-    #[rustc_clean(except = "opt_hir_owner_nodes,optimized_mir", cfg = "cfail2")]
+    #[cfg(bfail2)]
+    #[rustc_clean(except = "opt_hir_owner_nodes,optimized_mir", cfg = "bfail2")]
     pub fn x() {
         println!("{}", "2");
     }
@@ -26,7 +26,7 @@ pub mod x {
 pub mod y {
     use x;
 
-    #[rustc_clean(cfg = "cfail2")]
+    #[rustc_clean(cfg = "bfail2")]
     pub fn y() {
         x::x();
     }
@@ -35,7 +35,7 @@ pub mod y {
 pub mod z {
     use y;
 
-    #[rustc_clean(cfg = "cfail2")]
+    #[rustc_clean(cfg = "bfail2")]
     pub fn z() {
         y::y();
     }

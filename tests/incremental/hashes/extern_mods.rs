@@ -6,11 +6,11 @@
 // rev3 and make sure that the hash has not changed.
 
 //@ build-pass (FIXME(62277): could be check-pass?)
-//@ revisions: cfail1 cfail2 cfail3 cfail4 cfail5 cfail6
+//@ revisions: bfail1 bfail2 bfail3 bfail4 bfail5 bfail6
 //@ compile-flags: -Z query-dep-graph -O
-//@ [cfail1]compile-flags: -Zincremental-ignore-spans
-//@ [cfail2]compile-flags: -Zincremental-ignore-spans
-//@ [cfail3]compile-flags: -Zincremental-ignore-spans
+//@ [bfail1]compile-flags: -Zincremental-ignore-spans
+//@ [bfail2]compile-flags: -Zincremental-ignore-spans
+//@ [bfail3]compile-flags: -Zincremental-ignore-spans
 //@ ignore-backends: gcc
 
 #![allow(warnings)]
@@ -19,168 +19,168 @@
 #![crate_type = "rlib"]
 
 // Change function name --------------------------------------------------------
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 extern "C" {
     pub fn change_function_name1(c: i64) -> i32;
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2", except = "opt_hir_owner_nodes")]
-#[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5", except = "opt_hir_owner_nodes")]
-#[rustc_clean(cfg = "cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg = "bfail2", except = "opt_hir_owner_nodes")]
+#[rustc_clean(cfg = "bfail3")]
+#[rustc_clean(cfg = "bfail5", except = "opt_hir_owner_nodes")]
+#[rustc_clean(cfg = "bfail6")]
 extern "C" {
     pub fn change_function_name2(c: i64) -> i32;
 }
 
 // Change parameter name -------------------------------------------------------
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 extern "C" {
     pub fn change_parameter_name(c: i64) -> i32;
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2")]
-#[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5")]
-#[rustc_clean(cfg = "cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg = "bfail2")]
+#[rustc_clean(cfg = "bfail3")]
+#[rustc_clean(cfg = "bfail5")]
+#[rustc_clean(cfg = "bfail6")]
 extern "C" {
     pub fn change_parameter_name(d: i64) -> i32;
 }
 
 // Change parameter type -------------------------------------------------------
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 extern "C" {
     pub fn change_parameter_type(c: i64) -> i32;
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2")]
-#[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5")]
-#[rustc_clean(cfg = "cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg = "bfail2")]
+#[rustc_clean(cfg = "bfail3")]
+#[rustc_clean(cfg = "bfail5")]
+#[rustc_clean(cfg = "bfail6")]
 extern "C" {
     pub fn change_parameter_type(c: i32) -> i32;
 }
 
 // Change return type ----------------------------------------------------------
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 extern "C" {
     pub fn change_return_type(c: i32) -> i32;
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2")]
-#[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5")]
-#[rustc_clean(cfg = "cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg = "bfail2")]
+#[rustc_clean(cfg = "bfail3")]
+#[rustc_clean(cfg = "bfail5")]
+#[rustc_clean(cfg = "bfail6")]
 extern "C" {
     pub fn change_return_type(c: i32) -> i8 ;
 }
 
 // Add parameter ---------------------------------------------------------------
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 extern "C" {
     pub fn add_parameter(c: i32        ) -> i32;
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2")]
-#[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5")]
-#[rustc_clean(cfg = "cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg = "bfail2")]
+#[rustc_clean(cfg = "bfail3")]
+#[rustc_clean(cfg = "bfail5")]
+#[rustc_clean(cfg = "bfail6")]
 extern "C" {
     pub fn add_parameter(c: i32, d: i32) -> i32;
 }
 
 // Add return type -------------------------------------------------------------
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 extern "C" {
     pub fn add_return_type(c: i32)       ;
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2")]
-#[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5")]
-#[rustc_clean(cfg = "cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg = "bfail2")]
+#[rustc_clean(cfg = "bfail3")]
+#[rustc_clean(cfg = "bfail5")]
+#[rustc_clean(cfg = "bfail6")]
 extern "C" {
     pub fn add_return_type(c: i32) -> i32;
 }
 
 // Make function variadic ------------------------------------------------------
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 extern "C" {
     pub fn make_function_variadic(c: i32     );
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2")]
-#[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5")]
-#[rustc_clean(cfg = "cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg = "bfail2")]
+#[rustc_clean(cfg = "bfail3")]
+#[rustc_clean(cfg = "bfail5")]
+#[rustc_clean(cfg = "bfail6")]
 extern "C" {
     pub fn make_function_variadic(c: i32, ...);
 }
 
 // Change calling convention ---------------------------------------------------
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 extern "C" {
     pub fn change_calling_convention(c: (i32,));
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2", except = "opt_hir_owner_nodes")]
-#[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5", except = "opt_hir_owner_nodes")]
-#[rustc_clean(cfg = "cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg = "bfail2", except = "opt_hir_owner_nodes")]
+#[rustc_clean(cfg = "bfail3")]
+#[rustc_clean(cfg = "bfail5", except = "opt_hir_owner_nodes")]
+#[rustc_clean(cfg = "bfail6")]
 extern "rust-call" {
     pub fn change_calling_convention(c: (i32,));
 }
 
 // Make function public --------------------------------------------------------
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 extern "C" {
     fn     make_function_public(c: i32);
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2")]
-#[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5")]
-#[rustc_clean(cfg = "cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg = "bfail2")]
+#[rustc_clean(cfg = "bfail3")]
+#[rustc_clean(cfg = "bfail5")]
+#[rustc_clean(cfg = "bfail6")]
 extern "C" {
     pub fn make_function_public(c: i32);
 }
 
 // Add function ----------------------------------------------------------------
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 extern "C" {
     pub fn add_function1(c: i32);
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2", except = "opt_hir_owner_nodes")]
-#[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5", except = "opt_hir_owner_nodes")]
-#[rustc_clean(cfg = "cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg = "bfail2", except = "opt_hir_owner_nodes")]
+#[rustc_clean(cfg = "bfail3")]
+#[rustc_clean(cfg = "bfail5", except = "opt_hir_owner_nodes")]
+#[rustc_clean(cfg = "bfail6")]
 extern "C" {
     pub fn add_function1(c: i32);
     pub fn add_function2();
 }
 
 // Change link-name ------------------------------------------------------------
-#[cfg(any(cfail1,cfail4))]
+#[cfg(any(bfail1,bfail4))]
 #[link(name = "foo")]
 extern "C" {
     pub fn change_link_name(c: i32);
 }
 
-#[cfg(not(any(cfail1,cfail4)))]
-#[rustc_clean(cfg = "cfail2")]
-#[rustc_clean(cfg = "cfail3")]
-#[rustc_clean(cfg = "cfail5")]
-#[rustc_clean(cfg = "cfail6")]
+#[cfg(not(any(bfail1,bfail4)))]
+#[rustc_clean(cfg = "bfail2")]
+#[rustc_clean(cfg = "bfail3")]
+#[rustc_clean(cfg = "bfail5")]
+#[rustc_clean(cfg = "bfail6")]
 #[link(name = "bar")]
 extern "C" {
     pub fn change_link_name(c: i32);
@@ -191,15 +191,15 @@ type c_i64 = i64;
 
 // Indirectly change parameter type --------------------------------------------
 mod indirectly_change_parameter_type {
-    #[cfg(any(cfail1,cfail4))]
+    #[cfg(any(bfail1,bfail4))]
     use super::c_i32 as c_int;
-    #[cfg(not(any(cfail1,cfail4)))]
+    #[cfg(not(any(bfail1,bfail4)))]
     use super::c_i64 as c_int;
 
-    #[rustc_clean(cfg = "cfail2")]
-    #[rustc_clean(cfg = "cfail3")]
-    #[rustc_clean(cfg = "cfail5")]
-    #[rustc_clean(cfg = "cfail6")]
+    #[rustc_clean(cfg = "bfail2")]
+    #[rustc_clean(cfg = "bfail3")]
+    #[rustc_clean(cfg = "bfail5")]
+    #[rustc_clean(cfg = "bfail6")]
     extern "C" {
         pub fn indirectly_change_parameter_type(c: c_int);
     }
@@ -207,15 +207,15 @@ mod indirectly_change_parameter_type {
 
 // Indirectly change return type --------------------------------------------
 mod indirectly_change_return_type {
-    #[cfg(any(cfail1,cfail4))]
+    #[cfg(any(bfail1,bfail4))]
     use super::c_i32 as c_int;
-    #[cfg(not(any(cfail1,cfail4)))]
+    #[cfg(not(any(bfail1,bfail4)))]
     use super::c_i64 as c_int;
 
-    #[rustc_clean(cfg = "cfail2")]
-    #[rustc_clean(cfg = "cfail3")]
-    #[rustc_clean(cfg = "cfail5")]
-    #[rustc_clean(cfg = "cfail6")]
+    #[rustc_clean(cfg = "bfail2")]
+    #[rustc_clean(cfg = "bfail3")]
+    #[rustc_clean(cfg = "bfail5")]
+    #[rustc_clean(cfg = "bfail6")]
     extern "C" {
         pub fn indirectly_change_return_type() -> c_int;
     }
