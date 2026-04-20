@@ -4106,6 +4106,15 @@ pub fn vcmlaq_rot90_laneq_f32<const LANE: i32>(
         vcmlaq_rot90_f32(a, b, c)
     }
 }
+#[doc = "Join two smaller vectors into a single larger vector"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcombine_f64)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+#[cfg_attr(test, assert_instr(mov))]
+pub fn vcombine_f64(a: float64x1_t, b: float64x1_t) -> float64x2_t {
+    unsafe { simd_shuffle!(a, b, [0, 1]) }
+}
 #[doc = "Insert vector element from another vector element"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcopy_lane_f32)"]
 #[inline]

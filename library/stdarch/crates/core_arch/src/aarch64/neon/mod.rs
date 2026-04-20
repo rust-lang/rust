@@ -346,15 +346,6 @@ pub fn vget_lane_f64<const IMM5: i32>(v: float64x1_t) -> f64 {
     unsafe { simd_extract!(v, IMM5 as u32) }
 }
 
-/// Vector combine
-#[inline]
-#[target_feature(enable = "neon")]
-#[cfg_attr(test, assert_instr(mov))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub fn vcombine_f64(low: float64x1_t, high: float64x1_t) -> float64x2_t {
-    unsafe { simd_shuffle!(low, high, [0, 1]) }
-}
-
 /// Shift left
 #[inline]
 #[target_feature(enable = "neon")]
