@@ -199,7 +199,7 @@ pub(crate) struct EmbedSourceRequiresDebugInfo;
 
 #[derive(Diagnostic)]
 #[diag(
-    "`-Z stack-protector={$stack_protector}` is not supported for target {$target_triple} and will be ignored"
+    "`-C stack-protector={$stack_protector}` is not supported for target {$target_triple} and will be ignored"
 )]
 pub(crate) struct StackProtectorNotSupportedForTarget<'a> {
     pub(crate) stack_protector: StackProtector,
