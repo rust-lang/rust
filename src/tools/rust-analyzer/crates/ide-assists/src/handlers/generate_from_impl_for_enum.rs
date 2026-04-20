@@ -40,19 +40,18 @@ pub(crate) fn generate_from_impl_for_enum(
         "Generate `From` impl for this enum variant(s)",
         target,
         |edit| {
-            let make = SyntaxFactory::with_mappings();
+            let editor = edit.make_editor(adt.syntax());
+            let make = editor.make();
             let indent = adt.indent_level();
             let mut elements = Vec::new();
 
             for variant_info in variants {
-                let impl_ = build_from_impl(&make, &adt, variant_info).indent(indent);
+                let impl_ = build_from_impl(make, &adt, variant_info).indent(indent);
                 elements.push(make.whitespace(&format!("\n\n{indent}")).into());
                 elements.push(impl_.syntax().clone().into());
             }
 
-            let mut editor = edit.make_editor(adt.syntax());
             editor.insert_all(Position::after(adt.syntax()), elements);
-            editor.add_mappings(make.finish_with_mappings());
             edit.add_file_edits(file_id, editor);
         },
     )

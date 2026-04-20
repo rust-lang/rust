@@ -17,7 +17,7 @@ use super::MemberConstraint;
 use super::unify_key::RegionVidKey;
 use crate::next_solver::infer::snapshot::undo_log::{InferCtxtUndoLogs, Snapshot};
 use crate::next_solver::infer::unify_key::RegionVariableValue;
-use crate::next_solver::{AliasTy, Binder, DbInterner, ParamTy, PlaceholderTy, Region, Ty};
+use crate::next_solver::{AliasTy, Binder, DbInterner, ParamTy, PlaceholderType, Region, Ty};
 
 #[derive(Debug, Clone, Default)]
 pub struct RegionConstraintStorage<'db> {
@@ -122,7 +122,7 @@ pub struct Verify<'db> {
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub enum GenericKind<'db> {
     Param(ParamTy),
-    Placeholder(PlaceholderTy),
+    Placeholder(PlaceholderType<'db>),
     Alias(AliasTy<'db>),
 }
 

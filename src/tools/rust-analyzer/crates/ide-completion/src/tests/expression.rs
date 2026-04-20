@@ -2273,7 +2273,7 @@ fn main() {
     $0
 }
 //- /std.rs crate:std
-#[unstable]
+#[unstable(feature = "some_non_internal_feature")]
 pub struct UnstableButWeAreOnNightlyAnyway;
 "#,
         expect![[r#"
@@ -2281,6 +2281,112 @@ pub struct UnstableButWeAreOnNightlyAnyway;
             md std
             st UnstableButWeAreOnNightlyAnyway UnstableButWeAreOnNightlyAnyway
             bt u32                                                         u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
+fn expr_unstable_item_internal_feature() {
+    check(
+        r#"
+//- toolchain:nightly
+//- /main.rs crate:main deps:std
+use std::*;
+fn main() {
+    $0
+}
+//- /std.rs crate:std
+#[unstable(feature = "intrinsics")]
+pub mod intrinsics {}
+    "#,
+        expect![[r#"
+            fn main() fn()
+            md std
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+//- toolchain:nightly
+//- /main.rs crate:main deps:std
+#![feature(intrinsics)]
+use std::*;
+fn main() {
+    $0
+}
+//- /std.rs crate:std
+#[unstable(feature = "intrinsics")]
+pub mod intrinsics {}
+    "#,
+        expect![[r#"
+            fn main() fn()
+            md intrinsics
+            md std
+            bt u32     u32
             kw async
             kw const
             kw crate::

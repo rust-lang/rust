@@ -317,7 +317,12 @@ pub(crate) fn complete_expr_path(
                 }
                 // synthetic names currently leak out as we lack synthetic hygiene, so filter them
                 // out here
-                ScopeDef::Local(_) => {
+                ScopeDef::Local(_) =>
+                {
+                    #[expect(
+                        clippy::collapsible_match,
+                        reason = "this changes meaning, causing the next arm to be selected"
+                    )]
                     if !name.as_str().starts_with('<') {
                         acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases)
                     }

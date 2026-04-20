@@ -61,7 +61,7 @@ use std::{fmt, mem::ManuallyDrop};
 
 use base_db::{
     CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Files, Nonce, SourceDatabase,
-    SourceRoot, SourceRootId, SourceRootInput, query_group, set_all_crates_with_durability,
+    SourceRoot, SourceRootId, SourceRootInput, set_all_crates_with_durability,
 };
 use hir::{
     FilePositionWrapper, FileRangeWrapper,
@@ -252,15 +252,20 @@ impl RootDatabase {
     }
 }
 
-#[query_group::query_group]
-pub trait LineIndexDatabase: base_db::SourceDatabase {
-    #[salsa::invoke_interned(line_index)]
-    fn line_index(&self, file_id: FileId) -> Arc<LineIndex>;
-}
-
-fn line_index(db: &dyn LineIndexDatabase, file_id: FileId) -> Arc<LineIndex> {
-    let text = db.file_text(file_id).text(db);
-    Arc::new(LineIndex::new(text))
+pub fn line_index(db: &dyn SourceDatabase, file_id: FileId) -> &Arc<LineIndex> {
+    #[salsa::interned]
+    pub struct InternedFileId {
+        id: FileId,
+    }
+    #[salsa::tracked(returns(ref))]
+    fn line_index<'db>(
+        db: &'db dyn SourceDatabase,
+        file_id: InternedFileId<'db>,
+    ) -> Arc<LineIndex> {
+        let text = db.file_text(file_id.id(db)).text(db);
+        Arc::new(LineIndex::new(text))
+    }
+    line_index(db, InternedFileId::new(db, file_id))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -380,7 +385,7 @@ pub enum Severity {
     Allow,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub struct MiniCore<'a>(&'a str);
 
 impl<'a> MiniCore<'a> {
@@ -392,6 +397,15 @@ impl<'a> MiniCore<'a> {
     #[inline]
     pub const fn default() -> Self {
         Self(test_utils::MiniCore::RAW_SOURCE)
+    }
+}
+
+impl std::fmt::Debug for MiniCore<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("MiniCore")
+            // don't print the whole contents if they correspond to the default
+            .field(if self.0 == test_utils::MiniCore::RAW_SOURCE { &"<default>" } else { &self.0 })
+            .finish()
     }
 }
 

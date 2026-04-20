@@ -49,6 +49,7 @@ fn foo() -> i32 {
                 "GenericPredicates::query_with_diagnostics_",
                 "ImplTraits::return_type_impl_traits_",
                 "ExprScopes::body_expr_scopes_",
+                "body_upvars_mentioned",
             ]
         "#]],
     );
@@ -137,6 +138,7 @@ fn baz() -> i32 {
                 "GenericPredicates::query_with_diagnostics_",
                 "ImplTraits::return_type_impl_traits_",
                 "ExprScopes::body_expr_scopes_",
+                "body_upvars_mentioned",
                 "InferenceResult::for_body_",
                 "FunctionSignature::of_",
                 "FunctionSignature::with_source_map_",
@@ -147,6 +149,7 @@ fn baz() -> i32 {
                 "GenericPredicates::query_with_diagnostics_",
                 "ImplTraits::return_type_impl_traits_",
                 "ExprScopes::body_expr_scopes_",
+                "body_upvars_mentioned",
                 "InferenceResult::for_body_",
                 "FunctionSignature::of_",
                 "FunctionSignature::with_source_map_",
@@ -157,6 +160,7 @@ fn baz() -> i32 {
                 "GenericPredicates::query_with_diagnostics_",
                 "ImplTraits::return_type_impl_traits_",
                 "ExprScopes::body_expr_scopes_",
+                "body_upvars_mentioned",
             ]
         "#]],
     );
@@ -205,6 +209,7 @@ fn baz() -> i32 {
                 "Body::of_",
                 "InferenceResult::for_body_",
                 "ExprScopes::body_expr_scopes_",
+                "body_upvars_mentioned",
                 "AttrFlags::query_",
                 "FunctionSignature::with_source_map_",
                 "FunctionSignature::of_",
@@ -594,6 +599,7 @@ fn main() {
                 "GenericPredicates::query_with_diagnostics_",
                 "GenericPredicates::query_with_diagnostics_",
                 "ImplTraits::return_type_impl_traits_",
+                "body_upvars_mentioned",
                 "InferenceResult::for_body_",
                 "FunctionSignature::of_",
                 "FunctionSignature::with_source_map_",
@@ -616,6 +622,7 @@ fn main() {
                 "impl_self_ty_with_diagnostics_query",
                 "AttrFlags::query_",
                 "GenericPredicates::query_with_diagnostics_",
+                "body_upvars_mentioned",
             ]
         "#]],
     );
@@ -686,6 +693,7 @@ fn main() {
                 "GenericPredicates::query_with_diagnostics_",
                 "GenericPredicates::query_with_diagnostics_",
                 "ImplTraits::return_type_impl_traits_",
+                "body_upvars_mentioned",
                 "InferenceResult::for_body_",
                 "FunctionSignature::with_source_map_",
                 "GenericPredicates::query_with_diagnostics_",
@@ -703,6 +711,7 @@ fn main() {
                 "impl_self_ty_with_diagnostics_query",
                 "AttrFlags::query_",
                 "GenericPredicates::query_with_diagnostics_",
+                "body_upvars_mentioned",
             ]
         "#]],
     );

@@ -642,9 +642,7 @@ impl ExpressionStore {
                 self.walk_exprs_in_pat(*pat, &mut f);
                 f(*expr);
             }
-            Expr::Block { statements, tail, .. }
-            | Expr::Unsafe { statements, tail, .. }
-            | Expr::Async { statements, tail, .. } => {
+            Expr::Block { statements, tail, .. } | Expr::Unsafe { statements, tail, .. } => {
                 for stmt in statements.iter() {
                     match stmt {
                         Statement::Let { initializer, else_branch, pat, .. } => {
@@ -677,6 +675,9 @@ impl ExpressionStore {
                 f(*expr);
                 arms.iter().for_each(|arm| {
                     f(arm.expr);
+                    if let Some(guard) = arm.guard {
+                        f(guard);
+                    }
                     self.walk_exprs_in_pat(arm.pat, &mut f);
                 });
             }
@@ -777,9 +778,7 @@ impl ExpressionStore {
             Expr::Let { expr, .. } => {
                 f(*expr);
             }
-            Expr::Block { statements, tail, .. }
-            | Expr::Unsafe { statements, tail, .. }
-            | Expr::Async { statements, tail, .. } => {
+            Expr::Block { statements, tail, .. } | Expr::Unsafe { statements, tail, .. } => {
                 for stmt in statements.iter() {
                     match stmt {
                         Statement::Let { initializer, else_branch, .. } => {
@@ -922,6 +921,20 @@ impl ExpressionStore {
             Some(it) => it.bindings.iter(),
             None => const { &Arena::new() }.iter(),
         }
+    }
+
+    /// The coroutine associated with a coroutine closure.
+    #[inline]
+    pub fn coroutine_for_closure(coroutine_closure: ExprId) -> ExprId {
+        // We keep the async closure exactly one expr before.
+        ExprId::from_raw(la_arena::RawIdx::from_u32(coroutine_closure.into_raw().into_u32() - 1))
+    }
+
+    /// The opposite of [`Self::coroutine_for_closure()`].
+    #[inline]
+    pub fn closure_for_coroutine(coroutine: ExprId) -> ExprId {
+        // We keep the async closure exactly one expr before.
+        ExprId::from_raw(la_arena::RawIdx::from_u32(coroutine.into_raw().into_u32() + 1))
     }
 }
 

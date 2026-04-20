@@ -22,8 +22,9 @@ use crate::{
 use syntax::{
     ast::{
         self, AstNode, FieldList, HasAttrs, HasGenericArgs, HasGenericParams, HasModuleItem,
-        HasName, HasTypeBounds, edit_in_place::GenericParamsOwnerEdit, make,
+        HasName, HasTypeBounds, make,
     },
+    syntax_editor::{GetOrCreateWhereClause, SyntaxEditor},
     ted,
 };
 
@@ -1150,11 +1151,9 @@ fn coerce_pointee_expand(
 
     const ADDED_PARAM: &str = "__S";
 
-    let where_clause = strukt.get_or_create_where_clause();
+    let mut new_predicates: Vec<ast::WherePred> = Vec::new();
 
     {
-        let mut new_predicates = Vec::new();
-
         // # Rewrite generic parameter bounds
         // For each bound `U: ..` in `struct<U: ..>`, make a new bound with `__S` in place of `#[pointee]`
         // Example:
@@ -1196,16 +1195,13 @@ fn coerce_pointee_expand(
                 } else {
                     make::name_ref(&param_name.text())
                 };
-                new_predicates.push(
-                    make::where_pred(
-                        Either::Right(make::ty_path(make::path_from_segments(
-                            [make::path_segment(new_bounds_target)],
-                            false,
-                        ))),
-                        new_bounds,
-                    )
-                    .clone_for_update(),
-                );
+                new_predicates.push(make::where_pred(
+                    Either::Right(make::ty_path(make::path_from_segments(
+                        [make::path_segment(new_bounds_target)],
+                        false,
+                    ))),
+                    new_bounds,
+                ));
             }
         }
 
@@ -1235,7 +1231,7 @@ fn coerce_pointee_expand(
         //
         // We should also write a few new `where` bounds from `#[pointee] T` to `__S`
         // as well as any bound that indirectly involves the `#[pointee] T` type.
-        for predicate in where_clause.predicates() {
+        for predicate in strukt.where_clause().into_iter().flat_map(|wc| wc.predicates()) {
             let predicate = predicate.clone_subtree().clone_for_update();
             let Some(pred_target) = predicate.ty() else { continue };
 
@@ -1269,41 +1265,40 @@ fn coerce_pointee_expand(
                 );
             }
         }
-
-        for new_predicate in new_predicates {
-            where_clause.add_predicate(new_predicate);
-        }
     }
 
     {
         // # Add `Unsize<__S>` bound to `#[pointee]` at the generic parameter location
         //
         // Find the `#[pointee]` parameter and add an `Unsize<__S>` bound to it.
-        where_clause.add_predicate(
-            make::where_pred(
-                Either::Right(make::ty_path(make::path_from_segments(
-                    [make::path_segment(make::name_ref(&pointee_param_name.text()))],
-                    false,
-                ))),
-                [make::type_bound(make::ty_path(make::path_from_segments(
-                    [
-                        make::path_segment(make::name_ref("core")),
-                        make::path_segment(make::name_ref("marker")),
-                        make::generic_ty_path_segment(
-                            make::name_ref("Unsize"),
-                            [make::type_arg(make::ty_path(make::path_from_segments(
-                                [make::path_segment(make::name_ref(ADDED_PARAM))],
-                                false,
-                            )))
-                            .into()],
-                        ),
-                    ],
-                    true,
-                )))],
-            )
-            .clone_for_update(),
-        );
+        new_predicates.push(make::where_pred(
+            Either::Right(make::ty_path(make::path_from_segments(
+                [make::path_segment(make::name_ref(&pointee_param_name.text()))],
+                false,
+            ))),
+            [make::type_bound(make::ty_path(make::path_from_segments(
+                [
+                    make::path_segment(make::name_ref("core")),
+                    make::path_segment(make::name_ref("marker")),
+                    make::generic_ty_path_segment(
+                        make::name_ref("Unsize"),
+                        [make::type_arg(make::ty_path(make::path_from_segments(
+                            [make::path_segment(make::name_ref(ADDED_PARAM))],
+                            false,
+                        )))
+                        .into()],
+                    ),
+                ],
+                true,
+            )))],
+        ));
     }
+
+    let (editor, strukt) = SyntaxEditor::with_ast_node(strukt);
+    strukt.get_or_create_where_clause(&editor, new_predicates.into_iter());
+    let edit = editor.finish();
+    let strukt = ast::Struct::cast(edit.new_root().clone()).unwrap();
+    let adt = ast::Adt::Struct(strukt.clone());
 
     let self_for_traits = {
         // Replace the `#[pointee]` with `__S`.

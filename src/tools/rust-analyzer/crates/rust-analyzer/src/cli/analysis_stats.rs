@@ -26,8 +26,9 @@ use ide::{
     InlayHintsConfig, LineCol, RaFixtureConfig, RootDatabase,
 };
 use ide_db::{
-    EditionedFileId, LineIndexDatabase, SnippetCap,
+    EditionedFileId, SnippetCap,
     base_db::{SourceDatabase, salsa::Database},
+    line_index,
 };
 use itertools::Itertools;
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace};
@@ -1487,7 +1488,7 @@ fn location_csv_expr(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, expr_id: 
     let node = src.map(|e| e.to_node(&root).syntax().clone());
     let original_range = node.as_ref().original_file_range_rooted(db);
     let path = vfs.file_path(original_range.file_id.file_id(db));
-    let line_index = db.line_index(original_range.file_id.file_id(db));
+    let line_index = line_index(db, original_range.file_id.file_id(db));
     let text_range = original_range.range;
     let (start, end) =
         (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
@@ -1503,7 +1504,7 @@ fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: Pa
     let node = src.map(|e| e.to_node(&root).syntax().clone());
     let original_range = node.as_ref().original_file_range_rooted(db);
     let path = vfs.file_path(original_range.file_id.file_id(db));
-    let line_index = db.line_index(original_range.file_id.file_id(db));
+    let line_index = line_index(db, original_range.file_id.file_id(db));
     let text_range = original_range.range;
     let (start, end) =
         (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
@@ -1522,7 +1523,7 @@ fn expr_syntax_range<'a>(
         let node = src.map(|e| e.to_node(&root).syntax().clone());
         let original_range = node.as_ref().original_file_range_rooted(db);
         let path = vfs.file_path(original_range.file_id.file_id(db));
-        let line_index = db.line_index(original_range.file_id.file_id(db));
+        let line_index = line_index(db, original_range.file_id.file_id(db));
         let text_range = original_range.range;
         let (start, end) =
             (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
@@ -1543,7 +1544,7 @@ fn pat_syntax_range<'a>(
         let node = src.map(|e| e.to_node(&root).syntax().clone());
         let original_range = node.as_ref().original_file_range_rooted(db);
         let path = vfs.file_path(original_range.file_id.file_id(db));
-        let line_index = db.line_index(original_range.file_id.file_id(db));
+        let line_index = line_index(db, original_range.file_id.file_id(db));
         let text_range = original_range.range;
         let (start, end) =
             (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));

@@ -160,7 +160,7 @@ env.RA_TEST_NOT_AN_OBJECT = "value"
         ("RA_TEST_UNSET", None),
     ]
     .iter()
-    .map(|(k, v)| (k.to_string(), v.map(ToString::to_string)))
+    .map(|(k, v)| (k.to_string(), v.map(str::to_owned)))
     .collect();
     let env = cargo_config_env(&Some(config), &extra_env);
     assert_eq!(env.get("RA_TEST_WORKSPACE_DIR").as_deref(), Some(cwd.join("").as_str()));

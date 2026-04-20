@@ -1,7 +1,7 @@
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
     AstNode, SyntaxNode,
-    ast::{self, HasName, Name, edit::AstNodeEdit, syntax_factory::SyntaxFactory},
+    ast::{self, HasName, Name, edit::AstNodeEdit},
     syntax_editor::SyntaxEditor,
 };
 
@@ -121,8 +121,8 @@ fn find_extracted_variable(ctx: &AssistContext<'_>, arm: &ast::MatchArm) -> Opti
 
 // Rename `extracted` with `binding` in `pat`.
 fn rename_variable(pat: &ast::Pat, extracted: &[Name], binding: ast::Pat) -> SyntaxNode {
-    let (mut editor, syntax) = SyntaxEditor::new(pat.syntax().clone());
-    let make = SyntaxFactory::with_mappings();
+    let (editor, syntax) = SyntaxEditor::new(pat.syntax().clone());
+    let make = editor.make();
     let extracted = extracted
         .iter()
         .map(|e| e.syntax().text_range() - pat.syntax().text_range().start())
@@ -145,7 +145,6 @@ fn rename_variable(pat: &ast::Pat, extracted: &[Name], binding: ast::Pat) -> Syn
             editor.replace(extracted_syntax, binding.syntax());
         }
     }
-    editor.add_mappings(make.finish_with_mappings());
     let new_node = editor.finish().new_root().clone();
     if let Some(pat) = ast::Pat::cast(new_node.clone()) {
         pat.dedent(1.into()).syntax().clone()

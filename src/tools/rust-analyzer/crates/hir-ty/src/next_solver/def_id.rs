@@ -12,7 +12,9 @@ use hir_def::{
 use rustc_type_ir::inherent;
 use stdx::impl_from;
 
-use crate::db::{InternedClosureId, InternedCoroutineId, InternedOpaqueTyId};
+use crate::db::{
+    InternedClosureId, InternedCoroutineClosureId, InternedCoroutineId, InternedOpaqueTyId,
+};
 
 use super::DbInterner;
 
@@ -35,6 +37,7 @@ pub enum SolverDefId {
     TypeAliasId(TypeAliasId),
     InternedClosureId(InternedClosureId),
     InternedCoroutineId(InternedCoroutineId),
+    InternedCoroutineClosureId(InternedCoroutineClosureId),
     InternedOpaqueTyId(InternedOpaqueTyId),
     EnumVariantId(EnumVariantId),
     Ctor(Ctor),
@@ -80,6 +83,9 @@ impl std::fmt::Debug for SolverDefId {
             SolverDefId::InternedCoroutineId(id) => {
                 f.debug_tuple("InternedCoroutineId").field(&id).finish()
             }
+            SolverDefId::InternedCoroutineClosureId(id) => {
+                f.debug_tuple("InternedCoroutineClosureId").field(&id).finish()
+            }
             SolverDefId::InternedOpaqueTyId(id) => {
                 f.debug_tuple("InternedOpaqueTyId").field(&id).finish()
             }
@@ -123,6 +129,7 @@ impl_from!(
     TypeAliasId,
     InternedClosureId,
     InternedCoroutineId,
+    InternedCoroutineClosureId,
     InternedOpaqueTyId,
     EnumVariantId,
     Ctor
@@ -206,6 +213,7 @@ impl TryFrom<SolverDefId> for AttrDefId {
             SolverDefId::BuiltinDeriveImplId(_)
             | SolverDefId::InternedClosureId(_)
             | SolverDefId::InternedCoroutineId(_)
+            | SolverDefId::InternedCoroutineClosureId(_)
             | SolverDefId::InternedOpaqueTyId(_)
             | SolverDefId::AnonConstId(_) => Err(()),
         }
@@ -229,6 +237,7 @@ impl TryFrom<SolverDefId> for DefWithBodyId {
             | SolverDefId::BuiltinDeriveImplId(_)
             | SolverDefId::InternedClosureId(_)
             | SolverDefId::InternedCoroutineId(_)
+            | SolverDefId::InternedCoroutineClosureId(_)
             | SolverDefId::Ctor(Ctor::Struct(_))
             | SolverDefId::AnonConstId(_)
             | SolverDefId::AdtId(_) => return Err(()),
@@ -251,6 +260,7 @@ impl TryFrom<SolverDefId> for GenericDefId {
             SolverDefId::TypeAliasId(type_alias_id) => GenericDefId::TypeAliasId(type_alias_id),
             SolverDefId::InternedClosureId(_)
             | SolverDefId::InternedCoroutineId(_)
+            | SolverDefId::InternedCoroutineClosureId(_)
             | SolverDefId::InternedOpaqueTyId(_)
             | SolverDefId::EnumVariantId(_)
             | SolverDefId::BuiltinDeriveImplId(_)
@@ -348,6 +358,7 @@ declare_id_wrapper!(TraitIdWrapper, TraitId);
 declare_id_wrapper!(TypeAliasIdWrapper, TypeAliasId);
 declare_id_wrapper!(ClosureIdWrapper, InternedClosureId);
 declare_id_wrapper!(CoroutineIdWrapper, InternedCoroutineId);
+declare_id_wrapper!(CoroutineClosureIdWrapper, InternedCoroutineClosureId);
 declare_id_wrapper!(AdtIdWrapper, AdtId);
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]

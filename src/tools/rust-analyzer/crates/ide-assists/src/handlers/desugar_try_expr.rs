@@ -65,9 +65,8 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
         "Replace try expression with match",
         target,
         |builder| {
-            let make = SyntaxFactory::with_mappings();
-            let mut editor = builder.make_editor(try_expr.syntax());
-
+            let editor = builder.make_editor(try_expr.syntax());
+            let make = editor.make();
             let sad_pat = match try_enum {
                 TryEnum::Option => make.path_pat(make.ident_path("None")),
                 TryEnum::Result => make
@@ -77,7 +76,7 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     )
                     .into(),
             };
-            let sad_expr = make.expr_return(Some(sad_expr(try_enum, &make, || {
+            let sad_expr = make.expr_return(Some(sad_expr(try_enum, make, || {
                 make.expr_path(make.ident_path("err"))
             })));
 
@@ -95,7 +94,6 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 .indent(IndentLevel::from_node(try_expr.syntax()));
 
             editor.replace(try_expr.syntax(), expr_match.syntax());
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     );
@@ -109,8 +107,8 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             "Replace try expression with let else",
             target,
             |builder| {
-                let make = SyntaxFactory::with_mappings();
-                let mut editor = builder.make_editor(let_stmt.syntax());
+                let editor = builder.make_editor(let_stmt.syntax());
+                let make = editor.make();
 
                 let indent_level = IndentLevel::from_node(let_stmt.syntax());
                 let fill_expr = || crate::utils::expr_fill_default(ctx.config);
@@ -124,7 +122,7 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     make.block_expr(
                         iter::once(
                             make.expr_stmt(
-                                make.expr_return(Some(sad_expr(try_enum, &make, fill_expr))).into(),
+                                make.expr_return(Some(sad_expr(try_enum, make, fill_expr))).into(),
                             )
                             .into(),
                         ),
@@ -133,7 +131,6 @@ pub(crate) fn desugar_try_expr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     .indent(indent_level),
                 );
                 editor.replace(let_stmt.syntax(), new_let_stmt.syntax());
-                editor.add_mappings(make.finish_with_mappings());
                 builder.add_file_edits(ctx.vfs_file_id(), editor);
             },
         );
