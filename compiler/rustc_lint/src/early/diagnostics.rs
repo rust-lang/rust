@@ -43,26 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            &AttributeLintKind::DocUnknownSpotlight { span } => {
-                lints::DocUnknownSpotlight { sugg_span: span }.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocUnknownPasses { name, span } => {
-                lints::DocUnknownPasses { name, note_span: span }.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocUnknownPlugins { span } => {
-                lints::DocUnknownPlugins { label_span: span }.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocUnknownAny { name } => {
-                lints::DocUnknownAny { name }.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocAutoCfgWrongLiteral => {
-                lints::DocAutoCfgWrongLiteral.into_diag(dcx, level)
-            }
-
             &AttributeLintKind::DocTestTakesList => lints::DocTestTakesList.into_diag(dcx, level),
 
             &AttributeLintKind::DocTestUnknown { name } => {
