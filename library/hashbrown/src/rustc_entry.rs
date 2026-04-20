@@ -1,6 +1,6 @@
 use self::RustcEntry::*;
 use crate::alloc::{Allocator, Global};
-use crate::map::{Drain, HashMap, IntoIter, Iter, IterMut, make_hash};
+use crate::map::{Drain, HashMap, IntoIter, Iter, IterMut, make_hash, make_hasher};
 use crate::raw::{Bucket, RawTable};
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash};
@@ -52,6 +52,72 @@ where
             })
         }
     }
+
+    /// Tries to insert a key-value pair into the map, and returns
+    /// a mutable reference to the value in the entry.
+    ///
+    /// # Errors
+    ///
+    /// If the map already had this key present, nothing is updated, and an error
+    /// containing the occupied entry, the key, and the value is returned.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// use hashbrown::HashMap;
+    /// use hashbrown::hash_map::RustcOccupiedError;
+    ///
+    /// let mut map = HashMap::new();
+    /// assert_eq!(map.rustc_try_insert(37, "a").ok().unwrap(), &"a");
+    ///
+    /// match map.rustc_try_insert(37, "b") {
+    ///     Err(RustcOccupiedError { entry, key, value, .. }) => {
+    ///         assert_eq!(entry.key(), &37);
+    ///         assert_eq!(entry.get(), &"a");
+    ///         assert_eq!(key, 37);
+    ///         assert_eq!(value, "b");
+    ///     }
+    ///     _ => panic!()
+    /// }
+    /// ```
+    #[cfg_attr(feature = "inline-more", inline)]
+    pub fn rustc_try_insert(
+        &mut self,
+        key: K,
+        value: V,
+    ) -> Result<&mut V, RustcOccupiedError<'_, K, V, A>> {
+        let hash = make_hash(&self.hash_builder, &key);
+        if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
+            let entry = RustcOccupiedEntry {
+                elem,
+                table: &mut self.table,
+            };
+            Err(RustcOccupiedError { entry, key, value })
+        } else {
+            let hasher = make_hasher(&self.hash_builder);
+            let entry = self.table.insert_entry(hash, (key, value), hasher);
+            Ok(&mut entry.1)
+        }
+    }
+}
+
+/// The error returned by [`rustc_try_insert`](HashMap::rustc_try_insert) when the key already exists.
+///
+/// Note: There are no impls for this type, because we expect the standard library will
+/// immediately reconstruct these errors into its own `OccupiedError`.
+#[non_exhaustive]
+pub struct RustcOccupiedError<'a, K, V, A = Global>
+where
+    A: Allocator,
+{
+    /// The entry in the map that was already occupied.
+    pub entry: RustcOccupiedEntry<'a, K, V, A>,
+    /// The key which was not inserted, because the entry was already occupied.
+    pub key: K,
+    /// The value which was not inserted, because the entry was already occupied.
+    pub value: V,
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
