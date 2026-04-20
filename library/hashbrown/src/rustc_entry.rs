@@ -104,6 +104,9 @@ where
 }
 
 /// The error returned by [`rustc_try_insert`](HashMap::rustc_try_insert) when the key already exists.
+///
+/// Note: There are no impls for this type, because we expect the standard library will
+/// immediately reconstruct these errors into its own `OccupiedError`.
 #[non_exhaustive]
 pub struct RustcOccupiedError<'a, K, V, A = Global>
 where
@@ -116,8 +119,6 @@ where
     /// The value which was not inserted, because the entry was already occupied.
     pub value: V,
 }
-// NB: there are no impls for this type, because we expect std will
-// immediately reconstruct these errors into its own `OccupiedError`.
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
 ///
