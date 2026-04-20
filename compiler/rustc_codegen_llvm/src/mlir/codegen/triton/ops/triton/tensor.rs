@@ -2760,8 +2760,98 @@ impl<'a> TritonCodegen<'a> {
         Ok(Some(result.into()))
     }
 
-    // `triton::Triton::softmax` — multi-step op; no single Triton IR equivalent.
-    stub_handler!(codegen_softmax_call);
+    /// `triton::Triton::softmax` — numerically-stable softmax expanded inline.
+    ///
+    /// For input `tensor<Nxf32>` along the last (only) axis:
+    ///   x_max  = reduce(x, max)            → f32 scalar
+    ///   x_sub  = x - splat(x_max)          → tensor<Nxf32>
+    ///   exp_x  = math.exp(x_sub)           → tensor<Nxf32>
+    ///   sum_e  = reduce(exp_x, sum)        → f32 scalar
+    ///   y      = exp_x / splat(sum_e)      → tensor<Nxf32>
+    pub fn codegen_softmax_call<'tcx>(
+        &self, tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>, mir: &Body<'tcx>,
+        _func: &Operand<'tcx>, _func_name: &str, args: &[Spanned<Operand<'tcx>>],
+        _destination: &Place<'tcx>, _target: &Option<BasicBlock>, _unwind: &UnwindAction,
+        _call_source: &CallSource, _fn_span: &Span, location: Location<'a>,
+        mlir_block: &BlockRef<'a, 'a>, state: &mut CodegenState<'a, 'a>,
+    ) -> Result<Option<Value<'a, 'a>>, MlirError> {
+        let x = self.codegen_operand(
+            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+        )?;
+        let x_ty = RankedTensorType::try_from(x.r#type())
+            .map_err(|_| MlirError::InvalidType { msg: "softmax: expected ranked tensor input".into() })?;
+        let dims = x_ty.dims().map_err(|e| MlirError::InvalidType { msg: e.to_string() })?;
+        let elem_ty = x_ty.element();
+        // axis = last dimension
+        let axis = (dims.len() as i32) - 1;
+        let tensor_ty: melior::ir::Type<'a> = x.r#type();
+
+        // --- x_max = reduce(x, arith.maximumf, axis) → scalar ---
+        let max_region = self.build_reduce_region(location, elem_ty, "arith.maximumf");
+        let max_result_ty = self.reduce_result_ty(x, axis);
+        let max_op: Operation<'a> = reduce(
+            self.module.context(), location, &[x], &[max_result_ty], axis, max_region,
+        ).map_err(|e| MlirError::CreateOperation { err: e })?.into();
+        let x_max: Value<'a, 'a> = max_op.result(0)
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?.into();
+        mlir_block.append_operation(max_op);
+
+        // --- splat x_max → tensor<Nxf32> ---
+        let splat_max_op: Operation<'a> = splat(self.module.context(), location, x_max, tensor_ty)
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?.into();
+        let x_max_bcast: Value<'a, 'a> = splat_max_op.result(0)
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?.into();
+        mlir_block.append_operation(splat_max_op);
+
+        // --- x_sub = x - x_max_bcast ---
+        let sub_op: Operation<'a> = OperationBuilder::new("arith.subf", location)
+            .add_operands(&[x, x_max_bcast])
+            .add_results(&[tensor_ty])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        let x_sub: Value<'a, 'a> = sub_op.result(0)
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?.into();
+        mlir_block.append_operation(sub_op);
+
+        // --- exp_x = math.exp(x_sub) ---
+        let exp_op: Operation<'a> = OperationBuilder::new("math.exp", location)
+            .add_operands(&[x_sub])
+            .add_results(&[tensor_ty])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        let exp_x: Value<'a, 'a> = exp_op.result(0)
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?.into();
+        mlir_block.append_operation(exp_op);
+
+        // --- sum_e = reduce(exp_x, arith.addf, axis) → scalar ---
+        let sum_region = self.build_reduce_region(location, elem_ty, "arith.addf");
+        let sum_result_ty = self.reduce_result_ty(exp_x, axis);
+        let sum_op: Operation<'a> = reduce(
+            self.module.context(), location, &[exp_x], &[sum_result_ty], axis, sum_region,
+        ).map_err(|e| MlirError::CreateOperation { err: e })?.into();
+        let sum_e: Value<'a, 'a> = sum_op.result(0)
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?.into();
+        mlir_block.append_operation(sum_op);
+
+        // --- splat sum_e → tensor<Nxf32> ---
+        let splat_sum_op: Operation<'a> = splat(self.module.context(), location, sum_e, tensor_ty)
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?.into();
+        let sum_e_bcast: Value<'a, 'a> = splat_sum_op.result(0)
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?.into();
+        mlir_block.append_operation(splat_sum_op);
+
+        // --- y = exp_x / sum_e_bcast ---
+        let div_op: Operation<'a> = OperationBuilder::new("arith.divf", location)
+            .add_operands(&[exp_x, sum_e_bcast])
+            .add_results(&[tensor_ty])
+            .build()
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?;
+        let y: Value<'a, 'a> = div_op.result(0)
+            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?.into();
+        mlir_block.append_operation(div_op);
+
+        Ok(Some(y))
+    }
 
     // =========================================================================
     // Binary elementwise math ops
