@@ -219,3 +219,15 @@ pub(crate) struct DocUnknownSpotlight {
     )]
     pub sugg_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("unknown `doc` attribute `{$name}`")]
+#[note(
+    "`doc` attribute `{$name}` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136>"
+)]
+#[note("`doc({$name})` is now a no-op")]
+pub(crate) struct DocUnknownPasses {
+    pub name: Symbol,
+    #[label("no longer functions")]
+    pub note_span: Span,
+}
