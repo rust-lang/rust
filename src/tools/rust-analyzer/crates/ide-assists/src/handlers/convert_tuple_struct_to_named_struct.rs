@@ -105,7 +105,7 @@ fn edit_struct_def(
     let make = editor.make();
     let record_fields = tuple_fields.fields().zip(names).filter_map(|(f, name)| {
         let (field_editor, field) =
-            SyntaxEditor::with_ast_node(&ast::make::record_field(f.visibility(), name, f.ty()?));
+            SyntaxEditor::with_ast_node(&make.record_field(f.visibility(), name, f.ty()?));
         field_editor.insert_all(
             Position::first_child_of(field.syntax()),
             f.attrs().map(|attr| attr.syntax().clone().into()).collect(),
@@ -119,21 +119,21 @@ fn edit_struct_def(
         if let Some(w) = strukt.where_clause() {
             editor.delete(w.syntax());
             let mut insert_element = Vec::new();
-            insert_element.push(ast::make::tokens::single_newline().syntax_element());
+            insert_element.push(make.whitespace("\n").syntax_element());
             insert_element.push(w.syntax().syntax_element());
             if w.syntax().last_token().is_none_or(|t| t.kind() != SyntaxKind::COMMA) {
-                insert_element.push(ast::make::token(T![,]).into());
+                insert_element.push(make.token(T![,]).into());
             }
-            insert_element.push(ast::make::tokens::single_newline().syntax_element());
+            insert_element.push(make.whitespace("\n").syntax_element());
             editor.insert_all(tuple_fields_before, insert_element);
         } else {
-            editor.insert(tuple_fields_before, ast::make::tokens::single_space());
+            editor.insert(tuple_fields_before, make.whitespace(" "));
         }
         if let Some(t) = strukt.semicolon_token() {
             editor.delete(t);
         }
     } else {
-        editor.insert(tuple_fields_before, ast::make::tokens::single_space());
+        editor.insert(tuple_fields_before, make.whitespace(" "));
     }
 
     editor.replace(tuple_fields.syntax(), record_fields.syntax());
@@ -189,7 +189,7 @@ fn process_struct_name_reference(
                 let range = ctx.sema.original_range_opt(tuple_struct_pat.syntax())?.range;
                 let new = make.record_pat_with_fields(
                     full_path,
-                    generate_record_pat_list(&tuple_struct_pat, names),
+                    generate_record_pat_list(&tuple_struct_pat, names, make),
                 );
                 editor.replace_all(cover_edit_range(source.syntax(), range), vec![new.syntax().clone().into()]);
             },
@@ -316,6 +316,7 @@ fn generate_names(
 fn generate_record_pat_list(
     pat: &ast::TupleStructPat,
     names: &[ast::Name],
+    make: &SyntaxFactory,
 ) -> ast::RecordPatFieldList {
     let pure_fields = pat.fields().filter(|p| !matches!(p, ast::Pat::RestPat(_)));
     let rest_len = names.len().saturating_sub(pure_fields.clone().count());
@@ -327,8 +328,8 @@ fn generate_record_pat_list(
 
     let fields = before_rest
         .chain(after_rest)
-        .map(|(pat, name)| ast::make::record_pat_field(ast::make::name_ref(&name.text()), pat));
-    ast::make::record_pat_field_list(fields, rest_pat)
+        .map(|(pat, name)| make.record_pat_field(make.name_ref(&name.text()), pat));
+    make.record_pat_field_list(fields, rest_pat)
 }
 
 #[cfg(test)]
