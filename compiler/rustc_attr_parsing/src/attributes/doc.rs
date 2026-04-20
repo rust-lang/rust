@@ -14,8 +14,8 @@ use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::errors::{
-    DocAliasDuplicated, DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowUnexpectedItem,
-    IllFormedAttributeInput,
+    DocAliasDuplicated, DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList,
+    DocAutoCfgHideShowUnexpectedItem, IllFormedAttributeInput,
 };
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
@@ -367,9 +367,11 @@ impl DocParser {
                         }
                     };
                     let ArgParser::List(list) = item.args() else {
-                        cx.emit_lint(
+                        cx.emit_dyn_lint(
                             rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                            AttributeLintKind::DocAutoCfgHideShowExpectsList { attr_name },
+                            move |dcx, level| {
+                                DocAutoCfgHideShowExpectsList { attr_name }.into_diag(dcx, level)
+                            },
                             item.span(),
                         );
                         continue;

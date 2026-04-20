@@ -3304,12 +3304,6 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
-#[diag("`#![doc(auto_cfg({$attr_name}(...)))]` expects a list of items")]
-pub(crate) struct DocAutoCfgHideShowExpectsList {
-    pub attr_name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("invalid `doc` attribute")]
 pub(crate) struct DocInvalid;
 

@@ -187,3 +187,9 @@ pub(crate) struct AmbiguousDeriveHelpers;
 pub(crate) struct DocAutoCfgHideShowUnexpectedItem {
     pub attr_name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag("`#![doc(auto_cfg({$attr_name}(...)))]` expects a list of items")]
+pub(crate) struct DocAutoCfgHideShowExpectsList {
+    pub attr_name: Symbol,
+}
