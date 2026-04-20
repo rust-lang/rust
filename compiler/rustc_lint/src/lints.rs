@@ -3304,10 +3304,6 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
-#[diag("invalid `doc` attribute")]
-pub(crate) struct DocInvalid;
-
-#[derive(Diagnostic)]
 #[diag("unknown `doc` attribute `include`")]
 pub(crate) struct DocUnknownInclude {
     pub inner: &'static str,
