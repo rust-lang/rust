@@ -1,42 +1,67 @@
 /// `libm` cannot have dependencies, so this is vendored directly from the `cfg-if` crate
 /// (with some comments stripped for compactness).
 macro_rules! cfg_if {
-    // match if/else chains with a final `else`
-    ($(
-        if #[cfg($meta:meta)] { $($tokens:tt)* }
-    ) else * else {
-        $($tokens2:tt)*
-    }) => {
-        cfg_if! { @__items () ; $( ( ($meta) ($($tokens)*) ), )* ( () ($($tokens2)*) ), }
-    };
-
-    // match if/else chains lacking a final `else`
     (
-        if #[cfg($i_met:meta)] { $($i_tokens:tt)* }
-        $( else if #[cfg($e_met:meta)] { $($e_tokens:tt)* } )*
+        if #[cfg( $($i_meta:tt)+ )] { $( $i_tokens:tt )* }
+        $(
+            else if #[cfg( $($ei_meta:tt)+ )] { $( $ei_tokens:tt )* }
+        )*
+        $(
+            else { $( $e_tokens:tt )* }
+        )?
     ) => {
         cfg_if! {
-            @__items
-            () ;
-            ( ($i_met) ($($i_tokens)*) ),
-            $( ( ($e_met) ($($e_tokens)*) ), )*
-            ( () () ),
+            @__items () ;
+            (( $($i_meta)+ ) ( $( $i_tokens )* )),
+            $(
+                (( $($ei_meta)+ ) ( $( $ei_tokens )* )),
+            )*
+            $(
+                (() ( $( $e_tokens )* )),
+            )?
         }
     };
 
     // Internal and recursive macro to emit all the items
     //
-    // Collects all the negated cfgs in a list at the beginning and after the
-    // semicolon is all the remaining items
-    (@__items ($($not:meta,)*) ; ) => {};
-    (@__items ($($not:meta,)*) ; ( ($($m:meta),*) ($($tokens:tt)*) ), $($rest:tt)*) => {
-        #[cfg(all($($m,)* not(any($($not),*))))] cfg_if! { @__identity $($tokens)* }
-        cfg_if! { @__items ($($not,)* $($m,)*) ; $($rest)* }
+    // Collects all the previous cfgs in a list at the beginning, so they can be
+    // negated. After the semicolon are all the remaining items.
+    (@__items ( $( ($($_:tt)*) , )* ) ; ) => {};
+    (
+        @__items ( $( ($($no:tt)+) , )* ) ;
+        (( $( $($yes:tt)+ )? ) ( $( $tokens:tt )* )),
+        $( $rest:tt , )*
+    ) => {
+        // Emit all items within one block, applying an appropriate #[cfg]. The
+        // #[cfg] will require all `$yes` matchers specified and must also negate
+        // all previous matchers.
+        #[cfg(all(
+            $( $($yes)+ , )?
+            not(any( $( $($no)+ ),* ))
+        ))]
+        // Subtle: You might think we could put `$( $tokens )*` here. But if
+        // that contains multiple items then the `#[cfg(all(..))]` above would
+        // only apply to the first one. By wrapping `$( $tokens )*` in this
+        // macro call, we temporarily group the items into a single thing (the
+        // macro call) that will be included/excluded by the `#[cfg(all(..))]`
+        // as appropriate. If the `#[cfg(all(..))]` succeeds, the macro call
+        // will be included, and then evaluated, producing `$( $tokens )*`. See
+        // also the "issue #90" test below.
+        cfg_if! { @__temp_group $( $tokens )* }
+
+        // Recurse to emit all other items in `$rest`, and when we do so add all
+        // our `$yes` matchers to the list of `$no` matchers as future emissions
+        // will have to negate everything we just matched as well.
+        cfg_if! {
+            @__items ( $( ($($no)+) , )* $( ($($yes)+) , )? ) ;
+            $( $rest , )*
+        }
     };
 
-    // Internal macro to make __apply work out right for different match types,
-    // because of how macros matching/expand stuff.
-    (@__identity $($tokens:tt)*) => { $($tokens)* };
+    // See the "Subtle" comment above.
+    (@__temp_group $( $tokens:tt )* ) => {
+        $( $tokens )*
+    };
 }
 
 /// Choose between using an arch-specific implementation and the function body. Returns directly
