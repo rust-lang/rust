@@ -3,7 +3,7 @@ name: Release-plz
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
 
