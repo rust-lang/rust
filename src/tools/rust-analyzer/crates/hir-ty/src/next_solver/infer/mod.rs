@@ -372,6 +372,10 @@ impl<'db> InferCtxtBuilder<'db> {
     }
 
     pub fn build(&mut self, typing_mode: TypingMode<'db>) -> InferCtxt<'db> {
+        // We do not allow creating an InferCtxt for an Interner without a crate, because this means
+        // an interner without a crate cannot access the cache, therefore constructing it doesn't need
+        // to reinit the cache, and we construct a lot of no-crate interners.
+        self.interner.expect_crate();
         let InferCtxtBuilder { interner } = *self;
         InferCtxt {
             interner,
