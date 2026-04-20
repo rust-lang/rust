@@ -1348,7 +1348,7 @@ fn benchmark_syntax_highlighting_parser() {
             })
             .count()
     };
-    assert_eq!(hash, 1606);
+    assert_eq!(hash, 1631);
 }
 
 #[test]

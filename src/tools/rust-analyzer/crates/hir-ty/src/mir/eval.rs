@@ -40,7 +40,7 @@ use triomphe::Arc;
 use crate::{
     CallableDefId, ComplexMemoryMap, InferenceResult, MemoryMap, ParamEnvAndCrate,
     consteval::{self, ConstEvalError, try_const_usize},
-    db::{HirDatabase, InternedClosure, InternedClosureId},
+    db::{HirDatabase, InternedClosureId},
     display::{ClosureStyle, DisplayTarget, HirDisplay},
     infer::PointerCast,
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
@@ -731,24 +731,7 @@ impl<'db> Evaluator<'db> {
             return *r;
         }
         let (ty, proj) = pair;
-        let r = proj.projected_ty(
-            &self.infcx,
-            self.param_env.param_env,
-            ty,
-            |c, subst, f| {
-                let InternedClosure(owner, _) = c.loc(self.db);
-                let infer = InferenceResult::of(self.db, owner);
-                let (captures, _) = infer.closure_info(c);
-                let parent_subst = subst.as_closure().parent_args();
-                captures
-                    .get(f)
-                    .expect("broken closure field")
-                    .ty
-                    .get()
-                    .instantiate(self.interner(), parent_subst)
-            },
-            self.crate_id,
-        );
+        let r = proj.projected_ty(&self.infcx, self.param_env.param_env, ty, self.crate_id);
         self.projected_ty_cache.borrow_mut().insert((ty, proj), r);
         r
     }

@@ -6,8 +6,7 @@ use base_db::Crate;
 use either::Either;
 use hir_def::{
     DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
-    expr_store::ExpressionStore,
-    hir::{BindingAnnotation, BindingId, Expr, ExprId, Ordering, PatId},
+    hir::{BindingId, Expr, ExprId, Ordering, PatId},
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 use rustc_ast_ir::Mutability;
@@ -168,7 +167,6 @@ impl<V: PartialEq> ProjectionElem<V> {
         infcx: &InferCtxt<'db>,
         env: ParamEnv<'db>,
         mut base: Ty<'db>,
-        closure_field: impl FnOnce(InternedClosureId, GenericArgs<'db>, usize) -> Ty<'db>,
         krate: Crate,
     ) -> Ty<'db> {
         let interner = infcx.interner;
@@ -223,7 +221,7 @@ impl<V: PartialEq> ProjectionElem<V> {
                 }
             },
             ProjectionElem::ClosureField(f) => match base.kind() {
-                TyKind::Closure(id, subst) => closure_field(id.0, subst, *f),
+                TyKind::Closure(_, args) => args.as_closure().tupled_upvars_ty().tuple_fields()[*f],
                 _ => {
                     never!("Only closure has closure field");
                     Ty::new_error(interner, ErrorGuaranteed)
@@ -711,17 +709,29 @@ pub enum MutBorrowKind {
 }
 
 impl BorrowKind {
-    fn from_hir(m: hir_def::type_ref::Mutability) -> Self {
+    fn from_hir_mutability(m: hir_def::type_ref::Mutability) -> Self {
         match m {
             hir_def::type_ref::Mutability::Shared => BorrowKind::Shared,
             hir_def::type_ref::Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
         }
     }
 
-    fn from_rustc(m: rustc_ast_ir::Mutability) -> Self {
+    fn from_rustc_mutability(m: rustc_ast_ir::Mutability) -> Self {
         match m {
             rustc_ast_ir::Mutability::Not => BorrowKind::Shared,
             rustc_ast_ir::Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
+        }
+    }
+
+    fn from_hir(bk: crate::infer::closure::analysis::BorrowKind) -> Self {
+        match bk {
+            crate::closure_analysis::BorrowKind::Immutable => Self::Shared,
+            crate::closure_analysis::BorrowKind::UniqueImmutable => {
+                Self::Mut { kind: MutBorrowKind::ClosureCapture }
+            }
+            crate::closure_analysis::BorrowKind::Mutable => {
+                Self::Mut { kind: MutBorrowKind::Default }
+            }
         }
     }
 }
@@ -1079,6 +1089,7 @@ pub struct MirBody {
     pub start_block: BasicBlockId,
     pub owner: DefWithBodyId,
     pub binding_locals: ArenaMap<BindingId, LocalId>,
+    pub upvar_locals: FxHashMap<BindingId, Vec<(LocalId, crate::closure_analysis::Place)>>,
     pub param_locals: Vec<LocalId>,
     /// This field stores the closures directly owned by this body. It is used
     /// in traversing every mir body.
@@ -1190,6 +1201,7 @@ impl MirBody {
             start_block: _,
             owner: _,
             binding_locals,
+            upvar_locals,
             param_locals,
             closures,
             projection_store,
@@ -1198,6 +1210,7 @@ impl MirBody {
         basic_blocks.shrink_to_fit();
         locals.shrink_to_fit();
         binding_locals.shrink_to_fit();
+        upvar_locals.shrink_to_fit();
         param_locals.shrink_to_fit();
         closures.shrink_to_fit();
         for (_, b) in basic_blocks.iter_mut() {
@@ -1215,20 +1228,6 @@ pub enum MirSpan {
     SelfParam,
     Unknown,
 }
-
-impl MirSpan {
-    pub fn is_ref_span(&self, store: &ExpressionStore) -> bool {
-        match *self {
-            MirSpan::ExprId(expr) => matches!(store[expr], Expr::Ref { .. }),
-            // FIXME: Figure out if this is correct wrt. match ergonomics.
-            MirSpan::BindingId(binding) => {
-                matches!(store[binding].mode, BindingAnnotation::Ref | BindingAnnotation::RefMut)
-            }
-            MirSpan::PatId(_) | MirSpan::SelfParam | MirSpan::Unknown => false,
-        }
-    }
-}
-
 impl_from!(ExprId, PatId for MirSpan);
 
 impl From<&ExprId> for MirSpan {

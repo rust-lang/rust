@@ -238,8 +238,7 @@ impl<'db> ExprValidator<'db> {
             if (pat_ty == scrut_ty
                 || scrut_ty
                     .as_reference()
-                    .map(|(match_expr_ty, ..)| match_expr_ty == pat_ty)
-                    .unwrap_or(false))
+                    .is_none_or(|(match_expr_ty, ..)| match_expr_ty == pat_ty))
                 && types_of_subpatterns_do_match(arm.pat, self.body, self.infer)
             {
                 // If we had a NotUsefulMatchArm diagnostic, we could

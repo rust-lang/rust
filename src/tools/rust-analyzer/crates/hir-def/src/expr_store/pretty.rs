@@ -401,7 +401,7 @@ fn print_generic_params(db: &dyn DefDatabase, generic_params: &GenericParams, p:
 pub fn print_expr_hir(
     db: &dyn DefDatabase,
     store: &ExpressionStore,
-    _owner: DefWithBodyId,
+    _owner: ExpressionStoreOwnerId,
     expr: ExprId,
     edition: Edition,
 ) -> String {
@@ -420,7 +420,7 @@ pub fn print_expr_hir(
 pub fn print_pat_hir(
     db: &dyn DefDatabase,
     store: &ExpressionStore,
-    _owner: DefWithBodyId,
+    _owner: ExpressionStoreOwnerId,
     pat: PatId,
     oneline: bool,
     edition: Edition,

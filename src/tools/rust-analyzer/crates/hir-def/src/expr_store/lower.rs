@@ -945,12 +945,19 @@ impl<'db> ExprCollector<'db> {
         })
     }
 
-    /// An `async fn` needs to capture all parameters in the generated `async` block, even if they have
-    /// non-captured patterns such as wildcards (to ensure consistent drop order).
-    fn lower_async_fn(&mut self, params: &mut Vec<PatId>, body: ExprId) -> ExprId {
+    /// Lowers a desugared coroutine body after moving all of the arguments
+    /// into the body. This is to make sure that the future actually owns the
+    /// arguments that are passed to the function, and to ensure things like
+    /// drop order are stable.
+    fn lower_async_block_with_moved_arguments(
+        &mut self,
+        params: &mut [PatId],
+        body: ExprId,
+        coroutine_source: CoroutineSource,
+    ) -> ExprId {
         let mut statements = Vec::new();
         for param in params {
-            let name = match self.store.pats[*param] {
+            let (name, hygiene) = match self.store.pats[*param] {
                 Pat::Bind { id, .. }
                     if matches!(
                         self.store.bindings[id].mode,
@@ -962,14 +969,16 @@ impl<'db> ExprCollector<'db> {
                 }
                 Pat::Bind { id, .. } => {
                     // If this is a `ref` binding, we can't leave it as is but we can at least reuse the name, for better display.
-                    self.store.bindings[id].name.clone()
+                    (self.store.bindings[id].name.clone(), self.store.bindings[id].hygiene)
                 }
-                _ => self.generate_new_name(),
+                _ => (self.generate_new_name(), HygieneId::ROOT),
             };
-            let binding_id =
-                self.alloc_binding(name.clone(), BindingAnnotation::Mutable, HygieneId::ROOT);
+            let binding_id = self.alloc_binding(name.clone(), BindingAnnotation::Mutable, hygiene);
             let pat_id = self.alloc_pat_desugared(Pat::Bind { id: binding_id, subpat: None });
             let expr = self.alloc_expr_desugared(Expr::Path(name.into()));
+            if !hygiene.is_root() {
+                self.store.ident_hygiene.insert(expr.into(), hygiene);
+            }
             statements.push(Statement::Let {
                 pat: *param,
                 type_ref: None,
@@ -980,12 +989,17 @@ impl<'db> ExprCollector<'db> {
         }
 
         let async_ = self.async_block(
-            CoroutineSource::Fn,
-            CaptureBy::Value,
+            coroutine_source,
+            // The default capture mode here is by-ref. Later on during upvar analysis,
+            // we will force the captured arguments to by-move, but for async closures,
+            // we want to make sure that we avoid unnecessarily moving captures, or else
+            // all async closures would default to `FnOnce` as their calling mode.
+            CaptureBy::Ref,
             None,
             statements.into_boxed_slice(),
             Some(body),
         );
+        // It's important that this comes last, see the lowering of async closures for why.
         self.alloc_expr_desugared(async_)
     }
 
@@ -1010,14 +1024,18 @@ impl<'db> ExprCollector<'db> {
 
     fn collect(
         &mut self,
-        params: &mut Vec<PatId>,
+        params: &mut [PatId],
         expr: Option<ast::Expr>,
         awaitable: Awaitable,
     ) -> ExprId {
         self.awaitable_context.replace(awaitable);
         self.with_label_rib(RibKind::Closure, |this| {
             let body = this.collect_expr_opt(expr);
-            if awaitable == Awaitable::Yes { this.lower_async_fn(params, body) } else { body }
+            if awaitable == Awaitable::Yes {
+                this.lower_async_block_with_moved_arguments(params, body, CoroutineSource::Fn)
+            } else {
+                body
+            }
         })
     }
 
@@ -1407,9 +1425,11 @@ impl<'db> ExprCollector<'db> {
                 }
             }
             ast::Expr::ClosureExpr(e) => self.with_label_rib(RibKind::Closure, |this| {
-                this.with_binding_owner(|this| {
+                this.with_binding_owner_and_return(|this| {
                     let mut args = Vec::new();
                     let mut arg_types = Vec::new();
+                    // For coroutine closures, the body, aka. the coroutine is the bindings owner, and not the closure.
+                    let mut body_is_bindings_owner = false;
                     if let Some(pl) = e.param_list() {
                         let num_params = pl.params().count();
                         args.reserve_exact(num_params);
@@ -1448,18 +1468,12 @@ impl<'db> ExprCollector<'db> {
                     } else if e.async_token().is_some() {
                         // It's important that this expr is allocated immediately before the closure.
                         // We rely on it for `coroutine_for_closure()`.
-                        body = this.alloc_expr_desugared(Expr::Closure {
-                            args: Box::default(),
-                            arg_types: Box::default(),
-                            ret_type: None,
+                        body = this.lower_async_block_with_moved_arguments(
+                            &mut args,
                             body,
-                            closure_kind: ClosureKind::AsyncBlock {
-                                source: CoroutineSource::Closure,
-                            },
-                            // The block may need to capture by move, but we cannot know it now.
-                            // It will be fixed in capture analysis.
-                            capture_by: CaptureBy::Ref,
-                        });
+                            CoroutineSource::Closure,
+                        );
+                        body_is_bindings_owner = true;
 
                         ClosureKind::AsyncClosure
                     } else {
@@ -1469,7 +1483,7 @@ impl<'db> ExprCollector<'db> {
                         if e.move_token().is_some() { CaptureBy::Value } else { CaptureBy::Ref };
                     this.is_lowering_coroutine = prev_is_lowering_coroutine;
                     this.current_try_block = prev_try_block;
-                    this.alloc_expr(
+                    let closure = this.alloc_expr(
                         Expr::Closure {
                             args: args.into(),
                             arg_types: arg_types.into(),
@@ -1479,7 +1493,9 @@ impl<'db> ExprCollector<'db> {
                             capture_by,
                         },
                         syntax_ptr,
-                    )
+                    );
+
+                    (if body_is_bindings_owner { body } else { closure }, closure)
                 })
             }),
             ast::Expr::BinExpr(e) => {
@@ -1781,13 +1797,24 @@ impl<'db> ExprCollector<'db> {
         }
     }
 
-    fn with_binding_owner(&mut self, create_expr: impl FnOnce(&mut Self) -> ExprId) -> ExprId {
+    /// The callback should return two exprs: the first is the bindings owner, the second is the expr to return.
+    fn with_binding_owner_and_return(
+        &mut self,
+        create_expr: impl FnOnce(&mut Self) -> (ExprId, ExprId),
+    ) -> ExprId {
         let prev_unowned_bindings_len = self.unowned_bindings.len();
-        let expr_id = create_expr(self);
+        let (bindings_owner, expr_to_return) = create_expr(self);
         for binding in self.unowned_bindings.drain(prev_unowned_bindings_len..) {
-            self.store.binding_owners.insert(binding, expr_id);
+            self.store.binding_owners.insert(binding, bindings_owner);
         }
-        expr_id
+        expr_to_return
+    }
+
+    fn with_binding_owner(&mut self, create_expr: impl FnOnce(&mut Self) -> ExprId) -> ExprId {
+        self.with_binding_owner_and_return(move |this| {
+            let expr = create_expr(this);
+            (expr, expr)
+        })
     }
 
     /// Desugar `try { <stmts>; <expr> }` into `'<new_label>: { <stmts>; ::std::ops::Try::from_output(<expr>) }`,

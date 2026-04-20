@@ -561,6 +561,16 @@ impl<'db> InferCtxt<'db> {
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id)
     }
 
+    pub fn type_is_use_cloned_modulo_regions(&self, param_env: ParamEnv<'db>, ty: Ty<'db>) -> bool {
+        let ty = self.resolve_vars_if_possible(ty);
+
+        let Some(use_cloned_def_id) = self.interner.lang_items().UseCloned else {
+            return false;
+        };
+
+        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, use_cloned_def_id)
+    }
+
     pub fn unresolved_variables(&self) -> Vec<Ty<'db>> {
         let mut inner = self.inner.borrow_mut();
         let mut vars: Vec<Ty<'db>> = inner

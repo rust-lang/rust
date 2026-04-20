@@ -962,7 +962,7 @@ fn foo(num: i32) -> Option<i32> {
         check_assist_by_label(
             wrap_return_type,
             r#"
-//- minicore: option
+//- minicore: option, fn
 fn foo(the_field: u32) ->$0 u32 {
     let true_closure = || { return true; };
     if the_field < 5 {
@@ -996,7 +996,7 @@ fn foo(the_field: u32) -> Option<u32> {
         check_assist_by_label(
             wrap_return_type,
             r#"
-//- minicore: option
+//- minicore: option, fn
 fn foo(the_field: u32) -> u32$0 {
     let true_closure = || {
         return true;
@@ -2033,7 +2033,7 @@ fn foo(num: i32) -> Result<i32, ${0:_}> {
         check_assist_by_label(
             wrap_return_type,
             r#"
-//- minicore: result
+//- minicore: result, fn
 fn foo(the_field: u32) ->$0 u32 {
     let true_closure = || { return true; };
     if the_field < 5 {
@@ -2067,7 +2067,7 @@ fn foo(the_field: u32) -> Result<u32, ${0:_}> {
         check_assist_by_label(
             wrap_return_type,
             r#"
-//- minicore: result
+//- minicore: result, fn
 fn foo(the_field: u32) -> u32$0 {
     let true_closure = || {
         return true;

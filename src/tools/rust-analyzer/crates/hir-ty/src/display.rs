@@ -47,7 +47,7 @@ use span::Edition;
 use stdx::never;
 
 use crate::{
-    CallableDefId, FnAbi, ImplTraitId, InferenceResult, MemoryMap, ParamEnvAndCrate, consteval,
+    CallableDefId, FnAbi, ImplTraitId, MemoryMap, ParamEnvAndCrate, consteval,
     db::{HirDatabase, InternedClosure},
     generics::generics,
     layout::Layout,
@@ -1495,9 +1495,7 @@ impl<'db> HirDisplay<'db> for Ty<'db> {
                 }
                 let sig = interner.signature_unclosure(substs.as_closure().sig(), Safety::Safe);
                 let sig = sig.skip_binder();
-                let InternedClosure(owner, _) = id.loc(db);
-                let infer = InferenceResult::of(db, owner);
-                let (_, kind) = infer.closure_info(id);
+                let kind = substs.as_closure().kind();
                 match f.closure_style {
                     ClosureStyle::ImplFn => write!(f, "impl {kind:?}(")?,
                     ClosureStyle::RANotation => write!(f, "|")?,

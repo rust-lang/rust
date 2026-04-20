@@ -10,12 +10,6 @@ use crate::{
     next_solver::Region,
 };
 
-macro_rules! not_supported {
-    ($it: expr) => {
-        return Err(MirLowerError::NotSupported(format!($it)))
-    };
-}
-
 impl<'db> MirLowerCtx<'_, 'db> {
     fn lower_expr_to_some_place_without_adjust(
         &mut self,
@@ -98,11 +92,8 @@ impl<'db> MirLowerCtx<'_, 'db> {
                         last.target.as_ref(),
                         expr_id.into(),
                         match od.0 {
-                            Some(Mutability::Mut) => true,
-                            Some(Mutability::Not) => false,
-                            None => {
-                                not_supported!("implicit overloaded deref with unknown mutability")
-                            }
+                            Mutability::Mut => true,
+                            Mutability::Not => false,
                         },
                     )
                 }

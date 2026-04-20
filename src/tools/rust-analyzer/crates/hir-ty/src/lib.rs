@@ -92,10 +92,8 @@ use crate::{
 pub use autoderef::autoderef;
 pub use infer::{
     Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic, InferenceResult,
-    InferenceTyDiagnosticSource, OverloadedDeref, PointerCast,
-    cast::CastError,
-    closure::analysis::{CaptureKind, CapturedItem},
-    could_coerce, could_unify, could_unify_deeply, infer_query_with_inspect,
+    InferenceTyDiagnosticSource, OverloadedDeref, PointerCast, cast::CastError, could_coerce,
+    could_unify, could_unify_deeply, infer_query_with_inspect,
 };
 pub use lower::{
     GenericPredicates, ImplTraits, LifetimeElisionKind, TyDefId, TyLoweringContext, ValueTyDefId,
@@ -108,6 +106,16 @@ pub use utils::{
     TargetFeatureIsSafeInTarget, Unsafety, all_super_traits, direct_super_traits,
     is_fn_unsafe_to_call, target_feature_is_safe_in_target,
 };
+
+pub mod closure_analysis {
+    pub use crate::infer::{
+        CaptureInfo, CaptureSourceStack, CapturedPlace, ClosureData, UpvarCapture,
+        closure::analysis::{
+            BorrowKind,
+            expr_use_visitor::{FakeReadCause, Place, PlaceBase, Projection, ProjectionKind},
+        },
+    };
+}
 
 /// A constant can have reference to other things. Memory map job is holding
 /// the necessary bits of memory of the const eval session to keep the constant
@@ -197,7 +205,7 @@ pub fn param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> Option<usize> 
     generics::generics(db, id.parent).type_or_const_param_idx(id)
 }
 
-#[derive(Debug, Copy, Clone, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum FnAbi {
     Aapcs,
     AapcsUnwind,
@@ -237,21 +245,6 @@ pub enum FnAbi {
     X86Interrupt,
     RustPreserveNone,
     Unknown,
-}
-
-impl PartialEq for FnAbi {
-    fn eq(&self, _other: &Self) -> bool {
-        // FIXME: Proper equality breaks `coercion::two_closures_lub` test
-        true
-    }
-}
-
-impl Hash for FnAbi {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        // Required because of the FIXME above and due to us implementing `Eq`, without this
-        // we would break the `Hash` + `Eq` contract
-        core::mem::discriminant(&Self::Unknown).hash(state);
-    }
 }
 
 impl FnAbi {
