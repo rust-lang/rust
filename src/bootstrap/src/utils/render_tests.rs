@@ -155,7 +155,9 @@ impl<'a> Renderer<'a> {
     }
 
     fn render_test_outcome(&mut self, outcome: Outcome<'_>, test: &TestOutcome) {
-        self.executed_tests += 1;
+        if !matches!(outcome, Outcome::FilteredOut) {
+            self.executed_tests += 1;
+        }
 
         if let Outcome::Ignored { reason } = outcome {
             self.ignored_tests += 1;
@@ -171,6 +173,7 @@ impl<'a> Renderer<'a> {
             match outcome {
                 Outcome::Ok | Outcome::BenchOk => build_helper::metrics::TestOutcome::Passed,
                 Outcome::Failed => build_helper::metrics::TestOutcome::Failed,
+                Outcome::FilteredOut => build_helper::metrics::TestOutcome::FilteredOut,
                 Outcome::Ignored { reason } => build_helper::metrics::TestOutcome::Ignored {
                     ignore_reason: reason.map(|s| s.to_string()),
                 },
@@ -209,7 +212,9 @@ impl<'a> Renderer<'a> {
             self.terse_tests_in_line = 0;
         }
 
-        self.terse_tests_in_line += 1;
+        if !matches!(outcome, Outcome::FilteredOut) {
+            self.terse_tests_in_line += 1;
+        }
         self.builder.colored_stdout(|stdout| outcome.write_short(stdout, &test.name)).unwrap();
         let _ = std::io::stdout().flush();
     }
@@ -359,6 +364,9 @@ impl<'a> Renderer<'a> {
                     &outcome,
                 );
             }
+            Message::Test(TestMessage::FilteredOut(outcome)) => {
+                self.render_test_outcome(Outcome::FilteredOut, &outcome);
+            }
             Message::Test(TestMessage::Failed(outcome)) => {
                 self.render_test_outcome(Outcome::Failed, &outcome);
                 self.failures.push(outcome);
@@ -371,11 +379,13 @@ impl<'a> Renderer<'a> {
     }
 }
 
+#[derive(Debug)]
 enum Outcome<'a> {
     Ok,
     BenchOk,
     Failed,
     Ignored { reason: Option<&'a str> },
+    FilteredOut,
 }
 
 impl Outcome<'_> {
@@ -400,6 +410,7 @@ impl Outcome<'_> {
                 writer.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))?;
                 write!(writer, "i")?;
             }
+            Outcome::FilteredOut => {}
         }
         writer.reset()
     }
@@ -425,13 +436,14 @@ impl Outcome<'_> {
                     write!(writer, ", {reason}")?;
                 }
             }
+            Outcome::FilteredOut => {}
         }
         writer.reset()
     }
 
     fn write_ci(&self, writer: &mut dyn WriteColor, name: &str) -> Result<(), std::io::Error> {
         match self {
-            Outcome::Ok | Outcome::BenchOk | Outcome::Ignored { .. } => {}
+            Outcome::Ok | Outcome::BenchOk | Outcome::FilteredOut | Outcome::Ignored { .. } => {}
             Outcome::Failed => {
                 writer.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
                 writeln!(writer, "   {name} ... FAILED")?;
