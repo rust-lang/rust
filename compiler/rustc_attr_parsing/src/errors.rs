@@ -263,3 +263,7 @@ pub(crate) struct DiagnosticOnConstOnlyForTraitImpls {
 #[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_move]` can only be applied to enums, structs or unions")]
 pub(crate) struct DiagnosticOnMoveOnlyForAdt;
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_unimplemented]` can only be applied to trait definitions")]
+pub(crate) struct DiagnosticOnUnimplementedOnlyForTraits;

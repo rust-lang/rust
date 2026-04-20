@@ -51,10 +51,6 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use crate::errors;
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_unimplemented]` can only be applied to trait definitions")]
-struct DiagnosticOnUnimplementedOnlyForTraits;
-
-#[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_const]` can only be applied to non-const trait impls")]
 struct DiagnosticOnConstOnlyForNonConstTraitImpls {
     #[label("this is a const trait impl")]
@@ -211,7 +207,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
                 Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
-                Attribute::Parsed(AttributeKind::OnUnimplemented{span, directive}) => {self.check_diagnostic_on_unimplemented(*span, hir_id, target,directive.as_deref())},
+                Attribute::Parsed(AttributeKind::OnUnimplemented{directive,..}) => {self.check_diagnostic_on_unimplemented(hir_id, directive.as_deref())},
                 Attribute::Parsed(AttributeKind::OnUnknown { span, .. }) => { self.check_diagnostic_on_unknown(*span, hir_id, target) },
                 Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)}
                 Attribute::Parsed(AttributeKind::OnMove { directive , .. }) => {
@@ -525,23 +521,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[diagnostic::on_unimplemented]` is applied to a trait definition
-    fn check_diagnostic_on_unimplemented(
-        &self,
-        attr_span: Span,
-        hir_id: HirId,
-        target: Target,
-        directive: Option<&Directive>,
-    ) {
-        if !matches!(target, Target::Trait) {
-            self.tcx.emit_node_span_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                DiagnosticOnUnimplementedOnlyForTraits,
-            );
-        }
-
+    /// Checks use of generic formatting parameters in `#[diagnostic::on_unimplemented]`
+    fn check_diagnostic_on_unimplemented(&self, hir_id: HirId, directive: Option<&Directive>) {
         if let Some(directive) = directive {
             if let Node::Item(Item {
                 kind: ItemKind::Trait(_, _, _, _, trait_name, generics, _, _),
