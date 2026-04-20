@@ -16,15 +16,15 @@ use tracing::debug;
 use crate::FnCtxt;
 use crate::method::probe::{self, Pick};
 
-struct AmbiguousTraitMethodCall<'a, 'b, 'tcx> {
+struct AmbiguousTraitMethodCall<'a, 'tcx> {
     segment_name: Symbol,
     self_expr_span: Span,
     pick: &'a Pick<'tcx>,
     tcx: TyCtxt<'tcx>,
-    edition: &'b str,
+    edition: &'static str,
 }
 
-impl<'a, 'b, 'c, 'tcx> Diagnostic<'a, ()> for AmbiguousTraitMethodCall<'b, 'c, 'tcx> {
+impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for AmbiguousTraitMethodCall<'b, 'tcx> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         let Self { segment_name, self_expr_span, pick, tcx, edition } = self;
         let mut lint = Diag::new(
@@ -80,20 +80,18 @@ impl<'a, 'b, 'c, 'tcx> Diagnostic<'a, ()> for AmbiguousTraitMethodCall<'b, 'c, '
     }
 }
 
-struct AmbiguousTraitMethod<'a, 'b, 'tcx, 'pcx, 'fnctx> {
-    segment: &'a hir::PathSegment<'pcx>,
+struct AmbiguousTraitMethod<'a, 'tcx, 'fnctx> {
+    segment: &'a hir::PathSegment<'tcx>,
     call_expr: &'tcx hir::Expr<'tcx>,
     self_expr: &'tcx hir::Expr<'tcx>,
     pick: &'a Pick<'tcx>,
     args: &'tcx [hir::Expr<'tcx>],
-    edition: &'b str,
+    edition: &'static str,
     span: Span,
     this: &'a FnCtxt<'fnctx, 'tcx>,
 }
 
-impl<'a, 'b, 'c, 'tcx, 'pcx, 'fnctx> Diagnostic<'a, ()>
-    for AmbiguousTraitMethod<'b, 'c, 'tcx, 'pcx, 'fnctx>
-{
+impl<'a, 'c, 'tcx, 'fnctx> Diagnostic<'a, ()> for AmbiguousTraitMethod<'c, 'tcx, 'fnctx> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         let Self { segment, call_expr, self_expr, pick, args, edition, span, this } = self;
         let mut lint = Diag::new(
@@ -158,7 +156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(super) fn lint_edition_dependent_dot_call(
         &self,
         self_ty: Ty<'tcx>,
-        segment: &hir::PathSegment<'_>,
+        segment: &hir::PathSegment<'tcx>,
         span: Span,
         call_expr: &'tcx hir::Expr<'tcx>,
         self_expr: &'tcx hir::Expr<'tcx>,
