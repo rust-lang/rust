@@ -671,8 +671,7 @@ impl<'db> InferenceContext<'_, 'db> {
         // that does not misuse a `FnSig` type, but that can be done separately.
         let return_ty = return_ty.unwrap_or_else(|| self.table.next_ty_var());
 
-        let sig =
-            projection.rebind(self.interner().mk_fn_sig_safe_rust_abi(input_tys, return_ty));
+        let sig = projection.rebind(self.interner().mk_fn_sig_safe_rust_abi(input_tys, return_ty));
 
         Some(sig)
     }
