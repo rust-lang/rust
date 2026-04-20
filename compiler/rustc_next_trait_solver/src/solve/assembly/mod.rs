@@ -11,7 +11,7 @@ use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::search_graph::CandidateHeadUsages;
 use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
 use rustc_type_ir::{
-    self as ty, AliasTy, Interner, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    self as ty, AliasTy, Interner, Region, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
     Upcast, elaborate,
 };
@@ -1368,7 +1368,7 @@ where
         }
     }
 
-    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, r: Region<I>) -> Self::Result {
         match self.ecx.eager_resolve_region(r).kind() {
             ty::ReStatic | ty::ReError(_) | ty::ReBound(..) => ControlFlow::Continue(()),
             ty::RePlaceholder(p) => {

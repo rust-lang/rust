@@ -14,7 +14,7 @@ use crate::relate::Relate;
 use crate::solve::{AdtDestructorKind, SizedTraitKind};
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{
-    self as ty, ClauseKind, CollectAndApply, FieldInfo, Interner, PredicateKind, UpcastFrom,
+    self as ty, ClauseKind, CollectAndApply, FieldInfo, Interner, PredicateKind, Region, UpcastFrom,
 };
 
 pub trait Ty<I: Interner<Ty = Self>>:
@@ -78,7 +78,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_foreign(interner: I, def_id: I::ForeignId) -> Self;
 
-    fn new_dynamic(interner: I, preds: I::BoundExistentialPredicates, region: I::Region) -> Self;
+    fn new_dynamic(interner: I, preds: I::BoundExistentialPredicates, region: Region<I>) -> Self;
 
     fn new_coroutine(interner: I, def_id: I::CoroutineId, args: I::GenericArgs) -> Self;
 
@@ -100,7 +100,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_ptr(interner: I, ty: Self, mutbl: Mutability) -> Self;
 
-    fn new_ref(interner: I, region: I::Region, ty: Self, mutbl: Mutability) -> Self;
+    fn new_ref(interner: I, region: Region<I>, ty: Self, mutbl: Mutability) -> Self;
 
     fn new_array_with_const_len(interner: I, ty: Self, len: I::Const) -> Self;
 
@@ -317,7 +317,7 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
     + TypeVisitable<I>
     + Relate<I>
     + From<I::Ty>
-    + From<I::Region>
+    + From<Region<I>>
     + From<I::Const>
     + From<I::Term>
 {
@@ -345,11 +345,11 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
         self.as_const().expect("expected a const")
     }
 
-    fn as_region(&self) -> Option<I::Region> {
+    fn as_region(&self) -> Option<Region<I>> {
         if let ty::GenericArgKind::Lifetime(c) = self.kind() { Some(c) } else { None }
     }
 
-    fn expect_region(&self) -> I::Region {
+    fn expect_region(&self) -> Region<I> {
         self.as_region().expect("expected a const")
     }
 
@@ -421,7 +421,7 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
 
     fn type_at(self, i: usize) -> I::Ty;
 
-    fn region_at(self, i: usize) -> I::Region;
+    fn region_at(self, i: usize) -> Region<I>;
 
     fn const_at(self, i: usize) -> I::Const;
 
@@ -466,7 +466,7 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::TraitPredicate<I>>
     + UpcastFrom<I, ty::OutlivesPredicate<I, I::Ty>>
-    + UpcastFrom<I, ty::OutlivesPredicate<I, I::Region>>
+    + UpcastFrom<I, ty::OutlivesPredicate<I, Region<I>>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
     + Elaboratable<I>
 {

@@ -8,11 +8,11 @@ use smallvec::{SmallVec, smallvec};
 use crate::data_structures::SsoHashSet;
 use crate::inherent::*;
 use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _, TypeVisitor};
-use crate::{self as ty, Interner};
+use crate::{self as ty, Interner, Region};
 
 #[derive_where(Debug; I: Interner)]
 pub enum Component<I: Interner> {
-    Region(I::Region),
+    Region(Region<I>),
     Param(I::ParamTy),
     Placeholder(ty::PlaceholderType<I>),
     UnresolvedInferenceVariable(ty::InferTy),
@@ -210,7 +210,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
         }
     }
 
-    fn visit_region(&mut self, lt: I::Region) -> Self::Result {
+    fn visit_region(&mut self, lt: Region<I>) -> Self::Result {
         if !lt.is_bound() {
             self.out.push(Component::Region(lt));
         }

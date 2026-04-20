@@ -16,7 +16,7 @@ use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldabl
 use crate::inherent::*;
 use crate::lift::Lift;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex, Unnormalized};
+use crate::{self as ty, DebruijnIndex, Interner, Region, UniverseIndex, Unnormalized};
 
 /// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
@@ -339,7 +339,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         c.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, r: Region<I>) -> Self::Result {
         match r.kind() {
             ty::ReBound(index, br) if index == ty::BoundVarIndexKind::Bound(self.binder_index) => {
                 let idx = br.var().as_usize();
@@ -708,7 +708,7 @@ impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
         t
     }
 
-    fn fold_region(&mut self, r: I::Region) -> I::Region {
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         // Note: This routine only handles regions that are bound on
         // type declarations and other outer declarations, not those
         // bound in *fn types*. Region instantiation of the bound
@@ -846,7 +846,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     fn region_param_expected(
         &self,
         ebr: I::EarlyParamRegion,
-        r: I::Region,
+        r: Region<I>,
         kind: ty::GenericArgKind<I>,
     ) -> ! {
         panic!(
@@ -861,7 +861,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
 
     #[cold]
     #[inline(never)]
-    fn region_param_out_of_range(&self, ebr: I::EarlyParamRegion, r: I::Region) -> ! {
+    fn region_param_out_of_range(&self, ebr: I::EarlyParamRegion, r: Region<I>) -> ! {
         panic!(
             "region parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
             ebr,
@@ -922,7 +922,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         }
     }
 
-    fn shift_region_through_binders(&self, region: I::Region) -> I::Region {
+    fn shift_region_through_binders(&self, region: Region<I>) -> Region<I> {
         if self.binders_passed == 0 || !region.has_escaping_bound_vars() {
             region
         } else {

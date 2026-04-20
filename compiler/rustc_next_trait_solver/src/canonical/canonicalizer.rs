@@ -3,7 +3,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalParamEnvCacheEntry, CanonicalVarKind, Flags, InferCtxtLike,
-    Interner, PlaceholderConst, PlaceholderType, TypeFlags, TypeFoldable, TypeFolder,
+    Interner, PlaceholderConst, PlaceholderType, Region, TypeFlags, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt,
 };
 
@@ -409,7 +409,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
         self.delegate.cx()
     }
 
-    fn fold_region(&mut self, r: I::Region) -> I::Region {
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         let kind = match r.kind() {
             ty::ReBound(..) => return r,
 
