@@ -7,8 +7,8 @@ use rustc_attr_parsing::{AttributeParser, Early, OmitDoc, ShouldEmit};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::Target;
+use rustc_hir::def::DefKind;
 use rustc_hir::def::Namespace::{TypeNS, ValueNS};
-use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
 use rustc_span::{Span, Symbol, sym};
@@ -295,17 +295,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             return;
         }
         let def = self.create_def(v.id, Some(v.ident.name), DefKind::Variant, v.span);
-        self.with_parent(def, |this| {
-            if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(&v.data) {
-                this.create_def(
-                    ctor_node_id,
-                    None,
-                    DefKind::Ctor(CtorOf::Variant, ctor_kind),
-                    v.span,
-                );
-            }
-            this.brg_visit_variant(v);
-        });
+        self.with_parent(def, |this| this.brg_visit_variant(v));
     }
 
     fn visit_where_predicate(&mut self, pred: &'a WherePredicate) {

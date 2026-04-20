@@ -1504,7 +1504,13 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             };
 
         // Define a constructor name in the value namespace.
-        if let Some(ctor_node_id) = variant.data.ctor_node_id() {
+        if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(&variant.data) {
+            self.create_def(
+                ctor_node_id,
+                None,
+                DefKind::Ctor(CtorOf::Variant, ctor_kind),
+                variant.span,
+            );
             let feed = self.r.feed(ctor_node_id);
             let ctor_def_id = feed.key();
             let ctor_res = self.res(ctor_def_id);
