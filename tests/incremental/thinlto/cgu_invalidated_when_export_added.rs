@@ -1,4 +1,4 @@
-//@ revisions: cfail1 cfail2
+//@ revisions: bfail1 bfail2
 //@ build-pass
 //@ ignore-backends: gcc
 
@@ -18,7 +18,7 @@ impl Drop for Foo {
 pub extern "C" fn run() {
     thread_local! { pub static FOO : Foo = Foo { } ; }
 
-    #[cfg(cfail2)]
+    #[cfg(bfail2)]
     {
         FOO.with(|_f| ())
     }

@@ -1,4 +1,4 @@
-//@ revisions: rpass cfail
+//@ revisions: rpass bfail
 //@ ignore-backends: gcc
 
 #![deny(unused_features)]
@@ -10,9 +10,9 @@
 
 // Used library features
 #![feature(error_iter)]
-//[cfail]~^ ERROR feature `error_iter` is declared but not used
+//[bfail]~^ ERROR feature `error_iter` is declared but not used
 #![cfg_attr(all(), feature(allocator_api))]
-//[cfail]~^ ERROR feature `allocator_api` is declared but not used
+//[bfail]~^ ERROR feature `allocator_api` is declared but not used
 
 pub fn use_box_patterns(b: Box<i32>) -> i32 {
     let box x = b;

@@ -135,7 +135,7 @@ pub(crate) struct TestProps {
     pub(crate) pretty_mode: String,
     // Only compare pretty output and don't try compiling
     pub(crate) pretty_compare_only: bool,
-    // Patterns which must not appear in the output of a cfail test.
+    /// Strings that must not appear in compile/run output.
     pub(crate) forbid_output: Vec<String>,
     // Revisions to test for incremental compilation.
     pub(crate) revisions: Vec<String>,
@@ -442,8 +442,8 @@ impl TestProps {
             (TestMode::Incremental, _) => {
                 // FIXME(Zalathar): This only detects forbidden directives that are
                 // declared _after_ the incompatible `//@ revisions:` directive(s).
-                if self.revisions.iter().any(|r| !r.starts_with("cfail")) {
-                    panic!("`{s}` directive is only supported in `cfail` incremental tests")
+                if self.revisions.iter().any(|r| !r.starts_with("bfail")) {
+                    panic!("`{s}` directive is only supported in `bfail` incremental tests")
                 }
             }
             (mode, _) => panic!("`{s}` directive is not supported in `{mode}` tests"),
