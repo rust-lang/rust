@@ -11,7 +11,7 @@ use rustc_data_structures::stable_hash::StableHasher;
 use rustc_errors::{ColorConfig, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
-use rustc_macros::{BlobDecodable, Encodable};
+use rustc_macros::{BlobDecodable, Encodable, StableHash};
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::{RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm};
@@ -78,7 +78,8 @@ pub struct ExtendedTargetModifierInfo {
 
 /// A recorded -Zopt_name=opt_value (or -Copt_name=opt_value)
 /// which alter the ABI or effectiveness of exploit mitigations.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Encodable, BlobDecodable)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Encodable, BlobDecodable, StableHash)]
 pub struct TargetModifier {
     /// Option enum value
     pub opt: OptionsTargetModifiers,
@@ -215,7 +216,8 @@ macro_rules! top_level_options {
             )*
         }
     ) => {
-        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, BlobDecodable)]
+        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone)]
+        #[derive(Encodable, BlobDecodable, StableHash)]
         pub enum OptionsTargetModifiers {
             $(
                 $(
@@ -524,7 +526,8 @@ macro_rules! options {
             )*
         }
 
-        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone, Encodable, BlobDecodable)]
+        #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Copy, Clone)]
+        #[derive(Encodable, BlobDecodable, StableHash)]
         pub enum $tmod_enum {
             $(
                 $( $tmod_variant, )?
