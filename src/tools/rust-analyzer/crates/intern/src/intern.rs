@@ -34,6 +34,7 @@ use std::{
 use dashmap::{DashMap, SharedValue};
 use hashbrown::raw::RawTable;
 use rustc_hash::FxBuildHasher;
+use rustc_type_ir::inherent::IntoKind;
 use triomphe::{Arc, ArcBorrow};
 
 type InternMap<T> = DashMap<Arc<T>, (), FxBuildHasher>;
@@ -315,6 +316,14 @@ impl<T: Debug> Debug for InternedRef<'_, T> {
 impl<T: Display> Display for InternedRef<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         (*self.arc).fmt(f)
+    }
+}
+
+impl<T: Clone> IntoKind for InternedRef<'_, T> {
+    type Kind = T;
+
+    fn kind(self) -> Self::Kind {
+        self.arc.get().clone()
     }
 }
 

@@ -20,6 +20,8 @@ rustc-hash.workspace = true
 triomphe.workspace = true
 rayon.workspace = true
 
+ra-ap-rustc_type_ir.workspace = true
+
 [lints]
 workspace = true
 

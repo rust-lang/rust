@@ -7,6 +7,8 @@ mod intern;
 mod intern_slice;
 mod symbol;
 
+extern crate ra_ap_rustc_type_ir as rustc_type_ir;
+
 pub use self::gc::{GarbageCollector, GcInternedSliceVisit, GcInternedVisit};
 pub use self::intern::{InternStorage, Internable, Interned, InternedRef, impl_internable};
 pub use self::intern_slice::{
