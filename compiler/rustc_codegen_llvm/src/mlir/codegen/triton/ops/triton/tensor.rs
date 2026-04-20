@@ -922,27 +922,39 @@ impl<'a> TritonCodegen<'a> {
             .map_err(|e| MlirError::CodegenFailed { err: format!("expand_dims axis: {e:?}") })?
             .to_i32();
 
-        let src_tensor: RankedTensorType<'a> = src.r#type().try_into()
-            .map_err(|e: melior::error::Error| MlirError::InvalidType { msg: e.to_string() })?;
-        let src_dims = src_tensor.dims().map_err(|e| MlirError::InvalidType { msg: e.to_string() })?;
-        let elem_ty = src_tensor.element();
+        // When `src` is a scalar (e.g. result of tt.reduce on a 1-D tensor), emit tt.splat
+        // to produce `tensor<1xElem>` rather than tt.expand_dims which requires a tensor input.
+        eprintln!("[DEBUG-EXPAND-DIMS] src type: {}", src.r#type());
+        if let Ok(src_tensor) = RankedTensorType::try_from(src.r#type()) {
+            let src_dims = src_tensor.dims().map_err(|e| MlirError::InvalidType { msg: e.to_string() })?;
+            let elem_ty = src_tensor.element();
 
-        // Insert size-1 at `axis` into the shape.
-        let axis_usize = if axis < 0 {
-            (src_dims.len() as i32 + axis + 1) as usize
+            let axis_usize = if axis < 0 {
+                (src_dims.len() as i32 + axis + 1) as usize
+            } else {
+                axis as usize
+            };
+            let mut result_dims = src_dims.clone();
+            result_dims.insert(axis_usize, 1);
+            let result_ty = tensor_type(&result_dims, elem_ty).into();
+
+            let op: Operation<'a> = expand_dims(self.module.context(), location, src, axis, result_ty)
+                .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?
+                .into();
+            let result = op.result(0).expect("expand_dims result");
+            mlir_block.append_operation(op);
+            Ok(Some(result.into()))
         } else {
-            axis as usize
-        };
-        let mut result_dims = src_dims.clone();
-        result_dims.insert(axis_usize, 1);
-        let result_ty = tensor_type(&result_dims, elem_ty).into();
-
-        let op: Operation<'a> = expand_dims(self.module.context(), location, src, axis, result_ty)
-            .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?
-            .into();
-        let result = op.result(0).expect("expand_dims result");
-        mlir_block.append_operation(op);
-        Ok(Some(result.into()))
+            // Scalar input — insert one unit dimension via tt.splat.
+            let elem_ty = src.r#type();
+            let result_ty = tensor_type(&[1], elem_ty).into();
+            let op: Operation<'a> = splat(self.module.context(), location, src, result_ty)
+                .map_err(|e| MlirError::CodegenFailed { err: e.to_string() })?
+                .into();
+            let result = op.result(0).expect("expand_dims(scalar) splat result");
+            mlir_block.append_operation(op);
+            Ok(Some(result.into()))
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -3498,16 +3510,32 @@ impl<'a> TritonCodegen<'a> {
         mlir_block: &BlockRef<'a, 'a>,
         state: &mut CodegenState<'a, 'a>,
     ) -> Result<Option<Value<'a, 'a>>, MlirError> {
-        // args: [scalar_value] — shape comes from the destination tensor type.
+        // args: [shape: &[i32], value: E] — shape comes from args[0] (slice), value from args[1].
         let scalar = self.codegen_operand(
-            tcx, instance, &args[0].node, args[0].node.ty(mir, tcx), location, mlir_block, state,
+            tcx, instance, &args[1].node, args[1].node.ty(mir, tcx), location, mlir_block, state,
         )?;
 
         let dest_ty = destination.ty(mir, tcx).ty;
         let dest_ty = instance.instantiate_mir_and_normalize_erasing_regions(
             tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(dest_ty),
         );
-        let result_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
+        let mapped_ty = self.type_mapper.map_type(self.module.context(), &tcx, &dest_ty);
+
+        // Try to get the concrete shape from slice_shape[args[0] local] to avoid `tensor<?xE>`.
+        let result_ty = if let Operand::Copy(p) | Operand::Move(p) = &args[0].node {
+            if let Some(shape) = state.slice_shape.get(&p.local) {
+                let elem_ty = if let Ok(t) = RankedTensorType::try_from(mapped_ty) {
+                    t.element()
+                } else {
+                    mapped_ty
+                };
+                tensor_type(shape, elem_ty).into()
+            } else {
+                mapped_ty
+            }
+        } else {
+            mapped_ty
+        };
 
         self.splat_scalar_const(location, scalar, result_ty, mlir_block).map(Some)
     }

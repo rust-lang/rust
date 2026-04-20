@@ -43,11 +43,17 @@ unsafe impl<'c> Sync for MlirModule<'c> {}
 
 impl<'c> MlirModule<'c> {
     pub fn new(mod_name: &str) -> Self {
+        Self::new_with_capability(mod_name, 90)
+    }
+
+    pub fn new_with_capability(mod_name: &str, capability: i32) -> Self {
         let context = Context::new();
         let location = Location::unknown(&context);
         let module = Module::new(location);
 
-        let options = CompileOptions::default_cuda();
+        let mut options = CompileOptions::default_cuda();
+        // Safety: CompileOptionsData is a union; default_cuda() sets the cuda variant.
+        unsafe { options.data.cuda.capability = capability; }
         let compiler = TritonCompiler::new(context.to_raw(), "cuda", &options)
             .expect("Failed to create Triton compiler");
 

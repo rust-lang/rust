@@ -711,7 +711,9 @@ fn find_range_bound<'tcx>(
         for stmt in &mir.basic_blocks[bb].statements {
             if let StatementKind::Assign(assign) = &stmt.kind {
                 let (_, rvalue) = assign.as_ref();
-                if let Rvalue::Aggregate(box AggregateKind::Adt(..), fields) = rvalue {
+                if let Rvalue::Aggregate(kind, fields) = rvalue
+                    && matches!(kind.as_ref(), AggregateKind::Adt(..))
+                {
                     if fields.len() == 2 {
                         // Treat [start, end] → look at index 1 (end).
                         let end_op = &fields[FieldIdx::from_usize(1)];
@@ -739,19 +741,7 @@ fn find_range_bound<'tcx>(
 /// Try to extract a constant integer value from a `ConstOperand` without needing tcx/instance.
 /// Works for monomorphized scalar constants (`Const::Val`) and simple `Const::Ty` value-tree consts.
 fn try_const_operand_as_i64(c: &ConstOperand<'_>) -> Option<i64> {
-    use rustc_middle::mir::interpret::{ConstValue, Scalar};
-    use rustc_middle::ty::Const;
-    match c.const_ {
-        Const::Val(ConstValue::Scalar(Scalar::Int(s)), _) => Some(s.to_bits_unchecked() as i64),
-        Const::Ty(_, ref ck) => {
-            if let ConstKind::Value(cv) = ck.kind() {
-                cv.valtree.try_to_leaf().map(|s| s.to_bits_unchecked() as i64)
-            } else {
-                None
-            }
-        }
-        _ => None,
-    }
+    c.const_.try_to_scalar_int().map(|s| s.to_bits_unchecked() as i64)
 }
 
 /// Find the Lt statement that assigns `discr_local` and extract (counter_local, bound_local).
@@ -1765,6 +1755,20 @@ impl<'a> TritonCodegen<'a> {
                     }
                 }
 
+                // `_x = const &[T; N]` — populate slice_shape so PointerCoercion(Unsize)
+                // can propagate the shape when this local is later coerced to &[T].
+                if let Operand::Constant(c) = operand {
+                    let const_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                        tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(c.const_.ty()),
+                    );
+                    if let Some(shape) =
+                        self.try_read_array_ref_const(tcx, *instance, const_ty, &c.const_)
+                    {
+                        state.slice_shape.insert(place.local, shape);
+                        // Fall through to codegen_operand to emit a placeholder SSA value.
+                    }
+                }
+
                 let result = self.codegen_operand(
                     tcx,
                     instance,
@@ -1845,6 +1849,10 @@ impl<'a> TritonCodegen<'a> {
                                     println!("[DEBUG-UNSIZE] inserting slice_shape[{:?}] = {:?}", place.local, shape);
                                     state.slice_shape.insert(place.local, shape);
                                 }
+                            }
+                            // Const array ref assigned directly (e.g. `_x = const &[T; N]`) → slice_shape.
+                            if let Some(shape) = state.slice_shape.get(&p.local).cloned() {
+                                state.slice_shape.insert(place.local, shape);
                             }
                         }
                     }
@@ -2068,11 +2076,39 @@ impl<'a> TritonCodegen<'a> {
                 todo!("RawPtr: {:?} {:?}", _raw_ptr_kind, src_place)
             }
             Rvalue::BinaryOp(bin_op, operands) => {
-                let value = self.codegen_binary_op(
-                    tcx, instance, mir, place, bin_op, operands, location, mlir_block, state,
-                )?;
-                if let Some(value) = value {
-                    state.ssa_values.insert(place.local, value);
+                // WithOverflow variants return (T, bool) — treat as plain arithmetic + false flag.
+                let is_overflow_op = matches!(
+                    bin_op,
+                    BinOp::AddWithOverflow | BinOp::SubWithOverflow | BinOp::MulWithOverflow
+                );
+                if is_overflow_op {
+                    let plain_op = match bin_op {
+                        BinOp::AddWithOverflow => BinOp::Add,
+                        BinOp::SubWithOverflow => BinOp::Sub,
+                        BinOp::MulWithOverflow => BinOp::Mul,
+                        _ => unreachable!(),
+                    };
+                    let value = self.codegen_binary_op(
+                        tcx, instance, mir, place, &plain_op, operands, location, mlir_block, state,
+                    )?;
+                    if let Some(result_val) = value {
+                        let ctx = self.module.context();
+                        let i1_ty = IntegerType::new(ctx, 1);
+                        let false_attr = IntegerAttribute::new(i1_ty.into(), 0);
+                        let false_op: Operation<'a> =
+                            melior::dialect::arith::constant(ctx, false_attr.into(), location)
+                                .into();
+                        let false_val: Value = false_op.result(0).unwrap().into();
+                        mlir_block.append_operation(false_op);
+                        state.tuple_fields.insert(place.local, vec![result_val, false_val]);
+                    }
+                } else {
+                    let value = self.codegen_binary_op(
+                        tcx, instance, mir, place, bin_op, operands, location, mlir_block, state,
+                    )?;
+                    if let Some(value) = value {
+                        state.ssa_values.insert(place.local, value);
+                    }
                 }
             }
             Rvalue::UnaryOp(un_op, operand) => todo!("UnaryOp: {:?} {:?}", un_op, operand),

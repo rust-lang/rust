@@ -133,8 +133,16 @@ fn compile_codegen_unit_impl(
     info!("CGU size estimate: {}", cgu.size_estimate());
     info!("========================================");
 
+    // Determine GPU capability from -Ctarget-cpu (e.g. "sm_120a" → 120, "sm_90a" → 90).
+    let target_cpu = crate::llvm_util::target_cpu(tcx.sess);
+    let capability: i32 = {
+        let s = target_cpu.trim_start_matches("sm_").trim_end_matches('a');
+        s.parse::<i32>().unwrap_or(90)
+    };
+    eprintln!("[DEBUG] GPU capability: {} (from target_cpu={})", capability, target_cpu);
+
     // Create the MLIR module
-    let mut mlir_module = MlirModule::new(cgu_name.as_str());
+    let mut mlir_module = MlirModule::new_with_capability(cgu_name.as_str(), capability);
     let mut triton_codegen = TritonCodegen::new(&mlir_module);
 
     // Get all mono items in deterministic order
