@@ -1,0 +1,29 @@
+//@ run-rustfix
+
+#![deny(unused_parens)]
+
+struct Thing;
+impl Thing {
+    fn method(self) {}
+}
+
+fn main() {
+    // Unnecessary parens - should warn
+    let x = Thing;
+    (x).method(); //~ ERROR unnecessary parentheses around method receiver
+
+    // Necessary parens - should NOT warn
+    let _ = (1..10).sum::<i32>(); // Range expression
+    let _ = (1_i32 + 2).abs(); // Binary expression
+    let _ = (-1_i32).abs(); // Unary expression
+    let _ = (true as i32).abs(); // Cast expression
+    let _ = (&42).clone(); // AddrOf expression
+    let _ = (&mut 42).clone(); // AddrOf mut expression
+
+    // Block expressions - should NOT warn
+    let _ = ({ 1_i32 }).abs(); // Block expression
+    let _ = (unsafe { std::mem::zeroed::<i32>() }).abs(); // Unsafe block expression
+
+    // lint for path with multiple segments
+    let _ = (std::cmp::Ordering::Equal).is_eq(); //~ ERROR unnecessary parentheses around method receiver
+}

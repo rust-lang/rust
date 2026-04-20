@@ -1212,7 +1212,7 @@ macro_rules! uint_impl {
         /// ```
         ///
         /// ```should_panic
-        #[doc = concat!("let _ = (", stringify!($SelfT), "::MAX).strict_sub_signed(-1);")]
+        #[doc = concat!("let _ = ", stringify!($SelfT), "::MAX.strict_sub_signed(-1);")]
         /// ```
         #[stable(feature = "strict_overflow_ops", since = "1.91.0")]
         #[rustc_const_stable(feature = "strict_overflow_ops", since = "1.91.0")]
@@ -2520,7 +2520,7 @@ macro_rules! uint_impl {
         ///
         /// ```
         #[doc = concat!("assert_eq!(2", stringify!($SelfT), ".saturating_mul(10), 20);")]
-        #[doc = concat!("assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($SelfT),"::MAX);")]
+        #[doc = concat!("assert_eq!(", stringify!($SelfT), "::MAX.saturating_mul(10), ", stringify!($SelfT),"::MAX);")]
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_saturating_int_methods", since = "1.47.0")]
