@@ -248,3 +248,7 @@ pub(crate) struct DocUnknownPlugins {
 pub(crate) struct DocUnknownAny {
     pub name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag("expected boolean for `#[doc(auto_cfg = ...)]`")]
+pub(crate) struct DocAutoCfgWrongLiteral;

@@ -43,10 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            &AttributeLintKind::DocAutoCfgWrongLiteral => {
-                lints::DocAutoCfgWrongLiteral.into_diag(dcx, level)
-            }
-
             &AttributeLintKind::DocTestTakesList => lints::DocTestTakesList.into_diag(dcx, level),
 
             &AttributeLintKind::DocTestUnknown { name } => {

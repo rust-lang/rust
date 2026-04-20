@@ -3304,10 +3304,6 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
-#[diag("expected boolean for `#[doc(auto_cfg = ...)]`")]
-pub(crate) struct DocAutoCfgWrongLiteral;
-
-#[derive(Diagnostic)]
 #[diag("`#[doc(test(...)]` takes a list of attributes")]
 pub(crate) struct DocTestTakesList;
 

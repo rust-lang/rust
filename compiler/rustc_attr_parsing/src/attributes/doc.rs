@@ -15,8 +15,8 @@ use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::errors::{
     DocAliasDuplicated, DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList,
-    DocAutoCfgHideShowUnexpectedItem, DocUnknownAny, DocUnknownInclude, DocUnknownPasses,
-    DocUnknownPlugins, DocUnknownSpotlight, IllFormedAttributeInput,
+    DocAutoCfgHideShowUnexpectedItem, DocAutoCfgWrongLiteral, DocUnknownAny, DocUnknownInclude,
+    DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, IllFormedAttributeInput,
 };
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
@@ -443,9 +443,9 @@ impl DocParser {
             ArgParser::NameValue(nv) => {
                 let MetaItemLit { kind: LitKind::Bool(bool_value), span, .. } = nv.value_as_lit()
                 else {
-                    cx.emit_lint(
+                    cx.emit_dyn_lint(
                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                        AttributeLintKind::DocAutoCfgWrongLiteral,
+                        move |dcx, level| DocAutoCfgWrongLiteral.into_diag(dcx, level),
                         nv.value_span,
                     );
                     return;
