@@ -30,17 +30,17 @@ pub unsafe extern "C" fn check_list_1(mut ap: VaList) -> usize {
     continue_if!(ap.arg::<c_int>() == '4' as c_int);
     continue_if!(ap.arg::<c_int>() == ';' as c_int);
     continue_if!(ap.arg::<c_int>() == 0x32);
-    continue_if!(ap.arg::<c_int>() == 0x10000001);
+    continue_if!(ap.arg::<i32>() == 0x10000001);
     continue_if!(compare_c_str(ap.arg::<*const c_char>(), c"Valid!"));
     0
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_list_2(mut ap: VaList) -> usize {
-    continue_if!(ap.arg::<c_double>() == 3.14f64);
+    continue_if!(ap.arg::<c_double>() == 3.14);
     continue_if!(ap.arg::<c_long>() == 12);
     continue_if!(ap.arg::<c_int>() == 'a' as c_int);
-    continue_if!(ap.arg::<c_double>() == 6.28f64);
+    continue_if!(ap.arg::<c_double>() == 6.28);
     continue_if!(compare_c_str(ap.arg::<*const c_char>(), c"Hello"));
     continue_if!(ap.arg::<c_int>() == 42);
     continue_if!(compare_c_str(ap.arg::<*const c_char>(), c"World"));
@@ -49,7 +49,7 @@ pub unsafe extern "C" fn check_list_2(mut ap: VaList) -> usize {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_list_copy_0(mut ap: VaList) -> usize {
-    continue_if!(ap.arg::<c_double>() == 6.28f64);
+    continue_if!(ap.arg::<c_double>() == 6.28);
     continue_if!(ap.arg::<c_int>() == 16);
     continue_if!(ap.arg::<c_int>() == 'A' as c_int);
     continue_if!(compare_c_str(ap.arg::<*const c_char>(), c"Skip Me!"));
@@ -66,7 +66,7 @@ pub unsafe extern "C" fn check_varargs_0(_: c_int, mut ap: ...) -> usize {
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn check_varargs_1(_: c_int, mut ap: ...) -> usize {
-    continue_if!(ap.arg::<c_double>() == 3.14f64);
+    continue_if!(ap.arg::<c_double>() == 3.14);
     continue_if!(ap.arg::<c_long>() == 12);
     continue_if!(ap.arg::<c_int>() == 'A' as c_int);
     continue_if!(ap.arg::<c_longlong>() == 1);
@@ -156,7 +156,7 @@ extern "C" fn run_test_variadic() -> usize {
 
 #[unsafe(no_mangle)]
 extern "C" fn run_test_va_list_by_value() -> usize {
-    unsafe extern "C" fn helper(mut ap: ...) -> usize {
+    unsafe extern "C" fn helper(ap: ...) -> usize {
         unsafe { test_va_list_by_value(ap) }
     }
 

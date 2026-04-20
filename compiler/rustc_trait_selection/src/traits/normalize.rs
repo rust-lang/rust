@@ -13,7 +13,7 @@ use rustc_middle::span_bug;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{
     self, AliasTerm, Term, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
-    TypeVisitableExt, TypingMode,
+    TypeVisitableExt, TypingMode, Unnormalized,
 };
 use tracing::{debug, instrument};
 
@@ -28,7 +28,11 @@ impl<'tcx> At<'_, 'tcx> {
     ///
     /// This normalization should be used when the type contains inference variables or the
     /// projection may be fallible.
-    fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(&self, value: T) -> InferOk<'tcx, T> {
+    fn normalize<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &self,
+        value: Unnormalized<'tcx, T>,
+    ) -> InferOk<'tcx, T> {
+        let value = value.skip_normalization();
         if self.infcx.next_trait_solver() {
             InferOk { value, obligations: PredicateObligations::new() }
         } else {
@@ -53,7 +57,7 @@ impl<'tcx> At<'_, 'tcx> {
     /// can remove the `fulfill_cx` parameter on this function.
     fn deeply_normalize<T, E>(
         self,
-        value: T,
+        value: Unnormalized<'tcx, T>,
         fulfill_cx: &mut dyn TraitEngine<'tcx, E>,
     ) -> Result<T, Vec<E>>
     where
@@ -315,8 +319,12 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         // that other kinds of normalization do.
         let infcx = self.selcx.infcx;
         self.obligations.extend(
-            infcx.tcx.predicates_of(free.def_id).instantiate_own(infcx.tcx, free.args).map(
-                |(mut predicate, span)| {
+            infcx
+                .tcx
+                .predicates_of(free.def_id)
+                .instantiate_own(infcx.tcx, free.args)
+                .map(|(pred, span)| (pred.skip_norm_wip(), span))
+                .map(|(mut predicate, span)| {
                     if free.has_escaping_bound_vars() {
                         (predicate, ..) = BoundVarReplacer::replace_bound_vars(
                             infcx,
@@ -327,17 +335,23 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                     let mut cause = self.cause.clone();
                     cause.map_code(|code| ObligationCauseCode::TypeAlias(code, span, free.def_id));
                     Obligation::new(infcx.tcx, cause, self.param_env, predicate)
-                },
-            ),
+                }),
         );
         self.depth += 1;
         let res = if free.kind(infcx.tcx).is_type() {
-            infcx.tcx.type_of(free.def_id).instantiate(infcx.tcx, free.args).fold_with(self).into()
+            infcx
+                .tcx
+                .type_of(free.def_id)
+                .instantiate(infcx.tcx, free.args)
+                .skip_norm_wip()
+                .fold_with(self)
+                .into()
         } else {
             infcx
                 .tcx
                 .const_of_item(free.def_id)
                 .instantiate(infcx.tcx, free.args)
+                .skip_norm_wip()
                 .fold_with(self)
                 .into()
         };
@@ -413,7 +427,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
 
                         let args = data.args.fold_with(self);
                         let generic_ty = self.cx().type_of(def_id);
-                        let concrete_ty = generic_ty.instantiate(self.cx(), args);
+                        let concrete_ty = generic_ty.instantiate(self.cx(), args).skip_norm_wip();
                         self.depth += 1;
                         let folded_ty = self.fold_ty(concrete_ty);
                         self.depth -= 1;

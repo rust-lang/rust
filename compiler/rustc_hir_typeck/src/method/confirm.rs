@@ -23,7 +23,7 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::{
     self, AssocContainer, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, UserArgs,
+    TypeFoldable, TypeVisitableExt, Unnormalized, UserArgs,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Span};
@@ -137,14 +137,15 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // traits, no trait system method can be called before this point because they
         // could alter our Self-type, except for normalizing the receiver from the
         // signature (which is also done during probing).
-        let method_sig_rcvr = self.normalize(self.span, method_sig.inputs()[0]);
+        let method_sig_rcvr =
+            self.normalize(self.span, Unnormalized::new_wip(method_sig.inputs()[0]));
         debug!(
             "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
             self_ty, method_sig_rcvr, method_sig, method_predicates
         );
         self.unify_receivers(self_ty, method_sig_rcvr, pick);
 
-        let method_sig = self.normalize(self.span, method_sig);
+        let method_sig = self.normalize(self.span, Unnormalized::new_wip(method_sig));
 
         // Make sure nobody calls `drop()` explicitly.
         self.check_for_illegal_method_calls(pick);
@@ -460,7 +461,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                             self.cfcx
                                 .tcx
                                 .type_of(param.def_id)
-                                .instantiate(self.cfcx.tcx, preceding_args),
+                                .instantiate(self.cfcx.tcx, preceding_args)
+                                .skip_norm_wip(),
                         )
                         .into(),
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
@@ -532,7 +534,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             }
         }
 
-        self.normalize(self.span, args)
+        self.normalize(self.span, Unnormalized::new_wip(args))
     }
 
     fn unify_receivers(
@@ -591,7 +593,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         debug!("method_predicates after instantiation = {:?}", method_predicates);
 
-        let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, all_args);
+        let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, all_args).skip_norm_wip();
         debug!("type scheme instantiated, sig={:?}", sig);
 
         let sig = self.instantiate_binder_with_fresh_vars(sig);
@@ -657,22 +659,25 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ) -> Option<Span> {
         let sized_def_id = self.tcx.lang_items().sized_trait()?;
 
-        traits::elaborate(self.tcx, predicates.predicates.iter().copied())
-            // We don't care about regions here.
-            .filter_map(|pred| match pred.kind().skip_binder() {
-                ty::ClauseKind::Trait(trait_pred) if trait_pred.def_id() == sized_def_id => {
-                    let span = predicates
-                        .iter()
-                        .find_map(|(p, span)| if p == pred { Some(span) } else { None })
-                        .unwrap_or(DUMMY_SP);
-                    Some((trait_pred, span))
-                }
-                _ => None,
-            })
-            .find_map(|(trait_pred, span)| match trait_pred.self_ty().kind() {
-                ty::Dynamic(..) => Some(span),
-                _ => None,
-            })
+        traits::elaborate(
+            self.tcx,
+            predicates.predicates.iter().copied().map(Unnormalized::skip_norm_wip),
+        )
+        // We don't care about regions here.
+        .filter_map(|pred| match pred.kind().skip_binder() {
+            ty::ClauseKind::Trait(trait_pred) if trait_pred.def_id() == sized_def_id => {
+                let span = predicates
+                    .iter()
+                    .find_map(|(p, span)| if p.skip_norm_wip() == pred { Some(span) } else { None })
+                    .unwrap_or(DUMMY_SP);
+                Some((trait_pred, span))
+            }
+            _ => None,
+        })
+        .find_map(|(trait_pred, span)| match trait_pred.self_ty().kind() {
+            ty::Dynamic(..) => Some(span),
+            _ => None,
+        })
     }
 
     fn check_for_illegal_method_calls(&self, pick: &probe::Pick<'_>) {

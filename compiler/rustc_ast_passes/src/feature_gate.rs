@@ -7,7 +7,7 @@ use rustc_hir::Attribute;
 use rustc_hir::attrs::AttributeKind;
 use rustc_session::Session;
 use rustc_session::parse::{feature_err, feature_warn};
-use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
+use rustc_span::{Span, Spanned, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::errors;
@@ -646,14 +646,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
     let mut errored = false;
 
     if let Some(Attribute::Parsed(AttributeKind::Feature(feature_idents, first_span))) =
-        AttributeParser::parse_limited(
-            sess,
-            &krate.attrs,
-            &[sym::feature],
-            DUMMY_SP,
-            krate.id,
-            Some(&features),
-        )
+        AttributeParser::parse_limited(sess, &krate.attrs, &[sym::feature])
     {
         // `feature(...)` used on non-nightly. This is definitely an error.
         let mut err = errors::FeatureOnNonNightly {

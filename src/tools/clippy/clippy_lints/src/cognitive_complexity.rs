@@ -145,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
         def_id: LocalDefId,
     ) {
         #[allow(deprecated)]
-        if !cx.tcx.get_attrs(def_id, sym::test).next().is_some() {
+        if cx.tcx.get_attrs(def_id, sym::test).next().is_none() {
             let expr = if kind.asyncness().is_async() {
                 match get_async_fn_body(cx.tcx, body) {
                     Some(b) => b,

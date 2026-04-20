@@ -134,7 +134,7 @@ impl LateLintPass<'_> for IterWithoutIntoIter {
                 .trait_def_id()
                 .is_some_and(|did| cx.tcx.is_diagnostic_item(sym::IntoIterator, did))
             && !item.span.in_external_macro(cx.sess().source_map())
-            && let &ty::Ref(_, ty, mtbl) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
+            && let &ty::Ref(_, ty, mtbl) = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip().kind()
             && let expected_method_name = match mtbl {
                 Mutability::Mut => sym::iter_mut,
                 Mutability::Not => sym::iter,
@@ -205,13 +205,13 @@ impl {self_ty_without_ref} {{
             && let FnRetTy::Return(ret) = sig.decl.output
             && is_nameable_in_impl_trait(ret)
             && cx.tcx.generics_of(item_did).is_own_empty()
-            && sig.decl.implicit_self == expected_implicit_self
+            && sig.decl.implicit_self() == expected_implicit_self
             && sig.decl.inputs.len() == 1
             && let Some(imp) = get_parent_as_impl(cx.tcx, item.hir_id())
             && imp.of_trait.is_none()
             && let sig = cx.tcx.liberate_late_bound_regions(
                 item_did,
-                cx.tcx.fn_sig(item_did).instantiate_identity()
+                cx.tcx.fn_sig(item_did).instantiate_identity().skip_norm_wip()
             )
             && let ref_ty = sig.inputs()[0]
             && let Some(into_iter_did) = cx.tcx.get_diagnostic_item(sym::IntoIterator)

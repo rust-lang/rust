@@ -14,7 +14,7 @@ use rustc_infer::traits::query::{
 };
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
-    self, RePlaceholder, Region, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex,
+    self, RePlaceholder, Region, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex, Unnormalized,
 };
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -275,7 +275,7 @@ where
         // the former fails to normalize the `nll/relate_tys/impl-fn-ignore-binder-via-bottom.rs`
         // test. Check after #85499 lands to see if its fixes have erased this difference.
         let ty::ParamEnvAnd { param_env, value } = key;
-        let _ = ocx.normalize(&cause, param_env, value.value);
+        let _ = ocx.normalize(&cause, param_env, Unnormalized::new_wip(value.value));
 
         let diag = try_extract_error_from_fulfill_cx(
             &ocx,
@@ -322,7 +322,7 @@ where
         let ocx = ObligationCtxt::new(&infcx);
 
         let ty::ParamEnvAnd { param_env, value } = key;
-        let _ = ocx.deeply_normalize(&cause, param_env, value.value);
+        let _ = ocx.deeply_normalize(&cause, param_env, Unnormalized::new_wip(value.value));
 
         let diag = try_extract_error_from_fulfill_cx(
             &ocx,
@@ -451,7 +451,7 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
             (RePlaceholder(a_p), RePlaceholder(b_p)) => a_p.bound == b_p.bound,
             _ => a_region == b_region,
         };
-    let mut check = |c: &Constraint<'tcx>, cause: &SubregionOrigin<'tcx>, exact| match c.kind {
+    let mut check = |c: Constraint<'tcx>, cause: &SubregionOrigin<'tcx>, exact| match c.kind {
         ConstraintKind::RegSubReg
             if ((exact && c.sup == placeholder_region)
                 || (!exact && regions_the_same(c.sup, placeholder_region)))
@@ -467,13 +467,23 @@ fn try_extract_error_from_region_constraints<'a, 'tcx>(
         {
             Some((c.sub, cause.clone()))
         }
-        _ => None,
+        ConstraintKind::VarSubVar
+        | ConstraintKind::RegSubVar
+        | ConstraintKind::VarSubReg
+        | ConstraintKind::RegSubReg => None,
+
+        ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => {
+            unreachable!()
+        }
     };
 
     let mut find_culprit = |exact_match: bool| {
         region_constraints
             .constraints
             .iter()
+            .flat_map(|(constraint, cause)| {
+                constraint.iter_outlives().map(move |constraint| (constraint, cause))
+            })
             .find_map(|(constraint, cause)| check(constraint, cause, exact_match))
     };
 

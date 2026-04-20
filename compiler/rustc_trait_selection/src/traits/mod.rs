@@ -35,7 +35,8 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, Clause, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode, Upcast,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode,
+    Unnormalized, Upcast,
 };
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
@@ -180,7 +181,7 @@ pub enum TraitQueryMode {
 #[instrument(level = "debug", skip(cause, param_env, normalize_predicate))]
 pub fn predicates_for_generics<'tcx>(
     cause: impl Fn(usize, Span) -> ObligationCause<'tcx>,
-    mut normalize_predicate: impl FnMut(Clause<'tcx>) -> Clause<'tcx>,
+    mut normalize_predicate: impl FnMut(Unnormalized<'tcx, Clause<'tcx>>) -> Clause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     generic_bounds: ty::InstantiatedPredicates<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
@@ -274,7 +275,7 @@ fn do_normalize_predicates<'tcx>(
     // we move over to lazy normalization *anyway*.
     let infcx = tcx.infer_ctxt().ignoring_regions().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-    let predicates = ocx.normalize(&cause, elaborated_env, predicates);
+    let predicates = ocx.normalize(&cause, elaborated_env, Unnormalized::new_wip(predicates));
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     if !errors.is_empty() {
@@ -505,7 +506,7 @@ pub fn deeply_normalize_param_env_ignoring_regions<'tcx>(
         .build(TypingMode::non_body_analysis());
     let predicates = match crate::solve::deeply_normalize::<_, FulfillmentError<'tcx>>(
         infcx.at(&cause, elaborated_env),
-        predicates,
+        Unnormalized::new_wip(predicates),
     ) {
         Ok(predicates) => predicates,
         Err(errors) => {
@@ -626,7 +627,9 @@ pub fn try_evaluate_const<'tcx>(
                         // does not actually make use of them. We handle this case specially and attempt to evaluate anyway.
                         match tcx.thir_abstract_const(uv.def) {
                             Ok(Some(ct)) => {
-                                let ct = tcx.expand_abstract_consts(ct.instantiate(tcx, uv.args));
+                                let ct = tcx.expand_abstract_consts(
+                                    ct.instantiate(tcx, uv.args).skip_norm_wip(),
+                                );
                                 if let Err(e) = ct.error_reported() {
                                     return Err(EvaluateConstErr::EvaluationFailure(e));
                                 } else if ct.has_non_region_infer() || ct.has_non_region_param() {
@@ -715,7 +718,7 @@ pub fn try_evaluate_const<'tcx>(
                 Ok(Ok(val)) => Ok(ty::Const::new_value(
                     tcx,
                     val,
-                    tcx.type_of(uv.def).instantiate(tcx, uv.args),
+                    tcx.type_of(uv.def).instantiate(tcx, uv.args).skip_norm_wip(),
                 )),
                 Ok(Err(_)) => {
                     let e = tcx.dcx().delayed_bug(
@@ -794,7 +797,8 @@ pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause
         .build_with_typing_env(ty::TypingEnv::fully_monomorphized());
 
     let ocx = ObligationCtxt::new(&infcx);
-    let predicates = ocx.normalize(&ObligationCause::dummy(), param_env, predicates);
+    let predicates =
+        ocx.normalize(&ObligationCause::dummy(), param_env, Unnormalized::new_wip(predicates));
     for predicate in predicates {
         let obligation = Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate);
         ocx.register_obligation(obligation);
@@ -820,7 +824,13 @@ fn instantiate_and_check_impossible_predicates<'tcx>(
 ) -> bool {
     debug!("instantiate_and_check_impossible_predicates(key={:?})", key);
 
-    let mut predicates = tcx.predicates_of(key.0).instantiate(tcx, key.1).predicates;
+    let mut predicates: Vec<_> = tcx
+        .predicates_of(key.0)
+        .instantiate(tcx, key.1)
+        .predicates
+        .into_iter()
+        .map(Unnormalized::skip_norm_wip)
+        .collect();
 
     // Specifically check trait fulfillment to avoid an error when trying to resolve
     // associated items.
@@ -896,7 +906,8 @@ fn is_impossible_associated_item(
     let param_env = ty::ParamEnv::empty();
     let fresh_args = infcx.fresh_args_for_item(tcx.def_span(impl_def_id), impl_def_id);
 
-    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, fresh_args);
+    let impl_trait_ref =
+        tcx.impl_trait_ref(impl_def_id).instantiate(tcx, fresh_args).skip_norm_wip();
 
     let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };
     let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {
@@ -905,7 +916,7 @@ fn is_impossible_associated_item(
                 tcx,
                 ObligationCause::dummy_with_span(*span),
                 param_env,
-                ty::EarlyBinder::bind(*pred).instantiate(tcx, impl_trait_ref.args),
+                ty::EarlyBinder::bind(*pred).instantiate(tcx, impl_trait_ref.args).skip_norm_wip(),
             )
         })
     });

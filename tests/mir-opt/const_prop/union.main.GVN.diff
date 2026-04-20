@@ -17,13 +17,11 @@
   
       bb0: {
           StorageLive(_1);
--         StorageLive(_2);
-+         nop;
+          StorageLive(_2);
           _2 = const 1_u32;
 -         _1 = Un { us: move _2 };
--         StorageDead(_2);
 +         _1 = const Un {{ us: 1_u32 }};
-+         nop;
+          StorageDead(_2);
           StorageLive(_3);
           StorageLive(_4);
 -         _4 = copy (_1.0: u32);

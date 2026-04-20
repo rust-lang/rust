@@ -102,7 +102,6 @@ pub(crate) struct ReexportTestHarnessMainParser;
 
 impl<S: Stage> SingleAttributeParser<S> for ReexportTestHarnessMainParser {
     const PATH: &[Symbol] = &[sym::reexport_test_harness_main];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
@@ -129,7 +128,6 @@ pub(crate) struct RustcAbiParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcAbiParser {
     const PATH: &[Symbol] = &[sym::rustc_abi];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const TEMPLATE: AttributeTemplate = template!(OneOf: &[sym::debug, sym::assert_eq]);
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::TyAlias),
@@ -179,7 +177,6 @@ pub(crate) struct RustcDelayedBugFromInsideQueryParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcDelayedBugFromInsideQueryParser {
     const PATH: &[Symbol] = &[sym::rustc_delayed_bug_from_inside_query];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDelayedBugFromInsideQuery;
 }
@@ -188,7 +185,6 @@ pub(crate) struct RustcEvaluateWhereClausesParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcEvaluateWhereClausesParser {
     const PATH: &[Symbol] = &[sym::rustc_evaluate_where_clauses];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
@@ -203,7 +199,6 @@ pub(crate) struct TestRunnerParser;
 
 impl<S: Stage> SingleAttributeParser<S> for TestRunnerParser {
     const PATH: &[Symbol] = &[sym::test_runner];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const TEMPLATE: AttributeTemplate = template!(List: &["path"]);
 
@@ -223,7 +218,6 @@ pub(crate) struct RustcTestMarkerParser;
 
 impl<S: Stage> SingleAttributeParser<S> for RustcTestMarkerParser {
     const PATH: &[Symbol] = &[sym::rustc_test_marker];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[
         Allow(Target::Const),
         Allow(Target::Fn),

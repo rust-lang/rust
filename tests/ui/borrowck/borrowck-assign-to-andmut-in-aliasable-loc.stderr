@@ -17,7 +17,7 @@ LL |     *s.pointer += 1;
    |
 help: consider changing this to be a mutable reference
    |
-LL | fn c(s: &mut  &mut S) {
+LL | fn c(s: &mut &mut S) {
    |          +++
 
 error: aborting due to 2 previous errors

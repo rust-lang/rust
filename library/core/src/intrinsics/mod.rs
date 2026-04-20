@@ -364,6 +364,8 @@ pub fn rustc_peek<T>(_: T) -> T;
 /// On Unix, the
 /// process will probably terminate with a signal like `SIGABRT`, `SIGILL`, `SIGTRAP`, `SIGSEGV` or
 /// `SIGBUS`.  The precise behavior is not guaranteed and not stable.
+///
+/// The stabilization-track version of this intrinsic is [`core::process::abort_immediate`].
 #[rustc_nounwind]
 #[rustc_intrinsic]
 pub fn abort() -> !;

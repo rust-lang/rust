@@ -38,3 +38,28 @@ mod custom_module {
         fn wake_by_ref(self: &Arc<Self>) {}
     }
 }
+
+#[clippy::msrv = "1.84"]
+mod msrv_1_84 {
+    use std::sync::Arc;
+    use std::task::Wake;
+
+    struct CustomWaker;
+    impl Wake for CustomWaker {
+        fn wake(self: Arc<Self>) {}
+        fn wake_by_ref(self: &Arc<Self>) {}
+    }
+}
+
+#[clippy::msrv = "1.85"]
+mod msrv_1_85 {
+    use std::sync::Arc;
+    use std::task::Wake;
+
+    struct CustomWaker;
+    impl Wake for CustomWaker {
+        //~^ manual_noop_waker
+        fn wake(self: Arc<Self>) {}
+        fn wake_by_ref(self: &Arc<Self>) {}
+    }
+}

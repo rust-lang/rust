@@ -24,7 +24,7 @@ use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
     self, AdtKind, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFlags,
     TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
-    Upcast,
+    Unnormalized, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -66,7 +66,12 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
     // Convenience function to normalize during wfcheck. This performs
     // `ObligationCtxt::normalize`, but provides a nice `ObligationCauseCode`.
-    fn normalize<T>(&self, span: Span, loc: Option<WellFormedLoc>, value: T) -> T
+    fn normalize<T>(
+        &self,
+        span: Span,
+        loc: Option<WellFormedLoc>,
+        value: Unnormalized<'tcx, T>,
+    ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -86,7 +91,12 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     /// signature types for implied bounds when checking regions.
     // FIXME(-Znext-solver): This should be removed when we compute implied outlives
     // bounds using the unnormalized signature of the function we're checking.
-    pub(super) fn deeply_normalize<T>(&self, span: Span, loc: Option<WellFormedLoc>, value: T) -> T
+    pub(super) fn deeply_normalize<T>(
+        &self,
+        span: Span,
+        loc: Option<WellFormedLoc>,
+        value: Unnormalized<'tcx, T>,
+    ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -99,7 +109,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                 Ok(value) => value,
                 Err(errors) => {
                     self.infcx.err_ctxt().report_fulfillment_errors(errors);
-                    value
+                    value.skip_norm_wip()
                 }
             }
         } else {
@@ -416,7 +426,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
                         // `Self::Iter<'a>` is a GAT we want to gather any potential missing bounds from.
                         let sig: ty::FnSig<'_> = tcx.liberate_late_bound_regions(
                             item_def_id.to_def_id(),
-                            tcx.fn_sig(item_def_id).instantiate_identity(),
+                            tcx.fn_sig(item_def_id).instantiate_identity().skip_norm_wip(),
                         );
                         gather_gat_bounds(
                             tcx,
@@ -446,6 +456,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
                             item_def_id,
                             tcx.explicit_item_bounds(item_def_id)
                                 .iter_identity_copied()
+                                .map(Unnormalized::skip_norm_wip)
                                 .collect::<Vec<_>>(),
                             &FxIndexSet::default(),
                             gat_def_id,
@@ -840,7 +851,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
 
         // Const parameters are well formed if their type is structural match.
         ty::GenericParamDefKind::Const { .. } => {
-            let ty = tcx.type_of(param.def_id).instantiate_identity();
+            let ty = tcx.type_of(param.def_id).instantiate_identity().skip_norm_wip();
             let span = tcx.def_span(param.def_id);
             let def_id = param.def_id.expect_local();
 
@@ -965,7 +976,7 @@ pub(crate) fn check_associated_item(
         let self_ty = match item.container {
             ty::AssocContainer::Trait => tcx.types.self_param,
             ty::AssocContainer::InherentImpl | ty::AssocContainer::TraitImpl(_) => {
-                tcx.type_of(item.container_id(tcx)).instantiate_identity()
+                tcx.type_of(item.container_id(tcx)).instantiate_identity().skip_norm_wip()
             }
         };
 
@@ -995,7 +1006,7 @@ pub(crate) fn check_associated_item(
                 Ok(())
             }
             ty::AssocKind::Fn { .. } => {
-                let sig = tcx.fn_sig(def_id).instantiate_identity();
+                let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
                 let hir_sig =
                     tcx.hir_node_by_def_id(def_id).fn_sig().expect("bad signature for method");
                 check_fn_or_method(wfcx, sig, hir_sig.decl, def_id);
@@ -1084,7 +1095,7 @@ fn check_type_defn<'tcx>(
             // intermediate types must be sized.
             let needs_drop_copy = || {
                 packed && {
-                    let ty = tcx.type_of(variant.tail().did).instantiate_identity();
+                    let ty = tcx.type_of(variant.tail().did).instantiate_identity().skip_norm_wip();
                     let ty = tcx.erase_and_anonymize_regions(ty);
                     assert!(!ty.has_infer());
                     ty.needs_drop(tcx, wfcx.infcx.typing_env(wfcx.param_env))
@@ -1191,15 +1202,17 @@ fn check_associated_type_bounds(wfcx: &WfCheckingCtxt<'_, '_>, item: ty::AssocIt
     let bounds = wfcx.tcx().explicit_item_bounds(item.def_id);
 
     debug!("check_associated_type_bounds: bounds={:?}", bounds);
-    let wf_obligations = bounds.iter_identity_copied().flat_map(|(bound, bound_span)| {
-        traits::wf::clause_obligations(
-            wfcx.infcx,
-            wfcx.param_env,
-            wfcx.body_def_id,
-            bound,
-            bound_span,
-        )
-    });
+    let wf_obligations = bounds.iter_identity_copied().map(Unnormalized::skip_norm_wip).flat_map(
+        |(bound, bound_span)| {
+            traits::wf::clause_obligations(
+                wfcx.infcx,
+                wfcx.param_env,
+                wfcx.body_def_id,
+                bound,
+                bound_span,
+            )
+        },
+    );
 
     wfcx.register_obligations(wf_obligations);
 }
@@ -1212,7 +1225,7 @@ fn check_item_fn(
     enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
         check_eiis_fn(tcx, def_id);
 
-        let sig = tcx.fn_sig(def_id).instantiate_identity();
+        let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
         check_fn_or_method(wfcx, sig, decl, def_id);
         Ok(())
     })
@@ -1286,14 +1299,14 @@ pub(crate) fn check_static_item<'tcx>(
 
         let span = tcx.ty_span(item_id);
         let loc = Some(WellFormedLoc::Ty(item_id));
-        let item_ty = wfcx.deeply_normalize(span, loc, ty);
+        let item_ty = wfcx.deeply_normalize(span, loc, Unnormalized::new_wip(ty));
 
         let is_foreign_item = tcx.is_foreign_item(item_id);
         let is_structurally_foreign_item = || {
             let tail = tcx.struct_tail_raw(
                 item_ty,
                 &ObligationCause::dummy(),
-                |ty| wfcx.deeply_normalize(span, loc, ty),
+                |ty| wfcx.deeply_normalize(span, loc, Unnormalized::new_wip(ty)),
                 || {},
             );
 
@@ -1385,7 +1398,7 @@ fn check_impl<'tcx>(
                 let trait_ref = tcx.impl_trait_ref(item.owner_id).instantiate_identity();
                 // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in
                 // case other `Foo` impls are incoherent.
-                tcx.ensure_result().coherent_trait(trait_ref.def_id)?;
+                tcx.ensure_result().coherent_trait(trait_ref.skip_normalization().def_id)?;
                 let trait_span = of_trait.trait_ref.path.span;
                 let trait_ref = wfcx.deeply_normalize(
                     trait_span,
@@ -1446,11 +1459,11 @@ fn check_impl<'tcx>(
                 wfcx.register_obligations(obligations);
             }
             None => {
-                let self_ty = tcx.type_of(item.owner_id).instantiate_identity();
+                let self_ty = tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip();
                 let self_ty = wfcx.deeply_normalize(
                     item.span,
                     Some(WellFormedLoc::Ty(item.hir_id().expect_owner().def_id)),
-                    self_ty,
+                    Unnormalized::new_wip(self_ty),
                 );
                 wfcx.register_wf_obligation(
                     impl_.self_ty.span,
@@ -1481,7 +1494,11 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
     //
     // Here, the default `Vec<[u32]>` is not WF because `[u32]: Sized` does not hold.
     for param in &generics.own_params {
-        if let Some(default) = param.default_value(tcx).map(ty::EarlyBinder::instantiate_identity) {
+        if let Some(default) = param
+            .default_value(tcx)
+            .map(ty::EarlyBinder::instantiate_identity)
+            .map(Unnormalized::skip_norm_wip)
+        {
             // Ignore dependent defaults -- that is, where the default of one type
             // parameter includes another (e.g., `<T, U = T>`). In those cases, we can't
             // be sure if it will error or not as user might always specify the other.
@@ -1509,14 +1526,14 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
                     ty::ConstKind::Error(_) | ty::ConstKind::Expr(_) => continue,
                     ty::ConstKind::Value(cv) => cv.ty,
                     ty::ConstKind::Unevaluated(uv) => {
-                        infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args)
+                        infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args).skip_norm_wip()
                     }
                     ty::ConstKind::Param(param_ct) => {
                         param_ct.find_const_ty_from_env(wfcx.param_env)
                     }
                 };
 
-                let param_ty = tcx.type_of(param.def_id).instantiate_identity();
+                let param_ty = tcx.type_of(param.def_id).instantiate_identity().skip_norm_wip();
                 if !ct_ty.has_param() && !param_ty.has_param() {
                     let cause = traits::ObligationCause::new(
                         tcx.def_span(param.def_id),
@@ -1545,7 +1562,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
     let args = GenericArgs::for_item(tcx, def_id.to_def_id(), |param, _| {
         if param.index >= generics.parent_count as u32
             // If the param has a default, ...
-            && let Some(default) = param.default_value(tcx).map(ty::EarlyBinder::instantiate_identity)
+            && let Some(default) = param.default_value(tcx).map(ty::EarlyBinder::instantiate_identity).map(Unnormalized::skip_norm_wip)
             // ... and it's not a dependent default, ...
             && !default.has_param()
         {
@@ -1589,12 +1606,16 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
             let instantiated_pred = ty::EarlyBinder::bind(pred).instantiate(tcx, args);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
             // or preds with multiple params.
-            if instantiated_pred.has_non_region_param()
+            if instantiated_pred.skip_normalization().has_non_region_param()
                 || param_count.params.len() > 1
                 || has_region
             {
                 None
-            } else if predicates.predicates.iter().any(|&(p, _)| p == instantiated_pred) {
+            } else if predicates
+                .predicates
+                .iter()
+                .any(|&(p, _)| Unnormalized::new_wip(p) == instantiated_pred)
+            {
                 // Avoid duplication of predicates that contain no parameters, for example.
                 None
             } else {
@@ -1628,13 +1649,15 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
         .copied()
         .zip(predicates.spans.iter().copied())
         .filter_map(|(clause, sp)| {
+            let clause = clause.skip_norm_wip();
             let proj = clause.as_projection_clause()?;
             let pred_binder = proj
                 .map_bound(|pred| {
                     pred.term.as_const().map(|ct| {
                         let assoc_const_ty = tcx
                             .type_of(pred.projection_term.def_id)
-                            .instantiate(tcx, pred.projection_term.args);
+                            .instantiate(tcx, pred.projection_term.args)
+                            .skip_norm_wip();
                         ty::ClauseKind::ConstArgHasType(ct, assoc_const_ty)
                     })
                 })
@@ -1652,7 +1675,13 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
 
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
     let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
-        traits::wf::clause_obligations(infcx, wfcx.param_env, wfcx.body_def_id, p, sp)
+        traits::wf::clause_obligations(
+            infcx,
+            wfcx.param_env,
+            wfcx.body_def_id,
+            p.skip_norm_wip(),
+            sp,
+        )
     });
     let obligations: Vec<_> =
         wf_obligations.chain(default_obligations).chain(assoc_const_obligations).collect();
@@ -1687,7 +1716,7 @@ fn check_fn_or_method<'tcx>(
                     // one greater than the index of the last input type.
                     param_idx: idx,
                 }),
-                ty,
+                Unnormalized::new_wip(ty),
             )
         }));
 
@@ -1701,9 +1730,9 @@ fn check_fn_or_method<'tcx>(
 
     check_where_clauses(wfcx, def_id);
 
-    if sig.abi == ExternAbi::RustCall {
+    if sig.abi() == ExternAbi::RustCall {
         let span = tcx.def_span(def_id);
-        let has_implicit_self = hir_decl.implicit_self != hir::ImplicitSelfKind::None;
+        let has_implicit_self = hir_decl.implicit_self() != hir::ImplicitSelfKind::None;
         let mut inputs = sig.inputs().iter().skip(if has_implicit_self { 1 } else { 0 });
         // Check that the argument is a tuple and is sized
         if let Some(ty) = inputs.next() {
@@ -1773,16 +1802,16 @@ fn check_method_receiver<'tcx>(
     let span = fn_sig.decl.inputs[0].span;
     let loc = Some(WellFormedLoc::Param { function: method.def_id.expect_local(), param_idx: 0 });
 
-    let sig = tcx.fn_sig(method.def_id).instantiate_identity();
+    let sig = tcx.fn_sig(method.def_id).instantiate_identity().skip_norm_wip();
     let sig = tcx.liberate_late_bound_regions(method.def_id, sig);
-    let sig = wfcx.normalize(DUMMY_SP, loc, sig);
+    let sig = wfcx.normalize(DUMMY_SP, loc, Unnormalized::new_wip(sig));
 
     debug!("check_method_receiver: sig={:?}", sig);
 
-    let self_ty = wfcx.normalize(DUMMY_SP, loc, self_ty);
+    let self_ty = wfcx.normalize(DUMMY_SP, loc, Unnormalized::new_wip(self_ty));
 
     let receiver_ty = sig.inputs()[0];
-    let receiver_ty = wfcx.normalize(DUMMY_SP, loc, receiver_ty);
+    let receiver_ty = wfcx.normalize(DUMMY_SP, loc, Unnormalized::new_wip(receiver_ty));
 
     // If the receiver already has errors reported, consider it valid to avoid
     // unnecessary errors (#58712).
@@ -2116,6 +2145,7 @@ pub(super) fn check_variances_for_type_defn<'tcx>(tcx: TyCtxt<'tcx>, def_id: Loc
         if let ControlFlow::Break(ErrorGuaranteed { .. }) = tcx
             .type_of(def_id)
             .instantiate_identity()
+            .skip_norm_wip()
             .visit_with(&mut HasErrorDeep { tcx, seen: Default::default() })
         {
             continue;
@@ -2147,7 +2177,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for HasErrorDeep<'tcx> {
             ty::Adt(def, _) => {
                 if self.seen.insert(def.did()) {
                     for field in def.all_fields() {
-                        self.tcx.type_of(field.did).instantiate_identity().visit_with(self)?;
+                        self.tcx
+                            .type_of(field.did)
+                            .instantiate_identity()
+                            .skip_norm_wip()
+                            .visit_with(self)?;
                     }
                 }
             }
@@ -2268,11 +2302,15 @@ impl<'tcx> IsProbablyCyclical<'tcx> {
         match self.tcx.def_kind(def_id) {
             DefKind::Struct | DefKind::Enum | DefKind::Union => {
                 self.tcx.adt_def(def_id).all_fields().try_for_each(|field| {
-                    self.tcx.type_of(field.did).instantiate_identity().visit_with(self)
+                    self.tcx
+                        .type_of(field.did)
+                        .instantiate_identity()
+                        .skip_norm_wip()
+                        .visit_with(self)
                 })
             }
             DefKind::TyAlias if self.tcx.type_alias_is_lazy(def_id) => {
-                self.tcx.type_of(def_id).instantiate_identity().visit_with(self)
+                self.tcx.type_of(def_id).instantiate_identity().skip_norm_wip().visit_with(self)
             }
             _ => ControlFlow::Continue(()),
         }
@@ -2358,7 +2396,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
 
             // Match the existing behavior.
             if pred.is_global() && !pred.has_type_flags(TypeFlags::HAS_BINDER_VARS) {
-                let pred = self.normalize(span, None, pred);
+                let pred = self.normalize(span, None, Unnormalized::new_wip(pred));
 
                 // only use the span of the predicate clause (#90869)
                 let hir_node = tcx.hir_node_by_def_id(self.body_def_id);
@@ -2473,8 +2511,13 @@ fn lint_redundant_lifetimes<'tcx>(
     );
     // If we are in a function, add its late-bound lifetimes too.
     if matches!(def_kind, DefKind::Fn | DefKind::AssocFn) {
-        for (idx, var) in
-            tcx.fn_sig(owner_id).instantiate_identity().bound_vars().iter().enumerate()
+        for (idx, var) in tcx
+            .fn_sig(owner_id)
+            .instantiate_identity()
+            .skip_norm_wip()
+            .bound_vars()
+            .iter()
+            .enumerate()
         {
             let ty::BoundVariableKind::Region(kind) = var else { continue };
             let kind = ty::LateParamRegionKind::from_bound(ty::BoundVar::from_usize(idx), kind);

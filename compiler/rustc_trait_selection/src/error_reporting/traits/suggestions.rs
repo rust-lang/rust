@@ -34,8 +34,8 @@ use rustc_middle::ty::print::{
 };
 use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InferTy, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, TypeckResults, Upcast,
-    suggest_arbitrary_trait_bound, suggest_constraining_type_param,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, TypeckResults,
+    Unnormalized, Upcast, suggest_arbitrary_trait_bound, suggest_constraining_type_param,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
@@ -1427,8 +1427,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ))
                 }
                 ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
-                    self.tcx.item_self_bounds(def_id).instantiate(self.tcx, args).iter().find_map(
-                        |pred| {
+                    self.tcx
+                        .item_self_bounds(def_id)
+                        .instantiate(self.tcx, args)
+                        .skip_norm_wip()
+                        .iter()
+                        .find_map(|pred| {
                             if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
                             && self
                                 .tcx
@@ -1444,8 +1448,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             } else {
                                 None
                             }
-                        },
-                    )
+                        })
                 }
                 ty::Dynamic(data, _) => data.iter().find_map(|pred| {
                     if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
@@ -1519,7 +1522,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // implied by wf, but also because that would possibly result in
         // erroneous errors later on.
         let InferOk { value: output, obligations: _ } =
-            self.at(&ObligationCause::dummy(), param_env).normalize(output);
+            self.at(&ObligationCause::dummy(), param_env).normalize(Unnormalized::new_wip(output));
 
         if output.is_ty_var() { None } else { Some((def_id_or_name, output, inputs)) }
     }
@@ -2344,21 +2347,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let inputs = trait_ref.args.type_at(1);
             let sig = match inputs.kind() {
                 ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id) => {
-                    infcx.tcx.mk_fn_sig(
-                        *inputs,
-                        infcx.next_ty_var(DUMMY_SP),
-                        false,
-                        hir::Safety::Safe,
-                        ExternAbi::Rust,
-                    )
+                    infcx.tcx.mk_fn_sig_safe_rust_abi(*inputs, infcx.next_ty_var(DUMMY_SP))
                 }
-                _ => infcx.tcx.mk_fn_sig(
-                    [inputs],
-                    infcx.next_ty_var(DUMMY_SP),
-                    false,
-                    hir::Safety::Safe,
-                    ExternAbi::Rust,
-                ),
+                _ => infcx.tcx.mk_fn_sig_safe_rust_abi([inputs], infcx.next_ty_var(DUMMY_SP)),
             };
 
             Ty::new_fn_ptr(infcx.tcx, ty::Binder::dummy(sig))
@@ -2567,7 +2558,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // that the predicate that we failed to satisfy is a `Fn`-like trait.
         if let ObligationCauseCode::WhereClauseInExpr(def_id, _, _, idx) = *cause
             && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
-            && let Some(pred) = predicates.predicates.get(idx)
+            && let Some(pred) = predicates.predicates.get(idx).map(|p| p.as_ref().skip_norm_wip())
             && let ty::ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
             && self.tcx.is_fn_trait(trait_pred.def_id())
         {
@@ -2579,6 +2570,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Find another predicate whose self-type is equal to the expected self type,
             // but whose args don't match.
             let other_pred = predicates.into_iter().enumerate().find(|&(other_idx, (pred, _))| {
+                let pred = pred.skip_norm_wip();
                 match pred.kind().skip_binder() {
                     ty::ClauseKind::Trait(trait_pred)
                         if self.tcx.is_fn_trait(trait_pred.def_id())
@@ -3362,7 +3354,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         .map(|&&t| {
                                             with_no_trimmed_paths!(format!(
                                                 "  {}",
-                                                tcx.type_of(t).instantiate_identity(),
+                                                tcx.type_of(t)
+                                                    .instantiate_identity()
+                                                    .skip_norm_wip(),
                                             ))
                                         })
                                         .collect::<Vec<_>>();
@@ -4251,8 +4245,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 [trait_pred.self_ty()],
             )
         });
-        let InferOk { value: projection_ty, .. } =
-            self.at(&obligation.cause, obligation.param_env).normalize(projection_ty);
+        let InferOk { value: projection_ty, .. } = self
+            .at(&obligation.cause, obligation.param_env)
+            .normalize(Unnormalized::new_wip(projection_ty));
 
         debug!(
             normalized_projection_type = ?self.resolve_vars_if_possible(projection_ty)
@@ -4552,6 +4547,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     self.tcx.predicates_of(def_id).instantiate(self.tcx, node_args)
                 && let Some(where_pred) = where_clauses.predicates.get(idx)
             {
+                let where_pred = where_pred.as_ref().skip_norm_wip();
                 if let Some(where_pred) = where_pred.as_trait_clause()
                     && let Some(failed_pred) = failed_pred.as_trait_clause()
                     && where_pred.def_id() == failed_pred.def_id()
@@ -4669,11 +4665,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             && let [self_ty, found_ty] = trait_ref.args.as_slice()
             && let Some(fn_ty) = self_ty.as_type().filter(|ty| ty.is_fn())
             && let fn_sig @ ty::FnSig {
-                abi: ExternAbi::Rust,
-                c_variadic: false,
-                safety: hir::Safety::Safe,
                 ..
             } = fn_ty.fn_sig(tcx).skip_binder()
+            && fn_sig.abi() == ExternAbi::Rust
+            && !fn_sig.c_variadic()
+            && fn_sig.safety() == hir::Safety::Safe
 
             // Extract first param of fn sig with peeled refs, e.g. `fn(&T)` -> `T`
             && let Some(&ty::Ref(_, target_ty, needs_mut)) = fn_sig.inputs().first().map(|t| t.kind())
@@ -4687,7 +4683,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Extract `<U as Deref>::Target` assoc type and check that it is `T`
             && let Some(deref_target_did) = tcx.lang_items().deref_target()
             && let projection = Ty::new_projection_from_args(tcx,deref_target_did, tcx.mk_args(&[ty::GenericArg::from(found_ty)]))
-            && let InferOk { value: deref_target, obligations } = infcx.at(&ObligationCause::dummy(), param_env).normalize(projection)
+            && let InferOk { value: deref_target, obligations } = infcx.at(&ObligationCause::dummy(), param_env).normalize(Unnormalized::new_wip(projection))
             && obligations.iter().all(|obligation| infcx.predicate_must_hold_modulo_regions(obligation))
             && infcx.can_eq(param_env, deref_target, target_ty)
         {
@@ -5300,7 +5296,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             self.probe(|_| {
                 let ocx = ObligationCtxt::new(self);
                 self.enter_forall(pred, |pred| {
-                    let pred = ocx.normalize(&ObligationCause::dummy(), param_env, pred);
+                    let pred = ocx.normalize(
+                        &ObligationCause::dummy(),
+                        param_env,
+                        Unnormalized::new_wip(pred),
+                    );
                     ocx.register_obligation(Obligation::new(
                         self.tcx,
                         ObligationCause::dummy(),

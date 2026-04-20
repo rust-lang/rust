@@ -477,7 +477,7 @@ fn filter_for_ignored_option() {
     opts.run_tests = true;
     opts.run_ignored = RunIgnored::Only;
 
-    let tests = one_ignored_one_unignored_test();
+    let tests = TestList::new(one_ignored_one_unignored_test(), TestListOrder::Unsorted);
     let filtered = filter_tests(&opts, tests);
 
     assert_eq!(filtered.len(), 1);
@@ -494,7 +494,7 @@ fn run_include_ignored_option() {
     opts.run_tests = true;
     opts.run_ignored = RunIgnored::Yes;
 
-    let tests = one_ignored_one_unignored_test();
+    let tests = TestList::new(one_ignored_one_unignored_test(), TestListOrder::Unsorted);
     let filtered = filter_tests(&opts, tests);
 
     assert_eq!(filtered.len(), 2);
@@ -527,7 +527,7 @@ fn exclude_should_panic_option() {
         testfn: DynTestFn(Box::new(move || Ok(()))),
     });
 
-    let filtered = filter_tests(&opts, tests);
+    let filtered = filter_tests(&opts, TestList::new(tests, TestListOrder::Unsorted));
 
     assert_eq!(filtered.len(), 2);
     assert!(filtered.iter().all(|test| test.desc.should_panic == ShouldPanic::No));
@@ -535,8 +535,8 @@ fn exclude_should_panic_option() {
 
 #[test]
 fn exact_filter_match() {
-    fn tests() -> Vec<TestDescAndFn> {
-        ["base", "base::test", "base::test1", "base::test2"]
+    fn tests() -> TestList {
+        let tests = ["base", "base::test", "base::test1", "base::test2"]
             .into_iter()
             .map(|name| TestDescAndFn {
                 desc: TestDesc {
@@ -555,7 +555,8 @@ fn exact_filter_match() {
                 },
                 testfn: DynTestFn(Box::new(move || Ok(()))),
             })
-            .collect()
+            .collect();
+        TestList::new(tests, TestListOrder::Sorted)
     }
 
     let substr =
@@ -908,7 +909,8 @@ fn test_dyn_bench_returning_err_fails_when_run_as_test() {
         }
         Ok(())
     };
-    run_tests(&TestOpts { run_tests: true, ..TestOpts::new() }, vec![desc], notify).unwrap();
+    let tests = TestList::new(vec![desc], TestListOrder::Unsorted);
+    run_tests(&TestOpts { run_tests: true, ..TestOpts::new() }, tests, notify).unwrap();
     let result = rx.recv().unwrap().result;
     assert_eq!(result, TrFailed);
 }

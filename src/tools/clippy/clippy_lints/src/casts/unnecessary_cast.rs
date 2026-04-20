@@ -8,10 +8,10 @@ use clippy_utils::{get_parent_expr, is_hir_ty_cfg_dependant, is_ty_alias, sym};
 use rustc_ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Expr, ExprKind, FnRetTy, Lit, Node, Path, QPath, TyKind, UnOp};
+use rustc_hir::{Expr, ExprKind, FnRetTy, HirId, Lit, Node, Path, QPath, TyKind, UnOp};
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_middle::ty::{self, FloatTy, InferTy, Ty};
+use rustc_middle::ty::{self, FloatTy, GenericArg, InferTy, Ty};
 use rustc_span::Symbol;
 use std::ops::ControlFlow;
 
@@ -171,6 +171,16 @@ pub(super) fn check<'tcx>(
             ];
             matches!(expr.span.ctxt().outer_expn_data().macro_def_id, Some(def_id) if
                 cx.tcx.get_diagnostic_name(def_id).is_some_and(|sym| ALLOWED_MACROS.contains(&sym)))
+        }
+
+        // Removing the cast here can change inference along the path to an outer
+        // method receiver, so avoid linting in that case.
+        if is_inference_sensitive_inner_expr(cx, cast_expr)
+            && contains_unsuffixed_numeric_literal(cast_expr)
+            && feeds_outer_method_receiver(cx, expr)
+            && has_lint_blocking_context_on_receiver_path(cx, expr)
+        {
+            return false;
         }
 
         if let Some(id) = cast_expr.res_local_id()
@@ -339,4 +349,339 @@ fn emit_lint(
         },
         applicability,
     );
+}
+
+fn contains_unsuffixed_numeric_literal<'e>(expr: &'e Expr<'e>) -> bool {
+    for_each_expr_without_closures(expr, |e| {
+        if let Some(lit) = get_numeric_literal(e)
+            && matches!(
+                lit.node,
+                LitKind::Int(_, LitIntType::Unsuffixed) | LitKind::Float(_, LitFloatType::Unsuffixed)
+            )
+        {
+            return ControlFlow::Break(());
+        }
+
+        ControlFlow::Continue(())
+    })
+    .is_some()
+}
+
+// Returns `true` for expressions whose resolved type or method depends on inference.
+fn is_inference_sensitive_inner_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    match expr.kind {
+        ExprKind::MethodCall(..) | ExprKind::Binary(..) | ExprKind::Unary(..) | ExprKind::Index(..) => cx
+            .typeck_results()
+            .type_dependent_def_id(expr.hir_id)
+            .and_then(|def_id| cx.tcx.opt_associated_item(def_id))
+            .is_some_and(|assoc| assoc.trait_container(cx.tcx).is_some()),
+        _ => false,
+    }
+}
+
+// Returns `true` if the function's output type contains a type parameter
+// originating from the selected input.
+fn output_depends_on_input_param(cx: &LateContext<'_>, def_id: rustc_hir::def_id::DefId, input_index: usize) -> bool {
+    let sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_binder();
+
+    let Some(input_ty) = sig.inputs().get(input_index) else {
+        return false;
+    };
+
+    let output_ty = sig.output();
+
+    input_ty.walk().filter_map(GenericArg::as_type).any(|input_part| {
+        match input_part.kind() {
+            ty::Param(input_param) => output_ty
+                .walk()
+                .filter_map(GenericArg::as_type)
+                .any(|output_part| {
+                    matches!(output_part.kind(), ty::Param(output_param) if output_param.index == input_param.index)
+                }),
+            _ => false,
+        }
+    })
+}
+
+// Returns `true` if the generic arguments include at least one explicit type or const
+// argument and none of the provided generic arguments are placeholders like `::<_>`.
+fn has_explicit_type_or_const_args(args: Option<&rustc_hir::GenericArgs<'_>>) -> bool {
+    let Some(args) = args else {
+        return false;
+    };
+
+    let mut has_explicit = false;
+
+    for arg in args.args {
+        match arg {
+            rustc_hir::GenericArg::Type(_) | rustc_hir::GenericArg::Const(_) => {
+                has_explicit = true;
+            },
+            rustc_hir::GenericArg::Infer(_) => return false,
+            rustc_hir::GenericArg::Lifetime(_) => {},
+        }
+    }
+
+    has_explicit
+}
+
+// Controls whether the receiver path walk is looking for an outer method
+// receiver or for a context where linting should stop.
+#[derive(Copy, Clone)]
+enum ReceiverPathMode {
+    FindReceiver,
+    FindLintBlockingContext,
+}
+
+enum ReceiverPathResult {
+    Continue(HirId),
+    Stop(bool),
+}
+
+fn stop_if_lint_blocking_else_continue(parent_hir_id: HirId, mode: ReceiverPathMode) -> ReceiverPathResult {
+    if matches!(mode, ReceiverPathMode::FindLintBlockingContext) {
+        ReceiverPathResult::Stop(true)
+    } else {
+        ReceiverPathResult::Continue(parent_hir_id)
+    }
+}
+
+fn walk_receiver_path_method_call(
+    cx: &LateContext<'_>,
+    current_hir_id: HirId,
+    parent: &Expr<'_>,
+    segment: &rustc_hir::PathSegment<'_>,
+    receiver: &Expr<'_>,
+    args: &[Expr<'_>],
+    mode: ReceiverPathMode,
+) -> ReceiverPathResult {
+    if receiver.hir_id == current_hir_id {
+        return if matches!(mode, ReceiverPathMode::FindLintBlockingContext) {
+            ReceiverPathResult::Continue(parent.hir_id)
+        } else {
+            ReceiverPathResult::Stop(true)
+        };
+    }
+
+    let Some(arg_index) = args.iter().position(|arg| arg.hir_id == current_hir_id) else {
+        return ReceiverPathResult::Stop(false);
+    };
+
+    let passthrough = !has_explicit_type_or_const_args(segment.args)
+        && cx
+            .typeck_results()
+            .type_dependent_def_id(parent.hir_id)
+            .is_some_and(|def_id| output_depends_on_input_param(cx, def_id, arg_index + 1));
+
+    if matches!(mode, ReceiverPathMode::FindLintBlockingContext) {
+        if passthrough
+            || args.iter().any(|arg| {
+                arg.hir_id != current_hir_id
+                    && get_numeric_literal(arg).is_none()
+                    && !cx.typeck_results().expr_ty(arg).is_primitive()
+            })
+        {
+            ReceiverPathResult::Stop(true)
+        } else {
+            ReceiverPathResult::Continue(parent.hir_id)
+        }
+    } else if passthrough {
+        ReceiverPathResult::Continue(parent.hir_id)
+    } else {
+        ReceiverPathResult::Stop(false)
+    }
+}
+
+fn walk_receiver_path_call(
+    cx: &LateContext<'_>,
+    current_hir_id: HirId,
+    parent: &Expr<'_>,
+    callee: &Expr<'_>,
+    args: &[Expr<'_>],
+    mode: ReceiverPathMode,
+) -> ReceiverPathResult {
+    if callee.hir_id == current_hir_id {
+        return ReceiverPathResult::Continue(parent.hir_id);
+    }
+
+    let Some(arg_index) = args.iter().position(|arg| arg.hir_id == current_hir_id) else {
+        return ReceiverPathResult::Stop(false);
+    };
+
+    let passthrough = if let ExprKind::Path(qpath) = callee.kind
+        && let Res::Def(DefKind::Fn, def_id) = cx.qpath_res(&qpath, callee.hir_id)
+    {
+        let has_explicit_args = match &qpath {
+            QPath::Resolved(_, path) => path
+                .segments
+                .last()
+                .is_some_and(|seg| has_explicit_type_or_const_args(seg.args)),
+            QPath::TypeRelative(_, segment) => has_explicit_type_or_const_args(segment.args),
+        };
+
+        !has_explicit_args && output_depends_on_input_param(cx, def_id, arg_index)
+    } else {
+        false
+    };
+
+    if matches!(mode, ReceiverPathMode::FindLintBlockingContext) {
+        ReceiverPathResult::Stop(passthrough)
+    } else if passthrough {
+        ReceiverPathResult::Continue(parent.hir_id)
+    } else {
+        ReceiverPathResult::Stop(false)
+    }
+}
+
+// Walk one step up the receiver path for the current mode.
+fn walk_receiver_path_step(cx: &LateContext<'_>, current_hir_id: HirId, mode: ReceiverPathMode) -> ReceiverPathResult {
+    match cx.tcx.parent_hir_node(current_hir_id) {
+        Node::Expr(parent) => match parent.kind {
+            // Main case.
+            // The current node may be the receiver.
+            // Or it may flow through a passthrough method.
+            ExprKind::MethodCall(segment, receiver, args, _) => {
+                walk_receiver_path_method_call(cx, current_hir_id, parent, segment, receiver, args, mode)
+            },
+            // Regular calls only keep the path alive
+            // if the output still depends on this input.
+            ExprKind::Call(callee, args) => walk_receiver_path_call(cx, current_hir_id, parent, callee, args, mode),
+            // A sibling that is not primitive blocks the lint.
+            ExprKind::Binary(_, left, right) | ExprKind::Index(left, right, _)
+                if left.hir_id == current_hir_id || right.hir_id == current_hir_id =>
+            {
+                if matches!(mode, ReceiverPathMode::FindLintBlockingContext) {
+                    let sibling = if left.hir_id == current_hir_id { right } else { left };
+                    if get_numeric_literal(sibling).is_none() && !cx.typeck_results().expr_ty(sibling).is_primitive() {
+                        ReceiverPathResult::Stop(true)
+                    } else {
+                        ReceiverPathResult::Continue(parent.hir_id)
+                    }
+                } else {
+                    ReceiverPathResult::Continue(parent.hir_id)
+                }
+            },
+            // These expressions don't block the lint, so we continue walking up the path.
+            ExprKind::Unary(_, inner)
+            | ExprKind::Cast(inner, _)
+            | ExprKind::AddrOf(_, _, inner)
+            | ExprKind::Field(inner, _)
+            | ExprKind::DropTemps(inner)
+                if inner.hir_id == current_hir_id =>
+            {
+                ReceiverPathResult::Continue(parent.hir_id)
+            },
+            // A block can forward its tail expression, so we keep walking through it.
+            ExprKind::Block(block, _)
+                if block.hir_id == current_hir_id || block.expr.is_some_and(|tail| tail.hir_id == current_hir_id) =>
+            {
+                ReceiverPathResult::Continue(parent.hir_id)
+            },
+            // Depending on the mode, either keep walking or block the lint.
+            ExprKind::Loop(block, ..) if block.hir_id == current_hir_id => {
+                stop_if_lint_blocking_else_continue(parent.hir_id, mode)
+            },
+            // Tuples and arrays wrap the current expression, so we continue walking up the path.
+            ExprKind::Tup(exprs) | ExprKind::Array(exprs) if exprs.iter().any(|e| e.hir_id == current_hir_id) => {
+                ReceiverPathResult::Continue(parent.hir_id)
+            },
+            // The expression is stored in a field. We continue walking up the path to see how the struct is used.
+            ExprKind::Struct(_, fields, _)
+                if fields
+                    .iter()
+                    .any(|field| field.hir_id == current_hir_id || field.expr.hir_id == current_hir_id) =>
+            {
+                ReceiverPathResult::Continue(parent.hir_id)
+            },
+            // Depending on the mode, either keep walking or block the lint.
+            ExprKind::If(cond, then_expr, else_expr)
+                if cond.hir_id == current_hir_id
+                    || then_expr.hir_id == current_hir_id
+                    || else_expr.is_some_and(|else_expr| else_expr.hir_id == current_hir_id) =>
+            {
+                stop_if_lint_blocking_else_continue(parent.hir_id, mode)
+            },
+            // Depending on the mode, either keep walking or block the lint.
+            ExprKind::Match(scrutinee, arms, _)
+                if scrutinee.hir_id == current_hir_id
+                    || arms
+                        .iter()
+                        .any(|arm| arm.hir_id == current_hir_id || arm.body.hir_id == current_hir_id) =>
+            {
+                stop_if_lint_blocking_else_continue(parent.hir_id, mode)
+            },
+            // Depending on the mode, either keep walking or block the lint.
+            ExprKind::Break(_, Some(inner)) if inner.hir_id == current_hir_id => {
+                stop_if_lint_blocking_else_continue(parent.hir_id, mode)
+            },
+            _ => ReceiverPathResult::Stop(false),
+        },
+        // These are structural HIR nodes. We just skip them and keep walking.
+        Node::ExprField(_) | Node::Block(_) | Node::Arm(_) | Node::Stmt(_) => {
+            ReceiverPathResult::Continue(cx.tcx.parent_hir_id(current_hir_id))
+        },
+        // Handle `let x = init; x` in the same block.
+        // Depending on the mode, either keep walking init or block the lint.
+        Node::LetStmt(local) => {
+            if let Some(block_hir_id) = let_init_to_block_hir_id(cx, local, current_hir_id) {
+                stop_if_lint_blocking_else_continue(block_hir_id, mode)
+            } else {
+                ReceiverPathResult::Stop(false)
+            }
+        },
+        _ => ReceiverPathResult::Stop(false),
+    }
+}
+
+// Returns `true` if `expr` eventually becomes the receiver of an outer method call.
+fn feeds_outer_method_receiver(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    let mut current_hir_id = expr.hir_id;
+
+    loop {
+        match walk_receiver_path_step(cx, current_hir_id, ReceiverPathMode::FindReceiver) {
+            ReceiverPathResult::Continue(next) => current_hir_id = next,
+            ReceiverPathResult::Stop(result) => return result,
+        }
+    }
+}
+
+// Returns `true` if the receiver path contains a context that should block the lint.
+fn has_lint_blocking_context_on_receiver_path(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    let mut current_hir_id = expr.hir_id;
+
+    loop {
+        match walk_receiver_path_step(cx, current_hir_id, ReceiverPathMode::FindLintBlockingContext) {
+            ReceiverPathResult::Continue(next) => current_hir_id = next,
+            ReceiverPathResult::Stop(result) => return result,
+        }
+    }
+}
+
+// If the initializer flows into the tail expression of the same block, returns that block HirId.
+fn let_init_to_block_hir_id(
+    cx: &LateContext<'_>,
+    local: &rustc_hir::LetStmt<'_>,
+    current_hir_id: HirId,
+) -> Option<HirId> {
+    let init = local.init?;
+    if init.hir_id != current_hir_id {
+        return None;
+    }
+
+    let stmt_hir_id = match cx.tcx.parent_hir_node(local.hir_id) {
+        Node::Stmt(stmt) => stmt.hir_id,
+        _ => return None,
+    };
+
+    let Node::Block(block) = cx.tcx.parent_hir_node(stmt_hir_id) else {
+        return None;
+    };
+
+    let tail = block.expr?;
+    let binding_hir_id = tail.res_local_id()?;
+
+    match local.pat.kind {
+        rustc_hir::PatKind::Binding(_, local_hir_id, ..) if local_hir_id == binding_hir_id => Some(block.hir_id),
+        _ => None,
+    }
 }

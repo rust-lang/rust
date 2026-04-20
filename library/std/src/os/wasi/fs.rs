@@ -246,13 +246,15 @@ impl FileExt for File {
 
     #[cfg(target_env = "p1")]
     fn fdstat_set_flags(&self, flags: u16) -> io::Result<()> {
-        unsafe { wasi::fd_fdstat_set_flags(self.as_raw_fd() as wasi::Fd, flags).map_err(err2io) }
+        unsafe {
+            wasip1::fd_fdstat_set_flags(self.as_raw_fd() as wasip1::Fd, flags).map_err(err2io)
+        }
     }
 
     #[cfg(target_env = "p1")]
     fn fdstat_set_rights(&self, rights: u64, inheriting: u64) -> io::Result<()> {
         unsafe {
-            wasi::fd_fdstat_set_rights(self.as_raw_fd() as wasi::Fd, rights, inheriting)
+            wasip1::fd_fdstat_set_rights(self.as_raw_fd() as wasip1::Fd, rights, inheriting)
                 .map_err(err2io)
         }
     }
@@ -260,12 +262,12 @@ impl FileExt for File {
     #[cfg(target_env = "p1")]
     fn advise(&self, offset: u64, len: u64, advice: u8) -> io::Result<()> {
         let advice = match advice {
-            a if a == wasi::ADVICE_NORMAL.raw() => wasi::ADVICE_NORMAL,
-            a if a == wasi::ADVICE_SEQUENTIAL.raw() => wasi::ADVICE_SEQUENTIAL,
-            a if a == wasi::ADVICE_RANDOM.raw() => wasi::ADVICE_RANDOM,
-            a if a == wasi::ADVICE_WILLNEED.raw() => wasi::ADVICE_WILLNEED,
-            a if a == wasi::ADVICE_DONTNEED.raw() => wasi::ADVICE_DONTNEED,
-            a if a == wasi::ADVICE_NOREUSE.raw() => wasi::ADVICE_NOREUSE,
+            a if a == wasip1::ADVICE_NORMAL.raw() => wasip1::ADVICE_NORMAL,
+            a if a == wasip1::ADVICE_SEQUENTIAL.raw() => wasip1::ADVICE_SEQUENTIAL,
+            a if a == wasip1::ADVICE_RANDOM.raw() => wasip1::ADVICE_RANDOM,
+            a if a == wasip1::ADVICE_WILLNEED.raw() => wasip1::ADVICE_WILLNEED,
+            a if a == wasip1::ADVICE_DONTNEED.raw() => wasip1::ADVICE_DONTNEED,
+            a if a == wasip1::ADVICE_NOREUSE.raw() => wasip1::ADVICE_NOREUSE,
             _ => {
                 return Err(io::const_error!(
                     io::ErrorKind::InvalidInput,
@@ -275,31 +277,35 @@ impl FileExt for File {
         };
 
         unsafe {
-            wasi::fd_advise(self.as_raw_fd() as wasi::Fd, offset, len, advice).map_err(err2io)
+            wasip1::fd_advise(self.as_raw_fd() as wasip1::Fd, offset, len, advice).map_err(err2io)
         }
     }
 
     #[cfg(target_env = "p1")]
     fn allocate(&self, offset: u64, len: u64) -> io::Result<()> {
-        unsafe { wasi::fd_allocate(self.as_raw_fd() as wasi::Fd, offset, len).map_err(err2io) }
+        unsafe { wasip1::fd_allocate(self.as_raw_fd() as wasip1::Fd, offset, len).map_err(err2io) }
     }
 
     #[cfg(target_env = "p1")]
     fn create_directory<P: AsRef<Path>>(&self, dir: P) -> io::Result<()> {
         let path = osstr2str(dir.as_ref().as_ref())?;
-        unsafe { wasi::path_create_directory(self.as_raw_fd() as wasi::Fd, path).map_err(err2io) }
+        unsafe {
+            wasip1::path_create_directory(self.as_raw_fd() as wasip1::Fd, path).map_err(err2io)
+        }
     }
 
     #[cfg(target_env = "p1")]
     fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         let path = osstr2str(path.as_ref().as_ref())?;
-        unsafe { wasi::path_unlink_file(self.as_raw_fd() as wasi::Fd, path).map_err(err2io) }
+        unsafe { wasip1::path_unlink_file(self.as_raw_fd() as wasip1::Fd, path).map_err(err2io) }
     }
 
     #[cfg(target_env = "p1")]
     fn remove_directory<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         let path = osstr2str(path.as_ref().as_ref())?;
-        unsafe { wasi::path_remove_directory(self.as_raw_fd() as wasi::Fd, path).map_err(err2io) }
+        unsafe {
+            wasip1::path_remove_directory(self.as_raw_fd() as wasip1::Fd, path).map_err(err2io)
+        }
     }
 }
 
@@ -388,11 +394,11 @@ pub fn link<P: AsRef<Path>, U: AsRef<Path>>(
     new_path: U,
 ) -> io::Result<()> {
     unsafe {
-        wasi::path_link(
-            old_fd.as_raw_fd() as wasi::Fd,
+        wasip1::path_link(
+            old_fd.as_raw_fd() as wasip1::Fd,
             old_flags,
             osstr2str(old_path.as_ref().as_ref())?,
-            new_fd.as_raw_fd() as wasi::Fd,
+            new_fd.as_raw_fd() as wasip1::Fd,
             osstr2str(new_path.as_ref().as_ref())?,
         )
         .map_err(err2io)
@@ -411,10 +417,10 @@ pub fn rename<P: AsRef<Path>, U: AsRef<Path>>(
     new_path: U,
 ) -> io::Result<()> {
     unsafe {
-        wasi::path_rename(
-            old_fd.as_raw_fd() as wasi::Fd,
+        wasip1::path_rename(
+            old_fd.as_raw_fd() as wasip1::Fd,
             osstr2str(old_path.as_ref().as_ref())?,
-            new_fd.as_raw_fd() as wasi::Fd,
+            new_fd.as_raw_fd() as wasip1::Fd,
             osstr2str(new_path.as_ref().as_ref())?,
         )
         .map_err(err2io)
@@ -432,9 +438,9 @@ pub fn symlink<P: AsRef<Path>, U: AsRef<Path>>(
     new_path: U,
 ) -> io::Result<()> {
     unsafe {
-        wasi::path_symlink(
+        wasip1::path_symlink(
             osstr2str(old_path.as_ref().as_ref())?,
-            fd.as_raw_fd() as wasi::Fd,
+            fd.as_raw_fd() as wasip1::Fd,
             osstr2str(new_path.as_ref().as_ref())?,
         )
         .map_err(err2io)

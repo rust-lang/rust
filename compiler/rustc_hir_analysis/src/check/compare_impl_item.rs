@@ -16,7 +16,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BottomUpFolder, GenericArgs, GenericParamDefKind, Generics, Ty, TyCtxt, TypeFoldable,
     TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
-    Upcast,
+    Unnormalized, Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{BytePos, DUMMY_SP, Span};
@@ -40,7 +40,8 @@ pub(super) fn compare_impl_item(
 ) -> Result<(), ErrorGuaranteed> {
     let impl_item = tcx.associated_item(impl_item_def_id);
     let trait_item = tcx.associated_item(impl_item.expect_trait_impl()?);
-    let impl_trait_ref = tcx.impl_trait_ref(impl_item.container_id(tcx)).instantiate_identity();
+    let impl_trait_ref =
+        tcx.impl_trait_ref(impl_item.container_id(tcx)).instantiate_identity().skip_norm_wip();
     debug!(?impl_trait_ref);
 
     match impl_item.kind {
@@ -235,8 +236,9 @@ fn compare_method_predicate_entailment<'tcx>(
         );
     }
 
+    let hybrid_preds = hybrid_preds.into_iter().map(Unnormalized::skip_norm_wip);
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds));
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
     // FIXME(-Zhigher-ranked-assumptions): The `hybrid_preds`
     // should be well-formed. However, using them may result in
     // region errors as we currently don't track placeholder
@@ -327,21 +329,22 @@ fn compare_method_predicate_entailment<'tcx>(
     let unnormalized_impl_sig = infcx.instantiate_binder_with_fresh_vars(
         impl_m_span,
         BoundRegionConversionTime::HigherRankedType,
-        tcx.fn_sig(impl_m.def_id).instantiate_identity(),
+        tcx.fn_sig(impl_m.def_id).instantiate_identity().skip_norm_wip(),
     );
 
     let norm_cause = ObligationCause::misc(impl_m_span, impl_m_def_id);
-    let impl_sig = ocx.normalize(&norm_cause, param_env, unnormalized_impl_sig);
+    let impl_sig =
+        ocx.normalize(&norm_cause, param_env, Unnormalized::new_wip(unnormalized_impl_sig));
     debug!(?impl_sig);
 
-    let trait_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args);
+    let trait_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args).skip_norm_wip();
     let trait_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_sig);
 
     // Next, add all inputs and output as well-formed tys. Importantly,
     // we have to do this before normalization, since the normalized ty may
     // not contain the input parameters. See issue #87748.
     wf_tys.extend(trait_sig.inputs_and_output.iter());
-    let trait_sig = ocx.normalize(&norm_cause, param_env, trait_sig);
+    let trait_sig = ocx.normalize(&norm_cause, param_env, Unnormalized::new_wip(trait_sig));
     // We also have to add the normalized trait signature
     // as we don't normalize during implied bounds computation.
     wf_tys.extend(trait_sig.inputs_and_output.iter());
@@ -463,8 +466,10 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
 ) -> Result<&'tcx DefIdMap<ty::EarlyBinder<'tcx, Ty<'tcx>>>, ErrorGuaranteed> {
     let impl_m = tcx.associated_item(impl_m_def_id.to_def_id());
     let trait_m = tcx.associated_item(impl_m.expect_trait_impl()?);
-    let impl_trait_ref =
-        tcx.impl_trait_ref(tcx.parent(impl_m_def_id.to_def_id())).instantiate_identity();
+    let impl_trait_ref = tcx
+        .impl_trait_ref(tcx.parent(impl_m_def_id.to_def_id()))
+        .instantiate_identity()
+        .skip_norm_wip();
     // First, check a few of the same things as `compare_impl_method`,
     // just so we don't ICE during instantiation later.
     check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, true)?;
@@ -493,7 +498,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         .instantiate_identity(tcx)
         .into_iter()
         .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_to_impl_args))
-        .map(|(clause, _)| clause);
+        .map(|(clause, _)| clause.skip_norm_wip());
     let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
     let param_env = traits::normalize_param_env_or_error(
         tcx,
@@ -532,11 +537,11 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let impl_sig = ocx.normalize(
         &misc_cause,
         param_env,
-        infcx.instantiate_binder_with_fresh_vars(
+        Unnormalized::new_wip(infcx.instantiate_binder_with_fresh_vars(
             return_span,
             BoundRegionConversionTime::HigherRankedType,
-            tcx.fn_sig(impl_m.def_id).instantiate_identity(),
-        ),
+            tcx.fn_sig(impl_m.def_id).instantiate_identity().skip_norm_wip(),
+        )),
     );
     impl_sig.error_reported()?;
     let impl_return_ty = impl_sig.output();
@@ -549,11 +554,12 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     let unnormalized_trait_sig = tcx
         .liberate_late_bound_regions(
             impl_m.def_id,
-            tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args),
+            tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_to_impl_args).skip_norm_wip(),
         )
         .fold_with(&mut collector);
 
-    let trait_sig = ocx.normalize(&misc_cause, param_env, unnormalized_trait_sig);
+    let trait_sig =
+        ocx.normalize(&misc_cause, param_env, Unnormalized::new_wip(unnormalized_trait_sig));
     trait_sig.error_reported()?;
     let trait_return_ty = trait_sig.output();
 
@@ -839,12 +845,13 @@ where
                 .cx()
                 .explicit_item_bounds(def_id)
                 .iter_instantiated_copied(self.cx(), proj_args)
+                .map(Unnormalized::skip_norm_wip)
             {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
                     &ObligationCause::misc(self.span, self.body_id),
                     self.param_env,
-                    pred,
+                    Unnormalized::new_wip(pred),
                 );
 
                 self.ocx.register_obligation(traits::Obligation::new(
@@ -1252,11 +1259,11 @@ fn check_region_late_boundedness<'tcx>(
         .build_with_typing_env(ty::TypingEnv::non_body_analysis(tcx, impl_m.def_id));
 
     let impl_m_args = infcx.fresh_args_for_item(DUMMY_SP, impl_m.def_id);
-    let impl_m_sig = tcx.fn_sig(impl_m.def_id).instantiate(tcx, impl_m_args);
+    let impl_m_sig = tcx.fn_sig(impl_m.def_id).instantiate(tcx, impl_m_args).skip_norm_wip();
     let impl_m_sig = tcx.liberate_late_bound_regions(impl_m.def_id, impl_m_sig);
 
     let trait_m_args = infcx.fresh_args_for_item(DUMMY_SP, trait_m.def_id);
-    let trait_m_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_args);
+    let trait_m_sig = tcx.fn_sig(trait_m.def_id).instantiate(tcx, trait_m_args).skip_norm_wip();
     let trait_m_sig = tcx.liberate_late_bound_regions(impl_m.def_id, trait_m_sig);
 
     let ocx = ObligationCtxt::new(&infcx);
@@ -1443,7 +1450,7 @@ fn find_region_in_predicates<'tcx>(
     early_bound_region: ty::Region<'tcx>,
 ) -> Option<Span> {
     for (pred, span) in tcx.explicit_predicates_of(def_id).instantiate_identity(tcx) {
-        if pred.visit_with(&mut FindRegion(early_bound_region)).is_break() {
+        if pred.skip_norm_wip().visit_with(&mut FindRegion(early_bound_region)).is_break() {
             return Some(span);
         }
     }
@@ -1508,7 +1515,7 @@ fn compare_self_type<'tcx>(
             }
             ty::AssocContainer::Trait => tcx.types.self_param,
         };
-        let self_arg_ty = tcx.fn_sig(method.def_id).instantiate_identity().input(0);
+        let self_arg_ty = tcx.fn_sig(method.def_id).instantiate_identity().skip_norm_wip().input(0);
         let (infcx, param_env) = tcx
             .infer_ctxt()
             .build_with_typing_env(ty::TypingEnv::non_body_analysis(tcx, method.def_id));
@@ -2111,7 +2118,7 @@ fn compare_generic_param_kinds<'tcx>(
                     format!(
                         "{} const parameter of type `{}`",
                         prefix,
-                        tcx.type_of(param.def_id).instantiate_identity()
+                        tcx.type_of(param.def_id).instantiate_identity().skip_norm_wip()
                     )
                 }
                 Type { .. } => format!("{prefix} type parameter"),
@@ -2227,8 +2234,9 @@ fn compare_const_predicate_entailment<'tcx>(
             .instantiate_own(tcx, trait_to_impl_args)
             .map(|(predicate, _)| predicate),
     );
+    let hybrid_preds = hybrid_preds.into_iter().map(Unnormalized::skip_norm_wip);
 
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds));
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
     let param_env = traits::normalize_param_env_or_error(
         tcx,
         param_env,
@@ -2379,7 +2387,8 @@ fn compare_type_predicate_entailment<'tcx>(
         );
     }
 
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses(&hybrid_preds));
+    let hybrid_preds = hybrid_preds.into_iter().map(Unnormalized::skip_norm_wip);
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
     let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
     debug!(caller_bounds=?param_env.caller_bounds());
 
@@ -2511,12 +2520,13 @@ pub(super) fn check_type_bounds<'tcx>(
 
     let mut obligations: Vec<_> = util::elaborate(
         tcx,
-        tcx.explicit_item_bounds(trait_ty.def_id).iter_instantiated_copied(tcx, rebased_args).map(
-            |(concrete_ty_bound, span)| {
+        tcx.explicit_item_bounds(trait_ty.def_id)
+            .iter_instantiated_copied(tcx, rebased_args)
+            .map(Unnormalized::skip_norm_wip)
+            .map(|(concrete_ty_bound, span)| {
                 debug!(?concrete_ty_bound);
                 traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)
-            },
-        ),
+            }),
     )
     .collect();
 
@@ -2526,6 +2536,7 @@ pub(super) fn check_type_bounds<'tcx>(
             tcx,
             tcx.explicit_implied_const_bounds(trait_ty.def_id)
                 .iter_instantiated_copied(tcx, rebased_args)
+                .map(Unnormalized::skip_norm_wip)
                 .map(|(c, span)| {
                     traits::Obligation::new(
                         tcx,
@@ -2544,7 +2555,11 @@ pub(super) fn check_type_bounds<'tcx>(
     // See <https://github.com/rust-lang/rust/pull/117542#issue-1976337685>.
     let normalize_param_env = param_env_with_gat_bounds(tcx, impl_ty, impl_trait_ref);
     for obligation in &mut obligations {
-        match ocx.deeply_normalize(&normalize_cause, normalize_param_env, obligation.predicate) {
+        match ocx.deeply_normalize(
+            &normalize_cause,
+            normalize_param_env,
+            Unnormalized::new_wip(obligation.predicate),
+        ) {
             Ok(pred) => obligation.predicate = pred,
             Err(e) => {
                 return Err(infcx.err_ctxt().report_fulfillment_errors(e));
@@ -2702,7 +2717,7 @@ fn param_env_with_gat_bounds<'tcx>(
         // checking the default value specifically here. Add this equality to the
         // ParamEnv for normalization specifically.
         let normalize_impl_ty =
-            tcx.type_of(impl_ty.def_id).instantiate(tcx, normalize_impl_ty_args);
+            tcx.type_of(impl_ty.def_id).instantiate(tcx, normalize_impl_ty_args).skip_norm_wip();
         let rebased_args =
             normalize_impl_ty_args.rebase_onto(tcx, container_id, impl_trait_ref.args);
         let bound_vars = tcx.mk_bound_variable_kinds(&bound_vars);

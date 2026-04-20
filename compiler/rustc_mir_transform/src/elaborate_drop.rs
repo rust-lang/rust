@@ -7,7 +7,7 @@ use rustc_index::Idx;
 use rustc_middle::mir::*;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArg, GenericArgsRef, Ty, TyCtxt, Unnormalized};
 use rustc_middle::{bug, span_bug, traits};
 use rustc_span::{DUMMY_SP, Spanned, dummy_spanned};
 use tracing::{debug, instrument};
@@ -286,7 +286,7 @@ where
             // Resolving async_drop_in_place<T> function for drop_ty
             let drop_fn_def_id = tcx.require_lang_item(LangItem::AsyncDropInPlace, span);
             let trait_args = tcx.mk_args(&[drop_ty.into()]);
-            let sig = tcx.fn_sig(drop_fn_def_id).instantiate(tcx, trait_args);
+            let sig = tcx.fn_sig(drop_fn_def_id).instantiate(tcx, trait_args).skip_norm_wip();
             let sig = tcx.instantiate_bound_regions_with_erased(sig);
             (sig.output(), drop_fn_def_id, trait_args)
         };
@@ -562,7 +562,10 @@ where
                 // We silently leave an unnormalized type here to support polymorphic drop
                 // elaboration for users of rustc internal APIs
                 let field_ty = tcx
-                    .try_normalize_erasing_regions(self.elaborator.typing_env(), field_ty)
+                    .try_normalize_erasing_regions(
+                        self.elaborator.typing_env(),
+                        Unnormalized::new_wip(field_ty),
+                    )
                     .unwrap_or(field_ty);
 
                 (tcx.mk_place_field(base_place, field_idx, field_ty), subpath)

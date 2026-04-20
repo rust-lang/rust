@@ -478,7 +478,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
                 let has_deref = autoderef.step_count() > 0;
                 if !candidate_found && !has_deref && unsatisfied_predicates.is_empty() {
-                    ty = self.tcx.at(span).type_of(def.did()).instantiate_identity();
+                    ty =
+                        self.tcx.at(span).type_of(def.did()).instantiate_identity().skip_norm_wip();
                 }
             }
         }
@@ -1406,7 +1407,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     // different from the received one
                                     // So we avoid suggestion method with Box<Self>
                                     // for instance
-                                    self.tcx.at(span).type_of(*def_id).instantiate_identity()
+                                    self.tcx
+                                        .at(span)
+                                        .type_of(*def_id)
+                                        .instantiate_identity()
+                                        .skip_norm_wip()
                                         != rcvr_ty
                                 }
                                 (Mode::Path, false, _) => true,
@@ -1425,7 +1430,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         vec![
                             StringPart::normal(format!("the {item_kind} was found for `")),
                             StringPart::highlighted(
-                                self.tcx.at(span).type_of(*only).instantiate_identity().to_string(),
+                                self.tcx
+                                    .at(span)
+                                    .type_of(*only)
+                                    .instantiate_identity()
+                                    .skip_norm_wip()
+                                    .to_string(),
                             ),
                             StringPart::normal(format!("`")),
                         ]
@@ -1439,7 +1449,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .map(|impl_item| {
                                 format!(
                                     "- `{}`",
-                                    self.tcx.at(span).type_of(*impl_item).instantiate_identity()
+                                    self.tcx
+                                        .at(span)
+                                        .type_of(*impl_item)
+                                        .instantiate_identity()
+                                        .skip_norm_wip()
                                 )
                             })
                             .collect::<Vec<_>>()
@@ -1534,7 +1548,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         suggestion = vec![(replacement_span, var_name.to_string())];
                     }
                     (Some((hir::def::CtorKind::Fn, def_id)), hir::ExprKind::Call(rcvr, args)) => {
-                        let fn_sig = tcx.fn_sig(def_id).instantiate_identity();
+                        let fn_sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
                         let inputs = fn_sig.inputs().skip_binder();
                         // FIXME: reuse the logic for "change args" suggestion to account for types
                         // involved and detect things like substitution.
@@ -1580,7 +1594,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     (Some((hir::def::CtorKind::Fn, def_id)), _) => {
-                        let fn_sig = tcx.fn_sig(def_id).instantiate_identity();
+                        let fn_sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
                         let inputs = fn_sig.inputs().skip_binder();
                         suggestion = vec![(
                             replacement_span,
@@ -2204,7 +2218,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // not methods because they don’t have an instance of the struct to work with.
         if def_kind == DefKind::AssocFn {
             let ty_args = self.infcx.fresh_args_for_item(span, similar_candidate.def_id);
-            let fn_sig = tcx.fn_sig(similar_candidate.def_id).instantiate(tcx, ty_args);
+            let fn_sig =
+                tcx.fn_sig(similar_candidate.def_id).instantiate(tcx, ty_args).skip_norm_wip();
             let fn_sig = self.instantiate_binder_with_fresh_vars(
                 span,
                 BoundRegionConversionTime::FnCall,
@@ -2287,8 +2302,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     inherent_method.container_id(self.tcx),
                                     adt_args,
                                 );
-                        let fn_sig =
-                            self.tcx.fn_sig(inherent_method.def_id).instantiate(self.tcx, args);
+                        let fn_sig = self
+                            .tcx
+                            .fn_sig(inherent_method.def_id)
+                            .instantiate(self.tcx, args)
+                            .skip_norm_wip();
                         let fn_sig = self.instantiate_binder_with_fresh_vars(
                             item_name.span,
                             BoundRegionConversionTime::FnCall,
@@ -2363,7 +2381,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None
                     };
 
-                    let impl_ty = self.tcx.at(span).type_of(impl_did).instantiate_identity();
+                    let impl_ty =
+                        self.tcx.at(span).type_of(impl_did).instantiate_identity().skip_norm_wip();
 
                     let insertion = match self.tcx.impl_opt_trait_ref(impl_did) {
                         None => String::new(),
@@ -2411,6 +2430,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     self.tcx,
                                     self.fresh_args_for_item(sugg_span, impl_did),
                                 )
+                                .skip_norm_wip()
                                 .with_replaced_self_ty(self.tcx, rcvr_ty),
                             idx,
                             sugg_span,
@@ -2510,6 +2530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .tcx
                     .fn_sig(item.def_id)
                     .instantiate(self.tcx, self.fresh_args_for_item(DUMMY_SP, item.def_id))
+                    .skip_norm_wip()
                     .output();
                 let ret_ty = self.tcx.instantiate_bound_regions_with_erased(ret_ty);
                 let ty::Adt(def, args) = ret_ty.kind() else {
@@ -2591,7 +2612,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // When the "method" is resolved through dereferencing, we really want the
             // original type that has the associated function for accurate suggestions.
             // (#61411)
-            let impl_ty = self.tcx.type_of(*impl_did).instantiate_identity();
+            let impl_ty = self.tcx.type_of(*impl_did).instantiate_identity().skip_norm_wip();
             let target_ty = self
                 .autoderef(sugg_span, rcvr_ty)
                 .silence_errors()
@@ -2628,9 +2649,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let SelfSource::MethodCall(_) = source {
             let first_arg = static_candidates.get(0).and_then(|candidate_source| {
                 let (assoc_did, self_ty) = match candidate_source {
-                    CandidateSource::Impl(impl_did) => {
-                        (*impl_did, self.tcx.type_of(*impl_did).instantiate_identity())
-                    }
+                    CandidateSource::Impl(impl_did) => (
+                        *impl_did,
+                        self.tcx.type_of(*impl_did).instantiate_identity().skip_norm_wip(),
+                    ),
                     CandidateSource::Trait(trait_did) => (*trait_did, rcvr_ty),
                 };
 
@@ -2641,7 +2663,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // for CandidateSource::Impl, `Self` will be instantiated to a concrete type
                 // but for CandidateSource::Trait, `Self` is still `Self`
-                let sig = self.tcx.fn_sig(assoc.def_id).instantiate_identity();
+                let sig = self.tcx.fn_sig(assoc.def_id).instantiate_identity().skip_norm_wip();
                 sig.inputs().skip_binder().get(0).and_then(|first| {
                     // if the type of first arg is the same as the current impl type, we should take the first arg into assoc function
                     let first_ty = first.peel_refs();
@@ -2826,8 +2848,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     else {
                         continue;
                     };
-                    let range_ty =
-                        self.tcx.type_of(range_def_id).instantiate(self.tcx, &[actual.into()]);
+                    let range_ty = self
+                        .tcx
+                        .type_of(range_def_id)
+                        .instantiate(self.tcx, &[actual.into()])
+                        .skip_norm_wip();
 
                     let pick = self.lookup_probe_for_diagnostic(
                         item_name,
@@ -3492,6 +3517,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx
                 .type_of(impl_def_id)
                 .instantiate_identity()
+                .skip_norm_wip()
                 .ty_adt_def()
                 .is_some_and(|def| def.did() == adt.did())
         }) {
@@ -3623,7 +3649,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // just changing the path.
                     && pick.item.is_method()
                     && let Some(self_ty) =
-                        self.tcx.fn_sig(pick.item.def_id).instantiate_identity().inputs().skip_binder().get(0)
+                        self.tcx.fn_sig(pick.item.def_id).instantiate_identity().skip_norm_wip().inputs().skip_binder().get(0)
                     && self_ty.is_ref()
                 {
                     let suggested_path = match deref_ty.kind() {
@@ -4366,7 +4392,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         _ => false,
                                     };
 
-                                    if !fn_sig.decl.implicit_self.has_implicit_self()
+                                    if !fn_sig.decl.implicit_self().has_implicit_self()
                                         && self_first_arg
                                     {
                                         if let Some(ty) = fn_sig.decl.inputs.get(0) {
@@ -4585,7 +4611,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .map(|imp_did| self.tcx.impl_trait_header(imp_did))
                         .filter(|header| header.polarity != ty::ImplPolarity::Positive)
                         .any(|header| {
-                            let imp = header.trait_ref.instantiate_identity();
+                            let imp = header.trait_ref.instantiate_identity().skip_norm_wip();
                             let imp_simp =
                                 simplify_type(self.tcx, imp.self_ty(), TreatParams::AsRigid);
                             imp_simp.is_some_and(|s| s == simp_rcvr_ty)

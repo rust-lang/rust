@@ -74,7 +74,7 @@ pub(super) fn check(
     }
 
     for &def_id in unwrap_allowed_aliases {
-        let alias_ty = cx.tcx.type_of(def_id).instantiate_identity();
+        let alias_ty = cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
         if let (ty::Adt(adt, substs), ty::Adt(alias_adt, alias_substs)) = (ty.kind(), alias_ty.kind())
             && adt.did() == alias_adt.did()
         {

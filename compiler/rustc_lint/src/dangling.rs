@@ -102,8 +102,8 @@ impl<'tcx> LateLintPass<'tcx> for DanglingPointers {
             && let TyKind::Ptr(_) = ret_ty.kind
         {
             // get the return type of the function or closure
-            let ty = match cx.tcx.type_of(def_id).instantiate_identity().kind() {
-                ty::FnDef(..) => cx.tcx.fn_sig(def_id).instantiate_identity(),
+            let ty = match cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip().kind() {
+                ty::FnDef(..) => cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip(),
                 ty::Closure(_, args) => args.as_closure().sig(),
                 _ => return,
             };

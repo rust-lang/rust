@@ -33,7 +33,7 @@ declare_clippy_lint! {
     /// let mut x = true;
     /// let _ = std::mem::take(&mut x);
     /// ```
-    #[clippy::version = "1.94.0"]
+    #[clippy::version = "1.95.0"]
     pub MANUAL_TAKE,
     complexity,
     "manual `mem::take` implementation"
