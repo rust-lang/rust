@@ -3806,6 +3806,7 @@ dependencies = [
 name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
+ "fjall",
  "rustc_driver_impl",
  "rustc_windows_rc",
 ]
