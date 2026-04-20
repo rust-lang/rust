@@ -7,7 +7,8 @@ use std::sync::LazyLock;
 
 use private::Sealed;
 use rustc_ast::{AttrStyle, MetaItemLit, NodeId};
-use rustc_errors::{Diag, Diagnostic, Level, MultiSpan};
+use rustc_data_structures::sync::{DynSend, DynSync};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{AttrSuggestionStyle, AttributeTemplate};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
@@ -17,7 +18,6 @@ use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 
-use crate::AttributeParser;
 // Glob imports to avoid big, bitrotty import lists
 use crate::attributes::allow_unstable::*;
 use crate::attributes::autodiff::*;
@@ -59,13 +59,14 @@ use crate::attributes::stability::*;
 use crate::attributes::test_attrs::*;
 use crate::attributes::traits::*;
 use crate::attributes::transparency::*;
-use crate::attributes::{AttributeParser as _, Combine, Single, WithoutArgs};
+use crate::attributes::{AttributeParser as _, AttributeSafety, Combine, Single, WithoutArgs};
 use crate::parser::{ArgParser, MetaItemOrLitParser, RefPathParser};
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
     ParsedDescription,
 };
 use crate::target_checking::AllowedTargets;
+use crate::{AttributeParser, EmitAttribute};
 type GroupType<S> = LazyLock<GroupTypeInner<S>>;
 
 pub(super) struct GroupTypeInner<S: Stage> {
@@ -76,6 +77,7 @@ pub(super) struct GroupTypeInnerAccept<S: Stage> {
     pub(super) template: AttributeTemplate,
     pub(super) accept_fn: AcceptFn<S>,
     pub(super) allowed_targets: AllowedTargets,
+    pub(super) safety: AttributeSafety,
     pub(super) finalizer: FinalizeFn<S>,
 }
 
@@ -126,6 +128,7 @@ macro_rules! attribute_parsers {
                                             accept_fn(s, cx, args)
                                         })
                                     }),
+                                    safety: <$names as crate::attributes::AttributeParser<$stage>>::SAFETY,
                                     allowed_targets: <$names as crate::attributes::AttributeParser<$stage>>::ALLOWED_TARGETS,
                                     finalizer: Box::new(|cx| {
                                         let state = STATE_OBJECT.take();
@@ -269,7 +272,6 @@ attribute_parsers!(
         Single<WithoutArgs<PanicHandlerParser>>,
         Single<WithoutArgs<PanicRuntimeParser>>,
         Single<WithoutArgs<PinV2Parser>>,
-        Single<WithoutArgs<PointeeParser>>,
         Single<WithoutArgs<PreludeImportParser>>,
         Single<WithoutArgs<ProcMacroAttributeParser>>,
         Single<WithoutArgs<ProcMacroParser>>,
@@ -315,6 +317,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcNoImplicitAutorefsParser>>,
         Single<WithoutArgs<RustcNoImplicitBoundsParser>>,
         Single<WithoutArgs<RustcNoMirInlineParser>>,
+        Single<WithoutArgs<RustcNoWritableParser>>,
         Single<WithoutArgs<RustcNonConstTraitMethodParser>>,
         Single<WithoutArgs<RustcNonnullOptimizationGuaranteedParser>>,
         Single<WithoutArgs<RustcNounwindParser>>,
@@ -459,11 +462,34 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     /// Emit a lint. This method is somewhat special, since lints emitted during attribute parsing
     /// must be delayed until after HIR is built. This method will take care of the details of
     /// that.
-    pub(crate) fn emit_lint<M: Into<MultiSpan>>(
+    pub(crate) fn emit_lint(
         &mut self,
         lint: &'static Lint,
         kind: AttributeLintKind,
-        span: M,
+        span: impl Into<MultiSpan>,
+    ) {
+        self.emit_lint_inner(lint, EmitAttribute::Static(kind), span);
+    }
+
+    /// Emit a lint. This method is somewhat special, since lints emitted during attribute parsing
+    /// must be delayed until after HIR is built. This method will take care of the details of
+    /// that.
+    pub(crate) fn emit_dyn_lint<
+        F: for<'a> Fn(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + DynSync + 'static,
+    >(
+        &mut self,
+        lint: &'static Lint,
+        callback: F,
+        span: impl Into<MultiSpan>,
+    ) {
+        self.emit_lint_inner(lint, EmitAttribute::Dynamic(Box::new(callback)), span);
+    }
+
+    fn emit_lint_inner(
+        &mut self,
+        lint: &'static Lint,
+        kind: EmitAttribute,
+        span: impl Into<MultiSpan>,
     ) {
         if !matches!(
             self.stage.should_emit(),
@@ -475,12 +501,15 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     }
 
     pub(crate) fn warn_unused_duplicate(&mut self, used_span: Span, unused_span: Span) {
-        self.emit_lint(
+        self.emit_dyn_lint(
             rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            AttributeLintKind::UnusedDuplicate {
-                this: unused_span,
-                other: used_span,
-                warning: false,
+            move |dcx, level| {
+                rustc_errors::lints::UnusedDuplicate {
+                    this: unused_span,
+                    other: used_span,
+                    warning: false,
+                }
+                .into_diag(dcx, level)
             },
             unused_span,
         )
@@ -491,12 +520,15 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
         used_span: Span,
         unused_span: Span,
     ) {
-        self.emit_lint(
+        self.emit_dyn_lint(
             rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            AttributeLintKind::UnusedDuplicate {
-                this: unused_span,
-                other: used_span,
-                warning: true,
+            move |dcx, level| {
+                rustc_errors::lints::UnusedDuplicate {
+                    this: unused_span,
+                    other: used_span,
+                    warning: true,
+                }
+                .into_diag(dcx, level)
             },
             unused_span,
         )
@@ -567,7 +599,7 @@ pub struct SharedContext<'p, 'sess, S: Stage> {
 
     /// The second argument of the closure is a [`NodeId`] if `S` is `Early` and a [`HirId`] if `S`
     /// is `Late` and is the ID of the syntactical component this attribute was applied to.
-    pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, AttributeLintKind),
+    pub(crate) emit_lint: &'p mut dyn FnMut(LintId, MultiSpan, EmitAttribute),
 }
 
 /// Context given to every attribute parser during finalization.
@@ -865,11 +897,18 @@ where
     }
 
     pub(crate) fn warn_empty_attribute(&mut self, span: Span) {
-        let attr_path = self.attr_path.clone().to_string();
+        let attr_path = self.attr_path.to_string();
         let valid_without_list = self.template.word;
-        self.emit_lint(
+        self.emit_dyn_lint(
             rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            AttributeLintKind::EmptyAttribute { first_span: span, attr_path, valid_without_list },
+            move |dcx, level| {
+                crate::errors::EmptyAttributeList {
+                    attr_span: span,
+                    attr_path: &attr_path,
+                    valid_without_list,
+                }
+                .into_diag(dcx, level)
+            },
             span,
         );
     }
@@ -884,9 +923,12 @@ where
     ) {
         let suggestions = self.suggestions();
         let span = self.attr_span;
-        self.emit_lint(
+        self.emit_dyn_lint(
             lint,
-            AttributeLintKind::IllFormedAttributeInput { suggestions, docs: None, help },
+            move |dcx, level| {
+                crate::errors::IllFormedAttributeInput::new(&suggestions, None, help.as_deref())
+                    .into_diag(dcx, level)
+            },
             span,
         );
     }

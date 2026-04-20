@@ -86,7 +86,6 @@ impl AttributeKind {
             Path(..) => No,
             PatternComplexityLimit { .. } => No,
             PinV2(..) => Yes,
-            Pointee(..) => No,
             PreludeImport => No,
             ProcMacro(..) => No,
             ProcMacroAttribute(..) => No,
@@ -164,6 +163,7 @@ impl AttributeKind {
             RustcNoImplicitAutorefs => Yes,
             RustcNoImplicitBounds => No,
             RustcNoMirInline => Yes,
+            RustcNoWritable => Yes,
             RustcNonConstTraitMethod => No, // should be reported via other queries like `constness`
             RustcNonnullOptimizationGuaranteed => Yes,
             RustcNounwind => No,

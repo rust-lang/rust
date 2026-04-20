@@ -152,7 +152,7 @@ pub(crate) fn update_macro_stats(
     }
 
     // The recorded size is the difference between the input and the output.
-    let entry = ecx.macro_stats.entry((name, macro_kind)).or_insert(MacroStat::default());
+    let entry = ecx.macro_stats.entry((name, macro_kind)).or_default();
     entry.uses += 1;
     entry.lines += num_lines;
     entry.bytes += num_bytes;

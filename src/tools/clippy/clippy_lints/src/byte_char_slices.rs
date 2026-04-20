@@ -1,9 +1,15 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
-use rustc_ast::ast::{BorrowKind, Expr, ExprKind, Mutability};
-use rustc_ast::token::{Lit, LitKind};
+use std::borrow::Cow;
+
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::sugg::Sugg;
+use clippy_utils::{get_parent_expr, span_contains_cfg, span_contains_comment};
+use rustc_ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -30,47 +36,73 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ByteCharSlice => [BYTE_CHAR_SLICES]);
 
-impl EarlyLintPass for ByteCharSlice {
-    fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
+impl<'tcx> LateLintPass<'tcx> for ByteCharSlice {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if !expr.span.from_expansion()
-            && let Some(slice) = is_byte_char_slices(expr)
+            && let Some((has_ref, slice)) = is_byte_char_slices(cx, expr)
         {
-            span_lint_and_sugg(
+            span_lint_and_then(
                 cx,
                 BYTE_CHAR_SLICES,
                 expr.span,
                 "can be more succinctly written as a byte str",
-                "try",
-                format!("b\"{slice}\""),
-                Applicability::MachineApplicable,
+                |diag| {
+                    let mut app = Applicability::MachineApplicable;
+                    let mut sugg = Sugg::hir_from_snippet(cx, expr, |_| {
+                        let mut slice = slice.iter().fold("b\"".to_owned(), |mut acc, span| {
+                            let snippet = snippet_with_applicability(cx, *span, "b'?'", &mut app);
+                            acc.push_str(match &snippet[2..snippet.len() - 1] {
+                                "\"" => "\\\"",
+                                "\\'" => "'",
+                                other => other,
+                            });
+                            acc
+                        });
+                        slice.push('"');
+                        Cow::Owned(slice)
+                    });
+                    if !has_ref && !cx.typeck_results().expr_ty_adjusted(expr).is_array_slice() {
+                        sugg = sugg.deref();
+                    }
+
+                    diag.span_suggestion(expr.span, "try", sugg, app);
+                },
             );
         }
     }
 }
 
 /// Checks whether the slice is that of byte chars, and if so, builds a byte-string out of it
-fn is_byte_char_slices(expr: &Expr) -> Option<String> {
-    if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, expr) = &expr.kind
-        && let ExprKind::Array(members) = &expr.kind
-        && !members.is_empty()
+fn is_byte_char_slices<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<(bool, Vec<Span>)> {
+    let (has_ref, expr) = if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = expr.kind {
+        (true, inner)
+    } else if let Some(parent) = get_parent_expr(cx, expr) // Already checked by the parent expr.
+        && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, _) = parent.kind
     {
-        members
-            .iter()
-            .map(|member| match &member.kind {
-                ExprKind::Lit(Lit {
-                    kind: LitKind::Byte,
-                    symbol,
-                    ..
-                }) => Some(symbol.as_str()),
-                _ => None,
-            })
-            .map(|maybe_quote| match maybe_quote {
-                Some("\"") => Some("\\\""),
-                Some("\\'") => Some("'"),
-                other => other,
-            })
-            .collect::<Option<String>>()
+        return None;
     } else {
-        None
+        (false, expr)
+    };
+
+    if let ExprKind::Array(members) = expr.kind
+        && !members.is_empty()
+        && !span_contains_comment(cx, expr.span)
+        && !span_contains_cfg(cx, expr.span)
+    {
+        return members
+            .iter()
+            .try_fold(Vec::new(), |mut acc, member| {
+                if let ExprKind::Lit(lit) = member.kind
+                    && let LitKind::Byte(_) = lit.node
+                    && expr.span.eq_ctxt(member.span)
+                {
+                    acc.push(lit.span);
+                    return Some(acc);
+                }
+                None
+            })
+            .map(|s| (has_ref, s));
     }
+
+    None
 }

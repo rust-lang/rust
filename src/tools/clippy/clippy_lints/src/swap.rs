@@ -112,7 +112,7 @@ fn generate_swap_warning<'tcx>(
                 || ty.is_diag_item(cx, sym::Vec)
                 || ty.is_diag_item(cx, sym::VecDeque)
             {
-                let slice = Sugg::hir_with_applicability(cx, lhs1, "<slice>", &mut applicability);
+                let slice = Sugg::hir_with_context(cx, lhs1, ctxt, "<slice>", &mut applicability);
 
                 span_lint_and_sugg(
                     cx,

@@ -13,7 +13,7 @@ trait MyFromIterator<A> {
 }
 
 #[rustc_on_unimplemented]
-//~^ WARN missing options for `on_unimplemented` attribute
+//~^ WARN missing options for `rustc_on_unimplemented` attribute
 //~| NOTE part of
 trait NoContent {}
 
@@ -27,21 +27,19 @@ trait ParameterNotPresent<A, B> {}
 trait NoPositionalArgs<A, B> {}
 
 #[rustc_on_unimplemented(lorem = "")]
-//~^ ERROR this attribute must have a value
-//~^^ NOTE e.g. `#[rustc_on_unimplemented(message="foo")]`
-//~^^^ NOTE expected value here
+//~^WARN malformed `rustc_on_unimplemented` attribute
+//~|NOTE invalid option found here
 trait EmptyMessage {}
 
 #[rustc_on_unimplemented(lorem(ipsum(dolor)))]
-//~^ ERROR this attribute must have a value
-//~^^ NOTE e.g. `#[rustc_on_unimplemented(message="foo")]`
-//~^^^ NOTE expected value here
+//~^WARN malformed `rustc_on_unimplemented` attribute
+//~|NOTE invalid option found here
 trait Invalid {}
 
 #[rustc_on_unimplemented(message = "x", message = "y")]
-//~^ ERROR this attribute must have a value
-//~^^ NOTE e.g. `#[rustc_on_unimplemented(message="foo")]`
-//~^^^ NOTE expected value here
+//~^WARN `message` is ignored due to previous definition of `message`
+//~|NOTE `message` is first declared here
+//~|NOTE `message` is later redundantly declared here
 trait DuplicateMessage {}
 
 #[rustc_on_unimplemented(message = "x", on(desugared, message = "y"))]
@@ -55,21 +53,18 @@ trait OnInWrongPosition {}
 trait EmptyOn {}
 
 #[rustc_on_unimplemented(on = "x", message = "y")]
-//~^ ERROR this attribute must have a value
-//~^^ NOTE e.g. `#[rustc_on_unimplemented(message="foo")]`
-//~^^^ NOTE expected value here
+//~^WARN malformed `rustc_on_unimplemented` attribute
+//~|NOTE invalid option found here
 trait ExpectedPredicateInOn {}
 
 #[rustc_on_unimplemented(on(Self = "y"), message = "y")]
-//~^ ERROR this attribute must have a value
-//~| NOTE expected value here
-//~| NOTE e.g. `#[rustc_on_unimplemented(message="foo")]`
+//~^WARN malformed `rustc_on_unimplemented` attribute
+//~|NOTE invalid option found here
 trait OnWithoutDirectives {}
 
 #[rustc_on_unimplemented(on(from_desugaring, on(from_desugaring, message = "x")), message = "y")]
-//~^ ERROR this attribute must have a value
-//~^^ NOTE e.g. `#[rustc_on_unimplemented(message="foo")]`
-//~^^^ NOTE expected value here
+//~^WARN malformed `rustc_on_unimplemented` attribute
+//~|NOTE invalid option found here
 trait NestedOn {}
 
 #[rustc_on_unimplemented(on("y", message = "y"))]

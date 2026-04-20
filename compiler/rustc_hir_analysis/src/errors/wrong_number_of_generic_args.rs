@@ -360,7 +360,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 let in_ret =
                     matches!(fn_decl.output, hir::FnRetTy::Return(ty) if ty.hir_id == ty_id);
 
-                if in_arg || (in_ret && fn_decl.lifetime_elision_allowed) {
+                if in_arg || (in_ret && fn_decl.lifetime_elision_allowed()) {
                     return std::iter::repeat_n("'_".to_owned(), num_params_to_take)
                         .collect::<Vec<_>>()
                         .join(", ");

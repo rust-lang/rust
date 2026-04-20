@@ -36,9 +36,11 @@
 //@ revisions: loongarch32
 //@[loongarch32] compile-flags: --target loongarch32-unknown-none
 //@[loongarch32] needs-llvm-components: loongarch
+//@[loongarch32] ignore-llvm-version: 23
 //@ revisions: loongarch64
 //@[loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
 //@[loongarch64] needs-llvm-components: loongarch
+//@[loongarch64] ignore-llvm-version: 23
 //@ revisions: bpf
 //@[bpf] compile-flags: --target bpfeb-unknown-none
 //@[bpf] needs-llvm-components: bpf

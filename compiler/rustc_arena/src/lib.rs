@@ -140,25 +140,19 @@ impl<T> TypedArena<T> {
     /// Allocates an object in the `TypedArena`, returning a reference to it.
     #[inline]
     pub fn alloc(&self, object: T) -> &mut T {
+        assert!(size_of::<T>() != 0);
+
         if self.ptr == self.end {
             self.grow(1)
         }
 
         unsafe {
-            if size_of::<T>() == 0 {
-                self.ptr.set(self.ptr.get().wrapping_byte_add(1));
-                let ptr = ptr::NonNull::<T>::dangling().as_ptr();
-                // Don't drop the object. This `write` is equivalent to `forget`.
-                ptr::write(ptr, object);
-                &mut *ptr
-            } else {
-                let ptr = self.ptr.get();
-                // Advance the pointer.
-                self.ptr.set(self.ptr.get().add(1));
-                // Write into uninitialized memory.
-                ptr::write(ptr, object);
-                &mut *ptr
-            }
+            let ptr = self.ptr.get();
+            // Advance the pointer.
+            self.ptr.set(self.ptr.get().add(1));
+            // Write into uninitialized memory.
+            ptr::write(ptr, object);
+            &mut *ptr
         }
     }
 
@@ -302,16 +296,10 @@ impl<T> TypedArena<T> {
         let end = self.ptr.get().addr();
         // We then calculate the number of elements to be dropped in the last chunk,
         // which is the filled area's length.
-        let diff = if size_of::<T>() == 0 {
-            // `T` is ZST. It can't have a drop flag, so the value here doesn't matter. We get
-            // the number of zero-sized values in the last and only chunk, just out of caution.
-            // Recall that `end` was incremented for each allocated value.
-            end - start
-        } else {
-            // FIXME: this should *likely* use `offset_from`, but more
-            // investigation is needed (including running tests in miri).
-            (end - start) / size_of::<T>()
-        };
+        assert_ne!(size_of::<T>(), 0);
+        // FIXME: this should *likely* use `offset_from`, but more
+        // investigation is needed (including running tests in miri).
+        let diff = (end - start) / size_of::<T>();
         // Pass that to the `destroy` method.
         unsafe {
             last_chunk.destroy(diff);

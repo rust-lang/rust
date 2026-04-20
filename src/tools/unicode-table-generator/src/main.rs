@@ -91,11 +91,11 @@ static PROPERTIES: &[&str] = &[
     "Alphabetic",
     "Lowercase",
     "Uppercase",
-    "Cased",
     "Case_Ignorable",
     "Grapheme_Extend",
     "White_Space",
     "N",
+    "Lt",
 ];
 
 struct UnicodeData {

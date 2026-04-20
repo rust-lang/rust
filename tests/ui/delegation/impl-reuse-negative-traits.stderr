@@ -1,8 +1,8 @@
 error[E0749]: negative impls cannot have any items
-  --> $DIR/impl-reuse-negative-traits.rs:6:8
+  --> $DIR/impl-reuse-negative-traits.rs:16:1
    |
-LL |     fn foo(&self);
-   |        ^^^
+LL | reuse impl !Trait for F { &self.0 }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 

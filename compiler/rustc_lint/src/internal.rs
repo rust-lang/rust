@@ -141,7 +141,7 @@ fn has_unstable_into_iter_predicate<'tcx>(
         }
         // `IntoIterator::into_iter` has no additional method args.
         let into_iter_fn_args =
-            cx.tcx.instantiate_bound_regions_with_erased(trait_pred).trait_ref.args;
+            cx.tcx.instantiate_bound_regions_with_erased(trait_pred.skip_norm_wip()).trait_ref.args;
         let Ok(Some(instance)) = ty::Instance::try_resolve(
             cx.tcx,
             cx.typing_env(),
@@ -292,7 +292,8 @@ fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, path: &hir::Path<'_>) -> Option<String
         }
         // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
         Res::SelfTyAlias { alias_to: did, is_trait_impl: false, .. } => {
-            if let ty::Adt(adt, args) = cx.tcx.type_of(did).instantiate_identity().kind()
+            if let ty::Adt(adt, args) =
+                cx.tcx.type_of(did).instantiate_identity().skip_norm_wip().kind()
                 && let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(adt.did())
             {
                 return Some(format!("{}<{}>", name, args[0]));
@@ -783,7 +784,7 @@ impl<'tcx> LateLintPass<'tcx> for RustcMustMatchExhaustively {
                     }
                 }
             }
-            hir::ExprKind::If(expr, ..) if let ExprKind::Let(expr) = expr.kind => {
+            hir::ExprKind::Let(expr, ..) => {
                 if let Some(attr_span) = is_rustc_must_match_exhaustively(cx, expr.init.hir_id) {
                     cx.emit_span_lint(
                         RUSTC_MUST_MATCH_EXHAUSTIVELY,
@@ -791,7 +792,29 @@ impl<'tcx> LateLintPass<'tcx> for RustcMustMatchExhaustively {
                         RustcMustMatchExhaustivelyNotExhaustive {
                             attr_span,
                             pat_span: expr.span,
-                            message: "using if let only matches on one variant (try using `match`)",
+                            message: "using `if let` only matches on one variant (try using `match`)",
+                        },
+                    );
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx rustc_hir::Stmt<'tcx>) {
+        match stmt.kind {
+            rustc_hir::StmtKind::Let(let_stmt) => {
+                if let_stmt.els.is_some()
+                    && let Some(attr_span) =
+                        is_rustc_must_match_exhaustively(cx, let_stmt.pat.hir_id)
+                {
+                    cx.emit_span_lint(
+                        RUSTC_MUST_MATCH_EXHAUSTIVELY,
+                        let_stmt.span,
+                        RustcMustMatchExhaustivelyNotExhaustive {
+                            attr_span,
+                            pat_span: let_stmt.pat.span,
+                            message: "using `let else` only matches on one variant (try using `match`)",
                         },
                     );
                 }

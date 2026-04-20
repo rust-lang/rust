@@ -2,7 +2,7 @@
 macro_rules! m {
     (begin $ard:ident end) => {
         [$ard] //~ ERROR: expected expression, found `$`
-        //~^ HELP: there is a macro metavariable with similar name
+        //~^ HELP: there is a macro metavariable with a similar name
     };
 }
 

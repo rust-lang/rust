@@ -176,16 +176,5 @@ help: did you mean to invoke the function?
 LL |     let _ = (clos as fn(u32) -> u32)() as usize;
    |                                     ++
 
-error: casting function pointer `foo` to `*const ()`
-  --> tests/ui/fn_to_numeric_cast_any.rs:84:13
-   |
-LL |     let _ = foo as *const ();
-   |             ^^^^^^^^^^^^^^^^
-   |
-help: did you mean to invoke the function?
-   |
-LL |     let _ = foo() as *const ();
-   |                ++
-
-error: aborting due to 17 previous errors
+error: aborting due to 16 previous errors
 

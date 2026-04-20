@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, GenericArgsRef, Region, RegionVid, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    self, Flags, GenericArgsRef, Region, RegionVid, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
     TypeVisitor,
 };
 use tracing::{debug, instrument};

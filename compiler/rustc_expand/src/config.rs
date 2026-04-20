@@ -7,13 +7,13 @@ use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree,
 };
 use rustc_ast::{
-    self as ast, AttrItemKind, AttrKind, AttrStyle, Attribute, DUMMY_NODE_ID, EarlyParsedAttribute,
-    HasAttrs, HasTokens, MetaItem, MetaItemInner, NodeId, NormalAttr,
+    self as ast, AttrItemKind, AttrKind, AttrStyle, Attribute, EarlyParsedAttribute, HasAttrs,
+    HasTokens, MetaItem, MetaItemInner, NodeId, NormalAttr,
 };
 use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
-    self as attr, AttributeParser, CFG_TEMPLATE, EvalConfigResult, ShouldEmit, eval_config_entry,
-    parse_cfg,
+    self as attr, AttributeParser, AttributeSafety, CFG_TEMPLATE, EvalConfigResult, ShouldEmit,
+    eval_config_entry, parse_cfg,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_errors::msg;
@@ -28,7 +28,7 @@ use rustc_hir::{
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::parse::feature_err;
-use rustc_span::{DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
+use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
 use tracing::instrument;
 
 use crate::errors::{
@@ -51,14 +51,7 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
     let mut features = Features::default();
 
     if let Some(hir::Attribute::Parsed(AttributeKind::Feature(feature_idents, _))) =
-        AttributeParser::parse_limited(
-            sess,
-            krate_attrs,
-            &[sym::feature],
-            DUMMY_SP,
-            DUMMY_NODE_ID,
-            Some(&features),
-        )
+        AttributeParser::parse_limited(sess, krate_attrs, &[sym::feature])
     {
         for feature_ident in feature_idents {
             // If the enabled feature has been removed, issue an error.
@@ -106,33 +99,24 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
 
             // If the enabled feature is unstable, record it.
             if UNSTABLE_LANG_FEATURES.iter().find(|f| feature_ident.name == f.name).is_some() {
-                // When the ICE comes from a standard library crate, there's a chance that the person
-                // hitting the ICE may be using -Zbuild-std or similar with an untested target.
-                // The bug is probably in the standard library and not the compiler in that case,
-                // but that doesn't really matter - we want a bug report.
-                if features.internal(feature_ident.name)
-                    && !STDLIB_STABLE_CRATES.contains(&crate_name)
-                {
-                    sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
-                }
-
                 features.set_enabled_lang_feature(EnabledLangFeature {
                     gate_name: feature_ident.name,
                     attr_sp: feature_ident.span,
                     stable_since: None,
                 });
-                continue;
+            } else {
+                // Otherwise, the feature is unknown. Enable it as a lib feature.
+                // It will be checked later whether the feature really exists.
+                features.set_enabled_lib_feature(EnabledLibFeature {
+                    gate_name: feature_ident.name,
+                    attr_sp: feature_ident.span,
+                });
             }
 
-            // Otherwise, the feature is unknown. Enable it as a lib feature.
-            // It will be checked later whether the feature really exists.
-            features.set_enabled_lib_feature(EnabledLibFeature {
-                gate_name: feature_ident.name,
-                attr_sp: feature_ident.span,
-            });
-
-            // Similar to above, detect internal lib features to suppress
-            // the ICE message that asks for a report.
+            // When the ICE comes from a standard library crate, there's a chance that the person
+            // hitting the ICE may be using -Zbuild-std or similar with an untested target.
+            // The bug is probably in the standard library and not the compiler in that case,
+            // but that doesn't really matter - we want a bug report.
             if features.internal(feature_ident.name) && !STDLIB_STABLE_CRATES.contains(&crate_name)
             {
                 sess.using_internal_features.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -285,7 +269,7 @@ impl<'a> StripUnconfigured<'a> {
 
         let Some((cfg_predicate, expanded_attrs)) = rustc_attr_parsing::parse_cfg_attr(
             cfg_attr,
-            &self.sess,
+            self.sess,
             self.features,
             self.lint_node_id,
         ) else {
@@ -407,6 +391,7 @@ impl<'a> StripUnconfigured<'a> {
             parse_cfg,
             &CFG_TEMPLATE,
             AllowExprMetavar::Yes,
+            AttributeSafety::Normal,
         ) else {
             // Cfg attribute was not parsable, give up
             return EvalConfigResult::True;
@@ -422,7 +407,7 @@ impl<'a> StripUnconfigured<'a> {
             && !attr.span.allows_unstable(sym::stmt_expr_attributes)
         {
             let mut err = feature_err(
-                &self.sess,
+                self.sess,
                 sym::stmt_expr_attributes,
                 attr.span,
                 msg!("attributes on expressions are experimental"),

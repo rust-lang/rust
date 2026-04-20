@@ -4,7 +4,7 @@
 use std::mem;
 use std::sync::Arc;
 
-use rustc_ast::{self as ast, Crate, DUMMY_NODE_ID, NodeId};
+use rustc_ast::{self as ast, Crate, DelegationSuffixes, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
@@ -16,9 +16,8 @@ use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{
     AstFragment, AstFragmentKind, Invocation, InvocationKind, SupportsMacroExpansion,
 };
-use rustc_feature::Features;
 use rustc_hir::attrs::{AttributeKind, CfgEntry, StrippedCfgItem};
-use rustc_hir::def::{self, DefKind, MacroKinds, Namespace, NonMacroAttrKind};
+use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::{Attribute, StabilityLevel};
 use rustc_middle::middle::stability;
@@ -43,11 +42,9 @@ use crate::hygiene::Macros20NormalizedSyntaxContext;
 use crate::imports::Import;
 use crate::{
     BindingKey, CacheCell, CmResolver, Decl, DeclKind, DeriveData, Determinacy, Finalize, IdentKey,
-    InvocationParent, MacroData, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult,
+    InvocationParent, MacroData, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, Res,
     ResolutionError, Resolver, ScopeSet, Segment, Used,
 };
-
-type Res = def::Res<NodeId>;
 
 /// Name declaration produced by a `macro_rules` item definition.
 /// Not modularized, can shadow previous `macro_rules` definitions, etc.
@@ -125,26 +122,18 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
 
 pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
     let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
-    registered_tools_ast(tcx.dcx(), pre_configured_attrs, tcx.sess, tcx.features())
+    registered_tools_ast(tcx.dcx(), pre_configured_attrs, tcx.sess)
 }
 
 pub fn registered_tools_ast(
     dcx: DiagCtxtHandle<'_>,
     pre_configured_attrs: &[ast::Attribute],
     sess: &Session,
-    features: &Features,
 ) -> RegisteredTools {
     let mut registered_tools = RegisteredTools::default();
 
     if let Some(Attribute::Parsed(AttributeKind::RegisterTool(tools, _))) =
-        AttributeParser::parse_limited(
-            sess,
-            pre_configured_attrs,
-            &[sym::register_tool],
-            DUMMY_SP,
-            DUMMY_NODE_ID,
-            Some(features),
-        )
+        AttributeParser::parse_limited(sess, pre_configured_attrs, &[sym::register_tool])
     {
         for tool in tools {
             if let Some(old_tool) = registered_tools.replace(tool) {
@@ -242,8 +231,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             )
         });
 
-        let parent_scope =
-            parent_module.map_or(self.empty_module, |def_id| self.expect_module(def_id));
+        let parent_scope = parent_module
+            .map_or(self.empty_module, |def_id| self.expect_module(def_id).expect_local());
         self.ast_transform_scopes.insert(expn_id, parent_scope);
 
         expn_id
@@ -286,7 +275,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             InvocationKind::Derive { ref path, .. } => (path, MacroKind::Derive),
             InvocationKind::GlobDelegation { ref item, .. } => {
                 let ast::AssocItemKind::DelegationMac(deleg) = &item.kind else { unreachable!() };
-                deleg_impl = Some(self.invocation_parent(invoc_id));
+                let DelegationSuffixes::Glob(star_span) = deleg.suffixes else { unreachable!() };
+                deleg_impl = Some((self.invocation_parent(invoc_id), star_span));
                 // It is sufficient to consider glob delegation a bang macro for now.
                 (&deleg.prefix, MacroKind::Bang)
             }
@@ -530,6 +520,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         &self,
         trait_def_id: DefId,
         impl_def_id: LocalDefId,
+        star_span: Span,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate> {
         let target_trait = self.expect_module(trait_def_id);
         if !target_trait.unexpanded_invocations.borrow().is_empty() {
@@ -549,13 +540,13 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
 
         let mut idents = Vec::new();
         target_trait.for_each_child(self, |this, ident, orig_ident_span, ns, _binding| {
-            // FIXME: Adjust hygiene for idents from globs, like for glob imports.
             if let Some(overriding_keys) = this.impl_binding_keys.get(&impl_def_id)
                 && overriding_keys.contains(&BindingKey::new(ident, ns))
             {
                 // The name is overridden, do not produce it from the glob delegation.
             } else {
-                idents.push((ident.orig(orig_ident_span), None));
+                // FIXME: Adjust hygiene for idents from globs, like for glob imports.
+                idents.push((ident.orig(star_span.with_ctxt(orig_ident_span.ctxt())), None));
             }
         });
         Ok(idents)
@@ -579,7 +570,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         node_id: NodeId,
         force: bool,
-        deleg_impl: Option<LocalDefId>,
+        deleg_impl: Option<(LocalDefId, Span)>,
         invoc_in_mod_inert_attr: Option<LocalDefId>,
         suggestion_span: Option<Span>,
     ) -> Result<(Arc<SyntaxExtension>, Res), Indeterminate> {
@@ -792,7 +783,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         kind: MacroKind,
         parent_scope: &ParentScope<'ra>,
         force: bool,
-        deleg_impl: Option<LocalDefId>,
+        deleg_impl: Option<(LocalDefId, Span)>,
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
         ignore_import: Option<Import<'ra>>,
         suggestion_span: Option<Span>,
@@ -877,10 +868,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let res = res?;
         let ext = match deleg_impl {
-            Some(impl_def_id) => match res {
-                def::Res::Def(DefKind::Trait, def_id) => {
+            Some((impl_def_id, star_span)) => match res {
+                Res::Def(DefKind::Trait, def_id) => {
                     let edition = self.tcx.sess.edition();
-                    Some(Arc::new(SyntaxExtension::glob_delegation(def_id, impl_def_id, edition)))
+                    Some(Arc::new(SyntaxExtension::glob_delegation(
+                        def_id,
+                        impl_def_id,
+                        star_span,
+                        edition,
+                    )))
                 }
                 _ => None,
             },

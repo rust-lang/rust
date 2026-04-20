@@ -9,10 +9,12 @@
 //! [docs]: https://doc.rust-lang.org/stable/rustdoc/#using-standalone-markdown-files
 
 use std::fmt::{self, Write as _};
-use std::fs::{File, create_dir_all, read_to_string};
+use std::fs::{File, create_dir_all};
 use std::io::prelude::*;
-use std::path::Path;
+use std::path::PathBuf;
+use std::sync::Arc;
 
+use rustc_span::SourceFile;
 use rustc_span::edition::Edition;
 
 use crate::config::RenderOptions;
@@ -43,8 +45,8 @@ fn extract_leading_metadata(s: &str) -> (Vec<&str>, &str) {
 /// (e.g., output = "bar" => "bar/foo.html").
 ///
 /// Requires session globals to be available, for symbol interning.
-pub(crate) fn render_and_write<P: AsRef<Path>>(
-    input: P,
+pub(crate) fn render_and_write(
+    input: Arc<SourceFile>,
     options: RenderOptions,
     edition: Edition,
 ) -> Result<(), String> {
@@ -52,9 +54,9 @@ pub(crate) fn render_and_write<P: AsRef<Path>>(
         return Err(format!("{output}: {e}", output = options.output.display()));
     }
 
-    let input = input.as_ref();
+    let input_path = input.name.clone().into_local_path().unwrap_or(PathBuf::new());
     let mut output = options.output;
-    output.push(input.file_name().unwrap());
+    output.push(input_path.file_name().unwrap());
     output.set_extension("html");
 
     let mut css = String::new();
@@ -63,8 +65,7 @@ pub(crate) fn render_and_write<P: AsRef<Path>>(
             .expect("Writing to a String can't fail");
     }
 
-    let input_str =
-        read_to_string(input).map_err(|err| format!("{input}: {err}", input = input.display()))?;
+    let input_str = input.src.as_ref().map(|src| &src[..]).unwrap_or("");
     let playground_url = options.markdown_playground_url.or(options.playground_url);
     let playground = playground_url.map(|url| markdown::Playground { crate_name: None, url });
 

@@ -19,5 +19,6 @@ extern crate alloc;
 // CHECK-NEXT: [[C:%[0-9]]] = bitcast <16 x i1> [[B]] to i16
 #[no_mangle]
 pub fn lower_while_ascii(s: &str) -> (alloc::string::String, &str) {
-    alloc::str::convert_while_ascii(s, u8::to_ascii_lowercase)
+    // SAFETY: `to_ascii_lowercase` preserves ASCII bytes.
+    unsafe { alloc::str::convert_while_ascii(s, u8::to_ascii_lowercase) }
 }

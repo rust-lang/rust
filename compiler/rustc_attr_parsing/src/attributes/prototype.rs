@@ -5,7 +5,6 @@ use rustc_hir::Target;
 use rustc_hir::attrs::{AttributeKind, MirDialect, MirPhase};
 use rustc_span::{Span, Symbol, sym};
 
-use super::OnDuplicate;
 use crate::attributes::SingleAttributeParser;
 use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
@@ -17,8 +16,6 @@ pub(crate) struct CustomMirParser;
 
 impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
     const PATH: &[rustc_span::Symbol] = &[sym::custom_mir];
-
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
 

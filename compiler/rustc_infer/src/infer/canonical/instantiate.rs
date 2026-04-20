@@ -8,10 +8,9 @@
 
 use rustc_macros::extension;
 use rustc_middle::ty::{
-    self, DelayedMap, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitableExt, TypeVisitor,
+    self, DelayedMap, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_type_ir::{TypeFlags, TypeVisitable};
 
 use crate::infer::canonical::{Canonical, CanonicalVarValues};
 

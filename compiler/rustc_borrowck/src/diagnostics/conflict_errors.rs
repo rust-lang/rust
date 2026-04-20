@@ -754,19 +754,19 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             // Test the callee's predicates, substituting in `ref_ty` for the moved argument type.
-            clauses.instantiate(tcx, new_args).predicates.iter().all(|&(mut clause)| {
+            clauses.instantiate(tcx, new_args).predicates.iter().all(|clause| {
                 // Normalize before testing to see through type aliases and projections.
-                if let Ok(normalized) = tcx.try_normalize_erasing_regions(
-                    self.infcx.typing_env(self.infcx.param_env),
-                    clause,
-                ) {
-                    clause = normalized;
-                }
+                let normalized = tcx
+                    .try_normalize_erasing_regions(
+                        self.infcx.typing_env(self.infcx.param_env),
+                        *clause,
+                    )
+                    .unwrap_or_else(|_| clause.skip_norm_wip());
                 self.infcx.predicate_must_hold_modulo_regions(&Obligation::new(
                     tcx,
                     ObligationCause::dummy(),
                     self.infcx.param_env,
-                    clause,
+                    normalized,
                 ))
             })
         }) {
@@ -4040,23 +4040,74 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         if let Some(decl) = local_decl
             && decl.can_be_made_mutable()
         {
-            let is_for_loop = matches!(
-                            decl.local_info(),
-                            LocalInfo::User(BindingForm::Var(VarBindingForm {
-                                opt_match_place: Some((_, match_span)),
-                                ..
-                            })) if matches!(match_span.desugaring_kind(), Some(DesugaringKind::ForLoop))
-            );
-            let message = if is_for_loop
+            let mut is_for_loop = false;
+            let mut is_ref_pattern = false;
+            if let LocalInfo::User(BindingForm::Var(VarBindingForm {
+                opt_match_place: Some((_, match_span)),
+                ..
+            })) = *decl.local_info()
+            {
+                if matches!(match_span.desugaring_kind(), Some(DesugaringKind::ForLoop)) {
+                    is_for_loop = true;
+
+                    if let Some(body) = self.infcx.tcx.hir_maybe_body_owned_by(self.mir_def_id()) {
+                        struct RefPatternFinder<'tcx> {
+                            tcx: TyCtxt<'tcx>,
+                            binding_span: Span,
+                            is_ref_pattern: bool,
+                        }
+
+                        impl<'tcx> Visitor<'tcx> for RefPatternFinder<'tcx> {
+                            type NestedFilter = OnlyBodies;
+
+                            fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                                self.tcx
+                            }
+
+                            fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
+                                if !self.is_ref_pattern
+                                    && let hir::PatKind::Binding(_, _, ident, _) = pat.kind
+                                    && ident.span == self.binding_span
+                                {
+                                    self.is_ref_pattern =
+                                        self.tcx.hir_parent_iter(pat.hir_id).any(|(_, node)| {
+                                            matches!(
+                                                node,
+                                                hir::Node::Pat(hir::Pat {
+                                                    kind: hir::PatKind::Ref(..),
+                                                    ..
+                                                })
+                                            )
+                                        });
+                                }
+                                hir::intravisit::walk_pat(self, pat);
+                            }
+                        }
+
+                        let mut finder = RefPatternFinder {
+                            tcx: self.infcx.tcx,
+                            binding_span: decl.source_info.span,
+                            is_ref_pattern: false,
+                        };
+
+                        finder.visit_body(body);
+                        is_ref_pattern = finder.is_ref_pattern;
+                    }
+                }
+            }
+
+            let (span, message) = if is_for_loop
+                && is_ref_pattern
                 && let Ok(binding_name) =
                     self.infcx.tcx.sess.source_map().span_to_snippet(decl.source_info.span)
             {
-                format!("(mut {}) ", binding_name)
+                (decl.source_info.span, format!("(mut {})", binding_name))
             } else {
-                "mut ".to_string()
+                (decl.source_info.span.shrink_to_lo(), "mut ".to_string())
             };
+
             err.span_suggestion_verbose(
-                decl.source_info.span.shrink_to_lo(),
+                span,
                 "consider making this binding mutable",
                 message,
                 Applicability::MachineApplicable,
@@ -4171,11 +4222,20 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             if is_closure {
                 None
             } else {
-                let ty = self.infcx.tcx.type_of(self.mir_def_id()).instantiate_identity();
+                let ty = self
+                    .infcx
+                    .tcx
+                    .type_of(self.mir_def_id())
+                    .instantiate_identity()
+                    .skip_norm_wip();
                 match ty.kind() {
                     ty::FnDef(_, _) | ty::FnPtr(..) => self.annotate_fn_sig(
                         self.mir_def_id(),
-                        self.infcx.tcx.fn_sig(self.mir_def_id()).instantiate_identity(),
+                        self.infcx
+                            .tcx
+                            .fn_sig(self.mir_def_id())
+                            .instantiate_identity()
+                            .skip_norm_wip(),
                     ),
                     _ => None,
                 }

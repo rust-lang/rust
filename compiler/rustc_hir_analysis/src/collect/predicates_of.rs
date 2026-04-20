@@ -92,8 +92,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             // parent predicates would hold, and also so that the param-env
             // inherits these predicates as assumptions.
             let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
-            predicates
-                .extend(tcx.explicit_predicates_of(fn_def_id).instantiate_own(tcx, identity_args));
+            predicates.extend(
+                tcx.explicit_predicates_of(fn_def_id)
+                    .instantiate_own(tcx, identity_args)
+                    .map(|(c, s)| (c.skip_norm_wip(), s)),
+            );
 
             // We also install bidirectional outlives predicates for the RPITIT
             // to keep the duplicates lifetimes from opaque lowering in sync.
@@ -118,12 +121,15 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
 
             let impl_assoc_identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
             let impl_def_id = tcx.parent(fn_def_id);
-            let impl_trait_ref_args = tcx.impl_trait_ref(impl_def_id).instantiate_identity().args;
+            let impl_trait_ref_args =
+                tcx.impl_trait_ref(impl_def_id).instantiate_identity().skip_norm_wip().args;
 
             let impl_assoc_args =
                 impl_assoc_identity_args.rebase_onto(tcx, impl_def_id, impl_trait_ref_args);
 
-            let impl_predicates = trait_assoc_predicates.instantiate_own(tcx, impl_assoc_args);
+            let impl_predicates = trait_assoc_predicates
+                .instantiate_own(tcx, impl_assoc_args)
+                .map(|(c, s)| (c.skip_norm_wip(), s));
 
             return ty::GenericPredicates {
                 parent: Some(impl_def_id),
@@ -161,8 +167,9 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 if let Some(of_trait) = impl_.of_trait
                     && of_trait.defaultness.is_default()
                 {
-                    is_default_impl_trait =
-                        Some(ty::Binder::dummy(tcx.impl_trait_ref(def_id).instantiate_identity()));
+                    is_default_impl_trait = Some(ty::Binder::dummy(
+                        tcx.impl_trait_ref(def_id).instantiate_identity().skip_norm_wip(),
+                    ));
                 }
             }
             ItemKind::Trait(_, _, _, _, _, _, self_bounds, ..)
@@ -248,7 +255,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             }
             hir::GenericParamKind::Const { .. } => {
                 let param_def_id = param.def_id.to_def_id();
-                let ct_ty = tcx.type_of(param_def_id).instantiate_identity();
+                let ct_ty = tcx.type_of(param_def_id).instantiate_identity().skip_norm_wip();
                 let ct = icx.lowerer().lower_const_param(param_def_id, param.hir_id);
                 predicates
                     .insert((ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx), param.span));
@@ -345,9 +352,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // in trait checking. See `setup_constraining_predicates`
     // for details.
     if let Node::Item(&Item { kind: ItemKind::Impl(impl_), .. }) = node {
-        let self_ty = tcx.type_of(def_id).instantiate_identity();
-        let trait_ref =
-            impl_.of_trait.is_some().then(|| tcx.impl_trait_ref(def_id).instantiate_identity());
+        let self_ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
+        let trait_ref = impl_
+            .of_trait
+            .is_some()
+            .then(|| tcx.impl_trait_ref(def_id).instantiate_identity().skip_norm_wip());
         cgp::setup_constraining_predicates(
             tcx,
             &mut predicates,
@@ -465,18 +474,18 @@ fn const_evaluatable_predicates_of<'tcx>(
         if impl_.of_trait.is_some() {
             debug!("visit impl trait_ref");
             let trait_ref = tcx.impl_trait_ref(def_id);
-            trait_ref.instantiate_identity().visit_with(&mut collector);
+            trait_ref.instantiate_identity().skip_norm_wip().visit_with(&mut collector);
         }
 
         debug!("visit self_ty");
         let self_ty = tcx.type_of(def_id);
-        self_ty.instantiate_identity().visit_with(&mut collector);
+        self_ty.instantiate_identity().skip_norm_wip().visit_with(&mut collector);
     }
 
     if let Some(_) = tcx.hir_fn_sig_by_hir_id(hir_id) {
         debug!("visit fn sig");
         let fn_sig = tcx.fn_sig(def_id);
-        let fn_sig = fn_sig.instantiate_identity();
+        let fn_sig = fn_sig.instantiate_identity().skip_norm_wip();
         debug!(?fn_sig);
         fn_sig.visit_with(&mut collector);
     }
@@ -978,6 +987,32 @@ impl<'tcx> ItemCtxt<'tcx> {
         filter: PredicateFilter,
     ) -> Vec<(ty::Clause<'tcx>, Span)> {
         let mut bounds = Vec::new();
+
+        if let PredicateFilter::All = filter {
+            for param in hir_generics.params {
+                match param.kind {
+                    hir::GenericParamKind::Type { .. } => {
+                        let param_ty = self.lowerer().lower_ty_param(param.hir_id);
+                        self.lowerer().add_implicit_sizedness_bounds(
+                            &mut bounds,
+                            param_ty,
+                            &[],
+                            ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
+                            param.span,
+                        );
+                        self.lowerer().add_default_traits(
+                            &mut bounds,
+                            param_ty,
+                            &[],
+                            ImpliedBoundsContext::TyParam(param.def_id, hir_generics.predicates),
+                            param.span,
+                        );
+                    }
+                    hir::GenericParamKind::Lifetime { .. }
+                    | hir::GenericParamKind::Const { .. } => {}
+                }
+            }
+        }
 
         for predicate in hir_generics.predicates {
             let hir_id = predicate.hir_id;

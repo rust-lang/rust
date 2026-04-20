@@ -32,6 +32,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             return;
         }
 
+        // If the MIR body was constructed via `construct_error` (because an
+        // earlier pass like match checking failed), its args may not match
+        // the user-provided signature (e.g. a coroutine with too many
+        // parameters). Bail out as this can cause panic,
+        // see <https://github.com/rust-lang/rust/issues/139570>.
+        if self.body.tainted_by_errors.is_some() {
+            return;
+        }
+
         let user_provided_poly_sig = self.tcx().closure_user_provided_sig(mir_def_id);
 
         // Instantiate the canonicalized variables from user-provided signature
@@ -94,9 +103,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             user_provided_sig = self.tcx().mk_fn_sig(
                 user_provided_sig.inputs().iter().copied(),
                 output_ty,
-                user_provided_sig.c_variadic,
-                user_provided_sig.safety,
-                user_provided_sig.abi,
+                user_provided_sig.fn_sig_kind,
             );
         }
 

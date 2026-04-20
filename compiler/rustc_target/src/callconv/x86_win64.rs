@@ -1,4 +1,4 @@
-use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind, Size, TyAbiInterface};
+use rustc_abi::{BackendRepr, Float, Integer, Primitive, Size, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg};
 use crate::spec::{HasTargetSpec, RustcAbi};
@@ -33,8 +33,7 @@ where
                     } else {
                         // `i128` is returned in xmm0 by Clang and GCC
                         // FIXME(#134288): This may change for the `-msvc` targets in the future.
-                        let reg = Reg { kind: RegKind::Vector, size: Size::from_bits(128) };
-                        a.cast_to(reg);
+                        a.cast_to(Reg::opaque_vector(Size::from_bits(128)));
                     }
                 } else if a.layout.size.bytes() > 8
                     && !matches!(scalar.primitive(), Primitive::Float(Float::F128))

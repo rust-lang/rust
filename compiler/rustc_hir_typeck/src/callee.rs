@@ -12,7 +12,7 @@ use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
@@ -89,11 +89,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match *autoderef.final_ty().kind() {
             ty::FnDef(def_id, _) => {
-                let abi = self.tcx.fn_sig(def_id).skip_binder().skip_binder().abi;
+                let abi = self.tcx.fn_sig(def_id).skip_binder().skip_binder().abi();
                 self.check_call_abi(abi, call_expr.span);
             }
             ty::FnPtr(_, header) => {
-                self.check_call_abi(header.abi, call_expr.span);
+                self.check_call_abi(header.abi(), call_expr.span);
             }
             _ => { /* cannot have a non-rust abi */ }
         }
@@ -275,9 +275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx.coroutine_for_closure(def_id),
                         tupled_upvars_ty,
                     ),
-                    coroutine_closure_sig.c_variadic,
-                    coroutine_closure_sig.safety,
-                    coroutine_closure_sig.abi,
+                    coroutine_closure_sig.fn_sig_kind,
                 );
                 let adjustments = self.adjust_steps(autoderef);
                 self.record_deferred_call_resolution(
@@ -542,7 +540,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (fn_sig, def_id) = match *callee_ty.kind() {
             ty::FnDef(def_id, args) => {
                 self.enforce_context_effects(Some(call_expr.hir_id), call_expr.span, def_id, args);
-                let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
+                let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args).skip_norm_wip();
 
                 // Unit testing: function items annotated with
                 // `#[rustc_evaluate_where_clauses]` trigger special output
@@ -551,6 +549,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let predicates = self.tcx.predicates_of(def_id);
                     let predicates = predicates.instantiate(self.tcx, args);
                     for (predicate, predicate_span) in predicates {
+                        let predicate = predicate.skip_norm_wip();
                         let obligation = Obligation::new(
                             self.tcx,
                             ObligationCause::dummy_with_span(callee_expr.span),
@@ -586,7 +585,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             BoundRegionConversionTime::FnCall,
             fn_sig,
         );
-        let fn_sig = self.normalize(call_expr.span, fn_sig);
+        let fn_sig = self.normalize(call_expr.span, Unnormalized::new_wip(fn_sig));
 
         self.check_argument_types(
             call_expr.span,
@@ -595,12 +594,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn_sig.output(),
             expected,
             arg_exprs,
-            fn_sig.c_variadic,
+            fn_sig.c_variadic(),
             TupleArgumentsFlag::DontTupleArguments,
             def_id,
         );
 
-        if fn_sig.abi == rustc_abi::ExternAbi::RustCall {
+        if fn_sig.abi() == rustc_abi::ExternAbi::RustCall {
             let sp = arg_exprs.last().map_or(call_expr.span, |expr| expr.span);
             if let Some(ty) = fn_sig.inputs().last().copied() {
                 self.register_bound(
@@ -905,7 +904,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn_sig.output(),
             expected,
             arg_exprs,
-            fn_sig.c_variadic,
+            fn_sig.c_variadic(),
             TupleArgumentsFlag::TupleArguments,
             Some(closure_def_id.to_def_id()),
         );
@@ -961,7 +960,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx,
                     cause,
                     self.param_env,
-                    cond.to_host_effect_clause(self.tcx, host),
+                    cond.to_host_effect_clause(self.tcx, host).skip_norm_wip(),
                 ));
             }
         } else {
@@ -984,7 +983,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             method.sig.output(),
             expected,
             arg_exprs,
-            method.sig.c_variadic,
+            method.sig.c_variadic(),
             TupleArgumentsFlag::TupleArguments,
             Some(method.def_id),
         );

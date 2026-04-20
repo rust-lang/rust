@@ -8,13 +8,13 @@
 extern crate a;
 
 #[cfg(rpass1)]
-pub fn use_X() -> u32 {
+pub fn use_x() -> u32 {
     let x: a::X = 22;
     x as u32
 }
 
 #[cfg(rpass2)]
-pub fn use_X() -> u32 {
+pub fn use_x() -> u32 {
     22
 }
 

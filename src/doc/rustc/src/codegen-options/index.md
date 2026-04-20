@@ -655,16 +655,6 @@ deleted once compilation finishes. It takes one of the following values:
 * `y`, `yes`, `on`, `true` or no value: save temporary files.
 * `n`, `no`, `off` or `false`: delete temporary files (the default).
 
-## soft-float
-
-This option controls whether `rustc` generates code that emulates floating
-point instructions in software. It takes one of the following values:
-
-* `y`, `yes`, `on`, `true` or no value: use soft floats.
-* `n`, `no`, `off` or `false`: use hardware floats (the default).
-
-This flag only works on `*eabihf` targets and **is unsound and deprecated**.
-
 ## split-debuginfo
 
 This option controls the emission of "split debuginfo" for debug information

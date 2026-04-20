@@ -449,6 +449,16 @@ impl Rustc {
         self.cmd.arg("-Zcodegen-source-order");
         self
     }
+
+    /// Specify `-Z function-sections={yes, no}`.
+    pub fn function_sections(&mut self, enable: bool) -> &mut Self {
+        let flag = match enable {
+            true => "-Zfunction-sections=yes",
+            false => "-Zfunction-sections=no",
+        };
+        self.cmd.arg(flag);
+        self
+    }
 }
 
 /// Query the sysroot path corresponding `rustc --print=sysroot`.

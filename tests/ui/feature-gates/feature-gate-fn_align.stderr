@@ -22,10 +22,12 @@ error[E0539]: malformed `rustc_align` attribute input
   --> $DIR/feature-gate-fn_align.rs:12:5
    |
 LL |     #[rustc_align]
-   |     ^^^^^^^^^^^^^^
-   |     |
-   |     expected this to be a list
-   |     help: must be of the form: `#[rustc_align(<alignment in bytes>)]`
+   |     ^^^^^^^^^^^^^^ expected this to be a list
+   |
+help: must be of the form
+   |
+LL |     #[rustc_align(<alignment in bytes>)]
+   |                  ++++++++++++++++++++++
 
 error: aborting due to 3 previous errors
 

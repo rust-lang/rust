@@ -35,7 +35,7 @@ pub(super) fn check<'tcx>(
 
             // Only care about `impl PartialOrd<Foo> for Foo`
             // For `impl PartialOrd<B> for A, input_types is [A, B]
-            if trait_ref.instantiate_identity().args.type_at(1) == ty {
+            if trait_ref.instantiate_identity().skip_norm_wip().args.type_at(1) == ty {
                 let mess = if partial_ord_is_automatically_derived {
                     "you are implementing `Ord` explicitly but have derived `PartialOrd`"
                 } else {

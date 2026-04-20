@@ -1,4 +1,4 @@
-//@ revisions: windows-x86-gnu windows-x86-msvc
+//@ revisions: windows-x86-gnu windows-x86-msvc x86-uefi
 //@ add-minicore
 //@ assembly-output: emit-asm
 //
@@ -7,6 +7,9 @@
 //
 //@[windows-x86-msvc] compile-flags: --target x86_64-pc-windows-msvc
 //@[windows-x86-msvc] needs-llvm-components: x86
+//
+//@[x86-uefi] compile-flags: --target x86_64-unknown-uefi
+//@[x86-uefi] needs-llvm-components: x86
 
 #![crate_type = "lib"]
 #![feature(no_core)]

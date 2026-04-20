@@ -90,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for MultipleInherentImpl {
             }
 
             for impl_id in impl_ids.iter().map(|id| id.expect_local()) {
-                let impl_ty = cx.tcx.type_of(impl_id).instantiate_identity();
+                let impl_ty = cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip();
                 let hir_id = cx.tcx.local_def_id_to_hir_id(impl_id);
                 let criterion = match self.scope {
                     InherentImplLintScope::Module => Criterion::Module(cx.tcx.parent_module(hir_id)),

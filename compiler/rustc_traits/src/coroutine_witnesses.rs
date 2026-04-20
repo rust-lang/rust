@@ -69,18 +69,18 @@ fn compute_assumptions<'tcx>(
         let region_assumptions = infcx.take_registered_region_assumptions();
         let region_constraints = infcx.take_and_reset_region_constraints();
 
-        let outlives = make_query_region_constraints(
+        let constraints = make_query_region_constraints(
             region_obligations,
             &region_constraints,
             region_assumptions,
         )
-        .outlives
+        .constraints
         .fold_with(&mut OpportunisticRegionResolver::new(&infcx));
 
         tcx.mk_outlives_from_iter(
-            outlives
+            constraints
                 .into_iter()
-                .map(|(o, _)| o)
+                .flat_map(|(constraint, _)| constraint.iter_outlives())
                 // FIXME(higher_ranked_auto): We probably should deeply resolve these before
                 // filtering out infers which only correspond to unconstrained infer regions
                 // which we can sometimes get.

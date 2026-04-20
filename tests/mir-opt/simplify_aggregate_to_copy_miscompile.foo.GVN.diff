@@ -30,8 +30,7 @@
       }
   
       bb2: {
--         StorageLive(_5);
-+         nop;
+          StorageLive(_5);
           _5 = copy (((*_2) as Some).0: i32);
           StorageLive(_7);
 -         _7 = Option::<i32>::None;
@@ -44,8 +43,7 @@
 -         _0 = Option::<i32>::Some(move _8);
 +         _0 = Option::<i32>::Some(copy _5);
           StorageDead(_8);
--         StorageDead(_5);
-+         nop;
+          StorageDead(_5);
           StorageDead(_2);
           return;
       }

@@ -167,7 +167,6 @@ pub(crate) struct CollapseDebugInfoParser;
 
 impl<S: Stage> SingleAttributeParser<S> for CollapseDebugInfoParser {
     const PATH: &[Symbol] = &[sym::collapse_debuginfo];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const TEMPLATE: AttributeTemplate = template!(
         List: &["no", "external", "yes"],
         "https://doc.rust-lang.org/reference/attributes/debugger.html#the-collapse_debuginfo-attribute"
@@ -203,7 +202,6 @@ pub(crate) struct RustcProcMacroDeclsParser;
 
 impl<S: Stage> NoArgsAttributeParser<S> for RustcProcMacroDeclsParser {
     const PATH: &[Symbol] = &[sym::rustc_proc_macro_decls];
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Warn;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Static)]);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcProcMacroDecls;
 }

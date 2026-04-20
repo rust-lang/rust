@@ -1,5 +1,4 @@
 use rustc_hir::attrs::diagnostic::Directive;
-use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
@@ -17,32 +16,16 @@ impl OnUnknownParser {
         args: &ArgParser,
         mode: Mode,
     ) {
-        if !cx.features().diagnostic_on_unknown() {
+        if let Some(features) = cx.features
+            && !features.diagnostic_on_unknown()
+        {
             // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
             return;
         }
         let span = cx.attr_span;
         self.span = Some(span);
 
-        let items = match args {
-            ArgParser::List(items) if !items.is_empty() => items,
-            ArgParser::NoArgs | ArgParser::List(_) => {
-                cx.emit_lint(
-                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    AttributeLintKind::MissingOptionsForOnUnknown,
-                    span,
-                );
-                return;
-            }
-            ArgParser::NameValue(_) => {
-                cx.emit_lint(
-                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    AttributeLintKind::MalformedOnUnknownAttr { span },
-                    span,
-                );
-                return;
-            }
-        };
+        let Some(items) = parse_list(cx, args, mode) else { return };
 
         if let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) {
             merge_directives(cx, &mut self.directive, (span, directive));

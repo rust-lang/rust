@@ -73,7 +73,7 @@ fn visit_implementation_of_drop(checker: &Checker<'_>) -> Result<(), ErrorGuaran
     let tcx = checker.tcx;
     let impl_did = checker.impl_def_id;
     // Destructors only work on local ADT types.
-    match checker.impl_header.trait_ref.instantiate_identity().self_ty().kind() {
+    match checker.impl_header.trait_ref.instantiate_identity().skip_norm_wip().self_ty().kind() {
         ty::Adt(def, _) if def.did().is_local() => return Ok(()),
         ty::Error(_) => return Ok(()),
         _ => {}
@@ -93,7 +93,7 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
     let impl_did = checker.impl_def_id;
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
-    let self_type = impl_header.trait_ref.instantiate_identity().self_ty();
+    let self_type = impl_header.trait_ref.instantiate_identity().skip_norm_wip().self_ty();
     debug!("visit_implementation_of_copy: self_type={:?} (bound)", self_type);
 
     let param_env = tcx.param_env(impl_did);
@@ -142,7 +142,7 @@ fn visit_implementation_of_unpin(checker: &Checker<'_>) -> Result<(), ErrorGuara
     let impl_did = checker.impl_def_id;
     debug!("visit_implementation_of_unpin: impl_did={:?}", impl_did);
 
-    let self_type = impl_header.trait_ref.instantiate_identity().self_ty();
+    let self_type = impl_header.trait_ref.instantiate_identity().skip_norm_wip().self_ty();
     debug!("visit_implementation_of_unpin: self_type={:?}", self_type);
 
     let span = tcx.def_span(impl_did);
@@ -175,7 +175,7 @@ fn visit_implementation_of_const_param_ty(checker: &Checker<'_>) -> Result<(), E
     let tcx = checker.tcx;
     let header = checker.impl_header;
     let impl_did = checker.impl_def_id;
-    let self_type = header.trait_ref.instantiate_identity().self_ty();
+    let self_type = header.trait_ref.instantiate_identity().skip_norm_wip().self_ty();
     assert!(!self_type.has_escaping_bound_vars());
 
     let param_env = tcx.param_env(impl_did);
@@ -259,7 +259,7 @@ fn is_from_coerce_pointee_derive(tcx: TyCtxt<'_>, span: Span) -> bool {
 fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<(), ErrorGuaranteed> {
     let tcx = checker.tcx;
     let impl_did = checker.impl_def_id;
-    let trait_ref = checker.impl_header.trait_ref.instantiate_identity();
+    let trait_ref = checker.impl_header.trait_ref.instantiate_identity().skip_norm_wip();
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}", impl_did);
 
     let span = tcx.def_span(impl_did);
@@ -350,7 +350,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                             ty::TypingEnv::non_body_analysis(tcx, def_a.did()),
                             unnormalized_ty,
                         )
-                        .unwrap_or(unnormalized_ty)
+                        .unwrap_or(unnormalized_ty.skip_norm_wip())
                         .is_phantom_data()
                     {
                         return None;
@@ -445,8 +445,8 @@ pub(crate) fn coerce_unsized_info<'tcx>(
     let coerce_unsized_trait = tcx.require_lang_item(LangItem::CoerceUnsized, span);
     let unsize_trait = tcx.require_lang_item(LangItem::Unsize, span);
 
-    let source = tcx.type_of(impl_did).instantiate_identity();
-    let trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity();
+    let source = tcx.type_of(impl_did).instantiate_identity().skip_norm_wip();
+    let trait_ref = tcx.impl_trait_ref(impl_did).instantiate_identity().skip_norm_wip();
 
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
     let target = trait_ref.args.type_at(1);
@@ -570,7 +570,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                             ty::TypingEnv::non_body_analysis(tcx, def_a.did()),
                             unnormalized_ty,
                         )
-                        .unwrap_or(unnormalized_ty)
+                        .unwrap_or(unnormalized_ty.skip_norm_wip())
                         .is_phantom_data()
                     {
                         return None;
@@ -788,7 +788,8 @@ fn visit_implementation_of_coerce_pointee_validity(
     checker: &Checker<'_>,
 ) -> Result<(), ErrorGuaranteed> {
     let tcx = checker.tcx;
-    let self_ty = tcx.impl_trait_ref(checker.impl_def_id).instantiate_identity().self_ty();
+    let self_ty =
+        tcx.impl_trait_ref(checker.impl_def_id).instantiate_identity().skip_norm_wip().self_ty();
     let span = tcx.def_span(checker.impl_def_id);
     if !tcx.is_builtin_derived(checker.impl_def_id.into()) {
         return Err(tcx.dcx().emit_err(errors::CoercePointeeNoUserValidityAssertion { span }));
