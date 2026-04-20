@@ -255,6 +255,7 @@ impl MetaItemOrLitParser {
     }
 }
 
+// FIXME(scrabsha): once #155696 is merged, update this and mention the higher-level APIs.
 /// Utility that deconstructs a MetaItem into usable parts.
 ///
 /// MetaItems are syntactically extremely flexible, but specific attributes want to parse
@@ -263,7 +264,7 @@ impl MetaItemOrLitParser {
 /// MetaItems consist of some path, and some args. The args could be empty. In other words:
 ///
 /// - `name` -> args are empty
-/// - `name(...)` -> args are a [`list`](ArgParser::list), which is the bit between the parentheses
+/// - `name(...)` -> args are a [`list`](ArgParser::as_list), which is the bit between the parentheses
 /// - `name = value`-> arg is [`name_value`](ArgParser::name_value), where the argument is the
 ///   `= value` part
 ///
