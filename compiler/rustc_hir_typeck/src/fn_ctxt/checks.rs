@@ -3074,10 +3074,10 @@ struct CallCtxt<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> Deref for CallCtxt<'a, 'b, 'tcx> {
-    type Target = &'a FnCtxt<'b, 'tcx>;
+    type Target = FnCtxt<'b, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        &self.fn_ctxt
+        self.fn_ctxt
     }
 }
 

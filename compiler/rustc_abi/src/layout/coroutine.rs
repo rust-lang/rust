@@ -137,8 +137,7 @@ fn coroutine_saved_local_eligibility<VariantIdx: Idx, FieldIdx: Idx, LocalIdx: I
 
 /// Compute the full coroutine layout.
 pub(super) fn layout<
-    'a,
-    F: core::ops::Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + core::fmt::Debug + Copy,
+    F: core::ops::Deref<Target = LayoutData<FieldIdx, VariantIdx>> + core::fmt::Debug + Copy,
     VariantIdx: Idx,
     FieldIdx: Idx,
     LocalIdx: Idx,

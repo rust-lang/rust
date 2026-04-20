@@ -64,7 +64,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // declared list of variants -- they can differ with explicitly assigned discriminants.
         // We use "tag" to refer to how the discriminant is encoded in memory, which can be either
         // straight-forward (`TagEncoding::Direct`) or with a niche (`TagEncoding::Niche`).
-        let (tag_scalar_layout, tag_encoding, tag_field) = match op.layout().variants {
+        let layout = op.layout();
+        let (tag_scalar_layout, tag_encoding, tag_field) = match layout.variants {
             Variants::Empty => {
                 throw_ub!(UninhabitedEnumVariantRead(None));
             }

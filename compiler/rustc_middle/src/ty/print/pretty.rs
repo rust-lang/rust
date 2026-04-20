@@ -2005,10 +2005,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             (ty::ValTreeKind::Leaf(leaf), ty::Ref(_, inner_ty, _)) => {
                 write!(self, "&")?;
-                return self.pretty_print_const_scalar_int(*leaf, inner_ty, print_ty);
+                return self.pretty_print_const_scalar_int(leaf, inner_ty, print_ty);
             }
             (ty::ValTreeKind::Leaf(leaf), _) => {
-                return self.pretty_print_const_scalar_int(*leaf, cv.ty, print_ty);
+                return self.pretty_print_const_scalar_int(leaf, cv.ty, print_ty);
             }
             (_, ty::FnDef(def_id, args)) => {
                 // Never allowed today, but we still encounter them in invalid const args.

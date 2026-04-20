@@ -63,11 +63,11 @@ impl<'tcx> ValTree<'tcx> {
 }
 
 impl<'tcx> Deref for ValTree<'tcx> {
-    type Target = &'tcx ty::ValTreeKind<TyCtxt<'tcx>>;
+    type Target = ty::ValTreeKind<TyCtxt<'tcx>>;
 
     #[inline]
-    fn deref(&self) -> &&'tcx ty::ValTreeKind<TyCtxt<'tcx>> {
-        &self.0.0
+    fn deref(&self) -> &Self::Target {
+        self.0.0
     }
 }
 
@@ -168,7 +168,7 @@ impl<'tcx> Value<'tcx> {
     /// if this constant is some other kind.
     #[inline]
     pub fn to_leaf(self) -> ScalarInt {
-        match &**self.valtree {
+        match &*self.valtree {
             ValTreeKind::Leaf(s) => *s,
             ValTreeKind::Branch(..) => bug!("expected leaf, got {:?}", self),
         }
@@ -178,7 +178,7 @@ impl<'tcx> Value<'tcx> {
     /// if this constant is some other kind.
     #[inline]
     pub fn to_branch(self) -> &'tcx [ty::Const<'tcx>] {
-        match &**self.valtree {
+        match &*self.valtree {
             ValTreeKind::Branch(branch) => &**branch,
             ValTreeKind::Leaf(..) => bug!("expected branch, got {:?}", self),
         }
@@ -186,7 +186,7 @@ impl<'tcx> Value<'tcx> {
 
     /// Attempts to convert to a `ValTreeKind::Leaf` value.
     pub fn try_to_leaf(self) -> Option<ScalarInt> {
-        match &**self.valtree {
+        match &*self.valtree {
             ValTreeKind::Leaf(s) => Some(*s),
             ValTreeKind::Branch(_) => None,
         }
@@ -199,7 +199,7 @@ impl<'tcx> Value<'tcx> {
 
     /// Attempts to convert to a `ValTreeKind::Branch` value.
     pub fn try_to_branch(self) -> Option<&'tcx [ty::Const<'tcx>]> {
-        match &**self.valtree {
+        match &*self.valtree {
             ValTreeKind::Branch(branch) => Some(&**branch),
             ValTreeKind::Leaf(_) => None,
         }
