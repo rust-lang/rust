@@ -2,7 +2,7 @@ use std::hash::{Hash, Hasher as _};
 use std::sync::OnceLock;
 
 use rustc_data_structures::fx::FxHasher;
-use rustc_data_structures::hash_table::{self, HashTable};
+use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
 pub use rustc_data_structures::vec_cache::VecCache;
 use rustc_hir::def_id::LOCAL_CRATE;
@@ -89,9 +89,10 @@ where
         let mut shard = self.cache.lock_shard_by_hash(hash);
         cfg_select! {
             debug_assertions => {
+                use rustc_data_structures::hash_table::Entry::*;
                 match shard.entry(hash, |ent| { ent.key } == key, |ent| make_hash(&{ ent.key })) {
-                    hash_table::Entry::Occupied(_) => panic!("trying to complete query twice"),
-                    hash_table::Entry::Vacant(entry) => entry.insert(PackedCacheEntry { key, value, index }),
+                    Occupied(_) => panic!("trying to complete query twice"),
+                    Vacant(entry) => entry.insert(PackedCacheEntry { key, value, index }),
                 };
             }
             _ => {
