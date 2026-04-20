@@ -4,13 +4,7 @@
 use super::generic;
 use crate::support::Round;
 
-// Placeholder so we can have `fmaf16` in the `Float` trait.
-#[allow(unused)]
-#[cfg(f16_enabled)]
-#[cfg_attr(assert_no_panic, no_panic::no_panic)]
-pub(crate) fn fmaf16(_x: f16, _y: f16, _z: f16) -> f16 {
-    unimplemented!()
-}
+/* See `fmaf16.rs` for that implementation */
 
 /// Floating multiply add (f32)
 ///
@@ -78,8 +72,12 @@ mod tests {
                 (-1.0, -1.0, -1.0, 0.0),
 
                 // Roundtrip
+                (<$f>::MAX, 1.0, 0.0, <$f>::MAX),
+                (<$f>::MAX, <$f>::MAX, 1.0, <$f>::INFINITY),
                 (<$f>::MAX, 1.0, -<$f>::MAX, 0.0),
                 (-<$f>::MAX, 1.0, <$f>::MAX, 0.0),
+                (<$f>::MIN_POSITIVE_NORMAL, 1.0, -<$f>::MIN_POSITIVE_NORMAL, 0.0),
+                (-<$f>::MIN_POSITIVE_NORMAL, 1.0, <$f>::MIN_POSITIVE_NORMAL, 0.0),
                 (<$f>::MIN_POSITIVE_SUBNORMAL, 1.0, -<$f>::MIN_POSITIVE_SUBNORMAL, 0.0),
                 (-<$f>::MIN_POSITIVE_SUBNORMAL, 1.0, <$f>::MIN_POSITIVE_SUBNORMAL, 0.0),
                 (<$f>::MAX, 1.0, -<$f>::MAX, 0.0),
@@ -108,6 +106,12 @@ mod tests {
                 Hex(z)
             );
         }
+    }
+
+    #[test]
+    #[cfg(f16_enabled)]
+    fn check_f16() {
+        check::<f16>(super::super::fmaf16, &cases!(f16));
     }
 
     #[test]

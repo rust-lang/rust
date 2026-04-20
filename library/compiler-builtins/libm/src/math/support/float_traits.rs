@@ -64,13 +64,13 @@ pub trait Float:
     const MIN_POSITIVE_NORMAL: Self;
     const MIN_POSITIVE_SUBNORMAL: Self;
 
-    /// The bitwidth of the float type
+    /// The bitwidth of the float type.
     const BITS: u32;
 
-    /// The bitwidth of the significand
+    /// The bitwidth of the significand (does not include the implicit bit).
     const SIG_BITS: u32;
 
-    /// The bitwidth of the exponent
+    /// The bitwidth of the exponent.
     const EXP_BITS: u32 = Self::BITS - Self::SIG_BITS - 1;
 
     /// The saturated (maximum bitpattern) value of the exponent, i.e. the infinite
@@ -79,7 +79,7 @@ pub trait Float:
     /// This shifted fully right, use `EXP_MASK` for the shifted value.
     const EXP_SAT: u32 = (1 << Self::EXP_BITS) - 1;
 
-    /// The exponent bias value
+    /// The exponent bias value.
     const EXP_BIAS: u32 = Self::EXP_SAT >> 1;
 
     /// Maximum unbiased exponent value.
