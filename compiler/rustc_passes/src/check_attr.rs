@@ -57,13 +57,6 @@ struct DiagnosticOnConstOnlyForNonConstTraitImpls {
     item_span: Span,
 }
 
-#[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_unknown]` can only be applied to `use` statements")]
-struct DiagnosticOnUnknownOnlyForImports {
-    #[label("not an import")]
-    item_span: Span,
-}
-
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
@@ -208,7 +201,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 },
                 Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
                 Attribute::Parsed(AttributeKind::OnUnimplemented{directive,..}) => {self.check_diagnostic_on_unimplemented(hir_id, directive.as_deref())},
-                Attribute::Parsed(AttributeKind::OnUnknown { span, .. }) => { self.check_diagnostic_on_unknown(*span, hir_id, target) },
                 Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)}
                 Attribute::Parsed(AttributeKind::OnMove { directive , .. }) => {
                     self.check_diagnostic_on_move(hir_id, directive.as_deref())
@@ -260,6 +252,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::NoMain
                     | AttributeKind::NoMangle(..)
                     | AttributeKind::NoStd { .. }
+                    | AttributeKind::OnUnknown { .. }
                     | AttributeKind::Optimize(..)
                     | AttributeKind::PanicRuntime
                     | AttributeKind::PatchableFunctionEntry { .. }
@@ -622,19 +615,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     }
                 });
             }
-        }
-    }
-
-    /// Checks if `#[diagnostic::on_unknown]` is applied to a trait impl
-    fn check_diagnostic_on_unknown(&self, attr_span: Span, hir_id: HirId, target: Target) {
-        if !matches!(target, Target::Use) {
-            let item_span = self.tcx.hir_span(hir_id);
-            self.tcx.emit_node_span_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                DiagnosticOnUnknownOnlyForImports { item_span },
-            );
         }
     }
 

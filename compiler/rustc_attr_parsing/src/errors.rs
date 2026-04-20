@@ -267,3 +267,10 @@ pub(crate) struct DiagnosticOnMoveOnlyForAdt;
 #[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_unimplemented]` can only be applied to trait definitions")]
 pub(crate) struct DiagnosticOnUnimplementedOnlyForTraits;
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_unknown]` can only be applied to `use` statements")]
+pub(crate) struct DiagnosticOnUnknownOnlyForImports {
+    #[label("not an import")]
+    pub target_span: Span,
+}
