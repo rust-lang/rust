@@ -527,7 +527,7 @@ declare_features! (
     /// Allows defining gen blocks and `gen fn`.
     (unstable, gen_blocks, "1.75.0", Some(117078)),
     /// Allows using generics in more complex const expressions, based on definitional equality.
-    (unstable, generic_const_args, "1.95.0", Some(151972)),
+    (incomplete, generic_const_args, "1.95.0", Some(151972)),
     /// Allows non-trivial generic constants which have to be shown to successfully evaluate
     /// to a value by being part of an item signature.
     (incomplete, generic_const_exprs, "1.56.0", Some(76560)),
