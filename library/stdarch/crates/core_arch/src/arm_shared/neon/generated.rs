@@ -13400,6 +13400,27 @@ pub fn vget_high_u8(a: uint8x16_t) -> uint8x8_t {
     unsafe { simd_shuffle!(a, a, [8, 9, 10, 11, 12, 13, 14, 15]) }
 }
 #[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vget_high_p64)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(all(test, target_arch = "arm"), assert_instr("vmov"))]
+#[cfg_attr(
+    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
+    assert_instr(ext)
+)]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "neon_intrinsics", since = "1.59.0")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+pub fn vget_high_p64(a: poly64x2_t) -> poly64x1_t {
+    unsafe { transmute(u64x1::new(simd_extract!(a, 1))) }
+}
+#[doc = "Duplicate vector element to vector or scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vget_high_s64)"]
 #[inline]
 #[target_feature(enable = "neon")]
@@ -14085,6 +14106,23 @@ pub fn vget_low_u32(a: uint32x4_t) -> uint32x2_t {
 )]
 pub fn vget_low_u8(a: uint8x16_t) -> uint8x8_t {
     unsafe { simd_shuffle!(a, a, [0, 1, 2, 3, 4, 5, 6, 7]) }
+}
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vget_low_p64)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
+#[cfg_attr(test, assert_instr(nop))]
+#[cfg_attr(
+    not(target_arch = "arm"),
+    stable(feature = "neon_intrinsics", since = "1.59.0")
+)]
+#[cfg_attr(
+    target_arch = "arm",
+    unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")
+)]
+pub fn vget_low_p64(a: poly64x2_t) -> poly64x1_t {
+    unsafe { transmute(u64x1::new(simd_extract!(a, 0))) }
 }
 #[doc = "Duplicate vector element to vector or scalar"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vget_low_s64)"]
