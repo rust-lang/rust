@@ -231,3 +231,14 @@ pub(crate) struct DocUnknownPasses {
     #[label("no longer functions")]
     pub note_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("unknown `doc` attribute `plugins`")]
+#[note(
+    "`doc` attribute `plugins` no longer functions; see issue #44136 <https://github.com/rust-lang/rust/issues/44136> and CVE-2018-1000622 <https://nvd.nist.gov/vuln/detail/CVE-2018-1000622>"
+)]
+#[note("`doc(plugins)` is now a no-op")]
+pub(crate) struct DocUnknownPlugins {
+    #[label("no longer functions")]
+    pub label_span: Span,
+}

@@ -15,8 +15,8 @@ use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::errors::{
     DocAliasDuplicated, DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList,
-    DocAutoCfgHideShowUnexpectedItem, DocUnknownInclude, DocUnknownPasses, DocUnknownSpotlight,
-    IllFormedAttributeInput,
+    DocAutoCfgHideShowUnexpectedItem, DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins,
+    DocUnknownSpotlight, IllFormedAttributeInput,
 };
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
@@ -652,10 +652,11 @@ impl DocParser {
                 );
             }
             Some(sym::plugins) => {
-                cx.emit_lint(
+                let span = path.span();
+                cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::DocUnknownPlugins { span: path.span() },
-                    path.span(),
+                    move |dcx, level| DocUnknownPlugins { label_span: span }.into_diag(dcx, level),
+                    span,
                 );
             }
             Some(name) => {
