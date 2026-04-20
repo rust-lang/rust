@@ -21,6 +21,7 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(box_patterns)]
 #![feature(iter_order_by)]
 #![feature(rustc_attrs)]

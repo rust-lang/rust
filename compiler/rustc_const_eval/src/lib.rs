@@ -1,4 +1,5 @@
 // tidy-alphabetical-start
+#![cfg_attr(bootstrap, feature(assert_matches))]
 #![feature(array_try_map)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]
