@@ -1,5 +1,6 @@
 //@ run-pass
 //@ only-x86
+//@ reference: items.extern.abi.thiscall
 
 trait A {
     extern "thiscall" fn test1(i: i32);
