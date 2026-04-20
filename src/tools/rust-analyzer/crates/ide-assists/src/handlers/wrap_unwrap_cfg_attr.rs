@@ -1,8 +1,7 @@
 use ide_db::source_change::SourceChangeBuilder;
-use itertools::Itertools;
 use syntax::{
     NodeOrToken, SyntaxToken, T, TextRange, algo,
-    ast::{self, AstNode, edit::AstNodeEdit, make},
+    ast::{self, AstNode, edit::AstNodeEdit},
 };
 
 use crate::{AssistContext, AssistId, Assists};
@@ -151,7 +150,7 @@ pub(crate) fn wrap_unwrap_cfg_attr(acc: &mut Assists, ctx: &AssistContext<'_>) -
             if let [attr] = &attrs[..]
                 && let Some(ast::Meta::CfgAttrMeta(meta)) = attr.meta()
             {
-                unwrap_cfg_attr(acc, meta)
+                unwrap_cfg_attr(acc, ctx, meta)
             } else {
                 wrap_cfg_attrs(acc, ctx, attrs)
             }
@@ -267,37 +266,41 @@ fn wrap_cfg_attrs(acc: &mut Assists, ctx: &AssistContext<'_>, attrs: Vec<ast::At
     Some(())
 }
 
-fn unwrap_cfg_attr(acc: &mut Assists, meta: ast::CfgAttrMeta) -> Option<()> {
+fn unwrap_cfg_attr(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_>,
+    meta: ast::CfgAttrMeta,
+) -> Option<()> {
     let top_attr = ast::Meta::from(meta.clone()).parent_attr()?;
     let range = top_attr.syntax().text_range();
-    let inner_attrs = meta
-        .metas()
-        .map(|meta| {
-            if top_attr.excl_token().is_some() {
-                make::attr_inner(meta)
-            } else {
-                make::attr_outer(meta)
-            }
-        })
-        .collect::<Vec<_>>();
-    if inner_attrs.is_empty() {
+    let inner_metas: Vec<ast::Meta> = meta.metas().collect();
+    if inner_metas.is_empty() {
         return None;
     }
-    let handle_source_change = |f: &mut SourceChangeBuilder| {
-        let inner_attrs = inner_attrs
-            .iter()
-            .map(|it| it.to_string())
-            .join(&format!("\n{}", top_attr.indent_level()));
-        f.replace(range, inner_attrs);
-    };
+    let is_inner = top_attr.excl_token().is_some();
+    let indent = top_attr.indent_level();
     acc.add(
         AssistId::refactor("wrap_unwrap_cfg_attr"),
         "Extract Inner Attributes from `cfg_attr`",
         range,
-        handle_source_change,
+        |builder: &mut SourceChangeBuilder| {
+            let editor = builder.make_editor(top_attr.syntax());
+            let make = editor.make();
+            let mut elements = vec![];
+            for (i, meta) in inner_metas.into_iter().enumerate() {
+                if i > 0 {
+                    elements.push(make.whitespace(&format!("\n{indent}")).into());
+                }
+                let attr = if is_inner { make.attr_inner(meta) } else { make.attr_outer(meta) };
+                elements.push(attr.syntax().clone().into());
+            }
+            editor.replace_with_many(top_attr.syntax(), elements);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
+        },
     );
     Some(())
 }
+
 #[cfg(test)]
 mod tests {
     use crate::tests::check_assist;
