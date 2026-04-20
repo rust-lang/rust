@@ -10,7 +10,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::RegionHighlightMode;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, RegionUtilitiesExt, TyCtxt, TypeVisitable};
 use rustc_span::{Ident, Span};
 use tracing::debug;
 

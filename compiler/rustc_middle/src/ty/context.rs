@@ -68,6 +68,7 @@ use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, PredefinedOpaques};
 use crate::ty::predicate::ExistentialPredicateStableCmpExt as _;
+use crate::ty::region::{RegionExt, RegionUtilitiesExt};
 use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Clauses, Const, GenericArg, GenericArgs,
     GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst, Pattern,

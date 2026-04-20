@@ -4,9 +4,7 @@ use std::fmt::Write;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{
-    Applicability, Diag, DiagArgValue, IntoDiagArg, into_diag_arg_using_display, listify, pluralize,
-};
+use rustc_errors::{Applicability, Diag, DiagArgValue, IntoDiagArg, listify, pluralize};
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, AmbigArg, LangItem, PredicateOrigin, WherePredicateKind};

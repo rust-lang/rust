@@ -8,7 +8,8 @@ use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::traits::query::type_op::DeeplyNormalize;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, elaborate, fold_regions,
+    self, GenericArgKind, RegionExt, RegionUtilitiesExt, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, elaborate, fold_regions,
 };
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};

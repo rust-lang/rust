@@ -39,8 +39,8 @@ use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
-    Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
-    const_lit_matches_ty, fold_regions,
+    RegionExt, RegionUtilitiesExt, Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode,
+    Unnormalized, Upcast, const_lit_matches_ty, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;

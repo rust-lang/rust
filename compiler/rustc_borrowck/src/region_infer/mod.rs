@@ -16,7 +16,9 @@ use rustc_middle::mir::{
     TerminatorKind,
 };
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex, fold_regions};
+use rustc_middle::ty::{
+    self, RegionExt, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex, fold_regions,
+};
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{DUMMY_SP, Span};

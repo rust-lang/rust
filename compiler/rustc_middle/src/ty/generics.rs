@@ -7,6 +7,7 @@ use tracing::instrument;
 
 use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt, Unnormalized};
 use crate::ty;
+use crate::ty::region::RegionExt;
 use crate::ty::{EarlyBinder, GenericArgsRef};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]

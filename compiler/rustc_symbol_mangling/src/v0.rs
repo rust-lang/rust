@@ -17,8 +17,8 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, PrintError, Printer};
 use rustc_middle::ty::{
-    self, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, ReifyReason, Ty, TyCtxt,
-    TypeVisitable, TypeVisitableExt, UintTy, Unnormalized,
+    self, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, RegionUtilitiesExt, ReifyReason,
+    Ty, TyCtxt, TypeVisitable, TypeVisitableExt, UintTy, Unnormalized,
 };
 use rustc_span::sym;
 
