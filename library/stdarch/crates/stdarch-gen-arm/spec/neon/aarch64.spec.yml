@@ -8523,7 +8523,6 @@ intrinsics:
             - link: "llvm.aarch64.neon.frecpx.{type[1]}"
               arch: aarch64,arm64ec
 
-
   - name: "vreinterpret{neon_type[1].no}{neon_type[0].noq}"
     doc: Vector reinterpret cast operation
     arguments: ["a: {type[0]}"]
@@ -8531,6 +8530,7 @@ intrinsics:
     attr: [*neon-stable]
     assert_instr: [nop]
     safety: safe
+    big_endian_inverse: false
     types:
       - [poly64x1_t, int64x1_t]
       - [poly64x1_t, uint64x1_t]
@@ -8540,54 +8540,65 @@ intrinsics:
       - [poly64x2_t, uint64x2_t]
       - [int64x2_t, poly64x2_t]
       - [uint64x2_t, poly64x2_t]
+      - [float64x1_t, int64x1_t]
+      - [float64x2_t, int64x2_t]
+      - [float64x1_t, uint64x1_t]
+      - [float64x2_t, uint64x2_t]
+      - [float64x1_t, poly64x1_t]
+      - [float64x2_t, poly64x2_t]
+      - [int64x1_t, float64x1_t]
+      - [int64x2_t, float64x2_t]
+      - [uint64x1_t, float64x1_t]
+      - [uint64x2_t, float64x2_t]
+      - [poly64x1_t, float64x1_t]
+      - [poly64x2_t, float64x2_t]
+    compose:
+      - FnCall: [transmute, [a]]
+
+  - name: "vreinterpret{neon_type[1].no}{neon_type[0].noq}"
+    doc: Vector reinterpret cast operation
+    arguments: ["a: {type[0]}"]
+    return_type: "{type[1]}"
+    attr: [*neon-stable]
+    assert_instr: [nop]
+    safety: safe
+    types:
       - [float64x1_t, int8x8_t]
       - [float64x1_t, int16x4_t]
       - [float64x1_t, int32x2_t]
-      - [float64x1_t, int64x1_t]
       - [float64x2_t, int8x16_t]
       - [float64x2_t, int16x8_t]
       - [float64x2_t, int32x4_t]
-      - [float64x2_t, int64x2_t]
       - [float64x1_t, uint8x8_t]
       - [float64x1_t, uint16x4_t]
       - [float64x1_t, uint32x2_t]
-      - [float64x1_t, uint64x1_t]
       - [float64x2_t, uint8x16_t]
       - [float64x2_t, uint16x8_t]
       - [float64x2_t, uint32x4_t]
-      - [float64x2_t, uint64x2_t]
       - [float64x1_t, poly8x8_t]
       - [float64x1_t, poly16x4_t]
       - [float32x2_t, poly64x1_t]
-      - [float64x1_t, poly64x1_t]
       - [float64x2_t, poly8x16_t]
       - [float64x2_t, poly16x8_t]
       - [float32x4_t, poly64x2_t]
-      - [float64x2_t, poly64x2_t]
       - [float64x2_t, p128]
       - [int8x8_t, float64x1_t]
       - [int16x4_t, float64x1_t]
       - [int32x2_t, float64x1_t]
-      - [int64x1_t, float64x1_t]
       - [int8x16_t, float64x2_t]
       - [int16x8_t, float64x2_t]
       - [int32x4_t, float64x2_t]
-      - [int64x2_t, float64x2_t]
       - [poly8x8_t, float64x1_t]
       - [uint16x4_t, float64x1_t]
       - [uint32x2_t, float64x1_t]
-      - [uint64x1_t, float64x1_t]
       - [poly8x16_t, float64x2_t]
       - [uint16x8_t, float64x2_t]
       - [uint32x4_t, float64x2_t]
-      - [uint64x2_t, float64x2_t]
       - [uint8x8_t, float64x1_t]
       - [poly16x4_t, float64x1_t]
-      - [poly64x1_t, float64x1_t]
       - [poly64x1_t, float32x2_t]
       - [uint8x16_t, float64x2_t]
       - [poly16x8_t, float64x2_t]
-      - [poly64x2_t, float64x2_t]
       - [poly64x2_t, float32x4_t]
       - [p128, float64x2_t]
       - [float32x2_t, float64x1_t]
