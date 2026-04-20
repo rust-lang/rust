@@ -7,7 +7,7 @@ use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
 use rustc_span::def_id::LocalDefId;
 use tracing::trace;
 
@@ -75,7 +75,7 @@ fn check_transmute<'tcx>(
 ) {
     let span = || tcx.hir_span(hir_id);
     let normalize = |ty| {
-        if let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, ty) {
+        if let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)) {
             ty
         } else {
             Ty::new_error_with_message(

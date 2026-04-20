@@ -39,8 +39,8 @@ use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::print::PrintPolyTraitRefExt as _;
 use rustc_middle::ty::{
     self, Const, FnSigKind, GenericArgKind, GenericArgsRef, GenericParamDefKind, LitToConstInput,
-    Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Upcast, const_lit_matches_ty,
-    fold_regions,
+    Ty, TyCtxt, TypeSuperFoldable, TypeVisitableExt, TypingMode, Unnormalized, Upcast,
+    const_lit_matches_ty, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
@@ -783,7 +783,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         // Ambig portions of `ConstArg` are handled in the match arm below
                         .lower_const_arg(
                             ct.as_unambig_ct(),
-                            tcx.type_of(param.def_id).instantiate(tcx, preceding_args),
+                            tcx.type_of(param.def_id)
+                                .instantiate(tcx, preceding_args)
+                                .skip_norm_wip(),
                         )
                         .into(),
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
@@ -828,6 +830,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             tcx.at(self.span)
                                 .type_of(param.def_id)
                                 .instantiate(tcx, preceding_args)
+                                .skip_norm_wip()
                                 .into()
                         } else if synthetic {
                             Ty::new_param(tcx, param.index, param.name).into()
@@ -842,13 +845,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         let ty = tcx
                             .at(self.span)
                             .type_of(param.def_id)
-                            .instantiate(tcx, preceding_args);
+                            .instantiate(tcx, preceding_args)
+                            .skip_norm_wip();
                         if let Err(guar) = ty.error_reported() {
                             return ty::Const::new_error(tcx, guar).into();
                         }
                         if !infer_args && has_default {
                             tcx.const_param_default(param.def_id)
                                 .instantiate(tcx, preceding_args)
+                                .skip_norm_wip()
                                 .into()
                         } else if infer_args {
                             self.lowerer.ct_infer(Some(param), self.span).into()
@@ -1217,7 +1222,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             let alias_ty = ty::AliasTy::new_from_args(tcx, ty::Free { def_id }, args);
             Ty::new_alias(tcx, alias_ty)
         } else {
-            tcx.at(span).type_of(def_id).instantiate(tcx, args)
+            tcx.at(span).type_of(def_id).instantiate(tcx, args).skip_norm_wip()
         }
     }
 
@@ -1247,6 +1252,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             || {
                 let trait_refs = predicates
                     .iter_identity_copied()
+                    .map(Unnormalized::skip_norm_wip)
                     .filter_map(|(p, _)| Some(p.as_trait_clause()?.map_bound(|t| t.trait_ref)));
                 traits::transitive_bounds_that_define_assoc_item(tcx, trait_refs, assoc_ident)
             },
@@ -1368,7 +1374,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                         // FIXME(mgca): code duplication with other places we lower
                                         // the rhs' of associated const bindings
                                         let ty = projection_term.map_bound(|alias| {
-                                            tcx.type_of(alias.def_id).instantiate(tcx, alias.args)
+                                            tcx.type_of(alias.def_id)
+                                                .instantiate(tcx, alias.args)
+                                                .skip_norm_wip()
                                         });
                                         let ty = bounds::check_assoc_const_binding_type(
                                             self,
@@ -1712,7 +1720,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 self.probe_single_bound_for_assoc_item(
                     || {
-                        let trait_ref = ty::Binder::dummy(trait_ref.instantiate_identity());
+                        let trait_ref =
+                            ty::Binder::dummy(trait_ref.instantiate_identity().skip_norm_wip());
                         traits::supertraits(tcx, trait_ref)
                     },
                     AssocItemQSelf::SelfTyAlias,
@@ -1945,10 +1954,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
                             let header = tcx.impl_trait_header(impl_def_id);
-                            let trait_ref = header.trait_ref.instantiate(
-                                tcx,
-                                infcx.fresh_args_for_item(DUMMY_SP, impl_def_id),
-                            );
+                            let trait_ref = header.trait_ref.instantiate(tcx, infcx.fresh_args_for_item(DUMMY_SP, impl_def_id)).skip_norm_wip();
 
                             let value = fold_regions(tcx, qself_ty, |_, _| tcx.lifetimes.re_erased);
                             // FIXME: Don't bother dealing with non-lifetime binders here...
@@ -2307,7 +2313,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // `Self` in impl (we know the concrete type).
                 assert_eq!(opt_self_ty, None);
                 // Try to evaluate any array length constants.
-                let ty = tcx.at(span).type_of(def_id).instantiate_identity();
+                let ty = tcx.at(span).type_of(def_id).instantiate_identity().skip_norm_wip();
                 let _ = self.prohibit_generic_args(
                     path.segments.iter(),
                     GenericsArgsErrExtend::SelfTyAlias { def_id, span },
@@ -2616,7 +2622,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .iter()
             .zip(args)
             .map(|(field_def, arg)| {
-                self.lower_const_arg(arg, tcx.type_of(field_def.did).instantiate(tcx, adt_args))
+                self.lower_const_arg(
+                    arg,
+                    tcx.type_of(field_def.did).instantiate(tcx, adt_args).skip_norm_wip(),
+                )
             })
             .collect::<Vec<_>>();
 
@@ -2737,7 +2746,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                         self.lower_const_arg(
                             expr.expr,
-                            tcx.type_of(field_def.did).instantiate(tcx, adt_args),
+                            tcx.type_of(field_def.did).instantiate(tcx, adt_args).skip_norm_wip(),
                         )
                     }
                     None => {
@@ -2946,7 +2955,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // FIXME(generic_const_parameter_types): We should use the proper generic args
         // here. It's only used as a hint for literals so doesn't matter too much to use the right
         // generic arguments, just weaker type inference.
-        let ty = tcx.type_of(anon.def_id).instantiate_identity();
+        let ty = tcx.type_of(anon.def_id).instantiate_identity().skip_norm_wip();
 
         match self.try_lower_anon_const_lit(ty, expr) {
             Some(v) => v,
@@ -3057,7 +3066,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn lower_delegation_ty(&self, infer: hir::InferDelegation<'tcx>) -> Ty<'tcx> {
         match infer {
             hir::InferDelegation::DefId(def_id) => {
-                self.tcx().type_of(def_id).instantiate_identity()
+                self.tcx().type_of(def_id).instantiate_identity().skip_norm_wip()
             }
             rustc_hir::InferDelegation::Sig(_, idx) => {
                 let delegation_sig = self.tcx().inherit_sig_for_delegation_item(self.item_def_id());
@@ -3648,10 +3657,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             trait_ref.def_id,
         )?;
 
-        let fn_sig = tcx.fn_sig(assoc.def_id).instantiate(
-            tcx,
-            trait_ref.args.extend_to(tcx, assoc.def_id, |param, _| tcx.mk_param_from_def(param)),
-        );
+        let fn_sig = tcx
+            .fn_sig(assoc.def_id)
+            .instantiate(
+                tcx,
+                trait_ref
+                    .args
+                    .extend_to(tcx, assoc.def_id, |param, _| tcx.mk_param_from_def(param)),
+            )
+            .skip_norm_wip();
         let fn_sig = tcx.liberate_late_bound_regions(fn_hir_id.expect_owner().to_def_id(), fn_sig);
 
         Some(if let Some(arg_idx) = arg_idx {

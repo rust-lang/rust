@@ -558,7 +558,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTyToOpaque<'tcx> {
                 self.tcx.opt_rpitit_info(projection_ty_def_id)
             && fn_def_id == self.fn_def_id
         {
-            self.tcx.type_of(projection_ty_def_id).instantiate(self.tcx, args)
+            self.tcx.type_of(projection_ty_def_id).instantiate(self.tcx, args).skip_norm_wip()
         } else {
             ty.super_fold_with(self)
         }

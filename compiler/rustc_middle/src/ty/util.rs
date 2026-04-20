@@ -28,7 +28,7 @@ use crate::traits::ObligationCause;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -220,7 +220,7 @@ impl<'tcx> TyCtxt<'tcx> {
         tcx.struct_tail_raw(
             ty,
             &ObligationCause::dummy(),
-            |ty| tcx.normalize_erasing_regions(typing_env, ty),
+            |ty| tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)),
             || {},
         )
     }
@@ -335,7 +335,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> (Ty<'tcx>, Ty<'tcx>) {
         let tcx = self;
         tcx.struct_lockstep_tails_raw(source, target, |ty| {
-            tcx.normalize_erasing_regions(typing_env, ty)
+            tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty))
         })
     }
 
@@ -517,10 +517,14 @@ impl<'tcx> TyCtxt<'tcx> {
         // <P1, P2, P0>, and then look up which of the impl args refer to
         // parameters marked as pure.
 
-        let impl_args = match *self.type_of(impl_def_id).instantiate_identity().kind() {
-            ty::Adt(def_, args) if def_ == def => args,
-            _ => span_bug!(self.def_span(impl_def_id), "expected ADT for self type of `Drop` impl"),
-        };
+        let impl_args =
+            match *self.type_of(impl_def_id).instantiate_identity().skip_norm_wip().kind() {
+                ty::Adt(def_, args) if def_ == def => args,
+                _ => span_bug!(
+                    self.def_span(impl_def_id),
+                    "expected ADT for self type of `Drop` impl"
+                ),
+            };
 
         let item_args = ty::GenericArgs::identity_for_item(self, def.did());
 
@@ -724,7 +728,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns the type a reference to the thread local takes in MIR.
     pub fn thread_local_ptr_ty(self, def_id: DefId) -> Ty<'tcx> {
-        let static_ty = self.type_of(def_id).instantiate_identity();
+        let static_ty = self.type_of(def_id).instantiate_identity().skip_norm_wip();
         if self.is_mutable_static(def_id) {
             Ty::new_mut_ptr(self, static_ty)
         } else if self.is_foreign_item(def_id) {
@@ -924,7 +928,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 return Ty::new_error(self, guar);
             }
 
-            ty = self.type_of(def_id).instantiate(self, args);
+            ty = self.type_of(def_id).instantiate(self, args).skip_norm_wip();
             depth += 1;
         }
 
@@ -987,7 +991,7 @@ impl<'tcx> OpaqueTypeExpander<'tcx> {
                 Some(expanded_ty) => *expanded_ty,
                 None => {
                     let generic_ty = self.tcx.type_of(def_id);
-                    let concrete_ty = generic_ty.instantiate(self.tcx, args);
+                    let concrete_ty = generic_ty.instantiate(self.tcx, args).skip_norm_wip();
                     let expanded_ty = self.fold_ty(concrete_ty);
                     self.expanded_cache.insert((def_id, args), expanded_ty);
                     expanded_ty
@@ -1067,7 +1071,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for FreeAliasTypeExpander<'tcx> {
 
         self.depth += 1;
         let ty = ensure_sufficient_stack(|| {
-            self.tcx.type_of(def_id).instantiate(self.tcx, args).fold_with(self)
+            self.tcx.type_of(def_id).instantiate(self.tcx, args).skip_norm_wip().fold_with(self)
         });
         self.depth -= 1;
         ty
@@ -1331,7 +1335,7 @@ impl<'tcx> Ty<'tcx> {
                 // query keys used. If normalization fails, we just use `query_ty`.
                 debug_assert!(!typing_env.param_env.has_infer());
                 let query_ty = tcx
-                    .try_normalize_erasing_regions(typing_env, query_ty)
+                    .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(query_ty))
                     .unwrap_or_else(|_| tcx.erase_and_anonymize_regions(query_ty));
 
                 tcx.needs_drop_raw(typing_env.as_query_input(query_ty))
@@ -1368,7 +1372,7 @@ impl<'tcx> Ty<'tcx> {
                 // If normalization fails, we just use `query_ty`.
                 debug_assert!(!typing_env.has_infer());
                 let query_ty = tcx
-                    .try_normalize_erasing_regions(typing_env, query_ty)
+                    .try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(query_ty))
                     .unwrap_or_else(|_| tcx.erase_and_anonymize_regions(query_ty));
 
                 tcx.needs_async_drop_raw(typing_env.as_query_input(query_ty))
@@ -1411,7 +1415,7 @@ impl<'tcx> Ty<'tcx> {
                 // This doesn't depend on regions, so try to minimize distinct
                 // query keys used.
                 // FIX: Use try_normalize to avoid crashing. If it fails, return true.
-                tcx.try_normalize_erasing_regions(typing_env, query_ty)
+                tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(query_ty))
                     .map(|erased| tcx.has_significant_drop_raw(typing_env.as_query_input(erased)))
                     .unwrap_or(true)
             }

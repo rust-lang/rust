@@ -15,7 +15,7 @@ use rustc_hir::{self as hir, FnSig, HirId, ItemKind, find_attr};
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized};
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -68,26 +68,33 @@ pub(crate) fn compare_eii_function_types<'tcx>(
     let mut wf_tys = FxIndexSet::default();
     let norm_cause = ObligationCause::misc(external_impl_span, external_impl);
 
-    let declaration_sig = tcx.fn_sig(foreign_item).instantiate_identity();
+    let declaration_sig = tcx.fn_sig(foreign_item).instantiate_identity().skip_norm_wip();
     let declaration_sig = tcx.liberate_late_bound_regions(external_impl.into(), declaration_sig);
     debug!(?declaration_sig);
 
     let unnormalized_external_impl_sig = infcx.instantiate_binder_with_fresh_vars(
         external_impl_span,
         infer::BoundRegionConversionTime::HigherRankedType,
-        tcx.fn_sig(external_impl).instantiate(
-            tcx,
-            infcx.fresh_args_for_item(external_impl_span, external_impl.to_def_id()),
-        ),
+        tcx.fn_sig(external_impl)
+            .instantiate(
+                tcx,
+                infcx.fresh_args_for_item(external_impl_span, external_impl.to_def_id()),
+            )
+            .skip_norm_wip(),
     );
-    let external_impl_sig = ocx.normalize(&norm_cause, param_env, unnormalized_external_impl_sig);
+    let external_impl_sig = ocx.normalize(
+        &norm_cause,
+        param_env,
+        Unnormalized::new_wip(unnormalized_external_impl_sig),
+    );
     debug!(?external_impl_sig);
 
     // Next, add all inputs and output as well-formed tys. Importantly,
     // we have to do this before normalization, since the normalized ty may
     // not contain the input parameters. See issue #87748.
     wf_tys.extend(declaration_sig.inputs_and_output.iter());
-    let declaration_sig = ocx.normalize(&norm_cause, param_env, declaration_sig);
+    let declaration_sig =
+        ocx.normalize(&norm_cause, param_env, Unnormalized::new_wip(declaration_sig));
     // We also have to add the normalized declaration
     // as we don't normalize during implied bounds computation.
     wf_tys.extend(external_impl_sig.inputs_and_output.iter());
@@ -170,7 +177,7 @@ pub(crate) fn compare_eii_statics<'tcx>(
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
-    let declaration_ty = tcx.type_of(foreign_item).instantiate_identity();
+    let declaration_ty = tcx.type_of(foreign_item).instantiate_identity().skip_norm_wip();
     debug!(?declaration_ty);
 
     // FIXME: Copied over from compare impl items, same issue:

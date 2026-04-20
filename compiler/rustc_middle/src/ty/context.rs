@@ -1660,7 +1660,8 @@ impl<'tcx> TyCtxt<'tcx> {
             self,
             self.lifetimes.re_static,
             self.type_of(self.require_lang_item(LangItem::PanicLocation, DUMMY_SP))
-                .instantiate(self, self.mk_args(&[self.lifetimes.re_static.into()])),
+                .instantiate(self, self.mk_args(&[self.lifetimes.re_static.into()]))
+                .skip_norm_wip(),
         )
     }
 
@@ -2831,7 +2832,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn needs_coroutine_by_move_body_def_id(self, def_id: DefId) -> bool {
         if let Some(hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure)) =
             self.coroutine_kind(def_id)
-            && let ty::Coroutine(_, args) = self.type_of(def_id).instantiate_identity().kind()
+            && let ty::Coroutine(_, args) =
+                self.type_of(def_id).instantiate_identity().skip_norm_wip().kind()
             && args.as_coroutine().kind_ty().to_opt_closure_kind() != Some(ty::ClosureKind::FnOnce)
         {
             true

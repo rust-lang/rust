@@ -306,7 +306,9 @@ impl<I: Interner> TyKind<I> {
     pub fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
         match self {
             ty::FnPtr(sig_tys, hdr) => sig_tys.with(hdr),
-            ty::FnDef(def_id, args) => interner.fn_sig(def_id).instantiate(interner, args),
+            ty::FnDef(def_id, args) => {
+                interner.fn_sig(def_id).instantiate(interner, args).skip_norm_wip()
+            }
             ty::Error(_) => {
                 // ignore errors (#54954)
                 ty::Binder::dummy(ty::FnSig::dummy())

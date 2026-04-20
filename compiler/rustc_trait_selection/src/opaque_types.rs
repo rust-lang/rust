@@ -80,6 +80,7 @@ pub fn opaque_type_has_defining_use_args<'tcx>(
             .tcx
             .type_of_opaque_hir_typeck(opaque_type_key.def_id)
             .instantiate_identity()
+            .skip_norm_wip()
             .error_reported()?;
     }
 

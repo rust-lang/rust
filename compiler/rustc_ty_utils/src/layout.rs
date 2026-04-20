@@ -19,7 +19,8 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, AdtDef, CoroutineArgsExt, EarlyBinder, PseudoCanonicalInput, Ty, TyCtxt, TypeVisitableExt,
+    self, AdtDef, CoroutineArgsExt, EarlyBinder, PseudoCanonicalInput, Ty, TyCtxt,
+    TypeVisitableExt, Unnormalized,
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::{Symbol, sym};
@@ -51,7 +52,7 @@ fn layout_of<'tcx>(
     // One that can be called after typecheck has completed and can use
     // `normalize_erasing_regions` here and another one that can be called
     // before typecheck has completed and uses `try_normalize_erasing_regions`.
-    let ty = match tcx.try_normalize_erasing_regions(typing_env, ty) {
+    let ty = match tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)) {
         Ok(t) => t,
         Err(normalization_error) => {
             return Err(tcx
@@ -419,9 +420,10 @@ fn layout_of_uncached<'tcx>(
 
             let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
                 let pointee_metadata = Ty::new_projection(tcx, metadata_def_id, [pointee]);
-                let metadata_ty = match tcx
-                    .try_normalize_erasing_regions(cx.typing_env, pointee_metadata)
-                {
+                let metadata_ty = match tcx.try_normalize_erasing_regions(
+                    cx.typing_env,
+                    Unnormalized::new_wip(pointee_metadata),
+                ) {
                     Ok(metadata_ty) => metadata_ty,
                     Err(mut err) => {
                         // Usually `<Ty as Pointee>::Metadata` can't be normalized because
@@ -434,7 +436,12 @@ fn layout_of_uncached<'tcx>(
                         // error.
                         match tcx.try_normalize_erasing_regions(
                             cx.typing_env,
-                            tcx.struct_tail_raw(pointee, &ObligationCause::dummy(), |ty| ty, || {}),
+                            Unnormalized::new_wip(tcx.struct_tail_raw(
+                                pointee,
+                                &ObligationCause::dummy(),
+                                |ty| ty,
+                                || {},
+                            )),
                         ) {
                             Ok(_) => {}
                             Err(better_err) => {
@@ -521,7 +528,8 @@ fn layout_of_uncached<'tcx>(
                 .iter()
                 .map(|local| {
                     let field_ty = EarlyBinder::bind(local.ty);
-                    let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty.instantiate(tcx, args));
+                    let uninit_ty =
+                        Ty::new_maybe_uninit(tcx, field_ty.instantiate(tcx, args).skip_norm_wip());
                     cx.spanned_layout_of(uninit_ty, local.source_info.span)
                 })
                 .try_collect::<IndexVec<_, _>>()?;
@@ -679,7 +687,10 @@ fn layout_of_uncached<'tcx>(
             let maybe_unsized = def.is_struct()
                 && def.non_enum_variant().tail_opt().is_some_and(|last_field| {
                     let typing_env = ty::TypingEnv::post_analysis(tcx, def.did());
-                    !tcx.type_of(last_field.did).instantiate_identity().is_sized(tcx, typing_env)
+                    !tcx.type_of(last_field.did)
+                        .instantiate_identity()
+                        .skip_norm_wip()
+                        .is_sized(tcx, typing_env)
                 });
 
             let layout = cx

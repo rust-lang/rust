@@ -10,7 +10,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     FnAbiError, HasTyCtxt, HasTypingEnv, LayoutCx, LayoutOf, TyAndLayout, fn_can_unwind,
 };
-use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt};
+use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, Unnormalized};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
 use rustc_target::callconv::{
@@ -45,8 +45,9 @@ fn fn_sig_for_fn_abi<'tcx>(
     let ty = instance.ty(tcx, typing_env);
     match *ty.kind() {
         ty::FnDef(def_id, args) => {
-            let mut sig = tcx
-                .instantiate_bound_regions_with_erased(tcx.fn_sig(def_id).instantiate(tcx, args));
+            let mut sig = tcx.instantiate_bound_regions_with_erased(
+                tcx.fn_sig(def_id).instantiate(tcx, args).skip_norm_wip(),
+            );
 
             // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
             if let ty::InstanceKind::VTableShim(..) = instance.def {
@@ -246,7 +247,7 @@ impl<'tcx> FnAbiDesc<'tcx> {
             layout_cx: LayoutCx::new(tcx, typing_env),
             sig: tcx.normalize_erasing_regions(
                 typing_env,
-                tcx.instantiate_bound_regions_with_erased(sig),
+                Unnormalized::new_wip(tcx.instantiate_bound_regions_with_erased(sig)),
             ),
             // Parameter attributes can never be deduced for indirect calls, as there is no
             // function body available to use.
@@ -268,7 +269,7 @@ impl<'tcx> FnAbiDesc<'tcx> {
             layout_cx: LayoutCx::new(tcx, typing_env),
             sig: tcx.normalize_erasing_regions(
                 typing_env,
-                fn_sig_for_fn_abi(tcx, instance, typing_env),
+                Unnormalized::new_wip(fn_sig_for_fn_abi(tcx, instance, typing_env)),
             ),
             // Parameter attributes can be deduced from the bodies of neither:
             // - virtual calls, as they might call other functions from the vtable; nor

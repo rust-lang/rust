@@ -2183,7 +2183,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 self.tables.defaultness.set(def_id.index, tcx.defaultness(def_id));
 
-                let trait_ref = header.trait_ref.instantiate_identity();
+                let trait_ref = header.trait_ref.instantiate_identity().skip_norm_wip();
                 let simplified_self_ty = fast_reject::simplify_type(
                     self.tcx,
                     trait_ref.self_ty(),

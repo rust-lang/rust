@@ -23,7 +23,7 @@ use rustc_macros::extension;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::*;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{Ident, Span, sym};
@@ -1883,7 +1883,11 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                             .map(|param| generic_param_def_as_bound_arg(param)),
                     );
                     bound_vars.extend(
-                        self.tcx.fn_sig(assoc_fn.def_id).instantiate_identity().bound_vars(),
+                        self.tcx
+                            .fn_sig(assoc_fn.def_id)
+                            .instantiate_identity()
+                            .skip_norm_wip()
+                            .bound_vars(),
                     );
                     bound_vars
                 } else {
@@ -1967,21 +1971,24 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 break Some((bound_vars.into_iter().collect(), assoc_item));
             }
             let predicates = tcx.explicit_supertraits_containing_assoc_item((def_id, assoc_ident));
-            let obligations = predicates.iter_identity_copied().filter_map(|(pred, _)| {
-                let bound_predicate = pred.kind();
-                match bound_predicate.skip_binder() {
-                    ty::ClauseKind::Trait(data) => {
-                        // The order here needs to match what we would get from
-                        // `rustc_middle::ty::predicate::Clause::instantiate_supertrait`
-                        let pred_bound_vars = bound_predicate.bound_vars();
-                        let mut all_bound_vars = bound_vars.clone();
-                        all_bound_vars.extend(pred_bound_vars.iter());
-                        let super_def_id = data.trait_ref.def_id;
-                        Some((super_def_id, all_bound_vars))
+            let obligations = predicates
+                .iter_identity_copied()
+                .map(Unnormalized::skip_norm_wip)
+                .filter_map(|(pred, _)| {
+                    let bound_predicate = pred.kind();
+                    match bound_predicate.skip_binder() {
+                        ty::ClauseKind::Trait(data) => {
+                            // The order here needs to match what we would get from
+                            // `rustc_middle::ty::predicate::Clause::instantiate_supertrait`
+                            let pred_bound_vars = bound_predicate.bound_vars();
+                            let mut all_bound_vars = bound_vars.clone();
+                            all_bound_vars.extend(pred_bound_vars.iter());
+                            let super_def_id = data.trait_ref.def_id;
+                            Some((super_def_id, all_bound_vars))
+                        }
+                        _ => None,
                     }
-                    _ => None,
-                }
-            });
+                });
 
             let obligations = obligations.filter(|o| visited.insert(o.0));
             stack.extend(obligations);
@@ -2197,7 +2204,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 .iter()
                 .map(|param| generic_param_def_as_bound_arg(param)),
         );
-        bound_vars.extend(self.tcx.fn_sig(item_def_id).instantiate_identity().bound_vars());
+        bound_vars.extend(
+            self.tcx.fn_sig(item_def_id).instantiate_identity().skip_norm_wip().bound_vars(),
+        );
 
         // SUBTLE: Stash the old bound vars onto the *item segment* before appending
         // the new bound vars. We do this because we need to know how many bound vars
@@ -2453,7 +2462,9 @@ fn is_late_bound_map(
                         arg_is_constrained: vec![false; generics.own_params.len()]
                             .into_boxed_slice(),
                     };
-                    walker.visit_ty(self.tcx.type_of(*alias_def).instantiate_identity());
+                    walker.visit_ty(
+                        self.tcx.type_of(*alias_def).instantiate_identity().skip_norm_wip(),
+                    );
 
                     match segments.last() {
                         Some(hir::PathSegment { args: Some(args), .. }) => {

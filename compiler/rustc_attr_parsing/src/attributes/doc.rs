@@ -13,6 +13,7 @@ use thin_vec::ThinVec;
 use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
+use crate::errors::{DocAliasDuplicated, DocAutoCfgExpectsHideOrShow, IllFormedAttributeInput};
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
     DocAliasBadChar, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd, DocAttrNotCrateLevel,
@@ -255,9 +256,9 @@ impl DocParser {
         }
 
         if let Some(first_definition) = self.attribute.aliases.get(&alias).copied() {
-            cx.emit_lint(
+            cx.emit_dyn_lint(
                 rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-                AttributeLintKind::DuplicateDocAlias { first_definition },
+                move |dcx, level| DocAliasDuplicated { first_definition }.into_diag(dcx, level),
                 span,
             );
         }
@@ -343,9 +344,9 @@ impl DocParser {
             ArgParser::List(list) => {
                 for meta in list.mixed() {
                     let MetaItemOrLitParser::MetaItemParser(item) = meta else {
-                        cx.emit_lint(
+                        cx.emit_dyn_lint(
                             rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                            AttributeLintKind::DocAutoCfgExpectsHideOrShow,
+                            |dcx, level| DocAutoCfgExpectsHideOrShow.into_diag(dcx, level),
                             meta.span(),
                         );
                         continue;
@@ -354,9 +355,9 @@ impl DocParser {
                         Some(sym::hide) => (HideOrShow::Hide, sym::hide),
                         Some(sym::show) => (HideOrShow::Show, sym::show),
                         _ => {
-                            cx.emit_lint(
+                            cx.emit_dyn_lint(
                                 rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                                AttributeLintKind::DocAutoCfgExpectsHideOrShow,
+                                |dcx, level| DocAutoCfgExpectsHideOrShow.into_diag(dcx, level),
                                 item.span(),
                             );
                             continue;
@@ -666,12 +667,10 @@ impl DocParser {
             ArgParser::NoArgs => {
                 let suggestions = cx.adcx().suggestions();
                 let span = cx.attr_span;
-                cx.emit_lint(
+                cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::IllFormedAttributeInput {
-                        suggestions,
-                        docs: None,
-                        help: None,
+                    move |dcx, level| {
+                        IllFormedAttributeInput::new(&suggestions, None, None).into_diag(dcx, level)
                     },
                     span,
                 );

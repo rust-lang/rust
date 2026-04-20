@@ -131,6 +131,7 @@ fn expr_ty_matches_p_ty(cx: &LateContext<'_>, expr: &Expr<'_>, p_expr: &Expr<'_>
                     .tcx
                     .fn_sig(item.owner_id)
                     .instantiate_identity()
+                    .skip_norm_wip()
                     .output()
                     .skip_binder();
                 return same_type_modulo_regions(output, cx.typeck_results().expr_ty(expr));

@@ -20,7 +20,7 @@ pub(super) fn build_async_destructor_ctor_shim<'tcx>(
     debug_assert_eq!(Some(def_id), tcx.lang_items().async_drop_in_place_fn());
     let generic_body = tcx.optimized_mir(def_id);
     let args = tcx.mk_args(&[ty.into()]);
-    let mut body = EarlyBinder::bind(generic_body.clone()).instantiate(tcx, args);
+    let mut body = EarlyBinder::bind(generic_body.clone()).instantiate(tcx, args).skip_norm_wip();
 
     // Minimal shim passes except MentionedItems,
     // it causes error "mentioned_items for DefId(...async_drop_in_place...) have already been set
@@ -206,7 +206,8 @@ fn build_adrop_for_coroutine_shim<'tcx>(
     // let mut _x: &mut CorLayout = &*_1.0.0;
     // Replace old _1.0 accesses into _x accesses;
     let body = tcx.optimized_mir(*coroutine_def_id).future_drop_poll().unwrap();
-    let mut body: Body<'tcx> = EarlyBinder::bind(body.clone()).instantiate(tcx, impl_args);
+    let mut body: Body<'tcx> =
+        EarlyBinder::bind(body.clone()).instantiate(tcx, impl_args).skip_norm_wip();
     body.source.instance = instance;
     body.phase = MirPhase::Runtime(RuntimePhase::Initial);
     body.var_debug_info.clear();

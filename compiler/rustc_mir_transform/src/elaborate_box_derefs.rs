@@ -96,13 +96,17 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
 
         let unique_did = tcx.adt_def(def_id).non_enum_variant().fields[FieldIdx::ZERO].did;
 
-        let Some(unique_def) = tcx.type_of(unique_did).instantiate_identity().ty_adt_def() else {
+        let Some(unique_def) =
+            tcx.type_of(unique_did).instantiate_identity().skip_norm_wip().ty_adt_def()
+        else {
             span_bug!(tcx.def_span(unique_did), "expected Box to contain Unique")
         };
 
         let nonnull_did = unique_def.non_enum_variant().fields[FieldIdx::ZERO].did;
 
-        let Some(nonnull_def) = tcx.type_of(nonnull_did).instantiate_identity().ty_adt_def() else {
+        let Some(nonnull_def) =
+            tcx.type_of(nonnull_did).instantiate_identity().skip_norm_wip().ty_adt_def()
+        else {
             span_bug!(tcx.def_span(nonnull_did), "expected Unique to contain Nonnull")
         };
 

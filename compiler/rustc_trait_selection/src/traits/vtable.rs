@@ -6,7 +6,8 @@ use rustc_infer::traits::util::PredicateSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, Upcast, VtblEntry,
+    self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
+    VtblEntry,
 };
 use rustc_span::DUMMY_SP;
 use smallvec::{SmallVec, smallvec};
@@ -123,6 +124,7 @@ fn prepare_vtable_segments_inner<'tcx, T>(
             let mut direct_super_traits_iter = tcx
                 .explicit_super_predicates_of(inner_most_trait_ref.def_id)
                 .iter_identity_copied()
+                .map(Unnormalized::skip_norm_wip)
                 .filter_map(move |(pred, _)| {
                     pred.instantiate_supertrait(tcx, ty::Binder::dummy(inner_most_trait_ref))
                         .as_trait_clause()
@@ -235,7 +237,10 @@ fn vtable_entries<'tcx>(
 ) -> &'tcx [VtblEntry<'tcx>] {
     debug_assert!(!trait_ref.has_non_region_infer() && !trait_ref.has_non_region_param());
     debug_assert_eq!(
-        tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), trait_ref),
+        tcx.normalize_erasing_regions(
+            ty::TypingEnv::fully_monomorphized(),
+            Unnormalized::new_wip(trait_ref)
+        ),
         trait_ref,
         "vtable trait ref should be normalized"
     );
@@ -263,13 +268,15 @@ fn vtable_entries<'tcx>(
                     // FIXME: Is this normalize needed?
                     let args = tcx.normalize_erasing_regions(
                         ty::TypingEnv::fully_monomorphized(),
-                        GenericArgs::for_item(tcx, def_id, |param, _| match param.kind {
-                            GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-                            GenericParamDefKind::Type { .. }
-                            | GenericParamDefKind::Const { .. } => {
-                                trait_ref.args[param.index as usize]
+                        Unnormalized::new_wip(GenericArgs::for_item(tcx, def_id, |param, _| {
+                            match param.kind {
+                                GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+                                GenericParamDefKind::Type { .. }
+                                | GenericParamDefKind::Const { .. } => {
+                                    trait_ref.args[param.index as usize]
+                                }
                             }
-                        }),
+                        })),
                     );
 
                     // It's possible that the method relies on where-clauses that
@@ -279,7 +286,7 @@ fn vtable_entries<'tcx>(
                     let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, args);
                     if impossible_predicates(
                         tcx,
-                        predicates.map(|(predicate, _)| predicate).collect(),
+                        predicates.map(|(predicate, _)| predicate.skip_norm_wip()).collect(),
                     ) {
                         debug!("vtable_entries: predicates do not hold");
                         return VtblEntry::Vacant;
@@ -317,7 +324,10 @@ fn vtable_entries<'tcx>(
 pub(crate) fn first_method_vtable_slot<'tcx>(tcx: TyCtxt<'tcx>, key: ty::TraitRef<'tcx>) -> usize {
     debug_assert!(!key.has_non_region_infer() && !key.has_non_region_param());
     debug_assert_eq!(
-        tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), key),
+        tcx.normalize_erasing_regions(
+            ty::TypingEnv::fully_monomorphized(),
+            Unnormalized::new_wip(key)
+        ),
         key,
         "vtable trait ref should be normalized"
     );
@@ -381,7 +391,10 @@ pub(crate) fn supertrait_vtable_slot<'tcx>(
 ) -> Option<usize> {
     debug_assert!(!key.has_non_region_infer() && !key.has_non_region_param());
     debug_assert_eq!(
-        tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), key),
+        tcx.normalize_erasing_regions(
+            ty::TypingEnv::fully_monomorphized(),
+            Unnormalized::new_wip(key)
+        ),
         key,
         "upcasting trait refs should be normalized"
     );

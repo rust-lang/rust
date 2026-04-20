@@ -548,7 +548,7 @@ fn is_default_equivalent_ctor(cx: &LateContext<'_>, def_id: DefId, path: &QPath<
     if let QPath::TypeRelative(_, method) = path
         && method.ident.name == sym::new
         && let Some(impl_did) = cx.tcx.impl_of_assoc(def_id)
-        && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
+        && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().skip_norm_wip().ty_adt_def()
     {
         return Some(adt.did()) == cx.tcx.lang_items().string()
             || (cx.tcx.get_diagnostic_name(adt.did())).is_some_and(|adt_name| std_types_symbols.contains(&adt_name));
@@ -1483,13 +1483,13 @@ pub fn is_direct_expn_of(span: Span, name: Symbol) -> Option<Span> {
 
 /// Convenience function to get the return type of a function.
 pub fn return_ty<'tcx>(cx: &LateContext<'tcx>, fn_def_id: OwnerId) -> Ty<'tcx> {
-    let ret_ty = cx.tcx.fn_sig(fn_def_id).instantiate_identity().output();
+    let ret_ty = cx.tcx.fn_sig(fn_def_id).instantiate_identity().skip_norm_wip().output();
     cx.tcx.instantiate_bound_regions_with_erased(ret_ty)
 }
 
 /// Convenience function to get the nth argument type of a function.
 pub fn nth_arg<'tcx>(cx: &LateContext<'tcx>, fn_def_id: OwnerId, nth: usize) -> Ty<'tcx> {
-    let arg = cx.tcx.fn_sig(fn_def_id).instantiate_identity().input(nth);
+    let arg = cx.tcx.fn_sig(fn_def_id).instantiate_identity().skip_norm_wip().input(nth);
     cx.tcx.instantiate_bound_regions_with_erased(arg)
 }
 
@@ -2634,7 +2634,7 @@ impl<'tcx> ExprUseNode<'tcx> {
             Self::LetStmt(LetStmt { ty: Some(ty), .. }) => Some(DefinedTy::Hir(ty)),
             Self::ConstStatic(id) => Some(DefinedTy::Mir {
                 def_site_def_id: Some(id.def_id.to_def_id()),
-                ty: Binder::dummy(cx.tcx.type_of(id).instantiate_identity()),
+                ty: Binder::dummy(cx.tcx.type_of(id).instantiate_identity().skip_norm_wip()),
             }),
             Self::Return(id) => {
                 if let Node::Expr(Expr {
@@ -2647,7 +2647,7 @@ impl<'tcx> ExprUseNode<'tcx> {
                         FnRetTy::Return(ty) => Some(DefinedTy::Hir(ty)),
                     }
                 } else {
-                    let ty = cx.tcx.fn_sig(id).instantiate_identity().output();
+                    let ty = cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip().output();
                     Some(DefinedTy::Mir {
                         def_site_def_id: Some(id.def_id.to_def_id()),
                         ty,
@@ -2669,7 +2669,7 @@ impl<'tcx> ExprUseNode<'tcx> {
                     })
                     .map(|(adt, field_def)| DefinedTy::Mir {
                         def_site_def_id: Some(adt.did()),
-                        ty: Binder::dummy(cx.tcx.type_of(field_def.did).instantiate_identity()),
+                        ty: Binder::dummy(cx.tcx.type_of(field_def.did).instantiate_identity().skip_norm_wip()),
                     }),
                 _ => None,
             },
@@ -3282,7 +3282,7 @@ pub fn get_path_from_caller_to_method_type<'tcx>(
     match assoc_item.container {
         rustc_ty::AssocContainer::Trait => get_path_to_callee(tcx, from, def_id),
         rustc_ty::AssocContainer::InherentImpl | rustc_ty::AssocContainer::TraitImpl(_) => {
-            let ty = tcx.type_of(def_id).instantiate_identity();
+            let ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
             get_path_to_ty(tcx, from, ty, args)
         },
     }
@@ -3298,7 +3298,7 @@ fn get_path_to_ty<'tcx>(tcx: TyCtxt<'tcx>, from: LocalDefId, ty: Ty<'tcx>, args:
         | rustc_ty::RawPtr(_, _)
         | rustc_ty::Ref(..)
         | rustc_ty::Slice(_)
-        | rustc_ty::Tuple(_) => format!("<{}>", EarlyBinder::bind(ty).instantiate(tcx, args)),
+        | rustc_ty::Tuple(_) => format!("<{}>", EarlyBinder::bind(ty).instantiate(tcx, args).skip_norm_wip()),
         _ => ty.to_string(),
     }
 }
@@ -3478,7 +3478,7 @@ pub fn expr_requires_coercion<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -
     // actually have type adjustments.
     match expr.kind {
         ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) if let Some(def_id) = fn_def_id(cx, expr) => {
-            let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity();
+            let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
 
             if !fn_sig.output().skip_binder().has_type_flags(TypeFlags::HAS_TY_PARAM) {
                 return false;
