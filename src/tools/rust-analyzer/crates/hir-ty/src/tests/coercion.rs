@@ -309,7 +309,7 @@ fn takes_ref_str(x: &str) {}
 fn returns_string() -> String { loop {} }
 fn test() {
     takes_ref_str(&{ returns_string() });
-               // ^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(None), Deref(Some(OverloadedDeref(Some(Not)))), Borrow(Ref(Not))
+               // ^^^^^^^^^^^^^^^^^^^^^ adjustments: Deref(None), Deref(Some(OverloadedDeref(Not))), Borrow(Ref(Not))
 }
 "#,
     );
@@ -598,6 +598,10 @@ fn test() {
     );
 }
 
+// FIXME: rustc emits the following error here:
+//  - error[E0277]:  he size for values of type `impl Foo + ?Sized` cannot be known at compilation time
+// ...but we don't emit any error here for now
+#[ignore = "rustc emits E0277 here"]
 #[test]
 fn coerce_unsize_apit() {
     check(

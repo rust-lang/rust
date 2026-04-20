@@ -1693,9 +1693,7 @@ impl<'db> SemanticsImpl<'db> {
                         hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
                         hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {
                             // FIXME: Should we handle unknown mutability better?
-                            Adjust::Deref(Some(OverloadedDeref(
-                                m.map(mutability).unwrap_or(Mutability::Shared),
-                            )))
+                            Adjust::Deref(Some(OverloadedDeref(mutability(m))))
                         }
                         hir_ty::Adjust::Deref(None) => Adjust::Deref(None),
                         hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::RawPtr(m)) => {

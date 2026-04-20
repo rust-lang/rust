@@ -1362,26 +1362,26 @@ fn node_to_insert_after(body: &FunctionBody, anchor: Anchor) -> Option<SyntaxNod
     while let Some(next_ancestor) = ancestors.next() {
         match next_ancestor.kind() {
             SyntaxKind::SOURCE_FILE => break,
-            SyntaxKind::IMPL => {
-                if body.extracted_from_trait_impl() && matches!(anchor, Anchor::Method) {
-                    let impl_node = find_non_trait_impl(&next_ancestor);
-                    if let target_node @ Some(_) = impl_node.as_ref().and_then(last_impl_member) {
-                        return target_node;
-                    }
+            SyntaxKind::IMPL
+                if body.extracted_from_trait_impl() && matches!(anchor, Anchor::Method) =>
+            {
+                let impl_node = find_non_trait_impl(&next_ancestor);
+                if let target_node @ Some(_) = impl_node.as_ref().and_then(last_impl_member) {
+                    return target_node;
                 }
             }
             SyntaxKind::ITEM_LIST if !matches!(anchor, Anchor::Freestanding) => continue,
-            SyntaxKind::ITEM_LIST => {
-                if ancestors.peek().map(SyntaxNode::kind) == Some(SyntaxKind::MODULE) {
-                    break;
-                }
+            SyntaxKind::ITEM_LIST
+                if ancestors.peek().map(SyntaxNode::kind) == Some(SyntaxKind::MODULE) =>
+            {
+                break;
             }
             SyntaxKind::ASSOC_ITEM_LIST if !matches!(anchor, Anchor::Method) => continue,
             SyntaxKind::ASSOC_ITEM_LIST if body.extracted_from_trait_impl() => continue,
-            SyntaxKind::ASSOC_ITEM_LIST => {
-                if ancestors.peek().map(SyntaxNode::kind) == Some(SyntaxKind::IMPL) {
-                    break;
-                }
+            SyntaxKind::ASSOC_ITEM_LIST
+                if ancestors.peek().map(SyntaxNode::kind) == Some(SyntaxKind::IMPL) =>
+            {
+                break;
             }
             _ => (),
         }
@@ -2088,7 +2088,11 @@ fn fix_param_usages(
     for (param, usages) in usages_for_param {
         for usage in usages {
             match usage.syntax().ancestors().skip(1).find_map(ast::Expr::cast) {
-                Some(ast::Expr::MethodCallExpr(_) | ast::Expr::FieldExpr(_)) => {
+                Some(
+                    ast::Expr::MethodCallExpr(_)
+                    | ast::Expr::FieldExpr(_)
+                    | ast::Expr::IndexExpr(_),
+                ) => {
                     // do nothing
                 }
                 Some(ast::Expr::RefExpr(node))
@@ -2124,19 +2128,19 @@ fn update_external_control_flow(handler: &FlowHandler<'_>, syntax: &SyntaxNode) 
     for event in syntax.preorder() {
         match event {
             WalkEvent::Enter(e) => match e.kind() {
-                SyntaxKind::LOOP_EXPR | SyntaxKind::WHILE_EXPR | SyntaxKind::FOR_EXPR => {
-                    if nested_loop.is_none() {
-                        nested_loop = Some(e.clone());
-                    }
+                SyntaxKind::LOOP_EXPR | SyntaxKind::WHILE_EXPR | SyntaxKind::FOR_EXPR
+                    if nested_loop.is_none() =>
+                {
+                    nested_loop = Some(e.clone());
                 }
                 SyntaxKind::FN
                 | SyntaxKind::CONST
                 | SyntaxKind::STATIC
                 | SyntaxKind::IMPL
-                | SyntaxKind::MODULE => {
-                    if nested_scope.is_none() {
-                        nested_scope = Some(e.clone());
-                    }
+                | SyntaxKind::MODULE
+                    if nested_scope.is_none() =>
+                {
+                    nested_scope = Some(e.clone());
                 }
                 _ => {}
             },
@@ -3206,6 +3210,32 @@ fn foo() {
 
 fn $0fun_name(n: &mut i32) {
     *n += 1;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn mut_index_from_outer_scope() {
+        check_assist(
+            extract_function,
+            r#"
+//- minicore: index
+fn foo() {
+    let mut arr = [1i32];
+    $0arr[0] = 3;$0
+    let _ = arr;
+}
+"#,
+            r#"
+fn foo() {
+    let mut arr = [1i32];
+    fun_name(&mut arr);
+    let _ = arr;
+}
+
+fn $0fun_name(arr: &mut [i32; 1]) {
+    arr[0] = 3;
 }
 "#,
         );

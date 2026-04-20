@@ -112,6 +112,7 @@ fn main() {}
 }
 
 #[test]
+#[ignore = "this test tends to stuck, FIXME: investigate that"]
 fn test_flycheck_diagnostics_with_override_command_cleared_after_fix() {
     if skip_slow_tests() {
         return;

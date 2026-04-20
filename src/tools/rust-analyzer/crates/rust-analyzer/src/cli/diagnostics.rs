@@ -6,7 +6,7 @@ use rustc_hash::FxHashSet;
 
 use hir::{Crate, Module, db::HirDatabase, sym};
 use ide::{AnalysisHost, AssistResolveStrategy, Diagnostic, DiagnosticsConfig, Severity};
-use ide_db::{LineIndexDatabase, base_db::SourceDatabase};
+use ide_db::{base_db::SourceDatabase, line_index};
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 
 use crate::cli::{flags, progress_report::ProgressReport};
@@ -99,7 +99,7 @@ impl flags::Diagnostics {
                     }
 
                     let Diagnostic { code, message, range, severity, .. } = diagnostic;
-                    let line_index = db.line_index(range.file_id);
+                    let line_index = line_index(db, range.file_id);
                     let start = line_index.line_col(range.range.start());
                     let end = line_index.line_col(range.range.end());
                     bar.println(format!(

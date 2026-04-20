@@ -487,7 +487,7 @@ mod tests {
             "The amount of folds is different than the expected amount"
         );
 
-        for (fold, (range, attr, collapsed_text)) in folds.iter().zip(ranges.into_iter()) {
+        for (fold, (range, attr, collapsed_text)) in folds.iter().zip(ranges) {
             assert_eq!(fold.range.start(), range.start(), "mismatched start of folding ranges");
             assert_eq!(fold.range.end(), range.end(), "mismatched end of folding ranges");
 

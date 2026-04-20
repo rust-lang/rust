@@ -64,7 +64,7 @@ fn render(
         label(&ctx, needs_bang, bra, ket, &name.to_smolstr()),
         completion.edition,
     );
-    item.set_deprecated(ctx.is_deprecated(macro_))
+    item.set_deprecated(ctx.is_deprecated(macro_, None /* macros can't be assoc items */))
         .detail(macro_.display(completion.db, completion.display_target).to_string())
         .set_documentation(docs)
         .set_relevance(ctx.completion_relevance());

@@ -21,7 +21,7 @@ use rustc_type_ir::{
 use triomphe::Arc;
 
 use crate::{
-    InferenceResult, ParamEnvAndCrate,
+    ParamEnvAndCrate,
     consteval::try_const_usize,
     db::HirDatabase,
     next_solver::{
@@ -331,25 +331,18 @@ pub fn layout_of_ty_query(
             ptr.valid_range_mut().start = 1;
             Layout::scalar(dl, ptr)
         }
-        TyKind::Closure(id, args) => {
-            let def = db.lookup_intern_closure(id.0);
-            let infer = InferenceResult::of(db, def.0);
-            let (captures, _) = infer.closure_info(id.0);
-            let fields = captures
-                .iter()
-                .map(|it| {
-                    let ty = it.ty.get().instantiate(interner, args.as_closure().parent_args());
-                    db.layout_of_ty(ty.store(), trait_env.clone())
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            let fields = fields.iter().map(|it| &**it).collect::<Vec<_>>();
-            let fields = fields.iter().collect::<IndexVec<_, _>>();
-            cx.calc.univariant(&fields, &ReprOptions::default(), StructKind::AlwaysSized)?
+        TyKind::Closure(_, args) => {
+            return db.layout_of_ty(args.as_closure().tupled_upvars_ty().store(), trait_env);
+        }
+        TyKind::Coroutine(_, args) => {
+            return db.layout_of_ty(args.as_coroutine().tupled_upvars_ty().store(), trait_env);
+        }
+        TyKind::CoroutineClosure(_, args) => {
+            return db
+                .layout_of_ty(args.as_coroutine_closure().tupled_upvars_ty().store(), trait_env);
         }
 
-        TyKind::Coroutine(_, _)
-        | TyKind::CoroutineWitness(_, _)
-        | TyKind::CoroutineClosure(_, _) => {
+        TyKind::CoroutineWitness(_, _) => {
             return Err(LayoutError::NotImplemented);
         }
 

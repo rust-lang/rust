@@ -126,7 +126,9 @@ fn build_completion(
         ctx.completion.edition,
     );
     item.set_documentation(ctx.docs(def))
-        .set_deprecated(ctx.is_deprecated(def))
+        .set_deprecated(
+            ctx.is_deprecated(def, None /* the two current `def` arguments to this function, `Struct` and `EnumVariant`, both can't be assoc items */),
+        )
         .detail(&pat)
         .lookup_by(lookup)
         .set_relevance(relevance);

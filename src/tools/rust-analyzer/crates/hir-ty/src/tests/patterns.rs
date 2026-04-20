@@ -294,6 +294,7 @@ fn infer_pattern_match_ergonomics_ref() {
 fn ref_pat_with_inference_variable() {
     check_no_mismatches(
         r#"
+//- minicore: fn
 enum E { A }
 fn test() {
     let f = |e| match e {

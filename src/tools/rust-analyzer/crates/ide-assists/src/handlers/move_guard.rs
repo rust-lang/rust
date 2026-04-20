@@ -73,24 +73,24 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext<'_>)
         "Move guard to arm body",
         target,
         |builder| {
-            let mut edit = builder.make_editor(match_arm.syntax());
+            let editor = builder.make_editor(match_arm.syntax());
             for element in space_before_delete {
                 if element.kind() == WHITESPACE {
-                    edit.delete(element);
+                    editor.delete(element);
                 }
             }
             for rest_arm in &rest_arms {
-                edit.delete(rest_arm.syntax());
+                editor.delete(rest_arm.syntax());
             }
             if let Some(element) = space_after_arrow
                 && element.kind() == WHITESPACE
             {
-                edit.replace(element, make.whitespace(" "));
+                editor.replace(element, make.whitespace(" "));
             }
 
-            edit.delete(guard.syntax());
-            edit.replace(arm_expr.syntax(), if_expr.syntax());
-            builder.add_file_edits(ctx.vfs_file_id(), edit);
+            editor.delete(guard.syntax());
+            editor.replace(arm_expr.syntax(), if_expr.syntax());
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -156,7 +156,8 @@ pub(crate) fn move_arm_cond_to_match_guard(
         "Move condition to match guard",
         replace_node.text_range(),
         |builder| {
-            let make = SyntaxFactory::without_mappings();
+            let editor = builder.make_editor(match_arm.syntax());
+            let make = editor.make();
             let mut replace_arms = vec![];
 
             // Dedent if if_expr is in a BlockExpr
@@ -227,14 +228,12 @@ pub(crate) fn move_arm_cond_to_match_guard(
                 }
             }
 
-            let mut edit = builder.make_editor(match_arm.syntax());
-
             let newline = make.whitespace(&format!("\n{indent_level}"));
             let replace_arms = replace_arms.iter().map(|it| it.syntax().syntax_element());
             let replace_arms = Itertools::intersperse(replace_arms, newline.syntax_element());
-            edit.replace_with_many(match_arm.syntax(), replace_arms.collect());
+            editor.replace_with_many(match_arm.syntax(), replace_arms.collect());
 
-            builder.add_file_edits(ctx.vfs_file_id(), edit);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

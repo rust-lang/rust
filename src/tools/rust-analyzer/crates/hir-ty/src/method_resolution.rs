@@ -219,7 +219,6 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 /// between multiple candidates. We otherwise treat them as ordinary inference
 /// variable to avoid rejecting otherwise correct code.
 #[derive(Debug)]
-#[expect(dead_code)]
 pub(super) enum TreatNotYetDefinedOpaques {
     AsInfer,
     AsRigid,

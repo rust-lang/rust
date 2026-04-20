@@ -127,7 +127,7 @@ impl AddRewrite for Assists {
         target: &SyntaxNode,
     ) -> Option<()> {
         self.add(AssistId::refactor_rewrite("sort_items"), label, target.text_range(), |builder| {
-            let mut editor = builder.make_editor(target);
+            let editor = builder.make_editor(target);
 
             old.into_iter()
                 .zip(new)

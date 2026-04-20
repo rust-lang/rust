@@ -1,12 +1,14 @@
 use ide_db::assists::GroupLabel;
-use itertools::Itertools;
 use stdx::to_lower_snake_case;
-use syntax::ast::HasVisibility;
-use syntax::ast::{self, AstNode, HasName};
+use syntax::{
+    AstNode, Edition,
+    ast::{self, HasName, HasVisibility, edit::AstNodeEdit},
+    syntax_editor::Position,
+};
 
 use crate::{
     AssistContext, AssistId, Assists,
-    utils::{add_method_to_adt, find_struct_impl, is_selected},
+    utils::{find_struct_impl, generate_impl_with_item, is_selected},
 };
 
 // Assist: generate_enum_try_into_method
@@ -116,15 +118,6 @@ fn generate_enum_projection_method(
     assist_description: &str,
     props: ProjectionProps,
 ) -> Option<()> {
-    let ProjectionProps {
-        fn_name_prefix,
-        self_param,
-        return_prefix,
-        return_suffix,
-        happy_case,
-        sad_case,
-    } = props;
-
     let variant = ctx.find_node_at_offset::<ast::Variant>()?;
     let parent_enum = ast::Adt::Enum(variant.parent_enum());
     let variants = variant
@@ -135,7 +128,7 @@ fn generate_enum_projection_method(
         .collect::<Vec<_>>();
     let methods = variants
         .iter()
-        .map(|variant| Method::new(variant, fn_name_prefix))
+        .map(|variant| Method::new(variant, props.fn_name_prefix))
         .collect::<Option<Vec<_>>>()?;
     let fn_names = methods.iter().map(|it| it.fn_name.clone()).collect::<Vec<_>>();
     stdx::never!(variants.is_empty());
@@ -151,28 +144,64 @@ fn generate_enum_projection_method(
         target,
         |builder| {
             let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{v} "));
+            let must_use = if ctx.config.assist_emit_must_use { "#[must_use]\n" } else { "" };
 
-            let must_use = if ctx.config.assist_emit_must_use { "#[must_use]\n    " } else { "" };
-
-            let method = methods
+            let fn_items: Vec<ast::AssocItem> = methods
                 .iter()
-                .map(|Method { pattern_suffix, field_type, bound_name, fn_name, variant_name }| {
-                    format!(
-                        "    \
-    {must_use}{vis}fn {fn_name}({self_param}) -> {return_prefix}{field_type}{return_suffix} {{
-        if let Self::{variant_name}{pattern_suffix} = self {{
-            {happy_case}({bound_name})
-        }} else {{
-            {sad_case}
-        }}
-    }}"
-                    )
-                })
-                .join("\n\n");
+                .map(|method| build_fn_item(method, &vis, must_use, &props))
+                .collect();
 
-            add_method_to_adt(builder, &parent_enum, impl_def, &method);
+            if let Some(impl_def) = &impl_def {
+                let editor = builder.make_editor(impl_def.syntax());
+                impl_def.assoc_item_list().unwrap().add_items(&editor, fn_items);
+                builder.add_file_edits(ctx.vfs_file_id(), editor);
+                return;
+            }
+
+            let editor = builder.make_editor(parent_enum.syntax());
+            let make = editor.make();
+            let indent = parent_enum.indent_level();
+            let assoc_list = make.assoc_item_list(fn_items);
+            let new_impl = generate_impl_with_item(make, &parent_enum, Some(assoc_list));
+            editor.insert_all(
+                Position::after(parent_enum.syntax()),
+                vec![
+                    make.whitespace(&format!("\n\n{indent}")).into(),
+                    new_impl.syntax().clone().into(),
+                ],
+            );
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
+}
+
+fn build_fn_item(
+    method: &Method,
+    vis: &str,
+    must_use: &str,
+    props: &ProjectionProps,
+) -> ast::AssocItem {
+    let Method { pattern_suffix, field_type, bound_name, fn_name, variant_name } = method;
+    let ProjectionProps { self_param, return_prefix, return_suffix, happy_case, sad_case, .. } =
+        props;
+    let fn_text = format!(
+        "{must_use}{vis}fn {fn_name}({self_param}) -> {return_prefix}{field_type}{return_suffix} {{
+    if let Self::{variant_name}{pattern_suffix} = self {{
+        {happy_case}({bound_name})
+    }} else {{
+        {sad_case}
+    }}
+}}"
+    );
+    let wrapped = format!("impl X {{ {fn_text} }}");
+    let parse = syntax::SourceFile::parse(&wrapped, Edition::CURRENT);
+    let fn_ = parse
+        .tree()
+        .syntax()
+        .descendants()
+        .find_map(ast::Fn::cast)
+        .expect("fn text must produce a valid fn node");
+    ast::AssocItem::Fn(fn_.indent(1.into()))
 }
 
 struct Method {
@@ -185,6 +214,7 @@ struct Method {
 
 impl Method {
     fn new(variant: &ast::Variant, fn_name_prefix: &str) -> Option<Self> {
+        use itertools::Itertools as _;
         let variant_name = variant.name()?;
         let fn_name = format!("{fn_name_prefix}_{}", &to_lower_snake_case(&variant_name.text()));
 
