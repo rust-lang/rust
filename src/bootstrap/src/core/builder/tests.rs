@@ -2162,6 +2162,7 @@ mod snapshot {
         [build] llvm <host>
         [build] rustc 0 <host> -> rustc 1 <host>
         [build] rustdoc 0 <host>
+        [build] rustc 1 <host> -> std 1 <host>
         ");
     }
 

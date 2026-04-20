@@ -899,6 +899,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // right is important, as `compiletest` is intended to only support one target spec JSON
         // format, namely that of the staged compiler.
         cargo.env("TEST_RUSTC", builder.rustc(staged_compiler));
+        builder.ensure(Std::new(staged_compiler, host));
+
+        // run_cargo_test will automatically add the dylib paths for the bootstrap compiler,
+        // but some UI tests expect that it's also set for the tested compiler.
+        cargo.env("COMPILETEST_RUNTIME_PATH", builder.sysroot_target_libdir(staged_compiler, host));
 
         run_cargo_test(cargo, &[], &[], "compiletest self test", host, builder);
     }

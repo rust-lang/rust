@@ -10,6 +10,7 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::process::ChildStdout;
 use std::time::Duration;
 
+use build_helper::metrics::compiletest::*;
 use termcolor::{Color, ColorSpec, WriteColor};
 
 use crate::core::builder::Builder;
@@ -438,65 +439,4 @@ impl Outcome<'_> {
         }
         writer.reset()
     }
-}
-
-#[derive(serde_derive::Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-enum Message {
-    Suite(SuiteMessage),
-    Test(TestMessage),
-    Bench(BenchOutcome),
-    Report(Report),
-}
-
-#[derive(serde_derive::Deserialize)]
-#[serde(tag = "event", rename_all = "snake_case")]
-enum SuiteMessage {
-    Ok(SuiteOutcome),
-    Failed(SuiteOutcome),
-    Started { test_count: usize },
-}
-
-#[derive(serde_derive::Deserialize)]
-struct SuiteOutcome {
-    passed: usize,
-    failed: usize,
-    ignored: usize,
-    measured: usize,
-    filtered_out: usize,
-    /// The time it took to execute this test suite, or `None` if time measurement was not possible
-    /// (e.g. due to running on wasm).
-    exec_time: Option<f64>,
-}
-
-#[derive(serde_derive::Deserialize)]
-#[serde(tag = "event", rename_all = "snake_case")]
-enum TestMessage {
-    Ok(TestOutcome),
-    Failed(TestOutcome),
-    Ignored(TestOutcome),
-    Timeout { name: String },
-    Started,
-}
-
-#[derive(serde_derive::Deserialize)]
-struct BenchOutcome {
-    name: String,
-    median: f64,
-    deviation: f64,
-}
-
-#[derive(serde_derive::Deserialize)]
-struct TestOutcome {
-    name: String,
-    exec_time: Option<f64>,
-    stdout: Option<String>,
-    message: Option<String>,
-}
-
-/// Emitted when running doctests.
-#[derive(serde_derive::Deserialize)]
-struct Report {
-    total_time: f64,
-    compilation_time: f64,
 }
