@@ -911,6 +911,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &ty::GenericParamDef) -> Result<(), Er
                     // Can never implement `ConstParamTy`, don't suggest anything.
                     Err(
                         ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed
+                        | ConstParamTyImplementationError::NonExhaustive(..)
                         | ConstParamTyImplementationError::InvalidInnerTyOfBuiltinTy(..),
                     ) => None,
                     Err(ConstParamTyImplementationError::UnsizedConstParamsFeatureRequired) => {
