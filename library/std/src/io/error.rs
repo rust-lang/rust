@@ -3,6 +3,8 @@ mod tests;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::io::ErrorKind;
+#[unstable(feature = "raw_os_error_ty", issue = "107792")]
+pub use core::io::RawOsError;
 
 // On 64-bit platforms, `io::Error` may use a bit-packed representation to
 // reduce size. However, this representation assumes that error codes are
@@ -139,17 +141,6 @@ enum ErrorData<C> {
     SimpleMessage(&'static SimpleMessage),
     Custom(C),
 }
-
-/// The type of raw OS error codes.
-///
-/// This is an [`i32`] on all currently supported platforms, but platforms
-/// added in the future (such as UEFI) may use a different primitive type like
-/// [`usize`]. Use `as` or [`into`] conversions where applicable to ensure maximum
-/// portability.
-///
-/// [`into`]: Into::into
-#[unstable(feature = "raw_os_error_ty", issue = "107792")]
-pub type RawOsError = sys::io::RawOsError;
 
 // `#[repr(align(4))]` is probably redundant, it should have that value or
 // higher already. We include it just because repr_bitpacked.rs's encoding

@@ -62,7 +62,7 @@ pub use error::errno_location;
     target_os = "wasi",
 ))]
 pub use error::set_errno;
-pub use error::{RawOsError, decode_error_kind, errno, error_string, is_interrupted};
+pub use error::{decode_error_kind, errno, error_string, is_interrupted};
 pub use io_slice::{IoSlice, IoSliceMut};
 pub use is_terminal::is_terminal;
 pub use kernel_copy::{CopyState, kernel_copy};
