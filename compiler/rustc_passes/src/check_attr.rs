@@ -51,9 +51,9 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use crate::errors;
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_const]` can only be applied to non-const trait impls")]
+#[diag("`#[diagnostic::on_const]` can only be applied to non-const trait implementations")]
 struct DiagnosticOnConstOnlyForNonConstTraitImpls {
-    #[label("this is a const trait impl")]
+    #[label("this is a const trait implementation")]
     item_span: Span,
 }
 

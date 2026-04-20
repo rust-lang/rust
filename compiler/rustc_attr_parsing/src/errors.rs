@@ -254,9 +254,9 @@ pub(crate) struct DocUnknownAny {
 pub(crate) struct DocAutoCfgWrongLiteral;
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_const]` can only be applied to non-const trait impls")]
+#[diag("`#[diagnostic::on_const]` can only be applied to non-const trait implementations")]
 pub(crate) struct DiagnosticOnConstOnlyForTraitImpls {
-    #[label("not a trait impl")]
+    #[label("not a trait implementation")]
     pub target_span: Span,
 }
 
@@ -277,4 +277,7 @@ pub(crate) struct DiagnosticOnUnknownOnlyForImports {
 
 #[derive(Diagnostic)]
 #[diag("`#[diagnostic::do_not_recommend]` can only be placed on trait implementations")]
-pub(crate) struct IncorrectDoNotRecommendLocation;
+pub(crate) struct IncorrectDoNotRecommendLocation {
+    #[label("not a trait implementation")]
+    pub target_span: Span,
+}
