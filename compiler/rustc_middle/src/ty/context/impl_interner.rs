@@ -115,8 +115,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type ExprConst = ty::Expr<'tcx>;
     type ValTree = ty::ValTree<'tcx>;
     type ScalarInt = ty::ScalarInt;
-
-    type Region = Region<'tcx>;
+    type InternedRegionKind = Interned<'tcx, ty::RegionKind<'tcx>>;
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegion = ty::LateParamRegion;
 
@@ -794,6 +793,54 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.opt_item_name(id).unwrap_or_else(|| {
             bug!("item_name: no name for {:?}", self.def_path(id));
         })
+    }
+
+    fn get_anon_re_bounds_lifetime(self, idx: usize, var_idx: usize) -> Option<Region<'tcx>> {
+        if let Some(inner) = self.lifetimes.anon_re_bounds.get(idx) {
+            inner.get(var_idx).copied()
+        } else {
+            None
+        }
+    }
+
+    fn get_anon_re_canonical_bounds_lifetime(self, idx: usize) -> Option<Region<'tcx>> {
+        self.lifetimes.anon_re_canonical_bounds.get(idx).copied()
+    }
+
+    fn get_re_static_lifetime(self) -> Region<'tcx> {
+        self.lifetimes.re_static
+    }
+
+    fn intern_region(self, region_kind: RegionKind<'tcx>) -> Region<'tcx> {
+        self.intern_region(region_kind)
+    }
+
+    fn intern_bound_region(
+        self,
+        debruijn: DebruijnIndex,
+        bound_region: BoundRegion<'tcx>,
+    ) -> Region<'tcx> {
+        // Use a pre-interned one when possible.
+        if let ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon } = bound_region
+            && let Some(inner) = self.lifetimes.anon_re_bounds.get(debruijn.as_usize())
+            && let Some(re) = inner.get(var.as_usize()).copied()
+        {
+            re
+        } else {
+            self.intern_region(ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), bound_region))
+        }
+    }
+
+    fn intern_canonical_bound(self, var: BoundVar) -> Region<'tcx> {
+        // Use a pre-interned one when possible.
+        if let Some(re) = self.lifetimes.anon_re_canonical_bounds.get(var.as_usize()).copied() {
+            re
+        } else {
+            self.intern_region(ty::ReBound(
+                ty::BoundVarIndexKind::Canonical,
+                BoundRegion { var, kind: ty::BoundRegionKind::Anon },
+            ))
+        }
     }
 }
 
