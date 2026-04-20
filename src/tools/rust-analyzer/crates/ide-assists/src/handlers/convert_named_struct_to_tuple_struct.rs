@@ -99,20 +99,19 @@ fn edit_struct_def(
 ) {
     // Note that we don't need to consider macro files in this function because this is
     // currently not triggered for struct definitions inside macro calls.
+    let editor = builder.make_editor(strukt.syntax());
+    let make = editor.make();
+
     let tuple_fields = record_fields.fields().filter_map(|f| {
-        let (editor, field) =
-            SyntaxEditor::with_ast_node(&ast::make::tuple_field(f.visibility(), f.ty()?));
-        editor.insert_all(
+        let (field_editor, field) =
+            SyntaxEditor::with_ast_node(&make.tuple_field(f.visibility(), f.ty()?));
+        field_editor.insert_all(
             Position::first_child_of(field.syntax()),
             f.attrs().map(|attr| attr.syntax().clone().into()).collect(),
         );
-        let field_syntax = editor.finish().new_root().clone();
-        let field = ast::TupleField::cast(field_syntax)?;
-        Some(field)
+        let field_syntax = field_editor.finish().new_root().clone();
+        ast::TupleField::cast(field_syntax)
     });
-
-    let editor = builder.make_editor(strukt.syntax());
-    let make = editor.make();
 
     let tuple_fields = make.tuple_field_list(tuple_fields);
 
