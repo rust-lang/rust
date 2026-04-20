@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // Test that we can read the value of a non-atomic store atomically and an of an atomic value non-atomically.
 
 #![no_main]

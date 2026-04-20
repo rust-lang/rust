@@ -1,4 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
 //@revisions: rlx_rlx rlx_acq rel_rlx
 
 // Translated from GenMC's test `wrong/racy/MP+rel+rlx`, `MP+rlx+acq` and `MP+rlx+rlx`.

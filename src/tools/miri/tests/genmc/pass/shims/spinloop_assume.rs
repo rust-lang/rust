@@ -1,5 +1,5 @@
 //@ revisions: bounded123 bounded321 replaced123 replaced321
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows -Zmiri-genmc-verbose
+//@compile-flags: -Zmiri-genmc-verbose
 //@normalize-stderr-test: "Verification took .*s" -> "Verification took [TIME]s"
 
 // This test uses GenMC assume statements to bound or replace spinloops.

@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // Test several operations on atomic pointers.
 
 #![no_main]

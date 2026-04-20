@@ -1,4 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
 //@revisions: release1 release2
 
 // Translated from GenMC's test "2+2W+3sc+rel1" and "2+2W+3sc+rel2" (two variants that swap which store is `Release`).

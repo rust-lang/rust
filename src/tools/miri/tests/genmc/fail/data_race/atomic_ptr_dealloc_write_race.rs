@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // Test that use-after-free bugs involving atomic pointers are detected in GenMC mode.
 
 #![no_main]

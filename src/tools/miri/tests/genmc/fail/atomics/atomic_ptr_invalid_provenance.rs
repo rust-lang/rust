@@ -1,5 +1,4 @@
 //@revisions: send make
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
 
 // Test that we can distinguish two pointers with the same address, but different provenance, after they are sent to GenMC and back.
 // We have two variants, one where we send such a pointer to GenMC, and one where we make it on the GenMC side.

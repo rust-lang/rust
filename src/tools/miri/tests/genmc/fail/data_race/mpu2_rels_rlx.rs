@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // Translated from GenMC's test `wrong/racy/MPU2+rels+rlx`.
 // Test if Miri with GenMC can detect the data race on `X`.
 // The data race only occurs if thread 1 finishes, then threads 3 and 4 run, then thread 2.

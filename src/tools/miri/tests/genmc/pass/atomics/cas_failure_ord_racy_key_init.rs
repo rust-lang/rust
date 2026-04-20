@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows -Zmiri-ignore-leaks
+//@compile-flags: -Zmiri-ignore-leaks
 
 // Adapted from: `impl LazyKey`, `fn lazy_init`: rust/library/std/src/sys/thread_local/key/racy.rs
 // Two threads race to initialize a key, which is just an index into an array in this test.
