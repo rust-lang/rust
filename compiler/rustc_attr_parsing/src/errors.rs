@@ -1,4 +1,4 @@
-use rustc_errors::{DiagArgValue, MultiSpan};
+use rustc_errors::{Applicability, DiagArgValue, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -177,3 +177,31 @@ pub(crate) struct DocAliasDuplicated {
 #[derive(Diagnostic)]
 #[diag("only `hide` or `show` are allowed in `#[doc(auto_cfg(...))]`")]
 pub(crate) struct DocAutoCfgExpectsHideOrShow;
+
+#[derive(Diagnostic)]
+#[diag("there exists a built-in attribute with the same name")]
+pub(crate) struct AmbiguousDeriveHelpers;
+
+#[derive(Diagnostic)]
+#[diag("`#![doc(auto_cfg({$attr_name}(...)))]` only accepts identifiers or key/value items")]
+pub(crate) struct DocAutoCfgHideShowUnexpectedItem {
+    pub attr_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#![doc(auto_cfg({$attr_name}(...)))]` expects a list of items")]
+pub(crate) struct DocAutoCfgHideShowExpectsList {
+    pub attr_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown `doc` attribute `include`")]
+pub(crate) struct DocUnknownInclude {
+    pub inner: &'static str,
+    pub value: Symbol,
+    #[suggestion(
+        "use `doc = include_str!` instead",
+        code = "#{inner}[doc = include_str!(\"{value}\")]"
+    )]
+    pub sugg: (Span, Applicability),
+}

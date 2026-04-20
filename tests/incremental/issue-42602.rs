@@ -6,7 +6,7 @@
 // This was fixed by improving the resolution of the `FnOnce` trait
 // selection node.
 
-//@ revisions:cfail1 cfail2 cfail3
+//@ revisions: bfail1 bfail2 bfail3
 //@ compile-flags:-Zquery-dep-graph
 //@ build-pass (FIXME(62277): could be check-pass?)
 //@ ignore-backends: gcc
@@ -19,14 +19,14 @@ fn main() {
 }
 
 mod a {
-    #[cfg(cfail1)]
+    #[cfg(bfail1)]
     pub fn foo() {
         let x = vec![1, 2, 3];
         let v = || ::std::mem::drop(x);
         v();
     }
 
-    #[cfg(not(cfail1))]
+    #[cfg(not(bfail1))]
     pub fn foo() {
         let x = vec![1, 2, 3, 4];
         let v = || ::std::mem::drop(x);
@@ -35,8 +35,8 @@ mod a {
 }
 
 mod b {
-    #[rustc_clean(cfg="cfail2")]
-    #[rustc_clean(cfg="cfail3")]
+    #[rustc_clean(cfg="bfail2")]
+    #[rustc_clean(cfg="bfail3")]
     pub fn bar() {
         let x = vec![1, 2, 3];
         let v = || ::std::mem::drop(x);

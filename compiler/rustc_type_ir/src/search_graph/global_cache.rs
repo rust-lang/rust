@@ -39,6 +39,11 @@ pub struct GlobalCache<X: Cx> {
 }
 
 impl<X: Cx> GlobalCache<X> {
+    #[inline]
+    pub const fn new() -> Self {
+        GlobalCache { map: HashMap::with_hasher(rustc_hash::FxBuildHasher) }
+    }
+
     /// Insert a final result into the global cache.
     pub(super) fn insert(
         &mut self,
