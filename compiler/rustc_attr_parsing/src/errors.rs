@@ -252,3 +252,10 @@ pub(crate) struct DocUnknownAny {
 #[derive(Diagnostic)]
 #[diag("expected boolean for `#[doc(auto_cfg = ...)]`")]
 pub(crate) struct DocAutoCfgWrongLiteral;
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_const]` can only be applied to trait impls")]
+pub(crate) struct DiagnosticOnConstOnlyForTraitImpls {
+    #[label("not a trait impl")]
+    pub target_span: Span,
+}

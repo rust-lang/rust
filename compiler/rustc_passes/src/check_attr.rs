@@ -55,13 +55,6 @@ use crate::errors;
 struct DiagnosticOnUnimplementedOnlyForTraits;
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_const]` can only be applied to trait impls")]
-struct DiagnosticOnConstOnlyForTraitImpls {
-    #[label("not a trait impl")]
-    item_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_const]` can only be applied to non-const trait impls")]
 struct DiagnosticOnConstOnlyForNonConstTraitImpls {
     #[label("this is a const trait impl")]
@@ -587,7 +580,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[diagnostic::on_const]` is applied to a trait impl
+    /// Checks if `#[diagnostic::on_const]` is applied to a on-const trait impl
     fn check_diagnostic_on_const(
         &self,
         attr_span: Span,
@@ -595,6 +588,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         target: Target,
         item: Option<ItemLike<'_>>,
     ) {
+        // We only check the non-constness here. A diagnostic for use
+        // on not-trait impl items is issued during attribute parsing.
         if target == (Target::Impl { of_trait: true }) {
             match item.unwrap() {
                 ItemLike::Item(it) => match it.expect_impl().constness {
@@ -613,16 +608,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ItemLike::ForeignItem => {}
             }
         }
-        let item_span = self.tcx.hir_span(hir_id);
-        self.tcx.emit_node_span_lint(
-            MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-            hir_id,
-            attr_span,
-            DiagnosticOnConstOnlyForTraitImpls { item_span },
-        );
-
-        // We don't check the validity of generic args here...whose generics would that be, anyway?
-        // The traits' or the impls'?
+        // FIXME(#155570) Can we do something with generic args here?
+        // regardless, we don't check the validity of generic args here
+        // ...whose generics would that be, anyway? The traits' or the impls'?
     }
 
     /// Checks if `#[diagnostic::on_move]` is applied to an ADT definition
