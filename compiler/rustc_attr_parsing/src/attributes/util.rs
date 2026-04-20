@@ -1,7 +1,6 @@
 use std::num::IntErrorKind;
 
-use rustc_ast::LitKind;
-use rustc_ast::attr::AttributeExt;
+use rustc_ast as ast;
 use rustc_feature::is_builtin_attr_name;
 use rustc_hir::RustcVersion;
 use rustc_hir::limit::Limit;
@@ -27,8 +26,8 @@ pub fn parse_version(s: Symbol) -> Option<RustcVersion> {
     Some(RustcVersion { major, minor, patch })
 }
 
-pub fn is_builtin_attr(attr: &impl AttributeExt) -> bool {
-    attr.is_doc_comment().is_some() || attr.name().is_some_and(|name| is_builtin_attr_name(name))
+pub fn is_builtin_attr(attr: &ast::Attribute) -> bool {
+    attr.is_doc_comment() || attr.name().is_some_and(|name| is_builtin_attr_name(name))
 }
 
 /// Parse a single integer.
@@ -46,7 +45,7 @@ pub(crate) fn parse_single_integer<S: Stage>(
         cx.adcx().expected_integer_literal(single.span());
         return None;
     };
-    let LitKind::Int(num, _ty) = lit.kind else {
+    let ast::LitKind::Int(num, _ty) = lit.kind else {
         cx.adcx().expected_integer_literal(single.span());
         return None;
     };
