@@ -346,20 +346,6 @@ pub fn vget_lane_f64<const IMM5: i32>(v: float64x1_t) -> f64 {
     unsafe { simd_extract!(v, IMM5 as u32) }
 }
 
-/// Duplicate vector element to vector or scalar
-#[inline]
-#[target_feature(enable = "neon")]
-#[rustc_legacy_const_generics(1)]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
-#[cfg_attr(
-    all(test, any(target_arch = "aarch64", target_arch = "arm64ec")),
-    assert_instr(nop, IMM5 = 0)
-)]
-pub fn vgetq_lane_f64<const IMM5: i32>(v: float64x2_t) -> f64 {
-    static_assert_uimm_bits!(IMM5, 1);
-    unsafe { simd_extract!(v, IMM5 as u32) }
-}
-
 /// Vector combine
 #[inline]
 #[target_feature(enable = "neon")]

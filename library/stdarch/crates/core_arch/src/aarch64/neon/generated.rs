@@ -11456,6 +11456,17 @@ pub fn vget_high_f64(a: float64x2_t) -> float64x1_t {
 pub fn vget_low_f64(a: float64x2_t) -> float64x1_t {
     unsafe { float64x1_t([simd_extract!(a, 0)]) }
 }
+#[doc = "Duplicate vector element to vector or scalar"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vgetq_lane_f64)"]
+#[inline]
+#[target_feature(enable = "neon")]
+#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+#[rustc_legacy_const_generics(1)]
+#[cfg_attr(test, assert_instr(nop, IMM5 = 0))]
+pub fn vgetq_lane_f64<const IMM5: i32>(a: float64x2_t) -> f64 {
+    static_assert_uimm_bits!(IMM5, 1);
+    unsafe { simd_extract!(a, IMM5 as u32) }
+}
 #[doc = "Load multiple single-element structures to one, two, three, or four registers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vld1_f16)"]
 #[doc = "## Safety"]
