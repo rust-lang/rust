@@ -138,6 +138,8 @@ impl<'tcx> MatchPairTree<'tcx> {
             PatKind::Missing | PatKind::Wild | PatKind::Error(_) => None,
 
             PatKind::Or { ref pats } => {
+                use super::OrderedPatternData;
+
                 let pats: Box<[FlatPat<'tcx>]> =
                     pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect();
                 if !pats[0].extra_data.bindings.is_empty() {
@@ -146,9 +148,9 @@ impl<'tcx> MatchPairTree<'tcx> {
                     // or-patterns that will be simplified by `merge_trivial_subcandidates`. In
                     // other words, we can assume this expands into subcandidates.
                     // FIXME(@dianne): this needs updating/removing if we always merge or-patterns
-                    extra_data.bindings.push(super::OrderedPatternData::FromOrPattern);
+                    extra_data.bindings.push(OrderedPatternData::FromOrPattern);
                 }
-                if !pats[0].extra_data.guard_patterns.is_empty() {
+                if pats.iter().any(|pat| !pat.extra_data.guard_patterns.is_empty()) {
                     extra_data.guard_patterns.push(super::OrderedPatternData::FromOrPattern);
                 }
                 Some(TestableCase::Or { pats })
