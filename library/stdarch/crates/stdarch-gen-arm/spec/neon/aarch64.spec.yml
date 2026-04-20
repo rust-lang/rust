@@ -1869,9 +1869,9 @@ intrinsics:
       - *target-not-arm64ec
     safety: safe
     types:
+      - ["f16", "u16", 'h_u16_f16']
       - ["f16", "u32", 'h_u32_f16']
       - ["f16", "u64", 'h_u64_f16']
-
     compose:
       - LLVMLink:
           name: "vcvta{type[2]}"
@@ -1891,6 +1891,7 @@ intrinsics:
       - *target-not-arm64ec
     safety: safe
     types:
+      - ["f16", "i16", 'h_s16_f16']
       - ["f16", "i32", 'h_s32_f16']
       - ["f16", "i64", 'h_s64_f16']
     compose:
@@ -1900,37 +1901,6 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.fcvtas.{type[1]}.{type[0]}"
               arch: aarch64,arm64ec
-
-
-  - name: "vcvta{type[2]}"
-    doc: "Floating-point convert to integer, rounding to nearest with ties to away"
-    arguments: ["a: {type[0]}"]
-    return_type: "{type[1]}"
-    attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtas]]}]]
-      - *neon-fp16
-      - *neon-unstable-f16
-      - *target-not-arm64ec
-    safety: safe
-    types:
-      - ["f16", "i16", 'h_s16_f16', 's32']
-    compose:
-      - 'vcvtah_{type[3]}_f16(a) as i16'
-
-  - name: "vcvta{type[2]}"
-    doc: "Floating-point convert to integer, rounding to nearest with ties to away"
-    arguments: ["a: {type[0]}"]
-    return_type: "{type[1]}"
-    attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtau]]}]]
-      - *neon-fp16
-      - *neon-unstable-f16
-      - *target-not-arm64ec
-    safety: safe
-    types:
-      - ["f16", "u16", 'h_u16_f16', 'u32']
-    compose:
-      - 'vcvtah_{type[3]}_f16(a) as u16'
 
   - name: "vcvta{type[2]}"
     doc: "Floating-point convert to integer, rounding to nearest with ties to away"
@@ -2041,6 +2011,7 @@ intrinsics:
       - *target-not-arm64ec
     safety: safe
     types:
+      - ["f16", "i16", 'h']
       - ["f16", "i32", 'h']
       - ["f16", "i64", 'h']
     compose:
@@ -2052,22 +2023,6 @@ intrinsics:
               arch: aarch64,arm64ec
 
   - name: "vcvtn{type[2]}_{type[1]}_{type[0]}"
-    doc: "Floating-point convert to integer, rounding to nearest with ties to even"
-    arguments: ["a: {type[0]}"]
-    return_type: "{type[1]}"
-    attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtns]]}]]
-      - *neon-fp16
-      - *neon-unstable-f16
-      - *target-not-arm64ec
-    safety: safe
-    types:
-      - ["f16", "i16", 'h', 'i32']
-    compose:
-      - 'vcvtnh_{type[3]}_f16(a) as i16'
-
-
-  - name: "vcvtn{type[2]}_{type[1]}_{type[0]}"
     doc: "Floating-point convert to unsigned integer, rounding to nearest with ties to even"
     arguments: ["a: {type[0]}"]
     return_type: "{type[1]}"
@@ -2078,6 +2033,7 @@ intrinsics:
       - *target-not-arm64ec
     safety: safe
     types:
+      - ["f16", "u16", 'h']
       - ["f16", "u32", 'h']
       - ["f16", "u64", 'h']
     compose:
@@ -2087,21 +2043,6 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.fcvtnu.{type[1]}.{type[0]}"
               arch: aarch64,arm64ec
-
-  - name: "vcvtn{type[2]}_{type[1]}_{type[0]}"
-    doc: "Floating-point convert to unsigned integer, rounding to nearest with ties to even"
-    arguments: ["a: {type[0]}"]
-    return_type: "{type[1]}"
-    attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtnu]]}]]
-      - *neon-fp16
-      - *neon-unstable-f16
-      - *target-not-arm64ec
-    safety: safe
-    types:
-      - ["f16", "u16", 'h', 'u32']
-    compose:
-      - 'vcvtnh_{type[3]}_f16(a) as u16'
 
   - name: "vcvtm{neon_type[1].no}_{neon_type[0]}"
     doc: "Floating-point convert to signed integer, rounding toward minus infinity"
@@ -2393,6 +2334,7 @@ intrinsics:
       - *target-not-arm64ec
     safety: safe
     types:
+      - ["f16", "i16", 'h']
       - ["f16", "i32", 'h']
       - ["f16", "i64", 'h']
     compose:
@@ -2404,21 +2346,6 @@ intrinsics:
               arch: aarch64,arm64ec
 
   - name: "vcvtp{type[2]}_{type[1]}_{type[0]}"
-    doc: "Floating-point convert to integer, rounding to plus infinity"
-    arguments: ["a: {type[0]}"]
-    return_type: "{type[1]}"
-    attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtps]]}]]
-      - *neon-fp16
-      - *neon-unstable-f16
-      - *target-not-arm64ec
-    safety: safe
-    types:
-      - ["f16", "i16", 'h', 'i32']
-    compose:
-      - 'vcvtph_{type[3]}_f16(a) as i16'
-
-  - name: "vcvtp{type[2]}_{type[1]}_{type[0]}"
     doc: "Floating-point convert to unsigned integer, rounding to plus infinity"
     arguments: ["a: {type[0]}"]
     return_type: "{type[1]}"
@@ -2429,6 +2356,7 @@ intrinsics:
       - *target-not-arm64ec
     safety: safe
     types:
+      - ["f16", "u16", 'h']
       - ["f16", "u32", 'h']
       - ["f16", "u64", 'h']
     compose:
@@ -2438,21 +2366,6 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.fcvtpu.{type[1]}.{type[0]}"
               arch: aarch64,arm64ec
-
-  - name: "vcvtp{type[2]}_{type[1]}_{type[0]}"
-    doc: "Floating-point convert to unsigned integer, rounding to plus infinity"
-    arguments: ["a: {type[0]}"]
-    return_type: "{type[1]}"
-    attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtpu]]}]]
-      - *neon-fp16
-      - *neon-unstable-f16
-      - *target-not-arm64ec
-    safety: safe
-    types:
-      - ["f16", "u16", 'h', 'u32']
-    compose:
-      - 'vcvtph_{type[3]}_f16(a) as u16'
 
   - name: "vdup{neon_type.laneq_nox}"
     doc: "Set all vector lanes to the same value"
@@ -12034,6 +11947,7 @@ intrinsics:
       - *target-not-arm64ec
     safety: safe
     types:
+      - ["f16", "i16", 'h']
       - ["f16", "i32", 'h']
       - ["f16", "i64", 'h']
     compose:
@@ -12043,22 +11957,6 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.fcvtms.{type[1]}.{type[0]}"
               arch: aarch64,arm64ec
-
-  - name: "vcvtm{type[2]}_{type[1]}_{type[0]}"
-    doc: "Floating-point convert to integer, rounding towards minus infinity"
-    arguments: ["a: {type[0]}"]
-    return_type: "{type[1]}"
-    attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtms]]}]]
-      - *neon-fp16
-      - *neon-unstable-f16
-      - *target-not-arm64ec
-    safety: safe
-    types:
-      - ["f16", "i16", 'h', 'i32']
-    compose:
-      - 'vcvtmh_{type[3]}_f16(a) as i16'
-
 
   - name: "vcvtm{type[2]}_{type[1]}_{type[0]}"
     doc: "Floating-point convert to unsigned integer, rounding towards minus infinity"
@@ -12071,6 +11969,7 @@ intrinsics:
       - *target-not-arm64ec
     safety: safe
     types:
+      - ["f16", "u16", 'h']
       - ["f16", "u32", 'h']
       - ["f16", "u64", 'h']
     compose:
@@ -12080,21 +11979,6 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.fcvtmu.{type[1]}.{type[0]}"
               arch: aarch64,arm64ec
-
-  - name: "vcvtm{type[2]}_{type[1]}_{type[0]}"
-    doc: "Floating-point convert to integer, rounding towards minus infinity"
-    arguments: ["a: {type[0]}"]
-    return_type: "{type[1]}"
-    attr:
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [fcvtmu]]}]]
-      - *neon-fp16
-      - *neon-unstable-f16
-      - *target-not-arm64ec
-    safety: safe
-    types:
-      - ["f16", "u16", 'h', 'u32']
-    compose:
-      - 'vcvtmh_{type[3]}_f16(a) as u16'
 
   - name: "vmlal_high_n_{neon_type[1]}"
     doc: "Multiply-add long"
