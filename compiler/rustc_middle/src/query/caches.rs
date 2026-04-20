@@ -1,6 +1,9 @@
+use std::hash::{Hash, Hasher as _};
 use std::sync::OnceLock;
 
-use rustc_data_structures::sharded::ShardedHashMap;
+use rustc_data_structures::fx::FxHasher;
+use rustc_data_structures::hash_table::{self, HashTable};
+use rustc_data_structures::sharded::Sharded;
 pub use rustc_data_structures::vec_cache::VecCache;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_index::Idx;
@@ -38,10 +41,25 @@ pub trait QueryCache: Sized {
     fn len(&self) -> usize;
 }
 
+#[inline]
+fn make_hash<K: Hash + ?Sized>(val: &K) -> u64 {
+    let mut state = FxHasher::default();
+    val.hash(&mut state);
+    state.finish()
+}
+
+#[repr(packed(4))]
+#[derive(Clone, Copy)]
+struct PackedCacheEntry<K, V> {
+    key: K,
+    value: V,
+    index: DepNodeIndex,
+}
+
 /// In-memory cache for queries whose keys aren't suitable for any of the
 /// more specialized kinds of cache. Backed by a sharded hashmap.
 pub struct DefaultCache<K, V> {
-    cache: ShardedHashMap<K, (V, DepNodeIndex)>,
+    cache: Sharded<HashTable<PackedCacheEntry<K, V>>>,
 }
 
 impl<K, V> Default for DefaultCache<K, V> {
@@ -58,26 +76,40 @@ where
     type Key = K;
     type Value = V;
 
-    #[inline(always)]
+    #[inline]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
-        self.cache.get(key)
+        let hash = make_hash(key);
+        let shard = self.cache.lock_shard_by_hash(hash);
+        shard.find(hash, |ent| { ent.key } == *key).map(|ent| (ent.value, ent.index))
     }
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        self.cache.insert_unique(key, (value, index));
+        let hash = make_hash(&key);
+        let mut shard = self.cache.lock_shard_by_hash(hash);
+        cfg_select! {
+            debug_assertions => {
+                match shard.entry(hash, |ent| { ent.key } == key, |ent| make_hash(&{ ent.key })) {
+                    hash_table::Entry::Occupied(_) => panic!("trying to complete query twice"),
+                    hash_table::Entry::Vacant(entry) => entry.insert(PackedCacheEntry { key, value, index }),
+                };
+            }
+            _ => {
+                shard.insert_unique(hash, PackedCacheEntry { key, value, index }, |ent| make_hash(&{ ent.key }));
+            }
+        }
     }
 
     fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
         for shard in self.cache.lock_shards() {
-            for (k, v) in shard.iter() {
-                f(k, &v.0, v.1);
+            for PackedCacheEntry { key, value, index } in shard.iter().copied() {
+                f(&key, &value, index);
             }
         }
     }
 
     fn len(&self) -> usize {
-        self.cache.len()
+        self.cache.lock_shards().map(|shard| shard.len()).sum()
     }
 }
 

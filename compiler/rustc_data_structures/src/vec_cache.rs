@@ -16,6 +16,7 @@ use rustc_index::Idx;
 #[cfg(test)]
 mod tests;
 
+#[repr(packed(4))]
 struct Slot<V> {
     // We never construct &Slot<V> so it's fine for this to not be in an UnsafeCell.
     value: V,
