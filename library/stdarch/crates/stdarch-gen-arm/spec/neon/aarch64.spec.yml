@@ -11470,8 +11470,8 @@ intrinsics:
                   - FnCall: ["vdup_n_{type[0]}", [b]]
             - '0'
 
-  - name: "vabdl_high_{neon_type[0]}"
-    doc: "Unsigned Absolute difference Long"
+  - name: "vabdl_high{neon_type[0].noq}"
+    doc: Unsigned Absolute difference Long
     arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
     return_type: "{neon_type[1]}"
     attr:
@@ -11479,13 +11479,99 @@ intrinsics:
       - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [uabdl2]]}]]
     safety: safe
     types:
-      - [uint8x16_t, uint16x8_t, uint8x8_t, '[8, 9, 10, 11, 12, 13, 14, 15]']
-      - [uint16x8_t, uint32x4_t, uint16x4_t, '[4, 5, 6, 7]']
-      - [uint32x4_t, uint64x2_t, uint32x2_t, '[2, 3]']
+      - [uint8x16_t, uint16x8_t, uint8x8_t]
     compose:
-      - Let: [c, "{neon_type[2]}", {FnCall: [simd_shuffle!, [a, a, "{type[3]}"]]}]
-      - Let: [d, "{neon_type[2]}", {FnCall: [simd_shuffle!, [b, b, "{type[3]}"]]}]
-      - FnCall: [simd_cast, [{FnCall: ["vabd_{neon_type[0]}", [c, d]]}]]
+      - Let:
+          - c
+          - "{neon_type[2]}"
+          - FnCall:
+              - simd_shuffle!
+              - - a
+                - a
+                - [8, 9, 10, 11, 12, 13, 14, 15]
+      - Let:
+          - d
+          - "{neon_type[2]}"
+          - FnCall:
+              - simd_shuffle!
+              - - b
+                - b
+                - [8, 9, 10, 11, 12, 13, 14, 15]
+      - FnCall:
+          - simd_cast
+          - - FnCall:
+                - "vabd_{neon_type[0]}"
+                - - c
+                  - d
+
+  - name: "vabdl_high{neon_type[0].noq}"
+    doc: Unsigned Absolute difference Long
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [uabdl2]]}]]
+    safety: safe
+    types:
+      - [uint16x8_t, uint32x4_t, uint16x4_t]
+    compose:
+      - Let:
+          - c
+          - "{neon_type[2]}"
+          - FnCall:
+              - simd_shuffle!
+              - - a
+                - a
+                - [4, 5, 6, 7]
+      - Let:
+          - d
+          - "{neon_type[2]}"
+          - FnCall:
+              - simd_shuffle!
+              - - b
+                - b
+                - [4, 5, 6, 7]
+
+      - FnCall:
+          - simd_cast
+          - - FnCall:
+                - "vabd_{neon_type[0]}"
+                - - c
+                  - d
+
+  - name: "vabdl_high{neon_type[0].noq}"
+    doc: Unsigned Absolute difference Long
+    arguments: ["a: {neon_type[0]}", "b: {neon_type[0]}"]
+    return_type: "{neon_type[1]}"
+    attr:
+      - *neon-stable
+      - FnCall: [cfg_attr, [*all-test-little-endian, {FnCall: [assert_instr, [uabdl2]]}]]
+    safety: safe
+    types:
+      - [uint32x4_t, uint64x2_t, uint32x2_t, int32x2_t]
+    compose:
+      - Let:
+          - c
+          - "{neon_type[2]}"
+          - FnCall:
+              - simd_shuffle!
+              - - a
+                - a
+                - [2, 3]
+      - Let:
+          - d
+          - "{neon_type[2]}"
+          - FnCall:
+              - simd_shuffle!
+              - - b
+                - b
+                - [2, 3]
+      - FnCall:
+          - simd_cast
+          - - FnCall:
+                - "vabd_{neon_type[0]}"
+                - - c
+                  - d
 
   - name: "vfms_n_f64"
     doc: "Floating-point fused Multiply-subtract to accumulator(vector)"
