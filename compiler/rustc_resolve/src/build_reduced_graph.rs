@@ -21,7 +21,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::LoadedMacro;
 use rustc_middle::metadata::{ModChild, Reexport};
-use rustc_middle::ty::{Feed, Visibility};
+use rustc_middle::ty::{TyCtxtFeed, Visibility};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
 use rustc_span::{Ident, Span, Symbol, kw, sym};
@@ -563,6 +563,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         item: &Item,
         vis: Visibility,
         root_span: Span,
+        feed: TyCtxtFeed<'tcx, LocalDefId>,
     ) {
         debug!(
             "build_reduced_graph_for_use_tree(parent_prefix={:?}, use_tree={:?}, nested={})",
@@ -572,7 +573,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         // Top level use tree reuses the item's id and list stems reuse their parent
         // use tree's ids, so in both cases their visibilities are already filled.
         if nested && !list_stem {
-            self.r.feed_visibility(self.r.feed(id), vis);
+            self.r.feed_visibility(feed, vis);
         }
 
         let mut prefix_iter = parent_prefix
@@ -735,11 +736,11 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
                 for &(ref tree, id) in items {
-                    self.create_def(id, None, DefKind::Use, use_tree.span());
+                    let feed = self.create_def(id, None, DefKind::Use, use_tree.span());
                     self.build_reduced_graph_for_use_tree(
                         // This particular use tree
                         tree, id, &prefix, true, false, // The whole `use` item
-                        item, vis, root_span,
+                        item, vis, root_span, feed,
                     );
                 }
 
@@ -768,6 +769,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                             self.parent_scope.module.nearest_parent_mod().expect_local(),
                         ),
                         root_span,
+                        feed,
                     );
                 }
             }
@@ -778,7 +780,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         &mut self,
         fields: &[ast::FieldDef],
         ident: Ident,
-        feed: Feed<'tcx, LocalDefId>,
+        feed: TyCtxtFeed<'tcx, LocalDefId>,
         adt_res: Res,
         adt_vis: Visibility,
         adt_span: Span,
@@ -798,13 +800,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     }
 
     /// Constructs the reduced graph for one item.
-    fn build_reduced_graph_for_item(&mut self, item: &'a Item) {
+    fn build_reduced_graph_for_item(&mut self, item: &'a Item, feed: TyCtxtFeed<'tcx, LocalDefId>) {
         let parent_scope = &self.parent_scope;
         let parent = parent_scope.module.expect_local();
         let expansion = parent_scope.expansion;
         let sp = item.span;
         let vis = self.resolve_visibility(&item.vis);
-        let feed = self.r.feed(item.id);
         let local_def_id = feed.key();
         let def_id = local_def_id.to_def_id();
         let def_kind = self.r.tcx.def_kind(def_id);
@@ -825,6 +826,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     item,
                     vis,
                     use_tree.span(),
+                    feed,
                 );
             }
 
@@ -867,7 +869,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
                 // Functions introducing procedural macros reserve a slot
                 // in the macro namespace as well (see #52225).
-                self.define_macro(item);
+                self.define_macro(item, feed);
             }
 
             // These items live in the type namespace.
@@ -928,14 +930,13 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                         field_visibilities.push(field_vis.to_def_id());
                     }
                     // If this is a unit or tuple-like struct, register the constructor.
-                    self.create_def(
+                    let feed = self.create_def(
                         ctor_node_id,
                         None,
                         DefKind::Ctor(CtorOf::Struct, ctor_kind),
                         item.span,
                     );
 
-                    let feed = self.r.feed(ctor_node_id);
                     let ctor_def_id = feed.key();
                     let ctor_res = self.res(ctor_def_id);
                     self.r.define_local(parent, ident, ValueNS, ctor_res, ctor_vis, sp, expansion);
@@ -1070,8 +1071,8 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         &mut self,
         item: &ForeignItem,
         ident: Ident,
+        feed: TyCtxtFeed<'tcx, LocalDefId>,
     ) {
-        let feed = self.r.feed(item.id);
         let local_def_id = feed.key();
         let def_id = local_def_id.to_def_id();
         let ns = match item.kind {
@@ -1267,10 +1268,13 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         }
     }
 
-    fn define_macro(&mut self, item: &ast::Item) -> MacroRulesScopeRef<'ra> {
+    fn define_macro(
+        &mut self,
+        item: &ast::Item,
+        feed: TyCtxtFeed<'tcx, LocalDefId>,
+    ) -> MacroRulesScopeRef<'ra> {
         let parent_scope = self.parent_scope;
         let expansion = parent_scope.expansion;
-        let feed = self.r.feed(item.id);
         let def_id = feed.key();
         let (res, orig_ident, span, macro_rules) = match &item.kind {
             ItemKind::MacroDef(ident, def) => {
@@ -1369,17 +1373,17 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 }
 
 impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
-    pub(crate) fn brg_visit_item(&mut self, item: &'a Item) {
+    pub(crate) fn brg_visit_item(&mut self, item: &'a Item, feed: TyCtxtFeed<'tcx, LocalDefId>) {
         let orig_module_scope = self.parent_scope.module;
         self.parent_scope.macro_rules = match item.kind {
             ItemKind::MacroDef(..) => {
-                let macro_rules_scope = self.define_macro(item);
+                let macro_rules_scope = self.define_macro(item, feed);
                 visit::walk_item(self, item);
                 macro_rules_scope
             }
             _ => {
                 let orig_macro_rules_scope = self.parent_scope.macro_rules;
-                self.build_reduced_graph_for_item(item);
+                self.build_reduced_graph_for_item(item, feed);
                 match item.kind {
                     ItemKind::Mod(..) => {
                         // Visit attributes after items for backward compatibility.
@@ -1422,9 +1426,9 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         ctxt: AssocCtxt,
         ident: Ident,
         ns: Namespace,
+        feed: TyCtxtFeed<'tcx, LocalDefId>,
     ) {
         let vis = self.resolve_visibility(&item.vis);
-        let feed = self.r.feed(item.id);
         let local_def_id = feed.key();
         let def_id = local_def_id.to_def_id();
 
@@ -1476,21 +1480,28 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         }
     }
 
-    pub(crate) fn brg_visit_field_def(&mut self, sf: &'a ast::FieldDef) {
+    pub(crate) fn brg_visit_field_def(
+        &mut self,
+        sf: &'a ast::FieldDef,
+        feed: TyCtxtFeed<'tcx, LocalDefId>,
+    ) {
         let vis = self.resolve_visibility(&sf.vis);
-        self.r.feed_visibility(self.r.feed(sf.id), vis);
+        self.r.feed_visibility(feed, vis);
         visit::walk_field_def(self, sf);
     }
 
     // Constructs the reduced graph for one variant. Variants exist in the
     // type and value namespaces.
-    pub(crate) fn brg_visit_variant(&mut self, variant: &'a ast::Variant) {
+    pub(crate) fn brg_visit_variant(
+        &mut self,
+        variant: &'a ast::Variant,
+        feed: TyCtxtFeed<'tcx, LocalDefId>,
+    ) {
         let parent = self.parent_scope.module.expect_local();
         let expn_id = self.parent_scope.expansion;
         let ident = variant.ident;
 
         // Define a name in the type namespace.
-        let feed = self.r.feed(variant.id);
         let def_id = feed.key();
         let vis = self.resolve_visibility(&variant.vis);
         self.r.define_local(parent, ident, TypeNS, self.res(def_id), vis, variant.span, expn_id);
@@ -1506,13 +1517,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
         // Define a constructor name in the value namespace.
         if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(&variant.data) {
-            self.create_def(
+            let feed = self.create_def(
                 ctor_node_id,
                 None,
                 DefKind::Ctor(CtorOf::Variant, ctor_kind),
                 variant.span,
             );
-            let feed = self.r.feed(ctor_node_id);
             let ctor_def_id = feed.key();
             let ctor_res = self.res(ctor_def_id);
             self.r.define_local(parent, ident, ValueNS, ctor_res, ctor_vis, variant.span, expn_id);

@@ -3765,7 +3765,10 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
                 Visibility::Public
             };
-            this.r.feed_visibility(this.r.feed(id), vis);
+            // HACK: because we don't want to track the `TyCtxtFeed` through the resolver to here
+            // in a hash-map, we instead conjure a `TyCtxtFeed` for any `DefId` here, but prevent
+            // it from being used generally.
+            this.r.tcx.feed_visibility_for_trait_impl_item(this.r.local_def_id(id), vis);
         };
 
         let Some(decl) = decl else {
