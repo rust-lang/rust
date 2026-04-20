@@ -327,6 +327,7 @@ unsafe impl Sync for DbInterner<'_> {}
 impl<'db> DbInterner<'db> {
     // FIXME(next-solver): remove this method
     pub fn conjure() -> DbInterner<'db> {
+        // Here we can not reinit the cache since we do that when we attach the db.
         crate::with_attached_db(|db| DbInterner {
             db: unsafe { std::mem::transmute::<&dyn HirDatabase, &'db dyn HirDatabase>(db) },
             krate: None,
@@ -339,10 +340,13 @@ impl<'db> DbInterner<'db> {
     ///
     /// Elaboration is a special kind: it needs lang items (for `Sized`), therefore it needs `new_with()`.
     pub fn new_no_crate(db: &'db dyn HirDatabase) -> Self {
+        // We do not reinit the cache here, since anything accessing the cache needs an InferCtxt,
+        // and we panic when trying to construct an InferCtxt for an Interner without a crate.
         DbInterner { db, krate: None, lang_items: None }
     }
 
     pub fn new_with(db: &'db dyn HirDatabase, krate: Crate) -> DbInterner<'db> {
+        tls_cache::reinit_cache(db);
         DbInterner {
             db,
             krate: Some(krate),
@@ -1120,7 +1124,8 @@ impl<'db> Interner for DbInterner<'db> {
         self,
         f: impl FnOnce(&mut rustc_type_ir::search_graph::GlobalCache<Self>) -> R,
     ) -> R {
-        tls_cache::with_cache(self.db, f)
+        // We make sure to reinit the cache when constructing the Interner.
+        tls_cache::borrow_assume_valid(self.db, f)
     }
 
     fn canonical_param_env_cache_get_or_insert<R>(
@@ -2475,6 +2480,7 @@ mod tls_db {
             }
 
             let _guard = DbGuard::new(self, db);
+            super::tls_cache::reinit_cache(db);
             op()
         }
 
@@ -2497,10 +2503,14 @@ mod tls_db {
                 #[inline]
                 fn drop(&mut self) {
                     self.state.database.set(self.prev);
+                    if let Some(prev) = self.prev {
+                        super::tls_cache::reinit_cache(unsafe { prev.as_ref() });
+                    }
                 }
             }
 
             let _guard = DbGuard::new(self, db);
+            super::tls_cache::reinit_cache(db);
             op()
         }
 
@@ -2555,22 +2565,38 @@ mod tls_cache {
         static GLOBAL_CACHE: RefCell<Option<Cache>> = const { RefCell::new(None) };
     }
 
-    pub(super) fn with_cache<'db, T>(
-        db: &'db dyn HirDatabase,
-        f: impl FnOnce(&mut GlobalCache<DbInterner<'db>>) -> T,
-    ) -> T {
+    pub(super) fn reinit_cache(db: &dyn HirDatabase) {
         GLOBAL_CACHE.with_borrow_mut(|handle| {
             let (db_nonce, revision) = db.nonce_and_revision();
-            let handle = match handle {
+            match handle {
                 Some(handle) => {
                     if handle.revision != revision || db_nonce != handle.db_nonce {
                         *handle = Cache { cache: GlobalCache::default(), revision, db_nonce };
                     }
-                    handle
                 }
-                None => handle.insert(Cache { cache: GlobalCache::default(), revision, db_nonce }),
-            };
+                None => *handle = Some(Cache { cache: GlobalCache::default(), revision, db_nonce }),
+            }
+        })
+    }
 
+    pub(super) fn borrow_assume_valid<'db, T>(
+        db: &'db dyn HirDatabase,
+        f: impl FnOnce(&mut GlobalCache<DbInterner<'db>>) -> T,
+    ) -> T {
+        if cfg!(debug_assertions) {
+            let get_state = || {
+                GLOBAL_CACHE.with_borrow(|handle| {
+                    handle.as_ref().map(|handle| (handle.db_nonce, handle.revision))
+                })
+            };
+            let old_state = get_state();
+            reinit_cache(db);
+            let new_state = get_state();
+            assert_eq!(old_state, new_state, "you assumed the cache is valid!");
+        }
+
+        GLOBAL_CACHE.with_borrow_mut(|handle| {
+            let handle = handle.as_mut().expect("you assumed the cache is valid!");
             // SAFETY: No idea
             f(unsafe {
                 std::mem::transmute::<
