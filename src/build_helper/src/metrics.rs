@@ -2,6 +2,69 @@ use std::time::Duration;
 
 use serde_derive::{Deserialize, Serialize};
 
+pub mod compiletest {
+    #[derive(serde_derive::Deserialize, Debug)]
+    #[serde(tag = "type", rename_all = "snake_case")]
+    pub enum Message {
+        Suite(SuiteMessage),
+        Test(TestMessage),
+        Bench(BenchOutcome),
+        Report(Report),
+    }
+
+    #[derive(serde_derive::Deserialize, Debug)]
+    #[serde(tag = "event", rename_all = "snake_case")]
+    pub enum SuiteMessage {
+        Ok(SuiteOutcome),
+        Failed(SuiteOutcome),
+        Started { test_count: usize },
+    }
+
+    #[derive(serde_derive::Deserialize, Debug)]
+    pub struct SuiteOutcome {
+        pub passed: usize,
+        pub failed: usize,
+        pub ignored: usize,
+        pub measured: usize,
+        pub filtered_out: usize,
+        /// The time it took to execute this test suite, or `None` if time measurement was not possible
+        /// (e.g. due to running on wasm).
+        pub exec_time: Option<f64>,
+    }
+
+    #[derive(serde_derive::Deserialize, Debug)]
+    #[serde(tag = "event", rename_all = "snake_case")]
+    pub enum TestMessage {
+        Ok(TestOutcome),
+        Failed(TestOutcome),
+        Ignored(TestOutcome),
+        Timeout { name: String },
+        Started,
+    }
+
+    #[derive(serde_derive::Deserialize, Debug)]
+    pub struct BenchOutcome {
+        pub name: String,
+        pub median: f64,
+        pub deviation: f64,
+    }
+
+    #[derive(serde_derive::Deserialize, Debug)]
+    pub struct TestOutcome {
+        pub name: String,
+        pub exec_time: Option<f64>,
+        pub stdout: Option<String>,
+        pub message: Option<String>,
+    }
+
+    /// Emitted when running doctests.
+    #[derive(serde_derive::Deserialize, Debug)]
+    pub struct Report {
+        pub total_time: f64,
+        pub compilation_time: f64,
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct JsonRoot {
