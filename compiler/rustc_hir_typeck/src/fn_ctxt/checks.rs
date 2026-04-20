@@ -2346,6 +2346,17 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
                         provided_span,
                         format!("unexpected argument{idx}{provided_ty_name}"),
                     ));
+                    if self.provided_arg_tys.len() == 1
+                        && let Some(span) = self.maybe_suggest_expect_for_unwrap(provided_ty)
+                    {
+                        err.span_suggestion_verbose(
+                            span,
+                            "did you mean to use `expect`?",
+                            "expect",
+                            Applicability::MaybeIncorrect,
+                        );
+                        continue;
+                    }
                     let mut span = provided_span;
                     if span.can_be_used_for_suggestions()
                         && self.call_metadata.error_span.can_be_used_for_suggestions()
@@ -2775,6 +2786,22 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
         suggestion += ")";
 
         (suggestion_span, suggestion)
+    }
+
+    fn maybe_suggest_expect_for_unwrap(&self, provided_ty: Ty<'tcx>) -> Option<Span> {
+        let tcx = self.tcx();
+        if let Some(call_ident) = self.call_metadata.call_ident
+            && call_ident.name == sym::unwrap
+            && let Some(callee_ty) = self.callee_ty
+            && let ty::Adt(adt, _) = callee_ty.peel_refs().kind()
+            && (tcx.is_diagnostic_item(sym::Option, adt.did())
+                || tcx.is_diagnostic_item(sym::Result, adt.did()))
+            && self.may_coerce(provided_ty, Ty::new_static_str(tcx))
+        {
+            Some(call_ident.span)
+        } else {
+            None
+        }
     }
 }
 
