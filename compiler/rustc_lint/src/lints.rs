@@ -3304,18 +3304,6 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
-#[diag("unknown `doc` attribute `include`")]
-pub(crate) struct DocUnknownInclude {
-    pub inner: &'static str,
-    pub value: Symbol,
-    #[suggestion(
-        "use `doc = include_str!` instead",
-        code = "#{inner}[doc = include_str!(\"{value}\")]"
-    )]
-    pub sugg: (Span, Applicability),
-}
-
-#[derive(Diagnostic)]
 #[diag("unknown `doc` attribute `spotlight`")]
 #[note("`doc(spotlight)` was renamed to `doc(notable_trait)`")]
 #[note("`doc(spotlight)` is now a no-op")]

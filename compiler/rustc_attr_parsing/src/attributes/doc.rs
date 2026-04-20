@@ -1,5 +1,5 @@
 use rustc_ast::ast::{AttrStyle, LitKind, MetaItemLit};
-use rustc_errors::{Diagnostic, msg};
+use rustc_errors::{Applicability, Diagnostic, msg};
 use rustc_feature::template;
 use rustc_hir::Target;
 use rustc_hir::attrs::{
@@ -15,7 +15,7 @@ use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::errors::{
     DocAliasDuplicated, DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList,
-    DocAutoCfgHideShowUnexpectedItem, IllFormedAttributeInput,
+    DocAutoCfgHideShowUnexpectedItem, DocUnknownInclude, IllFormedAttributeInput,
 };
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
@@ -624,14 +624,19 @@ impl DocParser {
                     AttrStyle::Outer => "",
                     AttrStyle::Inner => "!",
                 };
-                cx.emit_lint(
+                let value = nv.value_as_lit().symbol;
+                let span = path.span();
+                cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::DocUnknownInclude {
-                        inner,
-                        value: nv.value_as_lit().symbol,
-                        span: path.span(),
+                    move |dcx, level| {
+                        DocUnknownInclude {
+                            inner,
+                            value,
+                            sugg: (span, Applicability::MaybeIncorrect),
+                        }
+                        .into_diag(dcx, level)
                     },
-                    path.span(),
+                    span,
                 );
             }
             Some(name @ (sym::passes | sym::no_default_passes)) => {

@@ -1,4 +1,4 @@
-use rustc_errors::{DiagArgValue, MultiSpan};
+use rustc_errors::{Applicability, DiagArgValue, MultiSpan};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -192,4 +192,16 @@ pub(crate) struct DocAutoCfgHideShowUnexpectedItem {
 #[diag("`#![doc(auto_cfg({$attr_name}(...)))]` expects a list of items")]
 pub(crate) struct DocAutoCfgHideShowExpectsList {
     pub attr_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown `doc` attribute `include`")]
+pub(crate) struct DocUnknownInclude {
+    pub inner: &'static str,
+    pub value: Symbol,
+    #[suggestion(
+        "use `doc = include_str!` instead",
+        code = "#{inner}[doc = include_str!(\"{value}\")]"
+    )]
+    pub sugg: (Span, Applicability),
 }
