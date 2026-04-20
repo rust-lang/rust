@@ -155,7 +155,9 @@ fn report_debuginfo_statistics(suites: &[&TestSuite]) {
                         debugger_test_record.entry(kind).or_insert(TestSuiteRecord::default());
                     match test.outcome {
                         TestOutcome::Passed => record.passed += 1,
-                        TestOutcome::Ignored { .. } => record.ignored += 1,
+                        TestOutcome::Ignored { .. } | TestOutcome::FilteredOut => {
+                            record.ignored += 1
+                        }
                         TestOutcome::Failed => record.failed += 1,
                     }
                 }
@@ -336,7 +338,7 @@ fn aggregate_test_suites(suites: &[&TestSuite]) -> BTreeMap<String, TestSuiteRec
                 TestOutcome::Failed => {
                     record.failed += 1;
                 }
-                TestOutcome::Ignored { .. } => {
+                TestOutcome::Ignored { .. } | TestOutcome::FilteredOut => {
                     record.ignored += 1;
                 }
             }
@@ -470,6 +472,7 @@ fn report_test_diffs(
         match outcome {
             TestOutcome::Passed => "pass".to_string(),
             TestOutcome::Failed => "fail".to_string(),
+            TestOutcome::FilteredOut => "ignore".to_string(),
             TestOutcome::Ignored { ignore_reason } => {
                 let reason = match ignore_reason {
                     Some(reason) => format!(" ({reason})"),

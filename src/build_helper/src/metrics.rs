@@ -38,6 +38,7 @@ pub mod compiletest {
         Ok(TestOutcome),
         Failed(TestOutcome),
         Ignored(TestOutcome),
+        FilteredOut(TestOutcome),
         Timeout { name: String },
         Started,
     }
@@ -155,6 +156,7 @@ pub struct Test {
 pub enum TestOutcome {
     Passed,
     Failed,
+    FilteredOut,
     Ignored { ignore_reason: Option<String> },
 }
 

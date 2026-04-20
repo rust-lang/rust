@@ -96,13 +96,12 @@ impl CompiletestMetrics {
                 Message::Test(inner @ TestMessage::Timeout { name }) => (inner, name),
                 _ => return None,
             };
-            let stripped = name.strip_prefix("[ui] tests/ui/compiletest-self-test/").unwrap()
-                .strip_suffix(".rs").unwrap();
-            if stripped == expected {
-                Some(msg)
-            } else {
-                None
-            }
+            let stripped = name
+                .strip_prefix("[ui] ")
+                .unwrap_or_else(|| panic!("unknown name format {name}"))
+                // This can be None if compiletest prints ignored tests from other directories.
+                .strip_prefix("tests/ui/compiletest-self-test/");
+            if stripped == Some(expected) { Some(msg) } else { None }
         })
     }
 }
@@ -129,7 +128,18 @@ impl CompiletestMetricsExt for Assert {
 
 #[test]
 fn ignore_directive_tests_reported_ignored() {
+    let ct = compiletest();
+    let metrics = run_ok(ct).metrics();
+    assert!(matches!(metrics.find_test("ignore-directive.rs").unwrap(), TestMessage::Ignored(..)));
+}
+
+#[test]
+fn skipped_tests_reported_filtered() {
     let mut ct = compiletest();
-    let metrics = dbg!(run_ok(ct).metrics());
-    assert!(matches!(metrics.find_test("ignore-directive").unwrap(), TestMessage::Ignored(..)));
+    ct.arg("--skip=ignore-directive");
+    let metrics = run_ok(ct).metrics();
+    assert!(matches!(
+        metrics.find_test("ignore-directive.rs").unwrap(),
+        TestMessage::FilteredOut(..)
+    ));
 }
