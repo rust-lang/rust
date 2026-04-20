@@ -177,11 +177,12 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 self.brg_visit_item(i);
                 return;
             }
-            ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
+            ItemKind::MacCall(..) => {
                 self.visit_macro_invoc(i.id);
                 self.brg_visit_item(i);
                 return;
             }
+            ItemKind::DelegationMac(..) => unreachable!(),
         };
         let def_id =
             self.create_def(i.id, i.kind.ident().map(|ident| ident.name), def_kind, i.span);
