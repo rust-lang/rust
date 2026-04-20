@@ -390,6 +390,26 @@ fn take<T>(t: T) {}
 
 fn main() {}
 
+// https://github.com/rust-lang/rust-clippy/issues/16875
+// Adding a match guard allows fall-through to subsequent arms, which changes semantics
+// when non-wildcard arms follow the arm being collapsed.
+fn issue16875(a: Option<&str>, b: i32) -> i32 {
+    let mut res = 0;
+    // should NOT lint: `_ if b == 1` is not wild-like (has a guard), so collapsing
+    // `Some(_)` into `Some(_) if b == 0` would let `_ if b == 1` match Some values
+    // that previously fell through to the no-op arm body.
+    match a {
+        Some(_) => {
+            if b == 0 {
+                res = 1;
+            }
+        },
+        _ if b == 1 => res = 2,
+        _ => {},
+    }
+    res
+}
+
 fn issue16705(x: Option<String>) {
     fn takes_ownership(s: String) -> bool {
         true
