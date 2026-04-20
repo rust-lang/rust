@@ -37,10 +37,6 @@ impl IntoDiagArg for Instance<'_> {
     }
 }
 
-into_diag_arg_using_display! {
-    ty::Region<'_>,
-}
-
 impl<'tcx> Ty<'tcx> {
     /// Similar to `Ty::is_primitive`, but also considers inferred numeric values to be primitive.
     pub fn is_primitive_ty(self) -> bool {

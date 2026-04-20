@@ -251,31 +251,6 @@ pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
     fn prefix_str(self) -> &'static str;
 }
 
-pub trait Region<I: Interner<Region = Self>>:
-    Copy
-    + Debug
-    + Hash
-    + Eq
-    + Into<I::GenericArg>
-    + IntoKind<Kind = ty::RegionKind<I>>
-    + Flags
-    + Relate<I>
-{
-    fn new_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundRegion<I>) -> Self;
-
-    fn new_anon_bound(interner: I, debruijn: ty::DebruijnIndex, var: ty::BoundVar) -> Self;
-
-    fn new_canonical_bound(interner: I, var: ty::BoundVar) -> Self;
-
-    fn new_static(interner: I) -> Self;
-
-    fn new_placeholder(interner: I, var: ty::PlaceholderRegion<I>) -> Self;
-
-    fn is_bound(self) -> bool {
-        matches!(self.kind(), ty::ReBound(..))
-    }
-}
-
 pub trait Const<I: Interner<Const = Self>>:
     Copy
     + Debug
