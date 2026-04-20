@@ -1,0 +1,25 @@
+error[E0742]: visibilities can only be restricted to ancestor modules
+  --> $DIR/decl-macros.rs:6:13
+   |
+LL |         pub(self) struct B {}
+   |             ^^^^
+...
+LL |     crate::m::mac!();
+   |     ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `crate::m::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0742]: visibilities can only be restricted to ancestor modules
+  --> $DIR/decl-macros.rs:7:16
+   |
+LL |         pub(in crate::m) struct C {}
+   |                ^^^^^^^^
+...
+LL |     crate::m::mac!();
+   |     ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `crate::m::mac` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0742`.
