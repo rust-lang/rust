@@ -3549,12 +3549,12 @@ impl<T: ?Sized + PartialEq, A: Allocator> ArcEqIdent<T, A> for Arc<T, A> {
 impl<T: ?Sized + crate::rc::MarkerEq, A: Allocator> ArcEqIdent<T, A> for Arc<T, A> {
     #[inline]
     fn eq(&self, other: &Arc<T, A>) -> bool {
-        Arc::ptr_eq(self, other) || **self == **other
+        ptr::eq(self.ptr.as_ptr(), other.ptr.as_ptr()) || **self == **other
     }
 
     #[inline]
     fn ne(&self, other: &Arc<T, A>) -> bool {
-        !Arc::ptr_eq(self, other) && **self != **other
+        !ptr::eq(self.ptr.as_ptr(), other.ptr.as_ptr()) && **self != **other
     }
 }
 
