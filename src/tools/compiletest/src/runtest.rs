@@ -327,12 +327,15 @@ impl<'test> TestCx<'test> {
             TestMode::Incremental => {
                 let revision =
                     self.revision.expect("incremental tests require a list of revisions");
-                if revision.starts_with("bpass") || revision.starts_with("rpass") {
+                if revision.starts_with("cpass")
+                    || revision.starts_with("bpass")
+                    || revision.starts_with("rpass")
+                {
                     true
                 } else if revision.starts_with("bfail") {
                     pm.is_some()
                 } else {
-                    panic!("revision name must begin with `bfail`, `bpass`, or `rpass`");
+                    panic!("revision name must begin with `cpass`, `bfail`, `bpass`, or `rpass`");
                 }
             }
             mode => panic!("unimplemented for mode {:?}", mode),
