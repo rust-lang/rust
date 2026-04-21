@@ -656,7 +656,6 @@ pub enum DeprecatedSinceKind {
 pub enum AttributeLintKind {
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
-    CrateTypeUnknown { span: Span, suggested: Option<Symbol> },
     MalformedDoc,
     ExpectedNoArgs,
     ExpectedNameValue,

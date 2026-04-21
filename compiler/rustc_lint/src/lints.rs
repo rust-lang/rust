@@ -3304,21 +3304,6 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
-#[diag("invalid `crate_type` value")]
-pub(crate) struct UnknownCrateTypes {
-    #[subdiagnostic]
-    pub sugg: Option<UnknownCrateTypesSuggestion>,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion("did you mean", code = r#""{snippet}""#, applicability = "maybe-incorrect")]
-pub(crate) struct UnknownCrateTypesSuggestion {
-    #[primary_span]
-    pub span: Span,
-    pub snippet: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("positional format arguments are not allowed here")]
 #[help(
     "only named format arguments with the name of one of the generic types are allowed in this context"

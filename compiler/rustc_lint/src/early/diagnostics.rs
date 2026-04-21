@@ -43,11 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            &AttributeLintKind::CrateTypeUnknown { span, suggested } => lints::UnknownCrateTypes {
-                sugg: suggested.map(|s| lints::UnknownCrateTypesSuggestion { span, snippet: s }),
-            }
-            .into_diag(dcx, level),
-
             &AttributeLintKind::MalformedDoc => lints::MalformedDoc.into_diag(dcx, level),
 
             &AttributeLintKind::ExpectedNoArgs => lints::ExpectedNoArgs.into_diag(dcx, level),

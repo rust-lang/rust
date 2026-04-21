@@ -279,6 +279,21 @@ pub(crate) struct AttrCrateLevelOnly;
 pub(crate) struct DoNotRecommendDoesNotExpectArgs;
 
 #[derive(Diagnostic)]
+#[diag("invalid `crate_type` value")]
+pub(crate) struct UnknownCrateTypes {
+    #[subdiagnostic]
+    pub sugg: Option<UnknownCrateTypesSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion("did you mean", code = r#""{snippet}""#, applicability = "maybe-incorrect")]
+pub(crate) struct UnknownCrateTypesSuggestion {
+    #[primary_span]
+    pub span: Span,
+    pub snippet: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_const]` can only be applied to non-const trait implementations")]
 pub(crate) struct DiagnosticOnConstOnlyForTraitImpls {
     #[label("not a trait implementation")]
