@@ -700,6 +700,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Feeds the HIR delayed owner during AST -> HIR delayed lowering.
     pub fn feed_delayed_owner(self, key: LocalDefId, owner: MaybeOwner<'tcx>) {
+        self.dep_graph.assert_ignored();
         TyCtxtFeed { tcx: self, key }.delayed_owner(owner);
     }
 }
