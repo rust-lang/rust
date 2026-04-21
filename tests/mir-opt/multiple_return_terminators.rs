@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ compile-flags: -Z mir-opt-level=4
 // EMIT_MIR multiple_return_terminators.test.MultipleReturnTerminators.diff
 

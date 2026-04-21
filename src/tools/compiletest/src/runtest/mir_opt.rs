@@ -40,7 +40,7 @@ impl TestCx<'_> {
         let test_dir = self.testpaths.file.parent().unwrap();
         let test_crate = self.testpaths.file.file_stem().unwrap().replace('-', "_");
 
-        let MiroptTest { run_filecheck, suffix, files, passes: _ } = test_info;
+        let MiroptTest { suffix, files, passes: _ } = test_info;
 
         if self.config.bless {
             for e in glob(&format!("{}/{}.*{}.mir", test_dir, test_crate, suffix)).unwrap() {
@@ -89,7 +89,7 @@ impl TestCx<'_> {
             }
         }
 
-        if run_filecheck {
+        if !self.props.skip_filecheck {
             let output_path = self.output_base_name().with_extension("mir");
             let proc_res = self.verify_with_filecheck(&output_path);
             if !proc_res.status.success() {

@@ -1,6 +1,6 @@
 //@ aux-build: wrapper.rs
 //@ compile-flags: -Zmir-opt-level=2 -Zinline-mir
-// skip-filecheck
+//@ skip-filecheck
 
 // This is a regression test for https://github.com/rust-lang/rust/issues/146998
 

@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 // Check that `UnwindAction::Unreachable` is not generated for unwindable intrinsics.
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 #![feature(core_intrinsics)]

@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 #![feature(custom_mir, core_intrinsics)]
 
 extern crate core;

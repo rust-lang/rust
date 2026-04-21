@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ test-mir-pass: Derefer
 // EMIT_MIR derefer_terminator_test.main.Derefer.diff
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
