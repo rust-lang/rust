@@ -1,17 +1,63 @@
 //! Field Reflection
 
+use crate::fmt;
 use crate::marker::PhantomData;
 
 /// Field Representing Type
 #[unstable(feature = "field_representing_type_raw", issue = "none")]
 #[lang = "field_representing_type"]
-#[expect(missing_debug_implementations)]
 #[fundamental]
 pub struct FieldRepresentingType<T: ?Sized, const VARIANT: u32, const FIELD: u32> {
     // We want this type to be invariant over `T`, because otherwise `field_of!(Struct<'short>,
     // field)` is a subtype of `field_of!(Struct<'long>, field)`. This subtype relationship does not
     // have an immediately obvious meaning and we want to prevent people from relying on it.
     _phantom: PhantomData<fn(T) -> T>,
+}
+
+impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> fmt::Debug
+    for FieldRepresentingType<T, VARIANT, FIELD>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        enum Member {
+            Name(&'static str),
+            Index(u32),
+        }
+        impl fmt::Display for Member {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                match self {
+                    Self::Name(name) => fmt::Display::fmt(name, f),
+                    Self::Index(idx) => fmt::Display::fmt(idx, f),
+                }
+            }
+        }
+        let (variant, field) = const {
+            use crate::mem::type_info::{Type, TypeKind};
+            match Type::of::<T>().kind {
+                TypeKind::Struct(struct_) => {
+                    (None, Member::Name(struct_.fields[FIELD as usize].name))
+                }
+                TypeKind::Tuple(_) => (None, Member::Index(FIELD)),
+                TypeKind::Enum(enum_) => {
+                    let variant = &enum_.variants[VARIANT as usize];
+                    (Some(variant.name), Member::Name(variant.fields[FIELD as usize].name))
+                }
+                TypeKind::Union(union) => (None, Member::Name(union.fields[FIELD as usize].name)),
+                _ => unreachable!(),
+            }
+        };
+        let type_name = const { crate::any::type_name::<T>() };
+        match variant {
+            Some(variant) => write!(f, "field_of!({type_name}, {variant}.{field})"),
+            None => write!(f, "field_of!({type_name}, {field})"),
+        }
+        // NOTE: if there are changes in the reflection work and the above no
+        // longer compiles, then the following debug impl could also work in
+        // the meantime:
+        // ```rust
+        // let type_name = const { type_name::<T>() };
+        // write!(f, "field_of!({type_name}, {VARIANT}.{FIELD})")
+        // ```
+    }
 }
 
 impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Copy
