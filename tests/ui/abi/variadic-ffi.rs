@@ -28,20 +28,20 @@ pub unsafe extern "C" fn test_va_copy(_: u64, mut ap: ...) {
 
     // Advance one pair in the copy before checking
     let mut ap2 = ap.clone();
-    let _ = ap2.arg::<u64>();
-    let _ = ap2.arg::<f64>();
+    let _ = ap2.next_arg::<u64>();
+    let _ = ap2.next_arg::<f64>();
     assert_eq!(rust_valist_interesting_average(2, ap2) as i64, 50);
 
     // Advance one pair in the original
-    let _ = ap.arg::<u64>();
-    let _ = ap.arg::<f64>();
+    let _ = ap.next_arg::<u64>();
+    let _ = ap.next_arg::<f64>();
 
     let ap2 = ap.clone();
     assert_eq!(rust_valist_interesting_average(2, ap2) as i64, 50);
 
     let mut ap2 = ap.clone();
-    let _ = ap2.arg::<u64>();
-    let _ = ap2.arg::<f64>();
+    let _ = ap2.next_arg::<u64>();
+    let _ = ap2.next_arg::<f64>();
     assert_eq!(rust_valist_interesting_average(2, ap2) as i64, 70);
 }
 

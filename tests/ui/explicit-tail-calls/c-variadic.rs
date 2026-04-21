@@ -3,7 +3,7 @@
 #![allow(unused)]
 
 unsafe extern "C" fn foo(mut ap: ...) -> u32 {
-    ap.arg::<u32>()
+    ap.next_arg::<u32>()
 }
 
 extern "C" fn bar() -> u32 {
