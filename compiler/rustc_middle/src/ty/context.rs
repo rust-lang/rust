@@ -2399,10 +2399,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// to build a full `Place` it's just a convenient way to grab a projection and modify it in
     /// flight.
     pub fn mk_place_elem(self, place: Place<'tcx>, elem: PlaceElem<'tcx>) -> Place<'tcx> {
-        let mut projection = place.projection.to_vec();
-        projection.push(elem);
-
-        Place { local: place.local, projection: self.mk_place_elems(&projection) }
+        Place {
+            local: place.local,
+            projection: self.mk_place_elems_from_iter(place.projection.iter().chain([elem])),
+        }
     }
 
     pub fn mk_poly_existential_predicates(
