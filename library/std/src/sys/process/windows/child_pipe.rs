@@ -72,8 +72,12 @@ pub(super) fn child_pipe(ours_readable: bool, their_handle_inheritable: bool) ->
         let mut object_attributes = c::OBJECT_ATTRIBUTES::default();
         object_attributes.Length = size_of::<c::OBJECT_ATTRIBUTES>() as u32;
 
-        // Open a handle to the pipe filesystem (`\Device\NamedPipe\`) and cache it.
+        // Open a handle to the pipe filesystem (`\Device\NamedPipe\`).
         // This will be used when creating a new anonymous pipe.
+        //
+        // We cache the handle once so we can reuse it without needing to reopen it each time.
+        // NOTE: this means the handle may appear to be leaked but that's fine because
+        // it's only one handle and the OS will clean it up when the process exits.
         static PIPE_FS: Atomic<c::HANDLE> = Atomic::<c::HANDLE>::new(ptr::null_mut());
         let pipe_fs = if let handle = PIPE_FS.load(Relaxed)
             && !handle.is_null()
