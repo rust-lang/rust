@@ -3304,10 +3304,6 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
-#[diag("`#![doc(test(...)]` does not take a literal")]
-pub(crate) struct DocTestLiteral;
-
-#[derive(Diagnostic)]
 #[diag("this attribute can only be applied at the crate level")]
 #[note(
     "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information"

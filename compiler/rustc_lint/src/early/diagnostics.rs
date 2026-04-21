@@ -43,8 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            &AttributeLintKind::DocTestLiteral => lints::DocTestLiteral.into_diag(dcx, level),
-
             &AttributeLintKind::AttrCrateLevelOnly => {
                 lints::AttrCrateLevelOnly.into_diag(dcx, level)
             }

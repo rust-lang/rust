@@ -15,9 +15,9 @@ use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::errors::{
     DocAliasDuplicated, DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList,
-    DocAutoCfgHideShowUnexpectedItem, DocAutoCfgWrongLiteral, DocTestTakesList, DocTestUnknown,
-    DocUnknownAny, DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight,
-    IllFormedAttributeInput,
+    DocAutoCfgHideShowUnexpectedItem, DocAutoCfgWrongLiteral, DocTestLiteral, DocTestTakesList,
+    DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins,
+    DocUnknownSpotlight, IllFormedAttributeInput,
 };
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
@@ -224,9 +224,9 @@ impl DocParser {
                 );
             }
             None => {
-                cx.emit_lint(
+                cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::DocTestLiteral,
+                    |dcx, level| DocTestLiteral.into_diag(dcx, level),
                     path.span(),
                 );
             }

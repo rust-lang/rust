@@ -264,6 +264,10 @@ pub(crate) struct DocTestUnknown {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#![doc(test(...)]` does not take a literal")]
+pub(crate) struct DocTestLiteral;
+
+#[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_const]` can only be applied to non-const trait implementations")]
 pub(crate) struct DiagnosticOnConstOnlyForTraitImpls {
     #[label("not a trait implementation")]
