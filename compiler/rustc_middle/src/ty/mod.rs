@@ -338,7 +338,9 @@ impl TyCtxt<'_> {
     }
 
     pub fn is_descendant_of(self, mut descendant: DefId, ancestor: DefId) -> bool {
-        if descendant.krate != ancestor.krate {
+        // Def-ids from different crates are always unordered, and def-ids of parent nodes
+        // are always created before def-ids of child nodes.
+        if descendant.krate != ancestor.krate || descendant.index < ancestor.index {
             return false;
         }
 
