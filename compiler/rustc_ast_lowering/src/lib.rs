@@ -621,7 +621,7 @@ enum GenericArgsMode {
 impl<'hir> LoweringContext<'_, 'hir> {
     fn create_def(
         &mut self,
-        node_id: ast::NodeId,
+        node_id: NodeId,
         name: Option<Symbol>,
         def_kind: DefKind,
         span: Span,
@@ -651,7 +651,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn next_node_id(&mut self) -> NodeId {
         let start = self.next_node_id;
         let next = start.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
-        self.next_node_id = ast::NodeId::from_u32(next);
+        self.next_node_id = NodeId::from_u32(next);
         start
     }
 
