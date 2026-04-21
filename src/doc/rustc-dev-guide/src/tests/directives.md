@@ -327,7 +327,7 @@ The following directives affect how certain command-line tools are invoked, in
 test suites that use those tools:
 
 - `skip-filecheck` avoids running LLVM's `FileCheck` tool in tests that would normally run it to check output.
-  - Used by mir-opt tests.
+  - Used by codegen tests, assembly tests, and mir-opt tests.
 - `filecheck-flags` adds extra flags when running LLVM's `FileCheck` tool.
   - Used by [codegen tests](compiletest.md#codegen-tests),
   [assembly tests](compiletest.md#assembly-tests), and

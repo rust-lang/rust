@@ -316,7 +316,7 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             let directive_name = ln.name;
             // FIXME(Zalathar): Someday we should add unified support for declaring
             // and checking which modes are supported by each directive.
-            if !matches!(config.mode, TestMode::MirOpt) {
+            if !matches!(config.mode, TestMode::Assembly | TestMode::Codegen | TestMode::MirOpt) {
                 panic!(
                     "directive `//@ {directive_name}` is not supported by this test suite (mode: {mode:?})",
                     mode = config.mode

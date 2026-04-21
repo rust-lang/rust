@@ -442,7 +442,6 @@ impl TestProps {
         let check_no_run = |s| match (config.mode, s) {
             (TestMode::Ui, _) => (),
             (TestMode::Crashes, _) => (),
-            (TestMode::Codegen, "build-pass") => (),
             (mode, _) => panic!("`{s}` directive is not supported in `{mode}` tests"),
         };
         let pass_mode = if config.parse_name_directive(ln, "check-pass") {
