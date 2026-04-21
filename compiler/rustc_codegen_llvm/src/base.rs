@@ -125,8 +125,8 @@ pub(crate) fn compile_codegen_unit(
                 maybe_create_entry_wrapper::<Builder<'_, '_, '_>>(&cx, cx.codegen_unit)
             {
                 let mut attrs = attributes::sanitize_attrs(&cx, tcx, SanitizerFnAttrs::default());
-                // For pauthtest make sure that the ptrauth-* attributes are also attached to the
-                // entry wrapper.
+                // When pointer authentication is enabled, ensure that the ptrauth-* attributes are
+                // also attached to the entry wrapper.
                 if cx.sess().target.env == Env::Pauthtest {
                     for &ptrauth_attr in pauth_fn_attrs() {
                         attrs.push(llvm::CreateAttrString(cx.llcx, ptrauth_attr));
