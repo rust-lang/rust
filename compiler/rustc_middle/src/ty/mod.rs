@@ -227,7 +227,7 @@ pub struct ResolverAstLowering<'tcx> {
     // Information about delegations which is used when handling recursive delegations
     pub delegation_infos: LocalDefIdMap<DelegationInfo>,
 
-    pub per_parent_disambiguators: LocalDefIdMap<Steal<PerParentDisambiguatorState>>,
+    pub disambiguators: Steal<LocalDefIdMap<PerParentDisambiguatorState>>,
 }
 
 #[derive(Debug)]
