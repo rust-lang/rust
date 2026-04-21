@@ -29,10 +29,12 @@ fn round_pointer_up_to_alignment<'ll>(
     align: Align,
 ) -> &'ll Value {
     let ptr = bx.inbounds_ptradd(addr, bx.const_i32(align.bytes() as i32 - 1));
+    let pointer_width = bx.tcx().sess.target.pointer_width;
+    let mask = align.bytes().wrapping_neg() & (u64::MAX >> (64 - pointer_width));
     bx.call_intrinsic(
         "llvm.ptrmask",
-        &[bx.type_ptr(), bx.type_i32()],
-        &[ptr, bx.const_int(bx.isize_ty, -(align.bytes() as isize) as i64)],
+        &[bx.type_ptr(), bx.type_isize()],
+        &[ptr, bx.const_usize(mask)],
     )
 }
 
