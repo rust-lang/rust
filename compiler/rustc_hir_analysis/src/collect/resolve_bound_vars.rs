@@ -14,7 +14,8 @@ use rustc_ast::visit::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::definitions::{DefPathData, DisambiguatorState};
+use rustc_hir::def_id::LocalDefIdMap;
+use rustc_hir::definitions::{DefPathData, PerParentDisambiguatorsMap};
 use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
 use rustc_hir::{
     self as hir, AmbigArg, GenericArg, GenericParam, GenericParamKind, HirId, LifetimeKind, Node,
@@ -30,6 +31,7 @@ use rustc_span::{Ident, Span, sym};
 use tracing::{debug, debug_span, instrument};
 
 use crate::errors;
+use crate::hir::definitions::PerParentDisambiguatorState;
 
 #[extension(trait RegionExt)]
 impl ResolvedArg {
@@ -64,7 +66,7 @@ impl ResolvedArg {
 struct BoundVarContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     rbv: &'a mut ResolveBoundVars<'tcx>,
-    disambiguator: &'a mut DisambiguatorState,
+    disambiguators: &'a mut LocalDefIdMap<PerParentDisambiguatorState>,
     scope: ScopeRef<'a, 'tcx>,
     opaque_capture_errors: RefCell<Option<OpaqueHigherRankedLifetimeCaptureErrors>>,
 }
@@ -259,7 +261,7 @@ fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBou
         tcx,
         rbv: &mut rbv,
         scope: &Scope::Root { opt_parent_item: None },
-        disambiguator: &mut DisambiguatorState::new(),
+        disambiguators: &mut Default::default(),
         opaque_capture_errors: RefCell::new(None),
     };
     match tcx.hir_owner_node(local_def_id) {
@@ -1104,12 +1106,12 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
     where
         F: for<'b> FnOnce(&mut BoundVarContext<'b, 'tcx>),
     {
-        let BoundVarContext { tcx, rbv, disambiguator, .. } = self;
+        let BoundVarContext { tcx, rbv, disambiguators, .. } = self;
         let nested_errors = RefCell::new(self.opaque_capture_errors.borrow_mut().take());
         let mut this = BoundVarContext {
             tcx: *tcx,
             rbv,
-            disambiguator,
+            disambiguators,
             scope: &wrap_scope,
             opaque_capture_errors: nested_errors,
         };
@@ -1523,7 +1525,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     None,
                     DefKind::LifetimeParam,
                     Some(DefPathData::OpaqueLifetime(ident.name)),
-                    self.disambiguator,
+                    self.disambiguators.get_or_create(opaque_def_id),
                 );
                 feed.def_span(ident.span);
                 feed.def_ident_span(Some(ident.span));

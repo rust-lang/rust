@@ -3304,46 +3304,6 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
-#[diag("`#[doc(test(...)]` takes a list of attributes")]
-pub(crate) struct DocTestTakesList;
-
-#[derive(Diagnostic)]
-#[diag("unknown `doc(test)` attribute `{$name}`")]
-pub(crate) struct DocTestUnknown {
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#![doc(test(...)]` does not take a literal")]
-pub(crate) struct DocTestLiteral;
-
-#[derive(Diagnostic)]
-#[diag("this attribute can only be applied at the crate level")]
-#[note(
-    "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information"
-)]
-pub(crate) struct AttrCrateLevelOnly;
-
-#[derive(Diagnostic)]
-#[diag("`#[diagnostic::do_not_recommend]` does not expect any arguments")]
-pub(crate) struct DoNotRecommendDoesNotExpectArgs;
-
-#[derive(Diagnostic)]
-#[diag("invalid `crate_type` value")]
-pub(crate) struct UnknownCrateTypes {
-    #[subdiagnostic]
-    pub sugg: Option<UnknownCrateTypesSuggestion>,
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion("did you mean", code = r#""{snippet}""#, applicability = "maybe-incorrect")]
-pub(crate) struct UnknownCrateTypesSuggestion {
-    #[primary_span]
-    pub span: Span,
-    pub snippet: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("positional format arguments are not allowed here")]
 #[help(
     "only named format arguments with the name of one of the generic types are allowed in this context"

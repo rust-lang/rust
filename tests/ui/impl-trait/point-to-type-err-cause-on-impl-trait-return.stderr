@@ -64,8 +64,11 @@ error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:5:5
    |
 LL | fn foo() -> impl std::fmt::Display {
-   |             ---------------------- expected `i32` because of return type
-...
+   |             ---------------------- expected a single type implementing `std::fmt::Display` because of return type
+LL |     if false {
+LL |         return 0i32;
+   |                ---- return type resolved to be `i32`
+LL |     }
 LL |     1u32
    |     ^^^^ expected `i32`, found `u32`
    |
@@ -79,8 +82,11 @@ error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:12:16
    |
 LL | fn bar() -> impl std::fmt::Display {
-   |             ---------------------- expected `i32` because of return type
-...
+   |             ---------------------- expected a single type implementing `std::fmt::Display` because of return type
+LL |     if false {
+LL |         return 0i32;
+   |                ---- return type resolved to be `i32`
+LL |     } else {
 LL |         return 1u32;
    |                ^^^^ expected `i32`, found `u32`
    |
@@ -94,8 +100,11 @@ error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:20:9
    |
 LL | fn baz() -> impl std::fmt::Display {
-   |             ---------------------- expected `i32` because of return type
-...
+   |             ---------------------- expected a single type implementing `std::fmt::Display` because of return type
+LL |     if false {
+LL |         return 0i32;
+   |                ---- return type resolved to be `i32`
+LL |     } else {
 LL |         1u32
    |         ^^^^ expected `i32`, found `u32`
    |
@@ -137,8 +146,10 @@ error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:35:14
    |
 LL | fn bat() -> impl std::fmt::Display {
-   |             ---------------------- expected `i32` because of return type
-...
+   |             ---------------------- expected a single type implementing `std::fmt::Display` because of return type
+LL |     match 13 {
+LL |         0 => return 0i32,
+   |                     ---- return type resolved to be `i32`
 LL |         _ => 1u32,
    |              ^^^^ expected `i32`, found `u32`
    |
@@ -151,9 +162,10 @@ error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:40:5
    |
 LL |   fn can() -> impl std::fmt::Display {
-   |               ---------------------- expected `i32` because of return type
+   |               ---------------------- expected a single type implementing `std::fmt::Display` because of return type
 LL | /     match 13 {
 LL | |         0 => return 0i32,
+   | |                     ---- return type resolved to be `i32`
 LL | |         1 => 1u32,
 LL | |         _ => 2u32,
 LL | |     }
@@ -168,7 +180,10 @@ error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:53:13
    |
 LL | fn cat() -> impl std::fmt::Display {
-   |             ---------------------- expected `i32` because of return type
+   |             ---------------------- expected a single type implementing `std::fmt::Display` because of return type
+...
+LL |             return 0i32;
+   |                    ---- return type resolved to be `i32`
 ...
 LL |             1u32
    |             ^^^^ expected `i32`, found `u32`

@@ -5,9 +5,7 @@ use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, extension};
 use rustc_type_ir as ir;
 
-use crate::ty::{
-    self, DebruijnIndex, EarlyBinder, Ty, TyCtxt, TypeFlags, Upcast, UpcastFrom, WithCachedTypeInfo,
-};
+use crate::ty::{self, EarlyBinder, Ty, TyCtxt, TypeFlags, Upcast, UpcastFrom, WithCachedTypeInfo};
 
 pub type TraitRef<'tcx> = ir::TraitRef<TyCtxt<'tcx>>;
 pub type AliasTerm<'tcx> = ir::AliasTerm<TyCtxt<'tcx>>;
@@ -76,18 +74,6 @@ impl<'tcx> Predicate<'tcx> {
     #[inline]
     pub fn kind(self) -> ty::Binder<'tcx, PredicateKind<'tcx>> {
         self.0.internee
-    }
-
-    // FIXME(compiler-errors): Think about removing this.
-    #[inline(always)]
-    pub fn flags(self) -> TypeFlags {
-        self.0.flags
-    }
-
-    // FIXME(compiler-errors): Think about removing this.
-    #[inline(always)]
-    pub fn outer_exclusive_binder(self) -> DebruijnIndex {
-        self.0.outer_exclusive_binder
     }
 
     /// Flips the polarity of a Predicate.

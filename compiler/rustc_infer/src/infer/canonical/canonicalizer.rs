@@ -10,10 +10,9 @@ use rustc_data_structures::sso::SsoHashMap;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, BoundVar, GenericArg, InferConst, List, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt,
+    self, BoundVar, Flags, GenericArg, InferConst, List, Ty, TyCtxt, TypeFlags, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, TypingModeEqWrapper,
 };
-use rustc_type_ir::TypingModeEqWrapper;
 use smallvec::SmallVec;
 use tracing::debug;
 

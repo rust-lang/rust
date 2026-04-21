@@ -57,7 +57,7 @@ use rustc_hir::def::{
     PerNS,
 };
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
-use rustc_hir::definitions::PerParentDisambiguatorState;
+use rustc_hir::definitions::{PerParentDisambiguatorState, PerParentDisambiguatorsMap};
 use rustc_hir::{PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::CStore;
@@ -1424,7 +1424,7 @@ pub struct Resolver<'ra, 'tcx> {
 
     node_id_to_def_id: NodeMap<Feed<'tcx, LocalDefId>>,
 
-    per_parent_disambiguators: LocalDefIdMap<PerParentDisambiguatorState>,
+    disambiguators: LocalDefIdMap<PerParentDisambiguatorState>,
 
     /// Indices of unnamed struct or variant fields with unresolved attributes.
     placeholder_field_indices: FxHashMap<NodeId, usize> = default::fx_hash_map(),
@@ -1627,14 +1627,10 @@ impl<'tcx> Resolver<'_, 'tcx> {
             self.tcx.definitions_untracked().def_key(self.node_id_to_def_id[&node_id].key()),
         );
 
+        let disambiguator = self.disambiguators.get_or_create(parent);
+
         // FIXME: remove `def_span` body, pass in the right spans here and call `tcx.at().create_def()`
-        let feed = self.tcx.create_def(
-            parent,
-            name,
-            def_kind,
-            None,
-            self.per_parent_disambiguators.entry(parent).or_default(),
-        );
+        let feed = self.tcx.create_def(parent, name, def_kind, None, disambiguator);
         let def_id = feed.def_id();
 
         // Create the definition.
@@ -1818,7 +1814,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             doc_link_resolutions: Default::default(),
             doc_link_traits_in_scope: Default::default(),
             current_crate_outer_attr_insert_span,
-            per_parent_disambiguators: Default::default(),
+            disambiguators: Default::default(),
             ..
         };
 
@@ -1958,11 +1954,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
             delegation_infos: self.delegation_infos,
-            per_parent_disambiguators: self
-                .per_parent_disambiguators
-                .into_items()
-                .map(|(k, d)| (k, Steal::new(d)))
-                .collect(),
+            disambiguators: Steal::new(self.disambiguators),
         };
         ResolverOutputs { global_ctxt, ast_lowering }
     }
