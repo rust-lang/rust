@@ -47,7 +47,7 @@ define_config! {
         codegen_backends: Option<Vec<String>> = "codegen-backends",
         runner: Option<String> = "runner",
         optimized_compiler_builtins: Option<CompilerBuiltins> = "optimized-compiler-builtins",
-        jemalloc: Option<bool> = "jemalloc",
+        override_allocator: Option<bool> = "override-allocator",
     }
 }
 
@@ -81,7 +81,7 @@ pub struct Target {
     pub no_std: bool,
     pub codegen_backends: Option<Vec<CodegenBackendKind>>,
     pub optimized_compiler_builtins: Option<CompilerBuiltins>,
-    pub jemalloc: Option<bool>,
+    pub override_allocator: Option<bool>,
 }
 
 impl Target {
