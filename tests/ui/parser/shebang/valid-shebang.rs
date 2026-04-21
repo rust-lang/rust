@@ -1,7 +1,7 @@
 #!/usr/bin/env run-cargo-script
 
 //@ check-pass
-//@ reference: input.shebang
+//@ reference: shebang.syntax
 fn main() {
     println!("Hello World!");
 }

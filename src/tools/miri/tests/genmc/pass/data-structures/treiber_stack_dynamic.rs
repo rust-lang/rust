@@ -1,5 +1,5 @@
 //@ revisions: default_R1W1 default_R1W2 default_R1W3 spinloop_assume_R1W1 spinloop_assume_R1W2 spinloop_assume_R1W3
-//@compile-flags: -Zmiri-ignore-leaks -Zmiri-genmc -Zmiri-disable-stacked-borrows -Zmiri-genmc-verbose
+//@compile-flags: -Zmiri-ignore-leaks -Zmiri-genmc-verbose
 //@normalize-stderr-test: "Verification took .*s" -> "Verification took [TIME]s"
 
 // This test is a translations of the GenMC test `treiber-stack-dynamic`, but with all code related to GenMC's hazard pointer API removed.

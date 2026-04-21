@@ -234,17 +234,13 @@ impl Completions {
             Visible::Editable => true,
             Visible::No => return,
         };
-        self.add(
-            render_path_resolution(
-                RenderContext::new(ctx)
-                    .private_editable(is_private_editable)
-                    .doc_aliases(doc_aliases),
-                path_ctx,
-                local_name,
-                resolution,
-            )
-            .build(ctx.db),
-        );
+        render_path_resolution(
+            RenderContext::new(ctx).private_editable(is_private_editable).doc_aliases(doc_aliases),
+            path_ctx,
+            local_name,
+            resolution,
+        )
+        .add_to(self, ctx.db);
     }
 
     pub(crate) fn add_pattern_resolution(
@@ -259,15 +255,13 @@ impl Completions {
             Visible::Editable => true,
             Visible::No => return,
         };
-        self.add(
-            render_pattern_resolution(
-                RenderContext::new(ctx).private_editable(is_private_editable),
-                pattern_ctx,
-                local_name,
-                resolution,
-            )
-            .build(ctx.db),
-        );
+        render_pattern_resolution(
+            RenderContext::new(ctx).private_editable(is_private_editable),
+            pattern_ctx,
+            local_name,
+            resolution,
+        )
+        .add_to(self, ctx.db);
     }
 
     pub(crate) fn add_enum_variants(
@@ -276,9 +270,6 @@ impl Completions {
         path_ctx: &PathCompletionCtx<'_>,
         e: hir::Enum,
     ) {
-        if !ctx.check_stability_and_hidden(e) {
-            return;
-        }
         e.variants(ctx.db)
             .into_iter()
             .for_each(|variant| self.add_enum_variant(ctx, path_ctx, variant, None));
@@ -313,15 +304,13 @@ impl Completions {
             Visible::Editable => true,
             Visible::No => return,
         };
-        self.add(
-            render_macro(
-                RenderContext::new(ctx).private_editable(is_private_editable),
-                path_ctx,
-                local_name,
-                mac,
-            )
-            .build(ctx.db),
-        );
+        render_macro(
+            RenderContext::new(ctx).private_editable(is_private_editable),
+            path_ctx,
+            local_name,
+            mac,
+        )
+        .add_to(self, ctx.db);
     }
 
     pub(crate) fn add_function(
@@ -337,17 +326,13 @@ impl Completions {
             Visible::No => return,
         };
         let doc_aliases = ctx.doc_aliases(&func);
-        self.add(
-            render_fn(
-                RenderContext::new(ctx)
-                    .private_editable(is_private_editable)
-                    .doc_aliases(doc_aliases),
-                path_ctx,
-                local_name,
-                func,
-            )
-            .build(ctx.db),
-        );
+        render_fn(
+            RenderContext::new(ctx).private_editable(is_private_editable).doc_aliases(doc_aliases),
+            path_ctx,
+            local_name,
+            func,
+        )
+        .add_to(self, ctx.db);
     }
 
     pub(crate) fn add_method(
@@ -364,18 +349,14 @@ impl Completions {
             Visible::No => return,
         };
         let doc_aliases = ctx.doc_aliases(&func);
-        self.add(
-            render_method(
-                RenderContext::new(ctx)
-                    .private_editable(is_private_editable)
-                    .doc_aliases(doc_aliases),
-                dot_access,
-                receiver,
-                local_name,
-                func,
-            )
-            .build(ctx.db),
-        );
+        render_method(
+            RenderContext::new(ctx).private_editable(is_private_editable).doc_aliases(doc_aliases),
+            dot_access,
+            receiver,
+            local_name,
+            func,
+        )
+        .add_to(self, ctx.db);
     }
 
     pub(crate) fn add_method_with_import(
@@ -391,19 +372,17 @@ impl Completions {
             Visible::No => return,
         };
         let doc_aliases = ctx.doc_aliases(&func);
-        self.add(
-            render_method(
-                RenderContext::new(ctx)
-                    .private_editable(is_private_editable)
-                    .doc_aliases(doc_aliases)
-                    .import_to_add(Some(import)),
-                dot_access,
-                None,
-                None,
-                func,
-            )
-            .build(ctx.db),
-        );
+        render_method(
+            RenderContext::new(ctx)
+                .private_editable(is_private_editable)
+                .doc_aliases(doc_aliases)
+                .import_to_add(Some(import)),
+            dot_access,
+            None,
+            None,
+            func,
+        )
+        .add_to(self, ctx.db);
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext<'_>, konst: hir::Const) {

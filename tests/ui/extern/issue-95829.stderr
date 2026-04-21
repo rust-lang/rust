@@ -1,5 +1,5 @@
 error: incorrect function inside `extern` block
-  --> $DIR/issue-95829.rs:4:14
+  --> $DIR/issue-95829.rs:5:14
    |
 LL |   extern "C" {
    |   ---------- `extern` blocks define existing foreign functions and functions inside of them cannot have a body
@@ -16,7 +16,7 @@ LL | |     }
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
 
 error: functions in `extern` blocks cannot have `async` qualifier
-  --> $DIR/issue-95829.rs:4:5
+  --> $DIR/issue-95829.rs:5:5
    |
 LL | extern "C" {
    | ---------- in this `extern` block

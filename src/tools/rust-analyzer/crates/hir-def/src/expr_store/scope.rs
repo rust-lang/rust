@@ -324,7 +324,7 @@ fn compute_expr_scopes(
             let mut scope = scopes.root_scope();
             compute_expr_scopes(scopes, *id, &mut scope);
         }
-        Expr::Unsafe { id, statements, tail } | Expr::Async { id, statements, tail } => {
+        Expr::Unsafe { id, statements, tail } => {
             let mut scope = scopes.new_block_scope(*scope, *id, None);
             // Overwrite the old scope for the block expr, so that every block scope can be found
             // via the block itself (important for blocks that only contain items, no expressions).

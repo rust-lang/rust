@@ -5,7 +5,6 @@ use ide_db::{
     defs::Definition,
     search::{SearchScope, UsageSearchResult},
 };
-use syntax::ast::syntax_factory::SyntaxFactory;
 use syntax::{
     AstNode,
     ast::{self, HasGenericParams, HasName, HasTypeBounds, Name, NameLike, PathType},
@@ -72,8 +71,8 @@ pub(crate) fn replace_named_generic_with_impl(
         "Replace named generic with impl trait",
         target,
         |edit| {
-            let mut editor = edit.make_editor(type_param.syntax());
-            let make = SyntaxFactory::without_mappings();
+            let editor = edit.make_editor(type_param.syntax());
+            let make = editor.make();
 
             // remove trait from generic param list
             if let Some(generic_params) = fn_.generic_param_list() {

@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // Translated from GenMC's "litmus/Z6+acq" test.
 
 #![no_main]

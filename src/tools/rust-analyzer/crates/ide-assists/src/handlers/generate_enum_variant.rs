@@ -59,12 +59,12 @@ pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let InRealFile { file_id, value: enum_node } = e.source(db)?.original_ast_node_rooted(db)?;
 
     acc.add(AssistId::generate("generate_enum_variant"), "Generate variant", target, |builder| {
-        let mut editor = builder.make_editor(enum_node.syntax());
-        let make = SyntaxFactory::with_mappings();
-        let field_list = parent.make_field_list(ctx, &make);
+        let editor = builder.make_editor(enum_node.syntax());
+        let make = editor.make();
+        let field_list = parent.make_field_list(ctx, make);
         let variant = make.variant(None, make.name(&name_ref.text()), field_list, None);
         if let Some(it) = enum_node.variant_list() {
-            it.add_variant(&mut editor, &variant);
+            it.add_variant(&editor, &variant);
         }
         builder.add_file_edits(file_id.file_id(ctx.db()), editor);
     })

@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: 235f56089da3dbb5
+lsp/ext.rs hash: dc4ba5f417c74aa6
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -653,7 +653,7 @@ Note that this functionality is intended primarily to inform the end user about 
 In particular, it's valid for the client to completely ignore this extension.
 Clients are discouraged from but are allowed to use the `health` status to decide if it's worth sending a request to the server.
 
-### Controlling Flycheck
+## Controlling Flycheck
 
 The flycheck/checkOnSave feature can be controlled via notifications sent by the client to the server.
 

@@ -2722,6 +2722,15 @@ enum Stage {
     Late,
 }
 
+/// Parts of import data required for finalizing import resolution.
+/// Does not carry a lifetime, so it can be stored in `Finalize`.
+#[derive(Copy, Clone, Debug)]
+struct ImportSummary {
+    vis: Visibility,
+    nearest_parent_mod: LocalDefId,
+    is_single: bool,
+}
+
 /// Invariant: if `Finalize` is used, expansion and import resolution must be complete.
 #[derive(Copy, Clone, Debug)]
 struct Finalize {
@@ -2740,8 +2749,8 @@ struct Finalize {
     used: Used = Used::Other,
     /// Finalizing early or late resolution.
     stage: Stage = Stage::Early,
-    /// Nominal visibility of the import item, in case we are resolving an import's final segment.
-    import_vis: Option<Visibility> = None,
+    /// Some import data, in case we are resolving an import's final segment.
+    import: Option<ImportSummary> = None,
 }
 
 impl Finalize {

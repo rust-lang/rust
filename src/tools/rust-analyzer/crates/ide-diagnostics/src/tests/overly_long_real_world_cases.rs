@@ -6,6 +6,7 @@ use crate::tests::check_diagnostics_with_disabled;
 fn tracing_infinite_repeat() {
     check_diagnostics_with_disabled(
         r#"
+//- minicore: fn
 //- /core.rs crate:core
 #[rustc_builtin_macro]
 #[macro_export]

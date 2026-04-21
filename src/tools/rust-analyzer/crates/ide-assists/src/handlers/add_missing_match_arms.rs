@@ -8,7 +8,7 @@ use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
 use syntax::ast::edit::IndentLevel;
 use syntax::ast::syntax_factory::SyntaxFactory;
-use syntax::ast::{self, AstNode, MatchArmList, MatchExpr, Pat, make};
+use syntax::ast::{self, AstNode, MatchArmList, MatchExpr, Pat};
 use syntax::syntax_editor::{Position, SyntaxEditor};
 use syntax::{SyntaxKind, SyntaxNode, ToSmolStr};
 
@@ -74,7 +74,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         .filter(|pat| !matches!(pat, Pat::WildcardPat(_)))
         .collect();
 
-    let make = SyntaxFactory::with_mappings();
+    let make = SyntaxFactory::without_mappings();
 
     let scope = ctx.sema.scope(expr.syntax())?;
     let module = scope.module();
@@ -271,12 +271,12 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 }
             };
 
-            let mut editor = builder.make_editor(&old_place);
+            let editor = builder.make_editor(&old_place);
             let mut arms_edit = ArmsEdit { match_arm_list, place: old_place, last_arm: None };
 
-            arms_edit.remove_wildcard_arms(ctx, &mut editor);
-            arms_edit.add_comma_after_last_arm(ctx, &make, &mut editor);
-            arms_edit.append_arms(&missing_arms, &make, &mut editor);
+            arms_edit.remove_wildcard_arms(ctx, &editor);
+            arms_edit.add_comma_after_last_arm(ctx, &make, &editor);
+            arms_edit.append_arms(&missing_arms, &make, &editor);
 
             if let Some(cap) = ctx.config.snippet_cap {
                 if let Some(it) = missing_arms
@@ -297,7 +297,6 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 }
             }
 
-            editor.add_mappings(make.take());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -358,7 +357,7 @@ struct ArmsEdit {
 }
 
 impl ArmsEdit {
-    fn remove_wildcard_arms(&mut self, ctx: &AssistContext<'_>, editor: &mut SyntaxEditor) {
+    fn remove_wildcard_arms(&mut self, ctx: &AssistContext<'_>, editor: &SyntaxEditor) {
         for arm in self.match_arm_list.arms() {
             if !matches!(arm.pat(), Some(Pat::WildcardPat(_))) {
                 self.last_arm = Some(arm);
@@ -387,7 +386,7 @@ impl ArmsEdit {
         }
     }
 
-    fn append_arms(&self, arms: &[ast::MatchArm], make: &SyntaxFactory, editor: &mut SyntaxEditor) {
+    fn append_arms(&self, arms: &[ast::MatchArm], make: &SyntaxFactory, editor: &SyntaxEditor) {
         let Some(mut before) = self.place.last_token() else {
             stdx::never!("match arm list not contain any token");
             return;
@@ -420,7 +419,7 @@ impl ArmsEdit {
         &self,
         ctx: &AssistContext<'_>,
         make: &SyntaxFactory,
-        editor: &mut SyntaxEditor,
+        editor: &SyntaxEditor,
     ) {
         if let Some(last_arm) = &self.last_arm
             && last_arm.comma_token().is_none()
@@ -593,12 +592,12 @@ fn build_pat(
         ExtendedVariant::Variant { variant: var, use_self } => {
             let edition = module.krate(db).edition(db);
             let path = if use_self {
-                make::path_from_segments(
+                make.path_from_segments(
                     [
-                        make::path_segment(make::name_ref_self_ty()),
-                        make::path_segment(make::name_ref(
-                            &var.name(db).display(db, edition).to_smolstr(),
-                        )),
+                        make.path_segment(make.name_ref_self_ty()),
+                        make.path_segment(
+                            make.name_ref(&var.name(db).display(db, edition).to_smolstr()),
+                        ),
                     ],
                     false,
                 )
@@ -612,7 +611,7 @@ fn build_pat(
                     let pats = fields.into_iter().map(|f| {
                         let name = name_generator.for_type(&f.ty(db).to_type(db), db, edition);
                         match name {
-                            Some(name) => make::ext::simple_ident_pat(make.name(&name)).into(),
+                            Some(name) => make.ident_pat(false, false, make.name(&name)).into(),
                             None => make.wildcard_pat().into(),
                         }
                     });

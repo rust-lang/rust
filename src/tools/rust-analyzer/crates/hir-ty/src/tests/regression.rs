@@ -2363,6 +2363,7 @@ fn test() {
 }
 "#,
         expect![[r#"
+            46..49 'Foo': Foo<N>
             93..97 'self': Foo<N>
             108..125 '{     ...     }': usize
             118..119 'N': usize
@@ -2854,5 +2855,61 @@ trait B where
 
 fn foo<T: B>(v: T::T) {}
     "#,
+    );
+}
+
+#[test]
+fn regression_22007() {
+    check_types(
+        r#"
+//- minicore: fn
+trait Super {
+    type Assoc;
+    fn foo(self) -> Self::Assoc
+    where
+        Self: Sub,
+    { loop {} }
+}
+trait Sub: Super {}
+
+struct Struct;
+impl Super for Struct {
+    type Assoc = u8;
+}
+impl Sub for Struct {}
+
+fn foo() {
+    Struct.foo();
+ // ^^^^^^^^^^^^ u8
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_21885() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized, future, result
+use core::future::Future;
+
+trait Foo {
+    type Assoc;
+
+    fn foo() -> &dyn Future<Output = Result<Self::Assoc, ()>>;
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    type Assoc = NotFound;
+
+    fn foo() -> &dyn Future<Output = Result<Self::Assoc, ()>> {
+        &async {
+            Err(())
+        }
+    }
+}
+"#,
     );
 }

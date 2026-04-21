@@ -382,6 +382,21 @@ fn main() {
     }
 
     #[test]
+    fn empty_block_to_line() {
+        check_assist(
+            convert_comment_block,
+            r#"
+/**/$0
+fn main() {}
+"#,
+            r#"
+
+fn main() {}
+"#,
+        );
+    }
+
+    #[test]
     fn end_of_line_block_to_line() {
         check_assist_not_applicable(
             convert_comment_block,

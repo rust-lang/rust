@@ -1,3 +1,4 @@
+//- minicore: fn
 use crate::ast::{AngleBracketedArgs, ParenthesizedArgs, AttrStyle, BareFnTy};
 use crate::ast::{GenericBound, TraitBoundModifier};
 use crate::ast::Unsafety;

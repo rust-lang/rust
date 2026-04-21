@@ -140,15 +140,15 @@ mod ffi {
         /// Log errors, warnings and tips.
         Tip,
         /// Debug print considered revisits.
-        /// Downgraded to `Tip` if `GENMC_DEBUG` is not enabled.
+        /// Downgraded to `Tip` if `ENABLE_GENMC_DEBUG` is not enabled.
         Debug1Revisits,
         /// Print the execution graph after every memory access.
         /// Also includes the previous debug log level.
-        /// Downgraded to `Tip` if `GENMC_DEBUG` is not enabled.
+        /// Downgraded to `Tip` if `ENABLE_GENMC_DEBUG` is not enabled.
         Debug2MemoryAccesses,
         /// Print reads-from values considered by GenMC.
         /// Also includes the previous debug log level.
-        /// Downgraded to `Tip` if `GENMC_DEBUG` is not enabled.
+        /// Downgraded to `Tip` if `ENABLE_GENMC_DEBUG` is not enabled.
         Debug3ReadsFrom,
     }
 
@@ -182,7 +182,7 @@ mod ffi {
 
     #[must_use]
     #[derive(Debug, Clone, Copy)]
-    enum ExecutionState {
+    enum ExecutionStatus {
         Ok,
         Error,
         Blocked,
@@ -192,7 +192,7 @@ mod ffi {
     #[must_use]
     #[derive(Debug)]
     struct SchedulingResult {
-        exec_state: ExecutionState,
+        exec_status: ExecutionStatus,
         next_thread: i32,
     }
 
@@ -212,10 +212,10 @@ mod ffi {
     #[must_use]
     #[derive(Debug)]
     struct LoadResult {
+        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
+        invalid: bool,
         /// If not null, contains the error encountered during the handling of the load.
         error: UniquePtr<CxxString>,
-        /// Indicates whether a value was read or not.
-        has_value: bool,
         /// The value that was read. Should not be used if `has_value` is `false`.
         read_value: GenmcScalar,
     }
@@ -223,6 +223,8 @@ mod ffi {
     #[must_use]
     #[derive(Debug)]
     struct StoreResult {
+        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
+        invalid: bool,
         /// If not null, contains the error encountered during the handling of the store.
         error: UniquePtr<CxxString>,
         /// `true` if the write should also be reflected in Miri's memory representation.
@@ -232,6 +234,8 @@ mod ffi {
     #[must_use]
     #[derive(Debug)]
     struct ReadModifyWriteResult {
+        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
+        invalid: bool,
         /// If there was an error, it will be stored in `error`, otherwise it is `None`.
         error: UniquePtr<CxxString>,
         /// The value that was read by the RMW operation as the left operand.
@@ -245,6 +249,8 @@ mod ffi {
     #[must_use]
     #[derive(Debug)]
     struct CompareExchangeResult {
+        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
+        invalid: bool,
         /// If there was an error, it will be stored in `error`, otherwise it is `None`.
         error: UniquePtr<CxxString>,
         /// The value that was read by the compare-exchange.
@@ -258,12 +264,23 @@ mod ffi {
     #[must_use]
     #[derive(Debug)]
     struct MutexLockResult {
+        /// If `true`, exploration should be dropped, **and all other fields are invalid**.
+        invalid: bool,
         /// If there was an error, it will be stored in `error`, otherwise it is `None`.
         error: UniquePtr<CxxString>,
         /// If true, GenMC determined that we should retry the mutex lock operation once the thread attempting to lock is scheduled again.
         is_reset: bool,
         /// Indicate whether the lock was acquired by this thread.
         is_lock_acquired: bool,
+    }
+
+    #[must_use]
+    #[derive(Debug)]
+    struct MallocResult {
+        /// If not null, contains the error encountered during the handling of malloc.
+        error: UniquePtr<CxxString>,
+        /// The allocated address.
+        address: u64,
     }
 
     /**** These are GenMC types that we have to copy-paste here since cxx does not support
@@ -385,13 +402,19 @@ mod ffi {
         /***** Functions for handling events encountered during program execution. *****/
 
         /**** Memory access handling ****/
-        fn handle_load(
+        fn handle_atomic_load(
             self: Pin<&mut MiriGenmcShim>,
             thread_id: i32,
             address: u64,
             size: u64,
             memory_ordering: MemOrdering,
             old_value: GenmcScalar,
+        ) -> LoadResult;
+        fn handle_non_atomic_load(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            address: u64,
+            size: u64,
         ) -> LoadResult;
         fn handle_read_modify_write(
             self: Pin<&mut MiriGenmcShim>,
@@ -415,7 +438,7 @@ mod ffi {
             fail_load_ordering: MemOrdering,
             can_fail_spuriously: bool,
         ) -> CompareExchangeResult;
-        fn handle_store(
+        fn handle_atomic_store(
             self: Pin<&mut MiriGenmcShim>,
             thread_id: i32,
             address: u64,
@@ -423,6 +446,12 @@ mod ffi {
             value: GenmcScalar,
             old_value: GenmcScalar,
             memory_ordering: MemOrdering,
+        ) -> StoreResult;
+        fn handle_non_atomic_store(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            address: u64,
+            size: u64,
         ) -> StoreResult;
         fn handle_fence(
             self: Pin<&mut MiriGenmcShim>,
@@ -436,7 +465,7 @@ mod ffi {
             thread_id: i32,
             size: u64,
             alignment: u64,
-        ) -> u64;
+        ) -> MallocResult;
         /// Returns true if an error was found.
         fn handle_free(
             self: Pin<&mut MiriGenmcShim>,
