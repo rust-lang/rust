@@ -1,4 +1,4 @@
-// https://github.com/rust-lang/rust/issues/7663
+//! Regression test for #7663.
 //@ revisions: glob_glob explicit_explicit glob_explicit
 //@[glob_glob] check-fail
 //@[explicit_explicit] check-fail
