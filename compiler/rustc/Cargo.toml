@@ -29,7 +29,7 @@ wasi = "=0.14.2"
 [dependencies.libmimalloc-sys]
 version = "0.1.45"
 optional = true
-features = ["override"]
+features = ["override", "v2"]
 
 [features]
 # tidy-alphabetical-start
