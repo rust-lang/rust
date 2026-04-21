@@ -14,18 +14,6 @@ pub struct FieldRepresentingType<T: ?Sized, const VARIANT: u32, const FIELD: u32
     _phantom: PhantomData<fn(T) -> T>,
 }
 
-// SAFETY: `FieldRepresentingType` doesn't contain any `T`
-unsafe impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Send
-    for FieldRepresentingType<T, VARIANT, FIELD>
-{
-}
-
-// SAFETY: `FieldRepresentingType` doesn't contain any `T`
-unsafe impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Sync
-    for FieldRepresentingType<T, VARIANT, FIELD>
-{
-}
-
 impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Copy
     for FieldRepresentingType<T, VARIANT, FIELD>
 {
