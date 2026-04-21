@@ -196,7 +196,7 @@ pub(crate) fn layout_of<'tcx>(
                 // enough info here... Maybe we can use a hacky HIR walker.
                 if matches!(
                     coroutine_kind,
-                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async { fused: _ }, _)
                 ) {
                     diag.note("a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future");
                 }

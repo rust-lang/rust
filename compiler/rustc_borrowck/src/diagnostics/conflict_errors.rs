@@ -3621,7 +3621,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         bug!("gen block/closure expected, but gen function found.")
                     }
                 },
-                CoroutineKind::Desugared(CoroutineDesugaring::Async, async_kind) => {
+                CoroutineKind::Desugared(CoroutineDesugaring::Async { fused: _ }, async_kind) => {
                     match async_kind {
                         CoroutineSource::Block => "async block",
                         CoroutineSource::Closure => "async closure",
@@ -3661,7 +3661,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 fr_name.highlight_region_name(&mut err);
                 if matches!(
                     use_span.coroutine_kind(),
-                    Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, _))
+                    Some(CoroutineKind::Desugared(CoroutineDesugaring::Async { fused: _ }, _))
                 ) {
                     err.note(
                         "async blocks are not executed immediately and must either take a \

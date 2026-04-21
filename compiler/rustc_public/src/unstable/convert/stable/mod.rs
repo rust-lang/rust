@@ -69,7 +69,7 @@ impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineKind {
     ) -> Self::T {
         use rustc_hir::{CoroutineDesugaring, CoroutineKind};
         match *self {
-            CoroutineKind::Desugared(CoroutineDesugaring::Async, source) => {
+            CoroutineKind::Desugared(CoroutineDesugaring::Async { fused: _ }, source) => {
                 crate::mir::CoroutineKind::Desugared(
                     crate::mir::CoroutineDesugaring::Async,
                     source.stable(tables, cx),

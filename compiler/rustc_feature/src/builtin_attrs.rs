@@ -375,6 +375,8 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // `#[coroutine]` attribute to be applied to closures to make them coroutines instead
     gated!(coroutine, coroutines, experimental!(coroutine)),
 
+    gated!(fused, fused_attribute, experimental!(fused)),
+
     // RFC 3543
     // `#[patchable_function_entry(prefix_nops = m, entry_nops = n)]`
     gated!(patchable_function_entry, experimental!(patchable_function_entry)),

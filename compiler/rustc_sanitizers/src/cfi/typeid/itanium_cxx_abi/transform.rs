@@ -420,7 +420,7 @@ pub(crate) fn transform_instance<'tcx>(
                     ),
                     hir::CoroutineKind::Desugared(desugaring, _) => {
                         let lang_item = match desugaring {
-                            hir::CoroutineDesugaring::Async => LangItem::Future,
+                            hir::CoroutineDesugaring::Async { fused: _ } => LangItem::Future,
                             hir::CoroutineDesugaring::AsyncGen => LangItem::AsyncIterator,
                             hir::CoroutineDesugaring::Gen => LangItem::Iterator,
                         };

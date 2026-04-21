@@ -468,7 +468,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir::ExprKind::Closure(&hir::Closure {
                         kind:
                             hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
-                                hir::CoroutineDesugaring::Async,
+                                hir::CoroutineDesugaring::Async { fused: _ },
                                 hir::CoroutineSource::Closure,
                             )),
                         ..
