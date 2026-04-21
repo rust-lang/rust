@@ -275,6 +275,10 @@ pub(crate) struct DocTestLiteral;
 pub(crate) struct AttrCrateLevelOnly;
 
 #[derive(Diagnostic)]
+#[diag("`#[diagnostic::do_not_recommend]` does not expect any arguments")]
+pub(crate) struct DoNotRecommendDoesNotExpectArgs;
+
+#[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_const]` can only be applied to non-const trait implementations")]
 pub(crate) struct DiagnosticOnConstOnlyForTraitImpls {
     #[label("not a trait implementation")]

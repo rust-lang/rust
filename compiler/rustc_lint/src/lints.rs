@@ -3304,10 +3304,6 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::do_not_recommend]` does not expect any arguments")]
-pub(crate) struct DoNotRecommendDoesNotExpectArgs;
-
-#[derive(Diagnostic)]
 #[diag("invalid `crate_type` value")]
 pub(crate) struct UnknownCrateTypes {
     #[subdiagnostic]
