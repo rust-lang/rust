@@ -27,7 +27,7 @@ use crate::traits::ObligationCause;
 use crate::ty::InferTy::*;
 use crate::ty::{
     self, AdtDef, Const, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv, Region,
-    Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, ValTree,
+    Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy, ValTree,
 };
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
@@ -1123,12 +1123,6 @@ impl<'tcx> Ty<'tcx> {
     #[inline(always)]
     pub fn kind(self) -> &'tcx TyKind<'tcx> {
         self.0.0
-    }
-
-    // FIXME(compiler-errors): Think about removing this.
-    #[inline(always)]
-    pub fn flags(self) -> TypeFlags {
-        self.0.0.flags
     }
 
     #[inline]
