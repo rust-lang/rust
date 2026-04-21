@@ -174,6 +174,7 @@ pub struct CoverageInfoHi {
     /// data structures without having to scan the entire body first.
     pub num_block_markers: usize,
     pub branch_spans: Vec<BranchSpan>,
+    pub mcdc_spans: Vec<(mcdc::DecisionSpan, Vec<mcdc::ConditionSpan>)>,
 }
 
 #[derive(Clone, Debug)]
@@ -182,6 +183,83 @@ pub struct BranchSpan {
     pub span: Span,
     pub true_marker: BlockMarkerId,
     pub false_marker: BlockMarkerId,
+}
+
+pub mod mcdc {
+    use rustc_macros::{StableHash, TyDecodable, TyEncodable};
+    use rustc_span::Span;
+
+    use crate::mir::coverage::BlockMarkerId;
+
+    rustc_index::newtype_index! {
+        /// ID of an MC/DC condition. Used by LLVM to check MC/DC coverage.
+        ///
+        /// Note: the maximum number of condition within a decision supported by
+        /// llvm is 32767, thus the max ID is 0x7FFE.
+        #[stable_hash]
+        #[encodable]
+        #[orderable]
+        #[max = 0x7FFE]
+        #[debug_format = "ConditionId({})"]
+        pub struct ConditionId {}
+    }
+
+    impl ConditionId {
+        pub const START: Self = Self::from_usize(0);
+        pub const MAX_AS_USIZE: usize = Self::MAX.as_usize();
+    }
+
+    /// Node in a BDD (Binary Decision Diagram) for MC/DC analysis
+    #[derive(Copy, Clone, Debug)]
+    #[derive(TyEncodable, TyDecodable, Hash, StableHash)]
+    pub struct ConditionInfo {
+        pub condition_id: ConditionId,
+        pub true_next_id: Option<ConditionId>,
+        pub false_next_id: Option<ConditionId>,
+    }
+
+    /// This struct is generated during THIR lowering, it keeps track of a
+    /// condition (simple boolean expression) span. It associates it with a BDD
+    /// node, that helps knowing the shape of the decision graph, and two markers
+    /// inserted in the generated MIR to find the basic blocks corresponding to
+    /// the two possible outcommes of the condition.
+    #[derive(Clone, Debug)]
+    #[derive(TyEncodable, TyDecodable, Hash, StableHash)]
+    pub struct ConditionSpan {
+        pub span: Span,
+        pub condition_info: ConditionInfo,
+        pub true_marker: BlockMarkerId,
+        pub false_marker: BlockMarkerId,
+    }
+
+    /// This struct is generated during THIR lowering for each encountered
+    /// "complex" boolean expression (expressions with at least one logical
+    /// operator). it associates the span of the expression in the source
+    /// code with:
+    /// - the list of markers inserted in the generated MIR to keep
+    ///     track of the output basic blocks of the decision graph.
+    /// - the depth, corresponding to the level of nesting of this decision
+    ///     (e.g. in `true || foo (a && b)`, `true || foo (...)` has depth 0,
+    ///     `a && b` has depth 1).
+    /// - the number of conditions ("simple" boolean expressions) within this
+    ///     decision.
+    ///
+    /// Invariant: for each [`DecisionSpan`] generated, there should be
+    /// `num_conditions` [`ConditionSpan`]'s as well.
+    #[derive(Clone, Debug)]
+    #[derive(TyEncodable, TyDecodable, Hash, StableHash)]
+    pub struct DecisionSpan {
+        pub span: Span,
+
+        /// Marker statements designating outputs of the decision in MIR.
+        pub end_markers: Vec<BlockMarkerId>,
+
+        /// Nesting level of the decision.
+        pub decision_depth: u16,
+
+        /// Number of conditions in the decision.
+        pub num_conditions: usize,
+    }
 }
 
 /// Contains information needed during codegen, obtained by inspecting the
