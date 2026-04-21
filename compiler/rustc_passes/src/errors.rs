@@ -14,10 +14,6 @@ use crate::check_attr::ProcMacroKind;
 use crate::lang_items::Duplicate;
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::do_not_recommend]` can only be placed on trait implementations")]
-pub(crate) struct IncorrectDoNotRecommendLocation;
-
-#[derive(Diagnostic)]
 #[diag("`#[loop_match]` should be applied to a loop")]
 pub(crate) struct LoopMatchAttr {
     #[primary_span]
