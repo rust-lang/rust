@@ -271,6 +271,10 @@ pub(crate) struct CrateRoot {
     interpret_alloc_index: LazyArray<u64>,
     proc_macro_data: Option<ProcMacroData>,
 
+    delayed_codegen_requests: LazyArray<rustc_middle::mono::DelayedInstance<'static>>,
+    cast_relevant_lifetimes:
+        LazyArray<(ty::Instance<'static>, rustc_middle::mono::CastRelevantLifetimes<'static>)>,
+
     tables: LazyTables,
     debugger_visualizers: LazyArray<DebuggerVisualizerFile>,
 
@@ -384,6 +388,7 @@ define_tables! {
     intrinsic: Table<DefIndex, Option<LazyValue<ty::IntrinsicDef>>>,
     is_macro_rules: Table<DefIndex, bool>,
     type_alias_is_lazy: Table<DefIndex, bool>,
+    has_trait_cast_intrinsics: Table<DefIndex, bool>,
     attr_flags: Table<DefIndex, AttrFlags>,
     // The u64 is the crate-local part of the DefPathHash. All hashes in this crate have the same
     // StableCrateId, so we omit encoding those into the table.
@@ -446,6 +451,7 @@ define_tables! {
     // FIXME(eddyb) perhaps compute this on the fly if cheap enough?
     coerce_unsized_info: Table<DefIndex, LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
     mir_const_qualif: Table<DefIndex, LazyValue<mir::ConstQualifs>>,
+    borrowck_region_summary: Table<DefIndex, LazyValue<mir::BorrowckRegionSummary>>,
     rendered_const: Table<DefIndex, LazyValue<String>>,
     rendered_precise_capturing_args: Table<DefIndex, LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
     fn_arg_idents: Table<DefIndex, LazyArray<Option<Ident>>>,

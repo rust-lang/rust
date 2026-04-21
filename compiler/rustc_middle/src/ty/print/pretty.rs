@@ -3325,6 +3325,10 @@ define_print! {
 define_print_and_forward_display! {
     (self, p):
 
+    ty::OutlivesArg<'tcx> {
+        write!(p, "outlives({}, {})", self.longer(), self.shorter())?;
+    }
+
     &'tcx ty::List<Ty<'tcx>> {
         write!(p, "{{")?;
         p.comma_sep(self.iter())?;
@@ -3409,6 +3413,7 @@ define_print_and_forward_display! {
             GenericArgKind::Lifetime(lt) => lt.print(p)?,
             GenericArgKind::Type(ty) => ty.print(p)?,
             GenericArgKind::Const(ct) => ct.print(p)?,
+            GenericArgKind::Outlives(o) => o.print(p)?,
         }
     }
 }

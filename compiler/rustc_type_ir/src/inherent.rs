@@ -282,6 +282,22 @@ pub trait Region<I: Interner<Region = Self>>:
     }
 }
 
+pub trait OutlivesArg<I: Interner<OutlivesArg = Self>>:
+    Copy + Debug + Hash + Eq + Into<I::GenericArg>
+{
+    fn new(interner: I, longer: usize, shorter: usize) -> Self;
+
+    fn data(self) -> ty::OutlivesArgData;
+
+    fn longer(self) -> usize {
+        self.data().longer
+    }
+
+    fn shorter(self) -> usize {
+        self.data().shorter
+    }
+}
+
 #[rust_analyzer::prefer_underscore_import]
 pub trait Const<I: Interner<Const = Self>>:
     Copy
@@ -359,7 +375,7 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
 {
     fn as_term(&self) -> Option<I::Term> {
         match self.kind() {
-            ty::GenericArgKind::Lifetime(_) => None,
+            ty::GenericArgKind::Lifetime(_) | ty::GenericArgKind::Outlives(_) => None,
             ty::GenericArgKind::Type(ty) => Some(ty.into()),
             ty::GenericArgKind::Const(ct) => Some(ct.into()),
         }
@@ -391,7 +407,7 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
 
     fn is_non_region_infer(self) -> bool {
         match self.kind() {
-            ty::GenericArgKind::Lifetime(_) => false,
+            ty::GenericArgKind::Lifetime(_) | ty::GenericArgKind::Outlives(_) => false,
             ty::GenericArgKind::Type(ty) => ty.is_ty_var(),
             ty::GenericArgKind::Const(ct) => ct.is_ct_var(),
         }

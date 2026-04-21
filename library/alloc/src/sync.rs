@@ -4969,3 +4969,44 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Arc<T, A> {
         unsafe { (**self).shrink(ptr, old_layout, new_layout) }
     }
 }
+
+#[unstable(feature = "trait_cast", issue = "none")]
+impl<'a, T, U, I, A> core::trait_cast::TraitCast<I, U> for Arc<T, A>
+where
+    I: core::marker::MetaSized
+        + core::ptr::Pointee<Metadata = core::ptr::DynMetadata<I>>
+        + core::marker::TraitMetadataTable<I>,
+    T: core::marker::MetaSized + core::marker::TraitMetadataTable<I> + 'a,
+    U: core::marker::MetaSized
+        + core::ptr::Pointee<Metadata = core::ptr::DynMetadata<U>>
+        + core::marker::TraitMetadataTable<I>
+        + 'a,
+    A: Allocator,
+{
+    type Target = Arc<U, A>;
+    unsafe fn unchecked_cast(self) -> Result<Arc<U, A>, core::trait_cast::TraitCastError<Self>> {
+        unsafe {
+            let (obj_graph_id, table) =
+                <T as core::marker::TraitMetadataTable<I>>::derived_metadata_table(&*self);
+            let (this, alloc) = Arc::into_raw_with_allocator(self);
+            let (crate_graph_id, idx) = core::intrinsics::trait_metadata_index::<I, U>();
+            if crate_graph_id as *const u8 != obj_graph_id as *const u8 {
+                return Err(core::trait_cast::TraitCastError::ForeignTraitGraph(Arc::from_raw_in(
+                    this, alloc,
+                )));
+            }
+            let table_len = core::intrinsics::trait_metadata_table_len::<I>();
+            let table: &[Option<NonNull<()>>] =
+                &*core::ptr::from_raw_parts(table.as_ptr(), table_len);
+
+            let (p, _) = (this as *const T).to_raw_parts();
+            let Some(Some(vtable)) = table.get(idx) else {
+                let this = Arc::from_raw_in(this, alloc);
+                return Err(core::trait_cast::TraitCastError::UnsatisfiedObligation(this));
+            };
+            let metadata: core::ptr::DynMetadata<U> = core::mem::transmute(vtable);
+            let p = core::ptr::from_raw_parts(p, metadata);
+            Ok(Arc::from_raw_in(p, alloc))
+        }
+    }
+}

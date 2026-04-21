@@ -249,6 +249,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.infcx.typing_env(self.param_env)
     }
 
+    fn mk_call_id(
+        &mut self,
+        func: &Operand<'tcx>,
+    ) -> &'tcx ty::List<(DefId, u32, ty::GenericArgsRef<'tcx>)> {
+        let id = self.cfg.next_call_id();
+        let callee_args =
+            func.const_fn_def().map(|(_, args)| args).unwrap_or_else(|| self.tcx.mk_args(&[]));
+        self.tcx.mk_call_chain(&[(self.def_id.to_def_id(), id, callee_args)])
+    }
+
     fn is_bound_var_in_guard(&self, id: LocalVarId) -> bool {
         self.guard_context.iter().any(|frame| frame.locals.iter().any(|local| local.id == id))
     }
@@ -391,6 +401,15 @@ impl LocalsForNode {
 
 struct CFG<'tcx> {
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    next_call_id: u32,
+}
+
+impl<'tcx> CFG<'tcx> {
+    fn next_call_id(&mut self) -> u32 {
+        let id = self.next_call_id;
+        self.next_call_id += 1;
+        id
+    }
 }
 
 rustc_index::newtype_index! {
@@ -711,7 +730,7 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
     let local_decls = IndexVec::from_iter(
         [output].iter().chain(&inputs).map(|ty| LocalDecl::with_source_info(*ty, source_info)),
     );
-    let mut cfg = CFG { basic_blocks: IndexVec::new() };
+    let mut cfg = CFG { basic_blocks: IndexVec::new(), next_call_id: 0 };
     let mut source_scopes = IndexVec::new();
 
     cfg.start_new_block();
@@ -776,7 +795,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             hir_id,
             parent_module: tcx.parent_module(hir_id).to_def_id(),
             check_overflow,
-            cfg: CFG { basic_blocks: IndexVec::new() },
+            cfg: CFG { basic_blocks: IndexVec::new(), next_call_id: 0 },
             fn_span: span,
             arg_count,
             coroutine,
@@ -948,6 +967,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.coroutine,
             None,
         );
+        body.next_call_id = self.cfg.next_call_id;
         body.coverage_info_hi = self.coverage_info.map(|b| b.into_done());
 
         let writer = pretty::MirWriter::new(self.tcx);

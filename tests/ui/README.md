@@ -1410,6 +1410,10 @@ Exercises `#[track_caller]` and `-Z track-diagnostics`.
 
 Collection of tests for [trait bounds](https://doc.rust-lang.org/reference/trait-bounds.html).
 
+## `tests/ui/trait-cast/`
+
+Tests for `#![feature(trait_cast)]` — bounded intertrait casting via `TraitMetadataTable` and the `cast!` / `try_cast!` macros.
+
 ## `tests/ui/traits/`
 
 Broad collection of tests on traits in general.

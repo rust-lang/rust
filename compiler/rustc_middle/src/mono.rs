@@ -6,14 +6,14 @@ use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hashes::Hash128;
 use rustc_hir::ItemId;
 use rustc_hir::attrs::{InlineAttr, Linkage};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_session::config::OptLevel;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Span, Spanned, Symbol};
 use rustc_target::spec::SymbolVisibility;
 use tracing::debug;
 
@@ -21,7 +21,7 @@ use crate::dep_graph::dep_node::{make_compile_codegen_unit, make_compile_mono_it
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use crate::ich::StableHashingContext;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::ty::{self, GenericArgs, Instance, InstanceKind, SymbolName, Ty, TyCtxt};
+use crate::ty::{self, GenericArgs, Instance, InstanceKind, List, SymbolName, Ty, TyCtxt};
 
 /// Describes how a monomorphization will be instantiated in object files.
 #[derive(PartialEq)]
@@ -50,6 +50,78 @@ pub enum InstantiationMode {
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable, TyEncodable, TyDecodable)]
 pub struct NormalizationErrorInMono;
+
+/// Interned bv_to_param mapping. Index = dyn bound-var index,
+/// value = walk-order position of the corresponding region in the
+/// function's generic args (None = non-generic / concrete region).
+/// Interned via `tcx.mk_lifetime_bv_to_param_mapping(iter)`.
+/// Pointer-based Hash/Eq via ty::List interning.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+#[repr(transparent)]
+pub struct LifetimeBVToParamMapping<'tcx>(pub &'tcx ty::List<Option<usize>>);
+
+impl ToStableHashKey<StableHashingContext<'_>> for LifetimeBVToParamMapping<'_> {
+    type KeyType = Fingerprint;
+
+    fn to_stable_hash_key(&self, hcx: &mut StableHashingContext<'_>) -> Self::KeyType {
+        let mut hasher = StableHasher::new();
+        self.hash_stable(hcx, &mut hasher);
+        hasher.finish()
+    }
+}
+
+/// Per-Instance cast-relevant lifetimes, used for both direct and transitive
+/// sensitivity. Records how dyn bound vars map through the call chain to the
+/// function's own walk-order positions. Each element is an interned
+/// `LifetimeBVToParamMapping` — the lattice domain is the set of distinct
+/// interned mappings.
+///
+/// Returned by the `cast_relevant_lifetimes` and `crate_cast_relevant_lifetimes`
+/// queries.
+#[derive(Clone, Debug, TyEncodable, TyDecodable)]
+pub struct CastRelevantLifetimes<'tcx> {
+    pub mappings: UnordSet<LifetimeBVToParamMapping<'tcx>>,
+}
+
+impl<'tcx> CastRelevantLifetimes<'tcx> {
+    /// Return the maximum walk-order position referenced across all mappings.
+    /// Used to size the composed_mapping vector in augment_callee.
+    pub fn max_walk_order_position(&self) -> usize {
+        self.mappings
+            .items()
+            .flat_map(|m| m.0.iter().filter_map(|b| b))
+            .max()
+            .map(|m| m + 1)
+            .unwrap_or(0)
+    }
+
+    /// Construct from a slice of direct mappings (as returned by
+    /// `derive_direct_sensitivity`).
+    pub fn from_direct_mappings(mappings: &[LifetimeBVToParamMapping<'tcx>]) -> Self {
+        CastRelevantLifetimes { mappings: UnordSet::from_iter(mappings.iter().copied()) }
+    }
+}
+
+impl HashStable<StableHashingContext<'_>> for CastRelevantLifetimes<'_> {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'_>, hasher: &mut StableHasher) {
+        self.mappings.hash_stable(hcx, hasher);
+    }
+}
+
+/// Return type of the `items_of_instance` query.
+#[derive(Clone, Copy, Debug, HashStable, TyEncodable, TyDecodable)]
+pub struct ItemsOfInstance<'tcx> {
+    pub used_items: &'tcx [Spanned<MonoItem<'tcx>>],
+    pub mentioned_items: &'tcx [Spanned<MonoItem<'tcx>>],
+    /// For each Call/TailCall terminator, the resolved callee Instance
+    /// and its call-site identifier chain.
+    pub call_sites:
+        &'tcx [(&'tcx List<(DefId, u32, crate::ty::GenericArgsRef<'tcx>)>, Instance<'tcx>)],
+    /// Direct sensitivity of this Instance, derived from walking the
+    /// post-inlining MIR for trait-cast intrinsic calls. Each element is an
+    /// interned `LifetimeBVToParamMapping`. Empty if not sensitive.
+    pub direct_sensitivity: &'tcx [LifetimeBVToParamMapping<'tcx>],
+}
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable, TyEncodable, TyDecodable)]
 pub enum MonoItem<'tcx> {
@@ -335,10 +407,137 @@ impl ToStableHashKey<StableHashingContext<'_>> for MonoItem<'_> {
     }
 }
 
+impl ToStableHashKey<StableHashingContext<'_>> for crate::ty::Instance<'_> {
+    type KeyType = Fingerprint;
+
+    fn to_stable_hash_key(&self, hcx: &mut StableHashingContext<'_>) -> Self::KeyType {
+        let mut hasher = StableHasher::new();
+        self.hash_stable(hcx, &mut hasher);
+        hasher.finish()
+    }
+}
+
+/// A single delayed codegen request. Covers both directly sensitive
+/// Instances (which contain intrinsic calls needing resolution) and
+/// transitively sensitive ones (which need MIR patching with canonical
+/// callee references).
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash, HashStable, TyEncodable, TyDecodable)]
+pub struct DelayedInstance<'tcx> {
+    pub instance: crate::ty::Instance<'tcx>,
+    /// Call sites where a sensitive callee must be substituted with
+    /// its augmented version. Empty for purely directly-sensitive
+    /// Instances (leaf functions that only contain intrinsic calls).
+    /// The augmented callees recorded here are pre-canonicalization;
+    /// the global phase rewrites them through the condensation map
+    /// before patching MIR.
+    pub callee_substitutions: &'tcx [(
+        &'tcx crate::ty::List<(DefId, u32, crate::ty::GenericArgsRef<'tcx>)>,
+        crate::ty::Instance<'tcx>,
+    )],
+    /// All augmented intrinsic callee Instances for this caller.
+    /// Used by the global phase's condensation pipeline.
+    pub intrinsic_callees: &'tcx [crate::ty::Instance<'tcx>],
+}
+impl ToStableHashKey<StableHashingContext<'_>> for DelayedInstance<'_> {
+    type KeyType = Fingerprint;
+
+    fn to_stable_hash_key(&self, hcx: &mut StableHashingContext<'_>) -> Self::KeyType {
+        let mut hasher = StableHasher::new();
+        self.hash_stable(hcx, &mut hasher);
+        hasher.finish()
+    }
+}
+
+/// Result of mono item collection (before global trait-cast resolution
+/// and partitioning). Returned by the `collect_local_mono_items` query.
+#[derive(Debug, HashStable, Copy, Clone)]
+pub struct LocalMonoItemCollection<'tcx> {
+    pub mono_items: &'tcx [MonoItem<'tcx>],
+    pub usage_map: &'tcx UsageMap<'tcx>,
+    pub delayed_codegen: &'tcx [DelayedInstance<'tcx>],
+    pub sensitivity_map: &'tcx UnordMap<crate::ty::Instance<'tcx>, CastRelevantLifetimes<'tcx>>,
+}
+
 #[derive(Debug, HashStable, Copy, Clone)]
 pub struct MonoItemPartitions<'tcx> {
     pub codegen_units: &'tcx [CodegenUnit<'tcx>],
     pub all_mono_items: &'tcx DefIdSet,
+    /// Full delayed codegen data with callee substitution metadata,
+    /// consumed by the global phase. The `delayed_codegen_requests`
+    /// query projects bare Instances from this.
+    pub delayed_codegen: &'tcx [DelayedInstance<'tcx>],
+    /// Per-Instance cast-relevant lifetimes. The
+    /// `crate_cast_relevant_lifetimes` query returns this directly.
+    pub sensitivity_map: &'tcx UnordMap<crate::ty::Instance<'tcx>, CastRelevantLifetimes<'tcx>>,
+}
+
+/// Maps mono items to their usage relationships. Tracks which items
+/// use which other items, and the reverse mapping.
+#[derive(Debug)]
+pub struct UsageMap<'tcx> {
+    /// Maps every mono item to the mono items used by it.
+    pub used_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
+
+    /// Maps each mono item with users to the mono items that use it.
+    /// Subset of `used_map`: unused items are absent.
+    user_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
+}
+
+impl<'tcx> UsageMap<'tcx> {
+    pub fn new() -> UsageMap<'tcx> {
+        UsageMap { used_map: Default::default(), user_map: Default::default() }
+    }
+
+    pub fn record_used(
+        &mut self,
+        user_item: MonoItem<'tcx>,
+        used_items: impl Iterator<Item = MonoItem<'tcx>>,
+    ) {
+        let used: Vec<_> = used_items.collect();
+        for &used_item in &used {
+            self.user_map.entry(used_item).or_default().push(user_item);
+        }
+        assert!(self.used_map.insert(user_item, used).is_none());
+    }
+
+    pub fn get_user_items(&self, item: MonoItem<'tcx>) -> &[MonoItem<'tcx>] {
+        self.user_map.get(&item).map(|items| items.as_slice()).unwrap_or(&[])
+    }
+
+    /// Remove a mono item from both the used_map and user_map.
+    pub fn remove(&mut self, item: MonoItem<'tcx>) {
+        if let Some(used_items) = self.used_map.remove(&item) {
+            for used_item in used_items {
+                if let Some(users) = self.user_map.get_mut(&used_item) {
+                    users.retain(|u| *u != item);
+                }
+            }
+        }
+        self.user_map.remove(&item);
+    }
+
+    /// Internally iterate over all inlined items used by `item`.
+    /// Items not in the usage map (e.g., vtable methods added during
+    /// trait cast resolution) are treated as having no inlined children.
+    pub fn for_each_inlined_used_item<F>(&self, tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>, mut f: F)
+    where
+        F: FnMut(MonoItem<'tcx>),
+    {
+        let Some(used_items) = self.used_map.get(&item) else { return };
+        for used_item in used_items.iter() {
+            let is_inlined = used_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy;
+            if is_inlined {
+                f(*used_item);
+            }
+        }
+    }
+}
+
+// Manual HashStable: only hash used_map since user_map is derived from it.
+impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for UsageMap<'tcx> {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        self.used_map.hash_stable(hcx, hasher);
+    }
 }
 
 #[derive(Debug, HashStable)]

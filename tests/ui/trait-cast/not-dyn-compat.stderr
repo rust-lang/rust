@@ -1,0 +1,159 @@
+error[E0038]: the trait `GenericMethod` is not dyn compatible
+  --> $DIR/not-dyn-compat.rs:34:25
+   |
+LL | trait GenericMethod<T>: TraitMetadataTable<dyn GenericMethod<T>> + core::fmt::Debug {
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `GenericMethod` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/not-dyn-compat.rs:37:8
+   |
+LL | trait GenericMethod<T>: TraitMetadataTable<dyn GenericMethod<T>> + core::fmt::Debug {
+   |       ------------- this trait is not dyn compatible...
+...
+LL |     fn process<U>(&self, value: U) -> u32;
+   |        ^^^^^^^ ...because method `process` has generic type parameters
+   = help: consider moving `process` to another trait
+
+error[E0038]: the trait `NeedsSized` is not dyn compatible
+  --> $DIR/not-dyn-compat.rs:47:22
+   |
+LL | trait NeedsSized<T>: TraitMetadataTable<dyn NeedsSized<T>> + core::fmt::Debug
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `NeedsSized` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/not-dyn-compat.rs:51:11
+   |
+LL | trait NeedsSized<T>: TraitMetadataTable<dyn NeedsSized<T>> + core::fmt::Debug
+   |       ---------- this trait is not dyn compatible...
+...
+LL |     Self: Sized,
+   |           ^^^^^ ...because it requires `Self: Sized`
+
+error[E0038]: the trait `ReturnsSelf` is not dyn compatible
+  --> $DIR/not-dyn-compat.rs:63:23
+   |
+LL | trait ReturnsSelf<T>: TraitMetadataTable<dyn ReturnsSelf<T>> + core::fmt::Debug {
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ReturnsSelf` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/not-dyn-compat.rs:68:24
+   |
+LL | trait ReturnsSelf<T>: TraitMetadataTable<dyn ReturnsSelf<T>> + core::fmt::Debug {
+   |       ----------- this trait is not dyn compatible...
+...
+LL |     fn build(&self) -> Self;
+   |                        ^^^^ ...because method `build` references the `Self` type in its return type
+   = help: consider moving `build` to another trait
+
+error[E0038]: the trait `AssocGeneric` is not dyn compatible
+  --> $DIR/not-dyn-compat.rs:81:5
+   |
+LL |     TraitMetadataTable<dyn AssocGeneric<T, Assoc = T>> + core::fmt::Debug
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `AssocGeneric` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/not-dyn-compat.rs:86:8
+   |
+LL | trait AssocGeneric<T>:
+   |       ------------ this trait is not dyn compatible...
+...
+LL |     fn map<F: Fn(&Self::Assoc) -> u32>(&self, f: F) -> u32;
+   |        ^^^ ...because method `map` has generic type parameters
+   = help: consider moving `map` to another trait
+
+error[E0038]: the trait `GenericMethod` is not dyn compatible
+  --> $DIR/not-dyn-compat.rs:34:25
+   |
+LL | trait GenericMethod<T>: TraitMetadataTable<dyn GenericMethod<T>> + core::fmt::Debug {
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `GenericMethod` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/not-dyn-compat.rs:37:8
+   |
+LL | trait GenericMethod<T>: TraitMetadataTable<dyn GenericMethod<T>> + core::fmt::Debug {
+   |       ------------- this trait is not dyn compatible...
+...
+LL |     fn process<U>(&self, value: U) -> u32;
+   |        ^^^^^^^ ...because method `process` has generic type parameters
+   = help: consider moving `process` to another trait
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0038]: the trait `NeedsSized` is not dyn compatible
+  --> $DIR/not-dyn-compat.rs:47:22
+   |
+LL | trait NeedsSized<T>: TraitMetadataTable<dyn NeedsSized<T>> + core::fmt::Debug
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `NeedsSized` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/not-dyn-compat.rs:51:11
+   |
+LL | trait NeedsSized<T>: TraitMetadataTable<dyn NeedsSized<T>> + core::fmt::Debug
+   |       ---------- this trait is not dyn compatible...
+...
+LL |     Self: Sized,
+   |           ^^^^^ ...because it requires `Self: Sized`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0038]: the trait `ReturnsSelf` is not dyn compatible
+  --> $DIR/not-dyn-compat.rs:63:23
+   |
+LL | trait ReturnsSelf<T>: TraitMetadataTable<dyn ReturnsSelf<T>> + core::fmt::Debug {
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ReturnsSelf` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/not-dyn-compat.rs:68:24
+   |
+LL | trait ReturnsSelf<T>: TraitMetadataTable<dyn ReturnsSelf<T>> + core::fmt::Debug {
+   |       ----------- this trait is not dyn compatible...
+...
+LL |     fn build(&self) -> Self;
+   |                        ^^^^ ...because method `build` references the `Self` type in its return type
+   = help: consider moving `build` to another trait
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0038]: the trait `ReturnsSelf` is not dyn compatible
+  --> $DIR/not-dyn-compat.rs:63:23
+   |
+LL | trait ReturnsSelf<T>: TraitMetadataTable<dyn ReturnsSelf<T>> + core::fmt::Debug {
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ReturnsSelf` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/not-dyn-compat.rs:68:24
+   |
+LL | trait ReturnsSelf<T>: TraitMetadataTable<dyn ReturnsSelf<T>> + core::fmt::Debug {
+   |       ----------- this trait is not dyn compatible...
+...
+LL |     fn build(&self) -> Self;
+   |                        ^^^^ ...because method `build` references the `Self` type in its return type
+   = help: consider moving `build` to another trait
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0038]: the trait `AssocGeneric` is not dyn compatible
+  --> $DIR/not-dyn-compat.rs:81:5
+   |
+LL |     TraitMetadataTable<dyn AssocGeneric<T, Assoc = T>> + core::fmt::Debug
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `AssocGeneric` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/not-dyn-compat.rs:86:8
+   |
+LL | trait AssocGeneric<T>:
+   |       ------------ this trait is not dyn compatible...
+...
+LL |     fn map<F: Fn(&Self::Assoc) -> u32>(&self, f: F) -> u32;
+   |        ^^^ ...because method `map` has generic type parameters
+   = help: consider moving `map` to another trait
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

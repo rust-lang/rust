@@ -46,6 +46,10 @@ impl<'tcx> rustc_type_ir::Flags for Const<'tcx> {
     fn outer_exclusive_binder(&self) -> rustc_type_ir::DebruijnIndex {
         self.0.outer_exclusive_binder
     }
+
+    fn region_slots(&self) -> u32 {
+        self.0.region_slots
+    }
 }
 
 impl<'tcx> Const<'tcx> {

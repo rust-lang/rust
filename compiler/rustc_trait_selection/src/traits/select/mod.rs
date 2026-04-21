@@ -1815,6 +1815,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             }
                             ty::GenericArgKind::Type(ty) => self.infcx.shallow_resolve(ty) != ty,
                             ty::GenericArgKind::Lifetime(_) => false,
+                            ty::GenericArgKind::Outlives(_) => false,
                         }
                 })
             {

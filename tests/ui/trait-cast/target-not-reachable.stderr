@@ -1,0 +1,43 @@
+error: `Unrelated` is not in the trait graph rooted at `Root`
+  --> $DIR/target-not-reachable.rs:35:13
+   |
+LL |     let _ = core::cast!(in dyn Root, obj => dyn Unrelated);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Unrelated` does not have `Root` as a (transitive) supertrait
+   = help: add `Root` as a supertrait bound on `Unrelated`
+   = note: this error originates in the macro `core::cast` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the size for values of type `dyn Unrelated` cannot be known at compilation time
+  --> $DIR/target-not-reachable.rs:35:38
+   |
+LL |     let _ = core::cast!(in dyn Root, obj => dyn Unrelated);
+   |             -------------------------^^^------------------
+   |             |                        |
+   |             |                        the trait `Sized` is not implemented for `dyn Unrelated`
+   |             required by a bound introduced by this call
+   |
+   = note: the trait bound `Sized` is not satisfied
+   = note: required for `dyn Unrelated` to implement `std::marker::TraitMetadataTable<dyn Root>`
+   = note: required for `&dyn Root` to implement `TraitCast<dyn Root, dyn Unrelated>`
+help: consider borrowing here
+   |
+LL |     let _ = core::cast!(in dyn Root, &obj => dyn Unrelated);
+   |                                      +
+LL |     let _ = core::cast!(in dyn Root, &mut obj => dyn Unrelated);
+   |                                      ++++
+
+error: `Unrelated` is not in the trait graph rooted at `Root`
+  --> $DIR/target-not-reachable.rs:35:13
+   |
+LL |     let _ = core::cast!(in dyn Root, obj => dyn Unrelated);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Unrelated` does not have `Root` as a (transitive) supertrait
+   = help: add `Root` as a supertrait bound on `Unrelated`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the macro `core::cast` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

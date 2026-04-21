@@ -107,11 +107,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                 symbol_export_level(tcx, def_id.to_def_id())
             };
             let codegen_attrs = tcx.codegen_fn_attrs(def_id.to_def_id());
-            debug!(
-                "EXPORTED SYMBOL (local): {} ({:?})",
-                tcx.symbol_name(Instance::mono(tcx, def_id.to_def_id())),
-                export_level
-            );
+            debug!("EXPORTED SYMBOL (local): {} ({:?})", tcx.def_path_str(def_id), export_level);
             let info = SymbolExportInfo {
                 level: export_level,
                 kind: if tcx.is_static(def_id.to_def_id()) {

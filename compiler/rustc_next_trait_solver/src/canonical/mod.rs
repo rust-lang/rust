@@ -185,6 +185,8 @@ where
                     opt_values[bc.var()] = Some(*original_value);
                 }
             }
+            // Outlives args are metadata, not canonical variables.
+            ty::GenericArgKind::Outlives(_) => {}
         }
     }
     CanonicalVarValues::instantiate(delegate.cx(), response.var_kinds, |var_values, kind| {
@@ -261,7 +263,9 @@ fn register_region_constraints<D, I>(
             ty::RegionConstraint::Outlives(ty::OutlivesPredicate(lhs, rhs)) => match lhs.kind() {
                 ty::GenericArgKind::Lifetime(lhs) => delegate.sub_regions(rhs, lhs, span),
                 ty::GenericArgKind::Type(lhs) => delegate.register_ty_outlives(lhs, rhs, span),
-                ty::GenericArgKind::Const(_) => panic!("const outlives: {lhs:?}: {rhs:?}"),
+                ty::GenericArgKind::Const(_) | ty::GenericArgKind::Outlives(_) => {
+                    panic!("unexpected outlives arg: {lhs:?}: {rhs:?}")
+                }
             },
             ty::RegionConstraint::Eq(ty::RegionEqPredicate(lhs, rhs)) => {
                 delegate.equate_regions(lhs, rhs, span)

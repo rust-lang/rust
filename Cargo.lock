@@ -4372,6 +4372,7 @@ dependencies = [
  "rustc_errors",
  "rustc_hir",
  "rustc_index",
+ "rustc_lint_defs",
  "rustc_macros",
  "rustc_middle",
  "rustc_session",
@@ -4379,6 +4380,7 @@ dependencies = [
  "rustc_target",
  "serde",
  "serde_json",
+ "smallvec",
  "tracing",
 ]
 

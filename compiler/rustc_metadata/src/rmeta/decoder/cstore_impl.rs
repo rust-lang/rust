@@ -268,6 +268,15 @@ provide! { tcx, def_id, other, cdata,
             .map(|lazy| lazy.decode((cdata, tcx)))
             .process_decoded(tcx, || panic!("{def_id:?} does not have coerce_unsized_info"))) }
     mir_const_qualif => { table }
+    borrowck_region_summary => {
+        cdata
+            .root
+            .tables
+            .borrowck_region_summary
+            .get((cdata, tcx), def_id.index)
+            .map(|lazy| lazy.decode((cdata, tcx)))
+            .unwrap_or_default()
+    }
     rendered_const => { table }
     rendered_precise_capturing_args => { table }
     asyncness => { table_direct }
@@ -379,6 +388,14 @@ provide! { tcx, def_id, other, cdata,
 
     traits => { tcx.arena.alloc_from_iter(cdata.get_traits(tcx)) }
     trait_impls_in_crate => { tcx.arena.alloc_from_iter(cdata.get_trait_impls(tcx)) }
+    delayed_codegen_requests => {
+        tcx.arena.alloc_from_iter(cdata.root.delayed_codegen_requests.decode((cdata, tcx)))
+    }
+    crate_cast_relevant_lifetimes => {
+        let map = cdata.get_cast_relevant_lifetimes(tcx)
+            .collect::<rustc_data_structures::unord::UnordMap<_, _>>();
+        tcx.arena.alloc(map)
+    }
     implementations_of_trait => { cdata.get_implementations_of_trait(tcx, other) }
     crate_incoherent_impls => { cdata.get_incoherent_impls(tcx, other) }
 
@@ -418,6 +435,7 @@ provide! { tcx, def_id, other, cdata,
     }
     anon_const_kind => { table }
     const_of_item => { table }
+    has_trait_cast_intrinsics => { table_direct }
 }
 
 pub(in crate::rmeta) fn provide(providers: &mut Providers) {

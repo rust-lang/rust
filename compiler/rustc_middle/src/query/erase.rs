@@ -13,9 +13,9 @@ use std::mem::MaybeUninit;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{DynSend, DynSync};
-use rustc_span::{ErrorGuaranteed, Spanned};
+use rustc_span::ErrorGuaranteed;
 
-use crate::mono::{MonoItem, NormalizationErrorInMono};
+use crate::mono::{ItemsOfInstance, NormalizationErrorInMono};
 use crate::ty::{self, Ty, TyCtxt};
 use crate::{mir, thir, traits};
 
@@ -135,6 +135,10 @@ impl<T> Erasable for Result<&'_ T, ErrorGuaranteed> {
     type Storage = [u8; size_of::<Result<&'_ (), ErrorGuaranteed>>()];
 }
 
+impl Erasable for Result<ItemsOfInstance<'_>, NormalizationErrorInMono> {
+    type Storage = [u8; size_of::<Result<ItemsOfInstance<'static>, NormalizationErrorInMono>>()];
+}
+
 impl<T> Erasable for Option<&'_ T> {
     type Storage = [u8; size_of::<Option<&'_ ()>>()];
 }
@@ -193,7 +197,6 @@ impl_erasable_for_types_with_no_type_params! {
     Result<&'_ traits::ImplSource<'_, ()>, traits::CodegenObligationError>,
     Result<&'_ ty::List<Ty<'_>>, ty::util::AlwaysRequiresDrop>,
     Result<(&'_ Steal<thir::Thir<'_>>, thir::ExprId), ErrorGuaranteed>,
-    Result<(&'_ [Spanned<MonoItem<'_>>], &'_ [Spanned<MonoItem<'_>>]), NormalizationErrorInMono>,
     Result<(), ErrorGuaranteed>,
     Result<Option<ty::EarlyBinder<'_, ty::Const<'_>>>, ErrorGuaranteed>,
     Result<Option<ty::Instance<'_>>, ErrorGuaranteed>,
@@ -221,6 +224,7 @@ impl_erasable_for_types_with_no_type_params! {
     rustc_middle::mir::interpret::AllocId,
     rustc_middle::mir::interpret::EvalStaticInitializerRawResult<'_>,
     rustc_middle::mir::interpret::EvalToValTreeResult<'_>,
+    rustc_middle::mono::LocalMonoItemCollection<'_>,
     rustc_middle::mono::MonoItemPartitions<'_>,
     rustc_middle::traits::query::MethodAutoderefStepsResult<'_>,
     rustc_middle::ty::AdtDef<'_>,

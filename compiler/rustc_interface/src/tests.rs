@@ -698,6 +698,11 @@ fn test_unstable_options_tracking_hash() {
     untracked!(dump_mir_graphviz, true);
     untracked!(dump_mono_stats, SwitchWithOptPath::Enabled(Some("mono-items-dir/".into())));
     untracked!(dump_mono_stats_format, DumpMonoStatsFormat::Json);
+    untracked!(dump_trait_cast_augmentation, Some("all".to_string()));
+    untracked!(dump_trait_cast_canonicalization, true);
+    untracked!(dump_trait_cast_chain_composition, Some("all".to_string()));
+    untracked!(dump_trait_cast_erasure_safety, Some("all".to_string()));
+    untracked!(dump_trait_cast_sensitivity, Some("all".to_string()));
     untracked!(dylib_lto, true);
     untracked!(emit_stack_sizes, true);
     untracked!(future_incompat_test, true);
@@ -723,6 +728,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(print_codegen_stats, true);
     untracked!(print_llvm_passes, true);
     untracked!(print_mono_items, true);
+    untracked!(print_trait_cast_stats, true);
     untracked!(print_type_sizes, true);
     untracked!(proc_macro_backtrace, true);
     untracked!(proc_macro_execution_strategy, ProcMacroExecutionStrategy::CrossThread);
@@ -803,6 +809,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(force_unstable_if_unmarked, true);
     tracked!(function_return, FunctionReturn::ThunkExtern);
     tracked!(function_sections, Some(false));
+    tracked!(global_crate, Some(true));
     tracked!(hint_mostly_unused, true);
     tracked!(human_readable_cgu_names, true);
     tracked!(incremental_ignore_spans, true);

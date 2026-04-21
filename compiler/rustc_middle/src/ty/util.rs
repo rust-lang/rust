@@ -550,6 +550,8 @@ impl<'tcx> TyCtxt<'tcx> {
                         // Error: not a const param
                         _ => false,
                     },
+                    // Outlives args are metadata, not relevant for drop.
+                    GenericArgKind::Outlives(_) => false,
                 }
             })
             .map(|(item_param, _)| item_param)
@@ -600,6 +602,8 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     _ => return Err(NotUniqueParam::NotParam(c.into())),
                 },
+                // Outlives args are metadata, skip.
+                GenericArgKind::Outlives(_) => {}
             }
         }
 

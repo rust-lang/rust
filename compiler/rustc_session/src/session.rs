@@ -281,6 +281,14 @@ impl Session {
         if self.opts.unstable_opts.print_type_sizes
             || self.opts.unstable_opts.query_dep_graph
             || self.opts.unstable_opts.dump_mir.is_some()
+            || self.opts.unstable_opts.dump_post_mono_mir.enabled()
+            || self.opts.unstable_opts.dump_trait_cast_augmentation.is_some()
+            || self.opts.unstable_opts.dump_trait_cast_canonicalization
+            || self.opts.unstable_opts.dump_trait_cast_chain_composition.is_some()
+            || self.opts.unstable_opts.dump_trait_cast_erasure_safety.is_some()
+            || self.opts.unstable_opts.dump_trait_cast_sensitivity.is_some()
+            || self.opts.unstable_opts.dump_trait_graph.is_some()
+            || self.opts.unstable_opts.print_trait_cast_stats
             || self.opts.unstable_opts.unpretty.is_some()
             || self.prof.is_args_recording_enabled()
             || self.opts.output_types.contains_key(&OutputType::Mir)

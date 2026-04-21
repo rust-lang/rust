@@ -1484,6 +1484,14 @@ impl<'a> CrateMetadataRef<'a> {
         self.root.foreign_modules.decode((self, tcx))
     }
 
+    fn get_cast_relevant_lifetimes<'tcx>(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> impl Iterator<Item = (ty::Instance<'tcx>, rustc_middle::mono::CastRelevantLifetimes<'tcx>)>
+    {
+        self.root.cast_relevant_lifetimes.decode((self, tcx))
+    }
+
     fn get_dylib_dependency_formats<'tcx>(
         self,
         tcx: TyCtxt<'tcx>,

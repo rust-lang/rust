@@ -324,6 +324,8 @@ pub mod random;
 pub mod range;
 pub mod result;
 pub mod sync;
+#[unstable(feature = "trait_cast", issue = "none")]
+pub mod trait_cast;
 #[unstable(feature = "unsafe_binders", issue = "130516")]
 pub mod unsafe_binder;
 

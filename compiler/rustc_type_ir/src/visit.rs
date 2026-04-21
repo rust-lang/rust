@@ -234,6 +234,11 @@ impl<I: Interner, T: TypeVisitable<I>, S> TypeVisitable<I> for indexmap::IndexSe
 pub trait Flags {
     fn flags(&self) -> TypeFlags;
     fn outer_exclusive_binder(&self) -> ty::DebruijnIndex;
+    /// Number of region occurrences reached by a `TypeVisitor` DFS over
+    /// this value. Cached at interning for `Ty` / `Const` / `Predicate` /
+    /// `Clauses` so consumers can obtain the count in O(1) without
+    /// re-walking the type tree.
+    fn region_slots(&self) -> u32;
 }
 
 pub trait TypeVisitableExt<I: Interner>: TypeVisitable<I> {

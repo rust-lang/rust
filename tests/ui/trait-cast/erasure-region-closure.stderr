@@ -1,0 +1,14 @@
+error: trait graph rooted at `Root` is not downcast-safe
+  --> $DIR/erasure-region-closure.rs:24:11
+   |
+LL | trait Root: TraitMetadataTable<dyn Root> + core::fmt::Debug {
+   | ----------------------------------------------------------- root supertrait defined here
+...
+LL | trait Sub<'a>: Root {
+   |           ^^ lifetime `'a` is not bounded by any lifetime on `Root`
+   |
+   = note: downcasting to `dyn Sub` could manufacture the lifetime `'a` which was erased when unsizing to `dyn Root`
+   = help: add a lifetime parameter to `Root` that `'a` can be bounded by
+
+error: aborting due to 1 previous error
+

@@ -730,6 +730,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     // to search anything here.
                 }
 
+                (GenericArgKind::Outlives(_), _) => {
+                    // Outlives args are metadata-only; no lifetime to find here.
+                }
+
                 (
                     GenericArgKind::Lifetime(_)
                     | GenericArgKind::Type(_)

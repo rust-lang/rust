@@ -1,3 +1,4 @@
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 #[cfg(not(feature = "nightly"))]
 use std::mem;
@@ -1529,6 +1530,67 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     pub fn count(&self, row: R) -> usize {
         let (start, end) = self.range(row);
         count_ones(&self.words[start..end])
+    }
+
+    /// Returns a [`BitRowRef`] for `row` whose `Eq`/`Hash` semantics
+    /// correctly ignore excess bits in the final word.
+    pub fn row_ref(&self, row: R) -> BitRowRef<'_> {
+        assert!(row.index() < self.num_rows);
+        let (start, end) = self.range(row);
+        BitRowRef::new(&self.words[start..end], self.num_columns)
+    }
+}
+
+/// Borrowed view of a single [`BitMatrix`] row. `Eq`/`Hash` ignore
+/// excess bits in the final word, so two rows that set the same
+/// columns always compare equal regardless of trailing garbage.
+#[derive(Clone, Copy, Debug)]
+pub struct BitRowRef<'a> {
+    words: &'a [Word],
+    /// Bitmask for the final word: only the low `num_columns % 64`
+    /// bits are significant. `!0` when `num_columns` is a multiple
+    /// of 64 (no excess bits).
+    final_mask: Word,
+}
+
+impl<'a> BitRowRef<'a> {
+    #[inline]
+    pub fn new(words: &'a [Word], num_columns: usize) -> Self {
+        let remainder = num_columns % WORD_BITS;
+        let final_mask = if remainder == 0 { !0 } else { (1u64 << remainder) - 1 };
+        BitRowRef { words, final_mask }
+    }
+
+    #[inline]
+    fn masked_final_word(&self) -> Word {
+        self.words.last().map_or(0, |w| w & self.final_mask)
+    }
+}
+
+impl PartialEq for BitRowRef<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        if self.words.len() != other.words.len() || self.final_mask != other.final_mask {
+            return false;
+        }
+        let n = self.words.len();
+        if n == 0 {
+            return true;
+        }
+        self.words[..n - 1] == other.words[..n - 1]
+            && self.masked_final_word() == other.masked_final_word()
+    }
+}
+
+impl Eq for BitRowRef<'_> {}
+
+impl Hash for BitRowRef<'_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        let n = self.words.len();
+        if n == 0 {
+            return;
+        }
+        self.words[..n - 1].hash(state);
+        self.masked_final_word().hash(state);
     }
 }
 

@@ -209,6 +209,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 GenericArgKind::Const(val) => {
                     self.add_constraints_from_const(current, val, variance_i)
                 }
+                GenericArgKind::Outlives(_) => {}
             }
         }
     }
@@ -402,6 +403,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 GenericArgKind::Const(val) => {
                     self.add_constraints_from_const(current, val, variance)
                 }
+                GenericArgKind::Outlives(_) => {}
             }
         }
     }

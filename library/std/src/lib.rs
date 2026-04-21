@@ -555,6 +555,8 @@ pub use core::ptr;
 pub use core::range;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
+#[unstable(feature = "trait_cast", issue = "none")]
+pub use core::trait_cast;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::u8;
@@ -746,6 +748,8 @@ pub use core::{
 };
 #[stable(feature = "assert_matches", since = "1.95.0")]
 pub use core::{assert_matches, debug_assert_matches};
+#[unstable(feature = "trait_cast", issue = "none")]
+pub use core::{cast, try_cast, unchecked_cast};
 
 // Re-export unstable derive macro defined through core.
 #[unstable(feature = "derive_from", issue = "144889")]

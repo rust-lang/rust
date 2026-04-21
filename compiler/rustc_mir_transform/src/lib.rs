@@ -252,6 +252,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                 target,
                 unwind,
                 fn_span,
+                call_id,
                 ..
             } if let ty::FnDef(def_id, _) = *const_.ty().kind()
                 && tcx.is_intrinsic(def_id, sym::const_eval_select) =>
@@ -301,6 +302,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
                     unwind,
                     call_source: CallSource::Misc,
                     fn_span,
+                    call_id,
                 };
             }
             _ => {}

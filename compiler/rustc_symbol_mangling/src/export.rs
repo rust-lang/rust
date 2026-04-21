@@ -150,6 +150,10 @@ impl<'tcx> AbiHashStable<'tcx> for ty::GenericArgKind<'tcx> {
         match self {
             ty::GenericArgKind::Type(t) => t.abi_hash(tcx, hasher),
             ty::GenericArgKind::Lifetime(_) | ty::GenericArgKind::Const(_) => unimplemented!(),
+            ty::GenericArgKind::Outlives(o) => {
+                o.longer().abi_hash(tcx, hasher);
+                o.shorter().abi_hash(tcx, hasher);
+            }
         }
     }
 }

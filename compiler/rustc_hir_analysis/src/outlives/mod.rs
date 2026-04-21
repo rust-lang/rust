@@ -85,6 +85,10 @@ pub(super) fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicate
                                 // Generic consts don't impose any constraints.
                                 None
                             }
+                            GenericArgKind::Outlives(_) => {
+                                // Outlives metadata doesn't impose any constraints.
+                                None
+                            }
                         }
                     },
                 ));

@@ -7,7 +7,7 @@ use std::os::raw::{c_char, c_int};
 use cranelift_jit::{JITBuilder, JITModule};
 use rustc_codegen_ssa::CrateInfo;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::mono::MonoItem;
+use rustc_middle::mono::MonoItem;
 use rustc_session::Session;
 use rustc_session::config::OutputFilenames;
 use rustc_span::sym;

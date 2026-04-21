@@ -9,6 +9,11 @@ note: ...which requires borrow-checking `cycle1`...
    |
 LL | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires borrow-checking (with region summaries) `cycle1`...
+  --> $DIR/auto-trait-leak.rs:11:1
+   |
+LL | fn cycle1() -> impl Clone {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: ...which requires promoting constants in MIR for `cycle1`...
   --> $DIR/auto-trait-leak.rs:11:1
    |
@@ -41,6 +46,11 @@ note: ...which requires computing type of opaque `cycle2::{opaque#0}`...
 LL | fn cycle2() -> impl Clone {
    |                ^^^^^^^^^^
 note: ...which requires borrow-checking `cycle2`...
+  --> $DIR/auto-trait-leak.rs:17:1
+   |
+LL | fn cycle2() -> impl Clone {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires borrow-checking (with region summaries) `cycle2`...
   --> $DIR/auto-trait-leak.rs:17:1
    |
 LL | fn cycle2() -> impl Clone {

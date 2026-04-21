@@ -4,7 +4,7 @@ use std::rc::Rc;
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::mir::ConstraintCategory;
+use rustc_middle::mir::{BorrowckRegionSummary, BorrowckResult, ConstraintCategory};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::ErrorGuaranteed;
 use smallvec::SmallVec;
@@ -39,6 +39,9 @@ pub(super) struct BorrowCheckRootCtxt<'tcx> {
     collect_region_constraints_results:
         FxIndexMap<LocalDefId, CollectRegionConstraintsResult<'tcx>>,
     propagated_borrowck_results: FxHashMap<LocalDefId, PropagatedBorrowCheckResults<'tcx>>,
+    /// Region summaries collected during borrowck of the root and all its
+    /// nested bodies, keyed by their `LocalDefId`.
+    region_summaries: FxIndexMap<LocalDefId, BorrowckRegionSummary>,
     tainted_by_errors: Option<ErrorGuaranteed>,
     /// This should be `None` during normal compilation. See [`crate::consumers`] for more
     /// information on how this is used.
@@ -58,6 +61,7 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
             unconstrained_hidden_type_errors: Default::default(),
             collect_region_constraints_results: Default::default(),
             propagated_borrowck_results: Default::default(),
+            region_summaries: Default::default(),
             tainted_by_errors: None,
             consumer,
         }
@@ -78,15 +82,20 @@ impl<'tcx> BorrowCheckRootCtxt<'tcx> {
         &self.propagated_borrowck_results[&nested_body_def_id].used_mut_upvars
     }
 
-    pub(super) fn finalize(
-        self,
-    ) -> Result<&'tcx FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>, ErrorGuaranteed>
-    {
-        if let Some(guar) = self.tainted_by_errors {
-            Err(guar)
-        } else {
-            Ok(self.tcx.arena.alloc(self.hidden_types))
-        }
+    pub(super) fn add_region_summary(
+        &mut self,
+        def_id: LocalDefId,
+        summary: BorrowckRegionSummary,
+    ) {
+        self.region_summaries.insert(def_id, summary);
+    }
+
+    pub(super) fn finalize(self) -> &'tcx BorrowckResult<'tcx> {
+        let hidden_types =
+            if let Some(guar) = self.tainted_by_errors { Err(guar) } else { Ok(self.hidden_types) };
+        self.tcx
+            .arena
+            .alloc(BorrowckResult { hidden_types, region_summaries: self.region_summaries })
     }
 
     fn handle_opaque_type_uses(&mut self) {

@@ -447,6 +447,9 @@ language_item_table! {
 
     // Used to fallback `{float}` to `f32` when `f32: From<{float}>`
     From,                    sym::From,                from_trait,                 Target::Trait,          GenericRequirement::Exact(1);
+
+    // Trait Casting
+    TraitMetadataTable,      sym::trait_metadata_table, trait_metadata_table_trait, Target::Trait,         GenericRequirement::Exact(1);
 }
 
 /// The requirement imposed on the generics of a lang item

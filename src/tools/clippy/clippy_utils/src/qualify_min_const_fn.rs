@@ -75,7 +75,7 @@ fn check_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, span: Span, msrv: Msrv) 
 
             // No constraints on lifetimes or constants, except potentially
             // constants' types, but `walk` will get to them as well.
-            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
+            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) | GenericArgKind::Outlives(_) => continue,
         };
 
         match ty.kind() {
@@ -354,8 +354,9 @@ fn check_terminator<'tcx>(
             target: _,
             unwind: _,
             fn_span: _,
+            call_id: _,
         }
-        | TerminatorKind::TailCall { func, args, fn_span: _ } => {
+        | TerminatorKind::TailCall { func, args, fn_span: _, call_id: _ } => {
             let fn_ty = func.ty(body, cx.tcx);
             if let ty::FnDef(fn_def_id, fn_substs) = fn_ty.kind() {
                 // FIXME: when analyzing a function with generic parameters, we may not have enough information to

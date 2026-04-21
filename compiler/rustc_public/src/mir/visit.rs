@@ -214,7 +214,7 @@ macro_rules! make_mir_visitor {
                     TerminatorKind::Drop { place, target: _, unwind: _ } => {
                         self.visit_place(place, PlaceContext::MUTATING, location);
                     }
-                    TerminatorKind::Call { func, args, destination, target: _, unwind: _ } => {
+                    TerminatorKind::Call { func, args, destination, target: _, unwind: _, .. } => {
                         self.visit_operand(func, location);
                         for arg in args {
                             self.visit_operand(arg, location);

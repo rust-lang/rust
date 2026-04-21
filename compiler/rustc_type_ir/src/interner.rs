@@ -163,6 +163,10 @@ pub trait Interner:
     type EarlyParamRegion: ParamLike;
     type LateParamRegion: Copy + Debug + Hash + Eq;
 
+    /// Interned outlives relation between two region positions within a
+    /// generic arg list; carried as a `GenericArgKind::Outlives` entry.
+    type OutlivesArg: OutlivesArg<Self>;
+
     type RegionAssumptions: Copy
         + Debug
         + Hash

@@ -241,6 +241,8 @@ impl<I: Interner> CanonicalVarValues<I> {
             ty::GenericArgKind::Const(ct) => {
                 matches!(ct.kind(), ty::ConstKind::Bound(ty::BoundVarIndexKind::Canonical, bc) if bc.var().as_usize() == bv)
             }
+            // Outlives args are pure metadata, not identity-relevant.
+            ty::GenericArgKind::Outlives(_) => true,
         })
     }
 
@@ -272,6 +274,8 @@ impl<I: Interner> CanonicalVarValues<I> {
                         return false;
                     }
                 }
+                // Outlives args are pure metadata, not identity-relevant.
+                ty::GenericArgKind::Outlives(_) => {}
             }
         }
 

@@ -12,7 +12,7 @@ use std::marker::{DiscriminantKind, PointeeSized};
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::Const;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{Span, SpanDecoder, SpanEncoder, Spanned};
@@ -164,6 +164,13 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Region<'tcx> {
     }
 }
 
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::OutlivesArg<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.longer().encode(e);
+        self.shorter().encode(e);
+    }
+}
+
 impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::Const<'tcx> {
     fn encode(&self, e: &mut E) {
         self.0.0.encode(e);
@@ -303,6 +310,14 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::Region<'tcx> {
     }
 }
 
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::OutlivesArg<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        let longer: usize = Decodable::decode(decoder);
+        let shorter: usize = Decodable::decode(decoder);
+        decoder.interner().mk_outlives_arg(longer, shorter)
+    }
+}
+
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for CanonicalVarKinds<'tcx> {
     fn decode(decoder: &mut D) -> Self {
         let len = decoder.read_usize();
@@ -364,6 +379,14 @@ impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
         let len = decoder.read_usize();
         decoder.interner().mk_poly_existential_predicates_from_iter(
             (0..len).map::<ty::Binder<'tcx, _>, _>(|_| Decodable::decode(decoder)),
+        )
+    }
+}
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<ty::ArgOutlivesPredicate<'tcx>> {
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        let len = decoder.read_usize();
+        decoder.interner().mk_outlives_from_iter(
+            (0..len).map::<ty::OutlivesPredicate<'tcx, _>, _>(|_| Decodable::decode(decoder)),
         )
     }
 }
@@ -488,6 +511,38 @@ impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for &'tcx ty::List<LocalDefId> {
     }
 }
 
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D>
+    for ty::List<(DefId, u32, GenericArgsRef<'tcx>)>
+{
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        let len = decoder.read_usize();
+        decoder.interner().mk_call_chain_from_iter(
+            (0..len).map::<(DefId, u32, GenericArgsRef<'tcx>), _>(|_| Decodable::decode(decoder)),
+        )
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for &'tcx ty::List<(DefId, u32, GenericArgsRef<'tcx>)> {
+    fn decode(d: &mut D) -> Self {
+        RefDecodable::decode(d)
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for ty::List<Option<usize>> {
+    fn decode(decoder: &mut D) -> &'tcx Self {
+        let len = decoder.read_usize();
+        decoder.interner().mk_lifetime_bv_to_param_mapping_from_iter(
+            (0..len).map::<Option<usize>, _>(|_| Decodable::decode(decoder)),
+        )
+    }
+}
+
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for &'tcx ty::List<Option<usize>> {
+    fn decode(d: &mut D) -> Self {
+        RefDecodable::decode(d)
+    }
+}
+
 impl_decodable_via_ref! {
     &'tcx ty::TypeckResults<'tcx>,
     &'tcx ty::List<Ty<'tcx>>,
@@ -498,6 +553,7 @@ impl_decodable_via_ref! {
     &'tcx ty::List<ty::Pattern<'tcx>>,
     &'tcx ty::ListWithCachedTypeInfo<ty::Clause<'tcx>>,
     &'tcx ty::List<Const<'tcx>>,
+    &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>,
 }
 
 #[macro_export]
@@ -569,6 +625,18 @@ impl_arena_copy_decoder! {<'tcx>
     rustc_span::def_id::LocalDefId,
     (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
     rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs,
+    Option<usize>,
+    ty::Instance<'tcx>,
+    (u32, ty::Instance<'tcx>),
+    (
+        &'tcx ty::List<(
+            rustc_span::def_id::DefId,
+            u32,
+            rustc_middle::ty::GenericArgsRef<'tcx>,
+        )>,
+        ty::Instance<'tcx>,
+    ),
+    rustc_middle::mono::LifetimeBVToParamMapping<'tcx>,
 }
 
 #[macro_export]

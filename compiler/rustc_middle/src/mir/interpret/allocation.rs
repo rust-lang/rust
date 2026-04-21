@@ -112,17 +112,24 @@ pub struct Allocation<Prov: Provenance = CtfeProvenance, Extra = (), Bytes = Box
     /// Also used by codegen to determine if a static should be put into mutable memory,
     /// which happens for `static mut` and `static` with interior mutability.
     pub mutability: Mutability,
+    /// When `true`, the address of this allocation is semantically
+    /// significant and must not be merged with other allocations by the
+    /// optimizer or linker, even if they have identical content.
+    pub address_significant: bool,
     /// Extra state for the machine.
     pub extra: Extra,
 }
 
-/// Helper struct that packs an alignment, mutability, and "all bytes are zero" flag together.
+/// Helper struct that packs an alignment, mutability, "all bytes are zero", and
+/// "address significant" flags together.
 ///
 /// Alignment values always have 2 free high bits, and we check for this in our [`Encodable`] impl.
+/// The `address_significant` flag is encoded as an additional byte after the packed flags byte.
 struct AllocFlags {
     align: Align,
     mutability: Mutability,
     all_zero: bool,
+    address_significant: bool,
 }
 
 impl<E: Encoder> Encodable<E> for AllocFlags {
@@ -141,6 +148,8 @@ impl<E: Encoder> Encodable<E> for AllocFlags {
         };
         flags |= (self.all_zero as u8) << 7;
         flags.encode(encoder);
+        // Encode address_significant as an additional byte.
+        self.address_significant.encode(encoder);
     }
 }
 
@@ -157,8 +166,9 @@ impl<D: Decoder> Decodable<D> for AllocFlags {
             _ => Mutability::Mut,
         };
         let all_zero = all_zero > 0;
+        let address_significant: bool = Decodable::decode(decoder);
 
-        AllocFlags { align, mutability, all_zero }
+        AllocFlags { align, mutability, all_zero, address_significant }
     }
 }
 
@@ -193,7 +203,13 @@ where
 {
     fn encode(&self, encoder: &mut E) {
         let all_zero = all_zero(&self.bytes);
-        AllocFlags { align: self.align, mutability: self.mutability, all_zero }.encode(encoder);
+        AllocFlags {
+            align: self.align,
+            mutability: self.mutability,
+            all_zero,
+            address_significant: self.address_significant,
+        }
+        .encode(encoder);
 
         encoder.emit_usize(self.bytes.len());
         if !all_zero {
@@ -211,7 +227,8 @@ where
     Extra: Decodable<D>,
 {
     fn decode(decoder: &mut D) -> Self {
-        let AllocFlags { align, mutability, all_zero } = Decodable::decode(decoder);
+        let AllocFlags { align, mutability, all_zero, address_significant } =
+            Decodable::decode(decoder);
 
         let len = decoder.read_usize();
         let bytes = if all_zero { vec![0u8; len] } else { decoder.read_raw_bytes(len).to_vec() };
@@ -221,7 +238,7 @@ where
         let init_mask = Decodable::decode(decoder);
         let extra = Decodable::decode(decoder);
 
-        Self { bytes, provenance, init_mask, align, mutability, extra }
+        Self { bytes, provenance, init_mask, align, mutability, address_significant, extra }
     }
 }
 
@@ -248,6 +265,7 @@ impl hash::Hash for Allocation {
             init_mask,
             align,
             mutability,
+            address_significant,
             extra: (), // don't bother hashing ()
         } = self;
 
@@ -270,6 +288,7 @@ impl hash::Hash for Allocation {
         init_mask.hash(state);
         align.hash(state);
         mutability.hash(state);
+        address_significant.hash(state);
     }
 }
 
@@ -412,6 +431,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
             init_mask: InitMask::new(size, true),
             align,
             mutability,
+            address_significant: false,
             extra: (),
         }
     }
@@ -450,6 +470,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
             ),
             align,
             mutability: Mutability::Mut,
+            address_significant: false,
             extra: (),
         })
     }
@@ -504,6 +525,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
             init_mask: self.init_mask,
             align: self.align,
             mutability: self.mutability,
+            address_significant: self.address_significant,
             extra,
         }
     }
@@ -540,6 +562,7 @@ impl Allocation {
             init_mask: self.init_mask.clone(),
             align: self.align,
             mutability: self.mutability,
+            address_significant: self.address_significant,
             extra: self.extra,
         })
     }

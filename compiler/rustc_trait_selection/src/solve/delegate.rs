@@ -166,6 +166,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             }
             ty::GenericArgKind::Type(_) => self.next_ty_var(span).into(),
             ty::GenericArgKind::Const(_) => self.next_const_var(span).into(),
+            ty::GenericArgKind::Outlives(_) => unreachable!(),
         }
     }
 

@@ -50,6 +50,7 @@ pub enum SolverTraitLangItem {
     PointeeSized,
     PointeeTrait,
     Sized,
+    TraitMetadataTable,
     TransmuteTrait,
     TrivialClone,
     Tuple,

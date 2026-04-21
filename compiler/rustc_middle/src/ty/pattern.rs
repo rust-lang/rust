@@ -47,6 +47,22 @@ impl<'tcx> Flags for Pattern<'tcx> {
             ty::PatternKind::NotNull => rustc_type_ir::INNERMOST,
         }
     }
+
+    fn region_slots(&self) -> u32 {
+        match &**self {
+            ty::PatternKind::Range { start, end } => {
+                start.region_slots().saturating_add(end.region_slots())
+            }
+            ty::PatternKind::Or(pats) => {
+                let mut n: u32 = 0;
+                for pat in pats.iter() {
+                    n = n.saturating_add(pat.region_slots());
+                }
+                n
+            }
+            ty::PatternKind::NotNull => 0,
+        }
+    }
 }
 
 impl<'tcx> std::ops::Deref for Pattern<'tcx> {

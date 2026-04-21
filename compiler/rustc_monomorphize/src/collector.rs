@@ -208,9 +208,9 @@
 use std::cell::OnceCell;
 use std::ops::ControlFlow;
 
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::{Lock, par_for_each_in};
-use rustc_data_structures::unord::{UnordMap, UnordSet};
+use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def::DefKind;
@@ -220,21 +220,28 @@ use rustc_hir::limit::Limit;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, ErrorHandled, GlobalAlloc, Scalar};
 use rustc_middle::mir::visit::Visitor as MirVisitor;
-use rustc_middle::mir::{self, Body, Location, MentionedItem, traversal};
-use rustc_middle::mono::{CollectionMode, InstantiationMode, MonoItem, NormalizationErrorInMono};
+use rustc_middle::mir::{self, Body, InputSlot, Location, MentionedItem, VidProvenance, traversal};
+use rustc_middle::mono::{
+    CastRelevantLifetimes, CollectionMode, DelayedInstance, ItemsOfInstance,
+    LifetimeBVToParamMapping, MonoItem, NormalizationErrorInMono, UsageMap,
+};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
+    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, List, Ty, TyCtxt, TypeFoldable,
     TypeVisitable, TypeVisitableExt, TypeVisitor, Unnormalized, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{DebugInfo, EntryFnType};
-use rustc_span::{DUMMY_SP, Span, Spanned, dummy_spanned, respan};
+use rustc_span::{DUMMY_SP, Span, Spanned, dummy_spanned, respan, sym};
 use tracing::{debug, instrument, trace};
 
+use crate::cast_sensitivity::{
+    self, CallerOutlivesEnv, InstanceSensitivity, augment_callee, compose_all_through_chain,
+};
+use crate::erasure_safe::{region_slots_of_arg, region_slots_of_args};
 use crate::errors::{
     self, EncounteredErrorWhileInstantiating, EncounteredErrorWhileInstantiatingGlobalAsm,
     NoOptimizedMir, RecursionLimit,
@@ -255,54 +262,15 @@ struct SharedState<'tcx> {
     mentioned: Lock<UnordSet<MonoItem<'tcx>>>,
     /// Which items are being used where, for better errors.
     usage_map: Lock<UsageMap<'tcx>>,
-}
-
-pub(crate) struct UsageMap<'tcx> {
-    // Maps every mono item to the mono items used by it.
-    pub used_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
-
-    // Maps each mono item with users to the mono items that use it.
-    // Be careful: subsets `used_map`, so unused items are vacant.
-    user_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
-}
-
-impl<'tcx> UsageMap<'tcx> {
-    fn new() -> UsageMap<'tcx> {
-        UsageMap { used_map: Default::default(), user_map: Default::default() }
-    }
-
-    fn record_used<'a>(&mut self, user_item: MonoItem<'tcx>, used_items: &'a MonoItems<'tcx>)
-    where
-        'tcx: 'a,
-    {
-        for used_item in used_items.items() {
-            self.user_map.entry(used_item).or_default().push(user_item);
-        }
-
-        assert!(self.used_map.insert(user_item, used_items.items().collect()).is_none());
-    }
-
-    pub(crate) fn get_user_items(&self, item: MonoItem<'tcx>) -> &[MonoItem<'tcx>] {
-        self.user_map.get(&item).map(|items| items.as_slice()).unwrap_or(&[])
-    }
-
-    /// Internally iterate over all inlined items used by `item`.
-    pub(crate) fn for_each_inlined_used_item<F>(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        item: MonoItem<'tcx>,
-        mut f: F,
-    ) where
-        F: FnMut(MonoItem<'tcx>),
-    {
-        let used_items = self.used_map.get(&item).unwrap();
-        for used_item in used_items.iter() {
-            let is_inlined = used_item.instantiation_mode(tcx) == InstantiationMode::LocalCopy;
-            if is_inlined {
-                f(*used_item);
-            }
-        }
-    }
+    /// Delayed codegen requests: augmented Instances whose codegen must be
+    /// handled by the global phase. Includes both directly sensitive
+    /// (intrinsic-containing) and transitively sensitive (callee-patching)
+    /// Instances, each with their callee substitution metadata.
+    delayed_codegen: Lock<UnordSet<DelayedInstance<'tcx>>>,
+    /// Per-Instance sensitivity metadata, keyed on base Instance
+    /// (no Outlives entries). Populated by `collect_items_rec`
+    /// post-processing and consumed by sensitive-subgraph augmentation.
+    instance_sensitivity: Lock<FxIndexMap<Instance<'tcx>, InstanceSensitivity<'tcx>>>,
 }
 
 struct MonoItems<'tcx> {
@@ -471,8 +439,13 @@ fn collect_items_rec<'tcx>(
                 recursion_limit,
             ));
 
+            // `must_delay_codegen` instances are NOT pushed to
+            // `delayed_codegen` here. `augment_sensitive_subgraphs` handles
+            // all delayed-codegen recording — both for sensitive and
+            // non-sensitive instances — after collection finishes.
+
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                let Ok((used, mentioned)) = tcx.items_of_instance((instance, mode)) else {
+                let Ok(result) = tcx.items_of_instance((instance, mode)) else {
                     // Normalization errors here are usually due to trait solving overflow.
                     // FIXME: I assume that there are few type errors at post-analysis stage, but not
                     // entirely sure.
@@ -488,8 +461,8 @@ fn collect_items_rec<'tcx>(
                         def_path_str,
                     });
                 };
-                used_items.extend(used.into_iter().copied());
-                mentioned_items.extend(mentioned.into_iter().copied());
+                used_items.extend(result.used_items.iter().copied());
+                mentioned_items.extend(result.mentioned_items.iter().copied());
             });
         }
         MonoItem::GlobalAsm(item_id) => {
@@ -566,7 +539,7 @@ fn collect_items_rec<'tcx>(
     // This is part of the output of collection and hence only relevant for "used" items.
     // ("Mentioned" items are only considered internally during collection.)
     if mode == CollectionMode::UsedItems {
-        state.usage_map.lock().record_used(starting_item.node, &used_items);
+        state.usage_map.lock().record_used(starting_item.node, used_items.items());
     }
 
     {
@@ -686,6 +659,9 @@ struct MirUsedCollector<'a, 'tcx> {
     /// Note that this contains *not-monomorphized* items!
     used_mentioned_items: &'a mut UnordSet<MentionedItem<'tcx>>,
     instance: Instance<'tcx>,
+    /// Records (call_chain, callee_instance) for each resolved Call/TailCall.
+    /// Used for transitive sensitivity composition in `collect_items_rec`.
+    call_sites: &'a mut Vec<(&'tcx List<(DefId, u32, ty::GenericArgsRef<'tcx>)>, Instance<'tcx>)>,
 }
 
 impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
@@ -853,13 +829,18 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                         false
                     };
 
-                visit_fn_use(
-                    self.tcx,
-                    callee_ty,
-                    !force_indirect_call,
-                    source,
-                    &mut self.used_items,
-                )
+                if let Some(instance) =
+                    visit_fn_use(self.tcx, callee_ty, !force_indirect_call, source, self.used_items)
+                {
+                    // Record call site for sensitivity composition.
+                    // Use the stable call_id from the terminator, not the basic block index.
+                    let call_id = match terminator.kind {
+                        mir::TerminatorKind::Call { call_id, .. } => call_id,
+                        mir::TerminatorKind::TailCall { call_id, .. } => call_id,
+                        _ => unreachable!(),
+                    };
+                    self.call_sites.push((call_id, instance));
+                }
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
@@ -947,7 +928,7 @@ fn visit_fn_use<'tcx>(
     is_direct_call: bool,
     source: Span,
     output: &mut MonoItems<'tcx>,
-) {
+) -> Option<Instance<'tcx>> {
     if let ty::FnDef(def_id, args) = *ty.kind() {
         let instance = if is_direct_call {
             ty::Instance::expect_resolve(
@@ -969,6 +950,9 @@ fn visit_fn_use<'tcx>(
             }
         };
         visit_instance_use(tcx, instance, is_direct_call, source, output);
+        Some(instance)
+    } else {
+        None
     }
 }
 
@@ -1088,6 +1072,36 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> 
     }
 
     true
+}
+
+fn has_trait_cast_intrinsics<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
+    let def_id = def_id.to_def_id();
+    if !tcx.is_mir_available(def_id) {
+        return false;
+    }
+    let body = tcx.optimized_mir(def_id);
+    for bb in body.basic_blocks.iter() {
+        if let mir::TerminatorKind::Call { ref func, .. } = bb.terminator().kind {
+            let func_ty = func.ty(body, tcx);
+            if let ty::FnDef(callee, _) = *func_ty.kind() {
+                if tcx.is_intrinsic(callee, sym::trait_metadata_index)
+                    || tcx.is_intrinsic(callee, sym::trait_metadata_table)
+                    || tcx.is_intrinsic(callee, sym::trait_metadata_table_len)
+                    || tcx.is_intrinsic(callee, sym::trait_cast_is_lifetime_erasure_safe)
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+fn must_delay_codegen<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> bool {
+    match instance.def {
+        InstanceKind::Item(def_id) => tcx.has_trait_cast_intrinsics(def_id),
+        _ => false,
+    }
 }
 
 /// For a given pair of source and target type that occur in an unsizing coercion,
@@ -1299,6 +1313,49 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
     }
 }
 
+/// Collect mono items for vtable methods of a (sub_trait, concrete_type)
+/// pair from a trait cast table. Uses the same vtable_entries path as the
+/// normal collector to ensure Instance consistency.
+///
+/// Called from `resolve_trait_cast_globals` because these vtables are
+/// created after the normal mono item collection phase.
+pub(crate) fn collect_vtable_methods_for_trait_cast<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sub_trait: Ty<'tcx>,
+    concrete_type: Ty<'tcx>,
+    output: &mut Vec<MonoItem<'tcx>>,
+) {
+    let mut items = MonoItems::new();
+    create_mono_items_for_vtable_methods(tcx, sub_trait, concrete_type, DUMMY_SP, &mut items);
+    output.extend(items.items());
+}
+
+/// Collect mono items reachable from a trait-cast metadata allocation.
+///
+/// Walking the allocation provenance reaches the table's referenced vtables,
+/// and from there the actual method instances stored in those vtables.
+pub(crate) fn collect_alloc_items_for_trait_cast<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    alloc_id: AllocId,
+    output: &mut Vec<MonoItem<'tcx>>,
+) {
+    let mut items = MonoItems::new();
+    collect_alloc(tcx, alloc_id, &mut items);
+    output.extend(items.items());
+}
+
+struct CollectedItems<'tcx> {
+    used_items: MonoItems<'tcx>,
+    mentioned_items: MonoItems<'tcx>,
+    /// For each Call/TailCall terminator, the resolved callee Instance
+    /// and its call-site identifier `(DefId, u32, callee_args)`. Used by
+    /// `collect_items_rec` to compute transitive sensitivity.
+    call_sites: Vec<(&'tcx List<(DefId, u32, ty::GenericArgsRef<'tcx>)>, Instance<'tcx>)>,
+    /// Direct sensitivity of this Instance, derived from walking the
+    /// post-inlining MIR for trait-cast intrinsic calls. Empty if not sensitive.
+    direct_sensitivity: &'tcx [LifetimeBVToParamMapping<'tcx>],
+}
+
 /// Scans the MIR in order to find function calls, closures, and drop-glue.
 ///
 /// Anything that's found is added to `output`. Furthermore the "mentioned items" of the MIR are returned.
@@ -1307,7 +1364,7 @@ fn collect_items_of_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     mode: CollectionMode,
-) -> Result<(MonoItems<'tcx>, MonoItems<'tcx>), NormalizationErrorInMono> {
+) -> Result<CollectedItems<'tcx>, NormalizationErrorInMono> {
     // This item is getting monomorphized, do mono-time checks.
     let body = tcx.instance_mir(instance.def);
     // Plenty of code paths later assume that everything can be normalized. So we have to check
@@ -1329,12 +1386,14 @@ fn collect_items_of_instance<'tcx>(
     let mut used_items = MonoItems::new();
     let mut mentioned_items = MonoItems::new();
     let mut used_mentioned_items = Default::default();
+    let mut call_sites = Vec::new();
     let mut collector = MirUsedCollector {
         tcx,
         body,
         used_items: &mut used_items,
         used_mentioned_items: &mut used_mentioned_items,
         instance,
+        call_sites: &mut call_sites,
     };
 
     if mode == CollectionMode::UsedItems {
@@ -1365,22 +1424,25 @@ fn collect_items_of_instance<'tcx>(
         }
     }
 
-    Ok((used_items, mentioned_items))
+    // Derive per-DefId direct sensitivity from borrowck_region_summary.
+    let direct_sensitivity = derive_direct_sensitivity(tcx, instance);
+
+    Ok(CollectedItems { used_items, mentioned_items, call_sites, direct_sensitivity })
 }
 
 fn items_of_instance<'tcx>(
     tcx: TyCtxt<'tcx>,
     (instance, mode): (Instance<'tcx>, CollectionMode),
-) -> Result<
-    (&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]),
-    NormalizationErrorInMono,
-> {
-    let (used_items, mentioned_items) = collect_items_of_instance(tcx, instance, mode)?;
+) -> Result<ItemsOfInstance<'tcx>, NormalizationErrorInMono> {
+    let CollectedItems { used_items, mentioned_items, call_sites, direct_sensitivity } =
+        collect_items_of_instance(tcx, instance, mode)?;
 
-    let used_items = tcx.arena.alloc_from_iter(used_items);
-    let mentioned_items = tcx.arena.alloc_from_iter(mentioned_items);
-
-    Ok((used_items, mentioned_items))
+    Ok(ItemsOfInstance {
+        used_items: tcx.arena.alloc_from_iter(used_items),
+        mentioned_items: tcx.arena.alloc_from_iter(mentioned_items),
+        call_sites: tcx.arena.alloc_from_iter(call_sites),
+        direct_sensitivity,
+    })
 }
 
 /// `item` must be already monomorphized.
@@ -1804,14 +1866,559 @@ fn create_mono_items_for_default_impls<'tcx>(
 }
 
 //=-----------------------------------------------------------------------------
+// Two-phase collection
+//=-----------------------------------------------------------------------------
+
+/// Derive per-Instance direct sensitivity by walking the post-inlining
+/// (optimized) MIR for trait-cast intrinsic calls. Handles both non-inlined
+/// (single-element call_id chain) and inlined (multi-element chain) intrinsic
+/// calls via call_id chain composition.
+///
+/// Returns a slice of interned `LifetimeBVToParamMapping`s — one per
+/// intrinsic call site whose target dyn type references universal region
+/// params. Empty for the vast majority of functions.
+fn derive_direct_sensitivity<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+) -> &'tcx [LifetimeBVToParamMapping<'tcx>] {
+    let def_id = instance.def_id();
+
+    // Fast path: most functions don't contain trait cast intrinsics at all.
+    if !tcx.has_trait_cast_intrinsics(def_id) {
+        return &[];
+    }
+
+    // Walk the post-inlining MIR to find all trait-cast intrinsic calls
+    // (both non-inlined and inlined).
+    let body = tcx.instance_mir(instance.def);
+    let mut mappings: Vec<LifetimeBVToParamMapping<'tcx>> = Vec::new();
+    let mut input_slot_to_walk_pos: FxHashMap<InputSlot, usize> = FxHashMap::default();
+    let mut input_walk_pos = 0usize;
+    for (arg_ordinal, arg) in instance.args.iter().enumerate() {
+        let slots = region_slots_of_arg(arg);
+        for offset in 0..slots {
+            input_slot_to_walk_pos.insert(
+                InputSlot { arg_ordinal: arg_ordinal as u32, offset_within_arg: offset as u32 },
+                input_walk_pos + offset,
+            );
+        }
+        input_walk_pos += slots;
+    }
+
+    for bb_data in body.basic_blocks.iter() {
+        let mir::TerminatorKind::Call { ref func, call_id, .. } = bb_data.terminator().kind else {
+            continue;
+        };
+
+        // Check if this is a trait-cast intrinsic call.
+        let func_ty = func.ty(body, tcx);
+        let ty::FnDef(callee, _) = *func_ty.kind() else {
+            continue;
+        };
+        if !tcx.is_intrinsic(callee, sym::trait_metadata_index)
+            && !tcx.is_intrinsic(callee, sym::trait_cast_is_lifetime_erasure_safe)
+        {
+            continue;
+        }
+
+        if call_id.is_empty() {
+            bug!("call-site must be annotated with a unique id");
+        }
+
+        // The first element of the chain identifies the original function
+        // containing the intrinsic call.
+        let &(origin_def_id, origin_local_id, edge_args_template) = &call_id[0];
+
+        // Fetch the borrowck region summary for the origin function.
+        let origin_summary = tcx.borrowck_region_summary(origin_def_id);
+
+        // Build the bv_to_param mapping. Two paths:
+        // 1. Borrowck has a call-site mapping → use vid provenance.
+        // 2. No mapping (regions only appear after monomorphization,
+        //    e.g. U = dyn Trait<'lt>) → trace through template args.
+        let (bv_to_param, has_entry) =
+            if let Some(origin_mapping) = origin_summary.call_site_mappings.get(&origin_local_id) {
+                // Path 1: borrowck saw regions at this call site.
+                let graph = &origin_summary.outlives_graph;
+
+                let max_walk_pos = origin_mapping
+                    .region_mappings
+                    .items()
+                    .map(|(&walk_pos, _)| walk_pos as usize)
+                    .max()
+                    .unwrap_or(0);
+
+                let mut bv_to_param: Vec<Option<usize>> = vec![None; max_walk_pos + 1];
+                let mut has_entry = false;
+
+                // Check which vids are in the 'static SCC so we can exclude them.
+                let static_scc = origin_summary
+                    .vid_to_param_pos
+                    .iter()
+                    .find(|&&(_, pp)| pp == mir::STATIC_PARAM_POS)
+                    .and_then(|&(vid, _)| graph.scc_of_vid(vid));
+
+                for (walk_pos, region_vid) in origin_mapping
+                    .region_mappings
+                    .items()
+                    .map(|(&walk_pos, &region_vid)| (walk_pos, region_vid))
+                    .into_sorted_stable_ord()
+                {
+                    if let Some(scc) = graph.scc_of_vid(region_vid) {
+                        if Some(scc) != static_scc {
+                            match origin_summary.vid_provenance.get(&region_vid).copied() {
+                                Some(
+                                    VidProvenance::Input(slot)
+                                    | VidProvenance::BoundedByUniversal(slot),
+                                ) => {
+                                    let input_wp = input_slot_to_walk_pos
+                                        .get(&slot)
+                                        .copied()
+                                        .unwrap_or(walk_pos as usize);
+                                    bv_to_param[walk_pos as usize] = Some(input_wp);
+                                    has_entry = true;
+                                }
+                                Some(VidProvenance::Static | VidProvenance::LocalOnly) => {}
+                                None => bug!(
+                                    "missing vid provenance for region vid {region_vid} in {:?}",
+                                    origin_summary
+                                ),
+                            }
+                        }
+                    }
+                }
+
+                (bv_to_param, has_entry)
+            } else {
+                // Path 2: no call-site mapping. Regions inside the callee's
+                // type args were invisible to borrowck because they were
+                // hidden inside type parameters (e.g. U = dyn Trait<'lt>).
+                // Trace the regions through the edge-args template to the
+                // caller's input walk-position space.
+                let concrete_edge_args = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx,
+                    ty::TypingEnv::fully_monomorphized(),
+                    ty::EarlyBinder::bind(edge_args_template),
+                );
+                let total_slots: usize = region_slots_of_args(concrete_edge_args);
+                if total_slots == 0 {
+                    continue;
+                }
+
+                let mut bv_to_param: Vec<Option<usize>> = vec![None; total_slots];
+                let mut has_entry = false;
+                let mut walk_pos = 0usize;
+
+                for (template_arg, concrete_arg) in
+                    edge_args_template.iter().zip(concrete_edge_args.iter())
+                {
+                    let source_arg_ordinal = match template_arg.kind() {
+                        ty::GenericArgKind::Type(ty) => match ty.kind() {
+                            ty::Param(param_ty) => Some(param_ty.index as usize),
+                            _ => None,
+                        },
+                        ty::GenericArgKind::Lifetime(region) => match region.kind() {
+                            ty::ReEarlyParam(ep) => Some(ep.index as usize),
+                            _ => None,
+                        },
+                        ty::GenericArgKind::Const(ct) => match ct.kind() {
+                            ty::ConstKind::Param(param_ct) => Some(param_ct.index as usize),
+                            _ => None,
+                        },
+                        ty::GenericArgKind::Outlives(_) => None,
+                    };
+
+                    let slots = region_slots_of_arg(concrete_arg);
+                    if let Some(source_ordinal) = source_arg_ordinal {
+                        for offset in 0..slots {
+                            let slot = InputSlot {
+                                arg_ordinal: source_ordinal as u32,
+                                offset_within_arg: offset as u32,
+                            };
+                            if let Some(&input_wp) = input_slot_to_walk_pos.get(&slot) {
+                                bv_to_param[walk_pos + offset] = Some(input_wp);
+                                has_entry = true;
+                            }
+                        }
+                    }
+                    walk_pos += slots;
+                }
+
+                (bv_to_param, has_entry)
+            };
+
+        if !has_entry {
+            continue;
+        }
+
+        let list = tcx.mk_lifetime_bv_to_param_mapping_from_iter(bv_to_param.into_iter());
+        mappings.push(LifetimeBVToParamMapping(list));
+    }
+
+    if mappings.is_empty() {
+        return &[];
+    }
+
+    tcx.arena.alloc_from_iter(mappings)
+}
+
+/// Create augmented Instances and record delayed codegen requests.
+/// Runs after the main `collect_items_rec` DFS completes.
+///
+/// This function does NOT patch MIR or feed `codegen_mir`. All MIR patching
+/// is performed exclusively in the global crate's global phase. This
+/// function is responsible for:
+/// - Creating augmented Instances via `augment_callee`
+/// - Recording ALL `DelayedInstance` entries in `delayed_codegen`
+///   (both sensitive and non-sensitive `must_delay_codegen` instances)
+/// - Populating `intrinsic_callees` for intrinsic-containing functions
+///   so that `gather_trait_cast_requests` discovers all intrinsic sites
+/// - Cleaning up superseded base Instances that are replaced by augmented
+///   variants.
+///
+/// The collector itself does NOT push to `delayed_codegen` during the DFS —
+/// this function handles all delayed-codegen recording, ensuring
+/// `intrinsic_callees` is always populated when trait-cast intrinsic
+/// calls are present.
+fn augment_sensitive_subgraphs<'tcx>(tcx: TyCtxt<'tcx>, state: &mut SharedState<'tcx>) {
+    // Runs after the parallel collection phase has finished, so `state` is
+    // exclusively owned here. Take direct `&mut` views of each MTLock-guarded
+    // field rather than re-acquiring the locks per access.
+    let SharedState { visited, mentioned, usage_map, delayed_codegen, instance_sensitivity } =
+        state;
+    let visited = visited.get_mut();
+    let mentioned = mentioned.get_mut();
+    let usage_map = usage_map.get_mut();
+    let delayed_codegen = delayed_codegen.get_mut();
+    let instance_sensitivity = instance_sensitivity.get_mut();
+
+    // Worklist: (instance, base_instance_for_metadata_lookup).
+    // For ground-level transitioning bodies: instance == base_instance (no Outlives).
+    // For augmented Instances: instance has Outlives, base_instance is stripped.
+    let mut worklist: Vec<(Instance<'tcx>, Instance<'tcx>)> = Vec::new();
+    let mut replaced_bases: FxIndexSet<Instance<'tcx>> = FxIndexSet::default();
+
+    // Seed: ALL sensitive base Instances — both transitively sensitive
+    // (non-empty augmented_callees) AND directly sensitive (empty
+    // augmented_callees but sensitivity.is_some()). This ensures root
+    // directly sensitive functions get their intrinsic_callees populated
+    // for gather_trait_cast_requests.
+    for (instance, entry) in instance_sensitivity.iter() {
+        if entry.sensitivity.is_some() && !instance.has_outlives_entries() {
+            worklist.push((*instance, *instance));
+        }
+    }
+
+    while let Some((instance, base_instance)) = worklist.pop() {
+        let Some(entry) = instance_sensitivity.get(&base_instance) else { continue };
+        let augmented_callees = entry.augmented_callees;
+        let has_augmented_callees = !augmented_callees.is_empty();
+        let intrinsic_callees = collect_intrinsic_callees(tcx, instance);
+
+        if has_augmented_callees {
+            // Transitively sensitive: has augmented callees to substitute.
+            // Collect the instance's OWN intrinsic callees (if any) from
+            // its MIR. For purely transitive callers (like main), this is
+            // empty — their intrinsics are covered by each callee's own
+            // DelayedInstance entry (created when the worklist processes
+            // the augmented callee below).
+
+            delayed_codegen.insert(DelayedInstance {
+                instance,
+                callee_substitutions: augmented_callees,
+                intrinsic_callees,
+            });
+
+            // Add augmented callees as new MonoItems and continue down
+            // the sensitive sub-graph.
+            for &(_call_id, augmented_callee) in augmented_callees {
+                let callee_base = augmented_callee.strip_outlives(tcx);
+                visited.insert(MonoItem::Fn(augmented_callee));
+                replaced_bases.insert(callee_base);
+
+                // If this augmented callee is itself transitively sensitive,
+                // compute ITS augmented callees and add to worklist.
+                let Some(callee_entry) = instance_sensitivity.get(&callee_base) else {
+                    continue;
+                };
+                if callee_entry.sensitivity.is_none() {
+                    continue;
+                }
+
+                let callee_call_sites = callee_entry.sensitive_call_sites;
+                let callee_sensitivity = callee_entry.sensitivity.clone().unwrap();
+
+                // Build CallerOutlivesEnv from the augmented Instance's
+                // Outlives entries.
+                let caller_env = CallerOutlivesEnv::from_outlives_entries(tcx, &augmented_callee);
+
+                // Compute augmented sub-callees for the augmented callee.
+                // Use the batched walk-position transport so each chain
+                // link is fetched once per call site.
+                let mut sub_augmented = Vec::new();
+                for &(sub_call_id, sub_callee) in callee_call_sites {
+                    let Some(sub_entry) = instance_sensitivity.get(&sub_callee) else {
+                        continue;
+                    };
+                    let Some(sub_sens) = &sub_entry.sensitivity else {
+                        continue;
+                    };
+
+                    // Build composed mapping through the full call_id chain.
+                    let max_walk_pos = sub_sens.max_walk_order_position();
+                    let composed_mapping =
+                        compose_all_through_chain(tcx, augmented_callee, sub_call_id, max_walk_pos);
+
+                    let sub_augmented_callee = augment_callee(
+                        tcx,
+                        augmented_callee,
+                        sub_callee,
+                        sub_sens,
+                        &caller_env,
+                        Some(&composed_mapping),
+                    );
+                    sub_augmented.push((sub_call_id, sub_augmented_callee));
+                }
+
+                instance_sensitivity.insert(
+                    augmented_callee,
+                    InstanceSensitivity {
+                        sensitivity: Some(callee_sensitivity),
+                        sensitive_call_sites: callee_call_sites,
+                        augmented_callees: tcx.arena.alloc_from_iter(sub_augmented),
+                    },
+                );
+
+                worklist.push((augmented_callee, augmented_callee));
+            }
+        } else {
+            // Directly sensitive root function: contains intrinsic calls
+            // but has no sensitive callees. Collect sentinel-augmented
+            // intrinsic callee Instances from the MIR so that
+            // gather_trait_cast_requests discovers all intrinsic sites.
+            delayed_codegen.insert(DelayedInstance {
+                instance,
+                callee_substitutions: &[],
+                intrinsic_callees,
+            });
+        }
+    }
+
+    // Post-worklist pass: handle must_delay_codegen instances that are
+    // NOT in the sensitivity_map (non-generic functions with intrinsic
+    // calls where all binder variables map to existential/static regions).
+    // These need DelayedInstance entries with sentinel-augmented
+    // intrinsic_callees so gather_trait_cast_requests sees them.
+    {
+        let delayed_instances: UnordSet<Instance<'tcx>> =
+            delayed_codegen.items().map(|d| d.instance).collect();
+
+        delayed_codegen.extend_unord(visited.items().filter_map(|&item| {
+            let MonoItem::Fn(instance) = item else {
+                return None;
+            };
+            if instance.has_outlives_entries() {
+                return None;
+            }
+            if !tcx.must_delay_codegen(instance) {
+                return None;
+            }
+            if delayed_instances.contains(&instance) {
+                return None;
+            }
+
+            let intrinsic_callees = collect_intrinsic_callees(tcx, instance);
+            Some(DelayedInstance { instance, callee_substitutions: &[], intrinsic_callees })
+        }));
+    }
+
+    // Cleanup: remove base Instances superseded by augmented versions
+    // from visited, mentioned, usage_map, AND delayed_codegen.
+    // A base Instance can end up in delayed_codegen when it is processed
+    // before its caller augments it (e.g., check_a is delayed first as
+    // non-augmented, then main augments it → augmented_check_a is also
+    // delayed). The base must be removed so only the augmented version
+    // remains.
+    //
+    // When removing a base's usage_map entry, transfer its used-items
+    // list to the augmented replacement so the partitioner can still
+    // discover LocalCopy dependencies via `get_reachable_inlined_items`.
+    if !replaced_bases.is_empty() {
+        // Build base → augmented Instance mapping for usage_map transfer.
+        let base_to_augmented: FxIndexMap<Instance<'tcx>, Instance<'tcx>> = replaced_bases
+            .iter()
+            .filter_map(|base| {
+                // Find the augmented version: an Instance in visited
+                // whose strip_outlives == base and has outlives entries.
+                // The augmented callees for base's callers contain this.
+                // Look through all sensitivity entries' augmented_callees.
+                for (_inst, entry) in instance_sensitivity.iter() {
+                    for &(_call_id, aug) in entry.augmented_callees {
+                        if aug.strip_outlives(tcx) == *base && aug.has_outlives_entries() {
+                            return Some((*base, aug));
+                        }
+                    }
+                }
+                None
+            })
+            .collect();
+
+        for base in &replaced_bases {
+            let base_mono = MonoItem::Fn(*base);
+            // Transfer usage_map entry to augmented version before removing.
+            if let Some(augmented) = base_to_augmented.get(base) {
+                let aug_mono = MonoItem::Fn(*augmented);
+                if let Some(used_items) = usage_map.used_map.get(&base_mono).cloned() {
+                    usage_map.used_map.insert(aug_mono, used_items);
+                }
+            }
+            visited.remove(&base_mono);
+            mentioned.remove(&base_mono);
+            usage_map.remove(base_mono);
+        }
+
+        let filtered: UnordSet<DelayedInstance<'tcx>> = delayed_codegen
+            .items()
+            .filter(|d| !replaced_bases.contains(&d.instance))
+            .copied()
+            .collect();
+        *delayed_codegen = filtered;
+    }
+
+    // Remove ALL delayed codegen Instances from visited. These will be
+    // re-added by cascade_canonicalize with patched bodies (intrinsic
+    // calls resolved). Without this, delayed instances appear twice in
+    // mono_items — once from visited and once from cascade_canonicalize.
+    for d in tcx.with_stable_hashing_context(|mut hcx| {
+        delayed_codegen.items().copied().collect_sorted::<_, Vec<_>>(&mut hcx, false)
+    }) {
+        visited.remove(&MonoItem::Fn(d.instance));
+    }
+}
+
+/// Collect sentinel-augmented intrinsic callee Instances from a function's
+/// MIR. Walks the basic blocks looking for Call terminators that invoke
+/// trait-cast intrinsics (`trait_metadata_index`, `trait_metadata_table`,
+/// `trait_metadata_table_len`, `trait_cast_is_lifetime_erasure_safe`).
+/// Each found intrinsic callee is sentinel-augmented via `with_outlives(tcx, &[])`,
+/// indicating the (conservative) empty outlives class. The global phase
+/// computes the actual per-call-site outlives class via
+/// `augmented_outlives_for_call`.
+fn collect_intrinsic_callees<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    instance: Instance<'tcx>,
+) -> &'tcx [Instance<'tcx>] {
+    let body = tcx.instance_mir(instance.def);
+    let mut callees: Vec<Instance<'tcx>> = Vec::new();
+
+    for bb_data in body.basic_blocks.iter() {
+        let mir::TerminatorKind::Call { ref func, .. } = bb_data.terminator().kind else {
+            continue;
+        };
+
+        let func_ty = func.ty(body, tcx);
+        // The body from instance_mir is polymorphic — apply the caller
+        // instance's substitutions to get fully monomorphized types.
+        let func_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+            tcx,
+            ty::TypingEnv::fully_monomorphized(),
+            ty::EarlyBinder::bind(func_ty),
+        );
+        let ty::FnDef(callee_def_id, callee_args) = *func_ty.kind() else {
+            continue;
+        };
+
+        if !tcx.is_intrinsic(callee_def_id, sym::trait_metadata_index)
+            && !tcx.is_intrinsic(callee_def_id, sym::trait_cast_is_lifetime_erasure_safe)
+            && !tcx.is_intrinsic(callee_def_id, sym::trait_metadata_table)
+            && !tcx.is_intrinsic(callee_def_id, sym::trait_metadata_table_len)
+        {
+            continue;
+        }
+
+        let callee_instance = Instance::expect_resolve(
+            tcx,
+            ty::TypingEnv::fully_monomorphized(),
+            callee_def_id,
+            callee_args,
+            body.span,
+        );
+
+        // Sentinel-augment: adds the Outlives sentinel (empty outlives
+        // class). The global phase's augmented_outlives_for_call query
+        // computes the actual per-call-site outlives class at resolution
+        // time.
+        let augmented = callee_instance.with_outlives(tcx, &[]);
+        callees.push(augmented);
+    }
+
+    if callees.is_empty() {
+        return &[];
+    }
+    tcx.arena.alloc_from_iter(callees)
+}
+
+/// Patch a Call/TailCall terminator in the MIR body to reference an augmented
+/// callee Instance. Finds the terminator with matching call-chain and modifies
+/// its func operand to point to the augmented callee's FnDef type.
+/// Used by the global phase's cascading canonicalization.
+pub(crate) fn patch_call_terminator<'tcx>(
+    body: &mut Body<'tcx>,
+    target_call_id: &'tcx List<(DefId, u32, ty::GenericArgsRef<'tcx>)>,
+    augmented_callee: Instance<'tcx>,
+    tcx: TyCtxt<'tcx>,
+) {
+    // Search all basic blocks for the terminator with matching call_id chain.
+    for bb_data in body.basic_blocks_mut().iter_mut() {
+        let terminator = bb_data.terminator_mut();
+        let (func, matched) = match &mut terminator.kind {
+            mir::TerminatorKind::Call { func, call_id, .. }
+                if std::ptr::eq(*call_id, target_call_id) =>
+            {
+                (func, true)
+            }
+            mir::TerminatorKind::TailCall { func, call_id, .. }
+                if std::ptr::eq(*call_id, target_call_id) =>
+            {
+                (func, true)
+            }
+            _ => continue,
+        };
+
+        if matched {
+            // Build the augmented callee's FnDef type.
+            let fn_ty = augmented_callee.ty(tcx, ty::TypingEnv::fully_monomorphized());
+            let span = terminator.source_info.span;
+            *func = mir::Operand::Constant(Box::new(mir::ConstOperand {
+                span,
+                user_ty: None,
+                const_: mir::Const::zero_sized(fn_ty),
+            }));
+            return; // call_id chain is unique within a body
+        }
+    }
+}
+
+//=-----------------------------------------------------------------------------
 // Top-level entry point, tying it all together
 //=-----------------------------------------------------------------------------
+
+/// Results of mono collection, including delayed codegen data for the
+/// global phase.
+pub(crate) struct CollectionResult<'tcx> {
+    pub mono_items: Vec<MonoItem<'tcx>>,
+    pub usage_map: UsageMap<'tcx>,
+    /// Full delayed codegen data with callee substitution metadata.
+    pub delayed_codegen: &'tcx [DelayedInstance<'tcx>],
+    /// Per-Instance cast-relevant lifetimes sensitivity map.
+    pub sensitivity_map: &'tcx UnordMap<Instance<'tcx>, CastRelevantLifetimes<'tcx>>,
+}
 
 #[instrument(skip(tcx, strategy), level = "debug")]
 pub(crate) fn collect_crate_mono_items<'tcx>(
     tcx: TyCtxt<'tcx>,
     strategy: MonoItemCollectionStrategy,
-) -> (Vec<MonoItem<'tcx>>, UsageMap<'tcx>) {
+) -> CollectionResult<'tcx> {
     let _prof_timer = tcx.prof.generic_activity("monomorphization_collector");
 
     let roots = tcx
@@ -1820,29 +2427,83 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
 
     debug!("building mono item graph, beginning at roots");
 
-    let state = SharedState {
+    let mut state = SharedState {
         visited: Lock::new(UnordSet::default()),
         mentioned: Lock::new(UnordSet::default()),
         usage_map: Lock::new(UsageMap::new()),
+        delayed_codegen: Lock::new(UnordSet::default()),
+        instance_sensitivity: Lock::new(FxIndexMap::default()),
     };
     let recursion_limit = tcx.recursion_limit();
 
+    // Normal collection (sensitivity detection deferred to a batch pass).
     tcx.sess.time("monomorphization_collector_graph_walk", || {
         par_for_each_in(roots, |root| {
             collect_items_root(tcx, dummy_spanned(*root), &state, recursion_limit);
         });
     });
 
+    // Batch sensitivity computation: SCC-based fixed-point iteration
+    // over the full collected Instance set.
+    tcx.sess.time("monomorphization_collector_sensitivity_scc", || {
+        let visited = state.visited.lock();
+        cast_sensitivity::compute_cast_relevant_lifetimes(
+            tcx,
+            &state.instance_sensitivity,
+            &visited,
+        );
+    });
+
+    // Augmentation + delayed codegen recording. Handles ALL delayed
+    // codegen entries — both sensitive sub-graphs (augmentation) and
+    // non-sensitive must_delay_codegen instances (intrinsic callee
+    // collection). Does NOT patch MIR or feed codegen_mir — that is
+    // deferred to the global phase.
+    tcx.sess.time("monomorphization_collector_augmentation", || {
+        augment_sensitive_subgraphs(tcx, &mut state);
+    });
+
+    let SharedState { visited, mentioned: _, usage_map, delayed_codegen, instance_sensitivity } =
+        state;
+
+    // Sort delayed codegen entries deterministically for the arena slice.
+    let delayed = tcx.with_stable_hashing_context(move |mut hcx| {
+        delayed_codegen.into_inner().into_sorted(&mut hcx, true)
+    });
+    let delayed: &'tcx [DelayedInstance<'tcx>] = tcx.arena.alloc_slice(&delayed);
+
+    // Build sensitivity_map from instance_sensitivity for query proxying.
+    let sensitivity_map =
+        cast_sensitivity::build_sensitivity_map(tcx, instance_sensitivity.into_inner());
+
     // The set of MonoItems was created in an inherently indeterministic order because
     // of parallelism. We sort it here to ensure that the output is deterministic.
     let mono_items = tcx.with_stable_hashing_context(move |mut hcx| {
-        state.visited.into_inner().into_sorted(&mut hcx, true)
+        visited.into_inner().into_sorted(&mut hcx, true)
     });
 
-    (mono_items, state.usage_map.into_inner())
+    CollectionResult {
+        mono_items,
+        usage_map: usage_map.into_inner(),
+        delayed_codegen: delayed,
+        sensitivity_map,
+    }
+}
+
+/// Default provider for `codegen_mir`: returns the unmodified MIR body
+/// from `instance_mir`. For outlives-sensitive instances, the monomorphization
+/// collector feeds a patched body that takes precedence over this provider.
+fn codegen_mir<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> &'tcx Body<'tcx> {
+    tcx.instance_mir(instance.def)
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
     providers.hooks.should_codegen_locally = should_codegen_locally;
+    providers.hooks.must_delay_codegen = must_delay_codegen;
     providers.queries.items_of_instance = items_of_instance;
+    providers.queries.has_trait_cast_intrinsics = has_trait_cast_intrinsics;
+    providers.queries.codegen_mir = codegen_mir;
 }
+
+#[cfg(test)]
+mod tests;

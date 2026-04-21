@@ -35,6 +35,10 @@ impl<'tcx> rustc_type_ir::Flags for Region<'tcx> {
             _ => ty::INNERMOST,
         }
     }
+
+    fn region_slots(&self) -> u32 {
+        1
+    }
 }
 
 impl<'tcx> Region<'tcx> {

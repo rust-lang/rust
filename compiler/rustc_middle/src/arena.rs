@@ -27,10 +27,12 @@ macro_rules! arena_types {
                     rustc_middle::mir::Body<'tcx>
                 >,
             [decode] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
-            [decode] borrowck_result: rustc_data_structures::fx::FxIndexMap<
+            [] borrowck_result: rustc_middle::mir::BorrowckResult<'tcx>,
+            [decode] borrowck_hidden_types: rustc_data_structures::fx::FxIndexMap<
                 rustc_hir::def_id::LocalDefId,
                 rustc_middle::ty::DefinitionSiteHiddenType<'tcx>,
             >,
+            [decode] borrowck_region_summary: rustc_middle::mir::BorrowckRegionSummary,
             [] resolver: rustc_data_structures::steal::Steal<(
                 rustc_middle::ty::ResolverAstLowering<'tcx>,
                 std::sync::Arc<rustc_ast::Crate>,
@@ -88,6 +90,12 @@ macro_rules! arena_types {
             [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
             [] dyn_compatibility_violations: rustc_middle::traits::DynCompatibilityViolation,
             [] codegen_unit: rustc_middle::mono::CodegenUnit<'tcx>,
+            [] usage_map: rustc_middle::mono::UsageMap<'tcx>,
+            [] cast_relevant_lifetimes: rustc_middle::mono::CastRelevantLifetimes<'tcx>,
+            [] cast_relevant_lifetimes_map: rustc_data_structures::unord::UnordMap<
+                rustc_middle::ty::Instance<'tcx>,
+                rustc_middle::mono::CastRelevantLifetimes<'tcx>,
+            >,
             [decode] attribute: rustc_hir::Attribute,
             [] name_set: rustc_data_structures::unord::UnordSet<rustc_span::Symbol>,
             [] autodiff_item: rustc_hir::attrs::AutoDiffItem,

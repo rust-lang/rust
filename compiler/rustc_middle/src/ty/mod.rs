@@ -143,6 +143,7 @@ pub mod pattern;
 pub mod print;
 pub mod relate;
 pub mod significant_drop_order;
+pub mod trait_cast;
 pub mod trait_def;
 pub mod util;
 pub mod vtable;
@@ -451,6 +452,10 @@ impl<'tcx> rustc_type_ir::Flags for Ty<'tcx> {
 
     fn outer_exclusive_binder(&self) -> DebruijnIndex {
         self.0.outer_exclusive_binder
+    }
+
+    fn region_slots(&self) -> u32 {
+        self.0.region_slots
     }
 }
 
@@ -912,6 +917,10 @@ impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
 
     fn outer_exclusive_binder(&self) -> DebruijnIndex {
         (**self).outer_exclusive_binder()
+    }
+
+    fn region_slots(&self) -> u32 {
+        (**self).region_slots()
     }
 }
 

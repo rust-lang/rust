@@ -498,6 +498,9 @@ fn extract_def_id_from_arg<'tcx>(
             };
             generics.const_param(param_ct, tcx).def_id
         }
+        ty::GenericArgKind::Outlives(_) => {
+            bug!("Outlives args have no associated DefId");
+        }
     }
 }
 

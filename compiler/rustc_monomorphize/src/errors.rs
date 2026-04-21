@@ -184,3 +184,14 @@ pub(crate) struct StaticInitializerCyclic<'a> {
     pub head: &'a str,
     pub target: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag("cast target `{$target}` is unreachable in the trait graph of `{$root}`")]
+#[note("no type implementing `{$root}` also implements `{$target}`")]
+#[note("this cast will always return `Err` at runtime")]
+pub(crate) struct UnusedCastTargetLint<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub root: Ty<'tcx>,
+    pub target: Ty<'tcx>,
+}

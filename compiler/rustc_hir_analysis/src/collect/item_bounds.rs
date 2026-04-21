@@ -212,6 +212,10 @@ fn remap_gat_vars_and_recurse_into_nested_projections<'tcx>(
                 };
                 mapping.insert(bv.var, tcx.mk_param_from_def(param))
             }
+            ty::GenericArgKind::Outlives(_) => {
+                // Outlives metadata args don't participate in GAT arg mapping.
+                continue;
+            }
         };
 
         if existing.is_some() {

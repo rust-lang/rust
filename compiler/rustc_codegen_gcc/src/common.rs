@@ -265,6 +265,12 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                             };
                         }
 
+                        if alloc.inner().address_significant {
+                            debug_assert!(
+                                alloc.inner().mutability.is_not(),
+                                "address_significant on mutable allocation"
+                            );
+                        }
                         let value = match alloc.inner().mutability {
                             Mutability::Mut => self.static_addr_of_mut(
                                 const_alloc_to_gcc(self, alloc),

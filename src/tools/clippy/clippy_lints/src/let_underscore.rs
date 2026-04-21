@@ -146,7 +146,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                 GenericArgKind::Type(inner_ty) => inner_ty
                     .ty_adt_def()
                     .is_some_and(|adt| paths::PARKING_LOT_GUARDS.iter().any(|path| path.matches(cx, adt.did()))),
-                GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+                GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) | GenericArgKind::Outlives(_) => false,
             });
             if contains_sync_guard {
                 #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]

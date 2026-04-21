@@ -1586,6 +1586,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 unwind,
                 call_source: _,
                 fn_span,
+                call_id: _,
             } => self.codegen_call_terminator(
                 helper,
                 bx,
@@ -1599,7 +1600,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 CallKind::Normal,
                 mergeable_succ(),
             ),
-            mir::TerminatorKind::TailCall { ref func, ref args, fn_span } => self
+            mir::TerminatorKind::TailCall { ref func, ref args, fn_span, call_id: _ } => self
                 .codegen_call_terminator(
                     helper,
                     bx,

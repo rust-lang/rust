@@ -591,6 +591,7 @@ macro_rules! make_mir_visitor {
                         unwind: _,
                         call_source: _,
                         fn_span,
+                        call_id: _,
                     } => {
                         self.visit_span($(& $mutability)? *fn_span);
                         self.visit_operand(func, location);
@@ -604,7 +605,7 @@ macro_rules! make_mir_visitor {
                         );
                     }
 
-                    TerminatorKind::TailCall { func, args, fn_span } => {
+                    TerminatorKind::TailCall { func, args, fn_span, call_id: _ } => {
                         self.visit_span($(& $mutability)? *fn_span);
                         self.visit_operand(func, location);
                         for arg in args {

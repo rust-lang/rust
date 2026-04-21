@@ -71,6 +71,7 @@ where
                         ty::GenericArgKind::Const(ct) => {
                             self.structurally_normalize_const(goal.param_env, ct).map(Into::into)
                         }
+                        ty::GenericArgKind::Outlives(o) => Ok(o.into()),
                     }))?;
 
                 let opaque_type_key = ty::OpaqueTypeKey { def_id, args: normalized_args };

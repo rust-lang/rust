@@ -79,7 +79,7 @@ use rustc_session::cstore::{
 };
 use rustc_session::lint::LintExpectationId;
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::{DUMMY_SP, LocalExpnId, Span, Spanned, Symbol};
+use rustc_span::{DUMMY_SP, LocalExpnId, Span, Symbol};
 use rustc_target::spec::PanicStrategy;
 
 use crate::hir::Crate;
@@ -99,7 +99,8 @@ use crate::mir::interpret::{
     EvalToValTreeResult, GlobalId,
 };
 use crate::mono::{
-    CodegenUnit, CollectionMode, MonoItem, MonoItemPartitions, NormalizationErrorInMono,
+    CodegenUnit, CollectionMode, ItemsOfInstance, LocalMonoItemCollection, MonoItemPartitions,
+    NormalizationErrorInMono,
 };
 use crate::query::describe_as_module;
 use crate::query::plumbing::{define_callbacks, maybe_into_query_key};
@@ -1243,6 +1244,13 @@ rustc_queries! {
         desc { "coherence checking all impls of trait `{}`", tcx.def_path_str(def_id) }
     }
 
+    /// Shared core computation for borrow-checking a typeck root.
+    /// Returns both hidden types and region summaries.
+    /// Both `mir_borrowck` and `borrowck_region_summary` delegate to this.
+    query borrowck_result(key: LocalDefId) -> &'tcx mir::BorrowckResult<'tcx> {
+        desc { "borrow-checking (with region summaries) `{}`", tcx.def_path_str(key) }
+    }
+
     /// Borrow-checks the given typeck root, e.g. functions, const/static items,
     /// and its children, e.g. closures, inline consts.
     query mir_borrowck(key: LocalDefId) -> Result<
@@ -1250,6 +1258,16 @@ rustc_queries! {
         ErrorGuaranteed
     > {
         desc { "borrow-checking `{}`", tcx.def_path_str(key) }
+    }
+
+    /// Compact summary of borrowck's solved region constraints for a function.
+    /// Provides cross-crate access to outlives relationships that only exist
+    /// transiently during borrowck's region inference.
+    query borrowck_region_summary(key: DefId) -> &'tcx mir::BorrowckRegionSummary {
+        desc { "computing borrowck region summary for `{}`", tcx.def_path_str(key) }
+        arena_cache
+        cache_on_disk
+        separate_provide_extern
     }
 
     /// Gets a complete map from all types to their inherent impls.
@@ -2395,6 +2413,16 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Collects mono items for the local crate (including sensitivity
+    /// analysis and augmentation) but does NOT perform global trait-cast
+    /// resolution or partitioning. This query exists so that
+    /// `delayed_codegen_requests` can depend on it without creating a
+    /// cycle through `collect_and_partition_mono_items`.
+    query collect_local_mono_items(_: ()) -> LocalMonoItemCollection<'tcx> {
+        eval_always
+        desc { "collect_local_mono_items" }
+    }
+
     query collect_and_partition_mono_items(_: ()) -> MonoItemPartitions<'tcx> {
         eval_always
         desc { "collect_and_partition_mono_items" }
@@ -2719,7 +2747,7 @@ rustc_queries! {
         desc { "functions to skip for move-size check" }
     }
 
-    query items_of_instance(key: (ty::Instance<'tcx>, CollectionMode)) -> Result<(&'tcx [Spanned<MonoItem<'tcx>>], &'tcx [Spanned<MonoItem<'tcx>>]), NormalizationErrorInMono> {
+    query items_of_instance(key: (ty::Instance<'tcx>, CollectionMode)) -> Result<ItemsOfInstance<'tcx>, NormalizationErrorInMono> {
         desc { "collecting items used by `{}`", key.0 }
         cache_on_disk
     }
@@ -2727,6 +2755,15 @@ rustc_queries! {
     query size_estimate(key: ty::Instance<'tcx>) -> usize {
         desc { "estimating codegen size of `{}`", key }
         cache_on_disk
+    }
+
+    /// Returns the MIR body to use for codegen of the given Instance.
+    /// Defaults to `instance_mir`, but may be overridden by the
+    /// monomorphization collector for outlives-sensitive instances
+    /// that need patched MIR with augmented callee references.
+    query codegen_mir(key: ty::Instance<'tcx>) -> &'tcx mir::Body<'tcx> {
+        desc { "getting codegen MIR for `{}`", key }
+        feedable
     }
 
     query anon_const_kind(def_id: DefId) -> ty::AnonConstKind {
@@ -2760,6 +2797,170 @@ rustc_queries! {
         desc { "looking up the externally implementable items of a crate" }
         cache_on_disk
         separate_provide_extern
+    }
+
+    query has_trait_cast_intrinsics(def_id: DefId) -> bool {
+        desc { "checking for trait cast intrinsics in `{}`",
+               tcx.def_path_str(def_id) }
+        cache_on_disk
+        separate_provide_extern
+    }
+
+    /// Per-crate sensitivity map: Instance → cast-relevant lifetime
+    /// mappings. Local provider proxies `collect_and_partition_mono_items`;
+    /// extern provider decodes from metadata.
+    query crate_cast_relevant_lifetimes(key: CrateNum) -> &'tcx UnordMap<ty::Instance<'tcx>, crate::mono::CastRelevantLifetimes<'tcx>> {
+        desc { "computing cast-relevant lifetimes for crate `{}`", tcx.crate_name(key) }
+        separate_provide_extern
+    }
+
+    /// Per-Instance cast-relevant lifetimes: the sensitivity mappings
+    /// recording how dyn bound vars map through call chains. Returns
+    /// `None` for non-sensitive Instances. Thin lookup into
+    /// `crate_cast_relevant_lifetimes` for the Instance's defining crate.
+    query cast_relevant_lifetimes(key: ty::Instance<'tcx>) -> Option<&'tcx crate::mono::CastRelevantLifetimes<'tcx>> {
+        desc { "looking up cast-relevant lifetimes for `{}`", key }
+    }
+
+    /// Per-call-site outlives entries derived by composing the `call_id`
+    /// chain through the caller's outlives environment.
+    ///
+    /// MIR-backed callees receive entries in their binder-variable space.
+    /// MIR-less intrinsic callees may receive transport/origin walk-position
+    /// entries that the intrinsic resolver must lower into its own native
+    /// interpretation space before consuming. Returns the Outlives
+    /// `GenericArg` entries (sentinel-stripped).
+    query augmented_outlives_for_call(
+        key: (
+            ty::Instance<'tcx>,
+            &'tcx ty::List<(DefId, u32, ty::GenericArgsRef<'tcx>)>,
+            ty::Instance<'tcx>,
+        )
+    ) -> &'tcx [ty::GenericArg<'tcx>] {
+        desc { "computing augmented outlives for call site" }
+    }
+
+    /// Tracks which MIR bodies contain calls to trait casting intrinsics,
+    /// signaling that their codegen must be delayed until the global crate.
+    /// For the local crate, proxies into `collect_and_partition_mono_items`.
+    /// For upstream crates, decoded from metadata.
+    query delayed_codegen_requests(key: CrateNum) -> &'tcx [crate::mono::DelayedInstance<'tcx>] {
+        separate_provide_extern
+        desc { "tracking MIR bodies for delayed codegen" }
+    }
+
+    /// Local def-ids that back at least one instance in the local crate's
+    /// `delayed_codegen_requests`. The encoder's `should_encode_mir` consults
+    /// this to ensure MIR for transitively-delayed fns (not just direct
+    /// intrinsic callers) is available to the downstream global crate's
+    /// cascade-canonicalize phase.
+    query local_def_ids_backing_delayed_instances(_: ()) -> &'tcx LocalDefIdSet {
+        desc { "collecting local def-ids backing delayed-codegen instances" }
+    }
+
+    /// Whether an Instance is transitively reached by a trait-cast intrinsic
+    /// — i.e. it appears in the `delayed_codegen_requests` set of the local
+    /// crate or any upstream crate and must be codegen'd by the global
+    /// crate. Used by the symbol mangler (to drop the instantiating-crate
+    /// suffix for delayed instances, so upstream vtable refs and downstream
+    /// bodies share a name) and by the visibility override in
+    /// `mono_item_visibility`. Compares on the strip-outlives form so that
+    /// augmented (outlives-annotated) and base instances collapse
+    /// identically — the v0 mangler's impl-path does not emit Outlives
+    /// args in the symbol, so both forms share a name.
+    ///
+    /// The provider consults `delayed_codegen_stripped_set(cnum)` (a
+    /// `FxHashSet<Instance>` precomputed per-crate from
+    /// `delayed_codegen_requests(cnum)`) so per-call cost is O(crates)
+    /// rather than O(total-delayed-instances).
+    query is_transitively_delayed_instance(key: ty::Instance<'tcx>) -> bool {
+        desc { "checking whether `{}` is a transitively-delayed instance", key }
+    }
+
+    /// `delayed_codegen_requests` for the local crate and every upstream
+    /// crate, re-projected as a single flat set of the strip-outlives
+    /// canonical Instance forms. Used by
+    /// `is_transitively_delayed_instance` for a single O(1) membership
+    /// test rather than one per crate.
+    query delayed_codegen_stripped_set(_: ()) -> &'tcx UnordSet<ty::Instance<'tcx>> {
+        arena_cache
+        desc { "building global stripped-instance set for all crates' delayed-codegen" }
+    }
+
+    /// Gathers and classifies all trait-cast intrinsic callees from
+    /// delayed-codegen Instances into grouped requests by kind.
+    query gather_trait_cast_requests(_: ()) -> &'tcx ty::trait_cast::TraitCastRequests<'tcx> {
+        arena_cache
+        desc { "gathering trait cast requests" }
+    }
+
+    /// Builds the trait-cast graph for a single root supertrait,
+    /// partitioning gathered requests into sub-trait/outlives-class
+    /// mappings and concrete-type sets.
+    query trait_cast_graph(root: Ty<'tcx>) -> &'tcx ty::trait_cast::TraitGraph<'tcx> {
+        arena_cache
+        desc { "building trait cast graph for root supertrait" }
+    }
+
+    /// Computes the reflexive-transitive closure of outlives relationships
+    /// over a `dim`-dimensional index space via Floyd-Warshall.
+    /// Shared across layout, population, and erasure-safe checks.
+    query outlives_reachability(key: (&'tcx [ty::GenericArg<'tcx>], usize)) -> &'tcx rustc_index::bit_set::BitMatrix<usize, usize> {
+        arena_cache
+        desc { "computing outlives reachability matrix" }
+    }
+
+    /// Whether an impl is universally admissible — admissible under every
+    /// outlives class for every dyn binder structure. Fast-path check for
+    /// layout condensation.
+    query impl_universally_admissible(impl_def_id: DefId) -> bool {
+        desc { "checking universal admissibility of `{}`", tcx.def_path_str(impl_def_id) }
+    }
+
+    /// Assigns table slot indices for all (sub_trait, outlives_class) pairs
+    /// in the trait cast graph for a root supertrait.
+    query trait_cast_layout(root: Ty<'tcx>) -> &'tcx ty::trait_cast::TableLayout<'tcx> {
+        arena_cache
+        desc { "computing trait cast table layout for root supertrait" }
+    }
+
+    /// Populates the trait cast table for a (root supertrait, concrete type)
+    /// pair. For each table slot, determines whether the concrete type
+    /// implements the sub-trait under that slot's outlives class, and if so,
+    /// records the vtable AllocId.
+    query trait_cast_table(key: (Ty<'tcx>, Ty<'tcx>)) -> &'tcx [Option<mir::interpret::AllocId>] {
+        desc { "populating trait cast table for concrete type" }
+    }
+
+    /// Returns the AllocId of the metadata table static for a (root
+    /// supertrait, concrete type) pair. The allocation is an immutable
+    /// array of pointer-sized entries: vtable pointers for admissible
+    /// slots, null for non-admissible ones.
+    query trait_cast_table_alloc(key: (Ty<'tcx>, Ty<'tcx>)) -> mir::interpret::AllocId {
+        desc { "emitting trait cast metadata table static" }
+    }
+
+    /// Returns the `AllocId` of a unique per-global-crate `u8` static
+    /// whose **address** serves as the global crate identifier for
+    /// cross-crate trait-cast safety checks. The value is unspecified;
+    /// only the address matters.
+    query global_crate_id_alloc(_: ()) -> mir::interpret::AllocId {
+        desc { "creating global crate ID static for trait casting" }
+    }
+
+    /// Determines whether casting to `target_trait` within the graph
+    /// rooted at `super_trait` is safe w.r.t. lifetime erasure.
+    ///
+    /// Key: (super_trait, target_trait, origin_positions,
+    ///        call_site_outlives).
+    ///
+    /// `origin_positions` and `call_site_outlives` are in walk-position
+    /// space from the CRL composition pipeline. `root_transport_slots`
+    /// is derived from `super_trait` inside the provider.
+    query is_lifetime_erasure_safe(
+        key: (Ty<'tcx>, Ty<'tcx>, &'tcx [Option<usize>], &'tcx [ty::GenericArg<'tcx>])
+    ) -> bool {
+        desc { "checking lifetime erasure safety for trait cast" }
     }
 
     //-----------------------------------------------------------------------------

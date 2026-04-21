@@ -256,7 +256,28 @@ fn compute_symbol_name<'tcx>(
     // the ID of the instantiating crate. This avoids symbol conflicts
     // in case the same instances is emitted in two crates of the same
     // project.
-    let avoid_cross_crate_conflicts = is_generic(instance) || is_globally_shared_function;
+    //
+    // Exception: transitively-delayed instances (trait-cast intrinsic
+    // callers and their transitive callers) are emitted only by the
+    // single global crate in a linkage, so the per-instantiating-crate
+    // suffix would cause upstream vtable references (mangled with the
+    // upstream's crate-id) and downstream bodies (mangled with the
+    // global bin's crate-id) to diverge. Stripping the suffix for these
+    // instances makes both sides converge on a single name; the
+    // "one global crate per linkage" invariant guarantees no conflict.
+    //
+    // Pre-compute `is_delayed` into a standalone binding rather than
+    // short-circuiting it into the `&&` expression: `compute_symbol_name`
+    // is called from `report_symbol_names` inside
+    // `tcx.dep_graph.with_ignore(...)` (for `#[rustc_symbol_name]` attr
+    // testing), and if the first forcing of
+    // `delayed_codegen_requests → collect_local_mono_items` happens
+    // under that ignore-context the resulting dep-graph state silently
+    // drops subsequent diagnostics. Eager evaluation guarantees the
+    // first forcing happens on a consistent path.
+    let is_delayed = tcx.is_transitively_delayed_instance(instance);
+    let avoid_cross_crate_conflicts =
+        (is_generic(instance) || is_globally_shared_function) && !is_delayed;
 
     let instantiating_crate = avoid_cross_crate_conflicts.then(compute_instantiating_crate);
 

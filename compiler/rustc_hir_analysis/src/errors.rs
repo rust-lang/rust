@@ -1958,3 +1958,73 @@ pub(crate) struct EiiDefkindMismatchStaticSafety {
     pub span: Span,
     pub eii_name: Symbol,
 }
+
+/// Emitted eagerly at trait-definition time when a trait that is part of a
+/// bounded intertrait casting graph (i.e. has some supertrait ancestor
+/// carrying `TraitMetadataTable<dyn Self>`) introduces a lifetime parameter
+/// that is not expressible through any lifetime parameter of the root
+/// supertrait. Such a lifetime would be erased during unsizing to
+/// `dyn Root` and could be manufactured at downcast time, which is unsound.
+#[derive(Diagnostic)]
+#[diag("trait graph rooted at `{$root}` is not downcast-safe")]
+#[note(
+    "downcasting to `dyn {$trait_name}` could manufacture the lifetime `{$lt_name}` \
+     which was erased when unsizing to `dyn {$root}`"
+)]
+#[help("add a lifetime parameter to `{$root}` that `{$lt_name}` can be bounded by")]
+pub(crate) struct TraitGraphNotDowncastSafe {
+    #[primary_span]
+    #[label("lifetime `{$lt_name}` is not bounded by any lifetime on `{$root}`")]
+    pub span: Span,
+    #[label("root supertrait defined here")]
+    pub root_span: Span,
+    pub trait_name: Symbol,
+    pub root: Symbol,
+    pub lt_name: Symbol,
+}
+
+/// Emitted when a trait declaration names `TraitMetadataTable<T>` as a
+/// supertrait where `T` is not a `dyn Trait` type. The `TraitMetadataTable`
+/// machinery's blanket impl requires `T: Pointee<Metadata = DynMetadata<T>>`,
+/// which holds only for trait objects.
+#[derive(Diagnostic)]
+#[diag("`TraitMetadataTable` type argument must be a trait object")]
+#[note(
+    "`TraitMetadataTable<T>` requires `T: Pointee<Metadata = DynMetadata<T>>`, \
+     which holds only for trait objects"
+)]
+#[help(
+    "use `dyn Self` to declare `{$trait_name}` as a cast root, or `dyn R` for a \
+     cast-root supertrait `R` of `{$trait_name}`"
+)]
+pub(crate) struct TmtArgMustBeDyn<'tcx> {
+    #[primary_span]
+    #[label("`{$arg_ty}` is not a `dyn Trait` type")]
+    pub span: Span,
+    pub arg_ty: Ty<'tcx>,
+    pub trait_name: Symbol,
+}
+
+/// Emitted when a trait declaration names `TraitMetadataTable<dyn X>` as a
+/// supertrait where `dyn X` is neither `dyn Self` (declaring this trait as
+/// a cast root) nor `dyn R` for a transitive supertrait `R` that is itself a
+/// cast root. Such a bound is satisfiable but places the trait in no
+/// reachable cast graph.
+#[derive(Diagnostic)]
+#[diag("`TraitMetadataTable` type argument does not match a cast root")]
+#[note(
+    "on a trait `Tr`, a `TraitMetadataTable<dyn X>` supertrait bound requires \
+     `X = Self` (declaring `Tr` as a cast root) or `X = R` for some transitive \
+     supertrait `R` of `Tr` that is itself a cast root"
+)]
+#[help(
+    "subtraits inherit `TraitMetadataTable<dyn Root>` from their root — \
+     the explicit bound is usually unnecessary"
+)]
+pub(crate) struct TmtArgMismatch {
+    #[primary_span]
+    #[label("`dyn {$arg_trait}` is not a (transitive) supertrait of `{$trait_name}`")]
+    pub span: Span,
+    pub arg_trait: Symbol,
+    pub trait_name: Symbol,
+}

@@ -2301,6 +2301,37 @@ options! {
         "output statistics about monomorphization collection"),
     dump_mono_stats_format: DumpMonoStatsFormat = (DumpMonoStatsFormat::Markdown, parse_dump_mono_stats, [UNTRACKED],
         "the format to use for -Z dump-mono-stats (`markdown` (default) or `json`)"),
+    dump_post_mono_mir: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
+        parse_switch_with_opt_path, [UNTRACKED],
+        "dump instance-specific MIR bodies produced by codegen_mir to files"),
+    dump_trait_cast_augmentation: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "dump augmentation decisions (CallerOutlivesEnv, composed mapping, BV \
+         nodes, outlives pairs, final augmented callee) per caller -> callee edge \
+         to stderr. `all` matches every augmentation; a substring matches callers \
+         whose printed name contains it."),
+    dump_trait_cast_canonicalization: bool = (false, parse_bool, [UNTRACKED],
+        "dump trait-cast cascade canonicalization decisions (depth-ordered \
+         patching, signature-group deduplication, codegen emission) to stderr \
+         (default: no)"),
+    dump_trait_cast_chain_composition: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "dump per-link details of trait-cast call_id chain composition \
+         (template input-slot maps, vid provenance resolutions, final walk-position \
+         mapping with None entries) to stderr. `all` matches every invocation; a \
+         substring matches callers whose printed name contains it."),
+    dump_trait_cast_erasure_safety: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "dump trait-cast erasure-safety analysis decisions (binder-var \
+         enumeration, where-clause derivation, supertrait chain, verdict) per \
+         query to stderr. `all` dumps every query; a substring matches queries \
+         whose super-trait printed name contains it."),
+    dump_trait_cast_sensitivity: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "dump per-instance trait-cast sensitivity metadata (CastRelevantLifetimes, \
+         sensitive call sites, pre-augmented callees) to stderr. `all` dumps every \
+         instance whose sensitivity is non-empty or which is directly sensitive; a \
+         substring matches instances whose printed name contains it."),
+    dump_trait_graph: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "dump computed trait graph info for root supertraits matching the filter. \
+         `all` dumps every root; a substring (e.g. `MyTrait`) matches roots whose \
+         printed type contains it. Output goes to stderr."),
     #[rustc_lint_opt_deny_field_access("use `Session::dwarf_version` instead of this field")]
     dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
@@ -2349,6 +2380,8 @@ options! {
         "whether each function should go in its own section"),
     future_incompat_test: bool = (false, parse_bool, [UNTRACKED],
         "forces all lints to be future incompatible, used for internal testing (default: no)"),
+    global_crate: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "explicitly set whether this crate is a 'global crate' (default: auto)"),
     graphviz_dark_mode: bool = (false, parse_bool, [UNTRACKED],
         "use dark-themed colors in graphviz output (default: no)"),
     graphviz_font: String = ("Courier, monospace".to_string(), parse_string, [UNTRACKED],
@@ -2555,6 +2588,9 @@ options! {
         "print the LLVM optimization passes being run (default: no)"),
     print_mono_items: bool = (false, parse_bool, [UNTRACKED],
         "print the result of the monomorphization collection pass (default: no)"),
+    print_trait_cast_stats: bool = (false, parse_bool, [UNTRACKED],
+        "print summary statistics for the trait-cast monomorphization \
+         pipeline to stderr (default: no)"),
     print_type_sizes: bool = (false, parse_bool, [UNTRACKED],
         "print layout information for each type encountered (default: no)"),
     proc_macro_backtrace: bool = (false, parse_bool, [UNTRACKED],

@@ -1,0 +1,85 @@
+error: `BrokenRoot` cannot be used as a cast root: missing `TraitMetadataTable` bound
+  --> $DIR/missing-root-bound.rs:35:13
+   |
+LL |     let _ = core::cast!(in dyn BrokenRoot, obj => dyn SomeTarget);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `TraitMetadataTable<dyn BrokenRoot>` is not a supertrait of `BrokenRoot`
+   |
+   = help: add `TraitMetadataTable<dyn BrokenRoot>` as a supertrait bound of `BrokenRoot`
+   = note: this error originates in the macro `core::cast` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `dyn SomeTarget: std::marker::TraitMetadataTable<dyn BrokenRoot>` is not satisfied
+  --> $DIR/missing-root-bound.rs:35:51
+   |
+LL |     let _ = core::cast!(in dyn BrokenRoot, obj => dyn SomeTarget);
+   |                                                   ^^^^^^^^^^^^^^ the trait `Sized` is not implemented for `dyn SomeTarget`
+   |
+   = note: required for `dyn SomeTarget` to implement `std::marker::TraitMetadataTable<dyn BrokenRoot>`
+note: required by a bound in `std::trait_cast::TraitCast::cast`
+  --> $SRC_DIR/core/src/trait_cast.rs:LL:COL
+
+error[E0277]: the trait bound `&dyn BrokenRoot: TraitCast<dyn BrokenRoot, dyn SomeTarget>` is not satisfied
+  --> $DIR/missing-root-bound.rs:35:44
+   |
+LL |     let _ = core::cast!(in dyn BrokenRoot, obj => dyn SomeTarget);
+   |             -------------------------------^^^-------------------
+   |             |                              |
+   |             |                              the trait `Sized` is not implemented for `dyn BrokenRoot`
+   |             required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `TraitCast<I, U>`:
+             &'r T
+             &'r mut T
+             Arc<T, A>
+             Box<T, A>
+             Rc<T, A>
+   = note: required for `dyn BrokenRoot` to implement `std::marker::TraitMetadataTable<dyn BrokenRoot>`
+   = note: required for `&dyn BrokenRoot` to implement `TraitCast<dyn BrokenRoot, dyn SomeTarget>`
+
+error[E0277]: the size for values of type `dyn SomeTarget` cannot be known at compilation time
+  --> $DIR/missing-root-bound.rs:35:44
+   |
+LL |     let _ = core::cast!(in dyn BrokenRoot, obj => dyn SomeTarget);
+   |             -------------------------------^^^-------------------
+   |             |                              |
+   |             |                              doesn't have a size known at compile-time
+   |             required by a bound introduced by this call
+   |
+   = help: the trait `Sized` is not implemented for `dyn SomeTarget`
+   = help: the following other types implement trait `TraitCast<I, U>`:
+             &'r T
+             &'r mut T
+             Arc<T, A>
+             Box<T, A>
+             Rc<T, A>
+   = note: required for `dyn SomeTarget` to implement `std::marker::TraitMetadataTable<dyn BrokenRoot>`
+   = note: required for `&dyn BrokenRoot` to implement `TraitCast<dyn BrokenRoot, dyn SomeTarget>`
+
+error: `BrokenRoot` cannot be used as a cast root: missing `TraitMetadataTable` bound
+  --> $DIR/missing-root-bound.rs:35:13
+   |
+LL |     let _ = core::cast!(in dyn BrokenRoot, obj => dyn SomeTarget);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `TraitMetadataTable<dyn BrokenRoot>` is not a supertrait of `BrokenRoot`
+   |
+   = help: add `TraitMetadataTable<dyn BrokenRoot>` as a supertrait bound of `BrokenRoot`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the macro `core::cast` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0277]: the trait bound `dyn SomeTarget: std::marker::TraitMetadataTable<dyn BrokenRoot>` is not satisfied
+  --> $DIR/missing-root-bound.rs:35:13
+   |
+LL |     let _ = core::cast!(in dyn BrokenRoot, obj => dyn SomeTarget);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Sized` is not implemented for `dyn SomeTarget`
+   |
+   = help: the following other types implement trait `TraitCast<I, U>`:
+             &'r T
+             &'r mut T
+             Arc<T, A>
+             Box<T, A>
+             Rc<T, A>
+   = note: required for `dyn SomeTarget` to implement `std::marker::TraitMetadataTable<dyn BrokenRoot>`
+   = note: required for `&dyn BrokenRoot` to implement `TraitCast<dyn BrokenRoot, dyn SomeTarget>`
+   = note: this error originates in the macro `core::cast` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

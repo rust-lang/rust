@@ -772,6 +772,9 @@ impl_ref_decoder! {<'tcx>
     rustc_span::def_id::LocalDefId,
     (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
     rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs,
+    Option<usize>,
+    (u32, ty::Instance<'tcx>),
+    rustc_middle::mono::LifetimeBVToParamMapping<'tcx>,
 }
 
 //- ENCODING -------------------------------------------------------------------

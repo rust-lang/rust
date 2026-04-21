@@ -149,7 +149,7 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
                 stack.push(bound_ty.skip_binder().into());
             }
         },
-        ty::GenericArgKind::Lifetime(_) => {}
+        ty::GenericArgKind::Lifetime(_) | ty::GenericArgKind::Outlives(_) => {}
         ty::GenericArgKind::Const(parent_ct) => match parent_ct.kind() {
             ty::ConstKind::Infer(_)
             | ty::ConstKind::Param(_)
