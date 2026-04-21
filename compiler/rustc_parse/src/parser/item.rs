@@ -2942,8 +2942,8 @@ impl<'a> Parser<'a> {
                         && !self.is_unsafe_foreign_mod()
                         // Rule out `async gen {` and `async gen move {`
                         && !self.is_async_gen_block()
-                        // Rule out `const unsafe auto` and `const unsafe trait`
-                        && !self.is_keyword_ahead(2, &[kw::Auto, kw::Trait])
+                        // Rule out `const unsafe auto` and `const unsafe trait` and `const unsafe impl`
+                        && !self.is_keyword_ahead(2, &[kw::Auto, kw::Trait, kw::Impl])
                     )
                 })
             // `extern ABI fn`
