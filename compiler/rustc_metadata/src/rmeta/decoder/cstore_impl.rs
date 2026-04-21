@@ -100,7 +100,7 @@ macro_rules! provide_one {
                     .root
                     .tables
                     .$name
-                    .get(($cdata, $tcx), $def_id.index)
+                    .get($cdata.cdata, $def_id.index)
                     .map(|lazy| lazy.decode(($cdata, $tcx)))
                     .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
@@ -109,7 +109,7 @@ macro_rules! provide_one {
     ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_defaulted_array }) => {
         provide_one! {
             $tcx, $def_id, $other, $cdata, $name => {
-                let lazy = $cdata.root.tables.$name.get(($cdata, $tcx), $def_id.index);
+                let lazy = $cdata.root.tables.$name.get($cdata.cdata, $def_id.index);
                 let value = if lazy.is_default() {
                     &[] as &[_]
                 } else {
@@ -127,7 +127,7 @@ macro_rules! provide_one {
                     .root
                     .tables
                     .$name
-                    .get(($cdata, $tcx), $def_id.index)
+                    .get($cdata.cdata, $def_id.index)
                     .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
         }
@@ -264,7 +264,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .coerce_unsized_info
-            .get((cdata, tcx), def_id.index)
+            .get(cdata.cdata, def_id.index)
             .map(|lazy| lazy.decode((cdata, tcx)))
             .process_decoded(tcx, || panic!("{def_id:?} does not have coerce_unsized_info"))) }
     mir_const_qualif => { table }
@@ -280,7 +280,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .eval_static_initializer
-            .get((cdata, tcx), def_id.index)
+            .get(cdata.cdata, def_id.index)
             .map(|lazy| lazy.decode((cdata, tcx)))
             .unwrap_or_else(|| panic!("{def_id:?} does not have eval_static_initializer")))
     }
@@ -293,7 +293,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .deduced_param_attrs
-            .get((cdata, tcx), def_id.index)
+            .get(cdata.cdata, def_id.index)
             .map(|lazy| {
                 &*tcx.arena.alloc_from_iter(lazy.decode((cdata, tcx)))
             })
@@ -306,7 +306,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .trait_impl_trait_tys
-            .get((cdata, tcx), def_id.index)
+            .get(cdata.cdata, def_id.index)
             .map(|lazy| lazy.decode((cdata, tcx)))
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
     }
