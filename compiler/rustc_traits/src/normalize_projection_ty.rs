@@ -2,7 +2,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::canonical::{Canonical, QueryResponse};
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
+use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
 use rustc_trait_selection::traits::query::normalize::NormalizationResult;
@@ -86,10 +86,14 @@ fn normalize_canonicalized_free_alias<'tcx>(
                 },
             );
             ocx.register_obligations(obligations);
-            let normalized_term = if goal.kind(tcx).is_type() {
-                tcx.type_of(goal.def_id()).instantiate(tcx, goal.args).skip_norm_wip().into()
-            } else {
-                tcx.const_of_item(goal.def_id()).instantiate(tcx, goal.args).skip_norm_wip().into()
+            let normalized_term = match goal.kind(tcx) {
+                ty::AliasTermKind::FreeTy { def_id } => {
+                    tcx.type_of(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
+                }
+                ty::AliasTermKind::FreeConst { def_id } => {
+                    tcx.const_of_item(def_id).instantiate(tcx, goal.args).skip_norm_wip().into()
+                }
+                kind => panic!("expected free alias, found {kind:?}"),
             };
             Ok(NormalizationResult { normalized_term })
         },

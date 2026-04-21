@@ -52,13 +52,14 @@ where
                 .map(|pred| goal.with(cx, pred)),
         );
 
-        let normalized = if inherent.kind(cx).is_type() {
-            cx.type_of(inherent.def_id()).instantiate(cx, inherent_args).skip_norm_wip().into()
-        } else {
-            cx.const_of_item(inherent.def_id())
-                .instantiate(cx, inherent_args)
-                .skip_norm_wip()
-                .into()
+        let normalized = match inherent.kind(cx) {
+            ty::AliasTermKind::InherentTy { def_id } => {
+                cx.type_of(def_id).instantiate(cx, inherent_args).skip_norm_wip().into()
+            }
+            ty::AliasTermKind::InherentConst { def_id } => {
+                cx.const_of_item(def_id).instantiate(cx, inherent_args).skip_norm_wip().into()
+            }
+            kind => panic!("expected inherent alias, found {kind:?}"),
         };
         self.instantiate_normalizes_to_term(goal, normalized);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

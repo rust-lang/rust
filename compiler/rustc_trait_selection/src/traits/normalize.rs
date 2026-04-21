@@ -339,22 +339,22 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                 }),
         );
         self.depth += 1;
-        let res = if free.kind(infcx.tcx).is_type() {
-            infcx
+        let res = match free.kind(infcx.tcx) {
+            ty::AliasTermKind::FreeTy { def_id } => infcx
                 .tcx
-                .type_of(free.def_id())
+                .type_of(def_id)
                 .instantiate(infcx.tcx, free.args)
                 .skip_norm_wip()
                 .fold_with(self)
-                .into()
-        } else {
-            infcx
+                .into(),
+            ty::AliasTermKind::FreeConst { def_id } => infcx
                 .tcx
-                .const_of_item(free.def_id())
+                .const_of_item(def_id)
                 .instantiate(infcx.tcx, free.args)
                 .skip_norm_wip()
                 .fold_with(self)
-                .into()
+                .into(),
+            kind => panic!("expected free alias, found {kind:?}"),
         };
         self.depth -= 1;
         res

@@ -545,10 +545,14 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
         ));
     }
 
-    let term: Term<'tcx> = if alias_term.kind(tcx).is_type() {
-        tcx.type_of(alias_term.def_id()).instantiate(tcx, args).skip_norm_wip().into()
-    } else {
-        tcx.const_of_item(alias_term.def_id()).instantiate(tcx, args).skip_norm_wip().into()
+    let term: Term<'tcx> = match alias_term.kind(tcx) {
+        ty::AliasTermKind::InherentTy { def_id } => {
+            tcx.type_of(def_id).instantiate(tcx, args).skip_norm_wip().into()
+        }
+        ty::AliasTermKind::InherentConst { def_id } => {
+            tcx.const_of_item(def_id).instantiate(tcx, args).skip_norm_wip().into()
+        }
+        kind => panic!("expected inherent alias, found {kind:?}"),
     };
 
     let mut term = selcx.infcx.resolve_vars_if_possible(term);
@@ -2029,12 +2033,6 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let args = obligation.predicate.args.rebase_onto(tcx, trait_def_id, args);
     let args = translate_args(selcx.infcx, param_env, impl_def_id, args, assoc_term.defining_node);
 
-    let term = if obligation.predicate.kind(tcx).is_type() {
-        tcx.type_of(assoc_term.item.def_id).map_bound(|ty| ty.into())
-    } else {
-        tcx.const_of_item(assoc_term.item.def_id).map_bound(|ct| ct.into())
-    };
-
     let progress = if !tcx.check_args_compatible(assoc_term.item.def_id, args) {
         let msg = "impl item and trait item have different parameters";
         let span = obligation.cause.span;
@@ -2046,7 +2044,28 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         Progress { term: err, obligations: nested }
     } else {
         assoc_term_own_obligations(selcx, obligation, &mut nested);
-        Progress { term: term.instantiate(tcx, args).skip_norm_wip(), obligations: nested }
+
+        let term = match obligation.predicate.kind(tcx) {
+            ty::AliasTermKind::ProjectionTy { .. } => {
+                tcx.type_of(assoc_term.item.def_id).instantiate(tcx, args).skip_norm_wip().into()
+            }
+            ty::AliasTermKind::ProjectionConst { .. }
+                if tcx.is_type_const(assoc_term.item.def_id) =>
+            {
+                tcx.const_of_item(assoc_term.item.def_id)
+                    .instantiate(tcx, args)
+                    .skip_norm_wip()
+                    .into()
+            }
+            ty::AliasTermKind::ProjectionConst { .. } => {
+                let uv = ty::UnevaluatedConst::new(assoc_term.item.def_id, args);
+                let ct = ty::Const::new_unevaluated(tcx, uv);
+                super::evaluate_const(selcx.infcx, ct, param_env).into()
+            }
+            kind => panic!("expected projection alias, found {kind:?}"),
+        };
+
+        Progress { term, obligations: nested }
     };
     Ok(Projected::Progress(progress))
 }
