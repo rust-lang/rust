@@ -541,19 +541,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             hir::AssocItemConstraintKind::Equality { term } => {
                 let term = match term {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
-                    hir::Term::Const(ct) => {
-                        let ty = projection_term.map_bound(|alias| {
-                            tcx.type_of(alias.def_id).instantiate(tcx, alias.args).skip_norm_wip()
-                        });
-                        let ty = check_assoc_const_binding_type(
-                            self,
+                    hir::Term::Const(ct) => self
+                        .lower_assoc_const_binding_rhs(
+                            ct,
                             constraint.ident,
-                            ty,
                             constraint.hir_id,
-                        );
-
-                        self.lower_const_arg(ct, ty).into()
-                    }
+                            projection_term,
+                        )
+                        .into(),
                 };
 
                 // Find any late-bound regions declared in `ty` that are not
@@ -852,6 +847,23 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // and it's no coincidence why.
         let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
         Ok(ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args).skip_norm_wip())
+    }
+
+    /// Derives the expected type of an associated const,
+    /// validates it, and lowers the RHS const arg against that type
+    pub(crate) fn lower_assoc_const_binding_rhs(
+        &self,
+        ct: &'tcx hir::ConstArg<'tcx>,
+        assoc_ident: Ident,
+        constraint_hir_id: hir::HirId,
+        projection_term: ty::Binder<'tcx, ty::AliasTerm<'tcx>>,
+    ) -> ty::Const<'tcx> {
+        let tcx = self.tcx();
+        let ty = projection_term.map_bound(|alias| {
+            tcx.type_of(alias.def_id).instantiate(tcx, alias.args).skip_norm_wip()
+        });
+        let ty = check_assoc_const_binding_type(self, assoc_ident, ty, constraint_hir_id);
+        self.lower_const_arg(ct, ty)
     }
 }
 
