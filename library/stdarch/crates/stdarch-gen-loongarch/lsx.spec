@@ -228,21 +228,25 @@ asm-fmts = vd, vj, ui6
 data-types = V2DI, V2DI, UQI
 
 /// lsx_vbitclr_b
+impl = portable
 name = lsx_vbitclr_b
 asm-fmts = vd, vj, vk
 data-types = UV16QI, UV16QI, UV16QI
 
 /// lsx_vbitclr_h
+impl = portable
 name = lsx_vbitclr_h
 asm-fmts = vd, vj, vk
 data-types = UV8HI, UV8HI, UV8HI
 
 /// lsx_vbitclr_w
+impl = portable
 name = lsx_vbitclr_w
 asm-fmts = vd, vj, vk
 data-types = UV4SI, UV4SI, UV4SI
 
 /// lsx_vbitclr_d
+impl = portable
 name = lsx_vbitclr_d
 asm-fmts = vd, vj, vk
 data-types = UV2DI, UV2DI, UV2DI
@@ -268,21 +272,25 @@ asm-fmts = vd, vj, ui6
 data-types = UV2DI, UV2DI, UQI
 
 /// lsx_vbitset_b
+impl = portable
 name = lsx_vbitset_b
 asm-fmts = vd, vj, vk
 data-types = UV16QI, UV16QI, UV16QI
 
 /// lsx_vbitset_h
+impl = portable
 name = lsx_vbitset_h
 asm-fmts = vd, vj, vk
 data-types = UV8HI, UV8HI, UV8HI
 
 /// lsx_vbitset_w
+impl = portable
 name = lsx_vbitset_w
 asm-fmts = vd, vj, vk
 data-types = UV4SI, UV4SI, UV4SI
 
 /// lsx_vbitset_d
+impl = portable
 name = lsx_vbitset_d
 asm-fmts = vd, vj, vk
 data-types = UV2DI, UV2DI, UV2DI
@@ -308,21 +316,25 @@ asm-fmts = vd, vj, ui6
 data-types = UV2DI, UV2DI, UQI
 
 /// lsx_vbitrev_b
+impl = portable
 name = lsx_vbitrev_b
 asm-fmts = vd, vj, vk
 data-types = UV16QI, UV16QI, UV16QI
 
 /// lsx_vbitrev_h
+impl = portable
 name = lsx_vbitrev_h
 asm-fmts = vd, vj, vk
 data-types = UV8HI, UV8HI, UV8HI
 
 /// lsx_vbitrev_w
+impl = portable
 name = lsx_vbitrev_w
 asm-fmts = vd, vj, vk
 data-types = UV4SI, UV4SI, UV4SI
 
 /// lsx_vbitrev_d
+impl = portable
 name = lsx_vbitrev_d
 asm-fmts = vd, vj, vk
 data-types = UV2DI, UV2DI, UV2DI

@@ -191,6 +191,18 @@ lsx_vrepli_b
 lsx_vrepli_h
 lsx_vrepli_w
 lsx_vrepli_d
+lsx_vbitclr_b
+lsx_vbitclr_h
+lsx_vbitclr_w
+lsx_vbitclr_d
+lsx_vbitset_b
+lsx_vbitset_h
+lsx_vbitset_w
+lsx_vbitset_d
+lsx_vbitrev_b
+lsx_vbitrev_h
+lsx_vbitrev_w
+lsx_vbitrev_d
 
 # LASX intrinsics
 lasx_xvsll_b
@@ -379,3 +391,15 @@ lasx_xvrepli_b
 lasx_xvrepli_h
 lasx_xvrepli_w
 lasx_xvrepli_d
+lasx_xvbitclr_b
+lasx_xvbitclr_h
+lasx_xvbitclr_w
+lasx_xvbitclr_d
+lasx_xvbitset_b
+lasx_xvbitset_h
+lasx_xvbitset_w
+lasx_xvbitset_d
+lasx_xvbitrev_b
+lasx_xvbitrev_h
+lasx_xvbitrev_w
+lasx_xvbitrev_d
