@@ -12,6 +12,7 @@ rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_infer = { path = "../rustc_infer" }
+rustc_lint_defs = { path = "../rustc_lint_defs" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_next_trait_solver = { path = "../rustc_next_trait_solver" }

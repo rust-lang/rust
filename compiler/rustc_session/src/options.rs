@@ -2667,6 +2667,8 @@ written to standard error output)"),
         "prefer dynamic linking to static linking for staticlibs (default: no)"),
     strict_init_checks: bool = (false, parse_bool, [TRACKED],
         "control if mem::uninitialized and mem::zeroed panic on more UB"),
+    strict_projection_item_bounds: bool = (false, parse_bool, [TRACKED],
+        "check item bounds on projection rhs for wellformedness"),
     #[rustc_lint_opt_deny_field_access("use `Session::teach` instead of this field")]
     teach: bool = (false, parse_bool, [TRACKED],
         "show extended diagnostic help (default: no)"),
