@@ -641,4 +641,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New config section `pgo` was introduced, to configure PGO profiling options. The `--rust-profile-use`/`--rust-profile-generate`/`--llvm-profile-use`/`--llvm-profile-generate` flags and the `rust.profile-use`/`rust.profile-generate` config options have been deprecated.",
     },
+    ChangeInfo {
+        change_id: 155617,
+        severity: ChangeSeverity::Warning,
+        summary: "`jemalloc` options are replaced with `override-allocator` which take allocator names such as `jemalloc`",
+    },
 ];
