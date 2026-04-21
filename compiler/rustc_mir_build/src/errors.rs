@@ -1459,3 +1459,13 @@ pub(crate) struct ConstContinueUnknownJumpTarget {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("number of conditions in decision ({$num_conditions}) exceeds limit ({$max_conditions}), so MC/DC analysis will not count this expression
+")]
+pub(crate) struct MCDCNumberConditionExceeded {
+    #[primary_span]
+    pub span: Span,
+    pub max_conditions: usize,
+    pub num_conditions: usize,
+}

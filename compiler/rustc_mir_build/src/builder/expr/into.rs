@@ -160,6 +160,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let condition_scope = this.local_scope();
                 let source_info = this.source_info(expr.span);
 
+                // Build the binary decision diagram from for MC/DC purposes if
+                // enabled.
+                this.visit_logical_operator(op, expr.span);
+
                 // We first evaluate the left-hand side of the predicate ...
                 let (then_block, else_block) =
                     this.in_if_then_scope(condition_scope, expr.span, |this| {

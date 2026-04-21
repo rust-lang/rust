@@ -50,6 +50,24 @@ rustc_index::newtype_index! {
     pub struct ExpressionId {}
 }
 
+rustc_index::newtype_index! {
+    /// ID of a mcdc condition. Used by llvm to check mcdc coverage.
+    ///
+    /// Note: the maximum number of condition within a decision supported by
+    /// llvm is 32767, thus the max ID is 0x7FFE.
+    #[stable_hash]
+    #[encodable]
+    #[orderable]
+    #[max = 0x7FFE]
+    #[debug_format = "ConditionId({})"]
+    pub struct ConditionId {}
+}
+
+impl ConditionId {
+    pub const START: Self = Self::from_usize(0);
+    pub const MAX_AS_USIZE: usize = Self::MAX.as_usize();
+}
+
 /// Enum that can hold a constant zero value, the ID of an physical coverage
 /// counter, or the ID of a coverage-counter expression.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -182,6 +200,33 @@ pub struct BranchSpan {
     pub span: Span,
     pub true_marker: BlockMarkerId,
     pub false_marker: BlockMarkerId,
+}
+
+/// Node in a BDD (Binary Decision Diagram) for MCDC analysis
+#[derive(Copy, Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
+pub struct ConditionInfo {
+    pub condition_id: ConditionId,
+    pub true_next_id: Option<ConditionId>,
+    pub false_next_id: Option<ConditionId>,
+}
+
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
+pub struct MCDCConditionSpan {
+    pub span: Span,
+    pub condition_info: ConditionInfo,
+    pub true_marker: BlockMarkerId,
+    pub false_marker: BlockMarkerId,
+}
+
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
+pub struct MCDCDecisionSpan {
+    pub span: Span,
+    pub end_markers: Vec<BlockMarkerId>,
+    pub decision_depth: u16,
+    pub num_conditions: usize,
 }
 
 /// Contains information needed during codegen, obtained by inspecting the

@@ -8,7 +8,10 @@ use rustc_middle::thir::{ExprId, ExprKind, Pat, Thir};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 
+use crate::builder::coverageinfo::mcdc::MCDCInfoBuilder;
 use crate::builder::{Builder, CFG};
+
+mod mcdc;
 
 /// Collects coverage-related information during MIR building, to eventually be
 /// turned into a function's [`CoverageInfoHi`] when MIR building is complete.
@@ -20,6 +23,9 @@ pub(crate) struct CoverageInfoBuilder {
 
     /// Present if branch coverage is enabled.
     branch_info: Option<BranchInfo>,
+
+    /// Present if mcdc is enabled.
+    mcdc_info: Option<MCDCInfoBuilder>,
 }
 
 #[derive(Default)]
@@ -78,6 +84,7 @@ impl CoverageInfoBuilder {
             nots: FxHashMap::default(),
             markers: BlockMarkerGen::default(),
             branch_info: tcx.sess.instrument_coverage_branch().then(BranchInfo::default),
+            mcdc_info: tcx.sess.instrument_coverage_mcdc().then(MCDCInfoBuilder::default),
         })
     }
 
@@ -129,26 +136,41 @@ impl CoverageInfoBuilder {
 
     fn register_two_way_branch<'tcx>(
         &mut self,
+        tcx: TyCtxt<'tcx>,
         cfg: &mut CFG<'tcx>,
         source_info: SourceInfo,
         true_block: BasicBlock,
         false_block: BasicBlock,
     ) {
-        // Bail out if branch coverage is not enabled.
-        let Some(branch_info) = self.branch_info.as_mut() else { return };
+        let mut inject_block_marker =
+            |bb: BasicBlock| self.markers.inject_block_marker(cfg, source_info, bb);
 
-        let true_marker = self.markers.inject_block_marker(cfg, source_info, true_block);
-        let false_marker = self.markers.inject_block_marker(cfg, source_info, false_block);
+        // If MC/DC is enabled, register the branch via MCDC
+        if let Some(mcdc_info) = self.mcdc_info.as_mut() {
+            let true_marker = inject_block_marker(true_block);
+            let false_marker = inject_block_marker(false_block);
 
-        branch_info.branch_spans.push(BranchSpan {
-            span: source_info.span,
-            true_marker,
-            false_marker,
-        });
+            mcdc_info.record_leaf_condition(tcx, source_info.span, true_marker, false_marker);
+        } else if let Some(branch_info) = self.branch_info.as_mut() {
+            // Else, if branch/condition is enabled, register the branch here
+            let true_marker = inject_block_marker(true_block);
+            let false_marker = inject_block_marker(false_block);
+
+            branch_info.branch_spans.push(BranchSpan {
+                span: source_info.span,
+                true_marker,
+                false_marker,
+            });
+        }
     }
 
     pub(crate) fn into_done(self) -> Box<CoverageInfoHi> {
-        let Self { nots: _, markers: BlockMarkerGen { num_block_markers }, branch_info } = self;
+        let Self {
+            nots: _,
+            markers: BlockMarkerGen { num_block_markers },
+            branch_info,
+            mcdc_info: _,
+        } = self;
 
         let branch_spans =
             branch_info.map(|branch_info| branch_info.branch_spans).unwrap_or_default();
@@ -159,8 +181,12 @@ impl CoverageInfoBuilder {
     }
 
     pub(crate) fn as_done(&self) -> Box<CoverageInfoHi> {
-        let &Self { nots: _, markers: BlockMarkerGen { num_block_markers }, ref branch_info } =
-            self;
+        let &Self {
+            nots: _,
+            markers: BlockMarkerGen { num_block_markers },
+            ref branch_info,
+            mcdc_info: _,
+        } = self;
 
         let branch_spans = branch_info
             .as_ref()
@@ -223,7 +249,13 @@ impl<'tcx> Builder<'_, 'tcx> {
             mir::TerminatorKind::if_(mir::Operand::Copy(place), true_block, false_block),
         );
 
-        coverage_info.register_two_way_branch(&mut self.cfg, source_info, true_block, false_block);
+        coverage_info.register_two_way_branch(
+            self.tcx,
+            &mut self.cfg,
+            source_info,
+            true_block,
+            false_block,
+        );
 
         let join_block = self.cfg.start_new_block();
         self.cfg.goto(true_block, source_info, join_block);
@@ -254,7 +286,13 @@ impl<'tcx> Builder<'_, 'tcx> {
 
         let source_info = SourceInfo { span: self.thir[expr_id].span, scope: self.source_scope };
 
-        coverage_info.register_two_way_branch(&mut self.cfg, source_info, then_block, else_block);
+        coverage_info.register_two_way_branch(
+            self.tcx,
+            &mut self.cfg,
+            source_info,
+            then_block,
+            else_block,
+        );
     }
 
     /// If branch coverage is enabled, inject marker statements into `true_block`
@@ -271,6 +309,12 @@ impl<'tcx> Builder<'_, 'tcx> {
         let Some(coverage_info) = self.coverage_info.as_mut() else { return };
 
         let source_info = SourceInfo { span: pattern.span, scope: self.source_scope };
-        coverage_info.register_two_way_branch(&mut self.cfg, source_info, true_block, false_block);
+        coverage_info.register_two_way_branch(
+            self.tcx,
+            &mut self.cfg,
+            source_info,
+            true_block,
+            false_block,
+        );
     }
 }
