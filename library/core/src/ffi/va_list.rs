@@ -213,14 +213,15 @@ crate::cfg_select! {
 /// assert_eq!(unsafe { my_func(3, 42i32, -7i32, 20i32) }, 55);
 /// ```
 ///
-/// The [`VaList::arg`] method can be used to read an argument from the list. This method
-/// automatically advances the `VaList` to the next argument. The C equivalent is `va_arg`.
+/// The [`VaList::arg`] method reads the next argument from the variable argument list,
+/// and is equivalent to C `va_arg`.
 ///
 /// Cloning a `VaList` performs the equivalent of C `va_copy`, producing an independent cursor
 /// that arguments can be read from without affecting the original. Dropping a `VaList` performs
 /// the equivalent of C `va_end`.
 ///
-/// This can be used across an FFI boundary, and fully matches the platform's `va_list`.
+/// A `VaList` can be used across an FFI boundary, and fully matches the platform's `va_list` in
+/// terms of layout and ABI.
 #[repr(transparent)]
 #[lang = "va_list"]
 pub struct VaList<'a> {
@@ -285,17 +286,33 @@ mod sealed {
 
 /// Types that are valid to read using [`VaList::arg`].
 ///
+/// This trait is implemented for primitive types that have a variable argument application-binary
+/// interface (ABI) on the current platform. It is always implemented for:
+///
+/// - [`c_int`], [`c_long`] and [`c_longlong`]
+/// - [`c_uint`], [`c_ulong`] and [`c_ulonglong`]
+/// - [`c_double`]
+/// - `*const T` and `*mut T`
+///
+/// Implementations for e.g. `i32` or `usize` shouldn't be relied upon directly,
+/// because they may not be available on all platforms.
+///
 /// # Safety
 ///
-/// The standard library implements this trait for primitive types that are
-/// expected to have a variable argument application-binary interface (ABI) on all
-/// platforms.
-///
-/// When C passes variable arguments, integers smaller than [`c_int`] and floats smaller
-/// than [`c_double`] are implicitly promoted to [`c_int`] and [`c_double`] respectively.
-/// Implementing this trait for types that are subject to this promotion rule is invalid.
+/// When C passes variable arguments, signed integers smaller than [`c_int`] are promoted
+/// to [`c_int`], unsigned integers smaller than [`c_uint`] are promoted to [`c_uint`],
+/// and [`c_float`] is promoted to [`c_double`]. Implementing this trait for types that are
+/// subject to this promotion rule is invalid.
 ///
 /// [`c_int`]: core::ffi::c_int
+/// [`c_long`]: core::ffi::c_long
+/// [`c_longlong`]: core::ffi::c_longlong
+///
+/// [`c_uint`]: core::ffi::c_uint
+/// [`c_ulong`]: core::ffi::c_ulong
+/// [`c_ulonglong`]: core::ffi::c_ulonglong
+///
+/// [`c_float`]: core::ffi::c_float
 /// [`c_double`]: core::ffi::c_double
 // We may unseal this trait in the future, but currently our `va_arg` implementations don't support
 // types with an alignment larger than 8, or with a non-scalar layout. Inline assembly can be used
@@ -352,14 +369,16 @@ const _: () = {
     va_arg_safe_check::<crate::ffi::c_int>();
     va_arg_safe_check::<crate::ffi::c_uint>();
     va_arg_safe_check::<crate::ffi::c_long>();
+
     va_arg_safe_check::<crate::ffi::c_ulong>();
     va_arg_safe_check::<crate::ffi::c_longlong>();
     va_arg_safe_check::<crate::ffi::c_ulonglong>();
+
     va_arg_safe_check::<crate::ffi::c_double>();
 };
 
 impl<'f> VaList<'f> {
-    /// Read an argument from the variable argument list, and advance to the next argument.
+    /// Read the next argument from the variable argument list.
     ///
     /// Only types that implement [`VaArgSafe`] can be read from a variable argument list.
     ///
