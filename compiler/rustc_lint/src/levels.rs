@@ -738,12 +738,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         let attr_index = attr_index.try_into().unwrap();
                         let expectation_id = match source_hir_id {
                             None => LintExpectationId::Unstable { attr_id, lint_index },
-                            Some(hir_id) => LintExpectationId::Stable {
-                                hir_id,
-                                attr_id,
-                                lint_index,
-                                attr_index,
-                            },
+                            Some(hir_id) => {
+                                LintExpectationId::Stable { hir_id, lint_index, attr_index }
+                            }
                         };
 
                         self.simple_add(Level::Expect, lint, *reason, Some(expectation_id));

@@ -110,7 +110,7 @@ pub enum LintExpectationId {
     /// stable and can be cached. The additional index ensures that nodes with
     /// several expectations can correctly match diagnostics to the individual
     /// expectation.
-    Stable { hir_id: HirId, attr_id: AttrId, attr_index: u16, lint_index: u16 },
+    Stable { hir_id: HirId, attr_index: u16, lint_index: u16 },
 }
 
 impl LintExpectationId {
