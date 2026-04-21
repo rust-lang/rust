@@ -3304,12 +3304,6 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
-#[diag("unknown `doc(test)` attribute `{$name}`")]
-pub(crate) struct DocTestUnknown {
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#![doc(test(...)]` does not take a literal")]
 pub(crate) struct DocTestLiteral;
 
