@@ -1277,14 +1277,15 @@ fn create_coroutine_resume_function<'tcx>(
     if can_return {
         let block = match transform.coroutine_kind {
             CoroutineKind::Desugared(CoroutineDesugaring::Async, _)
-            | CoroutineKind::Coroutine(_) => {
+                if tcx.is_async_drop_in_place_coroutine(body.source.def_id()) =>
+            {
                 // For `async_drop_in_place<T>::{closure}` we just keep return Poll::Ready,
                 // because async drop of such coroutine keeps polling original coroutine
-                if tcx.is_async_drop_in_place_coroutine(body.source.def_id()) {
-                    insert_poll_ready_block(tcx, body)
-                } else {
-                    insert_panic_block(tcx, body, ResumedAfterReturn(transform.coroutine_kind))
-                }
+                insert_poll_ready_block(tcx, body)
+            }
+            CoroutineKind::Desugared(CoroutineDesugaring::Async, _)
+            | CoroutineKind::Coroutine(_) => {
+                insert_panic_block(tcx, body, ResumedAfterReturn(transform.coroutine_kind))
             }
             CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)
             | CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
