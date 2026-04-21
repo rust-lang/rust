@@ -1,6 +1,7 @@
 //! Field Reflection
 
 use crate::fmt;
+use crate::hash::{Hash, Hasher};
 use crate::marker::PhantomData;
 
 /// Field Representing Type
@@ -78,6 +79,43 @@ impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Default
 {
     fn default() -> Self {
         Self { _phantom: PhantomData::default() }
+    }
+}
+
+impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Hash
+    for FieldRepresentingType<T, VARIANT, FIELD>
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self._phantom.hash(state);
+    }
+}
+
+impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> PartialEq
+    for FieldRepresentingType<T, VARIANT, FIELD>
+{
+    fn eq(&self, other: &Self) -> bool {
+        self._phantom == other._phantom
+    }
+}
+
+impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Eq
+    for FieldRepresentingType<T, VARIANT, FIELD>
+{
+}
+
+impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> PartialOrd
+    for FieldRepresentingType<T, VARIANT, FIELD>
+{
+    fn partial_cmp(&self, other: &Self) -> Option<crate::cmp::Ordering> {
+        self._phantom.partial_cmp(&other._phantom)
+    }
+}
+
+impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Ord
+    for FieldRepresentingType<T, VARIANT, FIELD>
+{
+    fn cmp(&self, other: &Self) -> crate::cmp::Ordering {
+        self._phantom.cmp(&other._phantom)
     }
 }
 
