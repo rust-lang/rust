@@ -39,7 +39,7 @@
 use std::iter;
 
 use ast::visit::Visitor;
-use hir::def::{DefKind, PartialRes, Res};
+use hir::def::{DefKind, Res};
 use hir::{BodyId, HirId};
 use rustc_abi::ExternAbi;
 use rustc_ast as ast;
@@ -677,8 +677,7 @@ impl SelfResolver<'_, '_, '_> {
             && let Some(Res::Local(sig_id)) = res.full_res()
             && sig_id == self.path_id
         {
-            let new_res = PartialRes::new(Res::Local(self.self_param_id));
-            self.ctxt.partial_res_overrides.insert(id, new_res);
+            self.ctxt.partial_res_overrides.insert(id, self.self_param_id);
         }
     }
 }

@@ -145,7 +145,9 @@ struct LoweringContext<'a, 'hir> {
     /// Maps the `NodeId`s created during lowering to `LocalDefId`s.
     node_id_to_def_id: NodeMap<LocalDefId>,
     /// Overlay over resolver's `partial_res_map` used by delegation.
-    partial_res_overrides: NodeMap<PartialRes>,
+    /// This only contains `PartialRes::new(Res::Local(self_param_id))`,
+    /// so we only store `self_param_id`.
+    partial_res_overrides: NodeMap<NodeId>,
 
     allow_contracts: Arc<[Symbol]>,
     allow_try_trait: Arc<[Symbol]>,
@@ -261,6 +263,9 @@ impl<'tcx> ResolverAstLowering<'tcx> {
             return None;
         }
 
+        // We do not need to look at `partial_res_overrides`. That map only contains overrides for
+        // `self_param` locals. And here we are looking for the function definition that `expr`
+        // resolves to.
         let def_id = self.partial_res_map.get(&expr.id)?.full_res()?.opt_def_id()?;
 
         // We only support cross-crate argument rewriting. Uses
@@ -669,10 +674,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
-        self.partial_res_overrides
-            .get(&id)
-            .or_else(|| self.resolver.partial_res_map.get(&id))
-            .copied()
+        match self.partial_res_overrides.get(&id) {
+            Some(self_param_id) => Some(PartialRes::new(Res::Local(*self_param_id))),
+            None => self.resolver.partial_res_map.get(&id).copied(),
+        }
     }
 
     /// Given the id of an owner node in the AST, returns the corresponding `OwnerId`.
