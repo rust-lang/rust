@@ -1,11 +1,3 @@
-warning: `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
-  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:7:1
-   |
-LL | #[diagnostic::on_unimplemented(message = "Baz")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
-
 warning: there is no parameter `DoesNotExist` on trait `Test`
   --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:31:44
    |
@@ -23,6 +15,14 @@ LL | #[diagnostic::on_unimplemented(unsupported = "foo")]
    |
    = help: only `message`, `note` and `label` are allowed as options
    = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: `#[diagnostic::on_unimplemented]` can only be applied to trait definitions
+  --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:7:1
+   |
+LL | #[diagnostic::on_unimplemented(message = "Baz")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 warning: malformed `diagnostic::on_unimplemented` attribute
   --> $DIR/do_not_fail_parsing_on_invalid_options_1.rs:11:50

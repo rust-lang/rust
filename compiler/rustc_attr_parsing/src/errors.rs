@@ -252,3 +252,32 @@ pub(crate) struct DocUnknownAny {
 #[derive(Diagnostic)]
 #[diag("expected boolean for `#[doc(auto_cfg = ...)]`")]
 pub(crate) struct DocAutoCfgWrongLiteral;
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_const]` can only be applied to non-const trait implementations")]
+pub(crate) struct DiagnosticOnConstOnlyForTraitImpls {
+    #[label("not a trait implementation")]
+    pub target_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_move]` can only be applied to enums, structs or unions")]
+pub(crate) struct DiagnosticOnMoveOnlyForAdt;
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_unimplemented]` can only be applied to trait definitions")]
+pub(crate) struct DiagnosticOnUnimplementedOnlyForTraits;
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_unknown]` can only be applied to `use` statements")]
+pub(crate) struct DiagnosticOnUnknownOnlyForImports {
+    #[label("not an import")]
+    pub target_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::do_not_recommend]` can only be placed on trait implementations")]
+pub(crate) struct IncorrectDoNotRecommendLocation {
+    #[label("not a trait implementation")]
+    pub target_span: Span,
+}
