@@ -1,3 +1,5 @@
+#![expect(incomplete_features)]
+#![feature(ergonomic_clones)]
 #![warn(clippy::redundant_closure_call)]
 #![allow(clippy::redundant_async_block)]
 #![allow(clippy::type_complexity)]
@@ -110,6 +112,37 @@ mod issue11707 {
 
     fn demo() {
         spawn_on((|| async move {})());
+        //~^ redundant_closure_call
+    }
+
+    fn demo_with_captures() {
+        let name = String::from("world");
+        spawn_on((|| async move { drop(format!("hello, {name}")) })());
+        //~^ redundant_closure_call
+    }
+
+    fn demo_async_move_closure() {
+        let name = String::from("world");
+        spawn_on((async move || drop(format!("hello, {name}")))());
+        //~^ redundant_closure_call
+    }
+}
+
+mod issue16232 {
+    use core::future::Future;
+
+    fn spawn_on(fut: impl Future<Output = ()>) {}
+
+    fn closure_async_use_block() {
+        let name = String::from("world");
+        #[rustfmt::skip]
+        spawn_on((|| async use { drop(format!("hello, {name:?}")) })());
+        //~^ redundant_closure_call
+    }
+
+    fn async_use_closure() {
+        let name = String::from("world");
+        spawn_on((async use || drop(format!("hello, {name}")))());
         //~^ redundant_closure_call
     }
 }
