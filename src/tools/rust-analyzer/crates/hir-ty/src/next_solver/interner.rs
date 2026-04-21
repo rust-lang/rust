@@ -330,6 +330,7 @@ unsafe impl Sync for DbInterner<'_> {}
 
 impl<'db> DbInterner<'db> {
     // FIXME(next-solver): remove this method
+    #[doc(hidden)]
     pub fn conjure() -> DbInterner<'db> {
         // Here we can not reinit the cache since we do that when we attach the db.
         crate::with_attached_db(|db| DbInterner {

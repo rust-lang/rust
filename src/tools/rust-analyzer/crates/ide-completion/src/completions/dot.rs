@@ -93,7 +93,7 @@ pub(crate) fn complete_dot(
         // Does <&receiver_ty as IntoIterator>::IntoIter` exist? Assume `iter` is valid
         let iter = receiver_ty
             .autoderef(ctx.db)
-            .map(|ty| ty.strip_references().add_reference(hir::Mutability::Shared))
+            .map(|ty| ty.strip_references().add_reference(ctx.db, hir::Mutability::Shared))
             .find_map(|ty| ty.into_iterator_iter(ctx.db))
             .map(|ty| (ty, SmolStr::new_static("iter()")));
         // Does <receiver_ty as IntoIterator>::IntoIter` exist?

@@ -88,7 +88,7 @@ fn add_reference(
     let range = ctx.sema.diagnostics_display_range((*expr_ptr).map(|it| it.into()));
 
     let (_, mutability) = d.expected.as_reference()?;
-    let actual_with_ref = d.actual.add_reference(mutability);
+    let actual_with_ref = d.actual.add_reference(ctx.db(), mutability);
     if !actual_with_ref.could_coerce_to(ctx.sema.db, &d.expected) {
         return None;
     }

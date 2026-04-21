@@ -330,13 +330,14 @@ impl<'db> SourceAnalyzer<'db> {
     }
 
     fn trait_environment(&self, db: &'db dyn HirDatabase) -> ParamEnvAndCrate<'db> {
-        self.param_and(self.body_or_sig.as_ref().map_or_else(ParamEnv::empty, |body_or_sig| {
-            match *body_or_sig {
+        self.param_and(self.body_or_sig.as_ref().map_or_else(
+            || ParamEnv::empty(DbInterner::new_no_crate(db)),
+            |body_or_sig| match *body_or_sig {
                 BodyOrSig::Body { def, .. } => db.trait_environment(def.into()),
                 BodyOrSig::VariantFields { def, .. } => db.trait_environment(def.into()),
                 BodyOrSig::Sig { def, .. } => db.trait_environment(def.into()),
-            }
-        }))
+            },
+        ))
     }
 
     pub(crate) fn expr_id(&self, expr: ast::Expr) -> Option<ExprOrPatId> {

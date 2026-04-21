@@ -198,7 +198,7 @@ pub trait TyLoweringInferVarsCtx<'db> {
 
 pub struct TyLoweringContext<'db, 'a> {
     pub db: &'db dyn HirDatabase,
-    interner: DbInterner<'db>,
+    pub(crate) interner: DbInterner<'db>,
     types: &'db crate::next_solver::DefaultAny<'db>,
     lang_items: &'db LangItems,
     resolver: &'a Resolver<'db>,
@@ -2072,12 +2072,12 @@ impl<'db> GenericPredicates {
 
 /// A cycle can occur from malformed code.
 fn generic_predicates_cycle_result(
-    _db: &dyn HirDatabase,
+    db: &dyn HirDatabase,
     _: salsa::Id,
     _def: GenericDefId,
 ) -> TyLoweringResult<GenericPredicates> {
     TyLoweringResult::empty(GenericPredicates::from_explicit_own_predicates(
-        StoredEarlyBinder::bind(Clauses::default().store()),
+        StoredEarlyBinder::bind(Clauses::empty(DbInterner::new_no_crate(db)).store()),
     ))
 }
 
@@ -2086,7 +2086,7 @@ impl GenericPredicates {
     pub fn empty() -> &'static GenericPredicates {
         static EMPTY: OnceLock<GenericPredicates> = OnceLock::new();
         EMPTY.get_or_init(|| GenericPredicates {
-            predicates: StoredEarlyBinder::bind(Clauses::default().store()),
+            predicates: StoredEarlyBinder::bind(Clauses::new_from_slice(&[]).store()),
             has_trait_implied_predicate: false,
             parent_explicit_self_predicates_start: 0,
             own_predicates_start: 0,
