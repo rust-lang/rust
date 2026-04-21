@@ -1,7 +1,11 @@
+use rustc_errors::Diagnostic;
 use rustc_hir::attrs::diagnostic::Directive;
+use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 
+use crate::ShouldEmit;
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
+use crate::errors::DiagnosticOnUnknownOnlyForImports;
 
 #[derive(Default)]
 pub(crate) struct OnUnknownParser {
@@ -25,6 +29,22 @@ impl OnUnknownParser {
         let span = cx.attr_span;
         self.span = Some(span);
 
+        // At early parsing we get passed `Target::Crate` regardless of the item we're on.
+        // Only do target checking if we're late.
+        let early = matches!(cx.stage.should_emit(), ShouldEmit::Nothing);
+
+        if !early && !matches!(cx.target, Target::Use) {
+            let target_span = cx.target_span;
+            cx.emit_dyn_lint(
+                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                move |dcx, level| {
+                    DiagnosticOnUnknownOnlyForImports { target_span }.into_diag(dcx, level)
+                },
+                span,
+            );
+            return;
+        }
+
         let Some(items) = parse_list(cx, args, mode) else { return };
 
         if let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) {
@@ -41,7 +61,7 @@ impl<S: Stage> AttributeParser<S> for OnUnknownParser {
             this.parse(cx, args, Mode::DiagnosticOnUnknown);
         },
     )];
-    //FIXME attribute is not parsed for non-use statements but diagnostics are issued in `check_attr.rs`
+    // "Allowed" for all targets, but noop for all but use statements.
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
