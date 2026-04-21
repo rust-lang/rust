@@ -1,6 +1,5 @@
-//@ revisions: bfail1 bfail2 bfail3
+//@ revisions: bpass1 bpass2 bpass3
 //@ compile-flags: -Coverflow-checks=on
-//@ build-pass
 //@ ignore-backends: gcc
 
 #![warn(arithmetic_overflow)]
