@@ -1,0 +1,50 @@
+warning: malformed `diagnostic::on_type_error` attribute
+  --> $DIR/report_warning_on_invalid_meta_item_syntax.rs:3:29
+   |
+LL | #[diagnostic::on_type_error(note)]
+   |                             ^^^^ invalid option found here
+   |
+   = help: only `note` is allowed as option for `diagnostic::on_type_error`
+   = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
+
+warning: expected a literal or missing delimiter
+  --> $DIR/report_warning_on_invalid_meta_item_syntax.rs:7:28
+   |
+LL | #[diagnostic::on_type_error(note =)]
+   |                            ^^^^^^^^
+   |
+   = help: only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma
+
+error[E0308]: mismatched types
+  --> $DIR/report_warning_on_invalid_meta_item_syntax.rs:13:27
+   |
+LL |     let _: NoValue<i32> = 43;
+   |            ------------   ^^ expected `NoValue<i32>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `NoValue<i32>`
+                found type `{integer}`
+help: try wrapping the expression in `NoValue`
+   |
+LL |     let _: NoValue<i32> = NoValue(43);
+   |                           ++++++++  +
+
+error[E0308]: mismatched types
+  --> $DIR/report_warning_on_invalid_meta_item_syntax.rs:15:30
+   |
+LL |     let _: EmptyValue<i32> = 44;
+   |            ---------------   ^^ expected `EmptyValue<i32>`, found integer
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `EmptyValue<i32>`
+                found type `{integer}`
+help: try wrapping the expression in `EmptyValue`
+   |
+LL |     let _: EmptyValue<i32> = EmptyValue(44);
+   |                              +++++++++++  +
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0308`.

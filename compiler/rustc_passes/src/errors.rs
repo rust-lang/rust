@@ -1307,3 +1307,18 @@ pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
 pub(crate) struct OnMoveMalformedFormatLiterals {
     pub name: Symbol,
 }
+
+#[derive(Diagnostic)]
+#[diag("unknown parameter `{$name}`")]
+#[help(r#"expect either a generic argument name, {"`{Self}`"}, {"`{Expected}`"} or {"`{Found}`"} as format argument"#)]
+pub(crate) struct OnTypeErrorMalformedFormatLiterals {
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "`#[diagnostic::on_type_error]` only supports one ADT generic parameter, but found `{$count}`"
+)]
+pub(crate) struct OnTypeErrorMultipleGenerics {
+    pub count: usize,
+}

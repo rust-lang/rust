@@ -39,7 +39,7 @@ use rustc_session::config::CrateType;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-    MISPLACED_DIAGNOSTIC_ATTRIBUTES, UNUSED_ATTRIBUTES,
+    MISPLACED_DIAGNOSTIC_ATTRIBUTES, ON_TYPE_ERROR_MULTIPLE_GENERICS, UNUSED_ATTRIBUTES,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edition::Edition;
@@ -78,6 +78,10 @@ struct DiagnosticOnUnknownOnlyForImports {
     #[label("not an import")]
     item_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_type_error]` can only be applied to enums, structs or unions")]
+struct DiagnosticOnTypeErrorOnlyForAdt;
 
 fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
     match impl_item.kind {
@@ -227,6 +231,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)}
                 Attribute::Parsed(AttributeKind::OnMove { span, directive }) => {
                     self.check_diagnostic_on_move(*span, hir_id, target, directive.as_deref())
+                },
+                Attribute::Parsed(AttributeKind::OnTypeError{ span, directive }) => {
+                    self.check_diagnostic_on_type_error(*span, hir_id, target, directive.as_deref())
                 },
                 Attribute::Parsed(
                     // tidy-alphabetical-start
@@ -685,6 +692,74 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 attr_span,
                 DiagnosticOnUnknownOnlyForImports { item_span },
             );
+        }
+    }
+
+    /// Checks if `#[diagnostic::on_type_error]` is applied to an ADT definition
+    fn check_diagnostic_on_type_error(
+        &self,
+        attr_span: Span,
+        hir_id: HirId,
+        target: Target,
+        directive: Option<&Directive>,
+    ) {
+        if !matches!(target, Target::Enum | Target::Struct | Target::Union) {
+            self.tcx.emit_node_span_lint(
+                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                hir_id,
+                attr_span,
+                DiagnosticOnTypeErrorOnlyForAdt,
+            );
+        }
+
+        if let Some(directive) = directive {
+            if let Node::Item(Item {
+                kind:
+                    ItemKind::Struct(_, generics, _)
+                    | ItemKind::Enum(_, generics, _)
+                    | ItemKind::Union(_, generics, _),
+                ..
+            }) = self.tcx.hir_node(hir_id)
+            {
+                let generic_count = generics
+                    .params
+                    .iter()
+                    .filter(|p| !matches!(p.kind, GenericParamKind::Lifetime { .. }))
+                    .count();
+
+                // Enforce: at most one generic
+                if generic_count > 1 {
+                    self.tcx.emit_node_span_lint(
+                        ON_TYPE_ERROR_MULTIPLE_GENERICS,
+                        hir_id,
+                        generics.span,
+                        errors::OnTypeErrorMultipleGenerics { count: generic_count },
+                    );
+                }
+
+                directive.visit_params(&mut |argument_name, span| {
+                    let has_generic = generics.params.iter().any(|p| {
+                        if !matches!(p.kind, GenericParamKind::Lifetime { .. })
+                            && let ParamName::Plain(name) = p.name
+                            && name.name == argument_name
+                        {
+                            true
+                        } else {
+                            false
+                        }
+                    });
+
+                    let is_allowed = argument_name == sym::Expected || argument_name == sym::Found;
+                    if !(has_generic | is_allowed) {
+                        self.tcx.emit_node_span_lint(
+                            MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                            hir_id,
+                            span,
+                            errors::OnTypeErrorMalformedFormatLiterals { name: argument_name },
+                        )
+                    }
+                });
+            }
         }
     }
 

@@ -213,6 +213,7 @@ symbols! {
         Eq,
         Equal,
         Err,
+        Expected, // used for formatting for diagnostic::on_type_error for diagnostic purposes
         ExternC,
         ExternRust,
         Float,
@@ -223,6 +224,7 @@ symbols! {
         FnPtr,
         Formatter,
         Forward,
+        Found, // used for formatting for diagnostic::on_type_error for diagnostic purposes
         From,
         FromIterator,
         FromResidual,
@@ -802,6 +804,7 @@ symbols! {
         diagnostic_namespace,
         diagnostic_on_const,
         diagnostic_on_move,
+        diagnostic_on_type_error,
         diagnostic_on_unknown,
         dialect,
         direct,
@@ -1425,6 +1428,7 @@ symbols! {
         on,
         on_const,
         on_move,
+        on_type_error,
         on_unimplemented,
         on_unknown,
         opaque,

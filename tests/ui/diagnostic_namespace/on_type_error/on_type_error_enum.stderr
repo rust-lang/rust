@@ -1,0 +1,19 @@
+error[E0308]: mismatched types
+  --> $DIR/on_type_error_enum.rs:9:27
+   |
+LL |     let e: MyEnum<&str> = "hello";
+   |            ------------   ^^^^^^^ expected `MyEnum<&str>`, found `&str`
+   |            |
+   |            expected due to this
+   |
+   = note: expected enum `MyEnum<&str>`, found `&'static str`
+   = note:   expected enum `MyEnum<&str>`
+           found reference `&'static str`
+help: try wrapping the expression in `MyEnum::Variant`
+   |
+LL |     let e: MyEnum<&str> = MyEnum::Variant("hello");
+   |                           ++++++++++++++++       +
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

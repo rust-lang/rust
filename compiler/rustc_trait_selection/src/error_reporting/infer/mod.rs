@@ -51,12 +51,13 @@ use std::path::PathBuf;
 use std::{cmp, fmt, iter};
 
 use rustc_abi::ExternAbi;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
-use rustc_hir as hir;
+use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
+use rustc_hir::{self as hir, find_attr};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::extension;
 use rustc_middle::bug;
@@ -67,7 +68,8 @@ use rustc_middle::ty::{
     self, List, ParamEnv, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, Unnormalized,
 };
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, sym};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, kw, sym};
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use crate::error_reporting::TypeErrCtxt;
@@ -1981,6 +1983,83 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         }
     }
 
+    fn check_on_type_error_attribute(
+        &self,
+        expected_ty: Ty<'tcx>,
+        found_ty: Ty<'tcx>,
+    ) -> ThinVec<String> {
+        let mut unique_notes = FxHashSet::default();
+
+        // Check found type for attribute
+        if let ty::Adt(item_def, args) = found_ty.kind() {
+            if let Some(Some(directive)) =
+                find_attr!(self.tcx, item_def.did(), OnTypeError { directive, .. } => directive)
+            {
+                let notes = self.format_on_type_error_notes(
+                    directive,
+                    args,
+                    item_def.clone(),
+                    expected_ty,
+                    found_ty,
+                );
+                unique_notes.extend(notes);
+            }
+        }
+
+        // Check expected type for attribute
+        if let ty::Adt(item_def, args) = expected_ty.kind() {
+            if let Some(Some(directive)) =
+                find_attr!(self.tcx, item_def.did(), OnTypeError { directive, .. } => directive)
+            {
+                let notes = self.format_on_type_error_notes(
+                    directive,
+                    args,
+                    item_def.clone(),
+                    expected_ty,
+                    found_ty,
+                );
+                unique_notes.extend(notes);
+            }
+        }
+
+        // Order doesn't matter for notes, so we can allow the lint
+        #[allow(rustc::potential_query_instability)]
+        unique_notes.into_iter().collect()
+    }
+
+    fn format_on_type_error_notes(
+        &self,
+        directive: &Directive,
+        args: &ty::GenericArgsRef<'tcx>,
+        item_def: ty::AdtDef<'tcx>,
+        expected_ty: Ty<'tcx>,
+        found_ty: Ty<'tcx>,
+    ) -> ThinVec<String> {
+        let item_name = self.tcx.item_name(item_def.did()).to_string();
+        let mut generic_args: Vec<_> = self
+            .tcx
+            .generics_of(item_def.did())
+            .own_params
+            .iter()
+            .filter_map(|param| Some((param.name, args[param.index as usize].to_string())))
+            .collect();
+        generic_args.push((kw::SelfUpper, item_name.clone()));
+        generic_args.push((sym::Expected, expected_ty.to_string()));
+        generic_args.push((sym::Found, found_ty.to_string()));
+
+        let format_args = FormatArgs {
+            this: item_name,
+            // Unused
+            this_sugared: String::new(),
+            // Unused
+            item_context: "",
+            generic_args,
+        };
+        let CustomDiagnostic { notes, .. } = directive.eval(None, &format_args);
+
+        notes.into()
+    }
+
     pub fn report_and_explain_type_error(
         &self,
         trace: TypeTrace<'tcx>,
@@ -1991,6 +2070,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let span = trace.cause.span;
         let mut path = None;
+
+        // Check for on_type_error attribute
+        let on_type_error_notes = if let Some((expected_ty, found_ty)) = trace.values.ty() {
+            self.check_on_type_error_attribute(expected_ty, found_ty)
+        } else {
+            ThinVec::new()
+        };
+
         let failure_code = trace.cause.as_failure_code_diag(
             terr,
             span,
@@ -1998,6 +2085,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
         let mut diag = self.dcx().create_err(failure_code);
         *diag.long_ty_path() = path;
+
+        // Add custom notes
+        for note in on_type_error_notes {
+            diag.note(note);
+        }
+
         self.note_type_err(
             &mut diag,
             &trace.cause,
