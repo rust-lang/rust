@@ -1099,23 +1099,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Make sure to structurally resolve the types, since we use
             // the `TyKind`s heavily in coercion.
             let ocx = ObligationCtxt::new(self);
-            let structurally_resolve = |ty| {
-                let ty = self.shallow_resolve(ty);
-                if self.next_trait_solver()
-                    && let ty::Alias(..) = ty.kind()
-                {
-                    ocx.structurally_normalize_ty(&cause, self.param_env, Unnormalized::new_wip(ty))
-                } else {
-                    Ok(ty)
-                }
-            };
-            let Ok(expr_ty) = structurally_resolve(expr_ty) else {
-                return false;
-            };
-            let Ok(target_ty) = structurally_resolve(target_ty) else {
-                return false;
-            };
-
             let Ok(ok) = coerce.coerce(expr_ty, target_ty) else {
                 return false;
             };

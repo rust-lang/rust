@@ -32,10 +32,12 @@ impl<'tcx> At<'_, 'tcx> {
         &self,
         value: Unnormalized<'tcx, T>,
     ) -> InferOk<'tcx, T> {
-        let value = value.skip_normalization();
         if self.infcx.next_trait_solver() {
-            InferOk { value, obligations: PredicateObligations::new() }
+            let crate::solve::Normalized { value, obligations, .. } =
+                crate::solve::normalize(*self, value);
+            InferOk { value, obligations }
         } else {
+            let value = value.skip_normalization();
             let mut selcx = SelectionContext::new(self.infcx);
             let Normalized { value, obligations } =
                 normalize_with_depth(&mut selcx, self.param_env, self.cause.clone(), 0, value);

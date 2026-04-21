@@ -1569,13 +1569,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         |alias_term: ty::AliasTerm<'tcx>, expected_term: ty::Term<'tcx>| {
                             let ocx = ObligationCtxt::new(self);
 
-                            let Ok(normalized_term) = ocx.structurally_normalize_term(
+                            // FIXME: doubtful about this, normalization error now are silent unless
+                            // we check it. add ambiguity check?
+                            let normalized_term = ocx.normalize(
                                 &ObligationCause::dummy(),
                                 obligation.param_env,
                                 Unnormalized::new_wip(alias_term.to_term(self.tcx)),
-                            ) else {
-                                return None;
-                            };
+                            );
 
                             if let Err(terr) = ocx.eq(
                                 &ObligationCause::dummy(),
@@ -2842,13 +2842,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
         let trait_ref = normalized_predicate.trait_ref;
 
-        let Ok(assume) = ocx.structurally_normalize_const(
+        let assume = ocx.normalize(
             &obligation.cause,
             obligation.param_env,
             Unnormalized::new_wip(trait_ref.args.const_at(2)),
-        ) else {
-            return (obligation.clone(), trait_predicate);
-        };
+        );
 
         let Some(assume) = rustc_transmute::Assume::from_const(self.tcx, assume) else {
             return (obligation.clone(), trait_predicate);
@@ -2895,17 +2893,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             );
 
             let ocx = ObligationCtxt::new(self);
-            let Ok(assume) = ocx.structurally_normalize_const(
+            let assume = ocx.normalize(
                 &obligation.cause,
                 obligation.param_env,
                 Unnormalized::new_wip(trait_pred.trait_ref.args.const_at(2)),
-            ) else {
-                self.dcx().span_delayed_bug(
-                    span,
-                    "Unable to construct rustc_transmute::Assume where it was previously possible",
-                );
-                return GetSafeTransmuteErrorAndReason::Silent;
-            };
+            );
 
             let Some(assume) = rustc_transmute::Assume::from_const(self.infcx.tcx, assume) else {
                 self.dcx().span_delayed_bug(

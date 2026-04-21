@@ -22,9 +22,7 @@ use crate::infer::at::At;
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::{InferCtxt, InferOk};
 use crate::traits::normalize::needs_normalization;
-use crate::traits::{
-    BoundVarReplacer, Normalized, ObligationCause, PlaceholderReplacer, ScrubbedTraitError,
-};
+use crate::traits::{BoundVarReplacer, Normalized, ObligationCause, PlaceholderReplacer};
 
 #[extension(pub trait QueryNormalizeExt<'tcx>)]
 impl<'a, 'tcx> At<'a, 'tcx> {
@@ -77,23 +75,23 @@ impl<'a, 'tcx> At<'a, 'tcx> {
             vec![]
         };
 
-        if self.infcx.next_trait_solver() {
-            match crate::solve::deeply_normalize_with_skipped_universes::<_, ScrubbedTraitError<'tcx>>(
-                self,
-                Unnormalized::new_wip(value),
-                universes,
-            ) {
-                Ok(value) => {
-                    return Ok(Normalized { value, obligations: PredicateObligations::new() });
-                }
-                Err(_errors) => {
-                    return Err(NoSolution);
-                }
-            }
-        }
-
         if !needs_normalization(self.infcx, &value) {
             return Ok(Normalized { value, obligations: PredicateObligations::new() });
+        }
+
+        if self.infcx.next_trait_solver() {
+            let crate::solve::Normalized { value, obligations, has_errors, .. } =
+                crate::solve::normalize(self, Unnormalized::new_wip(value));
+            let result = if has_errors {
+                Err(NoSolution)
+            } else {
+                if value.has_non_region_infer() {
+                    Err(NoSolution)
+                } else {
+                    Ok(Normalized { value, obligations })
+                }
+            };
+            return result;
         }
 
         let mut normalizer = QueryNormalizer {
