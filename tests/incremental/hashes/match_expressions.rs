@@ -5,20 +5,20 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-//@ build-pass (FIXME(62277): could be check-pass?)
-//@ revisions: bfail1 bfail2 bfail3 bfail4 bfail5 bfail6
+//@ revisions: bpass1 bpass2 bpass3 bpass4 bpass5 bpass6
 //@ compile-flags: -Z query-dep-graph -O
-//@ [bfail1]compile-flags: -Zincremental-ignore-spans
-//@ [bfail2]compile-flags: -Zincremental-ignore-spans
-//@ [bfail3]compile-flags: -Zincremental-ignore-spans
+//@ [bpass1]compile-flags: -Zincremental-ignore-spans
+//@ [bpass2]compile-flags: -Zincremental-ignore-spans
+//@ [bpass3]compile-flags: -Zincremental-ignore-spans
 //@ ignore-backends: gcc
+// FIXME(#62277): could be check-pass?
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]
 
 // Add Arm ---------------------------------------------------------------------
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn add_arm(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -28,11 +28,11 @@ pub fn add_arm(x: u32) -> u32 {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass6")]
 pub fn add_arm(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -45,7 +45,7 @@ pub fn add_arm(x: u32) -> u32 {
 
 
 // Change Order Of Arms --------------------------------------------------------
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn change_order_of_arms(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -54,11 +54,11 @@ pub fn change_order_of_arms(x: u32) -> u32 {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
 pub fn change_order_of_arms(x: u32) -> u32 {
     match x {
         1 => 1,
@@ -70,7 +70,7 @@ pub fn change_order_of_arms(x: u32) -> u32 {
 
 
 // Add Guard Clause ------------------------------------------------------------
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn add_guard_clause(x: u32, y: bool) -> u32 {
     match x {
         0 => 0,
@@ -79,11 +79,11 @@ pub fn add_guard_clause(x: u32, y: bool) -> u32 {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass6")]
 pub fn add_guard_clause(x: u32, y: bool) -> u32 {
     match x {
         0 => 0,
@@ -95,7 +95,7 @@ pub fn add_guard_clause(x: u32, y: bool) -> u32 {
 
 
 // Change Guard Clause ------------------------------------------------------------
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn change_guard_clause(x: u32, y: bool) -> u32 {
     match x {
         0 => 0,
@@ -104,11 +104,11 @@ pub fn change_guard_clause(x: u32, y: bool) -> u32 {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass6")]
 pub fn change_guard_clause(x: u32, y: bool) -> u32 {
     match x {
         0 => 0,
@@ -120,7 +120,7 @@ pub fn change_guard_clause(x: u32, y: bool) -> u32 {
 
 
 // Add @-Binding ---------------------------------------------------------------
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn add_at_binding(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -129,11 +129,11 @@ pub fn add_at_binding(x: u32) -> u32 {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass6")]
 pub fn add_at_binding(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -145,7 +145,7 @@ pub fn add_at_binding(x: u32) -> u32 {
 
 
 // Change Name of @-Binding ----------------------------------------------------
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn change_name_of_at_binding(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -154,11 +154,11 @@ pub fn change_name_of_at_binding(x: u32) -> u32 {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
 pub fn change_name_of_at_binding(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -170,7 +170,7 @@ pub fn change_name_of_at_binding(x: u32) -> u32 {
 
 
 // Change Simple Binding To Pattern --------------------------------------------
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn change_simple_name_to_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (0, 0) => 0,
@@ -178,11 +178,11 @@ pub fn change_simple_name_to_pattern(x: u32) -> u32 {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass6")]
 pub fn change_simple_name_to_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (0, 0) => 0,
@@ -193,7 +193,7 @@ pub fn change_simple_name_to_pattern(x: u32) -> u32 {
 
 
 // Change Name In Pattern ------------------------------------------------------
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn change_name_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (a, 0) => 0,
@@ -202,11 +202,11 @@ pub fn change_name_in_pattern(x: u32) -> u32 {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
 pub fn change_name_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (b, 0) => 0,
@@ -218,7 +218,7 @@ pub fn change_name_in_pattern(x: u32) -> u32 {
 
 
 // Change Mutability Of Binding In Pattern -------------------------------------
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn change_mutability_of_binding_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (    a, 0) => 0,
@@ -226,12 +226,12 @@ pub fn change_mutability_of_binding_in_pattern(x: u32) -> u32 {
     }
 }
 
-// Ignore optimized_mir in bfail2, the only change to optimized MIR is a span.
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,typeck_root")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail6")]
+// Ignore optimized_mir in bpass2, the only change to optimized MIR is a span.
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,typeck_root")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass6")]
 pub fn change_mutability_of_binding_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (mut a, 0) => 0,
@@ -242,7 +242,7 @@ pub fn change_mutability_of_binding_in_pattern(x: u32) -> u32 {
 
 
 // Add `ref` To Binding In Pattern -------------------------------------
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn add_ref_to_binding_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (    a, 0) => 0,
@@ -250,11 +250,11 @@ pub fn add_ref_to_binding_in_pattern(x: u32) -> u32 {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass6")]
 pub fn add_ref_to_binding_in_pattern(x: u32) -> u32 {
     match (x, x & 1) {
         (ref a, 0) => 0,
@@ -265,7 +265,7 @@ pub fn add_ref_to_binding_in_pattern(x: u32) -> u32 {
 
 
 // Add `&` To Binding In Pattern -------------------------------------
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn add_amp_to_binding_in_pattern(x: u32) -> u32 {
     match (&x, x & 1) {
         ( a, 0) => 0,
@@ -273,11 +273,11 @@ pub fn add_amp_to_binding_in_pattern(x: u32) -> u32 {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass6")]
 pub fn add_amp_to_binding_in_pattern(x: u32) -> u32 {
     match (&x, x & 1) {
         (&a, 0) => 0,
@@ -288,7 +288,7 @@ pub fn add_amp_to_binding_in_pattern(x: u32) -> u32 {
 
 
 // Change RHS Of Arm -----------------------------------------------------------
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn change_rhs_of_arm(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -297,11 +297,11 @@ pub fn change_rhs_of_arm(x: u32) -> u32 {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir")]
+#[rustc_clean(cfg="bpass6")]
 pub fn change_rhs_of_arm(x: u32) -> u32 {
     match x {
         0 => 0,
@@ -313,7 +313,7 @@ pub fn change_rhs_of_arm(x: u32) -> u32 {
 
 
 // Add Alternative To Arm ------------------------------------------------------
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn add_alternative_to_arm(x: u32) -> u32 {
     match x {
         0     => 0,
@@ -322,11 +322,11 @@ pub fn add_alternative_to_arm(x: u32) -> u32 {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes,optimized_mir,typeck_root")]
+#[rustc_clean(cfg="bpass6")]
 pub fn add_alternative_to_arm(x: u32) -> u32 {
     match x {
         0 | 7 => 0,
