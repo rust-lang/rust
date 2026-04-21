@@ -333,7 +333,7 @@ impl<'test> TestCx<'test> {
                 {
                     true
                 } else if revision.starts_with("bfail") {
-                    pm.is_some()
+                    false
                 } else {
                     panic!("revision name must begin with `cpass`, `bfail`, `bpass`, or `rpass`");
                 }
