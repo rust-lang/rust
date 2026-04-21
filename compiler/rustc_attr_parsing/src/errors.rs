@@ -268,6 +268,13 @@ pub(crate) struct DocTestUnknown {
 pub(crate) struct DocTestLiteral;
 
 #[derive(Diagnostic)]
+#[diag("this attribute can only be applied at the crate level")]
+#[note(
+    "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information"
+)]
+pub(crate) struct AttrCrateLevelOnly;
+
+#[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_const]` can only be applied to non-const trait implementations")]
 pub(crate) struct DiagnosticOnConstOnlyForTraitImpls {
     #[label("not a trait implementation")]

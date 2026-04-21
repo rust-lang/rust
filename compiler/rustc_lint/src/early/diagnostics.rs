@@ -43,10 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            &AttributeLintKind::AttrCrateLevelOnly => {
-                lints::AttrCrateLevelOnly.into_diag(dcx, level)
-            }
-
             &AttributeLintKind::DoNotRecommendDoesNotExpectArgs => {
                 lints::DoNotRecommendDoesNotExpectArgs.into_diag(dcx, level)
             }
