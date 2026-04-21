@@ -1036,7 +1036,7 @@ impl<'a> CrateMetadataRef<'a> {
         if cnum == LOCAL_CRATE { self.cnum } else { self.cnum_map[cnum] }
     }
 
-    fn def_kind(self, _tcx: TyCtxt<'_>, item_id: DefIndex) -> DefKind {
+    fn def_kind(self, item_id: DefIndex) -> DefKind {
         self.root
             .tables
             .def_kind
@@ -1119,7 +1119,7 @@ impl<'a> CrateMetadataRef<'a> {
                         did,
                         name: self.item_name(did.index),
                         vis: self.get_visibility(tcx, did.index),
-                        safety: self.get_safety(tcx, did.index),
+                        safety: self.get_safety(did.index),
                         value: self.get_default_field(tcx, did.index),
                     })
                     .collect(),
@@ -1131,7 +1131,7 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     fn get_adt_def<'tcx>(self, tcx: TyCtxt<'tcx>, item_id: DefIndex) -> ty::AdtDef<'tcx> {
-        let kind = self.def_kind(tcx, item_id);
+        let kind = self.def_kind(item_id);
         let did = self.local_def_id(item_id);
 
         let adt_kind = match kind {
@@ -1151,7 +1151,7 @@ impl<'a> CrateMetadataRef<'a> {
                 .expect("variants are not encoded for an enum")
                 .decode((self, tcx))
                 .filter_map(|index| {
-                    let kind = self.def_kind(tcx, index);
+                    let kind = self.def_kind(index);
                     match kind {
                         DefKind::Ctor(..) => None,
                         _ => Some(self.get_variant(tcx, kind, index, did)),
@@ -1182,7 +1182,7 @@ impl<'a> CrateMetadataRef<'a> {
             .map_id(|index| self.local_def_id(index))
     }
 
-    fn get_safety(self, _tcx: TyCtxt<'_>, id: DefIndex) -> Safety {
+    fn get_safety(self, id: DefIndex) -> Safety {
         self.root.tables.safety.get(self.cdata, id)
     }
 
@@ -1263,7 +1263,7 @@ impl<'a> CrateMetadataRef<'a> {
 
     fn get_mod_child(self, tcx: TyCtxt<'_>, id: DefIndex) -> ModChild {
         let ident = self.item_ident(tcx, id);
-        let res = Res::Def(self.def_kind(tcx, id), self.local_def_id(id));
+        let res = Res::Def(self.def_kind(id), self.local_def_id(id));
         let vis = self.get_visibility(tcx, id);
 
         ModChild { ident, res, vis, reexport_chain: Default::default() }
@@ -1316,7 +1316,7 @@ impl<'a> CrateMetadataRef<'a> {
         }
     }
 
-    fn is_item_mir_available(self, _tcx: TyCtxt<'_>, id: DefIndex) -> bool {
+    fn is_item_mir_available(self, id: DefIndex) -> bool {
         self.root.tables.optimized_mir.get(self.cdata, id).is_some()
     }
 
@@ -1346,7 +1346,7 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     fn get_associated_item(self, tcx: TyCtxt<'_>, id: DefIndex) -> ty::AssocItem {
-        let kind = match self.def_kind(tcx, id) {
+        let kind = match self.def_kind(id) {
             DefKind::AssocConst { is_type_const } => {
                 ty::AssocKind::Const { name: self.item_name(id), is_type_const }
             }
@@ -1373,7 +1373,7 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     fn get_ctor(self, tcx: TyCtxt<'_>, node_id: DefIndex) -> Option<(CtorKind, DefId)> {
-        match self.def_kind(tcx, node_id) {
+        match self.def_kind(node_id) {
             DefKind::Struct | DefKind::Variant => {
                 let vdata = self
                     .root
@@ -1542,7 +1542,7 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     fn get_macro(self, tcx: TyCtxt<'_>, id: DefIndex) -> ast::MacroDef {
-        match self.def_kind(tcx, id) {
+        match self.def_kind(id) {
             DefKind::Macro(_) => {
                 let macro_rules = self.root.tables.is_macro_rules.get(self.cdata, id);
                 let body = self
@@ -1855,7 +1855,7 @@ impl<'a> CrateMetadataRef<'a> {
             .clone()
     }
 
-    fn get_attr_flags(self, _tcx: TyCtxt<'_>, index: DefIndex) -> AttrFlags {
+    fn get_attr_flags(self, index: DefIndex) -> AttrFlags {
         self.root.tables.attr_flags.get(self.cdata, index)
     }
 

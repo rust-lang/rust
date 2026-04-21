@@ -253,7 +253,7 @@ provide! { tcx, def_id, other, cdata,
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
     params_in_repr => { table }
-    def_kind => { cdata.def_kind(tcx, def_id.index) }
+    def_kind => { cdata.def_kind(def_id.index) }
     impl_parent => { table }
     defaultness => { table_direct }
     constness => { table_direct }
@@ -323,7 +323,7 @@ provide! { tcx, def_id, other, cdata,
     associated_item => { cdata.get_associated_item(tcx, def_id.index) }
     inherent_impls => { cdata.get_inherent_implementations_for_type(tcx, def_id.index) }
     attrs_for_def => { tcx.arena.alloc_from_iter(cdata.get_item_attrs(tcx, def_id.index)) }
-    is_mir_available => { cdata.is_item_mir_available(tcx, def_id.index) }
+    is_mir_available => { cdata.is_item_mir_available(def_id.index) }
     cross_crate_inlinable => { table_direct }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
@@ -411,7 +411,7 @@ provide! { tcx, def_id, other, cdata,
     crate_extern_paths => { cdata.source().paths().cloned().collect() }
     expn_that_defined => { cdata.get_expn_that_defined(tcx, def_id.index) }
     default_field => { cdata.get_default_field(tcx, def_id.index) }
-    is_doc_hidden => { cdata.get_attr_flags(tcx,def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
+    is_doc_hidden => { cdata.get_attr_flags(def_id.index).contains(AttrFlags::IS_DOC_HIDDEN) }
     doc_link_resolutions => { tcx.arena.alloc(cdata.get_doc_link_resolutions(tcx, def_id.index)) }
     doc_link_traits_in_scope => {
         tcx.arena.alloc_from_iter(cdata.get_doc_link_traits_in_scope(tcx, def_id.index))
@@ -613,8 +613,8 @@ impl CStore {
         self.get_crate_data(def_id.krate).get_span(tcx, def_id.index)
     }
 
-    pub fn def_kind_untracked(&self, tcx: TyCtxt<'_>, def: DefId) -> DefKind {
-        self.get_crate_data(def.krate).def_kind(tcx, def.index)
+    pub fn def_kind_untracked(&self, def: DefId) -> DefKind {
+        self.get_crate_data(def.krate).def_kind(def.index)
     }
 
     pub fn expn_that_defined_untracked(&self, tcx: TyCtxt<'_>, def_id: DefId) -> ExpnId {
