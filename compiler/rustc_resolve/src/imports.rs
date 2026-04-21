@@ -1134,6 +1134,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 module,
                 error_implied_by_parse_error: _,
                 message,
+                note: _,
             } => {
                 if no_ambiguity {
                     if !self.issue_145575_hack_applied {
@@ -1159,6 +1160,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 suggestion,
                 module,
                 segment_name,
+                note,
                 ..
             } => {
                 if no_ambiguity {
@@ -1190,7 +1192,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         None => UnresolvedImportError {
                             span,
                             label: Some(label),
-                            note: None,
+                            note,
                             suggestion,
                             candidates: None,
                             segment: Some(segment_name),
@@ -1419,6 +1421,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         Some((suggestion, note)) => (suggestion.or(lev_suggestion), note),
                         _ => (lev_suggestion, None),
                     };
+
+                // If importing of trait asscoiated items is enabled, an also find an
+                // `Enum`, then note that inherent associated items cannot be imported.
+                let note = if self.tcx.features().import_trait_associated_functions()
+                    && let PathResult::Module(ModuleOrUniformRoot::Module(m)) = path_res
+                    && let Some(Res::Def(DefKind::Enum, _)) = m.res()
+                {
+                    note.or(Some(
+                        "cannot import inherent associated items, only trait associated items"
+                            .to_string(),
+                    ))
+                } else {
+                    note
+                };
 
                 let label = match module {
                     ModuleOrUniformRoot::Module(module) => {
