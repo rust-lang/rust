@@ -1227,7 +1227,10 @@ impl ExternPreludeEntry<'_> {
 struct DeriveData {
     resolutions: Vec<DeriveResolution>,
     helper_attrs: Vec<(usize, IdentKey, Span)>,
+    // if this list keeps getting extended, we could use `bitflags`,
+    // something like what [`rustc_type_ir::flags::TypeFlags`] is doing.
     has_derive_copy: bool,
+    has_derive_ord: bool,
 }
 
 struct MacroData {
@@ -1381,6 +1384,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// Derive macros cannot modify the item themselves and have to store the markers in the global
     /// context, so they attach the markers to derive container IDs using this resolver table.
     containers_deriving_copy: FxHashSet<LocalExpnId> = default::fx_hash_set(),
+    containers_deriving_ord: FxHashSet<LocalExpnId> = default::fx_hash_set(),
     /// Parent scopes in which the macros were invoked.
     /// FIXME: `derives` are missing in these parent scopes and need to be taken from elsewhere.
     invocation_parent_scopes: FxHashMap<LocalExpnId, ParentScope<'ra>> = default::fx_hash_map(),

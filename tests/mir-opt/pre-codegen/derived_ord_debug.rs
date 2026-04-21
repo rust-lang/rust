@@ -10,8 +10,8 @@ pub struct MultiField(char, i16);
 // EMIT_MIR derived_ord_debug.{impl#1}-cmp.PreCodegen.after.mir
 
 // CHECK-LABEL: partial_cmp(_1: &MultiField, _2: &MultiField) -> Option<std::cmp::Ordering>
-// CHECK: = <char as PartialOrd>::partial_cmp(
-// CHECK: = <i16 as PartialOrd>::partial_cmp(
+// CHECK: = <MultiField as Ord>::cmp(
+// CHECK: = Option::<std::cmp::Ordering>::Some(
 
 // CHECK-LABEL: cmp(_1: &MultiField, _2: &MultiField) -> std::cmp::Ordering
 // CHECK: = <char as Ord>::cmp(
