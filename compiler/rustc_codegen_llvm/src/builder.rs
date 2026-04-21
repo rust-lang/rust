@@ -1992,7 +1992,8 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         if self.sess().target.env != Env::Pauthtest {
             return None;
         }
-        // Pauthtest only supports extern "C" calls, filter out other ABIs.
+        // Pointer authentication support is currently limited to extern "C" calls; filter out other
+        // ABIs.
         if fn_abi?.conv != CanonAbi::C {
             return None;
         }

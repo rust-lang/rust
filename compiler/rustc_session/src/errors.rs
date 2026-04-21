@@ -144,9 +144,9 @@ pub(crate) struct CannotEnableCrtStaticLinux;
 
 #[derive(Diagnostic)]
 #[diag(
-    "pauthtest ABI is incompatible with statically linked libc, disable it using `-C target-feature=-crt-static`"
+    "pointer authentication requires dynamic linking. Statically linked libc is incompatible, disable it using `-C target-feature=-crt-static`"
 )]
-pub(crate) struct CannotEnableCrtStaticPauthtest;
+pub(crate) struct CannotEnableCrtStaticPointerAuth;
 
 #[derive(Diagnostic)]
 #[diag("`-Zsanitizer=cfi` requires `-Clto` or `-Clinker-plugin-lto`")]

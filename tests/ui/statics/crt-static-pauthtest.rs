@@ -6,4 +6,4 @@
 #![feature(no_core)]
 #![no_main]
 
-//~? ERROR pauthtest ABI is incompatible with statically linked libc
+//~? ERROR pointer authentication requires dynamic linking. Statically linked libc is incompatible, disable it using `-C target-feature=-crt-static`

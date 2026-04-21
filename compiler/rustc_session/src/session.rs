@@ -1202,7 +1202,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     // Using static linking is prohibited on pauthtest target
     if sess.crt_static(None) && sess.target.env == Env::Pauthtest {
-        sess.dcx().emit_err(errors::CannotEnableCrtStaticPauthtest);
+        sess.dcx().emit_err(errors::CannotEnableCrtStaticPointerAuth);
     }
 
     // LLVM CFI requires LTO.

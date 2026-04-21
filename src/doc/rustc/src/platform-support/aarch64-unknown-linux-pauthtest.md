@@ -2,27 +2,25 @@
 
 **Tier: 3**
 
-The target enables Pointer Authentication Code (PAC) support in Rust on AArch64
-ELF based Linux systems using a pauthtest ABI (provided by LLVM) and
-pauthtest-enabled sysroot with custom musl, serving as a reference libc
-implementation. It requires dynamic linking with a pauthtest-enabled dynamic
-linker serving as ELF interpreter capable of resolving pauth relocations and
-respecting pauthtest ABI constraints.
+This target enables Pointer Authentication Code (PAC) support in Rust on AArch64
+ELF-based Linux systems. It uses the `aarch64-unknown-linux-pauthtest` LLVM
+target and a pointer-authentication-enabled sysroot with a custom musl as a
+reference libc implementation. Dynamic linking is required, with a dynamic
+linker acting as the ELF interpreter that can resolve pauth relocations and
+enforce pointer authentication constraints.
 
 Supported features include:
-* authenticating signed function pointers for extern "C" function calls
-  (corresponds to `-fptrauth-calls` included in pauthtest ABI as defined in
-  LLVM)
-* signing return address before spilling to stack and authenticating return
-  address after restoring from stack for non-leaf functions (corresponds to
-  `-fptrauth-returns`)
-* trapping if authentication failure is detected and FPAC feature is not present
+* authentication of signed function pointers for extern "C" calls (corresponds
+  to LLVM's `-fptrauth-calls`)
+* signing of return addresses before spilling to the stack and authentication
+  after restoring for non-leaf functions (corresponds to `-fptrauth-returns`)
+* trapping on authentication failure when the FPAC feature is not present
   (corresponds to `-fptrauth-auth-traps`)
-* signing of init/fini array entries with the signing schema used for pauthtest
-  ABI (corresponding to `-fptrauth-init-fini`,
+* signing of init/fini array entries using the LLVM-defined pointer
+  authentication scheme (corresponds to `-fptrauth-init-fini` and
   `-fptrauth-init-fini-address-discrimination`)
-* non-ABI-affecting indirect control flow hardening features included in
-  pauthtest ABI (corresponding to `-faarch64-jump-table-hardening`,
+* non-ABI-affecting indirect control-flow hardening features as implemented in
+  LLVM (corresponds to `-faarch64-jump-table-hardening` and
   `-fptrauth-indirect-gotos`)
 * signed ELF GOT entries (gated behind `-Z ptrauth-elf-got`, off by default)
 
@@ -34,6 +32,19 @@ Existing compiler support, such as enabling branch authentication instructions
 (i.e.: `-Z branch-protection`) provide limited functionality, mainly signing
 return addresses (`pac-ret`). The new target goes further by enabling ABI-level
 pointer authentication support.
+
+This target does not define a new ABI; it builds on the existing C/C++ language
+ABI with pointer authentication support added. However, different authentication
+features, encoded in the signing schema, are not ABI-compatible with one
+another.
+
+Useful links:
+* Clang pointer authentication documentation:
+  https://clang.llvm.org/docs/PointerAuthentication.html
+* LLVM pointer authentication documentation:
+  https://llvm.org/docs/PointerAuth.html
+* PAuth ABI Extension to ELF for the AArch64 architecture:
+  https://github.com/ARM-software/abi-aa/blob/main/pauthabielf64/pauthabielf64.rst
 
 ## Target maintainers
 
@@ -52,9 +63,9 @@ well.
 
 ## Building the toolchain
 
-Building this target requires a pauthtest-enabled sysroot based on a custom musl
-toolchain. The sysroot must be available on the system before compilation. To
-build it, follow the instructions in the [build scripts
+Building this target requires a pointer-authentication-enabled sysroot based on
+a custom musl toolchain. The sysroot must be available on the system before
+compilation. To build it, follow the instructions in the [build scripts
 repo](https://github.com/access-softek/pauth-toolchain-build-scripts).
 
 The target uses Clang, please make sure it is `v22.1.0` or higher. When using a
@@ -85,7 +96,7 @@ a wrapper its name must contain `clang`. A recommended name is
 `<version>` with LLVM's version. Make the wrapper executable.
 
 To verify that the toolchain layout is correct, check that:
-* the sysroot contains a pauthtest-enabled version of libunwind
+* the sysroot contains a pointer-authentication-enabled version of libunwind
   (`<toolchain_root>/aarch64-linux-pauthtest/usr/lib/libunwind.so`),
 * the Clang resource directory contains the appropriate `compiler-rt` objects
   (`<toolchain_root>/lib/clang/<version>/lib/aarch64-unknown-linux-pauthtest/{clang_rt.crtbegin.o,clang_rt.crtend.o}`)
@@ -155,16 +166,20 @@ index 0564f2e..a8a0d1a 100644
          if cfg!(target_vendor = "apple") {
              self.ip()
 +        } else if cfg!(target_env = "pauthtest") {
-+            // NOTE: As ip here is not signed (raw, non-PAC-enabled pointer) we
-+            // must not use uw::_Unwind_FindEnclosingFunction. This is because,
-+            // for pauthtest toolchain, libunwind will try to authenticate and
-+            // resign it. Signing here (apart from risking creating a signing
-+            // oracle) is not possible. According to the schema the value must
-+            // be signed using SP as the discriminator - which is the problem.
-+            // SP obtained here would not match the SP at the auth-resign time,
-+            // as uw::_Unwind_FindEnclosingFunction creates a new context so
-+            // the SP used for signing here would belong to a different frame
-+            // that the one used for auth-resign. Hence return a raw value.
++            // NOTE: ip here is an unsigned (raw) pointer, so we must not use
++            // uw::_Unwind_FindEnclosingFunction.
++            //
++            // Otherwise, in the pointer-authentication-enabled reference
++            // toolchain, libunwind would attempt to authenticate and re-sign
++            // values. Performing signing here is not safe: it could create a
++            // signing oracle, and more importantly it is incorrect under the
++            // expected signing schema.
++            // The schema requires the stack pointer (SP) as the discriminator.
++            // However, the SP available at this point would not match the SP
++            // at authentication/re-sign time, since
++            // _Unwind_FindEnclosingFunction constructs a new unwind context.
++            // The SP used here would therefore correspond to a different frame.
++            // As a result, we must return the raw value.
 +            self.ip()
          } else {
              unsafe { uw::_Unwind_FindEnclosingFunction(self.ip()) }
@@ -343,12 +358,13 @@ fails.
 
 ## Cross-compilation toolchains and C code
 
-This target supports interoperability with C code. Use the pauthtest-enabled
-sysroot, described in building the toolchain section of this document. C code
-must be compiled with the pauthtest aware compiler. Mixed Rust/C programs are
-supported and tested (e.g. quicksort examples). Pointer authentication semantics
-must be consistent across Rust and C components. The target only supports
-dynamic linking.
+This target supports interoperability with C code. A
+pointer-authentication-enabled sysroot, built as described in the toolchain
+build section of this document, is required. C code must be compiled with a
+compiler configuration that supports pointer authentication. Mixed Rust/C
+programs are supported and tested (e.g. quicksort examples). Pointer
+authentication semantics must be consistent across Rust and C components. Only
+dynamic linking is supported.
 
 The target can be cross-compiled from any Linux-based host, but execution
 requires an AArch64 system that implements Pointer Authentication (PAC). In
@@ -375,7 +391,7 @@ The following categories are supported (all present in tree):
 * End-to-end execution tests
   * Rust-driven quicksort (pauth-quicksort-rust-driver)
   * C-driven quicksort (pauth-quicksort-c-driver)
-* UI error reporting (pauthtest does not support `+crt-static`)
+* UI error reporting (the target does not support `+crt-static`)
   * crt-static-pauthtest.rs
 
 All tests from `assembly-llvm`, `codegen-llvm`, `codegen-units`, `coverage`,
@@ -412,7 +428,10 @@ For more information please see the discussion in the [rust-lang issue
 tracker](https://github.com/rust-lang/rust/issues/152532).
 
 The current version only supports C interoperability with pointer authentication
-features explicitly mentioned at the beginning of this document.
+features explicitly mentioned at the beginning of this document. Further work is
+needed to support configurable signing schemas (i.e. selection of signing keys,
+discriminators, address diversity, and features opt-in/opt-out) as defined by
+the LLVM pointer authentication model.
 
 C++ interoperability is not currently supported. Features such as signing C++
 member function pointers, virtual function pointers, and virtual table pointers
