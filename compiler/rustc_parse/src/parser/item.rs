@@ -1066,9 +1066,20 @@ impl<'a> Parser<'a> {
         ];
         // `impl(`
         if self.check_keyword(exp!(Impl)) && self.look_ahead(1, |t| t == &token::OpenParen) {
-            // Since the `path` in `impl(in? path)` can be arbitrarily long,
-            // we treat `(in? path)` as a `TokenTree::Delimited`,
-            // so we look ahead over token trees rather than tokens.
+            // `impl(in` unambiguously introduces an `impl` restriction
+            if self.is_keyword_ahead(2, &[kw::In]) {
+                return true;
+            }
+            // `impl(crate | self | super)` + SUFFIX
+            if self.is_keyword_ahead(2, &[kw::Crate, kw::SelfLower, kw::Super])
+                && self.look_ahead(3, |t| t == &token::CloseParen)
+                && SUFFIXES.iter().any(|suffix| {
+                    suffix.iter().enumerate().all(|(i, kw)| self.is_keyword_ahead(i + 4, &[*kw]))
+                })
+            {
+                return true;
+            }
+            // Recover cases like `impl(path::to::module)` + SUFFIX to suggest inserting `in`.
             SUFFIXES.iter().any(|suffix| {
                 suffix.iter().enumerate().all(|(i, kw)| {
                     self.tree_look_ahead(i + 2, |t| {
