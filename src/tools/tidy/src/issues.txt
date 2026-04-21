@@ -844,13 +844,6 @@ ui/derives/issue-43023.rs
 ui/derives/issue-91492.rs
 ui/derives/issue-91550.rs
 ui/derives/issue-97343.rs
-ui/deriving/issue-103157.rs
-ui/deriving/issue-15689-1.rs
-ui/deriving/issue-18738.rs
-ui/deriving/issue-19358.rs
-ui/deriving/issue-58319.rs
-ui/deriving/issue-6341.rs
-ui/deriving/issue-89188-gat-hrtb.rs
 ui/did_you_mean/issue-103909.rs
 ui/did_you_mean/issue-105225-named-args.rs
 ui/did_you_mean/issue-105225.rs
