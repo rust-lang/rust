@@ -221,7 +221,7 @@ impl<'a> LazyDecoder for BlobDecodeContext<'a> {
 
 /// This is the decode context used when crate metadata was already read.
 /// Decoding of some types, like `Span` require some information to already been read.
-/// Can be constructed from a [`TyCtxt`] and [`CrateMetadataRef`] (see the [`Metadata`] trait)
+/// Can be constructed from a [`TyCtxt`] and [`CrateMetadataRef`] (see the [`MetaDecoder`] trait)
 pub(super) struct MetadataDecodeContext<'a, 'tcx> {
     blob_decoder: BlobDecodeContext<'a>,
     cdata: CrateMetadataRef<'a>,
@@ -255,19 +255,24 @@ impl<'a, 'tcx> Deref for MetadataDecodeContext<'a, 'tcx> {
     }
 }
 
-pub(super) trait Metadata<'a>: Copy {
+pub(super) trait MetaBlob<'a>: Copy {
+    fn blob(self) -> &'a MetadataBlob;
+}
+
+pub(super) trait MetaDecoder: Copy {
     type Context: BlobDecoder + LazyDecoder;
 
-    fn blob(self) -> &'a MetadataBlob;
     fn decoder(self, pos: usize) -> Self::Context;
 }
 
-impl<'a> Metadata<'a> for &'a MetadataBlob {
-    type Context = BlobDecodeContext<'a>;
-
+impl<'a> MetaBlob<'a> for &'a MetadataBlob {
     fn blob(self) -> &'a MetadataBlob {
         self
     }
+}
+
+impl<'a> MetaDecoder for &'a MetadataBlob {
+    type Context = BlobDecodeContext<'a>;
 
     fn decoder(self, pos: usize) -> Self::Context {
         BlobDecodeContext {
@@ -285,12 +290,14 @@ impl<'a> Metadata<'a> for &'a MetadataBlob {
     }
 }
 
-impl<'a, 'tcx> Metadata<'a> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
-    type Context = MetadataDecodeContext<'a, 'tcx>;
-
+impl<'a, 'tcx> MetaBlob<'a> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
     fn blob(self) -> &'a MetadataBlob {
         &self.0.cdata.blob
     }
+}
+
+impl<'a, 'tcx> MetaDecoder for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
+    type Context = MetadataDecodeContext<'a, 'tcx>;
 
     fn decoder(self, pos: usize) -> MetadataDecodeContext<'a, 'tcx> {
         MetadataDecodeContext {
@@ -304,7 +311,7 @@ impl<'a, 'tcx> Metadata<'a> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
 
 impl<T: ParameterizedOverTcx> LazyValue<T> {
     #[inline]
-    fn decode<'a, 'tcx, M: Metadata<'a>>(self, metadata: M) -> T::Value<'tcx>
+    fn decode<'tcx, M: MetaDecoder>(self, metadata: M) -> T::Value<'tcx>
     where
         T::Value<'tcx>: Decodable<M::Context>,
     {
@@ -344,10 +351,7 @@ unsafe impl<D: Decoder, T: Decodable<D>> TrustedLen for DecodeIterator<T, D> {}
 
 impl<T: ParameterizedOverTcx> LazyArray<T> {
     #[inline]
-    fn decode<'a, 'tcx, M: Metadata<'a>>(
-        self,
-        metadata: M,
-    ) -> DecodeIterator<T::Value<'tcx>, M::Context>
+    fn decode<'tcx, M: MetaDecoder>(self, metadata: M) -> DecodeIterator<T::Value<'tcx>, M::Context>
     where
         T::Value<'tcx>: Decodable<M::Context>,
     {
