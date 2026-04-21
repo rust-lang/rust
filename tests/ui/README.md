@@ -1588,6 +1588,21 @@ Tests on various well-formedness checks, e.g. [Type-checking normal functions](h
 
 Tests on `where` clauses. See [Where clauses | Reference](https://doc.rust-lang.org/reference/items/generics.html#where-clauses).
 
+## `tests/ui/whitespace/`
+
+Tests for whitespace handling in the Rust lexer. The Rust language
+defines whitespace as Unicode Pattern_White_Space, which is not the
+same as what the standard library gives you:
+
+- `is_ascii_whitespace` follows the WhatWG Infra Standard and skips
+  vertical tab (`\x0B`)
+- `is_whitespace` matches Unicode White_Space, which is a broader set
+
+These tests make that gap visible and check that the lexer accepts
+all 11 Pattern_White_Space characters correctly.
+
+See: https://github.com/rustfoundation/interop-initiative/issues/53
+
 ## `tests/ui/windows-subsystem/`: `#![windows_subsystem = ""]`
 
 See [the `windows_subsystem` attribute](https://doc.rust-lang.org/reference/runtime.html#the-windows_subsystem-attribute).
