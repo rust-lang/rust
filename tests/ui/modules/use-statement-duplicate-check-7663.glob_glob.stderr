@@ -1,0 +1,23 @@
+error[E0659]: `p` is ambiguous
+  --> $DIR/use-statement-duplicate-check-7663.rs:27:9
+   |
+LL |         p()
+   |         ^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `p` could refer to the function imported here
+  --> $DIR/use-statement-duplicate-check-7663.rs:23:9
+   |
+LL |     use crate::bar::*;
+   |         ^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `p` to disambiguate
+note: `p` could also refer to the function imported here
+  --> $DIR/use-statement-duplicate-check-7663.rs:24:9
+   |
+LL |     use crate::foo::*;
+   |         ^^^^^^^^^^^^^
+   = help: consider adding an explicit import of `p` to disambiguate
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

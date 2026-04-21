@@ -1,33 +1,48 @@
 // https://github.com/rust-lang/rust/issues/7663
-//@ run-pass
+//@ revisions: glob_glob explicit_explicit glob_explicit
+//@[glob_glob] check-fail
+//@[explicit_explicit] check-fail
+//@[glob_explicit] check-pass
 
 #![allow(unused_imports, dead_code)]
 
-mod test1 {
-
-    mod foo { pub fn p() -> isize { 1 } }
-    mod bar { pub fn p() -> isize { 2 } }
-
-    pub mod baz {
-        use crate::test1::bar::p;
-
-        pub fn my_main() { assert_eq!(p(), 2); }
+mod foo {
+    pub fn p() -> &'static str {
+        "foo"
     }
 }
 
-mod test2 {
-
-    mod foo { pub fn p() -> isize { 1 } }
-    mod bar { pub fn p() -> isize { 2 } }
-
-    pub mod baz {
-        use crate::test2::bar::p;
-
-        pub fn my_main() { assert_eq!(p(), 2); }
+mod bar {
+    pub fn p() -> usize {
+        2
     }
 }
 
-fn main() {
-    test1::baz::my_main();
-    test2::baz::my_main();
+#[cfg(glob_glob)]
+mod case {
+    use crate::bar::*;
+    use crate::foo::*;
+
+    fn check() -> usize {
+        p() //[glob_glob]~ ERROR `p` is ambiguous
+    }
 }
+
+#[cfg(explicit_explicit)]
+mod case {
+    use crate::foo::p;
+    use crate::bar::p;
+    //[explicit_explicit]~^ ERROR the name `p` is defined multiple times
+}
+
+#[cfg(glob_explicit)]
+mod case {
+    use crate::foo::*;
+    use crate::bar::p;
+
+    fn check() -> usize {
+        p()
+    }
+}
+
+fn main() {}
