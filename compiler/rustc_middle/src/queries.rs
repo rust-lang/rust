@@ -2039,6 +2039,13 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Returns the public api hash from a dependency metadata. Does not work for the local crate.
+    query public_api_hash(_: CrateNum) -> Svh {
+        eval_always
+        desc { "looking up the hash a crate" }
+        separate_provide_extern
+    }
+
     /// Gets the hash for the host proc macro. Used to support -Z dual-proc-macro.
     query crate_host_hash(_: CrateNum) -> Option<Svh> {
         eval_always

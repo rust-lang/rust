@@ -144,12 +144,12 @@ macro_rules! provide_one {
             let ($def_id, $other) = def_id_arg.into_args();
             assert!(!$def_id.is_local());
 
-            // External query providers call `crate_hash` in order to register a dependency
-            // on the crate metadata. The exception is `crate_hash` itself, which obviously
+            // External query providers call `public_api_hash` in order to register a dependency
+            // on the crate metadata. The exception is `public_api_hash` itself, which obviously
             // doesn't need to do this (and can't, as it would cause a query cycle).
             use rustc_middle::dep_graph::DepKind;
-            if DepKind::$name != DepKind::crate_hash && $tcx.dep_graph.is_fully_enabled() {
-                $tcx.ensure_ok().crate_hash($def_id.krate);
+            if DepKind::$name != DepKind::public_api_hash && $tcx.dep_graph.is_fully_enabled() {
+                $tcx.ensure_ok().public_api_hash($def_id.krate);
             }
 
             let cstore = CStore::from_tcx($tcx);
@@ -367,6 +367,7 @@ provide! { tcx, def_id, other, cdata,
     native_libraries => { cdata.get_native_libraries(tcx).collect() }
     foreign_modules => { cdata.get_foreign_modules(tcx).map(|m| (m.def_id, m)).collect() }
     crate_hash => { cdata.root.header.hash }
+    public_api_hash => { cdata.root.rdr_hashes.public_api_hash }
     crate_host_hash => { cdata.host_hash }
     crate_name => { cdata.root.header.name }
     num_extern_def_ids => { cdata.num_def_ids() }
