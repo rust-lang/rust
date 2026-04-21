@@ -254,6 +254,10 @@ pub(crate) struct DocUnknownAny {
 pub(crate) struct DocAutoCfgWrongLiteral;
 
 #[derive(Diagnostic)]
+#[diag("`#[doc(test(...)]` takes a list of attributes")]
+pub(crate) struct DocTestTakesList;
+
+#[derive(Diagnostic)]
 #[diag("`#[diagnostic::on_const]` can only be applied to non-const trait implementations")]
 pub(crate) struct DiagnosticOnConstOnlyForTraitImpls {
     #[label("not a trait implementation")]
