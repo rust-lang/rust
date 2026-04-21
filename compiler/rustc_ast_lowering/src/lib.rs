@@ -70,7 +70,7 @@ use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
 
 use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait};
-use crate::item::Owners;
+use crate::item::{Disambiguators, Owners};
 
 macro_rules! arena_vec {
     ($this:expr; $($x:expr),*) => (
@@ -94,7 +94,8 @@ pub mod stability;
 struct LoweringContext<'a, 'hir, R> {
     tcx: TyCtxt<'hir>,
     resolver: &'a mut R,
-    disambiguator: PerParentDisambiguatorState,
+    disambiguators: &'a mut Disambiguators,
+    current_disambiguator: PerParentDisambiguatorState,
 
     /// Used to allocate HIR nodes.
     arena: &'hir hir::Arena<'hir>,
@@ -154,12 +155,13 @@ struct LoweringContext<'a, 'hir, R> {
 }
 
 impl<'a, 'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'a, 'hir, R> {
-    fn new(tcx: TyCtxt<'hir>, resolver: &'a mut R) -> Self {
+    fn new(tcx: TyCtxt<'hir>, resolver: &'a mut R, disambiguators: &'a mut Disambiguators) -> Self {
         let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
             tcx,
             resolver,
-            disambiguator: Default::default(),
+            disambiguators,
+            current_disambiguator: Default::default(),
             arena: tcx.hir_arena,
 
             // HirId handling.
@@ -302,10 +304,6 @@ impl<'a, 'tcx> ResolverAstLoweringExt<'tcx> for ResolverDelayedAstLowering<'a, '
     fn next_node_id(&mut self) -> NodeId {
         next_node_id(&mut self.next_node_id)
     }
-
-    fn steal_or_create_disambiguator(&self, parent: LocalDefId) -> PerParentDisambiguatorState {
-        self.base.steal_or_create_disambiguator(parent)
-    }
 }
 
 fn next_node_id(current_id: &mut NodeId) -> NodeId {
@@ -407,10 +405,6 @@ impl<'tcx> ResolverAstLowering<'tcx> {
     #[inline]
     fn next_node_id(&mut self) -> NodeId {
         next_node_id(&mut self.next_node_id)
-    }
-
-    fn steal_or_create_disambiguator(&self, parent: LocalDefId) -> PerParentDisambiguatorState {
-        self.per_parent_disambiguators.get(&parent).map(|s| s.steal()).unwrap_or_default()
     }
 }
 
@@ -632,11 +626,13 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
         tcx.definitions_untracked().def_index_count(),
     );
 
+    let mut disambiguators = Disambiguators::Default(resolver.disambiguators.steal());
     let mut lowerer = item::ItemLowerer {
         tcx,
         resolver: &mut resolver,
         ast_index: &ast_index,
         owners: Owners::IndexVec(&mut owners),
+        disambiguators: &mut disambiguators,
     };
 
     let mut delayed_ids: FxIndexSet<LocalDefId> = Default::default();
@@ -655,7 +651,11 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
     let opt_hir_hash =
         if tcx.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
 
-    let delayed_resolver = Steal::new((resolver, krate));
+    let Disambiguators::Default(disambiguators) = disambiguators else { unreachable!() };
+    let delayed_disambigs =
+        Arc::new(disambiguators.into_items().map(|(id, d)| (id, Steal::new(d))).collect());
+
+    let delayed_resolver = Steal::new((resolver, krate, delayed_disambigs));
     mid_hir::Crate::new(owners, delayed_ids, delayed_resolver, opt_hir_hash)
 }
 
@@ -663,7 +663,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
 pub fn lower_delayed_owner(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let krate = tcx.hir_crate(());
 
-    let (resolver, krate) = &*krate.delayed_resolver.borrow();
+    let (resolver, krate, delayed_disambigs) = &*krate.delayed_resolver.borrow();
 
     // FIXME!!!(fn_delegation): make ast index lifetime same as resolver,
     // as it is too bad to reindex whole crate on each delegation lowering.
@@ -677,12 +677,12 @@ pub fn lower_delayed_owner(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     };
 
     let mut map = Default::default();
-
     let mut lowerer = item::ItemLowerer {
         tcx,
         resolver: &mut resolver,
         ast_index: &ast_index,
         owners: Owners::Map(&mut map),
+        disambiguators: &mut Disambiguators::Delayed(Arc::clone(delayed_disambigs)),
     };
 
     lowerer.lower_node(def_id);
@@ -740,7 +740,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         let def_id = self
             .tcx
             .at(span)
-            .create_def(parent, name, def_kind, None, &mut self.disambiguator)
+            .create_def(parent, name, def_kind, None, &mut self.current_disambiguator)
             .def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
@@ -780,9 +780,16 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         f: impl FnOnce(&mut Self) -> hir::OwnerNode<'hir>,
     ) {
         let owner_id = self.owner_id(owner);
+        let def_id = owner_id.def_id;
 
-        let new_disambig = self.resolver.steal_or_create_disambiguator(owner_id.def_id);
-        let disambiguator = std::mem::replace(&mut self.disambiguator, new_disambig);
+        let new_disambig = match &mut self.disambiguators {
+            Disambiguators::Default(map) => map.remove(&def_id),
+            Disambiguators::Delayed(map) => map.get(&def_id).map(Steal::steal),
+        };
+
+        let new_disambig = new_disambig.unwrap_or_else(|| PerParentDisambiguatorState::new(def_id));
+
+        let disambiguator = std::mem::replace(&mut self.current_disambiguator, new_disambig);
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
         let current_define_opaque = std::mem::take(&mut self.define_opaque);
@@ -817,7 +824,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         assert!(self.impl_trait_bounds.is_empty());
         let info = self.make_owner_info(item);
 
-        self.disambiguator = disambiguator;
+        self.current_disambiguator = disambiguator;
         self.attrs = current_attrs;
         self.bodies = current_bodies;
         self.define_opaque = current_define_opaque;
