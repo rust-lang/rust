@@ -116,7 +116,7 @@ impl<'v> rustc_ast::visit::Visitor<'v> for WillCreateDefIdsVisitor {
     }
 }
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     fn with_move_expr_bindings<T>(
         &mut self,
         state: Option<MoveExprState<'hir>>,
@@ -1169,7 +1169,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         whole_span: Span,
     ) -> hir::ExprKind<'hir> {
         // Return early in case of an ordinary assignment.
-        fn is_ordinary(lower_ctx: &mut LoweringContext<'_, '_>, lhs: &Expr) -> bool {
+        fn is_ordinary(lower_ctx: &mut LoweringContext<'_>, lhs: &Expr) -> bool {
             match &lhs.kind {
                 ExprKind::Array(..)
                 | ExprKind::Struct(..)

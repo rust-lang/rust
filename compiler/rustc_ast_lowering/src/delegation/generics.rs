@@ -114,7 +114,7 @@ impl DelegationGenericsKind {
 impl<'hir> HirOrTyGenerics<'hir> {
     pub(super) fn into_hir_generics(
         &mut self,
-        ctx: &mut LoweringContext<'_, 'hir>,
+        ctx: &mut LoweringContext<'hir>,
         span: Span,
     ) -> &mut HirOrTyGenerics<'hir> {
         if let HirOrTyGenerics::Ty(ty) = self {
@@ -140,7 +140,7 @@ impl<'hir> HirOrTyGenerics<'hir> {
 
     pub(super) fn into_generic_args(
         &self,
-        ctx: &mut LoweringContext<'_, 'hir>,
+        ctx: &mut LoweringContext<'hir>,
         span: Span,
     ) -> &'hir hir::GenericArgs<'hir> {
         match self {
@@ -203,7 +203,7 @@ impl<'hir> GenericsGenerationResults<'hir> {
     }
 }
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     pub(super) fn uplift_delegation_generics(
         &mut self,
         delegation: &Delegation,

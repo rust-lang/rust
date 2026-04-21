@@ -114,7 +114,8 @@ pub(crate) fn delegations_resolutions(
 ) -> FxIndexMap<LocalDefId, Result<DefId, ErrorGuaranteed>> {
     let krate = tcx.hir_crate(());
 
-    let (resolver, ast_crate) = &*krate.delayed_resolver.borrow();
+    let (resolver, _) = tcx.resolver_for_lowering();
+    let ast_crate = &*krate.ast_krate.borrow();
 
     // FIXME!!!(fn_delegation): make ast index lifetime same as resolver,
     // as it is too bad to reindex whole crate on each delegation lowering.
@@ -166,7 +167,7 @@ fn check_for_cycles(tcx: TyCtxt<'_>, mut def_id: DefId, span: Span) -> Result<()
     }
 }
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     fn is_method(&self, def_id: DefId, span: Span) -> bool {
         match self.tcx.def_kind(def_id) {
             DefKind::Fn => false,
@@ -746,13 +747,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 }
 
-struct SelfResolver<'a, 'b, 'hir> {
-    ctxt: &'a mut LoweringContext<'b, 'hir>,
+struct SelfResolver<'a, 'hir> {
+    ctxt: &'a mut LoweringContext<'hir>,
     path_id: NodeId,
     self_param_id: NodeId,
 }
 
-impl SelfResolver<'_, '_, '_> {
+impl SelfResolver<'_, '_> {
     fn try_replace_id(&mut self, id: NodeId) {
         if let Some(res) = self.ctxt.get_partial_res(id)
             && let Some(Res::Local(sig_id)) = res.full_res()
@@ -763,7 +764,7 @@ impl SelfResolver<'_, '_, '_> {
     }
 }
 
-impl<'ast> Visitor<'ast> for SelfResolver<'_, '_, '_> {
+impl<'ast> Visitor<'ast> for SelfResolver<'_, '_> {
     fn visit_id(&mut self, id: NodeId) {
         self.try_replace_id(id);
     }
