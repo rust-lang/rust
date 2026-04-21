@@ -1,9 +1,8 @@
 // Test compilation flow using custom pauth-enabled toolchain and signing extern "C" function
-// pointers used from within rust. Note that in order for the test to work the location of the
-// toolchain's sysroot has to be provided via env variable (`PAUTHTEST_SYSROOT`). The test assumes
-// that pauthtest-enabled `clang` is available on the path.
-// In this test rust is the driver - providing the data and the comparison function; while c -
-// provides the implementation of quicksort algorithm and is the user of  the data and comparator.
+// pointers used from within rust. The test assumes that pointer-authentication-enabled `clang` is
+// available on the path. In this test rust is the driver - providing the data and the comparison
+// function; while c - provides the implementation of quicksort algorithm and is the user of  the
+// data and comparator.
 
 //@ only-aarch64-unknown-linux-pauthtest
 

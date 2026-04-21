@@ -3907,10 +3907,10 @@ impl Step for TestHelpers {
                 .arg(&so)
                 .arg(&src)
                 .status()
-                .expect("Failed to run pauthtest clang for librust_test_helpers.so");
+                .unwrap_or_else(|_| panic!("Failed to run clang for {} toolchain", target.triple));
 
             if !status.success() {
-                panic!("Linking of pauthtest librust_test_helpers.so failed");
+                panic!("Linking of librust_test_helpers.so failed (target: {})", target.triple);
             }
         }
     }

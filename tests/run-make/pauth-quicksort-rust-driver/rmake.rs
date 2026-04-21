@@ -1,6 +1,6 @@
 // Test compilation flow using custom pauth-enabled toolchain and signing extern "C" function
-// pointers used from within rust. The test assumes that pauthtest-enabled `clang` is available on
-// the path.
+// pointers used from within rust. The test assumes that pointer-authentication-enabled `clang` is
+// available on the path.
 // In this test rust is the driver - providing the data and the comparison function; while c -
 // provides the implementation of quicksort algorithm and is the user of  the data and comparator.
 

@@ -37,7 +37,7 @@ pub struct Finder {
 /// when the newly-bumped stage 0 compiler now knows about the formerly-missing targets.
 const STAGE0_MISSING_TARGETS: &[&str] = &[
     // just a dummy comment so the list doesn't get onelined
-    "aarch64-unknown-linux-pauthtest", // Stage 0 compiler is not guaranteed to see pauthtest yet.
+    "aarch64-unknown-linux-pauthtest", // Stage 0 compiler is not guaranteed to see the target yet.
 ];
 
 /// Minimum version threshold for libstdc++ required when using prebuilt LLVM
