@@ -23,7 +23,7 @@ use rustc_macros::{Decodable, Encodable, HashStable};
 use rustc_span::{ErrorGuaranteed, ExpnId, HashStableContext, Span};
 
 use crate::query::Providers;
-use crate::ty::{ResolverAstLowering, TyCtxt};
+use crate::ty::TyCtxt;
 
 /// The top-level data structure that stores the entire contents of
 /// the crate currently being compiled.
@@ -37,9 +37,9 @@ pub struct Crate<'hir> {
     owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
     // Ids of delayed AST owners which are lowered through `lower_delayed_owner` query.
     pub delayed_ids: FxIndexSet<LocalDefId>,
-    // The resolver and AST crate which are set in the end of the `hir_crate` query
+    // The AST crate which are set in the end of the `hir_crate` query
     // and then stolen and dropped in `force_delayed_owners_lowering`.
-    pub delayed_resolver: Steal<(ResolverAstLowering<'hir>, Arc<ast::Crate>)>,
+    pub ast_krate: Steal<Arc<ast::Crate>>,
     // Only present when incr. comp. is enabled.
     pub opt_hir_hash: Option<Fingerprint>,
 }
@@ -48,10 +48,10 @@ impl<'hir> Crate<'hir> {
     pub fn new(
         owners: IndexVec<LocalDefId, MaybeOwner<'hir>>,
         delayed_ids: FxIndexSet<LocalDefId>,
-        delayed_resolver: Steal<(ResolverAstLowering<'hir>, Arc<ast::Crate>)>,
+        ast_krate: Steal<Arc<ast::Crate>>,
         opt_hir_hash: Option<Fingerprint>,
     ) -> Crate<'hir> {
-        Crate { owners, delayed_ids, delayed_resolver, opt_hir_hash }
+        Crate { owners, delayed_ids, ast_krate, opt_hir_hash }
     }
 
     /// Serves as an entry point for getting `MaybeOwner`. As owner can either be in

@@ -6,7 +6,7 @@ use smallvec::SmallVec;
 
 use crate::{ImplTraitContext, ImplTraitPosition, LoweringContext};
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     pub(super) fn lower_block(
         &mut self,
         b: &Block,

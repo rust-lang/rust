@@ -1261,7 +1261,7 @@ fn force_delayed_owners_lowering(tcx: TyCtxt<'_>) {
         tcx.ensure_done().lower_delayed_owner(id);
     }
 
-    let (_, krate) = krate.delayed_resolver.steal();
+    let krate = krate.ast_krate.steal();
     let prof = tcx.sess.prof.clone();
 
     // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.

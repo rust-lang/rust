@@ -91,9 +91,9 @@ mod pat;
 mod path;
 pub mod stability;
 
-struct LoweringContext<'a, 'hir> {
+struct LoweringContext<'hir> {
     tcx: TyCtxt<'hir>,
-    resolver: &'a ResolverAstLowering<'hir>,
+    resolver: &'hir ResolverAstLowering<'hir>,
     current_disambiguator: PerParentDisambiguatorState,
 
     /// Used to allocate HIR nodes.
@@ -163,8 +163,8 @@ struct LoweringContext<'a, 'hir> {
     attribute_parser: AttributeParser<'hir>,
 }
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
-    fn new(tcx: TyCtxt<'hir>, resolver: &'a ResolverAstLowering<'hir>) -> Self {
+impl<'hir> LoweringContext<'hir> {
+    fn new(tcx: TyCtxt<'hir>, resolver: &'hir ResolverAstLowering<'hir>) -> Self {
         let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
             tcx,
@@ -536,7 +536,8 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
     tcx.ensure_done().early_lint_checks(());
     tcx.ensure_done().debugger_visualizers(LOCAL_CRATE);
     tcx.ensure_done().get_lang_items(());
-    let (resolver, krate) = tcx.resolver_for_lowering().steal();
+    let (resolver, krate) = tcx.resolver_for_lowering();
+    let krate = krate.steal();
 
     let ast_index = index_crate(&resolver, &krate);
     let mut owners = IndexVec::from_fn_n(
@@ -546,7 +547,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
 
     let mut lowerer = item::ItemLowerer {
         tcx,
-        resolver: &resolver,
+        resolver,
         ast_index: &ast_index,
         owners: Owners::IndexVec(&mut owners),
     };
@@ -567,15 +568,16 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> mid_hir::Crate<'_> {
     let opt_hir_hash =
         if tcx.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
 
-    let delayed_resolver = Steal::new((resolver, krate));
-    mid_hir::Crate::new(owners, delayed_ids, delayed_resolver, opt_hir_hash)
+    let ast_krate = Steal::new(krate);
+    mid_hir::Crate::new(owners, delayed_ids, ast_krate, opt_hir_hash)
 }
 
 /// Lowers an AST owner corresponding to `def_id`, now only delegations are lowered this way.
 pub fn lower_delayed_owner(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let krate = tcx.hir_crate(());
 
-    let (resolver, krate) = &*krate.delayed_resolver.borrow();
+    let (resolver, _) = tcx.resolver_for_lowering();
+    let krate = &*krate.ast_krate.borrow();
 
     // FIXME!!!(fn_delegation): make ast index lifetime same as resolver,
     // as it is too bad to reindex whole crate on each delegation lowering.
@@ -623,7 +625,7 @@ enum GenericArgsMode {
     Silence,
 }
 
-impl<'hir> LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'hir> {
     fn create_def(
         &mut self,
         node_id: NodeId,
@@ -3032,7 +3034,7 @@ impl<'hir> GenericArgsCtor<'hir> {
             && self.parenthesized == hir::GenericArgsParentheses::No
     }
 
-    fn into_generic_args(self, this: &LoweringContext<'_, 'hir>) -> &'hir hir::GenericArgs<'hir> {
+    fn into_generic_args(self, this: &LoweringContext<'hir>) -> &'hir hir::GenericArgs<'hir> {
         let ga = hir::GenericArgs {
             args: this.arena.alloc_from_iter(self.args),
             constraints: self.constraints,
