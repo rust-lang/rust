@@ -73,6 +73,14 @@ impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Clone
     }
 }
 
+impl<T: ?Sized, const VARIANT: u32, const FIELD: u32> Default
+    for FieldRepresentingType<T, VARIANT, FIELD>
+{
+    fn default() -> Self {
+        Self { _phantom: PhantomData::default() }
+    }
+}
+
 /// Expands to the field representing type of the given field.
 ///
 /// The container type may be a tuple, `struct`, `union` or `enum`. In the case of an enum, the
