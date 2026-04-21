@@ -218,10 +218,18 @@ impl<'tcx> TransformVisitor<'tcx> {
         let source_info = SourceInfo::outermost(body.span);
 
         let none_value = match self.coroutine_kind {
-            CoroutineKind::Desugared(CoroutineDesugaring::Async { fused: _ }, _) => {
-                span_bug!(body.span, "`Future`s are not fused inherently")
-            }
             CoroutineKind::Coroutine(_) => span_bug!(body.span, "`Coroutine`s cannot be fused"),
+            // Fused futures continue to return `Poll::Pending`.
+            CoroutineKind::Desugared(CoroutineDesugaring::Async { fused }, _) => {
+                debug_assert!(fused);
+                let poll_def_id = self.tcx.require_lang_item(LangItem::Poll, body.span);
+                make_aggregate_adt(
+                    poll_def_id,
+                    VariantIdx::ONE,
+                    self.tcx.mk_args(&[self.old_ret_ty.into()]),
+                    IndexVec::new(),
+                )
+            }
             // `gen` continues return `None`
             CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
                 let option_def_id = self.tcx.require_lang_item(LangItem::Option, body.span);

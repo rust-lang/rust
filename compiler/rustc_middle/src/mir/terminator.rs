@@ -189,9 +189,15 @@ impl<O> AssertKind<O> {
             RemainderByZero(_) => LangItem::PanicRemZero,
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => LangItem::PanicCoroutineResumed,
             ResumedAfterReturn(CoroutineKind::Desugared(
-                CoroutineDesugaring::Async { fused: _ },
+                CoroutineDesugaring::Async { fused: false },
                 _,
             )) => LangItem::PanicAsyncFnResumed,
+            ResumedAfterReturn(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async { fused: true },
+                _,
+            )) => {
+                bug!("fused futures do not panic when resumed after completion")
+            }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 LangItem::PanicAsyncGenFnResumed
             }
@@ -295,10 +301,16 @@ impl<O> AssertKind<O> {
                 write!(f, "\"coroutine resumed after completion\"")
             }
             ResumedAfterReturn(CoroutineKind::Desugared(
-                CoroutineDesugaring::Async { fused: _ },
+                CoroutineDesugaring::Async { fused: false },
                 _,
             )) => {
                 write!(f, "\"`async fn` resumed after completion\"")
+            }
+            ResumedAfterReturn(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async { fused: true },
+                _,
+            )) => {
+                bug!("fused futures do not panic when resumed after completion")
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 write!(f, "\"`async gen fn` resumed after completion\"")
@@ -373,10 +385,16 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
                 write!(f, "attempt to calculate the remainder of `{val:#?}` with a divisor of zero")
             }
             ResumedAfterReturn(CoroutineKind::Desugared(
-                CoroutineDesugaring::Async { fused: _ },
+                CoroutineDesugaring::Async { fused: false },
                 _,
             )) => {
                 write!(f, "`async fn` resumed after completion")
+            }
+            ResumedAfterReturn(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async { fused: true },
+                _,
+            )) => {
+                bug!("fused futures do not panic when resumed after completion")
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 todo!()
