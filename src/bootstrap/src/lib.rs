@@ -867,8 +867,10 @@ impl Build {
             crates.is_empty() || possible_features_by_crates.contains(feature)
         };
         let mut features = vec![];
-        if self.config.jemalloc(target) && check("jemalloc") {
-            features.push("jemalloc");
+        if let Some(allocator) = self.config.override_allocator(target)
+            && check(allocator.feature_name())
+        {
+            features.push(allocator.feature_name());
         }
         if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
             features.push("llvm");
