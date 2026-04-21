@@ -1,4 +1,4 @@
-//@ check-fail
+//! Regression test for https://github.com/rust-lang/rust/issues/103157.
 
 #[derive(PartialEq, Eq)]
 pub enum Value {
