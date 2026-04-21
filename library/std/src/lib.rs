@@ -278,6 +278,7 @@
 #![feature(const_trait_impl)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
+#![feature(diagnostic_on_move)]
 #![feature(doc_cfg)]
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]

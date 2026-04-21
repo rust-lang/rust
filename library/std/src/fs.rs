@@ -132,6 +132,7 @@ use crate::{error, fmt};
 /// [`read`]: File::read
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "File")]
+#[diagnostic::on_move(note = "you can use `File::try_clone` to duplicate a `File` instance")]
 pub struct File {
     inner: fs_imp::File,
 }
