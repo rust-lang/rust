@@ -71,9 +71,22 @@ When developing out-of-tree projects that use `rustc_private` crates, you can co
 
 This configuration allows `rust-analyzer` to properly recognize and provide IDE support for `rustc_private` crates in out-of-tree projects. 
 
-### Getting Specific Nightly Documentation for `rustc_private`
+### Getting Nightly Documentation for `rustc_private`
 
-The nightly-rustc internal crates' documentation is only available for the latest nightly. If you depend on compiler internals from an older nightly, you may want to refer to the internal documentation from that particular nightly. The only way to do this is to generate the documentation locally. For example, to get documentation for `nightly-2025-11-08`:
+#### Latest Nightly
+
+For the latest nightly, you can install the `rustc-docs` component and open it directly in your browser:
+
+```sh
+rustup component add rustc-docs
+rustup doc --rustc-docs
+```
+
+> Note: The `rustc-docs` component is only available for recent nightly toolchains and may not be present for every nightly date. It was first introduced in [PR #75560](https://github.com/rust-lang/rust/pull/75560) (August 2020).
+
+#### Older Nightlies
+
+If you depend on compiler internals from an older nightly, you may want to refer to the internal documentation from that particular nightly. The only way to do this is to generate the documentation locally. For example, to get documentation for `nightly-2025-11-08`:
 
 Get the Git commit hash for that nightly:
 
