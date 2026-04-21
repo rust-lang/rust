@@ -80,6 +80,13 @@ rustc_index::newtype_index! {
     }
 }
 
+impl VariantIdx {
+    /// The second variant, at index 1.
+    ///
+    /// For use alongside [`VariantIdx::ZERO`].
+    pub const ONE: VariantIdx = VariantIdx::from_u32(1);
+}
+
 // A variant is absent if it's uninhabited and only has ZST fields.
 // Present uninhabited variants only require space for their fields,
 // but *not* an encoding of the discriminant (e.g., a tag value).

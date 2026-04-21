@@ -279,7 +279,7 @@ impl<'tcx> TransformVisitor<'tcx> {
         statements: &mut Vec<Statement<'tcx>>,
     ) {
         const ZERO: VariantIdx = VariantIdx::ZERO;
-        const ONE: VariantIdx = VariantIdx::from_usize(1);
+        const ONE: VariantIdx = VariantIdx::ONE;
         let rvalue = match self.coroutine_kind {
             CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
                 let poll_def_id = self.tcx.require_lang_item(LangItem::Poll, source_info.span);
@@ -1121,7 +1121,7 @@ fn return_poll_ready_assign<'tcx>(tcx: TyCtxt<'tcx>, source_info: SourceInfo) ->
         const_: Const::zero_sized(tcx.types.unit),
     }));
     let ready_val = Rvalue::Aggregate(
-        Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::from_usize(0), args, None, None)),
+        Box::new(AggregateKind::Adt(poll_def_id, VariantIdx::ZERO, args, None, None)),
         indexvec![val],
     );
     Statement::new(source_info, StatementKind::Assign(Box::new((Place::return_place(), ready_val))))

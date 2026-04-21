@@ -121,12 +121,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // If one variant consists entirely of 1-ZST, then the other variant
         // is the only "relevant" one for this check.
-        let var0 = VariantIdx::from_u32(0);
-        let var1 = VariantIdx::from_u32(1);
-        let relevant_variant = if all_fields_1zst(def.variant(var0))? {
-            def.variant(var1)
-        } else if all_fields_1zst(def.variant(var1))? {
-            def.variant(var0)
+        let relevant_variant = if all_fields_1zst(def.variant(VariantIdx::ZERO))? {
+            def.variant(VariantIdx::ONE)
+        } else if all_fields_1zst(def.variant(VariantIdx::ONE))? {
+            def.variant(VariantIdx::ZERO)
         } else {
             // No variant is all-1-ZST, so no NPO.
             return interp_ok(layout);

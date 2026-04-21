@@ -1077,9 +1077,9 @@ where
                         && this.fields.offset(tag_field.as_usize()) == offset =>
                     {
                         let tagged_variant = if *untagged_variant == VariantIdx::ZERO {
-                            VariantIdx::from_u32(1)
+                            VariantIdx::ONE
                         } else {
-                            VariantIdx::from_u32(0)
+                            VariantIdx::ZERO
                         };
                         assert_eq!(tagged_variant, *niche_variants.start());
                         if *niche_start == 0 {
