@@ -1,9 +1,14 @@
-error[E0271]: type mismatch resolving `Foo == ()`
+error[E0308]: mismatched types
   --> $DIR/opaque-alias-relate-issue-151331.rs:7:18
    |
 LL | fn make_foo() -> Foo {}
-   |                  ^^^ types differ
+   |    --------      ^^^ expected `Vec<_>`, found `()`
+   |    |
+   |    implicitly returns `()` as its body has no tail or `return` expression
+   |
+   = note: expected struct `Vec<_>`
+           found unit type `()`
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0308`.

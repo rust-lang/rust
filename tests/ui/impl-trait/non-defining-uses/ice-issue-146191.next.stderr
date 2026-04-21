@@ -1,8 +1,8 @@
 error[E0282]: type annotations needed
-  --> $DIR/ice-issue-146191.rs:8:5
+  --> $DIR/ice-issue-146191.rs:6:31
    |
-LL |     async { create_complex_future().await }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
+LL | fn create_complex_future() -> impl Future<Output = impl ReturnsSend> {
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
 
 error: aborting due to 1 previous error
 

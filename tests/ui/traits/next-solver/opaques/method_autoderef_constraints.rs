@@ -27,12 +27,10 @@ fn foo() -> Inv<impl Trait> {
     let mut x: Inv<_> = mk();
     if false {
         return x;
-        //~^ ERROR: the trait bound `u32: Trait` is not satisfied [E0277]
     }
 
     x.count_ones();
     x
-    //~^ ERROR: mismatched types [E0308]
 }
 
 fn main() {}

@@ -29,7 +29,7 @@ impl<In, Out> Trait<Bar, In> for Out {
 }
 
 impl<In, Out> Trait<(), In> for Out {
-    //~^ ERROR conflicting implementations of trait `Trait<Bar, _>`
+    //~^ ERROR: conflicting implementations of trait `Trait<Bar, _>`
     type Out = In;
     fn convert(i: In) -> Self::Out {
         i

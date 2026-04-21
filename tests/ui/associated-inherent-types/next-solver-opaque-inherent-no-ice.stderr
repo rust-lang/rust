@@ -40,15 +40,16 @@ LL |     type ImplTrait = impl Clone;
 error[E0308]: mismatched types
   --> $DIR/next-solver-opaque-inherent-no-ice.rs:13:9
    |
+LL |     type ImplTrait = impl Clone;
+   |                      ---------- the expected opaque type
+...
 LL |     fn f() -> Self::ImplTrait {
    |               --------------- expected `Foo::ImplTrait` because of return type
 LL |         ()
    |         ^^ types differ
    |
-   = note: expected associated type `Foo::ImplTrait`
-                    found unit type `()`
-   = help: consider constraining the associated type `Foo::ImplTrait` to `()` or calling a method that returns `Foo::ImplTrait`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+   = note: expected opaque type `Foo::ImplTrait`
+                found unit type `()`
 
 error: aborting due to 6 previous errors
 

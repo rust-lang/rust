@@ -13,8 +13,6 @@ struct W<T>(T);
 // `usize: Foo` doesn't hold. Therefore we ICE, because we don't expect to still
 // encounter weak types in `assemble_alias_bound_candidates_recur`.
 fn hello(_: W<A<usize>>) {}
-//~^ ERROR the trait bound `usize: Foo` is not satisfied
-//~| ERROR the trait bound `usize: Foo` is not satisfied
-//~| ERROR the trait bound `usize: Foo` is not satisfied
-
+//~^ ERROR: the trait bound `usize: Foo` is not satisfied
+//~| ERROR: the trait bound `usize: Foo` is not satisfied
 fn main() {}

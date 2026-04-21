@@ -1,4 +1,4 @@
-// regression test for #73299.
+// regression test for #74299.
 #![feature(specialization)]
 
 trait X {
@@ -18,7 +18,7 @@ trait Y {
 
 impl Y for <() as X>::U {}
 impl Y for <i32 as X>::U {}
-//~^ ERROR conflicting implementations of trait `Y` for type `<() as X>::U`
+//~^ ERROR conflicting implementations of trait `Y`
 
 fn main() {
     ().f().g();

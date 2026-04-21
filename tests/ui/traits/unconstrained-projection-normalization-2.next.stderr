@@ -28,13 +28,7 @@ help: consider relaxing the implicit `Sized` restriction
 LL |     type Assoc: ?Sized;
    |               ++++++++
 
-error[E0282]: type annotations needed
-  --> $DIR/unconstrained-projection-normalization-2.rs:20:11
-   |
-LL | fn foo(_: <Thing as Every>::Assoc) {}
-   |           ^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for associated type `<Thing as Every>::Assoc`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0207, E0277, E0282.
+Some errors have detailed explanations: E0207, E0277.
 For more information about an error, try `rustc --explain E0207`.

@@ -29,34 +29,13 @@ note: captured value does not implement `Valid`
 LL |     let foo: T = async { a };
    |                          ^ has type `False` which does not implement `Valid`
 
-error[E0271]: type mismatch resolving `impl Future + Send == {async block@$DIR/stalled-coroutine-obligations.rs:42:9: 42:19}`
-  --> $DIR/stalled-coroutine-obligations.rs:39:5
+error[E0271]: type mismatch resolving `impl Future + Send == {async block@$DIR/stalled-coroutine-obligations.rs:41:9: 41:19}`
+  --> $DIR/stalled-coroutine-obligations.rs:39:43
    |
 LL |     fn stalled_send(&self, b: *mut ()) -> impl Future + Send {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+   |                                           ^^^^^^^^^^^^^^^^^^ types differ
 
-error[E0271]: type mismatch resolving `impl Future + Send == {async block@$DIR/stalled-coroutine-obligations.rs:42:9: 42:19}`
-  --> $DIR/stalled-coroutine-obligations.rs:42:9
-   |
-LL | /         async move {
-LL | |
-LL | |             b
-LL | |         }
-   | |_________^ types differ
-
-error[E0271]: type mismatch resolving `{async block@$DIR/stalled-coroutine-obligations.rs:42:9: 42:19} <: impl Future + Send`
-  --> $DIR/stalled-coroutine-obligations.rs:39:62
-   |
-LL |       fn stalled_send(&self, b: *mut ()) -> impl Future + Send {
-   |  ______________________________________________________________^
-LL | |
-LL | |
-LL | |         async move {
-...  |
-LL | |     }
-   | |_____^ types differ
-
-error: aborting due to 6 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0271, E0277.
 For more information about an error, try `rustc --explain E0271`.

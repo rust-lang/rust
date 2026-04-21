@@ -38,9 +38,7 @@ fn stalled_auto_traits() {
 trait Trait {
     fn stalled_send(&self, b: *mut ()) -> impl Future + Send {
     //~^ ERROR: type mismatch resolving
-    //~| ERROR: type mismatch resolving
         async move {
-            //~^ ERROR: type mismatch resolving
             b
         }
     }

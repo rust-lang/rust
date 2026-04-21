@@ -11,10 +11,7 @@ LL | fn ret_ref_local<'e>() -> &'e i32 {
    |                           ------- expected `&'e i32` because of return type
 ...
 LL |     f(&1)
-   |     ^^^^^ expected `&i32`, found associated type
-   |
-   = help: consider constraining the associated type `S<'_>::P` to `&'e i32`
-   = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+   |     ^^^^^ expected `&i32`, found `()`
 
 error: aborting due to 2 previous errors
 

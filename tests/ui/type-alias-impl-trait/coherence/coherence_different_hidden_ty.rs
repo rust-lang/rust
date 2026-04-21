@@ -18,7 +18,7 @@ type TAIT = impl Sized;
 impl Trait for (TAIT, TAIT) {}
 
 impl Trait for (u32, i32) {}
-//~^ ERROR conflicting implementations of trait `Trait` for type `(TAIT, TAIT)`
+//~^ ERROR: conflicting implementations of trait `Trait` for type `(TAIT, TAIT)`
 
 #[define_opaque(TAIT)]
 fn define() -> TAIT {}

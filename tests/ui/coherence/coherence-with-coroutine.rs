@@ -21,6 +21,6 @@ struct Wrapper<T>(T);
 trait Trait {}
 impl Trait for Wrapper<OpaqueCoroutine> {}
 impl<T: Sync> Trait for Wrapper<T> {}
-//[stock]~^ ERROR conflicting implementations of trait `Trait` for type `Wrapper<OpaqueCoroutine>`
+//[stock]~^ ERROR: conflicting implementations of trait `Trait` for type `Wrapper<OpaqueCoroutine>`
 
 fn main() {}

@@ -9,6 +9,7 @@ trait Trait {}
 impl Trait for u32 {}
 
 fn hello() -> Box<impl Trait + ?Sized> {
+//[next]~^ ERROR: the trait bound `dyn Send: Trait` is not satisfied
     if true {
         let x = hello();
         //[next]~^ ERROR: the trait bound `dyn Send: Trait` is not satisfied

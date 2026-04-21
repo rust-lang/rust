@@ -21,16 +21,18 @@ trait Foo {
 impl Foo for () {
     type Item = String where String: Copy;
     //~^ ERROR overflow evaluating the requirement `String: Copy`
+    //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
+    //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
+    //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
+    //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
 }
 
 fn main() {
     let x = String::from("hello, world");
     let _ = identity(<() as Foo>::copy_me(&x));
-    //~^ ERROR overflow evaluating whether `<() as Foo>::Item` is well-formed
-    //~| ERROR overflow evaluating whether `&<() as Foo>::Item` is well-formed
-    //~| ERROR overflow evaluating the requirement `String == <() as Foo>::Item`
-    //~| ERROR overflow evaluating the requirement `<() as Foo>::Item == _`
-    //~| ERROR overflow evaluating the requirement `<() as Foo>::Item == _`
-    //~| ERROR overflow evaluating the requirement `<() as Foo>::Item == _`
+    //~^ ERROR: overflow evaluating the requirement `<() as Foo>::Item == String` [E0275]
+    //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
+    //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
+    //~| ERROR: overflow evaluating the requirement `<() as Foo>::Item == _` [E0275]
     println!("{x}");
 }
