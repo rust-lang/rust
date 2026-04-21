@@ -1,4 +1,4 @@
-use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind, Safety};
+use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind, Safety, ast};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
@@ -41,6 +41,35 @@ pub(crate) fn expand_deriving_partial_ord(
     } else {
         true
     };
+    let substructure = combine_substructure(Box::new(|cx, span, substr| {
+        cs_partial_cmp(cx, span, substr, discr_then_data)
+    }));
+    let (is_simple, substructure) = match item {
+        Annotatable::Item(annitem) => match &annitem.kind {
+            ItemKind::Struct(_, ast::Generics { params, .. }, _)
+            | ItemKind::Enum(_, ast::Generics { params, .. }, _)
+                if let container_id = cx.current_expansion.id.expn_data().parent.expect_local()
+                    && cx.resolver.has_derive_ord(container_id)
+                    && !params
+                        .iter()
+                        .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })) =>
+            {
+                (
+                    true,
+                    combine_substructure(Box::new(|cx, span, _| {
+                        cs_partial_cmp_simple(
+                            cx,
+                            span,
+                            cx.expr_ident(span, Ident::new(sym::other, span)),
+                        )
+                    })),
+                )
+            }
+            _ => (false, substructure),
+        },
+        _ => (false, substructure),
+    };
+
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,
         generics: Bounds::empty(),
@@ -49,9 +78,7 @@ pub(crate) fn expand_deriving_partial_ord(
         ret_ty,
         attributes: thin_vec![cx.attr_word(sym::inline, span)],
         fieldless_variants_strategy: FieldlessVariantsStrategy::Unify,
-        combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
-            cs_partial_cmp(cx, span, substr, discr_then_data)
-        })),
+        combine_substructure: substructure,
     };
 
     let trait_def = TraitDef {
@@ -68,7 +95,21 @@ pub(crate) fn expand_deriving_partial_ord(
         safety: Safety::Default,
         document: true,
     };
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand_ext(cx, mitem, item, push, is_simple)
+}
+
+// Special case for the type deriving both `PartialOrd` and `Ord`. Builds:
+// ```
+// Some(self.cmp(other))
+// ```
+fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr>) -> BlockOrExpr {
+    let cmp_expr = cx.expr_method_call(
+        span,
+        cx.expr_self(span),
+        Ident::new(sym::cmp, span),
+        thin_vec![other_expr],
+    );
+    BlockOrExpr::new_expr(cx.expr_some(span, cmp_expr))
 }
 
 fn cs_partial_cmp(
@@ -98,7 +139,8 @@ fn cs_partial_cmp(
         |cx, fold| match fold {
             CsFold::Single(field) => {
                 let [other_expr] = &field.other_selflike_exprs[..] else {
-                    cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
+                    cx.dcx()
+                        .span_bug(field.span, "not exactly 2 arguments in `derive(PartialOrd)`");
                 };
                 let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
                 cx.expr_call_global(field.span, partial_cmp_path.clone(), args)
