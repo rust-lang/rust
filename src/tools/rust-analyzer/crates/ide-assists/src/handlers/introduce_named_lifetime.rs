@@ -1,7 +1,7 @@
 use ide_db::{FileId, FxHashSet};
 use syntax::{
     AstNode, SmolStr, T, TextRange, ToSmolStr,
-    ast::{self, HasGenericParams, HasName, syntax_factory::SyntaxFactory},
+    ast::{self, HasGenericParams, HasName},
     format_smolstr,
     syntax_editor::{Element, Position, SyntaxEditor},
 };
@@ -97,23 +97,23 @@ fn generate_fn_def_assist(
     };
 
     acc.add(AssistId::refactor(ASSIST_NAME), ASSIST_LABEL, lifetime_loc, |edit| {
-        let mut editor = edit.make_editor(fn_def.syntax());
-        let factory = SyntaxFactory::with_mappings();
+        let editor = edit.make_editor(fn_def.syntax());
+        let make = editor.make();
 
         if let Some(generic_list) = fn_def.generic_param_list() {
-            insert_lifetime_param(&mut editor, &factory, &generic_list, &new_lifetime_name);
+            insert_lifetime_param(&editor, &generic_list, &new_lifetime_name);
         } else {
-            insert_new_generic_param_list_fn(&mut editor, &factory, &fn_def, &new_lifetime_name);
+            insert_new_generic_param_list_fn(&editor, &fn_def, &new_lifetime_name);
         }
 
-        editor.replace(lifetime.syntax(), factory.lifetime(&new_lifetime_name).syntax());
+        editor.replace(lifetime.syntax(), make.lifetime(&new_lifetime_name).syntax());
 
         if let Some(pos) = loc_needing_lifetime.and_then(|l| l.to_position()) {
             editor.insert_all(
                 pos,
                 vec![
-                    factory.lifetime(&new_lifetime_name).syntax().clone().into(),
-                    factory.whitespace(" ").into(),
+                    make.lifetime(&new_lifetime_name).syntax().clone().into(),
+                    make.whitespace(" ").into(),
                 ],
             );
         }
@@ -123,19 +123,19 @@ fn generate_fn_def_assist(
 }
 
 fn insert_new_generic_param_list_fn(
-    editor: &mut SyntaxEditor,
-    factory: &SyntaxFactory,
+    editor: &SyntaxEditor,
     fn_def: &ast::Fn,
     lifetime_name: &str,
 ) -> Option<()> {
+    let make = editor.make();
     let name = fn_def.name()?;
 
     editor.insert_all(
         Position::after(name.syntax()),
         vec![
-            factory.token(T![<]).syntax_element(),
-            factory.lifetime(lifetime_name).syntax().syntax_element(),
-            factory.token(T![>]).syntax_element(),
+            make.token(T![<]).syntax_element(),
+            make.lifetime(lifetime_name).syntax().syntax_element(),
+            make.token(T![>]).syntax_element(),
         ],
     );
 
@@ -166,35 +166,35 @@ fn generate_impl_def_assist(
     let new_lifetime_name = generate_unique_lifetime_param_name(impl_def.generic_param_list())?;
 
     acc.add(AssistId::refactor(ASSIST_NAME), ASSIST_LABEL, lifetime_loc, |edit| {
-        let mut editor = edit.make_editor(impl_def.syntax());
-        let factory = SyntaxFactory::without_mappings();
+        let editor = edit.make_editor(impl_def.syntax());
+        let make = editor.make();
 
         if let Some(generic_list) = impl_def.generic_param_list() {
-            insert_lifetime_param(&mut editor, &factory, &generic_list, &new_lifetime_name);
+            insert_lifetime_param(&editor, &generic_list, &new_lifetime_name);
         } else {
-            insert_new_generic_param_list_imp(&mut editor, &factory, &impl_def, &new_lifetime_name);
+            insert_new_generic_param_list_imp(&editor, &impl_def, &new_lifetime_name);
         }
 
-        editor.replace(lifetime.syntax(), factory.lifetime(&new_lifetime_name).syntax());
+        editor.replace(lifetime.syntax(), make.lifetime(&new_lifetime_name).syntax());
 
         edit.add_file_edits(file_id, editor);
     })
 }
 
 fn insert_new_generic_param_list_imp(
-    editor: &mut SyntaxEditor,
-    factory: &SyntaxFactory,
+    editor: &SyntaxEditor,
     impl_: &ast::Impl,
     lifetime_name: &str,
 ) -> Option<()> {
+    let make = editor.make();
     let impl_kw = impl_.impl_token()?;
 
     editor.insert_all(
         Position::after(impl_kw),
         vec![
-            factory.token(T![<]).syntax_element(),
-            factory.lifetime(lifetime_name).syntax().syntax_element(),
-            factory.token(T![>]).syntax_element(),
+            make.token(T![<]).syntax_element(),
+            make.lifetime(lifetime_name).syntax().syntax_element(),
+            make.token(T![>]).syntax_element(),
         ],
     );
 
@@ -202,22 +202,22 @@ fn insert_new_generic_param_list_imp(
 }
 
 fn insert_lifetime_param(
-    editor: &mut SyntaxEditor,
-    factory: &SyntaxFactory,
+    editor: &SyntaxEditor,
     generic_list: &ast::GenericParamList,
     lifetime_name: &str,
 ) -> Option<()> {
+    let make = editor.make();
     let r_angle = generic_list.r_angle_token()?;
     let needs_comma = generic_list.generic_params().next().is_some();
 
     let mut elements = Vec::new();
 
     if needs_comma {
-        elements.push(factory.token(T![,]).syntax_element());
-        elements.push(factory.whitespace(" ").syntax_element());
+        elements.push(make.token(T![,]).syntax_element());
+        elements.push(make.whitespace(" ").syntax_element());
     }
 
-    let lifetime = factory.lifetime(lifetime_name);
+    let lifetime = make.lifetime(lifetime_name);
     elements.push(lifetime.syntax().clone().into());
 
     editor.insert_all(Position::before(r_angle), elements);

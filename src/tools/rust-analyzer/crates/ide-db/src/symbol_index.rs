@@ -400,22 +400,16 @@ impl<'db> SymbolIndex<'db> {
     /// The symbol index for a given module. These modules should only be in source roots that
     /// are inside local_roots.
     pub fn module_symbols(db: &dyn HirDatabase, module: Module) -> &SymbolIndex<'_> {
-        // FIXME:
-        #[salsa::interned]
-        struct InternedModuleId {
-            id: hir::ModuleId,
-        }
-
         #[salsa::tracked(returns(ref))]
         fn module_symbols<'db>(
             db: &'db dyn HirDatabase,
-            module: InternedModuleId<'db>,
+            module: hir::ModuleId,
         ) -> SymbolIndex<'db> {
             let _p = tracing::info_span!("module_symbols").entered();
 
             // We call this without attaching because this runs in parallel, so we need to attach here.
             hir::attach_db(db, || {
-                let module: Module = module.id(db).into();
+                let module: Module = module.into();
                 SymbolIndex::new(SymbolCollector::new_module(
                     db,
                     module,
@@ -424,7 +418,7 @@ impl<'db> SymbolIndex<'db> {
             })
         }
 
-        module_symbols(db, InternedModuleId::new(db, hir::ModuleId::from(module)))
+        module_symbols(db, hir::ModuleId::from(module))
     }
 
     /// The symbol index for all extern prelude crates.

@@ -1,5 +1,5 @@
 #!
 
 //@ check-pass
-//@ reference: input.shebang
+//@ reference: shebang.syntax
 fn main() {}

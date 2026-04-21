@@ -463,7 +463,7 @@ fn doctest_convert_closure_to_fn() {
     check_doc_test(
         "convert_closure_to_fn",
         r#####"
-//- minicore: copy
+//- minicore: copy, fn
 struct String;
 impl String {
     fn new() -> Self {}

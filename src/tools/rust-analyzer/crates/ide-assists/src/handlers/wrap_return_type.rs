@@ -77,9 +77,9 @@ pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             kind.label(),
             type_ref.syntax().text_range(),
             |builder| {
-                let mut editor = builder.make_editor(&parent);
-                let make = SyntaxFactory::with_mappings();
-                let alias = wrapper_alias(ctx, &make, core_wrapper, type_ref, &ty, kind.symbol());
+                let editor = builder.make_editor(&parent);
+                let make = editor.make();
+                let alias = wrapper_alias(ctx, make, core_wrapper, type_ref, &ty, kind.symbol());
                 let (ast_new_return_ty, semantic_new_return_ty) = alias.unwrap_or_else(|| {
                     let (ast_ty, ty_constructor) = match kind {
                         WrapperKind::Option => {
@@ -156,8 +156,6 @@ pub(crate) fn wrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                         );
                     }
                 }
-
-                editor.add_mappings(make.finish_with_mappings());
                 builder.add_file_edits(ctx.vfs_file_id(), editor);
             },
         );
@@ -964,7 +962,7 @@ fn foo(num: i32) -> Option<i32> {
         check_assist_by_label(
             wrap_return_type,
             r#"
-//- minicore: option
+//- minicore: option, fn
 fn foo(the_field: u32) ->$0 u32 {
     let true_closure = || { return true; };
     if the_field < 5 {
@@ -998,7 +996,7 @@ fn foo(the_field: u32) -> Option<u32> {
         check_assist_by_label(
             wrap_return_type,
             r#"
-//- minicore: option
+//- minicore: option, fn
 fn foo(the_field: u32) -> u32$0 {
     let true_closure = || {
         return true;
@@ -2035,7 +2033,7 @@ fn foo(num: i32) -> Result<i32, ${0:_}> {
         check_assist_by_label(
             wrap_return_type,
             r#"
-//- minicore: result
+//- minicore: result, fn
 fn foo(the_field: u32) ->$0 u32 {
     let true_closure = || { return true; };
     if the_field < 5 {
@@ -2069,7 +2067,7 @@ fn foo(the_field: u32) -> Result<u32, ${0:_}> {
         check_assist_by_label(
             wrap_return_type,
             r#"
-//- minicore: result
+//- minicore: result, fn
 fn foo(the_field: u32) -> u32$0 {
     let true_closure = || {
         return true;

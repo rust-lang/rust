@@ -15,7 +15,8 @@ use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::errors::{
     DocAliasDuplicated, DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList,
-    DocAutoCfgHideShowUnexpectedItem, DocUnknownInclude, IllFormedAttributeInput,
+    DocAutoCfgHideShowUnexpectedItem, DocAutoCfgWrongLiteral, DocUnknownAny, DocUnknownInclude,
+    DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, IllFormedAttributeInput,
 };
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
@@ -442,9 +443,9 @@ impl DocParser {
             ArgParser::NameValue(nv) => {
                 let MetaItemLit { kind: LitKind::Bool(bool_value), span, .. } = nv.value_as_lit()
                 else {
-                    cx.emit_lint(
+                    cx.emit_dyn_lint(
                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                        AttributeLintKind::DocAutoCfgWrongLiteral,
+                        move |dcx, level| DocAutoCfgWrongLiteral.into_diag(dcx, level),
                         nv.value_span,
                     );
                     return;
@@ -613,10 +614,11 @@ impl DocParser {
                 }
             }
             Some(sym::spotlight) => {
-                cx.emit_lint(
+                let span = path.span();
+                cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::DocUnknownSpotlight { span: path.span() },
-                    path.span(),
+                    move |dcx, level| DocUnknownSpotlight { sugg_span: span }.into_diag(dcx, level),
+                    span,
                 );
             }
             Some(sym::include) if let Some(nv) = args.name_value() => {
@@ -640,32 +642,37 @@ impl DocParser {
                 );
             }
             Some(name @ (sym::passes | sym::no_default_passes)) => {
-                cx.emit_lint(
+                let span = path.span();
+                cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::DocUnknownPasses { name, span: path.span() },
-                    path.span(),
+                    move |dcx, level| {
+                        DocUnknownPasses { name, note_span: span }.into_diag(dcx, level)
+                    },
+                    span,
                 );
             }
             Some(sym::plugins) => {
-                cx.emit_lint(
+                let span = path.span();
+                cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::DocUnknownPlugins { span: path.span() },
-                    path.span(),
+                    move |dcx, level| DocUnknownPlugins { label_span: span }.into_diag(dcx, level),
+                    span,
                 );
             }
             Some(name) => {
-                cx.emit_lint(
+                cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::DocUnknownAny { name },
+                    move |dcx, level| DocUnknownAny { name }.into_diag(dcx, level),
                     path.span(),
                 );
             }
             None => {
                 let full_name =
                     path.segments().map(|s| s.as_str()).intersperse("::").collect::<String>();
-                cx.emit_lint(
+                let name = Symbol::intern(&full_name);
+                cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::DocUnknownAny { name: Symbol::intern(&full_name) },
+                    move |dcx, level| DocUnknownAny { name }.into_diag(dcx, level),
                     path.span(),
                 );
             }

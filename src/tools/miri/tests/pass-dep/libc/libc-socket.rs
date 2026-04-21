@@ -1,8 +1,6 @@
 //@ignore-target: windows # No libc socket on Windows
 //@compile-flags: -Zmiri-disable-isolation
 
-#![feature(io_error_inprogress)]
-
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
 #[path = "../../utils/mod.rs"]
@@ -18,7 +16,7 @@ use utils::check_nondet;
 const TEST_BYTES: &[u8] = b"these are some test bytes!";
 
 fn main() {
-    test_socket_close();
+    test_create_close();
     test_bind_ipv4();
     test_bind_ipv4_reuseaddr();
     test_set_reuseaddr_invalid_len();
@@ -50,11 +48,17 @@ fn main() {
     test_getpeername_ipv6();
 }
 
-fn test_socket_close() {
-    unsafe {
-        let sockfd = errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap();
-        errno_check(libc::close(sockfd));
-    }
+/// Test creating a socket and then closing it afterwards.
+fn test_create_close() {
+    let sockfd =
+        unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
+
+    let flags = unsafe { errno_result(libc::fcntl(sockfd, libc::F_GETFL, 0)).unwrap() };
+
+    // Ensure that socket is initially blocking.
+    assert_eq!(flags & libc::O_NONBLOCK, 0);
+
+    unsafe { errno_check(libc::close(sockfd)) };
 }
 
 fn test_bind_ipv4() {
@@ -193,13 +197,18 @@ fn test_listen() {
 /// - Connecting when the server is already accepting
 /// - Accepting when there is already an incoming connection
 fn test_accept_connect() {
-    let (server_sockfd, addr) = net::make_listener_ipv4(0).unwrap();
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
     // Spawn the server thread.
     let server_thread = thread::spawn(move || {
-        net::accept_ipv4(server_sockfd).unwrap();
+        let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
+
+        let flags = unsafe { errno_result(libc::fcntl(peerfd, libc::F_GETFL, 0)).unwrap() };
+
+        // Ensure that peer socket is blocking.
+        assert_eq!(flags & libc::O_NONBLOCK, 0);
 
         // Yield back to the client thread to test whether calling `connect` first also
         // works.
@@ -213,7 +222,7 @@ fn test_accept_connect() {
     thread::sleep(Duration::from_millis(10));
 
     // Test connecting to an already accepting server.
-    net::connect_ipv4(client_sockfd, addr);
+    net::connect_ipv4(client_sockfd, addr).unwrap();
 
     // Server thread should now be in its `sleep`.
     // Test connecting when there is no actively ongoing `accept`.
@@ -221,7 +230,7 @@ fn test_accept_connect() {
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
-    net::connect_ipv4(client_sockfd, addr);
+    net::connect_ipv4(client_sockfd, addr).unwrap();
 
     server_thread.join().unwrap();
 }
@@ -231,7 +240,7 @@ fn test_accept_connect() {
 /// We especially want to test that the peeking doesn't remove the bytes from
 /// the queue.
 fn test_send_peek_recv() {
-    let (server_sockfd, addr) = net::make_listener_ipv4(0).unwrap();
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -240,19 +249,18 @@ fn test_send_peek_recv() {
         let (peerfd, _) = net::accept_ipv4(server_sockfd).unwrap();
 
         // Write the bytes into the stream.
-        let bytes_written = unsafe {
-            errno_result(libc_utils::net::send_all(
-                peerfd,
+        unsafe {
+            errno_result(libc_utils::write_all_generic(
                 TEST_BYTES.as_ptr().cast(),
                 TEST_BYTES.len(),
-                0,
+                libc_utils::NoRetry,
+                |buf, count| libc::send(peerfd, buf, count, 0),
             ))
             .unwrap()
         };
-        assert_eq!(bytes_written as usize, TEST_BYTES.len());
     });
 
-    net::connect_ipv4(client_sockfd, addr);
+    net::connect_ipv4(client_sockfd, addr).unwrap();
 
     let mut buffer = [0; TEST_BYTES.len()];
     let bytes_read = unsafe {
@@ -273,17 +281,15 @@ fn test_send_peek_recv() {
     // able to read the same bytes again into a new buffer.
 
     let mut buffer = [0; TEST_BYTES.len()];
-    let bytes_read = unsafe {
-        errno_result(libc_utils::net::recv_all(
-            client_sockfd,
+    unsafe {
+        errno_result(libc_utils::read_all_generic(
             buffer.as_mut_ptr().cast(),
             buffer.len(),
-            0,
+            libc_utils::NoRetry,
+            |buf, count| libc::recv(client_sockfd, buf, count, 0),
         ))
         .unwrap()
     };
-
-    assert_eq!(bytes_read as usize, TEST_BYTES.len());
     assert_eq!(&buffer, TEST_BYTES);
 
     server_thread.join().unwrap();
@@ -291,7 +297,7 @@ fn test_send_peek_recv() {
 
 /// Test that we actually do partial sends and partial receives for sockets.
 fn test_partial_send_recv() {
-    let (server_sockfd, addr) = net::make_listener_ipv4(0).unwrap();
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -313,7 +319,7 @@ fn test_partial_send_recv() {
         });
     });
 
-    net::connect_ipv4(client_sockfd, addr);
+    net::connect_ipv4(client_sockfd, addr).unwrap();
 
     // Ensure we sometimes do incomplete writes.
     check_nondet(|| {
@@ -325,11 +331,10 @@ fn test_partial_send_recv() {
     let buffer = [0u8; 100_000];
     // Write a lot of bytes into the socket such that we can test
     // incomplete reads.
-    let bytes_written = unsafe {
+    unsafe {
         errno_result(libc_utils::write_all(client_sockfd, buffer.as_ptr().cast(), buffer.len()))
             .unwrap()
     };
-    assert_eq!(bytes_written as usize, buffer.len());
 
     server_thread.join().unwrap();
 }
@@ -339,7 +344,7 @@ fn test_partial_send_recv() {
 /// We want to test this because `write` and `read` should be the same as
 /// `send` and `recv` with zero flags.
 fn test_write_read() {
-    let (server_sockfd, addr) = net::make_listener_ipv4(0).unwrap();
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
@@ -359,15 +364,13 @@ fn test_write_read() {
         assert_eq!(bytes_written as usize, TEST_BYTES.len());
     });
 
-    net::connect_ipv4(client_sockfd, addr);
+    net::connect_ipv4(client_sockfd, addr).unwrap();
 
     let mut buffer = [0; TEST_BYTES.len()];
-    let bytes_read = unsafe {
+    unsafe {
         errno_result(libc_utils::read_all(client_sockfd, buffer.as_mut_ptr().cast(), buffer.len()))
             .unwrap()
     };
-
-    assert_eq!(bytes_read as usize, TEST_BYTES.len());
     assert_eq!(&buffer, TEST_BYTES);
 
     server_thread.join().unwrap();
@@ -484,14 +487,14 @@ fn test_getsockname_ipv6() {
 /// For a connected socket, the `getpeername` syscall should
 /// return the same address as the socket was connected to.
 fn test_getpeername_ipv4() {
-    let (server_sockfd, addr) = net::make_listener_ipv4(0).unwrap();
+    let (server_sockfd, addr) = net::make_listener_ipv4().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0)).unwrap() };
 
     // Spawn the server thread.
     let server_thread = thread::spawn(move || net::accept_ipv4(server_sockfd).unwrap());
 
-    net::connect_ipv4(client_sockfd, addr);
+    net::connect_ipv4(client_sockfd, addr).unwrap();
 
     let (_, peer_addr) = net::sockname_ipv4(|storage, len| unsafe {
         libc::getpeername(client_sockfd, storage, len)
@@ -509,14 +512,14 @@ fn test_getpeername_ipv4() {
 /// For a connected socket, the `getpeername` syscall should
 /// return the same address as the socket was connected to.
 fn test_getpeername_ipv6() {
-    let (server_sockfd, addr) = net::make_listener_ipv6(0).unwrap();
+    let (server_sockfd, addr) = net::make_listener_ipv6().unwrap();
     let client_sockfd =
         unsafe { errno_result(libc::socket(libc::AF_INET6, libc::SOCK_STREAM, 0)).unwrap() };
 
     // Spawn the server thread.
     let server_thread = thread::spawn(move || net::accept_ipv6(server_sockfd).unwrap());
 
-    net::connect_ipv6(client_sockfd, addr);
+    net::connect_ipv6(client_sockfd, addr).unwrap();
 
     let (_, peer_addr) = net::sockname_ipv6(|storage, len| unsafe {
         libc::getpeername(client_sockfd, storage, len)

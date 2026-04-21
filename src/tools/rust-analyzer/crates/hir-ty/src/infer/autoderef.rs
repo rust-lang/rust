@@ -36,7 +36,7 @@ impl<'db, Ctx: AutoderefCtx<'db>> GeneralAutoderef<'db, Ctx> {
             .iter()
             .map(|&(_source, kind)| {
                 if let AutoderefKind::Overloaded = kind {
-                    Some(OverloadedDeref(Some(Mutability::Not)))
+                    Some(OverloadedDeref(Mutability::Not))
                 } else {
                     None
                 }

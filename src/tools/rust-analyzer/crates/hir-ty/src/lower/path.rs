@@ -214,10 +214,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 );
                                 Ty::new_alias(
                                     self.ctx.interner,
-                                    AliasTyKind::Projection,
                                     AliasTy::new_from_args(
                                         self.ctx.interner,
-                                        associated_ty.into(),
+                                        AliasTyKind::Projection { def_id: associated_ty.into() },
                                         args,
                                     ),
                                 )
@@ -949,10 +948,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 bound,
                                 Ty::new_alias(
                                     self.ctx.interner,
-                                    AliasTyKind::Projection,
                                     AliasTy::new_from_args(
                                         self.ctx.interner,
-                                        associated_ty.into(),
+                                        AliasTyKind::Projection { def_id: associated_ty.into() },
                                         args,
                                     ),
                                 ),

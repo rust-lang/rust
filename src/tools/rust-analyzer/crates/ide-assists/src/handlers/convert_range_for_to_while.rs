@@ -6,7 +6,7 @@ use syntax::{
     T,
     algo::previous_non_trivia_token,
     ast::{
-        self, HasArgList, HasLoopBody, HasName, RangeItem, edit::AstNodeEdit, make,
+        self, HasArgList, HasLoopBody, HasName, RangeItem, edit::AstNodeEdit,
         syntax_factory::SyntaxFactory,
     },
     syntax_editor::{Element, Position, SyntaxEditor},
@@ -36,11 +36,13 @@ use crate::assist_context::{AssistContext, Assists};
 // }
 // ```
 pub(crate) fn convert_range_for_to_while(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    let (editor, _) = SyntaxEditor::new(ctx.source_file().syntax().clone());
+    let make = editor.make();
     let for_kw = ctx.find_token_syntax_at_offset(T![for])?;
     let for_ = ast::ForExpr::cast(for_kw.parent()?)?;
     let ast::Pat::IdentPat(pat) = for_.pat()? else { return None };
     let iterable = for_.iterable()?;
-    let (start, end, step, inclusive) = extract_range(&iterable)?;
+    let (start, end, step, inclusive) = extract_range(&iterable, make)?;
     let name = pat.name()?;
     let body = for_.loop_body()?.stmt_list()?;
     let label = for_.label();
@@ -55,13 +57,11 @@ pub(crate) fn convert_range_for_to_while(acc: &mut Assists, ctx: &AssistContext<
         description,
         for_.syntax().text_range(),
         |builder| {
-            let mut edit = builder.make_editor(for_.syntax());
-            let make = SyntaxFactory::with_mappings();
-
+            let make = editor.make();
             let indent = for_.indent_level();
             let pat = make.ident_pat(pat.ref_token().is_some(), true, name.clone());
             let let_stmt = make.let_stmt(pat.into(), None, Some(start));
-            edit.insert_all(
+            editor.insert_all(
                 Position::before(for_.syntax()),
                 vec![
                     let_stmt.syntax().syntax_element(),
@@ -86,39 +86,36 @@ pub(crate) fn convert_range_for_to_while(acc: &mut Assists, ctx: &AssistContext<
                 elements.push(make.token(T![loop]).syntax_element());
             }
 
-            edit.replace_all(
+            editor.replace_all(
                 for_kw.syntax_element()..=iterable.syntax().syntax_element(),
                 elements,
             );
 
             let op = ast::BinaryOp::Assignment { op: Some(ast::ArithOp::Add) };
-            process_loop_body(
-                body,
-                label,
-                &mut edit,
-                vec![
-                    make.whitespace(&format!("\n{}", indent + 1)).syntax_element(),
-                    make.expr_bin(var_expr, op, step).syntax().syntax_element(),
-                    make.token(T![;]).syntax_element(),
-                ],
-            );
-
-            edit.add_mappings(make.finish_with_mappings());
-            builder.add_file_edits(ctx.vfs_file_id(), edit);
+            let incrementer = vec![
+                make.whitespace(&format!("\n{}", indent + 1)).syntax_element(),
+                make.expr_bin(var_expr, op, step).syntax().syntax_element(),
+                make.token(T![;]).syntax_element(),
+            ];
+            process_loop_body(body, label, &editor, incrementer);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
 
-fn extract_range(iterable: &ast::Expr) -> Option<(ast::Expr, Option<ast::Expr>, ast::Expr, bool)> {
+fn extract_range(
+    iterable: &ast::Expr,
+    make: &SyntaxFactory,
+) -> Option<(ast::Expr, Option<ast::Expr>, ast::Expr, bool)> {
     Some(match iterable {
-        ast::Expr::ParenExpr(expr) => extract_range(&expr.expr()?)?,
+        ast::Expr::ParenExpr(expr) => extract_range(&expr.expr()?, make)?,
         ast::Expr::RangeExpr(range) => {
             let inclusive = range.op_kind()? == ast::RangeOp::Inclusive;
-            (range.start()?, range.end(), make::expr_literal("1").into(), inclusive)
+            (range.start()?, range.end(), make.expr_literal("1").into(), inclusive)
         }
         ast::Expr::MethodCallExpr(call) if call.name_ref()?.text() == "step_by" => {
             let [step] = Itertools::collect_array(call.arg_list()?.args())?;
-            let (start, end, _, inclusive) = extract_range(&call.receiver()?)?;
+            let (start, end, _, inclusive) = extract_range(&call.receiver()?, make)?;
             (start, end, step, inclusive)
         }
         _ => return None,
@@ -128,9 +125,10 @@ fn extract_range(iterable: &ast::Expr) -> Option<(ast::Expr, Option<ast::Expr>, 
 fn process_loop_body(
     body: ast::StmtList,
     label: Option<ast::Label>,
-    edit: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     incrementer: Vec<SyntaxElement>,
 ) -> Option<()> {
+    let make = editor.make();
     let last = previous_non_trivia_token(body.r_curly_token()?)?.syntax_element();
 
     let new_body = body.indent(1.into());
@@ -143,7 +141,7 @@ fn process_loop_body(
     );
 
     if continues.is_empty() {
-        edit.insert_all(Position::after(last), incrementer);
+        editor.insert_all(Position::after(last), incrementer);
         return Some(());
     }
 
@@ -154,9 +152,9 @@ fn process_loop_body(
     let first = children.next()?;
     let block_content = first.clone()..=children.last().unwrap_or(first);
 
-    let continue_label = make::lifetime("'cont");
-    let break_expr = make::expr_break(Some(continue_label.clone()), None);
-    let (mut new_edit, _) = SyntaxEditor::new(new_body.syntax().clone());
+    let continue_label = make.lifetime("'cont");
+    let break_expr = make.expr_break(Some(continue_label.clone()), None);
+    let (new_edit, _) = SyntaxEditor::new(new_body.syntax().clone());
     for continue_expr in &continues {
         new_edit.replace(continue_expr.syntax(), break_expr.syntax());
     }
@@ -164,13 +162,13 @@ fn process_loop_body(
     let elements = itertools::chain(
         [
             continue_label.syntax().syntax_element(),
-            make::token(T![:]).syntax_element(),
-            make::tokens::single_space().syntax_element(),
+            make.token(T![:]).syntax_element(),
+            make.whitespace(" ").syntax_element(),
             new_body.syntax_element(),
         ],
         incrementer,
     );
-    edit.replace_all(block_content, elements.collect());
+    editor.replace_all(block_content, elements.collect());
 
     Some(())
 }

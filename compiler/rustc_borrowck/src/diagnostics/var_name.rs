@@ -31,7 +31,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             })
             .or_else(|| {
                 debug!("get_var_name_and_span_for_region: attempting argument");
-                self.get_argument_index_for_region(tcx, fr).and_then(|index| {
+                self.get_user_arg_index_for_region(tcx, fr).and_then(|index| {
                     let local = self.user_arg_index_to_local(body, index);
                     if body_uses_local(body, local) {
                         Some(self.get_argument_name_and_span_for_region(body, local_names, index))
@@ -93,26 +93,26 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ///
     /// N.B., in the case of a closure, the index is indexing into the signature as seen by the
     /// user - in particular, index 0 is not the implicit self parameter.
-    pub(crate) fn get_argument_index_for_region(
+    pub(crate) fn get_user_arg_index_for_region(
         &self,
         tcx: TyCtxt<'tcx>,
         fr: RegionVid,
     ) -> Option<usize> {
         let implicit_inputs = self.universal_regions().defining_ty.implicit_inputs();
-        let argument_index =
+        let user_arg_index =
             self.universal_regions().unnormalized_input_tys.iter().skip(implicit_inputs).position(
                 |arg_ty| {
-                    debug!("get_argument_index_for_region: arg_ty = {arg_ty:?}");
+                    debug!("get_user_arg_index_for_region: arg_ty = {arg_ty:?}");
                     tcx.any_free_region_meets(arg_ty, |r| r.as_var() == fr)
                 },
             )?;
 
         debug!(
-            "get_argument_index_for_region: found {fr:?} in argument {argument_index} which has type {:?}",
-            self.universal_regions().unnormalized_input_tys[argument_index],
+            "get_user_arg_index_for_region: found {fr:?} in argument {user_arg_index} which has type {:?}",
+            self.universal_regions().unnormalized_input_tys[user_arg_index],
         );
 
-        Some(argument_index)
+        Some(user_arg_index)
     }
 
     /// Given the index of an argument as seen from the user (i.e. excluding
@@ -128,9 +128,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         body: &Body<'tcx>,
         local_names: &IndexSlice<Local, Option<Symbol>>,
-        argument_index: usize,
+        user_arg_index: usize,
     ) -> (Option<Symbol>, Span) {
-        let argument_local = self.user_arg_index_to_local(body, argument_index);
+        let argument_local = self.user_arg_index_to_local(body, user_arg_index);
         debug!("get_argument_name_and_span_for_region: argument_local={argument_local:?}");
 
         let argument_name = local_names[argument_local];

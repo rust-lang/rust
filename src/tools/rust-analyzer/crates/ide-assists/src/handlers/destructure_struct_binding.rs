@@ -124,9 +124,9 @@ fn destructure_struct_binding_impl(
     data: &StructEditData,
 ) {
     let field_names = generate_field_names(ctx, data);
-    let mut editor = builder.make_editor(data.target.syntax());
-    destructure_pat(ctx, &mut editor, data, &field_names);
-    update_usages(ctx, &mut editor, data, &field_names.into_iter().collect());
+    let editor = builder.make_editor(data.target.syntax());
+    destructure_pat(ctx, &editor, data, &field_names);
+    update_usages(ctx, &editor, data, &field_names.into_iter().collect());
     builder.add_file_edits(ctx.vfs_file_id(), editor);
 }
 
@@ -145,12 +145,8 @@ struct StructEditData {
 }
 
 impl StructEditData {
-    fn apply_to_destruct(
-        &self,
-        new_pat: ast::Pat,
-        editor: &mut SyntaxEditor,
-        make: &SyntaxFactory,
-    ) {
+    fn apply_to_destruct(&self, new_pat: ast::Pat, editor: &SyntaxEditor) {
+        let make = editor.make();
         match &self.target {
             Target::IdentPat(pat) => {
                 // If the binding is nested inside a record, we need to wrap the new
@@ -275,15 +271,15 @@ fn get_names_in_scope(
 
 fn destructure_pat(
     _ctx: &AssistContext<'_>,
-    editor: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     data: &StructEditData,
     field_names: &[(SmolStr, SmolStr)],
 ) {
+    let make = editor.make();
     let struct_path = mod_path_to_ast(&data.struct_def_path, data.edition);
     let is_ref = data.target.is_ref();
     let is_mut = data.target.is_mut();
 
-    let make = SyntaxFactory::with_mappings();
     let new_pat = match data.kind {
         hir::StructKind::Tuple => {
             let ident_pats = field_names.iter().map(|(_, new_name)| {
@@ -314,8 +310,7 @@ fn destructure_pat(
         hir::StructKind::Unit => make.path_pat(struct_path),
     };
 
-    data.apply_to_destruct(new_pat, editor, &make);
-    editor.add_mappings(make.finish_with_mappings());
+    data.apply_to_destruct(new_pat, editor);
 }
 
 fn generate_field_names(ctx: &AssistContext<'_>, data: &StructEditData) -> Vec<(SmolStr, SmolStr)> {
@@ -354,18 +349,16 @@ fn new_field_name(base_name: SmolStr, names_in_scope: &FxHashSet<SmolStr>) -> Sm
 
 fn update_usages(
     ctx: &AssistContext<'_>,
-    editor: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     data: &StructEditData,
     field_names: &FxHashMap<SmolStr, SmolStr>,
 ) {
     let source = ctx.source_file().syntax();
-    let make = SyntaxFactory::with_mappings();
     let edits = data
         .usages
         .iter()
-        .filter_map(|r| build_usage_edit(ctx, &make, data, r, field_names))
+        .filter_map(|r| build_usage_edit(ctx, editor.make(), data, r, field_names))
         .collect_vec();
-    editor.add_mappings(make.finish_with_mappings());
     for (old, new) in edits {
         if let Some(range) = ctx.sema.original_range_opt(&old) {
             editor.replace_all(cover_edit_range(source, range.range), vec![new.into()]);

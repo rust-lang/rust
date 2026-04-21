@@ -2196,6 +2196,42 @@ pub fn check_stage0_version(
     }
 }
 
+fn print_rustc_modifications(
+    dwn_ctx: &DownloadContext<'_>,
+    if_unchanged: bool,
+    mut modifications: Vec<PathBuf>,
+) -> Option<()> {
+    if !dwn_ctx.exec_ctx.is_verbose() {
+        modifications.retain(|path| !path.starts_with("compiler"));
+    }
+    if modifications.is_empty() {
+        // only compiler changes; still force a rebuild but don't say why.
+        eprintln!(
+            "skipping rustc download with `download-rustc = 'if-unchanged'` due to local changes"
+        );
+        return None;
+    }
+
+    eprintln!(
+        "NOTE: detected {} modifications that could affect a build of rustc",
+        modifications.len()
+    );
+    for file in modifications.iter().take(10) {
+        eprintln!("- {}", file.display());
+    }
+    if modifications.len() > 10 {
+        eprintln!("- ... and {} more", modifications.len() - 10);
+    }
+
+    if if_unchanged {
+        eprintln!("skipping rustc download due to `download-rustc = 'if-unchanged'`");
+        None
+    } else {
+        eprintln!("downloading unconditionally due to `download-rustc = true`");
+        Some(())
+    }
+}
+
 pub fn download_ci_rustc_commit<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
     rust_info: &channel::GitInfo,
@@ -2250,24 +2286,7 @@ pub fn download_ci_rustc_commit<'a>(
                     return None;
                 }
 
-                eprintln!(
-                    "NOTE: detected {} modifications that could affect a build of rustc",
-                    modifications.len()
-                );
-                for file in modifications.iter().take(10) {
-                    eprintln!("- {}", file.display());
-                }
-                if modifications.len() > 10 {
-                    eprintln!("- ... and {} more", modifications.len() - 10);
-                }
-
-                if if_unchanged {
-                    eprintln!("skipping rustc download due to `download-rustc = 'if-unchanged'`");
-                    return None;
-                } else {
-                    eprintln!("downloading unconditionally due to `download-rustc = true`");
-                }
-
+                print_rustc_modifications(dwn_ctx, if_unchanged, modifications)?;
                 upstream
             }
             PathFreshness::MissingUpstream => {

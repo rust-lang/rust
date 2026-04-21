@@ -28,7 +28,7 @@ mod downloading {
     /// The GenMC repository the we get our commit from.
     pub(crate) const GENMC_GITHUB_URL: &str = "https://github.com/MPI-SWS/genmc.git";
     /// The GenMC commit we depend on. It must be available on the specified GenMC repository.
-    pub(crate) const GENMC_COMMIT: &str = "22d3d0b44dedb4e8e1aae3330e546465e4664529";
+    pub(crate) const GENMC_COMMIT: &str = "29b03a66402c4453fc77901ef3be90bb55707cd4";
 
     /// Ensure that a local GenMC repo is present and set to the correct commit.
     /// Return the path of the GenMC repo clone.
@@ -159,6 +159,7 @@ fn compile_cpp_dependencies(genmc_path: &Path) {
         .out_dir(genmc_build_dir)
         .profile(GENMC_CMAKE_PROFILE)
         .define("BUILD_LLI", "OFF")
+        .define("EMIT_NA_LABELS", "OFF")
         .define("GENMC_DEBUG", if enable_genmc_debug { "ON" } else { "OFF" });
 
     // The actual compilation happens here:
@@ -172,7 +173,7 @@ fn compile_cpp_dependencies(genmc_path: &Path) {
     // Part 2:
     // Compile the cxx_bridge (the link between the Rust and C++ code).
 
-    let genmc_include_dir = genmc_install_dir.join("include").join("genmc");
+    let genmc_include_dir = genmc_install_dir.join("include");
 
     // These are all the C++ files we need to compile, which needs to be updated if more C++ files are added to Miri.
     // We use absolute paths since relative paths can confuse IDEs when attempting to go-to-source on a path in a compiler error.
@@ -181,10 +182,6 @@ fn compile_cpp_dependencies(genmc_path: &Path) {
         .map(|file| std::path::absolute(cpp_files_base_path.join(file)).unwrap());
 
     let mut bridge = cxx_build::bridge("src/lib.rs");
-    // FIXME(genmc,cmake): Remove once the GenMC debug setting is available in the config.h file.
-    if enable_genmc_debug {
-        bridge.define("ENABLE_GENMC_DEBUG", None);
-    }
     bridge
         .opt_level(2)
         .debug(true) // Same settings that GenMC uses (default for cmake `RelWithDebInfo`)

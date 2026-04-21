@@ -1,5 +1,4 @@
 //@revisions: weak sc
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
 //@[sc]compile-flags: -Zmiri-disable-weak-memory-emulation
 
 // Translated from GenMC's test "2+2W".

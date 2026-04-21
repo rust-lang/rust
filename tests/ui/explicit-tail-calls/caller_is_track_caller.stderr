@@ -10,5 +10,11 @@ error: a function marked with `#[track_caller]` cannot perform a tail-call
 LL |     become a();
    |     ^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: a function marked with `#[track_caller]` cannot perform a tail-call
+  --> $DIR/caller_is_track_caller.rs:21:9
+   |
+LL |         become self.d();
+   |         ^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
 

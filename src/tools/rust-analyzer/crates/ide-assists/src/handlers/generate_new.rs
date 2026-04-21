@@ -3,10 +3,7 @@ use ide_db::{
     use_trivial_constructor::use_trivial_constructor,
 };
 use syntax::{
-    ast::{
-        self, AstNode, HasName, HasVisibility, StructKind, edit::AstNodeEdit,
-        syntax_factory::SyntaxFactory,
-    },
+    ast::{self, AstNode, HasName, HasVisibility, StructKind, edit::AstNodeEdit},
     syntax_editor::Position,
 };
 
@@ -38,11 +35,9 @@ use crate::{
 // ```
 pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
-
-    let make = SyntaxFactory::without_mappings();
-    let field_list = match strukt.kind() {
+    let field_list: Vec<(String, ast::Type)> = match strukt.kind() {
         StructKind::Record(named) => {
-            named.fields().filter_map(|f| Some((f.name()?, f.ty()?))).collect::<Vec<_>>()
+            named.fields().filter_map(|f| Some((f.name()?.to_string(), f.ty()?))).collect()
         }
         StructKind::Tuple(tuple) => {
             let mut name_generator = NameGenerator::default();
@@ -56,12 +51,12 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                         ctx.db(),
                         ctx.edition(),
                     ) {
-                        Some(name) => name,
-                        None => name_generator.suggest_name(&format!("_{i}")),
+                        Some(name) => name.to_string(),
+                        None => name_generator.suggest_name(&format!("_{i}")).to_string(),
                     };
-                    Some((make.name(name.as_str()), f.ty()?))
+                    Some((name, ty))
                 })
-                .collect::<Vec<_>>()
+                .collect()
         }
         StructKind::Unit => return None,
     };
@@ -74,7 +69,9 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
 
     let target = strukt.syntax().text_range();
     acc.add(AssistId::generate("generate_new"), "Generate `new`", target, |builder| {
-        let make = SyntaxFactory::with_mappings();
+        let editor = builder.make_editor(strukt.syntax());
+        let make = editor.make();
+
         let trivial_constructors = field_list
             .iter()
             .map(|(name, ty)| {
@@ -100,13 +97,13 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                     edition,
                 )?;
 
-                Some((make.name_ref(&name.text()), Some(expr)))
+                Some((make.name_ref(name), Some(expr)))
             })
             .collect::<Vec<_>>();
 
         let params = field_list.iter().enumerate().filter_map(|(i, (name, ty))| {
             if trivial_constructors[i].is_none() {
-                Some(make.param(make.ident_pat(false, false, name.clone()).into(), ty.clone()))
+                Some(make.param(make.ident_pat(false, false, make.name(name)).into(), ty.clone()))
             } else {
                 None
             }
@@ -117,7 +114,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             if let Some(constructor) = trivial_constructors[i].clone() {
                 constructor
             } else {
-                (make.name_ref(&name.text()), None)
+                (make.name_ref(name), None)
             }
         });
 
@@ -158,8 +155,6 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             )
             .indent(1.into());
 
-        let mut editor = builder.make_editor(strukt.syntax());
-
         // Get the node for set annotation
         let contain_fn = if let Some(impl_def) = impl_def {
             let fn_ = fn_.indent(impl_def.indent_level());
@@ -185,7 +180,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             let indent_level = strukt.indent_level();
             let list = make.assoc_item_list([ast::AssocItem::Fn(fn_)]);
             let impl_def =
-                generate_impl_with_item(&make, &ast::Adt::Struct(strukt.clone()), Some(list))
+                generate_impl_with_item(make, &ast::Adt::Struct(strukt.clone()), Some(list))
                     .indent(strukt.indent_level());
 
             // Insert it after the adt
@@ -235,8 +230,6 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                 editor.add_annotation(name.syntax(), tabstop_before);
             }
         }
-
-        editor.add_mappings(make.finish_with_mappings());
         builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }

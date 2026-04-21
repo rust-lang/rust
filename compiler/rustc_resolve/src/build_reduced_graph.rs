@@ -12,10 +12,8 @@ use rustc_ast::{
     self as ast, AssocItem, AssocItemKind, Block, ConstItem, Delegation, Fn, ForeignItem,
     ForeignItemKind, Inline, Item, ItemKind, NodeId, StaticItem, StmtKind, TraitAlias, TyAlias,
 };
-use rustc_attr_parsing as attr;
 use rustc_attr_parsing::AttributeParser;
 use rustc_expand::base::ResolverExpand;
-use rustc_expand::expand::AstFragment;
 use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
 use rustc_hir::def::{self, *};
@@ -31,7 +29,7 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::Namespace::{MacroNS, TypeNS, ValueNS};
-use crate::def_collector::collect_definitions;
+use crate::def_collector::DefCollector;
 use crate::diagnostics::StructCtor;
 use crate::imports::{ImportData, ImportKind, OnUnknownData};
 use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
@@ -237,30 +235,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    pub(crate) fn build_reduced_graph(
-        &mut self,
-        fragment: &AstFragment,
-        parent_scope: ParentScope<'ra>,
-    ) -> MacroRulesScopeRef<'ra> {
-        collect_definitions(self, fragment, parent_scope.expansion);
-        let mut visitor = BuildReducedGraphVisitor { r: self, parent_scope };
-        fragment.visit_with(&mut visitor);
-        visitor.parent_scope.macro_rules
-    }
-
     pub(crate) fn build_reduced_graph_external(&self, module: ExternModule<'ra>) {
         let def_id = module.def_id();
         let children = self.tcx.module_children(def_id);
-        let parent_scope = ParentScope::module(module.to_module(), self.arenas);
         for (i, child) in children.iter().enumerate() {
-            self.build_reduced_graph_for_external_crate_res(child, parent_scope, i, None)
+            self.build_reduced_graph_for_external_crate_res(child, module, i, None)
         }
         for (i, child) in
             self.cstore().ambig_module_children_untracked(self.tcx, def_id).enumerate()
         {
             self.build_reduced_graph_for_external_crate_res(
                 &child.main,
-                parent_scope,
+                module,
                 children.len() + i,
                 Some(&child.second),
             )
@@ -271,11 +257,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn build_reduced_graph_for_external_crate_res(
         &self,
         child: &ModChild,
-        parent_scope: ParentScope<'ra>,
+        parent: ExternModule<'ra>,
         child_index: usize,
         ambig_child: Option<&ModChild>,
     ) {
-        let parent = parent_scope.module.expect_extern();
         let child_span = |this: &Self, reexport_chain: &[Reexport], res: def::Res<_>| {
             this.def_span(
                 reexport_chain
@@ -288,7 +273,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let ident = IdentKey::new(orig_ident);
         let span = child_span(self, reexport_chain, res);
         let res = res.expect_non_local();
-        let expansion = parent_scope.expansion;
+        let expansion = LocalExpnId::ROOT;
         let ambig = ambig_child.map(|ambig_child| {
             let ModChild { ident: _, res, vis, ref reexport_chain } = *ambig_child;
             let span = child_span(self, reexport_chain, res);
@@ -364,18 +349,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 }
 
-struct BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
-    r: &'a mut Resolver<'ra, 'tcx>,
-    parent_scope: ParentScope<'ra>,
-}
-
-impl<'ra, 'tcx> AsMut<Resolver<'ra, 'tcx>> for BuildReducedGraphVisitor<'_, 'ra, 'tcx> {
+impl<'ra, 'tcx> AsMut<Resolver<'ra, 'tcx>> for DefCollector<'_, 'ra, 'tcx> {
     fn as_mut(&mut self) -> &mut Resolver<'ra, 'tcx> {
         self.r
     }
 }
 
-impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
+impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     fn res(&self, def_id: impl Into<DefId>) -> Res {
         let def_id = def_id.into();
         Res::Def(self.r.tcx.def_kind(def_id), def_id)
@@ -755,6 +735,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
             ast::UseTreeKind::Nested { ref items, .. } => {
                 for &(ref tree, id) in items {
+                    self.create_def(id, None, DefKind::Use, use_tree.span());
                     self.build_reduced_graph_for_use_tree(
                         // This particular use tree
                         tree, id, &prefix, true, false, // The whole `use` item
@@ -1077,7 +1058,11 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     }
 
     /// Constructs the reduced graph for one foreign item.
-    fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem, ident: Ident) {
+    pub(crate) fn build_reduced_graph_for_foreign_item(
+        &mut self,
+        item: &ForeignItem,
+        ident: Ident,
+    ) {
         let feed = self.r.feed(item.id);
         let local_def_id = feed.key();
         let def_id = local_def_id.to_def_id();
@@ -1209,7 +1194,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     }
 
     /// Returns `true` if this attribute list contains `macro_use`.
-    fn contains_macro_use(&self, attrs: &[ast::Attribute]) -> bool {
+    pub(crate) fn contains_macro_use(&self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
             if attr.has_name(sym::macro_escape) {
                 let inner_attribute = matches!(attr.style, ast::AttrStyle::Inner);
@@ -1229,7 +1214,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         false
     }
 
-    fn visit_invoc(&mut self, id: NodeId) -> LocalExpnId {
+    pub(crate) fn visit_invoc(&mut self, id: NodeId) -> LocalExpnId {
         let invoc_id = id.placeholder_to_expn_id();
         let old_parent_scope = self.r.invocation_parent_scopes.insert(invoc_id, self.parent_scope);
         assert!(old_parent_scope.is_none(), "invocation data is reset for an invocation");
@@ -1238,7 +1223,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
 
     /// Visit invocation in context in which it can emit a named item (possibly `macro_rules`)
     /// directly into its parent scope's module.
-    fn visit_invoc_in_module(&mut self, id: NodeId) -> MacroRulesScopeRef<'ra> {
+    pub(crate) fn visit_invoc_in_module(&mut self, id: NodeId) -> MacroRulesScopeRef<'ra> {
         let invoc_id = self.visit_invoc(id);
         self.parent_scope.module.unexpanded_invocations.borrow_mut(self.r).insert(invoc_id);
         self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Invocation(invoc_id))
@@ -1375,24 +1360,8 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
     }
 }
 
-macro_rules! method {
-    ($visit:ident: $ty:ty, $invoc:path, $walk:ident) => {
-        fn $visit(&mut self, node: &'a $ty) {
-            if let $invoc(..) = node.kind {
-                self.visit_invoc(node.id);
-            } else {
-                visit::$walk(self, node);
-            }
-        }
-    };
-}
-
-impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
-    method!(visit_expr: ast::Expr, ast::ExprKind::MacCall, walk_expr);
-    method!(visit_pat: ast::Pat, ast::PatKind::MacCall, walk_pat);
-    method!(visit_ty: ast::Ty, ast::TyKind::MacCall, walk_ty);
-
-    fn visit_item(&mut self, item: &'a Item) {
+impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
+    pub(crate) fn brg_visit_item(&mut self, item: &'a Item) {
         let orig_module_scope = self.parent_scope.module;
         self.parent_scope.macro_rules = match item.kind {
             ItemKind::MacroDef(..) => {
@@ -1425,30 +1394,11 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         self.parent_scope.module = orig_module_scope;
     }
 
-    fn visit_stmt(&mut self, stmt: &'a ast::Stmt) {
-        if let ast::StmtKind::MacCall(..) = stmt.kind {
-            self.parent_scope.macro_rules = self.visit_invoc_in_module(stmt.id);
-        } else {
-            visit::walk_stmt(self, stmt);
-        }
+    pub(crate) fn brg_visit_stmt_mac_call(&mut self, stmt: &'a ast::Stmt) {
+        self.parent_scope.macro_rules = self.visit_invoc_in_module(stmt.id);
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &'a ForeignItem) {
-        let ident = match foreign_item.kind {
-            ForeignItemKind::Static(box StaticItem { ident, .. })
-            | ForeignItemKind::Fn(box Fn { ident, .. })
-            | ForeignItemKind::TyAlias(box TyAlias { ident, .. }) => ident,
-            ForeignItemKind::MacCall(_) => {
-                self.visit_invoc_in_module(foreign_item.id);
-                return;
-            }
-        };
-
-        self.build_reduced_graph_for_foreign_item(foreign_item, ident);
-        visit::walk_item(self, foreign_item);
-    }
-
-    fn visit_block(&mut self, block: &'a Block) {
+    pub(crate) fn brg_visit_block(&mut self, block: &'a Block) {
         let orig_current_module = self.parent_scope.module;
         let orig_current_macro_rules_scope = self.parent_scope.macro_rules;
         self.build_reduced_graph_for_block(block);
@@ -1457,38 +1407,13 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         self.parent_scope.macro_rules = orig_current_macro_rules_scope;
     }
 
-    fn visit_assoc_item(&mut self, item: &'a AssocItem, ctxt: AssocCtxt) {
-        let (ident, ns) = match item.kind {
-            AssocItemKind::Const(box ConstItem { ident, .. })
-            | AssocItemKind::Fn(box Fn { ident, .. })
-            | AssocItemKind::Delegation(box Delegation { ident, .. }) => (ident, ValueNS),
-
-            AssocItemKind::Type(box TyAlias { ident, .. }) => (ident, TypeNS),
-
-            AssocItemKind::MacCall(_) => {
-                match ctxt {
-                    AssocCtxt::Trait => {
-                        self.visit_invoc_in_module(item.id);
-                    }
-                    AssocCtxt::Impl { .. } => {
-                        let invoc_id = item.id.placeholder_to_expn_id();
-                        if !self.r.glob_delegation_invoc_ids.contains(&invoc_id) {
-                            self.r
-                                .impl_unexpanded_invocations
-                                .entry(self.r.invocation_parent(invoc_id))
-                                .or_default()
-                                .insert(invoc_id);
-                        }
-                        self.visit_invoc(item.id);
-                    }
-                }
-                return;
-            }
-
-            AssocItemKind::DelegationMac(..) => {
-                span_bug!(item.span, "delegation mac should already have been removed")
-            }
-        };
+    pub(crate) fn brg_visit_assoc_item(
+        &mut self,
+        item: &'a AssocItem,
+        ctxt: AssocCtxt,
+        ident: Ident,
+        ns: Namespace,
+    ) {
         let vis = self.resolve_visibility(&item.vis);
         let feed = self.r.feed(item.id);
         let local_def_id = feed.key();
@@ -1519,73 +1444,38 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         visit::walk_assoc_item(self, item, ctxt);
     }
 
-    fn visit_attribute(&mut self, attr: &'a ast::Attribute) {
-        if !attr.is_doc_comment() && attr::is_builtin_attr(attr) {
-            self.r
-                .builtin_attrs
-                .push((attr.get_normal_item().path.segments[0].ident, self.parent_scope));
-        }
-        visit::walk_attribute(self, attr);
-    }
-
-    fn visit_arm(&mut self, arm: &'a ast::Arm) {
-        if arm.is_placeholder {
-            self.visit_invoc(arm.id);
-        } else {
-            visit::walk_arm(self, arm);
-        }
-    }
-
-    fn visit_expr_field(&mut self, f: &'a ast::ExprField) {
-        if f.is_placeholder {
-            self.visit_invoc(f.id);
-        } else {
-            visit::walk_expr_field(self, f);
+    pub(crate) fn visit_assoc_item_mac_call(
+        &mut self,
+        item: &'a Item<AssocItemKind>,
+        ctxt: AssocCtxt,
+    ) {
+        match ctxt {
+            AssocCtxt::Trait => {
+                self.visit_invoc_in_module(item.id);
+            }
+            AssocCtxt::Impl { .. } => {
+                let invoc_id = item.id.placeholder_to_expn_id();
+                if !self.r.glob_delegation_invoc_ids.contains(&invoc_id) {
+                    self.r
+                        .impl_unexpanded_invocations
+                        .entry(self.r.invocation_parent(invoc_id))
+                        .or_default()
+                        .insert(invoc_id);
+                }
+                self.visit_invoc(item.id);
+            }
         }
     }
 
-    fn visit_pat_field(&mut self, fp: &'a ast::PatField) {
-        if fp.is_placeholder {
-            self.visit_invoc(fp.id);
-        } else {
-            visit::walk_pat_field(self, fp);
-        }
-    }
-
-    fn visit_generic_param(&mut self, param: &'a ast::GenericParam) {
-        if param.is_placeholder {
-            self.visit_invoc(param.id);
-        } else {
-            visit::walk_generic_param(self, param);
-        }
-    }
-
-    fn visit_param(&mut self, p: &'a ast::Param) {
-        if p.is_placeholder {
-            self.visit_invoc(p.id);
-        } else {
-            visit::walk_param(self, p);
-        }
-    }
-
-    fn visit_field_def(&mut self, sf: &'a ast::FieldDef) {
-        if sf.is_placeholder {
-            self.visit_invoc(sf.id);
-        } else {
-            let vis = self.resolve_visibility(&sf.vis);
-            self.r.feed_visibility(self.r.feed(sf.id), vis);
-            visit::walk_field_def(self, sf);
-        }
+    pub(crate) fn brg_visit_field_def(&mut self, sf: &'a ast::FieldDef) {
+        let vis = self.resolve_visibility(&sf.vis);
+        self.r.feed_visibility(self.r.feed(sf.id), vis);
+        visit::walk_field_def(self, sf);
     }
 
     // Constructs the reduced graph for one variant. Variants exist in the
     // type and value namespaces.
-    fn visit_variant(&mut self, variant: &'a ast::Variant) {
-        if variant.is_placeholder {
-            self.visit_invoc_in_module(variant.id);
-            return;
-        }
-
+    pub(crate) fn brg_visit_variant(&mut self, variant: &'a ast::Variant) {
         let parent = self.parent_scope.module.expect_local();
         let expn_id = self.parent_scope.expansion;
         let ident = variant.ident;
@@ -1619,25 +1509,5 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         self.insert_field_visibilities_local(def_id.to_def_id(), variant.data.fields());
 
         visit::walk_variant(self, variant);
-    }
-
-    fn visit_where_predicate(&mut self, p: &'a ast::WherePredicate) {
-        if p.is_placeholder {
-            self.visit_invoc(p.id);
-        } else {
-            visit::walk_where_predicate(self, p);
-        }
-    }
-
-    fn visit_crate(&mut self, krate: &'a ast::Crate) {
-        if krate.is_placeholder {
-            self.visit_invoc_in_module(krate.id);
-        } else {
-            // Visit attributes after items for backward compatibility.
-            // This way they can use `macro_rules` defined later.
-            visit::walk_list!(self, visit_item, &krate.items);
-            visit::walk_list!(self, visit_attribute, &krate.attrs);
-            self.contains_macro_use(&krate.attrs);
-        }
     }
 }
