@@ -34,10 +34,28 @@ fn merged_profiles() {
     let _other: Mutex<i32> = todo!(); //~ ERROR: use of a disallowed type `std::sync::Mutex` (profile: export)
 }
 
+// `#[expect(clippy::disallowed_types)]` silences the body warning and the unknown-profile
+// warning tagged under `DISALLOWED_TYPES`, but not one tagged under `DISALLOWED_METHODS`.
+#[expect(clippy::disallowed_types)]
+#[clippy::disallowed_profile("unknown_type_profile_expect_before")]
+//~^ ERROR: unknown profile `unknown_type_profile_expect_before` for `clippy::disallowed_methods`
+fn expect_before_unknown_profile() {
+    let _value: Rc<i32> = todo!();
+}
+
+#[clippy::disallowed_profile("unknown_type_profile_expect_after")]
+//~^ ERROR: unknown profile `unknown_type_profile_expect_after` for `clippy::disallowed_methods`
+#[expect(clippy::disallowed_types)]
+fn expect_after_unknown_profile() {
+    let _value: Rc<i32> = todo!();
+}
+
 fn main() {
     default_type();
     forward_profile();
     export_profile();
     unknown_profile();
     merged_profiles();
+    expect_before_unknown_profile();
+    expect_after_unknown_profile();
 }

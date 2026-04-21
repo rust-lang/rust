@@ -6,6 +6,12 @@ use rustc_hir::{Attribute, HirId};
 use rustc_lint::LateContext;
 use rustc_span::{Span, Symbol};
 
+/// One profile name referenced by a `#[clippy::disallowed_profile(...)]` or
+/// `#[clippy::disallowed_profiles(...)]` attribute on an item.
+///
+/// A single attribute produces one `ProfileEntry` per string argument. The entry records which
+/// attribute variant introduced it, the profile name, and the span of that string literal so
+/// diagnostics (e.g. "unknown profile") can point at the exact argument.
 #[derive(Copy, Clone)]
 pub struct ProfileEntry {
     pub attr_name: Symbol,
@@ -13,6 +19,11 @@ pub struct ProfileEntry {
     pub span: Span,
 }
 
+/// The set of profiles active at some `HirId`, obtained by walking up the HIR from that id and
+/// collecting the first ancestor that carries a `#[clippy::disallowed_profile(s)]` attribute.
+///
+/// An empty selection is represented by `None` at the call site; a `ProfileSelection` is always
+/// non-empty.
 #[derive(Clone)]
 pub struct ProfileSelection {
     entries: SmallVec<[ProfileEntry; 2]>,
@@ -85,12 +96,12 @@ fn profiles_from_attrs(cx: &LateContext<'_>, attrs: &[Attribute]) -> Option<Prof
     let mut entries = SmallVec::<[ProfileEntry; 2]>::new();
 
     for attr in attrs {
-        let Some(path) = attr.ident_path() else { continue };
-        if path.len() != 2 || path[0].name != sym::clippy {
+        let path = attr.path();
+        if path.len() != 2 || path[0] != sym::clippy {
             continue;
         }
 
-        let name = path[1].name;
+        let name = path[1];
         if name != sym::disallowed_profile && name != sym::disallowed_profiles {
             continue;
         }

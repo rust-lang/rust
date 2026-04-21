@@ -95,7 +95,12 @@ impl TypeLookup {
 
 pub struct DisallowedTypes {
     default: TypeLookup,
+    /// Lookup per profile that declares a non-empty `disallowed_types` list. Profiles
+    /// declared in `[profiles.*]` but without `disallowed_types` entries are absent here.
     profiles: FxHashMap<Symbol, TypeLookup>,
+    /// Every profile name declared in `[profiles.*]`, regardless of whether it contributes
+    /// to this lint. Used to suppress the "unknown profile" warning for profiles that exist
+    /// in config but only define entries for other lints (e.g. `disallowed_methods`).
     known_profiles: FxHashSet<Symbol>,
     profile_cache: ProfileResolver,
     warned_unknown_profiles: FxHashSet<Span>,
@@ -109,7 +114,7 @@ impl DisallowedTypes {
         let mut profiles = FxHashMap::default();
         let mut known_profiles = FxHashSet::default();
         let mut profile_entries: Vec<_> = conf.profiles.iter().collect();
-        profile_entries.sort_by(|(a, _), (b, _)| a.cmp(b));
+        profile_entries.sort_by_key(|(a, _)| *a);
         for (name, profile) in profile_entries {
             let symbol = Symbol::intern(name.as_str());
             known_profiles.insert(symbol);
@@ -151,19 +156,19 @@ impl DisallowedTypes {
 
     fn check_res_emit(&mut self, cx: &LateContext<'_>, hir_id: rustc_hir::HirId, res: &Res, span: Span) {
         let mut active_profiles = SmallVec::<[Symbol; 2]>::new();
-        let mut unknown_profiles = SmallVec::<[ProfileEntry; 2]>::new();
-        if let Some(selection) = self.profile_cache.active_profiles(cx, hir_id) {
-            for entry in selection.iter() {
-                if self.profiles.contains_key(&entry.name) {
-                    active_profiles.push(entry.name);
-                } else if !self.known_profiles.contains(&entry.name) {
-                    unknown_profiles.push(*entry);
-                }
+        // Copy entries out of the cache before iterating: `warn_unknown_profile` takes
+        // `&mut self`, which conflicts with the borrow held by `active_profiles(...)`.
+        let entries: SmallVec<[ProfileEntry; 2]> = self
+            .profile_cache
+            .active_profiles(cx, hir_id)
+            .map(|selection| selection.iter().copied().collect())
+            .unwrap_or_default();
+        for entry in &entries {
+            if self.profiles.contains_key(&entry.name) {
+                active_profiles.push(entry.name);
+            } else if !self.known_profiles.contains(&entry.name) {
+                self.warn_unknown_profile(cx, entry);
             }
-        }
-
-        for entry in unknown_profiles {
-            self.warn_unknown_profile(cx, &entry);
         }
 
         if let Some((profile, (path, disallowed_path))) = active_profiles.iter().find_map(|symbol| {

@@ -48,6 +48,24 @@ fn merged_profiles() {
     value.unwrap(); //~ ERROR: use of a disallowed method `core::option::Option::unwrap` (profile: export)
 }
 
+// `#[expect(clippy::disallowed_methods)]` silences the body warning and the unknown-profile
+// warning tagged under `DISALLOWED_METHODS`, but not the one tagged under `DISALLOWED_TYPES`.
+#[expect(clippy::disallowed_methods)]
+#[clippy::disallowed_profile("unknown_profile_expect_before")]
+//~^ ERROR: unknown profile `unknown_profile_expect_before` for `clippy::disallowed_types`
+fn expect_before_unknown_profile() {
+    let value = String::from("test");
+    std::mem::drop(value);
+}
+
+#[clippy::disallowed_profile("unknown_profile_expect_after")]
+//~^ ERROR: unknown profile `unknown_profile_expect_after` for `clippy::disallowed_types`
+#[expect(clippy::disallowed_methods)]
+fn expect_after_unknown_profile() {
+    let value = String::from("test");
+    std::mem::drop(value);
+}
+
 fn main() {
     default_violation();
     expected_violation();
@@ -55,4 +73,6 @@ fn main() {
     export_profile();
     unknown_profile();
     merged_profiles();
+    expect_before_unknown_profile();
+    expect_after_unknown_profile();
 }

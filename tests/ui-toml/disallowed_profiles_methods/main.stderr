@@ -56,5 +56,17 @@ error: use of a disallowed method `core::option::Option::unwrap` (profile: expor
 LL |     value.unwrap();
    |           ^^^^^^
 
-error: aborting due to 8 previous errors
+error: `clippy::disallowed_profile` references unknown profile `unknown_profile_expect_before` for `clippy::disallowed_types`
+  --> tests/ui-toml/disallowed_profiles_methods/main.rs:54:30
+   |
+LL | #[clippy::disallowed_profile("unknown_profile_expect_before")]
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `clippy::disallowed_profile` references unknown profile `unknown_profile_expect_after` for `clippy::disallowed_types`
+  --> tests/ui-toml/disallowed_profiles_methods/main.rs:61:30
+   |
+LL | #[clippy::disallowed_profile("unknown_profile_expect_after")]
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 10 previous errors
 
