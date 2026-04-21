@@ -1484,6 +1484,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 body.span,
                 coroutine_kind,
                 hir::CoroutineSource::Fn,
+                find_attr!(attrs, Fused(_)),
             );
 
             // FIXME(async_fn_track_caller): Can this be moved above?
@@ -1506,6 +1507,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body_span: Span,
         coroutine_kind: CoroutineKind,
         coroutine_source: hir::CoroutineSource,
+        fused: bool,
     ) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>) {
         let mut parameters: Vec<hir::Param<'_>> = Vec::new();
         let mut statements: Vec<hir::Stmt<'_>> = Vec::new();
@@ -1665,7 +1667,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             this.expr_block(body)
         };
         let desugaring_kind = match coroutine_kind {
-            CoroutineKind::Async { .. } => hir::CoroutineDesugaring::Async { fused: false },
+            CoroutineKind::Async { .. } => hir::CoroutineDesugaring::Async { fused },
             CoroutineKind::Gen { .. } => hir::CoroutineDesugaring::Gen,
             CoroutineKind::AsyncGen { .. } => hir::CoroutineDesugaring::AsyncGen,
         };

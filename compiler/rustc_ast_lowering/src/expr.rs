@@ -355,7 +355,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ExprKind::Use(expr, use_kw_span) => self.lower_expr_use(*use_kw_span, expr),
                 ExprKind::Gen(capture_clause, block, genblock_kind, decl_span) => {
                     let desugaring_kind = match genblock_kind {
-                        GenBlockKind::Async => hir::CoroutineDesugaring::Async { fused: false },
+                        GenBlockKind::Async => {
+                            hir::CoroutineDesugaring::Async { fused: find_attr!(e.attrs, Fused(_)) }
+                        }
                         GenBlockKind::Gen => hir::CoroutineDesugaring::Gen,
                         GenBlockKind::AsyncGen => hir::CoroutineDesugaring::AsyncGen,
                     };

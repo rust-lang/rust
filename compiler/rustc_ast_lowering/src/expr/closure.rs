@@ -38,6 +38,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &closure.body,
                     closure.fn_decl_span,
                     closure.fn_arg_span,
+                    find_attr!(&e.attrs, Fused(_)),
                 ),
                 span: self.lower_span(e.span),
             },
@@ -309,13 +310,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body: &Expr,
         fn_decl_span: Span,
         fn_arg_span: Span,
+        fused: bool,
     ) -> hir::ExprKind<'hir> {
         let closure_def_id = self.local_def_id(closure_id);
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
         let coroutine_desugaring = match coroutine_kind {
-            CoroutineKind::Async { .. } => hir::CoroutineDesugaring::Async { fused: false },
-            CoroutineKind::Gen { .. } => hir::CoroutineDesugaring::Gen,
+            CoroutineKind::Async { .. } => hir::CoroutineDesugaring::Async { fused },
+            CoroutineKind::Gen { .. } => {
+                debug_assert!(!fused, "This should have been rejected by attribute parsing");
+                hir::CoroutineDesugaring::Gen
+            }
             CoroutineKind::AsyncGen { span, .. } => {
                 span_bug!(span, "only async closures and `iter!` closures are supported currently")
             }
@@ -336,6 +341,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         body.span,
                         coroutine_kind,
                         hir::CoroutineSource::Closure,
+                        fused,
                     )
                 });
 
