@@ -188,9 +188,10 @@ impl<O> AssertKind<O> {
             DivisionByZero(_) => LangItem::PanicDivZero,
             RemainderByZero(_) => LangItem::PanicRemZero,
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => LangItem::PanicCoroutineResumed,
-            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                LangItem::PanicAsyncFnResumed
-            }
+            ResumedAfterReturn(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async { fused: _ },
+                _,
+            )) => LangItem::PanicAsyncFnResumed,
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 LangItem::PanicAsyncGenFnResumed
             }
@@ -198,9 +199,10 @@ impl<O> AssertKind<O> {
                 LangItem::PanicGenFnNone
             }
             ResumedAfterPanic(CoroutineKind::Coroutine(_)) => LangItem::PanicCoroutineResumedPanic,
-            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                LangItem::PanicAsyncFnResumedPanic
-            }
+            ResumedAfterPanic(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async { fused: _ },
+                _,
+            )) => LangItem::PanicAsyncFnResumedPanic,
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 LangItem::PanicAsyncGenFnResumedPanic
             }
@@ -210,9 +212,10 @@ impl<O> AssertKind<O> {
             NullPointerDereference => LangItem::PanicNullPointerDereference,
             InvalidEnumConstruction(_) => LangItem::PanicInvalidEnumConstruction,
             ResumedAfterDrop(CoroutineKind::Coroutine(_)) => LangItem::PanicCoroutineResumedDrop,
-            ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
-                LangItem::PanicAsyncFnResumedDrop
-            }
+            ResumedAfterDrop(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async { fused: _ },
+                _,
+            )) => LangItem::PanicAsyncFnResumedDrop,
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
                 LangItem::PanicAsyncGenFnResumedDrop
             }
@@ -291,7 +294,10 @@ impl<O> AssertKind<O> {
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
                 write!(f, "\"coroutine resumed after completion\"")
             }
-            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
+            ResumedAfterReturn(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async { fused: _ },
+                _,
+            )) => {
                 write!(f, "\"`async fn` resumed after completion\"")
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
@@ -303,7 +309,10 @@ impl<O> AssertKind<O> {
             ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
                 write!(f, "\"coroutine resumed after panicking\"")
             }
-            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
+            ResumedAfterPanic(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async { fused: _ },
+                _,
+            )) => {
                 write!(f, "\"`async fn` resumed after panicking\"")
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
@@ -315,7 +324,10 @@ impl<O> AssertKind<O> {
             ResumedAfterDrop(CoroutineKind::Coroutine(_)) => {
                 write!(f, "\"coroutine resumed after async drop\"")
             }
-            ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
+            ResumedAfterDrop(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async { fused: _ },
+                _,
+            )) => {
                 write!(f, "\"`async fn` resumed after async drop\"")
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
@@ -360,7 +372,10 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
             RemainderByZero(val) => {
                 write!(f, "attempt to calculate the remainder of `{val:#?}` with a divisor of zero")
             }
-            ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
+            ResumedAfterReturn(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async { fused: _ },
+                _,
+            )) => {
                 write!(f, "`async fn` resumed after completion")
             }
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
@@ -372,7 +387,10 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
                 write!(f, "coroutine resumed after completion")
             }
-            ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
+            ResumedAfterPanic(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async { fused: _ },
+                _,
+            )) => {
                 write!(f, "`async fn` resumed after panicking")
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {
@@ -388,7 +406,10 @@ impl<O: fmt::Debug> fmt::Display for AssertKind<O> {
             InvalidEnumConstruction(source) => {
                 write!(f, "trying to construct an enum from an invalid value `{source:#?}`")
             }
-            ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
+            ResumedAfterDrop(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async { fused: _ },
+                _,
+            )) => {
                 write!(f, "`async fn` resumed after async drop")
             }
             ResumedAfterDrop(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)) => {

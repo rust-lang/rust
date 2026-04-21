@@ -130,7 +130,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                     // unlike for all other coroutine kinds.
                     env_ty
                 }
-                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async { fused: _ }, _)
                 | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)
                 | hir::CoroutineKind::Coroutine(_) => Ty::new_adt(tcx, pin_adt_ref, pin_args),
             };
@@ -142,7 +142,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             // or the `Iterator::next(...) -> Option` function in case this is a
             // special coroutine backing a gen construct.
             let (resume_ty, ret_ty) = match coroutine_kind {
-                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _) => {
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async { fused: _ }, _) => {
                     // The signature should be `Future::poll(_, &mut Context<'_>) -> Poll<Output>`
                     assert_eq!(sig.yield_ty, tcx.types.unit);
 

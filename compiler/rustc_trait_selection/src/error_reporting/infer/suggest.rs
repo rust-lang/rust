@@ -175,7 +175,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         match self.tcx.coroutine_kind(cause.body_id) {
             Some(hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::AsyncGen,
+                hir::CoroutineDesugaring::Async { fused: _ } | hir::CoroutineDesugaring::AsyncGen,
                 _,
             )) => (),
             None

@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for AsyncClosureUsage {
         let hir::ExprKind::Closure(&hir::Closure {
             kind:
                 hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Async,
+                    hir::CoroutineDesugaring::Async { fused: _ },
                     hir::CoroutineSource::Block,
                 )),
             fn_decl_span: async_decl_span,

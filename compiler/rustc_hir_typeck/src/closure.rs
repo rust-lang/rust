@@ -146,9 +146,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             .into()]),
                         )
                     }
-                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _) => {
-                        tcx.types.unit
-                    }
+                    hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async { fused: _ },
+                        _,
+                    ) => tcx.types.unit,
                 };
 
                 // Resume type defaults to `()` if the coroutine has no argument.
@@ -189,7 +190,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // that we have to infer.
                         (tcx.types.unit, self.infcx.next_ty_var(expr_span))
                     }
-                    hir::CoroutineDesugaring::Async => {
+                    hir::CoroutineDesugaring::Async { fused: _ } => {
                         // async closures always return the type ascribed after the `->` (if present),
                         // and yield `()`.
                         (bound_sig.skip_binder().output(), tcx.types.unit)
@@ -450,7 +451,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Gen) => {
                         self.tcx.fn_trait_kind_from_def_id(trait_def_id)
                     }
-                    hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async) => self
+                    hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async { fused: _ }) => self
                         .tcx
                         .async_fn_trait_kind_from_def_id(trait_def_id)
                         .or_else(|| self.tcx.fn_trait_kind_from_def_id(trait_def_id)),
@@ -497,7 +498,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::ClosureKind::Closure if self.tcx.is_lang_item(def_id, LangItem::FnOnceOutput) => {
                 self.extract_sig_from_projection(cause_span, projection)
             }
-            hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async)
+            hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async { fused: _ })
                 if self.tcx.is_lang_item(def_id, LangItem::AsyncFnOnceOutput) =>
             {
                 self.extract_sig_from_projection(cause_span, projection)
@@ -505,7 +506,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // It's possible we've passed the closure to a (somewhat out-of-fashion)
             // `F: FnOnce() -> Fut, Fut: Future<Output = T>` style bound. Let's still
             // guide inference here, since it's beneficial for the user.
-            hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async)
+            hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async { fused: _ })
                 if self.tcx.is_lang_item(def_id, LangItem::FnOnceOutput) =>
             {
                 self.extract_sig_from_projection_and_future_bound(cause_span, projection)
@@ -896,7 +897,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // we expect the return type of the block to match that of the enclosing
                 // function.
                 hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Async,
+                    hir::CoroutineDesugaring::Async { fused: _ },
                     hir::CoroutineSource::Fn,
                 )) => {
                     debug!("closure is async fn body");
@@ -921,7 +922,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // For closures/coroutines, we know nothing about the return
                 // type unless it was supplied.
                 hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Async,
+                    hir::CoroutineDesugaring::Async { fused: _ },
                     _,
                 ))
                 | hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine(_))

@@ -576,7 +576,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if matches!(
                         self.tcx.coroutine_kind(def_id),
                         Some(CoroutineKind::Desugared(
-                            CoroutineDesugaring::Async,
+                            CoroutineDesugaring::Async { fused: _ },
                             CoroutineSource::Closure
                         ))
                     ) =>

@@ -1665,7 +1665,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             this.expr_block(body)
         };
         let desugaring_kind = match coroutine_kind {
-            CoroutineKind::Async { .. } => hir::CoroutineDesugaring::Async,
+            CoroutineKind::Async { .. } => hir::CoroutineDesugaring::Async { fused: false },
             CoroutineKind::Gen { .. } => hir::CoroutineDesugaring::Gen,
             CoroutineKind::AsyncGen { .. } => hir::CoroutineDesugaring::AsyncGen,
         };

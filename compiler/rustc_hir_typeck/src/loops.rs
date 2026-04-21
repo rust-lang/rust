@@ -342,7 +342,7 @@ impl<'hir> CheckLoopVisitor<'hir> {
             }
             Coroutine { coroutine_span, kind, source } => {
                 let kind = match kind {
-                    hir::CoroutineDesugaring::Async => "async",
+                    hir::CoroutineDesugaring::Async { fused: _ } => "async",
                     hir::CoroutineDesugaring::Gen => "gen",
                     hir::CoroutineDesugaring::AsyncGen => "async gen",
                 };

@@ -790,15 +790,15 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
                 match coroutine_kind {
                     hir::CoroutineKind::Desugared(
-                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineDesugaring::Async { fused: _ },
                         hir::CoroutineSource::Fn,
                     ) => "async fn",
                     hir::CoroutineKind::Desugared(
-                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineDesugaring::Async { fused: _ },
                         hir::CoroutineSource::Block,
                     ) => "async block",
                     hir::CoroutineKind::Desugared(
-                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineDesugaring::Async { fused: _ },
                         hir::CoroutineSource::Closure,
                     ) => "async closure",
                     hir::CoroutineKind::Desugared(
@@ -843,7 +843,10 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::AssocFn if self.associated_item(def_id).is_method() => "a",
             DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
                 match coroutine_kind {
-                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, ..) => "an",
+                    hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async { fused: _ },
+                        ..,
+                    ) => "an",
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, ..) => "an",
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, ..) => "a",
                     hir::CoroutineKind::Coroutine(_) => "a",

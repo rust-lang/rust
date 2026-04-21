@@ -1031,7 +1031,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn coroutine_is_async(self, def_id: DefId) -> bool {
         matches!(
             self.coroutine_kind(def_id),
-            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _))
+            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async { fused: _ }, _))
         )
     }
 
