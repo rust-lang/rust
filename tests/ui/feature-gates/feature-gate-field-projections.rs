@@ -1,17 +1,17 @@
 #![feature(ptr_metadata)]
 
 use std::field::Field; //~ ERROR: use of unstable library feature `field_projections` [E0658]
-use std::field::Subplace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+use std::ops::place::Subplace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
 use std::field::field_of; //~ ERROR: use of unstable library feature `field_projections` [E0658]
-use std::ops::DropHusk; //~ ERROR: use of unstable library feature `field_projections` [E0658]
-use std::ops::Place; //~ ERROR: use of unstable library feature `field_projections` [E0658]
-use std::ops::PlaceBorrow; //~ ERROR: use of unstable library feature `field_projections` [E0658]
-use std::ops::PlaceDeref; //~ ERROR: use of unstable library feature `field_projections` [E0658]
-use std::ops::PlaceDrop; //~ ERROR: use of unstable library feature `field_projections` [E0658]
-use std::ops::PlaceMove; //~ ERROR: use of unstable library feature `field_projections` [E0658]
-use std::ops::PlaceRead; //~ ERROR: use of unstable library feature `field_projections` [E0658]
-use std::ops::PlaceWrapper; //~ ERROR: use of unstable library feature `field_projections` [E0658]
-use std::ops::PlaceWrite; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+use std::ops::place::DropHusk; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+use std::ops::place::DerefPlace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+use std::ops::place::BorrowPlace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+use std::ops::place::NestPlace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+use std::ops::place::DropPlace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+use std::ops::place::MovePlace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+use std::ops::place::ReadPlace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+use std::ops::place::WrapPlace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+use std::ops::place::WritePlace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
 use std::ptr;
 use std::ptr::Pointee;
 
@@ -28,12 +28,12 @@ where
 
 struct MyPtr<T: ?Sized>(*mut T);
 
-impl<T: ?Sized> Place for MyPtr<T> {
+impl<T: ?Sized> DerefPlace for MyPtr<T> {
     //~^ ERROR: use of unstable library feature `field_projections` [E0658]
     type Target = T; //~ ERROR: use of unstable library feature `field_projections` [E0658]
 }
 
-unsafe impl<T, S> PlaceRead<S> for MyPtr<T>
+unsafe impl<T, S> ReadPlace<S> for MyPtr<T>
 //~^ ERROR: use of unstable library feature `field_projections` [E0658]
 where
     T: ?Sized,
@@ -52,7 +52,7 @@ where
     }
 }
 
-unsafe impl<T, S> PlaceWrite<S> for MyPtr<T>
+unsafe impl<T, S> WritePlace<S> for MyPtr<T>
 //~^ ERROR: use of unstable library feature `field_projections` [E0658]
 where
     T: ?Sized,
@@ -71,7 +71,7 @@ where
     }
 }
 
-unsafe impl<T, S> PlaceMove<S> for MyPtr<T>
+unsafe impl<T, S> MovePlace<S> for MyPtr<T>
 //~^ ERROR: use of unstable library feature `field_projections` [E0658]
 where
     S: Subplace<Source = T>, //~ ERROR: use of unstable library feature `field_projections` [E0658]
@@ -81,7 +81,7 @@ where
 {
 }
 
-unsafe impl<T, S> PlaceDrop<S> for MyPtr<T>
+unsafe impl<T, S> DropPlace<S> for MyPtr<T>
 //~^ ERROR: use of unstable library feature `field_projections` [E0658]
 where
     T: ?Sized,
@@ -105,7 +105,7 @@ unsafe impl<T> DropHusk for MyPtr<T> {
     }
 }
 
-unsafe impl<T, S> PlaceBorrow<S, MyPtr<S::Target>> for MyPtr<T>
+unsafe impl<T, S> BorrowPlace<S, MyPtr<S::Target>> for MyPtr<T>
 //~^ ERROR: use of unstable library feature `field_projections` [E0658]
 //~^^ ERROR: use of unstable library feature `field_projections` [E0658]
 where
@@ -124,16 +124,16 @@ where
     }
 }
 
-unsafe impl<T, S> PlaceDeref<S> for MyPtr<T>
+unsafe impl<T, S> NestPlace<S> for MyPtr<T>
 //~^ ERROR: use of unstable library feature `field_projections` [E0658]
 where
     S: Subplace<Source = T>, //~ ERROR: use of unstable library feature `field_projections` [E0658]
     //~^ ERROR: use of unstable library feature `field_projections` [E0658]
     //~^^ ERROR: use of unstable library feature `field_projections` [E0658]
-    S::Target: Place, //~ ERROR: use of unstable library feature `field_projections` [E0658]
+    S::Target: DerefPlace, //~ ERROR: use of unstable library feature `field_projections` [E0658]
                       //~^ ERROR: use of unstable library feature `field_projections` [E0658]
 {
-    unsafe fn deref(this: *const Self, sub: S) -> *const S::Target {
+    unsafe fn nested(this: *const Self, sub: S) -> *const S::Target {
         //~^ ERROR: use of unstable library feature `field_projections` [E0658]
         //~^^ ERROR: use of unstable library feature `field_projections` [E0658]
         let _ = (this, sub);
@@ -141,32 +141,32 @@ where
     }
 }
 
-unsafe fn using_place_ops<T, S>(place: *const MyPtr<T>, sub: S)
+unsafe fn using_place_ops<T, S>(place: *const MyPtr<T>, sub: impl Fn() -> S)
 where
     S: Subplace<Source = T>, //~ ERROR: use of unstable library feature `field_projections` [E0658]
     //~^ ERROR: use of unstable library feature `field_projections` [E0658]
     //~^^ ERROR: use of unstable library feature `field_projections` [E0658]
-    S::Target: Sized + Place, //~ ERROR: use of unstable library feature `field_projections` [E0658]
+    S::Target: Sized + DerefPlace, //~ ERROR: use of unstable library feature `field_projections` [E0658]
                               //~^ ERROR: use of unstable library feature `field_projections` [E0658]
 {
     unsafe {
-        let value = PlaceRead::read(place, sub); //~ ERROR: use of unstable library feature `field_projections` [E0658]
-        PlaceWrite::write(place, sub, value); //~ ERROR: use of unstable library feature `field_projections` [E0658]
-        let _ = PlaceBorrow::<_, MyPtr<_>>::borrow(place, sub); //~ ERROR: use of unstable library feature `field_projections` [E0658]
-        let _ = PlaceDeref::deref(place, sub); //~ ERROR: use of unstable library feature `field_projections` [E0658]
-        PlaceDrop::drop(place, sub); //~ ERROR: use of unstable library feature `field_projections` [E0658]
+        let value = ReadPlace::read(place, sub()); //~ ERROR: use of unstable library feature `field_projections` [E0658]
+        WritePlace::write(place, sub(), value); //~ ERROR: use of unstable library feature `field_projections` [E0658]
+        let _ = BorrowPlace::<_, MyPtr<_>>::borrow(place, sub()); //~ ERROR: use of unstable library feature `field_projections` [E0658]
+        let _ = NestPlace::nested(place, sub()); //~ ERROR: use of unstable library feature `field_projections` [E0658]
+        DropPlace::drop(place, sub()); //~ ERROR: use of unstable library feature `field_projections` [E0658]
         DropHusk::drop_husk(place); //~ ERROR: use of unstable library feature `field_projections` [E0658]
     }
 }
 
 struct MyWrapper<T: ?Sized>(T);
 
-impl<T: ?Sized> Place for MyWrapper<T> {
+impl<T: ?Sized> DerefPlace for MyWrapper<T> {
     //~^ ERROR: use of unstable library feature `field_projections` [E0658]
     type Target = T; //~ ERROR: use of unstable library feature `field_projections` [E0658]
 }
 
-unsafe impl<T, S> PlaceWrapper<S> for MyWrapper<T>
+unsafe impl<T, S> WrapPlace<S> for MyWrapper<T>
 //~^ ERROR: use of unstable library feature `field_projections` [E0658]
 where
     T: ?Sized,
@@ -214,7 +214,7 @@ where
     //~^ ERROR: use of unstable library feature `field_projections` [E0658]
 {
     unsafe {
-        let _ = <MyWrapper<T> as PlaceWrapper<S>>::wrap(sub); //~ ERROR: use of unstable library feature `field_projections` [E0658]
+        let _ = <MyWrapper<T> as WrapPlace<S>>::wrap(sub); //~ ERROR: use of unstable library feature `field_projections` [E0658]
     }
 }
 

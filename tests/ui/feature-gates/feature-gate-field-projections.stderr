@@ -21,8 +21,8 @@ LL | use std::field::Field;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:4:5
    |
-LL | use std::field::Subplace;
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL | use std::ops::place::Subplace;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -41,8 +41,8 @@ LL | use std::field::field_of;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:6:5
    |
-LL | use std::ops::DropHusk;
-   |     ^^^^^^^^^^^^^^^^^^
+LL | use std::ops::place::DropHusk;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -51,8 +51,8 @@ LL | use std::ops::DropHusk;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:7:5
    |
-LL | use std::ops::Place;
-   |     ^^^^^^^^^^^^^^^
+LL | use std::ops::place::DerefPlace;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -61,8 +61,8 @@ LL | use std::ops::Place;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:8:5
    |
-LL | use std::ops::PlaceBorrow;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL | use std::ops::place::BorrowPlace;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -71,8 +71,8 @@ LL | use std::ops::PlaceBorrow;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:9:5
    |
-LL | use std::ops::PlaceDeref;
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL | use std::ops::place::NestPlace;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -81,8 +81,8 @@ LL | use std::ops::PlaceDeref;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:10:5
    |
-LL | use std::ops::PlaceDrop;
-   |     ^^^^^^^^^^^^^^^^^^^
+LL | use std::ops::place::DropPlace;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -91,8 +91,8 @@ LL | use std::ops::PlaceDrop;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:11:5
    |
-LL | use std::ops::PlaceMove;
-   |     ^^^^^^^^^^^^^^^^^^^
+LL | use std::ops::place::MovePlace;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -101,8 +101,8 @@ LL | use std::ops::PlaceMove;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:12:5
    |
-LL | use std::ops::PlaceRead;
-   |     ^^^^^^^^^^^^^^^^^^^
+LL | use std::ops::place::ReadPlace;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -111,8 +111,8 @@ LL | use std::ops::PlaceRead;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:13:5
    |
-LL | use std::ops::PlaceWrapper;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+LL | use std::ops::place::WrapPlace;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -121,8 +121,8 @@ LL | use std::ops::PlaceWrapper;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:14:5
    |
-LL | use std::ops::PlaceWrite;
-   |     ^^^^^^^^^^^^^^^^^^^^
+LL | use std::ops::place::WritePlace;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -151,8 +151,8 @@ LL |     type Target = T;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:31:17
    |
-LL | impl<T: ?Sized> Place for MyPtr<T> {
-   |                 ^^^^^
+LL | impl<T: ?Sized> DerefPlace for MyPtr<T> {
+   |                 ^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -191,7 +191,7 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:36:19
    |
-LL | unsafe impl<T, S> PlaceRead<S> for MyPtr<T>
+LL | unsafe impl<T, S> ReadPlace<S> for MyPtr<T>
    |                   ^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -231,7 +231,7 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:55:19
    |
-LL | unsafe impl<T, S> PlaceWrite<S> for MyPtr<T>
+LL | unsafe impl<T, S> WritePlace<S> for MyPtr<T>
    |                   ^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -251,7 +251,7 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:74:19
    |
-LL | unsafe impl<T, S> PlaceMove<S> for MyPtr<T>
+LL | unsafe impl<T, S> MovePlace<S> for MyPtr<T>
    |                   ^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -281,7 +281,7 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:84:19
    |
-LL | unsafe impl<T, S> PlaceDrop<S> for MyPtr<T>
+LL | unsafe impl<T, S> DropPlace<S> for MyPtr<T>
    |                   ^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -341,7 +341,7 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:108:19
    |
-LL | unsafe impl<T, S> PlaceBorrow<S, MyPtr<S::Target>> for MyPtr<T>
+LL | unsafe impl<T, S> BorrowPlace<S, MyPtr<S::Target>> for MyPtr<T>
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -351,8 +351,8 @@ LL | unsafe impl<T, S> PlaceBorrow<S, MyPtr<S::Target>> for MyPtr<T>
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:136:5
    |
-LL |     unsafe fn deref(this: *const Self, sub: S) -> *const S::Target {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     unsafe fn nested(this: *const Self, sub: S) -> *const S::Target {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -371,8 +371,8 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:133:16
    |
-LL |     S::Target: Place,
-   |                ^^^^^
+LL |     S::Target: DerefPlace,
+   |                ^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -381,8 +381,8 @@ LL |     S::Target: Place,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:127:19
    |
-LL | unsafe impl<T, S> PlaceDeref<S> for MyPtr<T>
-   |                   ^^^^^^^^^^^^^
+LL | unsafe impl<T, S> NestPlace<S> for MyPtr<T>
+   |                   ^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -401,8 +401,8 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:149:24
    |
-LL |     S::Target: Sized + Place,
-   |                        ^^^^^
+LL |     S::Target: Sized + DerefPlace,
+   |                        ^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -411,7 +411,7 @@ LL |     S::Target: Sized + Place,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:153:21
    |
-LL |         let value = PlaceRead::read(place, sub);
+LL |         let value = ReadPlace::read(place, sub());
    |                     ^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -421,7 +421,7 @@ LL |         let value = PlaceRead::read(place, sub);
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:154:9
    |
-LL |         PlaceWrite::write(place, sub, value);
+LL |         WritePlace::write(place, sub(), value);
    |         ^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -431,8 +431,8 @@ LL |         PlaceWrite::write(place, sub, value);
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:155:17
    |
-LL |         let _ = PlaceBorrow::<_, MyPtr<_>>::borrow(place, sub);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | ...   let _ = BorrowPlace::<_, MyPtr<_>>::borrow(place, sub());
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -441,7 +441,7 @@ LL |         let _ = PlaceBorrow::<_, MyPtr<_>>::borrow(place, sub);
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:156:17
    |
-LL |         let _ = PlaceDeref::deref(place, sub);
+LL |         let _ = NestPlace::nested(place, sub());
    |                 ^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -451,7 +451,7 @@ LL |         let _ = PlaceDeref::deref(place, sub);
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:157:9
    |
-LL |         PlaceDrop::drop(place, sub);
+LL |         DropPlace::drop(place, sub());
    |         ^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -481,8 +481,8 @@ LL |     type Target = T;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:164:17
    |
-LL | impl<T: ?Sized> Place for MyWrapper<T> {
-   |                 ^^^^^
+LL | impl<T: ?Sized> DerefPlace for MyWrapper<T> {
+   |                 ^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -521,8 +521,8 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:169:19
    |
-LL | unsafe impl<T, S> PlaceWrapper<S> for MyWrapper<T>
-   |                   ^^^^^^^^^^^^^^^
+LL | unsafe impl<T, S> WrapPlace<S> for MyWrapper<T>
+   |                   ^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -596,8 +596,8 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:217:17
    |
-LL |         let _ = <MyWrapper<T> as PlaceWrapper<S>>::wrap(sub);
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         let _ = <MyWrapper<T> as WrapPlace<S>>::wrap(sub);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -704,10 +704,10 @@ LL |     S: Subplace<Source = T>,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `field_projections`
-  --> $DIR/feature-gate-field-projections.rs:136:58
+  --> $DIR/feature-gate-field-projections.rs:136:59
    |
-LL |     unsafe fn deref(this: *const Self, sub: S) -> *const S::Target {
-   |                                                          ^^^^^^^^^
+LL |     unsafe fn nested(this: *const Self, sub: S) -> *const S::Target {
+   |                                                           ^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -830,7 +830,7 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:108:40
    |
-LL | unsafe impl<T, S> PlaceBorrow<S, MyPtr<S::Target>> for MyPtr<T>
+LL | unsafe impl<T, S> BorrowPlace<S, MyPtr<S::Target>> for MyPtr<T>
    |                                        ^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -851,7 +851,7 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:133:5
    |
-LL |     S::Target: Place,
+LL |     S::Target: DerefPlace,
    |     ^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -882,7 +882,7 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:149:5
    |
-LL |     S::Target: Sized + Place,
+LL |     S::Target: Sized + DerefPlace,
    |     ^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
