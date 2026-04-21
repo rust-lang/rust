@@ -1434,20 +1434,31 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
             // Only propagate `#[inline(always)]` to the callsite when there is
             // an attribute and the caller and callee are compatible for
-            // inlining here.
+            // inlining here. Otherwise we explicitly emit a `noinline` to
+            // ensure that the function will not get inlined through an LLVM
+            // pass.
             if attributes::has_inline_always_callsite_attribute(
                 self.cx.tcx,
                 callee_attrs,
                 callee_instance,
-            ) && self.tcx.is_call_inline_able_at_callsite(
-                &callee_attrs.target_features,
-                &caller_attrs.target_features,
             ) {
-                attributes::apply_to_callsite(
-                    call,
-                    llvm::AttributePlace::Function,
-                    &[AttributeKind::AlwaysInline.create_attr(self.cx.llcx)],
-                );
+                if self.tcx.is_call_inline_able_at_callsite(
+                    &callee_attrs.target_features,
+                    &caller_attrs.target_features,
+                ) {
+                    attributes::apply_to_callsite(
+                        call,
+                        llvm::AttributePlace::Function,
+                        &[AttributeKind::AlwaysInline.create_attr(self.cx.llcx)],
+                    );
+                } else {
+                    // Ensure the function call will not be inlined.
+                    attributes::apply_to_callsite(
+                        call,
+                        llvm::AttributePlace::Function,
+                        &[AttributeKind::NoInline.create_attr(self.cx.llcx)],
+                    );
+                }
             }
         }
 
