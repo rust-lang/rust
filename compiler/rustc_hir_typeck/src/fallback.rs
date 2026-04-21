@@ -4,7 +4,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph;
 use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
-use rustc_hir::attrs::DivergingFallbackBehavior;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{InferKind, Visitor};
@@ -72,7 +71,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             return false;
         }
 
-        let (diverging_fallback, diverging_fallback_ty) = self.calculate_diverging_fallback();
+        let diverging_fallback = self.calculate_diverging_fallback();
         let fallback_to_f32 = self.calculate_fallback_to_f32(&unresolved_float);
 
         // We do fallback in two passes, to try to generate
@@ -86,7 +85,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 || {
                     diverging_fallback.contains(&vid).then(|| {
                         self.diverging_fallback_has_occurred.set(true);
-                        diverging_fallback_ty
+                        self.tcx.types.never
                     })
                 },
                 |vid| (Ty::new_var(self.tcx, vid), self.type_var_origin(vid).span),
@@ -209,28 +208,19 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         fallback_to_f32
     }
 
-    fn calculate_diverging_fallback(&self) -> (UnordSet<ty::TyVid>, Ty<'tcx>) {
-        let diverging_fallback_ty = match self.diverging_fallback_behavior {
-            DivergingFallbackBehavior::ToUnit => self.tcx.types.unit,
-            DivergingFallbackBehavior::ToNever => self.tcx.types.never,
-            DivergingFallbackBehavior::NoFallback => {
-                // the type doesn't matter, since no fallback will occur
-                return (UnordSet::new(), self.tcx.types.unit);
-            }
-        };
-
+    fn calculate_diverging_fallback(&self) -> UnordSet<ty::TyVid> {
         // Compute the diverging root vids D -- that is, the root vid of
         // those type variables that (a) are the target of a coercion from
         // a `!` type and (b) have not yet been solved.
         //
-        // These variables are the ones that are targets for fallback to
-        // either `!` or `()`.
+        // These variables are the ones that are targets for fallback to `!`.
         let diverging_root_vids: Vec<ty::TyVid> = self
             .diverging_type_vars
             .borrow()
             .iter()
             .filter_map(|&vid| self.infcx.shallow_resolve_ty_var_or_get_root(vid).err())
             .collect();
+
         {
             // Construct a coercion graph where an edge `A -> B` indicates
             // a type variable is that is coerced
@@ -249,9 +239,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             }
         }
 
-        let diverging_fallback = diverging_root_vids.into_iter().collect::<UnordSet<_>>();
-
-        (diverging_fallback, diverging_fallback_ty)
+        diverging_root_vids.into_iter().collect::<UnordSet<_>>()
     }
 
     fn lint_never_type_fallback_flowing_into_unsafe_code(
