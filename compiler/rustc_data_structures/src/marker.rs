@@ -63,7 +63,7 @@ already_send!(
         [std::sync::atomic::AtomicU32][std::backtrace::Backtrace][std::io::Stdout][std::io::Stderr]
         [std::io::Error][std::fs::File][std::panic::Location<'_>][rustc_arena::DroplessArena]
         [jobserver_crate::Client][jobserver_crate::HelperThread][crate::memmap::Mmap]
-        [crate::profiling::SelfProfiler][crate::owned_slice::OwnedSlice]
+        [crate::profiling::SelfProfiler][crate::owned_slice::OwnedSlice][crate::sync::Registry]
 );
 
 #[cfg(target_has_atomic = "64")]
@@ -142,7 +142,7 @@ already_sync!(
     [std::sync::atomic::AtomicBool][std::sync::atomic::AtomicUsize][std::sync::atomic::AtomicU8]
         [std::sync::atomic::AtomicU32][std::backtrace::Backtrace][std::io::Error][std::fs::File][std::panic::Location<'_>]
         [jobserver_crate::Client][jobserver_crate::HelperThread][crate::memmap::Mmap]
-        [crate::profiling::SelfProfiler][crate::owned_slice::OwnedSlice]
+        [crate::profiling::SelfProfiler][crate::owned_slice::OwnedSlice][crate::sync::Registry]
 );
 
 // Use portable AtomicU64 for targets without native 64-bit atomics

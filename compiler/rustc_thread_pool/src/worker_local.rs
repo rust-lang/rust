@@ -73,3 +73,9 @@ impl<T> Deref for WorkerLocal<T> {
         self.current()
     }
 }
+
+impl<T: Default> Default for WorkerLocal<T> {
+    fn default() -> Self {
+        WorkerLocal::new(|_| Default::default())
+    }
+}
