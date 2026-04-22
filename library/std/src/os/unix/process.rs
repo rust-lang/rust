@@ -106,8 +106,8 @@ pub trait CommandExt: Sealed {
     /// [POSIX fork() specification]:
     ///     https://pubs.opengroup.org/onlinepubs/9699919799/functions/fork.html
     /// [`std::env`]: mod@crate::env
-    /// [`Error::new`]: crate::io::Error::new
-    /// [`Error::other`]: crate::io::Error::other
+    /// [`Error::new`]: ../../../io/struct.Error.html#method.new
+    /// [`Error::other`]: ../../../io/struct.Error.html#method.other
     #[stable(feature = "process_pre_exec", since = "1.34.0")]
     unsafe fn pre_exec<F>(&mut self, f: F) -> &mut process::Command
     where
