@@ -23,8 +23,8 @@ macros, values, types, lifetimes), and names may be valid at different (nested)
 scopes.
 Also, different types of names can fail resolution differently, and
 failures can happen differently at different scopes.
-For example, in a module
-scope, failure means no unexpanded macros and no unresolved glob imports in
+For example, in a module scope,
+failure means no unexpanded macros and no unresolved glob imports in
 that module.
 On the other hand, in a function body scope, failure requires that a
 name be absent from the block we are in, all outer scopes, and the global scope.
@@ -46,13 +46,14 @@ let y: x = 2;
 
 How do we know on line 3 whether `x` is a type (`u32`) or a value (1)?
 These conflicts are resolved during name resolution.
-In this specific case, name
-resolution defines that type names and variable names live in separate
+In this specific case,
+name resolution defines that type names and variable names live in separate
 namespaces and therefore can co-exist.
 
 The name resolution in Rust is a two-phase process.
-In the first phase, which runs
-during `macro` expansion, we build a tree of modules and resolve imports.
+In the first phase,
+which runs during `macro` expansion,
+we build a tree of modules and resolve imports.
 Macro expansion and name resolution communicate with each other via the
 [`ResolverAstLoweringExt`] trait.
 
@@ -60,8 +61,8 @@ The input to the second phase is the syntax tree, produced by parsing input
 files and expanding `macros`.
 This phase produces links from all the names in the
 source to relevant places where the name was introduced.
-It also generates
-helpful error messages, like typo suggestions, traits to import or lints about
+It also generates helpful error messages,
+like typo suggestions, traits to import or lints about
 unused items.
 
 A successful run of the second phase ([`Resolver::resolve_crate`]) creates kind
@@ -95,15 +96,13 @@ namespaces, the resolver keeps them separated and builds separate structures for
 them.
 
 In other words, when the code talks about namespaces, it doesn't mean the module
-hierarchy, it's types vs.
-values vs.
-macros.
+hierarchy, it's types versus values versus macros.
 
 ## Scopes and ribs
 
 A name is visible only in certain area in the source code.
-This forms a
-hierarchical structure, but not necessarily a simple one ‒ if one scope is
+This forms a hierarchical structure,
+but not necessarily a simple one ‒ if one scope is
 part of another, it doesn't mean a name visible in the outer scope is also
 visible in the inner scope, or that it refers to the same thing.
 
@@ -159,8 +158,8 @@ blocks), which isn't a full namespace in its own right.
 
 To perform the name resolution of the whole crate, the syntax tree is traversed
 top-down and every encountered name is resolved.
-This works for most kinds of
-names, because at the point of use of a name it is already introduced in the [`Rib`]
+This works for most kinds of names,
+because at the point of use of a name it is already introduced in the [`Rib`]
 hierarchy.
 
 There are some exceptions to this.
