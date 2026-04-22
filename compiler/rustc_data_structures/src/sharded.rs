@@ -185,7 +185,9 @@ impl<K: Eq + Hash, V> ShardedHashMap<K, V> {
 
     /// Insert value into the [`ShardedHashMap`] with unique key.
     ///
-    /// Checks uniqueness if debug_assertions enabled.
+    /// This function panics if debug_assertions are enabled and uniqueness is violated.
+    /// If uniqueness is violated but debug_assertions are disabled then lookups will arbitrarily
+    /// return one of the inserted elements.
     #[inline]
     pub fn insert_unique(&self, key: K, value: V) {
         let hash = make_hash(&key);
