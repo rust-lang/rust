@@ -111,6 +111,9 @@
 #![feature(const_try)]
 #![feature(copied_into_inner)]
 #![feature(core_intrinsics)]
+#![feature(core_io)]
+#![feature(core_io_borrowed_buf)]
+#![feature(core_io_internals)]
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]
 #![feature(diagnostic_on_move)]
@@ -141,6 +144,7 @@
 #![feature(ptr_alignment_type)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
+#![feature(raw_os_error_ty)]
 #![feature(rev_into_inner)]
 #![feature(set_ptr_value)]
 #![feature(sized_type_properties)]
@@ -228,6 +232,8 @@ pub mod collections;
 pub mod ffi;
 pub mod fmt;
 pub mod intrinsics;
+#[unstable(feature = "alloc_io", issue = "154046")]
+pub mod io;
 #[cfg(not(no_rc))]
 pub mod rc;
 pub mod slice;

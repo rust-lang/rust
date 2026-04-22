@@ -1,0 +1,11 @@
+//! Traits, helpers, and type definitions for core I/O functionality.
+
+mod error;
+
+#[unstable(feature = "core_io_borrowed_buf", issue = "117693")]
+pub use core::io::{BorrowedBuf, BorrowedCursor};
+
+#[unstable(feature = "alloc_io", issue = "154046")]
+pub use self::error::ErrorKind;
+#[unstable(feature = "raw_os_error_ty", issue = "107792")]
+pub use self::error::RawOsError;

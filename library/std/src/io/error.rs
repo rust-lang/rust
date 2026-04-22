@@ -2,9 +2,9 @@
 mod tests;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::io::ErrorKind;
+pub use alloc_crate::io::ErrorKind;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
-pub use core::io::RawOsError;
+pub use alloc_crate::io::RawOsError;
 
 // On 64-bit platforms, `io::Error` may use a bit-packed representation to
 // reduce size. However, this representation assumes that error codes are
