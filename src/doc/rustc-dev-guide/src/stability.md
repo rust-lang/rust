@@ -4,8 +4,8 @@ This section is about the stability attributes and schemes that allow stable
 APIs to use unstable APIs internally in the rustc standard library.
 
 **NOTE**: this section is for *library* features, not *language* features.
-For instructions on
-stabilizing a language feature see [Stabilizing Features](./stabilization-guide.md).
+For instructions on stabilizing a language feature,
+see [Stabilizing Features](./stabilization-guide.md).
 
 ## unstable
 
@@ -18,31 +18,30 @@ This restriction only applies across
 crate boundaries, unstable items may be used within the crate that defines them.
 
 The `issue` field specifies the associated GitHub [issue number].
-This field is
-required and all unstable features should have an associated tracking issue.
-In rare cases where there is no sensible value `issue = "none"` is used.
+This field is required,
+and all unstable features should have an associated tracking issue.
+In rare cases where there is no sensible value, `issue = "none"` is used.
 
 The `unstable` attribute infects all sub-items, where the attribute doesn't
 have to be reapplied.
-So if you apply this to a module, all items in the module will be unstable.
+So, if you apply this to a module, all items in the module will be unstable.
 
-If you rename a feature, you can add `old_name = "old_name"` to produce a 
+If you rename a feature, you can add `old_name = "old_name"` to produce a
 useful error message.
 
 You can make specific sub-items stable by using the `#[stable]` attribute on
 them.
 The stability scheme works similarly to how `pub` works.
-You can have
-public functions of nonpublic modules and you can have stable functions in
-unstable modules or vice versa.
+You can have public functions of non-public modules,
+and you can have stable functions in unstable modules or vice versa.
 
 Previously, due to a [rustc bug], stable items inside unstable modules were
 available to stable code in that location.
 As of <!-- date-check --> September 2024, items with [accidentally stabilized
 paths] are marked with the `#[rustc_allowed_through_unstable_modules]` attribute
 to prevent code dependent on those paths from breaking.
-Do *not* add this attribute
-to any more items unless that is needed to avoid breaking changes.
+Do *not* add this attribute to any more items,
+unless that is needed to avoid breaking changes.
 
 The `unstable` attribute may also have the `soft` value, which makes it a
 future-incompatible deny-by-default lint instead of a hard error.
@@ -161,7 +160,7 @@ You also need to take care to uphold the `const fn` invariant that calling it at
 compile-time needs to behave the same (see also [this blog post][blog]).
 This means that you
 may not create a `const fn` that e.g. transmutes a memory address to an integer,
-because the addresses of things are nondeterministic and often unknown at
+because the addresses of things are non-deterministic and often unknown at
 compile-time.
 
 **Always ping @rust-lang/wg-const-eval if you are adding more
