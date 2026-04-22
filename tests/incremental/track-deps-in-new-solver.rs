@@ -1,7 +1,5 @@
-//@ revisions: bfail1 bfail2
-
+//@ revisions: cpass1 cpass2
 //@ compile-flags: -Znext-solver
-//@ check-pass
 
 #![allow(dead_code)]
 
@@ -18,10 +16,10 @@ impl Future for S {
     }
 }
 
-#[cfg(bfail1)]
+#[cfg(cpass1)]
 pub struct Error(());
 
-#[cfg(bfail2)]
+#[cfg(cpass2)]
 pub struct Error();
 
 fn main() {}

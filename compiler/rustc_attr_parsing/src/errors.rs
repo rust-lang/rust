@@ -252,3 +252,72 @@ pub(crate) struct DocUnknownAny {
 #[derive(Diagnostic)]
 #[diag("expected boolean for `#[doc(auto_cfg = ...)]`")]
 pub(crate) struct DocAutoCfgWrongLiteral;
+
+#[derive(Diagnostic)]
+#[diag("`#[doc(test(...)]` takes a list of attributes")]
+pub(crate) struct DocTestTakesList;
+
+#[derive(Diagnostic)]
+#[diag("unknown `doc(test)` attribute `{$name}`")]
+pub(crate) struct DocTestUnknown {
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#![doc(test(...)]` does not take a literal")]
+pub(crate) struct DocTestLiteral;
+
+#[derive(Diagnostic)]
+#[diag("this attribute can only be applied at the crate level")]
+#[note(
+    "read <https://doc.rust-lang.org/nightly/rustdoc/the-doc-attribute.html#at-the-crate-level> for more information"
+)]
+pub(crate) struct AttrCrateLevelOnly;
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::do_not_recommend]` does not expect any arguments")]
+pub(crate) struct DoNotRecommendDoesNotExpectArgs;
+
+#[derive(Diagnostic)]
+#[diag("invalid `crate_type` value")]
+pub(crate) struct UnknownCrateTypes {
+    #[subdiagnostic]
+    pub sugg: Option<UnknownCrateTypesSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion("did you mean", code = r#""{snippet}""#, applicability = "maybe-incorrect")]
+pub(crate) struct UnknownCrateTypesSuggestion {
+    #[primary_span]
+    pub span: Span,
+    pub snippet: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_const]` can only be applied to non-const trait implementations")]
+pub(crate) struct DiagnosticOnConstOnlyForTraitImpls {
+    #[label("not a trait implementation")]
+    pub target_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_move]` can only be applied to enums, structs or unions")]
+pub(crate) struct DiagnosticOnMoveOnlyForAdt;
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_unimplemented]` can only be applied to trait definitions")]
+pub(crate) struct DiagnosticOnUnimplementedOnlyForTraits;
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_unknown]` can only be applied to `use` statements")]
+pub(crate) struct DiagnosticOnUnknownOnlyForImports {
+    #[label("not an import")]
+    pub target_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::do_not_recommend]` can only be placed on trait implementations")]
+pub(crate) struct IncorrectDoNotRecommendLocation {
+    #[label("not a trait implementation")]
+    pub target_span: Span,
+}

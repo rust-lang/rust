@@ -1,8 +1,7 @@
-//@ revisions: bfail1 bfail2
+//@ revisions: bpass1 bpass2
 //@ compile-flags: -Z query-dep-graph --crate-type rlib -C lto
-//@ build-pass
 
 #![feature(rustc_attrs)]
-#![rustc_partition_reused(module = "rlib_lto", cfg = "bfail2")]
+#![rustc_partition_reused(module = "rlib_lto", cfg = "bpass2")]
 
 pub fn foo() {}

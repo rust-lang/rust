@@ -321,7 +321,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         self.obligations.extend(
             infcx
                 .tcx
-                .predicates_of(free.def_id)
+                .predicates_of(free.def_id())
                 .instantiate_own(infcx.tcx, free.args)
                 .map(|(pred, span)| (pred.skip_norm_wip(), span))
                 .map(|(mut predicate, span)| {
@@ -333,7 +333,8 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
                         );
                     }
                     let mut cause = self.cause.clone();
-                    cause.map_code(|code| ObligationCauseCode::TypeAlias(code, span, free.def_id));
+                    cause
+                        .map_code(|code| ObligationCauseCode::TypeAlias(code, span, free.def_id()));
                     Obligation::new(infcx.tcx, cause, self.param_env, predicate)
                 }),
         );
@@ -341,7 +342,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         let res = if free.kind(infcx.tcx).is_type() {
             infcx
                 .tcx
-                .type_of(free.def_id)
+                .type_of(free.def_id())
                 .instantiate(infcx.tcx, free.args)
                 .skip_norm_wip()
                 .fold_with(self)
@@ -349,7 +350,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         } else {
             infcx
                 .tcx
-                .const_of_item(free.def_id)
+                .const_of_item(free.def_id())
                 .instantiate(infcx.tcx, free.args)
                 .skip_norm_wip()
                 .fold_with(self)
@@ -468,16 +469,20 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
         // feature gate causes a parse error.
         let ct = match tcx.def_kind(uv.def) {
             DefKind::AssocConst { .. } => match tcx.def_kind(tcx.parent(uv.def)) {
-                DefKind::Trait => self.normalize_trait_projection(uv.into()).expect_const(),
-                DefKind::Impl { of_trait: false } => {
-                    self.normalize_inherent_projection(uv.into()).expect_const()
-                }
+                DefKind::Trait => self
+                    .normalize_trait_projection(ty::AliasTerm::from_unevaluated_const(tcx, uv))
+                    .expect_const(),
+                DefKind::Impl { of_trait: false } => self
+                    .normalize_inherent_projection(ty::AliasTerm::from_unevaluated_const(tcx, uv))
+                    .expect_const(),
                 kind => unreachable!(
                     "unexpected `DefKind` for const alias' resolution's parent def: {:?}",
                     kind
                 ),
             },
-            DefKind::Const { .. } => self.normalize_free_alias(uv.into()).expect_const(),
+            DefKind::Const { .. } => self
+                .normalize_free_alias(ty::AliasTerm::from_unevaluated_const(tcx, uv))
+                .expect_const(),
             DefKind::AnonConst => {
                 let ct = ct.super_fold_with(self);
                 super::with_replaced_escaping_bound_vars(

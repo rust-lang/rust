@@ -107,7 +107,7 @@ where
         let tcx = infcx.tcx;
         let recursion_limit = tcx.recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
-            let term = alias_term.to_alias_term().unwrap();
+            let term = alias_term.to_alias_term(tcx).unwrap();
 
             self.at.infcx.err_ctxt().report_overflow_error(
                 OverflowCause::DeeplyNormalize(term),

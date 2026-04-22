@@ -485,7 +485,7 @@ where
             && (alias_ty.has_infer_regions() || matches!(kind, ty::Opaque { .. }))
         {
             debug!("no declared bounds");
-            let opt_variances = self.tcx.opt_alias_variances(kind, kind.def_id());
+            let opt_variances = self.tcx.opt_alias_variances(kind);
             self.args_must_outlive(alias_ty.args, origin, region, opt_variances);
             return;
         }

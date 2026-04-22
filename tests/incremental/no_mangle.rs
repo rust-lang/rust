@@ -1,5 +1,4 @@
-//@ revisions: bfail1 bfail2
-//@ check-pass
+//@ revisions: cpass1 cpass2
 //@ compile-flags: --crate-type cdylib
 //@ needs-crate-type: cdylib
 

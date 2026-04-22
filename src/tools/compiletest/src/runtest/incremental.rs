@@ -1,4 +1,4 @@
-use super::{FailMode, ProcRes, TestCx, WillExecute};
+use super::{Emit, FailMode, PassMode, ProcRes, TestCx, WillExecute};
 
 impl TestCx<'_> {
     pub(super) fn run_incremental_test(&self) {
@@ -31,7 +31,9 @@ impl TestCx<'_> {
             write!(self.stdout, "revision={:?} props={:#?}", revision, self.props);
         }
 
-        if revision.starts_with("bpass") {
+        if revision.starts_with("cpass") {
+            self.run_cpass_test();
+        } else if revision.starts_with("bpass") {
             self.run_bpass_test();
         } else if revision.starts_with("rpass") {
             self.run_rpass_test();
@@ -40,6 +42,12 @@ impl TestCx<'_> {
         } else {
             self.fatal("revision name must begin with `bfail`, `bpass`, or `rpass`");
         }
+    }
+
+    fn run_cpass_test(&self) {
+        let proc_res = self.compile_test(WillExecute::No, Emit::Metadata);
+        self.check_if_test_should_compile(None, Some(PassMode::Check), &proc_res);
+        self.check_compiler_output_for_incr(&proc_res);
     }
 
     fn run_bpass_test(&self) {

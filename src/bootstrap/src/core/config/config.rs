@@ -1184,6 +1184,12 @@ impl Config {
             exit!(1);
         }
 
+        if matches!(flags_cmd, Subcommand::Fix) {
+            eprintln!(
+                "WARNING: `x fix` is provided on a best-effort basis and does not support all `cargo fix` options correctly."
+            );
+        }
+
         // CI should always run stage 2 builds, unless it specifically states otherwise
         #[cfg(not(test))]
         if flags_stage.is_none() && ci_env.is_running_in_ci() {

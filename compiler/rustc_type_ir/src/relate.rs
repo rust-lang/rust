@@ -220,7 +220,7 @@ impl<I: Interner> Relate<I> for ty::AliasTy<I> {
             )))
         } else {
             let cx = relation.cx();
-            let args = if let Some(variances) = cx.opt_alias_variances(a.kind, a.kind.def_id()) {
+            let args = if let Some(variances) = cx.opt_alias_variances(a.kind) {
                 relate_args_with_variances(relation, variances, a.args, b.args)?
             } else {
                 relate_args_invariantly(relation, a.args, b.args)?
@@ -236,27 +236,27 @@ impl<I: Interner> Relate<I> for ty::AliasTerm<I> {
         a: ty::AliasTerm<I>,
         b: ty::AliasTerm<I>,
     ) -> RelateResult<I, ty::AliasTerm<I>> {
-        if a.def_id != b.def_id {
-            Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.def_id, b.def_id)))
+        if a.def_id() != b.def_id() {
+            Err(TypeError::ProjectionMismatched(ExpectedFound::new(a.def_id(), b.def_id())))
         } else {
             let args = match a.kind(relation.cx()) {
-                ty::AliasTermKind::OpaqueTy => relate_args_with_variances(
+                ty::AliasTermKind::OpaqueTy { .. } => relate_args_with_variances(
                     relation,
-                    relation.cx().variances_of(a.def_id),
+                    relation.cx().variances_of(a.def_id()),
                     a.args,
                     b.args,
                 )?,
-                ty::AliasTermKind::ProjectionTy
-                | ty::AliasTermKind::FreeConst
-                | ty::AliasTermKind::FreeTy
-                | ty::AliasTermKind::InherentTy
-                | ty::AliasTermKind::InherentConst
-                | ty::AliasTermKind::UnevaluatedConst
-                | ty::AliasTermKind::ProjectionConst => {
+                ty::AliasTermKind::ProjectionTy { .. }
+                | ty::AliasTermKind::FreeConst { .. }
+                | ty::AliasTermKind::FreeTy { .. }
+                | ty::AliasTermKind::InherentTy { .. }
+                | ty::AliasTermKind::InherentConst { .. }
+                | ty::AliasTermKind::UnevaluatedConst { .. }
+                | ty::AliasTermKind::ProjectionConst { .. } => {
                     relate_args_invariantly(relation, a.args, b.args)?
                 }
             };
-            Ok(ty::AliasTerm::new_from_args(relation.cx(), a.def_id, args))
+            Ok(a.with_args(relation.cx(), args))
         }
     }
 }

@@ -1,5 +1,4 @@
-//@ revisions: bfail1 bfail2
-//@ build-pass
+//@ revisions: bpass1 bpass2
 //@ ignore-backends: gcc
 
 // rust-lang/rust#69798:
@@ -18,7 +17,7 @@ impl Drop for Foo {
 pub extern "C" fn run() {
     thread_local! { pub static FOO : Foo = Foo { } ; }
 
-    #[cfg(bfail2)]
+    #[cfg(bpass2)]
     {
         FOO.with(|_f| ())
     }
