@@ -458,7 +458,8 @@ as they must be compilable by a stage 0 rustc that may be a beta or even stable 
 
 By default, run-make tests print each subprocess command and its stdout/stderr.
 When running with `--no-capture` on `panic=abort` test suites (such as `cg_clif`),
-this can flood the terminal. Omit `--verbose-run-make-subprocess-output` to
+this can flood the terminal.
+Omit `--verbose-run-make-subprocess-output` to
 suppress this output for passing tests — failing tests always print regardless:
 
 ```bash

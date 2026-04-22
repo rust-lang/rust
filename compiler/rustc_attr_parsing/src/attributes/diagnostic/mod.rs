@@ -25,6 +25,7 @@ pub(crate) mod on_const;
 pub(crate) mod on_move;
 pub(crate) mod on_unimplemented;
 pub(crate) mod on_unknown;
+pub(crate) mod on_unmatch_args;
 
 #[derive(Copy, Clone)]
 pub(crate) enum Mode {
@@ -38,6 +39,8 @@ pub(crate) enum Mode {
     DiagnosticOnMove,
     /// `#[diagnostic::on_unknown]`
     DiagnosticOnUnknown,
+    /// `#[diagnostic::on_unmatch_args]`
+    DiagnosticOnUnmatchArgs,
 }
 
 impl Mode {
@@ -48,6 +51,7 @@ impl Mode {
             Self::DiagnosticOnConst => "diagnostic::on_const",
             Self::DiagnosticOnMove => "diagnostic::on_move",
             Self::DiagnosticOnUnknown => "diagnostic::on_unknown",
+            Self::DiagnosticOnUnmatchArgs => "diagnostic::on_unmatch_args",
         }
     }
 
@@ -62,6 +66,7 @@ impl Mode {
             Self::DiagnosticOnConst => DEFAULT,
             Self::DiagnosticOnMove => DEFAULT,
             Self::DiagnosticOnUnknown => DEFAULT,
+            Self::DiagnosticOnUnmatchArgs => DEFAULT,
         }
     }
 
@@ -75,6 +80,7 @@ impl Mode {
             Self::DiagnosticOnConst => DEFAULT,
             Self::DiagnosticOnMove => DEFAULT,
             Self::DiagnosticOnUnknown => DEFAULT,
+            Self::DiagnosticOnUnmatchArgs => DEFAULT,
         }
     }
 }
@@ -398,7 +404,9 @@ fn parse_arg(
         Position::ArgumentNamed(name) => match (mode, Symbol::intern(name)) {
             // Only `#[rustc_on_unimplemented]` can use these
             (Mode::RustcOnUnimplemented { .. }, sym::ItemContext) => FormatArg::ItemContext,
-            (Mode::RustcOnUnimplemented { .. }, sym::This) => FormatArg::This,
+            (Mode::RustcOnUnimplemented { .. } | Mode::DiagnosticOnUnmatchArgs, sym::This) => {
+                FormatArg::This
+            }
             (Mode::RustcOnUnimplemented { .. }, sym::Trait) => FormatArg::Trait,
             // Any attribute can use these
             (_, kw::SelfUpper) => FormatArg::SelfUpper,
