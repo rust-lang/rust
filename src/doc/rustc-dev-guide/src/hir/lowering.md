@@ -2,7 +2,7 @@
 
 The AST lowering step converts AST to [HIR](../hir.md).
 This means many structures are removed if they are irrelevant
-for type analysis or similar syntax agnostic analyses.
+for type analysis or similar syntax-agnostic analyses.
 Examples of such structures include but are not limited to
 
 * Parenthesis
@@ -40,21 +40,21 @@ Lowering needs to uphold several invariants in order to not trigger the
 sanity checks in [`compiler/rustc_passes/src/hir_id_validator.rs`][hir_id_validator]:
 
 1. A `HirId` must be used if created.
-   So if you use the `lower_node_id`,
-  you *must* use the resulting `NodeId` or `HirId` (either is fine, since
-  any `NodeId`s in the `HIR` are checked for existing `HirId`s)
+   So, if you use the `lower_node_id`,
+   you *must* use the resulting `NodeId` or `HirId` (either is fine, since
+   any `NodeId`s in the `HIR` are checked for existing `HirId`s).
 2. Lowering a `HirId` must be done in the scope of the *owning* item.
-  This means you need to use `with_hir_id_owner` if you are creating parts
-  of an item other than the one being currently lowered.
-  This happens for example during the lowering of existential `impl Trait`
+   This means you need to use `with_hir_id_owner` if you are creating parts
+   of an item other than the one being currently lowered.
+   This happens, for example, during the lowering of existential `impl Trait`.
 3. A `NodeId` that will be placed into a HIR structure must be lowered,
-  even if its `HirId` is unused.
-  Calling `let _ = self.lower_node_id(node_id);` is perfectly legitimate.
+   even if its `HirId` is unused.
+   Calling `let _ = self.lower_node_id(node_id);` is perfectly legitimate.
 4. If you are creating new nodes that didn't exist in the `AST`, you *must*
-  create new ids for them.
-  This is done by calling the `next_id` method,
-  which produces both a new `NodeId` as well as automatically lowering it
-  for you so you also get the `HirId`.
+   create new ids for them.
+   This is done by calling the `next_id` method,
+   which produces both a new `NodeId` as well as automatically lowering it
+   for you so you also get the `HirId`.
 
 [`rustc_ast_lowering`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/index.html
 [`lower_to_hir`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast_lowering/fn.lower_to_hir.html
@@ -74,7 +74,7 @@ the advantage of creating a way to find the `DefId` of something via its
 If lowering needs this `DefId` in multiple places, you can't
 generate a new `NodeId` in all those places because you'd also get a new
 `DefId` then.
-With a `NodeId` from the `AST` this is not an issue.
+With a `NodeId` from the `AST`, this is not an issue.
 
 Having the `NodeId` also allows the `DefCollector` to generate the `DefId`s
 instead of lowering having to do it on the fly.
