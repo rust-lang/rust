@@ -55,7 +55,8 @@ When developing out-of-tree projects that use `rustc_private` crates, you can co
 
 #### Configuration Steps
 
-1. Configure `rust-analyzer.rustc.source` to `"discover"` in your editor settings.  
+1. Configure `rust-analyzer.rustc.source` to `"discover"` in your editor settings.
+   
    For VS Code, add to `rust_analyzer_settings.json`:
    ```json
    {
@@ -69,7 +70,7 @@ When developing out-of-tree projects that use `rustc_private` crates, you can co
    rustc_private = true
    ```
 
-This configuration allows `rust-analyzer` to properly recognize and provide IDE support for `rustc_private` crates in out-of-tree projects. 
+This configuration allows `rust-analyzer` to properly recognize and provide IDE support for `rustc_private` crates in out-of-tree projects.
 
 ### Getting Nightly Documentation for `rustc_private`
 
@@ -86,7 +87,9 @@ rustup doc --rustc-docs
 
 #### Older Nightlies
 
-If you depend on compiler internals from an older nightly, you may want to refer to the internal documentation from that particular nightly. The only way to do this is to generate the documentation locally. For example, to get documentation for `nightly-2025-11-08`:
+If you depend on compiler internals from an older nightly, you may want to refer to the internal documentation from that particular nightly.
+The only way to do this is to generate the documentation locally.
+For example, to get documentation for `nightly-2025-11-08`:
 
 Get the Git commit hash for that nightly:
 
@@ -95,7 +98,8 @@ rustup toolchain install nightly-2025-11-08
 rustc +nightly-2025-11-08 --version --verbose
 ```
 
-The output will include a `commit-hash` line identifying the exact source revision. Check out `rust-lang/rust` at that commit, then follow the steps in [compiler documentation](../building/compiler-documenting.md).
+The output will include a `commit-hash` line identifying the exact source revision.
+Check out `rust-lang/rust` at that commit, then follow the steps in [compiler documentation](../building/compiler-documenting.md).
 
 
 ### Additional Resources
