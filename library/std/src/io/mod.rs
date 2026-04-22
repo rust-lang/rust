@@ -3083,8 +3083,7 @@ impl<T: Read> Read for Take<T> {
             let is_init = buf.is_init();
 
             // SAFETY: no uninit data is written to ibuf
-            let ibuf = unsafe { &mut buf.as_mut()[..limit] };
-            let mut sliced_buf: BorrowedBuf<'_> = ibuf.into();
+            let mut sliced_buf = BorrowedBuf::from(unsafe { &mut buf.as_mut()[..limit] });
 
             if is_init {
                 // SAFETY: `sliced_buf` is a subslice of `buf`, so if `buf` was initialized then
@@ -3092,13 +3091,12 @@ impl<T: Read> Read for Take<T> {
                 unsafe { sliced_buf.set_init() };
             }
 
-            let mut cursor = sliced_buf.unfilled();
-            let result = self.inner.read_buf(cursor.reborrow());
+            let result = self.inner.read_buf(sliced_buf.unfilled());
 
             let did_init_up_to_limit = sliced_buf.is_init();
             let filled = sliced_buf.len();
 
-            // cursor / sliced_buf / ibuf must drop here
+            // sliced_buf must drop here
 
             // Avoid accidentally quadratic behaviour by initializing the whole
             // cursor if only part of it was initialized.
