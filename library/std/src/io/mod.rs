@@ -3084,7 +3084,6 @@ impl<T: Read> Read for Take<T> {
 
             // SAFETY: no uninit data is written to ibuf
             let ibuf = unsafe { &mut buf.as_mut()[..limit] };
-
             let mut sliced_buf: BorrowedBuf<'_> = ibuf.into();
 
             if is_init {
@@ -3096,14 +3095,14 @@ impl<T: Read> Read for Take<T> {
             let mut cursor = sliced_buf.unfilled();
             let result = self.inner.read_buf(cursor.reborrow());
 
-            let should_init = cursor.is_init();
+            let did_init_up_to_limit = sliced_buf.is_init();
             let filled = sliced_buf.len();
 
             // cursor / sliced_buf / ibuf must drop here
 
             // Avoid accidentally quadratic behaviour by initializing the whole
             // cursor if only part of it was initialized.
-            if should_init {
+            if did_init_up_to_limit {
                 // SAFETY: no uninit data is written
                 let uninit = unsafe { &mut buf.as_mut()[limit..] };
                 uninit.write_filled(0);
