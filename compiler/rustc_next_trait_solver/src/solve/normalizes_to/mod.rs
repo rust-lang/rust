@@ -34,7 +34,7 @@ where
         debug_assert!(self.term_is_fully_unconstrained(goal));
         let cx = self.cx();
         match goal.predicate.alias.kind(cx) {
-            ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
+            ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. } => {
                 let trait_ref = goal.predicate.alias.trait_ref(cx);
                 let (_, proven_via) =
                     self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
@@ -85,14 +85,14 @@ where
                     },
                 )
             }
-            ty::AliasTermKind::InherentTy | ty::AliasTermKind::InherentConst => {
+            ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConst { .. } => {
                 self.normalize_inherent_associated_term(goal)
             }
-            ty::AliasTermKind::OpaqueTy => self.normalize_opaque_type(goal),
-            ty::AliasTermKind::FreeTy | ty::AliasTermKind::FreeConst => {
+            ty::AliasTermKind::OpaqueTy { .. } => self.normalize_opaque_type(goal),
+            ty::AliasTermKind::FreeTy { .. } | ty::AliasTermKind::FreeConst { .. } => {
                 self.normalize_free_alias(goal)
             }
-            ty::AliasTermKind::UnevaluatedConst => self.normalize_anon_const(goal),
+            ty::AliasTermKind::UnevaluatedConst { .. } => self.normalize_anon_const(goal),
         }
     }
 
@@ -268,8 +268,8 @@ where
 
             let error_response = |ecx: &mut EvalCtxt<'_, D>, guar| {
                 let error_term = match goal.predicate.alias.kind(cx) {
-                    ty::AliasTermKind::ProjectionTy => Ty::new_error(cx, guar).into(),
-                    ty::AliasTermKind::ProjectionConst => Const::new_error(cx, guar).into(),
+                    ty::AliasTermKind::ProjectionTy { .. } => Ty::new_error(cx, guar).into(),
+                    ty::AliasTermKind::ProjectionConst { .. } => Const::new_error(cx, guar).into(),
                     kind => panic!("expected projection, found {kind:?}"),
                 };
                 ecx.instantiate_normalizes_to_term(goal, error_term);
@@ -384,10 +384,10 @@ where
 
             // Finally we construct the actual value of the associated type.
             let term = match goal.predicate.alias.kind(cx) {
-                ty::AliasTermKind::ProjectionTy => {
+                ty::AliasTermKind::ProjectionTy { .. } => {
                     cx.type_of(target_item_def_id).map_bound(|ty| ty.into())
                 }
-                ty::AliasTermKind::ProjectionConst => {
+                ty::AliasTermKind::ProjectionConst { .. } => {
                     cx.const_of_item(target_item_def_id).map_bound(|ct| ct.into())
                 }
                 kind => panic!("expected projection, found {kind:?}"),
@@ -472,7 +472,7 @@ where
         let pred = ty::ProjectionPredicate {
             projection_term: ty::AliasTerm::new(
                 cx,
-                goal.predicate.def_id(),
+                cx.alias_term_kind_from_def_id(goal.predicate.def_id()),
                 [goal.predicate.self_ty(), inputs],
             ),
             term: output.into(),
@@ -526,7 +526,7 @@ where
                 (
                     ty::AliasTerm::new(
                         cx,
-                        goal.predicate.def_id(),
+                        cx.alias_term_kind_from_def_id(goal.predicate.def_id()),
                         [goal.predicate.self_ty(), tupled_inputs_ty],
                     ),
                     output_coroutine_ty.into(),
@@ -535,7 +535,7 @@ where
                 (
                     ty::AliasTerm::new(
                         cx,
-                        goal.predicate.def_id(),
+                        cx.alias_term_kind_from_def_id(goal.predicate.def_id()),
                         [
                             I::GenericArg::from(goal.predicate.self_ty()),
                             tupled_inputs_ty.into(),
@@ -548,7 +548,7 @@ where
                 (
                     ty::AliasTerm::new(
                         cx,
-                        goal.predicate.def_id(),
+                        cx.alias_term_kind_from_def_id(goal.predicate.def_id()),
                         [goal.predicate.self_ty(), tupled_inputs_ty],
                     ),
                     coroutine_return_ty.into(),
@@ -746,7 +746,11 @@ where
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
-                projection_term: ty::AliasTerm::new(ecx.cx(), goal.predicate.def_id(), [self_ty]),
+                projection_term: ty::AliasTerm::new(
+                    ecx.cx(),
+                    cx.alias_term_kind_from_def_id(goal.predicate.def_id()),
+                    [self_ty],
+                ),
                 term,
             }
             .upcast(cx),
@@ -778,7 +782,11 @@ where
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
             ty::ProjectionPredicate {
-                projection_term: ty::AliasTerm::new(ecx.cx(), goal.predicate.def_id(), [self_ty]),
+                projection_term: ty::AliasTerm::new(
+                    ecx.cx(),
+                    cx.alias_term_kind_from_def_id(goal.predicate.def_id()),
+                    [self_ty],
+                ),
                 term,
             }
             .upcast(cx),
@@ -863,7 +871,7 @@ where
             ty::ProjectionPredicate {
                 projection_term: ty::AliasTerm::new(
                     ecx.cx(),
-                    goal.predicate.def_id(),
+                    cx.alias_term_kind_from_def_id(goal.predicate.def_id()),
                     [self_ty, coroutine.resume_ty()],
                 ),
                 term,

@@ -388,8 +388,8 @@ impl<'tcx> BestObligation<'tcx> {
                 self.detect_error_in_self_ty_normalization(goal, pred.self_ty())?;
             }
             Some(ty::PredicateKind::NormalizesTo(pred))
-                if let ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst =
-                    pred.alias.kind(tcx) =>
+                if let ty::AliasTermKind::ProjectionTy { .. }
+                | ty::AliasTermKind::ProjectionConst { .. } = pred.alias.kind(tcx) =>
             {
                 self.detect_error_in_self_ty_normalization(goal, pred.alias.self_ty())?;
                 self.detect_non_well_formed_assoc_item(goal, pred.alias)?;
@@ -450,7 +450,8 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             ty::PredicateKind::NormalizesTo(normalizes_to)
                 if matches!(
                     normalizes_to.alias.kind(tcx),
-                    ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst
+                    ty::AliasTermKind::ProjectionTy { .. }
+                        | ty::AliasTermKind::ProjectionConst { .. }
                 ) =>
             {
                 ChildMode::Trait(pred.kind().rebind(ty::TraitPredicate {

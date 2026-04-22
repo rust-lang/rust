@@ -1493,7 +1493,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
                             && self
                                 .tcx
-                                .is_lang_item(proj.projection_term.def_id, LangItem::FnOnceOutput)
+                                .is_lang_item(proj.projection_term.def_id(), LangItem::FnOnceOutput)
                             // args tuple will always be args[1]
                             && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
                             {
@@ -1537,7 +1537,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         if let ty::ClauseKind::Projection(proj) = pred.kind().skip_binder()
                             && self
                                 .tcx
-                                .is_lang_item(proj.projection_term.def_id, LangItem::FnOnceOutput)
+                                .is_lang_item(proj.projection_term.def_id(), LangItem::FnOnceOutput)
                             && proj.projection_term.self_ty() == found
                             // args tuple will always be args[1]
                             && let ty::Tuple(args) = proj.projection_term.args.type_at(1).kind()
@@ -5304,7 +5304,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let TypeError::Sorts(expected_found) = diff else {
                 continue;
             };
-            let ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, .. }) =
+            let &ty::Alias(ty::AliasTy { kind: kind @ ty::Projection { def_id }, .. }) =
                 expected_found.expected.kind()
             else {
                 continue;
@@ -5313,7 +5313,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Make `Self` be equivalent to the type of the call chain
             // expression we're looking at now, so that we can tell what
             // for example `Iterator::Item` is at this point in the chain.
-            let args = GenericArgs::for_item(self.tcx, *def_id, |param, _| {
+            let args = GenericArgs::for_item(self.tcx, def_id, |param, _| {
                 if param.index == 0 {
                     debug_assert_matches!(param.kind, ty::GenericParamDefKind::Type { .. });
                     return prev_ty.into();
@@ -5327,7 +5327,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // This corresponds to `<ExprTy as Iterator>::Item = _`.
             let projection = ty::Binder::dummy(ty::PredicateKind::Clause(
                 ty::ClauseKind::Projection(ty::ProjectionPredicate {
-                    projection_term: ty::AliasTerm::new_from_args(self.tcx, *def_id, args),
+                    projection_term: ty::AliasTerm::new_from_args(self.tcx, kind.into(), args),
                     term: ty.into(),
                 }),
             ));
@@ -5344,7 +5344,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 && let ty = self.resolve_vars_if_possible(ty)
                 && !ty.is_ty_var()
             {
-                assocs_in_this_method.push(Some((span, (*def_id, ty))));
+                assocs_in_this_method.push(Some((span, (def_id, ty))));
             } else {
                 // `<ExprTy as Iterator>` didn't select, so likely we've
                 // reached the end of the iterator chain, like the originating
@@ -6392,12 +6392,12 @@ fn point_at_assoc_type_restriction<G: EmissionGuarantee>(
         return;
     };
     let Some(name) = tcx
-        .opt_rpitit_info(proj.projection_term.def_id)
+        .opt_rpitit_info(proj.projection_term.def_id())
         .and_then(|data| match data {
             ty::ImplTraitInTraitData::Trait { fn_def_id, .. } => Some(tcx.item_name(fn_def_id)),
             ty::ImplTraitInTraitData::Impl { .. } => None,
         })
-        .or_else(|| tcx.opt_item_name(proj.projection_term.def_id))
+        .or_else(|| tcx.opt_item_name(proj.projection_term.def_id()))
     else {
         return;
     };

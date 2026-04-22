@@ -1364,7 +1364,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                                 &item_segment,
                                                 trait_ref.args,
                                             );
-                                            ty::AliasTerm::new_from_args(
+                                            ty::AliasTerm::new_from_def_id(
                                                 tcx,
                                                 assoc_item.def_id,
                                                 alias_args,
@@ -1374,7 +1374,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                                         // FIXME(mgca): code duplication with other places we lower
                                         // the rhs' of associated const bindings
                                         let ty = projection_term.map_bound(|alias| {
-                                            tcx.type_of(alias.def_id)
+                                            tcx.type_of(alias.def_id())
                                                 .instantiate(tcx, alias.args)
                                                 .skip_norm_wip()
                                         });

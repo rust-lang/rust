@@ -91,9 +91,9 @@ pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::opaque_types::OpaqueTypeKey;
 pub use self::pattern::{Pattern, PatternKind};
 pub use self::predicate::{
-    AliasTerm, ArgOutlivesPredicate, Clause, ClauseKind, CoercePredicate, ExistentialPredicate,
-    ExistentialPredicateStableCmpExt, ExistentialProjection, ExistentialTraitRef,
-    HostEffectPredicate, NormalizesTo, OutlivesPredicate, PolyCoercePredicate,
+    AliasTerm, AliasTermKind, ArgOutlivesPredicate, Clause, ClauseKind, CoercePredicate,
+    ExistentialPredicate, ExistentialPredicateStableCmpExt, ExistentialProjection,
+    ExistentialTraitRef, HostEffectPredicate, NormalizesTo, OutlivesPredicate, PolyCoercePredicate,
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
     PolyProjectionPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
     PolyTraitRef, PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,
@@ -607,14 +607,14 @@ impl<'tcx> Term<'tcx> {
         }
     }
 
-    pub fn to_alias_term(self) -> Option<AliasTerm<'tcx>> {
+    pub fn to_alias_term(self, tcx: TyCtxt<'tcx>) -> Option<AliasTerm<'tcx>> {
         match self.kind() {
             TermKind::Ty(ty) => match *ty.kind() {
                 ty::Alias(alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
             TermKind::Const(ct) => match ct.kind() {
-                ConstKind::Unevaluated(uv) => Some(uv.into()),
+                ConstKind::Unevaluated(uv) => Some(AliasTerm::from_unevaluated_const(tcx, uv)),
                 _ => None,
             },
         }

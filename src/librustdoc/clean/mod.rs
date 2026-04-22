@@ -563,7 +563,7 @@ fn projection_to_path_segment<'tcx>(
     proj: ty::Binder<'tcx, ty::AliasTerm<'tcx>>,
     cx: &mut DocContext<'tcx>,
 ) -> PathSegment {
-    let def_id = proj.skip_binder().def_id;
+    let def_id = proj.skip_binder().def_id();
     let generics = cx.tcx.generics_of(def_id);
     PathSegment {
         name: cx.tcx.item_name(def_id),
