@@ -146,7 +146,8 @@ impl Repr {
         // (rather than `ptr::wrapping_add`), but it's unclear this would give
         // any benefit, so we just use `wrapping_add` instead.
         let tagged = p.wrapping_add(TAG_CUSTOM).cast::<()>();
-        // Safety: `TAG_CUSTOM + p` is the same as `TAG_CUSTOM | p`,
+        // SAFETY:
+        // `TAG_CUSTOM + p` is the same as `TAG_CUSTOM | p`,
         // because `p`'s alignment means it isn't allowed to have any of the
         // `TAG_BITS` set (you can verify that addition and bitwise-or are the
         // same when the operands have no bits in common using a truth table).
@@ -166,7 +167,7 @@ impl Repr {
     #[inline]
     pub(super) fn new_os(code: RawOsError) -> Self {
         let utagged = ((code as usize) << 32) | TAG_OS;
-        // Safety: `TAG_OS` is not zero, so the result of the `|` is not 0.
+        // SAFETY: `TAG_OS` is not zero, so the result of the `|` is not 0.
         let res = Self(
             NonNull::without_provenance(unsafe { NonZeroUsize::new_unchecked(utagged) }),
             PhantomData,
@@ -183,7 +184,7 @@ impl Repr {
     #[inline]
     pub(super) fn new_simple(kind: ErrorKind) -> Self {
         let utagged = ((kind as usize) << 32) | TAG_SIMPLE;
-        // Safety: `TAG_SIMPLE` is not zero, so the result of the `|` is not 0.
+        // SAFETY: `TAG_SIMPLE` is not zero, so the result of the `|` is not 0.
         let res = Self(
             NonNull::without_provenance(unsafe { NonZeroUsize::new_unchecked(utagged) }),
             PhantomData,
@@ -200,26 +201,26 @@ impl Repr {
 
     #[inline]
     pub(super) const fn new_simple_message(m: &'static SimpleMessage) -> Self {
-        // Safety: References are never null.
+        // SAFETY: References are never null.
         Self(unsafe { NonNull::new_unchecked(m as *const _ as *mut ()) }, PhantomData)
     }
 
     #[inline]
     pub(super) fn data(&self) -> ErrorData<&Custom> {
-        // Safety: We're a Repr, decode_repr is fine.
+        // SAFETY: We're a Repr, decode_repr is fine.
         unsafe { decode_repr(self.0, |c| &*c) }
     }
 
     #[inline]
     pub(super) fn data_mut(&mut self) -> ErrorData<&mut Custom> {
-        // Safety: We're a Repr, decode_repr is fine.
+        // SAFETY: We're a Repr, decode_repr is fine.
         unsafe { decode_repr(self.0, |c| &mut *c) }
     }
 
     #[inline]
     pub(super) fn into_data(self) -> ErrorData<Box<Custom>> {
         let this = core::mem::ManuallyDrop::new(self);
-        // Safety: We're a Repr, decode_repr is fine. The `Box::from_raw` is
+        // SAFETY: We're a Repr, decode_repr is fine. The `Box::from_raw` is
         // safe because we prevent double-drop using `ManuallyDrop`.
         unsafe { decode_repr(this.0, |p| Box::from_raw(p)) }
     }
@@ -228,7 +229,7 @@ impl Repr {
 impl Drop for Repr {
     #[inline]
     fn drop(&mut self) {
-        // Safety: We're a Repr, decode_repr is fine. The `Box::from_raw` is
+        // SAFETY: We're a Repr, decode_repr is fine. The `Box::from_raw` is
         // safe because we're being dropped.
         unsafe {
             let _ = decode_repr(self.0, |p| Box::<Custom>::from_raw(p));
@@ -255,7 +256,7 @@ where
             let kind_bits = (bits >> 32) as u32;
             let kind = ErrorKind::from_prim(kind_bits).unwrap_or_else(|| {
                 debug_assert!(false, "Invalid io::error::Repr bits: `Repr({:#018x})`", bits);
-                // This means the `ptr` passed in was not valid, which violates
+                // SAFETY: This means the `ptr` passed in was not valid, which violates
                 // the unsafe contract of `decode_repr`.
                 //
                 // Using this rather than unwrap meaningfully improves the code
