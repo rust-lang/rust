@@ -212,8 +212,8 @@ fn own_existential_vtable_entries_iter(
         debug!("own_existential_vtable_entry: trait_method={:?}", trait_method);
         let def_id = trait_method.def_id;
 
-        // Final methods should not be included in the vtable.
-        if trait_method.defaultness(tcx).is_final() {
+        // Final methods should not be included in the vtable if they are not dyn-compatible.
+        if tcx.defaultness(def_id).is_final() && tcx.is_dyn_incompatible_final_assoc_fn(def_id) {
             return None;
         }
 

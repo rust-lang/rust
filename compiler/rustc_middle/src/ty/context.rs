@@ -703,6 +703,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self.dep_graph.assert_ignored();
         TyCtxtFeed { tcx: self, key }.delayed_owner(owner);
     }
+
+    pub fn feed_is_dyn_incompatible_final_assoc_fn(self, key: DefId, value: bool) {
+        debug_assert_eq!(self.def_kind(key), DefKind::AssocFn);
+        debug_assert!(self.defaultness(key).is_final());
+
+        TyCtxtFeed { tcx: self, key }.is_dyn_incompatible_final_assoc_fn_query(value)
+    }
 }
 
 impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {
