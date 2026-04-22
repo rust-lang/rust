@@ -35,11 +35,11 @@ use crate::{error, fmt, result, sys};
 ///
 /// While usual Rust style is to import types directly, aliases of [`Result`]
 /// often are not, to make it easier to distinguish between them. [`Result`] is
-/// generally assumed to be [`std::result::Result`][`Result`], and so users of this alias
+/// generally assumed to be [`core::result::Result`][`Result`], and so users of this alias
 /// will generally use `io::Result` instead of shadowing the [prelude]'s import
-/// of [`std::result::Result`][`Result`].
+/// of [`core::result::Result`][`Result`].
 ///
-/// [`std::io`]: crate::io
+/// [`std::io`]: ../../std/io/index.html
 /// [`io::Error`]: Error
 /// [`Result`]: crate::result::Result
 /// [prelude]: crate::prelude
@@ -63,16 +63,16 @@ use crate::{error, fmt, result, sys};
 #[doc(search_unbox)]
 pub type Result<T> = result::Result<T, Error>;
 
-/// The error type for I/O operations of the [`Read`], [`Write`], [`Seek`], and
+/// The error type for I/O operations of the [`Read`][Read], [`Write`][Write], [`Seek`][Seek], and
 /// associated traits.
 ///
 /// Errors mostly originate from the underlying OS, but custom instances of
 /// `Error` can be created with crafted error messages and a particular value of
 /// [`ErrorKind`].
 ///
-/// [`Read`]: crate::io::Read
-/// [`Write`]: crate::io::Write
-/// [`Seek`]: crate::io::Seek
+/// [Read]: ../../std/io/trait.Read.html
+/// [Write]: ../../std/io/trait.Write.html
+/// [Seek]: ../../std/io/trait.Seek.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Error {
     repr: Repr,
@@ -154,7 +154,7 @@ enum ErrorData<C> {
 // have on 32 bit platforms.
 //
 // (For the sake of being explicit: the alignment requirement here only matters
-// if `error/repr_bitpacked.rs` is in use — for the unpacked repr it doesn't
+// if `error/repr_bitpacked.rs` is in use — for the unpacked repr it doesn't
 // matter at all)
 #[doc(hidden)]
 #[unstable(feature = "io_const_error_internals", issue = "none")]
@@ -167,8 +167,10 @@ pub struct SimpleMessage {
 
 /// Creates a new I/O error from a known kind of error and a string literal.
 ///
-/// Contrary to [`Error::new`], this macro does not allocate and can be used in
+/// Contrary to [`Error::new`][new], this macro does not allocate and can be used in
 /// `const` contexts.
+///
+/// [new]: ../../std/io/struct.Error.html#method.new
 ///
 /// # Example
 /// ```
@@ -262,8 +264,10 @@ impl Error {
     /// Creates a new I/O error from an arbitrary error payload.
     ///
     /// This function is used to generically create I/O errors which do not
-    /// originate from the OS itself. It is a shortcut for [`Error::new`]
+    /// originate from the OS itself. It is a shortcut for [`Error::new`][new]
     /// with [`ErrorKind::Other`].
+    ///
+    /// [new]: struct.Error.html#method.new
     ///
     /// # Examples
     ///
@@ -367,12 +371,12 @@ impl Error {
 
     /// Returns the OS error that this error represents (if any).
     ///
-    /// If this [`Error`] was constructed via [`last_os_error`] or
-    /// [`from_raw_os_error`], then this function will return [`Some`], otherwise
+    /// If this [`Error`] was constructed via [`last_os_error`][last_os_error] or
+    /// [`from_raw_os_error`][from_raw_os_error], then this function will return [`Some`], otherwise
     /// it will return [`None`].
     ///
-    /// [`last_os_error`]: Error::last_os_error
-    /// [`from_raw_os_error`]: Error::from_raw_os_error
+    /// [last_os_error]: ../../std/io/struct.Error.html#method.last_os_error
+    /// [from_raw_os_error]: ../../std/io/struct.Error.html#method.from_raw_os_error
     ///
     /// # Examples
     ///
@@ -408,10 +412,10 @@ impl Error {
 
     /// Returns a reference to the inner error wrapped by this error (if any).
     ///
-    /// If this [`Error`] was constructed via [`new`] then this function will
+    /// If this [`Error`] was constructed via [`new`][new] then this function will
     /// return [`Some`], otherwise it will return [`None`].
     ///
-    /// [`new`]: Error::new
+    /// [new]: ../../std/io/struct.Error.html#method.new
     ///
     /// # Examples
     ///
@@ -448,10 +452,10 @@ impl Error {
     /// Returns a mutable reference to the inner error wrapped by this error
     /// (if any).
     ///
-    /// If this [`Error`] was constructed via [`new`] then this function will
+    /// If this [`Error`] was constructed via [`new`][new] then this function will
     /// return [`Some`], otherwise it will return [`None`].
     ///
-    /// [`new`]: Error::new
+    /// [new]: ../../std/io/struct.Error.html#method.new
     ///
     /// # Examples
     ///
@@ -521,12 +525,12 @@ impl Error {
 
     /// Consumes the `Error`, returning its inner error (if any).
     ///
-    /// If this [`Error`] was constructed via [`new`] or [`other`],
+    /// If this [`Error`] was constructed via [`new`][new] or [`other`][other],
     /// then this function will return [`Some`],
     /// otherwise it will return [`None`].
     ///
-    /// [`new`]: Error::new
-    /// [`other`]: Error::other
+    /// [new]: struct.Error.html#method.new
+    /// [other]: struct.Error.html#method.other
     ///
     /// # Examples
     ///
@@ -571,8 +575,9 @@ impl Error {
     ///
     /// This method is meant to be a convenience routine for calling
     /// `Box<dyn Error + Sync + Send>::downcast` on the custom boxed error, returned by
-    /// [`Error::into_inner`].
+    /// [`Error::into_inner`][into_inner].
     ///
+    /// [into_inner]: struct.Error.html#method.into_inner
     ///
     /// # Examples
     ///
@@ -655,9 +660,9 @@ impl Error {
     /// This may be a value set by Rust code constructing custom `io::Error`s,
     /// or if this `io::Error` was sourced from the operating system,
     /// it will be a value inferred from the system's error encoding.
-    /// See [`last_os_error`] for more details.
+    /// See [`last_os_error`][last_os_error] for more details.
     ///
-    /// [`last_os_error`]: Error::last_os_error
+    /// [last_os_error]: ../../std/io/struct.Error.html#method.last_os_error
     ///
     /// # Examples
     ///
