@@ -5,7 +5,6 @@ use rustc_hir::Target;
 use rustc_hir::attrs::{
     AttributeKind, CfgEntry, CfgHideShow, CfgInfo, DocAttribute, DocInline, HideOrShow,
 };
-use rustc_hir::lints::AttributeLintKind;
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, edition, sym};
 use thin_vec::ThinVec;
@@ -17,7 +16,7 @@ use crate::errors::{
     AttrCrateLevelOnly, DocAliasDuplicated, DocAutoCfgExpectsHideOrShow,
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowUnexpectedItem, DocAutoCfgWrongLiteral,
     DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude,
-    DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNoArgs,
+    DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs,
     IllFormedAttributeInput, MalformedDoc,
 };
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
@@ -85,9 +84,9 @@ fn expected_name_value<S: Stage>(
     span: Span,
     _name: Option<Symbol>,
 ) {
-    cx.emit_lint(
+    cx.emit_dyn_lint(
         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-        AttributeLintKind::ExpectedNameValue,
+        |dcx, level| ExpectedNameValue.into_diag(dcx, level),
         span,
     );
 }

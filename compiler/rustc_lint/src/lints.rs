@@ -3283,13 +3283,6 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("expected this to be of the form `... = \"...\"`")]
-#[warning(
-    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-)]
-pub(crate) struct ExpectedNameValue;
-
-#[derive(Diagnostic)]
 #[diag("positional format arguments are not allowed here")]
 #[help(
     "only named format arguments with the name of one of the generic types are allowed in this context"

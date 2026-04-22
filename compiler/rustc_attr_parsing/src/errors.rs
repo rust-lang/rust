@@ -339,3 +339,10 @@ pub(crate) struct MalformedDoc;
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
 )]
 pub(crate) struct ExpectedNoArgs;
+
+#[derive(Diagnostic)]
+#[diag("expected this to be of the form `... = \"...\"`")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct ExpectedNameValue;

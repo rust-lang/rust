@@ -43,7 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            &AttributeLintKind::ExpectedNameValue => lints::ExpectedNameValue.into_diag(dcx, level),
             &AttributeLintKind::MalFormedDiagnosticAttribute { attribute, options, span } => {
                 lints::MalFormedDiagnosticAttributeLint { attribute, options, span }
                     .into_diag(dcx, level)
