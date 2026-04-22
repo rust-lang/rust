@@ -5,6 +5,7 @@ use std::ops::ControlFlow;
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
@@ -484,6 +485,30 @@ fn normalize_to_error<'a, 'tcx>(
     Normalized { value: new_value, obligations }
 }
 
+/// When normalizing a const alias, register a `ConstArgHasType` obligation
+/// to ensure the const value's type matches the declared type.
+fn push_const_arg_has_type_obligation<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    obligations: &mut PredicateObligations<'tcx>,
+    cause: &ObligationCause<'tcx>,
+    depth: usize,
+    param_env: ty::ParamEnv<'tcx>,
+    term: Term<'tcx>,
+    def_id: DefId,
+    args: ty::GenericArgsRef<'tcx>,
+) {
+    if let Some(ct) = term.as_const() {
+        let expected_ty = tcx.type_of(def_id).instantiate(tcx, args).skip_norm_wip();
+        obligations.push(Obligation::with_depth(
+            tcx,
+            cause.clone(),
+            depth,
+            param_env,
+            ty::ClauseKind::ConstArgHasType(ct, expected_ty),
+        ));
+    }
+}
+
 /// Confirm and normalize the given inherent projection.
 // FIXME(mgca): While this supports constants, it is only used for types by default right now
 #[instrument(level = "debug", skip(selcx, param_env, cause, obligations))]
@@ -551,16 +576,16 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
         tcx.const_of_item(alias_term.def_id()).instantiate(tcx, args).skip_norm_wip().into()
     };
 
-    if let Some(ct) = term.as_const() {
-        let expected_ty = tcx.type_of(alias_term.def_id).instantiate(tcx, args);
-        obligations.push(Obligation::with_depth(
-            tcx,
-            cause.clone(),
-            depth + 1,
-            param_env,
-            ty::ClauseKind::ConstArgHasType(ct, expected_ty),
-        ));
-    }
+    push_const_arg_has_type_obligation(
+        tcx,
+        obligations,
+        &cause,
+        depth + 1,
+        param_env,
+        term,
+        alias_term.def_id(),
+        args,
+    );
 
     let mut term = selcx.infcx.resolve_vars_if_possible(term);
     if term.has_aliases() {
@@ -2057,18 +2082,18 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         Progress { term: err, obligations: nested }
     } else {
         assoc_term_own_obligations(selcx, obligation, &mut nested);
-        let instantiated_term: Term<'tcx> = term.instantiate(tcx, args);
-        if let Some(ct) = instantiated_term.as_const() {
-            let expected_ty = tcx.type_of(assoc_term.item.def_id).instantiate(tcx, args);
-            nested.push(Obligation::with_depth(
-                tcx,
-                obligation.cause.clone(),
-                obligation.recursion_depth + 1,
-                obligation.param_env,
-                ty::ClauseKind::ConstArgHasType(ct, expected_ty),
-            ));
-        }
-        Progress { term: instantiated_term.skip_norm_wip(), obligations: nested }
+        let instantiated_term: Term<'tcx> = term.instantiate(tcx, args).skip_norm_wip();
+        push_const_arg_has_type_obligation(
+            tcx,
+            &mut nested,
+            &obligation.cause,
+            obligation.recursion_depth + 1,
+            obligation.param_env,
+            instantiated_term,
+            assoc_term.item.def_id,
+            args,
+        );
+        Progress { term: instantiated_term, obligations: nested }
     };
     Ok(Projected::Progress(progress))
 }
