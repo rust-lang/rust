@@ -1,0 +1,25 @@
+error[E0228]: cannot deduce the lifetime bound for this trait object type from context
+  --> $DIR/object-lifetime-default-assoc-ty-binding-item-bounds.rs:24:50
+   |
+LL | fn bar<'a>(x: &'a str) -> &'a dyn Foo<'a, Item = dyn Bar> { &() }
+   |                                                  ^^^^^^^
+   |
+help: please supply an explicit bound
+   |
+LL | fn bar<'a>(x: &'a str) -> &'a dyn Foo<'a, Item = dyn Bar + /* 'a */> { &() }
+   |                                                          ++++++++++
+
+error[E0228]: cannot deduce the lifetime bound for this trait object type from context
+  --> $DIR/object-lifetime-default-assoc-ty-binding-item-bounds.rs:28:36
+   |
+LL | fn baz(x: &str) -> &dyn Foo<Item = dyn Bar> { &() }
+   |                                    ^^^^^^^
+   |
+help: please supply an explicit bound
+   |
+LL | fn baz(x: &str) -> &dyn Foo<Item = dyn Bar + /* 'a */> { &() }
+   |                                            ++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0228`.
