@@ -18,6 +18,7 @@ use crate::errors::{
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowUnexpectedItem, DocAutoCfgWrongLiteral,
     DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude,
     DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, IllFormedAttributeInput,
+    MalformedDoc,
 };
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
@@ -107,9 +108,9 @@ fn expected_string_literal<S: Stage>(
     span: Span,
     _actual_literal: Option<&MetaItemLit>,
 ) {
-    cx.emit_lint(
+    cx.emit_dyn_lint(
         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-        AttributeLintKind::MalformedDoc,
+        |dcx, level| MalformedDoc.into_diag(dcx, level),
         span,
     );
 }
@@ -203,9 +204,9 @@ impl DocParser {
                     // FIXME: remove this method once merged and uncomment the line below instead.
                     // cx.expected_list(cx.attr_span, args);
                     let span = cx.attr_span;
-                    cx.emit_lint(
+                    cx.emit_dyn_lint(
                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                        AttributeLintKind::MalformedDoc,
+                        |dcx, level| MalformedDoc.into_diag(dcx, level),
                         span,
                     );
                     return;
@@ -399,9 +400,9 @@ impl DocParser {
                                     // FIXME: remove this method once merged and uncomment the line
                                     // below instead.
                                     // cx.expected_identifier(sub_item.path().span());
-                                    cx.emit_lint(
+                                    cx.emit_dyn_lint(
                                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                                        AttributeLintKind::MalformedDoc,
+                                        |dcx, level| MalformedDoc.into_diag(dcx, level),
                                         sub_item.path().span(),
                                     );
                                     continue;
@@ -605,9 +606,9 @@ impl DocParser {
                             // FIXME: remove this method once merged and uncomment the line
                             // below instead.
                             // cx.unexpected_literal(lit.span);
-                            cx.emit_lint(
+                            cx.emit_dyn_lint(
                                 rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                                AttributeLintKind::MalformedDoc,
+                                |dcx, level| MalformedDoc.into_diag(dcx, level),
                                 lit.span,
                             );
                         }

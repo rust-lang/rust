@@ -656,7 +656,6 @@ pub enum DeprecatedSinceKind {
 pub enum AttributeLintKind {
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
-    MalformedDoc,
     ExpectedNoArgs,
     ExpectedNameValue,
     MalFormedDiagnosticAttribute { attribute: &'static str, options: &'static str, span: Span },

@@ -3283,13 +3283,6 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("malformed `doc` attribute input")]
-#[warning(
-    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-)]
-pub(crate) struct MalformedDoc;
-
-#[derive(Diagnostic)]
 #[diag("didn't expect any arguments here")]
 #[warning(
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"

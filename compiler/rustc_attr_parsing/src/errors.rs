@@ -325,3 +325,10 @@ pub(crate) struct IncorrectDoNotRecommendLocation {
     #[label("not a trait implementation")]
     pub target_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("malformed `doc` attribute input")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct MalformedDoc;
