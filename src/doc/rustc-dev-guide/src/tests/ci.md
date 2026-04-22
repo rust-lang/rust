@@ -462,8 +462,8 @@ These are some useful panels from the dashboard:
 
 - Pipeline duration: check how long the auto builds take to run.
 - Top slowest jobs: check which jobs are taking the longest to run.
-- Change in median job duration: check what jobs are slowest than before. Useful
-  to detect regressions.
+- Change in median job duration: check what jobs are slowest than before.
+  This is useful for detecting regressions.
 - Top failed jobs: check which jobs are failing the most.
 
 To learn more about the dashboard, see the [Datadog CI docs].
