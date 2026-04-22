@@ -3595,7 +3595,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn isqrt(self) -> Self {
-            let result = imp::int_sqrt::$ActualT(self as $ActualT) as $SelfT;
+            let result = imp::int_sqrt::$ActualT(self as $ActualT) as Self;
 
             // Inform the optimizer what the range of outputs is. If testing
             // `core` crashes with no panic message and a `num::int_sqrt::u*`
@@ -3606,10 +3606,29 @@ macro_rules! uint_impl {
             // function, which means that increasing the input will never
             // cause the output to decrease. Thus, since the input for unsigned
             // integers is bounded by `[0, <$ActualT>::MAX]`, sqrt(n) will be
-            // bounded by `[sqrt(0), sqrt(<$ActualT>::MAX)]`.
+            // bounded by `[sqrt(0), sqrt(<$ActualT>::MAX)]` and bounding the
+            // input by `[1, <$ActualT>::MAX]` bounds sqrt(n) by
+            // `[sqrt(1), sqrt(<$ActualT>::MAX)]`.
             unsafe {
                 const MAX_RESULT: $SelfT = imp::int_sqrt::$ActualT(<$ActualT>::MAX) as $SelfT;
-                crate::hint::assert_unchecked(result <= MAX_RESULT);
+                crate::hint::assert_unchecked(result <= MAX_RESULT)
+            }
+
+            if self >= 1 {
+                // SAFETY: The above statements about monotonicity also apply here.
+                // Since the input in this branch is bounded by `[1, <$ActualT>::MAX]`,
+                // sqrt(n) is bounded by `[sqrt(1), sqrt(<$ActualT>::MAX)]`, and
+                // `sqrt(1) == 1`.
+                unsafe { crate::hint::assert_unchecked(result >= 1) }
+            }
+
+            // SAFETY: the isqrt implementation returns the square root and rounds down,
+            // meaning `result * result <= self`. This implies `result <= self`.
+            // The compiler needs both to optimize for both.
+            // `result * result <= self` implies the multiplication will not overflow.
+            unsafe {
+                crate::hint::assert_unchecked(result.unchecked_mul(result) <= self);
+                crate::hint::assert_unchecked(result <= self);
             }
 
             result

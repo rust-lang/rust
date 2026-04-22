@@ -1845,10 +1845,9 @@ macro_rules! int_impl {
             if self < 0 {
                 None
             } else {
-                // SAFETY: Input is nonnegative in this `else` branch.
-                let result = unsafe {
-                    imp::int_sqrt::$ActualT(self as $ActualT) as $SelfT
-                };
+                // The upper bound of `$UnsignedT::MAX.isqrt()` told to the compiler
+                // in the unsigned function also tells it that `result >= 0`
+                let result = self.cast_unsigned().isqrt().cast_signed();
 
                 // Inform the optimizer what the range of outputs is. If
                 // testing `core` crashes with no panic message and a
@@ -1862,15 +1861,9 @@ macro_rules! int_impl {
                 // `[0, <$ActualT>::MAX]`, sqrt(n) will be bounded by
                 // `[sqrt(0), sqrt(<$ActualT>::MAX)]`.
                 unsafe {
-                    // SAFETY: `<$ActualT>::MAX` is nonnegative.
-                    const MAX_RESULT: $SelfT = unsafe {
-                        imp::int_sqrt::$ActualT(<$ActualT>::MAX) as $SelfT
-                    };
-
-                    crate::hint::assert_unchecked(result >= 0);
+                    const MAX_RESULT: $SelfT = <$SelfT>::MAX.cast_unsigned().isqrt().cast_signed();
                     crate::hint::assert_unchecked(result <= MAX_RESULT);
                 }
-
                 Some(result)
             }
         }
