@@ -200,7 +200,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
                 Attribute::Parsed(AttributeKind::OnUnimplemented{directive,..}) => {self.check_diagnostic_on_unimplemented(hir_id, directive.as_deref())},
-                Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)}
+                Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)},
+                Attribute::Parsed(AttributeKind::OnUnmatchArgs { directive, .. }) => {
+                    self.check_diagnostic_on_unmatch_args(hir_id, directive.as_deref())
+                },
                 Attribute::Parsed(AttributeKind::OnMove { directive , .. }) => {
                     self.check_diagnostic_on_move(hir_id, directive.as_deref())
                 },
@@ -557,6 +560,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // FIXME(#155570) Can we do something with generic args here?
         // regardless, we don't check the validity of generic args here
         // ...whose generics would that be, anyway? The traits' or the impls'?
+    }
+
+    /// Checks use of generic formatting parameters in `#[diagnostic::on_unmatch_args]`.
+    fn check_diagnostic_on_unmatch_args(&self, hir_id: HirId, directive: Option<&Directive>) {
+        if let Some(directive) = directive {
+            directive.visit_params(&mut |argument_name, span| {
+                self.tcx.emit_node_span_lint(
+                    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                    hir_id,
+                    span,
+                    errors::OnUnmatchArgsMalformedFormatLiterals { name: argument_name },
+                )
+            });
+        }
     }
 
     /// Checks use of generic formatting parameters in `#[diagnostic::on_move]`

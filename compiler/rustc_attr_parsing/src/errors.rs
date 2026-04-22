@@ -316,6 +316,10 @@ pub(crate) struct DiagnosticOnUnknownOnlyForImports {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[diagnostic::on_unmatch_args]` can only be applied to macro definitions")]
+pub(crate) struct DiagnosticOnUnmatchArgsOnlyForMacros;
+
+#[derive(Diagnostic)]
 #[diag("`#[diagnostic::do_not_recommend]` can only be placed on trait implementations")]
 pub(crate) struct IncorrectDoNotRecommendLocation {
     #[label("not a trait implementation")]
