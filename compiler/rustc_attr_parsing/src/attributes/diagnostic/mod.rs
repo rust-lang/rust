@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use rustc_errors::E0232;
+use rustc_errors::{Diagnostic, E0232};
 use rustc_hir::AttrPath;
 use rustc_hir::attrs::diagnostic::{
     Directive, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg, Name, NameValue,
@@ -18,6 +18,7 @@ use rustc_span::{Ident, InnerSpan, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::context::{AcceptContext, Stage};
+use crate::errors::MalFormedDiagnosticAttributeLint;
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
 
 pub(crate) mod do_not_recommend;
@@ -157,12 +158,15 @@ fn parse_list<'p, S: Stage>(
             );
         }
         ArgParser::NameValue(_) => {
-            cx.emit_lint(
+            cx.emit_dyn_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                AttributeLintKind::MalFormedDiagnosticAttribute {
-                    attribute: mode.as_str(),
-                    options: mode.allowed_options(),
-                    span,
+                move |dcx, level| {
+                    MalFormedDiagnosticAttributeLint {
+                        attribute: mode.as_str(),
+                        options: mode.allowed_options(),
+                        span,
+                    }
+                    .into_diag(dcx, level)
                 },
                 span,
             );
@@ -188,12 +192,15 @@ fn parse_directive_items<'p, S: Stage>(
         let span = item.span();
 
         macro malformed() {{
-            cx.emit_lint(
+            cx.emit_dyn_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                AttributeLintKind::MalFormedDiagnosticAttribute {
-                    attribute: mode.as_str(),
-                    options: mode.allowed_options(),
-                    span,
+                move |dcx, level| {
+                    MalFormedDiagnosticAttributeLint {
+                        attribute: mode.as_str(),
+                        options: mode.allowed_options(),
+                        span,
+                    }
+                    .into_diag(dcx, level)
                 },
                 span,
             );

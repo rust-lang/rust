@@ -3337,13 +3337,3 @@ pub(crate) struct EqInternalMethodImplemented;
     "only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma"
 )]
 pub(crate) struct NonMetaItemDiagnosticAttribute;
-
-#[derive(Diagnostic)]
-#[diag("malformed `{$attribute}` attribute")]
-#[help("{$options}")]
-pub(crate) struct MalFormedDiagnosticAttributeLint {
-    pub attribute: &'static str,
-    pub options: &'static str,
-    #[label("invalid option found here")]
-    pub span: Span,
-}

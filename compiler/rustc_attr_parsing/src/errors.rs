@@ -346,3 +346,13 @@ pub(crate) struct ExpectedNoArgs;
     "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
 )]
 pub(crate) struct ExpectedNameValue;
+
+#[derive(Diagnostic)]
+#[diag("malformed `{$attribute}` attribute")]
+#[help("{$options}")]
+pub(crate) struct MalFormedDiagnosticAttributeLint {
+    pub attribute: &'static str,
+    pub options: &'static str,
+    #[label("invalid option found here")]
+    pub span: Span,
+}

@@ -43,10 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            &AttributeLintKind::MalFormedDiagnosticAttribute { attribute, options, span } => {
-                lints::MalFormedDiagnosticAttributeLint { attribute, options, span }
-                    .into_diag(dcx, level)
-            }
             AttributeLintKind::MalformedDiagnosticFormat { warning } => match warning {
                 FormatWarning::PositionalArgument { .. } => {
                     lints::DisallowedPositionalArgument.into_diag(dcx, level)
