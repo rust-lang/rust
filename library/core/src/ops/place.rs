@@ -94,9 +94,10 @@
 //!
 //! ### Safety
 //!
-//! All operation functions are `unsafe`, since they have raw pointer arguments.
-//! The raw pointers are needed, because the values they point to might be
-//! partially moved out or borrowed at the same time.
+//! All operation functions are `unsafe`, since they have raw pointer arguments
+//! that have safety preconditions. The arguments are raw pointers, because the
+//! values they point to need not be in a valid state (they may be partially
+//! moved out or borrowed).
 //!
 //! The safety requirements for the operation functions have not been figured
 //! out at this point in time. Since we expect several changes to the design, we
