@@ -420,10 +420,6 @@ Tests for quality of diagnostics involving suppression of cascading errors in so
 
 Tests for built-in derive macros (`Debug`, `Clone`, etc.) when used in conjunction with built-in `#[derive(..)]` attributes.
 
-## `tests/ui/deriving/`: Derive Macro
-
-**FIXME**: Coalesce with `tests/ui/derives`.
-
 ## `tests/ui/dest-prop/` Destination Propagation
 
 **FIXME**: Contains a single test for the `DestProp` mir-opt, should probably be rehomed.
