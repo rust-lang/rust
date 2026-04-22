@@ -703,6 +703,23 @@ impl<'tcx> TyCtxt<'tcx> {
         self.dep_graph.assert_ignored();
         TyCtxtFeed { tcx: self, key }.delayed_owner(owner);
     }
+
+    // Trait impl item visibility is inherited from its trait when not specified
+    // explicitly. In that case we cannot determine it in early resolve,
+    // but instead are feeding it in late resolve, where we don't have access to the
+    // `TyCtxtFeed` anymore.
+    // To avoid having to hash the `LocalDefId` multiple times for inserting and removing the
+    // `TyCtxtFeed` from a hash table, we add this hack to feed the visibility.
+    // Do not use outside of the resolver query.
+    pub fn feed_visibility_for_trait_impl_item(self, key: LocalDefId, vis: ty::Visibility) {
+        if cfg!(debug_assertions) {
+            match self.def_kind(self.local_parent(key)) {
+                DefKind::Impl { of_trait: true } => {}
+                other => bug!("{key:?} is not an assoc item of a trait impl: {other:?}"),
+            }
+        }
+        TyCtxtFeed { tcx: self, key }.visibility(vis.to_def_id())
+    }
 }
 
 impl<'tcx, KEY: Copy> TyCtxtFeed<'tcx, KEY> {

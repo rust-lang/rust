@@ -7,10 +7,11 @@ use rustc_attr_parsing::{AttributeParser, Early, OmitDoc, ShouldEmit};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::Target;
+use rustc_hir::def::DefKind;
 use rustc_hir::def::Namespace::{TypeNS, ValueNS};
-use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
+use rustc_middle::ty::TyCtxtFeed;
 use rustc_span::{Span, Symbol, sym};
 use tracing::{debug, instrument};
 
@@ -43,22 +44,20 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         name: Option<Symbol>,
         def_kind: DefKind,
         span: Span,
-    ) -> LocalDefId {
+    ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let parent_def = self.invocation_parent.parent_def;
         debug!(
             "create_def(node_id={:?}, def_kind={:?}, parent_def={:?})",
             node_id, def_kind, parent_def
         );
-        self.r
-            .create_def(
-                parent_def,
-                node_id,
-                name,
-                def_kind,
-                self.parent_scope.expansion.to_expn_id(),
-                span.with_parent(None),
-            )
-            .def_id()
+        self.r.create_def(
+            parent_def,
+            node_id,
+            name,
+            def_kind,
+            self.parent_scope.expansion.to_expn_id(),
+            span.with_parent(None),
+        )
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: LocalDefId, f: F) {
@@ -100,7 +99,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         } else {
             let name = field.ident.map_or_else(|| sym::integer(index(self)), |ident| ident.name);
             let def = self.create_def(field.id, Some(name), DefKind::Field, field.span);
-            self.with_parent(def, |this| this.brg_visit_field_def(field));
+            self.with_parent(def.def_id(), |this| this.brg_visit_field_def(field, def));
         }
     }
 
@@ -173,42 +172,25 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             }
             ItemKind::GlobalAsm(..) => DefKind::GlobalAsm,
             ItemKind::Use(_) => {
-                self.create_def(i.id, None, DefKind::Use, i.span);
-                self.brg_visit_item(i);
+                let feed = self.create_def(i.id, None, DefKind::Use, i.span);
+                self.brg_visit_item(i, feed);
                 return;
             }
-            ItemKind::MacCall(..) | ItemKind::DelegationMac(..) => {
+            ItemKind::MacCall(..) => {
                 self.visit_macro_invoc(i.id);
-                self.brg_visit_item(i);
+                self.brg_visit_mac_call_in_module(i.id);
                 return;
             }
+            ItemKind::DelegationMac(..) => unreachable!(),
         };
-        let def_id =
-            self.create_def(i.id, i.kind.ident().map(|ident| ident.name), def_kind, i.span);
+        let feed = self.create_def(i.id, i.kind.ident().map(|ident| ident.name), def_kind, i.span);
 
         if let Some(macro_data) = opt_macro_data {
-            self.r.new_local_macro(def_id, macro_data);
+            self.r.new_local_macro(feed.def_id(), macro_data);
         }
 
-        self.with_parent(def_id, |this| {
-            this.with_impl_trait(ImplTraitContext::Existential, |this| {
-                match i.kind {
-                    ItemKind::Struct(_, _, ref struct_def)
-                    | ItemKind::Union(_, _, ref struct_def) => {
-                        // If this is a unit or tuple-like struct, register the constructor.
-                        if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(struct_def) {
-                            this.create_def(
-                                ctor_node_id,
-                                None,
-                                DefKind::Ctor(CtorOf::Struct, ctor_kind),
-                                i.span,
-                            );
-                        }
-                    }
-                    _ => {}
-                }
-                this.brg_visit_item(i);
-            })
+        self.with_parent(feed.def_id(), |this| {
+            this.with_impl_trait(ImplTraitContext::Existential, |this| this.brg_visit_item(i, feed))
         });
     }
 
@@ -244,15 +226,17 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 }
 
                 let (return_id, return_span) = coroutine_kind.return_id();
-                let return_def = self.create_def(return_id, None, DefKind::OpaqueTy, return_span);
+                let return_def =
+                    self.create_def(return_id, None, DefKind::OpaqueTy, return_span).def_id();
                 self.with_parent(return_def, |this| this.visit_fn_ret_ty(output));
 
                 // If this async fn has no body (i.e. it's an async fn signature in a trait)
                 // then the closure_def will never be used, and we should avoid generating a
                 // def-id for it.
                 if let Some(body) = body {
-                    let closure_def =
-                        self.create_def(coroutine_kind.closure_id(), None, DefKind::Closure, span);
+                    let closure_def = self
+                        .create_def(coroutine_kind.closure_id(), None, DefKind::Closure, span)
+                        .def_id();
                     self.with_parent(closure_def, |this| this.visit_block(body));
                 }
             }
@@ -262,8 +246,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
-                let coroutine_def =
-                    self.create_def(coroutine_kind.closure_id(), None, DefKind::Closure, span);
+                let coroutine_def = self
+                    .create_def(coroutine_kind.closure_id(), None, DefKind::Closure, span)
+                    .def_id();
                 self.with_parent(coroutine_def, |this| this.visit_expr(body));
             }
             _ => visit::walk_fn(self, fn_kind),
@@ -299,8 +284,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
         let def = self.create_def(fi.id, Some(ident.name), def_kind, fi.span);
 
-        self.with_parent(def, |this| {
-            this.build_reduced_graph_for_foreign_item(fi, ident);
+        self.with_parent(def.def_id(), |this| {
+            this.build_reduced_graph_for_foreign_item(fi, ident, def);
             visit::walk_item(this, fi)
         });
     }
@@ -311,18 +296,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             self.visit_invoc_in_module(v.id);
             return;
         }
-        let def = self.create_def(v.id, Some(v.ident.name), DefKind::Variant, v.span);
-        self.with_parent(def, |this| {
-            if let Some((ctor_kind, ctor_node_id)) = CtorKind::from_ast(&v.data) {
-                this.create_def(
-                    ctor_node_id,
-                    None,
-                    DefKind::Ctor(CtorOf::Variant, ctor_kind),
-                    v.span,
-                );
-            }
-            this.brg_visit_variant(v);
-        });
+        let feed = self.create_def(v.id, Some(v.ident.name), DefKind::Variant, v.span);
+        self.with_parent(feed.def_id(), |this| this.brg_visit_variant(v, feed));
     }
 
     fn visit_where_predicate(&mut self, pred: &'a WherePredicate) {
@@ -391,8 +366,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             }
         };
 
-        let def = self.create_def(i.id, Some(ident.name), def_kind, i.span);
-        self.with_parent(def, |this| this.brg_visit_assoc_item(i, ctxt, ident, ns));
+        let feed = self.create_def(i.id, Some(ident.name), def_kind, i.span);
+        self.with_parent(feed.def_id(), |this| this.brg_visit_assoc_item(i, ctxt, ident, ns, feed));
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {
@@ -410,8 +385,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         // to avoid affecting stable we have to feature gate the not creating
         // anon consts
         if !self.r.tcx.features().min_generic_const_args() {
-            let parent =
-                self.create_def(constant.id, None, DefKind::AnonConst, constant.value.span);
+            let parent = self
+                .create_def(constant.id, None, DefKind::AnonConst, constant.value.span)
+                .def_id();
             return self.with_parent(parent, |this| visit::walk_anon_const(this, constant));
         }
 
@@ -421,8 +397,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             }),
             MgcaDisambiguation::AnonConst => {
                 self.with_const_arg(ConstArgContext::NonDirect, |this| {
-                    let parent =
-                        this.create_def(constant.id, None, DefKind::AnonConst, constant.value.span);
+                    let parent = this
+                        .create_def(constant.id, None, DefKind::AnonConst, constant.value.span)
+                        .def_id();
                     this.with_parent(parent, |this| visit::walk_anon_const(this, constant));
                 })
             }
@@ -440,7 +417,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 return;
             }
             ExprKind::Closure(..) | ExprKind::Gen(..) => {
-                self.create_def(expr.id, None, DefKind::Closure, expr.span)
+                self.create_def(expr.id, None, DefKind::Closure, expr.span).def_id()
             }
             ExprKind::ConstBlock(constant) => {
                 // Under `min_generic_const_args` a `const { }` block sometimes
@@ -455,7 +432,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                         visit::walk_attribute(this, attr);
                     }
 
-                    let def = this.create_def(constant.id, None, def_kind, constant.value.span);
+                    let def =
+                        this.create_def(constant.id, None, def_kind, constant.value.span).def_id();
                     this.with_parent(def, |this| visit::walk_anon_const(this, constant));
                 });
             }
@@ -505,7 +483,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     ImplTraitContext::Existential => DefKind::OpaqueTy,
                     ImplTraitContext::InBinding => return visit::walk_ty(self, ty),
                 };
-                let id = self.create_def(opaque_id, Some(name), kind, ty.span);
+                let id = self.create_def(opaque_id, Some(name), kind, ty.span).def_id();
                 match self.invocation_parent.impl_trait_context {
                     // Do not nest APIT, as we desugar them as `impl_trait: bounds`,
                     // so the `impl_trait` node is not a parent to `bounds`.
@@ -523,7 +501,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     fn visit_stmt(&mut self, stmt: &'a Stmt) {
         match stmt.kind {
             StmtKind::MacCall(..) => {
-                self.brg_visit_stmt_mac_call(stmt);
+                self.brg_visit_mac_call_in_module(stmt.id);
                 self.visit_macro_invoc(stmt.id)
             }
             // FIXME(impl_trait_in_bindings): We don't really have a good way of
@@ -628,12 +606,14 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     }
                 }
                 InlineAsmOperand::Const { anon_const } => {
-                    let def = self.create_def(
-                        anon_const.id,
-                        None,
-                        DefKind::InlineConst,
-                        anon_const.value.span,
-                    );
+                    let def = self
+                        .create_def(
+                            anon_const.id,
+                            None,
+                            DefKind::InlineConst,
+                            anon_const.value.span,
+                        )
+                        .def_id();
                     self.with_parent(def, |this| visit::walk_anon_const(this, anon_const));
                 }
                 InlineAsmOperand::Sym { sym } => self.visit_inline_asm_sym(sym),
