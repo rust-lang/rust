@@ -2815,7 +2815,8 @@ where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Deref for String {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const ops::Deref for String {
     type Target = str;
 
     #[inline]
@@ -2828,7 +2829,8 @@ impl ops::Deref for String {
 unsafe impl ops::DerefPure for String {}
 
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
-impl ops::DerefMut for String {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl const ops::DerefMut for String {
     #[inline]
     fn deref_mut(&mut self) -> &mut str {
         self.as_mut_str()
