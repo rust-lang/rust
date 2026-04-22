@@ -907,6 +907,7 @@ impl f64 {
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn sin_cos(self) -> (f64, f64) {
         (self.sin(), self.cos())
     }
@@ -1091,9 +1092,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f64 {
-        let ax = self.abs();
-        let ix = 1.0 / ax;
-        (ax + (ax / (Self::hypot(1.0, ix) + ix))).ln_1p().copysign(self)
+        cmath::asinh(self)
     }
 
     /// Inverse hyperbolic cosine function.
@@ -1119,11 +1118,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f64 {
-        if self < 1.0 {
-            Self::NAN
-        } else {
-            (self + ((self - 1.0).sqrt() * (self + 1.0).sqrt())).ln()
-        }
+        cmath::acosh(self)
     }
 
     /// Inverse hyperbolic tangent function.

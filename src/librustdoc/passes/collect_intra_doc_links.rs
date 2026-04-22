@@ -125,9 +125,10 @@ impl Res {
             DefKind::Trait => "trait",
             DefKind::Union => "union",
             DefKind::Mod => "mod",
-            DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst => {
-                "const"
-            }
+            DefKind::Const { .. }
+            | DefKind::ConstParam
+            | DefKind::AssocConst { .. }
+            | DefKind::AnonConst => "const",
             DefKind::Static { .. } => "static",
             DefKind::Field => "field",
             DefKind::Variant | DefKind::Ctor(..) => "variant",
@@ -310,7 +311,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
 
         match ty_res {
             Res::Def(DefKind::Enum | DefKind::TyAlias, did) => {
-                match tcx.type_of(did).instantiate_identity().kind() {
+                match tcx.type_of(did).instantiate_identity().skip_norm_wip().kind() {
                     ty::Adt(def, _) if def.is_enum() => {
                         if let Some(variant) =
                             def.variants().iter().find(|v| v.name == variant_name)
@@ -393,7 +394,10 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
         if let Some(res) = self.resolve_path(path_str, ns, item_id, module_id) {
             return Ok(match res {
                 Res::Def(
-                    DefKind::AssocFn | DefKind::AssocConst | DefKind::AssocTy | DefKind::Variant,
+                    DefKind::AssocFn
+                    | DefKind::AssocConst { .. }
+                    | DefKind::AssocTy
+                    | DefKind::Variant,
                     def_id,
                 ) => {
                     vec![(Res::from_def_id(self.cx.tcx, self.cx.tcx.parent(def_id)), Some(def_id))]
@@ -490,7 +494,7 @@ fn resolve_self_ty<'tcx>(
 
     let self_id = match tcx.def_kind(item_id) {
         def_kind @ (DefKind::AssocFn
-        | DefKind::AssocConst
+        | DefKind::AssocConst { .. }
         | DefKind::AssocTy
         | DefKind::Variant
         | DefKind::Field) => {
@@ -505,7 +509,9 @@ fn resolve_self_ty<'tcx>(
     };
 
     match tcx.def_kind(self_id) {
-        DefKind::Impl { .. } => ty_to_res(tcx, tcx.type_of(self_id).instantiate_identity()),
+        DefKind::Impl { .. } => {
+            ty_to_res(tcx, tcx.type_of(self_id).instantiate_identity().skip_norm_wip())
+        }
         DefKind::Use => None,
         def_kind => Some(Res::Def(def_kind, self_id)),
     }
@@ -602,7 +608,8 @@ fn resolve_associated_item<'tcx>(
             // Resolve the link on the type the alias points to.
             // FIXME: if the associated item is defined directly on the type alias,
             // it will show up on its documentation page, we should link there instead.
-            let Some(aliased_res) = ty_to_res(tcx, tcx.type_of(alias_did).instantiate_identity())
+            let Some(aliased_res) =
+                ty_to_res(tcx, tcx.type_of(alias_did).instantiate_identity().skip_norm_wip())
             else {
                 return vec![];
             };
@@ -682,7 +689,7 @@ fn resolve_assoc_on_adt<'tcx>(
 ) -> Vec<(Res, DefId)> {
     debug!("looking for associated item named {item_ident} for item {adt_def_id:?}");
     let root_res = Res::from_def_id(tcx, adt_def_id);
-    let adt_ty = tcx.type_of(adt_def_id).instantiate_identity();
+    let adt_ty = tcx.type_of(adt_def_id).instantiate_identity().skip_norm_wip();
     let adt_def = adt_ty.ty_adt_def().expect("must be ADT");
     // Checks if item_name is a variant of the `SomeItem` enum
     if ns == TypeNS && adt_def.is_enum() {
@@ -743,7 +750,7 @@ fn resolve_assoc_on_simple_type<'tcx>(
     // Although having both would be ambiguous, use impl version for compatibility's sake.
     // To handle that properly resolve() would have to support
     // something like [`ambi_fn`](<SomeStruct as SomeTrait>::ambi_fn)
-    let ty = tcx.type_of(ty_def_id).instantiate_identity();
+    let ty = tcx.type_of(ty_def_id).instantiate_identity().skip_norm_wip();
     let trait_assoc_items = resolve_associated_trait_item(ty, module_id, item_ident, ns, tcx)
         .into_iter()
         .map(|item| (root_res, item.def_id))
@@ -1063,17 +1070,27 @@ impl LinkCollector<'_, '_> {
     #[instrument(level = "debug", skip_all)]
     fn resolve_links(&mut self, item: &Item) {
         let tcx = self.cx.tcx;
-        if !self.cx.document_private()
-            && let Some(def_id) = item.item_id.as_def_id()
-            && let Some(def_id) = def_id.as_local()
-            && !tcx.effective_visibilities(()).is_exported(def_id)
-            && !has_primitive_or_keyword_or_attribute_docs(&item.attrs.other_attrs)
+        let document_private = self.cx.document_private();
+        let effective_visibilities = tcx.effective_visibilities(());
+        let should_skip_link_resolution = |item_id: DefId| {
+            !document_private
+                && item_id
+                    .as_local()
+                    .is_some_and(|local_def_id| !effective_visibilities.is_exported(local_def_id))
+                && !has_primitive_or_keyword_or_attribute_docs(&item.attrs.other_attrs)
+        };
+
+        if let Some(def_id) = item.item_id.as_def_id()
+            && should_skip_link_resolution(def_id)
         {
             // Skip link resolution for non-exported items.
             return;
         }
 
-        let mut insert_links = |item_id, doc: &str| {
+        let mut try_insert_links = |item_id, doc: &str| {
+            if should_skip_link_resolution(item_id) {
+                return;
+            }
             let module_id = match tcx.def_kind(item_id) {
                 DefKind::Mod if item.inner_docs(tcx) => item_id,
                 _ => find_nearest_parent_module(tcx, item_id).unwrap(),
@@ -1104,7 +1121,7 @@ impl LinkCollector<'_, '_> {
             // NOTE: if there are links that start in one crate and end in another, this will not resolve them.
             // This is a degenerate case and it's not supported by rustdoc.
             let item_id = item_id.unwrap_or_else(|| item.item_id.expect_def_id());
-            insert_links(item_id, &doc)
+            try_insert_links(item_id, &doc)
         }
 
         // Also resolve links in the note text of `#[deprecated]`.
@@ -1133,7 +1150,7 @@ impl LinkCollector<'_, '_> {
             } else {
                 item.item_id.expect_def_id()
             };
-            insert_links(item_id, note)
+            try_insert_links(item_id, note)
         }
     }
 
@@ -1210,7 +1227,7 @@ impl LinkCollector<'_, '_> {
         let tcx = self.cx.tcx;
         let def_kind = tcx.def_kind(original_did);
         let did = match def_kind {
-            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst | DefKind::Variant => {
+            DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } | DefKind::Variant => {
                 // documented on their parent's page
                 tcx.parent(original_did)
             }
@@ -1398,7 +1415,13 @@ impl LinkCollector<'_, '_> {
         // Disallow e.g. linking to enums with `struct@`
         debug!("saw kind {kind:?} with disambiguator {disambiguator:?}");
         match (kind, disambiguator) {
-                | (DefKind::Const | DefKind::ConstParam | DefKind::AssocConst | DefKind::AnonConst, Some(Disambiguator::Kind(DefKind::Const)))
+                | (
+                    DefKind::Const { .. }
+                    | DefKind::ConstParam
+                    | DefKind::AssocConst { .. }
+                    | DefKind::AnonConst,
+                    Some(Disambiguator::Kind(DefKind::Const { .. })),
+                )
                 // NOTE: this allows 'method' to mean both normal functions and associated functions
                 // This can't cause ambiguity because both are in the same namespace.
                 | (DefKind::Fn | DefKind::AssocFn, Some(Disambiguator::Kind(DefKind::Fn)))
@@ -1721,7 +1744,7 @@ impl Disambiguator {
                 "trait" => Kind(DefKind::Trait),
                 "union" => Kind(DefKind::Union),
                 "module" | "mod" => Kind(DefKind::Mod),
-                "const" | "constant" => Kind(DefKind::Const),
+                "const" | "constant" => Kind(DefKind::Const { is_type_const: false }),
                 "static" => Kind(DefKind::Static {
                     mutability: Mutability::Not,
                     nested: false,
@@ -1904,61 +1927,70 @@ fn report_diagnostic(
 
     let sp = item.attr_span(tcx);
 
-    tcx.node_span_lint(lint, hir_id, sp, |lint| {
-        lint.primary_message(msg);
+    tcx.emit_node_span_lint(
+        lint,
+        hir_id,
+        sp,
+        rustc_errors::DiagDecorator(|lint| {
+            lint.primary_message(msg);
 
-        let (span, link_range) = match link_range {
-            MarkdownLinkRange::Destination(md_range) => {
-                let mut md_range = md_range.clone();
-                let sp =
-                    source_span_for_markdown_range(tcx, dox, &md_range, &item.attrs.doc_strings)
-                        .map(|(mut sp, _)| {
-                            while dox.as_bytes().get(md_range.start) == Some(&b' ')
-                                || dox.as_bytes().get(md_range.start) == Some(&b'`')
-                            {
-                                md_range.start += 1;
-                                sp = sp.with_lo(sp.lo() + BytePos(1));
-                            }
-                            while dox.as_bytes().get(md_range.end - 1) == Some(&b' ')
-                                || dox.as_bytes().get(md_range.end - 1) == Some(&b'`')
-                            {
-                                md_range.end -= 1;
-                                sp = sp.with_hi(sp.hi() - BytePos(1));
-                            }
-                            sp
-                        });
-                (sp, MarkdownLinkRange::Destination(md_range))
-            }
-            MarkdownLinkRange::WholeLink(md_range) => (
-                source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings)
-                    .map(|(sp, _)| sp),
-                link_range.clone(),
-            ),
-        };
+            let (span, link_range) = match link_range {
+                MarkdownLinkRange::Destination(md_range) => {
+                    let mut md_range = md_range.clone();
+                    let sp = source_span_for_markdown_range(
+                        tcx,
+                        dox,
+                        &md_range,
+                        &item.attrs.doc_strings,
+                    )
+                    .map(|(mut sp, _)| {
+                        while dox.as_bytes().get(md_range.start) == Some(&b' ')
+                            || dox.as_bytes().get(md_range.start) == Some(&b'`')
+                        {
+                            md_range.start += 1;
+                            sp = sp.with_lo(sp.lo() + BytePos(1));
+                        }
+                        while dox.as_bytes().get(md_range.end - 1) == Some(&b' ')
+                            || dox.as_bytes().get(md_range.end - 1) == Some(&b'`')
+                        {
+                            md_range.end -= 1;
+                            sp = sp.with_hi(sp.hi() - BytePos(1));
+                        }
+                        sp
+                    });
+                    (sp, MarkdownLinkRange::Destination(md_range))
+                }
+                MarkdownLinkRange::WholeLink(md_range) => (
+                    source_span_for_markdown_range(tcx, dox, md_range, &item.attrs.doc_strings)
+                        .map(|(sp, _)| sp),
+                    link_range.clone(),
+                ),
+            };
 
-        if let Some(sp) = span {
-            lint.span(sp);
-        } else {
-            // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
-            //                       ^     ~~~~
-            //                       |     link_range
-            //                       last_new_line_offset
-            let md_range = link_range.inner_range().clone();
-            let last_new_line_offset = dox[..md_range.start].rfind('\n').map_or(0, |n| n + 1);
-            let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
+            if let Some(sp) = span {
+                lint.span(sp);
+            } else {
+                // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
+                //                       ^     ~~~~
+                //                       |     link_range
+                //                       last_new_line_offset
+                let md_range = link_range.inner_range().clone();
+                let last_new_line_offset = dox[..md_range.start].rfind('\n').map_or(0, |n| n + 1);
+                let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
-            // Print the line containing the `md_range` and manually mark it with '^'s.
-            lint.note(format!(
-                "the link appears in this line:\n\n{line}\n\
+                // Print the line containing the `md_range` and manually mark it with '^'s.
+                lint.note(format!(
+                    "the link appears in this line:\n\n{line}\n\
                      {indicator: <before$}{indicator:^<found$}",
-                indicator = "",
-                before = md_range.start - last_new_line_offset,
-                found = md_range.len(),
-            ));
-        }
+                    indicator = "",
+                    before = md_range.start - last_new_line_offset,
+                    found = md_range.len(),
+                ));
+            }
 
-        decorate(lint, span, link_range);
-    });
+            decorate(lint, span, link_range);
+        }),
+    );
 }
 
 /// Reports a link that failed to resolve.
@@ -2092,7 +2124,8 @@ fn resolution_failure(
                         Res::Primitive(_) => None,
                     };
                     let is_struct_variant = |did| {
-                        if let ty::Adt(def, _) = tcx.type_of(did).instantiate_identity().kind()
+                        if let ty::Adt(def, _) =
+                            tcx.type_of(did).instantiate_identity().skip_norm_wip().kind()
                             && def.is_enum()
                             && let Some(variant) =
                                 def.variants().iter().find(|v| v.name == res.name(tcx))
@@ -2122,11 +2155,11 @@ fn resolution_failure(
                             | Field
                             | Closure
                             | AssocTy
-                            | AssocConst
+                            | AssocConst { .. }
                             | AssocFn
                             | Fn
                             | Macro(_)
-                            | Const
+                            | Const { .. }
                             | ConstParam
                             | ExternCrate
                             | Use

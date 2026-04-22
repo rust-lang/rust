@@ -32,22 +32,24 @@ use rustc_data_structures::sync::{
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::definitions::{DefPathData, Definitions, DisambiguatorState};
+use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
-use rustc_hir::{self as hir, HirId, Node, TraitCandidate, find_attr};
+use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, MaybeOwner, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
-use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
+use rustc_macros::Diagnostic;
 use rustc_session::Session;
 use rustc_session::config::CrateType;
 use rustc_session::cstore::{CrateStoreDyn, Untracked};
 use rustc_session::lint::Lint;
 use rustc_span::def_id::{CRATE_DEF_ID, DefPathHash, StableCrateId};
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::lift::Lift;
-use rustc_type_ir::{CollectAndApply, TypeFlags, WithCachedTypeInfo, elaborate, search_graph};
+use rustc_type_ir::{
+    CollectAndApply, FnSigKind, TypeFlags, WithCachedTypeInfo, elaborate, search_graph,
+};
 use tracing::{debug, instrument};
 
 use crate::arena::Arena;
@@ -55,14 +57,13 @@ use crate::dep_graph::dep_node::make_metadata;
 use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
-use crate::lint::{diag_lint_level, lint_level};
+use crate::lint::emit_lint_base;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use crate::middle::resolve_bound_vars;
 use crate::mir::interpret::{self, Allocation, ConstAllocation};
 use crate::mir::{Body, Local, Place, PlaceElem, ProjectionKind, Promoted};
-use crate::query::plumbing::QuerySystem;
-use crate::query::{IntoQueryParam, LocalCrate, Providers, TyCtxtAt};
+use crate::query::{IntoQueryKey, LocalCrate, Providers, QuerySystem, TyCtxtAt};
 use crate::thir::Thir;
 use crate::traits;
 use crate::traits::solve::{ExternalConstraints, ExternalConstraintsData, PredefinedOpaques};
@@ -85,7 +86,33 @@ impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
     }
 }
 
+impl<'tcx> rustc_type_ir::inherent::FSigKind<TyCtxt<'tcx>> for FnSigKind {
+    fn fn_sig_kind(self) -> Self {
+        self
+    }
+
+    fn new(abi: ExternAbi, safety: hir::Safety, c_variadic: bool) -> Self {
+        FnSigKind::default().set_abi(abi).set_safe(safety.is_safe()).set_c_variadic(c_variadic)
+    }
+
+    fn abi(self) -> ExternAbi {
+        self.abi()
+    }
+
+    fn safety(self) -> hir::Safety {
+        if self.is_safe() { hir::Safety::Safe } else { hir::Safety::Unsafe }
+    }
+
+    fn c_variadic(self) -> bool {
+        self.c_variadic()
+    }
+}
+
 impl<'tcx> rustc_type_ir::inherent::Abi<TyCtxt<'tcx>> for ExternAbi {
+    fn abi(self) -> Self {
+        self
+    }
+
     fn rust() -> Self {
         ExternAbi::Rust
     }
@@ -93,11 +120,23 @@ impl<'tcx> rustc_type_ir::inherent::Abi<TyCtxt<'tcx>> for ExternAbi {
     fn is_rust(self) -> bool {
         matches!(self, ExternAbi::Rust)
     }
+
+    fn pack_abi(self) -> u8 {
+        self.as_packed()
+    }
+
+    fn unpack_abi(abi_index: u8) -> Self {
+        Self::from_packed(abi_index)
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Safety<TyCtxt<'tcx>> for hir::Safety {
     fn safe() -> Self {
         hir::Safety::Safe
+    }
+
+    fn unsafe_mode() -> Self {
+        hir::Safety::Unsafe
     }
 
     fn is_safe(self) -> bool {
@@ -564,7 +603,7 @@ impl<'tcx> CommonConsts<'tcx> {
             ))
         };
 
-        let valtree_zst = mk_valtree(ty::ValTreeKind::Branch(Box::default()));
+        let valtree_zst = mk_valtree(ty::ValTreeKind::Branch(List::empty()));
         let valtree_true = mk_valtree(ty::ValTreeKind::Leaf(ty::ScalarInt::TRUE));
         let valtree_false = mk_valtree(ty::ValTreeKind::Leaf(ty::ScalarInt::FALSE));
 
@@ -608,7 +647,7 @@ pub struct TyCtxtFeed<'tcx, KEY: Copy> {
 
 /// Never return a `Feed` from a query. Only queries that create a `DefId` are
 /// allowed to feed queries for that `DefId`.
-impl<KEY: Copy, CTX> !HashStable<CTX> for TyCtxtFeed<'_, KEY> {}
+impl<KEY: Copy, Hcx> !HashStable<Hcx> for TyCtxtFeed<'_, KEY> {}
 
 /// The same as `TyCtxtFeed`, but does not contain a `TyCtxt`.
 /// Use this to pass around when you have a `TyCtxt` elsewhere.
@@ -623,7 +662,7 @@ pub struct Feed<'tcx, KEY: Copy> {
 
 /// Never return a `Feed` from a query. Only queries that create a `DefId` are
 /// allowed to feed queries for that `DefId`.
-impl<KEY: Copy, CTX> !HashStable<CTX> for Feed<'_, KEY> {}
+impl<KEY: Copy, Hcx> !HashStable<Hcx> for Feed<'_, KEY> {}
 
 impl<T: fmt::Debug + Copy> fmt::Debug for Feed<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -657,6 +696,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_anon_const_type(self, key: LocalDefId, value: ty::EarlyBinder<'tcx, Ty<'tcx>>) {
         debug_assert_eq!(self.def_kind(key), DefKind::AnonConst);
         TyCtxtFeed { tcx: self, key }.type_of(value)
+    }
+
+    /// Feeds the HIR delayed owner during AST -> HIR delayed lowering.
+    pub fn feed_delayed_owner(self, key: LocalDefId, owner: MaybeOwner<'tcx>) {
+        self.dep_graph.assert_ignored();
+        TyCtxtFeed { tcx: self, key }.delayed_owner(owner);
     }
 }
 
@@ -704,7 +749,7 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
         let attrs = hir::AttributeMap::EMPTY;
 
         let rustc_middle::hir::Hashes { opt_hash_including_bodies, .. } =
-            self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, &[], attrs.define_opaque);
+            self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, attrs.define_opaque);
         let node = node.into();
         self.opt_hir_owner_nodes(Some(self.tcx.arena.alloc(hir::OwnerNodes {
             opt_hash_including_bodies,
@@ -895,12 +940,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn has_typeck_results(self, def_id: LocalDefId) -> bool {
         // Closures' typeck results come from their outermost function,
         // as they are part of the same "inference environment".
-        let typeck_root_def_id = self.typeck_root_def_id(def_id.to_def_id());
-        if typeck_root_def_id != def_id.to_def_id() {
-            return self.has_typeck_results(typeck_root_def_id.expect_local());
-        }
-
-        self.hir_node_by_def_id(def_id).body_id().is_some()
+        let root = self.typeck_root_def_id_local(def_id);
+        self.hir_node_by_def_id(root).body_id().is_some()
     }
 
     /// Expects a body and returns its codegen attributes.
@@ -914,8 +955,8 @@ impl<'tcx> TyCtxt<'tcx> {
         } else if matches!(
             def_kind,
             DefKind::AnonConst
-                | DefKind::AssocConst
-                | DefKind::Const
+                | DefKind::AssocConst { .. }
+                | DefKind::Const { .. }
                 | DefKind::InlineConst
                 | DefKind::GlobalAsm
         ) {
@@ -1112,15 +1153,14 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Check if the given `def_id` is a `type const` (mgca)
-    pub fn is_type_const<I: Copy + IntoQueryParam<DefId>>(self, def_id: I) -> bool {
-        // No need to call the query directly in this case always false.
-        if !(matches!(
-            self.def_kind(def_id.into_query_param()),
-            DefKind::Const | DefKind::AssocConst
-        )) {
-            return false;
+    pub fn is_type_const(self, def_id: impl IntoQueryKey<DefId>) -> bool {
+        let def_id = def_id.into_query_key();
+        match self.def_kind(def_id) {
+            DefKind::Const { is_type_const } | DefKind::AssocConst { is_type_const } => {
+                is_type_const
+            }
+            _ => false,
         }
-        self.is_rhs_type_const(def_id)
     }
 
     /// Returns the movability of the coroutine of `def_id`, or panics
@@ -1169,8 +1209,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self.features_query(())
     }
 
-    pub fn def_key(self, id: impl IntoQueryParam<DefId>) -> rustc_hir::definitions::DefKey {
-        let id = id.into_query_param();
+    pub fn def_key(self, id: impl IntoQueryKey<DefId>) -> rustc_hir::definitions::DefKey {
+        let id = id.into_query_key();
         // Accessing the DefKey is ok, since it is part of DefPathHash.
         if let Some(id) = id.as_local() {
             self.definitions_untracked().def_key(id)
@@ -1333,7 +1373,10 @@ impl<'tcx> TyCtxt<'tcx> {
         let fun_features = &self.codegen_fn_attrs(fun_def).target_features;
         let caller_features = &self.body_codegen_attrs(caller).target_features;
         if self.is_target_feature_call_safe(&fun_features, &caller_features) {
-            return Some(fun_sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Safe, ..sig }));
+            return Some(fun_sig.map_bound(|sig| ty::FnSig {
+                fn_sig_kind: fun_sig.fn_sig_kind().set_safe(true),
+                ..sig
+            }));
         }
         None
     }
@@ -1356,7 +1399,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
         name: Option<Symbol>,
         def_kind: DefKind,
         override_def_path_data: Option<DefPathData>,
-        disambiguator: &mut DisambiguatorState,
+        disambiguator: &mut PerParentDisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let feed =
             self.tcx.create_def(parent, name, def_kind, override_def_path_data, disambiguator);
@@ -1374,7 +1417,7 @@ impl<'tcx> TyCtxt<'tcx> {
         name: Option<Symbol>,
         def_kind: DefKind,
         override_def_path_data: Option<DefPathData>,
-        disambiguator: &mut DisambiguatorState,
+        disambiguator: &mut PerParentDisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let data = override_def_path_data.unwrap_or_else(|| def_kind.def_path_data(name));
         // The following call has the side effect of modifying the tables inside `definitions`.
@@ -1493,10 +1536,6 @@ impl<'tcx> TyCtxt<'tcx> {
         f: impl FnOnce(StableHashingContext<'_>) -> R,
     ) -> R {
         f(StableHashingContext::new(self.sess, &self.untracked))
-    }
-
-    pub fn serialize_query_result_cache(self, encoder: FileEncoder) -> FileEncodeResult {
-        self.query_system.on_disk_cache.as_ref().map_or(Ok(0), |c| c.serialize(self, encoder))
     }
 
     #[inline]
@@ -1622,7 +1661,8 @@ impl<'tcx> TyCtxt<'tcx> {
             self,
             self.lifetimes.re_static,
             self.type_of(self.require_lang_item(LangItem::PanicLocation, DUMMY_SP))
-                .instantiate(self, self.mk_args(&[self.lifetimes.re_static.into()])),
+                .instantiate(self, self.mk_args(&[self.lifetimes.re_static.into()]))
+                .skip_norm_wip(),
         )
     }
 
@@ -1682,10 +1722,48 @@ impl<'tcx> TyCtxt<'tcx> {
         self.alloc_self_profile_query_strings();
 
         self.save_dep_graph();
-        self.query_key_hash_verify_all();
+        self.verify_query_key_hashes();
 
         if let Err((path, error)) = self.dep_graph.finish_encoding() {
             self.sess.dcx().emit_fatal(crate::error::FailedWritingFile { path: &path, error });
+        }
+    }
+
+    pub fn report_unused_features(self) {
+        #[derive(Diagnostic)]
+        #[diag("feature `{$feature}` is declared but not used")]
+        struct UnusedFeature {
+            feature: Symbol,
+        }
+
+        // Collect first to avoid holding the lock while linting.
+        let used_features = self.sess.used_features.lock();
+        let unused_features = self
+            .features()
+            .enabled_features_iter_stable_order()
+            .filter(|(f, _)| {
+                !used_features.contains_key(f)
+                // FIXME: `restricted_std` is used to tell a standard library built
+                // for a platform that it doesn't know how to support. But it
+                // could only gate a private mod (see `__restricted_std_workaround`)
+                // with `cfg(not(restricted_std))`, so it cannot be recorded as used
+                // in downstream crates. It should never be linted, but should we
+                // hack this in the linter to ignore it?
+                && f.as_str() != "restricted_std"
+                // `doc_cfg` affects rustdoc behavior: rustdoc checks it via
+                // `tcx.features().doc_cfg()`, but a normal rustc compilation may
+                // never observe that use. Do not lint it as unused here.
+                && *f != sym::doc_cfg
+            })
+            .collect::<Vec<_>>();
+
+        for (feature, span) in unused_features {
+            self.emit_node_span_lint(
+                rustc_session::lint::builtin::UNUSED_FEATURES,
+                CRATE_HIR_ID,
+                span,
+                UnusedFeature { feature },
+            );
         }
     }
 }
@@ -2063,7 +2141,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// unsafe.
     pub fn safe_to_unsafe_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
         assert!(sig.safety().is_safe());
-        Ty::new_fn_ptr(self, sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Unsafe, ..sig }))
+        Ty::new_fn_ptr(
+            self,
+            sig.map_bound(|sig| ty::FnSig { fn_sig_kind: sig.fn_sig_kind.set_safe(false), ..sig }),
+        )
     }
 
     /// Given a `fn` sig, returns an equivalent `unsafe fn` sig;
@@ -2071,7 +2152,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// unsafe.
     pub fn safe_to_unsafe_sig(self, sig: PolyFnSig<'tcx>) -> PolyFnSig<'tcx> {
         assert!(sig.safety().is_safe());
-        sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Unsafe, ..sig })
+        sig.map_bound(|sig| ty::FnSig { fn_sig_kind: sig.fn_sig_kind.set_safe(false), ..sig })
     }
 
     /// Given the def_id of a Trait `trait_def_id` and the name of an associated item `assoc_name`
@@ -2086,7 +2167,9 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Given a `ty`, return whether it's an `impl Future<...>`.
     pub fn ty_is_opaque_future(self, ty: Ty<'_>) -> bool {
-        let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *ty.kind() else { return false };
+        let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = *ty.kind() else {
+            return false;
+        };
         let future_trait = self.require_lang_item(LangItem::Future, DUMMY_SP);
 
         self.explicit_item_self_bounds(def_id).skip_binder().iter().any(|&(predicate, _)| {
@@ -2111,7 +2194,11 @@ impl<'tcx> TyCtxt<'tcx> {
                 ty::Tuple(params) => *params,
                 _ => bug!(),
             };
-            self.mk_fn_sig(params, s.output(), s.c_variadic, safety, ExternAbi::Rust)
+            self.mk_fn_sig(
+                params,
+                s.output(),
+                s.fn_sig_kind.set_safe(safety.is_safe()).set_abi(ExternAbi::Rust),
+            )
         })
     }
 
@@ -2151,9 +2238,9 @@ impl<'tcx> TyCtxt<'tcx> {
         // ATPITs) do not.
         let is_inherent_assoc_ty = matches!(self.def_kind(def_id), DefKind::AssocTy)
             && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
-        let is_inherent_assoc_type_const = matches!(self.def_kind(def_id), DefKind::AssocConst)
-            && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false })
-            && self.is_type_const(def_id);
+        let is_inherent_assoc_type_const =
+            matches!(self.def_kind(def_id), DefKind::AssocConst { is_type_const: true })
+                && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
         let own_args = if !nested && (is_inherent_assoc_ty || is_inherent_assoc_type_const) {
             if generics.own_params.len() + 1 != args.len() {
                 return false;
@@ -2198,9 +2285,12 @@ impl<'tcx> TyCtxt<'tcx> {
         if cfg!(debug_assertions) && !self.check_args_compatible(def_id, args) {
             let is_inherent_assoc_ty = matches!(self.def_kind(def_id), DefKind::AssocTy)
                 && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false });
-            let is_inherent_assoc_type_const = matches!(self.def_kind(def_id), DefKind::AssocConst)
-                && matches!(self.def_kind(self.parent(def_id)), DefKind::Impl { of_trait: false })
-                && self.is_type_const(def_id);
+            let is_inherent_assoc_type_const =
+                matches!(self.def_kind(def_id), DefKind::AssocConst { is_type_const: true })
+                    && matches!(
+                        self.def_kind(self.parent(def_id)),
+                        DefKind::Impl { of_trait: false }
+                    );
             if is_inherent_assoc_ty || is_inherent_assoc_type_const {
                 bug!(
                     "args not compatible with generics for {}: args={:#?}, generics={:#?}",
@@ -2381,24 +2471,38 @@ impl<'tcx> TyCtxt<'tcx> {
     // IntoIterator` instead of `I: Iterator`, and it doesn't have a slice
     // variant, because of the need to combine `inputs` and `output`. This
     // explains the lack of `_from_iter` suffix.
-    pub fn mk_fn_sig<I, T>(
-        self,
-        inputs: I,
-        output: I::Item,
-        c_variadic: bool,
-        safety: hir::Safety,
-        abi: ExternAbi,
-    ) -> T::Output
+    pub fn mk_fn_sig<I, T>(self, inputs: I, output: I::Item, fn_sig_kind: FnSigKind) -> T::Output
     where
         I: IntoIterator<Item = T>,
         T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
     {
         T::collect_and_apply(inputs.into_iter().chain(iter::once(output)), |xs| ty::FnSig {
             inputs_and_output: self.mk_type_list(xs),
-            c_variadic,
-            safety,
-            abi,
+            fn_sig_kind,
         })
+    }
+
+    /// `mk_fn_sig`, but with a Rust ABI, and no C-variadic argument.
+    pub fn mk_fn_sig_rust_abi<I, T>(
+        self,
+        inputs: I,
+        output: I::Item,
+        safety: hir::Safety,
+    ) -> T::Output
+    where
+        I: IntoIterator<Item = T>,
+        T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
+    {
+        self.mk_fn_sig(inputs, output, FnSigKind::default().set_safe(safety.is_safe()))
+    }
+
+    /// `mk_fn_sig`, but with a safe Rust ABI, and no C-variadic argument.
+    pub fn mk_fn_sig_safe_rust_abi<I, T>(self, inputs: I, output: I::Item) -> T::Output
+    where
+        I: IntoIterator<Item = T>,
+        T: CollectAndApply<Ty<'tcx>, ty::FnSig<'tcx>>,
+    {
+        self.mk_fn_sig(inputs, output, FnSigKind::default().set_safe(true))
     }
 
     pub fn mk_poly_existential_predicates_from_iter<I, T>(self, iter: I) -> T::Output
@@ -2506,22 +2610,7 @@ impl<'tcx> TyCtxt<'tcx> {
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level_at_node(lint, hir_id);
-        diag_lint_level(self.sess, lint, level, Some(span.into()), decorator)
-    }
-
-    /// Emit a lint at the appropriate level for a hir node, with an associated span.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[track_caller]
-    pub fn node_span_lint(
-        self,
-        lint: &'static Lint,
-        hir_id: HirId,
-        span: impl Into<MultiSpan>,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
-    ) {
-        let level = self.lint_level_at_node(lint, hir_id);
-        lint_level(self.sess, lint, level, Some(span.into()), decorate);
+        emit_lint_base(self.sess, lint, level, Some(span.into()), decorator)
     }
 
     /// Find the appropriate span where `use` and outer attributes can be inserted at.
@@ -2564,24 +2653,10 @@ impl<'tcx> TyCtxt<'tcx> {
         decorator: impl for<'a> Diagnostic<'a, ()>,
     ) {
         let level = self.lint_level_at_node(lint, id);
-        diag_lint_level(self.sess, lint, level, None, decorator);
+        emit_lint_base(self.sess, lint, level, None, decorator);
     }
 
-    /// Emit a lint at the appropriate level for a hir node.
-    ///
-    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
-    #[track_caller]
-    pub fn node_lint(
-        self,
-        lint: &'static Lint,
-        id: HirId,
-        decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
-    ) {
-        let level = self.lint_level_at_node(lint, id);
-        lint_level(self.sess, lint, level, None, decorate);
-    }
-
-    pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate]> {
+    pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate<'tcx>]> {
         let map = self.in_scope_traits_map(id.owner)?;
         let candidates = map.get(&id.local_id)?;
         Some(candidates)
@@ -2702,7 +2777,8 @@ impl<'tcx> TyCtxt<'tcx> {
         self.sess.opts.unstable_opts.build_sdylib_interface
     }
 
-    pub fn intrinsic(self, def_id: impl IntoQueryParam<DefId> + Copy) -> Option<ty::IntrinsicDef> {
+    pub fn intrinsic(self, def_id: impl IntoQueryKey<DefId>) -> Option<ty::IntrinsicDef> {
+        let def_id = def_id.into_query_key();
         match self.def_kind(def_id) {
             DefKind::Fn | DefKind::AssocFn => self.intrinsic_raw(def_id),
             _ => None,
@@ -2744,7 +2820,9 @@ impl<'tcx> TyCtxt<'tcx> {
         self.resolutions(()).extern_crate_map.get(&def_id).copied()
     }
 
-    pub fn resolver_for_lowering(self) -> &'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)> {
+    pub fn resolver_for_lowering(
+        self,
+    ) -> &'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)> {
         self.resolver_for_lowering_raw(()).0
     }
 
@@ -2755,7 +2833,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn needs_coroutine_by_move_body_def_id(self, def_id: DefId) -> bool {
         if let Some(hir::CoroutineKind::Desugared(_, hir::CoroutineSource::Closure)) =
             self.coroutine_kind(def_id)
-            && let ty::Coroutine(_, args) = self.type_of(def_id).instantiate_identity().kind()
+            && let ty::Coroutine(_, args) =
+                self.type_of(def_id).instantiate_identity().skip_norm_wip().kind()
             && args.as_coroutine().kind_ty().to_opt_closure_kind() != Some(ty::ClosureKind::FnOnce)
         {
             true
@@ -2769,10 +2848,8 @@ impl<'tcx> TyCtxt<'tcx> {
         find_attr!(self, def_id, DoNotRecommend { .. })
     }
 
-    pub fn is_trivial_const<P>(self, def_id: P) -> bool
-    where
-        P: IntoQueryParam<DefId>,
-    {
+    pub fn is_trivial_const(self, def_id: impl IntoQueryKey<DefId>) -> bool {
+        let def_id = def_id.into_query_key();
         self.trivial_const(def_id).is_some()
     }
 

@@ -1,5 +1,10 @@
 #![feature(try_blocks)]
-#![allow(clippy::unnecessary_wraps, clippy::no_effect)]
+#![allow(
+    clippy::unnecessary_wraps,
+    clippy::no_effect,
+    clippy::needless_return,
+    clippy::toplevel_ref_arg
+)]
 
 use std::sync::MutexGuard;
 
@@ -156,6 +161,7 @@ fn func() -> Option<i32> {
     };
 
     let s: &str = match &Some(String::new()) {
+        //~^ question_mark
         Some(v) => v,
         None => return None,
     };
@@ -178,6 +184,7 @@ fn func() -> Option<i32> {
     };
 
     match f() {
+        //~^ question_mark
         Some(val) => {
             println!("{val}");
             val
@@ -648,4 +655,58 @@ fn issue16429(b: i32) -> Option<i32> {
     };
 
     Some(0)
+}
+
+fn issue16654() -> Result<(), i32> {
+    let result = func_returning_result();
+
+    #[allow(clippy::collapsible_if)]
+    if true {
+        if let Err(err) = result {
+            //~^ question_mark
+            return Err(err);
+        }
+    }
+
+    _ = [if let Err(err) = result {
+        //~^ question_mark
+        return Err(err);
+    }];
+
+    Ok(())
+}
+
+#[rustfmt::skip]
+fn issue16751(mut v: Option<usize>) -> Option<usize> {
+    let _ = match &v {
+        //~^ question_mark
+        Some(n) => {
+            println!("{n}");
+            Some(42)
+        }
+        None => return None,
+    };
+
+    let _ = match v {
+        //~^ question_mark
+        Some(ref mut n) => {
+            println!("{n}");
+            Some(42)
+        }
+        None => return None,
+    };
+
+    let _ = if let Some(ref mut n) = v {
+        //~^ question_mark
+        println!("{n}");
+        42
+    } else {
+        return None;
+    };
+
+    match v {
+        //~^ question_mark
+        Some(n) => if n > 10 { Some(42) } else { None },
+        None => return None,
+    }
 }

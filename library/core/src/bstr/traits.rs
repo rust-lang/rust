@@ -268,4 +268,5 @@ impl_slice_index!(range::RangeFrom<usize>);
 impl_slice_index!(ops::RangeInclusive<usize>);
 impl_slice_index!(range::RangeInclusive<usize>);
 impl_slice_index!(ops::RangeToInclusive<usize>);
+impl_slice_index!(range::RangeToInclusive<usize>);
 impl_slice_index!((ops::Bound<usize>, ops::Bound<usize>));

@@ -1,5 +1,6 @@
-// Disabling in Miri as these would take too long.
+// This is marked as `test = true` and hence picked up by `./x miri`, but that would be too slow.
 #![cfg(not(miri))]
+#![allow(internal_features)]
 #![feature(iter_next_chunk)]
 #![feature(repr_simd)]
 #![feature(slice_partition_dedup)]

@@ -1,4 +1,6 @@
 use std::ffi::CString;
+use std::fs;
+use std::path::Path;
 use std::sync::Arc;
 
 use rustc_data_structures::memmap::Mmap;
@@ -32,18 +34,13 @@ impl<B: WriteBackendMethods> ThinModule<B> {
     }
 
     pub fn data(&self) -> &[u8] {
-        let a = self.shared.thin_buffers.get(self.idx).map(|b| b.data());
-        a.unwrap_or_else(|| {
-            let len = self.shared.thin_buffers.len();
-            self.shared.serialized_modules[self.idx - len].data()
-        })
+        self.shared.modules[self.idx].data()
     }
 }
 
 pub struct ThinShared<B: WriteBackendMethods> {
     pub data: B::ThinData,
-    pub thin_buffers: Vec<B::ModuleBuffer>,
-    pub serialized_modules: Vec<SerializedModule<B::ModuleBuffer>>,
+    pub modules: Vec<SerializedModule<B::ModuleBuffer>>,
     pub module_names: Vec<CString>,
 }
 
@@ -54,6 +51,19 @@ pub enum SerializedModule<M: ModuleBufferMethods> {
 }
 
 impl<M: ModuleBufferMethods> SerializedModule<M> {
+    pub fn from_file(bc_path: &Path) -> Self {
+        let file = fs::File::open(&bc_path).unwrap_or_else(|e| {
+            panic!("failed to open LTO bitcode file `{}`: {}", bc_path.display(), e)
+        });
+
+        let mmap = unsafe {
+            Mmap::map(file).unwrap_or_else(|e| {
+                panic!("failed to mmap LTO bitcode file `{}`: {}", bc_path.display(), e)
+            })
+        };
+        SerializedModule::FromUncompressedFile(mmap)
+    }
+
     pub fn data(&self) -> &[u8] {
         match *self {
             SerializedModule::Local(ref m) => m.data(),
@@ -110,11 +120,9 @@ pub(super) fn exported_symbols_for_lto(
 
     // If we're performing LTO for the entire crate graph, then for each of our
     // upstream dependencies, include their exported symbols.
-    if tcx.sess.lto() != Lto::ThinLocal {
-        for &cnum in each_linked_rlib_for_lto {
-            let _timer = tcx.prof.generic_activity("lto_generate_symbols_below_threshold");
-            symbols_below_threshold.extend(copy_symbols(cnum));
-        }
+    for &cnum in each_linked_rlib_for_lto {
+        let _timer = tcx.prof.generic_activity("lto_generate_symbols_below_threshold");
+        symbols_below_threshold.extend(copy_symbols(cnum));
     }
 
     // Mark allocator shim symbols as exported only if they were generated.

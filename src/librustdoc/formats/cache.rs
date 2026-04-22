@@ -389,6 +389,8 @@ impl DocFolder for CacheBuilder<'_, '_> {
                 // So would rather leave them to an expert,
                 // as at least the list is better than `_ => {}`.
             }
+
+            clean::PlaceholderImplItem => return None,
         }
 
         // Maintain the parent stack.
@@ -422,8 +424,12 @@ impl DocFolder for CacheBuilder<'_, '_> {
                 | clean::BorrowedRef { type_: box clean::Type::Path { ref path }, .. } => {
                     dids.insert(path.def_id());
                     if let Some(generics) = path.generics()
-                        && let ty::Adt(adt, _) =
-                            self.tcx.type_of(path.def_id()).instantiate_identity().kind()
+                        && let ty::Adt(adt, _) = self
+                            .tcx
+                            .type_of(path.def_id())
+                            .instantiate_identity()
+                            .skip_norm_wip()
+                            .kind()
                         && adt.is_fundamental()
                     {
                         for ty in generics {

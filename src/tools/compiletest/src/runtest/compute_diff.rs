@@ -1,16 +1,16 @@
 use std::collections::VecDeque;
 
 #[derive(Debug, PartialEq)]
-pub enum DiffLine {
+pub(crate) enum DiffLine {
     Context(String),
     Expected(String),
     Resulting(String),
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Mismatch {
-    pub line_number: u32,
-    pub lines: Vec<DiffLine>,
+pub(crate) struct Mismatch {
+    pub(crate) line_number: u32,
+    pub(crate) lines: Vec<DiffLine>,
 }
 
 impl Mismatch {
@@ -20,7 +20,7 @@ impl Mismatch {
 }
 
 // Produces a diff between the expected output and actual output.
-pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Mismatch> {
+pub(crate) fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Mismatch> {
     let mut line_number = 1;
     let mut context_queue: VecDeque<&str> = VecDeque::with_capacity(context_size);
     let mut lines_since_mismatch = context_size + 1;
@@ -102,5 +102,56 @@ pub(crate) fn write_diff(expected: &str, actual: &str, context_size: usize) -> S
         }
         writeln!(output).unwrap();
     }
+    output
+}
+
+pub(crate) fn diff_by_lines(expected: &str, actual: &str) -> String {
+    use std::collections::HashMap;
+    use std::fmt::Write;
+    let mut output = String::new();
+    let mut expected_counts: HashMap<&str, usize> = HashMap::new();
+    let mut actual_counts: HashMap<&str, usize> = HashMap::new();
+
+    for line in expected.lines() {
+        *expected_counts.entry(line).or_insert(0) += 1;
+    }
+    for line in actual.lines() {
+        *actual_counts.entry(line).or_insert(0) += 1;
+    }
+
+    fn write_expected_only_lines(
+        output: &mut String,
+        expected_lines: &HashMap<&str, usize>,
+        actual_lines: &HashMap<&str, usize>,
+    ) {
+        let mut expected_only: Vec<(&str, usize)> = expected_lines
+            .iter()
+            .filter_map(|(&line, &expected_count)| {
+                let actual_count = actual_lines.get(line).copied().unwrap_or(0);
+                if expected_count > actual_count {
+                    Some((line, expected_count - actual_count))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        expected_only.sort_by(|(a, _), (b, _)| a.cmp(b));
+
+        if expected_only.is_empty() {
+            writeln!(output, "(no lines found)").unwrap();
+        } else {
+            for (line, diff) in expected_only {
+                for _ in 0..diff {
+                    writeln!(output, "{line}").unwrap();
+                }
+            }
+        }
+    }
+
+    writeln!(output, "Compare output by lines enabled, diff by lines:").unwrap();
+    writeln!(output, "Expected contains these lines that are not in actual:").unwrap();
+    write_expected_only_lines(&mut output, &expected_counts, &actual_counts);
+    writeln!(output, "Actual contains these lines that are not in expected:").unwrap();
+    write_expected_only_lines(&mut output, &actual_counts, &expected_counts);
     output
 }

@@ -80,10 +80,8 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         _ => return None,
     };
 
-    let make = SyntaxFactory::with_mappings();
-
-    let demorganed = bin_expr.clone_subtree();
-    let mut editor = SyntaxEditor::new(demorganed.syntax().clone());
+    let (editor, demorganed) = SyntaxEditor::with_ast_node(&bin_expr);
+    let make = editor.make();
     editor.replace(demorganed.op_token()?, make.token(inv_token));
 
     let mut exprs = VecDeque::from([
@@ -99,7 +97,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                     exprs.push_back((bin_expr.lhs()?, cbin_expr.lhs()?, prec));
                     exprs.push_back((bin_expr.rhs()?, cbin_expr.rhs()?, prec));
                 } else {
-                    let mut inv = invert_boolean_expression(&make, expr);
+                    let mut inv = invert_boolean_expression(make, expr);
                     if precedence(&inv).needs_parentheses_in(prec) {
                         inv = make.expr_paren(inv).into();
                     }
@@ -109,7 +107,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                 return None;
             }
         } else {
-            let mut inv = invert_boolean_expression(&make, demorganed.clone());
+            let mut inv = invert_boolean_expression(make, demorganed.clone());
             if precedence(&inv).needs_parentheses_in(prec) {
                 inv = make.expr_paren(inv).into();
             }
@@ -117,7 +115,6 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         }
     }
 
-    editor.add_mappings(make.finish_with_mappings());
     let edit = editor.finish();
     let demorganed = ast::Expr::cast(edit.new_root().clone())?;
 
@@ -127,7 +124,9 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         "Apply De Morgan's law",
         op_range,
         |builder| {
-            let make = SyntaxFactory::with_mappings();
+            let editor = builder.make_editor(bin_expr.syntax());
+            let make = editor.make();
+
             let (target_node, result_expr) = if let Some(neg_expr) = bin_expr
                 .syntax()
                 .parent()
@@ -142,9 +141,9 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                 bin_expr.syntax().parent().and_then(ast::ParenExpr::cast)
             {
                 cov_mark::hit!(demorgan_double_parens);
-                (paren_expr.syntax().clone(), add_bang_paren(&make, demorganed))
+                (paren_expr.syntax().clone(), add_bang_paren(make, demorganed))
             } else {
-                (bin_expr.syntax().clone(), add_bang_paren(&make, demorganed))
+                (bin_expr.syntax().clone(), add_bang_paren(make, demorganed))
             };
 
             let final_expr = if target_node
@@ -157,9 +156,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                 result_expr
             };
 
-            let mut editor = builder.make_editor(&target_node);
             editor.replace(&target_node, final_expr.syntax());
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -197,7 +194,7 @@ pub(crate) fn apply_demorgan_iterator(acc: &mut Assists, ctx: &AssistContext<'_>
     let (name, arg_expr) = validate_method_call_expr(ctx, &method_call)?;
 
     let ast::Expr::ClosureExpr(closure_expr) = arg_expr else { return None };
-    let closure_body = closure_expr.body()?.clone_for_update();
+    let closure_body = closure_expr.body()?;
 
     let op_range = method_call.syntax().text_range();
     let label = format!("Apply De Morgan's law to `Iterator::{}`", name.text().as_str());
@@ -207,8 +204,8 @@ pub(crate) fn apply_demorgan_iterator(acc: &mut Assists, ctx: &AssistContext<'_>
         label,
         op_range,
         |builder| {
-            let make = SyntaxFactory::with_mappings();
-            let mut editor = builder.make_editor(method_call.syntax());
+            let editor = builder.make_editor(method_call.syntax());
+            let make = editor.make();
             // replace the method name
             let new_name = match name.text().as_str() {
                 "all" => make.name_ref("any"),
@@ -218,7 +215,7 @@ pub(crate) fn apply_demorgan_iterator(acc: &mut Assists, ctx: &AssistContext<'_>
             editor.replace(name.syntax(), new_name.syntax());
 
             // negate all tail expressions in the closure body
-            let tail_cb = &mut |e: &_| tail_cb_impl(&mut editor, &make, e);
+            let tail_cb = &mut |e: &_| tail_cb_impl(&editor, e);
             walk_expr(&closure_body, &mut |expr| {
                 if let ast::Expr::ReturnExpr(ret_expr) = expr
                     && let Some(ret_expr_arg) = &ret_expr.expr()
@@ -241,8 +238,6 @@ pub(crate) fn apply_demorgan_iterator(acc: &mut Assists, ctx: &AssistContext<'_>
             } else {
                 editor.insert(Position::before(method_call.syntax()), make.token(SyntaxKind::BANG));
             }
-
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -270,18 +265,18 @@ fn validate_method_call_expr(
     it_type.impls_trait(sema.db, iter_trait, &[]).then_some((name_ref, arg_expr))
 }
 
-fn tail_cb_impl(editor: &mut SyntaxEditor, make: &SyntaxFactory, e: &ast::Expr) {
+fn tail_cb_impl(editor: &SyntaxEditor, e: &ast::Expr) {
     match e {
         ast::Expr::BreakExpr(break_expr) => {
             if let Some(break_expr_arg) = break_expr.expr() {
-                for_each_tail_expr(&break_expr_arg, &mut |e| tail_cb_impl(editor, make, e))
+                for_each_tail_expr(&break_expr_arg, &mut |e| tail_cb_impl(editor, e))
             }
         }
         ast::Expr::ReturnExpr(_) => {
             // all return expressions have already been handled by the walk loop
         }
         e => {
-            let inverted_body = invert_boolean_expression(make, e.clone());
+            let inverted_body = invert_boolean_expression(editor.make(), e.clone());
             editor.replace(e.syntax(), inverted_body.syntax());
         }
     }

@@ -11,15 +11,13 @@ mod to_reuse {
     pub fn bounds<T: Clone>(_: T) {}
 }
 
-// FIXME(fn_delegation): this is supposed to work eventually
 reuse to_reuse::consts;
-//~^ ERROR  type annotations needed
 reuse to_reuse::late;
 reuse to_reuse::bounds;
 
 fn main() {
     late::<'static>(&0u8);
-    //~^ ERROR cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+    //~^ ERROR: function takes 0 lifetime arguments but 1 lifetime argument was supplied
 
     struct S;
     bounds(S);

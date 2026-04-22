@@ -4,15 +4,12 @@
 //! various caches, it's not really advanced at the moment.
 use std::panic::AssertUnwindSafe;
 
-use hir::{Symbol, db::DefDatabase};
+use base_db::all_crates;
+use hir::{Symbol, import_map::ImportMap};
 use rustc_hash::FxHashMap;
 use salsa::{Cancelled, Database};
 
-use crate::{
-    FxIndexMap, RootDatabase,
-    base_db::{Crate, RootQueryDb},
-    symbol_index::SymbolIndex,
-};
+use crate::{FxIndexMap, RootDatabase, base_db::Crate, symbol_index::SymbolIndex};
 
 /// We're indexing many crates.
 #[derive(Debug)]
@@ -56,7 +53,7 @@ pub fn parallel_prime_caches(
     // to compute the symbols/import map of an already computed def map in that time.
 
     let (reverse_deps, mut to_be_done_deps) = {
-        let all_crates = db.all_crates();
+        let all_crates = all_crates(db);
         let to_be_done_deps = all_crates
             .iter()
             .map(|&krate| (krate, krate.data(db).dependencies.len() as u32))
@@ -123,7 +120,7 @@ pub fn parallel_prime_caches(
                 Ok::<_, crossbeam_channel::SendError<_>>(())
             };
             let handle_import_map = |crate_id| {
-                let cancelled = Cancelled::catch(|| _ = db.import_map(crate_id));
+                let cancelled = Cancelled::catch(|| _ = ImportMap::of(&db, crate_id));
 
                 match cancelled {
                     Ok(()) => {
@@ -200,7 +197,7 @@ pub fn parallel_prime_caches(
         )
     };
 
-    let crate_def_maps_total = db.all_crates().len();
+    let crate_def_maps_total = all_crates(db).len();
     let mut crate_def_maps_done = 0;
     let (mut crate_import_maps_total, mut crate_import_maps_done) = (0usize, 0usize);
     let (mut module_symbols_total, mut module_symbols_done) = (0usize, 0usize);

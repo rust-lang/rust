@@ -176,6 +176,15 @@ impl<T, A: Allocator> HashSet<T, RandomState, A> {
     ///
     /// The hash set is initially created with a capacity of 0, so it will not allocate until it
     /// is first inserted into.
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(allocator_api)]
+    /// use std::alloc::Global;
+    /// use std::collections::HashSet;
+    ///
+    /// let set: HashSet<i32> = HashSet::new_in(Global);
+    /// ```
     #[inline]
     #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]
@@ -192,9 +201,11 @@ impl<T, A: Allocator> HashSet<T, RandomState, A> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(allocator_api)]
     /// use std::collections::HashSet;
-    /// let set: HashSet<i32> = HashSet::with_capacity(10);
-    /// assert!(set.capacity() >= 10);
+    /// use std::alloc::Global;
+    ///
+    /// let set: HashSet<i32> = HashSet::with_capacity_in(10, Global);
     /// ```
     #[inline]
     #[must_use]
@@ -229,6 +240,7 @@ impl<T, S> HashSet<T, S> {
     /// set.insert(2);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     #[rustc_const_stable(feature = "const_collections_with_hasher", since = "1.85.0")]
     pub const fn with_hasher(hasher: S) -> HashSet<T, S> {
@@ -261,6 +273,7 @@ impl<T, S> HashSet<T, S> {
     /// set.insert(1);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> HashSet<T, S> {
         HashSet { base: base::HashSet::with_capacity_and_hasher(capacity, hasher) }
@@ -280,7 +293,20 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
     /// the `HashSet` to be useful, see its documentation for details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(allocator_api)]
+    /// use std::alloc::Global;
+    /// use std::collections::HashSet;
+    /// use std::hash::RandomState;
+    ///
+    /// let s = RandomState::new();
+    /// let set: HashSet<i32> = HashSet::with_hasher_in(s, Global);
+    /// ```
     #[inline]
+    #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_hasher_in(hasher: S, alloc: A) -> HashSet<T, S, A> {
         HashSet { base: base::HashSet::with_hasher_in(hasher, alloc) }
@@ -300,7 +326,20 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
     /// the `HashSet` to be useful, see its documentation for details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(allocator_api)]
+    /// use std::alloc::Global;
+    /// use std::collections::HashSet;
+    /// use std::hash::RandomState;
+    ///
+    /// let s = RandomState::new();
+    /// let set: HashSet<i32> = HashSet::with_capacity_and_hasher_in(10, s, Global);
+    /// ```
     #[inline]
+    #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_and_hasher_in(capacity: usize, hasher: S, alloc: A) -> HashSet<T, S, A> {
         HashSet { base: base::HashSet::with_capacity_and_hasher_in(capacity, hasher, alloc) }

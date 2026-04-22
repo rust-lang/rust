@@ -1,9 +1,13 @@
 #![crate_name = "compiletest"]
+#![warn(unreachable_pub)]
 
 #[cfg(test)]
 mod tests;
 
+// Public modules needed by the compiletest binary or by `rustdoc-gui-test`.
 pub mod cli;
+pub mod rustdoc_gui_test;
+
 mod common;
 mod debuggers;
 mod diagnostics;
@@ -17,7 +21,6 @@ mod panic_hook;
 mod raise_fd_limit;
 mod read2;
 mod runtest;
-pub mod rustdoc_gui_test;
 mod util;
 
 use core::panic;
@@ -133,6 +136,11 @@ fn parse_config(args: Vec<String>) -> Config {
         .optflag("", "verbose", "run tests verbosely, showing all output")
         .optflag(
             "",
+            "verbose-run-make-subprocess-output",
+            "show verbose subprocess output for successful run-make tests",
+        )
+        .optflag(
+            "",
             "bless",
             "overwrite stderr/stdout files instead of complaining about a mismatch",
         )
@@ -219,7 +227,14 @@ fn parse_config(args: Vec<String>) -> Config {
             "CODEGEN BACKEND [NAME | PATH]",
         )
         .optflag("", "bypass-ignore-backends", "ignore `//@ ignore-backends` directives")
-        .reqopt("", "jobs", "number of parallel jobs bootstrap was configured with", "JOBS");
+        .reqopt("", "jobs", "number of parallel jobs bootstrap was configured with", "JOBS")
+        .optopt(
+            "",
+            "parallel-frontend-threads",
+            "number of parallel threads to use for the frontend when building test artifacts",
+            "THREADS_COUNT",
+        )
+        .optopt("", "iteration-count", "number of times to execute each test", "COUNT");
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -369,6 +384,20 @@ fn parse_config(args: Vec<String>) -> Config {
         None => panic!("`--jobs` is required"),
     };
 
+    let parallel_frontend_threads = match matches.opt_str("parallel-frontend-threads") {
+        Some(threads) => {
+            threads.parse::<u32>().expect("expected `--parallel-frontend-threads` to be an `u32`")
+        }
+        None => Config::DEFAULT_PARALLEL_FRONTEND_THREADS,
+    };
+    let iteration_count = match matches.opt_str("iteration-count") {
+        Some(count) => {
+            count.parse::<u32>().expect("expected `--iteration-count` to be a positive integer")
+        }
+        None => Config::DEFAULT_ITERATION_COUNT,
+    };
+    assert!(iteration_count > 0, "`--iteration-count` must be a positive integer");
+
     Config {
         bless: matches.opt_present("bless"),
         fail_fast: matches.opt_present("fail-fast")
@@ -447,6 +476,8 @@ fn parse_config(args: Vec<String>) -> Config {
         adb_test_dir,
         adb_device_status,
         verbose: matches.opt_present("verbose"),
+        verbose_run_make_subprocess_output: matches
+            .opt_present("verbose-run-make-subprocess-output"),
         only_modified: matches.opt_present("only-modified"),
         remote_test_client: matches.opt_str("remote-test-client").map(Utf8PathBuf::from),
         compare_mode,
@@ -489,6 +520,9 @@ fn parse_config(args: Vec<String>) -> Config {
         bypass_ignore_backends: matches.opt_present("bypass-ignore-backends"),
 
         jobs,
+
+        parallel_frontend_threads,
+        iteration_count,
     }
 }
 

@@ -7,7 +7,6 @@
 )]
 
 // The rustc crates we need
-extern crate rustc_abi;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -18,7 +17,6 @@ extern crate rustc_log;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
-extern crate rustc_target;
 
 /// See docs in https://github.com/rust-lang/rust/blob/HEAD/compiler/rustc/src/main.rs
 /// and https://github.com/rust-lang/rust/pull/146627 for why we need this.
@@ -42,14 +40,12 @@ use std::ops::Range;
 use std::process::ExitCode;
 use std::rc::Rc;
 use std::str::FromStr;
-use std::sync::Once;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use miri::{
     BacktraceStyle, BorrowTrackerMethod, GenmcConfig, GenmcCtx, MiriConfig, MiriEntryFnType,
     ProvenanceMode, TreeBorrowsParams, ValidationMode, run_genmc_mode,
 };
-use rustc_abi::ExternAbi;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::sync::{self, DynSync};
 use rustc_driver::Compilation;
@@ -66,10 +62,9 @@ use rustc_middle::middle::exported_symbols::{
 use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::EarlyDiagCtxt;
-use rustc_session::config::{CrateType, ErrorOutputType, OptLevel, Options};
+use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
+use rustc_session::{EarlyDiagCtxt, Session};
 use rustc_span::def_id::DefId;
-use rustc_target::spec::Target;
 
 use crate::log::setup::{deinit_loggers, init_early_loggers, init_late_loggers};
 
@@ -101,12 +96,9 @@ fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, MiriEntryFnType) {
         let start_def_id = id.expect_local();
         let start_span = tcx.def_span(start_def_id);
 
-        let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
+        let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi(
             [tcx.types.isize, Ty::new_imm_ptr(tcx, Ty::new_imm_ptr(tcx, tcx.types.u8))],
             tcx.types.isize,
-            false,
-            hir::Safety::Safe,
-            ExternAbi::Rust,
         ));
 
         let correct_func_sig = check_function_signature(
@@ -174,18 +166,21 @@ fn run_many_seeds(
 /// Generates the codegen backend for code that Miri will interpret: we basically
 /// use the dummy backend, except that we put the LLVM backend in charge of
 /// target features.
-fn make_miri_codegen_backend(opts: &Options, target: &Target) -> Box<dyn CodegenBackend> {
-    let early_dcx = EarlyDiagCtxt::new(opts.error_format);
+fn make_miri_codegen_backend(sess: &Session) -> Box<dyn CodegenBackend> {
+    let early_dcx = EarlyDiagCtxt::new(sess.opts.error_format);
 
     // Use the target_config method of the default codegen backend (eg LLVM) to ensure the
     // calculated target features match said backend by respecting eg -Ctarget-cpu.
-    let target_config_backend =
-        rustc_interface::util::get_codegen_backend(&early_dcx, &opts.sysroot, None, target);
-    let target_config_backend_init = Once::new();
+    let target_config_backend = rustc_interface::util::get_codegen_backend(
+        &early_dcx,
+        &sess.opts.sysroot,
+        None,
+        &sess.target,
+    );
+    target_config_backend.init(sess);
 
     Box::new(DummyCodegenBackend {
         target_config_override: Some(Box::new(move |sess| {
-            target_config_backend_init.call_once(|| target_config_backend.init(sess));
             target_config_backend.target_config(sess)
         })),
     })
@@ -193,7 +188,11 @@ fn make_miri_codegen_backend(opts: &Options, target: &Target) -> Box<dyn Codegen
 
 impl rustc_driver::Callbacks for MiriCompilerCalls {
     fn config(&mut self, config: &mut rustc_interface::interface::Config) {
+        // We never reach codegen anyway.
         config.make_codegen_backend = Some(Box::new(make_miri_codegen_backend));
+
+        // Register our custom extra symbols.
+        config.extra_symbols = miri::sym::EXTRA_SYMBOLS.into();
     }
 
     fn after_analysis<'tcx>(
@@ -305,8 +304,9 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
             // We need to add #[used] symbols to exported_symbols for `lookup_link_section`.
             // FIXME handle this somehow in rustc itself to avoid this hack.
             local_providers.queries.exported_non_generic_symbols = |tcx, LocalCrate| {
-                let reachable_set = tcx
-                    .with_stable_hashing_context(|hcx| tcx.reachable_set(()).to_sorted(&hcx, true));
+                let reachable_set = tcx.with_stable_hashing_context(|mut hcx| {
+                    tcx.reachable_set(()).to_sorted(&mut hcx, true)
+                });
                 tcx.arena.alloc_from_iter(
                     // This is based on:
                     // https://github.com/rust-lang/rust/blob/2962e7c0089d5c136f4e9600b7abccfbbde4973d/compiler/rustc_codegen_ssa/src/back/symbol_export.rs#L62-L63
@@ -354,6 +354,9 @@ impl rustc_driver::Callbacks for MiriDepCompilerCalls {
                 )
             }
         });
+
+        // Register our custom extra symbols.
+        config.extra_symbols = miri::sym::EXTRA_SYMBOLS.into();
     }
 
     fn after_analysis<'tcx>(
@@ -375,7 +378,7 @@ fn exit(exit_code: i32) -> ! {
     // Drop the tracing guard before exiting, so tracing calls are flushed correctly.
     deinit_loggers();
     // Make sure the supervisor knows about the exit code.
-    #[cfg(all(unix, feature = "native-lib"))]
+    #[cfg(all(feature = "native-lib", unix))]
     miri::native_lib::register_retcode_sv(exit_code);
     // Actually exit.
     std::process::exit(exit_code);
@@ -749,7 +752,7 @@ fn main() -> ExitCode {
     debug!("crate arguments: {:?}", miri_config.args);
     if !miri_config.native_lib.is_empty() && miri_config.native_lib_enable_tracing {
         // SAFETY: No other threads are running
-        #[cfg(all(unix, feature = "native-lib"))]
+        #[cfg(all(feature = "native-lib", unix))]
         if unsafe { miri::native_lib::init_sv() }.is_err() {
             eprintln!(
                 "warning: The native-lib tracer could not be started. Is this an x86 Linux system, and does Miri have permissions to ptrace?\n\

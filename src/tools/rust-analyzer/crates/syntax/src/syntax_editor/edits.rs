@@ -3,16 +3,114 @@
 use crate::{
     AstToken, Direction, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, T,
     algo::neighbor,
-    ast::{
-        self, AstNode, Fn, GenericParam, HasGenericParams, HasName, edit::IndentLevel, make,
-        syntax_factory::SyntaxFactory,
-    },
+    ast::{self, AstNode, Fn, GenericParam, HasGenericParams, HasName, edit::IndentLevel, make},
     syntax_editor::{Position, SyntaxEditor},
 };
 
+pub trait GetOrCreateWhereClause: ast::HasGenericParams {
+    fn where_clause_position(&self) -> Option<Position>;
+
+    fn get_or_create_where_clause(
+        &self,
+        editor: &SyntaxEditor,
+        new_preds: impl Iterator<Item = ast::WherePred>,
+    ) {
+        let make = editor.make();
+        let existing = self.where_clause();
+        let all_preds: Vec<_> =
+            existing.iter().flat_map(|wc| wc.predicates()).chain(new_preds).collect();
+        let new_where = make.where_clause(all_preds);
+
+        if let Some(existing) = &existing {
+            editor.replace(existing.syntax(), new_where.syntax());
+        } else if let Some(pos) = self.where_clause_position() {
+            editor.insert_all(
+                pos,
+                vec![make.whitespace(" ").into(), new_where.syntax().clone().into()],
+            );
+        }
+    }
+}
+
+impl GetOrCreateWhereClause for ast::Fn {
+    fn where_clause_position(&self) -> Option<Position> {
+        if let Some(ty) = self.ret_type() {
+            Some(Position::after(ty.syntax()))
+        } else if let Some(param_list) = self.param_list() {
+            Some(Position::after(param_list.syntax()))
+        } else {
+            Some(Position::last_child_of(self.syntax()))
+        }
+    }
+}
+
+impl GetOrCreateWhereClause for ast::Impl {
+    fn where_clause_position(&self) -> Option<Position> {
+        if let Some(ty) = self.self_ty() {
+            Some(Position::after(ty.syntax()))
+        } else {
+            Some(Position::last_child_of(self.syntax()))
+        }
+    }
+}
+
+impl GetOrCreateWhereClause for ast::Trait {
+    fn where_clause_position(&self) -> Option<Position> {
+        if let Some(gpl) = self.generic_param_list() {
+            Some(Position::after(gpl.syntax()))
+        } else if let Some(name) = self.name() {
+            Some(Position::after(name.syntax()))
+        } else {
+            Some(Position::last_child_of(self.syntax()))
+        }
+    }
+}
+
+impl GetOrCreateWhereClause for ast::TypeAlias {
+    fn where_clause_position(&self) -> Option<Position> {
+        if let Some(gpl) = self.generic_param_list() {
+            Some(Position::after(gpl.syntax()))
+        } else if let Some(name) = self.name() {
+            Some(Position::after(name.syntax()))
+        } else {
+            Some(Position::last_child_of(self.syntax()))
+        }
+    }
+}
+
+impl GetOrCreateWhereClause for ast::Struct {
+    fn where_clause_position(&self) -> Option<Position> {
+        let tfl = self.field_list().and_then(|fl| match fl {
+            ast::FieldList::RecordFieldList(_) => None,
+            ast::FieldList::TupleFieldList(it) => Some(it),
+        });
+        if let Some(tfl) = tfl {
+            Some(Position::after(tfl.syntax()))
+        } else if let Some(gpl) = self.generic_param_list() {
+            Some(Position::after(gpl.syntax()))
+        } else if let Some(name) = self.name() {
+            Some(Position::after(name.syntax()))
+        } else {
+            Some(Position::last_child_of(self.syntax()))
+        }
+    }
+}
+
+impl GetOrCreateWhereClause for ast::Enum {
+    fn where_clause_position(&self) -> Option<Position> {
+        if let Some(gpl) = self.generic_param_list() {
+            Some(Position::after(gpl.syntax()))
+        } else if let Some(name) = self.name() {
+            Some(Position::after(name.syntax()))
+        } else {
+            Some(Position::last_child_of(self.syntax()))
+        }
+    }
+}
+
 impl SyntaxEditor {
     /// Adds a new generic param to the function using `SyntaxEditor`
-    pub fn add_generic_param(&mut self, function: &Fn, new_param: GenericParam) {
+    pub fn add_generic_param(&self, function: &Fn, new_param: GenericParam) {
         match function.generic_param_list() {
             Some(generic_param_list) => match generic_param_list.generic_params().last() {
                 Some(last_param) => {
@@ -76,8 +174,8 @@ impl SyntaxEditor {
     }
 }
 
-fn get_or_insert_comma_after(editor: &mut SyntaxEditor, syntax: &SyntaxNode) -> SyntaxToken {
-    let make = SyntaxFactory::without_mappings();
+fn get_or_insert_comma_after(editor: &SyntaxEditor, syntax: &SyntaxNode) -> SyntaxToken {
+    let make = editor.make();
     match syntax
         .siblings_with_tokens(Direction::Next)
         .filter_map(|it| it.into_token())
@@ -97,7 +195,7 @@ impl ast::AssocItemList {
     ///
     /// Attention! This function does align the first line of `item` with respect to `self`,
     /// but it does _not_ change indentation of other lines (if any).
-    pub fn add_items(&self, editor: &mut SyntaxEditor, items: Vec<ast::AssocItem>) {
+    pub fn add_items(&self, editor: &SyntaxEditor, items: Vec<ast::AssocItem>) {
         let (indent, position, whitespace) = match self.assoc_items().last() {
             Some(last_item) => (
                 IndentLevel::from_node(last_item.syntax()),
@@ -109,7 +207,7 @@ impl ast::AssocItemList {
                     normalize_ws_between_braces(editor, self.syntax());
                     (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly), "\n")
                 }
-                None => (IndentLevel::single(), Position::last_child_of(self.syntax()), "\n"),
+                None => (IndentLevel::zero(), Position::last_child_of(self.syntax()), "\n"),
             },
         };
 
@@ -128,9 +226,28 @@ impl ast::AssocItemList {
     }
 }
 
+impl ast::Impl {
+    pub fn get_or_create_assoc_item_list_with_editor(
+        &self,
+        editor: &SyntaxEditor,
+    ) -> ast::AssocItemList {
+        let make = editor.make();
+        if let Some(list) = self.assoc_item_list() {
+            list
+        } else {
+            let list = make.assoc_item_list_empty();
+            editor.insert_all(
+                Position::last_child_of(self.syntax()),
+                vec![make.whitespace(" ").into(), list.syntax().clone().into()],
+            );
+            list
+        }
+    }
+}
+
 impl ast::VariantList {
-    pub fn add_variant(&self, editor: &mut SyntaxEditor, variant: &ast::Variant) {
-        let make = SyntaxFactory::without_mappings();
+    pub fn add_variant(&self, editor: &SyntaxEditor, variant: &ast::Variant) {
+        let make = editor.make();
         let (indent, position) = match self.variants().last() {
             Some(last_item) => (
                 IndentLevel::from_node(last_item.syntax()),
@@ -141,7 +258,7 @@ impl ast::VariantList {
                     normalize_ws_between_braces(editor, self.syntax());
                     (IndentLevel::from_token(&l_curly) + 1, Position::after(&l_curly))
                 }
-                None => (IndentLevel::single(), Position::last_child_of(self.syntax())),
+                None => (IndentLevel::zero(), Position::last_child_of(self.syntax())),
             },
         };
         let elements: Vec<SyntaxElement> = vec![
@@ -154,7 +271,7 @@ impl ast::VariantList {
 }
 
 impl ast::Fn {
-    pub fn replace_or_insert_body(&self, editor: &mut SyntaxEditor, body: ast::BlockExpr) {
+    pub fn replace_or_insert_body(&self, editor: &SyntaxEditor, body: ast::BlockExpr) {
         if let Some(old_body) = self.body() {
             editor.replace(old_body.syntax(), body.syntax());
         } else {
@@ -170,8 +287,8 @@ impl ast::Fn {
     }
 }
 
-fn normalize_ws_between_braces(editor: &mut SyntaxEditor, node: &SyntaxNode) -> Option<()> {
-    let make = SyntaxFactory::without_mappings();
+fn normalize_ws_between_braces(editor: &SyntaxEditor, node: &SyntaxNode) -> Option<()> {
+    let make = editor.make();
     let l = node
         .children_with_tokens()
         .filter_map(|it| it.into_token())
@@ -184,10 +301,11 @@ fn normalize_ws_between_braces(editor: &mut SyntaxEditor, node: &SyntaxNode) -> 
     let indent = IndentLevel::from_node(node);
 
     match l.next_sibling_or_token() {
-        Some(ws) if ws.kind() == SyntaxKind::WHITESPACE => {
-            if ws.next_sibling_or_token()?.into_token()? == r {
-                editor.replace(ws, make.whitespace(&format!("\n{indent}")));
-            }
+        Some(ws)
+            if ws.kind() == SyntaxKind::WHITESPACE
+                && ws.next_sibling_or_token()?.into_token()? == r =>
+        {
+            editor.replace(ws, make.whitespace(&format!("\n{indent}")));
         }
         Some(ws) if ws.kind() == T!['}'] => {
             editor.insert(Position::after(l), make.whitespace(&format!("\n{indent}")));
@@ -198,11 +316,11 @@ fn normalize_ws_between_braces(editor: &mut SyntaxEditor, node: &SyntaxNode) -> 
 }
 
 pub trait Removable: AstNode {
-    fn remove(&self, editor: &mut SyntaxEditor);
+    fn remove(&self, editor: &SyntaxEditor);
 }
 
 impl Removable for ast::TypeBoundList {
-    fn remove(&self, editor: &mut SyntaxEditor) {
+    fn remove(&self, editor: &SyntaxEditor) {
         match self.syntax().siblings_with_tokens(Direction::Prev).find(|it| it.kind() == T![:]) {
             Some(colon) => editor.delete_all(colon..=self.syntax().clone().into()),
             None => editor.delete(self.syntax()),
@@ -211,9 +329,8 @@ impl Removable for ast::TypeBoundList {
 }
 
 impl Removable for ast::Use {
-    fn remove(&self, editor: &mut SyntaxEditor) {
-        let make = SyntaxFactory::without_mappings();
-
+    fn remove(&self, editor: &SyntaxEditor) {
+        let make = editor.make();
         let next_ws = self
             .syntax()
             .next_sibling_or_token()
@@ -235,7 +352,7 @@ impl Removable for ast::Use {
 }
 
 impl Removable for ast::UseTree {
-    fn remove(&self, editor: &mut SyntaxEditor) {
+    fn remove(&self, editor: &SyntaxEditor) {
         for dir in [Direction::Next, Direction::Prev] {
             if let Some(next_use_tree) = neighbor(self, dir) {
                 let separators = self
@@ -259,7 +376,7 @@ mod tests {
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
 
-    use crate::SourceFile;
+    use crate::{SourceFile, ast::syntax_factory::SyntaxFactory};
 
     use super::*;
 
@@ -372,10 +489,9 @@ enum Foo {
     }
 
     fn check_add_variant(before: &str, expected: &str, variant: ast::Variant) {
-        let enum_ = ast_from_text::<ast::Enum>(before);
-        let mut editor = SyntaxEditor::new(enum_.syntax().clone());
+        let (editor, enum_) = SyntaxEditor::with_ast_node(&ast_from_text::<ast::Enum>(before));
         if let Some(it) = enum_.variant_list() {
-            it.add_variant(&mut editor, &variant)
+            it.add_variant(&editor, &variant)
         }
         let edit = editor.finish();
         let after = edit.new_root.to_string();

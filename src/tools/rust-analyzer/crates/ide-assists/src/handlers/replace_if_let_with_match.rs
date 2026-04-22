@@ -13,7 +13,10 @@ use syntax::{
 
 use crate::{
     AssistContext, AssistId, Assists,
-    utils::{does_pat_match_variant, does_pat_variant_nested_or_literal, unwrap_trivial_block},
+    utils::{
+        does_pat_match_variant, does_pat_variant_nested_or_literal, unwrap_trivial_block,
+        wrap_paren,
+    },
 };
 
 // Assist: replace_if_let_with_match
@@ -57,7 +60,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
     let if_exprs = successors(Some(if_expr.clone()), |expr| match expr.else_branch()? {
         ast::ElseBranch::IfExpr(expr) => Some(expr),
         ast::ElseBranch::Block(block) => {
-            let block = unwrap_trivial_block(block).clone_for_update();
+            let block = unwrap_trivial_block(block);
             else_block = Some(block.reset_indent().indent(IndentLevel(1)));
             None
         }
@@ -91,7 +94,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
             guard
         };
 
-        let body = if_expr.then_branch()?.clone_for_update().indent(IndentLevel(1));
+        let body = if_expr.then_branch()?.indent(IndentLevel(1));
         cond_bodies.push((cond, guard, body));
     }
 
@@ -108,13 +111,14 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
         format!("Replace if{let_} with match"),
         available_range,
         move |builder| {
-            let make = SyntaxFactory::with_mappings();
+            let editor = builder.make_editor(if_expr.syntax());
+            let make = editor.make();
             let match_expr: ast::Expr = {
-                let else_arm = make_else_arm(ctx, &make, else_block, &cond_bodies);
+                let else_arm = make_else_arm(ctx, make, else_block, &cond_bodies);
                 let make_match_arm =
                     |(pat, guard, body): (_, Option<ast::Expr>, ast::BlockExpr)| {
                         // Dedent from original position, then indent for match arm
-                        let body = body.dedent(indent).indent(IndentLevel::single());
+                        let body = body.dedent(indent);
                         let body = unwrap_trivial_block(body);
                         match (pat, guard.map(|it| make.match_guard(it))) {
                             (Some(pat), guard) => make.match_arm(pat, guard, body),
@@ -127,8 +131,13 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
                         }
                     };
                 let arms = cond_bodies.into_iter().map(make_match_arm).chain([else_arm]);
-                let match_expr =
-                    make.expr_match(scrutinee_to_be_expr, make.match_arm_list(arms)).indent(indent);
+                let expr = scrutinee_to_be_expr.reset_indent();
+                let expr = if match_scrutinee_needs_paren(&expr) {
+                    make.expr_paren(expr).into()
+                } else {
+                    expr
+                };
+                let match_expr = make.expr_match(expr, make.match_arm_list(arms)).indent(indent);
                 match_expr.into()
             };
 
@@ -143,10 +152,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
             } else {
                 match_expr
             };
-
-            let mut editor = builder.make_editor(if_expr.syntax());
             editor.replace(if_expr.syntax(), expr.syntax());
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -246,7 +252,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
         first_arm.guard(),
         second_arm.guard(),
     )?;
-    let scrutinee = match_expr.expr()?;
+    let scrutinee = match_expr.expr()?.reset_indent();
     let guard = guard.and_then(|it| it.condition());
 
     let let_ = match &if_let_pat {
@@ -264,7 +270,8 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
         format!("Replace match with if{let_}"),
         match_expr.syntax().text_range(),
         move |builder| {
-            let make = SyntaxFactory::with_mappings();
+            let editor = builder.make_editor(match_expr.syntax());
+            let make = editor.make();
             let make_block_expr = |expr: ast::Expr| {
                 // Blocks with modifiers (unsafe, async, etc.) are parsed as BlockExpr, but are
                 // formatted without enclosing braces. If we encounter such block exprs,
@@ -289,14 +296,13 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
                 _ => make.expr_let(if_let_pat, scrutinee).into(),
             };
             let condition = if let Some(guard) = guard {
+                let guard = wrap_paren(guard, make, ast::prec::ExprPrecedence::LAnd);
                 make.expr_bin(condition, ast::BinaryOp::LogicOp(ast::LogicOp::And), guard).into()
             } else {
                 condition
             };
-            let then_expr =
-                then_expr.clone_for_update().reset_indent().indent(IndentLevel::single());
-            let else_expr =
-                else_expr.clone_for_update().reset_indent().indent(IndentLevel::single());
+            let then_expr = then_expr.reset_indent();
+            let else_expr = else_expr.reset_indent();
             let then_block = make_block_expr(then_expr);
             let else_expr = if is_empty_expr(&else_expr) { None } else { Some(else_expr) };
             let if_let_expr = make
@@ -307,9 +313,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
                 )
                 .indent(IndentLevel::from_node(match_expr.syntax()));
 
-            let mut editor = builder.make_editor(match_expr.syntax());
             editor.replace(match_expr.syntax(), if_let_expr.syntax());
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -400,26 +404,35 @@ fn let_and_guard(cond: &ast::Expr) -> (Option<ast::LetExpr>, Option<ast::Expr>) 
     } else if let ast::Expr::BinExpr(bin_expr) = cond
         && let Some(ast::Expr::LetExpr(let_expr)) = and_bin_expr_left(bin_expr).lhs()
     {
-        let new_expr = bin_expr.clone_subtree();
-        let mut edit = SyntaxEditor::new(new_expr.syntax().clone());
-
+        let (editor, new_expr) = SyntaxEditor::with_ast_node(bin_expr);
         let left_bin = and_bin_expr_left(&new_expr);
         if let Some(rhs) = left_bin.rhs() {
-            edit.replace(left_bin.syntax(), rhs.syntax());
+            editor.replace(left_bin.syntax(), rhs.syntax());
         } else {
             if let Some(next) = left_bin.syntax().next_sibling_or_token()
                 && next.kind() == SyntaxKind::WHITESPACE
             {
-                edit.delete(next);
+                editor.delete(next);
             }
-            edit.delete(left_bin.syntax());
+            editor.delete(left_bin.syntax());
         }
 
-        let new_expr = edit.finish().new_root().clone();
+        let new_expr = editor.finish().new_root().clone();
         (Some(let_expr), ast::Expr::cast(new_expr))
     } else {
         (None, Some(cond.clone()))
     }
+}
+
+fn match_scrutinee_needs_paren(expr: &ast::Expr) -> bool {
+    let make = SyntaxFactory::without_mappings();
+    let fake_scrutinee = make.expr_unit();
+    let fake_match = make.expr_match(fake_scrutinee, make.match_arm_list(std::iter::empty()));
+    let Some(fake_expr) = fake_match.expr() else {
+        stdx::never!();
+        return false;
+    };
+    expr.needs_parens_in_place_of(fake_match.syntax(), fake_expr.syntax())
 }
 
 fn and_bin_expr_left(expr: &ast::BinExpr) -> ast::BinExpr {
@@ -445,6 +458,26 @@ mod tests {
             r#"
 fn main() {
     if $0true {} else if false {} else {}
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_if_with_match_paren_jump_scrutinee() {
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+fn f() {
+    if $0(return) {}
+}
+"#,
+            r#"
+fn f() {
+    match (return) {
+        true => {}
+        false => (),
+    }
 }
 "#,
         )
@@ -956,7 +989,9 @@ fn foo(x: Result<i32, ()>) {
             r#"
 fn main() {
     if true {
-        $0if let Ok(rel_path) = path.strip_prefix(root_path) {
+        $0if let Ok(rel_path) = path.strip_prefix(root_path)
+            .and(x)
+        {
             let rel_path = RelativePathBuf::from_path(rel_path)
                 .ok()?;
             Some((*id, rel_path))
@@ -971,7 +1006,9 @@ fn main() {
             r#"
 fn main() {
     if true {
-        match path.strip_prefix(root_path) {
+        match path.strip_prefix(root_path)
+            .and(x)
+        {
             Ok(rel_path) => {
                 let rel_path = RelativePathBuf::from_path(rel_path)
                     .ok()?;
@@ -993,7 +1030,9 @@ fn main() {
             r#"
 fn main() {
     if true {
-        $0if let Ok(rel_path) = path.strip_prefix(root_path) {
+        $0if let Ok(rel_path) = path.strip_prefix(root_path)
+            .and(x)
+        {
             Foo {
                 x: 1
             }
@@ -1008,7 +1047,9 @@ fn main() {
             r#"
 fn main() {
     if true {
-        match path.strip_prefix(root_path) {
+        match path.strip_prefix(root_path)
+            .and(x)
+        {
             Ok(rel_path) => {
                 Foo {
                     x: 1
@@ -1023,7 +1064,34 @@ fn main() {
     }
 }
 "#,
-        )
+        );
+
+        check_assist(
+            replace_if_let_with_match,
+            r#"
+fn main() {
+    if true {
+        $0if true
+            && false
+        {
+            foo()
+        }
+    }
+}
+"#,
+            r#"
+fn main() {
+    if true {
+        match true
+            && false
+        {
+            true => foo(),
+            false => (),
+        }
+    }
+}
+"#,
+        );
     }
 
     #[test]
@@ -1878,7 +1946,9 @@ fn foo(x: Result<i32, ()>) {
             r#"
 fn main() {
     if true {
-        $0match path.strip_prefix(root_path) {
+        $0match path.strip_prefix(root_path)
+            .and(x)
+        {
             Ok(rel_path) => Foo {
                 x: 2
             }
@@ -1892,7 +1962,9 @@ fn main() {
             r#"
 fn main() {
     if true {
-        if let Ok(rel_path) = path.strip_prefix(root_path) {
+        if let Ok(rel_path) = path.strip_prefix(root_path)
+            .and(x)
+        {
             Foo {
                 x: 2
             }
@@ -1911,7 +1983,9 @@ fn main() {
             r#"
 fn main() {
     if true {
-        $0match path.strip_prefix(root_path) {
+        $0match path.strip_prefix(root_path)
+            .and(x)
+        {
             Ok(rel_path) => {
                 let rel_path = RelativePathBuf::from_path(rel_path)
                     .ok()?;
@@ -1929,7 +2003,9 @@ fn main() {
             r#"
 fn main() {
     if true {
-        if let Ok(rel_path) = path.strip_prefix(root_path) {
+        if let Ok(rel_path) = path.strip_prefix(root_path)
+            .and(x)
+        {
             let rel_path = RelativePathBuf::from_path(rel_path)
                 .ok()?;
             Some((*id, rel_path))
@@ -2227,14 +2303,35 @@ fn main() {
 "#,
             r#"
 fn main() {
-    if let Some(n) = Some(0) && n % 2 == 0 && n != 6 {
+    if let Some(n) = Some(0) && (n % 2 == 0 && n != 6) {
         ()
     } else {
         code()
     }
 }
 "#,
-        )
+        );
+
+        check_assist(
+            replace_match_with_if_let,
+            r#"
+fn main() {
+    match$0 Some(0) {
+        Some(n) if n % 2 == 0 || n == 7 => (),
+        _ => code(),
+    }
+}
+"#,
+            r#"
+fn main() {
+    if let Some(n) = Some(0) && (n % 2 == 0 || n == 7) {
+        ()
+    } else {
+        code()
+    }
+}
+"#,
+        );
     }
 
     #[test]

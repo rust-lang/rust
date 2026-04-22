@@ -355,12 +355,14 @@ impl<T, A: Allocator + Clone> BTreeSet<T, A> {
     /// # #![allow(unused_mut)]
     /// # #![feature(allocator_api)]
     /// # #![feature(btreemap_alloc)]
+    ///
     /// use std::collections::BTreeSet;
     /// use std::alloc::Global;
     ///
-    /// let mut set: BTreeSet<i32> = BTreeSet::new_in(Global);
+    /// let set: BTreeSet<i32> = BTreeSet::new_in(Global);
     /// ```
     #[unstable(feature = "btreemap_alloc", issue = "32838")]
+    #[must_use]
     pub const fn new_in(alloc: A) -> BTreeSet<T, A> {
         BTreeSet { map: BTreeMap::new_in(alloc) }
     }
@@ -1546,7 +1548,9 @@ impl<'a, T, A: Allocator + Clone> IntoIterator for &'a BTreeSet<T, A> {
     }
 }
 
-/// An iterator produced by calling `extract_if` on BTreeSet.
+/// This `struct` is created by the [`extract_if`] method on [`BTreeSet`].
+///
+/// [`extract_if`]: BTreeSet::extract_if
 #[stable(feature = "btree_extract_if", since = "1.91.0")]
 #[must_use = "iterators are lazy and do nothing unless consumed; \
     use `retain` or `extract_if().for_each(drop)` to remove and discard elements"]

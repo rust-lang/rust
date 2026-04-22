@@ -3,7 +3,7 @@
 // Tests that the return type of trait methods is correctly normalized when
 // checking that a method in an impl matches the trait definition when the
 // return type involves a defaulted associated type.
-// ie. the trait has a method with return type `-> Self::R`, and `type R = ()`,
+// i.e. the trait has a method with return type `-> Self::R`, and `type R = ()`,
 // but the impl leaves out the return type (resulting in `()`).
 // Note that specialization is not involved in this test; no items in
 // implementations may be overridden. If they were, the normalization wouldn't

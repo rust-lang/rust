@@ -4,10 +4,13 @@ use either::Either;
 use hir_def::{
     AdtId, BuiltinDeriveImplId, FunctionId, GenericDefId, ImplId, ItemContainerId,
     builtin_derive::BuiltinDeriveImplMethod,
-    expr_store::ExpressionStore,
+    expr_store::{Body, ExpressionStore},
     hir::generics::{GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate},
     item_tree::FieldsShape,
-    signatures::{StaticFlags, TraitFlags},
+    signatures::{
+        ConstSignature, FunctionSignature, ImplSignature, StaticFlags, StaticSignature, TraitFlags,
+        TraitSignature, TypeAliasSignature,
+    },
     type_ref::{TypeBound, TypeRef, TypeRefId},
 };
 use hir_expand::name::Name;
@@ -26,9 +29,9 @@ use rustc_type_ir::inherent::IntoKind;
 
 use crate::{
     Adt, AnyFunctionId, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Crate, Enum,
-    ExternCrateDecl, Field, Function, GenericParam, HasCrate, HasVisibility, Impl, LifetimeParam,
-    Macro, Module, SelfParam, Static, Struct, StructKind, Trait, TraitRef, TupleField, Type,
-    TypeAlias, TypeNs, TypeOrConstParam, TypeParam, Union, Variant,
+    EnumVariant, ExternCrateDecl, Field, Function, GenericParam, HasCrate, HasVisibility, Impl,
+    LifetimeParam, Macro, Module, SelfParam, Static, Struct, StructKind, Trait, TraitRef,
+    TupleField, Type, TypeAlias, TypeNs, TypeOrConstParam, TypeParam, Union,
 };
 
 fn write_builtin_derive_impl_method<'db>(
@@ -38,7 +41,7 @@ fn write_builtin_derive_impl_method<'db>(
 ) -> Result {
     let db = f.db;
     let loc = impl_.loc(db);
-    let (adt_params, _adt_params_store) = db.generic_params_and_store(loc.adt.into());
+    let adt_params = GenericParams::of(db, loc.adt.into());
 
     if f.show_container_bounds() && !adt_params.is_empty() {
         f.write_str("impl")?;
@@ -73,7 +76,7 @@ fn write_builtin_derive_impl_method<'db>(
 
         let predicates =
             hir_ty::builtin_derive::predicates(db, impl_).explicit_predicates().skip_binder();
-        write_params_bounds(f, predicates)?;
+        write_params_bounds(f, &Vec::from_iter(predicates))?;
     }
 
     Ok(())
@@ -94,22 +97,22 @@ impl<'db> HirDisplay<'db> for Function {
         // Write container (trait or impl)
         let container_params = match container {
             ItemContainerId::TraitId(trait_) => {
-                let (params, params_store) = f.db.generic_params_and_store(trait_.into());
+                let (params, params_store) = GenericParams::with_store(f.db, trait_.into());
                 if f.show_container_bounds() && !params.is_empty() {
                     write_trait_header(trait_.into(), f)?;
                     f.write_char('\n')?;
-                    has_disaplayable_predicates(f.db, &params, &params_store)
+                    has_disaplayable_predicates(f.db, params, params_store)
                         .then_some((params, params_store))
                 } else {
                     None
                 }
             }
             ItemContainerId::ImplId(impl_) => {
-                let (params, params_store) = f.db.generic_params_and_store(impl_.into());
+                let (params, params_store) = GenericParams::with_store(f.db, impl_.into());
                 if f.show_container_bounds() && !params.is_empty() {
                     write_impl_header(impl_, f)?;
                     f.write_char('\n')?;
-                    has_disaplayable_predicates(f.db, &params, &params_store)
+                    has_disaplayable_predicates(f.db, params, params_store)
                         .then_some((params, params_store))
                 } else {
                     None
@@ -131,7 +134,7 @@ impl<'db> HirDisplay<'db> for Function {
                 _ => unreachable!(),
             };
             write!(f, "\n    // Bounds from {container_name}:",)?;
-            write_where_predicates(&container_params, &container_params_store, f)?;
+            write_where_predicates(container_params, container_params_store, f)?;
         }
         Ok(())
     }
@@ -140,7 +143,7 @@ impl<'db> HirDisplay<'db> for Function {
 fn write_function<'db>(f: &mut HirFormatter<'_, 'db>, func_id: FunctionId) -> Result<bool> {
     let db = f.db;
     let func = Function::from(func_id);
-    let data = db.function_signature(func_id);
+    let data = FunctionSignature::of(db, func_id);
 
     let mut module = func.module(db);
     // Block-local impls are "hoisted" to the nearest (non-block) module.
@@ -189,7 +192,7 @@ fn write_function<'db>(f: &mut HirFormatter<'_, 'db>, func_id: FunctionId) -> Re
 
     let comma = if too_long_param { ",\n    " } else { ", " };
     // FIXME: Use resolved `param.ty` once we no longer discard lifetimes
-    let body = db.body(func_id.into());
+    let body = Body::of(db, func_id.into());
     for (type_ref, param) in data.params.iter().zip(func.assoc_fn_params(db)).skip(skip_self) {
         if !first {
             f.write_str(comma)?;
@@ -268,7 +271,7 @@ fn write_impl_header<'db>(impl_: ImplId, f: &mut HirFormatter<'_, 'db>) -> Resul
     let def_id = GenericDefId::ImplId(impl_);
     write_generic_params(def_id, f)?;
 
-    let impl_data = db.impl_signature(impl_);
+    let impl_data = ImplSignature::of(db, impl_);
     if let Some(target_trait) = &impl_data.target_trait {
         f.write_char(' ')?;
         hir_display_with_store(&impl_data.store[target_trait.path], &impl_data.store).hir_fmt(f)?;
@@ -297,7 +300,7 @@ impl<'db> HirDisplay<'db> for SelfParam {
                 }
             },
         };
-        let data = f.db.function_signature(func);
+        let data = FunctionSignature::of(f.db, func);
         let param = *data.params.first().unwrap();
         match &data.store[param] {
             TypeRef::Path(p) if p.is_self_type() => f.write_str("self"),
@@ -440,7 +443,7 @@ fn write_fields<'db>(
 }
 
 fn write_variants<'db>(
-    variants: &[Variant],
+    variants: &[EnumVariant],
     has_where_clause: bool,
     limit: usize,
     f: &mut HirFormatter<'_, 'db>,
@@ -494,7 +497,7 @@ impl<'db> HirDisplay<'db> for TupleField {
     }
 }
 
-impl<'db> HirDisplay<'db> for Variant {
+impl<'db> HirDisplay<'db> for EnumVariant {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         write!(f, "{}", self.name(f.db).display(f.db, f.edition()))?;
         let data = self.id.fields(f.db);
@@ -569,13 +572,13 @@ impl<'db> HirDisplay<'db> for TypeOrConstParam {
 
 impl<'db> HirDisplay<'db> for TypeParam {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
-        let params = f.db.generic_params(self.id.parent());
+        let params = GenericParams::of(f.db, self.id.parent());
         let param_data = &params[self.id.local_id()];
         let krate = self.id.parent().krate(f.db).id;
         let ty = self.ty(f.db).ty;
         let predicates = GenericPredicates::query_all(f.db, self.id.parent());
         let predicates = predicates
-            .iter_identity_copied()
+            .iter_identity()
             .filter(|wc| match wc.kind().skip_binder() {
                 ClauseKind::Trait(tr) => tr.self_ty() == ty,
                 ClauseKind::Projection(proj) => proj.self_ty() == ty,
@@ -657,7 +660,7 @@ fn write_generic_params_or_args<'db>(
     f: &mut HirFormatter<'_, 'db>,
     include_defaults: bool,
 ) -> Result {
-    let (params, store) = f.db.generic_params_and_store(def);
+    let (params, store) = GenericParams::with_store(f.db, def);
     if params.iter_lt().next().is_none()
         && params.iter_type_or_consts().all(|it| it.1.const_param().is_none())
         && params
@@ -693,17 +696,17 @@ fn write_generic_params_or_args<'db>(
                     write!(f, "{}", name.display(f.db, f.edition()))?;
                     if include_defaults && let Some(default) = &ty.default {
                         f.write_str(" = ")?;
-                        default.hir_fmt(f, &store)?;
+                        default.hir_fmt(f, store)?;
                     }
                 }
                 TypeOrConstParamData::ConstParamData(c) => {
                     delim(f)?;
                     write!(f, "const {}: ", name.display(f.db, f.edition()))?;
-                    c.ty.hir_fmt(f, &store)?;
+                    c.ty.hir_fmt(f, store)?;
 
                     if include_defaults && let Some(default) = &c.default {
                         f.write_str(" = ")?;
-                        default.hir_fmt(f, &store)?;
+                        default.hir_fmt(f, store)?;
                     }
                 }
             }
@@ -715,13 +718,13 @@ fn write_generic_params_or_args<'db>(
 }
 
 fn write_where_clause<'db>(def: GenericDefId, f: &mut HirFormatter<'_, 'db>) -> Result<bool> {
-    let (params, store) = f.db.generic_params_and_store(def);
-    if !has_disaplayable_predicates(f.db, &params, &store) {
+    let (params, store) = GenericParams::with_store(f.db, def);
+    if !has_disaplayable_predicates(f.db, params, store) {
         return Ok(false);
     }
 
     f.write_str("\nwhere")?;
-    write_where_predicates(&params, &store, f)?;
+    write_where_predicates(params, store, f)?;
 
     Ok(true)
 }
@@ -736,7 +739,7 @@ fn has_disaplayable_predicates(
             pred,
             WherePredicate::TypeBound { target, .. }
             if  matches!(store[*target],
-                TypeRef::TypeParam(id) if db.generic_params(id.parent())[id.local_id()].name().is_none()
+                TypeRef::TypeParam(id) if GenericParams::of(db,id.parent())[id.local_id()].name().is_none()
             )
         )
     })
@@ -752,7 +755,7 @@ fn write_where_predicates<'db>(
     // unnamed type targets are displayed inline with the argument itself, e.g. `f: impl Y`.
     let is_unnamed_type_target = |target: TypeRefId| {
         matches!(store[target],
-            TypeRef::TypeParam(id) if f.db.generic_params(id.parent())[id.local_id()].name().is_none()
+            TypeRef::TypeParam(id) if GenericParams::of(f.db,id.parent())[id.local_id()].name().is_none()
         )
     };
 
@@ -816,7 +819,7 @@ impl<'db> HirDisplay<'db> for Const {
             module = module.nearest_non_block_module(db);
         }
         write_visibility(module.id, self.visibility(db), f)?;
-        let data = db.const_signature(self.id);
+        let data = ConstSignature::of(db, self.id);
         f.write_str("const ")?;
         match &data.name {
             Some(name) => write!(f, "{}: ", name.display(f.db, f.edition()))?,
@@ -830,7 +833,7 @@ impl<'db> HirDisplay<'db> for Const {
 impl<'db> HirDisplay<'db> for Static {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
-        let data = f.db.static_signature(self.id);
+        let data = StaticSignature::of(f.db, self.id);
         f.write_str("static ")?;
         if data.flags.contains(StaticFlags::MUTABLE) {
             f.write_str("mut ")?;
@@ -889,7 +892,7 @@ impl<'db> HirDisplay<'db> for Trait {
 
 fn write_trait_header<'db>(trait_: Trait, f: &mut HirFormatter<'_, 'db>) -> Result {
     write_visibility(trait_.module(f.db).id, trait_.visibility(f.db), f)?;
-    let data = f.db.trait_signature(trait_.id);
+    let data = TraitSignature::of(f.db, trait_.id);
     if data.flags.contains(TraitFlags::UNSAFE) {
         f.write_str("unsafe ")?;
     }
@@ -904,7 +907,7 @@ fn write_trait_header<'db>(trait_: Trait, f: &mut HirFormatter<'_, 'db>) -> Resu
 impl<'db> HirDisplay<'db> for TypeAlias {
     fn hir_fmt(&self, f: &mut HirFormatter<'_, 'db>) -> Result {
         write_visibility(self.module(f.db).id, self.visibility(f.db), f)?;
-        let data = f.db.type_alias_signature(self.id);
+        let data = TypeAliasSignature::of(f.db, self.id);
         write!(f, "type {}", data.name.display(f.db, f.edition()))?;
         let def_id = GenericDefId::TypeAliasId(self.id);
         write_generic_params(def_id, f)?;

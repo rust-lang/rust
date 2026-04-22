@@ -265,6 +265,7 @@ fn build_error_for_const_call<'tcx>(
             }
         }
         CallKind::FnCall { fn_trait_id, self_ty } => {
+            let kind = ccx.const_kind();
             let note = match self_ty.kind() {
                 FnDef(def_id, ..) => {
                     let span = tcx.def_span(*def_id);
@@ -274,8 +275,8 @@ fn build_error_for_const_call<'tcx>(
 
                     Some(errors::NonConstClosureNote::FnDef { span })
                 }
-                FnPtr(..) => Some(errors::NonConstClosureNote::FnPtr),
-                Closure(..) => Some(errors::NonConstClosureNote::Closure),
+                FnPtr(..) => Some(errors::NonConstClosureNote::FnPtr { kind }),
+                Closure(..) => Some(errors::NonConstClosureNote::Closure { kind }),
                 _ => None,
             };
 

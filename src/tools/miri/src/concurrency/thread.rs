@@ -1,9 +1,9 @@
 //! Implements threads.
 
-use std::mem;
 use std::sync::atomic::Ordering::Relaxed;
 use std::task::Poll;
 use std::time::{Duration, SystemTime};
+use std::{io, mem};
 
 use rand::seq::IteratorRandom;
 use rustc_abi::ExternAbi;
@@ -18,6 +18,7 @@ use rustc_span::{DUMMY_SP, Span};
 use rustc_target::spec::Os;
 
 use crate::concurrency::GlobalDataRaceHandler;
+use crate::concurrency::blocking_io::InterestReceiver;
 use crate::shims::tls;
 use crate::*;
 
@@ -25,10 +26,11 @@ use crate::*;
 enum SchedulingAction {
     /// Execute step on the active thread.
     ExecuteStep,
-    /// Execute a timeout callback.
-    ExecuteTimeoutCallback,
-    /// Wait for a bit, until there is a timeout to be called.
-    Sleep(Duration),
+    /// Wait for a bit, but at most as long as the duration specified.
+    /// We wake up early if an I/O event happened.
+    /// If the duration is [`None`], we sleep indefinitely. This is
+    /// only allowed when isolation is disabled and there are threads waiting for I/O!
+    SleepAndWaitForIo(Option<Duration>),
 }
 
 /// What to do with TLS allocations from terminated threads
@@ -111,6 +113,8 @@ pub enum BlockReason {
     Eventfd,
     /// Blocked on unnamed_socket.
     UnnamedSocket,
+    /// Blocked on an IO operation.
+    IO,
     /// Blocked for any reason related to GenMC, such as `assume` statements (GenMC mode only).
     /// Will be implicitly unblocked when GenMC schedules this thread again.
     Genmc,
@@ -653,64 +657,10 @@ impl<'tcx> ThreadManager<'tcx> {
         // We should only switch stacks between steps.
         self.yield_active_thread = true;
     }
-
-    /// Get the wait time for the next timeout, or `None` if no timeout is pending.
-    fn next_callback_wait_time(&self, clock: &MonotonicClock) -> Option<Duration> {
-        self.threads
-            .iter()
-            .filter_map(|t| {
-                match &t.state {
-                    ThreadState::Blocked { timeout: Some(timeout), .. } =>
-                        Some(timeout.get_wait_time(clock)),
-                    _ => None,
-                }
-            })
-            .min()
-    }
 }
 
 impl<'tcx> EvalContextPrivExt<'tcx> for MiriInterpCx<'tcx> {}
 trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
-    /// Execute a timeout callback on the callback's thread.
-    #[inline]
-    fn run_timeout_callback(&mut self) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let mut found_callback = None;
-        // Find a blocked thread that has timed out.
-        for (id, thread) in this.machine.threads.threads.iter_enumerated_mut() {
-            match &thread.state {
-                ThreadState::Blocked { timeout: Some(timeout), .. }
-                    if timeout.get_wait_time(&this.machine.monotonic_clock) == Duration::ZERO =>
-                {
-                    let old_state = mem::replace(&mut thread.state, ThreadState::Enabled);
-                    let ThreadState::Blocked { callback, .. } = old_state else { unreachable!() };
-                    found_callback = Some((id, callback));
-                    // Run the fallback (after the loop because borrow-checking).
-                    break;
-                }
-                _ => {}
-            }
-        }
-        if let Some((thread, callback)) = found_callback {
-            // This back-and-forth with `set_active_thread` is here because of two
-            // design decisions:
-            // 1. Make the caller and not the callback responsible for changing
-            //    thread.
-            // 2. Make the scheduler the only place that can change the active
-            //    thread.
-            let old_thread = this.machine.threads.set_active_thread_id(thread);
-            callback.call(this, UnblockKind::TimedOut)?;
-            this.machine.threads.set_active_thread_id(old_thread);
-        }
-        // found_callback can remain None if the computer's clock
-        // was shifted after calling the scheduler and before the call
-        // to get_ready_callback (see issue
-        // https://github.com/rust-lang/miri/issues/1763). In this case,
-        // just do nothing, which effectively just returns to the
-        // scheduler.
-        interp_ok(())
-    }
-
     #[inline]
     fn run_on_stack_empty(&mut self) -> InterpResult<'tcx, Poll<()>> {
         let this = self.eval_context_mut();
@@ -765,9 +715,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         }
 
         // We are not in GenMC mode, so we control the scheduling.
-        let thread_manager = &mut this.machine.threads;
-        let clock = &this.machine.monotonic_clock;
-        let rng = this.machine.rng.get_mut();
+        let thread_manager = &this.machine.threads;
         // This thread and the program can keep going.
         if thread_manager.threads[thread_manager.active_thread].state.is_enabled()
             && !thread_manager.yield_active_thread
@@ -775,16 +723,30 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             // The currently active thread is still enabled, just continue with it.
             return interp_ok(SchedulingAction::ExecuteStep);
         }
-        // The active thread yielded or got terminated. Let's see if there are any timeouts to take
-        // care of. We do this *before* running any other thread, to ensure that timeouts "in the
-        // past" fire before any other thread can take an action. This ensures that for
+
+        // The active thread yielded or got terminated. Let's see if there are any I/O events
+        // or timeouts to take care of.
+
+        if this.machine.communicate() {
+            // When isolation is disabled we need to check for events for
+            // threads which are blocked on host I/O.
+            // We do this before running any other threads such that the threads
+            // which received events are available for scheduling afterwards.
+
+            // Perform a non-blocking poll for newly available I/O events from the OS.
+            this.poll_and_unblock(Some(Duration::ZERO))?;
+        }
+
+        // We also check timeouts before running any other thread, to ensure that timeouts
+        // "in the past" fire before any other thread can take an action. This ensures that for
         // `pthread_cond_timedwait`, "an error is returned if [...] the absolute time specified by
         // abstime has already been passed at the time of the call".
         // <https://pubs.opengroup.org/onlinepubs/9699919799/functions/pthread_cond_timedwait.html>
-        let potential_sleep_time = thread_manager.next_callback_wait_time(clock);
-        if potential_sleep_time == Some(Duration::ZERO) {
-            return interp_ok(SchedulingAction::ExecuteTimeoutCallback);
-        }
+        let potential_sleep_time = this.unblock_expired_timeouts()?;
+
+        let thread_manager = &mut this.machine.threads;
+        let rng = this.machine.rng.get_mut();
+
         // No callbacks immediately scheduled, pick a regular thread to execute.
         // The active thread blocked or yielded. So we go search for another enabled thread.
         // We build the list of threads by starting with the threads after the current one, followed by
@@ -832,10 +794,89 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
             // All threads are currently blocked, but we have unexecuted
             // timeout_callbacks, which may unblock some of the threads. Hence,
             // sleep until the first callback.
-            interp_ok(SchedulingAction::Sleep(sleep_time))
+            interp_ok(SchedulingAction::SleepAndWaitForIo(Some(sleep_time)))
+        } else if thread_manager
+            .threads
+            .iter()
+            .any(|thread| thread.state.is_blocked_on(BlockReason::IO))
+        {
+            // At least one thread is blocked on host I/O but doesn't
+            // have a timeout set. Hence, we sleep indefinitely in the
+            // hope that eventually an I/O event for this thread happens.
+            interp_ok(SchedulingAction::SleepAndWaitForIo(None))
         } else {
             throw_machine_stop!(TerminationInfo::GlobalDeadlock);
         }
+    }
+
+    /// Poll for I/O events until either an I/O event happened or the timeout expired.
+    /// The different timeout values are described in [`BlockingIoManager::poll`].
+    fn poll_and_unblock(&mut self, timeout: Option<Duration>) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        let ready = match this.machine.blocking_io.poll(timeout) {
+            Ok(ready) => ready,
+            // We can ignore errors originating from interrupts; that's just a spurious wakeup.
+            Err(e) if e.kind() == io::ErrorKind::Interrupted => return interp_ok(()),
+            // For other errors we panic. On Linux and BSD hosts this should only be
+            // reachable when a system resource error (e.g. ENOMEM or ENOSPC) occurred.
+            Err(e) => panic!("unexpected error while polling: {e}"),
+        };
+
+        ready.into_iter().try_for_each(|(receiver, _source)| {
+            match receiver {
+                InterestReceiver::UnblockThread(thread_id) =>
+                    this.unblock_thread(thread_id, BlockReason::IO),
+            }
+        })
+    }
+
+    /// Find all threads with expired timeouts, unblock them and execute their timeout callbacks.
+    ///
+    /// This method returns the minimum duration until the next thread timeout expires.
+    /// If all ready threads have no timeout set, [`None`] is returned.
+    fn unblock_expired_timeouts(&mut self) -> InterpResult<'tcx, Option<Duration>> {
+        let this = self.eval_context_mut();
+        let clock = &this.machine.monotonic_clock;
+
+        let mut min_wait_time = Option::<Duration>::None;
+        let mut callbacks = Vec::new();
+
+        for (id, thread) in this.machine.threads.threads.iter_enumerated_mut() {
+            match &thread.state {
+                ThreadState::Blocked { timeout: Some(timeout), .. } => {
+                    let wait_time = timeout.get_wait_time(clock);
+                    if wait_time.is_zero() {
+                        // The timeout expired for this thread.
+                        let old_state = mem::replace(&mut thread.state, ThreadState::Enabled);
+                        let ThreadState::Blocked { callback, .. } = old_state else {
+                            unreachable!()
+                        };
+                        // Add callback to list to be run after this loop because of borrow-checking.
+                        callbacks.push((id, callback));
+                    } else {
+                        // Update `min_wait_time` to contain the smallest duration until
+                        // the next timeout expires.
+                        min_wait_time = Some(wait_time.min(min_wait_time.unwrap_or(Duration::MAX)));
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        for (thread, callback) in callbacks {
+            // This back-and-forth with `set_active_thread` is here because of two
+            // design decisions:
+            // 1. Make the caller and not the callback responsible for changing
+            //    thread.
+            // 2. Make the scheduler the only place that can change the active
+            //    thread.
+            let old_thread = this.machine.threads.set_active_thread_id(thread);
+            callback.call(this, UnblockKind::TimedOut)?;
+            this.machine.threads.set_active_thread_id(old_thread);
+        }
+
+        interp_ok(min_wait_time)
     }
 }
 
@@ -1300,11 +1341,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         }
                     }
                 }
-                SchedulingAction::ExecuteTimeoutCallback => {
-                    this.run_timeout_callback()?;
-                }
-                SchedulingAction::Sleep(duration) => {
-                    this.machine.monotonic_clock.sleep(duration);
+                SchedulingAction::SleepAndWaitForIo(duration) => {
+                    if this.machine.communicate() {
+                        // When we're running with isolation disabled, instead of
+                        // strictly sleeping the duration we allow waking up
+                        // early for I/O events from the OS.
+
+                        this.poll_and_unblock(duration)?;
+                    } else {
+                        let duration = duration.expect(
+                            "Infinite sleep should not be triggered when isolation is enabled",
+                        );
+                        this.machine.monotonic_clock.sleep(duration);
+                    }
                 }
             }
         }

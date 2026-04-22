@@ -259,7 +259,7 @@ fn emit_return_lint(
 // Go backwards while encountering whitespace and extend the given Span to that point.
 fn extend_span_to_previous_non_ws(cx: &LateContext<'_>, sp: Span) -> Span {
     if let Ok(prev_source) = cx.sess().source_map().span_to_prev_source(sp) {
-        let ws = [b' ', b'\t', b'\n'];
+        let ws = *b" \t\n";
         if let Some(non_ws_pos) = prev_source.bytes().rposition(|c| !ws.contains(&c)) {
             let len = prev_source.len() - non_ws_pos - 1;
             return sp.with_lo(sp.lo() - BytePos::from_usize(len));

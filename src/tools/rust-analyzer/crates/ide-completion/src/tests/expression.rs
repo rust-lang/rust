@@ -1030,8 +1030,6 @@ fn main() {
 "#,
         expect![[r#"
             fn test() fn() -> Zulu
-            ex Zulu
-            ex Zulu::test()
         "#]],
     );
 }
@@ -2275,7 +2273,7 @@ fn main() {
     $0
 }
 //- /std.rs crate:std
-#[unstable]
+#[unstable(feature = "some_non_internal_feature")]
 pub struct UnstableButWeAreOnNightlyAnyway;
 "#,
         expect![[r#"
@@ -2283,6 +2281,112 @@ pub struct UnstableButWeAreOnNightlyAnyway;
             md std
             st UnstableButWeAreOnNightlyAnyway UnstableButWeAreOnNightlyAnyway
             bt u32                                                         u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+}
+
+#[test]
+fn expr_unstable_item_internal_feature() {
+    check(
+        r#"
+//- toolchain:nightly
+//- /main.rs crate:main deps:std
+use std::*;
+fn main() {
+    $0
+}
+//- /std.rs crate:std
+#[unstable(feature = "intrinsics")]
+pub mod intrinsics {}
+    "#,
+        expect![[r#"
+            fn main() fn()
+            md std
+            bt u32     u32
+            kw async
+            kw const
+            kw crate::
+            kw enum
+            kw extern
+            kw false
+            kw fn
+            kw for
+            kw if
+            kw if let
+            kw impl
+            kw impl for
+            kw let
+            kw letm
+            kw loop
+            kw match
+            kw mod
+            kw return
+            kw self::
+            kw static
+            kw struct
+            kw trait
+            kw true
+            kw type
+            kw union
+            kw unsafe
+            kw use
+            kw while
+            kw while let
+            sn macro_rules
+            sn pd
+            sn ppd
+        "#]],
+    );
+    check(
+        r#"
+//- toolchain:nightly
+//- /main.rs crate:main deps:std
+#![feature(intrinsics)]
+use std::*;
+fn main() {
+    $0
+}
+//- /std.rs crate:std
+#[unstable(feature = "intrinsics")]
+pub mod intrinsics {}
+    "#,
+        expect![[r#"
+            fn main() fn()
+            md intrinsics
+            md std
+            bt u32     u32
             kw async
             kw const
             kw crate::
@@ -3656,6 +3760,41 @@ fn main() {
             sn refm                &mut expr
             sn return            return expr
             sn unsafe              unsafe {}
+        "#]],
+    );
+}
+
+#[test]
+fn rpitit_with_reference() {
+    check(
+        r#"
+trait Foo {
+    fn foo(&self);
+}
+
+trait Bar {
+    fn bar(&self) -> &impl Foo;
+}
+
+fn baz(v: impl Bar) {
+    v.bar().$0
+}
+    "#,
+        expect![[r#"
+            me foo() (as Foo) fn(&self)
+            sn box       Box::new(expr)
+            sn call      function(expr)
+            sn const           const {}
+            sn dbg           dbg!(expr)
+            sn dbgr         dbg!(&expr)
+            sn deref              *expr
+            sn let                  let
+            sn letm             let mut
+            sn match      match expr {}
+            sn ref                &expr
+            sn refm           &mut expr
+            sn return       return expr
+            sn unsafe         unsafe {}
         "#]],
     );
 }

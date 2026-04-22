@@ -374,7 +374,7 @@ error[E0283]: type annotations needed
 LL | fn in_dyn_Fn_return_in_return() -> &'static dyn Fn() -> impl Debug { panic!() }
    |                                                         ^^^^^^^^^^ cannot infer type
    |
-   = note: cannot satisfy `_: Debug`
+   = note: the type must implement `Debug`
 
 error[E0283]: type annotations needed
   --> $DIR/where-allowed.rs:65:46
@@ -387,7 +387,7 @@ LL | fn in_impl_Fn_return_in_return() -> &'static impl Fn() -> impl Debug { pani
              where A: std::marker::Tuple, F: Fn<A>, F: ?Sized;
            - impl<Args, F, A> Fn<Args> for Box<F, A>
              where Args: std::marker::Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
-           - impl<F, Args> Fn<Args> for Exclusive<F>
+           - impl<F, Args> Fn<Args> for SyncView<F>
              where F: Sync, F: Fn<Args>, Args: std::marker::Tuple;
 
 error: unconstrained opaque type

@@ -15,13 +15,14 @@ macro_rules! unsafe_impl_trusted_step {
     )*};
 }
 unsafe_impl_trusted_step![AsciiChar char i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize Ipv4Addr Ipv6Addr];
+unsafe_impl_trusted_step![NonZero<u8> NonZero<u16> NonZero<u32> NonZero<u64> NonZero<u128> NonZero<usize>];
 
 /// Objects that have a notion of *successor* and *predecessor* operations.
 ///
 /// The *successor* operation moves towards values that compare greater.
 /// The *predecessor* operation moves towards values that compare lesser.
 #[rustc_diagnostic_item = "range_step"]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "`std::ops::Range<{Self}>` is not an iterator",
     label = "`Range<{Self}>` is not an iterator",
     note = "`Range` only implements `Iterator` for select types in the standard library, \
@@ -29,7 +30,8 @@ unsafe_impl_trusted_step![AsciiChar char i8 i16 i32 i64 i128 isize u8 u16 u32 u6
             unstable `Step` trait"
 )]
 #[unstable(feature = "step_trait", issue = "42168")]
-pub trait Step: Clone + PartialOrd + Sized {
+#[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+pub const trait Step: [const] Clone + [const] PartialOrd + Sized {
     /// Returns the bounds on the number of *successor* steps required to get from `start` to `end`
     /// like [`Iterator::size_hint()`][Iterator::size_hint()].
     ///
@@ -254,15 +256,14 @@ macro_rules! step_identical_methods {
 
 macro_rules! step_integer_impls {
     {
-        narrower than or same width as usize:
-            $( [ $u_narrower:ident $i_narrower:ident ] ),+;
-        wider than usize:
-            $( [ $u_wider:ident $i_wider:ident ] ),+;
+        [ $( [ $u_narrower:ident $i_narrower:ident ] ),+ ] <= usize <
+        [ $( [ $u_wider:ident $i_wider:ident ] ),+ ]
     } => {
         $(
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", issue = "42168")]
-            impl Step for $u_narrower {
+            #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+            impl const Step for $u_narrower {
                 step_identical_methods!();
                 step_unsigned_methods!();
 
@@ -296,7 +297,8 @@ macro_rules! step_integer_impls {
 
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", issue = "42168")]
-            impl Step for $i_narrower {
+            #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+            impl const Step for $i_narrower {
                 step_identical_methods!();
                 step_signed_methods!($u_narrower);
 
@@ -362,7 +364,8 @@ macro_rules! step_integer_impls {
         $(
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", issue = "42168")]
-            impl Step for $u_wider {
+            #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+            impl const Step for $u_wider {
                 step_identical_methods!();
                 step_unsigned_methods!();
 
@@ -392,7 +395,8 @@ macro_rules! step_integer_impls {
 
             #[allow(unreachable_patterns)]
             #[unstable(feature = "step_trait", issue = "42168")]
-            impl Step for $i_wider {
+            #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+            impl const Step for $i_wider {
                 step_identical_methods!();
                 step_signed_methods!($u_wider);
 
@@ -432,24 +436,145 @@ macro_rules! step_integer_impls {
 
 #[cfg(target_pointer_width = "64")]
 step_integer_impls! {
-    narrower than or same width as usize: [u8 i8], [u16 i16], [u32 i32], [u64 i64], [usize isize];
-    wider than usize: [u128 i128];
+    [ [u8 i8], [u16 i16], [u32 i32], [u64 i64], [usize isize] ] <= usize < [ [u128 i128] ]
 }
 
 #[cfg(target_pointer_width = "32")]
 step_integer_impls! {
-    narrower than or same width as usize: [u8 i8], [u16 i16], [u32 i32], [usize isize];
-    wider than usize: [u64 i64], [u128 i128];
+    [ [u8 i8], [u16 i16], [u32 i32], [usize isize] ] <= usize < [ [u64 i64], [u128 i128] ]
 }
 
 #[cfg(target_pointer_width = "16")]
 step_integer_impls! {
-    narrower than or same width as usize: [u8 i8], [u16 i16], [usize isize];
-    wider than usize: [u32 i32], [u64 i64], [u128 i128];
+    [ [u8 i8], [u16 i16], [usize isize] ] <= usize < [ [u32 i32], [u64 i64], [u128 i128] ]
+}
+
+// These are still macro-generated because the integer literals resolve to different types.
+macro_rules! step_nonzero_identical_methods {
+    ($int:ident) => {
+        #[inline]
+        unsafe fn forward_unchecked(start: Self, n: usize) -> Self {
+            // SAFETY: the caller has to guarantee that `start + n` doesn't overflow.
+            unsafe { Self::new_unchecked(start.get().unchecked_add(n as $int)) }
+        }
+
+        #[inline]
+        unsafe fn backward_unchecked(start: Self, n: usize) -> Self {
+            // SAFETY: the caller has to guarantee that `start - n` doesn't overflow or hit zero.
+            unsafe { Self::new_unchecked(start.get().unchecked_sub(n as $int)) }
+        }
+
+        #[inline]
+        #[allow(arithmetic_overflow)]
+        #[rustc_inherit_overflow_checks]
+        fn forward(start: Self, n: usize) -> Self {
+            // In debug builds, trigger a panic on overflow.
+            // This should optimize completely out in release builds.
+            if Self::forward_checked(start, n).is_none() {
+                let _ = $int::MAX + 1;
+            }
+            // Do saturating math (wrapping math causes UB if it wraps to Zero)
+            start.saturating_add(n as $int)
+        }
+
+        #[inline]
+        #[allow(arithmetic_overflow)]
+        #[rustc_inherit_overflow_checks]
+        fn backward(start: Self, n: usize) -> Self {
+            // In debug builds, trigger a panic on overflow.
+            // This should optimize completely out in release builds.
+            if Self::backward_checked(start, n).is_none() {
+                let _ = $int::MIN - 1;
+            }
+            // Do saturating math (wrapping math causes UB if it wraps to Zero)
+            Self::new(start.get().saturating_sub(n as $int)).unwrap_or(Self::MIN)
+        }
+
+        #[inline]
+        fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
+            if *start <= *end {
+                #[allow(irrefutable_let_patterns, reason = "happens on usize or narrower")]
+                if let Ok(steps) = usize::try_from(end.get() - start.get()) {
+                    (steps, Some(steps))
+                } else {
+                    (usize::MAX, None)
+                }
+            } else {
+                (0, None)
+            }
+        }
+    };
+}
+
+macro_rules! step_nonzero_impls {
+    {
+        [$( $narrower:ident ),+] <= usize < [$( $wider:ident ),+]
+    } => {
+        $(
+            #[allow(unreachable_patterns)]
+            #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+            #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+            impl const Step for NonZero<$narrower> {
+                step_nonzero_identical_methods!($narrower);
+
+                #[inline]
+                fn forward_checked(start: Self, n: usize) -> Option<Self> {
+                    match $narrower::try_from(n) {
+                        Ok(n) => start.checked_add(n),
+                        Err(_) => None, // if n is out of range, `unsigned_start + n` is too
+                    }
+                }
+
+                #[inline]
+                fn backward_checked(start: Self, n: usize) -> Option<Self> {
+                    match $narrower::try_from(n) {
+                        // *_sub() is not implemented on NonZero<T>
+                        Ok(n) => start.get().checked_sub(n).and_then(Self::new),
+                        Err(_) => None, // if n is out of range, `unsigned_start - n` is too
+                    }
+                }
+            }
+        )+
+
+        $(
+            #[allow(unreachable_patterns)]
+            #[unstable(feature = "step_trait", reason = "recently redesigned", issue = "42168")]
+            #[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+            impl const Step for NonZero<$wider> {
+                step_nonzero_identical_methods!($wider);
+
+                #[inline]
+                fn forward_checked(start: Self, n: usize) -> Option<Self> {
+                    start.checked_add(n as $wider)
+                }
+
+                #[inline]
+                fn backward_checked(start: Self, n: usize) -> Option<Self> {
+                    start.get().checked_sub(n as $wider).and_then(Self::new)
+                }
+            }
+        )+
+    };
+}
+
+#[cfg(target_pointer_width = "64")]
+step_nonzero_impls! {
+    [u8, u16, u32, u64, usize] <= usize < [u128]
+}
+
+#[cfg(target_pointer_width = "32")]
+step_nonzero_impls! {
+    [u8, u16, u32, usize] <= usize < [u64, u128]
+}
+
+#[cfg(target_pointer_width = "16")]
+step_nonzero_impls! {
+    [u8, u16, usize] <= usize < [u32, u64, u128]
 }
 
 #[unstable(feature = "step_trait", issue = "42168")]
-impl Step for char {
+#[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+impl const Step for char {
     #[inline]
     fn steps_between(&start: &char, &end: &char) -> (usize, Option<usize>) {
         let start = start as u32;
@@ -536,7 +661,8 @@ impl Step for char {
 }
 
 #[unstable(feature = "step_trait", issue = "42168")]
-impl Step for AsciiChar {
+#[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+impl const Step for AsciiChar {
     #[inline]
     fn steps_between(&start: &AsciiChar, &end: &AsciiChar) -> (usize, Option<usize>) {
         Step::steps_between(&start.to_u8(), &end.to_u8())
@@ -578,7 +704,8 @@ impl Step for AsciiChar {
 }
 
 #[unstable(feature = "step_trait", issue = "42168")]
-impl Step for Ipv4Addr {
+#[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+impl const Step for Ipv4Addr {
     #[inline]
     fn steps_between(&start: &Ipv4Addr, &end: &Ipv4Addr) -> (usize, Option<usize>) {
         u32::steps_between(&start.to_bits(), &end.to_bits())
@@ -610,7 +737,8 @@ impl Step for Ipv4Addr {
 }
 
 #[unstable(feature = "step_trait", issue = "42168")]
-impl Step for Ipv6Addr {
+#[rustc_const_unstable(feature = "step_trait", issue = "42168")]
+impl const Step for Ipv6Addr {
     #[inline]
     fn steps_between(&start: &Ipv6Addr, &end: &Ipv6Addr) -> (usize, Option<usize>) {
         u128::steps_between(&start.to_bits(), &end.to_bits())
@@ -935,6 +1063,7 @@ impl<A: Step> Iterator for ops::Range<A> {
 range_exact_iter_impl! {
     usize u8 u16
     isize i8 i16
+    NonZero<usize> NonZero<u8> NonZero<u16>
 
     // These are incorrect per the reasoning above,
     // but removing them would be a breaking change as they were stabilized in Rust 1.0.0.
@@ -947,22 +1076,30 @@ range_exact_iter_impl! {
 unsafe_range_trusted_random_access_impl! {
     usize u8 u16
     isize i8 i16
+    NonZero<usize> NonZero<u8> NonZero<u16>
 }
 
 #[cfg(target_pointer_width = "32")]
 unsafe_range_trusted_random_access_impl! {
     u32 i32
+    NonZero<u32>
 }
 
 #[cfg(target_pointer_width = "64")]
 unsafe_range_trusted_random_access_impl! {
     u32 i32
     u64 i64
+    NonZero<u32>
+    NonZero<u64>
 }
 
 range_incl_exact_iter_impl! {
     u8
     i8
+    NonZero<u8>
+    // Since RangeInclusive<NonZero<uN>> can only be 1..=uN::MAX the length of this range is always
+    // <= uN::MAX, so they are always valid ExactSizeIterator unlike the ranges that include zero.
+    NonZero<u16> NonZero<usize>
 
     // These are incorrect per the reasoning above,
     // but removing them would be a breaking change as they were stabilized in Rust 1.26.0.

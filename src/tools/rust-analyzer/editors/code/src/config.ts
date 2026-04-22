@@ -485,7 +485,7 @@ export function substituteVariablesInEnv(env: Env): Env {
         Object.entries(env).map(([key, value]) => {
             const deps = new Set<string>();
             if (value) {
-                let match = undefined;
+                let match;
                 while ((match = depRe.exec(value))) {
                     const depName = unwrapUndefinable(match.groups?.["depName"]);
                     deps.add(depName);

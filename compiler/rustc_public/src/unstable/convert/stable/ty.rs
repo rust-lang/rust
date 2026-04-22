@@ -12,14 +12,14 @@ use crate::ty::{
 };
 use crate::unstable::Stable;
 
-impl<'tcx> Stable<'tcx> for ty::AliasTyKind {
+impl<'tcx> Stable<'tcx> for ty::AliasTyKind<'tcx> {
     type T = crate::ty::AliasKind;
     fn stable(&self, _: &mut Tables<'_, BridgeTys>, _: &CompilerCtxt<'_, BridgeTys>) -> Self::T {
         match self {
-            ty::Projection => crate::ty::AliasKind::Projection,
-            ty::Inherent => crate::ty::AliasKind::Inherent,
-            ty::Opaque => crate::ty::AliasKind::Opaque,
-            ty::Free => crate::ty::AliasKind::Free,
+            ty::Projection { .. } => crate::ty::AliasKind::Projection,
+            ty::Inherent { .. } => crate::ty::AliasKind::Inherent,
+            ty::Opaque { .. } => crate::ty::AliasKind::Opaque,
+            ty::Free { .. } => crate::ty::AliasKind::Free,
         }
     }
 }
@@ -31,8 +31,11 @@ impl<'tcx> Stable<'tcx> for ty::AliasTy<'tcx> {
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let ty::AliasTy { args, def_id, .. } = self;
-        crate::ty::AliasTy { def_id: tables.alias_def(*def_id), args: args.stable(tables, cx) }
+        let ty::AliasTy { args, kind, .. } = self;
+        crate::ty::AliasTy {
+            def_id: tables.alias_def(kind.def_id()),
+            args: args.stable(tables, cx),
+        }
     }
 }
 
@@ -43,8 +46,11 @@ impl<'tcx> Stable<'tcx> for ty::AliasTerm<'tcx> {
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        let ty::AliasTerm { args, def_id, .. } = self;
-        crate::ty::AliasTerm { def_id: tables.alias_def(*def_id), args: args.stable(tables, cx) }
+        let ty::AliasTerm { args, kind, .. } = self;
+        crate::ty::AliasTerm {
+            def_id: tables.alias_def(kind.def_id()),
+            args: args.stable(tables, cx),
+        }
     }
 }
 
@@ -249,6 +255,23 @@ where
     }
 }
 
+// This internal type isn't publicly exposed, because it is an implementation detail.
+// But it's a public field of FnSig (which has a public mirror type), so allow conversions.
+impl<'tcx> Stable<'tcx> for ty::FnSigKind {
+    type T = (bool /*c_variadic*/, crate::mir::Safety, crate::ty::Abi);
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        (
+            self.c_variadic(),
+            if self.is_safe() { crate::mir::Safety::Safe } else { crate::mir::Safety::Unsafe },
+            self.abi().stable(tables, cx),
+        )
+    }
+}
+
 impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
     type T = crate::ty::FnSig;
     fn stable<'cx>(
@@ -257,6 +280,7 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         use crate::ty::FnSig;
+        let (c_variadic, safety, abi) = self.fn_sig_kind.stable(tables, cx);
 
         FnSig {
             inputs_and_output: self
@@ -264,9 +288,9 @@ impl<'tcx> Stable<'tcx> for ty::FnSig<'tcx> {
                 .iter()
                 .map(|ty| ty.stable(tables, cx))
                 .collect(),
-            c_variadic: self.c_variadic,
-            safety: self.safety.stable(tables, cx),
-            abi: self.abi.stable(tables, cx),
+            c_variadic,
+            safety,
+            abi,
         }
     }
 }
@@ -451,8 +475,8 @@ impl<'tcx> Stable<'tcx> for ty::TyKind<'tcx> {
             ty::Tuple(fields) => TyKind::RigidTy(RigidTy::Tuple(
                 fields.iter().map(|ty| ty.stable(tables, cx)).collect(),
             )),
-            ty::Alias(alias_kind, alias_ty) => {
-                TyKind::Alias(alias_kind.stable(tables, cx), alias_ty.stable(tables, cx))
+            ty::Alias(_alias_ty) => {
+                todo!()
             }
             ty::Param(param_ty) => TyKind::Param(param_ty.stable(tables, cx)),
             ty::Bound(ty::BoundVarIndexKind::Canonical, _) => {
@@ -1054,7 +1078,7 @@ impl<'tcx> Stable<'tcx> for ty::AssocKind {
     ) -> Self::T {
         use crate::ty::{AssocKind, AssocTypeData};
         match *self {
-            ty::AssocKind::Const { name } => AssocKind::Const { name: name.to_string() },
+            ty::AssocKind::Const { name, .. } => AssocKind::Const { name: name.to_string() },
             ty::AssocKind::Fn { name, has_self } => {
                 AssocKind::Fn { name: name.to_string(), has_self }
             }
@@ -1137,5 +1161,27 @@ impl<'tcx> Stable<'tcx> for rustc_middle::ty::util::Discr<'tcx> {
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         crate::ty::Discr { val: self.val, ty: self.ty.stable(tables, cx) }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for rustc_middle::ty::VtblEntry<'tcx> {
+    type T = crate::ty::VtblEntry;
+
+    fn stable<'cx>(
+        &self,
+        tables: &mut Tables<'cx, BridgeTys>,
+        cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        use crate::ty::VtblEntry;
+        match self {
+            ty::VtblEntry::MetadataDropInPlace => VtblEntry::MetadataDropInPlace,
+            ty::VtblEntry::MetadataSize => VtblEntry::MetadataSize,
+            ty::VtblEntry::MetadataAlign => VtblEntry::MetadataAlign,
+            ty::VtblEntry::Vacant => VtblEntry::Vacant,
+            ty::VtblEntry::Method(instance) => VtblEntry::Method(instance.stable(tables, cx)),
+            ty::VtblEntry::TraitVPtr(trait_ref) => {
+                VtblEntry::TraitVPtr(trait_ref.stable(tables, cx))
+            }
+        }
     }
 }

@@ -14,9 +14,34 @@ use rustc_hir::{AssignOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, St
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
-use rustc_span::{Span, SyntaxContext};
+use rustc_span::{Span, Spanned, SyntaxContext};
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for `foo = bar; bar = foo` sequences.
+    ///
+    /// ### Why is this bad?
+    /// This looks like a failed attempt to swap.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let mut a = 1;
+    /// # let mut b = 2;
+    /// a = b;
+    /// b = a;
+    /// ```
+    /// If swapping is intended, use `swap()` instead:
+    /// ```no_run
+    /// # let mut a = 1;
+    /// # let mut b = 2;
+    /// std::mem::swap(&mut a, &mut b);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub ALMOST_SWAPPED,
+    correctness,
+    "`foo = bar; bar = foo` sequence"
+}
 
 declare_clippy_lint! {
     /// ### What it does
@@ -49,33 +74,7 @@ declare_clippy_lint! {
     "manual swap of two variables"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for `foo = bar; bar = foo` sequences.
-    ///
-    /// ### Why is this bad?
-    /// This looks like a failed attempt to swap.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let mut a = 1;
-    /// # let mut b = 2;
-    /// a = b;
-    /// b = a;
-    /// ```
-    /// If swapping is intended, use `swap()` instead:
-    /// ```no_run
-    /// # let mut a = 1;
-    /// # let mut b = 2;
-    /// std::mem::swap(&mut a, &mut b);
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub ALMOST_SWAPPED,
-    correctness,
-    "`foo = bar; bar = foo` sequence"
-}
-
-declare_lint_pass!(Swap => [MANUAL_SWAP, ALMOST_SWAPPED]);
+declare_lint_pass!(Swap => [ALMOST_SWAPPED, MANUAL_SWAP]);
 
 impl<'tcx> LateLintPass<'tcx> for Swap {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
@@ -113,7 +112,7 @@ fn generate_swap_warning<'tcx>(
                 || ty.is_diag_item(cx, sym::Vec)
                 || ty.is_diag_item(cx, sym::VecDeque)
             {
-                let slice = Sugg::hir_with_applicability(cx, lhs1, "<slice>", &mut applicability);
+                let slice = Sugg::hir_with_context(cx, lhs1, ctxt, "<slice>", &mut applicability);
 
                 span_lint_and_sugg(
                     cx,

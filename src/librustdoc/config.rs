@@ -15,8 +15,8 @@ use rustc_session::config::{
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::{EarlyDiagCtxt, getopts};
-use rustc_span::FileName;
 use rustc_span::edition::Edition;
+use rustc_span::{FileName, RemapPathScopeComponents};
 use rustc_target::spec::TargetTuple;
 
 use crate::core::new_dcx;
@@ -140,6 +140,8 @@ pub(crate) struct Options {
     pub(crate) no_run: bool,
     /// What sources are being mapped.
     pub(crate) remap_path_prefix: Vec<(PathBuf, PathBuf)>,
+    /// Which scope(s) to use with `--remap-path-prefix`
+    pub(crate) remap_path_scope: RemapPathScopeComponents,
 
     /// The path to a rustc-like binary to build tests with. If not set, we
     /// default to loading from `$sysroot/bin/rustc`.
@@ -222,6 +224,7 @@ impl fmt::Debug for Options {
             .field("no_run", &self.no_run)
             .field("test_builder_wrappers", &self.test_builder_wrappers)
             .field("remap-file-prefix", &self.remap_path_prefix)
+            .field("remap-file-scope", &self.remap_path_scope)
             .field("no_capture", &self.no_capture)
             .field("scrape_examples_options", &self.scrape_examples_options)
             .field("unstable_features", &self.unstable_features)
@@ -322,8 +325,8 @@ pub(crate) enum ModuleSorting {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum EmitType {
-    Toolchain,
-    InvocationSpecific,
+    HtmlStaticFiles,
+    HtmlNonStaticFiles,
     DepInfo(Option<OutFileName>),
 }
 
@@ -332,8 +335,12 @@ impl FromStr for EmitType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "toolchain-shared-resources" => Ok(Self::Toolchain),
-            "invocation-specific" => Ok(Self::InvocationSpecific),
+            // old nightly-only choices that are going away soon
+            "toolchain-shared-resources" => Ok(Self::HtmlStaticFiles),
+            "invocation-specific" => Ok(Self::HtmlNonStaticFiles),
+            // modern choices
+            "html-static-files" => Ok(Self::HtmlStaticFiles),
+            "html-non-static-files" => Ok(Self::HtmlNonStaticFiles),
             "dep-info" => Ok(Self::DepInfo(None)),
             option => match option.strip_prefix("dep-info=") {
                 Some("-") => Ok(Self::DepInfo(Some(OutFileName::Stdout))),
@@ -346,7 +353,7 @@ impl FromStr for EmitType {
 
 impl RenderOptions {
     pub(crate) fn should_emit_crate(&self) -> bool {
-        self.emit.is_empty() || self.emit.contains(&EmitType::InvocationSpecific)
+        self.emit.is_empty() || self.emit.contains(&EmitType::HtmlNonStaticFiles)
     }
 
     pub(crate) fn dep_info(&self) -> Option<Option<&OutFileName>> {
@@ -409,9 +416,9 @@ impl Options {
             config::parse_error_format(early_dcx, matches, color, json_color, json_rendered);
         let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
-        let mut target_modifiers = BTreeMap::<OptionsTargetModifiers, String>::new();
-        let codegen_options = CodegenOptions::build(early_dcx, matches, &mut target_modifiers);
-        let unstable_opts = UnstableOptions::build(early_dcx, matches, &mut target_modifiers);
+        let mut collected_options = Default::default();
+        let codegen_options = CodegenOptions::build(early_dcx, matches, &mut collected_options);
+        let unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
 
         let remap_path_prefix = match parse_remap_path_prefix(matches) {
             Ok(prefix_mappings) => prefix_mappings,
@@ -419,6 +426,8 @@ impl Options {
                 early_dcx.early_fatal(err);
             }
         };
+        let remap_path_scope =
+            rustc_session::config::parse_remap_path_scope(early_dcx, matches, &unstable_opts);
 
         let dcx = new_dcx(error_format, None, diagnostic_width, &unstable_opts);
         let dcx = dcx.handle();
@@ -458,8 +467,13 @@ impl Options {
             return None;
         }
 
+        let should_test = matches.opt_present("test");
+
         let mut emit = FxIndexMap::<_, EmitType>::default();
         for list in matches.opt_strs("emit") {
+            if should_test {
+                dcx.fatal("the `--test` flag and the `--emit` flag are not supported together");
+            }
             for kind in list.split(',') {
                 match kind.parse() {
                     Ok(kind) => {
@@ -510,6 +524,18 @@ impl Options {
                 dcx.fatal(
                     "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/134529)",
                 );
+            }
+        }
+
+        if output_format == OutputFormat::Json {
+            if let Some(emit_flag) = emit.iter().find_map(|emit| match emit {
+                EmitType::HtmlStaticFiles => Some("html-static-files"),
+                EmitType::HtmlNonStaticFiles => Some("html-non-static-files"),
+                EmitType::DepInfo(_) => None,
+            }) {
+                dcx.fatal(format!(
+                    "the `--emit={emit_flag}` flag is not supported with `--output-format=json`",
+                ));
             }
         }
 
@@ -630,7 +656,6 @@ impl Options {
         let test_args: Vec<String> =
             test_args.iter().flat_map(|s| s.split_whitespace()).map(|s| s.to_string()).collect();
 
-        let should_test = matches.opt_present("test");
         let no_run = matches.opt_present("no-run");
 
         if !should_test && no_run {
@@ -736,10 +761,12 @@ impl Options {
         }
 
         let index_page = matches.opt_str("index-page").map(|s| PathBuf::from(&s));
-        if let Some(ref index_page) = index_page
-            && !index_page.is_file()
-        {
-            dcx.fatal("option `--index-page` argument must be a file");
+        if let Some(ref index_page) = index_page {
+            if index_page.is_file() {
+                loaded_paths.push(index_page.clone());
+            } else {
+                dcx.fatal("option `--index-page` argument must be a file");
+            }
         }
 
         let target = parse_target_triple(early_dcx, matches);
@@ -867,6 +894,7 @@ impl Options {
             no_run,
             test_builder_wrappers,
             remap_path_prefix,
+            remap_path_scope,
             no_capture,
             crate_name,
             output_format,
@@ -874,7 +902,7 @@ impl Options {
             scrape_examples_options,
             unstable_features,
             doctest_build_args,
-            target_modifiers,
+            target_modifiers: collected_options.target_modifiers,
         };
         let render_options = RenderOptions {
             output,

@@ -23,7 +23,9 @@ pub(crate) fn complete_type_path(
             ScopeDef::GenericParam(LifetimeParam(_)) => location.complete_lifetimes(),
             ScopeDef::Label(_) => false,
             // no values in type places
-            ScopeDef::ModuleDef(Function(_) | Variant(_) | Static(_)) | ScopeDef::Local(_) => false,
+            ScopeDef::ModuleDef(Function(_) | EnumVariant(_) | Static(_)) | ScopeDef::Local(_) => {
+                false
+            }
             // unless its a constant in a generic arg list position
             ScopeDef::ModuleDef(Const(_)) | ScopeDef::GenericParam(ConstParam(_)) => {
                 location.complete_consts()
@@ -160,29 +162,27 @@ pub(crate) fn complete_type_path(
                 }
                 TypeLocation::GenericArg {
                     args: Some(arg_list), of_trait: Some(trait_), ..
-                } => {
-                    if arg_list.syntax().ancestors().find_map(ast::TypeBound::cast).is_some() {
-                        let arg_idx = arg_list
-                            .generic_args()
-                            .filter(|arg| {
-                                arg.syntax().text_range().end()
-                                    < ctx.original_token.text_range().start()
-                            })
-                            .count();
+                } if arg_list.syntax().ancestors().find_map(ast::TypeBound::cast).is_some() => {
+                    let arg_idx = arg_list
+                        .generic_args()
+                        .filter(|arg| {
+                            arg.syntax().text_range().end()
+                                < ctx.original_token.text_range().start()
+                        })
+                        .count();
 
-                        let n_required_params = trait_.type_or_const_param_count(ctx.sema.db, true);
-                        if arg_idx >= n_required_params {
-                            trait_.items_with_supertraits(ctx.sema.db).into_iter().for_each(|it| {
-                                if let hir::AssocItem::TypeAlias(alias) = it {
-                                    cov_mark::hit!(complete_assoc_type_in_generics_list);
-                                    acc.add_type_alias_with_eq(ctx, alias);
-                                }
-                            });
-
-                            let n_params = trait_.type_or_const_param_count(ctx.sema.db, false);
-                            if arg_idx >= n_params {
-                                return; // only show assoc types
+                    let n_required_params = trait_.type_or_const_param_count(ctx.sema.db, true);
+                    if arg_idx >= n_required_params {
+                        trait_.items_with_supertraits(ctx.sema.db).into_iter().for_each(|it| {
+                            if let hir::AssocItem::TypeAlias(alias) = it {
+                                cov_mark::hit!(complete_assoc_type_in_generics_list);
+                                acc.add_type_alias_with_eq(ctx, alias);
                             }
+                        });
+
+                        let n_params = trait_.type_or_const_param_count(ctx.sema.db, false);
+                        if arg_idx >= n_params {
+                            return; // only show assoc types
                         }
                     }
                 }
@@ -204,8 +204,8 @@ pub(crate) fn complete_type_path(
                 _ => {}
             };
 
-            acc.add_nameref_keywords_with_colon(ctx);
-            acc.add_type_keywords(ctx);
+            acc.add_nameref_keywords_with_type_like(ctx, path_ctx);
+            acc.add_type_keywords(ctx, path_ctx);
             ctx.process_all_names(&mut |name, def, doc_aliases| {
                 if scope_def_applicable(def) {
                     acc.add_path_resolution(ctx, path_ctx, name, def, doc_aliases);
@@ -228,14 +228,14 @@ pub(crate) fn complete_ascribed_type(
         TypeAscriptionTarget::Let(pat) | TypeAscriptionTarget::FnParam(pat) => {
             ctx.sema.type_of_pat(pat.as_ref()?)
         }
-        TypeAscriptionTarget::Const(exp) | TypeAscriptionTarget::RetType(exp) => {
+        TypeAscriptionTarget::Const(exp) | TypeAscriptionTarget::RetType { body: exp, .. } => {
             ctx.sema.type_of_expr(exp.as_ref()?)
         }
     }?
     .adjusted();
     if !ty.is_unknown() {
         let ty_string = ty.display_source_code(ctx.db, ctx.module.into(), true).ok()?;
-        acc.add(render_type_inference(ty_string, ctx));
+        acc.add(render_type_inference(ty_string, ctx, path_ctx));
     }
     None
 }

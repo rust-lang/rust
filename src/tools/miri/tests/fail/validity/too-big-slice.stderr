@@ -1,4 +1,4 @@
-error: Undefined Behavior: constructing invalid value: encountered invalid reference metadata: slice is bigger than largest supported object
+error: Undefined Behavior: constructing invalid value of type &[u8]: encountered invalid reference metadata: slice is bigger than largest supported object
   --> tests/fail/validity/too-big-slice.rs:LL:CC
    |
 LL | ...   let _x: &[u8] = mem::transmute((ptr, usize::MAX));

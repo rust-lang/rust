@@ -12,7 +12,8 @@ use ide::{
     CompletionFieldsToResolve, DiagnosticsConfig, GenericParameterHints, GotoDefinitionConfig,
     GotoImplementationConfig, HighlightConfig, HighlightRelatedConfig, HoverConfig, HoverDocFormat,
     InlayFieldsToResolve, InlayHintsConfig, JoinLinesConfig, MemoryLayoutHoverConfig,
-    MemoryLayoutHoverRenderKind, RenameConfig, Snippet, SnippetScope, SourceRootId,
+    MemoryLayoutHoverRenderKind, RaFixtureConfig, RenameConfig, Snippet, SnippetScope,
+    SourceRootId,
 };
 use ide_db::{
     MiniCore, SnippetCap,
@@ -312,6 +313,9 @@ config_data! {
 
         /// Hide inlay type hints for constructors.
         inlayHints_typeHints_hideNamedConstructor: bool = false,
+
+        /// Where to render type hints relative to their binding pattern.
+        inlayHints_typeHints_location: TypeHintsLocation = TypeHintsLocation::Inline,
 
         /// Enable the experimental support for interpreting tests.
         interpret_tests: bool = false,
@@ -727,6 +731,11 @@ config_data! {
         /// the `Problems Panel`.
         diagnostics_warningsAsInfo: Vec<String> = vec![],
 
+        /// Disable support for `#[rust_analyzer::rust_fixture]` snippets.
+        ///
+        /// If you are not working on rust-analyzer itself, you should ignore this config.
+        disableFixtureSupport: bool = false,
+
         /// Enforce the import granularity setting for all files. If set to false rust-analyzer will
         /// try to keep import styles consistent per file.
         imports_granularity_enforce: bool = false,
@@ -822,6 +831,9 @@ config_data! {
         ///
         /// Set this to `"all"` to pass `--all-features` to cargo.
         cargo_features: CargoFeaturesDef      = CargoFeaturesDef::Selected(vec![]),
+        /// Extra arguments passed only to `cargo metadata`, not to other cargo invocations.
+        /// Useful for flags like `--config` that `cargo metadata` supports.
+        cargo_metadataExtraArgs: Vec<String> = vec![],
         /// Whether to pass `--no-default-features` to cargo.
         cargo_noDefaultFeatures: bool    = false,
         /// Whether to skip fetching dependencies. If set to "true", the analysis is performed
@@ -948,18 +960,30 @@ config_data! {
         /// Override the command used for bench runnables.
         /// The first element of the array should be the program to execute (for example, `cargo`).
         ///
-        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
-        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
-        /// the test name (name of test function or test mod path).
+        /// Use the placeholders:
+        /// - `${package}`: package name.
+        /// - `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.
+        /// - `${target}`: target name (empty for `--lib`).
+        /// - `${test_name}`: the test path filter, e.g. `module::bench_func`.
+        /// - `${exact}`: `--exact` for single benchmarks, empty for modules.
+        /// - `${include_ignored}`: always empty for benchmarks.
+        /// - `${executable_args}`: all of the above binary args bundled together
+        ///   (includes `rust-analyzer.runnables.extraTestBinaryArgs`).
         runnables_bench_overrideCommand: Option<Vec<String>> = None,
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_command: Option<String> = None,
-        /// Override the command used for bench runnables.
+        /// Override the command used for doc-test runnables.
         /// The first element of the array should be the program to execute (for example, `cargo`).
         ///
-        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
-        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
-        /// the test name (name of test function or test mod path).
+        /// Use the placeholders:
+        /// - `${package}`: package name.
+        /// - `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.
+        /// - `${target}`: target name (empty for `--lib`).
+        /// - `${test_name}`: the test path filter, e.g. `module::func`.
+        /// - `${exact}`: always empty for doc-tests.
+        /// - `${include_ignored}`: always empty for doc-tests.
+        /// - `${executable_args}`: all of the above binary args bundled together
+        ///   (includes `rust-analyzer.runnables.extraTestBinaryArgs`).
         runnables_doctest_overrideCommand: Option<Vec<String>> = None,
         /// Additional arguments to be passed to cargo for runnables such as
         /// tests or binaries. For example, it may be `--release`.
@@ -977,9 +1001,15 @@ config_data! {
         /// Override the command used for test runnables.
         /// The first element of the array should be the program to execute (for example, `cargo`).
         ///
-        /// Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
-        /// replace the package name, target option (such as `--bin` or `--example`), the target name and
-        /// the test name (name of test function or test mod path).
+        /// Available placeholders:
+        /// - `${package}`: package name.
+        /// - `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.
+        /// - `${target}`: target name (empty for `--lib`).
+        /// - `${test_name}`: the test path filter, e.g. `module::test_func`.
+        /// - `${exact}`: `--exact` for single tests, empty for modules.
+        /// - `${include_ignored}`: `--include-ignored` for single tests, empty otherwise.
+        /// - `${executable_args}`: all of the above binary args bundled together
+        ///   (includes `rust-analyzer.runnables.extraTestBinaryArgs`).
         runnables_test_overrideCommand: Option<Vec<String>> = None,
 
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
@@ -1061,6 +1091,7 @@ struct ClientInfo {
     version: Option<Version>,
 }
 
+/// The configuration of this rust-analyzer instance.
 #[derive(Clone)]
 pub struct Config {
     /// Projects that have a Cargo.toml or a rust-project.json in a
@@ -1070,11 +1101,16 @@ pub struct Config {
     /// Projects whose configuration was generated by a command
     /// configured in discoverConfig.
     discovered_projects_from_command: Vec<ProjectJsonFromCommand>,
-    /// The workspace roots as registered by the LSP client
+    /// The workspace roots as registered by the LSP client.
     workspace_roots: Vec<AbsPathBuf>,
     caps: ClientCapabilities,
-    /// The LSP root path, deprecated in favor of `workspace_roots`
+
+    /// The root of the first project encountered. This is deprecated
+    /// because rust-analyzer might be handling multiple projects.
+    ///
+    /// Prefer `workspace_roots` and `workspace_root_for()`.
     root_path: AbsPathBuf,
+
     snippets: Vec<Snippet>,
     client_info: Option<ClientInfo>,
 
@@ -1504,6 +1540,8 @@ pub struct LensConfig {
     // annotations
     pub location: AnnotationLocation,
     pub filter_adjacent_derive_implementations: bool,
+
+    disable_ra_fixture: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -1559,7 +1597,7 @@ impl LensConfig {
             annotate_method_references: self.method_refs,
             annotate_enum_variant_references: self.enum_variant_refs,
             location: self.location.into(),
-            minicore,
+            ra_fixture: RaFixtureConfig { minicore, disable_ra_fixture: self.disable_ra_fixture },
             filter_adjacent_derive_implementations: self.filter_adjacent_derive_implementations,
         }
     }
@@ -1776,9 +1814,23 @@ impl Config {
         s
     }
 
-    pub fn root_path(&self) -> &AbsPathBuf {
-        // We should probably use `workspace_roots` here if set
-        &self.root_path
+    /// Find the workspace root that contains the given path, using the
+    /// longest prefix match.
+    pub fn workspace_root_for(&self, path: &AbsPath) -> &AbsPathBuf {
+        self.workspace_roots
+            .iter()
+            .filter(|root| path.starts_with(root.as_path()))
+            .max_by_key(|root| root.as_str().len())
+            .unwrap_or(self.default_root_path())
+    }
+
+    /// Best-effort root path for the current project.
+    ///
+    /// Use `workspace_root_for` where possible, because
+    /// `default_root_path` may return the wrong path when a user has
+    /// multiple workspaces.
+    pub fn default_root_path(&self) -> &AbsPathBuf {
+        self.workspace_roots.first().unwrap_or(&self.root_path)
     }
 
     pub fn caps(&self) -> &ClientCapabilities {
@@ -1816,8 +1868,15 @@ impl Config {
         }
     }
 
+    pub fn ra_fixture<'a>(&self, minicore: MiniCore<'a>) -> RaFixtureConfig<'a> {
+        RaFixtureConfig { minicore, disable_ra_fixture: *self.disableFixtureSupport(None) }
+    }
+
     pub fn call_hierarchy<'a>(&self, minicore: MiniCore<'a>) -> CallHierarchyConfig<'a> {
-        CallHierarchyConfig { exclude_tests: self.references_excludeTests().to_owned(), minicore }
+        CallHierarchyConfig {
+            exclude_tests: self.references_excludeTests().to_owned(),
+            ra_fixture: self.ra_fixture(minicore),
+        }
     }
 
     pub fn completion<'a>(
@@ -1878,7 +1937,7 @@ impl Config {
                 })
                 .collect(),
             exclude_traits: self.completion_excludeTraits(source_root),
-            minicore,
+            ra_fixture: self.ra_fixture(minicore),
         }
     }
 
@@ -1987,12 +2046,12 @@ impl Config {
                 None => ide::SubstTyLen::Unlimited,
             },
             show_drop_glue: *self.hover_dropGlue_enable(),
-            minicore,
+            ra_fixture: self.ra_fixture(minicore),
         }
     }
 
     pub fn goto_definition<'a>(&self, minicore: MiniCore<'a>) -> GotoDefinitionConfig<'a> {
-        GotoDefinitionConfig { minicore }
+        GotoDefinitionConfig { ra_fixture: self.ra_fixture(minicore) }
     }
 
     pub fn inlay_hints<'a>(&self, minicore: MiniCore<'a>) -> InlayHintsConfig<'a> {
@@ -2001,6 +2060,10 @@ impl Config {
         InlayHintsConfig {
             render_colons: self.inlayHints_renderColons().to_owned(),
             type_hints: self.inlayHints_typeHints_enable().to_owned(),
+            type_hints_placement: match self.inlayHints_typeHints_location() {
+                TypeHintsLocation::Inline => ide::TypeHintsPlacement::Inline,
+                TypeHintsLocation::EndOfLine => ide::TypeHintsPlacement::EndOfLine,
+            },
             sized_bound: self.inlayHints_implicitSizedBoundHints_enable().to_owned(),
             parameter_hints: self.inlayHints_parameterHints_enable().to_owned(),
             parameter_hints_for_missing_arguments: self
@@ -2082,7 +2145,7 @@ impl Config {
             implicit_drop_hints: self.inlayHints_implicitDrops_enable().to_owned(),
             implied_dyn_trait_hints: self.inlayHints_impliedDynTraitHints_enable().to_owned(),
             range_exclusive_hints: self.inlayHints_rangeExclusiveHints_enable().to_owned(),
-            minicore,
+            ra_fixture: self.ra_fixture(minicore),
         }
     }
 
@@ -2135,7 +2198,7 @@ impl Config {
                 .to_owned(),
             inject_doc_comment: self.semanticHighlighting_doc_comment_inject_enable().to_owned(),
             syntactic_name_ref_highlighting: false,
-            minicore,
+            ra_fixture: self.ra_fixture(minicore),
         }
     }
 
@@ -2402,6 +2465,7 @@ impl Config {
             target_dir_config: self.target_dir_from_config(source_root),
             set_test: *self.cfg_setTest(source_root),
             no_deps: *self.cargo_noDeps(source_root),
+            metadata_extra_args: self.cargo_metadataExtraArgs(source_root).clone(),
         }
     }
 
@@ -2621,6 +2685,7 @@ impl Config {
             location: *self.lens_location(),
             filter_adjacent_derive_implementations: *self
                 .gotoImplementations_filterAdjacentDerives(),
+            disable_ra_fixture: *self.disableFixtureSupport(None),
         }
     }
 
@@ -2995,6 +3060,13 @@ enum ClosureStyle {
     RustAnalyzer,
     WithId,
     Hide,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+enum TypeHintsLocation {
+    Inline,
+    EndOfLine,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -3906,6 +3978,14 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "`rust_analyzer`: `|i32, u64| -> i8`",
                 "`with_id`: `{closure#14352}`, where that id is the unique number of the closure in r-a internals",
                 "`hide`: Shows `...` for every closure type",
+            ],
+        },
+        "TypeHintsLocation" => set! {
+            "type": "string",
+            "enum": ["inline", "end_of_line"],
+            "enumDescriptions": [
+                "Render type hints directly after the binding identifier.",
+                "Render type hints after the end of the containing `let` statement when possible.",
             ],
         },
         "Option<MemoryLayoutHoverRenderKindDef>" => set! {

@@ -115,9 +115,6 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
                 props.pp_exact = config.parse_pp_exact(ln);
             }
         }),
-        handler(SHOULD_ICE, |config, ln, props| {
-            config.set_name_directive(ln, SHOULD_ICE, &mut props.should_ice);
-        }),
         handler(BUILD_AUX_DOCS, |config, ln, props| {
             config.set_name_directive(ln, BUILD_AUX_DOCS, &mut props.build_aux_docs);
         }),

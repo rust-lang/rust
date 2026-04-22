@@ -3,6 +3,7 @@
 //! Tests live in [`bind_pat`][super::bind_pat] module.
 use ide_db::famous_defs::FamousDefs;
 use ide_db::text_edit::{TextRange, TextSize};
+use span::Edition;
 use stdx::{TupleExt, never};
 use syntax::ast::{self, AstNode};
 
@@ -15,6 +16,7 @@ pub(super) fn hints(
     FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig<'_>,
     closure: ast::ClosureExpr,
+    edition: Edition,
 ) -> Option<()> {
     if !config.closure_capture_hints {
         return None;
@@ -60,7 +62,7 @@ pub(super) fn hints(
                 hir::CaptureKind::MutableRef => "&mut ",
                 hir::CaptureKind::Move => "",
             },
-            capture.display_place(sema.db)
+            capture.display_place_source_code(sema.db, edition)
         );
         if never!(label.is_empty()) {
             continue;

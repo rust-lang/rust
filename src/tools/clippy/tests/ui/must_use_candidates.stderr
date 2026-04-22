@@ -8,7 +8,7 @@ LL | pub fn pure(i: u8) -> u8 {
    = help: to override `-D warnings` add `#[allow(clippy::must_use_candidate)]`
 help: add the attribute
    |
-LL + #[must_use] 
+LL + #[must_use]
 LL | pub fn pure(i: u8) -> u8 {
    |
 
@@ -20,7 +20,7 @@ LL |     pub fn inherent_pure(&self) -> u8 {
    |
 help: add the attribute
    |
-LL ~     #[must_use] 
+LL ~     #[must_use]
 LL ~     pub fn inherent_pure(&self) -> u8 {
    |
 
@@ -32,7 +32,7 @@ LL | pub fn with_marker(_d: std::marker::PhantomData<&mut u32>) -> bool {
    |
 help: add the attribute
    |
-LL + #[must_use] 
+LL + #[must_use]
 LL | pub fn with_marker(_d: std::marker::PhantomData<&mut u32>) -> bool {
    |
 
@@ -44,7 +44,7 @@ LL | pub fn rcd(_x: Rc<u32>) -> bool {
    |
 help: add the attribute
    |
-LL + #[must_use] 
+LL + #[must_use]
 LL | pub fn rcd(_x: Rc<u32>) -> bool {
    |
 
@@ -56,7 +56,7 @@ LL | pub fn arcd(_x: Arc<u32>) -> bool {
    |
 help: add the attribute
    |
-LL + #[must_use] 
+LL + #[must_use]
 LL | pub fn arcd(_x: Arc<u32>) -> bool {
    |
 
@@ -69,7 +69,7 @@ LL | pub fn result_uninhabited() -> Result<i32, std::convert::Infallible> {
    = note: a future version of Rust will treat `Result<T, E>` as `T` when `E` is uninhabited wrt `#[must_use]`
 help: add the attribute
    |
-LL + #[must_use] 
+LL + #[must_use]
 LL | pub fn result_uninhabited() -> Result<i32, std::convert::Infallible> {
    |
 
@@ -82,7 +82,7 @@ LL | pub fn controlflow_uninhabited() -> std::ops::ControlFlow<std::convert::Inf
    = note: a future version of Rust will treat `ControlFlow<B, C>` as `C` when `B` is uninhabited wrt `#[must_use]`
 help: add the attribute
    |
-LL + #[must_use] 
+LL + #[must_use]
 LL | pub fn controlflow_uninhabited() -> std::ops::ControlFlow<std::convert::Infallible, i32> {
    |
 

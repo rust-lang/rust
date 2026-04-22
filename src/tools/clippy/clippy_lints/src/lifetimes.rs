@@ -29,41 +29,6 @@ use std::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for lifetime annotations which can be removed by
-    /// relying on lifetime elision.
-    ///
-    /// ### Why is this bad?
-    /// The additional lifetimes make the code look more
-    /// complicated, while there is nothing out of the ordinary going on. Removing
-    /// them leads to more readable code.
-    ///
-    /// ### Known problems
-    /// This lint ignores functions with `where` clauses that reference
-    /// lifetimes to prevent false positives.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// // Unnecessary lifetime annotations
-    /// fn in_and_out<'a>(x: &'a u8, y: u8) -> &'a u8 {
-    ///     x
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// fn elided(x: &u8, y: u8) -> &u8 {
-    ///     x
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub NEEDLESS_LIFETIMES,
-    complexity,
-    "using explicit lifetimes for references in function arguments when elision rules \
-     would allow omitting them"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for lifetime annotations which can be replaced with anonymous lifetimes (`'_`).
     ///
     /// ### Why is this bad?
@@ -124,6 +89,47 @@ declare_clippy_lint! {
     "unused lifetimes in function definitions"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for lifetime annotations which can be removed by
+    /// relying on lifetime elision.
+    ///
+    /// ### Why is this bad?
+    /// The additional lifetimes make the code look more
+    /// complicated, while there is nothing out of the ordinary going on. Removing
+    /// them leads to more readable code.
+    ///
+    /// ### Known problems
+    /// This lint ignores functions with `where` clauses that reference
+    /// lifetimes to prevent false positives.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// // Unnecessary lifetime annotations
+    /// fn in_and_out<'a>(x: &'a u8, y: u8) -> &'a u8 {
+    ///     x
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// fn elided(x: &u8, y: u8) -> &u8 {
+    ///     x
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub NEEDLESS_LIFETIMES,
+    complexity,
+    "using explicit lifetimes for references in function arguments when elision rules \
+     would allow omitting them"
+}
+
+impl_lint_pass!(Lifetimes => [
+    ELIDABLE_LIFETIME_NAMES,
+    EXTRA_UNUSED_LIFETIMES,
+    NEEDLESS_LIFETIMES,
+]);
+
 pub struct Lifetimes {
     msrv: Msrv,
 }
@@ -133,12 +139,6 @@ impl Lifetimes {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(Lifetimes => [
-    NEEDLESS_LIFETIMES,
-    ELIDABLE_LIFETIME_NAMES,
-    EXTRA_UNUSED_LIFETIMES,
-]);
 
 impl<'tcx> LateLintPass<'tcx> for Lifetimes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
@@ -411,7 +411,7 @@ fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxIndexSet<LocalDefI
 fn non_elidable_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Ident>, msrv: Msrv) -> bool {
     if let Some(ident) = ident
         && ident.name == kw::SelfLower
-        && !func.implicit_self.has_implicit_self()
+        && !func.implicit_self().has_implicit_self()
         && let Some(self_ty) = func.inputs.first()
         && !msrv.meets(cx, msrvs::EXPLICIT_SELF_TYPE_ELISION)
     {
@@ -697,7 +697,7 @@ fn is_candidate_for_elision(fd: &FnDecl<'_>) -> bool {
         }
     }
 
-    if fd.lifetime_elision_allowed
+    if fd.lifetime_elision_allowed()
         && let Return(ret_ty) = fd.output
         && walk_unambig_ty(&mut V, ret_ty).is_break()
     {

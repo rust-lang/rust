@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::source::{HasSession, snippet_with_applicability};
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, is_slice_like};
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{higher, peel_blocks_with_stmt, span_contains_comment};
@@ -13,8 +13,7 @@ use rustc_hir::QPath::Resolved;
 use rustc_hir::def::Res;
 use rustc_hir::{Expr, ExprKind, Pat};
 use rustc_lint::LateContext;
-use rustc_span::source_map::Spanned;
-use rustc_span::sym;
+use rustc_span::{Spanned, sym};
 
 use super::MANUAL_SLICE_FILL;
 
@@ -94,7 +93,7 @@ fn sugg<'tcx>(
     slice_span: rustc_span::Span,
     assignval_span: rustc_span::Span,
 ) {
-    let mut app = if span_contains_comment(cx.sess().source_map(), body.span) {
+    let mut app = if span_contains_comment(cx, body.span) {
         Applicability::MaybeIncorrect // Comments may be informational.
     } else {
         Applicability::MachineApplicable

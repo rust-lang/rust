@@ -6,7 +6,7 @@ use ide_db::{
     active_parameter::ActiveParameter,
     helpers::mod_path_to_ast,
     imports::{
-        import_assets::{ImportAssets, ImportCandidate, LocatedImport},
+        import_assets::{ImportAssets, ImportCandidate, LocatedImport, TraitImportCandidate},
         insert_use::{ImportScope, insert_use, insert_use_as_alias},
     },
 };
@@ -123,44 +123,48 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
 
         let (assist_id, import_name) =
             (AssistId::quick_fix("auto_import"), import_path.display(ctx.db(), edition));
-        acc.add_group(
-            &group_label,
-            assist_id,
-            format!("Import `{import_name}`"),
-            range,
-            |builder| {
+        let add_normal_import = |acc: &mut Assists, label| {
+            acc.add_group(&group_label, assist_id, label, range, |builder| {
                 let scope = builder.make_import_scope_mut(scope.clone());
                 insert_use(&scope, mod_path_to_ast(&import_path, edition), &ctx.config.insert_use);
-            },
-        );
-
-        match import_assets.import_candidate() {
-            ImportCandidate::TraitAssocItem(name) | ImportCandidate::TraitMethod(name) => {
-                let is_method =
-                    matches!(import_assets.import_candidate(), ImportCandidate::TraitMethod(_));
-                let type_ = if is_method { "method" } else { "item" };
-                let group_label = GroupLabel(format!(
-                    "Import a trait for {} {} by alias",
-                    type_,
-                    name.assoc_item_name.text()
-                ));
-                acc.add_group(
-                    &group_label,
-                    assist_id,
-                    format!("Import `{import_name} as _`"),
-                    range,
-                    |builder| {
-                        let scope = builder.make_import_scope_mut(scope.clone());
-                        insert_use_as_alias(
-                            &scope,
-                            mod_path_to_ast(&import_path, edition),
-                            &ctx.config.insert_use,
-                            edition,
-                        );
-                    },
+            })
+        };
+        let add_underscore_import = |acc: &mut Assists, name: &TraitImportCandidate<'_>, label| {
+            let is_method =
+                matches!(import_assets.import_candidate(), ImportCandidate::TraitMethod(_));
+            let type_ = if is_method { "method" } else { "item" };
+            let group_label = GroupLabel(format!(
+                "Import a trait for {} {} by alias",
+                type_,
+                name.assoc_item_name.text()
+            ));
+            acc.add_group(&group_label, assist_id, label, range, |builder| {
+                let scope = builder.make_import_scope_mut(scope.clone());
+                insert_use_as_alias(
+                    &scope,
+                    mod_path_to_ast(&import_path, edition),
+                    &ctx.config.insert_use,
+                    edition,
                 );
+            });
+        };
+
+        if let ImportCandidate::TraitAssocItem(name) | ImportCandidate::TraitMethod(name) =
+            import_assets.import_candidate()
+        {
+            if let hir::ItemInNs::Types(hir::ModuleDef::Trait(trait_to_import)) =
+                import.item_to_import
+                && trait_to_import.prefer_underscore_import(ctx.db())
+            {
+                // Flip the order of the suggestions and show a preference for `as _` in the name.
+                add_underscore_import(acc, name, format!("Import `{import_name}`"));
+                add_normal_import(acc, format!("Import `{import_name}` without `as _`"));
+            } else {
+                add_normal_import(acc, format!("Import `{import_name}`"));
+                add_underscore_import(acc, name, format!("Import `{import_name} as _`"));
             }
-            _ => {}
+        } else {
+            add_normal_import(acc, format!("Import `{import_name}`"));
         }
     }
     Some(())
@@ -268,7 +272,7 @@ pub(crate) fn relevance_score(
                         hir::Adt::Union(it) => it.ty(ctx.db()),
                         hir::Adt::Enum(it) => it.ty(ctx.db()),
                     }),
-                    hir::ModuleDef::Variant(variant) => Some(variant.constructor_ty(ctx.db())),
+                    hir::ModuleDef::EnumVariant(variant) => Some(variant.constructor_ty(ctx.db())),
                     hir::ModuleDef::Const(it) => Some(it.ty(ctx.db())),
                     hir::ModuleDef::Static(it) => Some(it.ty(ctx.db())),
                     hir::ModuleDef::TypeAlias(it) => Some(it.ty(ctx.db())),
@@ -1927,5 +1931,102 @@ fn f() {
 }
         "#;
         check_auto_import_order(before, &["Import `foo::wanted`", "Import `quux::wanted`"]);
+    }
+
+    #[test]
+    fn consider_definition_kind() {
+        check_assist(
+            auto_import,
+            r#"
+//- /eyre.rs crate:eyre
+#[macro_export]
+macro_rules! eyre {
+    () => {};
+}
+
+//- /color-eyre.rs crate:color-eyre deps:eyre
+pub use eyre;
+
+//- /main.rs crate:main deps:color-eyre
+fn main() {
+    ey$0re!();
+}
+        "#,
+            r#"
+use color_eyre::eyre::eyre;
+
+fn main() {
+    eyre!();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn prefer_underscore_import() {
+        check_assist_by_label(
+            auto_import,
+            r#"
+mod foo {
+    #[rust_analyzer::prefer_underscore_import]
+    pub trait Ext {
+        fn bar(&self) {}
+    }
+    impl<T> Ext for T {}
+}
+
+fn baz() {
+    1.b$0ar();
+}
+        "#,
+            r#"
+use foo::Ext as _;
+
+mod foo {
+    #[rust_analyzer::prefer_underscore_import]
+    pub trait Ext {
+        fn bar(&self) {}
+    }
+    impl<T> Ext for T {}
+}
+
+fn baz() {
+    1.bar();
+}
+        "#,
+            "Import `foo::Ext`",
+        );
+        check_assist_by_label(
+            auto_import,
+            r#"
+mod foo {
+    #[rust_analyzer::prefer_underscore_import]
+    pub trait Ext {
+        fn bar(&self) {}
+    }
+    impl<T> Ext for T {}
+}
+
+fn baz() {
+    1.b$0ar();
+}
+        "#,
+            r#"
+use foo::Ext;
+
+mod foo {
+    #[rust_analyzer::prefer_underscore_import]
+    pub trait Ext {
+        fn bar(&self) {}
+    }
+    impl<T> Ext for T {}
+}
+
+fn baz() {
+    1.bar();
+}
+        "#,
+            "Import `foo::Ext` without `as _`",
+        );
     }
 }

@@ -5,7 +5,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_macros::HashStable_Generic;
 use rustc_span::{Symbol, sym};
 
-use crate::spec::{Abi, Arch, FloatAbi, RustcAbi, Target};
+use crate::spec::{Arch, FloatAbi, LlvmAbi, RustcAbi, Target};
 
 /// Features that control behaviour of rustc, rather than the codegen.
 /// These exist globally and are not in the target-specific lists below.
@@ -392,7 +392,11 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
             "avx512vpopcntdq",
         ],
     ),
-    ("avx10.2", Unstable(sym::avx10_target_feature), &["avx10.1"]),
+    (
+        "avx10.2",
+        Unstable(sym::avx10_target_feature),
+        &["avx10.1", "avxvnni", "avxvnniint8", "avxvnniint16"],
+    ),
     ("avx512bf16", Stable, &["avx512bw"]),
     ("avx512bitalg", Stable, &["avx512bw"]),
     ("avx512bw", Stable, &["avx512f"]),
@@ -418,6 +422,7 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("ermsb", Unstable(sym::ermsb_target_feature), &[]),
     ("f16c", Stable, &["avx"]),
     ("fma", Stable, &["avx"]),
+    ("fma4", Unstable(sym::fma4_target_feature), &["avx", "sse4a"]),
     ("fxsr", Stable, &[]),
     ("gfni", Stable, &["sse2"]),
     ("kl", Stable, &["sse2"]),
@@ -463,7 +468,7 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("vpclmulqdq", Stable, &["avx", "pclmulqdq"]),
     ("widekl", Stable, &["kl"]),
     ("x87", Unstable(sym::x87_target_feature), &[]),
-    ("xop", Unstable(sym::xop_target_feature), &[/*"fma4", */ "avx", "sse4a"]),
+    ("xop", Unstable(sym::xop_target_feature), &["fma4", "avx", "sse4a"]),
     ("xsave", Stable, &[]),
     ("xsavec", Stable, &["xsave"]),
     ("xsaveopt", Stable, &["xsave"]),
@@ -473,6 +478,7 @@ static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 
 const HEXAGON_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
+    ("audio", Unstable(sym::hexagon_target_feature), &[]),
     ("hvx", Unstable(sym::hexagon_target_feature), &[]),
     ("hvx-ieee-fp", Unstable(sym::hexagon_target_feature), &["hvx"]),
     ("hvx-length64b", Unstable(sym::hexagon_target_feature), &["hvx"]),
@@ -489,6 +495,17 @@ const HEXAGON_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("hvxv73", Unstable(sym::hexagon_target_feature), &["hvxv71"]),
     ("hvxv75", Unstable(sym::hexagon_target_feature), &["hvxv73"]),
     ("hvxv79", Unstable(sym::hexagon_target_feature), &["hvxv75"]),
+    ("v60", Unstable(sym::hexagon_target_feature), &[]),
+    ("v62", Unstable(sym::hexagon_target_feature), &["v60"]),
+    ("v65", Unstable(sym::hexagon_target_feature), &["v62"]),
+    ("v66", Unstable(sym::hexagon_target_feature), &["v65"]),
+    ("v67", Unstable(sym::hexagon_target_feature), &["v66"]),
+    ("v68", Unstable(sym::hexagon_target_feature), &["v67"]),
+    ("v69", Unstable(sym::hexagon_target_feature), &["v68"]),
+    ("v71", Unstable(sym::hexagon_target_feature), &["v69"]),
+    ("v73", Unstable(sym::hexagon_target_feature), &["v71"]),
+    ("v75", Unstable(sym::hexagon_target_feature), &["v73"]),
+    ("v79", Unstable(sym::hexagon_target_feature), &["v75"]),
     ("zreg", Unstable(sym::hexagon_target_feature), &[]),
     // tidy-alphabetical-end
 ];
@@ -756,8 +773,10 @@ static WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const BPF_FEATURES: &[(&str, Stability, ImpliedFeatures)] =
-    &[("alu32", Unstable(sym::bpf_target_feature), &[])];
+const BPF_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+    ("alu32", Unstable(sym::bpf_target_feature), &[]),
+    ("allows-misaligned-mem-access", Unstable(sym::bpf_target_feature), &[]),
+];
 
 static CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
@@ -1154,36 +1173,40 @@ impl Target {
             Arch::AArch64 | Arch::Arm64EC => {
                 // Aarch64 has no sane ABI specifier, and LLVM doesn't even have a way to force
                 // the use of soft-float, so all we can do here is some crude hacks.
-                if self.abi == Abi::SoftFloat {
-                    // LLVM will use float registers when `fp-armv8` is available, e.g. for
-                    // calls to built-ins. The only way to ensure a consistent softfloat ABI
-                    // on aarch64 is to never enable `fp-armv8`, so we enforce that.
-                    // In Rust we tie `neon` and `fp-armv8` together, therefore `neon` is the
-                    // feature we have to mark as incompatible.
-                    FeatureConstraints { required: &[], incompatible: &["neon"] }
-                } else {
-                    // Everything else is assumed to use a hardfloat ABI. neon and fp-armv8 must be enabled.
-                    // `FeatureConstraints` uses Rust feature names, hence only "neon" shows up.
-                    FeatureConstraints { required: &["neon"], incompatible: &[] }
+                match self.rustc_abi {
+                    Some(RustcAbi::Softfloat) => {
+                        // LLVM will use float registers when `fp-armv8` is available, e.g. for
+                        // calls to built-ins. The only way to ensure a consistent softfloat ABI
+                        // on aarch64 is to never enable `fp-armv8`, so we enforce that.
+                        // In Rust we tie `neon` and `fp-armv8` together, therefore `neon` is the
+                        // feature we have to mark as incompatible.
+                        FeatureConstraints { required: &[], incompatible: &["neon"] }
+                    }
+                    None => {
+                        // Everything else is assumed to use a hardfloat ABI. neon and fp-armv8 must be enabled.
+                        // `FeatureConstraints` uses Rust feature names, hence only "neon" shows up.
+                        FeatureConstraints { required: &["neon"], incompatible: &[] }
+                    }
+                    Some(r) => panic!("invalid Rust ABI for aarch64: {r:?}"),
                 }
             }
             Arch::RiscV32 | Arch::RiscV64 => {
                 // RISC-V handles ABI in a very sane way, being fully explicit via `llvm_abiname`
                 // about what the intended ABI is.
-                match &*self.llvm_abiname {
-                    "ilp32d" | "lp64d" => {
+                match &self.llvm_abiname {
+                    LlvmAbi::Ilp32d | LlvmAbi::Lp64d => {
                         // Requires d (which implies f), incompatible with e and zfinx.
                         FeatureConstraints { required: &["d"], incompatible: &["e", "zfinx"] }
                     }
-                    "ilp32f" | "lp64f" => {
+                    LlvmAbi::Ilp32f | LlvmAbi::Lp64f => {
                         // Requires f, incompatible with e and zfinx.
                         FeatureConstraints { required: &["f"], incompatible: &["e", "zfinx"] }
                     }
-                    "ilp32" | "lp64" => {
+                    LlvmAbi::Ilp32 | LlvmAbi::Lp64 => {
                         // Requires nothing, incompatible with e.
                         FeatureConstraints { required: &[], incompatible: &["e"] }
                     }
-                    "ilp32e" => {
+                    LlvmAbi::Ilp32e => {
                         // ilp32e is documented to be incompatible with features that need aligned
                         // load/stores > 32 bits, like `d`. (One could also just generate more
                         // complicated code to align the stack when needed, but the RISCV
@@ -1194,7 +1217,7 @@ impl Target {
                         // a program while the rest doesn't know they even exist.
                         FeatureConstraints { required: &[], incompatible: &["d"] }
                     }
-                    "lp64e" => {
+                    LlvmAbi::Lp64e => {
                         // As above, `e` is not required.
                         NOTHING
                     }
@@ -1204,16 +1227,16 @@ impl Target {
             Arch::LoongArch32 | Arch::LoongArch64 => {
                 // LoongArch handles ABI in a very sane way, being fully explicit via `llvm_abiname`
                 // about what the intended ABI is.
-                match &*self.llvm_abiname {
-                    "ilp32d" | "lp64d" => {
+                match &self.llvm_abiname {
+                    LlvmAbi::Ilp32d | LlvmAbi::Lp64d => {
                         // Requires d (which implies f), incompatible with nothing.
                         FeatureConstraints { required: &["d"], incompatible: &[] }
                     }
-                    "ilp32f" | "lp64f" => {
+                    LlvmAbi::Ilp32f | LlvmAbi::Lp64f => {
                         // Requires f, incompatible with nothing.
                         FeatureConstraints { required: &["f"], incompatible: &[] }
                     }
-                    "ilp32s" | "lp64s" => {
+                    LlvmAbi::Ilp32s | LlvmAbi::Lp64s => {
                         // The soft-float ABI does not require any features and is also not
                         // incompatible with any features. Rust targets explicitly specify the
                         // LLVM ABI names, which allows for enabling hard-float support even on

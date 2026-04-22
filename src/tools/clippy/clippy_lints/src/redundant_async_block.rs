@@ -36,6 +36,7 @@ declare_clippy_lint! {
     complexity,
     "`async { future.await }` can be replaced by `future`"
 }
+
 declare_lint_pass!(RedundantAsyncBlock => [REDUNDANT_ASYNC_BLOCK]);
 
 impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {

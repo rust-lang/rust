@@ -1,14 +1,16 @@
 use either::Either;
 use ide_db::{defs::Definition, search::FileReference};
-use itertools::Itertools;
 use syntax::{
-    SyntaxKind,
+    NodeOrToken, SyntaxKind, SyntaxNode, T,
+    algo::next_non_trivia_token,
     ast::{self, AstNode, HasAttrs, HasGenericParams, HasVisibility},
     match_ast,
-    syntax_editor::{Position, SyntaxEditor},
+    syntax_editor::{Element, Position, SyntaxEditor},
 };
 
-use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
+use crate::{
+    AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder, utils::cover_edit_range,
+};
 
 // Assist: convert_named_struct_to_tuple_struct
 //
@@ -81,51 +83,49 @@ pub(crate) fn convert_named_struct_to_tuple_struct(
         AssistId::refactor_rewrite("convert_named_struct_to_tuple_struct"),
         "Convert to tuple struct",
         strukt_or_variant.syntax().text_range(),
-        |edit| {
-            edit_field_references(ctx, edit, record_fields.fields());
-            edit_struct_references(ctx, edit, strukt_def);
-            edit_struct_def(ctx, edit, &strukt_or_variant, record_fields);
+        |builder| {
+            edit_field_references(ctx, builder, record_fields.fields());
+            edit_struct_references(ctx, builder, strukt_def);
+            edit_struct_def(ctx, builder, &strukt_or_variant, record_fields);
         },
     )
 }
 
 fn edit_struct_def(
     ctx: &AssistContext<'_>,
-    edit: &mut SourceChangeBuilder,
+    builder: &mut SourceChangeBuilder,
     strukt: &Either<ast::Struct, ast::Variant>,
     record_fields: ast::RecordFieldList,
 ) {
     // Note that we don't need to consider macro files in this function because this is
     // currently not triggered for struct definitions inside macro calls.
+    let editor = builder.make_editor(strukt.syntax());
+    let make = editor.make();
+
     let tuple_fields = record_fields.fields().filter_map(|f| {
-        let field = ast::make::tuple_field(f.visibility(), f.ty()?);
-        let mut editor = SyntaxEditor::new(field.syntax().clone());
-        editor.insert_all(
+        let (field_editor, field) =
+            SyntaxEditor::with_ast_node(&make.tuple_field(f.visibility(), f.ty()?));
+        field_editor.insert_all(
             Position::first_child_of(field.syntax()),
-            f.attrs().map(|attr| attr.syntax().clone_subtree().clone_for_update().into()).collect(),
+            f.attrs().map(|attr| attr.syntax().clone().into()).collect(),
         );
-        let field_syntax = editor.finish().new_root().clone();
-        let field = ast::TupleField::cast(field_syntax)?;
-        Some(field)
+        let field_syntax = field_editor.finish().new_root().clone();
+        ast::TupleField::cast(field_syntax)
     });
-    let tuple_fields = ast::make::tuple_field_list(tuple_fields);
-    let record_fields_text_range = record_fields.syntax().text_range();
 
-    edit.edit_file(ctx.vfs_file_id());
-    edit.replace(record_fields_text_range, tuple_fields.syntax().text());
+    let tuple_fields = make.tuple_field_list(tuple_fields);
 
+    let mut elements = vec![tuple_fields.syntax().clone().into()];
     if let Either::Left(strukt) = strukt {
         if let Some(w) = strukt.where_clause() {
-            let mut where_clause = w.to_string();
-            if where_clause.ends_with(',') {
-                where_clause.pop();
-            }
-            where_clause.push(';');
+            editor.delete(w.syntax());
 
-            edit.delete(w.syntax().text_range());
-            edit.insert(record_fields_text_range.end(), ast::make::tokens::single_newline().text());
-            edit.insert(record_fields_text_range.end(), where_clause);
-            edit.insert(record_fields_text_range.end(), ast::make::tokens::single_newline().text());
+            elements.extend([
+                make.whitespace("\n").into(),
+                remove_trailing_comma(w).into(),
+                make.token(T![;]).into(),
+                make.whitespace("\n").into(),
+            ]);
 
             if let Some(tok) = strukt
                 .generic_param_list()
@@ -133,45 +133,51 @@ fn edit_struct_def(
                 .and_then(|tok| tok.next_token())
                 .filter(|tok| tok.kind() == SyntaxKind::WHITESPACE)
             {
-                edit.delete(tok.text_range());
+                editor.delete(tok);
             }
         } else {
-            edit.insert(record_fields_text_range.end(), ";");
+            elements.push(make.token(T![;]).into());
         }
     }
+    editor.replace_with_many(record_fields.syntax(), elements);
 
     if let Some(tok) = record_fields
         .l_curly_token()
         .and_then(|tok| tok.prev_token())
         .filter(|tok| tok.kind() == SyntaxKind::WHITESPACE)
     {
-        edit.delete(tok.text_range())
+        editor.delete(tok)
     }
+
+    builder.add_file_edits(ctx.vfs_file_id(), editor);
 }
 
 fn edit_struct_references(
     ctx: &AssistContext<'_>,
-    edit: &mut SourceChangeBuilder,
-    strukt: Either<hir::Struct, hir::Variant>,
+    builder: &mut SourceChangeBuilder,
+    strukt: Either<hir::Struct, hir::EnumVariant>,
 ) {
     let strukt_def = match strukt {
         Either::Left(s) => Definition::Adt(hir::Adt::Struct(s)),
-        Either::Right(v) => Definition::Variant(v),
+        Either::Right(v) => Definition::EnumVariant(v),
     };
     let usages = strukt_def.usages(&ctx.sema).include_self_refs().all();
 
     for (file_id, refs) in usages {
-        edit.edit_file(file_id.file_id(ctx.db()));
+        let source = ctx.sema.parse(file_id);
+        let editor = builder.make_editor(source.syntax());
         for r in refs {
-            process_struct_name_reference(ctx, r, edit);
+            process_struct_name_reference(ctx, r, &editor, &source);
         }
+        builder.add_file_edits(file_id.file_id(ctx.db()), editor);
     }
 }
 
 fn process_struct_name_reference(
     ctx: &AssistContext<'_>,
     r: FileReference,
-    edit: &mut SourceChangeBuilder,
+    edit: &SyntaxEditor,
+    source: &ast::SourceFile,
 ) -> Option<()> {
     // First check if it's the last semgnet of a path that directly belongs to a record
     // expression/pattern.
@@ -192,36 +198,26 @@ fn process_struct_name_reference(
     match_ast! {
         match parent {
             ast::RecordPat(record_struct_pat) => {
-                // When we failed to get the original range for the whole struct expression node,
+                // When we failed to get the original range for the whole struct pattern node,
                 // we can't provide any reasonable edit. Leave it untouched.
-                let file_range = ctx.sema.original_range_opt(record_struct_pat.syntax())?;
-                edit.replace(
-                    file_range.range,
-                    ast::make::tuple_struct_pat(
-                        record_struct_pat.path()?,
-                        record_struct_pat
-                            .record_pat_field_list()?
-                            .fields()
-                            .filter_map(|pat| pat.pat())
-                            .chain(record_struct_pat.record_pat_field_list()?
-                                .rest_pat()
-                                .map(Into::into))
-                    )
-                    .to_string()
+                record_to_tuple_struct_like(
+                    ctx,
+                    source,
+                    edit,
+                    record_struct_pat.record_pat_field_list()?,
+                    |it| it.fields().filter_map(|it| it.name_ref()),
                 );
             },
             ast::RecordExpr(record_expr) => {
-                // When we failed to get the original range for the whole struct pattern node,
+                // When we failed to get the original range for the whole struct expression node,
                 // we can't provide any reasonable edit. Leave it untouched.
-                let file_range = ctx.sema.original_range_opt(record_expr.syntax())?;
-                let path = record_expr.path()?;
-                let args = record_expr
-                    .record_expr_field_list()?
-                    .fields()
-                    .filter_map(|f| f.expr())
-                    .join(", ");
-
-                edit.replace(file_range.range, format!("{path}({args})"));
+                record_to_tuple_struct_like(
+                    ctx,
+                    source,
+                    edit,
+                    record_expr.record_expr_field_list()?,
+                    |it| it.fields().filter_map(|it| it.name_ref()),
+                );
             },
             _ => {}
         }
@@ -230,9 +226,64 @@ fn process_struct_name_reference(
     Some(())
 }
 
+fn record_to_tuple_struct_like<T, I>(
+    ctx: &AssistContext<'_>,
+    source: &ast::SourceFile,
+    editor: &SyntaxEditor,
+    field_list: T,
+    fields: impl FnOnce(&T) -> I,
+) -> Option<()>
+where
+    T: AstNode,
+    I: IntoIterator<Item = ast::NameRef>,
+{
+    let make = editor.make();
+    let orig = ctx.sema.original_range_opt(field_list.syntax())?;
+    let list_range = cover_edit_range(source.syntax(), orig.range);
+
+    let l_curly = match list_range.start() {
+        NodeOrToken::Node(node) => node.first_token()?,
+        NodeOrToken::Token(t) => t.clone(),
+    };
+    let r_curly = match list_range.end() {
+        NodeOrToken::Node(node) => node.last_token()?,
+        NodeOrToken::Token(t) => t.clone(),
+    };
+
+    if l_curly.kind() == T!['{'] {
+        delete_whitespace(editor, l_curly.prev_token());
+        delete_whitespace(editor, l_curly.next_token());
+        editor.replace(l_curly, make.token(T!['(']));
+    }
+    if r_curly.kind() == T!['}'] {
+        delete_whitespace(editor, r_curly.prev_token());
+        editor.replace(r_curly, make.token(T![')']));
+    }
+
+    for name_ref in fields(&field_list) {
+        let Some(orig) = ctx.sema.original_range_opt(name_ref.syntax()) else { continue };
+        let name_range = cover_edit_range(source.syntax(), orig.range);
+
+        if let Some(colon) = next_non_trivia_token(name_range.end().clone())
+            && colon.kind() == T![:]
+        {
+            editor.delete(&colon);
+            editor.delete_all(name_range);
+
+            if let Some(next) = next_non_trivia_token(colon.clone())
+                && next.kind() != T!['}']
+            {
+                // Avoid overlapping delete whitespace on `{ field: }`
+                delete_whitespace(editor, colon.next_token());
+            }
+        }
+    }
+    Some(())
+}
+
 fn edit_field_references(
     ctx: &AssistContext<'_>,
-    edit: &mut SourceChangeBuilder,
+    builder: &mut SourceChangeBuilder,
     fields: impl Iterator<Item = ast::RecordField>,
 ) {
     for (index, field) in fields.enumerate() {
@@ -243,17 +294,44 @@ fn edit_field_references(
         let def = Definition::Field(field);
         let usages = def.usages(&ctx.sema).all();
         for (file_id, refs) in usages {
-            edit.edit_file(file_id.file_id(ctx.db()));
+            let source = ctx.sema.parse(file_id);
+            let editor = builder.make_editor(source.syntax());
+            let make = editor.make();
+
             for r in refs {
                 if let Some(name_ref) = r.name.as_name_ref() {
                     // Only edit the field reference if it's part of a `.field` access
                     if name_ref.syntax().parent().and_then(ast::FieldExpr::cast).is_some() {
-                        edit.replace(r.range, index.to_string());
+                        editor.replace_all(
+                            cover_edit_range(source.syntax(), r.range),
+                            vec![make.name_ref(&index.to_string()).syntax().clone().into()],
+                        );
                     }
                 }
             }
+
+            builder.add_file_edits(file_id.file_id(ctx.db()), editor);
         }
     }
+}
+
+fn delete_whitespace(edit: &SyntaxEditor, whitespace: Option<impl Element>) {
+    let Some(whitespace) = whitespace else { return };
+    let NodeOrToken::Token(token) = whitespace.syntax_element() else { return };
+
+    if token.kind() == SyntaxKind::WHITESPACE && !token.text().contains('\n') {
+        edit.delete(token);
+    }
+}
+
+fn remove_trailing_comma(w: ast::WhereClause) -> SyntaxNode {
+    let (editor, w) = SyntaxEditor::new(w.syntax().clone());
+    if let Some(last) = w.last_child_or_token()
+        && last.kind() == T![,]
+    {
+        editor.delete(last);
+    }
+    editor.finish().new_root().clone()
 }
 
 #[cfg(test)]
@@ -678,6 +756,102 @@ where
     }
 
     #[test]
+    fn convert_constructor_expr_uses_self() {
+        // regression test for #21595
+        check_assist(
+            convert_named_struct_to_tuple_struct,
+            r#"
+struct $0Foo { field1: u32 }
+impl Foo {
+    fn clone(&self) -> Self {
+        Self { field1: self.field1 }
+    }
+}"#,
+            r#"
+struct Foo(u32);
+impl Foo {
+    fn clone(&self) -> Self {
+        Self(self.0)
+    }
+}"#,
+        );
+
+        check_assist(
+            convert_named_struct_to_tuple_struct,
+            r#"
+macro_rules! id {
+    ($($t:tt)*) => { $($t)* }
+}
+struct $0Foo { field1: u32 }
+impl Foo {
+    fn clone(&self) -> Self {
+        id!(Self { field1: self.field1 })
+    }
+}"#,
+            r#"
+macro_rules! id {
+    ($($t:tt)*) => { $($t)* }
+}
+struct Foo(u32);
+impl Foo {
+    fn clone(&self) -> Self {
+        id!(Self(self.0))
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn convert_pat_uses_self() {
+        // regression test for #21595
+        check_assist(
+            convert_named_struct_to_tuple_struct,
+            r#"
+enum Foo {
+    $0Value { field: &'static Foo },
+    Nil,
+}
+fn foo(foo: &Foo) {
+    if let Foo::Value { field: Foo::Value { field } } = foo {}
+}"#,
+            r#"
+enum Foo {
+    Value(&'static Foo),
+    Nil,
+}
+fn foo(foo: &Foo) {
+    if let Foo::Value(Foo::Value(field)) = foo {}
+}"#,
+        );
+
+        check_assist(
+            convert_named_struct_to_tuple_struct,
+            r#"
+macro_rules! id {
+    ($($t:tt)*) => { $($t)* }
+}
+enum Foo {
+    $0Value { field: &'static Foo },
+    Nil,
+}
+fn foo(foo: &Foo) {
+    if let id!(Foo::Value { field: Foo::Value { field } }) = foo {}
+}"#,
+            r#"
+macro_rules! id {
+    ($($t:tt)*) => { $($t)* }
+}
+enum Foo {
+    Value(&'static Foo),
+    Nil,
+}
+fn foo(foo: &Foo) {
+    if let id!(Foo::Value(Foo::Value(field))) = foo {}
+}"#,
+        );
+    }
+
+    #[test]
     fn not_applicable_other_than_record_variant() {
         check_assist_not_applicable(
             convert_named_struct_to_tuple_struct,
@@ -1042,7 +1216,9 @@ struct Struct(i32);
 
 fn test() {
     id! {
-        let s = Struct(42);
+        let s = Struct(
+            42,
+        );
         let Struct(value) = s;
         let Struct(inner) = s;
     }

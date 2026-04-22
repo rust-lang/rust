@@ -14,8 +14,10 @@ mod tests;
 use std::ops::ControlFlow;
 
 use either::Either;
-use hir::{DefWithBody, EditionedFileId, InFile, InRealFile, MacroKind, Semantics};
-use ide_db::{FxHashMap, FxHashSet, MiniCore, Ranker, RootDatabase, SymbolKind};
+use hir::{
+    DefWithBody, EditionedFileId, ExpressionStoreOwner, InFile, InRealFile, MacroKind, Semantics,
+};
+use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind, ra_fixture::RaFixtureConfig};
 use syntax::{
     AstNode, AstToken, NodeOrToken,
     SyntaxKind::*,
@@ -63,7 +65,7 @@ pub struct HighlightConfig<'a> {
     pub macro_bang: bool,
     /// Whether to highlight unresolved things be their syntax
     pub syntactic_name_ref_highlighting: bool,
-    pub minicore: MiniCore<'a>,
+    pub ra_fixture: RaFixtureConfig<'a>,
 }
 
 // Feature: Semantic Syntax Highlighting
@@ -256,8 +258,8 @@ fn traverse(
     let mut inside_attribute = false;
 
     // FIXME: accommodate range highlighting
-    let mut body_stack: Vec<Option<DefWithBody>> = vec![];
-    let mut per_body_cache: FxHashMap<DefWithBody, FxHashSet<_>> = FxHashMap::default();
+    let mut body_stack: Vec<Option<ExpressionStoreOwner>> = vec![];
+    let mut per_body_cache: FxHashMap<ExpressionStoreOwner, FxHashSet<_>> = FxHashMap::default();
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
@@ -288,19 +290,18 @@ fn traverse(
                 inside_attribute = false
             }
             Enter(NodeOrToken::Node(node)) => {
+                // FIXME: ExpressionStore signatures and variant fields
+                // Maybe we can re-use child container stuff here
                 if let Some(item) = <Either<ast::Item, ast::Variant>>::cast(node.clone()) {
                     match item {
                         Either::Left(item) => {
                             match &item {
-                                ast::Item::Fn(it) => {
-                                    body_stack.push(sema.to_def(it).map(Into::into))
-                                }
-                                ast::Item::Const(it) => {
-                                    body_stack.push(sema.to_def(it).map(Into::into))
-                                }
-                                ast::Item::Static(it) => {
-                                    body_stack.push(sema.to_def(it).map(Into::into))
-                                }
+                                ast::Item::Fn(it) => body_stack
+                                    .push(sema.to_def(it).map(DefWithBody::from).map(Into::into)),
+                                ast::Item::Const(it) => body_stack
+                                    .push(sema.to_def(it).map(DefWithBody::from).map(Into::into)),
+                                ast::Item::Static(it) => body_stack
+                                    .push(sema.to_def(it).map(DefWithBody::from).map(Into::into)),
                                 _ => (),
                             }
 
@@ -329,7 +330,9 @@ fn traverse(
                                 }
                             }
                         }
-                        Either::Right(it) => body_stack.push(sema.to_def(&it).map(Into::into)),
+                        Either::Right(it) => {
+                            body_stack.push(sema.to_def(&it).map(DefWithBody::from).map(Into::into))
+                        }
                     }
                 }
             }
@@ -392,11 +395,11 @@ fn traverse(
                 let descended = descend_token(sema, InRealFile::new(file_id, token));
                 let body = match &descended.value {
                     NodeOrToken::Node(n) => {
-                        sema.body_for(InFile::new(descended.file_id, n.syntax()))
+                        sema.store_owner_for(InFile::new(descended.file_id, n.syntax()))
                     }
-                    NodeOrToken::Token(t) => {
-                        t.parent().and_then(|it| sema.body_for(InFile::new(descended.file_id, &it)))
-                    }
+                    NodeOrToken::Token(t) => t
+                        .parent()
+                        .and_then(|it| sema.store_owner_for(InFile::new(descended.file_id, &it))),
                 };
                 (descended, body)
             }

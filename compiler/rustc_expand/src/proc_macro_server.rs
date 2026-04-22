@@ -110,26 +110,22 @@ impl FromInternal<TokenStream> for Vec<TokenTree<TokenStream, Span, Symbol>> {
         // Estimate the capacity as `stream.len()` rounded up to the next power
         // of two to limit the number of required reallocations.
         let mut trees = Vec::with_capacity(stream.len().next_power_of_two());
-        let mut iter = stream.iter();
 
-        while let Some(tree) = iter.next() {
+        for tree in stream.iter() {
             let (Token { kind, span }, joint) = match tree.clone() {
                 tokenstream::TokenTree::Delimited(span, _, mut delim, mut stream) => {
                     // In `mk_delimited` we avoid nesting invisible delimited
                     // of the same `MetaVarKind`. Here we do the same but
                     // ignore the `MetaVarKind` because it is discarded when we
                     // convert it to a `Group`.
-                    while let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim {
-                        if stream.len() == 1
-                            && let tree = stream.iter().next().unwrap()
-                            && let tokenstream::TokenTree::Delimited(_, _, delim2, stream2) = tree
-                            && let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim2
-                        {
-                            delim = *delim2;
-                            stream = stream2.clone();
-                        } else {
-                            break;
-                        }
+                    while let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim
+                        && stream.len() == 1
+                        && let tree = stream.get(0).unwrap()
+                        && let tokenstream::TokenTree::Delimited(_, _, delim2, stream2) = tree
+                        && let Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) = delim2
+                    {
+                        delim = *delim2;
+                        stream = stream2.clone();
                     }
 
                     trees.push(TokenTree::Group(Group {
@@ -475,14 +471,15 @@ impl server::Server for Rustc<'_, '_> {
     }
 
     fn track_env_var(&mut self, var: &str, value: Option<&str>) {
-        self.psess()
+        self.ecx
+            .sess
             .env_depinfo
             .borrow_mut()
             .insert((Symbol::intern(var), value.map(Symbol::intern)));
     }
 
     fn track_path(&mut self, path: &str) {
-        self.psess().file_depinfo.borrow_mut().insert(Symbol::intern(path));
+        self.ecx.sess.file_depinfo.borrow_mut().insert(Symbol::intern(path));
     }
 
     fn literal_from_str(&mut self, s: &str) -> Result<Literal<Self::Span, Self::Symbol>, String> {

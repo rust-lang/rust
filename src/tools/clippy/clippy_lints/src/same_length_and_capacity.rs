@@ -65,11 +65,12 @@ declare_clippy_lint! {
     /// // This time, leverage the previously saved capacity:
     /// let reconstructed = unsafe { Vec::from_raw_parts(ptr, len, cap) };
     /// ```
-    #[clippy::version = "1.93.0"]
+    #[clippy::version = "1.94.0"]
     pub SAME_LENGTH_AND_CAPACITY,
     pedantic,
     "`from_raw_parts` with same length and capacity"
 }
+
 declare_lint_pass!(SameLengthAndCapacity => [SAME_LENGTH_AND_CAPACITY]);
 
 impl<'tcx> LateLintPass<'tcx> for SameLengthAndCapacity {

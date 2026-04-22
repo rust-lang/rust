@@ -9,6 +9,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::print::PrintTraitRefExt;
 use rustc_middle::ty::{
     self, AliasTy, Binder, ClauseKind, PredicateKind, Ty, TyCtxt, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    Unnormalized,
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
@@ -75,13 +76,12 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             return;
         }
         let ret_ty = return_ty(cx, cx.tcx.local_def_id_to_hir_id(fn_def_id).expect_owner());
-        if let ty::Alias(ty::Opaque, AliasTy { def_id, args, .. }) = *ret_ty.kind()
+        if let ty::Alias(AliasTy { kind: ty::Opaque{def_id}, args, .. }) = *ret_ty.kind()
             && let Some(future_trait) = cx.tcx.lang_items().future_trait()
             && let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send)
             && let preds = cx.tcx.explicit_item_self_bounds(def_id)
             // If is a Future
-            && preds
-                .iter_instantiated_copied(cx.tcx, args)
+            && preds.iter_instantiated_copied(cx.tcx, args).map(Unnormalized::skip_norm_wip)
                 .filter_map(|(p, _)| p.as_trait_clause())
                 .any(|trait_pred| trait_pred.skip_binder().trait_ref.def_id == future_trait)
         {
@@ -148,7 +148,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for TyParamAtTopLevelVisitor {
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         match ty.kind() {
             ty::Param(_) => ControlFlow::Break(true),
-            ty::Alias(ty::AliasTyKind::Projection, ty) => ty.visit_with(self),
+            ty::Alias(
+                ty @ AliasTy {
+                    kind: ty::Projection { .. },
+                    ..
+                },
+            ) => ty.visit_with(self),
             _ => ControlFlow::Break(false),
         }
     }

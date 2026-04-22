@@ -1,6 +1,5 @@
 //! Type-checking for the `#[rustc_intrinsic]` intrinsics that the compiler exposes.
 
-use rustc_abi::ExternAbi;
 use rustc_errors::DiagMessage;
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
@@ -111,12 +110,10 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::expf32
         | sym::expf64
         | sym::expf128
-        | sym::fabsf16
-        | sym::fabsf32
-        | sym::fabsf64
-        | sym::fabsf128
+        | sym::fabs
         | sym::fadd_algebraic
         | sym::fdiv_algebraic
+        | sym::field_offset
         | sym::floorf16
         | sym::floorf32
         | sym::floorf64
@@ -146,22 +143,22 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::logf32
         | sym::logf64
         | sym::logf128
+        | sym::maximum_number_nsz_f16
+        | sym::maximum_number_nsz_f32
+        | sym::maximum_number_nsz_f64
+        | sym::maximum_number_nsz_f128
         | sym::maximumf16
         | sym::maximumf32
         | sym::maximumf64
         | sym::maximumf128
-        | sym::maxnumf16
-        | sym::maxnumf32
-        | sym::maxnumf64
-        | sym::maxnumf128
+        | sym::minimum_number_nsz_f16
+        | sym::minimum_number_nsz_f32
+        | sym::minimum_number_nsz_f64
+        | sym::minimum_number_nsz_f128
         | sym::minimumf16
         | sym::minimumf32
         | sym::minimumf64
         | sym::minimumf128
-        | sym::minnumf16
-        | sym::minnumf32
-        | sym::minnumf64
-        | sym::minnumf128
         | sym::mul_with_overflow
         | sym::needs_drop
         | sym::offload
@@ -280,7 +277,7 @@ pub(crate) fn check_intrinsic_type(
                 kind: ty::BoundRegionKind::ClosureEnv,
             },
         );
-        let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]);
+        let va_list_ty = tcx.type_of(did).instantiate(tcx, &[region.into()]).skip_norm_wip();
         (Ty::new_ref(tcx, env_region, va_list_ty, mutbl), va_list_ty)
     };
 
@@ -297,6 +294,7 @@ pub(crate) fn check_intrinsic_type(
             (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], tcx.types.usize)
         }
         sym::offset_of => (1, 0, vec![tcx.types.u32, tcx.types.u32], tcx.types.usize),
+        sym::field_offset => (1, 0, vec![], tcx.types.usize),
         sym::rustc_peek => (1, 0, vec![param(0)], param(0)),
         sym::caller_location => (0, 0, vec![], tcx.caller_location_ty()),
         sym::assert_inhabited | sym::assert_zero_valid | sym::assert_mem_uninitialized_valid => {
@@ -461,25 +459,26 @@ pub(crate) fn check_intrinsic_type(
             (0, 0, vec![tcx.types.f128, tcx.types.f128, tcx.types.f128], tcx.types.f128)
         }
 
-        sym::fabsf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-        sym::fabsf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-        sym::fabsf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-        sym::fabsf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
+        sym::fabs => (1, 0, vec![param(0)], param(0)),
 
-        sym::minnumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::minnumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::minnumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::minnumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
+        sym::minimum_number_nsz_f16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
+        sym::minimum_number_nsz_f32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
+        sym::minimum_number_nsz_f64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
+        sym::minimum_number_nsz_f128 => {
+            (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128)
+        }
 
         sym::minimumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
         sym::minimumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
         sym::minimumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
         sym::minimumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
 
-        sym::maxnumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
-        sym::maxnumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
-        sym::maxnumf64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
-        sym::maxnumf128 => (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128),
+        sym::maximum_number_nsz_f16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
+        sym::maximum_number_nsz_f32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
+        sym::maximum_number_nsz_f64 => (0, 0, vec![tcx.types.f64, tcx.types.f64], tcx.types.f64),
+        sym::maximum_number_nsz_f128 => {
+            (0, 0, vec![tcx.types.f128, tcx.types.f128], tcx.types.f128)
+        }
 
         sym::maximumf16 => (0, 0, vec![tcx.types.f16, tcx.types.f16], tcx.types.f16),
         sym::maximumf32 => (0, 0, vec![tcx.types.f32, tcx.types.f32], tcx.types.f32),
@@ -636,20 +635,10 @@ pub(crate) fn check_intrinsic_type(
 
         sym::catch_unwind => {
             let mut_u8 = Ty::new_mut_ptr(tcx, tcx.types.u8);
-            let try_fn_ty = ty::Binder::dummy(tcx.mk_fn_sig(
-                [mut_u8],
-                tcx.types.unit,
-                false,
-                hir::Safety::Safe,
-                ExternAbi::Rust,
-            ));
-            let catch_fn_ty = ty::Binder::dummy(tcx.mk_fn_sig(
-                [mut_u8, mut_u8],
-                tcx.types.unit,
-                false,
-                hir::Safety::Safe,
-                ExternAbi::Rust,
-            ));
+            let try_fn_ty =
+                ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([mut_u8], tcx.types.unit));
+            let catch_fn_ty =
+                ty::Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([mut_u8, mut_u8], tcx.types.unit));
             (
                 0,
                 0,
@@ -720,8 +709,8 @@ pub(crate) fn check_intrinsic_type(
         | sym::simd_and
         | sym::simd_or
         | sym::simd_xor
-        | sym::simd_fmin
-        | sym::simd_fmax
+        | sym::simd_minimum_number_nsz
+        | sym::simd_maximum_number_nsz
         | sym::simd_saturating_add
         | sym::simd_saturating_sub
         | sym::simd_carryless_mul => (1, 0, vec![param(0), param(0)], param(0)),
@@ -783,6 +772,13 @@ pub(crate) fn check_intrinsic_type(
         sym::simd_shuffle => (3, 0, vec![param(0), param(0), param(1)], param(2)),
         sym::simd_shuffle_const_generic => (2, 1, vec![param(0), param(0)], param(1)),
 
+        sym::sve_cast => (2, 0, vec![param(0)], param(1)),
+        sym::sve_tuple_create2 => (2, 0, vec![param(0), param(0)], param(1)),
+        sym::sve_tuple_create3 => (2, 0, vec![param(0), param(0), param(0)], param(1)),
+        sym::sve_tuple_create4 => (2, 0, vec![param(0), param(0), param(0), param(0)], param(1)),
+        sym::sve_tuple_get => (2, 1, vec![param(0)], param(1)),
+        sym::sve_tuple_set => (2, 1, vec![param(0), param(1)], param(0)),
+
         sym::atomic_cxchg | sym::atomic_cxchgweak => (
             1,
             2,
@@ -810,7 +806,7 @@ pub(crate) fn check_intrinsic_type(
             return;
         }
     };
-    let sig = tcx.mk_fn_sig(inputs, output, false, safety, ExternAbi::Rust);
+    let sig = tcx.mk_fn_sig_rust_abi(inputs, output, safety);
     let sig = ty::Binder::bind_with_vars(sig, bound_vars);
     equate_intrinsic_type(tcx, span, intrinsic_id, n_tps, n_lts, n_cts, sig)
 }

@@ -164,7 +164,7 @@ impl<'tcx> InherentCollect<'tcx> {
 
         let id = id.owner_id.def_id;
         let item_span = self.tcx.def_span(id);
-        let self_ty = self.tcx.type_of(id).instantiate_identity();
+        let self_ty = self.tcx.type_of(id).instantiate_identity().skip_norm_wip();
         let mut self_ty = self.tcx.peel_off_free_alias_tys(self_ty);
         // We allow impls on pattern types exactly when we allow impls on the base type.
         // FIXME(pattern_types): Figure out the exact coherence rules we want here.
@@ -195,7 +195,11 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::FnPtr(..)
             | ty::Tuple(..)
             | ty::UnsafeBinder(_) => self.check_primitive_impl(id, self_ty),
-            ty::Alias(ty::Projection | ty::Inherent | ty::Opaque, _) | ty::Param(_) => {
+            ty::Alias(ty::AliasTy {
+                kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Opaque { .. },
+                ..
+            })
+            | ty::Param(_) => {
                 Err(self.tcx.dcx().emit_err(errors::InherentNominal { span: item_span }))
             }
             ty::FnDef(..)
@@ -203,7 +207,7 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
-            | ty::Alias(ty::Free, _)
+            | ty::Alias(ty::AliasTy { kind: ty::Free { .. }, .. })
             | ty::Bound(..)
             | ty::Placeholder(_)
             | ty::Infer(_) => {

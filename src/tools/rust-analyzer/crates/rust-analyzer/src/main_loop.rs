@@ -92,7 +92,7 @@ impl fmt::Display for Event {
             Event::DeferredTask(_) => write!(f, "Event::DeferredTask"),
             Event::TestResult(_) => write!(f, "Event::TestResult"),
             Event::DiscoverProject(_) => write!(f, "Event::DiscoverProject"),
-            Event::FetchWorkspaces(_) => write!(f, "Event::SwitchWorkspaces"),
+            Event::FetchWorkspaces(_) => write!(f, "Event::FetchWorkspaces"),
         }
     }
 }
@@ -144,12 +144,11 @@ impl fmt::Debug for Event {
         };
 
         match self {
-            Event::Lsp(lsp_server::Message::Notification(not)) => {
-                if notification_is::<lsp_types::notification::DidOpenTextDocument>(not)
-                    || notification_is::<lsp_types::notification::DidChangeTextDocument>(not)
-                {
-                    return debug_non_verbose(not, f);
-                }
+            Event::Lsp(lsp_server::Message::Notification(not))
+                if (notification_is::<lsp_types::notification::DidOpenTextDocument>(not)
+                    || notification_is::<lsp_types::notification::DidChangeTextDocument>(not)) =>
+            {
+                return debug_non_verbose(not, f);
             }
             Event::Task(Task::Response(resp)) => {
                 return f
@@ -830,12 +829,19 @@ impl GlobalState {
                     let command = cfg.command.clone();
                     let discover = DiscoverCommand::new(self.discover_sender.clone(), command);
 
+                    let discover_path = match &arg {
+                        DiscoverProjectParam::Buildfile(it) => it,
+                        DiscoverProjectParam::Path(it) => it,
+                    };
+                    let current_dir =
+                        self.config.workspace_root_for(discover_path.as_path()).clone();
+
                     let arg = match arg {
                         DiscoverProjectParam::Buildfile(it) => DiscoverArgument::Buildfile(it),
                         DiscoverProjectParam::Path(it) => DiscoverArgument::Path(it),
                     };
 
-                    match discover.spawn(arg, self.config.root_path().as_ref()) {
+                    match discover.spawn(arg, current_dir.as_ref()) {
                         Ok(handle) => {
                             if self.discover_jobs_active == 0 {
                                 let title = &cfg.progress_label.clone();
@@ -953,7 +959,7 @@ impl GlobalState {
                 if let Some(dir) = dir {
                     message += &format!(
                         ": {}",
-                        match dir.strip_prefix(self.config.root_path()) {
+                        match dir.strip_prefix(self.config.workspace_root_for(&dir)) {
                             Some(relative_path) => relative_path.as_utf8_path(),
                             None => dir.as_ref(),
                         }
@@ -1178,6 +1184,8 @@ impl GlobalState {
             } => self.diagnostics.clear_check_older_than_for_package(id, package_id, generation),
             FlycheckMessage::Progress { id, progress } => {
                 let format_with_id = |user_facing_command: String| {
+                    // When we're running multiple flychecks, we have to include a disambiguator in
+                    // the title, or the editor complains. Note that this is a user-facing string.
                     if self.flycheck.len() == 1 {
                         user_facing_command
                     } else {

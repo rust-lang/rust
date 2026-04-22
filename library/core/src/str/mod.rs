@@ -15,7 +15,7 @@ mod validations;
 
 use self::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use crate::char::{self, EscapeDebugExtArgs};
-use crate::ops::Range;
+use crate::range::Range;
 use crate::slice::{self, SliceIndex};
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{ascii, mem};
@@ -81,25 +81,21 @@ const fn slice_error_fail_ct(_: &str, _: usize, _: usize) -> ! {
 
 #[track_caller]
 fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
-    const MAX_DISPLAY_LENGTH: usize = 256;
-    let trunc_len = s.floor_char_boundary(MAX_DISPLAY_LENGTH);
-    let s_trunc = &s[..trunc_len];
-    let ellipsis = if trunc_len < s.len() { "[...]" } else { "" };
     let len = s.len();
 
     // 1. begin is OOB.
     if begin > len {
-        panic!("start byte index {begin} is out of bounds of `{s_trunc}`{ellipsis}");
+        panic!("start byte index {begin} is out of bounds for string of length {len}");
     }
 
     // 2. end is OOB.
     if end > len {
-        panic!("end byte index {end} is out of bounds of `{s_trunc}`{ellipsis}");
+        panic!("end byte index {end} is out of bounds for string of length {len}");
     }
 
     // 3. range is backwards.
     if begin > end {
-        panic!("begin > end ({begin} > {end}) when slicing `{s_trunc}`{ellipsis}")
+        panic!("byte range starts at {begin} but ends at {end}");
     }
 
     // 4. begin is inside a character.
@@ -109,7 +105,7 @@ fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
         let range = floor..ceil;
         let ch = s[floor..ceil].chars().next().unwrap();
         panic!(
-            "start byte index {begin} is not a char boundary; it is inside {ch:?} (bytes {range:?}) of `{s_trunc}`{ellipsis}"
+            "start byte index {begin} is not a char boundary; it is inside {ch:?} (bytes {range:?} of string)"
         )
     }
 
@@ -120,7 +116,7 @@ fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
         let range = floor..ceil;
         let ch = s[floor..ceil].chars().next().unwrap();
         panic!(
-            "end byte index {end} is not a char boundary; it is inside {ch:?} (bytes {range:?}) of `{s_trunc}`{ellipsis}"
+            "end byte index {end} is not a char boundary; it is inside {ch:?} (bytes {range:?} of string)"
         )
     }
 
@@ -128,7 +124,7 @@ fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     // This test cannot be combined with 2. above because for cases like
     // `"abcαβγ"[4..9]` the error is that 4 is inside 'α', not that 9 is OOB.
     debug_assert_eq!(end, len);
-    panic!("end byte index {end} is out of bounds of `{s_trunc}`{ellipsis}");
+    panic!("end byte index {end} is out of bounds for string of length {len}");
 }
 
 impl str {
@@ -593,6 +589,7 @@ impl str {
     #[rustc_as_ptr]
     #[must_use]
     #[inline(always)]
+    #[rustc_no_writable]
     pub const fn as_mut_ptr(&mut self) -> *mut u8 {
         self as *mut str as *mut u8
     }
@@ -1206,6 +1203,9 @@ impl str {
     ///
     /// This uses the same definition as [`char::is_ascii_whitespace`].
     /// To split by Unicode `Whitespace` instead, use [`split_whitespace`].
+    /// Note that because of this difference in definition, even if `s.is_ascii()`
+    /// is `true`, `s.split_ascii_whitespace()` behavior will differ from `s.split_whitespace()`
+    /// if `s` contains U+000B VERTICAL TAB.
     ///
     /// [`split_whitespace`]: str::split_whitespace
     ///
@@ -2900,9 +2900,12 @@ impl str {
     /// Returns a string slice with leading ASCII whitespace removed.
     ///
     /// 'Whitespace' refers to the definition used by
-    /// [`u8::is_ascii_whitespace`].
+    /// [`u8::is_ascii_whitespace`]. Importantly, this definition excludes
+    /// the U+000B code point even though it has the Unicode [`White_Space`] property
+    /// and is removed by [`str::trim_start`].
     ///
     /// [`u8::is_ascii_whitespace`]: u8::is_ascii_whitespace
+    /// [`White_Space`]: https://www.unicode.org/reports/tr44/#White_Space
     ///
     /// # Examples
     ///
@@ -2925,9 +2928,12 @@ impl str {
     /// Returns a string slice with trailing ASCII whitespace removed.
     ///
     /// 'Whitespace' refers to the definition used by
-    /// [`u8::is_ascii_whitespace`].
+    /// [`u8::is_ascii_whitespace`]. Importantly, this definition excludes
+    /// the U+000B code point even though it has the Unicode [`White_Space`] property
+    /// and is removed by [`str::trim_end`].
     ///
     /// [`u8::is_ascii_whitespace`]: u8::is_ascii_whitespace
+    /// [`White_Space`]: https://www.unicode.org/reports/tr44/#White_Space
     ///
     /// # Examples
     ///
@@ -2951,9 +2957,12 @@ impl str {
     /// removed.
     ///
     /// 'Whitespace' refers to the definition used by
-    /// [`u8::is_ascii_whitespace`].
+    /// [`u8::is_ascii_whitespace`]. Importantly, this definition excludes
+    /// the U+000B code point even though it has the Unicode [`White_Space`] property
+    /// and is removed by [`str::trim`].
     ///
     /// [`u8::is_ascii_whitespace`]: u8::is_ascii_whitespace
+    /// [`White_Space`]: https://www.unicode.org/reports/tr44/#White_Space
     ///
     /// # Examples
     ///
@@ -3116,14 +3125,15 @@ impl str {
     /// # Examples
     /// ```
     /// #![feature(substr_range)]
+    /// use core::range::Range;
     ///
     /// let data = "a, b, b, a";
     /// let mut iter = data.split(", ").map(|s| data.substr_range(s).unwrap());
     ///
-    /// assert_eq!(iter.next(), Some(0..1));
-    /// assert_eq!(iter.next(), Some(3..4));
-    /// assert_eq!(iter.next(), Some(6..7));
-    /// assert_eq!(iter.next(), Some(9..10));
+    /// assert_eq!(iter.next(), Some(Range { start: 0, end: 1 }));
+    /// assert_eq!(iter.next(), Some(Range { start: 3, end: 4 }));
+    /// assert_eq!(iter.next(), Some(Range { start: 6, end: 7 }));
+    /// assert_eq!(iter.next(), Some(Range { start: 9, end: 10 }));
     /// ```
     #[must_use]
     #[unstable(feature = "substr_range", issue = "126769")]

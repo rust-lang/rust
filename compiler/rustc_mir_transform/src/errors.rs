@@ -19,11 +19,11 @@ pub(crate) fn emit_inline_always_target_feature_diagnostic<'a, 'tcx>(
     caller_def_id: DefId,
     callee_only: &[&'a str],
 ) {
-    tcx.node_span_lint(
+    tcx.emit_node_span_lint(
         lint::builtin::INLINE_ALWAYS_MISMATCHING_TARGET_FEATURES,
         tcx.local_def_id_to_hir_id(caller_def_id.as_local().unwrap()),
         call_span,
-        |lint| {
+        rustc_errors::DiagDecorator(|lint| {
             let callee = tcx.def_path_str(callee_def_id);
             let caller = tcx.def_path_str(caller_def_id);
 
@@ -46,7 +46,7 @@ pub(crate) fn emit_inline_always_target_feature_diagnostic<'a, 'tcx>(
                 format!("#[target_feature(enable = \"{feats}\")]\n"),
                 lint::Applicability::MaybeIncorrect,
             );
-        },
+        }),
     );
 }
 
@@ -145,11 +145,7 @@ impl<'a, P: std::fmt::Debug> Diagnostic<'a, ()> for AssertLint<P> {
                 }
             },
         );
-        let label = self.assert_kind.diagnostic_message();
-        self.assert_kind.add_args(&mut |name, value| {
-            diag.arg(name, value);
-        });
-        diag.span_label(self.span, label);
+        diag.span_label(self.span, self.assert_kind.to_string());
         diag
     }
 }
@@ -222,9 +218,27 @@ pub(crate) struct UnusedVarAssignedOnly {
 pub(crate) struct UnusedAssign {
     pub name: Symbol,
     #[subdiagnostic]
+    pub overwrite: Option<UnusedAssignOverwrite>,
+    #[subdiagnostic]
     pub suggestion: Option<UnusedAssignSuggestion>,
     #[help("maybe it is overwritten before being read?")]
     pub help: bool,
+}
+
+pub(crate) struct UnusedAssignOverwrite {
+    pub assigned_span: Span,
+    pub overwrite_span: Span,
+    pub name: Symbol,
+}
+
+impl Subdiagnostic for UnusedAssignOverwrite {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
+        diag.span_label(self.assigned_span, "this value is reassigned later and never used");
+        diag.span_label(
+            self.overwrite_span,
+            format!("`{}` is overwritten here before the previous value is read", self.name),
+        );
+    }
 }
 
 #[derive(Subdiagnostic)]
@@ -389,4 +403,5 @@ pub(crate) struct ForceInlineFailure {
 #[note("`{$callee}` is required to be inlined to: {$sym}")]
 pub(crate) struct ForceInlineJustification {
     pub sym: Symbol,
+    pub callee: String,
 }

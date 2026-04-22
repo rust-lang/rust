@@ -9,7 +9,6 @@ help: the trait `Foo` is implemented for `()`
    |
 LL | impl Foo for () where i32: Foo {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
@@ -26,7 +25,6 @@ help: the trait `Foo` is implemented for `()`
    |
 LL | impl Foo for () where i32: Foo {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
@@ -43,7 +41,6 @@ help: the trait `Foo` is implemented for `()`
    |
 LL | impl Foo for () where i32: Foo {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
@@ -60,7 +57,6 @@ help: the trait `Foo` is implemented for `()`
    |
 LL | impl Foo for () where i32: Foo {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
@@ -77,7 +73,6 @@ help: the trait `Foo` is implemented for `()`
    |
 LL | impl Foo for () where i32: Foo {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
@@ -94,7 +89,6 @@ help: the trait `Foo` is implemented for `()`
    |
 LL | impl Foo for () where i32: Foo {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
@@ -106,7 +100,6 @@ error[E0277]: the trait bound `String: Neg` is not satisfied
 LL | fn use_op(s: String) -> String where String: ::std::ops::Neg<Output=String> {
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Neg` is not implemented for `String`
    |
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
@@ -119,7 +112,6 @@ LL | fn use_for() where i32: Iterator {
    |                    ^^^^^^^^^^^^^ `i32` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `i32`
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
@@ -132,7 +124,6 @@ LL | struct TwoStrs(str, str) where str: Sized;
    |                                ^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
@@ -150,7 +141,6 @@ note: required because it appears within the type `Dst<(dyn A + 'static)>`
    |
 LL | struct Dst<X: ?Sized> {
    |        ^^^
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]
@@ -163,7 +153,6 @@ LL | fn return_str() -> str where str: Sized {
    |                              ^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = help: see issue #48214
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
    |
 LL + #![feature(trivial_bounds)]

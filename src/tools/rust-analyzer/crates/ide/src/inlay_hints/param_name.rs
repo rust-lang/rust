@@ -37,8 +37,9 @@ pub(super) fn hints(
     let hints = callable
         .params()
         .into_iter()
-        .zip(arg_list.args())
+        .zip(arg_list.args_maybe_empty())
         .filter_map(|(p, arg)| {
+            let arg = arg?;
             // Only annotate hints for expressions that exist in the original file
             let range = sema.original_range_opt(arg.syntax())?;
             if range.file_id != file_id {
@@ -374,7 +375,7 @@ fn is_adt_constructor_similar_to_param_name(
         hir::PathResolution::Def(hir::ModuleDef::Adt(_)) => {
             Some(to_lower_snake_case(&path.segment()?.name_ref()?.text()) == param_name)
         }
-        hir::PathResolution::Def(hir::ModuleDef::Function(_) | hir::ModuleDef::Variant(_)) => {
+        hir::PathResolution::Def(hir::ModuleDef::Function(_) | hir::ModuleDef::EnumVariant(_)) => {
             if to_lower_snake_case(&path.segment()?.name_ref()?.text()) == param_name {
                 return Some(true);
             }
@@ -426,6 +427,7 @@ fn main() {
     fn param_hints_on_closure() {
         check_params(
             r#"
+//- minicore: fn
 fn main() {
     let clo = |a: u8, b: u8| a + b;
     clo(
@@ -557,6 +559,19 @@ fn main() {
         0xa_b,
       //^^^^^ b
     );
+}"#,
+        )
+    }
+
+    #[test]
+    fn param_name_hints_show_after_empty_arg() {
+        check_params(
+            r#"pub fn test(a: i32, b: i32, c: i32) {}
+fn main() {
+    test(, 2,);
+         //^ b
+    test(, , 3);
+           //^ c
 }"#,
         )
     }

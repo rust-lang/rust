@@ -1,14 +1,15 @@
 use std::iter;
 
 use rustc_abi::{BackendRepr, TagEncoding, Variants, WrappingRange};
+use rustc_ast as ast;
+use rustc_hir as hir;
 use rustc_hir::{Expr, ExprKind, HirId, LangItem, find_attr};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_session::{declare_lint, declare_lint_pass, impl_lint_pass};
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
-use {rustc_ast as ast, rustc_hir as hir};
 
 mod improper_ctypes; // these files do the implementation for ImproperCTypesDefinitions,ImproperCTypesDeclarations
 pub(crate) use improper_ctypes::ImproperCTypesLint;
@@ -697,7 +698,7 @@ pub(crate) fn transparent_newtype_field<'a, 'tcx>(
 ) -> Option<&'a ty::FieldDef> {
     let typing_env = ty::TypingEnv::non_body_analysis(tcx, variant.def_id);
     variant.fields.iter().find(|field| {
-        let field_ty = tcx.type_of(field.did).instantiate_identity();
+        let field_ty = tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
         let is_1zst =
             tcx.layout_of(typing_env.as_query_input(field_ty)).is_ok_and(|layout| layout.is_1zst());
         !is_1zst
@@ -710,7 +711,7 @@ fn ty_is_known_nonnull<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> bool {
-    let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+    let ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
 
     match ty.kind() {
         ty::FnPtr(..) => true,
@@ -772,7 +773,7 @@ fn get_nullable_type<'tcx>(
     typing_env: ty::TypingEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<Ty<'tcx>> {
-    let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+    let ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
 
     Some(match *ty.kind() {
         ty::Adt(field_def, field_args) => {
@@ -935,7 +936,7 @@ declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Enum(_, _, ref enum_definition) = it.kind {
-            let t = cx.tcx.type_of(it.owner_id).instantiate_identity();
+            let t = cx.tcx.type_of(it.owner_id).instantiate_identity().skip_norm_wip();
             let ty = cx.tcx.erase_and_anonymize_regions(t);
             let Ok(layout) = cx.layout_of(ty) else { return };
             let Variants::Multiple { tag_encoding: TagEncoding::Direct, tag, variants, .. } =
@@ -1036,31 +1037,13 @@ impl InvalidAtomicOrdering {
         expr: &Expr<'hir>,
         recognized_names: &[Symbol], // used for fast path calculation
     ) -> Option<(Symbol, &'hir [Expr<'hir>])> {
-        const ATOMIC_TYPES: &[Symbol] = &[
-            sym::AtomicBool,
-            sym::AtomicPtr,
-            sym::AtomicUsize,
-            sym::AtomicU8,
-            sym::AtomicU16,
-            sym::AtomicU32,
-            sym::AtomicU64,
-            sym::AtomicU128,
-            sym::AtomicIsize,
-            sym::AtomicI8,
-            sym::AtomicI16,
-            sym::AtomicI32,
-            sym::AtomicI64,
-            sym::AtomicI128,
-        ];
         if let ExprKind::MethodCall(method_path, _, args, _) = &expr.kind
             && recognized_names.contains(&method_path.ident.name)
             && let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
             // skip extension traits, only lint functions from the standard library
             && let Some(impl_did) = cx.tcx.inherent_impl_of_assoc(m_def_id)
-            && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().ty_adt_def()
-            && let parent = cx.tcx.parent(adt.did())
-            && cx.tcx.is_diagnostic_item(sym::atomic_mod, parent)
-            && ATOMIC_TYPES.contains(&cx.tcx.item_name(adt.did()))
+            && let Some(adt) = cx.tcx.type_of(impl_did).instantiate_identity().skip_norm_wip().ty_adt_def()
+            && cx.tcx.is_diagnostic_item(sym::Atomic, adt.did())
         {
             return Some((method_path.ident.name, args));
         }

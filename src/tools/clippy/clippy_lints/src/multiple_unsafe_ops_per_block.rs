@@ -72,6 +72,7 @@ declare_clippy_lint! {
     restriction,
     "more than one unsafe operation per `unsafe` block"
 }
+
 declare_lint_pass!(MultipleUnsafeOpsPerBlock => [MULTIPLE_UNSAFE_OPS_PER_BLOCK]);
 
 impl<'tcx> LateLintPass<'tcx> for MultipleUnsafeOpsPerBlock {

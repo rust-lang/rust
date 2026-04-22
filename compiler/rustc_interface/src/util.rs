@@ -11,14 +11,14 @@ use rustc_codegen_ssa::back::archive::{ArArchiveBuilderBuilder, ArchiveBuilderBu
 use rustc_codegen_ssa::back::link::link_binary;
 use rustc_codegen_ssa::target_features::cfg_target_feature;
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_codegen_ssa::{CodegenResults, CrateInfo, TargetConfig};
+use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::sync;
 use rustc_metadata::{DylibError, EncodedMetadata, load_symbol_from_dylib};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
-use rustc_query_impl::collect_active_jobs_from_all_queries;
+use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 use rustc_session::config::{
     Cfg, CrateType, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
 };
@@ -183,15 +183,14 @@ pub(crate) fn run_in_thread_pool_with_globals<
     use std::process;
 
     use rustc_data_structures::defer;
-    use rustc_data_structures::sync::FromDyn;
     use rustc_middle::ty::tls;
-    use rustc_query_impl::break_query_cycles;
+    use rustc_query_impl::break_query_cycle;
 
     let thread_stack_size = init_stack_size(thread_builder_diag);
 
     let registry = sync::Registry::new(std::num::NonZero::new(threads).unwrap());
 
-    if !sync::is_dyn_thread_safe() {
+    let Some(proof) = sync::check_dyn_thread_safe() else {
         return run_in_thread_with_globals(
             thread_stack_size,
             edition,
@@ -204,9 +203,9 @@ pub(crate) fn run_in_thread_pool_with_globals<
                 f(current_gcx, jobserver_proxy)
             },
         );
-    }
+    };
 
-    let current_gcx = FromDyn::from(CurrentGcx::new());
+    let current_gcx = proof.derive(CurrentGcx::new());
     let current_gcx2 = current_gcx.clone();
 
     let proxy = Proxy::new();
@@ -253,13 +252,15 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                                     unsafe { &*(session_globals as *const SessionGlobals) },
                                     || {
                                         // Ensure there were no errors collecting all active jobs.
-                                        // We need the complete map to ensure we find a cycle to break.
-                                        collect_active_jobs_from_all_queries(tcx, false).expect(
-                                            "failed to collect active queries in deadlock handler",
+                                        // We need the complete map to ensure we find a cycle to
+                                        // break.
+                                        collect_active_query_jobs(
+                                            tcx,
+                                            CollectActiveJobsKind::FullNoContention,
                                         )
                                     },
                                 );
-                                break_query_cycles(job_map, &registry);
+                                break_query_cycle(job_map, &registry);
                             })
                         })
                     });
@@ -276,7 +277,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
     // `Send` in the parallel compiler.
     rustc_span::create_session_globals_then(edition, extra_symbols, Some(sm_inputs), || {
         rustc_span::with_session_globals(|session_globals| {
-            let session_globals = FromDyn::from(session_globals);
+            let session_globals = proof.derive(session_globals);
             builder
                 .build_scoped(
                     // Initialize each new worker thread when created.
@@ -401,12 +402,12 @@ impl CodegenBackend for DummyCodegenBackend {
         vec![CrateType::Rlib, CrateType::Executable]
     }
 
-    fn codegen_crate<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Box<dyn Any> {
-        Box::new(CodegenResults {
-            modules: vec![],
-            allocator_module: None,
-            crate_info: CrateInfo::new(tcx, String::new()),
-        })
+    fn target_cpu(&self, _sess: &Session) -> String {
+        String::new()
+    }
+
+    fn codegen_crate<'tcx>(&self, _tcx: TyCtxt<'tcx>, _crate_info: &CrateInfo) -> Box<dyn Any> {
+        Box::new(CompiledModules { modules: vec![], allocator_module: None })
     }
 
     fn join_codegen(
@@ -414,24 +415,22 @@ impl CodegenBackend for DummyCodegenBackend {
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
         _outputs: &OutputFilenames,
-    ) -> (CodegenResults, FxIndexMap<WorkProductId, WorkProduct>) {
+    ) -> (CompiledModules, FxIndexMap<WorkProductId, WorkProduct>) {
         (*ongoing_codegen.downcast().unwrap(), FxIndexMap::default())
     }
 
     fn link(
         &self,
         sess: &Session,
-        codegen_results: CodegenResults,
+        compiled_modules: CompiledModules,
+        crate_info: CrateInfo,
         metadata: EncodedMetadata,
         outputs: &OutputFilenames,
     ) {
         // JUSTIFICATION: TyCtxt no longer available here
         #[allow(rustc::bad_opt_access)]
-        if let Some(&crate_type) = codegen_results
-            .crate_info
-            .crate_types
-            .iter()
-            .find(|&&crate_type| crate_type != CrateType::Rlib)
+        if let Some(&crate_type) =
+            crate_info.crate_types.iter().find(|&&crate_type| crate_type != CrateType::Rlib)
             && outputs.outputs.should_link()
         {
             sess.dcx().fatal(format!(
@@ -442,7 +441,8 @@ impl CodegenBackend for DummyCodegenBackend {
         link_binary(
             sess,
             &DummyArchiveBuilderBuilder,
-            codegen_results,
+            compiled_modules,
+            crate_info,
             metadata,
             outputs,
             self.name(),

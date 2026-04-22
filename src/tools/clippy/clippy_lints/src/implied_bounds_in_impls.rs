@@ -47,6 +47,7 @@ declare_clippy_lint! {
     complexity,
     "specifying bounds that are implied by other bounds in `impl Trait` type"
 }
+
 declare_lint_pass!(ImpliedBoundsInImpls => [IMPLIED_BOUNDS_IN_IMPLS]);
 
 fn emit_lint(

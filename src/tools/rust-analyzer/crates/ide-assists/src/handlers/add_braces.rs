@@ -1,7 +1,7 @@
 use either::Either;
 use syntax::{
     AstNode, T,
-    ast::{self, edit::AstNodeEdit, syntax_factory::SyntaxFactory},
+    ast::{self, edit::AstNodeEdit},
     match_ast,
 };
 
@@ -56,15 +56,13 @@ pub(crate) fn add_braces(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         },
         expr.syntax().text_range(),
         |builder| {
-            let make = SyntaxFactory::with_mappings();
-            let mut editor = builder.make_editor(expr.syntax());
+            let editor = builder.make_editor(expr.syntax());
+            let make = editor.make();
 
             let new_expr = expr.reset_indent().indent(1.into());
             let block_expr = make.block_expr(None, Some(new_expr));
 
             editor.replace(expr.syntax(), block_expr.indent(expr.indent_level()).syntax());
-
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -84,6 +82,7 @@ fn get_replacement_node(ctx: &AssistContext<'_>) -> Option<(ParentType, ast::Exp
             match parent {
                 ast::LetStmt(it) => it.initializer()?,
                 ast::LetExpr(it) => it.expr()?,
+                ast::BinExpr(it) => it.rhs()?,
                 ast::Static(it) => it.body()?,
                 ast::Const(it) => it.body()?,
                 _ => return None,
@@ -174,6 +173,70 @@ fn foo() {
         n + 100
     };
 }
+"#,
+        );
+
+        check_assist(
+            add_braces,
+            r#"
+fn foo() {
+    let x;
+    x =$0 n + 100;
+}
+"#,
+            r#"
+fn foo() {
+    let x;
+    x = {
+        n + 100
+    };
+}
+"#,
+        );
+
+        check_assist(
+            add_braces,
+            r#"
+fn foo() {
+    if let x =$0 n + 100 {}
+}
+"#,
+            r#"
+fn foo() {
+    if let x = {
+        n + 100
+    } {}
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn suggest_add_braces_for_const_initializer() {
+        check_assist(
+            add_braces,
+            r#"
+const X: i32 =$0 1 + 2;
+"#,
+            r#"
+const X: i32 = {
+    1 + 2
+};
+"#,
+        );
+    }
+
+    #[test]
+    fn suggest_add_braces_for_static_initializer() {
+        check_assist(
+            add_braces,
+            r#"
+static X: i32 $0= 1 + 2;
+"#,
+            r#"
+static X: i32 = {
+    1 + 2
+};
 "#,
         );
     }

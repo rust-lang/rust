@@ -227,8 +227,6 @@ fn should_ignore(line: &str) -> bool {
 /// Returns `true` if `line` is allowed to be longer than the normal limit.
 fn long_line_is_ok(extension: &str, is_error_code: bool, max_columns: usize, line: &str) -> bool {
     match extension {
-        // fluent files are allowed to be any length
-        "ftl" => true,
         // non-error code markdown is allowed to be any length
         "md" if !is_error_code => true,
         // HACK(Ezrashaw): there is no way to split a markdown header over multiple lines
@@ -357,7 +355,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             return false;
         }
 
-        let extensions = ["rs", "py", "js", "sh", "c", "cpp", "h", "md", "css", "ftl", "goml"];
+        let extensions = ["rs", "py", "js", "sh", "c", "cpp", "h", "md", "css", "goml"];
 
         // NB: don't skip paths without extensions (or else we'll skip all directories and will only check top level files)
         if path.extension().is_none_or(|ext| !extensions.iter().any(|e| ext == OsStr::new(e))) {
@@ -378,6 +376,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
     // In some cases, a style check would be triggered by its own implementation
     // or comments. A simple workaround is to just allowlist this file.
     let this_file = Path::new(file!());
+    let codegen_file = Path::new("src/tools/tidy/src/codegen.rs");
 
     walk(path, skip, &mut |entry, contents| {
         let file = entry.path();
@@ -449,6 +448,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
         let is_this_file = file.ends_with(this_file) || this_file.ends_with(file);
         let is_test_for_this_file =
             is_test && file.parent().unwrap().ends_with(this_file.with_extension(""));
+        let is_codegen_tidy_file = file.ends_with(codegen_file);
         // scanning the whole file for multiple needles at once is more efficient than
         // executing lines times needles separate searches.
         let any_problematic_line =
@@ -516,7 +516,7 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
             if line.contains('\r') {
                 suppressible_tidy_err!(err, skip_cr, "CR character");
             }
-            if !is_this_file {
+            if !is_this_file && !is_codegen_tidy_file {
                 let directive_line_starts = ["// ", "# ", "/* ", "<!-- "];
                 let possible_line_start =
                     directive_line_starts.into_iter().any(|s| line.starts_with(s));
@@ -602,16 +602,34 @@ pub fn check(path: &Path, tidy_ctx: TidyCtx) {
                     err(DOUBLE_SPACE_AFTER_DOT)
                 }
 
-                if filename.ends_with(".ftl") {
-                    let line_backticks = trimmed.chars().filter(|ch| *ch == '`').count();
-                    if line_backticks % 2 == 1 {
-                        suppressible_tidy_err!(err, skip_odd_backticks, "odd number of backticks");
-                    }
-                } else if trimmed.contains("//") {
+                // Heuristics for matching unbalanced backticks by trying to find comments and
+                // comment blocks. Technically, this can have false negatives (or false positives),
+                // but as a heuristic this is fine.
+                let likely_comment = |trimmed: &str| {
+                    // Line comments, doc comments
+                    trimmed.contains("//")
+                        // Also account for `#[cfg_attr(bootstrap, doc = "")]` cases.
+                        || (trimmed.contains("cfg_attr") && trimmed.contains("doc"))
+                };
+
+                if likely_comment(trimmed) {
                     let (start_line, mut backtick_count) = comment_block.unwrap_or((i + 1, 0));
                     let line_backticks = trimmed.chars().filter(|ch| *ch == '`').count();
-                    let comment_text = trimmed.split("//").nth(1).unwrap();
-                    // This check ensures that we don't lint for code that has `//` in a string literal
+
+                    // Try to split `//`-like comments or `#[cfg_attr(bootstrap), doc = ""]`-like
+                    // doc attributes. Fuzzy, but probably good enough.
+                    let comment_text = match trimmed.split("//").nth(1) {
+                        Some(text) => text,
+                        None => {
+                            // Fallback to try look for RHS of doc attr bits.
+                            let (_doc, rest) =
+                                trimmed.split_once("doc").expect("failed to find `doc` attribute");
+                            rest
+                        }
+                    };
+
+                    // If backticks on a given comment line is not balanced, add to backtick count.
+                    // This is to account for wrapped backticks and code blocks.
                     if line_backticks % 2 == 1 {
                         backtick_count += comment_text.chars().filter(|ch| *ch == '`').count();
                     }

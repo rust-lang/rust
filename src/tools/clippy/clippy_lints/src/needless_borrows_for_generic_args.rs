@@ -4,7 +4,8 @@ use clippy_utils::mir::{PossibleBorrowerMap, enclosing_mir, expr_local, local_as
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::{implements_trait, is_copy};
-use clippy_utils::{DefinedTy, ExprUseNode, expr_use_ctxt, peel_n_hir_expr_refs, sym};
+use clippy_utils::{DefinedTy, ExprUseNode, get_expr_use_site, peel_n_hir_expr_refs, sym};
+use rustc_middle::ty::Unnormalized;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -17,6 +18,7 @@ use rustc_middle::ty::{
     self, ClauseKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, ParamTy, ProjectionPredicate, Ty,
 };
 use rustc_session::impl_lint_pass;
+use rustc_span::SyntaxContext;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
 use std::collections::VecDeque;
@@ -56,6 +58,10 @@ declare_clippy_lint! {
     "taking a reference that is going to be automatically dereferenced"
 }
 
+impl_lint_pass!(NeedlessBorrowsForGenericArgs<'_> => [
+    NEEDLESS_BORROWS_FOR_GENERIC_ARGS,
+]);
+
 pub struct NeedlessBorrowsForGenericArgs<'tcx> {
     /// Stack of (body owner, `PossibleBorrowerMap`) pairs. Used by
     /// [`needless_borrow_count`] to determine when a borrowed expression can instead
@@ -65,8 +71,6 @@ pub struct NeedlessBorrowsForGenericArgs<'tcx> {
     // `IntoIterator` for arrays requires Rust 1.53.
     msrv: Msrv,
 }
-impl_lint_pass!(NeedlessBorrowsForGenericArgs<'_> => [NEEDLESS_BORROWS_FOR_GENERIC_ARGS]);
-
 impl NeedlessBorrowsForGenericArgs<'_> {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
@@ -80,10 +84,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if matches!(expr.kind, ExprKind::AddrOf(..))
             && !expr.span.from_expansion()
-            && let use_cx = expr_use_ctxt(cx, expr)
-            && use_cx.same_ctxt
-            && !use_cx.is_ty_unified
-            && let use_node = use_cx.use_node(cx)
+            && let use_site = get_expr_use_site(cx.tcx, cx.typeck_results(), SyntaxContext::root(), expr)
+            && use_site.same_ctxt
+            && !use_site.is_ty_unified
+            && let use_node = use_site.use_node(cx)
             && let Some(DefinedTy::Mir { def_site_def_id: _, ty }) = use_node.defined_ty(cx)
             && let ty::Param(param_ty) = *ty.skip_binder().kind()
             && let Some((hir_id, fn_id, i)) = match use_node {
@@ -176,7 +180,7 @@ fn needless_borrow_count<'tcx>(
     let meta_sized_trait_def_id = cx.tcx.lang_items().meta_sized_trait();
     let drop_trait_def_id = cx.tcx.lang_items().drop_trait();
 
-    let fn_sig = cx.tcx.fn_sig(fn_id).instantiate_identity().skip_binder();
+    let fn_sig = cx.tcx.fn_sig(fn_id).instantiate_identity().skip_norm_wip().skip_binder();
     let predicates = cx.tcx.param_env(fn_id).caller_bounds();
     let projection_predicates = predicates
         .iter()
@@ -277,7 +281,7 @@ fn needless_borrow_count<'tcx>(
                 return false;
             }
 
-            let predicate = EarlyBinder::bind(predicate).instantiate(cx.tcx, &args_with_referent_ty[..]);
+            let predicate = EarlyBinder::bind(predicate).instantiate(cx.tcx, &args_with_referent_ty[..]).skip_norm_wip();
             let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
             let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
             infcx.predicate_must_hold_modulo_regions(&obligation)
@@ -305,6 +309,7 @@ fn has_ref_mut_self_method(cx: &LateContext<'_>, trait_def_id: DefId) -> bool {
                     .tcx
                     .fn_sig(assoc_item.def_id)
                     .instantiate_identity()
+                    .skip_norm_wip()
                     .skip_binder()
                     .inputs()[0];
                 matches!(self_ty.kind(), ty::Ref(_, _, Mutability::Mut))
@@ -329,7 +334,12 @@ fn is_mixed_projection_predicate<'tcx>(
         let mut projection_term = projection_predicate.projection_term;
         loop {
             match *projection_term.self_ty().kind() {
-                ty::Alias(ty::Projection, inner_projection_ty) => {
+                ty::Alias(
+                    inner_projection_ty @ ty::AliasTy {
+                        kind: ty::Projection { .. },
+                        ..
+                    },
+                ) => {
                     projection_term = inner_projection_ty.into();
                 },
                 ty::Param(param_ty) => {
@@ -420,8 +430,10 @@ fn replace_types<'tcx>(
                         .expect_ty(cx.tcx)
                         .to_ty(cx.tcx);
 
-                    if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), projection)
-                        && args[term_param_ty.index as usize] != GenericArg::from(projected_ty)
+                    if let Ok(projected_ty) = cx.tcx.try_normalize_erasing_regions(
+                        cx.typing_env(),
+                        Unnormalized::new_wip(projection),
+                    ) && args[term_param_ty.index as usize] != GenericArg::from(projected_ty)
                     {
                         deque.push_back((*term_param_ty, projected_ty));
                     }

@@ -1,0 +1,146 @@
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:17:21
+   |
+LL |         pub impl(in ::std) trait T2 {}
+   |                     ^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:19:21
+   |
+LL |         pub impl(in self::c) trait T3 {}
+   |                     ^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:21:21
+   |
+LL |         pub impl(in super::d) trait T4 {}
+   |                     ^^^^^^^^
+
+error[E0433]: too many leading `super` keywords
+  --> $DIR/restriction_resolution_errors.rs:27:35
+   |
+LL |         pub impl(in super::super::super) trait T7 {}
+   |                                   ^^^^^ there are too many leading `super` keywords
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:37:21
+   |
+LL |         pub impl(in self::f) trait L1 {}
+   |                     ^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:41:21
+   |
+LL |         pub impl(in super::h) trait L3 {}
+   |                     ^^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:50:13
+   |
+LL | pub impl(in crate::a) trait T13 {}
+   |             ^^^^^^^^
+
+error[E0433]: too many leading `super` keywords
+  --> $DIR/restriction_resolution_errors.rs:57:10
+   |
+LL | pub impl(super) trait T17 {}
+   |          ^^^^^ there are too many leading `super` keywords
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:59:13
+   |
+LL | pub impl(in external) trait T18 {}
+   |             ^^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:62:13
+   |
+LL | pub impl(in crate::j) trait L4 {}
+   |             ^^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:78:21
+   |
+LL |         pub impl(in crate::m2) trait U2 {}
+   |                     ^^^^^^^^^
+
+error: trait implementation can only be restricted to ancestor modules
+  --> $DIR/restriction_resolution_errors.rs:80:21
+   |
+LL |         pub impl(in m6::m5) trait U4 {}
+   |                     ^^^^^^
+
+error[E0433]: cannot find module or crate `a` in this scope
+  --> $DIR/restriction_resolution_errors.rs:15:21
+   |
+LL |         pub impl(in a::b) trait T1 {}
+   |                     ^ use of unresolved module or unlinked crate `a`
+   |
+help: there is a crate or module with a similar name
+   |
+LL -         pub impl(in a::b) trait T1 {}
+LL +         pub impl(in c::b) trait T1 {}
+   |
+help: consider importing this module
+   |
+LL +         use a;
+   |
+
+error[E0433]: cannot find module `c` in the crate root
+  --> $DIR/restriction_resolution_errors.rs:23:28
+   |
+LL |         pub impl(in crate::c) trait T5 {}
+   |                            ^ not found in the crate root
+
+error[E0577]: expected module, found enum `super::E`
+  --> $DIR/restriction_resolution_errors.rs:25:21
+   |
+LL |         pub impl(in super::E) trait T6 {}
+   |                     ^^^^^^^^ not a module
+
+error[E0577]: expected module, found enum `super::G`
+  --> $DIR/restriction_resolution_errors.rs:39:21
+   |
+LL |         pub impl(in super::G) trait L2 {}
+   |                     ^^^^^^^^ not a module
+
+error[E0577]: expected module, found enum `crate::a::E`
+  --> $DIR/restriction_resolution_errors.rs:52:13
+   |
+LL |     pub mod b {
+   |     --------- similarly named module `b` defined here
+...
+LL | pub impl(in crate::a::E) trait T14 {}
+   |             ^^^^^^^^^^^
+   |
+help: a module with a similar name exists
+   |
+LL - pub impl(in crate::a::E) trait T14 {}
+LL + pub impl(in crate::a::b) trait T14 {}
+   |
+
+error[E0577]: expected module, found enum `crate::I`
+  --> $DIR/restriction_resolution_errors.rs:64:13
+   |
+LL | pub mod a {
+   | --------- similarly named module `a` defined here
+...
+LL | pub impl(in crate::I) trait L5 {}
+   |             ^^^^^^^^
+   |
+help: a module with a similar name exists
+   |
+LL - pub impl(in crate::I) trait L5 {}
+LL + pub impl(in crate::a) trait L5 {}
+   |
+
+error[E0577]: expected module, found enum `m7`
+  --> $DIR/restriction_resolution_errors.rs:81:21
+   |
+LL |         pub impl(in m7) trait U5 {}
+   |                     ^^ not a module
+
+error: aborting due to 19 previous errors
+
+Some errors have detailed explanations: E0433, E0577.
+For more information about an error, try `rustc --explain E0433`.

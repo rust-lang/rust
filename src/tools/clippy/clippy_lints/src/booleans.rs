@@ -30,6 +30,8 @@ declare_clippy_lint! {
     /// Ignores short circuiting behavior of `||` and
     /// `&&`. Ignores `|`, `&` and `^`.
     ///
+    /// Creates a big toll on performance, **only enable sporadically**
+    ///
     /// ### Example
     /// ```ignore
     /// if a && true {}
@@ -43,7 +45,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub NONMINIMAL_BOOL,
-    complexity,
+    pedantic,
     "boolean expressions that can be written more concisely"
 }
 
@@ -57,6 +59,7 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// Ignores short circuiting behavior.
+    /// Creates a big toll on performance, **only enable sporadically**
     ///
     /// ### Example
     /// ```rust,ignore
@@ -70,9 +73,11 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub OVERLY_COMPLEX_BOOL_EXPR,
-    correctness,
+    pedantic,
     "boolean expressions that contain terminals which can be eliminated"
 }
+
+impl_lint_pass!(NonminimalBool => [NONMINIMAL_BOOL, OVERLY_COMPLEX_BOOL_EXPR]);
 
 // For each pairs, both orders are considered.
 const METHODS_WITH_NEGATION: [(Option<RustcVersion>, Symbol, Symbol); 3] = [
@@ -90,8 +95,6 @@ impl NonminimalBool {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(NonminimalBool => [NONMINIMAL_BOOL, OVERLY_COMPLEX_BOOL_EXPR]);
 
 impl<'tcx> LateLintPass<'tcx> for NonminimalBool {
     fn check_fn(

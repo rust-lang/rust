@@ -9,6 +9,7 @@ use std::{
 use hir_expand::{Lookup, mod_path::PathKind};
 use itertools::Itertools;
 use span::Edition;
+use stdx::never;
 use syntax::ast::{HasName, RangeOp};
 
 use crate::{
@@ -105,7 +106,7 @@ pub fn print_body_hir(
         p.buf.push(')');
         p.buf.push(' ');
     }
-    p.print_expr(body.body_expr);
+    p.print_expr(body.root_expr());
     if matches!(owner, DefWithBodyId::StaticId(_) | DefWithBodyId::ConstId(_)) {
         p.buf.push(';');
     }
@@ -168,8 +169,8 @@ pub fn print_signature(db: &dyn DefDatabase, owner: GenericDefId, edition: Editi
     match owner {
         GenericDefId::AdtId(id) => match id {
             AdtId::StructId(id) => {
-                let signature = db.struct_signature(id);
-                print_struct(db, id, &signature, edition)
+                let signature = StructSignature::of(db, id);
+                print_struct(db, id, signature, edition)
             }
             AdtId::UnionId(id) => {
                 format!("unimplemented {id:?}")
@@ -180,8 +181,8 @@ pub fn print_signature(db: &dyn DefDatabase, owner: GenericDefId, edition: Editi
         },
         GenericDefId::ConstId(id) => format!("unimplemented {id:?}"),
         GenericDefId::FunctionId(id) => {
-            let signature = db.function_signature(id);
-            print_function(db, id, &signature, edition)
+            let signature = FunctionSignature::of(db, id);
+            print_function(db, id, signature, edition)
         }
         GenericDefId::ImplId(id) => format!("unimplemented {id:?}"),
         GenericDefId::StaticId(id) => format!("unimplemented {id:?}"),
@@ -400,7 +401,7 @@ fn print_generic_params(db: &dyn DefDatabase, generic_params: &GenericParams, p:
 pub fn print_expr_hir(
     db: &dyn DefDatabase,
     store: &ExpressionStore,
-    _owner: DefWithBodyId,
+    _owner: ExpressionStoreOwnerId,
     expr: ExprId,
     edition: Edition,
 ) -> String {
@@ -419,7 +420,7 @@ pub fn print_expr_hir(
 pub fn print_pat_hir(
     db: &dyn DefDatabase,
     store: &ExpressionStore,
-    _owner: DefWithBodyId,
+    _owner: ExpressionStoreOwnerId,
     pat: PatId,
     oneline: bool,
     edition: Edition,
@@ -760,14 +761,31 @@ impl Printer<'_> {
                 w!(self, "]");
             }
             Expr::Closure { args, arg_types, ret_type, body, closure_kind, capture_by } => {
+                let mut body = *body;
+                let mut print_pipes = true;
                 match closure_kind {
                     ClosureKind::Coroutine(Movability::Static) => {
                         w!(self, "static ");
                     }
-                    ClosureKind::Async => {
+                    ClosureKind::AsyncClosure => {
+                        if let Expr::Closure {
+                            body: inner_body,
+                            closure_kind: ClosureKind::AsyncBlock { .. },
+                            ..
+                        } = self.store[body]
+                        {
+                            body = inner_body;
+                        } else {
+                            never!("async closure should always have an async block body");
+                        }
+
                         w!(self, "async ");
                     }
-                    _ => (),
+                    ClosureKind::AsyncBlock { .. } => {
+                        w!(self, "async ");
+                        print_pipes = false;
+                    }
+                    ClosureKind::Closure | ClosureKind::Coroutine(Movability::Movable) => (),
                 }
                 match capture_by {
                     CaptureBy::Value => {
@@ -775,24 +793,26 @@ impl Printer<'_> {
                     }
                     CaptureBy::Ref => (),
                 }
-                w!(self, "|");
-                for (i, (pat, ty)) in args.iter().zip(arg_types.iter()).enumerate() {
-                    if i != 0 {
-                        w!(self, ", ");
+                if print_pipes {
+                    w!(self, "|");
+                    for (i, (pat, ty)) in args.iter().zip(arg_types.iter()).enumerate() {
+                        if i != 0 {
+                            w!(self, ", ");
+                        }
+                        self.print_pat(*pat);
+                        if let Some(ty) = ty {
+                            w!(self, ": ");
+                            self.print_type_ref(*ty);
+                        }
                     }
-                    self.print_pat(*pat);
-                    if let Some(ty) = ty {
-                        w!(self, ": ");
-                        self.print_type_ref(*ty);
+                    w!(self, "|");
+                    if let Some(ret_ty) = ret_type {
+                        w!(self, " -> ");
+                        self.print_type_ref(*ret_ty);
                     }
+                    self.whitespace();
                 }
-                w!(self, "|");
-                if let Some(ret_ty) = ret_type {
-                    w!(self, " -> ");
-                    self.print_type_ref(*ret_ty);
-                }
-                self.whitespace();
-                self.print_expr(*body);
+                self.print_expr(body);
             }
             Expr::Tuple { exprs } => {
                 w!(self, "(");
@@ -831,9 +851,6 @@ impl Printer<'_> {
             }
             Expr::Unsafe { id: _, statements, tail } => {
                 self.print_block(Some("unsafe "), statements, tail);
-            }
-            Expr::Async { id: _, statements, tail } => {
-                self.print_block(Some("async "), statements, tail);
             }
             Expr::Const(id) => {
                 w!(self, "const {{ /* {id:?} */ }}");
@@ -1212,7 +1229,7 @@ impl Printer<'_> {
     }
 
     pub(crate) fn print_type_param(&mut self, param: TypeParamId) {
-        let generic_params = self.db.generic_params(param.parent());
+        let generic_params = GenericParams::of(self.db, param.parent());
 
         match generic_params[param.local_id()].name() {
             Some(name) => w!(self, "{}", name.display(self.db, self.edition)),
@@ -1221,7 +1238,7 @@ impl Printer<'_> {
     }
 
     pub(crate) fn print_lifetime_param(&mut self, param: LifetimeParamId) {
-        let generic_params = self.db.generic_params(param.parent);
+        let generic_params = GenericParams::of(self.db, param.parent);
         w!(self, "{}", generic_params[param.local_id].name.display(self.db, self.edition))
     }
 

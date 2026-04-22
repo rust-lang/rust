@@ -12,7 +12,8 @@ use rustc_parse::parser::ParseNtResult;
 use rustc_session::parse::ParseSess;
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::{
-    Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, sym, with_metavar_spans,
+    BytePos, Ident, MacroRulesNormalizedIdent, Span, Symbol, SyntaxContext, kw, sym,
+    with_metavar_spans,
 };
 use smallvec::{SmallVec, smallvec};
 
@@ -395,7 +396,7 @@ fn transcribe_sequence<'tx, 'itp>(
                 // The first time we encounter the sequence we push it to the stack. It
                 // then gets reused (see the beginning of the loop) until we are done
                 // repeating.
-                tscx.stack.push(Frame::new_sequence(seq_rep, seq.separator.clone(), seq.kleene.op));
+                tscx.stack.push(Frame::new_sequence(seq_rep, seq.separator, seq.kleene.op));
             }
         }
     }
@@ -556,6 +557,19 @@ fn transcribe_pnr<'tx>(
         ParseNtResult::Vis(vis) => {
             mk_delimited(vis.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
         }
+        ParseNtResult::Guard(guard) => {
+            // FIXME(macro_guard_matcher):
+            // Perhaps it would be better to treat the leading `if` as part of `ast::Guard` during parsing?
+            // Currently they are separate, but in macros we match and emit the leading `if` for `:guard` matchers, which creates some inconsistency.
+
+            let leading_if_span =
+                guard.span_with_leading_if.with_hi(guard.span_with_leading_if.lo() + BytePos(2));
+            let mut ts =
+                TokenStream::token_alone(token::Ident(kw::If, IdentIsRaw::No), leading_if_span);
+            ts.push_stream(TokenStream::from_ast(&guard.cond));
+
+            mk_delimited(guard.span_with_leading_if, MetaVarKind::Guard, ts)
+        }
     };
 
     tscx.result.push(tt);
@@ -615,7 +629,7 @@ fn metavar_expr_concat<'tx>(
 ) -> PResult<'tx, TokenTree> {
     let dcx = tscx.psess.dcx();
     let mut concatenated = String::new();
-    for element in elements.into_iter() {
+    for element in elements {
         let symbol = match element {
             MetaVarExprConcatElem::Ident(elem) => elem.name,
             MetaVarExprConcatElem::Literal(elem) => *elem,
@@ -733,7 +747,7 @@ fn maybe_use_metavar_location(
         TokenTree::Token(Token { kind, span }, spacing) => {
             let span = metavar_span.with_ctxt(span.ctxt());
             with_metavar_spans(|mspans| mspans.insert(span, metavar_span));
-            TokenTree::Token(Token { kind: kind.clone(), span }, *spacing)
+            TokenTree::Token(Token { kind: *kind, span }, *spacing)
         }
         TokenTree::Delimited(dspan, dspacing, delimiter, tts) => {
             let open = metavar_span.with_ctxt(dspan.open.ctxt());

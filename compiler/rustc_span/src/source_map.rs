@@ -15,7 +15,6 @@ use std::{fs, path};
 
 use rustc_data_structures::sync::{IntoDynSyncSend, MappedReadGuard, ReadGuard, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
-use rustc_macros::{Decodable, Encodable};
 use tracing::{debug, instrument, trace};
 
 use crate::*;
@@ -72,20 +71,6 @@ mod monotonic {
     }
 
     impl<T> !DerefMut for MonotonicVec<T> {}
-}
-
-#[derive(Clone, Encodable, Decodable, Debug, Copy, PartialEq, Hash, HashStable_Generic)]
-pub struct Spanned<T> {
-    pub node: T,
-    pub span: Span,
-}
-
-pub fn respan<T>(sp: Span, t: T) -> Spanned<T> {
-    Spanned { node: t, span: sp }
-}
-
-pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
-    respan(DUMMY_SP, t)
 }
 
 // _____________________________________________________________________________
@@ -758,7 +743,7 @@ impl SourceMap {
             let n = s[..start]
                 .char_indices()
                 .rfind(|&(_, c)| !f(c))
-                .map_or(start, |(i, _)| start - i - 1);
+                .map_or(start, |(i, c)| start - i - c.len_utf8());
             Ok(span.with_lo(span.lo() - BytePos(n as u32)))
         })
     }
@@ -979,21 +964,13 @@ impl SourceMap {
         Span::new(BytePos(start_of_next_point), end_of_next_point, sp.ctxt, None)
     }
 
-    /// Check whether span is followed by some specified expected string in limit scope
-    pub fn span_look_ahead(&self, span: Span, expect: &str, limit: Option<usize>) -> Option<Span> {
-        let mut sp = span;
-        for _ in 0..limit.unwrap_or(100_usize) {
-            sp = self.next_point(sp);
-            if let Ok(ref snippet) = self.span_to_snippet(sp) {
-                if snippet == expect {
-                    return Some(sp);
-                }
-                if snippet.chars().any(|c| !c.is_whitespace()) {
-                    break;
-                }
-            }
-        }
-        None
+    /// Check whether span is followed by some specified target string, ignoring whitespace.
+    /// *Only suitable for diagnostics.*
+    pub fn span_followed_by(&self, span: Span, target: &str) -> Option<Span> {
+        let span = self.span_extend_while_whitespace(span);
+        self.span_to_next_source(span).ok()?.strip_prefix(target).map(|_| {
+            Span::new(span.hi(), span.hi() + BytePos(target.len() as u32), span.ctxt(), None)
+        })
     }
 
     /// Finds the width of the character, either before or after the end of provided span,

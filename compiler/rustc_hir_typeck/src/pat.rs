@@ -1,13 +1,13 @@
-use std::cmp;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::{assert_matches, cmp};
 
 use rustc_abi::FieldIdx;
 use rustc_ast as ast;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, pluralize, struct_span_code_err,
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, Level, MultiSpan, pluralize,
+    struct_span_code_err,
 };
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -19,7 +19,7 @@ use rustc_hir::{
 use rustc_hir_analysis::autoderef::report_autoderef_recursion_limit_error;
 use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::traits::PatternOriginExpr;
-use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_session::parse::feature_err;
@@ -312,7 +312,7 @@ enum ResolvedPatKind<'tcx> {
 impl<'tcx> ResolvedPat<'tcx> {
     fn adjust_mode(&self) -> AdjustMode {
         if let ResolvedPatKind::Path { res, .. } = self.kind
-            && matches!(res, Res::Def(DefKind::Const | DefKind::AssocConst, _))
+            && matches!(res, Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, _))
         {
             // These constants can be of a reference type, e.g. `const X: &u8 = &0;`.
             // Peeling the reference types too early will cause type checking failures.
@@ -917,7 +917,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_expr_unadjusted(&self, lt: &'tcx hir::PatExpr<'tcx>) -> Ty<'tcx> {
         let ty = match &lt.kind {
             rustc_hir::PatExprKind::Lit { lit, negated } => {
-                let ty = self.check_expr_lit(lit, Expectation::NoExpectation);
+                let ty = self.check_expr_lit(lit, lt.hir_id, Expectation::NoExpectation);
                 if *negated {
                     self.register_bound(
                         ty,
@@ -1567,8 +1567,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Res::Def(
                 DefKind::Ctor(_, CtorKind::Const)
-                | DefKind::Const
-                | DefKind::AssocConst
+                | DefKind::Const { .. }
+                | DefKind::AssocConst { .. }
                 | DefKind::ConstParam,
                 _,
             ) => {} // OK
@@ -1636,67 +1636,77 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span_bug!(pat_span, "unexpected resolution for path pattern: {resolved_pat:?}");
         };
 
-        if let Some(span) = self.tcx.hir_res_span(pat_res) {
+        let span = match (self.tcx.hir_res_span(pat_res), res.opt_def_id()) {
+            (Some(span), _) => span,
+            (None, Some(def_id)) => self.tcx.def_span(def_id),
+            (None, None) => {
+                e.emit();
+                return;
+            }
+        };
+        if let [hir::PathSegment { ident, args: None, .. }] = segments
+            && e.suggestions.len() == 0
+        {
             e.span_label(span, format!("{} defined here", res.descr()));
-            if let [hir::PathSegment { ident, .. }] = segments {
-                e.span_label(
-                    pat_span,
-                    format!(
-                        "`{}` is interpreted as {} {}, not a new binding",
-                        ident,
-                        res.article(),
-                        res.descr(),
-                    ),
-                );
-                match self.tcx.parent_hir_node(hir_id) {
-                    hir::Node::PatField(..) => {
+            e.span_label(
+                pat_span,
+                format!(
+                    "`{}` is interpreted as {} {}, not a new binding",
+                    ident,
+                    res.article(),
+                    res.descr(),
+                ),
+            );
+            match self.tcx.parent_hir_node(hir_id) {
+                hir::Node::PatField(..) => {
+                    e.span_suggestion_verbose(
+                        ident.span.shrink_to_hi(),
+                        "bind the struct field to a different name instead",
+                        format!(": other_{}", ident.as_str().to_lowercase()),
+                        Applicability::HasPlaceholders,
+                    );
+                }
+                _ => {
+                    let (type_def_id, item_def_id) = match resolved_pat.ty.kind() {
+                        ty::Adt(def, _) => match res {
+                            Res::Def(DefKind::Const { .. }, def_id) => {
+                                (Some(def.did()), Some(def_id))
+                            }
+                            _ => (None, None),
+                        },
+                        _ => (None, None),
+                    };
+
+                    let is_range = matches!(
+                        type_def_id.and_then(|id| self.tcx.as_lang_item(id)),
+                        Some(
+                            LangItem::Range
+                                | LangItem::RangeFrom
+                                | LangItem::RangeTo
+                                | LangItem::RangeFull
+                                | LangItem::RangeInclusiveStruct
+                                | LangItem::RangeToInclusive,
+                        )
+                    );
+                    if is_range {
+                        if !self.maybe_suggest_range_literal(&mut e, item_def_id, *ident) {
+                            let msg = "constants only support matching by type, \
+                                if you meant to match against a range of values, \
+                                consider using a range pattern like `min ..= max` in the match block";
+                            e.note(msg);
+                        }
+                    } else {
+                        let msg = "introduce a new binding instead";
+                        let sugg = format!("other_{}", ident.as_str().to_lowercase());
                         e.span_suggestion_verbose(
-                            ident.span.shrink_to_hi(),
-                            "bind the struct field to a different name instead",
-                            format!(": other_{}", ident.as_str().to_lowercase()),
+                            ident.span,
+                            msg,
+                            sugg,
                             Applicability::HasPlaceholders,
                         );
                     }
-                    _ => {
-                        let (type_def_id, item_def_id) = match resolved_pat.ty.kind() {
-                            ty::Adt(def, _) => match res {
-                                Res::Def(DefKind::Const, def_id) => (Some(def.did()), Some(def_id)),
-                                _ => (None, None),
-                            },
-                            _ => (None, None),
-                        };
-
-                        let is_range = matches!(
-                            type_def_id.and_then(|id| self.tcx.as_lang_item(id)),
-                            Some(
-                                LangItem::Range
-                                    | LangItem::RangeFrom
-                                    | LangItem::RangeTo
-                                    | LangItem::RangeFull
-                                    | LangItem::RangeInclusiveStruct
-                                    | LangItem::RangeToInclusive,
-                            )
-                        );
-                        if is_range {
-                            if !self.maybe_suggest_range_literal(&mut e, item_def_id, *ident) {
-                                let msg = "constants only support matching by type, \
-                                    if you meant to match against a range of values, \
-                                    consider using a range pattern like `min ..= max` in the match block";
-                                e.note(msg);
-                            }
-                        } else {
-                            let msg = "introduce a new binding instead";
-                            let sugg = format!("other_{}", ident.as_str().to_lowercase());
-                            e.span_suggestion(
-                                ident.span,
-                                msg,
-                                sugg,
-                                Applicability::HasPlaceholders,
-                            );
-                        }
-                    }
-                };
-            }
+                }
+            };
         }
         e.emit();
     }
@@ -1733,7 +1743,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Res::Err => {
                 self.dcx().span_bug(pat.span, "`Res::Err` but no error emitted");
             }
-            Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
+            Res::Def(DefKind::AssocConst { .. } | DefKind::AssocFn, _) => {
                 return report_unexpected_res(res);
             }
             Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => tcx.expect_variant_res(res),
@@ -2434,10 +2444,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .struct_span_err(pat.span, "pattern requires `..` due to inaccessible fields");
 
         if let Some(field) = fields.last() {
+            let tail_span = field.span.shrink_to_hi().to(pat.span.shrink_to_hi());
+            let comma_hi_offset =
+                self.tcx.sess.source_map().span_to_snippet(tail_span).ok().and_then(|snippet| {
+                    let trimmed = snippet.trim_start();
+                    trimmed.starts_with(',').then(|| (snippet.len() - trimmed.len() + 1) as u32)
+                });
             err.span_suggestion_verbose(
-                field.span.shrink_to_hi(),
+                if let Some(comma_hi_offset) = comma_hi_offset {
+                    tail_span.with_hi(tail_span.lo() + BytePos(comma_hi_offset)).shrink_to_hi()
+                } else {
+                    field.span.shrink_to_hi()
+                },
                 "ignore the inaccessible and unused fields",
-                ", ..",
+                if comma_hi_offset.is_some() { " .." } else { ", .." },
                 Applicability::MachineApplicable,
             );
         } else {
@@ -2469,6 +2489,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         unmentioned_fields: &[(&ty::FieldDef, Ident)],
         ty: Ty<'tcx>,
     ) {
+        struct FieldsNotListed<'a, 'b, 'tcx> {
+            pat_span: Span,
+            unmentioned_fields: &'a [(&'b ty::FieldDef, Ident)],
+            joined_patterns: String,
+            ty: Ty<'tcx>,
+        }
+
+        impl<'a, 'b, 'c, 'tcx> Diagnostic<'a, ()> for FieldsNotListed<'b, 'c, 'tcx> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+                let Self { pat_span, unmentioned_fields, joined_patterns, ty } = self;
+                Diag::new(dcx, level, "some fields are not explicitly listed")
+                    .with_span_label(pat_span, format!("field{} {} not listed", rustc_errors::pluralize!(unmentioned_fields.len()), joined_patterns))
+                    .with_help(
+                        "ensure that all fields are mentioned explicitly by adding the suggested fields",
+                    )
+                    .with_note(format!(
+                        "the pattern is of type `{ty}` and the `non_exhaustive_omitted_patterns` attribute was found",
+                    ))
+            }
+        }
+
         fn joined_uncovered_patterns(witnesses: &[&Ident]) -> String {
             const LIMIT: usize = 3;
             match witnesses {
@@ -2493,16 +2534,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &unmentioned_fields.iter().map(|(_, i)| i).collect::<Vec<_>>(),
         );
 
-        self.tcx.node_span_lint(NON_EXHAUSTIVE_OMITTED_PATTERNS, pat.hir_id, pat.span, |lint| {
-            lint.primary_message("some fields are not explicitly listed");
-            lint.span_label(pat.span, format!("field{} {} not listed", rustc_errors::pluralize!(unmentioned_fields.len()), joined_patterns));
-            lint.help(
-                "ensure that all fields are mentioned explicitly by adding the suggested fields",
-            );
-            lint.note(format!(
-                "the pattern is of type `{ty}` and the `non_exhaustive_omitted_patterns` attribute was found",
-            ));
-        });
+        self.tcx.emit_node_span_lint(
+            NON_EXHAUSTIVE_OMITTED_PATTERNS,
+            pat.hir_id,
+            pat.span,
+            FieldsNotListed { pat_span: pat.span, unmentioned_fields, joined_patterns, ty },
+        );
     }
 
     /// Returns a diagnostic reporting a struct pattern which does not mention some fields.
@@ -2667,7 +2704,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             tcx.require_lang_item(hir::LangItem::DerefTarget, span),
             [source_ty],
         );
-        let target_ty = self.normalize(span, target_ty);
+        let target_ty = self.normalize(span, Unnormalized::new_wip(target_ty));
         self.try_structurally_resolve_type(span, target_ty)
     }
 

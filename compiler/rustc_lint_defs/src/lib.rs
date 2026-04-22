@@ -7,12 +7,12 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{
     HashStable, StableCompare, StableHasher, ToStableHashKey,
 };
-use rustc_error_messages::{DiagArgValue, IntoDiagArg, MultiSpan};
-use rustc_hir_id::{HashStableContext, HirId, ItemLocalId};
+use rustc_error_messages::{DiagArgValue, IntoDiagArg};
+use rustc_hir_id::{HirId, ItemLocalId};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::def_id::DefPathHash;
 pub use rustc_span::edition::Edition;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{HashStableContext, Ident, Span, Symbol, sym};
 use serde::{Deserialize, Serialize};
 
 pub use self::Level::*;
@@ -138,9 +138,9 @@ impl LintExpectationId {
     }
 }
 
-impl<HCX: HashStableContext> HashStable<HCX> for LintExpectationId {
+impl<Hcx: HashStableContext> HashStable<Hcx> for LintExpectationId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 hir_id.hash_stable(hcx, hasher);
@@ -156,11 +156,11 @@ impl<HCX: HashStableContext> HashStable<HCX> for LintExpectationId {
     }
 }
 
-impl<HCX: HashStableContext> ToStableHashKey<HCX> for LintExpectationId {
+impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for LintExpectationId {
     type KeyType = (DefPathHash, ItemLocalId, u16, u16);
 
     #[inline]
-    fn to_stable_hash_key(&self, hcx: &HCX) -> Self::KeyType {
+    fn to_stable_hash_key(&self, hcx: &mut Hcx) -> Self::KeyType {
         match self {
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 let (def_path_hash, lint_idx) = hir_id.to_stable_hash_key(hcx);
@@ -621,18 +621,18 @@ impl LintId {
     }
 }
 
-impl<HCX> HashStable<HCX> for LintId {
+impl<Hcx> HashStable<Hcx> for LintId {
     #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         self.lint_name_raw().hash_stable(hcx, hasher);
     }
 }
 
-impl<HCX> ToStableHashKey<HCX> for LintId {
+impl<Hcx> ToStableHashKey<Hcx> for LintId {
     type KeyType = &'static str;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &HCX) -> &'static str {
+    fn to_stable_hash_key(&self, _: &mut Hcx) -> &'static str {
         self.lint_name_raw()
     }
 }
@@ -652,215 +652,26 @@ pub enum DeprecatedSinceKind {
     InVersion(String),
 }
 
-// This could be a closure, but then implementing derive trait
-// becomes hacky (and it gets allocated).
 #[derive(Debug)]
-pub enum BuiltinLintDiag {
-    AbsPathWithModule(Span),
-    ElidedLifetimesInPaths(usize, Span, bool, Span),
-    UnusedImports {
-        remove_whole_use: bool,
-        num_to_remove: usize,
-        remove_spans: Vec<Span>,
-        test_module_span: Option<Span>,
-        span_snippets: Vec<String>,
-    },
-    RedundantImport(Vec<(Span, bool)>, Ident),
-    DeprecatedMacro {
-        suggestion: Option<Symbol>,
-        suggestion_span: Span,
-        note: Option<Symbol>,
-        path: String,
-        since_kind: DeprecatedSinceKind,
-    },
-    PatternsInFnsWithoutBody {
-        span: Span,
-        ident: Ident,
-        is_foreign: bool,
-    },
-    ReservedPrefix(Span, String),
-    /// `'r#` in edition < 2021.
-    RawPrefix(Span),
-    /// `##` or `#"` in edition < 2024.
-    ReservedString {
-        is_string: bool,
-        suggestion: Span,
-    },
-    BreakWithLabelAndLoop(Span),
-    UnicodeTextFlow(Span, String),
-    DeprecatedWhereclauseLocation(Span, Option<(Span, String)>),
-    SingleUseLifetime {
-        /// Span of the parameter which declares this lifetime.
-        param_span: Span,
-        /// Span of the code that should be removed when eliding this lifetime.
-        /// This span should include leading or trailing comma.
-        deletion_span: Option<Span>,
-        /// Span of the single use, or None if the lifetime is never used.
-        /// If true, the lifetime will be fully elided.
-        use_span: Option<(Span, bool)>,
-        ident: Ident,
-    },
-    NamedArgumentUsedPositionally {
-        /// Span where the named argument is used by position and will be replaced with the named
-        /// argument name
-        position_sp_to_replace: Option<Span>,
-        /// Span where the named argument is used by position and is used for lint messages
-        position_sp_for_msg: Option<Span>,
-        /// Span where the named argument's name is (so we know where to put the warning message)
-        named_arg_sp: Span,
-        /// String containing the named arguments name
-        named_arg_name: String,
-        /// Indicates if the named argument is used as a width/precision for formatting
-        is_formatting_arg: bool,
-    },
-    AmbiguousGlobReexports {
-        /// The name for which collision(s) have occurred.
-        name: String,
-        /// The name space for which the collision(s) occurred in.
-        namespace: String,
-        /// Span where the name is first re-exported.
-        first_reexport_span: Span,
-        /// Span where the same name is also re-exported.
-        duplicate_reexport_span: Span,
-    },
-    HiddenGlobReexports {
-        /// The name of the local binding which shadows the glob re-export.
-        name: String,
-        /// The namespace for which the shadowing occurred in.
-        namespace: String,
-        /// The glob reexport that is shadowed by the local binding.
-        glob_reexport_span: Span,
-        /// The local binding that shadows the glob reexport.
-        private_item_span: Span,
-    },
-    UnusedQualifications {
-        /// The span of the unnecessarily-qualified path to remove.
-        removal_span: Span,
-    },
-    AssociatedConstElidedLifetime {
-        elided: bool,
-        span: Span,
-        lifetimes_in_scope: MultiSpan,
-    },
-    UnusedCrateDependency {
-        extern_crate: Symbol,
-        local_crate: Symbol,
-    },
-    UnusedVisibility(Span),
-    AttributeLint(AttributeLintKind),
-    UnreachableCfg {
-        span: Span,
-        wildcard_span: Option<Span>,
-    },
-}
-
-#[derive(Debug, HashStable_Generic)]
 pub enum AttributeLintKind {
-    UnusedDuplicate {
-        this: Span,
-        other: Span,
-        warning: bool,
-    },
-    IllFormedAttributeInput {
-        suggestions: Vec<String>,
-        docs: Option<&'static str>,
-    },
-    EmptyAttribute {
-        first_span: Span,
-        attr_path: String,
-        valid_without_list: bool,
-    },
-    InvalidTarget {
-        name: String,
-        target: &'static str,
-        applied: Vec<String>,
-        only: &'static str,
-        attr_span: Span,
-    },
-    InvalidStyle {
-        name: String,
-        is_used_as_inner: bool,
-        target: &'static str,
-        target_span: Span,
-    },
-    UnsafeAttrOutsideUnsafe {
-        attribute_name_span: Span,
-        sugg_spans: Option<(Span, Span)>,
-    },
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
-    DuplicateDocAlias {
-        first_definition: Span,
-    },
-    DocAutoCfgExpectsHideOrShow,
-    DocAutoCfgHideShowUnexpectedItem {
-        attr_name: Symbol,
-    },
-    DocAutoCfgHideShowExpectsList {
-        attr_name: Symbol,
-    },
-    DocInvalid,
-    AmbiguousDeriveHelpers,
-    DocUnknownInclude {
-        span: Span,
-        inner: &'static str,
-        value: Symbol,
-    },
-    DocUnknownSpotlight {
-        span: Span,
-    },
-    DocUnknownPasses {
-        name: Symbol,
-        span: Span,
-    },
-    DocUnknownPlugins {
-        span: Span,
-    },
-    DocUnknownAny {
-        name: Symbol,
-    },
-    DocAutoCfgWrongLiteral,
-    DocTestTakesList,
-    DocTestUnknown {
-        name: Symbol,
-    },
-    DocTestLiteral,
-    AttrCrateLevelOnly,
-    DoNotRecommendDoesNotExpectArgs,
-    CrateTypeUnknown {
-        span: Span,
-        suggested: Option<Symbol>,
-    },
     MalformedDoc,
     ExpectedNoArgs,
     ExpectedNameValue,
-    MalformedOnUnimplementedAttr {
-        span: Span,
-    },
-    MalformedOnConstAttr {
-        span: Span,
-    },
-    MalformedDiagnosticFormat {
-        warning: FormatWarning,
-    },
-    DiagnosticWrappedParserError {
-        description: String,
-        label: String,
-        span: Span,
-    },
-    IgnoredDiagnosticOption {
-        option_name: Symbol,
-        first_span: Span,
-        later_span: Span,
-    },
-    MissingOptionsForOnUnimplemented,
-    MissingOptionsForOnConst,
+    MalFormedDiagnosticAttribute { attribute: &'static str, options: &'static str, span: Span },
+    MalformedDiagnosticFormat { warning: FormatWarning },
+    DiagnosticWrappedParserError { description: String, label: String, span: Span },
+    IgnoredDiagnosticOption { option_name: Symbol, first_span: Span, later_span: Span },
+    MissingOptionsForDiagnosticAttribute { attribute: &'static str, options: &'static str },
+    NonMetaItemDiagnosticAttribute,
 }
 
 #[derive(Debug, Clone, HashStable_Generic)]
 pub enum FormatWarning {
     PositionalArgument { span: Span, help: String },
     InvalidSpecifier { name: String, span: Span },
+    DisallowedPlaceholder { span: Span },
 }
 
 pub type RegisteredTools = FxIndexSet<Ident>;

@@ -30,8 +30,7 @@
       }
   
       bb0: {
--         StorageLive(_1);
-+         nop;
+          StorageLive(_1);
           StorageLive(_2);
 -         _2 = Option::<Layout>::None;
 +         _2 = const Option::<Layout>::None;
@@ -49,8 +48,7 @@
           _3 = copy _4 as *mut u8 (PtrToPtr);
           StorageDead(_4);
           StorageDead(_3);
--         StorageDead(_1);
-+         nop;
+          StorageDead(_1);
           return;
       }
   
@@ -64,7 +62,7 @@
   
       bb4: {
 -         _1 = move ((_2 as Some).0: std::alloc::Layout);
-+         _1 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(4 bytes) }: usize, align: std::ptr::Alignment {{ _inner_repr_trick: Scalar(0x00000000): std::ptr::alignment::AlignmentEnum }} }};
++         _1 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(4 bytes) }: usize, align: std::mem::Alignment {{ _inner_repr_trick: Scalar(0x00000000): mem::alignment::AlignmentEnum }} }};
           StorageDead(_8);
           StorageDead(_2);
           StorageLive(_3);
@@ -74,8 +72,8 @@
           StorageLive(_7);
 -         _7 = copy _1;
 -         _6 = std::alloc::Global::alloc_impl_runtime(move _7, const false) -> [return: bb5, unwind continue];
-+         _7 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(4 bytes) }: usize, align: std::ptr::Alignment {{ _inner_repr_trick: Scalar(0x00000000): std::ptr::alignment::AlignmentEnum }} }};
-+         _6 = std::alloc::Global::alloc_impl_runtime(const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(4 bytes) }: usize, align: std::ptr::Alignment {{ _inner_repr_trick: Scalar(0x00000000): std::ptr::alignment::AlignmentEnum }} }}, const false) -> [return: bb5, unwind continue];
++         _7 = const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(4 bytes) }: usize, align: std::mem::Alignment {{ _inner_repr_trick: Scalar(0x00000000): mem::alignment::AlignmentEnum }} }};
++         _6 = std::alloc::Global::alloc_impl_runtime(const Layout {{ size: Indirect { alloc_id: ALLOC0, offset: Size(4 bytes) }: usize, align: std::mem::Alignment {{ _inner_repr_trick: Scalar(0x00000000): mem::alignment::AlignmentEnum }} }}, const false) -> [return: bb5, unwind continue];
       }
   
       bb5: {

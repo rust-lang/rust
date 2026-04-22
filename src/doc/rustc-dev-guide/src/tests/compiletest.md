@@ -156,11 +156,12 @@ series of steps.
 Compiletest starts with an empty directory with the `-C incremental` flag, and
 then runs the compiler for each revision, reusing the incremental results from previous steps.
 
-The revisions should start with:
+Each revision name must start with one of:
 
-* `rpass` — the test should compile and run successfully
-* `rfail` — the test should compile successfully, but the executable should fail to run
-* `cfail` — the test should fail to compile
+* `cpass` - the test must compile successfully (check build, no codegen)
+* `bfail` — the test must fail to compile (full build, with codegen)
+* `bpass` — the test must compile successully (full build, with codegen)
+* `rpass` — the test must compile and run successfully
 
 To make the revisions unique, you should add a suffix like `rpass1` and `rpass2`.
 
@@ -185,15 +186,10 @@ fn foo() {
 fn main() { foo(); }
 ```
 
-`cfail` tests support the `forbid-output` directive to specify that a certain
+Incremental tests support the `forbid-output` directive to specify that a certain
 substring must not appear anywhere in the compiler output.
 This can be useful to ensure certain errors do not appear, but this can be fragile as error messages
 change over time, and a test may no longer be checking the right thing but will still pass.
-
-`cfail` tests support the `should-ice` directive to specify that a test should
-cause an Internal Compiler Error (ICE).
-This is a highly specialized directive
-to check that the incremental cache continues to work after an ICE.
 
 Incremental tests may use the attribute `#[rustc_clean(...)]` attribute.
 This attribute compares the fingerprint from the current compilation session with the previous one.
@@ -459,6 +455,15 @@ However, revisions or building auxiliary via directives are not currently suppor
 
 `rmake.rs` and `run-make-support` may *not* use any nightly/unstable features,
 as they must be compilable by a stage 0 rustc that may be a beta or even stable rustc.
+
+By default, run-make tests print each subprocess command and its stdout/stderr.
+When running with `--no-capture` on `panic=abort` test suites (such as `cg_clif`),
+this can flood the terminal. Omit `--verbose-run-make-subprocess-output` to
+suppress this output for passing tests — failing tests always print regardless:
+
+```bash
+./x test tests/run-make --no-capture --verbose-run-make-subprocess-output=false
+```
 
 #### Quickly check if `rmake.rs` tests can be compiled
 
@@ -836,3 +841,20 @@ In CI, compare modes are only used in one Linux builder, and only with the follo
 Note that compare modes are separate to [revisions](#revisions).
 All revisions are tested when running `./x test tests/ui`, however compare-modes must be
 manually run individually via the `--compare-mode` flag.
+
+## Parallel frontend
+
+Compiletest can be run with the `--parallel-frontend-threads` flag to run the compiler in parallel mode.
+This can be used to check that the compiler produces the same output in parallel mode as in non-parallel mode, and to check for any issues that might arise in parallel mode.
+
+To run the tests in parallel mode, you need to pass the `--parallel-frontend-threads` CLI flag:
+
+```bash
+./x test tests/ui -- --parallel-frontend-threads=N --iteration-count=M
+```
+
+Where `N` is the number of threads to use for the parallel frontend, and `M` is the number of times to run each test in parallel mode (to increase the chances of catching any non-determinism).
+
+Also, when running with `--parallel-frontend-threads`, the `compare-output-by-lines` directive would be implied for all tests, since the output from the parallel frontend can be non-deterministic in terms of the order of lines.
+
+The parallel frontend is available in UI tests only at the moment, and is not currently supported in other test suites.

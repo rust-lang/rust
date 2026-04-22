@@ -385,13 +385,13 @@ macro_rules! impl_trait {
             #[inline]
             fn simd_min(self, other: Self) -> Self {
                 // Safety: `self` and `other` are float vectors
-                unsafe { core::intrinsics::simd::simd_fmin(self, other) }
+                unsafe { core::intrinsics::simd::simd_minimum_number_nsz(self, other) }
             }
 
             #[inline]
             fn simd_max(self, other: Self) -> Self {
                 // Safety: `self` and `other` are floating point vectors
-                unsafe { core::intrinsics::simd::simd_fmax(self, other) }
+                unsafe { core::intrinsics::simd::simd_maximum_number_nsz(self, other) }
             }
 
             #[inline]
@@ -444,4 +444,4 @@ macro_rules! impl_trait {
     }
 }
 
-impl_trait! { f32 { bits: u32, mask: i32 }, f64 { bits: u64, mask: i64 } }
+impl_trait! { f16 { bits: u16, mask: i16 }, f32 { bits: u32, mask: i32 }, f64 { bits: u64, mask: i64 } }

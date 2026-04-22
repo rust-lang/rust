@@ -68,7 +68,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
                     // FIXME(clippy): don't you want to use the hir id of the peeled pat?
                     let id = match cx.qpath_res(path, *hir_id) {
                         Res::Def(
-                            DefKind::Const | DefKind::ConstParam | DefKind::AnonConst | DefKind::InlineConst,
+                            DefKind::Const { .. } | DefKind::ConstParam | DefKind::AnonConst | DefKind::InlineConst,
                             _,
                         ) => return,
                         Res::Def(_, id) => id,

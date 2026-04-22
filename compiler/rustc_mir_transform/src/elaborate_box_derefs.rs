@@ -6,7 +6,7 @@ use rustc_abi::FieldIdx;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, PatternKind, Ty, TyCtxt};
 
 use crate::patch::MirPatch;
 
@@ -96,13 +96,17 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
 
         let unique_did = tcx.adt_def(def_id).non_enum_variant().fields[FieldIdx::ZERO].did;
 
-        let Some(unique_def) = tcx.type_of(unique_did).instantiate_identity().ty_adt_def() else {
+        let Some(unique_def) =
+            tcx.type_of(unique_did).instantiate_identity().skip_norm_wip().ty_adt_def()
+        else {
             span_bug!(tcx.def_span(unique_did), "expected Box to contain Unique")
         };
 
         let nonnull_did = unique_def.non_enum_variant().fields[FieldIdx::ZERO].did;
 
-        let Some(nonnull_def) = tcx.type_of(nonnull_did).instantiate_identity().ty_adt_def() else {
+        let Some(nonnull_def) =
+            tcx.type_of(nonnull_did).instantiate_identity().skip_norm_wip().ty_adt_def()
+        else {
             span_bug!(tcx.def_span(nonnull_did), "expected Unique to contain Nonnull")
         };
 
@@ -137,8 +141,10 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
                             build_ptr_tys(tcx, boxed_ty, unique_def, nonnull_def);
 
                         new_projections.extend_from_slice(&build_projection(unique_ty, nonnull_ty));
-                        // While we can't project into `NonNull<_>` in a basic block
-                        // due to MCP#807, this is debug info where it's fine.
+                        // While we can't project into a pattern type in a basic block,
+                        // this is debug info where it's fine.
+                        let pat_ty = Ty::new_pat(tcx, ptr_ty, tcx.mk_pat(PatternKind::NotNull));
+                        new_projections.push(PlaceElem::Field(FieldIdx::ZERO, pat_ty));
                         new_projections.push(PlaceElem::Field(FieldIdx::ZERO, ptr_ty));
                         new_projections.push(PlaceElem::Deref);
                     } else if let Some(new_projections) = new_projections.as_mut() {

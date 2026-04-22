@@ -109,6 +109,14 @@ The live results can be seen on [the GitHub Actions workflows page].
 At any given time, at most a single `auto` build is being executed.
 Find out more in [Merging PRs serially with bors](#merging-prs-serially-with-bors).
 
+Normally, when an auto job fails, the whole CI workflow immediately ends.
+However, it can be useful to
+create auto jobs that are "non-blocking", or optional, to test them on CI for some time before blocking
+merges on them.
+This can be useful if those jobs can be flaky.
+
+To do that, prefix such a job with `optional-`, and set `continue_on_error: true` for it in [`jobs.yml`].
+
 [platform tiers]: https://forge.rust-lang.org/release/platform-support.html#rust-platform-support
 [auto]: https://github.com/rust-lang/rust/tree/automation/bors/auto
 
@@ -142,7 +150,10 @@ Such a try build will not execute any tests, and it will allow compilation warni
 It is useful when you want to
 get an optimized toolchain as fast as possible, for a Crater run or performance benchmarks,
 even if it might not be working fully correctly.
-If you want to do a full build for the default try job,
+
+The CI job executed in fast try builds has a special suffix (`-quick`),
+to distinguish it from a full build of the default try job.
+If you want to do the full build instead,
 specify its job name in a job pattern (explained below).
 
 If you want to run custom CI jobs in a try build and make sure that they pass all tests and do

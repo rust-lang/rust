@@ -61,14 +61,14 @@ impl PrettyPrintMirOptions {
 /// Manages MIR dumping, which is MIR writing done to a file with a specific name. In particular,
 /// it makes it impossible to dump MIR to one of these files when it hasn't been requested from the
 /// command line. Layered on top of `MirWriter`, which does the actual writing.
-pub struct MirDumper<'dis, 'de, 'tcx> {
+pub struct MirDumper<'a, 'tcx> {
     show_pass_num: bool,
     pass_name: &'static str,
-    disambiguator: &'dis dyn Display,
-    writer: MirWriter<'de, 'tcx>,
+    disambiguator: &'a dyn Display,
+    writer: MirWriter<'a, 'tcx>,
 }
 
-impl<'dis, 'de, 'tcx> MirDumper<'dis, 'de, 'tcx> {
+impl<'a, 'tcx> MirDumper<'a, 'tcx> {
     // If dumping should be performed (e.g. because it was requested on the
     // CLI), returns a `MirDumper` with default values for the following fields:
     // - `show_pass_num`: `false`
@@ -112,7 +112,7 @@ impl<'dis, 'de, 'tcx> MirDumper<'dis, 'de, 'tcx> {
     }
 
     #[must_use]
-    pub fn set_disambiguator(mut self, disambiguator: &'dis dyn Display) -> Self {
+    pub fn set_disambiguator(mut self, disambiguator: &'a dyn Display) -> Self {
         self.disambiguator = disambiguator;
         self
     }
@@ -120,7 +120,7 @@ impl<'dis, 'de, 'tcx> MirDumper<'dis, 'de, 'tcx> {
     #[must_use]
     pub fn set_extra_data(
         mut self,
-        extra_data: &'de dyn Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
+        extra_data: &'a dyn Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
     ) -> Self {
         self.writer.extra_data = extra_data;
         self
@@ -369,13 +369,13 @@ pub fn write_mir_pretty<'tcx>(
 }
 
 /// Does the writing of MIR to output, e.g. a file.
-pub struct MirWriter<'de, 'tcx> {
+pub struct MirWriter<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    extra_data: &'de dyn Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
+    extra_data: &'a dyn Fn(PassWhere, &mut dyn io::Write) -> io::Result<()>,
     options: PrettyPrintMirOptions,
 }
 
-impl<'de, 'tcx> MirWriter<'de, 'tcx> {
+impl<'a, 'tcx> MirWriter<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
         MirWriter { tcx, extra_data: &|_, _| Ok(()), options: PrettyPrintMirOptions::from_cli(tcx) }
     }
@@ -623,7 +623,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
     };
     match (kind, body.source.promoted) {
         (_, Some(_)) => write!(w, "const ")?, // promoteds are the closest to consts
-        (DefKind::Const | DefKind::AssocConst, _) => write!(w, "const ")?,
+        (DefKind::Const { .. } | DefKind::AssocConst { .. }, _) => write!(w, "const ")?,
         (DefKind::Static { safety: _, mutability: hir::Mutability::Not, nested: false }, _) => {
             write!(w, "static ")?
         }
@@ -709,7 +709,7 @@ pub fn dump_mir_def_ids(tcx: TyCtxt<'_>, single: Option<DefId>) -> Vec<DefId> {
 ///////////////////////////////////////////////////////////////////////////
 // Basic blocks and their parts (statements, terminators, ...)
 
-impl<'de, 'tcx> MirWriter<'de, 'tcx> {
+impl<'a, 'tcx> MirWriter<'a, 'tcx> {
     /// Write out a human-readable textual representation for the given basic block.
     fn write_basic_block(
         &self,

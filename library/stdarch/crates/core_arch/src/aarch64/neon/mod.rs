@@ -1022,8 +1022,12 @@ mod tests {
         ($elem_ty:ty, $len:expr, $vec_ty:ty, $store:expr, $load:expr) => {
             let vals: [$elem_ty; $len] = crate::array::from_fn(|i| i as $elem_ty);
             let a: $vec_ty = transmute(vals);
-            let mut tmp = [0 as $elem_ty; $len];
+            let mut tmp = core::mem::MaybeUninit::<[$elem_ty; $len]>::uninit();
             $store(tmp.as_mut_ptr().cast(), a);
+
+            // With Miri this will check that all elements were initialized.
+            let tmp = tmp.assume_init();
+
             let r: $vec_ty = $load(tmp.as_ptr().cast());
             let out: [$elem_ty; $len] = transmute(r);
             assert_eq!(out, vals);
@@ -1050,6 +1054,14 @@ mod tests {
         test_vld1q_f16_x2(f16, 16, float16x8x2_t, vst1q_f16_x2, vld1q_f16_x2);
         test_vld1q_f16_x3(f16, 24, float16x8x3_t, vst1q_f16_x3, vld1q_f16_x3);
         test_vld1q_f16_x4(f16, 32, float16x8x4_t, vst1q_f16_x4, vld1q_f16_x4);
+
+        test_vld2_f16_x2(f16, 8, float16x4x2_t, vst2_f16, vld2_f16);
+        test_vld2_f16_x3(f16, 12, float16x4x3_t, vst3_f16, vld3_f16);
+        test_vld2_f16_x4(f16, 16, float16x4x4_t, vst4_f16, vld4_f16);
+
+        test_vld2q_f16_x2(f16, 16, float16x8x2_t, vst2q_f16, vld2q_f16);
+        test_vld3q_f16_x3(f16, 24, float16x8x3_t, vst3q_f16, vld3q_f16);
+        test_vld4q_f16_x4(f16, 32, float16x8x4_t, vst4q_f16, vld4q_f16);
     }
 
     macro_rules! wide_store_load_roundtrip_aes {

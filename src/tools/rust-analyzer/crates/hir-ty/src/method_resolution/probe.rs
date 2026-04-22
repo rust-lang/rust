@@ -5,7 +5,8 @@ use std::{cell::RefCell, convert::Infallible, ops::ControlFlow};
 
 use hir_def::{
     AssocItemId, FunctionId, GenericParamId, ImplId, ItemContainerId, TraitId,
-    signatures::TraitFlags,
+    hir::generics::GenericParams,
+    signatures::{FunctionSignature, TraitFlags, TraitSignature},
 };
 use hir_expand::name::Name;
 use rustc_ast_ir::Mutability;
@@ -1594,7 +1595,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_bounds = GenericPredicates::query_all(self.db(), impl_def_id.into());
                     let impl_bounds = clauses_as_obligations(
-                        impl_bounds.iter_instantiated_copied(self.interner(), impl_args.as_slice()),
+                        impl_bounds.iter_instantiated(self.interner(), impl_args.as_slice()),
                         ObligationCause::new(),
                         self.param_env(),
                     );
@@ -1605,7 +1606,8 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                     // Some trait methods are excluded for arrays before 2021.
                     // (`array.into_iter()` wants a slice iterator for compatibility.)
                     if self_ty.is_array() && !self.ctx.edition.at_least_2021() {
-                        let trait_signature = self.db().trait_signature(poly_trait_ref.def_id().0);
+                        let trait_signature =
+                            TraitSignature::of(self.db(), poly_trait_ref.def_id().0);
                         if trait_signature
                             .flags
                             .contains(TraitFlags::SKIP_ARRAY_DURING_METHOD_DISPATCH)
@@ -1619,7 +1621,8 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
                     if self_ty.boxed_ty().is_some_and(Ty::is_slice)
                         && !self.ctx.edition.at_least_2024()
                     {
-                        let trait_signature = self.db().trait_signature(poly_trait_ref.def_id().0);
+                        let trait_signature =
+                            TraitSignature::of(self.db(), poly_trait_ref.def_id().0);
                         if trait_signature
                             .flags
                             .contains(TraitFlags::SKIP_BOXED_SLICE_DURING_METHOD_DISPATCH)
@@ -1963,7 +1966,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
         // associated value (i.e., methods, constants).
         match item {
             CandidateId::FunctionId(id) if self.mode == Mode::MethodCall => {
-                self.db().function_signature(id).has_self_param()
+                FunctionSignature::of(self.db(), id).has_self_param()
             }
             _ => true,
         }
@@ -2008,7 +2011,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
         // we are given do not include type/lifetime parameters for the
         // method yet. So create fresh variables here for those too,
         // if there are any.
-        let generics = self.db().generic_params(method.into());
+        let generics = GenericParams::of(self.db(), method.into());
 
         let xform_fn_sig = if generics.is_empty() {
             fn_sig.instantiate(self.interner(), args)

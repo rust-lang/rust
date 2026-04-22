@@ -4,13 +4,13 @@ use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{IntoSpan, SpanRangeExt};
 use clippy_utils::ty::get_field_by_name;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures};
-use clippy_utils::{ExprUseNode, expr_use_ctxt, sym};
+use clippy_utils::{ExprUseNode, get_expr_use_site, sym};
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{BindingMode, BorrowKind, ByRef, ClosureKind, Expr, ExprKind, Mutability, Node, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_span::{DUMMY_SP, Span, Symbol};
+use rustc_span::{DUMMY_SP, Span, Symbol, SyntaxContext};
 
 use super::MANUAL_INSPECT;
 
@@ -49,7 +49,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
                 // Nested closures don't need to treat returns specially.
                 let _: Option<!> = for_each_expr(cx, cx.tcx.hir_body(c.body).value, |e| {
                     if e.res_local_id() == Some(arg_id) {
-                        let (kind, same_ctxt) = check_use(cx, e);
+                        let (kind, same_ctxt) = check_use(cx, ctxt, e);
                         match (kind, same_ctxt && e.span.ctxt() == ctxt) {
                             (_, false) | (UseKind::Deref | UseKind::Return(..), true) => {
                                 requires_copy = true;
@@ -67,7 +67,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
             } else if matches!(e.kind, ExprKind::Ret(_)) {
                 ret_count += 1;
             } else if e.res_local_id() == Some(arg_id) {
-                let (kind, same_ctxt) = check_use(cx, e);
+                let (kind, same_ctxt) = check_use(cx, ctxt, e);
                 match (kind, same_ctxt && e.span.ctxt() == ctxt) {
                     (UseKind::Return(..), false) => {
                         return ControlFlow::Break(());
@@ -209,8 +209,8 @@ enum UseKind<'tcx> {
 }
 
 /// Checks how the value is used, and whether it was used in the same `SyntaxContext`.
-fn check_use<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> (UseKind<'tcx>, bool) {
-    let use_cx = expr_use_ctxt(cx, e);
+fn check_use<'tcx>(cx: &LateContext<'tcx>, ctxt: SyntaxContext, e: &'tcx Expr<'_>) -> (UseKind<'tcx>, bool) {
+    let use_cx = get_expr_use_site(cx.tcx, cx.typeck_results(), ctxt, e);
     if use_cx
         .adjustments
         .first()

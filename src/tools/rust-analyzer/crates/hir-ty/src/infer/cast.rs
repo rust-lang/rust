@@ -1,6 +1,10 @@
 //! Type cast logic. Basically coercion + additional casts.
 
-use hir_def::{AdtId, hir::ExprId, signatures::TraitFlags};
+use hir_def::{
+    AdtId,
+    hir::ExprId,
+    signatures::{TraitFlags, TraitSignature},
+};
 use rustc_ast_ir::Mutability;
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
@@ -328,11 +332,7 @@ impl<'db> CastCheck<'db> {
                     //
                     // Note that trait upcasting goes through a different mechanism (`coerce_unsized`)
                     // and is unaffected by this check.
-                    (Some(src_principal), Some(dst_principal)) => {
-                        if src_principal == dst_principal {
-                            return Ok(());
-                        }
-
+                    (Some(src_principal), Some(_)) => {
                         // We need to reconstruct trait object types.
                         // `m_src` and `m_dst` won't work for us here because they will potentially
                         // contain wrappers, which we do not care about.
@@ -387,8 +387,7 @@ impl<'db> CastCheck<'db> {
                             .chain(
                                 elaborate::supertrait_def_ids(ctx.interner(), src_principal)
                                     .filter(|trait_| {
-                                        ctx.db
-                                            .trait_signature(trait_.0)
+                                        TraitSignature::of(ctx.db, trait_.0)
                                             .flags
                                             .contains(TraitFlags::AUTO)
                                     }),

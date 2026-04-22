@@ -11,8 +11,6 @@
 //! This API is completely unstable and subject to change.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(assert_matches))]
-#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(default_field_values)]

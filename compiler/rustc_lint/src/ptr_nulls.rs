@@ -59,7 +59,7 @@ declare_lint! {
 declare_lint_pass!(PtrNullChecks => [USELESS_PTR_NULL_CHECKS, INVALID_NULL_ARGUMENTS]);
 
 /// This function checks if the expression is from a series of consecutive casts,
-/// ie. `(my_fn as *const _ as *mut _).cast_mut()` and whether the original expression is either
+/// i.e. `(my_fn as *const _ as *mut _).cast_mut()` and whether the original expression is either
 /// a fn ptr, a reference, or a function call whose definition is
 /// annotated with `#![rustc_never_returns_null_ptr]`.
 /// If this situation is present, the function returns the appropriate diagnostic.

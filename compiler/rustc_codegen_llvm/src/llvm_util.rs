@@ -16,7 +16,7 @@ use rustc_middle::bug;
 use rustc_session::Session;
 use rustc_session::config::{PrintKind, PrintRequest};
 use rustc_target::spec::{
-    Abi, Arch, Env, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport,
+    Arch, CfgAbi, Env, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport,
 };
 use smallvec::{SmallVec, smallvec};
 
@@ -252,12 +252,11 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
             "fp16" => Some(LLVMFeature::new("fullfp16")),
             s => Some(LLVMFeature::new(s)),
         },
-
-        // Filter out features that are not supported by the current LLVM version
-        Arch::LoongArch32 | Arch::LoongArch64 => match s {
-            "32s" if major < 21 => None,
+        Arch::Bpf => match s {
+            "allows-misaligned-mem-access" if major < 22 => None,
             s => Some(LLVMFeature::new(s)),
         },
+        // Filter out features that are not supported by the current LLVM version
         Arch::PowerPC | Arch::PowerPC64 => match s {
             "power8-crypto" => Some(LLVMFeature::new("crypto")),
             s => Some(LLVMFeature::new(s)),
@@ -366,29 +365,20 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
     let target_arch = &sess.target.arch;
     let target_os = &sess.target.options.os;
     let target_env = &sess.target.options.env;
-    let target_abi = &sess.target.options.abi;
+    let target_abi = &sess.target.options.cfg_abi;
     let target_pointer_width = sess.target.pointer_width;
     let version = get_version();
     let (major, _, _) = version;
 
     cfg.has_reliable_f16 = match (target_arch, target_os) {
-        // LLVM crash without neon <https://github.com/llvm/llvm-project/issues/129394> (fixed in LLVM 20.1.1)
-        (Arch::AArch64, _)
-            if !cfg.target_features.iter().any(|f| f.as_str() == "neon")
-                && version < (20, 1, 1) =>
-        {
-            false
-        }
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434> (fixed in llvm22)
         (Arch::Arm64EC, _) if major < 22 => false,
-        // Selection failure <https://github.com/llvm/llvm-project/issues/50374> (fixed in llvm21)
-        (Arch::S390x, _) if major < 21 => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
-        (Arch::X86_64, Os::Windows) if *target_env == Env::Gnu && *target_abi != Abi::Llvm => false,
+        (Arch::X86_64, Os::Windows) if *target_env == Env::Gnu && *target_abi != CfgAbi::Llvm => {
+            false
+        }
         // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
         (Arch::CSky, _) if major < 22 => false, // (fixed in llvm22)
-        (Arch::Hexagon, _) if major < 21 => false, // (fixed in llvm21)
-        (Arch::LoongArch32 | Arch::LoongArch64, _) if major < 21 => false, // (fixed in llvm21)
         (Arch::PowerPC | Arch::PowerPC64, _) if major < 22 => false, // (fixed in llvm22)
         (Arch::Sparc | Arch::Sparc64, _) if major < 22 => false, // (fixed in llvm22)
         (Arch::Wasm32 | Arch::Wasm64, _) if major < 22 => false, // (fixed in llvm22)
@@ -403,21 +393,18 @@ fn update_target_reliable_float_cfg(sess: &Session, cfg: &mut TargetConfig) {
         (Arch::AmdGpu, _) => false,
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         (Arch::Arm64EC, _) => false,
-        // Selection bug <https://github.com/llvm/llvm-project/issues/96432> (fixed in LLVM 20.1.0)
-        (Arch::Mips64 | Arch::Mips64r6, _) if version < (20, 1, 0) => false,
         // Selection bug <https://github.com/llvm/llvm-project/issues/95471>. This issue is closed
         // but basic math still does not work.
         (Arch::Nvptx64, _) => false,
         // ABI bugs <https://github.com/rust-lang/rust/issues/125109> et al. (full
         // list at <https://github.com/rust-lang/rust/issues/116909>)
         (Arch::PowerPC | Arch::PowerPC64, _) => false,
-        // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838>
-        (Arch::Sparc, _) => false,
-        // Stack alignment bug <https://github.com/llvm/llvm-project/issues/77401>. NB: tests may
-        // not fail if our compiler-builtins is linked. (fixed in llvm21)
-        (Arch::X86, _) if major < 21 => false,
+        // ABI unsupported  <https://github.com/llvm/llvm-project/issues/41838> (fixed in llvm22)
+        (Arch::Sparc, _) if major < 22 => false,
         // MinGW ABI bugs <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115054>
-        (Arch::X86_64, Os::Windows) if *target_env == Env::Gnu && *target_abi != Abi::Llvm => false,
+        (Arch::X86_64, Os::Windows) if *target_env == Env::Gnu && *target_abi != CfgAbi::Llvm => {
+            false
+        }
         // There are no known problems on other platforms, so the only requirement is that symbols
         // are available. `compiler-builtins` provides all symbols required for core `f128`
         // support, so this should work for everything else.
@@ -643,6 +630,7 @@ fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     }
 
     target_features::retpoline_features_by_flags(sess, features);
+    target_features::sanitizer_features_by_flags(sess, features);
 
     // -Zfixed-x18
     if sess.opts.unstable_opts.fixed_x18 {
@@ -702,7 +690,9 @@ pub(crate) fn global_llvm_features(sess: &Session, only_base_features: bool) -> 
 
                 features_string
             };
-            features.extend(features_string.split(',').map(String::from));
+            if !features_string.is_empty() {
+                features.extend(features_string.split(',').map(String::from));
+            }
         }
         Some(_) | None => {}
     };

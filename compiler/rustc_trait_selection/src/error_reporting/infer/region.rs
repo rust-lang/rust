@@ -441,7 +441,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     && let Some(def_id) = preds.principal_def_id()
                 {
                     for (clause, span) in
-                        self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
+                        self.tcx.predicates_of(def_id).instantiate_identity(self.tcx).into_iter()
                     {
                         if let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) =
                             clause.kind().skip_binder()
@@ -584,24 +584,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let trait_ref = self.tcx.impl_trait_ref(impl_def_id);
         let trait_args = trait_ref
             .instantiate_identity()
+            .skip_norm_wip()
             // Replace the explicit self type with `Self` for better suggestion rendering
             .with_replaced_self_ty(self.tcx, Ty::new_param(self.tcx, 0, kw::SelfUpper))
             .args;
         let trait_item_args = ty::GenericArgs::identity_for_item(self.tcx, impl_item_def_id)
             .rebase_onto(self.tcx, impl_def_id, trait_args);
 
-        let Ok(trait_predicates) =
-            self.tcx
-                .explicit_predicates_of(trait_item_def_id)
-                .instantiate_own(self.tcx, trait_item_args)
-                .map(|(pred, _)| {
-                    if pred.is_suggestable(self.tcx, false) {
-                        Ok(pred.to_string())
-                    } else {
-                        Err(())
-                    }
-                })
-                .collect::<Result<Vec<_>, ()>>()
+        let Ok(trait_predicates) = self
+            .tcx
+            .explicit_predicates_of(trait_item_def_id)
+            .instantiate_own(self.tcx, trait_item_args)
+            .map(|(pred, _)| {
+                let pred = pred.skip_norm_wip();
+                if pred.is_suggestable(self.tcx, false) { Ok(pred.to_string()) } else { Err(()) }
+            })
+            .collect::<Result<Vec<_>, ()>>()
         else {
             return;
         };
@@ -719,12 +717,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let labeled_user_string = match bound_kind {
             GenericKind::Param(_) => format!("the parameter type `{bound_kind}`"),
             GenericKind::Placeholder(_) => format!("the placeholder type `{bound_kind}`"),
-            GenericKind::Alias(p) => match p.kind(self.tcx) {
-                ty::Projection | ty::Inherent => {
+            GenericKind::Alias(p) => match p.kind {
+                ty::Projection { .. } | ty::Inherent { .. } => {
                     format!("the associated type `{bound_kind}`")
                 }
-                ty::Free => format!("the type alias `{bound_kind}`"),
-                ty::Opaque => format!("the opaque type `{bound_kind}`"),
+                ty::Free { .. } => format!("the type alias `{bound_kind}`"),
+                ty::Opaque { .. } => format!("the opaque type `{bound_kind}`"),
             },
         };
 
@@ -846,10 +844,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     LifetimeSuggestion::HasColon => suggs.push((sp, format!(" {lt_name}"))),
                 }
             } else if let GenericKind::Alias(ref p) = bound_kind
-                && let ty::Projection = p.kind(self.tcx)
-                && let DefKind::AssocTy = self.tcx.def_kind(p.def_id)
+                && let ty::Projection { def_id } = p.kind
+                && let DefKind::AssocTy = self.tcx.def_kind(def_id)
                 && let Some(ty::ImplTraitInTraitData::Trait { .. }) =
-                    self.tcx.opt_rpitit_info(p.def_id)
+                    self.tcx.opt_rpitit_info(def_id)
             {
                 // The lifetime found in the `impl` is longer than the one on the RPITIT.
                 // Do not suggest `<Type as Trait>::{opaque}: 'static`.

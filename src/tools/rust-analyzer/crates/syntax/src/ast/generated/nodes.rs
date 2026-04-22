@@ -377,6 +377,68 @@ impl CastExpr {
     #[inline]
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
 }
+pub struct CfgAtom {
+    pub(crate) syntax: SyntaxNode,
+}
+impl CfgAtom {
+    #[inline]
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    #[inline]
+    pub fn false_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![false]) }
+    #[inline]
+    pub fn ident_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
+    #[inline]
+    pub fn string_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![string]) }
+    #[inline]
+    pub fn true_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![true]) }
+}
+pub struct CfgAttrMeta {
+    pub(crate) syntax: SyntaxNode,
+}
+impl CfgAttrMeta {
+    #[inline]
+    pub fn cfg_predicate(&self) -> Option<CfgPredicate> { support::child(&self.syntax) }
+    #[inline]
+    pub fn metas(&self) -> AstChildren<Meta> { support::children(&self.syntax) }
+    #[inline]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    #[inline]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    #[inline]
+    pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
+    #[inline]
+    pub fn cfg_attr_token(&self) -> Option<SyntaxToken> {
+        support::token(&self.syntax, T![cfg_attr])
+    }
+}
+pub struct CfgComposite {
+    pub(crate) syntax: SyntaxNode,
+}
+impl CfgComposite {
+    #[inline]
+    pub fn cfg_predicates(&self) -> AstChildren<CfgPredicate> { support::children(&self.syntax) }
+    #[inline]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    #[inline]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    #[inline]
+    pub fn keyword(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![ident]) }
+}
+pub struct CfgMeta {
+    pub(crate) syntax: SyntaxNode,
+}
+impl CfgMeta {
+    #[inline]
+    pub fn cfg_predicate(&self) -> Option<CfgPredicate> { support::child(&self.syntax) }
+    #[inline]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    #[inline]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    #[inline]
+    pub fn comma_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![,]) }
+    #[inline]
+    pub fn cfg_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![cfg]) }
+}
 pub struct ClosureExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -422,6 +484,8 @@ impl Const {
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     #[inline]
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
+    #[inline]
+    pub fn type_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![type]) }
 }
 pub struct ConstArg {
     pub(crate) syntax: SyntaxNode,
@@ -746,6 +810,15 @@ impl Impl {
     #[inline]
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
 }
+pub struct ImplRestriction {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ImplRestriction {
+    #[inline]
+    pub fn visibility_inner(&self) -> Option<VisibilityInner> { support::child(&self.syntax) }
+    #[inline]
+    pub fn impl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![impl]) }
+}
 pub struct ImplTraitType {
     pub(crate) syntax: SyntaxNode,
 }
@@ -782,6 +855,17 @@ impl ItemList {
     pub fn l_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['{']) }
     #[inline]
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
+}
+pub struct KeyValueMeta {
+    pub(crate) syntax: SyntaxNode,
+}
+impl KeyValueMeta {
+    #[inline]
+    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    #[inline]
+    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
+    #[inline]
+    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
 }
 pub struct Label {
     pub(crate) syntax: SyntaxNode,
@@ -1012,25 +1096,6 @@ impl MatchGuard {
     #[inline]
     pub fn if_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![if]) }
 }
-pub struct Meta {
-    pub(crate) syntax: SyntaxNode,
-}
-impl Meta {
-    #[inline]
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
-    #[inline]
-    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
-    #[inline]
-    pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
-    #[inline]
-    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
-    #[inline]
-    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
-    #[inline]
-    pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
-    #[inline]
-    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
-}
 pub struct MethodCallExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1059,6 +1124,15 @@ impl Module {
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
     #[inline]
     pub fn mod_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mod]) }
+}
+pub struct MutRestriction {
+    pub(crate) syntax: SyntaxNode,
+}
+impl MutRestriction {
+    #[inline]
+    pub fn visibility_inner(&self) -> Option<VisibilityInner> { support::child(&self.syntax) }
+    #[inline]
+    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
 }
 pub struct Name {
     pub(crate) syntax: SyntaxNode,
@@ -1225,6 +1299,13 @@ impl PathExpr {
     #[inline]
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
 }
+pub struct PathMeta {
+    pub(crate) syntax: SyntaxNode,
+}
+impl PathMeta {
+    #[inline]
+    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
+}
 pub struct PathPat {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1337,7 +1418,9 @@ impl ast::HasName for RecordField {}
 impl ast::HasVisibility for RecordField {}
 impl RecordField {
     #[inline]
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn default_val(&self) -> Option<ConstArg> { support::child(&self.syntax) }
+    #[inline]
+    pub fn mut_restriction(&self) -> Option<MutRestriction> { support::child(&self.syntax) }
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     #[inline]
@@ -1607,6 +1690,15 @@ impl TokenTree {
     #[inline]
     pub fn r_curly_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['}']) }
 }
+pub struct TokenTreeMeta {
+    pub(crate) syntax: SyntaxNode,
+}
+impl TokenTreeMeta {
+    #[inline]
+    pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
+    #[inline]
+    pub fn token_tree(&self) -> Option<TokenTree> { support::child(&self.syntax) }
+}
 pub struct Trait {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1619,6 +1711,8 @@ impl ast::HasVisibility for Trait {}
 impl Trait {
     #[inline]
     pub fn assoc_item_list(&self) -> Option<AssocItemList> { support::child(&self.syntax) }
+    #[inline]
+    pub fn impl_restriction(&self) -> Option<ImplRestriction> { support::child(&self.syntax) }
     #[inline]
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
     #[inline]
@@ -1672,6 +1766,8 @@ impl ast::HasAttrs for TupleField {}
 impl ast::HasDocComments for TupleField {}
 impl ast::HasVisibility for TupleField {}
 impl TupleField {
+    #[inline]
+    pub fn mut_restriction(&self) -> Option<MutRestriction> { support::child(&self.syntax) }
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
@@ -1834,6 +1930,19 @@ impl Union {
     #[inline]
     pub fn union_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![union]) }
 }
+pub struct UnsafeMeta {
+    pub(crate) syntax: SyntaxNode,
+}
+impl UnsafeMeta {
+    #[inline]
+    pub fn meta(&self) -> Option<Meta> { support::child(&self.syntax) }
+    #[inline]
+    pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
+    #[inline]
+    pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
+    #[inline]
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
+}
 pub struct Use {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1896,7 +2005,7 @@ impl ast::HasName for Variant {}
 impl ast::HasVisibility for Variant {}
 impl Variant {
     #[inline]
-    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+    pub fn const_arg(&self) -> Option<ConstArg> { support::child(&self.syntax) }
     #[inline]
     pub fn field_list(&self) -> Option<FieldList> { support::child(&self.syntax) }
     #[inline]
@@ -1918,6 +2027,15 @@ pub struct Visibility {
 }
 impl Visibility {
     #[inline]
+    pub fn visibility_inner(&self) -> Option<VisibilityInner> { support::child(&self.syntax) }
+    #[inline]
+    pub fn pub_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![pub]) }
+}
+pub struct VisibilityInner {
+    pub(crate) syntax: SyntaxNode,
+}
+impl VisibilityInner {
+    #[inline]
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     #[inline]
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
@@ -1925,8 +2043,6 @@ impl Visibility {
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
     #[inline]
     pub fn in_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![in]) }
-    #[inline]
-    pub fn pub_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![pub]) }
 }
 pub struct WhereClause {
     pub(crate) syntax: SyntaxNode,
@@ -2025,6 +2141,12 @@ impl ast::HasAttrs for AssocItem {}
 impl ast::HasDocComments for AssocItem {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum CfgPredicate {
+    CfgAtom(CfgAtom),
+    CfgComposite(CfgComposite),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
     ArrayExpr(ArrayExpr),
     AsmExpr(AsmExpr),
@@ -2117,6 +2239,16 @@ pub enum Item {
     Use(Use),
 }
 impl ast::HasAttrs for Item {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Meta {
+    CfgAttrMeta(CfgAttrMeta),
+    CfgMeta(CfgMeta),
+    KeyValueMeta(KeyValueMeta),
+    PathMeta(PathMeta),
+    TokenTreeMeta(TokenTreeMeta),
+    UnsafeMeta(UnsafeMeta),
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Pat {
@@ -3133,6 +3265,134 @@ impl fmt::Debug for CastExpr {
         f.debug_struct("CastExpr").field("syntax", &self.syntax).finish()
     }
 }
+impl AstNode for CfgAtom {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        CFG_ATOM
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CFG_ATOM }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for CfgAtom {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for CfgAtom {}
+impl PartialEq for CfgAtom {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for CfgAtom {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for CfgAtom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CfgAtom").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for CfgAttrMeta {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        CFG_ATTR_META
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CFG_ATTR_META }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for CfgAttrMeta {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for CfgAttrMeta {}
+impl PartialEq for CfgAttrMeta {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for CfgAttrMeta {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for CfgAttrMeta {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CfgAttrMeta").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for CfgComposite {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        CFG_COMPOSITE
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CFG_COMPOSITE }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for CfgComposite {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for CfgComposite {}
+impl PartialEq for CfgComposite {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for CfgComposite {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for CfgComposite {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CfgComposite").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for CfgMeta {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        CFG_META
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == CFG_META }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for CfgMeta {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for CfgMeta {}
+impl PartialEq for CfgMeta {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for CfgMeta {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for CfgMeta {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CfgMeta").field("syntax", &self.syntax).finish()
+    }
+}
 impl AstNode for ClosureExpr {
     #[inline]
     fn kind() -> SyntaxKind
@@ -3965,6 +4225,38 @@ impl fmt::Debug for Impl {
         f.debug_struct("Impl").field("syntax", &self.syntax).finish()
     }
 }
+impl AstNode for ImplRestriction {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        IMPL_RESTRICTION
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL_RESTRICTION }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for ImplRestriction {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for ImplRestriction {}
+impl PartialEq for ImplRestriction {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for ImplRestriction {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for ImplRestriction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ImplRestriction").field("syntax", &self.syntax).finish()
+    }
+}
 impl AstNode for ImplTraitType {
     #[inline]
     fn kind() -> SyntaxKind
@@ -4091,6 +4383,38 @@ impl Clone for ItemList {
 impl fmt::Debug for ItemList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ItemList").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for KeyValueMeta {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        KEY_VALUE_META
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == KEY_VALUE_META }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for KeyValueMeta {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for KeyValueMeta {}
+impl PartialEq for KeyValueMeta {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for KeyValueMeta {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for KeyValueMeta {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("KeyValueMeta").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for Label {
@@ -4797,38 +5121,6 @@ impl fmt::Debug for MatchGuard {
         f.debug_struct("MatchGuard").field("syntax", &self.syntax).finish()
     }
 }
-impl AstNode for Meta {
-    #[inline]
-    fn kind() -> SyntaxKind
-    where
-        Self: Sized,
-    {
-        META
-    }
-    #[inline]
-    fn can_cast(kind: SyntaxKind) -> bool { kind == META }
-    #[inline]
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
-    }
-    #[inline]
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-impl hash::Hash for Meta {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
-}
-impl Eq for Meta {}
-impl PartialEq for Meta {
-    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
-}
-impl Clone for Meta {
-    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
-}
-impl fmt::Debug for Meta {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Meta").field("syntax", &self.syntax).finish()
-    }
-}
 impl AstNode for MethodCallExpr {
     #[inline]
     fn kind() -> SyntaxKind
@@ -4891,6 +5183,38 @@ impl Clone for Module {
 impl fmt::Debug for Module {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Module").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for MutRestriction {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        MUT_RESTRICTION
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MUT_RESTRICTION }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for MutRestriction {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for MutRestriction {}
+impl PartialEq for MutRestriction {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for MutRestriction {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for MutRestriction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MutRestriction").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for Name {
@@ -5307,6 +5631,38 @@ impl Clone for PathExpr {
 impl fmt::Debug for PathExpr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PathExpr").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for PathMeta {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        PATH_META
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == PATH_META }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for PathMeta {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for PathMeta {}
+impl PartialEq for PathMeta {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for PathMeta {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for PathMeta {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PathMeta").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for PathPat {
@@ -6301,6 +6657,38 @@ impl fmt::Debug for TokenTree {
         f.debug_struct("TokenTree").field("syntax", &self.syntax).finish()
     }
 }
+impl AstNode for TokenTreeMeta {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        TOKEN_TREE_META
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == TOKEN_TREE_META }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for TokenTreeMeta {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for TokenTreeMeta {}
+impl PartialEq for TokenTreeMeta {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for TokenTreeMeta {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for TokenTreeMeta {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TokenTreeMeta").field("syntax", &self.syntax).finish()
+    }
+}
 impl AstNode for Trait {
     #[inline]
     fn kind() -> SyntaxKind
@@ -6845,6 +7233,38 @@ impl fmt::Debug for Union {
         f.debug_struct("Union").field("syntax", &self.syntax).finish()
     }
 }
+impl AstNode for UnsafeMeta {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        UNSAFE_META
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == UNSAFE_META }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for UnsafeMeta {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for UnsafeMeta {}
+impl PartialEq for UnsafeMeta {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for UnsafeMeta {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for UnsafeMeta {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("UnsafeMeta").field("syntax", &self.syntax).finish()
+    }
+}
 impl AstNode for Use {
     #[inline]
     fn kind() -> SyntaxKind
@@ -7067,6 +7487,38 @@ impl Clone for Visibility {
 impl fmt::Debug for Visibility {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Visibility").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for VisibilityInner {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        VISIBILITY_INNER
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == VISIBILITY_INNER }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for VisibilityInner {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for VisibilityInner {}
+impl PartialEq for VisibilityInner {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for VisibilityInner {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for VisibilityInner {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("VisibilityInner").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for WhereClause {
@@ -7410,6 +7862,34 @@ impl AstNode for AssocItem {
             AssocItem::Fn(it) => &it.syntax,
             AssocItem::MacroCall(it) => &it.syntax,
             AssocItem::TypeAlias(it) => &it.syntax,
+        }
+    }
+}
+impl From<CfgAtom> for CfgPredicate {
+    #[inline]
+    fn from(node: CfgAtom) -> CfgPredicate { CfgPredicate::CfgAtom(node) }
+}
+impl From<CfgComposite> for CfgPredicate {
+    #[inline]
+    fn from(node: CfgComposite) -> CfgPredicate { CfgPredicate::CfgComposite(node) }
+}
+impl AstNode for CfgPredicate {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { matches!(kind, CFG_ATOM | CFG_COMPOSITE) }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            CFG_ATOM => CfgPredicate::CfgAtom(CfgAtom { syntax }),
+            CFG_COMPOSITE => CfgPredicate::CfgComposite(CfgComposite { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            CfgPredicate::CfgAtom(it) => &it.syntax,
+            CfgPredicate::CfgComposite(it) => &it.syntax,
         }
     }
 }
@@ -7967,6 +8447,63 @@ impl AstNode for Item {
             Item::TypeAlias(it) => &it.syntax,
             Item::Union(it) => &it.syntax,
             Item::Use(it) => &it.syntax,
+        }
+    }
+}
+impl From<CfgAttrMeta> for Meta {
+    #[inline]
+    fn from(node: CfgAttrMeta) -> Meta { Meta::CfgAttrMeta(node) }
+}
+impl From<CfgMeta> for Meta {
+    #[inline]
+    fn from(node: CfgMeta) -> Meta { Meta::CfgMeta(node) }
+}
+impl From<KeyValueMeta> for Meta {
+    #[inline]
+    fn from(node: KeyValueMeta) -> Meta { Meta::KeyValueMeta(node) }
+}
+impl From<PathMeta> for Meta {
+    #[inline]
+    fn from(node: PathMeta) -> Meta { Meta::PathMeta(node) }
+}
+impl From<TokenTreeMeta> for Meta {
+    #[inline]
+    fn from(node: TokenTreeMeta) -> Meta { Meta::TokenTreeMeta(node) }
+}
+impl From<UnsafeMeta> for Meta {
+    #[inline]
+    fn from(node: UnsafeMeta) -> Meta { Meta::UnsafeMeta(node) }
+}
+impl AstNode for Meta {
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool {
+        matches!(
+            kind,
+            CFG_ATTR_META | CFG_META | KEY_VALUE_META | PATH_META | TOKEN_TREE_META | UNSAFE_META
+        )
+    }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            CFG_ATTR_META => Meta::CfgAttrMeta(CfgAttrMeta { syntax }),
+            CFG_META => Meta::CfgMeta(CfgMeta { syntax }),
+            KEY_VALUE_META => Meta::KeyValueMeta(KeyValueMeta { syntax }),
+            PATH_META => Meta::PathMeta(PathMeta { syntax }),
+            TOKEN_TREE_META => Meta::TokenTreeMeta(TokenTreeMeta { syntax }),
+            UNSAFE_META => Meta::UnsafeMeta(UnsafeMeta { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            Meta::CfgAttrMeta(it) => &it.syntax,
+            Meta::CfgMeta(it) => &it.syntax,
+            Meta::KeyValueMeta(it) => &it.syntax,
+            Meta::PathMeta(it) => &it.syntax,
+            Meta::TokenTreeMeta(it) => &it.syntax,
+            Meta::UnsafeMeta(it) => &it.syntax,
         }
     }
 }
@@ -9334,6 +9871,11 @@ impl std::fmt::Display for AssocItem {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for CfgPredicate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -9360,6 +9902,11 @@ impl std::fmt::Display for GenericParam {
     }
 }
 impl std::fmt::Display for Item {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for Meta {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -9524,6 +10071,26 @@ impl std::fmt::Display for CastExpr {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for CfgAtom {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for CfgAttrMeta {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for CfgComposite {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for CfgMeta {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for ClosureExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -9654,6 +10221,11 @@ impl std::fmt::Display for Impl {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for ImplRestriction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for ImplTraitType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -9670,6 +10242,11 @@ impl std::fmt::Display for InferType {
     }
 }
 impl std::fmt::Display for ItemList {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for KeyValueMeta {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -9784,17 +10361,17 @@ impl std::fmt::Display for MatchGuard {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for Meta {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Display::fmt(self.syntax(), f)
-    }
-}
 impl std::fmt::Display for MethodCallExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
 impl std::fmt::Display for Module {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MutRestriction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -9860,6 +10437,11 @@ impl std::fmt::Display for Path {
     }
 }
 impl std::fmt::Display for PathExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for PathMeta {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -10019,6 +10601,11 @@ impl std::fmt::Display for TokenTree {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for TokenTreeMeta {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for Trait {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -10104,6 +10691,11 @@ impl std::fmt::Display for Union {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for UnsafeMeta {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for Use {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -10135,6 +10727,11 @@ impl std::fmt::Display for VariantList {
     }
 }
 impl std::fmt::Display for Visibility {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for VisibilityInner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

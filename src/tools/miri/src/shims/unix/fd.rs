@@ -15,7 +15,7 @@ use crate::shims::unix::*;
 use crate::*;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub(crate) enum FlockOp {
+pub enum FlockOp {
     SharedLock { nonblocking: bool },
     ExclusiveLock { nonblocking: bool },
     Unlock,
@@ -60,6 +60,20 @@ pub trait UnixFileDescription: FileDescription {
         _op: FlockOp,
     ) -> InterpResult<'tcx, io::Result<()>> {
         throw_unsup_format!("cannot flock {}", self.name());
+    }
+
+    /// Modifies device parameters.
+    /// `op` is the device-dependent operation code. It's either a `c_long` or `c_int`, depending on
+    /// the target and whether it uses glibc or musl.
+    /// `arg` is the optional third argument which exists depending on the operation code. It's either
+    /// an integer or a pointer.
+    fn ioctl<'tcx>(
+        &self,
+        _op: Scalar,
+        _arg: Option<&OpTy<'tcx>>,
+        _ecx: &mut MiriInterpCx<'tcx>,
+    ) -> InterpResult<'tcx, i32> {
+        throw_unsup_format!("cannot use ioctl on {}", self.name());
     }
 
     /// Return which epoll events are currently active.
@@ -129,6 +143,39 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
+    fn ioctl(
+        &mut self,
+        fd: &OpTy<'tcx>,
+        op: &OpTy<'tcx>,
+        varargs: &[OpTy<'tcx>],
+    ) -> InterpResult<'tcx, Scalar> {
+        let this = self.eval_context_mut();
+
+        let fd = this.read_scalar(fd)?.to_i32()?;
+        let op = this.read_scalar(op)?;
+        // There is at most one relevant variadic argument.
+        // It exists depending on the device and the opcode and thus we can't
+        // use `check_min_vararg_count` here.
+        let arg = varargs.first();
+
+        let Some(fd) = this.machine.fds.get(fd) else {
+            return this.set_last_error_and_return_i32(LibcError("EBADF"));
+        };
+
+        // Handle common opcodes.
+        let fioclex = this.eval_libc("FIOCLEX");
+        let fionclex = this.eval_libc("FIONCLEX");
+        if op == fioclex || op == fionclex {
+            // Since we don't support `exec`, those are NOPs.
+            return interp_ok(Scalar::from_i32(0));
+        }
+
+        // Since some ioctl operations use the return value as an output parameter, we cannot strictly use the convention of
+        // zero indicating success and -1 indicating an error.
+        let return_value = fd.as_unix(this).ioctl(op, arg, this)?;
+        interp_ok(Scalar::from_i32(return_value))
+    }
+
     fn fcntl(
         &mut self,
         fd_num: &OpTy<'tcx>,
@@ -196,7 +243,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [flag] = check_min_vararg_count("fcntl(fd, F_SETFL, ...)", varargs)?;
                 let flag = this.read_scalar(flag)?.to_i32()?;
 
-                fd.set_flags(flag, this)
+                // Ignore flags that never get stored by SETFL.
+                // "File access mode (O_RDONLY, O_WRONLY, O_RDWR) and file
+                // creation flags (i.e., O_CREAT, O_EXCL, O_NOCTTY, O_TRUNC)
+                // in arg are ignored."
+                let ignored_flags = this.eval_libc_i32("O_RDONLY")
+                    | this.eval_libc_i32("O_WRONLY")
+                    | this.eval_libc_i32("O_RDWR")
+                    | this.eval_libc_i32("O_CREAT")
+                    | this.eval_libc_i32("O_EXCL")
+                    | this.eval_libc_i32("O_NOCTTY")
+                    | this.eval_libc_i32("O_TRUNC");
+
+                fd.set_flags(flag & !ignored_flags, this)
             }
             cmd if this.tcx.sess.target.os == Os::MacOs
                 && cmd == this.eval_libc_i32("F_FULLFSYNC") =>

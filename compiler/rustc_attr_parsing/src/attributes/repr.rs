@@ -1,4 +1,4 @@
-use rustc_abi::Align;
+use rustc_abi::{Align, Size};
 use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
 use rustc_hir::attrs::{IntType, ReprAttr};
 
@@ -33,12 +33,14 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
         let mut reprs = Vec::new();
 
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span, args);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
             return reprs;
         };
 
         if list.is_empty() {
-            cx.warn_empty_attribute(cx.attr_span);
+            let attr_span = cx.attr_span;
+            cx.adcx().warn_empty_attribute(attr_span);
             return reprs;
         }
 
@@ -229,7 +231,7 @@ fn parse_repr_align<S: Stage>(
         return None;
     };
 
-    match parse_alignment(&lit.kind) {
+    match parse_alignment(&lit.kind, cx) {
         Ok(literal) => Some(match align_kind {
             AlignKind::Packed => ReprAttr::ReprPacked(literal),
             AlignKind::Align => ReprAttr::ReprAlign(literal),
@@ -248,23 +250,35 @@ fn parse_repr_align<S: Stage>(
     }
 }
 
-fn parse_alignment(node: &LitKind) -> Result<Align, &'static str> {
-    if let LitKind::Int(literal, LitIntType::Unsuffixed) = node {
-        // `Align::from_bytes` accepts 0 as an input, check is_power_of_two() first
-        if literal.get().is_power_of_two() {
-            // Only possible error is larger than 2^29
-            literal
-                .get()
-                .try_into()
-                .ok()
-                .and_then(|v| Align::from_bytes(v).ok())
-                .ok_or("larger than 2^29")
-        } else {
-            Err("not a power of two")
-        }
-    } else {
-        Err("not an unsuffixed integer")
+fn parse_alignment<S: Stage>(
+    node: &LitKind,
+    cx: &AcceptContext<'_, '_, S>,
+) -> Result<Align, String> {
+    let LitKind::Int(literal, LitIntType::Unsuffixed) = node else {
+        return Err("not an unsuffixed integer".to_string());
+    };
+
+    // `Align::from_bytes` accepts 0 as a valid input,
+    // so we check if its a power of two first
+    if !literal.get().is_power_of_two() {
+        return Err("not a power of two".to_string());
     }
+    // lit must be < 2^29
+    let align = literal
+        .get()
+        .try_into()
+        .ok()
+        .and_then(|a| Align::from_bytes(a).ok())
+        .ok_or("larger than 2^29".to_string())?;
+
+    // alignment must not be larger than the pointer width (`isize::MAX`)
+    let max = Size::from_bits(cx.sess.target.pointer_width).signed_int_max() as u64;
+    if align.bytes() > max {
+        return Err(format!(
+            "alignment larger than `isize::MAX` bytes ({max} for the current target)"
+        ));
+    }
+    Ok(align)
 }
 
 /// Parse #[align(N)].
@@ -278,11 +292,12 @@ impl RustcAlignParser {
     fn parse<S: Stage>(&mut self, cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) {
         match args {
             ArgParser::NoArgs | ArgParser::NameValue(_) => {
-                cx.expected_list(cx.attr_span, args);
+                let attr_span = cx.attr_span;
+                cx.adcx().expected_list(attr_span, args);
             }
             ArgParser::List(list) => {
                 let Some(align) = list.single() else {
-                    cx.expected_single_argument(list.span);
+                    cx.adcx().expected_single_argument(list.span, list.len());
                     return;
                 };
 
@@ -294,7 +309,7 @@ impl RustcAlignParser {
                     return;
                 };
 
-                match parse_alignment(&lit.kind) {
+                match parse_alignment(&lit.kind, cx) {
                     Ok(literal) => self.0 = Ord::max(self.0, Some((literal, cx.attr_span))),
                     Err(message) => {
                         cx.emit_err(session_diagnostics::InvalidAlignmentValue {

@@ -41,6 +41,7 @@ declare_clippy_lint! {
     pedantic,
     "`format!(..)` appended to existing `String`"
 }
+
 impl_lint_pass!(FormatPushString => [FORMAT_PUSH_STRING]);
 
 pub(crate) struct FormatPushString {

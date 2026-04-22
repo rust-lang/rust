@@ -12,14 +12,18 @@ use hir::LangItem;
 use hir::def_id::DefId;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir::{self as hir, CoroutineDesugaring, CoroutineKind};
-use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
+use rustc_infer::traits::{Obligation, PolyTraitObligation, PredicateObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, SizedTraitKind, Ty, TypeVisitableExt, TypingMode, elaborate};
+use rustc_middle::ty::{
+    self, FieldInfo, SizedTraitKind, TraitRef, Ty, TypeVisitableExt, elaborate,
+};
 use rustc_middle::{bug, span_bug};
+use rustc_span::DUMMY_SP;
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;
 use super::{SelectionCandidateSet, SelectionContext, TraitObligationStack};
+use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::util;
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
@@ -128,6 +132,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         &mut candidates,
                     );
                 }
+                Some(LangItem::Field) => {
+                    self.assemble_candidates_for_field_trait(obligation, &mut candidates);
+                }
                 _ => {
                     // We re-match here for traits that can have both builtin impls and user written impls.
                     // After the builtin impls we need to also add user written impls, which we do not want to
@@ -187,7 +194,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // quickly check if the self-type is a projection at all.
         match obligation.predicate.skip_binder().trait_ref.self_ty().kind() {
             // Excluding IATs and type aliases here as they don't have meaningful item bounds.
-            ty::Alias(ty::Projection | ty::Opaque, _) => {}
+            ty::Alias(ty::AliasTy { kind: ty::Projection { .. } | ty::Opaque { .. }, .. }) => {}
             ty::Infer(ty::TyVar(_)) => {
                 span_bug!(
                     obligation.cause.span,
@@ -674,7 +681,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // These may potentially implement `FnPtr`
                 ty::Placeholder(..)
                 | ty::Dynamic(_, _)
-                | ty::Alias(_, _)
+                | ty::Alias(_)
                 | ty::Infer(_)
                 | ty::Param(..)
                 | ty::Bound(_, _) => {}
@@ -777,7 +784,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
                 ty::Param(..)
-                | ty::Alias(ty::Projection | ty::Inherent | ty::Free, ..)
+                | ty::Alias(ty::AliasTy {
+                    kind: ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. },
+                    ..
+                })
                 | ty::Placeholder(..)
                 | ty::Bound(..) => {
                     // In these cases, we don't know what the actual
@@ -828,7 +838,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     );
                 }
 
-                ty::Alias(ty::Opaque, alias) => {
+                ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
                     if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate { .. })) {
                         // We do not generate an auto impl candidate for `impl Trait`s which already
                         // reference our auto trait.
@@ -839,11 +849,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         //
                         // Note that this is only sound as projection candidates of opaque types
                         // are always applicable for auto traits.
-                    } else if let TypingMode::Coherence = self.infcx.typing_mode() {
+                    } else if self.infcx.typing_mode().is_coherence() {
                         // We do not emit auto trait candidates for opaque types in coherence.
                         // Doing so can result in weird dependency cycles.
                         candidates.ambiguous = true;
-                    } else if self.infcx.can_define_opaque_ty(alias.def_id) {
+                    } else if self.infcx.can_define_opaque_ty(def_id) {
                         // We do not emit auto trait candidates for opaque types in their defining scope, as
                         // we need to know the hidden type first, which we can't reliably know within the defining
                         // scope.
@@ -1437,6 +1447,54 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
                 candidates.ambiguous = true;
             }
+        }
+    }
+
+    fn assemble_candidates_for_field_trait(
+        &mut self,
+        obligation: &PolyTraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) {
+        if let ty::Adt(def, args) = obligation.predicate.self_ty().skip_binder().kind()
+            && let Some(FieldInfo { base, ty, .. }) =
+                def.field_representing_type_info(self.tcx(), args)
+            // NOTE: these bounds have to be kept in sync with the definition of the `Field` trait
+            // in `library/core/src/field.rs` as well as the new trait solver `fn
+            // consider_builtin_field_candidate` in
+            // `compiler/rustc_next_trait_solver/src/solve/trait_goals.rs`.
+            && match self.infcx.evaluate_obligation(&PredicateObligation::new(
+                self.tcx(),
+                obligation.cause.clone(),
+                obligation.param_env,
+                TraitRef::new(
+                    self.tcx(),
+                    self.tcx().require_lang_item(LangItem::Sized, DUMMY_SP),
+                    [base],
+                ),
+            )) {
+                Ok(res) if res.must_apply_modulo_regions() => true,
+                _ => false,
+            }
+            && match self.infcx.evaluate_obligation(&PredicateObligation::new(
+                self.tcx(),
+                obligation.cause.clone(),
+                obligation.param_env,
+                TraitRef::new(
+                    self.tcx(),
+                    self.tcx().require_lang_item(LangItem::Sized, DUMMY_SP),
+                    [ty],
+                ),
+            )) {
+                Ok(res) if res.must_apply_modulo_regions() => true,
+                _ => false,
+            }
+            && match base.kind() {
+                ty::Adt(def, _) => def.is_struct() && !def.repr().packed(),
+                ty::Tuple(..) => true,
+                _ => false,
+            }
+        {
+            candidates.vec.push(BuiltinCandidate);
         }
     }
 }

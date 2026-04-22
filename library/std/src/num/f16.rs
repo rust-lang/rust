@@ -16,6 +16,7 @@ use crate::intrinsics;
 use crate::sys::cmath;
 
 #[cfg(not(test))]
+#[doc(test(attr(allow(unused_features))))]
 impl f16 {
     /// Raises a number to a floating point power.
     ///
@@ -607,6 +608,7 @@ impl f16 {
     #[doc(alias = "sincos")]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn sin_cos(self) -> (f16, f16) {
         (self.sin(), self.cos())
     }
@@ -831,9 +833,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn asinh(self) -> f16 {
-        let ax = self.abs();
-        let ix = 1.0 / ax;
-        (ax + (ax / (Self::hypot(1.0, ix) + ix))).ln_1p().copysign(self)
+        cmath::asinhf(self as f32) as f16
     }
 
     /// Inverse hyperbolic cosine function.
@@ -864,11 +864,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn acosh(self) -> f16 {
-        if self < 1.0 {
-            Self::NAN
-        } else {
-            (self + ((self - 1.0).sqrt() * (self + 1.0).sqrt())).ln()
-        }
+        cmath::acoshf(self as f32) as f16
     }
 
     /// Inverse hyperbolic tangent function.

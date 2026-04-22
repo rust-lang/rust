@@ -4,11 +4,11 @@
 fn f() {}
 
 fn g() {
-    become std::sync::Exclusive::new(f)() //~ error: tail calls can only be performed with function definitions or pointers
+    become std::sync::SyncView::new(f)() //~ error: tail calls can only be performed with function definitions or pointers
 }
 
 fn h() {
-    become (&mut &std::sync::Exclusive::new(f))() //~ error: tail calls can only be performed with function definitions or pointers
+    become (&mut &std::sync::SyncView::new(f))() //~ error: tail calls can only be performed with function definitions or pointers
 }
 
 fn i() {

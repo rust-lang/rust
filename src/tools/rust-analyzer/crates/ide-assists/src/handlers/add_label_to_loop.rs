@@ -3,11 +3,7 @@ use ide_db::{
 };
 use syntax::{
     SyntaxToken, T,
-    ast::{
-        self, AstNode, HasLoopBody,
-        make::{self, tokens},
-        syntax_factory::SyntaxFactory,
-    },
+    ast::{self, AstNode, HasLoopBody},
     syntax_editor::{Position, SyntaxEditor},
 };
 
@@ -35,9 +31,9 @@ use crate::{AssistContext, AssistId, Assists};
 // }
 // ```
 pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let loop_kw = ctx.find_token_syntax_at_offset(T![loop])?;
-    let loop_expr = loop_kw.parent().and_then(ast::LoopExpr::cast)?;
-    if loop_expr.label().is_some() {
+    let loop_expr = ctx.find_node_at_offset::<ast::AnyHasLoopBody>()?;
+    let loop_kw = loop_token(&loop_expr)?;
+    if loop_expr.label().is_some() || !loop_kw.text_range().contains_inclusive(ctx.offset()) {
         return None;
     }
 
@@ -46,14 +42,14 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         "Add Label",
         loop_expr.syntax().text_range(),
         |builder| {
-            let make = SyntaxFactory::with_mappings();
-            let mut editor = builder.make_editor(loop_expr.syntax());
+            let editor = builder.make_editor(loop_expr.syntax());
+            let make = editor.make();
 
             let label = make.lifetime("'l");
             let elements = vec![
                 label.syntax().clone().into(),
-                make::token(T![:]).into(),
-                tokens::single_space().into(),
+                make.token(T![:]).into(),
+                make.whitespace(" ").into(),
             ];
             editor.insert_all(Position::before(&loop_kw), elements);
 
@@ -69,26 +65,33 @@ pub(crate) fn add_label_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
                     _ => return,
                 };
                 if let Some(token) = token {
-                    insert_label_after_token(&mut editor, &make, &token, ctx, builder);
+                    insert_label_after_token(&editor, &token, ctx, builder);
                 }
             });
 
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
             builder.rename();
         },
     )
 }
 
+fn loop_token(loop_expr: &ast::AnyHasLoopBody) -> Option<syntax::SyntaxToken> {
+    loop_expr
+        .syntax()
+        .children_with_tokens()
+        .filter_map(|it| it.into_token())
+        .find(|it| matches!(it.kind(), T![for] | T![loop] | T![while]))
+}
+
 fn insert_label_after_token(
-    editor: &mut SyntaxEditor,
-    make: &SyntaxFactory,
+    editor: &SyntaxEditor,
     token: &SyntaxToken,
     ctx: &AssistContext<'_>,
     builder: &mut SourceChangeBuilder,
 ) {
+    let make = editor.make();
     let label = make.lifetime("'l");
-    let elements = vec![tokens::single_space().into(), label.syntax().clone().into()];
+    let elements = vec![make.whitespace(" ").into(), label.syntax().clone().into()];
     editor.insert_all(Position::after(token), elements);
 
     if let Some(cap) = ctx.config.snippet_cap {
@@ -116,6 +119,48 @@ fn main() {
             r#"
 fn main() {
     ${1:'l}: loop {
+        break ${2:'l};
+        continue ${0:'l};
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn add_label_to_while_expr() {
+        check_assist(
+            add_label_to_loop,
+            r#"
+fn main() {
+    while$0 true {
+        break;
+        continue;
+    }
+}"#,
+            r#"
+fn main() {
+    ${1:'l}: while true {
+        break ${2:'l};
+        continue ${0:'l};
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn add_label_to_for_expr() {
+        check_assist(
+            add_label_to_loop,
+            r#"
+fn main() {
+    for$0 _ in 0..5 {
+        break;
+        continue;
+    }
+}"#,
+            r#"
+fn main() {
+    ${1:'l}: for _ in 0..5 {
         break ${2:'l};
         continue ${0:'l};
     }
@@ -188,6 +233,31 @@ fn main() {
             r#"
 fn main() {
     'l: loop$0 {
+        break 'l;
+        continue 'l;
+    }
+}"#,
+        );
+    }
+
+    #[test]
+    fn do_not_add_label_if_outside_keyword() {
+        check_assist_not_applicable(
+            add_label_to_loop,
+            r#"
+fn main() {
+    'l: loop {$0
+        break 'l;
+        continue 'l;
+    }
+}"#,
+        );
+
+        check_assist_not_applicable(
+            add_label_to_loop,
+            r#"
+fn main() {
+    'l: while true {$0
         break 'l;
         continue 'l;
     }

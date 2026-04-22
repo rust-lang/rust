@@ -36,8 +36,8 @@ use crate::{
 pub use crate::{
     config::{AutoImportExclusionType, CallableSnippets, CompletionConfig},
     item::{
-        CompletionItem, CompletionItemKind, CompletionItemRefMode, CompletionRelevance,
-        CompletionRelevancePostfixMatch, CompletionRelevanceReturnType,
+        CompletionItem, CompletionItemImport, CompletionItemKind, CompletionItemRefMode,
+        CompletionRelevance, CompletionRelevancePostfixMatch, CompletionRelevanceReturnType,
         CompletionRelevanceTypeMatch,
     },
     snippet::{Snippet, SnippetScope},
@@ -263,6 +263,7 @@ pub fn completions(
                     extern_crate.as_ref(),
                 );
             }
+            CompletionAnalysis::CfgPredicate => completions::attribute::complete_cfg(acc, ctx),
             CompletionAnalysis::MacroSegment => {
                 completions::macro_def::complete_macro_segment(acc, ctx);
             }
@@ -279,7 +280,7 @@ pub fn resolve_completion_edits(
     db: &RootDatabase,
     config: &CompletionConfig<'_>,
     FilePosition { file_id, offset }: FilePosition,
-    imports: impl IntoIterator<Item = String>,
+    imports: impl IntoIterator<Item = CompletionItemImport>,
 ) -> Option<Vec<TextEdit>> {
     let _p = tracing::info_span!("resolve_completion_edits").entered();
     let sema = hir::Semantics::new(db);
@@ -298,12 +299,18 @@ pub fn resolve_completion_edits(
     let new_ast = scope.clone_for_update();
     let mut import_insert = TextEdit::builder();
 
-    imports.into_iter().for_each(|full_import_path| {
-        insert_use::insert_use(
-            &new_ast,
-            make::path_from_text_with_edition(&full_import_path, current_edition),
-            &config.insert_use,
-        );
+    imports.into_iter().for_each(|import| {
+        let full_path = make::path_from_text_with_edition(&import.path, current_edition);
+        if import.as_underscore {
+            insert_use::insert_use_as_alias(
+                &new_ast,
+                full_path,
+                &config.insert_use,
+                current_edition,
+            );
+        } else {
+            insert_use::insert_use(&new_ast, full_path, &config.insert_use);
+        }
     });
 
     diff(scope.as_syntax_node(), new_ast.as_syntax_node()).into_text_edit(&mut import_insert);

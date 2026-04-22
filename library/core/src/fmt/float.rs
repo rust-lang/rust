@@ -1,6 +1,6 @@
 use crate::fmt::{Debug, Display, Formatter, LowerExp, Result, UpperExp};
 use crate::mem::MaybeUninit;
-use crate::num::{flt2dec, fmt as numfmt};
+use crate::num::imp::{flt2dec, fmt as numfmt};
 
 #[doc(hidden)]
 trait GeneralFormat: PartialOrd {
@@ -171,8 +171,7 @@ where
     };
 
     if let Some(precision) = fmt.options.get_precision() {
-        // 1 integral digit + `precision` fractional digits = `precision + 1` total digits
-        float_to_exponential_common_exact(fmt, num, sign, precision + 1, upper)
+        float_to_exponential_common_exact(fmt, num, sign, precision, upper)
     } else {
         float_to_exponential_common_shortest(fmt, num, sign, upper)
     }

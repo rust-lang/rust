@@ -367,7 +367,8 @@ pub fn is_whitespace(c: char) -> bool {
 
 /// True if `c` is considered horizontal whitespace according to Rust language definition.
 pub fn is_horizontal_whitespace(c: char) -> bool {
-    // This is Pattern_White_Space.
+    // This is the horizontal space subset of `Pattern_White_Space` as
+    // categorized by UAX #31, Section 4.1.
     //
     // Note that this set is stable (ie, it doesn't change with different
     // Unicode versions), so it's ok to just hard-code the values.

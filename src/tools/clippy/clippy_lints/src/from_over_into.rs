@@ -52,6 +52,8 @@ declare_clippy_lint! {
     "Warns on implementations of `Into<..>` to use `From<..>`"
 }
 
+impl_lint_pass!(FromOverInto => [FROM_OVER_INTO]);
+
 pub struct FromOverInto {
     msrv: Msrv,
 }
@@ -61,8 +63,6 @@ impl FromOverInto {
         FromOverInto { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(FromOverInto => [FROM_OVER_INTO]);
 
 impl<'tcx> LateLintPass<'tcx> for FromOverInto {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
@@ -76,9 +76,9 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             // `impl Into<target_ty> for self_ty`
             && let Some(GenericArgs { args: [GenericArg::Type(target_ty)], .. }) = into_trait_seg.args
             && span_is_local(item.span)
-            && let middle_trait_ref = cx.tcx.impl_trait_ref(item.owner_id).instantiate_identity()
+            && let middle_trait_ref = cx.tcx.impl_trait_ref(item.owner_id).instantiate_identity().skip_norm_wip()
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
-            && !matches!(middle_trait_ref.args.type_at(1).kind(), ty::Alias(ty::Opaque, _))
+            && !matches!(middle_trait_ref.args.type_at(1).kind(), ty::Alias(ty::AliasTy { kind: ty::Opaque{..} , .. }))
             && self.msrv.meets(cx, msrvs::RE_REBALANCING_COHERENCE)
         {
             span_lint_and_then(

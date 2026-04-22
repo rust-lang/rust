@@ -8,7 +8,7 @@ jobs:
     name: Check Style
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install Rust
       run: rustup update nightly --no-self-update && rustup default nightly
     - run: ci/style.sh
@@ -18,7 +18,7 @@ jobs:
     needs: [style]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install Rust
       run: rustup update nightly --no-self-update && rustup default nightly
     - run: ci/dox.sh
@@ -30,7 +30,7 @@ jobs:
     needs: [style]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install Rust
       run: rustup update nightly --no-self-update && rustup default nightly
     - run: cargo test --manifest-path crates/stdarch-verify/Cargo.toml
@@ -96,8 +96,9 @@ jobs:
           os: ubuntu-latest
         - tuple: loongarch64-unknown-linux-gnu
           os: ubuntu-latest
-        - tuple: hexagon-unknown-linux-musl
-          os: ubuntu-latest
+        # hexagon doesn't build at the moment due to a libc issue.
+        # - tuple: hexagon-unknown-linux-musl
+        #   os: ubuntu-latest
         - tuple: wasm32-wasip1
           os: ubuntu-latest
 
@@ -209,14 +210,15 @@ jobs:
             tuple: amdgcn-amd-amdhsa
             os: ubuntu-latest
           norun: true
-        - target:
-            tuple: hexagon-unknown-linux-musl
-            os: ubuntu-latest
-          norun: true
-          build_std: true
+        # hexagon doesn't build at the moment due to a libc issue.
+        # - target:
+        #     tuple: hexagon-unknown-linux-musl
+        #     os: ubuntu-latest
+        #   norun: true
+        #   build_std: true
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install Rust
       run: |
         rustup update nightly --no-self-update
@@ -270,7 +272,7 @@ jobs:
   intrinsic-test:
     needs: [style]
     name: Intrinsic Test
-    runs-on: ubuntu-latest 
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         target:
@@ -285,7 +287,7 @@ jobs:
             build_std: true
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install Rust
       run: |
         rustup update nightly --no-self-update
@@ -310,7 +312,7 @@ jobs:
     name: Check stdarch-gen-{arm, loongarch, hexagon} output
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
     - name: Install Rust
       run: rustup update nightly && rustup default nightly && rustup component add rustfmt
     - name: Check arm spec
@@ -330,11 +332,33 @@ jobs:
         cargo run -p stdarch-gen-hexagon --release
         git diff --exit-code
 
+  # Run some tests with Miri. Most stdarch functions use platform-specific intrinsics
+  # that Miri does not support. Also Miri is reltively slow.
+  #
+  # Below we run some tests where Miri might catch UB, for instance on intrinsics that read from
+  # or write to pointers.
+  miri:
+    needs: [style]
+    name: Run some tests with miri
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+    - name: Install Rust
+      run: rustup update nightly && rustup default nightly && rustup component add miri
+    - name: Run miri tests
+      env:
+        TARGET: "aarch64-unknown-linux-gnu"
+      run: |
+        # read filters and join them with a space.
+        FILTERS=$(cat aarch64-miri-tests.txt | tr '\n' ' ')
+        cargo miri test -p core_arch --target aarch64-unknown-linux-gnu -- $FILTERS
+
   conclusion:
     needs:
       - docs
       - verify
       - test
+      - miri
       - intrinsic-test
       - check-stdarch-gen
     runs-on: ubuntu-latest

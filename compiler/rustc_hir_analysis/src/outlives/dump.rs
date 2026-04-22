@@ -5,7 +5,7 @@ use rustc_span::sym;
 
 pub(crate) fn inferred_outlives(tcx: TyCtxt<'_>) {
     for id in tcx.hir_free_items() {
-        if !find_attr!(tcx, id.owner_id, RustcOutlives) {
+        if !find_attr!(tcx, id.owner_id, RustcDumpInferredOutlives) {
             continue;
         }
 
@@ -21,7 +21,7 @@ pub(crate) fn inferred_outlives(tcx: TyCtxt<'_>) {
         preds.sort();
 
         let span = tcx.def_span(id.owner_id);
-        let mut err = tcx.dcx().struct_span_err(span, sym::rustc_outlives.as_str());
+        let mut err = tcx.dcx().struct_span_err(span, sym::rustc_dump_inferred_outlives.as_str());
         for pred in preds {
             err.note(pred);
         }

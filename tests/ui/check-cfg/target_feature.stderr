@@ -17,6 +17,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `addsubiw`
 `adx`
 `aes`
+`allows-misaligned-mem-access`
 `altivec`
 `alu32`
 `amx-avx512`
@@ -30,6 +31,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `amx-tile`
 `apxf`
 `atomics`
+`audio`
 `avx`
 `avx10.1`
 `avx10.2`
@@ -109,6 +111,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `float7e60`
 `floate1`
 `fma`
+`fma4`
 `fp-armv8`
 `fp16`
 `fp64`
@@ -358,9 +361,20 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `v`
 `v5te`
 `v6`
+`v60`
+`v62`
+`v65`
+`v66`
+`v67`
+`v68`
+`v69`
 `v6k`
 `v6t2`
 `v7`
+`v71`
+`v73`
+`v75`
+`v79`
 `v8`
 `v8.1a`
 `v8.2a`

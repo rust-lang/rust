@@ -1,25 +1,23 @@
 //@ run-pass
-//@ check-run-results
 
-#![feature(supertrait_item_shadowing)]
 #![allow(dead_code)]
 
 mod out_of_scope {
     pub trait Subtrait: super::Supertrait {
-        fn hello(&self) {
-            println!("subtrait");
+        fn hello(&self) -> &'static str {
+            "subtrait"
         }
     }
     impl<T> Subtrait for T {}
 }
 
 trait Supertrait {
-    fn hello(&self) {
-        println!("supertrait");
+    fn hello(&self) -> &'static str {
+        "supertrait"
     }
 }
 impl<T> Supertrait for T {}
 
 fn main() {
-    ().hello();
+    assert_eq!(().hello(), "supertrait");
 }

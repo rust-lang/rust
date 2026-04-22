@@ -4,7 +4,9 @@ use rustc_infer::traits::Obligation;
 use rustc_middle::traits::query::NoSolution;
 pub use rustc_middle::traits::query::type_op::AscribeUserType;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, UserArgs, UserSelfTy, UserTypeKind};
+use rustc_middle::ty::{
+    self, ParamEnvAnd, Ty, TyCtxt, Unnormalized, UserArgs, UserSelfTy, UserTypeKind,
+};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
@@ -78,7 +80,7 @@ fn relate_mir_and_user_ty<'tcx>(
         ty::ClauseKind::WellFormed(user_ty.into()),
     ));
 
-    let user_ty = ocx.normalize(&cause, param_env, user_ty);
+    let user_ty = ocx.normalize(&cause, param_env, Unnormalized::new_wip(user_ty));
     ocx.eq(&cause, param_env, mir_ty, user_ty)?;
 
     Ok(())
@@ -99,7 +101,7 @@ fn relate_mir_and_user_args<'tcx>(
 
     // For IACs, the user args are in the format [SelfTy, GAT_args...] but type_of expects [impl_args..., GAT_args...].
     // We need to infer the impl args by equating the impl's self type with the user-provided self type.
-    let is_inherent_assoc_const = tcx.def_kind(def_id) == DefKind::AssocConst
+    let is_inherent_assoc_const = matches!(tcx.def_kind(def_id), DefKind::AssocConst { .. })
         && tcx.def_kind(tcx.parent(def_id)) == DefKind::Impl { of_trait: false }
         && tcx.is_type_const(def_id);
 
@@ -108,7 +110,8 @@ fn relate_mir_and_user_args<'tcx>(
         let impl_args = ocx.infcx.fresh_args_for_item(span, impl_def_id);
         let impl_self_ty =
             ocx.normalize(&cause, param_env, tcx.type_of(impl_def_id).instantiate(tcx, impl_args));
-        let user_self_ty = ocx.normalize(&cause, param_env, args[0].expect_ty());
+        let user_self_ty =
+            ocx.normalize(&cause, param_env, Unnormalized::new_wip(args[0].expect_ty()));
         ocx.eq(&cause, param_env, impl_self_ty, user_self_ty)?;
 
         let gat_args = &args[1..];
@@ -169,9 +172,9 @@ fn relate_mir_and_user_args<'tcx>(
             ty::ClauseKind::WellFormed(self_ty.into()),
         ));
 
-        let self_ty = ocx.normalize(&cause, param_env, self_ty);
-        let impl_self_ty = tcx.type_of(impl_def_id).instantiate(tcx, args);
-        let impl_self_ty = ocx.normalize(&cause, param_env, impl_self_ty);
+        let self_ty = ocx.normalize(&cause, param_env, Unnormalized::new_wip(self_ty));
+        let impl_self_ty = tcx.type_of(impl_def_id).instantiate(tcx, args).skip_norm_wip();
+        let impl_self_ty = ocx.normalize(&cause, param_env, Unnormalized::new_wip(impl_self_ty));
 
         ocx.eq(&cause, param_env, self_ty, impl_self_ty)?;
     }

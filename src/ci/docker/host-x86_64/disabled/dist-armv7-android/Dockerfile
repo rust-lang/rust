@@ -19,11 +19,10 @@ ENV DEP_Z_ROOT=/android/ndk/arm-14/sysroot/usr/
 
 ENV HOSTS=armv7-linux-androideabi
 
-ENV RUST_CONFIGURE_ARGS \
-      --armv7-linux-androideabi-ndk=/android/ndk/arm \
+ENV RUST_CONFIGURE_ARGS="--armv7-linux-androideabi-ndk=/android/ndk/arm \
       --disable-rpath \
       --enable-extended \
-      --enable-cargo-openssl-static
+      --enable-cargo-openssl-static"
 
 # We support api level 14, but api level 21 is required to build llvm. To
 # overcome this problem we use a ndk with api level 21 to build llvm and then
@@ -32,12 +31,11 @@ ENV RUST_CONFIGURE_ARGS \
 # level 14), the default linker behavior is to generate an error, to allow the
 # build to finish we use --warn-unresolved-symbols. Note that the missing
 # symbols does not affect std, only the compiler (llvm) and cargo (openssl).
-ENV SCRIPT \
-  python3 ../x.py --stage 2 build src/llvm --host $HOSTS --target $HOSTS && \
-  (export RUSTFLAGS="\"-C link-arg=-Wl,--warn-unresolved-symbols\""; \
+ENV SCRIPT="python3 ../x.py --stage 2 build src/llvm --host $HOSTS --target $HOSTS && \
+  (export RUSTFLAGS=\"-C link-arg=-Wl,--warn-unresolved-symbols\"; \
     rm /android/ndk/arm && \
     ln -s /android/ndk/arm-14 /android/ndk/arm && \
-    python3 ../x.py dist --host $HOSTS --target $HOSTS)
+    python3 ../x.py dist --host $HOSTS --target $HOSTS)"
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

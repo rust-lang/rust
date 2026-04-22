@@ -73,13 +73,17 @@ declare_clippy_lint! {
     "outer expressions with no effect"
 }
 
+impl_lint_pass!(NoEffect => [
+    NO_EFFECT,
+    NO_EFFECT_UNDERSCORE_BINDING,
+    UNNECESSARY_OPERATION,
+]);
+
 #[derive(Default)]
 pub struct NoEffect {
     underscore_bindings: HirIdMap<Span>,
     local_bindings: Vec<Vec<HirId>>,
 }
-
-impl_lint_pass!(NoEffect => [NO_EFFECT, UNNECESSARY_OPERATION, NO_EFFECT_UNDERSCORE_BINDING]);
 
 impl<'tcx> LateLintPass<'tcx> for NoEffect {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
@@ -152,6 +156,7 @@ impl NoEffect {
                                     .tcx
                                     .fn_sig(item.owner_id)
                                     .instantiate_identity()
+                                    .skip_norm_wip()
                                     .output()
                                     .skip_binder();
 
@@ -242,7 +247,7 @@ fn has_no_effect(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             !expr_ty_has_significant_drop(cx, expr)
                 && fields.iter().all(|field| has_no_effect(cx, field.expr))
                 && match &base {
-                    StructTailExpr::None | StructTailExpr::DefaultFields(_) => true,
+                    StructTailExpr::None | StructTailExpr::NoneWithError(_) | StructTailExpr::DefaultFields(_) => true,
                     StructTailExpr::Base(base) => has_no_effect(cx, base),
                 }
         },
@@ -353,7 +358,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_>, expr: &'a Expr<'a>) -> Option<Vec
             } else {
                 let base = match base {
                     StructTailExpr::Base(base) => Some(base),
-                    StructTailExpr::None | StructTailExpr::DefaultFields(_) => None,
+                    StructTailExpr::None | StructTailExpr::NoneWithError(_) | StructTailExpr::DefaultFields(_) => None,
                 };
                 Some(fields.iter().map(|f| &f.expr).chain(base).map(Deref::deref).collect())
             }

@@ -7,6 +7,7 @@ use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
 use rustc_lint_defs::builtin::UNCOVERED_PARAM_IN_PROJECTION;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    Unnormalized,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{DefId, LocalDefId};
@@ -22,7 +23,7 @@ pub(crate) fn orphan_check_impl(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
 ) -> Result<(), ErrorGuaranteed> {
-    let trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate_identity();
+    let trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate_identity().skip_norm_wip();
     trait_ref.error_reported()?;
 
     match orphan_check(tcx, impl_def_id, OrphanCheckMode::Proper) {
@@ -179,20 +180,20 @@ pub(crate) fn orphan_check_impl(
                 NonlocalImpl::DisallowOther,
             ),
 
-            ty::Alias(kind, _) => {
+            ty::Alias(ty::AliasTy { kind, .. }) => {
                 let problematic_kind = match kind {
                     // trait Id { type This: ?Sized; }
                     // impl<T: ?Sized> Id for T {
                     //     type This = T;
                     // }
                     // impl<T: ?Sized> AutoTrait for <T as Id>::This {}
-                    ty::Projection => "associated type",
+                    ty::Projection { .. } => "associated type",
                     // type Foo = (impl Sized, bool)
                     // impl AutoTrait for Foo {}
-                    ty::Free => "type alias",
+                    ty::Free { .. } => "type alias",
                     // type Opaque = impl Trait;
                     // impl AutoTrait for Opaque {}
-                    ty::Opaque => "opaque type",
+                    ty::Opaque { .. } => "opaque type",
                     // ```
                     // struct S<T>(T);
                     // impl<T: ?Sized> S<T> {
@@ -201,7 +202,7 @@ pub(crate) fn orphan_check_impl(
                     // impl<T: ?Sized> AutoTrait for S<T>::This {}
                     // ```
                     // FIXME(inherent_associated_types): The example code above currently leads to a cycle
-                    ty::Inherent => "associated type",
+                    ty::Inherent { .. } => "associated type",
                 };
                 (LocalImpl::Disallow { problematic_kind }, NonlocalImpl::DisallowOther)
             }
@@ -301,13 +302,13 @@ fn orphan_check<'tcx>(
     let infcx = tcx.infer_ctxt().build(TypingMode::Coherence);
     let cause = traits::ObligationCause::dummy();
     let args = infcx.fresh_args_for_item(cause.span, impl_def_id.to_def_id());
-    let trait_ref = trait_ref.instantiate(tcx, args);
+    let trait_ref = trait_ref.instantiate(tcx, args).skip_norm_wip();
 
     let lazily_normalize_ty = |user_ty: Ty<'tcx>| {
         let ty::Alias(..) = user_ty.kind() else { return Ok(user_ty) };
 
         let ocx = traits::ObligationCtxt::new(&infcx);
-        let ty = ocx.normalize(&cause, ty::ParamEnv::empty(), user_ty);
+        let ty = ocx.normalize(&cause, ty::ParamEnv::empty(), Unnormalized::new_wip(user_ty));
         let ty = infcx.resolve_vars_if_possible(ty);
         let errors = ocx.try_evaluate_obligations();
         if !errors.is_empty() {
@@ -318,7 +319,7 @@ fn orphan_check<'tcx>(
             ocx.structurally_normalize_ty(
                 &cause,
                 ty::ParamEnv::empty(),
-                infcx.resolve_vars_if_possible(ty),
+                Unnormalized::new_wip(infcx.resolve_vars_if_possible(ty)),
             )
             .unwrap_or(ty)
         } else {
@@ -436,7 +437,7 @@ fn emit_orphan_check_error<'tcx>(
                             });
                         }
                     }
-                    ty::Alias(ty::Opaque, ..) => {
+                    ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
                         diag.subdiagnostic(errors::OnlyCurrentTraitsOpaque { span });
                     }
                     ty::RawPtr(ptr_ty, mutbl) => {

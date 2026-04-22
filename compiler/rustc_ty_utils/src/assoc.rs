@@ -1,8 +1,10 @@
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
-use rustc_hir::definitions::{DefPathData, DisambiguatorState};
+use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId, LocalDefIdMap};
+use rustc_hir::definitions::{
+    DefPathData, PerParentDisambiguatorState, PerParentDisambiguatorsMap,
+};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{self as hir, ImplItemImplKind, ItemKind};
+use rustc_hir::{self as hir, ConstItemRhs, ImplItemImplKind, ItemKind};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -88,7 +90,9 @@ fn associated_item_from_trait_item(
     let owner_id = trait_item.owner_id;
     let name = trait_item.ident.name;
     let kind = match trait_item.kind {
-        hir::TraitItemKind::Const { .. } => ty::AssocKind::Const { name },
+        hir::TraitItemKind::Const(_, _, is_type_const) => {
+            ty::AssocKind::Const { name, is_type_const: is_type_const.into() }
+        }
         hir::TraitItemKind::Fn { .. } => {
             ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }
         }
@@ -104,7 +108,9 @@ fn associated_item_from_impl_item(tcx: TyCtxt<'_>, impl_item: &hir::ImplItem<'_>
     let owner_id = impl_item.owner_id;
     let name = impl_item.ident.name;
     let kind = match impl_item.kind {
-        hir::ImplItemKind::Const { .. } => ty::AssocKind::Const { name },
+        hir::ImplItemKind::Const(_, rhs) => {
+            ty::AssocKind::Const { name, is_type_const: matches!(rhs, ConstItemRhs::TypeConst(_)) }
+        }
         hir::ImplItemKind::Fn { .. } => {
             ty::AssocKind::Fn { name, has_self: fn_has_self_parameter(tcx, owner_id) }
         }
@@ -125,7 +131,7 @@ struct RPITVisitor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     synthetics: Vec<LocalDefId>,
     data: DefPathData,
-    disambiguator: &'a mut DisambiguatorState,
+    disambiguators: &'a mut LocalDefIdMap<PerParentDisambiguatorState>,
 }
 
 impl<'tcx> Visitor<'tcx> for RPITVisitor<'_, 'tcx> {
@@ -134,7 +140,7 @@ impl<'tcx> Visitor<'tcx> for RPITVisitor<'_, 'tcx> {
             self.tcx,
             opaque.def_id,
             self.data,
-            &mut self.disambiguator,
+            &mut self.disambiguators,
         ));
         intravisit::walk_opaque_ty(self, opaque)
     }
@@ -145,7 +151,7 @@ fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
     def_id: LocalDefId,
 ) -> DefIdMap<Vec<DefId>> {
     let item = tcx.hir_expect_item(def_id);
-    let disambiguator = &mut DisambiguatorState::new();
+    let disambiguators = &mut Default::default();
     match item.kind {
         ItemKind::Trait(.., trait_item_refs) => trait_item_refs
             .iter()
@@ -159,7 +165,7 @@ fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
                 };
                 let def_name = tcx.item_name(fn_def_id.to_def_id());
                 let data = DefPathData::AnonAssocTy(def_name);
-                let mut visitor = RPITVisitor { tcx, synthetics: vec![], data, disambiguator };
+                let mut visitor = RPITVisitor { tcx, synthetics: vec![], data, disambiguators };
                 visitor.visit_fn_ret_ty(output);
                 let defs = visitor
                     .synthetics
@@ -193,7 +199,7 @@ fn associated_types_for_impl_traits_in_trait_or_impl<'tcx>(
                         return Some((did, vec![]));
                     };
                     let iter = in_trait_def[&trait_item_def_id].iter().map(|&id| {
-                        associated_type_for_impl_trait_in_impl(tcx, id, item, disambiguator)
+                        associated_type_for_impl_trait_in_impl(tcx, id, item, disambiguators)
                             .to_def_id()
                     });
                     Some((did, iter.collect()))
@@ -217,7 +223,7 @@ fn associated_type_for_impl_trait_in_trait(
     tcx: TyCtxt<'_>,
     opaque_ty_def_id: LocalDefId,
     data: DefPathData,
-    disambiguator: &mut DisambiguatorState,
+    disambiguators: &mut LocalDefIdMap<PerParentDisambiguatorState>,
 ) -> LocalDefId {
     let (hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. }
     | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, .. }) =
@@ -236,7 +242,7 @@ fn associated_type_for_impl_trait_in_trait(
         None,
         DefKind::AssocTy,
         Some(data),
-        disambiguator,
+        disambiguators.get_or_create(trait_def_id),
     );
 
     let local_def_id = trait_assoc_ty.def_id();
@@ -279,7 +285,7 @@ fn associated_type_for_impl_trait_in_impl(
     tcx: TyCtxt<'_>,
     trait_assoc_def_id: DefId,
     impl_fn: &hir::ImplItem<'_>,
-    disambiguator: &mut DisambiguatorState,
+    disambiguators: &mut LocalDefIdMap<PerParentDisambiguatorState>,
 ) -> LocalDefId {
     let impl_local_def_id = tcx.local_parent(impl_fn.owner_id.def_id);
 
@@ -302,7 +308,7 @@ fn associated_type_for_impl_trait_in_impl(
         None,
         DefKind::AssocTy,
         Some(data),
-        disambiguator,
+        disambiguators.get_or_create(impl_local_def_id),
     );
 
     let local_def_id = impl_assoc_ty.def_id();

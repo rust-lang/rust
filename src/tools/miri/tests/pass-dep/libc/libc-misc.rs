@@ -63,15 +63,22 @@ fn test_sigrt() {
 }
 
 fn test_dlsym() {
-    let addr = unsafe { libc::dlsym(libc::RTLD_DEFAULT, b"notasymbol\0".as_ptr().cast()) };
+    let addr = unsafe { libc::dlsym(libc::RTLD_DEFAULT, c"notasymbol".as_ptr()) };
     assert!(addr as usize == 0);
 
-    let addr = unsafe { libc::dlsym(libc::RTLD_DEFAULT, b"isatty\0".as_ptr().cast()) };
+    let addr = unsafe { libc::dlsym(libc::RTLD_DEFAULT, c"isatty".as_ptr()) };
     assert!(addr as usize != 0);
     let isatty: extern "C" fn(i32) -> i32 = unsafe { transmute(addr) };
     assert_eq!(isatty(999), 0);
     let errno = std::io::Error::last_os_error().raw_os_error().unwrap();
     assert_eq!(errno, libc::EBADF);
+
+    let addr = unsafe { libc::dlsym(libc::RTLD_DEFAULT, c"environ".as_ptr()) };
+    assert!(addr as usize != 0);
+    extern "C" {
+        static mut environ: *const *const u8;
+    }
+    assert!(addr as usize == &raw const environ as usize);
 }
 
 fn test_getuid() {

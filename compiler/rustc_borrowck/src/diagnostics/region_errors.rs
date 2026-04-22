@@ -15,7 +15,8 @@ use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{AnnotationSource, ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::{
-    self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitor, fold_regions,
+    self, FnSigKind, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitor,
+    fold_regions,
 };
 use rustc_span::{Ident, Span, kw};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -594,8 +595,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
-        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *output_ty.kind() {
-            output_ty = self.infcx.tcx.type_of(def_id).instantiate_identity()
+        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) = *output_ty.kind() {
+            output_ty = self.infcx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip()
         };
 
         debug!("report_fnmut_error: output_ty={:?}", output_ty);
@@ -686,6 +687,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             || (*category == ConstraintCategory::Assignment
                 && self.regioncx.universal_regions().defining_ty.is_fn_def())
             || self.regioncx.universal_regions().defining_ty.is_const()
+            || (fr_name_and_span.is_none()
+                && self.regioncx.universal_regions().defining_ty.is_fn_def())
         {
             return self.report_general_error(errci);
         }
@@ -930,7 +933,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         debug!(?fn_did, ?args);
 
         // Only suggest this on function calls, not closures
-        let ty = tcx.type_of(fn_did).instantiate_identity();
+        let ty = tcx.type_of(fn_did).instantiate_identity().skip_norm_wip();
         debug!("ty: {:?}, ty.kind: {:?}", ty, ty.kind());
         if let ty::Closure(_, _) = ty.kind() {
             return;
@@ -1050,7 +1053,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         else {
             return;
         };
-        let ty::Closure(_, args) = *tcx.type_of(closure_def_id).instantiate_identity().kind()
+        let ty::Closure(_, args) =
+            *tcx.type_of(closure_def_id).instantiate_identity().skip_norm_wip().kind()
         else {
             return;
         };
@@ -1081,14 +1085,14 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
 
         // Build a new closure where the return type is an owned value, instead of a ref.
+        let fn_sig_kind =
+            FnSigKind::default().set_safe(true).set_c_variadic(liberated_sig.c_variadic());
         let closure_sig_as_fn_ptr_ty = Ty::new_fn_ptr(
             tcx,
             ty::Binder::dummy(tcx.mk_fn_sig(
                 liberated_sig.inputs().iter().copied(),
                 peeled_ty,
-                liberated_sig.c_variadic,
-                hir::Safety::Safe,
-                rustc_abi::ExternAbi::Rust,
+                fn_sig_kind,
             )),
         );
         let closure_ty = Ty::new_closure(
@@ -1148,7 +1152,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let ocx = ObligationCtxt::new(&self.infcx);
         ocx.register_obligations(preds.iter().map(|(pred, span)| {
             trace!(?pred);
-            Obligation::misc(tcx, span, self.mir_def_id(), self.infcx.param_env, pred)
+            Obligation::misc(
+                tcx,
+                span,
+                self.mir_def_id(),
+                self.infcx.param_env,
+                pred.skip_norm_wip(),
+            )
         }));
 
         if ocx.evaluate_obligations_error_on_ambiguity().is_empty() && count > 0 {

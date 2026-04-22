@@ -7,7 +7,7 @@ use rustc_ast::visit::{VisitorResult, walk_list};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::svh::Svh;
-use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
+use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, spawn, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -289,7 +289,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn hir_body_owner_kind(self, def_id: impl Into<DefId>) -> BodyOwnerKind {
         let def_id = def_id.into();
         match self.def_kind(def_id) {
-            DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
+            DefKind::Const { .. } | DefKind::AssocConst { .. } | DefKind::AnonConst => {
                 BodyOwnerKind::Const { inline: false }
             }
             DefKind::InlineConst => BodyOwnerKind::Const { inline: true },
@@ -310,16 +310,18 @@ impl<'tcx> TyCtxt<'tcx> {
     /// This should only be used for determining the context of a body, a return
     /// value of `Some` does not always suggest that the owner of the body is `const`,
     /// just that it has to be checked as if it were.
-    pub fn hir_body_const_context(self, def_id: LocalDefId) -> Option<ConstContext> {
-        let def_id = def_id.into();
+    pub fn hir_body_const_context(self, local_def_id: LocalDefId) -> Option<ConstContext> {
+        let def_id = local_def_id.into();
         let ccx = match self.hir_body_owner_kind(def_id) {
             BodyOwnerKind::Const { inline } => ConstContext::Const { inline },
             BodyOwnerKind::Static(mutability) => ConstContext::Static(mutability),
 
             BodyOwnerKind::Fn if self.is_constructor(def_id) => return None,
-            BodyOwnerKind::Fn | BodyOwnerKind::Closure if self.is_const_fn(def_id) => {
-                ConstContext::ConstFn
+            // Const closures use their parent's const context
+            BodyOwnerKind::Closure if self.is_const_fn(def_id) => {
+                return self.hir_body_const_context(self.local_parent(local_def_id));
             }
+            BodyOwnerKind::Fn if self.is_const_fn(def_id) => ConstContext::ConstFn,
             BodyOwnerKind::Fn | BodyOwnerKind::Closure | BodyOwnerKind::GlobalAsm => return None,
         };
 
@@ -705,7 +707,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::ImplItem(ii) => {
                 let kind = match ii.kind {
                     ImplItemKind::Const(..) => "associated constant",
-                    ImplItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self {
+                    ImplItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self() {
                         ImplicitSelfKind::None => "associated function",
                         _ => "method",
                     },
@@ -716,7 +718,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::TraitItem(ti) => {
                 let kind = match ti.kind {
                     TraitItemKind::Const(..) => "associated constant",
-                    TraitItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self {
+                    TraitItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self() {
                         ImplicitSelfKind::None => "associated function",
                         _ => "trait method",
                     },
@@ -943,7 +945,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }) => until_within(*outer_span, ty.span),
             // With generics and bounds.
             Node::Item(Item {
-                kind: ItemKind::Trait(_, _, _, _, generics, bounds, _),
+                kind: ItemKind::Trait(_, _, _, _, _, generics, bounds, _),
                 span: outer_span,
                 ..
             })
@@ -1243,7 +1245,25 @@ pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> Mod
     }
 }
 
+fn force_delayed_owners_lowering(tcx: TyCtxt<'_>) {
+    let krate = tcx.hir_crate(());
+    for &id in &krate.delayed_ids {
+        tcx.ensure_done().lower_delayed_owner(id);
+    }
+
+    let (_, krate, _) = krate.delayed_resolver.steal();
+    let prof = tcx.sess.prof.clone();
+
+    // Drop AST to free memory. It can be expensive so try to drop it on a separate thread.
+    spawn(move || {
+        let _timer = prof.verbose_generic_activity("drop_ast");
+        drop(krate);
+    });
+}
+
 pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
+    force_delayed_owners_lowering(tcx);
+
     let mut collector = ItemCollector::new(tcx, true);
 
     // A "crate collector" and "module collector" start at a

@@ -10,7 +10,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexSlice;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 use rustc_target::callconv::FnAbi;
 use tracing::field::Empty;
 use tracing::{info, instrument, trace};
@@ -470,7 +470,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let instance = self.resolve(def_id, args)?;
                 (
                     FnVal::Instance(instance),
-                    self.fn_abi_of_instance(instance, extra_args)?,
+                    self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args)?,
                     instance.def.requires_caller_location(*self.tcx),
                 )
             }
@@ -542,7 +542,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let destination = self.eval_place(destination)?;
                 self.init_fn_call(
                     callee,
-                    (fn_sig.abi, fn_abi),
+                    (fn_sig.abi(), fn_abi),
                     &args,
                     with_caller_location,
                     &destination,
@@ -565,7 +565,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
                     self.eval_callee_and_args(terminator, func, args, &mir::Place::return_place())?;
 
-                self.init_fn_tail_call(callee, (fn_sig.abi, fn_abi), &args, with_caller_location)?;
+                self.init_fn_tail_call(
+                    callee,
+                    (fn_sig.abi(), fn_abi),
+                    &args,
+                    with_caller_location,
+                )?;
 
                 if self.frame_idx() != old_frame_idx {
                     span_bug!(

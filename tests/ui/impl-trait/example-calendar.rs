@@ -1,7 +1,6 @@
 //@ run-pass
 
-#![feature(fn_traits,
-           step_trait,
+#![feature(step_trait,
            unboxed_closures,
 )]
 

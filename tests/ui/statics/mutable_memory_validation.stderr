@@ -1,4 +1,4 @@
-error[E0080]: constructing invalid value at .x.<deref>: encountered `UnsafeCell` in read-only memory
+error[E0080]: constructing invalid value of type Meh: at .x.<deref>, encountered `UnsafeCell` in read-only memory
   --> $DIR/mutable_memory_validation.rs:13:1
    |
 LL | const MUH: Meh = Meh { x: unsafe { &mut *(&READONLY as *const _ as *mut _) } };

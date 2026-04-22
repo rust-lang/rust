@@ -14,7 +14,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
-use rustc_middle::ty::{self, GenericArgsRef, Region, SizedTraitKind, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{
+    self, GenericArgsRef, Region, SizedTraitKind, Ty, TyCtxt, Unnormalized, Upcast,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
 use thin_vec::thin_vec;
@@ -112,11 +114,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             FnPointerCandidate => {
                 let data = self.confirm_fn_pointer_candidate(obligation)?;
-                ImplSource::Builtin(BuiltinImplSource::Misc, data)
-            }
-
-            PointerLikeCandidate => {
-                let data = self.confirm_pointer_like_candidate(obligation);
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
@@ -262,6 +259,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Some(
                 LangItem::Destruct
                 | LangItem::DiscriminantKind
+                | LangItem::Field
                 | LangItem::FnPtrTrait
                 | LangItem::PointeeTrait
                 | LangItem::Tuple
@@ -541,6 +539,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         for (supertrait, _) in tcx
             .explicit_super_predicates_of(trait_predicate.def_id())
             .iter_instantiated_copied(tcx, trait_predicate.trait_ref.args)
+            .map(Unnormalized::skip_norm_wip)
         {
             let normalized_supertrait = normalize_with_depth_to(
                 self,
@@ -582,7 +581,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    bound.instantiate(tcx, trait_predicate.trait_ref.args),
+                    bound.instantiate(tcx, trait_predicate.trait_ref.args).skip_norm_wip(),
                     &mut nested,
                 );
                 nested.push(obligation.with(tcx, normalized_bound));
@@ -635,25 +634,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         nested.push(Obligation::new(self.infcx.tcx, cause, obligation.param_env, tr));
 
         Ok(nested)
-    }
-
-    fn confirm_pointer_like_candidate(
-        &mut self,
-        obligation: &PolyTraitObligation<'tcx>,
-    ) -> PredicateObligations<'tcx> {
-        debug!(?obligation, "confirm_pointer_like_candidate");
-        let placeholder_predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
-        let self_ty = self.infcx.shallow_resolve(placeholder_predicate.self_ty());
-        let ty::Pat(base, _) = *self_ty.kind() else { bug!() };
-        let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
-
-        self.collect_predicates_for_types(
-            obligation.param_env,
-            cause,
-            obligation.recursion_depth + 1,
-            placeholder_predicate.def_id(),
-            vec![base],
-        )
     }
 
     fn confirm_trait_alias_candidate(
@@ -1202,7 +1182,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    tail_field_ty.instantiate(tcx, args_a),
+                    tail_field_ty.instantiate(tcx, args_a).skip_norm_wip(),
                     &mut nested,
                 );
                 let target_tail = normalize_with_depth_to(
@@ -1210,7 +1190,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    tail_field_ty.instantiate(tcx, args_b),
+                    tail_field_ty.instantiate(tcx, args_b).skip_norm_wip(),
                     &mut nested,
                 );
 

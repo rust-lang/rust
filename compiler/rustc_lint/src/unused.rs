@@ -350,6 +350,7 @@ trait UnusedDelimLint {
                 start_replace: lo_replace,
                 end_span: hi,
                 end_replace: hi_replace,
+                delim: Self::DELIM_STR,
             }
         });
         cx.emit_span_lint(
@@ -599,7 +600,7 @@ impl UnusedDelimLint for UnusedParens {
                     && !value.span.from_expansion()
                     && (ctx != UnusedDelimsCtx::LetScrutineeExpr
                         || !matches!(inner.kind, ast::ExprKind::Binary(
-                                rustc_span::source_map::Spanned { node, .. },
+                                rustc_span::Spanned { node, .. },
                                 _,
                                 _,
                             ) if node.is_lazy()))
@@ -1177,7 +1178,7 @@ impl UnusedImportBraces {
                     }
                     rename.unwrap_or(orig_ident).name
                 }
-                ast::UseTreeKind::Glob => sym::asterisk,
+                ast::UseTreeKind::Glob(_) => sym::asterisk,
                 ast::UseTreeKind::Nested { .. } => return,
             };
 

@@ -60,6 +60,7 @@ declare_clippy_lint! {
     style,
     "late initializations that can be replaced by a `let` statement with an initializer"
 }
+
 declare_lint_pass!(NeedlessLateInit => [NEEDLESS_LATE_INIT]);
 
 fn contains_assign_expr<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) -> bool {

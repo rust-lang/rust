@@ -11,6 +11,44 @@ use rustc_span::def_id::LocalDefId;
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for excessive use of
+    /// bools in function definitions.
+    ///
+    /// ### Why is this bad?
+    /// Calls to such functions
+    /// are confusing and error prone, because it's
+    /// hard to remember argument order and you have
+    /// no type system support to back you up. Using
+    /// two-variant enums instead of bools often makes
+    /// API easier to use.
+    ///
+    /// ### Example
+    /// ```rust,ignore
+    /// fn f(is_round: bool, is_hot: bool) { ... }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust,ignore
+    /// enum Shape {
+    ///     Round,
+    ///     Spiky,
+    /// }
+    ///
+    /// enum Temperature {
+    ///     Hot,
+    ///     IceCold,
+    /// }
+    ///
+    /// fn f(shape: Shape, temperature: Temperature) { ... }
+    /// ```
+    #[clippy::version = "1.43.0"]
+    pub FN_PARAMS_EXCESSIVE_BOOLS,
+    pedantic,
+    "using too many bools in function parameters"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for excessive
     /// use of bools in structs.
     ///
@@ -50,43 +88,10 @@ declare_clippy_lint! {
     "using too many bools in a struct"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for excessive use of
-    /// bools in function definitions.
-    ///
-    /// ### Why is this bad?
-    /// Calls to such functions
-    /// are confusing and error prone, because it's
-    /// hard to remember argument order and you have
-    /// no type system support to back you up. Using
-    /// two-variant enums instead of bools often makes
-    /// API easier to use.
-    ///
-    /// ### Example
-    /// ```rust,ignore
-    /// fn f(is_round: bool, is_hot: bool) { ... }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```rust,ignore
-    /// enum Shape {
-    ///     Round,
-    ///     Spiky,
-    /// }
-    ///
-    /// enum Temperature {
-    ///     Hot,
-    ///     IceCold,
-    /// }
-    ///
-    /// fn f(shape: Shape, temperature: Temperature) { ... }
-    /// ```
-    #[clippy::version = "1.43.0"]
-    pub FN_PARAMS_EXCESSIVE_BOOLS,
-    pedantic,
-    "using too many bools in function parameters"
-}
+impl_lint_pass!(ExcessiveBools => [
+    FN_PARAMS_EXCESSIVE_BOOLS,
+    STRUCT_EXCESSIVE_BOOLS,
+]);
 
 pub struct ExcessiveBools {
     max_struct_bools: u64,
@@ -101,8 +106,6 @@ impl ExcessiveBools {
         }
     }
 }
-
-impl_lint_pass!(ExcessiveBools => [STRUCT_EXCESSIVE_BOOLS, FN_PARAMS_EXCESSIVE_BOOLS]);
 
 fn has_n_bools<'tcx>(iter: impl Iterator<Item = &'tcx Ty<'tcx>>, mut count: u64) -> bool {
     iter.filter(|ty| is_bool(ty)).any(|_| {

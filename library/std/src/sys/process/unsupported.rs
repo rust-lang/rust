@@ -327,3 +327,7 @@ pub fn read_output(
 ) -> io::Result<()> {
     match out.diverge() {}
 }
+
+pub fn getpid() -> u32 {
+    panic!("no pids on this platform")
+}

@@ -5,7 +5,7 @@ use rustc_hir as hir;
 use rustc_hir::GenericArg;
 use rustc_hir::def_id::DefId;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
-    check_generic_arg_count_for_call, lower_generic_args,
+    check_generic_arg_count_for_value_path, lower_generic_args,
 };
 use rustc_hir_analysis::hir_ty_lowering::{
     GenericArgsLowerer, HirTyLowerer, IsMethodCall, RegionInferReason,
@@ -18,11 +18,12 @@ use rustc_lint::builtin::{
 };
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
-    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, DerefAdjustKind,
+    PointerCoercion,
 };
 use rustc_middle::ty::{
     self, AssocContainer, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, UserArgs,
+    TypeFoldable, TypeVisitableExt, Unnormalized, UserArgs,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Span};
@@ -136,15 +137,15 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // traits, no trait system method can be called before this point because they
         // could alter our Self-type, except for normalizing the receiver from the
         // signature (which is also done during probing).
-        let method_sig_rcvr = self.normalize(self.span, method_sig.inputs()[0]);
+        let method_sig_rcvr =
+            self.normalize(self.span, Unnormalized::new_wip(method_sig.inputs()[0]));
         debug!(
             "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
             self_ty, method_sig_rcvr, method_sig, method_predicates
         );
         self.unify_receivers(self_ty, method_sig_rcvr, pick);
 
-        let (method_sig, method_predicates) =
-            self.normalize(self.span, (method_sig, method_predicates));
+        let method_sig = self.normalize(self.span, Unnormalized::new_wip(method_sig));
 
         // Make sure nobody calls `drop()` explicitly.
         self.check_for_illegal_method_calls(pick);
@@ -243,12 +244,16 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                             ty::Ref(_, ty, _) => *ty,
                             _ => bug!("Expected a reference type for argument to Pin"),
                         };
+                        adjustments.push(Adjustment {
+                            kind: Adjust::Deref(DerefAdjustKind::Pin),
+                            target: inner_ty,
+                        });
                         Ty::new_pinned_ref(self.tcx, region, inner_ty, mutbl)
                     }
                     _ => bug!("Cannot adjust receiver type for reborrowing pin of {target:?}"),
                 };
-
-                adjustments.push(Adjustment { kind: Adjust::ReborrowPin(mutbl), target });
+                adjustments
+                    .push(Adjustment { kind: Adjust::Borrow(AutoBorrow::Pin(mutbl)), target });
             }
             None => {}
         }
@@ -398,7 +403,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // variables.
         let generics = self.tcx.generics_of(pick.item.def_id);
 
-        let arg_count_correct = check_generic_arg_count_for_call(
+        let arg_count_correct = check_generic_arg_count_for_value_path(
             self.fcx,
             pick.item.def_id,
             generics,
@@ -456,7 +461,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                             self.cfcx
                                 .tcx
                                 .type_of(param.def_id)
-                                .instantiate(self.cfcx.tcx, preceding_args),
+                                .instantiate(self.cfcx.tcx, preceding_args)
+                                .skip_norm_wip(),
                         )
                         .into(),
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
@@ -528,7 +534,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             }
         }
 
-        self.normalize(self.span, args)
+        self.normalize(self.span, Unnormalized::new_wip(args))
     }
 
     fn unify_receivers(
@@ -587,7 +593,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         debug!("method_predicates after instantiation = {:?}", method_predicates);
 
-        let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, all_args);
+        let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, all_args).skip_norm_wip();
         debug!("type scheme instantiated, sig={:?}", sig);
 
         let sig = self.instantiate_binder_with_fresh_vars(sig);
@@ -621,6 +627,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 );
                 self.cause(self.span, code)
             },
+            |pred| self.normalize(self.call_expr.span, pred),
             self.param_env,
             method_predicates,
         ) {
@@ -652,22 +659,25 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ) -> Option<Span> {
         let sized_def_id = self.tcx.lang_items().sized_trait()?;
 
-        traits::elaborate(self.tcx, predicates.predicates.iter().copied())
-            // We don't care about regions here.
-            .filter_map(|pred| match pred.kind().skip_binder() {
-                ty::ClauseKind::Trait(trait_pred) if trait_pred.def_id() == sized_def_id => {
-                    let span = predicates
-                        .iter()
-                        .find_map(|(p, span)| if p == pred { Some(span) } else { None })
-                        .unwrap_or(DUMMY_SP);
-                    Some((trait_pred, span))
-                }
-                _ => None,
-            })
-            .find_map(|(trait_pred, span)| match trait_pred.self_ty().kind() {
-                ty::Dynamic(..) => Some(span),
-                _ => None,
-            })
+        traits::elaborate(
+            self.tcx,
+            predicates.predicates.iter().copied().map(Unnormalized::skip_norm_wip),
+        )
+        // We don't care about regions here.
+        .filter_map(|pred| match pred.kind().skip_binder() {
+            ty::ClauseKind::Trait(trait_pred) if trait_pred.def_id() == sized_def_id => {
+                let span = predicates
+                    .iter()
+                    .find_map(|(p, span)| if p.skip_norm_wip() == pred { Some(span) } else { None })
+                    .unwrap_or(DUMMY_SP);
+                Some((trait_pred, span))
+            }
+            _ => None,
+        })
+        .find_map(|(trait_pred, span)| match trait_pred.self_ty().kind() {
+            ty::Dynamic(..) => Some(span),
+            _ => None,
+        })
     }
 
     fn check_for_illegal_method_calls(&self, pick: &probe::Pick<'_>) {
@@ -736,12 +746,18 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let trait_name = self.tcx.item_name(pick.item.container_id(self.tcx));
         let import_span = self.tcx.hir_span_if_local(pick.import_ids[0].to_def_id()).unwrap();
 
-        self.tcx.node_lint(AMBIGUOUS_GLOB_IMPORTED_TRAITS, segment.hir_id, |diag| {
-            diag.primary_message(format!("Use of ambiguously glob imported trait `{trait_name}`"))
+        self.tcx.emit_node_lint(
+            AMBIGUOUS_GLOB_IMPORTED_TRAITS,
+            segment.hir_id,
+            rustc_errors::DiagDecorator(|diag| {
+                diag.primary_message(format!(
+                    "Use of ambiguously glob imported trait `{trait_name}`"
+                ))
                 .span(segment.ident.span)
                 .span_label(import_span, format!("`{trait_name}` imported ambiguously here"))
                 .help(format!("Import `{trait_name}` explicitly"));
-        });
+            }),
+        );
     }
 
     fn upcast(

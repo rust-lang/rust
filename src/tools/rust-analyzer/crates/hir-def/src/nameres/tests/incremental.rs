@@ -1,6 +1,6 @@
 use base_db::{
     CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CrateWorkspaceData,
-    DependencyBuilder, Env, RootQueryDb, SourceDatabase,
+    DependencyBuilder, Env, SourceDatabase, all_crates,
 };
 use expect_test::{Expect, expect};
 use intern::Symbol;
@@ -56,11 +56,11 @@ pub const BAZ: u32 = 0;
     "#,
     );
 
-    for &krate in db.all_crates().iter() {
+    for &krate in all_crates(&db).iter() {
         crate_def_map(&db, krate);
     }
 
-    let all_crates_before = db.all_crates();
+    let all_crates_before = all_crates(&db);
 
     {
         // Add dependencies: c -> b, b -> a.
@@ -100,15 +100,15 @@ pub const BAZ: u32 = 0;
         new_crate_graph.set_in_db(&mut db);
     }
 
-    let all_crates_after = db.all_crates();
+    let all_crates_after = all_crates(&db);
     assert!(
-        Arc::ptr_eq(&all_crates_before, &all_crates_after),
+        std::sync::Arc::ptr_eq(&all_crates_before, &all_crates_after),
         "the all_crates list should not have been invalidated"
     );
     execute_assert_events(
         &db,
         || {
-            for &krate in db.all_crates().iter() {
+            for &krate in all_crates(&db).iter() {
                 crate_def_map(&db, krate);
             }
         },
@@ -166,24 +166,24 @@ fn no() {}
             [
                 "crate_local_def_map",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "EnumVariants::of_",
             ]
         "#]],
         expect![[r#"
             [
-                "parse_shim",
-                "ast_id_map_shim",
+                "parse",
+                "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "EnumVariants::of_",
@@ -224,34 +224,34 @@ pub struct S {}
             [
                 "crate_local_def_map",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "decl_macro_expander_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "macro_def_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_macro_expansion_shim",
                 "macro_arg_shim",
             ]
         "#]],
         expect![[r#"
             [
-                "parse_shim",
-                "ast_id_map_shim",
+                "parse",
+                "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "macro_arg_shim",
                 "parse_macro_expansion_shim",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "file_item_tree_query",
             ]
         "#]],
@@ -282,26 +282,26 @@ fn f() { foo }
             [
                 "crate_local_def_map",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "crate_local_def_map",
                 "proc_macros_for_crate_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "macro_def_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_macro_expansion_shim",
                 "expand_proc_macro_shim",
                 "macro_arg_shim",
@@ -310,14 +310,14 @@ fn f() { foo }
         "#]],
         expect![[r#"
             [
-                "parse_shim",
-                "ast_id_map_shim",
+                "parse",
+                "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "macro_arg_shim",
                 "expand_proc_macro_shim",
                 "parse_macro_expansion_shim",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "file_item_tree_query",
             ]
         "#]],
@@ -406,38 +406,38 @@ pub struct S {}
             [
                 "crate_local_def_map",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "crate_local_def_map",
                 "proc_macros_for_crate_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "decl_macro_expander_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "macro_def_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_macro_expansion_shim",
                 "macro_arg_shim",
                 "decl_macro_expander_shim",
                 "macro_def_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_macro_expansion_shim",
                 "macro_arg_shim",
                 "macro_def_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_macro_expansion_shim",
                 "expand_proc_macro_shim",
                 "macro_arg_shim",
@@ -446,8 +446,8 @@ pub struct S {}
         "#]],
         expect![[r#"
             [
-                "parse_shim",
-                "ast_id_map_shim",
+                "parse",
+                "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "macro_arg_shim",
@@ -523,29 +523,29 @@ m!(Z);
             [
                 "crate_local_def_map",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "decl_macro_expander_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
                 "macro_def_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_macro_expansion_shim",
                 "macro_arg_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_macro_expansion_shim",
                 "macro_arg_shim",
                 "file_item_tree_query",
-                "ast_id_map_shim",
+                "ast_id_map",
                 "parse_macro_expansion_shim",
                 "macro_arg_shim",
             ]
@@ -571,8 +571,8 @@ m!(Z);
         &[("file_item_tree_query", 1), ("parse_macro_expansion_shim", 0)],
         expect![[r#"
             [
-                "parse_shim",
-                "ast_id_map_shim",
+                "parse",
+                "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
                 "macro_arg_shim",
@@ -604,14 +604,14 @@ pub type Ty = ();
     execute_assert_events(
         &db,
         || {
-            db.file_item_tree(pos.file_id.into());
+            db.file_item_tree(pos.file_id.into(), db.test_crate());
         },
         &[("file_item_tree_query", 1), ("parse", 1)],
         expect![[r#"
             [
                 "file_item_tree_query",
-                "ast_id_map_shim",
-                "parse_shim",
+                "ast_id_map",
+                "parse",
                 "real_span_map_shim",
             ]
         "#]],
@@ -624,13 +624,13 @@ pub type Ty = ();
     execute_assert_events(
         &db,
         || {
-            db.file_item_tree(pos.file_id.into());
+            db.file_item_tree(pos.file_id.into(), db.test_crate());
         },
         &[("file_item_tree_query", 1), ("parse", 1)],
         expect![[r#"
             [
-                "parse_shim",
-                "ast_id_map_shim",
+                "parse",
+                "ast_id_map",
                 "file_item_tree_query",
                 "real_span_map_shim",
             ]

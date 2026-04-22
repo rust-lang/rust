@@ -2,7 +2,6 @@
 //@ run-pass
 #![feature(gen_blocks)]
 #![feature(optimize_attribute)]
-#![feature(stmt_expr_attributes)]
 #![feature(async_iterator)]
 #![allow(dead_code)]
 

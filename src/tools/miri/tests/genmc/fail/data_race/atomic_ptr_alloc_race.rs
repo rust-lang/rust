@@ -1,5 +1,5 @@
 //@revisions: write dealloc
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows -Zmiri-ignore-leaks
+//@compile-flags: -Zmiri-ignore-leaks
 
 // Test that we can detect data races between an allocation and an unsynchronized action in another thread.
 // We have two variants, an alloc-dealloc race and an alloc-write race.

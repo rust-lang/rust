@@ -72,6 +72,11 @@ declare_clippy_lint! {
     "using a single-character str where a char could be used, e.g., `_.split(\"x\")`"
 }
 
+impl_lint_pass!(StringPatterns => [
+    MANUAL_PATTERN_CHAR_COMPARISON,
+    SINGLE_CHAR_PATTERN,
+]);
+
 pub struct StringPatterns {
     msrv: Msrv,
 }
@@ -81,8 +86,6 @@ impl StringPatterns {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(StringPatterns => [MANUAL_PATTERN_CHAR_COMPARISON, SINGLE_CHAR_PATTERN]);
 
 const PATTERN_METHODS: [(Symbol, usize); 22] = [
     (sym::contains, 0),
@@ -163,9 +166,9 @@ fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<
                 },
                 ExprKind::Binary(op, _, _) if op.node == BinOpKind::Or => ControlFlow::Continue(Descend::Yes),
                 ExprKind::Match(match_value, [arm, _], _) => {
-                    if matching_root_macro_call(cx, sub_expr.span, sym::matches_macro).is_none()
-                        || arm.guard.is_some()
+                    if arm.guard.is_some()
                         || match_value.res_local_id() != Some(binding)
+                        || matching_root_macro_call(cx, sub_expr.span, sym::matches_macro).is_none()
                     {
                         return ControlFlow::Break(());
                     }

@@ -8,11 +8,11 @@ use crate::{fmt, intrinsics, ptr, slice};
 ///
 /// # Initialization invariant
 ///
-/// The compiler, in general, assumes that a variable is properly initialized
+/// The compiler, in general, assumes that a variable is [properly initialized or "valid"][validity]
 /// according to the requirements of the variable's type. For example, a variable of
 /// reference type must be aligned and non-null. This is an invariant that must
 /// *always* be upheld, even in unsafe code. As a consequence, zero-initializing a
-/// variable of reference type causes instantaneous [undefined behavior][ub],
+/// variable of reference type causes instantaneous undefined behavior,
 /// no matter whether that reference ever gets used to access memory:
 ///
 /// ```rust,no_run
@@ -53,6 +53,11 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// // The equivalent code with `MaybeUninit<i32>`:
 /// let x: i32 = unsafe { MaybeUninit::uninit().assume_init() }; // undefined behavior! ⚠️
 /// ```
+///
+/// Conversely, sometimes it is okay to not initialize *all* bytes of a `MaybeUninit`
+/// before calling `assume_init`. For instance, padding bytes do not have to be initialized.
+/// See the field-by-field struct initialization example below for a case of that.
+///
 /// On top of that, remember that most types have additional invariants beyond merely
 /// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
 /// is considered initialized (under the current implementation; this does not constitute
@@ -197,7 +202,12 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// );
 /// ```
 /// [`&raw mut`]: https://doc.rust-lang.org/reference/types/pointer.html#r-type.pointer.raw.constructor
-/// [ub]: ../../reference/behavior-considered-undefined.html
+/// [validity]: ../../reference/behavior-considered-undefined.html#r-undefined.validity
+///
+/// Note that we have not initialized the padding, but that's fine -- it does not have to be
+/// initialized. In fact, even if we had initialized the padding in `uninit`, those bytes would be
+/// lost when copying the result: no matter the contents of the padding bytes in `uninit`, they will
+/// always be uninitialized in `foo`.
 ///
 /// # Layout
 ///
@@ -657,11 +667,18 @@ impl<T> MaybeUninit<T> {
     /// # Safety
     ///
     /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
-    /// state. Calling this when the content is not yet fully initialized causes immediate undefined
-    /// behavior. The [type-level documentation][inv] contains more information about
-    /// this initialization invariant.
+    /// state, i.e., a state that is considered ["valid" for type `T`][validity]. Calling this when
+    /// the content is not yet fully initialized causes immediate undefined behavior. The
+    /// [type-level documentation][inv] contains more information about this initialization
+    /// invariant.
+    ///
+    /// It is a common mistake to assume that this function is safe to call on integers because they
+    /// can hold all bit patterns. It is also a common mistake to think that calling this function
+    /// is UB if any byte is uninitialized. Both of these assumptions are wrong. If that is
+    /// surprising to you, please read the [type-level documentation][inv].
     ///
     /// [inv]: #initialization-invariant
+    /// [validity]: ../../reference/behavior-considered-undefined.html#r-undefined.validity
     ///
     /// On top of that, remember that most types have additional invariants beyond merely
     /// being considered initialized at the type level. For example, a `1`-initialized [`Vec<T>`]
@@ -689,12 +706,13 @@ impl<T> MaybeUninit<T> {
     /// *Incorrect* usage of this method:
     ///
     /// ```rust,no_run
+    /// # #![allow(invalid_value)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let x = MaybeUninit::<Vec<u32>>::uninit();
-    /// let x_init = unsafe { x.assume_init() };
-    /// // `x` had not been initialized yet, so this last line caused undefined behavior. ⚠️
+    /// let x: i32 = unsafe { MaybeUninit::uninit().assume_init() }; // undefined behavior! ⚠️
     /// ```
+    ///
+    /// See the [type-level documentation][#examples] for more examples.
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[rustc_const_stable(feature = "const_maybe_uninit_assume_init_by_value", since = "1.59.0")]
     #[inline(always)]
@@ -1532,7 +1550,7 @@ impl<T, const N: usize> MaybeUninit<[T; N]> {
     }
 }
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T, const N: usize> From<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
     #[inline]
     fn from(arr: [MaybeUninit<T>; N]) -> Self {
@@ -1540,7 +1558,7 @@ impl<T, const N: usize> From<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
     }
 }
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T, const N: usize> AsRef<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
     #[inline]
     fn as_ref(&self) -> &[MaybeUninit<T>; N] {
@@ -1549,7 +1567,7 @@ impl<T, const N: usize> AsRef<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
     }
 }
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T, const N: usize> AsRef<[MaybeUninit<T>]> for MaybeUninit<[T; N]> {
     #[inline]
     fn as_ref(&self) -> &[MaybeUninit<T>] {
@@ -1557,7 +1575,7 @@ impl<T, const N: usize> AsRef<[MaybeUninit<T>]> for MaybeUninit<[T; N]> {
     }
 }
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T, const N: usize> AsMut<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
     #[inline]
     fn as_mut(&mut self) -> &mut [MaybeUninit<T>; N] {
@@ -1566,7 +1584,7 @@ impl<T, const N: usize> AsMut<[MaybeUninit<T>; N]> for MaybeUninit<[T; N]> {
     }
 }
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T, const N: usize> AsMut<[MaybeUninit<T>]> for MaybeUninit<[T; N]> {
     #[inline]
     fn as_mut(&mut self) -> &mut [MaybeUninit<T>] {
@@ -1574,7 +1592,7 @@ impl<T, const N: usize> AsMut<[MaybeUninit<T>]> for MaybeUninit<[T; N]> {
     }
 }
 
-#[stable(feature = "more_conversion_trait_impls", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "more_conversion_trait_impls", since = "1.95.0")]
 impl<T, const N: usize> From<MaybeUninit<[T; N]>> for [MaybeUninit<T>; N] {
     #[inline]
     fn from(arr: MaybeUninit<[T; N]>) -> Self {

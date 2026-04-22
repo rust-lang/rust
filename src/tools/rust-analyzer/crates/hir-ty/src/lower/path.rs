@@ -14,7 +14,7 @@ use hir_def::{
         GenericParamDataRef, TypeOrConstParamData, TypeParamData, TypeParamProvenance,
     },
     resolver::{ResolveValueResult, TypeNs, ValueNs},
-    signatures::TraitFlags,
+    signatures::{TraitFlags, TraitSignature},
     type_ref::{TypeRef, TypeRefId},
 };
 use rustc_type_ir::{
@@ -30,7 +30,10 @@ use crate::{
     consteval::{unknown_const, unknown_const_as_generic},
     db::HirDatabase,
     generics::{Generics, generics},
-    lower::{GenericPredicateSource, LifetimeElisionKind, PathDiagnosticCallbackData},
+    lower::{
+        AssocTypeShorthandResolution, GenericPredicateSource, LifetimeElisionKind,
+        PathDiagnosticCallbackData,
+    },
     next_solver::{
         Binder, Clause, Const, DbInterner, EarlyBinder, ErrorGuaranteed, GenericArg, GenericArgs,
         Predicate, ProjectionPredicate, Region, TraitRef, Ty,
@@ -38,8 +41,8 @@ use crate::{
 };
 
 use super::{
-    ImplTraitLoweringMode, TyLoweringContext, associated_type_by_name_including_super_traits,
-    const_param_ty_query, ty_query,
+    ImplTraitLoweringMode, TyLoweringContext,
+    associated_type_by_name_including_super_traits_allow_ambiguity, const_param_ty_query, ty_query,
 };
 
 type CallbackData<'a> =
@@ -180,7 +183,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                         let trait_ref = self.lower_trait_ref_from_resolved_path(
                             trait_,
                             Ty::new_error(self.ctx.interner, ErrorGuaranteed),
-                            false,
+                            infer_args,
                         );
                         tracing::debug!(?trait_ref);
                         self.skip_resolved_segment();
@@ -198,7 +201,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 // this point (`trait_ref.substitution`).
                                 let substitution = self.substs_from_path_segment(
                                     associated_ty.into(),
-                                    false,
+                                    infer_args,
                                     None,
                                     true,
                                 );
@@ -211,10 +214,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 );
                                 Ty::new_alias(
                                     self.ctx.interner,
-                                    AliasTyKind::Projection,
                                     AliasTy::new_from_args(
                                         self.ctx.interner,
-                                        associated_ty.into(),
+                                        AliasTyKind::Projection { def_id: associated_ty.into() },
                                         args,
                                     ),
                                 )
@@ -482,12 +484,14 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         let error_ty = || Ty::new_error(self.ctx.interner, ErrorGuaranteed);
         let (assoc_type, trait_args) = match res {
             Some(TypeNs::GenericParam(param)) => {
-                let Ok(assoc_type) = super::resolve_type_param_assoc_type_shorthand(
-                    db,
-                    def,
-                    param,
-                    assoc_name.clone(),
-                ) else {
+                let AssocTypeShorthandResolution::Resolved(assoc_type) =
+                    super::resolve_type_param_assoc_type_shorthand(
+                        db,
+                        def,
+                        param,
+                        assoc_name.clone(),
+                    )
+                else {
                     return error_ty();
                 };
                 assoc_type
@@ -500,12 +504,14 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                 };
                 let impl_trait = impl_trait.instantiate_identity();
                 // Searching for `Self::Assoc` in `impl Trait for Type` is like searching for `Self::Assoc` in `Trait`.
-                let Ok(assoc_type) = super::resolve_type_param_assoc_type_shorthand(
-                    db,
-                    impl_trait.def_id.0.into(),
-                    TypeParamId::trait_self(impl_trait.def_id.0),
-                    assoc_name.clone(),
-                ) else {
+                let AssocTypeShorthandResolution::Resolved(assoc_type) =
+                    super::resolve_type_param_assoc_type_shorthand(
+                        db,
+                        impl_trait.def_id.0.into(),
+                        TypeParamId::trait_self(impl_trait.def_id.0),
+                        assoc_name.clone(),
+                    )
+                else {
                     return error_ty();
                 };
                 let (assoc_type, trait_args) = assoc_type
@@ -618,10 +624,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                 GenericDefId::TraitId(trait_) => {
                     // RTN is prohibited anyways if we got here.
                     let is_rtn = args.parenthesized == GenericArgsParentheses::ReturnTypeNotation;
-                    let is_fn_trait = self
-                        .ctx
-                        .db
-                        .trait_signature(trait_)
+                    let is_fn_trait = TraitSignature::of(self.ctx.db, trait_)
                         .flags
                         .contains(TraitFlags::RUSTC_PAREN_SUGAR);
                     is_rtn || !is_fn_trait
@@ -869,7 +872,7 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         let interner = self.ctx.interner;
         self.current_or_prev_segment.args_and_bindings.map(|args_and_bindings| {
             args_and_bindings.bindings.iter().enumerate().flat_map(move |(binding_idx, binding)| {
-                let found = associated_type_by_name_including_super_traits(
+                let found = associated_type_by_name_including_super_traits_allow_ambiguity(
                     self.ctx.db,
                     trait_ref,
                     binding.name.clone(),
@@ -945,10 +948,9 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 bound,
                                 Ty::new_alias(
                                     self.ctx.interner,
-                                    AliasTyKind::Projection,
                                     AliasTy::new_from_args(
                                         self.ctx.interner,
-                                        associated_ty.into(),
+                                        AliasTyKind::Projection { def_id: associated_ty.into() },
                                         args,
                                     ),
                                 ),
@@ -1017,7 +1019,7 @@ pub(crate) trait GenericArgsLowerer<'db> {
 fn check_generic_args_len<'db>(
     args_and_bindings: Option<&HirGenericArgs>,
     def: GenericDefId,
-    def_generics: &Generics,
+    def_generics: &Generics<'db>,
     infer_args: bool,
     lifetime_elision: &LifetimeElisionKind<'db>,
     lowering_assoc_type_generics: bool,

@@ -115,7 +115,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for CheckGpuKernelTypes<'tcx> {
             }
 
             ty::Adt(_, _)
-            | ty::Alias(_, _)
+            | ty::Alias(_)
             | ty::Array(_, _)
             | ty::Bound(_, _)
             | ty::Closure(_, _)
@@ -166,7 +166,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperGpuKernelLint {
             return;
         }
 
-        let sig = cx.tcx.fn_sig(id).instantiate_identity();
+        let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip();
         let sig = cx.tcx.instantiate_bound_regions_with_erased(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {

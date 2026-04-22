@@ -12,6 +12,28 @@ use std::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for raw string literals with an unnecessary amount of hashes around them.
+    ///
+    /// ### Why is this bad?
+    /// It's just unnecessary, and makes it look like there's more escaping needed than is actually
+    /// necessary.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let r = r###"Hello, "world"!"###;
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let r = r#"Hello, "world"!"#;
+    /// ```
+    #[clippy::version = "1.72.0"]
+    pub NEEDLESS_RAW_STRING_HASHES,
+    pedantic,
+    "suggests reducing the number of hashes around a raw string literal"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for raw string literals where a string literal can be used instead.
     ///
     /// ### Why restrict this?
@@ -33,27 +55,7 @@ declare_clippy_lint! {
     restriction,
     "suggests using a string literal when a raw string literal is unnecessary"
 }
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for raw string literals with an unnecessary amount of hashes around them.
-    ///
-    /// ### Why is this bad?
-    /// It's just unnecessary, and makes it look like there's more escaping needed than is actually
-    /// necessary.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let r = r###"Hello, "world"!"###;
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    /// let r = r#"Hello, "world"!"#;
-    /// ```
-    #[clippy::version = "1.72.0"]
-    pub NEEDLESS_RAW_STRING_HASHES,
-    pedantic,
-    "suggests reducing the number of hashes around a raw string literal"
-}
+
 impl_lint_pass!(RawStrings => [NEEDLESS_RAW_STRINGS, NEEDLESS_RAW_STRING_HASHES]);
 
 pub struct RawStrings {

@@ -1,4 +1,4 @@
-error: align: AbiAlign { abi: Align(2 bytes) }
+error: align: Align(2 bytes)
   --> $DIR/enum.rs:9:1
    |
 LL | enum UninhabitedVariantAlign {
@@ -10,11 +10,17 @@ error: size: Size(16 bytes)
 LL | enum UninhabitedVariantSpace {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: abi: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=1 }, Initialized { value: Int(I8, false), valid_range: 0..=255 })
+error: backend_repr: ScalarPair(Initialized { value: Int(I8, false), valid_range: 0..=1 }, Initialized { value: Int(I8, false), valid_range: 0..=255 })
   --> $DIR/enum.rs:21:1
    |
 LL | enum ScalarPairDifferingSign {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: size: Size(4 bytes)
+  --> $DIR/enum.rs:31:1
+   |
+LL | enum DefinedLayoutAllUninhabited {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 

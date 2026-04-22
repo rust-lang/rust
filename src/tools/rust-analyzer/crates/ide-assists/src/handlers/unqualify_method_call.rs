@@ -1,8 +1,5 @@
 use hir::AsAssocItem;
-use syntax::{
-    TextRange,
-    ast::{self, AstNode, HasArgList, prec::ExprPrecedence},
-};
+use syntax::ast::{self, AstNode, HasArgList, prec::ExprPrecedence};
 
 use crate::{AssistContext, AssistId, Assists};
 
@@ -36,10 +33,7 @@ pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) 
     }
 
     let args = call.arg_list()?;
-    let l_paren = args.l_paren_token()?;
-    let mut args_iter = args.args();
-    let first_arg = args_iter.next()?;
-    let second_arg = args_iter.next();
+    let first_arg = args.args().next()?;
 
     let qualifier = path.qualifier()?;
     let method_name = path.segment()?.name_ref()?;
@@ -51,43 +45,32 @@ pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) 
         return None;
     }
 
-    // `core::ops::Add::add(` -> ``
-    let delete_path =
-        TextRange::new(path.syntax().text_range().start(), l_paren.text_range().end());
-
-    // Parens around `expr` if needed
-    let parens = first_arg.precedence().needs_parentheses_in(ExprPrecedence::Postfix).then(|| {
-        let range = first_arg.syntax().text_range();
-        (range.start(), range.end())
-    });
-
-    // `, ` -> `.add(`
-    let replace_comma = TextRange::new(
-        first_arg.syntax().text_range().end(),
-        second_arg
-            .map(|a| a.syntax().text_range().start())
-            .unwrap_or_else(|| first_arg.syntax().text_range().end()),
-    );
-
     acc.add(
         AssistId::refactor_rewrite("unqualify_method_call"),
         "Unqualify method call",
         call.syntax().text_range(),
-        |edit| {
-            edit.delete(delete_path);
-            if let Some((open, close)) = parens {
-                edit.insert(open, "(");
-                edit.insert(close, ")");
-            }
-            edit.replace(replace_comma, format!(".{method_name}("));
+        |builder| {
+            let editor = builder.make_editor(call.syntax());
+            let make = editor.make();
+
+            let new_arg_list = make.arg_list(args.args().skip(1));
+            let receiver = if first_arg.precedence().needs_parentheses_in(ExprPrecedence::Postfix) {
+                ast::Expr::from(make.expr_paren(first_arg.clone()))
+            } else {
+                first_arg.clone()
+            };
+            let method_call = make.expr_method_call(receiver, method_name, new_arg_list);
+
+            editor.replace(call.syntax(), method_call.syntax());
 
             if let Some(fun) = fun.as_assoc_item(ctx.db())
                 && let Some(trait_) = fun.container_or_implemented_trait(ctx.db())
                 && !scope.can_use_trait_methods(trait_)
             {
-                // Only add an import for trait methods that are not already imported.
-                add_import(qualifier, ctx, edit);
+                add_import(qualifier, ctx, &editor);
             }
+
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -95,7 +78,7 @@ pub(crate) fn unqualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) 
 fn add_import(
     qualifier: ast::Path,
     ctx: &AssistContext<'_>,
-    edit: &mut ide_db::source_change::SourceChangeBuilder,
+    editor: &syntax::syntax_editor::SyntaxEditor,
 ) {
     if let Some(path_segment) = qualifier.segment() {
         // for `<i32 as std::ops::Add>`
@@ -122,8 +105,12 @@ fn add_import(
         );
 
         if let Some(scope) = scope {
-            let scope = edit.make_import_scope_mut(scope);
-            ide_db::imports::insert_use::insert_use(&scope, import, &ctx.config.insert_use);
+            ide_db::imports::insert_use::insert_use_with_editor(
+                &scope,
+                import,
+                &ctx.config.insert_use,
+                editor,
+            );
         }
     }
 }

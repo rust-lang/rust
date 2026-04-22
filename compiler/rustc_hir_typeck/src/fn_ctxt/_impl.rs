@@ -3,7 +3,9 @@ use std::slice;
 
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, Level, MultiSpan,
+};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
@@ -11,7 +13,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{self as hir, AmbigArg, ExprKind, GenericArg, HirId, Node, QPath, intravisit};
 use rustc_hir_analysis::hir_ty_lowering::errors::GenericsArgsErrExtend;
 use rustc_hir_analysis::hir_ty_lowering::generics::{
-    check_generic_arg_count_for_call, lower_generic_args,
+    check_generic_arg_count_for_value_path, lower_generic_args,
 };
 use rustc_hir_analysis::hir_ty_lowering::{
     ExplicitLateBound, GenericArgCountMismatch, GenericArgCountResult, GenericArgsLowerer,
@@ -25,8 +27,8 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::{
     self, AdtKind, CanonicalUserType, GenericArgsRef, GenericParamDefKind, IsIdentity,
-    SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, UserArgs,
-    UserSelfTy,
+    SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitableExt, Unnormalized,
+    UserArgs, UserSelfTy,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -69,7 +71,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let impl_def_id = assoc_item.container_id(tcx);
         let generics = tcx.generics_of(def_id);
         let impl_args = &args[..generics.parent_count];
-        let self_ty = tcx.type_of(impl_def_id).instantiate(tcx, impl_args);
+        let self_ty = tcx.type_of(impl_def_id).instantiate(tcx, impl_args).skip_norm_wip();
         // Build new args: [Self, own_args...]
         let own_args = &args[generics.parent_count..];
         tcx.mk_args_from_iter(
@@ -80,6 +82,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     pub(crate) fn warn_if_unreachable(&self, id: HirId, span: Span, kind: &str) {
+        struct UnreachableItem<'a, 'b> {
+            kind: &'a str,
+            span: Span,
+            orig_span: Span,
+            custom_note: Option<&'b str>,
+        }
+
+        impl<'a, 'b, 'c> Diagnostic<'a, ()> for UnreachableItem<'b, 'c> {
+            fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+                let Self { kind, span, orig_span, custom_note } = self;
+                let msg = format!("unreachable {kind}");
+                Diag::new(dcx, level, msg.clone()).with_span_label(span, msg).with_span_label(
+                    orig_span,
+                    custom_note.map(|c| c.to_owned()).unwrap_or_else(|| {
+                        "any code following this expression is unreachable".to_owned()
+                    }),
+                )
+            }
+        }
+
         let Diverges::Always { span: orig_span, custom_note } = self.diverges.get() else {
             return;
         };
@@ -97,19 +119,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => {}
         }
 
+        // Don't emit the lint if we are in an impl marked as `#[automatically_derive]`.
+        // This is relevant for deriving `Clone` and `PartialEq` on types containing `!`.
+        if self.tcx.is_automatically_derived(self.tcx.parent(id.owner.def_id.into())) {
+            return;
+        }
+
         // Don't warn twice.
         self.diverges.set(Diverges::WarnedAlways);
 
         debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
-        let msg = format!("unreachable {kind}");
-        self.tcx().node_span_lint(lint::builtin::UNREACHABLE_CODE, id, span, |lint| {
-            lint.primary_message(msg.clone());
-            lint.span_label(span, msg).span_label(
-                orig_span,
-                custom_note.unwrap_or("any code following this expression is unreachable"),
-            );
-        })
+        self.tcx().emit_node_span_lint(
+            lint::builtin::UNREACHABLE_CODE,
+            id,
+            span,
+            UnreachableItem { kind, span, orig_span, custom_note },
+        );
     }
 
     /// Resolves type and const variables in `t` if possible. Unlike the infcx
@@ -311,12 +337,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Adjust::Deref(DerefAdjustKind::Builtin) => {
                     // FIXME(const_trait_impl): We *could* enforce `&T: [const] Deref` here.
                 }
+                Adjust::Deref(DerefAdjustKind::Pin) => {
+                    // FIXME(const_trait_impl): We *could* enforce `Pin<&T>: [const] Deref` here.
+                }
                 Adjust::Pointer(_pointer_coercion) => {
                     // FIXME(const_trait_impl): We should probably enforce these.
-                }
-                Adjust::ReborrowPin(_mutability) => {
-                    // FIXME(const_trait_impl): We could enforce these; they correspond to
-                    // `&mut T: DerefMut` tho, so it's kinda moot.
                 }
                 Adjust::Borrow(_) => {
                     // No effects to enforce here.
@@ -398,21 +423,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    /// Instantiates and normalizes the bounds for a given item
-    pub(crate) fn instantiate_bounds(
-        &self,
-        span: Span,
-        def_id: DefId,
-        args: GenericArgsRef<'tcx>,
-    ) -> ty::InstantiatedPredicates<'tcx> {
-        let bounds = self.tcx.predicates_of(def_id);
-        let result = bounds.instantiate(self.tcx, args);
-        let result = self.normalize(span, result);
-        debug!("instantiate_bounds(bounds={:?}, args={:?}) = {:?}", bounds, args, result);
-        result
-    }
-
-    pub(crate) fn normalize<T>(&self, span: Span, value: T) -> T
+    pub(crate) fn normalize<T>(&self, span: Span, value: Unnormalized<'tcx, T>) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -463,7 +474,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if self.next_trait_solver() {
                         self.try_structurally_resolve_type(span, ty)
                     } else {
-                        self.normalize(span, ty)
+                        self.normalize(span, Unnormalized::new_wip(ty))
                     }
                 },
                 || {},
@@ -636,7 +647,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         field: &'tcx ty::FieldDef,
         args: GenericArgsRef<'tcx>,
     ) -> Ty<'tcx> {
-        self.normalize(span, field.ty(self.tcx, args))
+        self.normalize(span, Unnormalized::new_wip(field.ty(self.tcx, args)))
     }
 
     /// Drain all obligations that are stalled on coroutines defined in this body.
@@ -648,9 +659,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // being stalled on a coroutine.
         self.select_obligations_where_possible(|_| {});
 
-        let ty::TypingMode::Analysis { defining_opaque_types_and_generators } = self.typing_mode()
-        else {
-            bug!();
+        let defining_opaque_types_and_generators = match self.typing_mode() {
+            ty::TypingMode::Analysis { defining_opaque_types_and_generators } => {
+                defining_opaque_types_and_generators
+            }
+            ty::TypingMode::Coherence
+            | ty::TypingMode::Borrowck { .. }
+            | ty::TypingMode::PostBorrowckAnalysis { .. }
+            | ty::TypingMode::PostAnalysis => {
+                bug!()
+            }
         };
 
         if defining_opaque_types_and_generators
@@ -988,7 +1006,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Res::Def(DefKind::Ctor(CtorOf::Variant, _), _) => {
                 err_extend = GenericsArgsErrExtend::DefVariant(segments);
             }
-            Res::Def(DefKind::AssocFn | DefKind::AssocConst, def_id) => {
+            Res::Def(DefKind::AssocFn | DefKind::AssocConst { .. }, def_id) => {
                 let assoc_item = tcx.associated_item(def_id);
                 let container = assoc_item.container;
                 let container_id = assoc_item.container_id(tcx);
@@ -1046,7 +1064,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Res::Local(hid) = res {
             let ty = self.local_ty(span, hid);
-            let ty = self.normalize(span, ty);
+            let ty = self.normalize(span, Unnormalized::new_wip(ty));
             return (ty, res);
         }
 
@@ -1073,8 +1091,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // parameter internally, but we don't allow users to specify the
             // parameter's value explicitly, so we have to do some error-
             // checking here.
-            let arg_count =
-                check_generic_arg_count_for_call(self, def_id, generics, seg, IsMethodCall::No);
+            let arg_count = check_generic_arg_count_for_value_path(
+                self,
+                def_id,
+                generics,
+                seg,
+                IsMethodCall::No,
+            );
 
             if let ExplicitLateBound::Yes = arg_count.explicit_late_bound {
                 explicit_late_bound = ExplicitLateBound::Yes;
@@ -1108,7 +1131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let ty = LoweredTy::from_raw(
                 self,
                 span,
-                tcx.at(span).type_of(impl_def_id).instantiate_identity(),
+                tcx.at(span).type_of(impl_def_id).instantiate_identity().skip_norm_wip(),
             );
 
             // Firstly, check that this SelfCtor even comes from the item we're currently
@@ -1266,7 +1289,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.fcx
                                 .tcx
                                 .type_of(param.def_id)
-                                .instantiate(self.fcx.tcx, preceding_args),
+                                .instantiate(self.fcx.tcx, preceding_args)
+                                .skip_norm_wip(),
                         )
                         .into(),
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
@@ -1286,7 +1310,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if !infer_args && let Some(default) = param.default_value(tcx) {
                     // If we have a default, then it doesn't matter that we're not inferring
                     // the type/const arguments: We provide the default where any is missing.
-                    return default.instantiate(tcx, preceding_args);
+                    return default.instantiate(tcx, preceding_args).skip_norm_wip();
                 }
                 // If no type/const arguments were provided, we have to infer them.
                 // This case also occurs as a result of some malformed input, e.g.,
@@ -1314,7 +1338,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
         });
 
-        let args_for_user_type = if let Res::Def(DefKind::AssocConst, def_id) = res {
+        let args_for_user_type = if let Res::Def(DefKind::AssocConst { .. }, def_id) = res {
             self.transform_args_for_inherent_type_const(def_id, args_raw)
         } else {
             args_raw
@@ -1324,7 +1348,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.write_user_type_annotation_from_args(hir_id, def_id, args_for_user_type, user_self_ty);
 
         // Normalize only after registering type annotations.
-        let args = self.normalize(span, args_raw);
+        let args = self.normalize(span, Unnormalized::new_wip(args_raw));
 
         self.add_required_obligations_for_hir(span, def_id, args, hir_id);
 
@@ -1342,7 +1366,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // with the instantiated impl type.
             // This also occurs for an enum variant on a type alias.
             let impl_ty = self.normalize(span, tcx.type_of(impl_def_id).instantiate(tcx, args));
-            let self_ty = self.normalize(span, self_ty);
+            let self_ty = self.normalize(span, Unnormalized::new_wip(self_ty));
             match self.at(&self.misc(span), self.param_env).eq(
                 DefineOpaqueTypes::Yes,
                 impl_ty,
@@ -1362,7 +1386,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!("instantiate_value_path: type of {:?} is {:?}", hir_id, ty_instantiated);
 
-        let args = if let Res::Def(DefKind::AssocConst, def_id) = res {
+        let args = if let Res::Def(DefKind::AssocConst { .. }, def_id) = res {
             self.transform_args_for_inherent_type_const(def_id, args)
         } else {
             args
@@ -1396,10 +1420,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let param_env = self.param_env;
 
-        let bounds = self.instantiate_bounds(span, def_id, args);
+        let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, args);
 
         for obligation in traits::predicates_for_generics(
             |idx, predicate_span| self.cause(span, code(idx, predicate_span)),
+            |pred| self.normalize(span, pred),
             param_env,
             bounds,
         ) {
@@ -1420,9 +1445,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We need to use a separate variable here as otherwise the temporary for
             // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting
             // in a reentrant borrow, causing an ICE.
-            let result = self
-                .at(&self.misc(sp), self.param_env)
-                .structurally_normalize_ty(ty, &mut **self.fulfillment_cx.borrow_mut());
+            let result = self.at(&self.misc(sp), self.param_env).structurally_normalize_ty(
+                Unnormalized::new_wip(ty),
+                &mut **self.fulfillment_cx.borrow_mut(),
+            );
             match result {
                 Ok(normalized_ty) => normalized_ty,
                 Err(errors) => {
@@ -1449,9 +1475,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We need to use a separate variable here as otherwise the temporary for
             // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting
             // in a reentrant borrow, causing an ICE.
-            let result = self
-                .at(&self.misc(sp), self.param_env)
-                .structurally_normalize_const(ct, &mut **self.fulfillment_cx.borrow_mut());
+            let result = self.at(&self.misc(sp), self.param_env).structurally_normalize_const(
+                Unnormalized::new_wip(ct),
+                &mut **self.fulfillment_cx.borrow_mut(),
+            );
             match result {
                 Ok(normalized_ct) => normalized_ct,
                 Err(errors) => {

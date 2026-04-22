@@ -30,6 +30,7 @@ use rustc_proc_macro::bridge::client::ProcMacro;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
 use rustc_session::config::TargetModifier;
+use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_span::hygiene::HygieneDecodeContext;
 use rustc_span::{
@@ -78,8 +79,14 @@ impl MetadataBlob {
 /// own crate numbers.
 pub(crate) type CrateNumMap = IndexVec<CrateNum, CrateNum>;
 
-/// Target modifiers - abi or exploit mitigations flags
+/// Target modifiers - abi or exploit mitigations options that may cause unsoundness when mixed or
+/// partially enabled.
 pub(crate) type TargetModifiers = Vec<TargetModifier>;
+
+/// The set of mitigations that cannot be partially enabled (see
+/// [RFC 3855](https://github.com/rust-lang/rfcs/pull/3855)), but are currently enabled for this
+/// crate.
+pub(crate) type DeniedPartialMitigations = Vec<DeniedPartialMitigation>;
 
 pub(crate) struct CrateMetadata {
     /// The primary crate data - binary metadata blob.
@@ -959,6 +966,13 @@ impl CrateRoot {
     ) -> impl ExactSizeIterator<Item = TargetModifier> {
         self.target_modifiers.decode(metadata)
     }
+
+    pub(crate) fn decode_denied_partial_mitigations<'a>(
+        &self,
+        metadata: &'a MetadataBlob,
+    ) -> impl ExactSizeIterator<Item = DeniedPartialMitigation> {
+        self.denied_partial_mitigations.decode(metadata)
+    }
 }
 
 impl<'a> CrateMetadataRef<'a> {
@@ -1223,7 +1237,7 @@ impl<'a> CrateMetadataRef<'a> {
             .root
             .stripped_cfg_items
             .decode((self, tcx))
-            .map(|item| item.map_mod_id(|index| DefId { krate: cnum, index }));
+            .map(|item| item.map_scope_id(|index| DefId { krate: cnum, index }));
         tcx.arena.alloc_from_iter(item_names)
     }
 
@@ -1329,7 +1343,9 @@ impl<'a> CrateMetadataRef<'a> {
 
     fn get_associated_item(self, tcx: TyCtxt<'_>, id: DefIndex) -> ty::AssocItem {
         let kind = match self.def_kind(tcx, id) {
-            DefKind::AssocConst => ty::AssocKind::Const { name: self.item_name(id) },
+            DefKind::AssocConst { is_type_const } => {
+                ty::AssocKind::Const { name: self.item_name(id), is_type_const }
+            }
             DefKind::AssocFn => ty::AssocKind::Fn {
                 name: self.item_name(id),
                 has_self: self.get_fn_has_self_parameter(tcx, id),
@@ -1937,6 +1953,10 @@ impl CrateMetadata {
 
     pub(crate) fn target_modifiers(&self) -> TargetModifiers {
         self.root.decode_target_modifiers(&self.blob).collect()
+    }
+
+    pub(crate) fn enabled_denied_partial_mitigations(&self) -> DeniedPartialMitigations {
+        self.root.decode_denied_partial_mitigations(&self.blob).collect()
     }
 
     /// Keep `new_extern_crate` if it looks better in diagnostics

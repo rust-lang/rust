@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(
 ) {
     if let Some(bytes_id) = cx.typeck_results().type_dependent_def_id(count_recv.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(bytes_id)
-        && cx.tcx.type_of(impl_id).instantiate_identity().is_str()
+        && cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip().is_str()
         && let ty = cx.typeck_results().expr_ty(bytes_recv).peel_refs()
         && (ty.is_str() || ty.is_lang_item(cx, hir::LangItem::String))
     {

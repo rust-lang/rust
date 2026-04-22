@@ -8,7 +8,7 @@ nightly-only `#![feature(...)]` opt-in.
 This chapter documents the implementation
 of feature gating: where gates are defined, how they are enabled, and how usage is verified.
 
-<!-- data-check: Feb 2026 -->
+<!-- date-check: Feb 2026 -->
 
 ## Feature Definitions
 

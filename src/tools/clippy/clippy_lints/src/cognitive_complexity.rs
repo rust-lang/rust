@@ -40,6 +40,8 @@ declare_clippy_lint! {
     @eval_always = true
 }
 
+impl_lint_pass!(CognitiveComplexity => [COGNITIVE_COMPLEXITY]);
+
 pub struct CognitiveComplexity {
     limit: LimitStack,
 }
@@ -51,8 +53,6 @@ impl CognitiveComplexity {
         }
     }
 }
-
-impl_lint_pass!(CognitiveComplexity => [COGNITIVE_COMPLEXITY]);
 
 impl CognitiveComplexity {
     fn check<'tcx>(
@@ -145,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for CognitiveComplexity {
         def_id: LocalDefId,
     ) {
         #[allow(deprecated)]
-        if !cx.tcx.has_attr(def_id, sym::test) {
+        if cx.tcx.get_attrs(def_id, sym::test).next().is_none() {
             let expr = if kind.asyncness().is_async() {
                 match get_async_fn_body(cx.tcx, body) {
                     Some(b) => b,

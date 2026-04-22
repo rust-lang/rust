@@ -44,8 +44,8 @@ The targets require a reasonably up-to-date LoongArch toolchain on the host.
 Currently the following components are used by the Rust CI to build the target,
 and the versions can be seen as the minimum requirement:
 
-* GNU Binutils 2.42
-* GCC 14.x
+* GNU Binutils 2.45
+* GCC 15.x
 * glibc 2.36
 * linux-headers 5.19
 

@@ -122,6 +122,9 @@ impl Cargo {
         cmd_kind: Kind,
     ) -> Cargo {
         let mut cargo = builder.cargo(compiler, mode, source_type, target, cmd_kind);
+        if target.synthetic {
+            cargo.arg("-Zjson-target-spec");
+        }
 
         match cmd_kind {
             // No need to configure the target linker for these command types.
@@ -165,7 +168,11 @@ impl Cargo {
         target: TargetSelection,
         cmd_kind: Kind,
     ) -> Cargo {
-        builder.cargo(compiler, mode, source_type, target, cmd_kind)
+        let mut cargo = builder.cargo(compiler, mode, source_type, target, cmd_kind);
+        if target.synthetic {
+            cargo.arg("-Zjson-target-spec");
+        }
+        cargo
     }
 
     pub fn rustdocflag(&mut self, arg: &str) -> &mut Cargo {
@@ -502,6 +509,11 @@ impl Builder<'_> {
             }
         };
 
+        // Optionally suppress cargo output.
+        if self.config.quiet {
+            cargo.arg("--quiet");
+        }
+
         // Run cargo from the source root so it can find .cargo/config.
         // This matters when using vendoring and the working directory is outside the repository.
         cargo.current_dir(&self.src);
@@ -559,6 +571,7 @@ impl Builder<'_> {
 
         if !has_modern_jobserver {
             cargo.env_remove("MAKEFLAGS");
+            cargo.env_remove("MFLAGS");
         }
 
         cargo

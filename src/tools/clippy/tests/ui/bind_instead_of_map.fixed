@@ -1,4 +1,5 @@
 #![deny(clippy::bind_instead_of_map)]
+#![allow(clippy::manual_filter)]
 
 // need a main anyway, use it get rid of unused warnings too
 pub fn main() {

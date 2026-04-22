@@ -11,7 +11,7 @@ use hir::{
 };
 use ide_db::{
     FileId, FileRange, RootDatabase, SymbolKind,
-    base_db::{CrateOrigin, LangCrateOrigin, RootQueryDb},
+    base_db::{CrateOrigin, LangCrateOrigin, all_crates},
     defs::{Definition, find_std_module},
     documentation::{Documentation, HasDocs},
     famous_defs::FamousDefs,
@@ -276,7 +276,7 @@ impl<'db> TryToNav for FileSymbol<'db> {
                             Some(it.display(db, display_target).to_string())
                         }
                         hir::ModuleDef::Adt(it) => Some(it.display(db, display_target).to_string()),
-                        hir::ModuleDef::Variant(it) => {
+                        hir::ModuleDef::EnumVariant(it) => {
                             Some(it.display(db, display_target).to_string())
                         }
                         hir::ModuleDef::Const(it) => {
@@ -319,7 +319,7 @@ impl TryToNav for Definition {
             Definition::GenericParam(it) => it.try_to_nav(sema),
             Definition::Function(it) => it.try_to_nav(sema),
             Definition::Adt(it) => it.try_to_nav(sema),
-            Definition::Variant(it) => it.try_to_nav(sema),
+            Definition::EnumVariant(it) => it.try_to_nav(sema),
             Definition::Const(it) => it.try_to_nav(sema),
             Definition::Static(it) => it.try_to_nav(sema),
             Definition::Trait(it) => it.try_to_nav(sema),
@@ -347,7 +347,7 @@ impl TryToNav for hir::ModuleDef {
             hir::ModuleDef::Module(it) => Some(it.to_nav(sema.db)),
             hir::ModuleDef::Function(it) => it.try_to_nav(sema),
             hir::ModuleDef::Adt(it) => it.try_to_nav(sema),
-            hir::ModuleDef::Variant(it) => it.try_to_nav(sema),
+            hir::ModuleDef::EnumVariant(it) => it.try_to_nav(sema),
             hir::ModuleDef::Const(it) => it.try_to_nav(sema),
             hir::ModuleDef::Static(it) => it.try_to_nav(sema),
             hir::ModuleDef::Trait(it) => it.try_to_nav(sema),
@@ -406,7 +406,7 @@ impl ToNavFromAst for hir::Enum {
         container_name(db, self)
     }
 }
-impl ToNavFromAst for hir::Variant {
+impl ToNavFromAst for hir::EnumVariant {
     const KIND: SymbolKind = SymbolKind::Variant;
 }
 impl ToNavFromAst for hir::Union {
@@ -861,8 +861,7 @@ impl TryToNav for hir::BuiltinType {
         sema: &Semantics<'_, RootDatabase>,
     ) -> Option<UpmappingResult<NavigationTarget>> {
         let db = sema.db;
-        let krate = db
-            .all_crates()
+        let krate = all_crates(db)
             .iter()
             .copied()
             .find(|&krate| matches!(krate.data(db).origin, CrateOrigin::Lang(LangCrateOrigin::Std)))

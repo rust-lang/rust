@@ -73,8 +73,8 @@ pub(crate) fn replace_qualified_name_with_use(
             // Now that we've brought the name into scope, re-qualify all paths that could be
             // affected (that is, all paths inside the node we added the `use` to).
             let scope_node = scope.as_syntax_node();
-            let mut editor = builder.make_editor(scope_node);
-            shorten_paths(&mut editor, scope_node, &original_path);
+            let editor = builder.make_editor(scope_node);
+            shorten_paths(&editor, scope_node, &original_path);
             builder.add_file_edits(ctx.vfs_file_id(), editor);
             let path = drop_generic_args(&original_path);
             let edition = ctx
@@ -102,7 +102,7 @@ fn target_path(ctx: &AssistContext<'_>, mut original_path: ast::Path) -> Option<
     }
 
     match ctx.sema.resolve_path(&original_path)? {
-        PathResolution::Def(ModuleDef::Variant(_)) if on_first => original_path.qualifier(),
+        PathResolution::Def(ModuleDef::EnumVariant(_)) if on_first => original_path.qualifier(),
         PathResolution::Def(def) if def.as_assoc_item(ctx.db()).is_some() => {
             on_first.then_some(original_path.qualifier()?)
         }
@@ -111,8 +111,7 @@ fn target_path(ctx: &AssistContext<'_>, mut original_path: ast::Path) -> Option<
 }
 
 fn drop_generic_args(path: &ast::Path) -> ast::Path {
-    let path = path.clone_subtree();
-    let mut editor = SyntaxEditor::new(path.syntax().clone());
+    let (editor, path) = SyntaxEditor::with_ast_node(path);
     if let Some(segment) = path.segment()
         && let Some(generic_args) = segment.generic_arg_list()
     {
@@ -123,7 +122,7 @@ fn drop_generic_args(path: &ast::Path) -> ast::Path {
 }
 
 /// Mutates `node` to shorten `path` in all descendants of `node`.
-fn shorten_paths(editor: &mut SyntaxEditor, node: &SyntaxNode, path: &ast::Path) {
+fn shorten_paths(editor: &SyntaxEditor, node: &SyntaxNode, path: &ast::Path) {
     for child in node.children() {
         match_ast! {
             match child {
@@ -142,7 +141,7 @@ fn shorten_paths(editor: &mut SyntaxEditor, node: &SyntaxNode, path: &ast::Path)
     }
 }
 
-fn maybe_replace_path(editor: &mut SyntaxEditor, path: ast::Path, target: ast::Path) -> Option<()> {
+fn maybe_replace_path(editor: &SyntaxEditor, path: ast::Path, target: ast::Path) -> Option<()> {
     if !path_eq_no_generics(path.clone(), target) {
         return None;
     }

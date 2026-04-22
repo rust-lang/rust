@@ -118,8 +118,9 @@ pub(crate) fn write_shared(
                 let mut md_opts = opt.clone();
                 md_opts.output = cx.dst.clone();
                 md_opts.external_html = cx.shared.layout.external_html.clone();
+                let file = try_err!(cx.sess().source_map().load_file(&index_page), &index_page);
                 try_err!(
-                    crate::markdown::render_and_write(index_page, md_opts, cx.shared.edition()),
+                    crate::markdown::render_and_write(file, md_opts, cx.shared.edition()),
                     &index_page
                 );
             }
@@ -218,7 +219,7 @@ fn write_static_files(
         try_err!(fs::write(&dst_path, buffer), &dst_path);
     }
 
-    if opt.emit.is_empty() || opt.emit.contains(&EmitType::Toolchain) {
+    if opt.emit.is_empty() || opt.emit.contains(&EmitType::HtmlStaticFiles) {
         static_files::for_each(|f: &static_files::StaticFile| {
             let filename = static_dir.join(f.output_filename());
             let contents: &[u8] =

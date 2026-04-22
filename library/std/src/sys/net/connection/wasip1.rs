@@ -125,12 +125,12 @@ impl TcpStream {
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         let wasi_how = match how {
-            Shutdown::Read => wasi::SDFLAGS_RD,
-            Shutdown::Write => wasi::SDFLAGS_WR,
-            Shutdown::Both => wasi::SDFLAGS_RD | wasi::SDFLAGS_WR,
+            Shutdown::Read => wasip1::SDFLAGS_RD,
+            Shutdown::Write => wasip1::SDFLAGS_WR,
+            Shutdown::Both => wasip1::SDFLAGS_RD | wasip1::SDFLAGS_WR,
         };
 
-        unsafe { wasi::sock_shutdown(self.socket().as_raw_fd() as _, wasi_how).map_err(err2io) }
+        unsafe { wasip1::sock_shutdown(self.socket().as_raw_fd() as _, wasi_how).map_err(err2io) }
     }
 
     pub fn duplicate(&self) -> io::Result<TcpStream> {
@@ -167,19 +167,20 @@ impl TcpStream {
 
     pub fn set_nonblocking(&self, state: bool) -> io::Result<()> {
         let fdstat = unsafe {
-            wasi::fd_fdstat_get(self.socket().as_inner().as_raw_fd() as wasi::Fd).map_err(err2io)?
+            wasip1::fd_fdstat_get(self.socket().as_inner().as_raw_fd() as wasip1::Fd)
+                .map_err(err2io)?
         };
 
         let mut flags = fdstat.fs_flags;
 
         if state {
-            flags |= wasi::FDFLAGS_NONBLOCK;
+            flags |= wasip1::FDFLAGS_NONBLOCK;
         } else {
-            flags &= !wasi::FDFLAGS_NONBLOCK;
+            flags &= !wasip1::FDFLAGS_NONBLOCK;
         }
 
         unsafe {
-            wasi::fd_fdstat_set_flags(self.socket().as_inner().as_raw_fd() as wasi::Fd, flags)
+            wasip1::fd_fdstat_set_flags(self.socket().as_inner().as_raw_fd() as wasip1::Fd, flags)
                 .map_err(err2io)
         }
     }
@@ -221,7 +222,7 @@ impl TcpListener {
 
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
         let fd = unsafe {
-            wasi::sock_accept(self.as_inner().as_inner().as_raw_fd() as _, 0).map_err(err2io)?
+            wasip1::sock_accept(self.as_inner().as_inner().as_raw_fd() as _, 0).map_err(err2io)?
         };
 
         Ok((
@@ -258,19 +259,20 @@ impl TcpListener {
 
     pub fn set_nonblocking(&self, state: bool) -> io::Result<()> {
         let fdstat = unsafe {
-            wasi::fd_fdstat_get(self.socket().as_inner().as_raw_fd() as wasi::Fd).map_err(err2io)?
+            wasip1::fd_fdstat_get(self.socket().as_inner().as_raw_fd() as wasip1::Fd)
+                .map_err(err2io)?
         };
 
         let mut flags = fdstat.fs_flags;
 
         if state {
-            flags |= wasi::FDFLAGS_NONBLOCK;
+            flags |= wasip1::FDFLAGS_NONBLOCK;
         } else {
-            flags &= !wasi::FDFLAGS_NONBLOCK;
+            flags &= !wasip1::FDFLAGS_NONBLOCK;
         }
 
         unsafe {
-            wasi::fd_fdstat_set_flags(self.socket().as_inner().as_raw_fd() as wasi::Fd, flags)
+            wasip1::fd_fdstat_set_flags(self.socket().as_inner().as_raw_fd() as wasip1::Fd, flags)
                 .map_err(err2io)
         }
     }

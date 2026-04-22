@@ -17,8 +17,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(cfg_select))]
-#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![cfg_attr(target_arch = "loongarch64", feature(stdarch_loongarch))]
 #![feature(core_io_borrowed_buf)]
 #![feature(map_try_insert)]
@@ -91,6 +89,20 @@ use sha2::Sha256;
 
 #[cfg(test)]
 mod tests;
+
+#[derive(Clone, Encodable, Decodable, Debug, Copy, PartialEq, Hash, HashStable_Generic)]
+pub struct Spanned<T> {
+    pub node: T,
+    pub span: Span,
+}
+
+pub fn respan<T>(sp: Span, t: T) -> Spanned<T> {
+    Spanned { node: t, span: sp }
+}
+
+pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
+    respan(DUMMY_SP, t)
+}
 
 /// Per-session global variables: this struct is stored in thread-local storage
 /// in such a way that it is accessible without any kind of handle to all
@@ -2784,10 +2796,10 @@ impl InnerSpan {
     }
 }
 
-/// Requirements for a `StableHashingContext` to be used in this crate.
-///
-/// This is a hack to allow using the [`HashStable_Generic`] derive macro
-/// instead of implementing everything in rustc_middle.
+/// This trait lets `HashStable` and `derive(HashStable_Generic)` be used in
+/// this crate (and other crates upstream of `rustc_middle`), while leaving
+/// certain operations to be defined in `rustc_middle` where more things are
+/// visible.
 pub trait HashStableContext {
     /// The main event: stable hashing of a span.
     fn span_hash_stable(&mut self, span: Span, hasher: &mut StableHasher);
@@ -2800,13 +2812,13 @@ pub trait HashStableContext {
     fn assert_default_hashing_controls(&self, msg: &str);
 }
 
-impl<CTX> HashStable<CTX> for Span
+impl<Hcx> HashStable<Hcx> for Span
 where
-    CTX: HashStableContext,
+    Hcx: HashStableContext,
 {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+    fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
         // `span_hash_stable` does all the work.
-        ctx.span_hash_stable(*self, hasher)
+        hcx.span_hash_stable(*self, hasher)
     }
 }
 

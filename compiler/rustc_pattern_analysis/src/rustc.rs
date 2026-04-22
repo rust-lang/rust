@@ -11,7 +11,8 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::thir::{self, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{
-    self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, VariantDef,
+    self, FieldDef, OpaqueTypeKey, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized,
+    VariantDef,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -126,16 +127,19 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     #[inline]
     pub fn reveal_opaque_ty(&self, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
         fn reveal_inner<'tcx>(cx: &RustcPatCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
-            let ty::Alias(ty::Opaque, alias_ty) = *ty.kind() else { bug!() };
-            if let Some(local_def_id) = alias_ty.def_id.as_local() {
-                let key = ty::OpaqueTypeKey { def_id: local_def_id, args: alias_ty.args };
+            let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = *ty.kind()
+            else {
+                bug!()
+            };
+            if let Some(local_def_id) = def_id.as_local() {
+                let key = ty::OpaqueTypeKey { def_id: local_def_id, args };
                 if let Some(ty) = cx.reveal_opaque_key(key) {
                     return RevealedTy(ty);
                 }
             }
             RevealedTy(ty)
         }
-        if let ty::Alias(ty::Opaque, _) = ty.kind() {
+        if let ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) = ty.kind() {
             reveal_inner(self, ty)
         } else {
             RevealedTy(ty)
@@ -148,7 +152,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         self.typeck_results
             .hidden_types
             .get(&key.def_id)
-            .map(|x| x.ty.instantiate(self.tcx, key.args))
+            .map(|x| x.ty.instantiate(self.tcx, key.args).skip_norm_wip())
     }
     // This can take a non-revealed `Ty` because it reveals opaques itself.
     pub fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
@@ -192,7 +196,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             let ty = field.ty(self.tcx, args);
             // `field.ty()` doesn't normalize after instantiating.
             let ty =
-                self.tcx.try_normalize_erasing_regions(self.typing_env, ty).unwrap_or_else(|e| {
+                self.tcx.try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(ty)).unwrap_or_else(|e| {
                     self.tcx.dcx().span_delayed_bug(
                         self.scrut_span,
                         format!(
@@ -423,7 +427,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
             | ty::UnsafeBinder(_)
-            | ty::Alias(_, _)
+            | ty::Alias(_)
             | ty::Param(_)
             | ty::Error(_) => ConstructorSet::Unlistable,
             ty::CoroutineWitness(_, _) | ty::Bound(_, _) | ty::Placeholder(_) | ty::Infer(_) => {
@@ -462,7 +466,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         let arity;
         let fields: Vec<_>;
         match &pat.kind {
-            PatKind::Binding { subpattern: Some(subpat), .. } => return self.lower_pat(subpat),
+            PatKind::Binding { subpattern: Some(subpat), .. }
+            | PatKind::Guard { subpattern: subpat, .. } => return self.lower_pat(subpat),
             PatKind::Missing | PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
                 ctor = Wildcard;
                 fields = vec![];

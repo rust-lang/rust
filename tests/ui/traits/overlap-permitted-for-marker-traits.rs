@@ -4,7 +4,6 @@
 // `MyMarker` if it is either `Debug` or `Display`.
 
 #![feature(marker_trait_attr)]
-#![feature(negative_impls)]
 
 use std::fmt::{Debug, Display};
 

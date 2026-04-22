@@ -1,5 +1,5 @@
 // Ensure that we can't call `const_make_global` on pointers not in the current interpreter.
-
+//@ ignore-parallel-frontend different alloc ids
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
 

@@ -453,7 +453,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         let mut vid_map = FxIndexMap::<RegionTarget<'cx>, RegionDeps<'cx>>::default();
         let mut finished_map = FxIndexMap::default();
 
-        for (c, _) in &regions.constraints {
+        for c in regions.constraints.iter().flat_map(|(c, _)| c.iter_outlives()) {
             match c.kind {
                 ConstraintKind::VarSubVar => {
                     let sub_vid = c.sub.as_var();
@@ -488,6 +488,10 @@ impl<'tcx> AutoTraitFinder<'tcx> {
 
                     let deps2 = vid_map.entry(RegionTarget::Region(c.sup)).or_default();
                     deps2.smaller.insert(RegionTarget::Region(c.sub));
+                }
+
+                ConstraintKind::VarEqVar | ConstraintKind::VarEqReg | ConstraintKind::RegEqReg => {
+                    unreachable!()
                 }
             }
         }
@@ -546,14 +550,16 @@ impl<'tcx> AutoTraitFinder<'tcx> {
     pub fn is_of_param(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind() {
             ty::Param(_) => true,
-            ty::Alias(ty::Projection, p) => self.is_of_param(p.self_ty()),
+            ty::Alias(p @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
+                self.is_of_param(p.self_ty())
+            }
             _ => false,
         }
     }
 
     fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'tcx>) -> bool {
         if let Some(ty) = p.term().skip_binder().as_type() {
-            matches!(ty.kind(), ty::Alias(ty::Projection, proj) if proj == &p.skip_binder().projection_term.expect_ty(self.tcx))
+            matches!(ty.kind(), ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) if proj == &p.skip_binder().projection_term.expect_ty(self.tcx))
         } else {
             false
         }

@@ -4,7 +4,7 @@
 //! Since a free alias is never ambiguous, this just computes the `type_of` of
 //! the alias and registers the where-clauses of the type alias.
 
-use rustc_type_ir::{self as ty, Interner};
+use rustc_type_ir::{self as ty, Interner, Unnormalized};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::{Certainty, EvalCtxt, Goal, GoalSource, QueryResult};
@@ -24,15 +24,19 @@ where
         // Check where clauses
         self.add_goals(
             GoalSource::Misc,
-            cx.predicates_of(free_alias.def_id)
+            cx.predicates_of(free_alias.def_id())
                 .iter_instantiated(cx, free_alias.args)
+                .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred)),
         );
 
         let actual = if free_alias.kind(cx).is_type() {
-            cx.type_of(free_alias.def_id).instantiate(cx, free_alias.args).into()
+            cx.type_of(free_alias.def_id()).instantiate(cx, free_alias.args).skip_norm_wip().into()
         } else {
-            cx.const_of_item(free_alias.def_id).instantiate(cx, free_alias.args).into()
+            cx.const_of_item(free_alias.def_id())
+                .instantiate(cx, free_alias.args)
+                .skip_norm_wip()
+                .into()
         };
 
         self.instantiate_normalizes_to_term(goal, actual);

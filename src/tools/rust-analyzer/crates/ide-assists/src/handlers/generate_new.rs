@@ -3,7 +3,7 @@ use ide_db::{
     use_trivial_constructor::use_trivial_constructor,
 };
 use syntax::{
-    ast::{self, AstNode, HasName, HasVisibility, StructKind, edit::AstNodeEdit, make},
+    ast::{self, AstNode, HasName, HasVisibility, StructKind, edit::AstNodeEdit},
     syntax_editor::Position,
 };
 
@@ -35,10 +35,9 @@ use crate::{
 // ```
 pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
-
-    let field_list = match strukt.kind() {
+    let field_list: Vec<(String, ast::Type)> = match strukt.kind() {
         StructKind::Record(named) => {
-            named.fields().filter_map(|f| Some((f.name()?, f.ty()?))).collect::<Vec<_>>()
+            named.fields().filter_map(|f| Some((f.name()?.to_string(), f.ty()?))).collect()
         }
         StructKind::Tuple(tuple) => {
             let mut name_generator = NameGenerator::default();
@@ -52,12 +51,12 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                         ctx.db(),
                         ctx.edition(),
                     ) {
-                        Some(name) => name,
-                        None => name_generator.suggest_name(&format!("_{i}")),
+                        Some(name) => name.to_string(),
+                        None => name_generator.suggest_name(&format!("_{i}")).to_string(),
                     };
-                    Some((make::name(name.as_str()), f.ty()?))
+                    Some((name, ty))
                 })
-                .collect::<Vec<_>>()
+                .collect()
         }
         StructKind::Unit => return None,
     };
@@ -70,6 +69,9 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
 
     let target = strukt.syntax().text_range();
     acc.add(AssistId::generate("generate_new"), "Generate `new`", target, |builder| {
+        let editor = builder.make_editor(strukt.syntax());
+        let make = editor.make();
+
         let trivial_constructors = field_list
             .iter()
             .map(|(name, ty)| {
@@ -95,65 +97,63 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                     edition,
                 )?;
 
-                Some((make::name_ref(&name.text()), Some(expr)))
+                Some((make.name_ref(name), Some(expr)))
             })
             .collect::<Vec<_>>();
 
         let params = field_list.iter().enumerate().filter_map(|(i, (name, ty))| {
             if trivial_constructors[i].is_none() {
-                Some(make::param(make::ident_pat(false, false, name.clone()).into(), ty.clone()))
+                Some(make.param(make.ident_pat(false, false, make.name(name)).into(), ty.clone()))
             } else {
                 None
             }
         });
-        let params = make::param_list(None, params);
+        let params = make.param_list(None, params);
 
         let fields = field_list.iter().enumerate().map(|(i, (name, _))| {
             if let Some(constructor) = trivial_constructors[i].clone() {
                 constructor
             } else {
-                (make::name_ref(&name.text()), None)
+                (make.name_ref(name), None)
             }
         });
 
         let tail_expr: ast::Expr = match strukt.kind() {
             StructKind::Record(_) => {
-                let fields = fields.map(|(name, expr)| make::record_expr_field(name, expr));
-                let fields = make::record_expr_field_list(fields);
-                make::record_expr(make::ext::ident_path("Self"), fields).into()
+                let fields = fields.map(|(name, expr)| make.record_expr_field(name, expr));
+                let fields = make.record_expr_field_list(fields);
+                make.record_expr(make.ident_path("Self"), fields).into()
             }
             StructKind::Tuple(_) => {
                 let args = fields.map(|(arg, expr)| {
-                    let arg = || make::expr_path(make::path_unqualified(make::path_segment(arg)));
+                    let arg = || make.expr_path(make.path_unqualified(make.path_segment(arg)));
                     expr.unwrap_or_else(arg)
                 });
-                let arg_list = make::arg_list(args);
-                make::expr_call(make::expr_path(make::ext::ident_path("Self")), arg_list).into()
+                let arg_list = make.arg_list(args);
+                make.expr_call(make.expr_path(make.ident_path("Self")), arg_list).into()
             }
             StructKind::Unit => unreachable!(),
         };
-        let body = make::block_expr(None, tail_expr.into());
+        let body = make.block_expr(None, tail_expr.into());
 
-        let ret_type = make::ret_type(make::ty_path(make::ext::ident_path("Self")));
+        let ret_type = make.ret_type(make.ty_path(make.ident_path("Self")).into());
 
-        let fn_ = make::fn_(
-            None,
-            strukt.visibility(),
-            make::name("new"),
-            None,
-            None,
-            params,
-            body,
-            Some(ret_type),
-            false,
-            false,
-            false,
-            false,
-        )
-        .clone_for_update()
-        .indent(1.into());
-
-        let mut editor = builder.make_editor(strukt.syntax());
+        let fn_ = make
+            .fn_(
+                [],
+                strukt.visibility(),
+                make.name("new"),
+                None,
+                None,
+                params,
+                body,
+                Some(ret_type),
+                false,
+                false,
+                false,
+                false,
+            )
+            .indent(1.into());
 
         // Get the node for set annotation
         let contain_fn = if let Some(impl_def) = impl_def {
@@ -164,32 +164,30 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                 editor.insert_all(
                     Position::after(l_curly),
                     vec![
-                        make::tokens::whitespace(&format!("\n{}", impl_def.indent_level() + 1))
-                            .into(),
+                        make.whitespace(&format!("\n{}", impl_def.indent_level() + 1)).into(),
                         fn_.syntax().clone().into(),
-                        make::tokens::whitespace("\n").into(),
+                        make.whitespace("\n").into(),
                     ],
                 );
                 fn_.syntax().clone()
             } else {
-                let items = vec![ast::AssocItem::Fn(fn_)];
-                let list = make::assoc_item_list(Some(items));
+                let list = make.assoc_item_list([ast::AssocItem::Fn(fn_)]);
                 editor.insert(Position::after(impl_def.syntax()), list.syntax());
                 list.syntax().clone()
             }
         } else {
             // Generate a new impl to add the method to
             let indent_level = strukt.indent_level();
-            let body = vec![ast::AssocItem::Fn(fn_)];
-            let list = make::assoc_item_list(Some(body));
-            let impl_def = generate_impl_with_item(&ast::Adt::Struct(strukt.clone()), Some(list))
-                .indent(strukt.indent_level());
+            let list = make.assoc_item_list([ast::AssocItem::Fn(fn_)]);
+            let impl_def =
+                generate_impl_with_item(make, &ast::Adt::Struct(strukt.clone()), Some(list))
+                    .indent(strukt.indent_level());
 
             // Insert it after the adt
             editor.insert_all(
                 Position::after(strukt.syntax()),
                 vec![
-                    make::tokens::whitespace(&format!("\n\n{indent_level}")).into(),
+                    make.whitespace(&format!("\n\n{indent_level}")).into(),
                     impl_def.syntax().clone().into(),
                 ],
             );
@@ -232,7 +230,6 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                 editor.add_annotation(name.syntax(), tabstop_before);
             }
         }
-
         builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }

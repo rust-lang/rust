@@ -88,6 +88,8 @@ pub(crate) enum AssocItemNotFoundLabel<'a> {
     NotFound {
         #[primary_span]
         span: Span,
+        assoc_ident: Ident,
+        assoc_kind: &'static str,
     },
     #[label(
         "there is {$identically_named ->
@@ -149,6 +151,7 @@ pub(crate) enum AssocItemNotFoundSugg<'a> {
         trait_ref: String,
         suggested_name: Symbol,
         identically_named: bool,
+        assoc_kind: &'static str,
         #[applicability]
         applicability: Applicability,
     },
@@ -311,6 +314,14 @@ pub(crate) struct ConstParamTyImplOnUnsized {
 pub(crate) struct ConstParamTyImplOnNonAdt {
     #[primary_span]
     #[label("type is not a structure or enumeration")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("the trait `ConstParamTy` may not be implemented for this struct")]
+pub(crate) struct ConstParamTyFieldVisMismatch {
+    #[primary_span]
+    #[label("struct fields are less visible than the struct")]
     pub span: Span,
 }
 
@@ -733,14 +744,6 @@ pub(crate) enum CannotCaptureLateBound {
 }
 
 #[derive(Diagnostic)]
-#[diag("{$variances}")]
-pub(crate) struct VariancesOf {
-    #[primary_span]
-    pub span: Span,
-    pub variances: String,
-}
-
-#[derive(Diagnostic)]
 #[diag("{$ty}")]
 pub(crate) struct TypeOf<'tcx> {
     #[primary_span]
@@ -1030,6 +1033,16 @@ pub(crate) struct TooLargeStatic {
 pub(crate) struct SpecializationTrait {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("trait cannot be implemented outside `{$restriction_path}`")]
+pub(crate) struct ImplOfRestrictedTrait {
+    #[primary_span]
+    pub impl_span: Span,
+    #[note("trait restricted here")]
+    pub restriction_span: Span,
+    pub restriction_path: String,
 }
 
 #[derive(Diagnostic)]
@@ -1446,6 +1459,15 @@ pub struct NoVariantNamed<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
+#[derive(Diagnostic)]
+#[diag("no field `{$field}` on type `{$ty}`", code = E0609)]
+pub struct NoFieldOnType<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub field: Ident,
+}
+
 // FIXME(fmease): Deduplicate:
 
 #[derive(Diagnostic)]
@@ -1803,6 +1825,13 @@ pub(crate) struct CmseImplTrait {
 pub(crate) struct BadReturnTypeNotation {
     #[primary_span]
     pub span: Span,
+    #[suggestion(
+        "furthermore, argument types not allowed with return type notation",
+        applicability = "maybe-incorrect",
+        code = "(..)",
+        style = "verbose"
+    )]
+    pub suggestion: Option<Span>,
 }
 
 #[derive(Diagnostic)]
@@ -1903,4 +1932,29 @@ pub(crate) struct ImplUnpinForPinProjectedType {
     #[help("`{$adt_name}` is structurally pinned because it is marked as `#[pin_v2]`")]
     pub adt_span: Span,
     pub adt_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[{$eii_name}]` must be used on a {$expected_kind}")]
+pub(crate) struct EiiDefkindMismatch {
+    #[primary_span]
+    pub span: Span,
+    pub eii_name: Symbol,
+    pub expected_kind: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag("mutability does not match with the definition of`#[{$eii_name}]`")]
+pub(crate) struct EiiDefkindMismatchStaticMutability {
+    #[primary_span]
+    pub span: Span,
+    pub eii_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("safety does not match with the definition of`#[{$eii_name}]`")]
+pub(crate) struct EiiDefkindMismatchStaticSafety {
+    #[primary_span]
+    pub span: Span,
+    pub eii_name: Symbol,
 }

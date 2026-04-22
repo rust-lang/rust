@@ -124,8 +124,6 @@ macro_rules! assert_ne {
     };
 }
 
-// FIXME add back debug_assert_matches doc link after bootstrap.
-
 /// Asserts that an expression matches the provided pattern.
 ///
 /// This macro is generally preferable to `assert!(matches!(value, pattern))`, because it can print
@@ -137,8 +135,10 @@ macro_rules! assert_ne {
 /// otherwise this macro will panic.
 ///
 /// Assertions are always checked in both debug and release builds, and cannot
-/// be disabled. See `debug_assert_matches!` for assertions that are disabled in
+/// be disabled. See [`debug_assert_matches!`] for assertions that are disabled in
 /// release builds by default.
+///
+/// [`debug_assert_matches!`]: crate::debug_assert_matches
 ///
 /// On panic, this macro will print the value of the expression with its debug representation.
 ///
@@ -164,11 +164,11 @@ macro_rules! assert_ne {
 /// assert_matches!(a, Some(x) if x > 100);
 /// // assert_matches!(a, Some(x) if x < 100); // panics
 /// ```
-#[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "assert_matches", since = "1.95.0")]
 #[allow_internal_unstable(panic_internals)]
 #[rustc_macro_transparency = "semiopaque"]
 pub macro assert_matches {
-    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
+    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {{
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
@@ -179,8 +179,8 @@ pub macro assert_matches {
                 );
             }
         }
-    },
-    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )?, $($arg:tt)+) => {
+    }},
+    ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )?, $($arg:tt)+) => {{
         match $left {
             $( $pattern )|+ $( if $guard )? => {}
             ref left_val => {
@@ -191,7 +191,7 @@ pub macro assert_matches {
                 );
             }
         }
-    },
+    }},
 }
 
 /// Selects code at compile-time based on `cfg` predicates.
@@ -228,7 +228,7 @@ pub macro assert_matches {
 ///     _ => { "Behind every successful diet is an unwatched pizza" }
 /// };
 /// ```
-#[stable(feature = "cfg_select", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "cfg_select", since = "1.95.0")]
 #[rustc_diagnostic_item = "cfg_select"]
 #[rustc_builtin_macro]
 pub macro cfg_select($($tt:tt)*) {
@@ -391,7 +391,7 @@ macro_rules! debug_assert_ne {
 /// debug_assert_matches!(a, Some(x) if x > 100);
 /// // debug_assert_matches!(a, Some(x) if x < 100); // panics
 /// ```
-#[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "assert_matches", since = "1.95.0")]
 #[allow_internal_unstable(assert_matches)]
 #[rustc_macro_transparency = "semiopaque"]
 pub macro debug_assert_matches($($arg:tt)*) {
@@ -1720,7 +1720,7 @@ pub(crate) mod builtin {
     ///
     /// See [the reference] for more info.
     ///
-    /// [the reference]: ../../../reference/attributes/derive.html
+    /// [the reference]: ../reference/attributes/derive.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     pub macro derive($item:item) {

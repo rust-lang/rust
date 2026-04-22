@@ -65,6 +65,8 @@ ENV PATH="/build/emsdk:/build/emsdk/upstream/emscripten:/build/emsdk/node/curren
 ENV STAGING_DIR=/tmp
 
 COPY scripts/musl.sh /build
+COPY scripts/musl-cve-2026-6042.diff /build/
+COPY scripts/musl-cve-2026-40200.diff /build/
 RUN env \
     CC=arm-linux-gnueabi-gcc CFLAGS="-march=armv5te -marm -mfloat-abi=soft" \
     CXX=arm-linux-gnueabi-g++ CXXFLAGS="-march=armv5te -marm -mfloat-abi=soft" \
@@ -152,16 +154,14 @@ ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft
     CC_riscv64gc_unknown_none_elf=riscv64-unknown-elf-gcc \
     CFLAGS_riscv64gc_unknown_none_elf=-march=rv64gc -mabi=lp64
 
-ENV RUST_CONFIGURE_ARGS \
-      --musl-root-armv5te=/musl-armv5te \
+ENV RUST_CONFIGURE_ARGS="--musl-root-armv5te=/musl-armv5te \
       --musl-root-arm=/musl-arm \
       --musl-root-armhf=/musl-armhf \
       --musl-root-armv7hf=/musl-armv7hf \
-      --disable-docs
+      --disable-docs"
 
-ENV SCRIPT \
-      python3 ../x.py --stage 2 test --host='' --target $RUN_MAKE_TARGETS tests/run-make tests/run-make-cargo && \
-      python3 ../x.py dist --host='' --target $TARGETS
+ENV SCRIPT="python3 ../x.py --stage 2 test --host= --target $RUN_MAKE_TARGETS tests/run-make tests/run-make-cargo && \
+      python3 ../x.py dist --host= --target $TARGETS"
 
 # sccache
 COPY scripts/sccache.sh /scripts/

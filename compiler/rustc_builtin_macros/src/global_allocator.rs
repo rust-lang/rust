@@ -38,6 +38,12 @@ pub(crate) fn expand(
         return vec![orig_item];
     };
 
+    // Forbid `#[thread_local]` attributes on the item
+    if let Some(attr) = item.attrs.iter().find(|x| x.has_name(sym::thread_local)) {
+        ecx.dcx().emit_err(errors::AllocCannotThreadLocal { span: item.span, attr: attr.span });
+        return vec![orig_item];
+    }
+
     // Generate a bunch of new items using the AllocFnFactory
     let span = ecx.with_def_site_ctxt(item.span);
     let f = AllocFnFactory { span, ty_span, global: ident, cx: ecx };
@@ -180,7 +186,7 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn ptr_alignment(&self) -> Box<Ty> {
-        let path = self.cx.std_path(&[sym::ptr, sym::Alignment]);
+        let path = self.cx.std_path(&[sym::mem, sym::Alignment]);
         let path = self.cx.path(self.span, path);
         self.cx.ty_path(path)
     }

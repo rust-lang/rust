@@ -9,7 +9,8 @@ use hir::{
     HirDisplay, HirDisplayError, HirWrite, InRealFile, ModuleDef, ModuleDefId, Semantics, sym,
 };
 use ide_db::{
-    FileRange, MiniCore, RootDatabase, famous_defs::FamousDefs, text_edit::TextEditBuilder,
+    FileRange, RootDatabase, famous_defs::FamousDefs, ra_fixture::RaFixtureConfig,
+    text_edit::TextEditBuilder,
 };
 use ide_db::{FxHashSet, text_edit::TextEdit};
 use itertools::Itertools;
@@ -234,7 +235,7 @@ fn hints(
                         param_name::hints(hints, famous_defs, config, file_id, ast::Expr::from(it))
                     }
                     ast::Expr::ClosureExpr(it) => {
-                        closure_captures::hints(hints, famous_defs, config, it.clone());
+                        closure_captures::hints(hints, famous_defs, config, it.clone(), file_id.edition(sema.db));
                         closure_ret::hints(hints, famous_defs, config, display_target, it)
                     },
                     ast::Expr::RangeExpr(it) => range_exclusive::hints(hints, famous_defs, config, it),
@@ -302,6 +303,7 @@ fn hints(
 pub struct InlayHintsConfig<'a> {
     pub render_colons: bool,
     pub type_hints: bool,
+    pub type_hints_placement: TypeHintsPlacement,
     pub sized_bound: bool,
     pub discriminant_hints: DiscriminantHints,
     pub parameter_hints: bool,
@@ -328,7 +330,13 @@ pub struct InlayHintsConfig<'a> {
     pub max_length: Option<usize>,
     pub closing_brace_hints_min_lines: Option<usize>,
     pub fields_to_resolve: InlayFieldsToResolve,
-    pub minicore: MiniCore<'a>,
+    pub ra_fixture: RaFixtureConfig<'a>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TypeHintsPlacement {
+    Inline,
+    EndOfLine,
 }
 
 impl InlayHintsConfig<'_> {
@@ -899,7 +907,7 @@ mod tests {
 
     use expect_test::Expect;
     use hir::ClosureStyle;
-    use ide_db::MiniCore;
+    use ide_db::ra_fixture::RaFixtureConfig;
     use itertools::Itertools;
     use test_utils::extract_annotations;
 
@@ -907,12 +915,15 @@ mod tests {
     use crate::inlay_hints::{AdjustmentHints, AdjustmentHintsMode};
     use crate::{LifetimeElisionHints, fixture, inlay_hints::InlayHintsConfig};
 
-    use super::{ClosureReturnTypeHints, GenericParameterHints, InlayFieldsToResolve};
+    use super::{
+        ClosureReturnTypeHints, GenericParameterHints, InlayFieldsToResolve, TypeHintsPlacement,
+    };
 
     pub(super) const DISABLED_CONFIG: InlayHintsConfig<'_> = InlayHintsConfig {
         discriminant_hints: DiscriminantHints::Never,
         render_colons: false,
         type_hints: false,
+        type_hints_placement: TypeHintsPlacement::Inline,
         parameter_hints: false,
         parameter_hints_for_missing_arguments: false,
         sized_bound: false,
@@ -942,10 +953,11 @@ mod tests {
         implicit_drop_hints: false,
         implied_dyn_trait_hints: false,
         range_exclusive_hints: false,
-        minicore: MiniCore::default(),
+        ra_fixture: RaFixtureConfig::default(),
     };
     pub(super) const TEST_CONFIG: InlayHintsConfig<'_> = InlayHintsConfig {
         type_hints: true,
+        type_hints_placement: TypeHintsPlacement::Inline,
         parameter_hints: true,
         chaining_hints: true,
         closure_return_type_hints: ClosureReturnTypeHints::WithBlock,
@@ -1073,9 +1085,10 @@ fn foo() {
     fn closure_dependency_cycle_no_panic() {
         check(
             r#"
+//- minicore: fn
 fn foo() {
     let closure;
-     // ^^^^^^^ impl Fn()
+     // ^^^^^^^ impl FnOnce()
     closure = || {
         closure();
     };
@@ -1083,9 +1096,9 @@ fn foo() {
 
 fn bar() {
     let closure1;
-     // ^^^^^^^^ impl Fn()
+     // ^^^^^^^^ impl FnOnce()
     let closure2;
-     // ^^^^^^^^ impl Fn()
+     // ^^^^^^^^ impl FnOnce()
     closure1 = || {
         closure2();
     };

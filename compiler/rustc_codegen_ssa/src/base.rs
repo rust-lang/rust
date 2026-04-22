@@ -24,10 +24,10 @@ use rustc_middle::middle::exported_symbols::{self, SymbolExportKind};
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::BinOp;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
+use rustc_middle::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance, PatternKind, Ty, TyCtxt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType};
@@ -273,6 +273,13 @@ pub(crate) fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let src_ty = src.layout.ty;
     let dst_ty = dst.layout.ty;
     match (src_ty.kind(), dst_ty.kind()) {
+        (&ty::Pat(s, sp), &ty::Pat(d, dp))
+            if let (PatternKind::NotNull, PatternKind::NotNull) = (*sp, *dp) =>
+        {
+            let src = src.project_type(bx, s);
+            let dst = dst.project_type(bx, d);
+            coerce_unsized_into(bx, src, dst)
+        }
         (&ty::Ref(..), &ty::Ref(..) | &ty::RawPtr(..)) | (&ty::RawPtr(..), &ty::RawPtr(..)) => {
             let (base, info) = match bx.load_operand(src).val {
                 OperandValue::Pair(base, info) => unsize_ptr(bx, base, src_ty, dst_ty, Some(info)),
@@ -512,9 +519,10 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = cx
-            .tcx()
-            .normalize_erasing_regions(cx.typing_env(), main_ret_ty.no_bound_vars().unwrap());
+        let main_ret_ty = cx.tcx().normalize_erasing_regions(
+            cx.typing_env(),
+            Unnormalized::new_wip(main_ret_ty.no_bound_vars().unwrap()),
+        );
 
         let Some(llfn) = cx.declare_c_main(llfty) else {
             // FIXME: We should be smart and show a better diagnostic here.
@@ -681,7 +689,7 @@ pub fn allocator_shim_contents(tcx: TyCtxt<'_>, kind: AllocatorKind) -> Vec<Allo
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
-    target_cpu: String,
+    crate_info: &CrateInfo,
 ) -> OngoingCodegen<B> {
     if tcx.sess.target.need_explicit_cpu && tcx.sess.opts.cg.target_cpu.is_none() {
         // The target has no default cpu, but none is set explicitly
@@ -719,7 +727,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         None
     };
 
-    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, target_cpu, allocator_module);
+    let ongoing_codegen = start_async_codegen(backend.clone(), tcx, crate_info, allocator_module);
 
     // For better throughput during parallel processing by LLVM, we used to sort
     // CGUs largest to smallest. This would lead to better thread utilization
@@ -1118,7 +1126,7 @@ pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> 
         )
     });
 
-    if tcx.try_mark_green(&dep_node) {
+    if tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some() {
         // We can re-use either the pre- or the post-thinlto state. If no LTO is
         // being performed then we can use post-LTO artifacts, otherwise we must
         // reuse pre-LTO artifacts

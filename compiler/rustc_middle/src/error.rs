@@ -1,8 +1,7 @@
+use std::io;
 use std::path::Path;
-use std::{fmt, io};
 
 use rustc_errors::codes::*;
-use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -37,23 +36,8 @@ pub(crate) struct OpaqueHiddenTypeMismatch<'tcx> {
     pub sub: TypeMismatchReason,
 }
 
-#[derive(Diagnostic)]
-#[diag("we don't support unions yet: '{$ty_name}'")]
-pub struct UnsupportedUnion {
-    pub ty_name: String,
-}
-
-// FIXME(autodiff): I should get used somewhere
-#[derive(Diagnostic)]
-#[diag("reading from a `Duplicated` const {$ty} is unsafe")]
-pub struct AutodiffUnsafeInnerConstRef<'tcx> {
-    #[primary_span]
-    pub span: Span,
-    pub ty: Ty<'tcx>,
-}
-
 #[derive(Subdiagnostic)]
-pub enum TypeMismatchReason {
+pub(crate) enum TypeMismatchReason {
     #[label("this expression supplies two conflicting concrete types for the same opaque type")]
     ConflictType {
         #[primary_span]
@@ -112,56 +96,6 @@ pub(super) struct ConstNotUsedTraitAlias {
     pub ct: String,
     #[primary_span]
     pub span: Span,
-}
-
-pub struct CustomSubdiagnostic<'a> {
-    pub msg: fn() -> DiagMessage,
-    pub add_args: Box<dyn FnOnce(&mut dyn FnMut(DiagArgName, DiagArgValue)) + 'a>,
-}
-
-impl<'a> CustomSubdiagnostic<'a> {
-    pub fn label(x: fn() -> DiagMessage) -> Self {
-        Self::label_and_then(x, |_| {})
-    }
-    pub fn label_and_then<F: FnOnce(&mut dyn FnMut(DiagArgName, DiagArgValue)) + 'a>(
-        msg: fn() -> DiagMessage,
-        f: F,
-    ) -> Self {
-        Self { msg, add_args: Box::new(move |x| f(x)) }
-    }
-}
-
-impl fmt::Debug for CustomSubdiagnostic<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CustomSubdiagnostic").finish_non_exhaustive()
-    }
-}
-
-#[derive(Diagnostic)]
-pub enum LayoutError<'tcx> {
-    #[diag("the type `{$ty}` has an unknown layout")]
-    Unknown { ty: Ty<'tcx> },
-
-    #[diag("the type `{$ty}` does not have a fixed layout")]
-    TooGeneric { ty: Ty<'tcx> },
-
-    #[diag("values of the type `{$ty}` are too big for the target architecture")]
-    Overflow { ty: Ty<'tcx> },
-
-    #[diag("the SIMD type `{$ty}` has more elements than the limit {$max_lanes}")]
-    SimdTooManyLanes { ty: Ty<'tcx>, max_lanes: u64 },
-
-    #[diag("the SIMD type `{$ty}` has zero elements")]
-    SimdZeroLength { ty: Ty<'tcx> },
-
-    #[diag("unable to determine layout for `{$ty}` because `{$failure_ty}` cannot be normalized")]
-    NormalizationFailure { ty: Ty<'tcx>, failure_ty: String },
-
-    #[diag("a cycle occurred during layout computation")]
-    Cycle,
-
-    #[diag("the type has an unknown layout")]
-    ReferencesError,
 }
 
 #[derive(Diagnostic)]

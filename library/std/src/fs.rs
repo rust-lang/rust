@@ -815,7 +815,8 @@ impl File {
 
     /// Acquire an exclusive lock on the file. Blocks until the lock can be acquired.
     ///
-    /// This acquires an exclusive lock; no other file handle to this file may acquire another lock.
+    /// This acquires an exclusive lock; no other file handle to this file, in this or any other
+    /// process, may acquire another lock.
     ///
     /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
     /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
@@ -868,8 +869,8 @@ impl File {
 
     /// Acquire a shared (non-exclusive) lock on the file. Blocks until the lock can be acquired.
     ///
-    /// This acquires a shared lock; more than one file handle may hold a shared lock, but none may
-    /// hold an exclusive lock at the same time.
+    /// This acquires a shared lock; more than one file handle, in this or any other process, may
+    /// hold a shared lock, but none may hold an exclusive lock at the same time.
     ///
     /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
     /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
@@ -923,7 +924,8 @@ impl File {
     /// Returns `Err(TryLockError::WouldBlock)` if a different lock is already held on this file
     /// (via another handle/descriptor).
     ///
-    /// This acquires an exclusive lock; no other file handle to this file may acquire another lock.
+    /// This acquires an exclusive lock; no other file handle to this file, in this or any other
+    /// process, may acquire another lock.
     ///
     /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
     /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
@@ -987,8 +989,8 @@ impl File {
     /// Returns `Err(TryLockError::WouldBlock)` if a different lock is already held on this file
     /// (via another handle/descriptor).
     ///
-    /// This acquires a shared lock; more than one file handle may hold a shared lock, but none may
-    /// hold an exclusive lock at the same time.
+    /// This acquires a shared lock; more than one file handle, in this or any other process, may
+    /// hold a shared lock, but none may hold an exclusive lock at the same time.
     ///
     /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
     /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
@@ -2680,7 +2682,7 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 ///
 /// This function will only ever return an error of kind `NotFound` if the given
 /// path does not exist. Note that the inverse is not true,
-/// ie. if a path does not exist, its removal may fail for a number of reasons,
+/// i.e. if a path does not exist, its removal may fail for a number of reasons,
 /// such as insufficient permissions.
 ///
 /// # Examples
@@ -2894,7 +2896,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds the `CreateHardLink` function on Windows.
+/// This function currently corresponds to the `CreateHardLink` function on Windows.
 /// On most Unix systems, it corresponds to the `linkat` function with no flags.
 /// On Android, VxWorks, and Redox, it instead corresponds to the `link` function.
 /// On MacOS, it uses the `linkat` function if it is available, but on very old
@@ -3150,7 +3152,7 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// This function will only ever return an error of kind `NotFound` if the given
 /// path does not exist. Note that the inverse is not true,
-/// ie. if a path does not exist, its removal may fail for a number of reasons,
+/// i.e. if a path does not exist, its removal may fail for a number of reasons,
 /// such as insufficient permissions.
 ///
 /// # Examples

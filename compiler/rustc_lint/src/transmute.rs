@@ -216,7 +216,7 @@ fn check_ptr_transmute_in_const<'tcx>(
     dst: Ty<'tcx>,
 ) {
     if matches!(const_context, Some(hir::ConstContext::ConstFn))
-        || matches!(cx.tcx.def_kind(body_owner_def_id), DefKind::AssocConst)
+        || matches!(cx.tcx.def_kind(body_owner_def_id), DefKind::AssocConst { .. })
     {
         if src.is_raw_ptr() && dst.is_integral() {
             cx.tcx.emit_node_span_lint(
@@ -357,15 +357,24 @@ fn check_unnecessary_transmute<'tcx>(
         _ => return,
     };
 
-    cx.tcx.node_span_lint(UNNECESSARY_TRANSMUTES, expr.hir_id, expr.span, |diag| {
-        diag.primary_message("unnecessary transmute");
-        if let Some(sugg) = sugg {
-            diag.multipart_suggestion("replace this with", sugg, Applicability::MachineApplicable);
-        }
-        if let Some(help) = help {
-            diag.help(help);
-        }
-    });
+    cx.tcx.emit_node_span_lint(
+        UNNECESSARY_TRANSMUTES,
+        expr.hir_id,
+        expr.span,
+        rustc_errors::DiagDecorator(|diag| {
+            diag.primary_message("unnecessary transmute");
+            if let Some(sugg) = sugg {
+                diag.multipart_suggestion(
+                    "replace this with",
+                    sugg,
+                    Applicability::MachineApplicable,
+                );
+            }
+            if let Some(help) = help {
+                diag.help(help);
+            }
+        }),
+    );
 }
 
 #[derive(Diagnostic)]

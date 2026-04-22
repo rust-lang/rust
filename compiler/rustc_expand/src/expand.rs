@@ -8,14 +8,15 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
     self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrItemKind, AttrStyle, AttrVec,
-    DUMMY_NODE_ID, EarlyParsedAttribute, ExprKind, ForeignItemKind, HasAttrs, HasNodeId, Inline,
-    ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind, NodeId, PatKind, StmtKind,
-    TyKind, token,
+    DUMMY_NODE_ID, DelegationSuffixes, EarlyParsedAttribute, ExprKind, ForeignItemKind, HasAttrs,
+    HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind, NodeId,
+    PatKind, StmtKind, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
+use rustc_attr_parsing::parser::AllowExprMetavar;
 use rustc_attr_parsing::{
-    AttributeParser, CFG_TEMPLATE, Early, EvalConfigResult, ShouldEmit, eval_config_entry,
-    parse_cfg, validate_attr,
+    AttributeParser, AttributeSafety, CFG_TEMPLATE, Early, EvalConfigResult, ShouldEmit,
+    eval_config_entry, parse_cfg, validate_attr,
 };
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -182,8 +183,8 @@ macro_rules! ast_fragments {
             }
         }
 
-        impl<'a> MacResult for crate::mbe::macro_rules::ParserAnyMacro<'a> {
-            $(fn $make_ast(self: Box<crate::mbe::macro_rules::ParserAnyMacro<'a>>)
+        impl<'a, 'b> MacResult for crate::mbe::macro_rules::ParserAnyMacro<'a, 'b> {
+            $(fn $make_ast(self: Box<crate::mbe::macro_rules::ParserAnyMacro<'a, 'b>>)
                            -> Option<$AstTy> {
                 Some(self.make(AstFragmentKind::$Kind).$make_ast())
             })*
@@ -814,6 +815,27 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         {
                             rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
                         }
+                        Annotatable::Item(item_inner) if item_inner.tokens.is_none() => {
+                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
+                        }
+                        // When a function has EII implementations attached (via `eii_impls`),
+                        // use fake tokens so the pretty-printer re-emits the EII attribute
+                        // (e.g. `#[hello]`) in the token stream. Without this, the EII
+                        // attribute is lost during the token roundtrip performed by
+                        // `AttrProcMacro` expanders like `contracts::requires/ensures`,
+                        // breaking the EII link on the resulting re-parsed item.
+                        Annotatable::Item(item_inner)
+                            if matches!(&item_inner.kind,
+                                ItemKind::Fn(f) if !f.eii_impls.is_empty()) =>
+                        {
+                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
+                        }
+                        Annotatable::ForeignItem(item_inner) if item_inner.tokens.is_none() => {
+                            rustc_parse::fake_token_stream_for_foreign_item(
+                                &self.cx.sess.psess,
+                                item_inner,
+                            )
+                        }
                         _ => item.to_tokens(),
                     };
                     let attr_item = attr.get_normal_item();
@@ -1028,7 +1050,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             return;
         }
         feature_err(
-            &self.cx.sess,
+            self.cx.sess,
             sym::proc_macro_hygiene,
             span,
             format!("custom attributes cannot be applied to {kind}"),
@@ -1063,7 +1085,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
 
         if !self.cx.ecfg.features.proc_macro_hygiene() {
-            annotatable.visit_with(&mut GateProcMacroInput { sess: &self.cx.sess });
+            annotatable.visit_with(&mut GateProcMacroInput { sess: self.cx.sess });
         }
     }
 
@@ -1305,6 +1327,8 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
     fn declared_idents(&self) -> Vec<Ident> {
         vec![]
     }
+
+    fn as_target(&self) -> Target;
 }
 
 impl InvocationCollectorNode for Box<ast::Item> {
@@ -1440,7 +1464,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
         if let ItemKind::Use(ut) = &self.kind {
             fn collect_use_tree_leaves(ut: &ast::UseTree, idents: &mut Vec<Ident>) {
                 match &ut.kind {
-                    ast::UseTreeKind::Glob => {}
+                    ast::UseTreeKind::Glob(_) => {}
                     ast::UseTreeKind::Simple(_) => idents.push(ut.ident()),
                     ast::UseTreeKind::Nested { items, .. } => {
                         for (ut, _) in items {
@@ -1450,11 +1474,15 @@ impl InvocationCollectorNode for Box<ast::Item> {
                 }
             }
             let mut idents = Vec::new();
-            collect_use_tree_leaves(&ut, &mut idents);
+            collect_use_tree_leaves(ut, &mut idents);
             idents
         } else {
             self.kind.ident().into_iter().collect()
         }
+    }
+
+    fn as_target(&self) -> Target {
+        Target::from_ast_item(self)
     }
 }
 
@@ -1497,6 +1525,9 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitItemTa
     fn flatten_outputs(items: impl Iterator<Item = Self::OutputTy>) -> Self::OutputTy {
         items.flatten().collect()
     }
+    fn as_target(&self) -> Target {
+        Target::from_assoc_item_kind(&self.wrapped.kind, AssocCtxt::Trait)
+    }
 }
 
 struct ImplItemTag;
@@ -1537,6 +1568,9 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag
     }
     fn flatten_outputs(items: impl Iterator<Item = Self::OutputTy>) -> Self::OutputTy {
         items.flatten().collect()
+    }
+    fn as_target(&self) -> Target {
+        Target::from_assoc_item_kind(&self.wrapped.kind, AssocCtxt::Impl { of_trait: false })
     }
 }
 
@@ -1579,6 +1613,9 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::AssocItem>, TraitImplIt
     fn flatten_outputs(items: impl Iterator<Item = Self::OutputTy>) -> Self::OutputTy {
         items.flatten().collect()
     }
+    fn as_target(&self) -> Target {
+        Target::from_assoc_item_kind(&self.wrapped.kind, AssocCtxt::Impl { of_trait: true })
+    }
 }
 
 impl InvocationCollectorNode for Box<ast::ForeignItem> {
@@ -1601,6 +1638,14 @@ impl InvocationCollectorNode for Box<ast::ForeignItem> {
             _ => unreachable!(),
         }
     }
+    fn as_target(&self) -> Target {
+        match &self.kind {
+            ForeignItemKind::Static(_) => Target::ForeignStatic,
+            ForeignItemKind::Fn(_) => Target::ForeignFn,
+            ForeignItemKind::TyAlias(_) => Target::ForeignTy,
+            ForeignItemKind::MacCall(_) => Target::MacroCall,
+        }
+    }
 }
 
 impl InvocationCollectorNode for ast::Variant {
@@ -1613,6 +1658,9 @@ impl InvocationCollectorNode for ast::Variant {
     }
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_variant(collector, self)
+    }
+    fn as_target(&self) -> Target {
+        Target::Variant
     }
 }
 
@@ -1627,6 +1675,9 @@ impl InvocationCollectorNode for ast::WherePredicate {
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_where_predicate(collector, self)
     }
+    fn as_target(&self) -> Target {
+        Target::WherePredicate
+    }
 }
 
 impl InvocationCollectorNode for ast::FieldDef {
@@ -1639,6 +1690,9 @@ impl InvocationCollectorNode for ast::FieldDef {
     }
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_field_def(collector, self)
+    }
+    fn as_target(&self) -> Target {
+        Target::Field
     }
 }
 
@@ -1653,6 +1707,9 @@ impl InvocationCollectorNode for ast::PatField {
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_pat_field(collector, self)
     }
+    fn as_target(&self) -> Target {
+        Target::PatField
+    }
 }
 
 impl InvocationCollectorNode for ast::ExprField {
@@ -1665,6 +1722,9 @@ impl InvocationCollectorNode for ast::ExprField {
     }
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_expr_field(collector, self)
+    }
+    fn as_target(&self) -> Target {
+        Target::ExprField
     }
 }
 
@@ -1679,6 +1739,9 @@ impl InvocationCollectorNode for ast::Param {
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_param(collector, self)
     }
+    fn as_target(&self) -> Target {
+        Target::Param
+    }
 }
 
 impl InvocationCollectorNode for ast::GenericParam {
@@ -1692,6 +1755,25 @@ impl InvocationCollectorNode for ast::GenericParam {
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_generic_param(collector, self)
     }
+    fn as_target(&self) -> Target {
+        let mut has_default = false;
+        Target::GenericParam {
+            kind: match &self.kind {
+                rustc_ast::GenericParamKind::Lifetime => {
+                    rustc_hir::target::GenericParamKind::Lifetime
+                }
+                rustc_ast::GenericParamKind::Type { default } => {
+                    has_default = default.is_some();
+                    rustc_hir::target::GenericParamKind::Type
+                }
+                rustc_ast::GenericParamKind::Const { default, .. } => {
+                    has_default = default.is_some();
+                    rustc_hir::target::GenericParamKind::Const
+                }
+            },
+            has_default,
+        }
+    }
 }
 
 impl InvocationCollectorNode for ast::Arm {
@@ -1704,6 +1786,9 @@ impl InvocationCollectorNode for ast::Arm {
     }
     fn walk_flat_map(self, collector: &mut InvocationCollector<'_, '_>) -> Self::OutputTy {
         walk_flat_map_arm(collector, self)
+    }
+    fn as_target(&self) -> Target {
+        Target::Arm
     }
 }
 
@@ -1778,6 +1863,9 @@ impl InvocationCollectorNode for ast::Stmt {
             }
         }
     }
+    fn as_target(&self) -> Target {
+        Target::Statement
+    }
 }
 
 impl InvocationCollectorNode for ast::Crate {
@@ -1803,6 +1891,9 @@ impl InvocationCollectorNode for ast::Crate {
         self.attrs.truncate(pos);
         // Standard prelude imports are left in the crate for backward compatibility.
         self.items.truncate(collector.cx.num_standard_library_imports);
+    }
+    fn as_target(&self) -> Target {
+        Target::Crate
     }
 }
 
@@ -1837,6 +1928,10 @@ impl InvocationCollectorNode for ast::Ty {
             _ => unreachable!(),
         }
     }
+    fn as_target(&self) -> Target {
+        // This is only used for attribute parsing, which are not allowed on types.
+        unreachable!()
+    }
 }
 
 impl InvocationCollectorNode for ast::Pat {
@@ -1859,6 +1954,9 @@ impl InvocationCollectorNode for ast::Pat {
             PatKind::MacCall(mac) => (mac, AttrVec::new(), AddSemicolon::No),
             _ => unreachable!(),
         }
+    }
+    fn as_target(&self) -> Target {
+        todo!();
     }
 }
 
@@ -1885,6 +1983,9 @@ impl InvocationCollectorNode for ast::Expr {
             ExprKind::MacCall(mac) => (mac, self.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
+    }
+    fn as_target(&self) -> Target {
+        Target::Expression
     }
 }
 
@@ -1914,6 +2015,9 @@ impl InvocationCollectorNode for AstNodeWrapper<Box<ast::Expr>, OptExprTag> {
     }
     fn pre_flat_map_node_collect_attr(cfg: &StripUnconfigured<'_>, attr: &ast::Attribute) {
         cfg.maybe_emit_expr_attr_err(attr);
+    }
+    fn as_target(&self) -> Target {
+        Target::Expression
     }
 }
 
@@ -1945,6 +2049,9 @@ impl InvocationCollectorNode for AstNodeWrapper<ast::Expr, MethodReceiverTag> {
             ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
             _ => unreachable!(),
         }
+    }
+    fn as_target(&self) -> Target {
+        Target::Expression
     }
 }
 
@@ -2209,7 +2316,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
     fn expand_cfg_true(
         &mut self,
-        node: &mut (impl HasAttrs + HasNodeId),
+        node: &mut impl InvocationCollectorNode,
         attr: ast::Attribute,
         pos: usize,
     ) -> EvalConfigResult {
@@ -2218,12 +2325,13 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             &attr,
             attr.span,
             self.cfg().lint_node_id,
-            // Target doesn't matter for `cfg` parsing.
-            Target::Crate,
+            node.as_target(),
             self.cfg().features,
             ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             parse_cfg,
             &CFG_TEMPLATE,
+            AllowExprMetavar::Yes,
+            AttributeSafety::Normal,
         ) else {
             // Cfg attribute was not parsable, give up
             return EvalConfigResult::True;
@@ -2294,7 +2402,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     res
                 }
                 None if let Some((deleg, item)) = node.delegation() => {
-                    let Some(suffixes) = &deleg.suffixes else {
+                    let DelegationSuffixes::List(suffixes) = &deleg.suffixes else {
                         let traitless_qself =
                             matches!(&deleg.qself, Some(qself) if qself.position == 0);
                         let (item, of_trait) = match node.to_annotatable() {

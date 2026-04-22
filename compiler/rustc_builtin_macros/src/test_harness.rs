@@ -61,7 +61,7 @@ pub fn inject(
 
     // Do this here so that the test_runner crate attribute gets marked as used
     // even in non-test builds
-    let test_runner = get_test_runner(sess, features, krate);
+    let test_runner = get_test_runner(sess, krate);
 
     if sess.is_test_crate() {
         let panic_strategy = match (panic_strategy, sess.opts.unstable_opts.panic_abort_tests) {
@@ -370,6 +370,8 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> Box<ast::Expr> {
     let ecx = &cx.ext_cx;
 
     let mut tests = cx.test_cases.clone();
+    // Note that this sort is load-bearing: the libtest harness uses binary search to find tests by
+    // name.
     tests.sort_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
 
     ecx.expr_array_ref(
@@ -387,15 +389,8 @@ fn get_test_name(i: &ast::Item) -> Option<Symbol> {
     attr::first_attr_value_str_by_name(&i.attrs, sym::rustc_test_marker)
 }
 
-fn get_test_runner(sess: &Session, features: &Features, krate: &ast::Crate) -> Option<ast::Path> {
-    match AttributeParser::parse_limited(
-        sess,
-        &krate.attrs,
-        sym::test_runner,
-        krate.spans.inner_span,
-        krate.id,
-        Some(features),
-    ) {
+fn get_test_runner(sess: &Session, krate: &ast::Crate) -> Option<ast::Path> {
+    match AttributeParser::parse_limited(sess, &krate.attrs, &[sym::test_runner]) {
         Some(rustc_hir::Attribute::Parsed(AttributeKind::TestRunner(path))) => Some(path),
         _ => None,
     }

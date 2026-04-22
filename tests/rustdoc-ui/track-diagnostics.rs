@@ -3,6 +3,7 @@
 // Normalize the emitted location so this doesn't need
 // updating everytime someone adds or removes a line.
 //@ normalize-stderr: ".rs:\d+:\d+" -> ".rs:LL:CC"
+//@ normalize-stderr: "/rustc(?:-dev)?/[a-z0-9.]+/" -> ""
 
 struct A;
 struct B;
@@ -11,3 +12,4 @@ pub const S: A = B;
 //~^ ERROR mismatched types
 //~| NOTE created at
 //~| NOTE expected `A`, found `B`
+//~| NOTE expected because of the type of the const

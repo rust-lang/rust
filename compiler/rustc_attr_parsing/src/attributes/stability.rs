@@ -1,6 +1,8 @@
 use std::num::NonZero;
 
 use rustc_errors::ErrorGuaranteed;
+use rustc_feature::ACCEPTED_LANG_FEATURES;
+use rustc_hir::attrs::UnstableRemovedFeature;
 use rustc_hir::target::GenericParamKind;
 use rustc_hir::{
     DefaultBodyStability, MethodKind, PartialConstStability, Stability, StabilityLevel,
@@ -101,11 +103,12 @@ impl<S: Stage> AttributeParser<S> for StabilityParser {
             |this, cx, args| {
                 reject_outside_std!(cx);
                 let Some(nv) = args.name_value() else {
-                    cx.expected_name_value(cx.attr_span, None);
+                    let attr_span = cx.attr_span;
+                    cx.adcx().expected_name_value(attr_span, None);
                     return;
                 };
                 let Some(value_str) = nv.value_as_str() else {
-                    cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+                    cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
                     return;
                 };
                 this.allowed_through_unstable_modules = Some(value_str);
@@ -280,13 +283,13 @@ impl<S: Stage> AttributeParser<S> for ConstStabilityParser {
 /// Emits an error when either the option was already Some, or the arguments weren't of form
 /// `name = value`
 fn insert_value_into_option_or_error<S: Stage>(
-    cx: &AcceptContext<'_, '_, S>,
+    cx: &mut AcceptContext<'_, '_, S>,
     param: &MetaItemParser,
     item: &mut Option<Symbol>,
     name: Ident,
 ) -> Option<()> {
     if item.is_some() {
-        cx.duplicate_key(name.span, name.name);
+        cx.adcx().duplicate_key(name.span, name.name);
         None
     } else if let Some(v) = param.args().name_value()
         && let Some(s) = v.value_as_str()
@@ -294,7 +297,7 @@ fn insert_value_into_option_or_error<S: Stage>(
         *item = Some(s);
         Some(())
     } else {
-        cx.expected_name_value(param.span(), Some(name.name));
+        cx.adcx().expected_name_value(param.span(), Some(name.name));
         None
     }
 }
@@ -302,21 +305,22 @@ fn insert_value_into_option_or_error<S: Stage>(
 /// Read the content of a `stable`/`rustc_const_stable` attribute, and return the feature name and
 /// its stability information.
 pub(crate) fn parse_stability<S: Stage>(
-    cx: &AcceptContext<'_, '_, S>,
+    cx: &mut AcceptContext<'_, '_, S>,
     args: &ArgParser,
 ) -> Option<(Symbol, StabilityLevel)> {
     let mut feature = None;
     let mut since = None;
 
     let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span, args);
+        let attr_span = cx.attr_span;
+        cx.adcx().expected_list(attr_span, args);
         return None;
     };
 
     for param in list.mixed() {
         let param_span = param.span();
         let Some(param) = param.meta_item() else {
-            cx.unexpected_literal(param.span());
+            cx.adcx().expected_not_literal(param.span());
             return None;
         };
 
@@ -329,7 +333,7 @@ pub(crate) fn parse_stability<S: Stage>(
                 insert_value_into_option_or_error(cx, &param, &mut since, word.unwrap())?
             }
             _ => {
-                cx.expected_specific_argument(param_span, &[sym::feature, sym::since]);
+                cx.adcx().expected_specific_argument(param_span, &[sym::feature, sym::since]);
                 return None;
             }
         }
@@ -366,28 +370,28 @@ pub(crate) fn parse_stability<S: Stage>(
     }
 }
 
-// Read the content of a `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
+/// Read the content of a `unstable`/`rustc_const_unstable`/`rustc_default_body_unstable`
 /// attribute, and return the feature name and its stability information.
 pub(crate) fn parse_unstability<S: Stage>(
-    cx: &AcceptContext<'_, '_, S>,
+    cx: &mut AcceptContext<'_, '_, S>,
     args: &ArgParser,
 ) -> Option<(Symbol, StabilityLevel)> {
     let mut feature = None;
     let mut reason = None;
     let mut issue = None;
     let mut issue_num = None;
-    let mut is_soft = false;
     let mut implied_by = None;
     let mut old_name = None;
 
     let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span, args);
+        let attr_span = cx.attr_span;
+        cx.adcx().expected_list(attr_span, args);
         return None;
     };
 
     for param in list.mixed() {
         let Some(param) = param.meta_item() else {
-            cx.unexpected_literal(param.span());
+            cx.adcx().expected_not_literal(param.span());
             return None;
         };
 
@@ -423,12 +427,6 @@ pub(crate) fn parse_unstability<S: Stage>(
                     },
                 };
             }
-            Some(sym::soft) => {
-                if let Err(span) = args.no_args() {
-                    cx.emit_err(session_diagnostics::SoftNoArgs { span });
-                }
-                is_soft = true;
-            }
             Some(sym::implied_by) => {
                 insert_value_into_option_or_error(cx, &param, &mut implied_by, word.unwrap())?
             }
@@ -436,16 +434,9 @@ pub(crate) fn parse_unstability<S: Stage>(
                 insert_value_into_option_or_error(cx, &param, &mut old_name, word.unwrap())?
             }
             _ => {
-                cx.expected_specific_argument(
+                cx.adcx().expected_specific_argument(
                     param.span(),
-                    &[
-                        sym::feature,
-                        sym::reason,
-                        sym::issue,
-                        sym::soft,
-                        sym::implied_by,
-                        sym::old_name,
-                    ],
+                    &[sym::feature, sym::reason, sym::issue, sym::implied_by, sym::old_name],
                 );
                 return None;
             }
@@ -465,15 +456,110 @@ pub(crate) fn parse_unstability<S: Stage>(
 
     match (feature, issue) {
         (Ok(feature), Ok(_)) => {
+            // Stable *language* features shouldn't be used as unstable library features.
+            // (Not doing this for stable library features is checked by tidy.)
+            if ACCEPTED_LANG_FEATURES.iter().any(|f| f.name == feature) {
+                cx.emit_err(session_diagnostics::UnstableAttrForAlreadyStableFeature {
+                    attr_span: cx.attr_span,
+                    item_span: cx.target_span,
+                });
+                return None;
+            }
+
             let level = StabilityLevel::Unstable {
                 reason: UnstableReason::from_opt_reason(reason),
                 issue: issue_num,
-                is_soft,
                 implied_by,
                 old_name,
             };
             Some((feature, level))
         }
         (Err(ErrorGuaranteed { .. }), _) | (_, Err(ErrorGuaranteed { .. })) => None,
+    }
+}
+
+pub(crate) struct UnstableRemovedParser;
+
+impl<S: Stage> CombineAttributeParser<S> for UnstableRemovedParser {
+    type Item = UnstableRemovedFeature;
+    const PATH: &[Symbol] = &[sym::unstable_removed];
+    const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
+    const TEMPLATE: AttributeTemplate =
+        template!(List: &[r#"feature = "name", reason = "...", link = "...", since = "version""#]);
+
+    const CONVERT: ConvertFn<Self::Item> = |items, _| AttributeKind::UnstableRemoved(items);
+
+    fn extend(
+        cx: &mut AcceptContext<'_, '_, S>,
+        args: &ArgParser,
+    ) -> impl IntoIterator<Item = Self::Item> {
+        let mut feature = None;
+        let mut reason = None;
+        let mut link = None;
+        let mut since = None;
+
+        if !cx.features().staged_api() {
+            cx.emit_err(session_diagnostics::StabilityOutsideStd { span: cx.attr_span });
+            return None;
+        }
+
+        let ArgParser::List(list) = args else {
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
+            return None;
+        };
+
+        for param in list.mixed() {
+            let Some(param) = param.meta_item() else {
+                cx.adcx().expected_not_literal(param.span());
+                return None;
+            };
+
+            let Some(word) = param.path().word() else {
+                cx.adcx().expected_specific_argument(
+                    param.span(),
+                    &[sym::feature, sym::reason, sym::link, sym::since],
+                );
+                return None;
+            };
+            match word.name {
+                sym::feature => insert_value_into_option_or_error(cx, &param, &mut feature, word)?,
+                sym::since => insert_value_into_option_or_error(cx, &param, &mut since, word)?,
+                sym::reason => insert_value_into_option_or_error(cx, &param, &mut reason, word)?,
+                sym::link => insert_value_into_option_or_error(cx, &param, &mut link, word)?,
+                _ => {
+                    cx.adcx().expected_specific_argument(
+                        param.span(),
+                        &[sym::feature, sym::reason, sym::link, sym::since],
+                    );
+                    return None;
+                }
+            }
+        }
+
+        // Check all the arguments are present
+        let Some(feature) = feature else {
+            cx.adcx().missing_name_value(list.span, sym::feature);
+            return None;
+        };
+        let Some(reason) = reason else {
+            cx.adcx().missing_name_value(list.span, sym::reason);
+            return None;
+        };
+        let Some(link) = link else {
+            cx.adcx().missing_name_value(list.span, sym::link);
+            return None;
+        };
+        let Some(since) = since else {
+            cx.adcx().missing_name_value(list.span, sym::since);
+            return None;
+        };
+
+        let Some(version) = parse_version(since) else {
+            cx.emit_err(session_diagnostics::InvalidSince { span: cx.attr_span });
+            return None;
+        };
+
+        Some(UnstableRemovedFeature { feature, reason, link, since: version })
     }
 }

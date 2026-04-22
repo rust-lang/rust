@@ -333,7 +333,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Opaque types of empty bodies also need this unit assignment, in order to infer that their
             // type is actually unit. Otherwise there will be no defining use found in the MIR.
             if destination_ty.is_unit()
-                || matches!(destination_ty.kind(), ty::Alias(ty::Opaque, ..))
+                || matches!(
+                    destination_ty.kind(),
+                    ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })
+                )
             {
                 // We only want to assign an implicit `()` as the return value of the block if the
                 // block does not diverge. (Otherwise, we may try to assign a unit to a `!`-type.)

@@ -1,4 +1,4 @@
-use crate::num::TryFromIntError;
+use crate::num::{IntErrorKind, TryFromIntError};
 
 mod private {
     /// This trait being unreachable from outside the crate
@@ -70,8 +70,8 @@ impl_from_bool!(i8 i16 i32 i64 i128 isize);
 
 /// Implement `From<$small>` for `$large`
 macro_rules! impl_from {
-    ($small:ty => $large:ty, #[$attr:meta]) => {
-        #[$attr]
+    ($small:ty => $large:ty, $(#[$attrs:meta]),+) => {
+        $(#[$attrs])+
         #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
         impl const From<$small> for $large {
             #[doc = concat!("Converts from [`", stringify!($small), "`] to [`", stringify!($large), "`] losslessly.")]
@@ -157,8 +157,7 @@ impl_from!(i16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0"
 impl_from!(i16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(i32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(i32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-// FIXME(f128): This impl would allow using `f128` on stable before it is stabilised.
-// impl_from!(i64 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(i64 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 
 // unsigned integer -> float
 impl_from!(u8 => f16, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
@@ -170,12 +169,17 @@ impl_from!(u16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0"
 impl_from!(u16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(u32 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
-// FIXME(f128): This impl would allow using `f128` on stable before it is stabilised.
-// impl_from!(u64 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
+impl_from!(u64 => f128, #[unstable(feature = "f128", issue = "116909")], #[unstable_feature_bound(f128)]);
 
 // float -> float
-// FIXME(f16,f128): adding additional `From<{float}>` impls to `f32` breaks inference. See
-// <https://github.com/rust-lang/rust/issues/123831>
+
+// FIXME(f16): adding the additional `From<{float}>` impl to `f32` would break inference in cases
+// like `f32::from(1.0)`. The type checker has a custom workaround to keep that and similar code
+// compiling even with the second `From<16> for f32` instance. We keep this instance unstable for
+// now so that we can later remove the workaround.
+//
+// See also <https://github.com/rust-lang/rust/issues/123831>.
+impl_from!(f16 => f32, #[unstable(feature = "f32_from_f16", issue = "154005")], #[unstable_feature_bound(f32_from_f16)]);
 impl_from!(f16 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(f16 => f128, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
 impl_from!(f32 => f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")]);
@@ -198,11 +202,11 @@ macro_rules! impl_float_from_bool {
             /// # Examples
             /// ```
             $($(#[doc = $doctest_prefix])*)?
-            #[doc = concat!("let x: ", stringify!($float)," = false.into();")]
+            #[doc = concat!("let x = ", stringify!($float), "::from(false);")]
             /// assert_eq!(x, 0.0);
             /// assert!(x.is_sign_positive());
             ///
-            #[doc = concat!("let y: ", stringify!($float)," = true.into();")]
+            #[doc = concat!("let y = ", stringify!($float), "::from(true);")]
             /// assert_eq!(y, 1.0);
             $($(#[doc = $doctest_suffix])*)?
             /// ```
@@ -274,7 +278,7 @@ macro_rules! impl_try_from_lower_bounded {
                 if u >= 0 {
                     Ok(u as Self)
                 } else {
-                    Err(TryFromIntError(()))
+                    Err(TryFromIntError(IntErrorKind::NegOverflow))
                 }
             }
         }
@@ -295,7 +299,7 @@ macro_rules! impl_try_from_upper_bounded {
             #[inline]
             fn try_from(u: $source) -> Result<Self, Self::Error> {
                 if u > (Self::MAX as $source) {
-                    Err(TryFromIntError(()))
+                    Err(TryFromIntError(IntErrorKind::PosOverflow))
                 } else {
                     Ok(u as Self)
                 }
@@ -319,8 +323,10 @@ macro_rules! impl_try_from_both_bounded {
             fn try_from(u: $source) -> Result<Self, Self::Error> {
                 let min = Self::MIN as $source;
                 let max = Self::MAX as $source;
-                if u < min || u > max {
-                    Err(TryFromIntError(()))
+                if u < min {
+                    Err(TryFromIntError(IntErrorKind::NegOverflow))
+                } else if u > max {
+                    Err(TryFromIntError(IntErrorKind::PosOverflow))
                 } else {
                     Ok(u as Self)
                 }
@@ -331,8 +337,8 @@ macro_rules! impl_try_from_both_bounded {
 
 /// Implement `TryFrom<integer>` for `bool`
 macro_rules! impl_try_from_integer_for_bool {
-    ($($int:ty)+) => {$(
-        #[stable(feature = "try_from", since = "1.34.0")]
+    ($signedness:ident $($int:ty)+) => {$(
+        #[stable(feature = "bool_try_from_int", since = "1.95.0")]
         #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
         impl const TryFrom<$int> for bool {
             type Error = TryFromIntError;
@@ -343,18 +349,31 @@ macro_rules! impl_try_from_integer_for_bool {
             /// # Examples
             ///
             /// ```
-            #[doc = concat!("assert_eq!(0_", stringify!($int), ".try_into(), Ok(false));")]
+            #[doc = concat!("assert_eq!(bool::try_from(0_", stringify!($int), "), Ok(false));")]
             ///
-            #[doc = concat!("assert_eq!(1_", stringify!($int), ".try_into(), Ok(true));")]
+            #[doc = concat!("assert_eq!(bool::try_from(1_", stringify!($int), "), Ok(true));")]
             ///
-            #[doc = concat!("assert!(<", stringify!($int), " as TryInto<bool>>::try_into(2).is_err());")]
+            #[doc = concat!("assert!(bool::try_from(2_", stringify!($int), ").is_err());")]
             /// ```
             #[inline]
             fn try_from(i: $int) -> Result<Self, Self::Error> {
-                match i {
-                    0 => Ok(false),
-                    1 => Ok(true),
-                    _ => Err(TryFromIntError(())),
+                sign_dependent_expr!{
+                    $signedness ?
+                    if signed {
+                        match i {
+                            0 => Ok(false),
+                            1 => Ok(true),
+                            ..0 => Err(TryFromIntError(IntErrorKind::NegOverflow)),
+                            2.. => Err(TryFromIntError(IntErrorKind::PosOverflow)),
+                        }
+                    }
+                    if unsigned {
+                        match i {
+                            0 => Ok(false),
+                            1 => Ok(true),
+                            2.. => Err(TryFromIntError(IntErrorKind::PosOverflow)),
+                        }
+                    }
                 }
             }
         }
@@ -368,8 +387,8 @@ macro_rules! rev {
 }
 
 // integer -> bool
-impl_try_from_integer_for_bool!(u128 u64 u32 u16 u8);
-impl_try_from_integer_for_bool!(i128 i64 i32 i16 i8);
+impl_try_from_integer_for_bool!(unsigned u128 u64 u32 u16 u8);
+impl_try_from_integer_for_bool!(signed i128 i64 i32 i16 i8);
 
 // unsigned integer -> unsigned integer
 impl_try_from_upper_bounded!(u16 => u8);
@@ -407,7 +426,7 @@ impl_try_from_lower_bounded!(isize => usize);
 
 #[cfg(target_pointer_width = "16")]
 mod ptr_try_from_impls {
-    use super::TryFromIntError;
+    use super::{IntErrorKind, TryFromIntError};
 
     impl_try_from_upper_bounded!(usize => u8);
     impl_try_from_unbounded!(usize => u16, u32, u64, u128);
@@ -429,7 +448,7 @@ mod ptr_try_from_impls {
 
 #[cfg(target_pointer_width = "32")]
 mod ptr_try_from_impls {
-    use super::TryFromIntError;
+    use super::{IntErrorKind, TryFromIntError};
 
     impl_try_from_upper_bounded!(usize => u8, u16);
     impl_try_from_unbounded!(usize => u32, u64, u128);
@@ -454,7 +473,7 @@ mod ptr_try_from_impls {
 
 #[cfg(target_pointer_width = "64")]
 mod ptr_try_from_impls {
-    use super::TryFromIntError;
+    use super::{IntErrorKind, TryFromIntError};
 
     impl_try_from_upper_bounded!(usize => u8, u16, u32);
     impl_try_from_unbounded!(usize => u64, u128);
@@ -552,7 +571,7 @@ macro_rules! impl_nonzero_int_try_from_int {
             #[doc = concat!("to <code>[NonZero]\\<[", stringify!($Int), "]></code>.")]
             #[inline]
             fn try_from(value: $Int) -> Result<Self, Self::Error> {
-                Self::new(value).ok_or(TryFromIntError(()))
+                Self::new(value).ok_or(TryFromIntError(IntErrorKind::Zero))
             }
         }
     };

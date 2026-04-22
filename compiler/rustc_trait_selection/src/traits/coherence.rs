@@ -21,6 +21,7 @@ use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    Unnormalized,
 };
 pub use rustc_next_trait_solver::coherence::*;
 use rustc_next_trait_solver::solve::SolverDelegateEvalExt;
@@ -209,13 +210,14 @@ fn fresh_impl_header<'tcx>(
     ImplHeader {
         impl_def_id,
         impl_args,
-        self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args),
-        trait_ref: is_of_trait.then(|| tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args)),
+        self_ty: tcx.type_of(impl_def_id).instantiate(tcx, impl_args).skip_norm_wip(),
+        trait_ref: is_of_trait
+            .then(|| tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args).skip_norm_wip()),
         predicates: tcx
             .predicates_of(impl_def_id)
             .instantiate(tcx, impl_args)
             .iter()
-            .map(|(c, _)| c.as_predicate())
+            .map(|(c, _)| c.skip_norm_wip().as_predicate())
             .collect(),
     }
 }
@@ -229,7 +231,7 @@ fn fresh_impl_header_normalized<'tcx>(
     let header = fresh_impl_header(infcx, impl_def_id, is_of_trait);
 
     let InferOk { value: mut header, obligations } =
-        infcx.at(&ObligationCause::dummy(), param_env).normalize(header);
+        infcx.at(&ObligationCause::dummy(), param_env).normalize(Unnormalized::new_wip(header));
 
     header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
     header
@@ -535,12 +537,19 @@ fn impl_intersection_has_negative_obligation(
     // So there are no infer variables left now, except regions which aren't resolved by `resolve_vars_if_possible`.
     assert!(!impl1_header_args.has_non_region_infer());
 
-    let param_env =
-        ty::EarlyBinder::bind(tcx.param_env(impl1_def_id)).instantiate(tcx, impl1_header_args);
+    let param_env = ty::EarlyBinder::bind(tcx.param_env(impl1_def_id))
+        .instantiate(tcx, impl1_header_args)
+        .skip_norm_wip();
 
-    util::elaborate(tcx, tcx.predicates_of(impl2_def_id).instantiate(tcx, impl2_header.impl_args))
-        .elaborate_sized()
-        .any(|(clause, _)| try_prove_negated_where_clause(infcx, clause, param_env))
+    util::elaborate(
+        tcx,
+        tcx.predicates_of(impl2_def_id)
+            .instantiate(tcx, impl2_header.impl_args)
+            .into_iter()
+            .map(|(c, s)| (c.skip_norm_wip(), s)),
+    )
+    .elaborate_sized()
+    .any(|(clause, _)| try_prove_negated_where_clause(infcx, clause, param_env))
 }
 
 fn plug_infer_with_placeholders<'tcx>(
@@ -744,8 +753,8 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(tr)) => tr.trait_ref,
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj))
                 if matches!(
-                    infcx.tcx.def_kind(proj.projection_term.def_id),
-                    DefKind::AssocTy | DefKind::AssocConst
+                    infcx.tcx.def_kind(proj.projection_term.def_id()),
+                    DefKind::AssocTy | DefKind::AssocConst { .. }
                 ) =>
             {
                 proj.projection_term.trait_ref(infcx.tcx)
@@ -791,7 +800,11 @@ impl<'a, 'tcx> ProofTreeVisitor<'tcx> for AmbiguityCausesVisitor<'a, 'tcx> {
             if matches!(ty.kind(), ty::Alias(..)) {
                 let ocx = ObligationCtxt::new(infcx);
                 ty = ocx
-                    .structurally_normalize_ty(&ObligationCause::dummy(), param_env, ty)
+                    .structurally_normalize_ty(
+                        &ObligationCause::dummy(),
+                        param_env,
+                        Unnormalized::new_wip(ty),
+                    )
                     .map_err(|_| ())?;
                 if !ocx.try_evaluate_obligations().is_empty() {
                     return Err(());

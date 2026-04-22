@@ -1,0 +1,23 @@
+error[E0283]: type annotations needed
+  --> $DIR/transmute-from-async-closure.rs:18:29
+   |
+LL |     let _: &dyn NodeImpl = &Wrap::<_, (i128,)>::new(async |_: &(), i128| 0);
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `F` declared on the struct `Wrap`
+   |
+   = note: cannot satisfy `{async closure@$DIR/transmute-from-async-closure.rs:18:53: 18:73}: TransmuteFrom<(), Assume { alignment: false, lifetimes: false, safety: false, validity: false }>`
+note: required for `Wrap<{async closure@$DIR/transmute-from-async-closure.rs:18:53: 18:73}, (i128,)>` to implement `NodeImpl`
+  --> $DIR/transmute-from-async-closure.rs:16:12
+   |
+LL | impl<F, A> NodeImpl for Wrap<F, (A,)> where F: std::mem::TransmuteFrom<()> {}
+   |            ^^^^^^^^     ^^^^^^^^^^^^^          --------------------------- unsatisfied trait bound introduced here
+note: required because it appears within the type `Wrap<{async closure@$DIR/transmute-from-async-closure.rs:18:53: 18:73}, (i128,)>`
+  --> $DIR/transmute-from-async-closure.rs:9:8
+   |
+LL | struct Wrap<F, P>(F, P);
+   |        ^^^^
+   = note: required for `&Wrap<{async closure@$DIR/transmute-from-async-closure.rs:18:53: 18:73}, (i128,)>` to implement `CoerceUnsized<&dyn NodeImpl>`
+   = note: required for the cast from `&Wrap<{async closure@$DIR/transmute-from-async-closure.rs:18:53: 18:73}, (i128,)>` to `&dyn NodeImpl`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0283`.

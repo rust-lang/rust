@@ -474,9 +474,9 @@
 //!
 //! In an intrusive doubly-linked list, the collection itself does not own the memory in which
 //! each of its elements is stored. Instead, each client is free to allocate space for elements it
-//! adds to the list in whichever manner it likes, including on the stack! Elements can live on a
-//! stack frame that lives shorter than the collection does provided the elements that live in a
-//! given stack frame are removed from the list before going out of scope.
+//! adds to the list in whichever manner it likes, including on the stack! Elements can be stored
+//! in a stack frame shorter-lived than the collection, provided they are removed from the list
+//! before that frame goes out of scope.
 //!
 //! To make such an intrusive data structure work, every element stores pointers to its predecessor
 //! and successor within its own data, rather than having the list structure itself managing those
@@ -600,7 +600,7 @@
 //! automatically called [`Pin::get_unchecked_mut`].
 //!
 //! This can never cause a problem in purely safe code because creating a pinning pointer to
-//! a type which has an address-sensitive (thus does not implement `Unpin`) requires `unsafe`,
+//! a type which has address-sensitive states (and thus does not implement `Unpin`) requires `unsafe`,
 //! but it is important to note that choosing to take advantage of pinning-related guarantees
 //! to justify validity in the implementation of your type has consequences for that type's
 //! [`Drop`][Drop] implementation as well: if an element of your type could have been pinned,
@@ -740,7 +740,7 @@
 //!
 //! While counter-intuitive, it's often the easier choice: if you do not expose a
 //! <code>[Pin]<[&mut] Field></code>, you do not need to be careful about other code
-//! moving out of that field, you just have to ensure is that you never create pinning
+//! moving out of that field, you just have to ensure that you never create a pinning
 //! reference to that field. This does of course also mean that if you decide a field does not
 //! have structural pinning, you must not write [`unsafe`] code that assumes (invalidly) that the
 //! field *is* structurally pinned!
@@ -1829,9 +1829,10 @@ where
 ///
 /// # Safety
 ///
-/// If this type implements `Deref`, then the concrete type returned by `deref`
-/// and `deref_mut` must not change without a modification. The following
-/// operations are not considered modifications:
+/// Given a pointer of this type, the concrete type returned by its
+/// `deref` method and (if it implements `DerefMut`) its `deref_mut` method
+/// must be the same type and must not change without a modification.
+/// The following operations are not considered modifications:
 ///
 /// * Moving the pointer.
 /// * Performing unsizing coercions on the pointer.
@@ -1842,7 +1843,7 @@ where
 /// to. The concrete type of a slice is an array of the same element type and
 /// the length specified in the metadata. The concrete type of a sized type
 /// is the type itself.
-pub unsafe trait PinCoerceUnsized {}
+pub unsafe trait PinCoerceUnsized: Deref {}
 
 #[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a T {}
@@ -1852,12 +1853,6 @@ unsafe impl<'a, T: ?Sized> PinCoerceUnsized for &'a mut T {}
 
 #[stable(feature = "pin", since = "1.33.0")]
 unsafe impl<T: PinCoerceUnsized> PinCoerceUnsized for Pin<T> {}
-
-#[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for *const T {}
-
-#[stable(feature = "pin", since = "1.33.0")]
-unsafe impl<T: ?Sized> PinCoerceUnsized for *mut T {}
 
 /// Constructs a <code>[Pin]<[&mut] T></code>, by pinning a `value: T` locally.
 ///

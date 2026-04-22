@@ -1,3 +1,4 @@
+use either::{Either, for_both};
 use hir::{PathResolution, Semantics};
 use ide_db::{
     EditionedFileId, RootDatabase,
@@ -5,8 +6,9 @@ use ide_db::{
     search::{FileReference, FileReferenceNode, UsageSearchResult},
 };
 use syntax::{
-    SyntaxElement, TextRange,
-    ast::{self, AstNode, AstToken, HasName, syntax_factory::SyntaxFactory},
+    Direction, TextRange,
+    ast::{self, AstNode, AstToken, HasName},
+    syntax_editor::{Element, SyntaxEditor},
 };
 
 use crate::{
@@ -36,12 +38,15 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let InlineData { let_stmt, delete_let, references, target } =
         if let Some(path_expr) = ctx.find_node_at_offset::<ast::PathExpr>() {
             inline_usage(&ctx.sema, path_expr, range, file_id)
-        } else if let Some(let_stmt) = ctx.find_node_at_offset::<ast::LetStmt>() {
+        } else if let Some(let_stmt) = ctx.find_node_at_offset() {
             inline_let(&ctx.sema, let_stmt, range, file_id)
         } else {
             None
         }?;
-    let initializer_expr = let_stmt.initializer()?;
+    let initializer_expr = match &let_stmt {
+        either::Either::Left(it) => it.initializer()?,
+        either::Either::Right(it) => it.expr()?,
+    };
 
     let wrap_in_parens = references
         .into_iter()
@@ -78,20 +83,21 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
         "Inline variable",
         target.text_range(),
         move |builder| {
-            let mut editor = builder.make_editor(&target);
+            let editor = builder.make_editor(&target);
+            let make = editor.make();
             if delete_let {
                 editor.delete(let_stmt.syntax());
-                if let Some(whitespace) = let_stmt
-                    .syntax()
-                    .next_sibling_or_token()
-                    .and_then(SyntaxElement::into_token)
-                    .and_then(ast::Whitespace::cast)
+
+                if let Some(bin_expr) = let_stmt.syntax().parent().and_then(ast::BinExpr::cast)
+                    && let Some(op_token) = bin_expr.op_token()
                 {
-                    editor.delete(whitespace.syntax());
+                    editor.delete(&op_token);
+                    remove_whitespace(op_token, Direction::Prev, &editor);
+                    remove_whitespace(let_stmt.syntax(), Direction::Prev, &editor);
+                } else {
+                    remove_whitespace(let_stmt.syntax(), Direction::Next, &editor);
                 }
             }
-
-            let make = SyntaxFactory::with_mappings();
 
             for (name, should_wrap) in wrap_in_parens {
                 let replacement = if should_wrap {
@@ -108,15 +114,13 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
                     editor.replace(name.syntax(), replacement.syntax());
                 }
             }
-
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
 
 struct InlineData {
-    let_stmt: ast::LetStmt,
+    let_stmt: Either<ast::LetStmt, ast::LetExpr>,
     delete_let: bool,
     target: ast::NameOrNameRef,
     references: Vec<FileReference>,
@@ -124,11 +128,11 @@ struct InlineData {
 
 fn inline_let(
     sema: &Semantics<'_, RootDatabase>,
-    let_stmt: ast::LetStmt,
+    let_stmt: Either<ast::LetStmt, ast::LetExpr>,
     range: TextRange,
     file_id: EditionedFileId,
 ) -> Option<InlineData> {
-    let bind_pat = match let_stmt.pat()? {
+    let bind_pat = match for_both!(&let_stmt, it => it.pat())? {
         ast::Pat::IdentPat(pat) => pat,
         _ => return None,
     };
@@ -187,7 +191,7 @@ fn inline_usage(
 
     let bind_pat = source.as_ident_pat()?;
 
-    let let_stmt = ast::LetStmt::cast(bind_pat.syntax().parent()?)?;
+    let let_stmt = AstNode::cast(bind_pat.syntax().parent()?)?;
 
     let UsageSearchResult { mut references } = Definition::Local(local).usages(sema).all();
     let mut references = references.remove(&file_id)?;
@@ -195,6 +199,23 @@ fn inline_usage(
     references.retain(|fref| fref.name.as_name_ref() == Some(&name));
 
     Some(InlineData { let_stmt, delete_let, target: ast::NameOrNameRef::NameRef(name), references })
+}
+
+fn remove_whitespace(elem: impl Element, dir: Direction, editor: &SyntaxEditor) {
+    let token = match elem.syntax_element() {
+        syntax::NodeOrToken::Node(node) => match dir {
+            Direction::Next => node.last_token(),
+            Direction::Prev => node.first_token(),
+        },
+        syntax::NodeOrToken::Token(t) => Some(t),
+    };
+    let next_token = match dir {
+        Direction::Next => token.and_then(|it| it.next_token()),
+        Direction::Prev => token.and_then(|it| it.prev_token()),
+    };
+    if let Some(whitespace) = next_token.and_then(ast::Whitespace::cast) {
+        editor.delete(whitespace.syntax());
+    }
 }
 
 #[cfg(test)]
@@ -400,6 +421,38 @@ fn foo() {
     }
     let b = ( 10 + 1 ) * 10;
     bar(( 10 + 1 ));
+}",
+        );
+    }
+
+    #[test]
+    fn test_inline_let_expr() {
+        check_assist(
+            inline_local_variable,
+            r"
+fn bar(a: usize) {}
+fn foo() {
+    if let a$0 = 1
+        && true
+    {
+        a + 1;
+        if a > 10 {}
+        while a > 10 {}
+        let b = a * 10;
+        bar(a);
+    }
+}",
+            r"
+fn bar(a: usize) {}
+fn foo() {
+    if true
+    {
+        1 + 1;
+        if 1 > 10 {}
+        while 1 > 10 {}
+        let b = 1 * 10;
+        bar(1);
+    }
 }",
         );
     }
@@ -817,6 +870,70 @@ fn f() {
     }
 
     #[test]
+    fn let_expr_works_on_local_usage() {
+        check_assist(
+            inline_local_variable,
+            r#"
+fn f() {
+    if let xyz = 0
+        && true
+    {
+        xyz$0;
+    }
+}
+"#,
+            r#"
+fn f() {
+    if true
+    {
+        0;
+    }
+}
+"#,
+        );
+
+        check_assist(
+            inline_local_variable,
+            r#"
+fn f() {
+    if let xyz = true
+        && xyz$0
+    {
+    }
+}
+"#,
+            r#"
+fn f() {
+    if true
+    {
+    }
+}
+"#,
+        );
+
+        check_assist(
+            inline_local_variable,
+            r#"
+fn f() {
+    if true
+        && let xyz = 0
+    {
+        xyz$0;
+    }
+}
+"#,
+            r#"
+fn f() {
+    if true
+    {
+        0;
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn does_not_remove_let_when_multiple_usages() {
         check_assist(
             inline_local_variable,
@@ -934,6 +1051,7 @@ fn f() {
         check_assist(
             inline_local_variable,
             r#"
+//- minicore: fn
 fn main() {
     let $0f = || 2;
     let _ = f();

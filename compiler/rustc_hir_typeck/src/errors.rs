@@ -14,8 +14,7 @@ use rustc_hir::ExprKind;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
-use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol};
+use rustc_span::{Ident, Span, Spanned, Symbol};
 
 use crate::FnCtxt;
 
@@ -173,6 +172,12 @@ pub(crate) enum ExpectedReturnTypeLabel<'tcx> {
         #[primary_span]
         span: Span,
         expected: Ty<'tcx>,
+    },
+    #[label("expected a single type implementing `{$trait_name}` because of return type")]
+    ImplTrait {
+        #[primary_span]
+        span: Span,
+        trait_name: String,
     },
 }
 
@@ -488,15 +493,6 @@ impl HelpUseLatestEdition {
             Self::Standalone { edition }
         }
     }
-}
-
-#[derive(Diagnostic)]
-#[diag("no field `{$field}` on type `{$ty}`", code = E0609)]
-pub(crate) struct NoFieldOnType<'tcx> {
-    #[primary_span]
-    pub(crate) span: Span,
-    pub(crate) ty: Ty<'tcx>,
-    pub(crate) field: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -996,13 +992,17 @@ impl rustc_errors::Subdiagnostic for CastUnknownPointerSub {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             CastUnknownPointerSub::To(span) => {
-                let msg = diag.eagerly_translate(msg!("needs more type information"));
+                let msg = msg!("needs more type information");
                 diag.span_label(span, msg);
-                let msg = diag.eagerly_translate(msg!("the type information given here is insufficient to check whether the pointer cast is valid"));
+                let msg = msg!(
+                    "the type information given here is insufficient to check whether the pointer cast is valid"
+                );
                 diag.note(msg);
             }
             CastUnknownPointerSub::From(span) => {
-                let msg = diag.eagerly_translate(msg!("the type information given here is insufficient to check whether the pointer cast is valid"));
+                let msg = msg!(
+                    "the type information given here is insufficient to check whether the pointer cast is valid"
+                );
                 diag.span_label(span, msg);
             }
         }
@@ -1389,4 +1389,16 @@ pub(crate) struct ProjectOnNonPinProjectType {
         applicability = "machine-applicable"
     )]
     pub sugg_span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag("falling back to `f32` as the trait bound `f32: From<f64>` is not satisfied")]
+pub(crate) struct FloatLiteralF32Fallback {
+    pub literal: String,
+    #[suggestion(
+        "explicitly specify the type as `f32`",
+        code = "{literal}_f32",
+        applicability = "machine-applicable"
+    )]
+    pub span: Option<Span>,
 }

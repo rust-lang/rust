@@ -11,6 +11,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::{
     self, AssocContainer, ExistentialPredicateStableCmpExt as _, Instance, IntTy, List, TraitRef,
     Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,
+    Unnormalized,
 };
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
@@ -143,7 +144,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                     let variant = adt_def.non_enum_variant();
                     let typing_env = ty::TypingEnv::post_analysis(self.tcx, variant.def_id);
                     let field = variant.fields.iter().find(|field| {
-                        let ty = self.tcx.type_of(field.did).instantiate_identity();
+                        let ty = self.tcx.type_of(field.did).instantiate_identity().skip_norm_wip();
                         let is_zst = self
                             .tcx
                             .layout_of(typing_env.as_query_input(ty))
@@ -153,7 +154,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                     if let Some(field) = field {
                         let ty0 = self.tcx.normalize_erasing_regions(
                             ty::TypingEnv::fully_monomorphized(),
-                            field.ty(self.tcx, args),
+                            Unnormalized::new_wip(field.ty(self.tcx, args)),
                         );
                         // Generalize any repr(transparent) user-defined type that is either a
                         // pointer or reference, and either references itself or any other type that
@@ -214,9 +215,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
                 }
             }
 
-            ty::Alias(..) => self.fold_ty(
-                self.tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), t),
-            ),
+            ty::Alias(..) => self.fold_ty(self.tcx.normalize_erasing_regions(
+                ty::TypingEnv::fully_monomorphized(),
+                Unnormalized::new_wip(t),
+            )),
 
             ty::Bound(..) | ty::Error(..) | ty::Infer(..) | ty::Param(..) | ty::Placeholder(..) => {
                 bug!("fold_ty: unexpected `{:?}`", t.kind());
@@ -239,18 +241,18 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
         .flat_map(|super_poly_trait_ref| {
             tcx.associated_items(super_poly_trait_ref.def_id())
                 .in_definition_order()
-                .filter(|item| item.is_type() || item.is_const())
+                .filter(|item| item.is_type() || item.is_type_const())
                 .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                 .map(move |assoc_item| {
                     super_poly_trait_ref.map_bound(|super_trait_ref| {
-                        let projection_term = ty::AliasTerm::new_from_args(
+                        let projection_term = ty::AliasTerm::new_from_def_id(
                             tcx,
                             assoc_item.def_id,
                             super_trait_ref.args,
                         );
                         let term = tcx.normalize_erasing_regions(
                             ty::TypingEnv::fully_monomorphized(),
-                            projection_term.to_term(tcx),
+                            Unnormalized::new_wip(projection_term.to_term(tcx)),
                         );
                         debug!("Projection {:?} -> {term}", projection_term.to_term(tcx),);
                         ty::ExistentialPredicate::Projection(

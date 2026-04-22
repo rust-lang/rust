@@ -58,18 +58,14 @@ pub fn _kernel_1(x: &mut [f32; 256], y: &[f32; 256]) {
 // CHECK-NEXT:   %x = alloca [1024 x i8], align 16
 // CHECK-NEXT:   %.offload_baseptrs = alloca [2 x ptr], align 8
 // CHECK-NEXT:   %.offload_ptrs = alloca [2 x ptr], align 8
-// CHECK-NEXT:   %.offload_sizes = alloca [2 x i64], align 8
 // CHECK-NEXT:   %kernel_args = alloca %struct.__tgt_kernel_arguments, align 8
 // CHECK:   store ptr %x, ptr %.offload_baseptrs, align 8
 // CHECK-NEXT:   store ptr %x, ptr %.offload_ptrs, align 8
-// CHECK-NEXT:   store i64 1024, ptr %.offload_sizes, align 8
 // CHECK-NEXT:   [[BPTRS_1:%.*]] = getelementptr inbounds nuw i8, ptr %.offload_baseptrs, i64 8
 // CHECK-NEXT:   store ptr %y, ptr [[BPTRS_1]], align 8
 // CHECK-NEXT:   [[PTRS_1:%.*]] = getelementptr inbounds nuw i8, ptr %.offload_ptrs, i64 8
 // CHECK-NEXT:   store ptr %y, ptr [[PTRS_1]], align 8
-// CHECK-NEXT:   [[SIZES_1:%.*]] = getelementptr inbounds nuw i8, ptr %.offload_sizes, i64 8
-// CHECK-NEXT:   store i64 1024, ptr [[SIZES_1]], align 8
-// CHECK-NEXT:   call void @__tgt_target_data_begin_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 2, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull %.offload_sizes, ptr nonnull @.offload_maptypes.[[K]].begin, ptr null, ptr null)
+// CHECK-NEXT:   call void @__tgt_target_data_begin_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 2, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull @.offload_sizes.[[K]], ptr nonnull @.offload_maptypes.[[K]].begin, ptr null, ptr null)
 // CHECK-NEXT:   store i32 3, ptr %kernel_args, align 8
 // CHECK-NEXT:   [[P4:%[^ ]+]] = getelementptr inbounds nuw i8, ptr %kernel_args, i64 4
 // CHECK-NEXT:   store i32 2, ptr [[P4]], align 4
@@ -78,7 +74,7 @@ pub fn _kernel_1(x: &mut [f32; 256], y: &[f32; 256]) {
 // CHECK-NEXT:   [[P16:%[^ ]+]] = getelementptr inbounds nuw i8, ptr %kernel_args, i64 16
 // CHECK-NEXT:   store ptr %.offload_ptrs, ptr [[P16]], align 8
 // CHECK-NEXT:   [[P24:%[^ ]+]] = getelementptr inbounds nuw i8, ptr %kernel_args, i64 24
-// CHECK-NEXT:   store ptr %.offload_sizes, ptr [[P24]], align 8
+// CHECK-NEXT:   store ptr @.offload_sizes.[[K]], ptr [[P24]], align 8
 // CHECK-NEXT:   [[P32:%[^ ]+]] = getelementptr inbounds nuw i8, ptr %kernel_args, i64 32
 // CHECK-NEXT:   store ptr @.offload_maptypes.[[K]].kernel, ptr [[P32]], align 8
 // CHECK-NEXT:   [[P40:%[^ ]+]] = getelementptr inbounds nuw i8, ptr %kernel_args, i64 40
@@ -92,7 +88,7 @@ pub fn _kernel_1(x: &mut [f32; 256], y: &[f32; 256]) {
 // CHECK-NEXT:   [[P96:%[^ ]+]] = getelementptr inbounds nuw i8, ptr %kernel_args, i64 96
 // CHECK-NEXT:   store i32 0, ptr [[P96]], align 8
 // CHECK-NEXT:   [[TGT_RET:%.*]] = call i32 @__tgt_target_kernel(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 256, i32 32, ptr nonnull @.[[K]].region_id, ptr nonnull %kernel_args)
-// CHECK-NEXT:   call void @__tgt_target_data_end_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 2, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull %.offload_sizes, ptr nonnull @.offload_maptypes.[[K]].end, ptr null, ptr null)
+// CHECK-NEXT:   call void @__tgt_target_data_end_mapper(ptr nonnull @anon.{{.*}}.1, i64 -1, i32 2, ptr nonnull %.offload_baseptrs, ptr nonnull %.offload_ptrs, ptr nonnull @.offload_sizes.[[K]], ptr nonnull @.offload_maptypes.[[K]].end, ptr null, ptr null)
 // CHECK:  ret void
 // CHECK-NEXT: }
 

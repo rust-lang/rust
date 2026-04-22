@@ -5,7 +5,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_infer::traits::util::elaborate;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, Unnormalized};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, Symbol, sym};
 use tracing::instrument;
@@ -108,13 +108,6 @@ impl IsTyMustUse {
             _ => self,
         }
     }
-
-    fn yes(self) -> Option<MustUsePath> {
-        match self {
-            Self::Yes(must_use_path) => Some(must_use_path),
-            _ => None,
-        }
-    }
 }
 
 /// A path through a type to a `must_use` source. Contains useful info for the lint.
@@ -211,24 +204,31 @@ pub fn is_ty_must_use<'tcx>(
         ty::Adt(def, _) => {
             is_def_must_use(cx, def.did(), expr.span).map_or(IsTyMustUse::No, IsTyMustUse::Yes)
         }
-        ty::Alias(ty::Opaque | ty::Projection, ty::AliasTy { def_id: def, .. }) => {
-            elaborate(cx.tcx, cx.tcx.explicit_item_self_bounds(def).iter_identity_copied())
-                // We only care about self bounds for the impl-trait
-                .filter_only_self()
-                .find_map(|(pred, _span)| {
-                    // We only look at the `DefId`, so it is safe to skip the binder here.
-                    if let ty::ClauseKind::Trait(ref poly_trait_predicate) =
-                        pred.kind().skip_binder()
-                    {
-                        let def_id = poly_trait_predicate.trait_ref.def_id;
+        ty::Alias(ty::AliasTy {
+            kind: ty::Opaque { def_id: def } | ty::Projection { def_id: def },
+            ..
+        }) => {
+            elaborate(
+                cx.tcx,
+                cx.tcx
+                    .explicit_item_self_bounds(def)
+                    .iter_identity_copied()
+                    .map(Unnormalized::skip_norm_wip),
+            )
+            // We only care about self bounds for the impl-trait
+            .filter_only_self()
+            .find_map(|(pred, _span)| {
+                // We only look at the `DefId`, so it is safe to skip the binder here.
+                if let ty::ClauseKind::Trait(ref poly_trait_predicate) = pred.kind().skip_binder() {
+                    let def_id = poly_trait_predicate.trait_ref.def_id;
 
-                        is_def_must_use(cx, def_id, expr.span)
-                    } else {
-                        None
-                    }
-                })
-                .map(|inner| MustUsePath::Opaque(Box::new(inner)))
-                .map_or(IsTyMustUse::No, IsTyMustUse::Yes)
+                    is_def_must_use(cx, def_id, expr.span)
+                } else {
+                    None
+                }
+            })
+            .map(|inner| MustUsePath::Opaque(Box::new(inner)))
+            .map_or(IsTyMustUse::No, IsTyMustUse::Yes)
         }
         ty::Dynamic(binders, _) => binders
             .iter()
@@ -254,16 +254,23 @@ pub fn is_ty_must_use<'tcx>(
             // Default to `expr`.
             let elem_exprs = elem_exprs.iter().chain(iter::repeat(expr));
 
-            let nested_must_use = tys
-                .iter()
-                .zip(elem_exprs)
-                .enumerate()
-                .filter_map(|(i, (ty, expr))| {
-                    is_ty_must_use(cx, ty, expr, simplify_uninhabited).yes().map(|path| (i, path))
-                })
-                .collect::<Vec<_>>();
+            let mut all_trivial = true;
+            let mut nested_must_use = Vec::new();
 
-            if !nested_must_use.is_empty() {
+            tys.iter().zip(elem_exprs).enumerate().for_each(|(i, (ty, expr))| {
+                let must_use = is_ty_must_use(cx, ty, expr, simplify_uninhabited);
+
+                all_trivial &= matches!(must_use, IsTyMustUse::Trivial);
+                if let IsTyMustUse::Yes(path) = must_use {
+                    nested_must_use.push((i, path));
+                }
+            });
+
+            if all_trivial {
+                // If all tuple elements are trivial, mark the whole tuple as such.
+                // i.e. don't emit `unused_results` for types such as `((), ())`
+                IsTyMustUse::Trivial
+            } else if !nested_must_use.is_empty() {
                 IsTyMustUse::Yes(MustUsePath::TupleElement(nested_must_use))
             } else {
                 IsTyMustUse::No
@@ -316,7 +323,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
 
         if let hir::ExprKind::Match(await_expr, _arms, hir::MatchSource::AwaitDesugar) = expr.kind
             && let ty = cx.typeck_results().expr_ty(await_expr)
-            && let ty::Alias(ty::Opaque, ty::AliasTy { def_id: future_def_id, .. }) = ty.kind()
+            && let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: future_def_id }, .. }) = ty.kind()
             && cx.tcx.ty_is_opaque_future(ty)
             && let async_fn_def_id = cx.tcx.parent(*future_def_id)
             && matches!(cx.tcx.def_kind(async_fn_def_id), DefKind::Fn | DefKind::AssocFn)

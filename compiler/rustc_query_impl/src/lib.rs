@@ -8,32 +8,25 @@
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
-use rustc_data_structures::sync::AtomicU64;
+use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_middle::dep_graph;
-use rustc_middle::queries::{self, ExternProviders, Providers};
-use rustc_middle::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex, OnDiskCache};
-use rustc_middle::query::plumbing::{QuerySystem, QueryVTable};
-use rustc_middle::query::{AsLocalQueryKey, QueryCache, QueryMode};
+use rustc_middle::queries::{ExternProviders, Providers};
+use rustc_middle::query::on_disk_cache::OnDiskCache;
+use rustc_middle::query::{QueryCache, QuerySystem, QueryVTable};
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Span;
 
 pub use crate::dep_kind_vtables::make_dep_kind_vtables;
-pub use crate::job::{QueryJobMap, break_query_cycles, print_query_stack};
-pub use crate::plumbing::{collect_active_jobs_from_all_queries, query_key_hash_verify_all};
-use crate::plumbing::{encode_all_query_results, try_mark_green};
-use crate::profiling_support::QueryKeyStringCache;
-pub use crate::profiling_support::alloc_self_profile_query_strings;
-use crate::values::Value;
-
-#[macro_use]
-mod plumbing;
+pub use crate::execution::{CollectActiveJobsKind, collect_active_query_jobs};
+pub use crate::job::{QueryJobMap, break_query_cycle, print_query_stack};
 
 mod dep_kind_vtables;
 mod error;
 mod execution;
+mod handle_cycle_error;
 mod job;
+mod plumbing;
 mod profiling_support;
-mod values;
+mod query_impl;
 
 /// Trait that knows how to look up the [`QueryVTable`] for a particular query.
 ///
@@ -57,19 +50,19 @@ pub fn query_system<'tcx>(
 ) -> QuerySystem<'tcx> {
     QuerySystem {
         arenas: Default::default(),
-        query_vtables: make_query_vtables(incremental),
+        query_vtables: query_impl::make_query_vtables(incremental),
+        side_effects: Default::default(),
         on_disk_cache,
         local_providers,
         extern_providers,
         jobs: AtomicU64::new(1),
+        cycle_handler_nesting: Lock::new(0),
     }
 }
 
-rustc_middle::rustc_with_all_queries! { define_queries! }
-
 pub fn provide(providers: &mut rustc_middle::util::Providers) {
-    providers.hooks.alloc_self_profile_query_strings = alloc_self_profile_query_strings;
-    providers.hooks.query_key_hash_verify_all = query_key_hash_verify_all;
-    providers.hooks.encode_all_query_results = encode_all_query_results;
-    providers.hooks.try_mark_green = try_mark_green;
+    providers.hooks.alloc_self_profile_query_strings =
+        profiling_support::alloc_self_profile_query_strings;
+    providers.hooks.verify_query_key_hashes = plumbing::verify_query_key_hashes;
+    providers.hooks.encode_query_values = plumbing::encode_query_values;
 }

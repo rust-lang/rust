@@ -65,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
             && let Some(did) = of_trait.trait_ref.trait_def_id()
             && tcx.is_lang_item(did, LangItem::Deref)
             // the self type is `dyn t_principal`
-            && let self_ty = tcx.type_of(item.owner_id).instantiate_identity()
+            && let self_ty = tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip()
             && let ty::Dynamic(data, _) = self_ty.kind()
             && let Some(self_principal) = data.principal()
             // `<T as Deref>::Target` is `dyn target_principal`
@@ -87,7 +87,10 @@ impl<'tcx> LateLintPass<'tcx> for DerefIntoDynSupertrait {
                     ty::AssocTag::Type,
                     item.owner_id.to_def_id(),
                 )
-                .map(|label| SupertraitAsDerefTargetLabel { label: tcx.def_span(label.def_id) });
+                .map(|label| SupertraitAsDerefTargetLabel {
+                    label: tcx.def_span(label.def_id),
+                    self_ty,
+                });
             let span = tcx.def_span(item.owner_id.def_id);
             cx.emit_span_lint(
                 DEREF_INTO_DYN_SUPERTRAIT,

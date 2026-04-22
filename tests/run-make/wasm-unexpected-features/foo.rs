@@ -4,6 +4,9 @@
 #![needs_allocator]
 #![allow(internal_features)]
 
+extern crate minicore;
+use minicore::*;
+
 #[rustc_std_internal_symbol]
 unsafe fn __rust_alloc(_size: usize, _align: usize) -> *mut u8 {
     0 as *mut u8
@@ -14,6 +17,11 @@ unsafe extern "Rust" {
     fn __rust_alloc_error_handler(size: usize, align: usize) -> !;
 }
 
+#[rustc_std_internal_symbol]
+pub unsafe fn __rdl_alloc_error_handler(_size: usize, _align: usize) -> ! {
+    loop {}
+}
+
 #[used]
 static mut BUF: [u8; 1024] = [0; 1024];
 
@@ -22,22 +30,4 @@ extern "C" fn init() {
     unsafe {
         __rust_alloc_error_handler(0, 0);
     }
-}
-
-mod minicore {
-    #[lang = "pointee_sized"]
-    pub trait PointeeSized {}
-
-    #[lang = "meta_sized"]
-    pub trait MetaSized: PointeeSized {}
-
-    #[lang = "sized"]
-    pub trait Sized: MetaSized {}
-
-    #[lang = "copy"]
-    pub trait Copy {}
-    impl Copy for u8 {}
-
-    #[lang = "drop_in_place"]
-    fn drop_in_place<T>(_: *mut T) {}
 }

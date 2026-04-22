@@ -7,7 +7,7 @@
 #![feature(
     adt_const_params,
     min_generic_const_args,
-    unsized_const_params,
+    const_param_ty_trait,
     generic_const_parameter_types
 )]
 #![expect(incomplete_features)]

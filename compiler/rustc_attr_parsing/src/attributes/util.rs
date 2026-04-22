@@ -41,29 +41,22 @@ pub(crate) fn parse_single_integer<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     args: &ArgParser,
 ) -> Option<u128> {
-    let Some(list) = args.list() else {
-        cx.expected_list(cx.attr_span, args);
-        return None;
-    };
-    let Some(single) = list.single() else {
-        cx.expected_single_argument(list.span);
-        return None;
-    };
+    let single = cx.single_element_list(args, cx.attr_span)?;
     let Some(lit) = single.lit() else {
-        cx.expected_integer_literal(single.span());
+        cx.adcx().expected_integer_literal(single.span());
         return None;
     };
     let LitKind::Int(num, _ty) = lit.kind else {
-        cx.expected_integer_literal(single.span());
+        cx.adcx().expected_integer_literal(single.span());
         return None;
     };
     Some(num.0)
 }
 
 impl<S: Stage> AcceptContext<'_, '_, S> {
-    pub(crate) fn parse_limit_int(&self, nv: &NameValueParser) -> Option<Limit> {
+    pub(crate) fn parse_limit_int(&mut self, nv: &NameValueParser) -> Option<Limit> {
         let Some(limit) = nv.value_as_str() else {
-            self.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+            self.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
             return None;
         };
 

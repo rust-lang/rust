@@ -1,10 +1,10 @@
+use rustc_errors::Diagnostic;
 use rustc_hir::attrs::diagnostic::Directive;
-use rustc_hir::lints::AttributeLintKind;
-use rustc_session::lint::builtin::MALFORMED_DIAGNOSTIC_ATTRIBUTES;
+use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
-
+use crate::errors::DiagnosticOnConstOnlyForTraitImpls;
 #[derive(Default)]
 pub(crate) struct OnConstParser {
     span: Option<Span>,
@@ -17,42 +17,40 @@ impl<S: Stage> AttributeParser<S> for OnConstParser {
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
         |this, cx, args| {
             if !cx.features().diagnostic_on_const() {
+                // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
                 return;
             }
 
             let span = cx.attr_span;
             this.span = Some(span);
 
-            let items = match args {
-                ArgParser::List(items) if items.len() != 0 => items,
-                ArgParser::NoArgs | ArgParser::List(_) => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MissingOptionsForOnConst,
-                        span,
-                    );
-                    return;
-                }
-                ArgParser::NameValue(_) => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnConstAttr { span },
-                        span,
-                    );
-                    return;
-                }
-            };
+            // FIXME(mejrs) no constness field on `Target`,
+            // so non-constness is still checked in check_attr.rs
+            if !matches!(cx.target, Target::Impl { of_trait: true }) {
+                let target_span = cx.target_span;
+                cx.emit_dyn_lint(
+                    MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                    move |dcx, level| {
+                        DiagnosticOnConstOnlyForTraitImpls { target_span }.into_diag(dcx, level)
+                    },
+                    span,
+                );
+                return;
+            }
 
-            let Some(directive) =
-                parse_directive_items(cx, Mode::DiagnosticOnConst, items.mixed(), true)
-            else {
+            let mode = Mode::DiagnosticOnConst;
+
+            let Some(items) = parse_list(cx, args, mode) else { return };
+
+            let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) else {
                 return;
             };
             merge_directives(cx, &mut this.directive, (span, directive));
         },
     )];
 
-    //FIXME Still checked in `check_attr.rs`
+    // "Allowed" on all targets; noop on anything but non-const trait impls;
+    // this linted on in parser.
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(ALL_TARGETS);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {

@@ -44,7 +44,8 @@ pub(super) fn check(
     is_err: bool,
     allow_unwrap_in_consts: bool,
     allow_unwrap_in_tests: bool,
-    allow_unwrap_types: &[String],
+    unwrap_allowed_ids: &rustc_data_structures::fx::FxHashSet<rustc_hir::def_id::DefId>,
+    unwrap_allowed_aliases: &[rustc_hir::def_id::DefId],
     variant: Variant,
 ) {
     let ty = cx.typeck_results().expr_ty(recv).peel_refs();
@@ -66,50 +67,38 @@ pub(super) fn check(
 
     let method_suffix = if is_err { "_err" } else { "" };
 
-    let ty_name = ty.to_string();
-    if allow_unwrap_types
-        .iter()
-        .any(|allowed_type| ty_name.starts_with(allowed_type) || ty_name == *allowed_type)
+    if let ty::Adt(adt, _) = ty.kind()
+        && unwrap_allowed_ids.contains(&adt.did())
     {
         return;
     }
 
-    for s in allow_unwrap_types {
-        let def_ids = clippy_utils::paths::lookup_path_str(cx.tcx, clippy_utils::paths::PathNS::Type, s);
-        for def_id in def_ids {
-            if let ty::Adt(adt, _) = ty.kind()
-                && adt.did() == def_id
-            {
-                return;
-            }
-            if cx.tcx.def_kind(def_id) == DefKind::TyAlias {
-                let alias_ty = cx.tcx.type_of(def_id).instantiate_identity();
-                if let (ty::Adt(adt, substs), ty::Adt(alias_adt, alias_substs)) = (ty.kind(), alias_ty.kind())
-                    && adt.did() == alias_adt.did()
-                {
-                    let mut all_match = true;
-                    for (arg, alias_arg) in substs.iter().zip(alias_substs.iter()) {
-                        if let (Some(arg_ty), Some(alias_arg_ty)) = (arg.as_type(), alias_arg.as_type()) {
-                            if matches!(alias_arg_ty.kind(), ty::Param(_)) {
-                                continue;
-                            }
-                            if let (ty::Adt(arg_adt, _), ty::Adt(alias_arg_adt, _)) =
-                                (arg_ty.peel_refs().kind(), alias_arg_ty.peel_refs().kind())
-                            {
-                                if arg_adt.did() != alias_arg_adt.did() {
-                                    all_match = false;
-                                    break;
-                                }
-                            } else if arg_ty != alias_arg_ty {
-                                all_match = false;
-                                break;
-                            }
-                        }
+    for &def_id in unwrap_allowed_aliases {
+        let alias_ty = cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
+        if let (ty::Adt(adt, substs), ty::Adt(alias_adt, alias_substs)) = (ty.kind(), alias_ty.kind())
+            && adt.did() == alias_adt.did()
+        {
+            let mut all_match = true;
+            for (arg, alias_arg) in substs.iter().zip(alias_substs.iter()) {
+                if let (Some(arg_ty), Some(alias_arg_ty)) = (arg.as_type(), alias_arg.as_type()) {
+                    if matches!(alias_arg_ty.kind(), ty::Param(_)) {
+                        continue;
                     }
-                    if all_match {
-                        return;
+                    if let (ty::Adt(arg_adt, _), ty::Adt(alias_arg_adt, _)) =
+                        (arg_ty.peel_refs().kind(), alias_arg_ty.peel_refs().kind())
+                    {
+                        if arg_adt.did() != alias_arg_adt.did() {
+                            all_match = false;
+                            break;
+                        }
+                    } else if arg_ty != alias_arg_ty {
+                        all_match = false;
+                        break;
                     }
                 }
+            }
+            if all_match {
+                return;
             }
         }
     }
@@ -149,7 +138,8 @@ pub(super) fn check_call(
     allow_unwrap_in_tests: bool,
     allow_expect_in_consts: bool,
     allow_expect_in_tests: bool,
-    allow_unwrap_types: &[String],
+    unwrap_allowed_ids: &rustc_data_structures::fx::FxHashSet<rustc_hir::def_id::DefId>,
+    unwrap_allowed_aliases: &[rustc_hir::def_id::DefId],
 ) {
     let Some(recv) = args.first() else {
         return;
@@ -167,7 +157,8 @@ pub(super) fn check_call(
                 false,
                 allow_unwrap_in_consts,
                 allow_unwrap_in_tests,
-                allow_unwrap_types,
+                unwrap_allowed_ids,
+                unwrap_allowed_aliases,
                 Variant::Unwrap,
             );
         },
@@ -179,7 +170,8 @@ pub(super) fn check_call(
                 false,
                 allow_expect_in_consts,
                 allow_expect_in_tests,
-                allow_unwrap_types,
+                unwrap_allowed_ids,
+                unwrap_allowed_aliases,
                 Variant::Expect,
             );
         },
@@ -191,7 +183,8 @@ pub(super) fn check_call(
                 true,
                 allow_unwrap_in_consts,
                 allow_unwrap_in_tests,
-                allow_unwrap_types,
+                unwrap_allowed_ids,
+                unwrap_allowed_aliases,
                 Variant::Unwrap,
             );
         },
@@ -203,7 +196,8 @@ pub(super) fn check_call(
                 true,
                 allow_expect_in_consts,
                 allow_expect_in_tests,
-                allow_unwrap_types,
+                unwrap_allowed_ids,
+                unwrap_allowed_aliases,
                 Variant::Expect,
             );
         },

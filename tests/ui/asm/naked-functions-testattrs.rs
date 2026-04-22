@@ -1,5 +1,6 @@
 //@ needs-asm-support
 //@ compile-flags: --test
+//@ reference: attributes.codegen.naked.testing
 
 #![feature(test)]
 #![crate_type = "lib"]

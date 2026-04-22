@@ -3,7 +3,7 @@ use std::hash::{Hash, Hasher};
 use std::ops::Range;
 use std::str;
 
-use rustc_abi::{FIRST_VARIANT, ReprOptions, VariantIdx};
+use rustc_abi::{FIRST_VARIANT, FieldIdx, ReprOptions, VariantIdx};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -15,6 +15,8 @@ use rustc_hir::{self as hir, LangItem, find_attr};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_session::DataTypeKind;
+use rustc_span::sym;
+use rustc_type_ir::FieldInfo;
 use rustc_type_ir::solve::AdtDestructorKind;
 use tracing::{debug, info, trace};
 
@@ -23,8 +25,8 @@ use super::{
 };
 use crate::ich::StableHashingContext;
 use crate::mir::interpret::ErrorHandled;
-use crate::ty;
 use crate::ty::util::{Discr, IntTypeExt};
+use crate::ty::{self, ConstKind};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 pub struct AdtFlags(u16);
@@ -58,6 +60,10 @@ bitflags::bitflags! {
         const IS_PIN                        = 1 << 11;
         /// Indicates whether the type is `#[pin_project]`.
         const IS_PIN_PROJECT                = 1 << 12;
+        /// Indicates whether the type is `FieldRepresentingType`.
+        const IS_FIELD_REPRESENTING_TYPE    = 1 << 13;
+        /// Indicates whether the type is `MaybeDangling<_>`.
+        const IS_MAYBE_DANGLING             = 1 << 14;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
@@ -200,6 +206,51 @@ impl<'tcx> AdtDef<'tcx> {
     pub fn repr(self) -> ReprOptions {
         self.0.0.repr
     }
+
+    pub fn field_representing_type_info(
+        self,
+        tcx: TyCtxt<'tcx>,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Option<FieldInfo<TyCtxt<'tcx>>> {
+        if !self.is_field_representing_type() {
+            return None;
+        }
+        let base = args.type_at(0);
+        let variant_idx = match args.const_at(1).kind() {
+            ConstKind::Value(v) => VariantIdx::from_u32(v.to_leaf().to_u32()),
+            _ => return None,
+        };
+        let field_idx = match args.const_at(2).kind() {
+            ConstKind::Value(v) => FieldIdx::from_u32(v.to_leaf().to_u32()),
+            _ => return None,
+        };
+        let (ty, variant, name) = match base.kind() {
+            ty::Adt(base_def, base_args) => {
+                let variant = base_def.variant(variant_idx);
+                let field = &variant.fields[field_idx];
+                (field.ty(tcx, base_args), base_def.is_enum().then_some(variant.name), field.name)
+            }
+            ty::Tuple(tys) => {
+                if variant_idx != FIRST_VARIANT {
+                    bug!("expected variant of tuple to be FIRST_VARIANT, but found {variant_idx:?}")
+                }
+                (
+                    if let Some(ty) = tys.get(field_idx.index()) {
+                        *ty
+                    } else {
+                        bug!(
+                            "expected valid tuple index, but got {field_idx:?}, tuple length: {}",
+                            tys.len()
+                        )
+                    },
+                    None,
+                    sym::integer(field_idx.index()),
+                )
+            }
+            _ => panic!(),
+        };
+        Some(FieldInfo { base, ty, variant, variant_idx, name, field_idx })
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
@@ -209,6 +260,10 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
 
     fn is_struct(self) -> bool {
         self.is_struct()
+    }
+
+    fn is_packed(self) -> bool {
+        self.repr().packed()
     }
 
     fn struct_tail_ty(self, interner: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
@@ -221,6 +276,14 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
 
     fn is_manually_drop(self) -> bool {
         self.is_manually_drop()
+    }
+
+    fn field_representing_type_info(
+        self,
+        tcx: TyCtxt<'tcx>,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Option<FieldInfo<TyCtxt<'tcx>>> {
+        self.field_representing_type_info(tcx, args)
     }
 
     fn all_field_tys(
@@ -312,6 +375,9 @@ impl AdtDefData {
         if tcx.is_lang_item(did, LangItem::ManuallyDrop) {
             flags |= AdtFlags::IS_MANUALLY_DROP;
         }
+        if tcx.is_lang_item(did, LangItem::MaybeDangling) {
+            flags |= AdtFlags::IS_MAYBE_DANGLING;
+        }
         if tcx.is_lang_item(did, LangItem::UnsafeCell) {
             flags |= AdtFlags::IS_UNSAFE_CELL;
         }
@@ -320,6 +386,9 @@ impl AdtDefData {
         }
         if tcx.is_lang_item(did, LangItem::Pin) {
             flags |= AdtFlags::IS_PIN;
+        }
+        if tcx.is_lang_item(did, LangItem::FieldRepresentingType) {
+            flags |= AdtFlags::IS_FIELD_REPRESENTING_TYPE;
         }
 
         AdtDefData { did, variants, flags, repr }
@@ -436,6 +505,12 @@ impl<'tcx> AdtDef<'tcx> {
         self.flags().contains(AdtFlags::IS_MANUALLY_DROP)
     }
 
+    /// Returns `true` if this is `MaybeDangling<T>`.
+    #[inline]
+    pub fn is_maybe_dangling(self) -> bool {
+        self.flags().contains(AdtFlags::IS_MAYBE_DANGLING)
+    }
+
     /// Returns `true` if this is `Pin<T>`.
     #[inline]
     pub fn is_pin(self) -> bool {
@@ -447,6 +522,10 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn is_pin_project(self) -> bool {
         self.flags().contains(AdtFlags::IS_PIN_PROJECT)
+    }
+
+    pub fn is_field_representing_type(self) -> bool {
+        self.flags().contains(AdtFlags::IS_FIELD_REPRESENTING_TYPE)
     }
 
     /// Returns `true` if this type has a destructor.
@@ -671,10 +750,4 @@ impl<'tcx> AdtDef<'tcx> {
     ) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
         if self.is_struct() { tcx.adt_sizedness_constraint((self.did(), sizedness)) } else { None }
     }
-}
-
-#[derive(Clone, Copy, Debug, HashStable)]
-pub enum Representability {
-    Representable,
-    Infinite(ErrorGuaranteed),
 }

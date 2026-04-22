@@ -51,6 +51,8 @@ declare_clippy_lint! {
     "using a `&mut` argument when it's not mutated"
 }
 
+impl_lint_pass!(NeedlessPassByRefMut<'_> => [NEEDLESS_PASS_BY_REF_MUT]);
+
 pub struct NeedlessPassByRefMut<'tcx> {
     avoid_breaking_exported_api: bool,
     used_fn_def_ids: FxHashSet<LocalDefId>,
@@ -66,8 +68,6 @@ impl NeedlessPassByRefMut<'_> {
         }
     }
 }
-
-impl_lint_pass!(NeedlessPassByRefMut<'_> => [NEEDLESS_PASS_BY_REF_MUT]);
 
 fn should_skip<'tcx>(
     cx: &LateContext<'tcx>,
@@ -173,7 +173,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             return;
         }
 
-        let fn_sig = cx.tcx.fn_sig(fn_def_id).instantiate_identity();
+        let fn_sig = cx.tcx.fn_sig(fn_def_id).instantiate_identity().skip_norm_wip();
         let fn_sig = cx.tcx.liberate_late_bound_regions(fn_def_id.to_def_id(), fn_sig);
 
         // If there are no `&mut` argument, no need to go any further.

@@ -8,7 +8,7 @@ use rustc_hir::def::*;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, BindingMode, ByRef, HirId, MatchSource};
 use rustc_infer::infer::TyCtxtInferExt;
-use rustc_lint::Level;
+use rustc_lint_defs::Level;
 use rustc_middle::bug;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
@@ -101,8 +101,7 @@ struct MatchVisitor<'p, 'tcx> {
     error: Result<(), ErrorGuaranteed>,
 }
 
-// Visitor for a thir body. This calls `check_match`, `check_let` and `check_let_chain` as
-// appropriate.
+// Visitor for a thir body. This calls `check_match` and `check_let` as appropriate.
 impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
     fn thir(&self) -> &'p Thir<'tcx> {
         self.thir
@@ -160,7 +159,7 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 self.check_match(scrutinee, arms, MatchSource::Normal, span);
             }
             ExprKind::Let { box ref pat, expr } => {
-                self.check_let(pat, Some(expr), ex.span);
+                self.check_let(pat, Some(expr), ex.span, None);
             }
             ExprKind::LogicalOp { op: LogicalOp::And, .. }
                 if !matches!(self.let_source, LetSource::None) =>
@@ -169,7 +168,7 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 let Ok(()) = self.visit_land(ex, &mut chain_refutabilities) else { return };
                 // Lint only single irrefutable let binding.
                 if let [Some((_, Irrefutable))] = chain_refutabilities[..] {
-                    self.lint_single_let(ex.span);
+                    self.lint_single_let(ex.span, None);
                 }
                 return;
             }
@@ -184,8 +183,9 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 self.with_hir_source(hir_id, |this| {
                     let let_source =
                         if else_block.is_some() { LetSource::LetElse } else { LetSource::PlainLet };
+                    let else_span = else_block.map(|bid| this.thir.blocks[bid].span);
                     this.with_let_source(let_source, |this| {
-                        this.check_let(pattern, initializer, span)
+                        this.check_let(pattern, initializer, span, else_span)
                     });
                     visit::walk_stmt(this, stmt);
                 });
@@ -426,13 +426,19 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn check_let(&mut self, pat: &'p Pat<'tcx>, scrutinee: Option<ExprId>, span: Span) {
+    fn check_let(
+        &mut self,
+        pat: &'p Pat<'tcx>,
+        scrutinee: Option<ExprId>,
+        span: Span,
+        else_span: Option<Span>,
+    ) {
         assert!(self.let_source != LetSource::None);
         let scrut = scrutinee.map(|id| &self.thir[id]);
         if let LetSource::PlainLet = self.let_source {
             self.check_binding_is_irrefutable(pat, "local binding", scrut, Some(span));
         } else if let Ok(Irrefutable) = self.is_let_irrefutable(pat, scrut) {
-            self.lint_single_let(span);
+            self.lint_single_let(span, else_span);
         }
     }
 
@@ -526,6 +532,18 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                     | hir::MatchSource::AwaitDesugar
                     | hir::MatchSource::FormatArgs => None,
                 };
+
+                // Check if the match would be exhaustive if all guards were removed.
+                // If so, we leave a note that guards don't count towards exhaustivity.
+                let would_be_exhaustive_without_guards = {
+                    let any_arm_has_guard = tarms.iter().any(|arm| arm.has_guard);
+                    any_arm_has_guard && {
+                        let guardless_arms: Vec<_> =
+                            tarms.iter().map(|arm| MatchArm { has_guard: false, ..*arm }).collect();
+                        rustc_pattern_analysis::rustc::analyze_match(&cx, &guardless_arms, scrut.ty)
+                            .is_ok_and(|report| report.non_exhaustiveness_witnesses.is_empty())
+                    }
+                };
                 self.error = Err(report_non_exhaustive_match(
                     &cx,
                     self.thir,
@@ -534,14 +552,22 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                     witnesses,
                     arms,
                     braces_span,
+                    would_be_exhaustive_without_guards,
                 ));
             }
         }
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn lint_single_let(&mut self, let_span: Span) {
-        report_irrefutable_let_patterns(self.tcx, self.hir_source, self.let_source, 1, let_span);
+    fn lint_single_let(&mut self, let_span: Span, else_span: Option<Span>) {
+        report_irrefutable_let_patterns(
+            self.tcx,
+            self.hir_source,
+            self.let_source,
+            1,
+            let_span,
+            else_span,
+        );
     }
 
     fn analyze_binding(
@@ -836,6 +862,7 @@ fn report_irrefutable_let_patterns(
     source: LetSource,
     count: usize,
     span: Span,
+    else_span: Option<Span>,
 ) {
     macro_rules! emit_diag {
         ($lint:tt) => {{
@@ -847,7 +874,14 @@ fn report_irrefutable_let_patterns(
         LetSource::None | LetSource::PlainLet | LetSource::Else => bug!(),
         LetSource::IfLet | LetSource::ElseIfLet => emit_diag!(IrrefutableLetPatternsIfLet),
         LetSource::IfLetGuard => emit_diag!(IrrefutableLetPatternsIfLetGuard),
-        LetSource::LetElse => emit_diag!(IrrefutableLetPatternsLetElse),
+        LetSource::LetElse => {
+            tcx.emit_node_span_lint(
+                IRREFUTABLE_LET_PATTERNS,
+                id,
+                span,
+                IrrefutableLetPatternsLetElse { count, else_span },
+            );
+        }
         LetSource::WhileLet => emit_diag!(IrrefutableLetPatternsWhileLet),
     }
 }
@@ -957,8 +991,12 @@ fn find_fallback_pattern_typo<'tcx>(
                     continue;
                 };
                 if let Some(value_ns) = path.res.value_ns
-                    && let Res::Def(DefKind::Const, id) = value_ns
-                    && infcx.can_eq(param_env, ty, cx.tcx.type_of(id).instantiate_identity())
+                    && let Res::Def(DefKind::Const { .. }, id) = value_ns
+                    && infcx.can_eq(
+                        param_env,
+                        ty,
+                        cx.tcx.type_of(id).instantiate_identity().skip_norm_wip(),
+                    )
                 {
                     if cx.tcx.visibility(id).is_accessible_from(parent, cx.tcx) {
                         // The original const is accessible, suggest using it directly.
@@ -974,8 +1012,12 @@ fn find_fallback_pattern_typo<'tcx>(
                     }
                 }
             }
-            if let DefKind::Const = cx.tcx.def_kind(item.owner_id)
-                && infcx.can_eq(param_env, ty, cx.tcx.type_of(item.owner_id).instantiate_identity())
+            if let DefKind::Const { .. } = cx.tcx.def_kind(item.owner_id)
+                && infcx.can_eq(
+                    param_env,
+                    ty,
+                    cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip(),
+                )
             {
                 // Look for local consts.
                 let item_name = cx.tcx.item_name(item.owner_id);
@@ -1079,8 +1121,7 @@ fn report_arm_reachability<'p, 'tcx>(
             let arm_span = cx.tcx.hir_span(hir_id);
             let whole_arm_span = if is_match_arm {
                 // If the arm is followed by a comma, extend the span to include it.
-                let with_whitespace = sm.span_extend_while_whitespace(arm_span);
-                if let Some(comma) = sm.span_look_ahead(with_whitespace, ",", Some(1)) {
+                if let Some(comma) = sm.span_followed_by(arm_span, ",") {
                     Some(arm_span.to(comma))
                 } else {
                     Some(arm_span)
@@ -1114,7 +1155,7 @@ fn is_const_pat_that_looks_like_binding<'tcx>(tcx: TyCtxt<'tcx>, pat: &Pat<'tcx>
     // the pattern's source text must resemble a plain identifier without any
     // `::` namespace separators or other non-identifier characters.
     if let Some(def_id) = try { pat.extra.as_deref()?.expanded_const? }
-        && matches!(tcx.def_kind(def_id), DefKind::Const)
+        && matches!(tcx.def_kind(def_id), DefKind::Const { .. })
         && let Ok(snippet) = tcx.sess.source_map().span_to_snippet(pat.span)
         && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
     {
@@ -1133,6 +1174,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     witnesses: Vec<WitnessPat<'p, 'tcx>>,
     arms: &[ArmId],
     braces_span: Option<Span>,
+    would_be_exhaustive_without_guards: bool,
 ) -> ErrorGuaranteed {
     let is_empty_match = arms.is_empty();
     let non_empty_enum = match scrut_ty.kind() {
@@ -1343,8 +1385,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
         },
     );
 
-    let all_arms_have_guards = arms.iter().all(|arm_id| thir[*arm_id].guard.is_some());
-    if !is_empty_match && all_arms_have_guards {
+    if would_be_exhaustive_without_guards {
         err.subdiagnostic(NonExhaustiveMatchAllArmsGuarded);
     }
     if let Some((span, sugg)) = suggestion {

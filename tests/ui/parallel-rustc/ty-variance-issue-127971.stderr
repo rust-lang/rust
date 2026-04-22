@@ -93,17 +93,18 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
 LL | fn elided(_: &impl Copy + 'a) -> _ { x }
    |                                  ^ not allowed in type signatures
 
-error[E0599]: no function or associated item named `u32` found for struct `Box<_, _>` in the current scope
+error[E0599]: no associated function or constant named `u32` found for struct `Box<_, _>` in the current scope
   --> $DIR/ty-variance-issue-127971.rs:18:55
    |
 LL | fn x<'b>(_: &'a impl Copy + 'a) -> Box<dyn 'b> { Box::u32(x) }
-   |                                                       ^^^ function or associated item not found in `Box<_, _>`
+   |                                                       ^^^ associated function or constant not found in `Box<_, _>`
    |
 note: if you're trying to build a new `Box<_, _>` consider using one of the following associated functions:
       Box::<T>::new
       Box::<T>::new_uninit
       Box::<T>::new_zeroed
       Box::<T>::try_new
+      and 27 others
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 
 error: aborting due to 11 previous errors

@@ -46,7 +46,8 @@ pub(super) fn infer_predicates(
                         // For field of type &'a T (reference) or Adt
                         // (struct/enum/union) there will be outlive
                         // requirements for adt_def.
-                        let field_ty = tcx.type_of(field_def.did).instantiate_identity();
+                        let field_ty =
+                            tcx.type_of(field_def.did).instantiate_identity().skip_norm_wip();
                         let field_span = tcx.def_span(field_def.did);
                         insert_required_predicates_to_be_wf(
                             tcx,
@@ -62,7 +63,7 @@ pub(super) fn infer_predicates(
                 DefKind::TyAlias if tcx.type_alias_is_lazy(item_did) => {
                     insert_required_predicates_to_be_wf(
                         tcx,
-                        tcx.type_of(item_did).instantiate_identity(),
+                        tcx.type_of(item_did).instantiate_identity().skip_norm_wip(),
                         tcx.def_span(item_did),
                         &global_inferred_outlives,
                         &mut item_required_predicates,
@@ -157,21 +158,21 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 );
             }
 
-            ty::Alias(ty::Free, alias) => {
+            ty::Alias(ty::AliasTy { kind: ty::Free { def_id }, args, .. }) => {
                 // This corresponds to a type like `Type<'a, T>`.
                 // We check inferred and explicit predicates.
                 debug!("Free");
                 check_inferred_predicates(
                     tcx,
-                    alias.def_id,
-                    alias.args,
+                    def_id,
+                    args,
                     global_inferred_outlives,
                     required_predicates,
                 );
                 check_explicit_predicates(
                     tcx,
-                    alias.def_id,
-                    alias.args,
+                    def_id,
+                    args,
                     required_predicates,
                     explicit_map,
                     None,
@@ -203,15 +204,15 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 }
             }
 
-            ty::Alias(ty::Projection, alias) => {
+            ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) => {
                 // This corresponds to a type like `<() as Trait<'a, T>>::Type`.
                 // We only use the explicit predicates of the trait but
                 // not the ones of the associated type itself.
                 debug!("Projection");
                 check_explicit_predicates(
                     tcx,
-                    tcx.parent(alias.def_id),
-                    alias.args,
+                    tcx.parent(def_id),
+                    args,
                     required_predicates,
                     explicit_map,
                     None,
@@ -219,7 +220,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
             }
 
             // FIXME(inherent_associated_types): Use the explicit predicates from the parent impl.
-            ty::Alias(ty::Inherent, _) => {}
+            ty::Alias(ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {}
 
             _ => {}
         }
@@ -306,7 +307,8 @@ fn check_explicit_predicates<'tcx>(
             continue;
         }
 
-        let predicate = explicit_predicates.rebind(*outlives_predicate).instantiate(tcx, args);
+        let predicate =
+            explicit_predicates.rebind(*outlives_predicate).instantiate(tcx, args).skip_norm_wip();
         debug!("predicate = {predicate:?}");
         insert_outlives_predicate(tcx, predicate.0, predicate.1, span, required_predicates);
     }
@@ -349,7 +351,7 @@ fn check_inferred_predicates<'tcx>(
         // `predicate` is `U: 'b` in the example above.
         // So apply the instantiation to get `T: 'a`.
         let ty::OutlivesPredicate(arg, region) =
-            predicates.rebind(predicate).instantiate(tcx, args);
+            predicates.rebind(predicate).instantiate(tcx, args).skip_norm_wip();
         insert_outlives_predicate(tcx, arg, region, span, required_predicates);
     }
 }

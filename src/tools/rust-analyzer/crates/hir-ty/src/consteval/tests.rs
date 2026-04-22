@@ -1,21 +1,20 @@
-use base_db::RootQueryDb;
-use hir_def::db::DefDatabase;
+use base_db::all_crates;
+use hir_def::signatures::ConstSignature;
 use hir_expand::EditionedFileId;
 use rustc_apfloat::{
     Float,
     ieee::{Half as f16, Quad as f128},
 };
-use rustc_type_ir::inherent::IntoKind;
 use test_fixture::WithFixture;
 use test_utils::skip_slow_tests;
 
 use crate::{
     MemoryMap,
-    consteval::try_const_usize,
+    consteval::allocation_as_usize,
     db::HirDatabase,
     display::DisplayTarget,
     mir::pad16,
-    next_solver::{Const, ConstBytes, ConstKind, DbInterner, GenericArgs},
+    next_solver::{Allocation, DbInterner, GenericArgs},
     setup_tracing,
     test_db::TestDB,
 };
@@ -45,7 +44,11 @@ fn check_fail(
     crate::attach_db(&db, || match eval_goal(&db, file_id) {
         Ok(_) => panic!("Expected fail, but it succeeded"),
         Err(e) => {
-            assert!(error(simplify(e.clone())), "Actual error was: {}", pretty_print_err(e, &db))
+            assert!(
+                error(simplify(e.clone())),
+                "Actual error was: {}\n{e:?}",
+                pretty_print_err(e.clone(), &db)
+            )
         }
     })
 }
@@ -94,13 +97,7 @@ fn check_answer(
                 panic!("Error in evaluating goal: {err}");
             }
         };
-        match r.kind() {
-            ConstKind::Value(value) => {
-                let ConstBytes { memory, memory_map } = value.value.inner();
-                check(memory, memory_map);
-            }
-            _ => panic!("Expected number but found {r:?}"),
-        }
+        check(&r.memory, &r.memory_map);
     });
 }
 
@@ -108,7 +105,7 @@ fn pretty_print_err(e: ConstEvalError, db: &TestDB) -> String {
     let mut err = String::new();
     let span_formatter = |file, range| format!("{file:?} {range:?}");
     let display_target =
-        DisplayTarget::from_crate(db, *db.all_crates().last().expect("no crate graph present"));
+        DisplayTarget::from_crate(db, *all_crates(db).last().expect("no crate graph present"));
     match e {
         ConstEvalError::MirLowerError(e) => {
             e.pretty_print(&mut err, db, span_formatter, display_target)
@@ -121,7 +118,7 @@ fn pretty_print_err(e: ConstEvalError, db: &TestDB) -> String {
     err
 }
 
-fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const<'_>, ConstEvalError> {
+fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Allocation<'_>, ConstEvalError> {
     let _tracing = setup_tracing();
     let interner = DbInterner::new_no_crate(db);
     let module_id = db.module_for_file(file_id.file_id(db));
@@ -131,7 +128,11 @@ fn eval_goal(db: &TestDB, file_id: EditionedFileId) -> Result<Const<'_>, ConstEv
         .declarations()
         .find_map(|x| match x {
             hir_def::ModuleDefId::ConstId(x) => {
-                if db.const_signature(x).name.as_ref()?.display(db, file_id.edition(db)).to_string()
+                if ConstSignature::of(db, x)
+                    .name
+                    .as_ref()?
+                    .display(db, file_id.edition(db))
+                    .to_string()
                     == "GOAL"
                 {
                     Some(x)
@@ -1791,14 +1792,14 @@ const GOAL: i32 = {
 fn closure_capture_unsized_type() {
     check_number(
         r#"
-    //- minicore: fn, copy, slice, index, coerce_unsized
+    //- minicore: fn, copy, slice, index, coerce_unsized, sized
     fn f<T: A>(x: &<T as A>::Ty) -> &<T as A>::Ty {
         let c = || &*x;
         c()
     }
 
     trait A {
-        type Ty;
+        type Ty: ?Sized;
     }
 
     impl A for i32 {
@@ -1809,7 +1810,7 @@ fn closure_capture_unsized_type() {
         let k: &[u8] = &[1, 2, 3];
         let k = f::<i32>(k);
         k[0] + k[1] + k[2]
-    }
+    };
     "#,
         6,
     );
@@ -2520,7 +2521,7 @@ fn enums() {
     );
     crate::attach_db(&db, || {
         let r = eval_goal(&db, file_id).unwrap();
-        assert_eq!(try_const_usize(&db, r), Some(1));
+        assert_eq!(allocation_as_usize(r), 1);
     })
 }
 
@@ -2533,7 +2534,15 @@ fn const_loop() {
     const F2: i32 = 2 * F1;
     const GOAL: i32 = F3;
     "#,
-        |e| e == ConstEvalError::MirLowerError(MirLowerError::Loop),
+        |e| {
+            if let ConstEvalError::MirEvalError(MirEvalError::ConstEvalError(_, inner)) = e
+                && let ConstEvalError::MirLowerError(MirLowerError::Loop) = *inner
+            {
+                true
+            } else {
+                false
+            }
+        },
     );
 }
 
@@ -2936,6 +2945,14 @@ fn recursive_adt() {
             TAG_TREE
         };
     "#,
-        |e| matches!(e, ConstEvalError::MirLowerError(MirLowerError::Loop)),
+        |e| {
+            if let ConstEvalError::MirEvalError(MirEvalError::ConstEvalError(_, inner)) = e
+                && let ConstEvalError::MirLowerError(MirLowerError::Loop) = *inner
+            {
+                true
+            } else {
+                false
+            }
+        },
     );
 }

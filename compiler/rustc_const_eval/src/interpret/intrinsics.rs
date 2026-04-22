@@ -4,10 +4,10 @@
 
 mod simd;
 
+use std::assert_matches;
+
 use rustc_abi::{FieldIdx, HasDataLayout, Size, VariantIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
-use rustc_data_structures::assert_matches;
-use rustc_errors::msg;
 use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, read_target_uint, write_target_uint};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
@@ -20,8 +20,8 @@ use super::memory::MemoryKind;
 use super::util::ensure_monomorphic_enough;
 use super::{
     AllocId, CheckInAllocMsg, ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Pointer,
-    PointerArithmetic, Projectable, Provenance, Scalar, err_ub_custom, err_unsup_format, interp_ok,
-    throw_inval, throw_ub, throw_ub_custom, throw_ub_format, throw_unsup_format,
+    PointerArithmetic, Projectable, Provenance, Scalar, err_ub_format, err_unsup_format, interp_ok,
+    throw_inval, throw_ub, throw_ub_format, throw_unsup_format,
 };
 use crate::interpret::Writeable;
 
@@ -40,20 +40,20 @@ pub(crate) enum MinMax {
     /// In particular, `-0.0` is considered smaller than `+0.0` and
     /// if either input is NaN, the result is NaN.
     Minimum,
-    /// The IEEE-2008 `minNum` operation with the SNaN handling of the
-    /// IEEE-2019 `minimumNumber` operation - see `f32::min` etc.
+    /// The IEEE-2019 `minimumNumber` operation but with non-deterministic signed zero handling
+    /// (like in IEEE-2008 `minNum`) - see `f32::min` etc.
     /// In particular, if the inputs are `-0.0` and `+0.0`, the result is non-deterministic,
     /// and if one argument is NaN (quiet or signaling), the other one is returned.
-    MinimumNumber,
+    MinimumNumberNsz,
     /// The IEEE-2019 `maximum` operation - see `f32::maximum` etc.
     /// In particular, `-0.0` is considered smaller than `+0.0` and
     /// if either input is NaN, the result is NaN.
     Maximum,
-    /// The IEEE-2008 `maxNum` operation with the SNaN handling of the
-    /// IEEE-2019 `maximumNumber` operation - see `f32::max` etc.
+    /// The IEEE-2019 `maximumNumber` operation but with non-deterministic signed zero handling
+    /// (like in IEEE-2008 `maxNum`) - see `f32::max` etc.
     /// In particular, if the inputs are `-0.0` and `+0.0`, the result is non-deterministic,
     /// and if one argument is NaN (quiet or signaling), the other one is returned.
-    MaximumNumber,
+    MaximumNumberNsz,
 }
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
@@ -281,7 +281,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::align_of_val | sym::size_of_val => {
                 // Avoid `deref_pointer` -- this is not a deref, the ptr does not have to be
                 // dereferenceable!
-                let place = self.ref_to_mplace(&self.read_immediate(&args[0])?)?;
+                let place = self.imm_ptr_to_mplace(&self.read_immediate(&args[0])?)?;
                 let (size, align) = self
                     .size_and_align_of_val(&place)?
                     .ok_or_else(|| err_unsup_format!("`extern type` does not have known layout"))?;
@@ -401,10 +401,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         }
                         _ => {
                             // Not into the same allocation -- this is UB.
-                            throw_ub_custom!(
-                                msg!(
-                                    "`{$name}` called on two different pointers that are not both derived from the same allocation"
-                                ),
+                            throw_ub_format!(
+                                "`{name}` called on two different pointers that are not both derived from the same allocation",
                                 name = intrinsic_name,
                             );
                         }
@@ -424,16 +422,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     if overflowed.to_bool()? {
                         // a < b
                         if intrinsic_name == sym::ptr_offset_from_unsigned {
-                            throw_ub_custom!(
-                                msg!(
-                                    "`ptr_offset_from_unsigned` called when first pointer has smaller {$is_addr ->
-                                        [true] address
-                                        *[false] offset
-                                    } than second: {$a_offset} < {$b_offset}"
-                                ),
+                            throw_ub_format!(
+                                "`ptr_offset_from_unsigned` called when first pointer has smaller {is_addr} than second: {a_offset} < {b_offset}",
                                 a_offset = a_offset,
                                 b_offset = b_offset,
-                                is_addr = is_addr,
+                                is_addr = if is_addr { "address" } else { "offset" },
                             );
                         }
                         // The signed form of the intrinsic allows this. If we interpret the
@@ -441,11 +434,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         // seems *positive* or equal to isize::MIN, they were more than isize::MAX apart.
                         let dist = val.to_target_isize(self)?;
                         if dist >= 0 || i128::from(dist) == self.pointer_size().signed_int_min() {
-                            throw_ub_custom!(
-                                msg!(
-                                    "`{$name}` called when first pointer is too far before second"
-                                ),
-                                name = intrinsic_name,
+                            throw_ub_format!(
+                                "`{intrinsic_name}` called when first pointer is too far before second"
                             );
                         }
                         dist
@@ -455,11 +445,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         // If converting to isize produced a *negative* result, we had an overflow
                         // because they were more than isize::MAX apart.
                         if dist < 0 {
-                            throw_ub_custom!(
-                                msg!(
-                                    "`{$name}` called when first pointer is too far ahead of second"
-                                ),
-                                name = intrinsic_name,
+                            throw_ub_format!(
+                                "`{intrinsic_name}` called when first pointer is too far ahead of second"
                             );
                         }
                         dist
@@ -476,14 +463,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             && let Ok((b_alloc_id, ..)) = self.ptr_try_get_alloc_id(b, 0)
                             && a_alloc_id == b_alloc_id
                         {
-                            err_ub_custom!(
-                                msg!("`{$name}` called on two different pointers where the memory range between them is not in-bounds of an allocation"),
-                                name = intrinsic_name,
+                            err_ub_format!(
+                                "`{intrinsic_name}` called on two different pointers where the memory range between them is not in-bounds of an allocation"
                             )
                         } else {
-                            err_ub_custom!(
-                                msg!("`{$name}` called on two different pointers that are not both derived from the same allocation"),
-                                name = intrinsic_name,
+                            err_ub_format!(
+                                "`{intrinsic_name}` called on two different pointers that are not both derived from the same allocation"
                             )
                         }
                     })?;
@@ -496,9 +481,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 )
                 .map_err_kind(|_| {
                     // Make the error more specific.
-                    err_ub_custom!(
-                        msg!("`{$name}` called on two different pointers that are not both derived from the same allocation"),
-                        name = intrinsic_name,
+                    err_ub_format!(
+                        "`{intrinsic_name}` called on two different pointers that are not both derived from the same allocation"
                     )
                 })?;
 
@@ -542,17 +526,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_scalar(Scalar::from_target_usize(align.bytes(), self), dest)?;
             }
 
-            sym::minnumf16 => {
-                self.float_minmax_intrinsic::<Half>(args, MinMax::MinimumNumber, dest)?
+            sym::minimum_number_nsz_f16 => {
+                self.float_minmax_intrinsic::<Half>(args, MinMax::MinimumNumberNsz, dest)?
             }
-            sym::minnumf32 => {
-                self.float_minmax_intrinsic::<Single>(args, MinMax::MinimumNumber, dest)?
+            sym::minimum_number_nsz_f32 => {
+                self.float_minmax_intrinsic::<Single>(args, MinMax::MinimumNumberNsz, dest)?
             }
-            sym::minnumf64 => {
-                self.float_minmax_intrinsic::<Double>(args, MinMax::MinimumNumber, dest)?
+            sym::minimum_number_nsz_f64 => {
+                self.float_minmax_intrinsic::<Double>(args, MinMax::MinimumNumberNsz, dest)?
             }
-            sym::minnumf128 => {
-                self.float_minmax_intrinsic::<Quad>(args, MinMax::MinimumNumber, dest)?
+            sym::minimum_number_nsz_f128 => {
+                self.float_minmax_intrinsic::<Quad>(args, MinMax::MinimumNumberNsz, dest)?
             }
 
             sym::minimumf16 => self.float_minmax_intrinsic::<Half>(args, MinMax::Minimum, dest)?,
@@ -564,17 +548,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             sym::minimumf128 => self.float_minmax_intrinsic::<Quad>(args, MinMax::Minimum, dest)?,
 
-            sym::maxnumf16 => {
-                self.float_minmax_intrinsic::<Half>(args, MinMax::MaximumNumber, dest)?
+            sym::maximum_number_nsz_f16 => {
+                self.float_minmax_intrinsic::<Half>(args, MinMax::MaximumNumberNsz, dest)?
             }
-            sym::maxnumf32 => {
-                self.float_minmax_intrinsic::<Single>(args, MinMax::MaximumNumber, dest)?
+            sym::maximum_number_nsz_f32 => {
+                self.float_minmax_intrinsic::<Single>(args, MinMax::MaximumNumberNsz, dest)?
             }
-            sym::maxnumf64 => {
-                self.float_minmax_intrinsic::<Double>(args, MinMax::MaximumNumber, dest)?
+            sym::maximum_number_nsz_f64 => {
+                self.float_minmax_intrinsic::<Double>(args, MinMax::MaximumNumberNsz, dest)?
             }
-            sym::maxnumf128 => {
-                self.float_minmax_intrinsic::<Quad>(args, MinMax::MaximumNumber, dest)?
+            sym::maximum_number_nsz_f128 => {
+                self.float_minmax_intrinsic::<Quad>(args, MinMax::MaximumNumberNsz, dest)?
             }
 
             sym::maximumf16 => self.float_minmax_intrinsic::<Half>(args, MinMax::Maximum, dest)?,
@@ -591,10 +575,23 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::copysignf64 => self.float_copysign_intrinsic::<Double>(args, dest)?,
             sym::copysignf128 => self.float_copysign_intrinsic::<Quad>(args, dest)?,
 
-            sym::fabsf16 => self.float_abs_intrinsic::<Half>(args, dest)?,
-            sym::fabsf32 => self.float_abs_intrinsic::<Single>(args, dest)?,
-            sym::fabsf64 => self.float_abs_intrinsic::<Double>(args, dest)?,
-            sym::fabsf128 => self.float_abs_intrinsic::<Quad>(args, dest)?,
+            sym::fabs => {
+                let arg = self.read_immediate(&args[0])?;
+                let ty::Float(float_ty) = arg.layout.ty.kind() else {
+                    span_bug!(
+                        self.cur_span(),
+                        "non-float type for float intrinsic: {}",
+                        arg.layout.ty,
+                    );
+                };
+                let out_val = match float_ty {
+                    FloatTy::F16 => self.unop_float_intrinsic::<Half>(intrinsic_name, arg)?,
+                    FloatTy::F32 => self.unop_float_intrinsic::<Single>(intrinsic_name, arg)?,
+                    FloatTy::F64 => self.unop_float_intrinsic::<Double>(intrinsic_name, arg)?,
+                    FloatTy::F128 => self.unop_float_intrinsic::<Quad>(intrinsic_name, arg)?,
+                };
+                self.write_scalar(out_val, dest)?;
+            }
 
             sym::floorf16 => self.float_round_intrinsic::<Half>(
                 args,
@@ -778,7 +775,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let op = self.eval_operand(op, None)?;
                 let cond = self.read_scalar(&op)?.to_bool()?;
                 if !cond {
-                    throw_ub_custom!(msg!("`assume` called with `false`"));
+                    throw_ub_format!("`assume` called with `false`");
                 }
                 interp_ok(())
             }
@@ -808,7 +805,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let bits_out = match name {
             sym::ctpop => u128::from(bits.count_ones()),
             sym::ctlz_nonzero | sym::cttz_nonzero if bits == 0 => {
-                throw_ub_custom!(msg!("`{$name}` called on 0"), name = name,);
+                throw_ub_format!("`{name}` called on 0");
             }
             sym::ctlz | sym::ctlz_nonzero => u128::from(bits.leading_zeros()) - extra,
             sym::cttz | sym::cttz_nonzero => u128::from((bits << extra).trailing_zeros()) - extra,
@@ -840,11 +837,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let rem = self.binary_op(BinOp::Rem, a, b)?;
         // sign does not matter for 0 test, so `to_bits` is fine
         if rem.to_scalar().to_bits(a.layout.size)? != 0 {
-            throw_ub_custom!(
-                msg!("exact_div: {$a} cannot be divided by {$b} without remainder"),
-                a = format!("{a}"),
-                b = format!("{b}")
-            )
+            throw_ub_format!("exact_div: {a} cannot be divided by {b} without remainder")
         }
         // `Rem` says this is all right, so we can let `Div` do its job.
         let res = self.binary_op(BinOp::Div, a, b)?;
@@ -925,8 +918,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let (size, align) = (layout.size, layout.align.abi);
 
         let size = self.compute_size_in_bytes(size, count).ok_or_else(|| {
-            err_ub_custom!(
-                msg!("overflow computing total size of `{$name}`"),
+            err_ub_format!(
+                "overflow computing total size of `{name}`",
                 name = if nonoverlapping { "copy_nonoverlapping" } else { "copy" }
             )
         })?;
@@ -989,9 +982,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // `checked_mul` enforces a too small bound (the correct one would probably be target_isize_max),
         // but no actual allocation can be big enough for the difference to be noticeable.
-        let len = self.compute_size_in_bytes(layout.size, count).ok_or_else(|| {
-            err_ub_custom!(msg!("overflow computing total size of `{$name}`"), name = name)
-        })?;
+        let len = self
+            .compute_size_in_bytes(layout.size, count)
+            .ok_or_else(|| err_ub_format!("overflow computing total size of `{name}`"))?;
 
         let bytes = std::iter::repeat_n(byte, len.bytes_usize());
         self.write_bytes_ptr(dst, bytes)
@@ -1040,6 +1033,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(Scalar::from_bool(lhs_bytes == rhs_bytes))
     }
 
+    fn unop_float_intrinsic<F>(
+        &self,
+        name: Symbol,
+        arg: ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>>
+    where
+        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
+    {
+        let x: F = arg.to_scalar().to_float()?;
+        match name {
+            // bitwise, no NaN adjustments
+            sym::fabs => interp_ok(x.abs().into()),
+            _ => bug!("not a unary float intrinsic: {}", name),
+        }
+    }
+
     fn float_minmax<F>(
         &self,
         a: Scalar<M::Provenance>,
@@ -1051,16 +1060,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     {
         let a: F = a.to_float()?;
         let b: F = b.to_float()?;
-        let res = if matches!(op, MinMax::MinimumNumber | MinMax::MaximumNumber) && a == b {
+        let res = if matches!(op, MinMax::MinimumNumberNsz | MinMax::MaximumNumberNsz) && a == b {
             // They are definitely not NaN (those are never equal), but they could be `+0` and `-0`.
             // Let the machine decide which one to return.
             M::equal_float_min_max(self, a, b)
         } else {
             let result = match op {
                 MinMax::Minimum => a.minimum(b),
-                MinMax::MinimumNumber => a.min(b),
+                MinMax::MinimumNumberNsz => a.min(b),
                 MinMax::Maximum => a.maximum(b),
-                MinMax::MaximumNumber => a.max(b),
+                MinMax::MaximumNumberNsz => a.max(b),
             };
             self.adjust_nan(result, &[a, b])
         };
@@ -1095,20 +1104,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let b: F = self.read_scalar(&args[1])?.to_float()?;
         // bitwise, no NaN adjustments
         self.write_scalar(a.copy_sign(b), dest)?;
-        interp_ok(())
-    }
-
-    fn float_abs_intrinsic<F>(
-        &mut self,
-        args: &[OpTy<'tcx, M::Provenance>],
-        dest: &PlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, ()>
-    where
-        F: rustc_apfloat::Float + rustc_apfloat::FloatConvert<F> + Into<Scalar<M::Provenance>>,
-    {
-        let x: F = self.read_scalar(&args[0])?.to_float()?;
-        // bitwise, no NaN adjustments
-        self.write_scalar(x.abs(), dest)?;
         interp_ok(())
     }
 

@@ -22,6 +22,7 @@
     auto_traits,
     freeze_impls,
     negative_impls,
+    pattern_types,
     rustc_attrs,
     decl_macro,
     f16,
@@ -63,7 +64,7 @@ pub trait MetaSized: PointeeSized {}
 pub trait Sized: MetaSized {}
 
 #[lang = "destruct"]
-#[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
+#[diagnostic::on_unimplemented(message = "can't drop `{Self}`")]
 pub trait Destruct: PointeeSized {}
 
 #[lang = "legacy_receiver"]
@@ -127,17 +128,42 @@ pub struct ManuallyDrop<T: PointeeSized> {
 impl<T: Copy + PointeeSized> Copy for ManuallyDrop<T> {}
 
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
 pub struct NonNull<T: ?Sized> {
-    pointer: *const T,
+    pointer: pattern_type!(*const T is !null),
 }
 impl<T: ?Sized> Copy for NonNull<T> {}
 
 #[repr(transparent)]
-#[rustc_layout_scalar_valid_range_start(1)]
 #[rustc_nonnull_optimization_guaranteed]
-pub struct NonZero<T>(T);
+pub struct NonZero<T: ZeroablePrimitive>(T::NonZeroInner);
+
+pub trait ZeroablePrimitive {
+    type NonZeroInner;
+}
+
+macro_rules! define_valid_range_type {
+    ($(
+        $name:ident($int:ident is $pat:pat);
+    )+) => {$(
+        #[repr(transparent)]
+        pub struct $name(pattern_type!($int is $pat));
+
+        impl ZeroablePrimitive for $int {
+            type NonZeroInner = $name;
+        }
+    )+};
+}
+
+define_valid_range_type! {
+    NonZeroU8Inner(u8 is 1..=0xFF);
+    NonZeroU16Inner(u16 is 1..=0xFFFF);
+    NonZeroU32Inner(u32 is 1..=0xFFFF_FFFF);
+    NonZeroU64Inner(u64 is 1..=0xFFFF_FFFF_FFFF_FFFF);
+
+    NonZeroI8Inner(i8 is (-128..=-1 | 1..=0x7F));
+    NonZeroI32Inner(i32 is (-0x8000_0000..=-1 | 1..=0x7FFF_FFFF));
+}
 
 pub struct Unique<T: ?Sized> {
     pub pointer: NonNull<T>,
@@ -187,6 +213,12 @@ macro_rules! stringify {
     };
 }
 
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! compile_error {
+    ($msg:expr $(,)?) => {{ /* compiler built-in */ }};
+}
+
 #[lang = "add"]
 pub trait Add<Rhs = Self> {
     type Output;
@@ -225,6 +257,14 @@ impl Neg for i8 {
     }
 }
 
+impl Neg for i32 {
+    type Output = i32;
+
+    fn neg(self) -> i32 {
+        loop {}
+    }
+}
+
 #[lang = "sync"]
 pub trait Sync {}
 impl_marker_trait!(
@@ -235,6 +275,10 @@ impl_marker_trait!(
         f16, f32, f64, f128,
     ]
 );
+
+impl Sync for () {}
+
+impl<T, const N: usize> Sync for [T; N] {}
 
 #[lang = "drop_in_place"]
 fn drop_in_place<T>(_: *mut T) {}
@@ -275,6 +319,10 @@ trait Drop {
     fn drop(&mut self);
 }
 
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+
 pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
@@ -288,11 +336,30 @@ pub mod mem {
     pub const fn align_of<T>() -> usize;
 }
 
+pub mod ptr {
+    #[inline]
+    #[rustc_diagnostic_item = "ptr_write_volatile"]
+    pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
+        #[rustc_intrinsic]
+        pub unsafe fn volatile_store<T>(dst: *mut T, val: T);
+
+        unsafe { volatile_store(dst, src) };
+    }
+}
+
 #[lang = "c_void"]
 #[repr(u8)]
 pub enum c_void {
     __variant1,
     __variant2,
+}
+
+#[rustc_builtin_macro(pattern_type)]
+#[macro_export]
+macro_rules! pattern_type {
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
 }
 
 #[lang = "Ordering"]

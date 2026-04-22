@@ -643,6 +643,7 @@ impl f128 {
     #[doc(alias = "sincos")]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
+    #[must_use = "this returns the result of the operation, without modifying the original"]
     pub fn sin_cos(self) -> (f128, f128) {
         (self.sin(), self.cos())
     }
@@ -867,9 +868,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn asinh(self) -> f128 {
-        let ax = self.abs();
-        let ix = 1.0 / ax;
-        (ax + (ax / (Self::hypot(1.0, ix) + ix))).ln_1p().copysign(self)
+        cmath::asinhf128(self)
     }
 
     /// Inverse hyperbolic cosine function.
@@ -900,11 +899,7 @@ impl f128 {
     #[unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn acosh(self) -> f128 {
-        if self < 1.0 {
-            Self::NAN
-        } else {
-            (self + ((self - 1.0).sqrt() * (self + 1.0).sqrt())).ln()
-        }
+        cmath::acoshf128(self)
     }
 
     /// Inverse hyperbolic tangent function.

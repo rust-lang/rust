@@ -7,6 +7,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
 use rustc_middle::ty::{
     self, ClosureKind, GenericArgsRef, Instance, PseudoCanonicalInput, TyCtxt, TypeVisitableExt,
+    Unnormalized,
 };
 use rustc_span::sym;
 use rustc_trait_selection::traits;
@@ -28,7 +29,7 @@ fn resolve_instance_raw<'tcx>(
             def_id,
             typing_env,
             trait_def_id,
-            tcx.normalize_erasing_regions(typing_env, args),
+            tcx.normalize_erasing_regions(typing_env, Unnormalized::new_wip(args)),
         )
     } else {
         let def = if tcx.intrinsic(def_id).is_some() {
@@ -154,7 +155,7 @@ fn resolve_associated_item<'tcx>(
                 // and the obligation is monomorphic, otherwise passes such as
                 // transmute checking and polymorphic MIR optimizations could
                 // get a result which isn't correct for all monomorphizations.
-                match typing_env.typing_mode {
+                match typing_env.typing_mode() {
                     ty::TypingMode::Coherence
                     | ty::TypingMode::Analysis { .. }
                     | ty::TypingMode::Borrowck { .. }
@@ -194,7 +195,7 @@ fn resolve_associated_item<'tcx>(
                 let sized_def_id = tcx.lang_items().sized_trait();
                 // If we find a `Self: Sized` bound on the item, then we know
                 // that `dyn Trait` can certainly never apply here.
-                if !predicates.into_iter().filter_map(ty::Clause::as_trait_clause).any(|clause| {
+                if !predicates.into_iter().filter_map(|p| p.as_trait_clause()).any(|clause| {
                     Some(clause.def_id()) == sized_def_id
                         && clause.skip_binder().self_ty() == self_ty
                 }) {
@@ -230,7 +231,7 @@ fn resolve_associated_item<'tcx>(
             if trait_item_id != leaf_def.item.def_id
                 && let Some(leaf_def_item) = leaf_def.item.def_id.as_local()
             {
-                tcx.ensure_ok().compare_impl_item(leaf_def_item)?;
+                tcx.ensure_result().compare_impl_item(leaf_def_item)?;
             }
 
             Some(ty::Instance::new_raw(leaf_def.item.def_id, args))
@@ -386,6 +387,22 @@ fn resolve_associated_item<'tcx>(
                 assert_eq!(name, sym::transmute);
                 let args = tcx.erase_and_anonymize_regions(rcvr_args);
                 Some(ty::Instance::new_raw(trait_item_id, args))
+            } else if tcx.is_lang_item(trait_ref.def_id, LangItem::Field) {
+                if tcx.is_lang_item(trait_item_id, LangItem::FieldOffset) {
+                    let self_ty = trait_ref.self_ty();
+                    match self_ty.kind() {
+                        ty::Adt(def, _) if def.is_field_representing_type() => {}
+                        _ => bug!("expected field representing type, found {self_ty}"),
+                    }
+                    Some(Instance {
+                        def: ty::InstanceKind::Item(
+                            tcx.lang_items().get(LangItem::FieldOffset).unwrap(),
+                        ),
+                        args: rcvr_args,
+                    })
+                } else {
+                    bug!("unexpected associated associated item")
+                }
             } else {
                 Instance::try_resolve_item_for_coroutine(tcx, trait_item_id, trait_id, rcvr_args)
             }

@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 use rustc_abi::{ExternAbi, FieldIdx, ScalableElt};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
-use rustc_errors::{EmissionGuarantee, MultiSpan};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::attrs::ReprAttr::ReprPacked;
 use rustc_hir::def::{CtorKind, DefKind};
@@ -12,6 +12,7 @@ use rustc_hir::{LangItem, Node, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, ObligationCauseCode, WellFormedLoc};
 use rustc_lint_defs::builtin::{REPR_TRANSPARENT_NON_ZST_FIELDS, UNSUPPORTED_CALLING_CONVENTIONS};
+use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
@@ -20,10 +21,9 @@ use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{
     AdtDef, BottomUpFolder, FnSig, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, fold_regions,
+    TypeVisitable, TypeVisitableExt, Unnormalized, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
-use rustc_span::source_map::Spanned;
 use rustc_target::spec::{AbiMap, AbiMapping};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits;
@@ -53,6 +53,22 @@ fn add_abi_diag_help<T: EmissionGuarantee>(abi: ExternAbi, diag: &mut Diag<'_, T
 }
 
 pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi) {
+    struct UnsupportedCallingConventions {
+        abi: ExternAbi,
+    }
+
+    impl<'a> Diagnostic<'a, ()> for UnsupportedCallingConventions {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let Self { abi } = self;
+            let mut lint = Diag::new(
+                dcx,
+                level,
+                format!("{abi} is not a supported ABI for the current target"),
+            );
+            add_abi_diag_help(abi, &mut lint);
+            lint
+        }
+    }
     // FIXME: This should be checked earlier, e.g. in `rustc_ast_lowering`, as this
     // currently only guards function imports, function definitions, and function pointer types.
     // Functions in trait declarations can still use "deprecated" ABIs without any warning.
@@ -64,18 +80,18 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: ExternAbi
             tcx.dcx().span_delayed_bug(span, format!("{abi} should be rejected in ast_lowering"));
         }
         AbiMapping::Deprecated(..) => {
-            tcx.node_span_lint(UNSUPPORTED_CALLING_CONVENTIONS, hir_id, span, |lint| {
-                lint.primary_message(format!(
-                    "{abi} is not a supported ABI for the current target"
-                ));
-                add_abi_diag_help(abi, lint);
-            });
+            tcx.emit_node_span_lint(
+                UNSUPPORTED_CALLING_CONVENTIONS,
+                hir_id,
+                span,
+                UnsupportedCallingConventions { abi },
+            );
         }
     }
 }
 
 pub fn check_custom_abi(tcx: TyCtxt<'_>, def_id: LocalDefId, fn_sig: FnSig<'_>, fn_sig_span: Span) {
-    if fn_sig.abi == ExternAbi::Custom {
+    if fn_sig.abi() == ExternAbi::Custom {
         // Function definitions that use `extern "custom"` must be naked functions.
         if !find_attr!(tcx, def_id, Naked(_)) {
             tcx.dcx().emit_err(crate::errors::AbiCustomClothedFunction {
@@ -129,7 +145,7 @@ fn allowed_union_or_unsafe_field<'tcx>(
         .lang_items()
         .get(LangItem::BikeshedGuaranteedNoDrop)
         .unwrap_or_else(|| tcx.require_lang_item(LangItem::Copy, span));
-    let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, ty) else {
+    let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)) else {
         tcx.dcx().span_delayed_bug(span, "could not normalize field type");
         return true;
     };
@@ -174,12 +190,17 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
 
 /// Check that a `static` is inhabited.
 fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    #[derive(Diagnostic)]
+    #[diag("static of uninhabited type")]
+    #[note("uninhabited statics cannot be initialized, and any access would be an immediate error")]
+    struct StaticOfUninhabitedType;
+
     // Make sure statics are inhabited.
     // Other parts of the compiler assume that there are no uninhabited places. In principle it
     // would be enough to check this for `extern` statics, as statics with an initializer will
     // have UB during initialization if they are uninhabited, but there also seems to be no good
     // reason to allow any statics to be uninhabited.
-    let ty = tcx.type_of(def_id).instantiate_identity();
+    let ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
     let span = tcx.def_span(def_id);
     let layout = match tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty)) {
         Ok(l) => l,
@@ -194,7 +215,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         // SIMD types with invalid layout (e.g., zero-length) should emit an error
         Err(e @ LayoutError::InvalidSimd { .. }) => {
             let ty_span = tcx.ty_span(def_id);
-            tcx.dcx().emit_err(Spanned { span: ty_span, node: e.into_diagnostic() });
+            tcx.dcx().span_err(ty_span, e.to_string());
             return;
         }
         // Generic statics are rejected, but we still reach this case.
@@ -204,15 +225,11 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
     };
     if layout.is_uninhabited() {
-        tcx.node_span_lint(
+        tcx.emit_node_span_lint(
             UNINHABITED_STATIC,
             tcx.local_def_id_to_hir_id(def_id),
             span,
-            |lint| {
-                lint.primary_message("static of uninhabited type");
-                lint
-                .note("uninhabited statics cannot be initialized, and any access would be an immediate error");
-            },
+            StaticOfUninhabitedType,
         );
     }
 }
@@ -230,7 +247,7 @@ fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         return;
     }
 
-    if tcx.type_of(def_id).instantiate_identity().references_error() {
+    if tcx.type_of(def_id).instantiate_identity().skip_norm_wip().references_error() {
         return;
     }
     if check_opaque_for_cycles(tcx, def_id).is_err() {
@@ -319,7 +336,7 @@ fn check_opaque_meets_bounds<'tcx>(
     //
     // FIXME: Consider wrapping the hidden type in an existential `Binder` and instantiating it
     // here rather than using ReErased.
-    let hidden_ty = tcx.type_of(def_id.to_def_id()).instantiate(tcx, args);
+    let hidden_ty = tcx.type_of(def_id.to_def_id()).instantiate(tcx, args).skip_norm_wip();
     let hidden_ty = fold_regions(tcx, hidden_ty, |re, _dbi| match re.kind() {
         ty::ReErased => infcx.next_region_var(RegionVariableOrigin::Misc(span)),
         _ => re,
@@ -328,8 +345,10 @@ fn check_opaque_meets_bounds<'tcx>(
     // HACK: We eagerly instantiate some bounds to report better errors for them...
     // This isn't necessary for correctness, since we register these bounds when
     // equating the opaque below, but we should clean this up in the new solver.
-    for (predicate, pred_span) in
-        tcx.explicit_item_bounds(def_id).iter_instantiated_copied(tcx, args)
+    for (predicate, pred_span) in tcx
+        .explicit_item_bounds(def_id)
+        .iter_instantiated_copied(tcx, args)
+        .map(Unnormalized::skip_norm_wip)
     {
         let predicate = predicate.fold_with(&mut BottomUpFolder {
             tcx,
@@ -506,8 +525,8 @@ fn sanity_check_found_hidden_type<'tcx>(
         // Nothing was actually constrained.
         return Ok(());
     }
-    if let ty::Alias(ty::Opaque, alias) = ty.ty.kind() {
-        if alias.def_id == key.def_id.to_def_id() && alias.args == key.args {
+    if let &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) = ty.ty.kind() {
+        if def_id == key.def_id.to_def_id() && args == key.args {
             // Nothing was actually constrained, this is an opaque usage that was
             // only discovered to be opaque after inference vars resolved.
             return Ok(());
@@ -523,7 +542,7 @@ fn sanity_check_found_hidden_type<'tcx>(
     // These correspond to lifetime variables that never got resolved, so we patch this up here.
     ty.ty = erase_re_vars(ty.ty);
     // Get the hidden type.
-    let hidden_ty = tcx.type_of(key.def_id).instantiate(tcx, key.args);
+    let hidden_ty = tcx.type_of(key.def_id).instantiate(tcx, key.args).skip_norm_wip();
     let hidden_ty = erase_re_vars(hidden_ty);
 
     // If the hidden types differ, emit a type mismatch diagnostic.
@@ -723,7 +742,7 @@ fn is_enum_of_nonnullable_ptr<'tcx>(
 
 fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     if tcx.codegen_fn_attrs(def_id).import_linkage.is_some() {
-        if match tcx.type_of(def_id).instantiate_identity().kind() {
+        if match tcx.type_of(def_id).instantiate_identity().skip_norm_wip().kind() {
             ty::RawPtr(_, _) => false,
             ty::Adt(adt_def, args) => !is_enum_of_nonnullable_ptr(tcx, *adt_def, *args),
             _ => true,
@@ -766,7 +785,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
 
             check_static_inhabited(tcx, def_id);
             check_static_linkage(tcx, def_id);
-            let ty = tcx.type_of(def_id).instantiate_identity();
+            let ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
             res = res.and(wfcheck::check_static_item(
                 tcx, def_id, ty, /* should_check_for_sync */ true,
             ));
@@ -806,10 +825,9 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().associated_items(def_id);
             if of_trait {
                 let impl_trait_header = tcx.impl_trait_header(def_id);
-                res = res.and(
-                    tcx.ensure_ok()
-                        .coherent_trait(impl_trait_header.trait_ref.instantiate_identity().def_id),
-                );
+                res = res.and(tcx.ensure_result().coherent_trait(
+                    impl_trait_header.trait_ref.instantiate_identity().skip_norm_wip().def_id,
+                ));
 
                 if res.is_ok() {
                     // Checking this only makes sense if the all trait impls satisfy basic
@@ -897,7 +915,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             // avoids this query from having a direct dependency edge on the HIR
             return res;
         }
-        DefKind::Const => {
+        DefKind::Const { .. } => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
@@ -935,10 +953,10 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             check_type_alias_type_params_are_used(tcx, def_id);
+            let ty = tcx.type_of(def_id).instantiate_identity();
+            let span = tcx.def_span(def_id);
             if tcx.type_alias_is_lazy(def_id) {
                 res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
-                    let ty = tcx.type_of(def_id).instantiate_identity();
-                    let span = tcx.def_span(def_id);
                     let item_ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), ty);
                     wfcx.register_wf_obligation(
                         span,
@@ -949,6 +967,30 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                     Ok(())
                 }));
                 check_variances_for_type_defn(tcx, def_id);
+            } else {
+                res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
+                    // HACK: We sometimes incidentally check that const arguments have the correct
+                    // type as a side effect of the anon const desugaring. To make this "consistent"
+                    // for users we explicitly check `ConstArgHasType` clauses so that const args
+                    // that don't go through an anon const still have their types checked.
+                    //
+                    // We use the unnormalized type as this mirrors the behaviour that we previously
+                    // would have had when all const arguments were anon consts.
+                    //
+                    // Changing this to normalized obligations is a breaking change:
+                    // `type Bar = [(); panic!()];` would become an error
+                    if let Some(unnormalized_obligations) = wfcx.unnormalized_obligations(span, ty.skip_norm_wip())
+                    {
+                        let filtered_obligations =
+                            unnormalized_obligations.into_iter().filter(|o| {
+                                matches!(o.predicate.kind().skip_binder(),
+                                    ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _))
+                                    if matches!(ct.kind(), ty::ConstKind::Param(..)))
+                            });
+                        wfcx.ocx.register_obligations(filtered_obligations)
+                    }
+                    Ok(())
+                }));
             }
 
             // Only `Node::Item` and `Node::ForeignItem` still have HIR based
@@ -1059,7 +1101,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             // avoids this query from having a direct dependency edge on the HIR
             return res;
         }
-        DefKind::AssocConst => {
+        DefKind::AssocConst { .. } => {
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
             res = res.and(check_associated_item(tcx, def_id));
@@ -1199,7 +1241,7 @@ fn check_impl_items_against_trait<'tcx>(
     impl_id: LocalDefId,
     impl_trait_header: ty::ImplTraitHeader<'tcx>,
 ) {
-    let trait_ref = impl_trait_header.trait_ref.instantiate_identity();
+    let trait_ref = impl_trait_header.trait_ref.instantiate_identity().skip_norm_wip();
     // If the trait reference itself is erroneous (so the compilation is going
     // to fail), skip checking the items here -- the `impl_item` table in `tcx`
     // isn't populated for such impls.
@@ -1238,8 +1280,7 @@ fn check_impl_items_against_trait<'tcx>(
             Err(ErrorGuaranteed { .. }) => continue,
         };
 
-        let res = tcx.ensure_ok().compare_impl_item(impl_item.expect_local());
-
+        let res = tcx.ensure_result().compare_impl_item(impl_item.expect_local());
         if res.is_ok() {
             match ty_impl_item.kind {
                 ty::AssocKind::Fn { .. } => {
@@ -1247,7 +1288,9 @@ fn check_impl_items_against_trait<'tcx>(
                         tcx,
                         ty_impl_item,
                         ty_trait_item,
-                        tcx.impl_trait_ref(ty_impl_item.container_id(tcx)).instantiate_identity(),
+                        tcx.impl_trait_ref(ty_impl_item.container_id(tcx))
+                            .instantiate_identity()
+                            .skip_norm_wip(),
                     );
                 }
                 ty::AssocKind::Const { .. } => {}
@@ -1376,7 +1419,7 @@ fn check_impl_items_against_trait<'tcx>(
 }
 
 fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
-    let t = tcx.type_of(def_id).instantiate_identity();
+    let t = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
     if let ty::Adt(def, args) = t.kind()
         && def.is_struct()
     {
@@ -1451,7 +1494,7 @@ fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
 
 #[tracing::instrument(skip(tcx), level = "debug")]
 fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalable: ScalableElt) {
-    let ty = tcx.type_of(def_id).instantiate_identity();
+    let ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
     let ty::Adt(def, args) = ty.kind() else { return };
     if !def.is_struct() {
         tcx.dcx().delayed_bug("`rustc_scalable_vector` applied to non-struct");
@@ -1472,8 +1515,17 @@ fn check_scalable_vector(tcx: TyCtxt<'_>, span: Span, def_id: LocalDefId, scalab
             return;
         }
         ScalableElt::Container if fields.is_empty() => {
-            let mut err =
-                tcx.dcx().struct_span_err(span, "scalable vectors must have a single field");
+            let mut err = tcx
+                .dcx()
+                .struct_span_err(span, "scalable vector tuples must have at least one field");
+            err.help("tuples of scalable vectors can only contain multiple of the same scalable vector type");
+            err.emit();
+            return;
+        }
+        ScalableElt::Container if fields.len() > 8 => {
+            let mut err = tcx
+                .dcx()
+                .struct_span_err(span, "scalable vector tuples can have at most eight fields");
             err.help("tuples of scalable vectors can only contain multiple of the same scalable vector type");
             err.emit();
             return;
@@ -1592,7 +1644,7 @@ pub(super) fn check_packed(tcx: TyCtxt<'_>, sp: Span, def: ty::AdtDef<'_>) {
                         if first {
                             format!(
                                 "`{}` contains a field of type `{}`",
-                                tcx.type_of(def.did()).instantiate_identity(),
+                                tcx.type_of(def.did()).instantiate_identity().skip_norm_wip(),
                                 ident
                             )
                         } else {
@@ -1613,7 +1665,7 @@ pub(super) fn check_packed_inner(
     def_id: DefId,
     stack: &mut Vec<DefId>,
 ) -> Option<Vec<(DefId, Span)>> {
-    if let ty::Adt(def, args) = tcx.type_of(def_id).instantiate_identity().kind() {
+    if let ty::Adt(def, args) = tcx.type_of(def_id).instantiate_identity().skip_norm_wip().kind() {
         if def.is_struct() || def.is_union() {
             if def.repr().align.is_some() {
                 return Some(vec![(def.did(), DUMMY_SP)]);
@@ -1637,6 +1689,39 @@ pub(super) fn check_packed_inner(
 }
 
 pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) {
+    struct ZeroSizedFieldReprTransparentIncompatibility<'tcx> {
+        unsuited: UnsuitedInfo<'tcx>,
+    }
+
+    impl<'a, 'tcx> Diagnostic<'a, ()> for ZeroSizedFieldReprTransparentIncompatibility<'tcx> {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let Self { unsuited } = self;
+            let (title, note) = match unsuited.reason {
+                UnsuitedReason::NonExhaustive => (
+                    "external non-exhaustive types",
+                    "is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future.",
+                ),
+                UnsuitedReason::PrivateField => (
+                    "external types with private fields",
+                    "contains private fields, so it could become non-zero-sized in the future.",
+                ),
+                UnsuitedReason::ReprC => (
+                    "`repr(C)` types",
+                    "is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.",
+                ),
+            };
+            Diag::new(
+                dcx,
+                level,
+                format!("zero-sized fields in `repr(transparent)` cannot contain {title}"),
+            )
+            .with_note(format!(
+                "this field contains `{field_ty}`, which {note}",
+                field_ty = unsuited.ty,
+            ))
+        }
+    }
+
     if !adt.repr().transparent() {
         return;
     }
@@ -1708,7 +1793,8 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
         ty: Ty<'tcx>,
     ) -> ControlFlow<UnsuitedInfo<'tcx>> {
         // We can encounter projections during traversal, so ensure the type is normalized.
-        let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+        let ty =
+            tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
         match ty.kind() {
             ty::Tuple(list) => list.iter().try_for_each(|t| check_unsuited(tcx, typing_env, t)),
             ty::Array(ty, _) => check_unsuited(tcx, typing_env, *ty),
@@ -1747,29 +1833,11 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
             // If there are any non-trivial fields, then there can be no non-exhaustive 1-zsts.
             // Otherwise, it's only an issue if there's >1 non-exhaustive 1-zst.
             if non_trivial_count > 0 || prev_unsuited_1zst {
-                tcx.node_span_lint(
+                tcx.emit_node_span_lint(
                     REPR_TRANSPARENT_NON_ZST_FIELDS,
                     tcx.local_def_id_to_hir_id(adt.did().expect_local()),
                     field.span,
-                    |lint| {
-                        let title = match unsuited.reason {
-                            UnsuitedReason::NonExhaustive => "external non-exhaustive types",
-                            UnsuitedReason::PrivateField => "external types with private fields",
-                            UnsuitedReason::ReprC => "`repr(C)` types",
-                        };
-                        lint.primary_message(
-                            format!("zero-sized fields in `repr(transparent)` cannot contain {title}"),
-                        );
-                        let note = match unsuited.reason {
-                            UnsuitedReason::NonExhaustive => "is marked with `#[non_exhaustive]`, so it could become non-zero-sized in the future.",
-                            UnsuitedReason::PrivateField => "contains private fields, so it could become non-zero-sized in the future.",
-                            UnsuitedReason::ReprC => "is a `#[repr(C)]` type, so it is not guaranteed to be zero-sized on all targets.",
-                        };
-                        lint.note(format!(
-                            "this field contains `{field_ty}`, which {note}",
-                            field_ty = unsuited.ty,
-                        ));
-                    },
+                    ZeroSizedFieldReprTransparentIncompatibility { unsuited },
                 );
             } else {
                 prev_unsuited_1zst = true;
@@ -1960,7 +2028,7 @@ fn check_type_alias_type_params_are_used<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalD
         return;
     }
 
-    let ty = tcx.type_of(def_id).instantiate_identity();
+    let ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
     if ty.references_error() {
         // If there is already another error, do not emit an error for not using a type parameter.
         return;
@@ -2086,7 +2154,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
                 impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector {
                     fn visit_ty(&mut self, t: Ty<'tcx>) {
                         match *t.kind() {
-                            ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
+                            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id: def }, .. }) => {
                                 self.opaques.push(def);
                             }
                             ty::Closure(def_id, ..) | ty::Coroutine(def_id, ..) => {
@@ -2103,7 +2171,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
                 for def_id in visitor.opaques {
                     let ty_span = tcx.def_span(def_id);
                     if !seen.contains(&ty_span) {
-                        let descr = if ty.is_impl_trait() { "opaque " } else { "" };
+                        let descr = if ty.is_opaque() { "opaque " } else { "" };
                         err.span_label(ty_span, format!("returning this {descr}type `{ty}`"));
                         seen.insert(ty_span);
                     }
@@ -2119,10 +2187,10 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, opaque_def_id: LocalDefId) -> ErrorG
                     let mut label_match = |ty: Ty<'_>, span| {
                         for arg in ty.walk() {
                             if let ty::GenericArgKind::Type(ty) = arg.kind()
-                                && let ty::Alias(
-                                    ty::Opaque,
-                                    ty::AliasTy { def_id: captured_def_id, .. },
-                                ) = *ty.kind()
+                                && let ty::Alias(ty::AliasTy {
+                                    kind: ty::Opaque { def_id: captured_def_id },
+                                    ..
+                                }) = *ty.kind()
                                 && captured_def_id == opaque_def_id.to_def_id()
                             {
                                 err.span_label(

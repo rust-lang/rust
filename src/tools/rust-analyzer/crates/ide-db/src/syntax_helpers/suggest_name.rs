@@ -89,6 +89,12 @@ const USELESS_METHODS: &[&str] = &[
 ///
 /// assert_eq!(generator.suggest_name("b2"), "b2");
 /// assert_eq!(generator.suggest_name("b"), "b3");
+///
+/// // Multi-byte UTF-8 identifiers (e.g. CJK) are handled correctly
+/// assert_eq!(generator.suggest_name("日本語"), "日本語");
+/// assert_eq!(generator.suggest_name("日本語"), "日本語1");
+/// assert_eq!(generator.suggest_name("données3"), "données3");
+/// assert_eq!(generator.suggest_name("données"), "données4");
 /// ```
 #[derive(Debug, Default)]
 pub struct NameGenerator {
@@ -111,6 +117,20 @@ impl NameGenerator {
                 if let hir::ScopeDef::Local(_) = scope {
                     generator.insert(name.as_str());
                 }
+            });
+        }
+
+        generator
+    }
+
+    pub fn new_from_scope_non_locals(scope: Option<SemanticsScope<'_>>) -> Self {
+        let mut generator = Self::default();
+        if let Some(scope) = scope {
+            scope.process_all_names(&mut |name, scope| {
+                if let hir::ScopeDef::Local(_) = scope {
+                    return;
+                }
+                generator.insert(name.as_str());
             });
         }
 
@@ -262,11 +282,15 @@ impl NameGenerator {
     /// Remove the numeric suffix from the name
     ///
     /// # Examples
-    /// `a1b2c3` -> `a1b2c`
+    /// `a1b2c3` -> (`a1b2c`, Some(3))
     fn split_numeric_suffix(name: &str) -> (&str, Option<usize>) {
         let pos =
             name.rfind(|c: char| !c.is_numeric()).expect("Name cannot be empty or all-numeric");
-        let (prefix, suffix) = name.split_at(pos + 1);
+        // `rfind` returns the byte offset of the matched character, which may be
+        // multi-byte (e.g. CJK identifiers). Use `ceil_char_boundary` to advance
+        // past the full character to the next valid split point.
+        let split = name.ceil_char_boundary(pos + 1);
+        let (prefix, suffix) = name.split_at(split);
         (prefix, suffix.parse().ok())
     }
 }

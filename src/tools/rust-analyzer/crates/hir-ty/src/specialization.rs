@@ -1,6 +1,9 @@
 //! Impl specialization related things
 
-use hir_def::{HasModule, ImplId, nameres::crate_def_map};
+use hir_def::{
+    ExpressionStoreOwnerId, GenericDefId, HasModule, ImplId, nameres::crate_def_map,
+    signatures::ImplSignature,
+};
 use intern::sym;
 use tracing::debug;
 
@@ -45,11 +48,13 @@ fn specializes_query(
     specializing_impl_def_id: ImplId,
     parent_impl_def_id: ImplId,
 ) -> bool {
-    let trait_env = db.trait_environment(specializing_impl_def_id.into());
+    let trait_env = db.trait_environment(ExpressionStoreOwnerId::from(GenericDefId::from(
+        specializing_impl_def_id,
+    )));
     let interner = DbInterner::new_with(db, specializing_impl_def_id.krate(db));
 
-    let specializing_impl_signature = db.impl_signature(specializing_impl_def_id);
-    let parent_impl_signature = db.impl_signature(parent_impl_def_id);
+    let specializing_impl_signature = ImplSignature::of(db, specializing_impl_def_id);
+    let parent_impl_signature = ImplSignature::of(db, parent_impl_def_id);
 
     // We determine whether there's a subset relationship by:
     //
@@ -104,7 +109,7 @@ fn specializes_query(
     // only be referenced via projection predicates.
     ocx.register_obligations(clauses_as_obligations(
         GenericPredicates::query_all(db, parent_impl_def_id.into())
-            .iter_instantiated_copied(interner, parent_args.as_slice()),
+            .iter_instantiated(interner, parent_args.as_slice()),
         cause.clone(),
         param_env,
     ));

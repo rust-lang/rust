@@ -1,6 +1,6 @@
 //@ run-pass
 #![expect(incomplete_features)]
-#![feature(contracts, cfg_contract_checks, contracts_internals, core_intrinsics)]
+#![feature(contracts, contracts_internals, core_intrinsics)]
 
 extern crate core;
 

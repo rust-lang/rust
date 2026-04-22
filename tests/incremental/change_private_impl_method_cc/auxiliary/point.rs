@@ -5,10 +5,10 @@ pub struct Point {
 
 impl Point {
     fn distance_squared(&self) -> f32 {
-        #[cfg(cfail1)]
+        #[cfg(bpass1)]
         return self.x + self.y;
 
-        #[cfg(cfail2)]
+        #[cfg(bpass2)]
         return self.x * self.x + self.y * self.y;
     }
 

@@ -2363,6 +2363,7 @@ fn test() {
 }
 "#,
         expect![[r#"
+            46..49 'Foo': Foo<N>
             93..97 'self': Foo<N>
             108..125 '{     ...     }': usize
             118..119 'N': usize
@@ -2754,6 +2755,7 @@ where
             664..680 'filter...ter_fn': dyn Fn(&'? T) -> bool + 'static
             691..698 'loop {}': !
             696..698 '{}': ()
+            512..513 'N': usize
         "#]],
     );
 }
@@ -2793,5 +2795,121 @@ fn foo() {
             98..119 'is_siz...rsive>': fn is_sized<Recursive>()
             98..121 'is_siz...ive>()': ()
         "#]],
+    );
+}
+
+#[test]
+fn regression_21742() {
+    check_no_mismatches(
+        r#"
+pub trait IntoIterator {
+    type Item;
+}
+
+pub trait Collection: IntoIterator<Item = <Self as Collection>::Item> {
+    type Item;
+    fn contains(&self, item: &<Self as Collection>::Item);
+}
+
+fn contains_0<S: Collection<Item = i32>>(points: &S) {
+    points.contains(&0)
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_21773() {
+    check_no_mismatches(
+        r#"
+trait Neg {
+    type Output;
+}
+
+trait Abs: Neg {
+    fn abs(&self) -> Self::Output;
+}
+
+trait SelfAbs: Abs + Neg
+where
+    Self::Output: Neg<Output = Self::Output> + Abs,
+{
+}
+
+fn wrapped_abs<T: SelfAbs<Output = T>>(v: T) -> T {
+    v.abs()
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_21899() {
+    check_no_mismatches(
+        r#"
+trait B where
+    Self::T: B,
+{
+    type T;
+}
+
+fn foo<T: B>(v: T::T) {}
+    "#,
+    );
+}
+
+#[test]
+fn regression_22007() {
+    check_types(
+        r#"
+//- minicore: fn
+trait Super {
+    type Assoc;
+    fn foo(self) -> Self::Assoc
+    where
+        Self: Sub,
+    { loop {} }
+}
+trait Sub: Super {}
+
+struct Struct;
+impl Super for Struct {
+    type Assoc = u8;
+}
+impl Sub for Struct {}
+
+fn foo() {
+    Struct.foo();
+ // ^^^^^^^^^^^^ u8
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_21885() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_unsized, future, result
+use core::future::Future;
+
+trait Foo {
+    type Assoc;
+
+    fn foo() -> &dyn Future<Output = Result<Self::Assoc, ()>>;
+}
+
+struct Bar;
+
+impl Foo for Bar {
+    type Assoc = NotFound;
+
+    fn foo() -> &dyn Future<Output = Result<Self::Assoc, ()>> {
+        &async {
+            Err(())
+        }
+    }
+}
+"#,
     );
 }

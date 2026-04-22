@@ -40,7 +40,9 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, VariantDef, elaborate};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, Unnormalized, VariantDef, elaborate,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::{DUMMY_SP, Span, sym};
@@ -122,7 +124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Pointers to foreign types are thin, despite being unsized
             ty::Foreign(..) => Some(PointerKind::Thin),
             // We should really try to normalize here.
-            ty::Alias(_, pi) => Some(PointerKind::OfAlias(pi)),
+            ty::Alias(pi) => Some(PointerKind::OfAlias(pi)),
             ty::Param(p) => Some(PointerKind::OfParam(p)),
             // Insufficient type information.
             ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) => None,
@@ -753,7 +755,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 match *self.expr_ty.kind() {
                     ty::FnDef(..) => {
                         // Attempt a coercion to a fn pointer type.
-                        let f = fcx.normalize(self.expr_span, self.expr_ty.fn_sig(fcx.tcx));
+                        let f = fcx.normalize(
+                            self.expr_span,
+                            Unnormalized::new_wip(self.expr_ty.fn_sig(fcx.tcx)),
+                        );
                         let res = fcx.coerce(
                             self.expr,
                             self.expr_ty,

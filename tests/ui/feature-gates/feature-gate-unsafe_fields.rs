@@ -1,7 +1,7 @@
 //@ compile-flags: --crate-type=lib
 //@ revisions: with_gate without_gate
 //@ [with_gate] check-pass
-
+#![warn(incomplete_features)]
 #![cfg_attr(with_gate, feature(unsafe_fields))] //[with_gate]~ WARNING
 
 #[cfg(false)]

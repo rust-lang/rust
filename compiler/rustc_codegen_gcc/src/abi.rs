@@ -90,7 +90,9 @@ impl GccType for Reg {
                 64 => cx.type_f64(),
                 _ => bug!("unsupported float: {:?}", self),
             },
-            RegKind::Vector => cx.type_vector(cx.type_i8(), self.size.bytes()),
+            RegKind::Vector { hint_vector_elem: _ } => {
+                cx.type_vector(cx.type_i8(), self.size.bytes())
+            }
         }
     }
 }
@@ -105,7 +107,7 @@ pub struct FnAbiGcc<'gcc> {
 }
 
 pub trait FnAbiGccExt<'gcc, 'tcx> {
-    // TODO(antoyo): return a function pointer type instead?
+    // FIXME(antoyo): return a function pointer type instead?
     fn gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> FnAbiGcc<'gcc>;
     fn ptr_to_gcc_type(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
     #[cfg(feature = "master")]
@@ -260,7 +262,7 @@ pub fn conv_to_fn_attribute<'gcc>(conv: CanonAbi, arch: &Arch) -> Option<FnAttri
             &Arch::Nvptx64 => FnAttribute::NvptxKernel,
             arch => panic!("Arch {arch} does not support GpuKernel calling convention"),
         },
-        // TODO(antoyo): check if those AVR attributes are mapped correctly.
+        // FIXME(antoyo): check if those AVR attributes are mapped correctly.
         CanonAbi::Interrupt(interrupt_kind) => match interrupt_kind {
             InterruptKind::Avr => FnAttribute::AvrSignal,
             InterruptKind::AvrNonBlocking => FnAttribute::AvrInterrupt,

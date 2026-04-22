@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use rustc_hir as hir;
-use rustc_hir::attrs::diagnostic::{ConditionOptions, FormatArgs, OnUnimplementedNote};
+use rustc_hir::attrs::diagnostic::{ConditionOptions, CustomDiagnostic, FormatArgs};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::find_attr;
 pub use rustc_hir::lints::FormatWarning;
@@ -37,20 +37,19 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         long_ty_path: &mut Option<PathBuf>,
-    ) -> OnUnimplementedNote {
+    ) -> CustomDiagnostic {
         if trait_pred.polarity() != ty::PredicatePolarity::Positive {
-            return OnUnimplementedNote::default();
+            return CustomDiagnostic::default();
         }
         let (condition_options, format_args) =
             self.on_unimplemented_components(trait_pred, obligation, long_ty_path);
         if let Some(command) = find_attr!(self.tcx, trait_pred.def_id(), OnUnimplemented {directive, ..} => directive.as_deref()).flatten() {
-            command.evaluate_directive(
-                trait_pred.skip_binder().trait_ref,
-                &condition_options,
+            command.eval(
+                Some(&condition_options),
                 &format_args,
             )
         } else {
-            OnUnimplementedNote::default()
+            CustomDiagnostic::default()
         }
     }
 
@@ -99,7 +98,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             if let Some(def) = self_ty.ty_adt_def() {
                 // We also want to be able to select self's original
                 // signature with no type arguments resolved
-                self_types.push(self.tcx.type_of(def.did()).instantiate_identity().to_string());
+                self_types.push(
+                    self.tcx.type_of(def.did()).instantiate_identity().skip_norm_wip().to_string(),
+                );
             }
 
             for GenericParamDef { name, kind, index, .. } in generics.own_params.iter() {
@@ -118,14 +119,21 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // original signature with no type arguments resolved
                         generic_args.push((
                             *name,
-                            self.tcx.type_of(def.did()).instantiate_identity().to_string(),
+                            self.tcx
+                                .type_of(def.did())
+                                .instantiate_identity()
+                                .skip_norm_wip()
+                                .to_string(),
                         ));
                     }
                 }
             }
 
-            if let Some(true) = self_ty.ty_adt_def().map(|def| def.did().is_local()) {
-                crate_local = true;
+            if let Some(adt) = self_ty.ty_adt_def() {
+                if adt.did().is_local() {
+                    crate_local = true;
+                }
+                self_types.push(format!("{{{}}}", adt.descr()))
             }
 
             // Allow targeting all integers using `{integral}`, even if the exact type was resolved
@@ -158,8 +166,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the slice's type's original
                     // signature with no type arguments resolved
-                    self_types
-                        .push(format!("[{}]", self.tcx.type_of(def.did()).instantiate_identity()));
+                    self_types.push(format!(
+                        "[{}]",
+                        self.tcx.type_of(def.did()).instantiate_identity().skip_norm_wip()
+                    ));
                 }
                 if aty.is_integral() {
                     self_types.push("[{integral}]".to_string());
@@ -177,7 +187,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 if let Some(def) = aty.ty_adt_def() {
                     // We also want to be able to select the array's type's original
                     // signature with no type arguments resolved
-                    let def_ty = self.tcx.type_of(def.did()).instantiate_identity();
+                    let def_ty = self.tcx.type_of(def.did()).instantiate_identity().skip_norm_wip();
                     self_types.push(format!("[{def_ty}; _]"));
                     if let Some(n) = len {
                         self_types.push(format!("[{def_ty}; {n}]"));
@@ -208,7 +218,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }));
 
         let this = self.tcx.def_path_str(trait_pred.trait_ref.def_id);
-        let trait_sugared = trait_pred.trait_ref.print_trait_sugared().to_string();
+        let this_sugared = trait_pred.trait_ref.print_trait_sugared().to_string();
 
         let condition_options = ConditionOptions {
             self_types,
@@ -246,7 +256,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             })
             .collect();
 
-        let format_args = FormatArgs { this, trait_sugared, generic_args, item_context };
+        let format_args = FormatArgs { this, this_sugared, generic_args, item_context };
         (condition_options, format_args)
     }
 }

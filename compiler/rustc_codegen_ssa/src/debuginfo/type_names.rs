@@ -22,7 +22,9 @@ use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathD
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Mutability};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
-use rustc_middle::ty::{self, ExistentialProjection, GenericArgKind, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{
+    self, ExistentialProjection, GenericArgKind, GenericArgsRef, Ty, TyCtxt, Unnormalized,
+};
 use smallvec::SmallVec;
 
 use crate::debuginfo::wants_c_like_enum_debuginfo;
@@ -95,7 +97,7 @@ fn push_debuginfo_type_name<'tcx>(
                         // Computing the layout can still fail here, e.g. if the target architecture
                         // cannot represent the type. See
                         // https://github.com/rust-lang/rust/issues/94961.
-                        tcx.dcx().emit_fatal(e.into_diagnostic());
+                        tcx.dcx().fatal(e.to_string());
                     }
                 }
             } else {
@@ -364,10 +366,10 @@ fn push_debuginfo_type_name<'tcx>(
                 }
                 output.push_str(" (*)(");
             } else {
-                output.push_str(sig.safety.prefix_str());
+                output.push_str(sig.safety().prefix_str());
 
-                if sig.abi != rustc_abi::ExternAbi::Rust {
-                    let _ = write!(output, "extern {} ", sig.abi);
+                if sig.abi() != rustc_abi::ExternAbi::Rust {
+                    let _ = write!(output, "extern {} ", sig.abi());
                 }
 
                 output.push_str("fn(");
@@ -381,7 +383,7 @@ fn push_debuginfo_type_name<'tcx>(
                 pop_arg_separator(output);
             }
 
-            if sig.c_variadic {
+            if sig.c_variadic() {
                 if !sig.inputs().is_empty() {
                     output.push_str(", ...");
                 } else {
@@ -540,8 +542,10 @@ pub fn compute_debuginfo_vtable_name<'tcx>(
     }
 
     if let Some(trait_ref) = trait_ref {
-        let trait_ref =
-            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), trait_ref);
+        let trait_ref = tcx.normalize_erasing_regions(
+            ty::TypingEnv::fully_monomorphized(),
+            Unnormalized::new_wip(trait_ref),
+        );
         push_item_name(tcx, trait_ref.def_id, true, &mut vtable_name);
         visited.clear();
         push_generic_args_internal(tcx, trait_ref.args, &mut vtable_name, &mut visited);
@@ -654,7 +658,13 @@ fn push_generic_args_internal<'tcx>(
     output: &mut String,
     visited: &mut FxHashSet<Ty<'tcx>>,
 ) -> bool {
-    assert_eq!(args, tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), args));
+    assert_eq!(
+        args,
+        tcx.normalize_erasing_regions(
+            ty::TypingEnv::fully_monomorphized(),
+            Unnormalized::new_wip(args)
+        )
+    );
     let mut args = args.non_erasable_generics().peekable();
     if args.peek().is_none() {
         return false;

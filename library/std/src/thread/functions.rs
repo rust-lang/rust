@@ -168,7 +168,11 @@ pub fn yield_now() {
     imp::yield_now()
 }
 
-/// Determines whether the current thread is unwinding because of panic.
+/// Determines whether the current thread is panicking.
+///
+/// This returns `true` both when the thread is unwinding due to a panic,
+/// or executing a panic hook. Note that the latter case will still happen
+/// when `panic=abort` is set.
 ///
 /// A common use of this feature is to poison shared resources when writing
 /// unsafe code, by checking `panicking` when the `drop` is called.
@@ -309,14 +313,14 @@ pub fn sleep(dur: Duration) {
 ///
 /// |  Platform |               System call                                            |
 /// |-----------|----------------------------------------------------------------------|
-/// | Linux     | [clock_nanosleep] (Monotonic clock)                                  |
-/// | BSD except OpenBSD | [clock_nanosleep] (Monotonic Clock)]                        |
-/// | Android   | [clock_nanosleep] (Monotonic Clock)]                                 |
-/// | Solaris   | [clock_nanosleep] (Monotonic Clock)]                                 |
-/// | Illumos   | [clock_nanosleep] (Monotonic Clock)]                                 |
-/// | Dragonfly | [clock_nanosleep] (Monotonic Clock)]                                 |
-/// | Hurd      | [clock_nanosleep] (Monotonic Clock)]                                 |
-/// | Vxworks   | [clock_nanosleep] (Monotonic Clock)]                                 |
+/// | Linux     | [clock_nanosleep] (Monotonic Clock)                                  |
+/// | BSD except OpenBSD | [clock_nanosleep] (Monotonic Clock)                         |
+/// | Android   | [clock_nanosleep] (Monotonic Clock)                                  |
+/// | Solaris   | [clock_nanosleep] (Monotonic Clock)                                  |
+/// | Illumos   | [clock_nanosleep] (Monotonic Clock)                                  |
+/// | Dragonfly | [clock_nanosleep] (Monotonic Clock)                                  |
+/// | Hurd      | [clock_nanosleep] (Monotonic Clock)                                  |
+/// | Vxworks   | [clock_nanosleep] (Monotonic Clock)                                  |
 /// | Apple     | `mach_wait_until`                                                    |
 /// | Other     | `sleep_until` uses [`sleep`] and does not issue a syscall itself     |
 ///

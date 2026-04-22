@@ -141,7 +141,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             );
         }
 
-        let assoc_kind_str = assoc_tag_str(assoc_tag);
+        let assoc_kind = assoc_tag_str(assoc_tag);
         let qself_str = qself.to_string(tcx);
 
         // The fallback span is needed because `assoc_name` might be an `Fn()`'s `Output` without a
@@ -151,7 +151,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let mut err = errors::AssocItemNotFound {
             span: if is_dummy { span } else { assoc_ident.span },
             assoc_ident,
-            assoc_kind: assoc_kind_str,
+            assoc_kind,
             qself: &qself_str,
             label: None,
             sugg: None,
@@ -161,7 +161,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         };
 
         if is_dummy {
-            err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span });
+            err.label =
+                Some(errors::AssocItemNotFoundLabel::NotFound { span, assoc_ident, assoc_kind });
             return self.dcx().emit_err(err);
         }
 
@@ -181,7 +182,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         {
             err.sugg = Some(errors::AssocItemNotFoundSugg::Similar {
                 span: assoc_ident.span,
-                assoc_kind: assoc_kind_str,
+                assoc_kind,
                 suggested_name,
             });
             return self.dcx().emit_err(err);
@@ -224,7 +225,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let trait_name = tcx.def_path_str(best_trait);
                 err.label = Some(errors::AssocItemNotFoundLabel::FoundInOtherTrait {
                     span: assoc_ident.span,
-                    assoc_kind: assoc_kind_str,
+                    assoc_kind,
                     trait_name: &trait_name,
                     suggested_name,
                     identically_named: suggested_name == assoc_ident.name,
@@ -256,7 +257,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         err.sugg = Some(errors::AssocItemNotFoundSugg::SimilarInOtherTrait {
                             span: assoc_ident.span,
                             trait_name: &trait_name,
-                            assoc_kind: assoc_kind_str,
+                            assoc_kind,
                             suggested_name,
                         });
                         return self.dcx().emit_err(err);
@@ -286,6 +287,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             trait_ref,
                             identically_named,
                             suggested_name,
+                            assoc_kind,
                             applicability,
                         });
                     } else {
@@ -322,11 +324,15 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             err.sugg = Some(errors::AssocItemNotFoundSugg::Other {
                 span: assoc_ident.span,
                 qself: &qself_str,
-                assoc_kind: assoc_kind_str,
+                assoc_kind,
                 suggested_name: *candidate_name,
             });
         } else {
-            err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span: assoc_ident.span });
+            err.label = Some(errors::AssocItemNotFoundLabel::NotFound {
+                span: assoc_ident.span,
+                assoc_ident,
+                assoc_kind,
+            });
         }
 
         self.dcx().emit_err(err)
@@ -430,7 +436,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     tcx.visibility(trait_def_id).is_accessible_from(self.item_def_id(), tcx)
                         && header.polarity != ty::ImplPolarity::Negative
                 })
-                .map(|header| header.trait_ref.instantiate_identity().self_ty())
+                .map(|header| header.trait_ref.instantiate_identity().skip_norm_wip().self_ty())
                 // We don't care about blanket impls.
                 .filter(|self_ty| !self_ty.has_non_region_param())
                 .map(|self_ty| tcx.erase_and_anonymize_regions(self_ty).to_string())
@@ -505,7 +511,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         }
                         Some((hir::def::CtorKind::Fn, def_id)) => {
                             // tuple
-                            let fn_sig = tcx.fn_sig(def_id).instantiate_identity();
+                            let fn_sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
                             let inputs = fn_sig.inputs().skip_binder();
                             suggestion = vec![(
                                 ident.span.with_hi(expr.span.hi()),
@@ -722,7 +728,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 "the candidate".into()
             };
 
-            let impl_ty = tcx.at(span).type_of(impl_).instantiate_identity();
+            let impl_ty = tcx.at(span).type_of(impl_).instantiate_identity().skip_norm_wip();
             let note = format!("{title} is defined in an impl for the type `{impl_ty}`");
 
             if let Some(span) = note_span {
@@ -776,7 +782,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .iter()
                 .take(limit)
                 .map(|cand| {
-                    format!("- `{}`", tcx.at(span).type_of(cand.impl_).instantiate_identity())
+                    format!(
+                        "- `{}`",
+                        tcx.at(span).type_of(cand.impl_).instantiate_identity().skip_norm_wip()
+                    )
                 })
                 .collect::<Vec<_>>()
                 .join("\n");
@@ -1780,7 +1789,7 @@ fn generics_args_err_extend<'a>(
             );
         }
         GenericsArgsErrExtend::SelfTyAlias { def_id, span } => {
-            let ty = tcx.at(span).type_of(def_id).instantiate_identity();
+            let ty = tcx.at(span).type_of(def_id).instantiate_identity().skip_norm_wip();
             let span_of_impl = tcx.span_of_impl(def_id);
             let ty::Adt(self_def, _) = *ty.kind() else { return };
             let def_id = self_def.did();

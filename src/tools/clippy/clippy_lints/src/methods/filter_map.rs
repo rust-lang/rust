@@ -9,6 +9,7 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::{Closure, Expr, ExprKind, PatKind, PathSegment, QPath, UnOp};
 use rustc_lint::LateContext;
+use rustc_middle::ty::TypeckResults;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::Span;
 use rustc_span::symbol::{Ident, Symbol};
@@ -136,7 +137,9 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                     // .map(|y| y[.acceptable_method()].unwrap())
                     && let simple_equal = (receiver.res_local_id() == Some(filter_param_id)
                         && map_arg_peeled.res_local_id() == Some(map_param_id))
-                    && let eq_fallback = (|a: &Expr<'_>, b: &Expr<'_>| {
+                    && let eq_fallback =
+                    (|a_typeck_results: &TypeckResults<'tcx>, a: &Expr<'_>,
+                     b_typeck_results: &TypeckResults<'tcx>, b: &Expr<'_>| {
                         // in `filter(|x| ..)`, replace `*x` with `x`
                         let a_path = if !is_filter_param_ref
                             && let ExprKind::Unary(UnOp::Deref, expr_path) = a.kind
@@ -144,7 +147,7 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                         // let the filter closure arg and the map closure arg be equal
                         a_path.res_local_id() == Some(filter_param_id)
                             && b.res_local_id() == Some(map_param_id)
-                            && cx.typeck_results().expr_ty_adjusted(a) == cx.typeck_results().expr_ty_adjusted(b)
+                            && a_typeck_results.expr_ty_adjusted(a) == b_typeck_results.expr_ty_adjusted(b)
                     })
                     && (simple_equal
                         || SpanlessEq::new(cx).expr_fallback(eq_fallback).eq_expr(receiver, map_arg_peeled))
@@ -244,11 +247,11 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                 }),
                 _ => None,
             }
-        } else if matching_root_macro_call(cx, expr.span, sym::matches_macro).is_some()
+        } else if let ExprKind::Match(scrutinee, [arm, _], _) = expr.kind
             // we know for a fact that the wildcard pattern is the second arm
-            && let ExprKind::Match(scrutinee, [arm, _], _) = expr.kind
             && scrutinee.res_local_id() == Some(filter_param_id)
             && let PatKind::TupleStruct(QPath::Resolved(_, path), ..) = arm.pat.kind
+            && matching_root_macro_call(cx, expr.span, sym::matches_macro).is_some()
             && let Some(variant_def_id) = path.res.opt_def_id()
         {
             Some(OffendingFilterExpr::Matches { variant_def_id })

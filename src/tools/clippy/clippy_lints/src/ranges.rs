@@ -6,7 +6,7 @@ use clippy_utils::res::MaybeResPath;
 use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{expr_use_ctxt, fn_def_id, get_parent_expr, higher, is_in_const_context, is_integer_const, sym};
+use clippy_utils::{fn_def_id, get_expr_use_site, get_parent_expr, higher, is_in_const_context, is_integer_const, sym};
 use rustc_ast::Mutability;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
@@ -14,9 +14,73 @@ use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::ty::{self, ClauseKind, GenericArgKind, PredicatePolarity, Ty};
 use rustc_session::impl_lint_pass;
-use rustc_span::source_map::Spanned;
-use rustc_span::{DesugaringKind, Span};
+use rustc_span::{DesugaringKind, Span, Spanned, SyntaxContext};
 use std::cmp::Ordering;
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for expressions like `x >= 3 && x < 8` that could
+    /// be more readably expressed as `(3..8).contains(x)`.
+    ///
+    /// ### Why is this bad?
+    /// `contains` expresses the intent better and has less
+    /// failure modes (such as fencepost errors or using `||` instead of `&&`).
+    ///
+    /// ### Example
+    /// ```no_run
+    /// // given
+    /// let x = 6;
+    ///
+    /// assert!(x >= 3 && x < 8);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    ///# let x = 6;
+    /// assert!((3..8).contains(&x));
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub MANUAL_RANGE_CONTAINS,
+    style,
+    "manually reimplementing {`Range`, `RangeInclusive`}`::contains`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for inclusive ranges where 1 is subtracted from
+    /// the upper bound, e.g., `x..=(y-1)`.
+    ///
+    /// ### Why is this bad?
+    /// The code is more readable with an exclusive range
+    /// like `x..y`.
+    ///
+    /// ### Limitations
+    /// The lint is conservative and will trigger only when switching
+    /// from an inclusive to an exclusive range is provably safe from
+    /// a typing point of view. This corresponds to situations where
+    /// the range is used as an iterator, or for indexing.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..=(y-1) {
+    ///     // ..
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let x = 0;
+    /// # let y = 1;
+    /// for i in x..y {
+    ///     // ..
+    /// }
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub RANGE_MINUS_ONE,
+    pedantic,
+    "`x..=(y-1)` reads better as `x..y`"
+}
 
 declare_clippy_lint! {
     /// ### What it does
@@ -68,44 +132,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for inclusive ranges where 1 is subtracted from
-    /// the upper bound, e.g., `x..=(y-1)`.
-    ///
-    /// ### Why is this bad?
-    /// The code is more readable with an exclusive range
-    /// like `x..y`.
-    ///
-    /// ### Limitations
-    /// The lint is conservative and will trigger only when switching
-    /// from an inclusive to an exclusive range is provably safe from
-    /// a typing point of view. This corresponds to situations where
-    /// the range is used as an iterator, or for indexing.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let x = 0;
-    /// # let y = 1;
-    /// for i in x..=(y-1) {
-    ///     // ..
-    /// }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let x = 0;
-    /// # let y = 1;
-    /// for i in x..y {
-    ///     // ..
-    /// }
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub RANGE_MINUS_ONE,
-    pedantic,
-    "`x..=(y-1)` reads better as `x..y`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for range expressions `x..y` where both `x` and `y`
     /// are constant and `x` is greater to `y`. Also triggers if `x` is equal to `y` when they are conditions to a `for` loop.
     ///
@@ -137,32 +163,12 @@ declare_clippy_lint! {
     "reversing the limits of range expressions, resulting in empty ranges"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for expressions like `x >= 3 && x < 8` that could
-    /// be more readably expressed as `(3..8).contains(x)`.
-    ///
-    /// ### Why is this bad?
-    /// `contains` expresses the intent better and has less
-    /// failure modes (such as fencepost errors or using `||` instead of `&&`).
-    ///
-    /// ### Example
-    /// ```no_run
-    /// // given
-    /// let x = 6;
-    ///
-    /// assert!(x >= 3 && x < 8);
-    /// ```
-    /// Use instead:
-    /// ```no_run
-    ///# let x = 6;
-    /// assert!((3..8).contains(&x));
-    /// ```
-    #[clippy::version = "1.49.0"]
-    pub MANUAL_RANGE_CONTAINS,
-    style,
-    "manually reimplementing {`Range`, `RangeInclusive`}`::contains`"
-}
+impl_lint_pass!(Ranges => [
+    MANUAL_RANGE_CONTAINS,
+    RANGE_MINUS_ONE,
+    RANGE_PLUS_ONE,
+    REVERSED_EMPTY_RANGES,
+]);
 
 pub struct Ranges {
     msrv: Msrv,
@@ -173,13 +179,6 @@ impl Ranges {
         Self { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(Ranges => [
-    RANGE_PLUS_ONE,
-    RANGE_MINUS_ONE,
-    REVERSED_EMPTY_RANGES,
-    MANUAL_RANGE_CONTAINS,
-]);
 
 impl<'tcx> LateLintPass<'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
@@ -356,18 +355,19 @@ fn check_range_bounds<'a>(cx: &'a LateContext<'_>, ex: &'a Expr<'_>) -> Option<R
 /// check that the obligations are still satisfied after switching the range type.
 fn can_switch_ranges<'tcx>(
     cx: &LateContext<'tcx>,
+    ctxt: SyntaxContext,
     expr: &'tcx Expr<'_>,
     original: RangeLimits,
     inner_ty: Ty<'tcx>,
 ) -> bool {
-    let use_ctxt = expr_use_ctxt(cx, expr);
-    let (Node::Expr(parent_expr), false) = (use_ctxt.node, use_ctxt.is_ty_unified) else {
+    let use_site = get_expr_use_site(cx.tcx, cx.typeck_results(), ctxt, expr);
+    let (Node::Expr(parent_expr), false) = (use_site.node, use_site.is_ty_unified) else {
         return false;
     };
 
     // Check if `expr` is the argument of a compiler-generated `IntoIter::into_iter(expr)`
     if let ExprKind::Call(func, [arg]) = parent_expr.kind
-        && arg.hir_id == use_ctxt.child_id
+        && arg.hir_id == use_site.child_id
         && let ExprKind::Path(qpath) = func.kind
         && cx.tcx.qpath_is_lang_item(qpath, LangItem::IntoIterIntoIter)
         && parent_expr.span.is_desugaring(DesugaringKind::ForLoop)
@@ -378,7 +378,7 @@ fn can_switch_ranges<'tcx>(
     // Check if `expr` is used as the receiver of a method of the `Iterator`, `IntoIterator`,
     // or `RangeBounds` traits.
     if let ExprKind::MethodCall(_, receiver, _, _) = parent_expr.kind
-        && receiver.hir_id == use_ctxt.child_id
+        && receiver.hir_id == use_site.child_id
         && let Some(method_did) = cx.typeck_results().type_dependent_def_id(parent_expr.hir_id)
         && let Some(trait_did) = cx.tcx.trait_of_assoc(method_did)
         && matches!(
@@ -393,7 +393,7 @@ fn can_switch_ranges<'tcx>(
     // or `RangeBounds` trait.
     if let ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
         && let Some(id) = fn_def_id(cx, parent_expr)
-        && let Some(arg_idx) = args.iter().position(|e| e.hir_id == use_ctxt.child_id)
+        && let Some(arg_idx) = args.iter().position(|e| e.hir_id == use_site.child_id)
     {
         let input_idx = if matches!(parent_expr.kind, ExprKind::MethodCall(..)) {
             arg_idx + 1
@@ -402,7 +402,7 @@ fn can_switch_ranges<'tcx>(
         };
         let inputs = cx
             .tcx
-            .liberate_late_bound_regions(id, cx.tcx.fn_sig(id).instantiate_identity())
+            .liberate_late_bound_regions(id, cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip())
             .inputs();
         let expr_ty = inputs[input_idx];
         // Check that the `expr` type is present only once, otherwise modifying just one of them might be
@@ -448,6 +448,7 @@ fn can_switch_ranges<'tcx>(
             .tcx
             .type_of(switched_range_def_id)
             .instantiate(cx.tcx, &[inner_ty.into()])
+            .skip_norm_wip()
         // Check that the switched range type can be used for indexing the original expression
         // through the `Index` or `IndexMut` trait.
         && let ty::Ref(_, outer_ty, mutability) = cx.typeck_results().expr_ty_adjusted(outer_expr).kind()
@@ -513,16 +514,16 @@ fn check_range_switch<'tcx>(
         && span.can_be_used_for_suggestions()
         && limits == kind
         && let Some(y) = predicate(cx, end)
-        && can_switch_ranges(cx, expr, kind, cx.typeck_results().expr_ty(y))
+        && can_switch_ranges(cx, span.ctxt(), expr, kind, cx.typeck_results().expr_ty(y))
     {
         span_lint_and_then(cx, lint, span, msg, |diag| {
             let mut app = Applicability::MachineApplicable;
             let start = start.map_or(String::new(), |x| {
-                Sugg::hir_with_applicability(cx, x, "<x>", &mut app)
+                Sugg::hir_with_context(cx, x, span.ctxt(), "<x>", &mut app)
                     .maybe_paren()
                     .to_string()
             });
-            let end = Sugg::hir_with_applicability(cx, y, "<y>", &mut app).maybe_paren();
+            let end = Sugg::hir_with_context(cx, y, span.ctxt(), "<y>", &mut app).maybe_paren();
             match span.with_source_text(cx, |src| src.starts_with('(') && src.ends_with(')')) {
                 Some(true) => {
                     diag.span_suggestion(span, "use", format!("({start}{operator}{end})"), app);

@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 
-use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::lang_items::LangItem;
@@ -55,12 +54,12 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     // C-variadic fns also have a `VaList` input that's not listed in `fn_sig`
     // (as it's created inside the body itself, not passed in from outside).
-    let maybe_va_list = fn_sig.c_variadic.then(|| {
+    let maybe_va_list = fn_sig.c_variadic().then(|| {
         let span = body.params.last().unwrap().span;
         let va_list_did = tcx.require_lang_item(LangItem::VaList, span);
         let region = fcx.next_region_var(RegionVariableOrigin::Misc(span));
 
-        tcx.type_of(va_list_did).instantiate(tcx, &[region.into()])
+        tcx.type_of(va_list_did).instantiate(tcx, &[region.into()]).skip_norm_wip()
     });
 
     // Add formal parameters.
@@ -181,14 +180,17 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
     let panic_info_did = tcx.require_lang_item(hir::LangItem::PanicInfo, span);
 
     // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
-    let panic_info_ty = tcx.type_of(panic_info_did).instantiate(
-        tcx,
-        &[ty::GenericArg::from(ty::Region::new_bound(
+    let panic_info_ty = tcx
+        .type_of(panic_info_did)
+        .instantiate(
             tcx,
-            ty::INNERMOST,
-            ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BoundRegionKind::Anon },
-        ))],
-    );
+            &[ty::GenericArg::from(ty::Region::new_bound(
+                tcx,
+                ty::INNERMOST,
+                ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BoundRegionKind::Anon },
+            ))],
+        )
+        .skip_norm_wip();
     let panic_info_ref_ty = Ty::new_imm_ref(
         tcx,
         ty::Region::new_bound(
@@ -204,7 +206,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
         ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon),
     ]);
     let expected_sig = ty::Binder::bind_with_vars(
-        tcx.mk_fn_sig([panic_info_ref_ty], tcx.types.never, false, fn_sig.safety, ExternAbi::Rust),
+        tcx.mk_fn_sig_rust_abi([panic_info_ref_ty], tcx.types.never, fn_sig.safety()),
         bounds,
     );
 
@@ -225,12 +227,10 @@ fn check_lang_start_fn<'tcx>(tcx: TyCtxt<'tcx>, fn_sig: ty::FnSig<'tcx>, def_id:
     let generics = tcx.generics_of(def_id);
     let fn_generic = generics.param_at(0, tcx);
     let generic_ty = Ty::new_param(tcx, fn_generic.index, fn_generic.name);
-    let main_fn_ty = Ty::new_fn_ptr(
-        tcx,
-        Binder::dummy(tcx.mk_fn_sig([], generic_ty, false, hir::Safety::Safe, ExternAbi::Rust)),
-    );
+    let main_fn_ty =
+        Ty::new_fn_ptr(tcx, Binder::dummy(tcx.mk_fn_sig_safe_rust_abi([], generic_ty)));
 
-    let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig(
+    let expected_sig = ty::Binder::dummy(tcx.mk_fn_sig_rust_abi(
         [
             main_fn_ty,
             tcx.types.isize,
@@ -238,9 +238,7 @@ fn check_lang_start_fn<'tcx>(tcx: TyCtxt<'tcx>, fn_sig: ty::FnSig<'tcx>, def_id:
             tcx.types.u8,
         ],
         tcx.types.isize,
-        false,
-        fn_sig.safety,
-        ExternAbi::Rust,
+        fn_sig.safety(),
     ));
 
     let _ = check_function_signature(

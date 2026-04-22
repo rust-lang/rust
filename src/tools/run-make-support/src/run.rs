@@ -1,9 +1,8 @@
+use std::env;
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
-use std::{env, panic};
 
 use crate::command::{Command, CompletedProcess};
-use crate::util::handle_failed_output;
 use crate::{cwd, env_var};
 
 #[track_caller]
@@ -59,43 +58,26 @@ fn run_common(name: &str, args: Option<&[&str]>) -> Command {
     });
     cmd.env("LC_ALL", "C"); // force english locale
 
+    cmd.inspect(|std_cmd| eprintln!("running: {std_cmd:?}"));
     cmd
 }
 
 /// Run a built binary and make sure it succeeds.
 #[track_caller]
 pub fn run(name: &str) -> CompletedProcess {
-    let caller = panic::Location::caller();
-    let mut cmd = run_common(name, None);
-    let output = cmd.run();
-    if !output.status().success() {
-        handle_failed_output(&cmd, output, caller.line());
-    }
-    output
+    run_common(name, None).run()
 }
 
 /// Run a built binary with one or more argument(s) and make sure it succeeds.
 #[track_caller]
 pub fn run_with_args(name: &str, args: &[&str]) -> CompletedProcess {
-    let caller = panic::Location::caller();
-    let mut cmd = run_common(name, Some(args));
-    let output = cmd.run();
-    if !output.status().success() {
-        handle_failed_output(&cmd, output, caller.line());
-    }
-    output
+    run_common(name, Some(args)).run()
 }
 
 /// Run a built binary and make sure it fails.
 #[track_caller]
 pub fn run_fail(name: &str) -> CompletedProcess {
-    let caller = panic::Location::caller();
-    let mut cmd = run_common(name, None);
-    let output = cmd.run_fail();
-    if output.status().success() {
-        handle_failed_output(&cmd, output, caller.line());
-    }
-    output
+    run_common(name, None).run_fail()
 }
 
 /// Create a new custom [`Command`]. This should be preferred to creating [`std::process::Command`]

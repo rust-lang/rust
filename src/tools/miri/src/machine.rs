@@ -300,7 +300,8 @@ pub enum ProvenanceExtra {
 
 #[cfg(target_pointer_width = "64")]
 static_assert_size!(StrictPointer, 24);
-// FIXME: this would with in 24bytes but layout optimizations are not smart enough
+// Pointer does not fit as the layout algorithm isn't smart enough (but also, we tried using
+// pattern types to get a larger niche that makes this fit and it didn't improve performance).
 // #[cfg(target_pointer_width = "64")]
 //static_assert_size!(Pointer, 24);
 #[cfg(target_pointer_width = "64")]
@@ -536,6 +537,9 @@ pub struct MiriMachine<'tcx> {
     /// The set of threads.
     pub(crate) threads: ThreadManager<'tcx>,
 
+    /// Handles blocking I/O and polling for completion.
+    pub(crate) blocking_io: BlockingIoManager,
+
     /// Stores which thread is eligible to run on which CPUs.
     /// This has no effect at all, it is just tracked to produce the correct result
     /// in `sched_getaffinity`
@@ -565,7 +569,7 @@ pub struct MiriMachine<'tcx> {
     pub(crate) user_relevant_crates: Vec<CrateNum>,
 
     /// Mapping extern static names to their pointer.
-    extern_statics: FxHashMap<Symbol, StrictPointer>,
+    pub(crate) extern_statics: FxHashMap<Symbol, StrictPointer>,
 
     /// The random number generator used for resolving non-determinism.
     /// Needs to be queried by ptr_to_int, hence needs interior mutability.
@@ -595,12 +599,12 @@ pub struct MiriMachine<'tcx> {
     pub(crate) basic_block_count: u64,
 
     /// Handle of the optional shared object file for native functions.
-    #[cfg(all(unix, feature = "native-lib"))]
+    #[cfg(all(feature = "native-lib", unix))]
     pub native_lib: Vec<(libloading::Library, std::path::PathBuf)>,
-    #[cfg(not(all(unix, feature = "native-lib")))]
+    #[cfg(not(all(feature = "native-lib", unix)))]
     pub native_lib: Vec<!>,
     /// A memory location for exchanging the current `ecx` pointer with native code.
-    #[cfg(all(unix, feature = "native-lib"))]
+    #[cfg(all(feature = "native-lib", unix))]
     pub native_lib_ecx_interchange: &'static Cell<usize>,
 
     /// Run a garbage collector for BorTags every N basic blocks.
@@ -731,6 +735,8 @@ impl<'tcx> MiriMachine<'tcx> {
             thread_cpu_affinity
                 .insert(threads.active_thread(), CpuAffinityMask::new(&layout_cx, config.num_cpus));
         }
+        let blocking_io = BlockingIoManager::new(config.isolated_op == IsolatedOp::Allow)
+            .expect("Couldn't create poll instance");
         let alloc_addresses =
             RefCell::new(alloc_addresses::GlobalStateInner::new(config, stack_addr, tcx));
         MiriMachine {
@@ -753,6 +759,7 @@ impl<'tcx> MiriMachine<'tcx> {
             layouts,
             threads,
             thread_cpu_affinity,
+            blocking_io,
             static_roots: Vec::new(),
             profiler,
             string_cache: Default::default(),
@@ -771,7 +778,7 @@ impl<'tcx> MiriMachine<'tcx> {
             report_progress: config.report_progress,
             basic_block_count: 0,
             monotonic_clock: MonotonicClock::new(config.isolated_op == IsolatedOp::Allow),
-            #[cfg(all(unix, feature = "native-lib"))]
+            #[cfg(all(feature = "native-lib", unix))]
             native_lib: config.native_lib.iter().map(|lib_file_path| {
                 let host_triple = rustc_session::config::host_tuple();
                 let target_triple = tcx.sess.opts.target_triple.tuple();
@@ -793,9 +800,9 @@ impl<'tcx> MiriMachine<'tcx> {
                     lib_file_path.clone(),
                 )
             }).collect(),
-            #[cfg(all(unix, feature = "native-lib"))]
+            #[cfg(all(feature = "native-lib", unix))]
             native_lib_ecx_interchange: Box::leak(Box::new(Cell::new(0))),
-            #[cfg(not(all(unix, feature = "native-lib")))]
+            #[cfg(not(all(feature = "native-lib", unix)))]
             native_lib: config.native_lib.iter().map(|_| {
                 panic!("calling functions from native libraries via FFI is not supported in this build of Miri")
             }).collect(),
@@ -1009,6 +1016,7 @@ impl VisitProvenance for MiriMachine<'_> {
             data_race,
             alloc_addresses,
             fds,
+            blocking_io:_,
             epoll_interests:_,
             tcx: _,
             isolated_op: _,
@@ -1031,7 +1039,7 @@ impl VisitProvenance for MiriMachine<'_> {
             report_progress: _,
             basic_block_count: _,
             native_lib: _,
-            #[cfg(all(unix, feature = "native-lib"))]
+            #[cfg(all(feature = "native-lib", unix))]
             native_lib_ecx_interchange: _,
             gc_interval: _,
             since_gc: _,
@@ -1373,7 +1381,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
                 panic!("extern_statics cannot contain wildcards")
             };
             let info = ecx.get_alloc_info(alloc_id);
-            let def_ty = ecx.tcx.type_of(def_id).instantiate_identity();
+            let def_ty = ecx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
             let extern_decl_layout =
                 ecx.tcx.layout_of(ecx.typing_env().as_query_input(def_ty)).unwrap();
             if extern_decl_layout.size != info.size || extern_decl_layout.align.abi != info.align {

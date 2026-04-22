@@ -5,7 +5,7 @@
 //@ compile-flags: -Zextra-const-ub-checks
 // ignore-tidy-linelength
 const REF_INTERIOR_MUT: &usize = {
-    //~^ HELP consider importing this struct
+    //~^ HELP consider importing this type alias
     static FOO: Sync = AtomicUsize::new(0);
     //~^ ERROR cannot find
     //~| WARN trait objects without an explicit `dyn` are deprecated

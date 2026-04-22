@@ -22,6 +22,7 @@ mod testdir;
 
 use std::{collections::HashMap, path::PathBuf, time::Instant};
 
+use ide_db::FxHashMap;
 use lsp_types::{
     CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
     DocumentFormattingParams, DocumentRangeFormattingParams, FileRename, FormattingOptions,
@@ -261,7 +262,7 @@ fn main() {}
           {
             "args": {
               "cargoArgs": ["test", "--package", "foo", "--test", "spam"],
-              "executableArgs": ["test_eggs", "--exact", "--nocapture"],
+              "executableArgs": ["test_eggs", "--exact", "--nocapture", "--include-ignored"],
               "overrideCargo": null,
               "cwd": server.path().join("foo"),
               "workspaceRoot": server.path().join("foo")
@@ -670,6 +671,17 @@ fn main() {}
 #[test]
 fn test_format_document_range() {
     if skip_slow_tests() {
+        return;
+    }
+
+    // This test requires a nightly toolchain, so skip if it's not available.
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let has_nightly_rustfmt = toolchain::command("rustfmt", cwd, &FxHashMap::default())
+        .args(["+nightly", "--version"])
+        .output()
+        .is_ok_and(|out| out.status.success());
+    if !has_nightly_rustfmt {
+        tracing::warn!("skipping test_format_document_range: nightly rustfmt not available");
         return;
     }
 
@@ -1565,6 +1577,6 @@ fn test() {
 
     let res: serde_json::Value = serde_json::from_str(res.as_str().unwrap()).unwrap();
     let arr = res.as_array().unwrap();
-    assert_eq!(arr.len(), 2);
+    assert_eq!(arr.len(), 1);
     expect![[r#"{"goal":"Goal { param_env: ParamEnv { clauses: [] }, predicate: Binder { value: TraitPredicate(usize: Trait, polarity:Positive), bound_vars: [] } }","result":"Err(NoSolution)","depth":0,"candidates":[]}"#]].assert_eq(&arr[0].to_string());
 }

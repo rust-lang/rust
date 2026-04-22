@@ -1,5 +1,5 @@
 use std::marker::PointeeSized;
-use std::ptr::Alignment;
+use std::mem::Alignment;
 
 /// Returns the ABI-required minimum alignment of a type in bytes.
 ///

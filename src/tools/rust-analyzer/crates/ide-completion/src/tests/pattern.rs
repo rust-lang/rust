@@ -122,7 +122,6 @@ fn foo() {
             st Record
             st Tuple
             st Unit
-            ev TupleV
             bn Record {…} Record { field$1 }$0
             bn Tuple(…)            Tuple($1)$0
             bn TupleV(…)          TupleV($1)$0
@@ -159,8 +158,6 @@ fn foo(foo: Foo) { match foo { Foo { x: $0 } } }
         expect![[r#"
             en Bar
             st Foo
-            ev Nil
-            ev Value
             bn Foo {…} Foo { x$1 }$0
             bn Nil             Nil$0
             bn Value         Value$0
@@ -189,7 +186,6 @@ fn foo() {
             st Record
             st Tuple
             st Unit
-            ev Variant
             bn Record {…} Record { field$1 }$0
             bn Tuple(…)            Tuple($1)$0
             bn Variant               Variant$0
@@ -350,6 +346,34 @@ fn func() {
             bn RecordV {…} RecordV { field$1 }$0
             bn TupleV(…)            TupleV($1)$0
             bn UnitV                     UnitV$0
+        "#]],
+    );
+}
+
+#[test]
+fn enum_unqualified() {
+    check_with_base_items(
+        r#"
+use Enum::*;
+fn func() {
+    if let $0 = unknown {}
+}
+"#,
+        expect![[r#"
+            ct CONST
+            en Enum
+            ma makro!(…)      macro_rules! makro
+            md module
+            st Record
+            st Tuple
+            st Unit
+            bn Record {…}   Record { field$1 }$0
+            bn RecordV {…} RecordV { field$1 }$0
+            bn Tuple(…)              Tuple($1)$0
+            bn TupleV(…)            TupleV($1)$0
+            bn UnitV                     UnitV$0
+            kw mut
+            kw ref
         "#]],
     );
 }

@@ -79,6 +79,9 @@ pub(crate) struct UniversalRegions<'tcx> {
     ///
     /// N.B., associated types in these types have not been normalized,
     /// as the name suggests. =)
+    ///
+    /// N.B., in the case of a closure, index 0 is the implicit self parameter,
+    /// and not the first input as seen by the user.
     pub unnormalized_input_tys: &'tcx [Ty<'tcx>],
 
     pub yield_ty: Option<Ty<'tcx>>,
@@ -476,12 +479,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let mut indices = self.compute_indices(fr_static, defining_ty);
         debug!("build: indices={:?}", indices);
 
-        let typeck_root_def_id = self.infcx.tcx.typeck_root_def_id(self.mir_def.to_def_id());
-
         // If this is a 'root' body (not a closure/coroutine/inline const), then
         // there are no extern regions, so the local regions start at the same
         // position as the (empty) sub-list of extern regions
-        let first_local_index = if self.mir_def.to_def_id() == typeck_root_def_id {
+        let first_local_index = if !self.infcx.tcx.is_typeck_child(self.mir_def.to_def_id()) {
             first_extern_index
         } else {
             // If this is a closure, coroutine, or inline-const, then the late-bound regions from the enclosing
@@ -583,11 +584,11 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
     /// see `DefiningTy` for details.
     fn defining_ty(&self) -> DefiningTy<'tcx> {
         let tcx = self.infcx.tcx;
-        let typeck_root_def_id = tcx.typeck_root_def_id(self.mir_def.to_def_id());
+        let typeck_root_def_id = tcx.typeck_root_def_id_local(self.mir_def);
 
         match tcx.hir_body_owner_kind(self.mir_def) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
-                let defining_ty = tcx.type_of(self.mir_def).instantiate_identity();
+                let defining_ty = tcx.type_of(self.mir_def).instantiate_identity().skip_norm_wip();
 
                 debug!("defining_ty (pre-replacement): {:?}", defining_ty);
 
@@ -614,7 +615,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
             BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(..) => {
                 let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
-                if self.mir_def.to_def_id() == typeck_root_def_id {
+                if self.mir_def == typeck_root_def_id {
                     let args = self.infcx.replace_free_regions_with_nll_infer_vars(
                         NllRegionVariableOrigin::FreeRegion,
                         identity_args,
@@ -660,7 +661,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         defining_ty: DefiningTy<'tcx>,
     ) -> UniversalRegionIndices<'tcx> {
         let tcx = self.infcx.tcx;
-        let typeck_root_def_id = tcx.typeck_root_def_id(self.mir_def.to_def_id());
+        let typeck_root_def_id = tcx.typeck_root_def_id_local(self.mir_def);
         let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
         let renumbered_args = defining_ty.args();
 
@@ -782,7 +783,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
 
             DefiningTy::FnDef(def_id, _) => {
-                let sig = tcx.fn_sig(def_id).instantiate_identity();
+                let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
                 let sig = indices.fold_to_region_vids(tcx, sig);
                 let inputs_and_output = sig.inputs_and_output();
 
@@ -806,7 +807,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                         .infcx
                         .tcx
                         .type_of(va_list_did)
-                        .instantiate(self.infcx.tcx, &[region.into()]);
+                        .instantiate(self.infcx.tcx, &[region.into()])
+                        .skip_norm_wip();
 
                     // The signature needs to follow the order [input_tys, va_list_ty, output_ty]
                     return inputs_and_output.map_bound(|tys| {
@@ -824,7 +826,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 // For a constant body, there are no inputs, and one
                 // "output" (the type of the constant).
                 assert_eq!(self.mir_def.to_def_id(), def_id);
-                let ty = tcx.type_of(self.mir_def).instantiate_identity();
+                let ty = tcx.type_of(self.mir_def).instantiate_identity().skip_norm_wip();
 
                 let ty = indices.fold_to_region_vids(tcx, ty);
                 ty::Binder::dummy(tcx.mk_type_list(&[ty]))
@@ -836,9 +838,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 ty::Binder::dummy(tcx.mk_type_list(&[ty]))
             }
 
-            DefiningTy::GlobalAsm(def_id) => {
-                ty::Binder::dummy(tcx.mk_type_list(&[tcx.type_of(def_id).instantiate_identity()]))
-            }
+            DefiningTy::GlobalAsm(def_id) => ty::Binder::dummy(
+                tcx.mk_type_list(&[tcx.type_of(def_id).instantiate_identity().skip_norm_wip()]),
+            ),
         };
 
         // FIXME(#129952): We probably want a more principled approach here.
@@ -948,16 +950,14 @@ fn for_each_late_bound_region_in_recursive_scope<'tcx>(
     mut mir_def_id: LocalDefId,
     mut f: impl FnMut(ty::Region<'tcx>),
 ) {
-    let typeck_root_def_id = tcx.typeck_root_def_id(mir_def_id.to_def_id());
-
     // Walk up the tree, collecting late-bound regions until we hit the typeck root
     loop {
         for_each_late_bound_region_in_item(tcx, mir_def_id, &mut f);
 
-        if mir_def_id.to_def_id() == typeck_root_def_id {
-            break;
-        } else {
+        if tcx.is_typeck_child(mir_def_id.to_def_id()) {
             mir_def_id = tcx.local_parent(mir_def_id);
+        } else {
+            break;
         }
     }
 }
@@ -978,7 +978,7 @@ fn for_each_late_bound_region_in_item<'tcx>(
         // only deduced that a param in the closure signature is late-bound from a constraint
         // that we discover during typeck.
         DefKind::Closure => {
-            let ty = tcx.type_of(mir_def_id).instantiate_identity();
+            let ty = tcx.type_of(mir_def_id).instantiate_identity().skip_norm_wip();
             match *ty.kind() {
                 ty::Closure(_, args) => args.as_closure().sig().bound_vars(),
                 ty::CoroutineClosure(_, args) => {

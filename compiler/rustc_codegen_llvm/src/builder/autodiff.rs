@@ -6,7 +6,7 @@ use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, BuilderMethods};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir::attrs::RustcAutodiff;
-use rustc_middle::ty::{Instance, PseudoCanonicalInput, TyCtxt, TypingEnv};
+use rustc_middle::ty::{PseudoCanonicalInput, Ty, TyCtxt, TypingEnv};
 use rustc_middle::{bug, ty};
 use rustc_target::callconv::PassMode;
 use tracing::debug;
@@ -18,25 +18,23 @@ use crate::llvm::{self, TRUE, Type, Value};
 
 pub(crate) fn adjust_activity_to_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
-    instance: Instance<'tcx>,
+    fn_ptr_ty: Ty<'tcx>,
     typing_env: TypingEnv<'tcx>,
     da: &mut ThinVec<DiffActivity>,
 ) {
-    let fn_ty = instance.ty(tcx, typing_env);
-
-    if !matches!(fn_ty.kind(), ty::FnDef(..)) {
-        bug!("expected fn def for autodiff, got {:?}", fn_ty);
+    if !matches!(fn_ptr_ty.kind(), ty::FnPtr(..)) {
+        bug!("expected fn ptr for autodiff, got {:?}", fn_ptr_ty);
     }
 
     // We don't actually pass the types back into the type system.
     // All we do is decide how to handle the arguments.
-    let sig = fn_ty.fn_sig(tcx).skip_binder();
+    let fn_sig = fn_ptr_ty.fn_sig(tcx);
+    let sig = fn_sig.skip_binder();
 
     // FIXME(Sa4dUs): pass proper varargs once we have support for differentiating variadic functions
-    let Ok(fn_abi) =
-        tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
+    let Ok(fn_abi) = tcx.fn_abi_of_fn_ptr(typing_env.as_query_input((fn_sig, ty::List::empty())))
     else {
-        bug!("failed to get fn_abi of instance with empty varargs");
+        bug!("failed to get fn_abi of fn_ptr with empty varargs");
     };
 
     let mut new_activities = vec![];

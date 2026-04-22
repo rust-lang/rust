@@ -4,11 +4,7 @@ use ide_db::imports::{
     merge_imports::{MergeBehavior, try_merge_imports, try_merge_trees},
 };
 use syntax::{
-    AstNode, SyntaxElement, SyntaxNode,
-    algo::neighbor,
-    ast::{self, syntax_factory::SyntaxFactory},
-    match_ast,
-    syntax_editor::Removable,
+    AstNode, SyntaxElement, SyntaxNode, algo::neighbor, ast, match_ast, syntax_editor::Removable,
 };
 
 use crate::{
@@ -49,8 +45,9 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
             SyntaxElement::Node(n) => n,
             SyntaxElement::Token(t) => t.parent()?,
         };
-        let mut selected_nodes =
-            parent_node.children().filter(|it| selection_range.contains_range(it.text_range()));
+        let mut selected_nodes = parent_node.children().filter(|it| {
+            selection_range.intersect(it.text_range()).is_some_and(|it| !it.is_empty())
+        });
 
         let first_selected = selected_nodes.next()?;
         let edits = match_ast! {
@@ -75,17 +72,16 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
     };
 
     acc.add(AssistId::refactor_rewrite("merge_imports"), "Merge imports", target, |builder| {
-        let make = SyntaxFactory::with_mappings();
-        let mut editor = builder.make_editor(&parent_node);
+        let editor = builder.make_editor(&parent_node);
 
         for edit in edits {
             match edit {
                 Remove(it) => {
                     let node = it.as_ref();
                     if let Some(left) = node.left() {
-                        left.remove(&mut editor);
+                        left.remove(&editor);
                     } else if let Some(right) = node.right() {
-                        right.remove(&mut editor);
+                        right.remove(&editor);
                     }
                 }
                 Replace(old, new) => {
@@ -93,7 +89,6 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
                 }
             }
         }
-        editor.add_mappings(make.finish_with_mappings());
         builder.add_file_edits(ctx.vfs_file_id(), editor);
     })
 }
@@ -673,6 +668,25 @@ $0use std::fmt::Result;
 use std::fmt::Error;
 use {std::fmt::{Debug, Display, Write}};
 use std::fmt::Result;
+",
+        );
+    }
+
+    #[test]
+    fn merge_partial_selection_uses() {
+        cov_mark::check!(merge_with_selected_use_item_neighbors);
+        check_assist(
+            merge_imports,
+            r"
+use std::fmt::Error;
+$0use std::fmt::Display;
+use std::fmt::Debug;
+use std::fmt::Write;
+use$0 std::fmt::Result;
+",
+            r"
+use std::fmt::Error;
+use std::fmt::{Debug, Display, Result, Write};
 ",
         );
     }

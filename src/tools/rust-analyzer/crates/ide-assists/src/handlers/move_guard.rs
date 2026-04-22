@@ -3,7 +3,7 @@ use syntax::{
     SyntaxKind::WHITESPACE,
     TextRange,
     ast::{
-        AstNode, BlockExpr, ElseBranch, Expr, IfExpr, MatchArm, Pat, edit::AstNodeEdit, make,
+        AstNode, BlockExpr, ElseBranch, Expr, IfExpr, MatchArm, Pat, edit::AstNodeEdit,
         prec::ExprPrecedence, syntax_factory::SyntaxFactory,
     },
     syntax_editor::Element,
@@ -53,14 +53,15 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext<'_>)
     let space_after_arrow = match_arm.fat_arrow_token()?.next_sibling_or_token();
 
     let arm_expr = match_arm.expr()?;
+    let make = SyntaxFactory::without_mappings();
     let if_branch = chain([&match_arm], &rest_arms)
         .rfold(None, |else_branch, arm| {
             if let Some(guard) = arm.guard() {
-                let then_branch = crate::utils::wrap_block(&arm.expr()?);
+                let then_branch = crate::utils::wrap_block(&arm.expr()?, &make);
                 let guard_condition = guard.condition()?.reset_indent();
-                Some(make::expr_if(guard_condition, then_branch, else_branch).into())
+                Some(make.expr_if(guard_condition, then_branch, else_branch).into())
             } else {
-                arm.expr().map(|it| crate::utils::wrap_block(&it).into())
+                arm.expr().map(|it| crate::utils::wrap_block(&it, &make).into())
             }
         })?
         .indent(arm_expr.indent_level());
@@ -72,24 +73,24 @@ pub(crate) fn move_guard_to_arm_body(acc: &mut Assists, ctx: &AssistContext<'_>)
         "Move guard to arm body",
         target,
         |builder| {
-            let mut edit = builder.make_editor(match_arm.syntax());
+            let editor = builder.make_editor(match_arm.syntax());
             for element in space_before_delete {
                 if element.kind() == WHITESPACE {
-                    edit.delete(element);
+                    editor.delete(element);
                 }
             }
             for rest_arm in &rest_arms {
-                edit.delete(rest_arm.syntax());
+                editor.delete(rest_arm.syntax());
             }
             if let Some(element) = space_after_arrow
                 && element.kind() == WHITESPACE
             {
-                edit.replace(element, make::tokens::single_space());
+                editor.replace(element, make.whitespace(" "));
             }
 
-            edit.delete(guard.syntax());
-            edit.replace(arm_expr.syntax(), if_expr.syntax());
-            builder.add_file_edits(ctx.vfs_file_id(), edit);
+            editor.delete(guard.syntax());
+            editor.replace(arm_expr.syntax(), if_expr.syntax());
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -155,7 +156,8 @@ pub(crate) fn move_arm_cond_to_match_guard(
         "Move condition to match guard",
         replace_node.text_range(),
         |builder| {
-            let make = SyntaxFactory::without_mappings();
+            let editor = builder.make_editor(match_arm.syntax());
+            let make = editor.make();
             let mut replace_arms = vec![];
 
             // Dedent if if_expr is in a BlockExpr
@@ -226,14 +228,12 @@ pub(crate) fn move_arm_cond_to_match_guard(
                 }
             }
 
-            let mut edit = builder.make_editor(match_arm.syntax());
-
             let newline = make.whitespace(&format!("\n{indent_level}"));
             let replace_arms = replace_arms.iter().map(|it| it.syntax().syntax_element());
             let replace_arms = Itertools::intersperse(replace_arms, newline.syntax_element());
-            edit.replace_with_many(match_arm.syntax(), replace_arms.collect());
+            editor.replace_with_many(match_arm.syntax(), replace_arms.collect());
 
-            builder.add_file_edits(ctx.vfs_file_id(), edit);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }
@@ -567,7 +567,8 @@ fn main() {
     match 92 {
         x => if true
             && true
-            && true {
+            && true
+        {
             {
                 false
             }

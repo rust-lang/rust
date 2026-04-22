@@ -3,11 +3,9 @@ use std::sync::Arc;
 use rustc_ast::*;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::definitions::DefPathData;
 use rustc_hir::{self as hir, LangItem, Target};
 use rustc_middle::span_bug;
-use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{DesugaringKind, Ident, Span};
+use rustc_span::{DesugaringKind, Ident, Span, Spanned, respan};
 
 use super::errors::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
@@ -15,7 +13,7 @@ use super::errors::{
 use super::{ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt};
 use crate::{AllowReturnTypeNotation, ImplTraitPosition};
 
-impl<'a, 'hir> LoweringContext<'a, 'hir> {
+impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
     pub(crate) fn lower_pat(&mut self, pattern: &Pat) -> &'hir hir::Pat<'hir> {
         self.arena.alloc(self.lower_pat_mut(pattern))
     }
@@ -134,8 +132,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             self.lower_range_end(end, e2.is_some()),
                         );
                     }
-                    PatKind::Guard(inner, cond) => {
-                        break hir::PatKind::Guard(self.lower_pat(inner), self.lower_expr(cond));
+                    PatKind::Guard(inner, guard) => {
+                        break hir::PatKind::Guard(
+                            self.lower_pat(inner),
+                            self.lower_expr(&guard.cond),
+                        );
                     }
                     PatKind::Slice(pats) => break self.lower_pat_slice(pats),
                     PatKind::Rest => {
@@ -419,7 +420,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             _ => {
                 let is_const_block = matches!(expr.kind, ExprKind::ConstBlock(_));
-                let pattern_from_macro = expr.is_approximately_pattern();
+                let pattern_from_macro = expr.is_approximately_pattern()
+                    || matches!(
+                        expr.peel_parens().kind,
+                        ExprKind::Binary(Spanned { node: BinOpKind::BitOr, .. }, ..)
+                    );
                 let guar = self.dcx().emit_err(ArbitraryExpressionInPattern {
                     span,
                     pattern_from_macro_note: pattern_from_macro,
@@ -532,8 +537,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // We're generating a range end that didn't exist in the AST,
         // so the def collector didn't create the def ahead of time. That's why we have to do
         // it here.
-        let def_id =
-            self.create_def(node_id, None, DefKind::AnonConst, DefPathData::LateAnonConst, span);
+        let def_id = self.create_def(node_id, None, DefKind::AnonConst, span);
         let hir_id = self.lower_node_id(node_id);
 
         let unstable_span = self.mark_span_with_reason(

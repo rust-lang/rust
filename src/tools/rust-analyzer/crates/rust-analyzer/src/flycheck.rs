@@ -673,27 +673,31 @@ impl FlycheckActor {
                     if self.diagnostics_received == DiagnosticsReceived::NotYet {
                         tracing::trace!(flycheck_id = self.id, "clearing diagnostics");
                         // We finished without receiving any diagnostics.
-                        // Clear everything for good measure
-                        match &self.scope {
-                            FlycheckScope::Workspace => {
-                                self.send(FlycheckMessage::ClearDiagnostics {
-                                    id: self.id,
-                                    kind: ClearDiagnosticsKind::All(ClearScope::Workspace),
-                                });
-                            }
-                            FlycheckScope::Package { package, workspace_deps } => {
-                                for pkg in
-                                    std::iter::once(package).chain(workspace_deps.iter().flatten())
-                                {
-                                    self.send(FlycheckMessage::ClearDiagnostics {
-                                        id: self.id,
-                                        kind: ClearDiagnosticsKind::All(ClearScope::Package(
-                                            pkg.clone(),
-                                        )),
-                                    });
-                                }
-                            }
-                        }
+                        //
+                        // `cargo check` generally outputs something, even if there are no
+                        // warnings/errors, so we always know which package was checked.
+                        //
+                        // ```text
+                        // $ cargo check --message-format=json 2>/dev/null
+                        // {"reason":"compiler-artifact","package_id":"path+file:///Users/wilfred/tmp/scratch#0.1.0",...}
+                        // ```
+                        //
+                        // However, rustc only returns JSON if there are diagnostics present, so a
+                        // build without warnings or errors has an empty output.
+                        //
+                        // ```
+                        // $ rustc --error-format=json bad.rs
+                        // {"$message_type":"diagnostic","message":"mismatched types","...}
+                        //
+                        // $ rustc --error-format=json good.rs
+                        // ```
+                        //
+                        // So if we got zero diagnostics, it was almost certainly a check that
+                        // wasn't specific to a package.
+                        self.send(FlycheckMessage::ClearDiagnostics {
+                            id: self.id,
+                            kind: ClearDiagnosticsKind::All(ClearScope::Workspace),
+                        });
                     } else if res.is_ok() {
                         // We clear diagnostics for packages on
                         // `[CargoCheckMessage::CompilerArtifact]` but there seem to be setups where
@@ -1021,7 +1025,7 @@ impl JsonLinesParser<CheckMessage> for CheckParser {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(untagged)]
 enum JsonMessage {
     Cargo(cargo_metadata::Message),

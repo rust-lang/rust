@@ -15,18 +15,16 @@ use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
     self as ast, AnonConst, Arm, AssignOp, AssignOpKind, AttrStyle, AttrVec, BinOp, BinOpKind,
     BlockCheckMode, CaptureBy, ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl,
-    FnRetTy, Label, MacCall, MetaItemLit, MgcaDisambiguation, Movability, Param, RangeLimits,
-    StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
+    FnRetTy, Guard, Label, MacCall, MetaItemLit, MgcaDisambiguation, Movability, Param,
+    RangeLimits, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
 };
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
 use rustc_literal_escaper::unescape_char;
 use rustc_session::errors::{ExprParenthesesNeeded, report_lit_error};
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
 use rustc_span::edition::Edition;
-use rustc_span::source_map::{self, Spanned};
-use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Symbol, kw, sym};
+use rustc_span::{BytePos, ErrorGuaranteed, Ident, Pos, Span, Spanned, Symbol, kw, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::instrument;
 
@@ -296,12 +294,12 @@ impl<'a> Parser<'a> {
             let span = self.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span);
             lhs = match op {
                 AssocOp::Binary(ast_op) => {
-                    let binary = self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
+                    let binary = self.mk_binary(respan(cur_op_span, ast_op), lhs, rhs);
                     self.mk_expr(span, binary)
                 }
                 AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs, cur_op_span)),
                 AssocOp::AssignOp(aop) => {
-                    let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
+                    let aopexpr = self.mk_assign_op(respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(span, aopexpr)
                 }
                 AssocOp::Cast | AssocOp::Range(_) => {
@@ -409,7 +407,7 @@ impl<'a> Parser<'a> {
             }
             _ => return None,
         };
-        Some(source_map::respan(span, op))
+        Some(respan(span, op))
     }
 
     /// Checks if this expression is a successfully parsed statement.
@@ -1140,7 +1138,7 @@ impl<'a> Parser<'a> {
     /// Parse the field access used in offset_of, matched by `$(e:expr)+`.
     /// Currently returns a list of idents. However, it should be possible in
     /// future to also do array indices, which might be arbitrary expressions.
-    fn parse_floating_field_access(&mut self) -> PResult<'a, Vec<Ident>> {
+    pub(crate) fn parse_floating_field_access(&mut self) -> PResult<'a, Vec<Ident>> {
         let mut fields = Vec::new();
         let mut trailing_dot = None;
 
@@ -1309,12 +1307,13 @@ impl<'a> Parser<'a> {
                             self.dcx()
                                 .create_err(errors::ParenthesesWithStructFields {
                                     span,
-                                    r#type: path,
                                     braces_for_struct: errors::BracesForStructLiteral {
                                         first: open_paren,
                                         second: close_paren,
+                                        r#type: path.clone(),
                                     },
                                     no_fields_for_fn: errors::NoFieldsForFnCall {
+                                        r#type: path,
                                         fields: fields
                                             .into_iter()
                                             .map(|field| field.span.until(field.expr.span))
@@ -1921,11 +1920,17 @@ impl<'a> Parser<'a> {
                         _ => false,
                     }
                 {
+                    let span = expr.span;
                     self.psess.buffer_lint(
                         BREAK_WITH_LABEL_AND_LOOP,
                         lo.to(expr.span),
                         ast::CRATE_NODE_ID,
-                        BuiltinLintDiag::BreakWithLabelAndLoop(expr.span),
+                        errors::BreakWithLabelAndLoop {
+                            sub: errors::BreakWithLabelAndLoopSub {
+                                left: span.shrink_to_lo(),
+                                right: span.shrink_to_hi(),
+                            },
+                        },
                     );
                 }
 
@@ -2762,7 +2767,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `let $pat = $expr` pseudo-expression.
     fn parse_expr_let(&mut self, restrictions: Restrictions) -> PResult<'a, Box<Expr>> {
-        let recovered = if !restrictions.contains(Restrictions::ALLOW_LET) {
+        let recovered: Recovered = if !restrictions.contains(Restrictions::ALLOW_LET) {
             let err = errors::ExpectedExpressionFoundLet {
                 span: self.token.span,
                 reason: errors::ForbiddenLetReason::OtherForbidden,
@@ -3206,6 +3211,7 @@ impl<'a> Parser<'a> {
                     errors::MatchArmBodyWithoutBracesSugg::AddBraces {
                         left: span.shrink_to_lo(),
                         right: span.shrink_to_hi(),
+                        num_statements: stmts.len(),
                     }
                 } else {
                     errors::MatchArmBodyWithoutBracesSugg::UseComma { semicolon: semi_sp }
@@ -3457,20 +3463,52 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<Box<Expr>>> {
+    pub(crate) fn eat_metavar_guard(&mut self) -> Option<Box<Guard>> {
+        self.eat_metavar_seq(MetaVarKind::Guard, |this| {
+            this.expect_match_arm_guard(ForceCollect::Yes)
+        })
+    }
+
+    fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<Box<Guard>>> {
+        if let Some(guard) = self.eat_metavar_guard() {
+            return Ok(Some(guard));
+        }
+
         if !self.eat_keyword(exp!(If)) {
             // No match arm guard present.
             return Ok(None);
         }
+        self.expect_match_arm_guard_cond(ForceCollect::No).map(Some)
+    }
 
-        let mut cond = self.parse_match_guard_condition()?;
+    pub(crate) fn expect_match_arm_guard(
+        &mut self,
+        force_collect: ForceCollect,
+    ) -> PResult<'a, Box<Guard>> {
+        if let Some(guard) = self.eat_metavar_guard() {
+            return Ok(guard);
+        }
+
+        self.expect_keyword(exp!(If))?;
+        self.expect_match_arm_guard_cond(force_collect)
+    }
+
+    fn expect_match_arm_guard_cond(
+        &mut self,
+        force_collect: ForceCollect,
+    ) -> PResult<'a, Box<Guard>> {
+        let leading_if_span = self.prev_token.span;
+
+        let mut cond = self.parse_match_guard_condition(force_collect)?;
+        let cond_span = cond.span;
 
         CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
 
-        Ok(Some(cond))
+        let guard = Guard { cond: *cond, span_with_leading_if: leading_if_span.to(cond_span) };
+        Ok(Box::new(guard))
     }
 
-    fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Pat, Option<Box<Expr>>)> {
+    fn parse_match_arm_pat_and_guard(&mut self) -> PResult<'a, (Pat, Option<Box<Guard>>)> {
         if self.token == token::OpenParen {
             let left = self.token.span;
             let pat = self.parse_pat_no_top_guard(
@@ -3486,10 +3524,10 @@ impl<'a> Parser<'a> {
                 // FIXME(guard_patterns): convert this to a normal guard instead
                 let span = pat.span;
                 let ast::PatKind::Paren(subpat) = pat.kind else { unreachable!() };
-                let ast::PatKind::Guard(_, mut cond) = subpat.kind else { unreachable!() };
-                self.psess.gated_spans.ungate_last(sym::guard_patterns, cond.span);
+                let ast::PatKind::Guard(_, mut guard) = subpat.kind else { unreachable!() };
+                self.psess.gated_spans.ungate_last(sym::guard_patterns, guard.span());
                 let mut checker = CondChecker::new(self, LetChainsPolicy::AlwaysAllowed);
-                checker.visit_expr(&mut cond);
+                checker.visit_expr(&mut guard.cond);
 
                 let right = self.prev_token.span;
                 self.dcx().emit_err(errors::ParenthesesInMatchPat {
@@ -3497,14 +3535,10 @@ impl<'a> Parser<'a> {
                     sugg: errors::ParenthesesInMatchPatSugg { left, right },
                 });
 
-                Ok((
-                    self.mk_pat(span, ast::PatKind::Wild),
-                    (if let Some(guar) = checker.found_incorrect_let_chain {
-                        Some(self.mk_expr_err(cond.span, guar))
-                    } else {
-                        Some(cond)
-                    }),
-                ))
+                if let Some(guar) = checker.found_incorrect_let_chain {
+                    guard.cond = *self.mk_expr_err(guard.span(), guar);
+                }
+                Ok((self.mk_pat(span, ast::PatKind::Wild), Some(guard)))
             } else {
                 Ok((pat, self.parse_match_arm_guard()?))
             }
@@ -3520,33 +3554,47 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_match_guard_condition(&mut self) -> PResult<'a, Box<Expr>> {
+    fn parse_match_guard_condition(
+        &mut self,
+        force_collect: ForceCollect,
+    ) -> PResult<'a, Box<Expr>> {
         let attrs = self.parse_outer_attributes()?;
-        match self.parse_expr_res(Restrictions::ALLOW_LET | Restrictions::IN_IF_GUARD, attrs) {
-            Ok((expr, _)) => Ok(expr),
-            Err(mut err) => {
-                if self.prev_token == token::OpenBrace {
-                    let sugg_sp = self.prev_token.span.shrink_to_lo();
-                    // Consume everything within the braces, let's avoid further parse
-                    // errors.
-                    self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
-                    let msg = "you might have meant to start a match arm after the match guard";
-                    if self.eat(exp!(CloseBrace)) {
-                        let applicability = if self.token != token::FatArrow {
-                            // We have high confidence that we indeed didn't have a struct
-                            // literal in the match guard, but rather we had some operation
-                            // that ended in a path, immediately followed by a block that was
-                            // meant to be the match arm.
-                            Applicability::MachineApplicable
-                        } else {
-                            Applicability::MaybeIncorrect
-                        };
-                        err.span_suggestion_verbose(sugg_sp, msg, "=> ", applicability);
+        let expr = self.collect_tokens(
+            None,
+            AttrWrapper::empty(),
+            force_collect,
+            |this, _empty_attrs| {
+                match this
+                    .parse_expr_res(Restrictions::ALLOW_LET | Restrictions::IN_IF_GUARD, attrs)
+                {
+                    Ok((expr, _)) => Ok((expr, Trailing::No, UsePreAttrPos::No)),
+                    Err(mut err) => {
+                        if this.prev_token == token::OpenBrace {
+                            let sugg_sp = this.prev_token.span.shrink_to_lo();
+                            // Consume everything within the braces, let's avoid further parse
+                            // errors.
+                            this.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
+                            let msg =
+                                "you might have meant to start a match arm after the match guard";
+                            if this.eat(exp!(CloseBrace)) {
+                                let applicability = if this.token != token::FatArrow {
+                                    // We have high confidence that we indeed didn't have a struct
+                                    // literal in the match guard, but rather we had some operation
+                                    // that ended in a path, immediately followed by a block that was
+                                    // meant to be the match arm.
+                                    Applicability::MachineApplicable
+                                } else {
+                                    Applicability::MaybeIncorrect
+                                };
+                                err.span_suggestion_verbose(sugg_sp, msg, "=> ", applicability);
+                            }
+                        }
+                        Err(err)
                     }
                 }
-                Err(err)
-            }
-        }
+            },
+        )?;
+        Ok(expr)
     }
 
     pub(crate) fn is_builtin(&self) -> bool {
@@ -3841,6 +3889,15 @@ impl<'a> Parser<'a> {
                         recovered_async = Some(guar);
                     }
 
+                    // If we encountered an error which we are recovering from, treat the struct
+                    // as if it has a `..` in it, because we don’t know what fields the user
+                    // might have *intended* it to have.
+                    //
+                    // This assignment will be overwritten if we actually parse a `..` later.
+                    //
+                    // (Note that this code is duplicated between here and below in comma parsing.
+                    base = ast::StructRest::NoneWithError(guar);
+
                     // If the next token is a comma, then try to parse
                     // what comes next as additional fields, rather than
                     // bailing out until next `}`.
@@ -3891,6 +3948,10 @@ impl<'a> Parser<'a> {
                     } else if let Some(f) = field_ident(self, guar) {
                         fields.push(f);
                     }
+
+                    // See comment above on this same assignment inside of field parsing.
+                    base = ast::StructRest::NoneWithError(guar);
+
                     self.recover_stmt_(SemiColonMode::Comma, BlockMode::Ignore);
                     let _ = self.eat(exp!(Comma));
                 }

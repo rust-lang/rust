@@ -5,7 +5,7 @@ mod alloc;
 mod backtrace;
 mod files;
 mod math;
-#[cfg(all(unix, feature = "native-lib"))]
+#[cfg(all(feature = "native-lib", unix))]
 pub mod native_lib;
 mod unix;
 mod windows;
@@ -23,8 +23,8 @@ pub mod time;
 pub mod tls;
 pub mod unwind;
 
-pub use self::files::FdTable;
-#[cfg(all(unix, feature = "native-lib"))]
+pub use self::files::{FdId, FdTable, FileDescriptionRef};
+#[cfg(all(feature = "native-lib", unix))]
 pub use self::native_lib::trace::{init_sv, register_retcode_sv};
 pub use self::unix::{DirTable, EpollInterestTable};
 

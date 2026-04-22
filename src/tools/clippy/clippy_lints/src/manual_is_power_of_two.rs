@@ -34,11 +34,11 @@ declare_clippy_lint! {
     "manually reimplementing `is_power_of_two`"
 }
 
+impl_lint_pass!(ManualIsPowerOfTwo => [MANUAL_IS_POWER_OF_TWO]);
+
 pub struct ManualIsPowerOfTwo {
     msrv: Msrv,
 }
-
-impl_lint_pass!(ManualIsPowerOfTwo => [MANUAL_IS_POWER_OF_TWO]);
 
 impl ManualIsPowerOfTwo {
     pub fn new(conf: &'static Conf) -> Self {
@@ -51,7 +51,7 @@ impl ManualIsPowerOfTwo {
         }
 
         let mut applicability = Applicability::MachineApplicable;
-        let snippet = Sugg::hir_with_applicability(cx, receiver, "_", &mut applicability);
+        let snippet = Sugg::hir_with_context(cx, receiver, expr.span.ctxt(), "_", &mut applicability);
 
         span_lint_and_sugg(
             cx,

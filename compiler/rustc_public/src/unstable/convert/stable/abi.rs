@@ -10,8 +10,9 @@ use rustc_target::callconv;
 
 use crate::abi::{
     AddressSpace, ArgAbi, CallConvention, FieldsShape, FloatLength, FnAbi, IntegerLength,
-    IntegerType, Layout, LayoutShape, PassMode, Primitive, ReprFlags, ReprOptions, Scalar,
-    TagEncoding, TyAndLayout, ValueAbi, VariantFields, VariantsShape, WrappingRange,
+    IntegerType, Layout, LayoutShape, NumScalableVectors, PassMode, Primitive, ReprFlags,
+    ReprOptions, Scalar, TagEncoding, TyAndLayout, ValueAbi, VariantFields, VariantsShape,
+    WrappingRange,
 };
 use crate::compiler_interface::BridgeTys;
 use crate::target::MachineSize as Size;
@@ -249,6 +250,18 @@ impl<'tcx> Stable<'tcx> for rustc_abi::TagEncoding<rustc_abi::VariantIdx> {
     }
 }
 
+impl<'tcx> Stable<'tcx> for rustc_abi::NumScalableVectors {
+    type T = NumScalableVectors;
+
+    fn stable<'cx>(
+        &self,
+        _tables: &mut Tables<'cx, BridgeTys>,
+        _cx: &CompilerCtxt<'cx, BridgeTys>,
+    ) -> Self::T {
+        NumScalableVectors(self.0)
+    }
+}
+
 impl<'tcx> Stable<'tcx> for rustc_abi::BackendRepr {
     type T = ValueAbi;
 
@@ -265,8 +278,12 @@ impl<'tcx> Stable<'tcx> for rustc_abi::BackendRepr {
             rustc_abi::BackendRepr::SimdVector { element, count } => {
                 ValueAbi::Vector { element: element.stable(tables, cx), count }
             }
-            rustc_abi::BackendRepr::ScalableVector { element, count } => {
-                ValueAbi::ScalableVector { element: element.stable(tables, cx), count }
+            rustc_abi::BackendRepr::SimdScalableVector { element, count, number_of_vectors } => {
+                ValueAbi::ScalableVector {
+                    element: element.stable(tables, cx),
+                    count,
+                    number_of_vectors: number_of_vectors.stable(tables, cx),
+                }
             }
             rustc_abi::BackendRepr::Memory { sized } => ValueAbi::Aggregate { sized },
         }

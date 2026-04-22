@@ -6,7 +6,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::mono::Visibility;
+use rustc_middle::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 
@@ -37,7 +37,7 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         #[cfg(feature = "master")]
         global.add_attribute(VarAttribute::Visibility(base::visibility_to_gcc(visibility)));
 
-        // TODO(antoyo): set linkage.
+        // FIXME(antoyo): set linkage.
         self.instances.borrow_mut().insert(instance, global);
     }
 
@@ -69,9 +69,9 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             decl.add_attribute(FnAttribute::Visibility(base::visibility_to_gcc(visibility)));
         }
 
-        // TODO(antoyo): call set_link_section() to allow initializing argc/argv.
-        // TODO(antoyo): set unique comdat.
-        // TODO(antoyo): use inline attribute from there in linkage.set() above.
+        // FIXME(antoyo): call set_link_section() to allow initializing argc/argv.
+        // FIXME(antoyo): set unique comdat.
+        // FIXME(antoyo): use inline attribute from there in linkage.set() above.
 
         self.functions.borrow_mut().insert(symbol_name.to_string(), decl);
         self.function_instances.borrow_mut().insert(instance, decl);

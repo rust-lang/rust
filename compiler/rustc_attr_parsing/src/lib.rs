@@ -77,9 +77,9 @@
 //! containing both `C` and `packed` annotations.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(decl_macro)]
 #![feature(iter_intersperse)]
+#![feature(try_blocks)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
@@ -100,16 +100,18 @@ mod interface;
 pub mod parser;
 
 mod early_parsed;
+mod errors;
 mod safety;
 mod session_diagnostics;
 mod target_checking;
 pub mod validate_attr;
 
+pub use attributes::AttributeSafety;
 pub use attributes::cfg::{
     CFG_TEMPLATE, EvalConfigResult, eval_config_entry, parse_cfg, parse_cfg_attr, parse_cfg_entry,
 };
 pub use attributes::cfg_select::*;
 pub use attributes::util::{is_builtin_attr, parse_version};
 pub use context::{Early, Late, OmitDoc, ShouldEmit};
-pub use interface::AttributeParser;
+pub use interface::{AttributeParser, EmitAttribute};
 pub use session_diagnostics::ParsedDescription;

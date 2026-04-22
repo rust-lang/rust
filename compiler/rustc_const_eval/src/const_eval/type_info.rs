@@ -261,7 +261,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                         None => Cow::Owned(idx.to_string()), // For tuples
                     };
                     let name_place = self.allocate_str_dedup(&name)?;
-                    let ptr = self.mplace_to_ref(&name_place)?;
+                    let ptr = self.mplace_to_imm_ptr(&name_place, None)?;
                     self.write_immediate(*ptr, &field_place)?
                 }
                 sym::ty => {
@@ -419,7 +419,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         sig: &FnSigTys<TyCtxt<'tcx>>,
         fn_header: &FnHeader<TyCtxt<'tcx>>,
     ) -> InterpResult<'tcx> {
-        let FnHeader { safety, c_variadic, abi } = fn_header;
+        let FnHeader { fn_sig_kind } = fn_header;
 
         for (field_idx, field) in
             place.layout().ty.ty_adt_def().unwrap().non_enum_variant().fields.iter_enumerated()
@@ -428,9 +428,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
             match field.name {
                 sym::unsafety => {
-                    self.write_scalar(Scalar::from_bool(safety.is_unsafe()), &field_place)?;
+                    self.write_scalar(Scalar::from_bool(!fn_sig_kind.is_safe()), &field_place)?;
                 }
-                sym::abi => match abi {
+                sym::abi => match fn_sig_kind.abi() {
                     ExternAbi::C { .. } => {
                         let (rust_variant, _rust_place) =
                             self.downcast(&field_place, sym::ExternC)?;
@@ -444,7 +444,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                     other_abi => {
                         let (variant, variant_place) = self.downcast(&field_place, sym::Named)?;
                         let str_place = self.allocate_str_dedup(other_abi.as_str())?;
-                        let str_ref = self.mplace_to_ref(&str_place)?;
+                        let str_ref = self.mplace_to_imm_ptr(&str_place, None)?;
                         let payload = self.project_field(&variant_place, FieldIdx::ZERO)?;
                         self.write_immediate(*str_ref, &payload)?;
                         self.write_discriminant(variant, &field_place)?;
@@ -463,7 +463,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                     self.write_type_id(output, &field_place)?;
                 }
                 sym::variadic => {
-                    self.write_scalar(Scalar::from_bool(*c_variadic), &field_place)?;
+                    self.write_scalar(Scalar::from_bool(fn_sig_kind.c_variadic()), &field_place)?;
                 }
                 other => span_bug!(self.tcx.def_span(field.did), "unimplemented field {other}"),
             }

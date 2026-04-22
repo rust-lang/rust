@@ -50,11 +50,13 @@ declare_clippy_lint! {
     /// let range = Range { start: 0, end: 1 };
     /// println!("{}", range.end); // `end` is _not_ disallowed in the config.
     /// ```
-    #[clippy::version = "1.93.0"]
+    #[clippy::version = "1.95.0"]
     pub DISALLOWED_FIELDS,
     style,
     "declaration of a disallowed field use"
 }
+
+impl_lint_pass!(DisallowedFields => [DISALLOWED_FIELDS]);
 
 pub struct DisallowedFields {
     disallowed: DefIdMap<(&'static str, &'static DisallowedPath)>,
@@ -73,8 +75,6 @@ impl DisallowedFields {
         Self { disallowed }
     }
 }
-
-impl_lint_pass!(DisallowedFields => [DISALLOWED_FIELDS]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedFields {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

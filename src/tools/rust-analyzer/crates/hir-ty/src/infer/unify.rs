@@ -3,9 +3,7 @@
 use std::fmt;
 
 use base_db::Crate;
-use hir_def::{AdtId, DefWithBodyId, GenericParamId};
-use hir_expand::name::Name;
-use intern::sym;
+use hir_def::{AdtId, ExpressionStoreOwnerId, GenericParamId, TraitId};
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     TyVid, TypeFoldable, TypeVisitableExt, UpcastFrom,
@@ -17,9 +15,9 @@ use smallvec::SmallVec;
 use crate::{
     db::HirDatabase,
     next_solver::{
-        AliasTy, Canonical, ClauseKind, Const, DbInterner, ErrorGuaranteed, GenericArg,
-        GenericArgs, Goal, ParamEnv, Predicate, PredicateKind, Region, SolverDefId, Term, TraitRef,
-        Ty, TyKind, TypingMode,
+        Canonical, ClauseKind, Const, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs, Goal,
+        ParamEnv, Predicate, PredicateKind, Region, SolverDefId, Term, TraitRef, Ty, TyKind,
+        TypingMode,
         fulfill::{FulfillmentCtxt, NextSolverError},
         infer::{
             DbInternerInferExt, InferCtxt, InferOk, InferResult,
@@ -31,7 +29,7 @@ use crate::{
         obligation_ctxt::ObligationCtxt,
     },
     traits::{
-        FnTrait, NextTraitSolveResult, ParamEnvAndCrate, next_trait_solve_canonical_in_ctxt,
+        NextTraitSolveResult, ParamEnvAndCrate, next_trait_solve_canonical_in_ctxt,
         next_trait_solve_in_ctxt,
     },
 };
@@ -147,7 +145,7 @@ impl<'db> InferenceTable<'db> {
         db: &'db dyn HirDatabase,
         trait_env: ParamEnv<'db>,
         krate: Crate,
-        owner: Option<DefWithBodyId>,
+        owner: Option<ExpressionStoreOwnerId>,
     ) -> Self {
         let interner = DbInterner::new_with(db, krate);
         let typing_mode = match owner {
@@ -172,6 +170,10 @@ impl<'db> InferenceTable<'db> {
 
     pub(crate) fn type_is_copy_modulo_regions(&self, ty: Ty<'db>) -> bool {
         self.infer_ctxt.type_is_copy_modulo_regions(self.param_env, ty)
+    }
+
+    pub(crate) fn type_is_use_cloned_modulo_regions(&self, ty: Ty<'db>) -> bool {
+        self.infer_ctxt.type_is_use_cloned_modulo_regions(self.param_env, ty)
     }
 
     pub(crate) fn type_var_is_sized(&self, self_ty: TyVid) -> bool {
@@ -360,9 +362,6 @@ impl<'db> InferenceTable<'db> {
     /// in this case.
     pub(crate) fn try_structurally_resolve_type(&mut self, ty: Ty<'db>) -> Ty<'db> {
         if let TyKind::Alias(..) = ty.kind() {
-            // We need to use a separate variable here as otherwise the temporary for
-            // `self.fulfillment_cx.borrow_mut()` is alive in the `Err` branch, resulting
-            // in a reentrant borrow, causing an ICE.
             let result = self
                 .infer_ctxt
                 .at(&ObligationCause::misc(), self.param_env)
@@ -445,6 +444,18 @@ impl<'db> InferenceTable<'db> {
         }
     }
 
+    pub(crate) fn register_bound(&mut self, ty: Ty<'db>, def_id: TraitId, cause: ObligationCause) {
+        if !ty.references_non_lt_error() {
+            let trait_ref = TraitRef::new(self.interner(), def_id.into(), [ty]);
+            self.register_predicate(Obligation::new(
+                self.interner(),
+                cause,
+                self.param_env,
+                trait_ref,
+            ));
+        }
+    }
+
     pub(crate) fn register_infer_ok<T>(&mut self, infer_ok: InferOk<'db, T>) -> T {
         let InferOk { value, obligations } = infer_ok;
         self.register_predicates(obligations);
@@ -487,78 +498,6 @@ impl<'db> InferenceTable<'db> {
         for term in args.iter().filter_map(|it| it.as_term()) {
             self.register_wf_obligation(term, ObligationCause::new());
         }
-    }
-
-    pub(crate) fn callable_sig(
-        &mut self,
-        ty: Ty<'db>,
-        num_args: usize,
-    ) -> Option<(Option<FnTrait>, Vec<Ty<'db>>, Ty<'db>)> {
-        match ty.callable_sig(self.interner()) {
-            Some(sig) => {
-                let sig = sig.skip_binder();
-                Some((None, sig.inputs_and_output.inputs().to_vec(), sig.output()))
-            }
-            None => {
-                let (f, args_ty, return_ty) = self.callable_sig_from_fn_trait(ty, num_args)?;
-                Some((Some(f), args_ty, return_ty))
-            }
-        }
-    }
-
-    fn callable_sig_from_fn_trait(
-        &mut self,
-        ty: Ty<'db>,
-        num_args: usize,
-    ) -> Option<(FnTrait, Vec<Ty<'db>>, Ty<'db>)> {
-        let lang_items = self.interner().lang_items();
-        for (fn_trait_name, output_assoc_name, subtraits) in [
-            (FnTrait::FnOnce, sym::Output, &[FnTrait::Fn, FnTrait::FnMut][..]),
-            (FnTrait::AsyncFnMut, sym::CallRefFuture, &[FnTrait::AsyncFn]),
-            (FnTrait::AsyncFnOnce, sym::CallOnceFuture, &[]),
-        ] {
-            let fn_trait = fn_trait_name.get_id(lang_items)?;
-            let trait_data = fn_trait.trait_items(self.db);
-            let output_assoc_type =
-                trait_data.associated_type_by_name(&Name::new_symbol_root(output_assoc_name))?;
-
-            let mut arg_tys = Vec::with_capacity(num_args);
-            let arg_ty = Ty::new_tup_from_iter(
-                self.interner(),
-                std::iter::repeat_with(|| {
-                    let ty = self.next_ty_var();
-                    arg_tys.push(ty);
-                    ty
-                })
-                .take(num_args),
-            );
-            let args = GenericArgs::new_from_slice(&[ty.into(), arg_ty.into()]);
-            let trait_ref = TraitRef::new_from_args(self.interner(), fn_trait.into(), args);
-
-            let proj_args = self.infer_ctxt.fill_rest_fresh_args(output_assoc_type.into(), args);
-            let projection = Ty::new_alias(
-                self.interner(),
-                rustc_type_ir::AliasTyKind::Projection,
-                AliasTy::new_from_args(self.interner(), output_assoc_type.into(), proj_args),
-            );
-
-            let pred = Predicate::upcast_from(trait_ref, self.interner());
-            if !self.try_obligation(pred).no_solution() {
-                self.register_obligation(pred);
-                let return_ty = self.normalize_alias_ty(projection);
-                for &fn_x in subtraits {
-                    let fn_x_trait = fn_x.get_id(lang_items)?;
-                    let trait_ref =
-                        TraitRef::new_from_args(self.interner(), fn_x_trait.into(), args);
-                    let pred = Predicate::upcast_from(trait_ref, self.interner());
-                    if !self.try_obligation(pred).no_solution() {
-                        return Some((fn_x, arg_tys, return_ty));
-                    }
-                }
-                return Some((fn_trait_name, arg_tys, return_ty));
-            }
-        }
-        None
     }
 
     pub(super) fn insert_type_vars<T>(&mut self, ty: T) -> T

@@ -2,7 +2,7 @@ use std::convert::identity;
 
 use rustc_ast::token::Delimiter;
 use rustc_ast::tokenstream::DelimSpan;
-use rustc_ast::{AttrItem, Attribute, CRATE_NODE_ID, LitKind, ast, token};
+use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
 use rustc_errors::{Applicability, PResult, msg};
 use rustc_feature::{
     AttrSuggestionStyle, AttributeTemplate, Features, GatedCfg, find_gated_cfg, template,
@@ -19,8 +19,11 @@ use rustc_session::parse::{ParseSess, feature_err};
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 use thin_vec::ThinVec;
 
+use crate::attributes::AttributeSafety;
 use crate::context::{AcceptContext, ShouldEmit, Stage};
-use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser};
+use crate::parser::{
+    AllowExprMetavar, ArgParser, MetaItemListParser, MetaItemOrLitParser, NameValueParser,
+};
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, CfgAttrBadDelim, MetaBadDelimSugg,
     ParsedDescription,
@@ -42,11 +45,41 @@ pub fn parse_cfg<S: Stage>(
     args: &ArgParser,
 ) -> Option<CfgEntry> {
     let ArgParser::List(list) = args else {
-        cx.expected_list(cx.attr_span, args);
+        let attr_span = cx.attr_span;
+        cx.adcx().expected_list(attr_span, args);
         return None;
     };
+
     let Some(single) = list.single() else {
-        cx.expected_single_argument(list.span);
+        let target = cx.target;
+        let mut adcx = cx.adcx();
+        if list.is_empty() {
+            // `#[cfg()]`
+            let message = format!("if the {target} should be disabled, use `#[cfg(false)]`");
+            adcx.push_suggestion(message, list.span, "(false)".to_string());
+        } else {
+            // `#[cfg(foo, bar)]`
+            if let Ok(args) = adcx
+                .sess()
+                .source_map()
+                .span_to_source(list.span, |src, start, end| Ok(src[start..end].to_string()))
+            {
+                let all = format!("(all{args})");
+                let any = format!("(any{args})");
+
+                let all_msg = format!(
+                    "if the {target} should be enabled when all these predicates are, wrap them in `all`"
+                );
+                let any_msg = format!(
+                    "alternately, if the {target} should be enabled when any of these predicates are, wrap them in `any`"
+                );
+
+                adcx.push_suggestion(all_msg, list.span, all);
+                adcx.push_suggestion(any_msg, list.span, any);
+            }
+        }
+
+        adcx.expected_single_argument(list.span, list.len());
         return None;
     };
     parse_cfg_entry(cx, single).ok()
@@ -61,7 +94,7 @@ pub fn parse_cfg_entry<S: Stage>(
             ArgParser::List(list) => match meta.path().word_sym() {
                 Some(sym::not) => {
                     let Some(single) = list.single() else {
-                        return Err(cx.expected_single_argument(list.span));
+                        return Err(cx.adcx().expected_single_argument(list.span, list.len()));
                     };
                     CfgEntry::Not(Box::new(parse_cfg_entry(cx, single)?), list.span)
                 }
@@ -85,14 +118,14 @@ pub fn parse_cfg_entry<S: Stage>(
             a @ (ArgParser::NoArgs | ArgParser::NameValue(_)) => {
                 let Some(name) = meta.path().word_sym().filter(|s| !s.is_path_segment_keyword())
                 else {
-                    return Err(cx.expected_identifier(meta.path().span()));
+                    return Err(cx.adcx().expected_identifier(meta.path().span()));
                 };
                 parse_name_value(name, meta.path().span(), a.name_value(), meta.span(), cx)?
             }
         },
         MetaItemOrLitParser::Lit(lit) => match lit.kind {
             LitKind::Bool(b) => CfgEntry::Bool(b, lit.span),
-            _ => return Err(cx.expected_identifier(lit.span)),
+            _ => return Err(cx.adcx().expected_identifier(lit.span)),
         },
     })
 }
@@ -150,17 +183,17 @@ fn parse_cfg_entry_target<S: Stage>(
     for sub_item in list.mixed() {
         // First, validate that this is a NameValue item
         let Some(sub_item) = sub_item.meta_item() else {
-            cx.expected_name_value(sub_item.span(), None);
+            cx.adcx().expected_name_value(sub_item.span(), None);
             continue;
         };
         let Some(nv) = sub_item.args().name_value() else {
-            cx.expected_name_value(sub_item.span(), None);
+            cx.adcx().expected_name_value(sub_item.span(), None);
             continue;
         };
 
         // Then, parse it as a name-value item
         let Some(name) = sub_item.path().word_sym().filter(|s| !s.is_path_segment_keyword()) else {
-            return Err(cx.expected_identifier(sub_item.path().span()));
+            return Err(cx.adcx().expected_identifier(sub_item.path().span()));
         };
         let name = Symbol::intern(&format!("target_{name}"));
         if let Ok(cfg) =
@@ -185,9 +218,9 @@ pub(crate) fn parse_name_value<S: Stage>(
         None => None,
         Some(value) => {
             let Some(value_str) = value.value_as_str() else {
-                return Err(
-                    cx.expected_string_literal(value.value_span, Some(value.value_as_lit()))
-                );
+                return Err(cx
+                    .adcx()
+                    .expected_string_literal(value.value_span, Some(value.value_as_lit())));
             };
             Some((value_str, value.value_span))
         }
@@ -292,12 +325,13 @@ pub fn parse_cfg_attr(
     cfg_attr: &Attribute,
     sess: &Session,
     features: Option<&Features>,
+    lint_node_id: ast::NodeId,
 ) -> Option<(CfgEntry, Vec<(AttrItem, Span)>)> {
     match cfg_attr.get_normal_item().args.unparsed_ref().unwrap() {
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, tokens }) if !tokens.is_empty() => {
             check_cfg_attr_bad_delim(&sess.psess, *dspan, *delim);
             match parse_in(&sess.psess, tokens.clone(), "`cfg_attr` input", |p| {
-                parse_cfg_attr_internal(p, sess, features, cfg_attr)
+                parse_cfg_attr_internal(p, sess, features, lint_node_id, cfg_attr)
             }) {
                 Ok(r) => return Some(r),
                 Err(e) => {
@@ -333,8 +367,10 @@ pub fn parse_cfg_attr(
                 path: AttrPath::from_ast(&cfg_attr.get_normal_item().path, identity),
                 description: ParsedDescription::Attribute,
                 reason,
-                suggestions: CFG_ATTR_TEMPLATE
-                    .suggestions(AttrSuggestionStyle::Attribute(cfg_attr.style), sym::cfg_attr),
+                suggestions: session_diagnostics::AttributeParseErrorSuggestions::CreatedByTemplate(
+                    CFG_ATTR_TEMPLATE
+                        .suggestions(AttrSuggestionStyle::Attribute(cfg_attr.style), sym::cfg_attr),
+                ),
             });
         }
     }
@@ -356,6 +392,7 @@ fn parse_cfg_attr_internal<'a>(
     parser: &mut Parser<'a>,
     sess: &'a Session,
     features: Option<&Features>,
+    lint_node_id: ast::NodeId,
     attribute: &Attribute,
 ) -> PResult<'a, (CfgEntry, Vec<(ast::AttrItem, Span)>)> {
     // Parse cfg predicate
@@ -363,6 +400,7 @@ fn parse_cfg_attr_internal<'a>(
     let meta = MetaItemOrLitParser::parse_single(
         parser,
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+        AllowExprMetavar::Yes,
     )?;
     let pred_span = pred_start.with_hi(parser.token.span.hi());
 
@@ -373,9 +411,10 @@ fn parse_cfg_attr_internal<'a>(
         attribute.style,
         AttrPath { segments: attribute.path().into_boxed_slice(), span: attribute.span },
         Some(attribute.get_normal_item().unsafety),
+        AttributeSafety::Normal,
         ParsedDescription::Attribute,
         pred_span,
-        CRATE_NODE_ID,
+        lint_node_id,
         Target::Crate,
         features,
         ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },

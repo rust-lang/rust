@@ -14,7 +14,7 @@
 use crate::convert::FloatToInt;
 use crate::num::FpCategory;
 #[cfg(not(test))]
-use crate::num::libm;
+use crate::num::imp::libm;
 use crate::panic::const_assert;
 use crate::{intrinsics, mem};
 
@@ -500,6 +500,7 @@ impl f16 {
     /// ```
     #[inline]
     #[unstable(feature = "f16", issue = "116909")]
+    #[must_use]
     pub const fn classify(self) -> FpCategory {
         let b = self.to_bits();
         match (b & Self::MAN_MASK, b & Self::EXP_MASK) {
@@ -604,6 +605,7 @@ impl f16 {
     #[inline]
     #[doc(alias = "nextUp")]
     #[unstable(feature = "f16", issue = "116909")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn next_up(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -658,6 +660,7 @@ impl f16 {
     #[inline]
     #[doc(alias = "nextDown")]
     #[unstable(feature = "f16", issue = "116909")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn next_down(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -784,7 +787,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn max(self, other: f16) -> f16 {
-        intrinsics::maxnumf16(self, other)
+        intrinsics::maximum_number_nsz_f16(self, other)
     }
 
     /// Returns the minimum of the two numbers, ignoring NaN.
@@ -815,7 +818,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn min(self, other: f16) -> f16 {
-        intrinsics::minnumf16(self, other)
+        intrinsics::minimum_number_nsz_f16(self, other)
     }
 
     /// Returns the maximum of the two numbers, propagating NaN.
@@ -901,6 +904,8 @@ impl f16 {
     #[doc(alias = "average")]
     #[unstable(feature = "f16", issue = "116909")]
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     pub const fn midpoint(self, other: f16) -> f16 {
         const HI: f16 = f16::MAX / 2.;
 
@@ -1393,7 +1398,7 @@ impl f16 {
     #[rustc_const_unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn abs(self) -> Self {
-        intrinsics::fabsf16(self)
+        intrinsics::fabs(self)
     }
 
     /// Returns a number that represents the sign of `self`.
@@ -1521,7 +1526,11 @@ impl f16 {
 // Functions in this module fall into `core_float_math`
 // #[unstable(feature = "core_float_math", issue = "137578")]
 #[cfg(not(test))]
-#[doc(test(attr(feature(cfg_target_has_reliable_f16_f128), expect(internal_features))))]
+#[doc(test(attr(
+    feature(cfg_target_has_reliable_f16_f128),
+    expect(internal_features),
+    allow(unused_features)
+)))]
 impl f16 {
     /// Returns the largest integer less than or equal to `self`.
     ///

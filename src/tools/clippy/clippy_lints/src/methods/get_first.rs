@@ -7,7 +7,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 
 use super::GET_FIRST;
 
@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(
 ) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
-        && let identity = cx.tcx.type_of(impl_id).instantiate_identity()
+        && let identity = cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip()
         && let hir::ExprKind::Lit(Spanned {
             node: LitKind::Int(Pu128(0), _),
             ..

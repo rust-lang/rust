@@ -44,17 +44,17 @@ warning: value assigned to `b` is never read
   --> $DIR/liveness-consts.rs:18:17
    |
 LL |     let mut b = 1;
-   |                 ^
-   |
-   = help: maybe it is overwritten before being read?
+   |                 ^ this value is reassigned later and never used
+LL |     b += 1;
+   |     ------ `b` is overwritten here before the previous value is read
 
 warning: value assigned to `b` is never read
   --> $DIR/liveness-consts.rs:19:5
    |
 LL |     b += 1;
-   |     ^^^^^^
-   |
-   = help: maybe it is overwritten before being read?
+   |     ^^^^^^ this value is reassigned later and never used
+LL |     b = 42;
+   |     ------ `b` is overwritten here before the previous value is read
 
 warning: unused variable: `z`
   --> $DIR/liveness-consts.rs:62:13

@@ -22,18 +22,18 @@ pub struct Y {
     pub y: char
 }
 
-#[rustc_clean(except="fn_sig,typeck", cfg="rpass2")]
-pub fn use_X(x: X) -> u32 {
+#[rustc_clean(except="fn_sig,typeck_root", cfg="rpass2")]
+pub fn use_x(x: X) -> u32 {
     x.x as u32
 }
 
-#[rustc_clean(except="typeck", cfg="rpass2")]
-pub fn use_EmbedX(embed: EmbedX) -> u32 {
+#[rustc_clean(except="typeck_root", cfg="rpass2")]
+pub fn use_embed_x(embed: EmbedX) -> u32 {
     embed.x.x as u32
 }
 
 #[rustc_clean(cfg="rpass2")]
-pub fn use_Y() {
+pub fn use_y() {
     let x: Y = Y { y: 'c' };
 }
 

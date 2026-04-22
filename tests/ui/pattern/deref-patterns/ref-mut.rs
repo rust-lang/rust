@@ -1,5 +1,4 @@
 #![feature(deref_patterns)]
-//~^ WARN the feature `deref_patterns` is incomplete
 
 use std::rc::Rc;
 

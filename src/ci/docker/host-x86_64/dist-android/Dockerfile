@@ -16,15 +16,14 @@ ENV TARGETS=$TARGETS,i686-linux-android
 ENV TARGETS=$TARGETS,aarch64-linux-android
 ENV TARGETS=$TARGETS,x86_64-linux-android
 
-ENV RUST_CONFIGURE_ARGS \
-      --enable-extended \
+ENV RUST_CONFIGURE_ARGS="--enable-extended \
       --enable-profiler \
       --android-ndk=/android/ndk/ \
-      --disable-docs
+      --disable-docs"
 
 ENV PATH=$PATH:/android/ndk/toolchains/llvm/prebuilt/linux-x86_64/bin
 
-ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS
+ENV SCRIPT="python3 ../x.py dist --host= --target $TARGETS"
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

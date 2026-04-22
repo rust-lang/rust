@@ -1,6 +1,8 @@
 use rustc_abi::ExternAbi;
+use rustc_ast as ast;
 use rustc_attr_parsing::AttributeParser;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
+use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, ReprAttr};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -12,7 +14,6 @@ use rustc_session::config::CrateType;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{BytePos, Ident, Span, sym};
-use {rustc_ast as ast, rustc_hir as hir};
 
 use crate::lints::{
     NonCamelCaseType, NonCamelCaseTypeSub, NonSnakeCaseDiag, NonSnakeCaseDiagSub,
@@ -50,31 +51,27 @@ declare_lint_pass!(NonCamelCaseTypes => [NON_CAMEL_CASE_TYPES]);
 /// be upper cased or lower cased. For the purposes of the lint suggestion, we care about being able
 /// to change the char's case.
 fn char_has_case(c: char) -> bool {
-    let mut l = c.to_lowercase();
-    let mut u = c.to_uppercase();
-    while let Some(l) = l.next() {
-        match u.next() {
-            Some(u) if l != u => return true,
-            _ => {}
-        }
-    }
-    u.next().is_some()
+    !c.to_lowercase().eq(c.to_uppercase())
+}
+
+// contains a capitalisable character followed by, or preceded by, an underscore
+fn has_underscore_case(s: &str) -> bool {
+    let mut last = '\0';
+    s.chars().any(|c| match (std::mem::replace(&mut last, c), c) {
+        ('_', cs) | (cs, '_') => char_has_case(cs),
+        _ => false,
+    })
 }
 
 fn is_camel_case(name: &str) -> bool {
     let name = name.trim_matches('_');
-    if name.is_empty() {
+    let Some(first) = name.chars().next() else {
         return true;
-    }
+    };
 
-    // start with a non-lowercase letter rather than non-uppercase
+    // start with a non-lowercase letter rather than uppercase
     // ones (some scripts don't have a concept of upper/lowercase)
-    !name.chars().next().unwrap().is_lowercase()
-        && !name.contains("__")
-        && !name.chars().collect::<Vec<_>>().array_windows().any(|&[fst, snd]| {
-            // contains a capitalisable character followed by, or preceded by, an underscore
-            char_has_case(fst) && snd == '_' || char_has_case(snd) && fst == '_'
-        })
+    !(first.is_lowercase() || name.contains("__") || has_underscore_case(name))
 }
 
 fn to_camel_case(s: &str) -> String {
@@ -144,7 +141,7 @@ impl NonCamelCaseTypes {
 impl EarlyLintPass for NonCamelCaseTypes {
     fn check_item(&mut self, cx: &EarlyContext<'_>, it: &ast::Item) {
         let has_repr_c = matches!(
-            AttributeParser::parse_limited(cx.sess(), &it.attrs, sym::repr, it.span, it.id, None),
+            AttributeParser::parse_limited(cx.sess(), &it.attrs, &[sym::repr]),
             Some(Attribute::Parsed(AttributeKind::Repr { reprs, ..})) if reprs.iter().any(|(r, _)| r == &ReprAttr::ReprC)
         );
 
@@ -461,6 +458,19 @@ declare_lint! {
 
 declare_lint_pass!(NonUpperCaseGlobals => [NON_UPPER_CASE_GLOBALS]);
 
+struct NonUpperCaseGlobalGenerator<'a, F: FnOnce() -> NonUpperCaseGlobal<'a>> {
+    callback: F,
+}
+
+impl<'a, 'b, F: FnOnce() -> NonUpperCaseGlobal<'b>> Diagnostic<'a, ()>
+    for NonUpperCaseGlobalGenerator<'b, F>
+{
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        let Self { callback } = self;
+        callback().into_diag(dcx, level)
+    }
+}
+
 impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext<'_>, sort: &str, did: Option<LocalDefId>, ident: &Ident) {
         let name = ident.name.as_str();
@@ -517,7 +527,7 @@ impl NonUpperCaseGlobals {
                 }
             }
 
-            cx.emit_span_lint_lazy(NON_UPPER_CASE_GLOBALS, ident.span, || {
+            let callback = || {
                 // Compute usages lazily as it can expansive and useless when the lint is allowed.
                 // cf. https://github.com/rust-lang/rust/pull/142645#issuecomment-2993024625
                 let usages = if can_change_usages
@@ -537,7 +547,12 @@ impl NonUpperCaseGlobals {
                 };
 
                 NonUpperCaseGlobal { sort, name, sub, usages }
-            });
+            };
+            cx.emit_span_lint(
+                NON_UPPER_CASE_GLOBALS,
+                ident.span,
+                NonUpperCaseGlobalGenerator { callback },
+            );
         }
     }
 }
@@ -587,7 +602,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
             ..
         }) = p.kind
         {
-            if let Res::Def(DefKind::Const, _) = path.res
+            if let Res::Def(DefKind::Const { .. }, _) = path.res
                 && let [segment] = path.segments
             {
                 NonUpperCaseGlobals::check_upper_case(

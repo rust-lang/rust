@@ -1,32 +1,32 @@
 error: multiple `coverage` attributes
-  --> $DIR/bad-syntax.rs:9:1
+  --> $DIR/bad-syntax.rs:10:1
    |
 LL | #[coverage(off)]
    | ^^^^^^^^^^^^^^^^ help: remove this attribute
    |
 note: attribute also specified here
-  --> $DIR/bad-syntax.rs:10:1
+  --> $DIR/bad-syntax.rs:9:1
    |
 LL | #[coverage(off)]
    | ^^^^^^^^^^^^^^^^
 
 error: multiple `coverage` attributes
-  --> $DIR/bad-syntax.rs:13:1
-   |
-LL | #[coverage(off)]
-   | ^^^^^^^^^^^^^^^^ help: remove this attribute
-   |
-note: attribute also specified here
   --> $DIR/bad-syntax.rs:14:1
    |
 LL | #[coverage(on)]
-   | ^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/bad-syntax.rs:13:1
+   |
+LL | #[coverage(off)]
+   | ^^^^^^^^^^^^^^^^
 
 error[E0539]: malformed `coverage` attribute input
   --> $DIR/bad-syntax.rs:17:1
    |
 LL | #[coverage]
-   | ^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
+   | ^^^^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -39,7 +39,9 @@ error[E0539]: malformed `coverage` attribute input
   --> $DIR/bad-syntax.rs:20:1
    |
 LL | #[coverage = true]
-   | ^^^^^^^^^^^^^^^^^^ this attribute is only valid with either `on` or `off` as an argument
+   | ^^^^^^^^^^^------^
+   |            |
+   |            expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -56,7 +58,7 @@ error[E0805]: malformed `coverage` attribute input
 LL | #[coverage()]
    | ^^^^^^^^^^--^
    |           |
-   |           expected a single argument here
+   |           expected an argument here
    |
 help: try changing it to one of the following valid forms of the attribute
    |

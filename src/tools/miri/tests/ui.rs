@@ -42,7 +42,7 @@ fn build_native_lib(target: &str) -> PathBuf {
     std::fs::create_dir_all(&so_target_dir)
         .expect("Failed to create directory for shared object file");
     // We use a platform-neutral file extension to avoid having to hard-code alternatives.
-    let native_lib_path = so_target_dir.join("native-lib.module");
+    let native_lib_path = so_target_dir.join("native-lib-tests.so");
     let cc_output = Command::new(cc)
         .args([
             "-shared",
@@ -58,6 +58,7 @@ fn build_native_lib(target: &str) -> PathBuf {
             "tests/native-lib/aggregate_arguments.c",
             "tests/native-lib/ptr_read_access.c",
             "tests/native-lib/ptr_write_access.c",
+            "tests/native-lib/fn_ptr.c",
             // Ensure we notice serious problems in the C code.
             "-Wall",
             "-Wextra",
@@ -210,6 +211,12 @@ fn run_tests(
         let mut flag = std::ffi::OsString::from("-Zmiri-native-lib=");
         flag.push(native_lib.into_os_string());
         config.program.args.push(flag);
+    }
+    // For GenMC tests, add the relevant flags.
+    if path.starts_with("tests/genmc/") {
+        config.program.args.push("-Zmiri-genmc".into());
+        // FIXME(genmc): remove this when GenMC and SB can be used together.
+        config.program.args.push("-Zmiri-disable-stacked-borrows".into());
     }
 
     eprintln!("   Compiler: {}", config.program.display());

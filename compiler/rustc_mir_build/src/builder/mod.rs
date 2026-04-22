@@ -68,11 +68,11 @@ pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
 /// be called by the query `mir_built`.
 pub(crate) fn build_mir_inner_impl<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
     tcx.ensure_done().thir_abstract_const(def);
-    if let Err(e) = tcx.ensure_ok().check_match(def) {
+    if let Err(e) = tcx.ensure_result().check_match(def) {
         return construct_error(tcx, def, e);
     }
 
-    if let Err(err) = tcx.ensure_ok().check_tail_calls(def) {
+    if let Err(err) = tcx.ensure_result().check_tail_calls(def) {
         return construct_error(tcx, def, err);
     }
 
@@ -470,7 +470,7 @@ fn construct_fn<'tcx>(
         .output
         .span();
 
-    let mut abi = fn_sig.abi;
+    let mut abi = fn_sig.abi();
     if let DefKind::Closure = tcx.def_kind(fn_def) {
         // HACK(eddyb) Avoid having RustCall on closures,
         // as it adds unnecessary (and wrong) auto-tupling.
@@ -480,7 +480,7 @@ fn construct_fn<'tcx>(
     let arguments = &thir.params;
 
     let return_ty = fn_sig.output();
-    let coroutine = match tcx.type_of(fn_def).instantiate_identity().kind() {
+    let coroutine = match tcx.type_of(fn_def).instantiate_identity().skip_norm_wip().kind() {
         ty::Coroutine(_, args) => Some(Box::new(CoroutineInfo::initial(
             tcx.coroutine_kind(fn_def).unwrap(),
             args.as_coroutine().yield_ty(),
@@ -491,7 +491,7 @@ fn construct_fn<'tcx>(
     };
 
     if let Some((dialect, phase)) =
-        find_attr!(tcx.hir_attrs(fn_id), CustomMir(dialect, phase, _) => (dialect, phase))
+        find_attr!(tcx, fn_id, CustomMir(dialect, phase, _) => (dialect, phase))
     {
         return custom::build_custom_mir(
             tcx,
@@ -617,21 +617,23 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     let (inputs, output, coroutine) = match tcx.def_kind(def_id) {
-        DefKind::Const
-        | DefKind::AssocConst
+        DefKind::Const { .. }
+        | DefKind::AssocConst { .. }
         | DefKind::AnonConst
         | DefKind::InlineConst
         | DefKind::Static { .. }
-        | DefKind::GlobalAsm => (vec![], tcx.type_of(def_id).instantiate_identity(), None),
+        | DefKind::GlobalAsm => {
+            (vec![], tcx.type_of(def_id).instantiate_identity().skip_norm_wip(), None)
+        }
         DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => {
             let sig = tcx.liberate_late_bound_regions(
                 def_id.to_def_id(),
-                tcx.fn_sig(def_id).instantiate_identity(),
+                tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip(),
             );
             (sig.inputs().to_vec(), sig.output(), None)
         }
         DefKind::Closure => {
-            let closure_ty = tcx.type_of(def_id).instantiate_identity();
+            let closure_ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
             match closure_ty.kind() {
                 ty::Closure(_, args) => {
                     let args = args.as_closure();
@@ -855,9 +857,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // https://github.com/rust-lang/rust/issues/149571
                     && self
                         .tcx
-                        .fn_sig(self.def_id)
-                        .instantiate_identity()
-                        .skip_binder()
+                        .fn_sig(self.def_id).instantiate_identity().skip_binder()
                         .output()
                         .is_inhabited_from(
                             self.tcx,

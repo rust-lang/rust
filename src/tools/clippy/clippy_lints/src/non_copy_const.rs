@@ -20,10 +20,11 @@
 use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant, const_item_rhs_to_expr};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::{is_in_const_context, sym};
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::paths::{PathNS, lookup_path_str};
 use clippy_utils::ty::{get_field_idx_by_name, implements_trait};
+use clippy_utils::{is_in_const_context, sym};
+use rustc_middle::ty::Unnormalized;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, DefIdSet};
@@ -35,67 +36,12 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::mir::{ConstValue, UnevaluatedConst};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, DerefAdjustKind};
 use rustc_middle::ty::{
-    self, AliasTyKind, EarlyBinder, GenericArgs, GenericArgsRef, Instance, Ty, TyCtxt, TypeFolder, TypeSuperFoldable,
-    TypeckResults, TypingEnv,
+    self, EarlyBinder, GenericArgs, GenericArgsRef, Instance, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeckResults,
+    TypingEnv,
 };
 use rustc_session::impl_lint_pass;
 use rustc_span::DUMMY_SP;
 use std::collections::hash_map::Entry;
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for the declaration of named constant which contain interior mutability.
-    ///
-    /// ### Why is this bad?
-    /// Named constants are copied at every use site which means any change to their value
-    /// will be lost after the newly created value is dropped. e.g.
-    ///
-    /// ```rust
-    /// use core::sync::atomic::{AtomicUsize, Ordering};
-    /// const ATOMIC: AtomicUsize = AtomicUsize::new(0);
-    /// fn add_one() -> usize {
-    ///     // This will always return `0` since `ATOMIC` is copied before it's used.
-    ///     ATOMIC.fetch_add(1, Ordering::AcqRel)
-    /// }
-    /// ```
-    ///
-    /// If shared modification of the value is desired, a `static` item is needed instead.
-    /// If that is not desired, a `const fn` constructor should be used to make it obvious
-    /// at the use site that a new value is created.
-    ///
-    /// ### Known problems
-    /// Prior to `const fn` stabilization this was the only way to provide a value which
-    /// could initialize a `static` item (e.g. the `std::sync::ONCE_INIT` constant). In
-    /// this case the use of `const` is required and this lint should be suppressed.
-    ///
-    /// There also exists types which contain private fields with interior mutability, but
-    /// no way to both create a value as a constant and modify any mutable field using the
-    /// type's public interface (e.g. `bytes::Bytes`). As there is no reasonable way to
-    /// scan a crate's interface to see if this is the case, all such types will be linted.
-    /// If this happens use the `ignore-interior-mutability` configuration option to allow
-    /// the type.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
-    ///
-    /// const CONST_ATOM: AtomicUsize = AtomicUsize::new(12);
-    /// CONST_ATOM.store(6, SeqCst); // the content of the atomic is unchanged
-    /// assert_eq!(CONST_ATOM.load(SeqCst), 12); // because the CONST_ATOM in these lines are distinct
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
-    /// static STATIC_ATOM: AtomicUsize = AtomicUsize::new(15);
-    /// STATIC_ATOM.store(9, SeqCst);
-    /// assert_eq!(STATIC_ATOM.load(SeqCst), 9); // use a `static` item to refer to the same instance
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub DECLARE_INTERIOR_MUTABLE_CONST,
-    suspicious,
-    "declaring `const` with interior mutability"
-}
 
 declare_clippy_lint! {
     /// ### What it does
@@ -159,6 +105,66 @@ declare_clippy_lint! {
     style,
     "referencing `const` with interior mutability"
 }
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the declaration of named constant which contain interior mutability.
+    ///
+    /// ### Why is this bad?
+    /// Named constants are copied at every use site which means any change to their value
+    /// will be lost after the newly created value is dropped. e.g.
+    ///
+    /// ```rust
+    /// use core::sync::atomic::{AtomicUsize, Ordering};
+    /// const ATOMIC: AtomicUsize = AtomicUsize::new(0);
+    /// fn add_one() -> usize {
+    ///     // This will always return `0` since `ATOMIC` is copied before it's used.
+    ///     ATOMIC.fetch_add(1, Ordering::AcqRel)
+    /// }
+    /// ```
+    ///
+    /// If shared modification of the value is desired, a `static` item is needed instead.
+    /// If that is not desired, a `const fn` constructor should be used to make it obvious
+    /// at the use site that a new value is created.
+    ///
+    /// ### Known problems
+    /// Prior to `const fn` stabilization this was the only way to provide a value which
+    /// could initialize a `static` item (e.g. the `std::sync::ONCE_INIT` constant). In
+    /// this case the use of `const` is required and this lint should be suppressed.
+    ///
+    /// There also exists types which contain private fields with interior mutability, but
+    /// no way to both create a value as a constant and modify any mutable field using the
+    /// type's public interface (e.g. `bytes::Bytes`). As there is no reasonable way to
+    /// scan a crate's interface to see if this is the case, all such types will be linted.
+    /// If this happens use the `ignore-interior-mutability` configuration option to allow
+    /// the type.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+    ///
+    /// const CONST_ATOM: AtomicUsize = AtomicUsize::new(12);
+    /// CONST_ATOM.store(6, SeqCst); // the content of the atomic is unchanged
+    /// assert_eq!(CONST_ATOM.load(SeqCst), 12); // because the CONST_ATOM in these lines are distinct
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
+    /// static STATIC_ATOM: AtomicUsize = AtomicUsize::new(15);
+    /// STATIC_ATOM.store(9, SeqCst);
+    /// assert_eq!(STATIC_ATOM.load(SeqCst), 9); // use a `static` item to refer to the same instance
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
+    pub DECLARE_INTERIOR_MUTABLE_CONST,
+    suspicious,
+    "declaring `const` with interior mutability"
+}
+
+impl_lint_pass!(NonCopyConst<'_> => [
+    BORROW_INTERIOR_MUTABLE_CONST,
+    DECLARE_INTERIOR_MUTABLE_CONST,
+]);
 
 #[derive(Clone, Copy)]
 enum IsFreeze {
@@ -257,8 +263,6 @@ pub struct NonCopyConst<'tcx> {
     freeze_tys: FxHashMap<Ty<'tcx>, IsFreeze>,
 }
 
-impl_lint_pass!(NonCopyConst<'_> => [DECLARE_INTERIOR_MUTABLE_CONST, BORROW_INTERIOR_MUTABLE_CONST]);
-
 impl<'tcx> NonCopyConst<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, conf: &'static Conf) -> Self {
         Self {
@@ -274,7 +278,7 @@ impl<'tcx> NonCopyConst<'tcx> {
     /// Checks if a value of the given type is `Freeze`, or may be depending on the value.
     fn is_ty_freeze(&mut self, tcx: TyCtxt<'tcx>, typing_env: TypingEnv<'tcx>, ty: Ty<'tcx>) -> IsFreeze {
         // FIXME: this should probably be using the trait solver
-        let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+        let ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
         match self.freeze_tys.entry(ty) {
             Entry::Occupied(e) => *e.get(),
             Entry::Vacant(e) => {
@@ -342,7 +346,7 @@ impl<'tcx> NonCopyConst<'tcx> {
         ty: Ty<'tcx>,
         val: ConstValue,
     ) -> Result<bool, ()> {
-        let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+        let ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
         match self.is_ty_freeze(tcx, typing_env, ty) {
             IsFreeze::Yes => Ok(true),
             IsFreeze::Maybe if matches!(ty.kind(), ty::Adt(..) | ty::Array(..) | ty::Tuple(..)) => {
@@ -378,7 +382,7 @@ impl<'tcx> NonCopyConst<'tcx> {
     ) -> bool {
         // Make sure to instantiate all types coming from `typeck` with `gen_args`.
         let ty = EarlyBinder::bind(typeck.expr_ty(e)).instantiate(tcx, gen_args);
-        let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+        let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty.skip_norm_wip());
         match self.is_ty_freeze(tcx, typing_env, ty) {
             IsFreeze::Yes => true,
             IsFreeze::No => false,
@@ -392,16 +396,16 @@ impl<'tcx> NonCopyConst<'tcx> {
                 },
                 ExprKind::Path(ref p) => {
                     let res = typeck.qpath_res(p, e.hir_id);
-                    let gen_args = EarlyBinder::bind(typeck.node_args(e.hir_id)).instantiate(tcx, gen_args);
+                    let gen_args = EarlyBinder::bind(typeck.node_args(e.hir_id)).instantiate(tcx, gen_args).skip_norm_wip();
                     match res {
-                        Res::Def(DefKind::Const | DefKind::AssocConst, did)
+                        Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
                             if let Ok(val) =
                                 tcx.const_eval_resolve(typing_env, UnevaluatedConst::new(did, gen_args), DUMMY_SP)
                                 && let Ok(is_freeze) = self.is_value_freeze(tcx, typing_env, ty, val) =>
                         {
                             is_freeze
                         },
-                        Res::Def(DefKind::Const | DefKind::AssocConst, did)
+                        Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
                             if let Some((typeck, init)) = get_const_hir_value(tcx, typing_env, did, gen_args) =>
                         {
                             self.is_init_expr_freeze(tcx, typing_env, typeck, gen_args, init)
@@ -444,7 +448,7 @@ impl<'tcx> NonCopyConst<'tcx> {
         loop {
             let ty = typeck.expr_ty(src_expr);
             // Normalized as we need to check if this is an array later.
-            let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+            let ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
             let is_freeze = self.is_ty_freeze(tcx, typing_env, ty);
             if is_freeze.is_freeze() {
                 return None;
@@ -485,7 +489,7 @@ impl<'tcx> NonCopyConst<'tcx> {
         let mut ty = typeck.expr_ty(src_expr);
         loop {
             // Normalized as we need to check if this is an array later.
-            ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+            ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
             if let [adjust, ..] = typeck.expr_adjustments(src_expr) {
                 let res = if let Some(cause) = does_adjust_borrow(adjust)
                     && !self.is_value_freeze(tcx, typing_env, ty, val)?
@@ -585,10 +589,12 @@ impl<'tcx> NonCopyConst<'tcx> {
                     },
                     ExprKind::Path(ref init_path) => {
                         let next_init_args =
-                            EarlyBinder::bind(init_typeck.node_args(init_expr.hir_id)).instantiate(tcx, init_args);
+                            EarlyBinder::bind(init_typeck.node_args(init_expr.hir_id))
+                                .instantiate(tcx, init_args)
+                                .skip_norm_wip();
                         match init_typeck.qpath_res(init_path, init_expr.hir_id) {
                             Res::Def(DefKind::Ctor(..), _) => return None,
-                            Res::Def(DefKind::Const | DefKind::AssocConst, did)
+                            Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
                                 if let Ok(val) = tcx.const_eval_resolve(
                                     typing_env,
                                     UnevaluatedConst::new(did, next_init_args),
@@ -598,7 +604,7 @@ impl<'tcx> NonCopyConst<'tcx> {
                             {
                                 return res;
                             },
-                            Res::Def(DefKind::Const | DefKind::AssocConst, did)
+                            Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did)
                                 if let Some((next_typeck, value)) =
                                     get_const_hir_value(tcx, typing_env, did, next_init_args) =>
                             {
@@ -621,7 +627,7 @@ impl<'tcx> NonCopyConst<'tcx> {
             // gets cached.
             let ty = typeck.expr_ty(src_expr);
             // Normalized as we need to check if this is an array later.
-            let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+            let ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
             if self.is_ty_freeze(tcx, typing_env, ty).is_freeze() {
                 return None;
             }
@@ -699,7 +705,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Const(ident, .., ct_rhs) = item.kind
             && !ident.is_special()
-            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip()
             && match self.is_ty_freeze(cx.tcx, cx.typing_env(), ty) {
                 IsFreeze::No => true,
                 IsFreeze::Yes => false,
@@ -740,7 +746,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if let TraitItemKind::Const(_, ct_rhs_opt, _) = item.kind
-            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip()
             && match self.is_ty_freeze(cx.tcx, cx.typing_env(), ty) {
                 IsFreeze::No => true,
                 IsFreeze::Maybe if let Some(ct_rhs) = ct_rhs_opt => {
@@ -775,7 +781,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Const(_, ct_rhs) = item.kind
-            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip()
             && match self.is_ty_freeze(cx.tcx, cx.typing_env(), ty) {
                 IsFreeze::Yes => false,
                 IsFreeze::No => {
@@ -792,9 +798,9 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
                         let ty = (ReplaceAssocFolder {
                             tcx: cx.tcx,
                             trait_id,
-                            self_ty: cx.tcx.type_of(parent_item.owner_id).instantiate_identity(),
+                            self_ty: cx.tcx.type_of(parent_item.owner_id).instantiate_identity().skip_norm_wip(),
                         })
-                        .fold_ty(cx.tcx.type_of(item.owner_id).instantiate_identity());
+                        .fold_ty(cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip());
                         // `ty` may not be normalizable, but that should be fine.
                         !self.is_ty_freeze(cx.tcx, cx.typing_env(), ty).is_not_freeze()
                     } else {
@@ -831,7 +837,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if let ExprKind::Path(qpath) = &e.kind
             && let typeck = cx.typeck_results()
-            && let Res::Def(DefKind::Const | DefKind::AssocConst, did) = typeck.qpath_res(qpath, e.hir_id)
+            && let Res::Def(DefKind::Const { .. } | DefKind::AssocConst { .. }, did) = typeck.qpath_res(qpath, e.hir_id)
             // As of `1.80` constant contexts can't borrow any type with interior mutability
             && !is_in_const_context(cx)
             && !self.is_ty_freeze(cx.tcx, cx.typing_env(), typeck.expr_ty(e)).is_freeze()
@@ -881,7 +887,12 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceAssocFolder<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Alias(AliasTyKind::Projection, ty) = ty.kind()
+        if let ty::Alias(
+            ty @ ty::AliasTy {
+                kind: ty::Projection { .. },
+                ..
+            },
+        ) = ty.kind()
             && ty.trait_def_id(self.tcx) == self.trait_id
             && ty.self_ty() == self.self_ty
         {

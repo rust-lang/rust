@@ -1,4 +1,5 @@
 //@ needs-asm-support
+//@ reference: attributes.codegen.naked.inline
 #![crate_type = "lib"]
 
 use std::arch::naked_asm;

@@ -14,7 +14,7 @@ use std::{
 };
 
 use crossbeam_channel::{Receiver, Sender, select, unbounded};
-use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher, event::AccessKind};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rayon::iter::{IndexedParallelIterator as _, IntoParallelIterator as _, ParallelIterator};
 use rustc_hash::FxHashSet;
@@ -63,6 +63,7 @@ struct NotifyActor {
     sender: loader::Sender,
     watched_file_entries: FxHashSet<AbsPathBuf>,
     watched_dir_entries: Vec<loader::Directories>,
+    seen_paths: FxHashSet<AbsPathBuf>,
     // Drop order is significant.
     watcher: Option<(RecommendedWatcher, Receiver<NotifyEvent>)>,
 }
@@ -79,6 +80,7 @@ impl NotifyActor {
             sender,
             watched_dir_entries: Vec::new(),
             watched_file_entries: FxHashSet::default(),
+            seen_paths: FxHashSet::default(),
             watcher: None,
         }
     }
@@ -120,6 +122,7 @@ impl NotifyActor {
                         let n_total = config.load.len();
                         self.watched_dir_entries.clear();
                         self.watched_file_entries.clear();
+                        self.seen_paths.clear();
 
                         self.send(loader::Message::Progress {
                             n_total,
@@ -195,10 +198,12 @@ impl NotifyActor {
                 },
                 Event::NotifyEvent(event) => {
                     if let Some(event) = log_notify_error(event)
-                        && let EventKind::Create(_) | EventKind::Modify(_) | EventKind::Remove(_) =
-                            event.kind
+                        && let EventKind::Create(_)
+                        | EventKind::Modify(_)
+                        | EventKind::Remove(_)
+                        | EventKind::Access(AccessKind::Open(_)) = event.kind
                     {
-                        let files = event
+                        let abs_paths: Vec<AbsPathBuf> = event
                             .paths
                             .into_iter()
                             .filter_map(|path| {
@@ -207,7 +212,45 @@ impl NotifyActor {
                                         .expect("path is absolute"),
                                 )
                             })
+                            .collect();
+
+                        let mut saw_new_file = false;
+                        for abs_path in &abs_paths {
+                            if self.seen_paths.insert(abs_path.clone()) {
+                                saw_new_file = true;
+                            }
+                        }
+
+                        // Only consider access events for files that we haven't seen
+                        // before.
+                        //
+                        // This is important on FUSE filesystems, where we may not get a
+                        // Create event. In other cases we're about to access the file, so
+                        // we don't want an infinite loop where processing an Access event
+                        // creates another Access event.
+                        if matches!(event.kind, EventKind::Access(_)) && !saw_new_file {
+                            continue;
+                        }
+
+                        let files = abs_paths
+                            .into_iter()
                             .filter_map(|path| -> Option<(AbsPathBuf, Option<Vec<u8>>)> {
+                                // Ignore events for files/directories that we're not watching.
+                                if !(self.watched_file_entries.contains(&path)
+                                    || self
+                                        .watched_dir_entries
+                                        .iter()
+                                        .any(|dir| dir.contains_file(&path)))
+                                {
+                                    return None;
+                                }
+
+                                // For removed files, fs::metadata() will return Err, but
+                                // we still want to update the VFS.
+                                if matches!(event.kind, EventKind::Remove(_)) {
+                                    return Some((path, None));
+                                }
+
                                 let meta = fs::metadata(&path).ok()?;
                                 if meta.file_type().is_dir()
                                     && self
@@ -220,15 +263,6 @@ impl NotifyActor {
                                 }
 
                                 if !meta.file_type().is_file() {
-                                    return None;
-                                }
-
-                                if !(self.watched_file_entries.contains(&path)
-                                    || self
-                                        .watched_dir_entries
-                                        .iter()
-                                        .any(|dir| dir.contains_file(&path)))
-                                {
                                     return None;
                                 }
 
@@ -317,7 +351,7 @@ impl NotifyActor {
 
     fn watch(&mut self, path: &Path) {
         if let Some((watcher, _)) = &mut self.watcher {
-            log_notify_error(watcher.watch(path, RecursiveMode::NonRecursive));
+            log_notify_error(watcher.watch(path, RecursiveMode::Recursive));
         }
     }
 

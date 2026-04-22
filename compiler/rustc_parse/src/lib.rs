@@ -1,8 +1,6 @@
 //! The main parser interface.
 
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(assert_matches))]
-#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![cfg_attr(test, feature(iter_order_by))]
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
@@ -118,16 +116,9 @@ pub fn new_parser_from_file<'a>(
         let msg = format!("couldn't read `{}`: {}", path.display(), e);
         let mut err = psess.dcx().struct_fatal(msg);
         if let Ok(contents) = std::fs::read(path)
-            && let Err(utf8err) = String::from_utf8(contents.clone())
+            && let Err(utf8err) = std::str::from_utf8(&contents)
         {
-            utf8_error(
-                sm,
-                &path.display().to_string(),
-                sp,
-                &mut err,
-                utf8err.utf8_error(),
-                &contents,
-            );
+            utf8_error(sm, &path.display().to_string(), sp, &mut err, utf8err, &contents);
         }
         if let Some(sp) = sp {
             err.span(sp);
@@ -262,6 +253,15 @@ pub fn parse_in<'a, T>(
 
 pub fn fake_token_stream_for_item(psess: &ParseSess, item: &ast::Item) -> TokenStream {
     let source = pprust::item_to_string(item);
+    let filename = FileName::macro_expansion_source_code(&source);
+    unwrap_or_emit_fatal(source_str_to_stream(psess, filename, source, Some(item.span)))
+}
+
+pub fn fake_token_stream_for_foreign_item(
+    psess: &ParseSess,
+    item: &ast::ForeignItem,
+) -> TokenStream {
+    let source = pprust::foreign_item_to_string(item);
     let filename = FileName::macro_expansion_source_code(&source);
     unwrap_or_emit_fatal(source_str_to_stream(psess, filename, source, Some(item.span)))
 }

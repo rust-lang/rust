@@ -166,6 +166,14 @@ List of features to activate.
 Set this to `"all"` to pass `--all-features` to cargo.
 
 
+## rust-analyzer.cargo.metadataExtraArgs {#cargo.metadataExtraArgs}
+
+Default: `[]`
+
+Extra arguments passed only to `cargo metadata`, not to other cargo invocations.
+Useful for flags like `--config` that `cargo metadata` supports.
+
+
 ## rust-analyzer.cargo.noDefaultFeatures {#cargo.noDefaultFeatures}
 
 Default: `false`
@@ -616,6 +624,15 @@ List of warnings that should be displayed with info severity.
 
 The warnings will be indicated by a blue squiggly underline in code and a blue icon in
 the `Problems Panel`.
+
+
+## rust-analyzer.disableFixtureSupport {#disableFixtureSupport}
+
+Default: `false`
+
+Disable support for `#[rust_analyzer::rust_fixture]` snippets.
+
+If you are not working on rust-analyzer itself, you should ignore this config.
 
 
 ## rust-analyzer.document.symbol.search.excludeLocals {#document.symbol.search.excludeLocals}
@@ -1147,6 +1164,13 @@ Default: `false`
 Hide inlay type hints for constructors.
 
 
+## rust-analyzer.inlayHints.typeHints.location {#inlayHints.typeHints.location}
+
+Default: `"inline"`
+
+Where to render type hints relative to their binding pattern.
+
+
 ## rust-analyzer.interpret.tests {#interpret.tests}
 
 Default: `false`
@@ -1380,9 +1404,15 @@ Default: `null`
 Override the command used for bench runnables.
 The first element of the array should be the program to execute (for example, `cargo`).
 
-Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
-replace the package name, target option (such as `--bin` or `--example`), the target name and
-the test name (name of test function or test mod path).
+Use the placeholders:
+- `${package}`: package name.
+- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.
+- `${target}`: target name (empty for `--lib`).
+- `${test_name}`: the test path filter, e.g. `module::bench_func`.
+- `${exact}`: `--exact` for single benchmarks, empty for modules.
+- `${include_ignored}`: always empty for benchmarks.
+- `${executable_args}`: all of the above binary args bundled together
+  (includes `rust-analyzer.runnables.extraTestBinaryArgs`).
 
 
 ## rust-analyzer.runnables.command {#runnables.command}
@@ -1396,12 +1426,18 @@ Command to be executed instead of 'cargo' for runnables.
 
 Default: `null`
 
-Override the command used for bench runnables.
+Override the command used for doc-test runnables.
 The first element of the array should be the program to execute (for example, `cargo`).
 
-Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
-replace the package name, target option (such as `--bin` or `--example`), the target name and
-the test name (name of test function or test mod path).
+Use the placeholders:
+- `${package}`: package name.
+- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.
+- `${target}`: target name (empty for `--lib`).
+- `${test_name}`: the test path filter, e.g. `module::func`.
+- `${exact}`: always empty for doc-tests.
+- `${include_ignored}`: always empty for doc-tests.
+- `${executable_args}`: all of the above binary args bundled together
+  (includes `rust-analyzer.runnables.extraTestBinaryArgs`).
 
 
 ## rust-analyzer.runnables.extraArgs {#runnables.extraArgs}
@@ -1444,9 +1480,15 @@ Default: `null`
 Override the command used for test runnables.
 The first element of the array should be the program to execute (for example, `cargo`).
 
-Use the placeholders `${package}`, `${target_arg}`, `${target}`, `${test_name}` to dynamically
-replace the package name, target option (such as `--bin` or `--example`), the target name and
-the test name (name of test function or test mod path).
+Available placeholders:
+- `${package}`: package name.
+- `${target_arg}`: target option such as `--bin`, `--test`, `--lib`, etc.
+- `${target}`: target name (empty for `--lib`).
+- `${test_name}`: the test path filter, e.g. `module::test_func`.
+- `${exact}`: `--exact` for single tests, empty for modules.
+- `${include_ignored}`: `--include-ignored` for single tests, empty otherwise.
+- `${executable_args}`: all of the above binary args bundled together
+  (includes `rust-analyzer.runnables.extraTestBinaryArgs`).
 
 
 ## rust-analyzer.rustc.source {#rustc.source}

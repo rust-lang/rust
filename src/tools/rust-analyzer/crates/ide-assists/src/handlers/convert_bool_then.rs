@@ -77,8 +77,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
         "Convert `if` expression to `bool::then` call",
         target,
         |builder| {
-            let closure_body = closure_body.clone_subtree();
-            let mut editor = SyntaxEditor::new(closure_body.syntax().clone());
+            let (editor, closure_body) = SyntaxEditor::with_ast_node(&closure_body);
             // Rewrite all `Some(e)` in tail position to `e`
             for_each_tail_expr(&closure_body, &mut |e| {
                 let e = match e {
@@ -96,17 +95,13 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
             let edit = editor.finish();
             let closure_body = ast::Expr::cast(edit.new_root().clone()).unwrap();
 
-            let mut editor = builder.make_editor(expr.syntax());
-            let make = SyntaxFactory::with_mappings();
+            let editor = builder.make_editor(expr.syntax());
+            let make = editor.make();
             let closure_body = match closure_body {
                 ast::Expr::BlockExpr(block) => unwrap_trivial_block(block),
                 e => e,
             };
-            let cond = if invert_cond {
-                invert_boolean_expression(&make, cond)
-            } else {
-                cond.clone_for_update()
-            };
+            let cond = if invert_cond { invert_boolean_expression(make, cond) } else { cond };
 
             let parenthesize = matches!(
                 cond,
@@ -133,8 +128,6 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
             let arg_list = make.arg_list(Some(make.expr_closure(None, closure_body).into()));
             let mcall = make.expr_method_call(cond, make.name_ref("then"), arg_list);
             editor.replace(expr.syntax(), mcall.syntax());
-
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -192,8 +185,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
                 e => mapless_make.block_expr(None, Some(e)),
             };
 
-            let closure_body = closure_body.clone_subtree();
-            let mut editor = SyntaxEditor::new(closure_body.syntax().clone());
+            let (editor, closure_body) = SyntaxEditor::with_ast_node(&closure_body);
             // Wrap all tails in `Some(...)`
             let none_path = mapless_make.expr_path(mapless_make.ident_path("None"));
             let some_path = mapless_make.expr_path(mapless_make.ident_path("Some"));
@@ -216,8 +208,8 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
             let edit = editor.finish();
             let closure_body = ast::BlockExpr::cast(edit.new_root().clone()).unwrap();
 
-            let mut editor = builder.make_editor(mcall.syntax());
-            let make = SyntaxFactory::with_mappings();
+            let editor = builder.make_editor(mcall.syntax());
+            let make = editor.make();
 
             let cond = match &receiver {
                 ast::Expr::ParenExpr(expr) => expr.expr().unwrap_or(receiver),
@@ -231,8 +223,6 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
                 )
                 .indent(mcall.indent_level());
             editor.replace(mcall.syntax().clone(), if_expr.syntax().clone());
-
-            editor.add_mappings(make.finish_with_mappings());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -241,7 +231,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
 fn option_variants(
     sema: &Semantics<'_, RootDatabase>,
     expr: &SyntaxNode,
-) -> Option<(hir::Variant, hir::Variant)> {
+) -> Option<(hir::EnumVariant, hir::EnumVariant)> {
     let fam = FamousDefs(sema, sema.scope(expr)?.krate());
     let option_variants = fam.core_option_Option()?.variants(sema.db);
     match &*option_variants {
@@ -258,7 +248,7 @@ fn option_variants(
 /// If any of these conditions are met it is impossible to rewrite this as a `bool::then` call.
 fn is_invalid_body(
     sema: &Semantics<'_, RootDatabase>,
-    some_variant: hir::Variant,
+    some_variant: hir::EnumVariant,
     expr: &ast::Expr,
 ) -> bool {
     let mut invalid = false;
@@ -281,7 +271,7 @@ fn is_invalid_body(
                 && let Some(ast::Expr::PathExpr(p)) = call.expr()
             {
                 let res = p.path().and_then(|p| sema.resolve_path(&p));
-                if let Some(hir::PathResolution::Def(hir::ModuleDef::Variant(v))) = res {
+                if let Some(hir::PathResolution::Def(hir::ModuleDef::EnumVariant(v))) = res {
                     return invalid |= v != some_variant;
                 }
             }
@@ -294,11 +284,11 @@ fn is_invalid_body(
 fn block_is_none_variant(
     sema: &Semantics<'_, RootDatabase>,
     block: &ast::BlockExpr,
-    none_variant: hir::Variant,
+    none_variant: hir::EnumVariant,
 ) -> bool {
     block_as_lone_tail(block).and_then(|e| match e {
         ast::Expr::PathExpr(pat) => match sema.resolve_path(&pat.path()?)? {
-            hir::PathResolution::Def(hir::ModuleDef::Variant(v)) => Some(v),
+            hir::PathResolution::Def(hir::ModuleDef::EnumVariant(v)) => Some(v),
             _ => None,
         },
         _ => None,

@@ -1,3 +1,4 @@
+use rustc_errors::formatting::DiagMessageAddArg;
 use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, Subdiagnostic, msg};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
@@ -82,7 +83,7 @@ impl<'a> DescriptionCtx<'a> {
     }
 }
 
-pub enum PrefixKind {
+pub(crate) enum PrefixKind {
     Empty,
     RefValidFor,
     ContentValidFor,
@@ -98,7 +99,7 @@ pub enum PrefixKind {
     DataValidFor,
 }
 
-pub enum SuffixKind {
+pub(crate) enum SuffixKind {
     Empty,
     Continues,
     ReqByBinding,
@@ -138,14 +139,14 @@ impl IntoDiagArg for SuffixKind {
     }
 }
 
-pub struct RegionExplanation<'a> {
+pub(crate) struct RegionExplanation<'a> {
     desc: DescriptionCtx<'a>,
     prefix: PrefixKind,
     suffix: SuffixKind,
 }
 
 impl RegionExplanation<'_> {
-    pub fn new<'tcx>(
+    pub(crate) fn new<'tcx>(
         tcx: TyCtxt<'tcx>,
         generic_param_scope: LocalDefId,
         region: ty::Region<'tcx>,
@@ -163,13 +164,7 @@ impl RegionExplanation<'_> {
 
 impl Subdiagnostic for RegionExplanation<'_> {
     fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
-        diag.store_args();
-        diag.arg("pref_kind", self.prefix);
-        diag.arg("suff_kind", self.suffix);
-        diag.arg("desc_kind", self.desc.kind);
-        diag.arg("desc_arg", self.desc.arg);
-
-        let msg = diag.eagerly_translate(msg!(
+        let msg = msg!(
             "{$pref_kind ->
                 *[should_not_happen] [{$pref_kind}]
                 [ref_valid_for] ...the reference is valid for
@@ -202,8 +197,14 @@ impl Subdiagnostic for RegionExplanation<'_> {
                 [continues] ...
                 [req_by_binding] {\" \"}as required by this binding
             }"
-        ));
-        diag.restore_args();
+        )
+        .arg("pref_kind", self.prefix)
+        .arg("suff_kind", self.suffix)
+        .arg("desc_kind", self.desc.kind)
+        .arg("desc_arg", self.desc.arg)
+        .format();
+
+        // diag.restore_args();
         if let Some(span) = self.desc.span {
             diag.span_note(span, msg);
         } else {

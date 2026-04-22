@@ -39,3 +39,14 @@ impl<T: PointeeSized, U: PointeeSized> ChangePointee<U> for *mut T {
 impl<T: PointeeSized, U: PointeeSized> ChangePointee<U> for *const T {
     type Output = *const U;
 }
+
+/// Built-in float types (f16, f32, f64 and f128).
+///
+/// # Safety
+/// Must actually *be* such a type.
+pub unsafe trait FloatPrimitive: Sized + Copy {}
+
+unsafe impl FloatPrimitive for f16 {}
+unsafe impl FloatPrimitive for f32 {}
+unsafe impl FloatPrimitive for f64 {}
+unsafe impl FloatPrimitive for f128 {}

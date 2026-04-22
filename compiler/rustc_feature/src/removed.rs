@@ -103,7 +103,7 @@ declare_features! (
     (removed, default_type_parameter_fallback, "1.82.0", Some(27336),
      Some("never properly implemented; requires significant design work"), 127655),
     /// Allows using `#[deprecated_safe]` to deprecate the safeness of a function or trait
-    (removed, deprecated_safe, "CURRENT_RUSTC_VERSION", Some(94978), Some("never properly implemented, in the way of attribute refactor"), 152554),
+    (removed, deprecated_safe, "1.95.0", Some(94978), Some("never properly implemented, in the way of attribute refactor"), 152554),
     /// Allows deriving traits as per `SmartPointer` specification
     (removed, derive_smart_pointer, "1.84.0", Some(123430), Some("replaced by `CoercePointee`"), 131284),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
@@ -174,7 +174,7 @@ declare_features! (
      Some("removed due to implementation concerns as it requires significant refactorings"), 138492),
     /// A temporary feature gate used to enable parser extensions needed
     /// to bootstrap fix for #5723.
-    (removed, issue_5723_bootstrap, "CURRENT_RUSTC_VERSION", None, None),
+    (removed, issue_5723_bootstrap, "1.95.0", None, None),
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (removed, lazy_normalization_consts, "1.56.0", Some(72219), Some("superseded by `generic_const_exprs`"), 88369),
     /// Changes `impl Trait` to capture all lifetimes in scope.
@@ -309,19 +309,5 @@ declare_features! (
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features
-    // -------------------------------------------------------------------------
-
-
-    // -------------------------------------------------------------------------
-    // feature-group-start: removed library features
-    // -------------------------------------------------------------------------
-    //
-    // FIXME(#141617): we should have a better way to track removed library features, but we reuse
-    // the infrastructure here so users still get hints. The symbols used here can be remove from
-    // `symbol.rs` when that happens.
-    (removed, concat_idents, "1.90.0", Some(29599),
-     Some("use the `${concat(..)}` metavariable expression instead"), 142704),
-    // -------------------------------------------------------------------------
-    // feature-group-end: removed library features
     // -------------------------------------------------------------------------
 );

@@ -329,6 +329,8 @@ impl<'a> Parser<'a> {
             self.parse_borrowed_pointee()?
         } else if self.eat_keyword_noexpect(kw::Typeof) {
             self.parse_typeof_ty(lo)?
+        } else if self.is_builtin() {
+            self.parse_builtin_ty()?
         } else if self.eat_keyword(exp!(Underscore)) {
             // A type to be inferred `_`
             TyKind::Infer
@@ -800,6 +802,52 @@ impl<'a> Parser<'a> {
             .with_code(E0516)
             .emit();
         Ok(TyKind::Err(guar))
+    }
+
+    fn parse_builtin_ty(&mut self) -> PResult<'a, TyKind> {
+        self.parse_builtin(|this, lo, ident| {
+            Ok(match ident.name {
+                sym::field_of => Some(this.parse_ty_field_of(lo)?),
+                _ => None,
+            })
+        })
+    }
+
+    pub(crate) fn parse_ty_field_of(&mut self, _lo: Span) -> PResult<'a, TyKind> {
+        let container = self.parse_ty()?;
+        self.expect(exp!(Comma))?;
+
+        let fields = self.parse_floating_field_access()?;
+        let trailing_comma = self.eat_noexpect(&TokenKind::Comma);
+
+        if let Err(mut e) = self.expect_one_of(&[], &[exp!(CloseParen)]) {
+            if trailing_comma {
+                e.note("unexpected third argument to field_of");
+            } else {
+                e.note("field_of expects dot-separated field and variant names");
+            }
+            e.emit();
+        }
+
+        // Eat tokens until the macro call ends.
+        if self.may_recover() {
+            while !self.token.kind.is_close_delim_or_eof() {
+                self.bump();
+            }
+        }
+
+        match *fields {
+            [] => Err(self.dcx().struct_span_err(
+                self.token.span,
+                "`field_of!` expects dot-separated field and variant names",
+            )),
+            [field] => Ok(TyKind::FieldOf(container, None, field)),
+            [variant, field] => Ok(TyKind::FieldOf(container, Some(variant), field)),
+            _ => Err(self.dcx().struct_span_err(
+                fields.iter().map(|f| f.span).collect::<Vec<_>>(),
+                "`field_of!` only supports a single field or a variant with a field",
+            )),
+        }
     }
 
     /// Parses a function pointer type (`TyKind::FnPtr`).

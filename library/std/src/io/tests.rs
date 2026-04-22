@@ -17,10 +17,10 @@ fn read_until() {
     let mut v = Vec::new();
     assert_eq!(buf.read_until(b'3', &mut v).unwrap(), 3);
     assert_eq!(v, b"123");
-    v.truncate(0);
+    v.clear();
     assert_eq!(buf.read_until(b'3', &mut v).unwrap(), 1);
     assert_eq!(v, b"3");
-    v.truncate(0);
+    v.clear();
     assert_eq!(buf.read_until(b'3', &mut v).unwrap(), 0);
     assert_eq!(v, []);
 }
@@ -80,10 +80,10 @@ fn read_line() {
     let mut v = String::new();
     assert_eq!(buf.read_line(&mut v).unwrap(), 3);
     assert_eq!(v, "12\n");
-    v.truncate(0);
+    v.clear();
     assert_eq!(buf.read_line(&mut v).unwrap(), 1);
     assert_eq!(v, "\n");
-    v.truncate(0);
+    v.clear();
     assert_eq!(buf.read_line(&mut v).unwrap(), 0);
     assert_eq!(v, "");
 }
@@ -214,8 +214,8 @@ fn read_buf_exact() {
 fn borrowed_cursor_advance_overflow() {
     let mut buf = [0; 512];
     let mut buf = BorrowedBuf::from(&mut buf[..]);
-    buf.unfilled().advance(1);
-    buf.unfilled().advance(usize::MAX);
+    buf.unfilled().advance_checked(1);
+    buf.unfilled().advance_checked(usize::MAX);
 }
 
 #[test]

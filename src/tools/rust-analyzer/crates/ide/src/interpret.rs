@@ -1,5 +1,5 @@
 use hir::{ConstEvalError, DefWithBody, DisplayTarget, Semantics};
-use ide_db::{FilePosition, LineIndexDatabase, RootDatabase, base_db::SourceDatabase};
+use ide_db::{FilePosition, RootDatabase, base_db::SourceDatabase, line_index};
 use std::time::{Duration, Instant};
 use stdx::format_to;
 use syntax::{AstNode, TextRange, algo::ancestors_at_offset, ast};
@@ -40,7 +40,7 @@ fn find_and_interpret(db: &RootDatabase, position: FilePosition) -> Option<(Dura
 
         let path = source_root.path_for_file(&file_id).map(|x| x.to_string());
         let path = path.as_deref().unwrap_or("<unknown file>");
-        match db.line_index(file_id).try_line_col(text_range.start()) {
+        match line_index(db, file_id).try_line_col(text_range.start()) {
             Some(line_col) => format!("file://{path}:{}:{}", line_col.line + 1, line_col.col),
             None => format!("file://{path} range {text_range:?}"),
         }
@@ -68,7 +68,7 @@ pub(crate) fn render_const_eval_error(
         let source_root = db.source_root(source_root).source_root(db);
         let path = source_root.path_for_file(&file_id).map(|x| x.to_string());
         let path = path.as_deref().unwrap_or("<unknown file>");
-        match db.line_index(file_id).try_line_col(text_range.start()) {
+        match line_index(db, file_id).try_line_col(text_range.start()) {
             Some(line_col) => format!("file://{path}:{}:{}", line_col.line + 1, line_col.col),
             None => format!("file://{path} range {text_range:?}"),
         }

@@ -18,7 +18,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::{self, ConstInt, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, ConstInt, ScalarInt, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
@@ -35,7 +35,7 @@ impl<'tcx> crate::MirLint<'tcx> for KnownPanicsLint {
         let def_id = body.source.def_id().expect_local();
         let def_kind = tcx.def_kind(def_id);
         let is_fn_like = def_kind.is_fn_like();
-        let is_assoc_const = def_kind == DefKind::AssocConst;
+        let is_assoc_const = matches!(def_kind, DefKind::AssocConst { .. });
 
         // Only run const prop on functions, methods, closures and associated constants
         if !is_fn_like && !is_assoc_const {
@@ -241,7 +241,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 assert!(
                     !err.kind().formatted_string(),
                     "known panics lint encountered formatting error: {}",
-                    format_interp_error(self.ecx.tcx.dcx(), err),
+                    format_interp_error(err),
                 );
                 err
             })
@@ -261,7 +261,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // that the `PostAnalysisNormalize` pass has happened and that the body's consts
         // are normalized, so any call to resolve before that needs to be
         // manually normalized.
-        let val = self.tcx.try_normalize_erasing_regions(self.typing_env, c.const_).ok()?;
+        let val = self
+            .tcx
+            .try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(c.const_))
+            .ok()?;
 
         self.use_ecx(|this| this.ecx.eval_mir_constant(&val, c.span, None))?
             .as_mplace_or_imm()

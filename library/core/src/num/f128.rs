@@ -508,6 +508,7 @@ impl f128 {
     /// ```
     #[inline]
     #[unstable(feature = "f128", issue = "116909")]
+    #[must_use]
     pub const fn classify(self) -> FpCategory {
         let bits = self.to_bits();
         match (bits & Self::MAN_MASK, bits & Self::EXP_MASK) {
@@ -608,6 +609,7 @@ impl f128 {
     #[inline]
     #[doc(alias = "nextUp")]
     #[unstable(feature = "f128", issue = "116909")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn next_up(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -662,6 +664,7 @@ impl f128 {
     #[inline]
     #[doc(alias = "nextDown")]
     #[unstable(feature = "f128", issue = "116909")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn next_down(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -790,7 +793,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn max(self, other: f128) -> f128 {
-        intrinsics::maxnumf128(self, other)
+        intrinsics::maximum_number_nsz_f128(self, other)
     }
 
     /// Returns the minimum of the two numbers, ignoring NaN.
@@ -821,7 +824,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "this returns the result of the comparison, without modifying either input"]
     pub const fn min(self, other: f128) -> f128 {
-        intrinsics::minnumf128(self, other)
+        intrinsics::minimum_number_nsz_f128(self, other)
     }
 
     /// Returns the maximum of the two numbers, propagating NaN.
@@ -907,6 +910,8 @@ impl f128 {
     #[doc(alias = "average")]
     #[unstable(feature = "f128", issue = "116909")]
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
     pub const fn midpoint(self, other: f128) -> f128 {
         const HI: f128 = f128::MAX / 2.;
 
@@ -1409,7 +1414,7 @@ impl f128 {
     #[rustc_const_unstable(feature = "f128", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub const fn abs(self) -> Self {
-        intrinsics::fabsf128(self)
+        intrinsics::fabs(self)
     }
 
     /// Returns a number that represents the sign of `self`.

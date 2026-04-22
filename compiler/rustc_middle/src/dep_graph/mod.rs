@@ -14,7 +14,7 @@ use self::graph::{MarkFrame, print_markframe_trace};
 pub use self::retained::RetainedDepGraph;
 pub use self::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 pub use crate::dep_graph::debug::{DepNodeFilter, EdgeFilter};
-use crate::ty::print::with_reduced_queries;
+pub use crate::ty::print::with_reduced_queries;
 use crate::ty::{self, TyCtxt};
 
 mod debug;
@@ -42,8 +42,12 @@ pub enum KeyFingerprintStyle {
 }
 
 impl KeyFingerprintStyle {
+    /// True if a key can _potentially_ be recovered from a key fingerprint
+    /// with this style.
+    ///
+    /// For some key types, recovery is possible but not guaranteed.
     #[inline]
-    pub const fn reconstructible(self) -> bool {
+    pub const fn is_maybe_recoverable(self) -> bool {
         match self {
             KeyFingerprintStyle::DefPathHash
             | KeyFingerprintStyle::Unit
@@ -59,7 +63,7 @@ where
     OP: FnOnce() -> R,
 {
     ty::tls::with_context(|icx| {
-        let icx = ty::tls::ImplicitCtxt { task_deps, ..icx.clone() };
+        let icx = ty::tls::ImplicitCtxt { task_deps, ..*icx };
         ty::tls::enter_context(&icx, op)
     })
 }
@@ -81,10 +85,6 @@ impl<'tcx> TyCtxt<'tcx> {
         &self.dep_kind_vtables[dk.as_usize()]
     }
 
-    fn with_reduced_queries<T>(self, f: impl FnOnce() -> T) -> T {
-        with_reduced_queries!(f())
-    }
-
     #[inline(always)]
     pub fn key_fingerprint_style(self, kind: DepKind) -> KeyFingerprintStyle {
         self.dep_kind_vtable(kind).key_fingerprint_style
@@ -103,7 +103,7 @@ impl<'tcx> TyCtxt<'tcx> {
         prev_index: SerializedDepNodeIndex,
         frame: &MarkFrame<'_>,
     ) -> bool {
-        if let Some(force_fn) = self.dep_kind_vtable(dep_node.kind).force_from_dep_node {
+        if let Some(force_fn) = self.dep_kind_vtable(dep_node.kind).force_from_dep_node_fn {
             match panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 force_fn(self, dep_node, prev_index)
             })) {
@@ -117,13 +117,6 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         } else {
             false
-        }
-    }
-
-    /// Load data from the on-disk cache.
-    fn try_load_from_on_disk_cache(self, dep_node: &DepNode) {
-        if let Some(try_load_fn) = self.dep_kind_vtable(dep_node.kind).try_load_from_on_disk_cache {
-            try_load_fn(self, *dep_node)
         }
     }
 }

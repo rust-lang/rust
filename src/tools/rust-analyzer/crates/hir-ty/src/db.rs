@@ -5,9 +5,9 @@ use base_db::{Crate, target::TargetLoadError};
 use either::Either;
 use hir_def::{
     AdtId, BuiltinDeriveImplId, CallableDefId, ConstId, ConstParamId, DefWithBodyId, EnumVariantId,
-    FunctionId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId, StaticId, TraitId,
-    TypeAliasId, VariantId, builtin_derive::BuiltinDeriveImplMethod, db::DefDatabase, hir::ExprId,
-    layout::TargetDataLayout,
+    ExpressionStoreOwnerId, FunctionId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId,
+    StaticId, TraitId, TypeAliasId, VariantId, builtin_derive::BuiltinDeriveImplMethod,
+    db::DefDatabase, expr_store::ExpressionStore, hir::ExprId, layout::TargetDataLayout,
 };
 use la_arena::ArenaMap;
 use salsa::plumbing::AsId;
@@ -21,8 +21,8 @@ use crate::{
     lower::{Diagnostics, GenericDefaults},
     mir::{BorrowckResult, MirBody, MirLowerError},
     next_solver::{
-        Const, EarlyBinder, GenericArgs, ParamEnv, PolyFnSig, StoredEarlyBinder, StoredGenericArgs,
-        StoredTy, TraitRef, Ty, VariancesOf,
+        Allocation, EarlyBinder, GenericArgs, ParamEnv, PolyFnSig, StoredEarlyBinder,
+        StoredGenericArgs, StoredTy, TraitRef, Ty, VariancesOf,
     },
     traits::{ParamEnvAndCrate, StoredParamEnvAndCrate},
 };
@@ -68,11 +68,11 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         def: ConstId,
         subst: GenericArgs<'db>,
         trait_env: Option<ParamEnvAndCrate<'db>>,
-    ) -> Result<Const<'db>, ConstEvalError>;
+    ) -> Result<Allocation<'db>, ConstEvalError>;
 
     #[salsa::invoke(crate::consteval::const_eval_static)]
     #[salsa::transparent]
-    fn const_eval_static<'db>(&'db self, def: StaticId) -> Result<Const<'db>, ConstEvalError>;
+    fn const_eval_static<'db>(&'db self, def: StaticId) -> Result<Allocation<'db>, ConstEvalError>;
 
     #[salsa::invoke(crate::consteval::const_eval_discriminant_variant)]
     #[salsa::cycle(cycle_result = crate::consteval::const_eval_discriminant_cycle_result)]
@@ -178,13 +178,9 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
         def: CallableDefId,
     ) -> EarlyBinder<'db, PolyFnSig<'db>>;
 
-    #[salsa::invoke(crate::lower::trait_environment_for_body_query)]
-    #[salsa::transparent]
-    fn trait_environment_for_body<'db>(&'db self, def: DefWithBodyId) -> ParamEnv<'db>;
-
     #[salsa::invoke(crate::lower::trait_environment)]
     #[salsa::transparent]
-    fn trait_environment<'db>(&'db self, def: GenericDefId) -> ParamEnv<'db>;
+    fn trait_environment<'db>(&'db self, def: ExpressionStoreOwnerId) -> ParamEnv<'db>;
 
     #[salsa::invoke(crate::lower::generic_defaults_with_diagnostics_query)]
     #[salsa::cycle(cycle_result = crate::lower::generic_defaults_with_diagnostics_cycle_result)]
@@ -203,12 +199,6 @@ pub trait HirDatabase: DefDatabase + std::fmt::Debug {
     // Interned IDs for solver integration
     #[salsa::interned]
     fn intern_impl_trait_id(&self, id: ImplTraitId) -> InternedOpaqueTyId;
-
-    #[salsa::interned]
-    fn intern_closure(&self, id: InternedClosure) -> InternedClosureId;
-
-    #[salsa::interned]
-    fn intern_coroutine(&self, id: InternedCoroutine) -> InternedCoroutineId;
 
     #[salsa::invoke(crate::variance::variances_of)]
     #[salsa::transparent]
@@ -240,19 +230,89 @@ pub struct InternedOpaqueTyId {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct InternedClosure(pub DefWithBodyId, pub ExprId);
+pub struct InternedClosure(pub ExpressionStoreOwnerId, pub ExprId);
 
-#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
+#[salsa_macros::interned(constructor = new_impl, no_lifetime, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedClosureId {
     pub loc: InternedClosure,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct InternedCoroutine(pub DefWithBodyId, pub ExprId);
+impl InternedClosureId {
+    #[inline]
+    pub fn new(db: &dyn HirDatabase, loc: InternedClosure) -> Self {
+        if cfg!(debug_assertions) {
+            let store = ExpressionStore::of(db, loc.0);
+            let expr = &store[loc.1];
+            assert!(
+                matches!(
+                    expr,
+                    hir_def::hir::Expr::Closure {
+                        closure_kind: hir_def::hir::ClosureKind::Closure,
+                        ..
+                    }
+                ),
+                "expected a closure, found {expr:?}"
+            );
+        }
 
-#[salsa_macros::interned(no_lifetime, debug, revisions = usize::MAX)]
+        Self::new_impl(db, loc)
+    }
+}
+
+#[salsa_macros::interned(constructor = new_impl, no_lifetime, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedCoroutineId {
-    pub loc: InternedCoroutine,
+    pub loc: InternedClosure,
+}
+
+impl InternedCoroutineId {
+    #[inline]
+    pub fn new(db: &dyn HirDatabase, loc: InternedClosure) -> Self {
+        if cfg!(debug_assertions) {
+            let store = ExpressionStore::of(db, loc.0);
+            let expr = &store[loc.1];
+            assert!(
+                matches!(
+                    expr,
+                    hir_def::hir::Expr::Closure {
+                        closure_kind: hir_def::hir::ClosureKind::Coroutine(_)
+                            | hir_def::hir::ClosureKind::AsyncBlock { .. },
+                        ..
+                    }
+                ),
+                "expected a coroutine, found {expr:?}"
+            );
+        }
+
+        Self::new_impl(db, loc)
+    }
+}
+
+#[salsa_macros::interned(constructor = new_impl, no_lifetime, debug, revisions = usize::MAX)]
+#[derive(PartialOrd, Ord)]
+pub struct InternedCoroutineClosureId {
+    pub loc: InternedClosure,
+}
+
+impl InternedCoroutineClosureId {
+    #[inline]
+    pub fn new(db: &dyn HirDatabase, loc: InternedClosure) -> Self {
+        if cfg!(debug_assertions) {
+            let store = ExpressionStore::of(db, loc.0);
+            let expr = &store[loc.1];
+            assert!(
+                matches!(
+                    expr,
+                    hir_def::hir::Expr::Closure {
+                        closure_kind: hir_def::hir::ClosureKind::AsyncClosure,
+                        ..
+                    }
+                ),
+                "expected a coroutine closure, found {expr:?}"
+            );
+        }
+
+        Self::new_impl(db, loc)
+    }
 }

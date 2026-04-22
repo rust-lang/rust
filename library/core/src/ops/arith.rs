@@ -70,8 +70,7 @@
     on(all(Self = "{integer}", Rhs = "{float}"), message = "cannot add a float to an integer",),
     on(all(Self = "{float}", Rhs = "{integer}"), message = "cannot add an integer to a float",),
     message = "cannot add `{Rhs}` to `{Self}`",
-    label = "no implementation for `{Self} + {Rhs}`",
-    append_const_msg
+    label = "no implementation for `{Self} + {Rhs}`"
 )]
 #[doc(alias = "+")]
 pub const trait Add<Rhs = Self> {
@@ -181,10 +180,9 @@ add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128
 #[lang = "sub"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_ops", issue = "143802")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot subtract `{Rhs}` from `{Self}`",
-    label = "no implementation for `{Self} - {Rhs}`",
-    append_const_msg
+    label = "no implementation for `{Self} - {Rhs}`"
 )]
 #[doc(alias = "-")]
 pub const trait Sub<Rhs = Self> {
@@ -716,6 +714,7 @@ macro_rules! neg_impl {
             type Output = $t;
 
             #[inline]
+            #[track_caller]
             #[rustc_inherit_overflow_checks]
             fn neg(self) -> $t { -self }
         }

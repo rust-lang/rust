@@ -964,8 +964,8 @@ where
             //
             // Alternatively we could modify `Equate` for this case by adding another
             // variant to `StructurallyRelateAliases`.
-            let identity_args = self.fresh_args_for_item(alias.def_id);
-            let rigid_ctor = ty::AliasTerm::new_from_args(cx, alias.def_id, identity_args);
+            let identity_args = self.fresh_args_for_item(alias.def_id());
+            let rigid_ctor = alias.with_args(cx, identity_args);
             let ctor_term = rigid_ctor.to_term(cx);
             let obligations = self.delegate.eq_structurally_relating_aliases(
                 param_env,
@@ -1294,9 +1294,9 @@ where
 
         // Remove any trivial or duplicated region constraints once we've resolved regions
         let mut unique = HashSet::default();
-        external_constraints.region_constraints.retain(|outlives| {
-            outlives.0.as_region().is_none_or(|re| re != outlives.1) && unique.insert(*outlives)
-        });
+        external_constraints
+            .region_constraints
+            .retain(|outlives| !outlives.is_trivial() && unique.insert(*outlives));
 
         let canonical = canonicalize_response(
             self.delegate,
@@ -1350,7 +1350,7 @@ where
         // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-5-ambig.rs` and
         // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-6-ambig-unify.rs`.
         let region_constraints = if certainty == Certainty::Yes {
-            self.delegate.make_deduplicated_outlives_constraints()
+            self.delegate.make_deduplicated_region_constraints()
         } else {
             Default::default()
         };

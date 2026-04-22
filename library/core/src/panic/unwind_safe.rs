@@ -2,6 +2,7 @@ use crate::async_iter::AsyncIterator;
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::future::Future;
+use crate::marker::PointeeSized;
 use crate::ops::{Deref, DerefMut};
 use crate::pin::Pin;
 use crate::ptr::{NonNull, Unique};
@@ -178,17 +179,17 @@ pub struct AssertUnwindSafe<T>(#[stable(feature = "catch_unwind", since = "1.9.0
 // * Our custom AssertUnwindSafe wrapper is indeed unwind safe
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T: ?Sized> !UnwindSafe for &mut T {}
+impl<T: PointeeSized> !UnwindSafe for &mut T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T: RefUnwindSafe + ?Sized> UnwindSafe for &T {}
+impl<T: RefUnwindSafe + PointeeSized> UnwindSafe for &T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *const T {}
+impl<T: RefUnwindSafe + PointeeSized> UnwindSafe for *const T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-impl<T: RefUnwindSafe + ?Sized> UnwindSafe for *mut T {}
+impl<T: RefUnwindSafe + PointeeSized> UnwindSafe for *mut T {}
 #[unstable(feature = "ptr_internals", issue = "none")]
-impl<T: UnwindSafe + ?Sized> UnwindSafe for Unique<T> {}
+impl<T: UnwindSafe + PointeeSized> UnwindSafe for Unique<T> {}
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: RefUnwindSafe + ?Sized> UnwindSafe for NonNull<T> {}
+impl<T: RefUnwindSafe + PointeeSized> UnwindSafe for NonNull<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T> UnwindSafe for AssertUnwindSafe<T> {}
 
@@ -311,5 +312,18 @@ impl<S: AsyncIterator> AsyncIterator for AssertUnwindSafe<S> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.0.size_hint()
+    }
+}
+
+/// If a value's type is already `UnwindSafe`,
+/// wrapping it in `AssertUnwindSafe` is never incorrect.
+#[stable(feature = "from_wrapper_impls", since = "1.96.0")]
+impl<T> From<T> for AssertUnwindSafe<T>
+where
+    T: UnwindSafe,
+{
+    #[inline(always)]
+    fn from(value: T) -> Self {
+        Self(value)
     }
 }

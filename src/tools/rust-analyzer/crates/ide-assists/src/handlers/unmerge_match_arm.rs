@@ -1,6 +1,6 @@
 use syntax::{
     Direction, SyntaxKind, T,
-    ast::{self, AstNode, edit::IndentLevel, syntax_factory::SyntaxFactory},
+    ast::{self, AstNode, edit::IndentLevel},
     syntax_editor::{Element, Position},
 };
 
@@ -38,23 +38,26 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     }
     let match_arm = ast::MatchArm::cast(or_pat.syntax().parent()?)?;
     let match_arm_body = match_arm.expr()?;
+    let pats_after = pipe_token
+        .siblings_with_tokens(Direction::Next)
+        .filter_map(|it| ast::Pat::cast(it.into_node()?))
+        .collect::<Vec<_>>();
 
     // We don't need to check for leading pipe because it is directly under `MatchArm`
     // without `OrPat`.
 
     let new_parent = match_arm.syntax().parent()?;
+    if pats_after.is_empty() {
+        return None;
+    }
 
     acc.add(
         AssistId::refactor_rewrite("unmerge_match_arm"),
         "Unmerge match arm",
         pipe_token.text_range(),
         |edit| {
-            let make = SyntaxFactory::with_mappings();
-            let mut editor = edit.make_editor(&new_parent);
-            let pats_after = pipe_token
-                .siblings_with_tokens(Direction::Next)
-                .filter_map(|it| ast::Pat::cast(it.into_node()?))
-                .collect::<Vec<_>>();
+            let editor = edit.make_editor(&new_parent);
+            let make = editor.make();
             // It is guaranteed that `pats_after` has at least one element
             let new_pat = if pats_after.len() == 1 {
                 pats_after[0].clone()
@@ -98,7 +101,6 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
             insert_after_old_arm.push(new_match_arm.syntax().clone().into());
 
             editor.insert_all(Position::after(match_arm.syntax()), insert_after_old_arm);
-            editor.add_mappings(make.finish_with_mappings());
             edit.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
@@ -183,6 +185,21 @@ fn main() {
 fn main() {
     let y = match 0 {
         |$0 0 => { 1i32 }
+        1 => { 2i32 }
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn unmerge_match_arm_trailing_pipe() {
+        check_assist_not_applicable(
+            unmerge_match_arm,
+            r#"
+fn main() {
+    let y = match 0 {
+        0 |$0 => { 1i32 }
         1 => { 2i32 }
     };
 }

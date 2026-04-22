@@ -4,12 +4,12 @@ mod analysis;
 #[cfg(test)]
 mod tests;
 
-use std::iter;
+use std::{iter, sync::LazyLock};
 
-use base_db::RootQueryDb as _;
+use base_db::toolchain_channel;
 use hir::{
     DisplayTarget, HasAttrs, InFile, Local, ModuleDef, ModuleSource, Name, PathResolution,
-    ScopeDef, Semantics, SemanticsScope, Symbol, Type, TypeInfo,
+    ScopeDef, Semantics, SemanticsScope, Symbol, Type, TypeInfo, sym,
 };
 use ide_db::{
     FilePosition, FxHashMap, FxHashSet, RootDatabase, famous_defs::FamousDefs,
@@ -101,6 +101,28 @@ impl PathCompletionCtx<'_> {
                 ..
             }
         )
+    }
+
+    pub(crate) fn required_thin_arrow(&self) -> Option<(&'static str, TextSize)> {
+        let PathKind::Type {
+            location:
+                TypeLocation::TypeAscription(TypeAscriptionTarget::RetType {
+                    item: Some(ref fn_item),
+                    ..
+                }),
+        } = self.kind
+        else {
+            return None;
+        };
+        if fn_item.ret_type().is_some_and(|it| it.thin_arrow_token().is_some()) {
+            return None;
+        }
+        let ret_type = fn_item.ret_type().and_then(|it| it.ty());
+        match (ret_type, fn_item.param_list()) {
+            (Some(ty), _) => Some(("-> ", ty.syntax().text_range().start())),
+            (None, Some(param)) => Some((" ->", param.syntax().text_range().end())),
+            (None, None) => None,
+        }
     }
 }
 
@@ -231,7 +253,7 @@ impl TypeLocation {
 pub(crate) enum TypeAscriptionTarget {
     Let(Option<ast::Pat>),
     FnParam(Option<ast::Pat>),
-    RetType(Option<ast::Expr>),
+    RetType { body: Option<ast::Expr>, item: Option<ast::Fn> },
     Const(Option<ast::Expr>),
 }
 
@@ -288,7 +310,7 @@ pub(crate) struct PatternContext {
     pub(crate) record_pat: Option<ast::RecordPat>,
     pub(crate) impl_or_trait: Option<Either<ast::Impl, ast::Trait>>,
     /// List of missing variants in a match expr
-    pub(crate) missing_variants: Vec<hir::Variant>,
+    pub(crate) missing_variants: Vec<hir::EnumVariant>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -386,9 +408,11 @@ pub(crate) enum CompletionAnalysis<'db> {
     /// Set if we are currently completing in an unexpanded attribute, this usually implies a builtin attribute like `allow($0)`
     UnexpandedAttrTT {
         colon_prefix: bool,
-        fake_attribute_under_caret: Option<ast::Attr>,
+        fake_attribute_under_caret: Option<ast::TokenTreeMeta>,
         extern_crate: Option<ast::ExternCrate>,
     },
+    /// Set if we are inside the predicate of a `#[cfg]` or `#[cfg_attr]`.
+    CfgPredicate,
     MacroSegment,
 }
 
@@ -527,7 +551,7 @@ impl CompletionContext<'_> {
                 hir::ModuleDef::Module(it) => self.is_visible(it),
                 hir::ModuleDef::Function(it) => self.is_visible(it),
                 hir::ModuleDef::Adt(it) => self.is_visible(it),
-                hir::ModuleDef::Variant(it) => self.is_visible(it),
+                hir::ModuleDef::EnumVariant(it) => self.is_visible(it),
                 hir::ModuleDef::Const(it) => self.is_visible(it),
                 hir::ModuleDef::Static(it) => self.is_visible(it),
                 hir::ModuleDef::Trait(it) => self.is_visible(it),
@@ -577,7 +601,18 @@ impl CompletionContext<'_> {
         let Some(attrs) = attrs else {
             return true;
         };
-        !attrs.is_unstable() || self.is_nightly
+        if !attrs.is_unstable() {
+            return true;
+        }
+        if !self.is_nightly {
+            return false;
+        }
+        // Unstable on nightly, but we still don't want to suggest internal features, unless the feature flag is enabled.
+        let Some(unstable_feature) = attrs.unstable_feature(self.db) else {
+            return true;
+        };
+        !INTERNAL_FEATURES.contains(&unstable_feature)
+            || self.krate.is_unstable_feature_enabled(self.db, &unstable_feature)
     }
 
     pub(crate) fn check_stability_and_hidden<I>(&self, item: I) -> bool
@@ -715,7 +750,7 @@ impl<'db> CompletionContext<'db> {
         // actual completion.
         let file_with_fake_ident = {
             let (_, edition) = editioned_file_id.unpack(db);
-            let parse = db.parse(editioned_file_id);
+            let parse = editioned_file_id.parse(db);
             parse.reparse(TextRange::empty(offset), COMPLETION_MARKER, edition).tree()
         };
 
@@ -768,7 +803,7 @@ impl<'db> CompletionContext<'db> {
         let containing_function = scope.containing_function();
         let edition = krate.edition(db);
 
-        let toolchain = db.toolchain_channel(krate.into());
+        let toolchain = toolchain_channel(db, krate.into());
         // `toolchain == None` means we're in some detached files. Since we have no information on
         // the toolchain being used, let's just allow unstable items to be listed.
         let is_nightly = matches!(toolchain, Some(base_db::ReleaseChannel::Nightly) | None);
@@ -900,3 +935,40 @@ const OP_TRAIT_LANG: &[hir::LangItem] = &[
     hir::LangItem::Shr,
     hir::LangItem::Sub,
 ];
+
+// FIXME: Find a way to keep this up to date somehow?
+const INTERNAL_FEATURES_LIST: &[Symbol] = &[
+    sym::abi_unadjusted,
+    sym::allocator_internals,
+    sym::allow_internal_unsafe,
+    sym::allow_internal_unstable,
+    sym::cfg_emscripten_wasm_eh,
+    sym::cfg_target_has_reliable_f16_f128,
+    sym::compiler_builtins,
+    sym::custom_mir,
+    sym::eii_internals,
+    sym::field_representing_type_raw,
+    sym::intrinsics,
+    sym::lang_items,
+    sym::link_cfg,
+    sym::more_maybe_bounds,
+    sym::negative_bounds,
+    sym::pattern_complexity_limit,
+    sym::prelude_import,
+    sym::profiler_runtime,
+    sym::rustc_attrs,
+    sym::staged_api,
+    sym::test_unstable_lint,
+    sym::builtin_syntax,
+    sym::link_llvm_intrinsics,
+    sym::needs_panic_runtime,
+    sym::panic_runtime,
+    sym::pattern_types,
+    sym::rustdoc_internals,
+    sym::contracts_internals,
+    sym::freeze_impls,
+    sym::unsized_fn_params,
+];
+
+static INTERNAL_FEATURES: LazyLock<FxHashSet<Symbol>> =
+    LazyLock::new(|| INTERNAL_FEATURES_LIST.iter().cloned().collect());

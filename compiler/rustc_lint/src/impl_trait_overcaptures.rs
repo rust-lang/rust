@@ -1,6 +1,6 @@
 use std::cell::LazyCell;
+use std::debug_assert_matches;
 
-use rustc_data_structures::debug_assert_matches;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{Diagnostic, Subdiagnostic, msg};
@@ -17,6 +17,7 @@ use rustc_middle::ty::relate::{
 };
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    Unnormalized,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::fcw;
@@ -141,7 +142,7 @@ enum ParamKind {
 }
 
 fn check_fn(tcx: TyCtxt<'_>, parent_def_id: LocalDefId) {
-    let sig = tcx.fn_sig(parent_def_id).instantiate_identity();
+    let sig = tcx.fn_sig(parent_def_id).instantiate_identity().skip_norm_wip();
 
     let mut in_scope_parameters = FxIndexMap::default();
     // Populate the in_scope_parameters list first with all of the generics in scope
@@ -242,16 +243,13 @@ where
             return;
         }
 
-        if let ty::Alias(ty::Projection, opaque_ty) = *t.kind()
-            && self.tcx.is_impl_trait_in_trait(opaque_ty.def_id)
+        if let ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, args, .. }) = *t.kind()
+            && self.tcx.is_impl_trait_in_trait(def_id)
         {
             // visit the opaque of the RPITIT
-            self.tcx
-                .type_of(opaque_ty.def_id)
-                .instantiate(self.tcx, opaque_ty.args)
-                .visit_with(self)
-        } else if let ty::Alias(ty::Opaque, opaque_ty) = *t.kind()
-            && let Some(opaque_def_id) = opaque_ty.def_id.as_local()
+            self.tcx.type_of(def_id).instantiate(self.tcx, args).skip_norm_wip().visit_with(self)
+        } else if let ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args: opaque_ty_args, .. }) = *t.kind()
+            && let Some(opaque_def_id) = def_id.as_local()
             // Don't recurse infinitely on an opaque
             && self.seen.insert(opaque_def_id)
             // If it's owned by this function
@@ -282,7 +280,7 @@ where
                             continue;
                         }
 
-                        let arg = opaque_ty.args[param.index as usize];
+                        let arg = opaque_ty_args[param.index as usize];
                         // We need to turn all `ty::Param`/`ConstKind::Param` and
                         // `ReEarlyParam`/`ReBound` into def ids.
                         captured.insert(extract_def_id_from_arg(self.tcx, generics, arg));
@@ -415,8 +413,11 @@ where
             // in this lint as well. Interestingly, one place that I expect this lint to fire
             // is for `impl for<'a> Bound<Out = impl Other>`, since `impl Other` will begin
             // to capture `'a` in e2024 (even though late-bound vars in opaques are not allowed).
-            for clause in
-                self.tcx.item_bounds(opaque_ty.def_id).iter_instantiated(self.tcx, opaque_ty.args)
+            for clause in self
+                .tcx
+                .item_bounds(def_id)
+                .iter_instantiated(self.tcx, opaque_ty_args)
+                .map(Unnormalized::skip_norm_wip)
             {
                 clause.visit_with(self)
             }

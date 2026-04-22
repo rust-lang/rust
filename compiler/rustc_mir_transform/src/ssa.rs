@@ -14,6 +14,7 @@ use rustc_middle::middle::resolve_bound_vars::Set1;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_mir_dataflow::Analysis;
 use tracing::{debug, instrument, trace};
 
 pub(super) struct SsaLocals {
@@ -25,7 +26,7 @@ pub(super) struct SsaLocals {
     assignment_order: Vec<Local>,
     /// Copy equivalence classes between locals. See `copy_classes` for documentation.
     copy_classes: IndexVec<Local, Local>,
-    /// Number of "direct" uses of each local, ie. uses that are not dereferences.
+    /// Number of "direct" uses of each local, i.e. uses that are not dereferences.
     /// We ignore non-uses (Storage statements, debuginfo).
     direct_uses: IndexVec<Local, u32>,
     /// Set of SSA locals that are immutably borrowed.
@@ -314,7 +315,7 @@ fn compute_copy_classes(ssa: &mut SsaLocals, body: &Body<'_>) {
             continue;
         }
 
-        // We visit in `assignment_order`, ie. reverse post-order, so `rhs` has been
+        // We visit in `assignment_order`, i.e. reverse post-order, so `rhs` has been
         // visited before `local`, and we just have to copy the representing local.
         let head = copies[rhs];
 
@@ -389,5 +390,66 @@ impl StorageLiveLocals {
     #[inline]
     pub(crate) fn has_single_storage(&self, local: Local) -> bool {
         matches!(self.storage_live[local], Set1::One(_))
+    }
+}
+
+/// A dataflow analysis that tracks locals that are maybe uninitialized.
+///
+/// This is a simpler analysis than `MaybeUninitializedPlaces`, because it does not track
+/// individual fields.
+pub(crate) struct MaybeUninitializedLocals;
+
+impl<'tcx> Analysis<'tcx> for MaybeUninitializedLocals {
+    type Domain = DenseBitSet<Local>;
+
+    const NAME: &'static str = "maybe_uninit_locals";
+
+    fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
+        // bottom = all locals are initialized.
+        DenseBitSet::new_empty(body.local_decls.len())
+    }
+
+    fn initialize_start_block(&self, body: &Body<'tcx>, state: &mut Self::Domain) {
+        // All locals start as uninitialized...
+        state.insert_all();
+        // ...except for arguments, which are definitely initialized.
+        for arg in body.args_iter() {
+            state.remove(arg);
+        }
+    }
+
+    fn apply_primary_statement_effect(
+        &self,
+        state: &mut Self::Domain,
+        statement: &Statement<'tcx>,
+        _location: Location,
+    ) {
+        match statement.kind {
+            // An assignment makes a local initialized.
+            StatementKind::Assign(box (place, _)) => {
+                if let Some(local) = place.as_local() {
+                    state.remove(local);
+                }
+            }
+            // Storage{Live,Dead} makes a local uninitialized.
+            StatementKind::StorageLive(local) | StatementKind::StorageDead(local) => {
+                state.insert(local);
+            }
+            _ => {}
+        }
+    }
+
+    fn apply_call_return_effect(
+        &self,
+        state: &mut Self::Domain,
+        _block: BasicBlock,
+        return_places: CallReturnPlaces<'_, 'tcx>,
+    ) {
+        // The return place of a call is initialized.
+        return_places.for_each(|place| {
+            if let Some(local) = place.as_local() {
+                state.remove(local);
+            }
+        });
     }
 }

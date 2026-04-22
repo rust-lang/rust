@@ -23,7 +23,7 @@ pub(crate) fn render_variant_lit(
     ctx: RenderContext<'_>,
     path_ctx: &PathCompletionCtx<'_>,
     local_name: Option<hir::Name>,
-    variant: hir::Variant,
+    variant: hir::EnumVariant,
     path: Option<hir::ModPath>,
 ) -> Option<Builder> {
     let _p = tracing::info_span!("render_variant_lit").entered();
@@ -150,7 +150,7 @@ fn render(
 #[derive(Clone, Copy)]
 enum Variant {
     Struct(hir::Struct),
-    EnumVariant(hir::Variant),
+    EnumVariant(hir::EnumVariant),
 }
 
 impl Variant {
@@ -189,8 +189,12 @@ impl Variant {
 
     fn is_deprecated(self, ctx: &RenderContext<'_>) -> bool {
         match self {
-            Variant::Struct(it) => ctx.is_deprecated(it),
-            Variant::EnumVariant(it) => ctx.is_deprecated(it),
+            Variant::Struct(it) => {
+                ctx.is_deprecated(it, None /* structs can't be assoc items */)
+            }
+            Variant::EnumVariant(it) => {
+                ctx.is_deprecated(it, None /* enum variants can't be assoc items */)
+            }
         }
     }
 

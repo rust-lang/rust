@@ -5,10 +5,7 @@ use std::borrow::Cow;
 use base_db::AnchoredPath;
 use cfg::CfgExpr;
 use either::Either;
-use intern::{
-    Symbol,
-    sym,
-};
+use intern::{Symbol, sym};
 use itertools::Itertools;
 use mbe::{DelimiterKind, expect_fragment};
 use span::{Edition, FileId, Span};
@@ -384,16 +381,40 @@ fn cfg_select_expand(
                 );
             }
         }
-        let expand_to_if_active = match iter.next() {
-            Some(tt::TtElement::Subtree(_, tt)) => tt.remaining(),
-            _ => {
+        let expand_to_if_active = match iter.peek() {
+            Some(tt::TtElement::Subtree(sub, tt)) if sub.delimiter.kind == DelimiterKind::Brace => {
+                iter.next();
+                tt.remaining()
+            }
+            None | Some(TtElement::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', .. }))) => {
                 let err_span = iter.peek().map(|it| it.first_span()).unwrap_or(span);
+                iter.next();
                 return ExpandResult::new(
                     tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
                     ExpandError::other(err_span, "expected a token tree after `=>`"),
                 );
             }
+            Some(_) => {
+                let expr = expect_fragment(
+                    db,
+                    &mut iter,
+                    parser::PrefixEntryPoint::Expr,
+                    tt.top_subtree().delimiter.delim_span(),
+                );
+                if let Some(err) = expr.err {
+                    return ExpandResult::new(
+                        tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
+                        err.into(),
+                    );
+                }
+                expr.value
+            }
         };
+        if let Some(TtElement::Leaf(tt::Leaf::Punct(p))) = iter.peek()
+            && p.char == ','
+        {
+            iter.next();
+        }
 
         if expand_to.is_none() && active {
             expand_to = Some(expand_to_if_active);
@@ -753,7 +774,7 @@ fn relative_file(
     if res == call_site && !allow_recursion {
         Err(ExpandError::other(err_span, format!("recursive inclusion of `{path_str}`")))
     } else {
-        Ok(EditionedFileId::new(db, res, lookup.krate.data(db).edition, lookup.krate))
+        Ok(EditionedFileId::new(db, res, lookup.krate.data(db).edition))
     }
 }
 
@@ -807,7 +828,7 @@ fn include_expand(
     let span_map = db.real_span_map(editioned_file_id);
     // FIXME: Parse errors
     ExpandResult::ok(syntax_node_to_token_tree(
-        &db.parse(editioned_file_id).syntax_node(),
+        &editioned_file_id.parse(db).syntax_node(),
         SpanMap::RealSpanMap(span_map),
         span,
         syntax_bridge::DocCommentDesugarMode::ProcMacro,

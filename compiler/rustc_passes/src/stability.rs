@@ -52,7 +52,7 @@ fn inherit_deprecation(def_kind: DefKind) -> bool {
 fn inherit_const_stability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let def_kind = tcx.def_kind(def_id);
     match def_kind {
-        DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst => {
+        DefKind::AssocFn | DefKind::AssocTy | DefKind::AssocConst { .. } => {
             match tcx.def_kind(tcx.local_parent(def_id)) {
                 DefKind::Impl { .. } => true,
                 _ => false,
@@ -84,7 +84,7 @@ fn annotation_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> AnnotationKind {
         }
 
         // Impl items in trait impls cannot have stability.
-        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst => {
+        DefKind::AssocTy | DefKind::AssocFn | DefKind::AssocConst { .. } => {
             match tcx.def_kind(tcx.local_parent(def_id)) {
                 DefKind::Impl { of_trait: true } => AnnotationKind::Prohibited,
                 _ => AnnotationKind::Required,
@@ -131,7 +131,6 @@ const FORCE_UNSTABLE: Stability = Stability {
     level: StabilityLevel::Unstable {
         reason: UnstableReason::Default,
         issue: NonZero::new(27812),
-        is_soft: false,
         implied_by: None,
         old_name: None,
     },
@@ -964,12 +963,15 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     let mut lang_features = UnordSet::default();
     for EnabledLangFeature { gate_name, attr_sp, stable_since } in enabled_lang_features {
         if let Some(version) = stable_since {
+            // Mark the feature as enabled, to ensure that it is not marked as unused.
+            let _ = tcx.features().enabled(*gate_name);
+
             // Warn if the user has enabled an already-stable lang feature.
             unnecessary_stable_feature_lint(tcx, *attr_sp, *gate_name, *version);
         }
         if !lang_features.insert(gate_name) {
             // Warn if the user enables a lang feature multiple times.
-            tcx.dcx().emit_err(errors::DuplicateFeatureErr { span: *attr_sp, feature: *gate_name });
+            duplicate_feature_lint(tcx, *attr_sp, *gate_name);
         }
     }
 
@@ -978,7 +980,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     for EnabledLibFeature { gate_name, attr_sp } in enabled_lib_features {
         if remaining_lib_features.contains_key(gate_name) {
             // Warn if the user enables a lib feature multiple times.
-            tcx.dcx().emit_err(errors::DuplicateFeatureErr { span: *attr_sp, feature: *gate_name });
+            duplicate_feature_lint(tcx, *attr_sp, *gate_name);
         }
         remaining_lib_features.insert(*gate_name, *attr_sp);
     }
@@ -1021,6 +1023,9 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             if let FeatureStability::AcceptedSince(since) = stability
                 && let Some(span) = remaining_lib_features.get(&feature)
             {
+                // Mark the feature as enabled, to ensure that it is not marked as unused.
+                let _ = tcx.features().enabled(feature);
+
                 // Warn if the user has enabled an already-stable lib feature.
                 if let Some(implies) = all_implications.get(&feature) {
                     unnecessary_partially_stable_feature_lint(tcx, *span, feature, *implies, since);
@@ -1092,7 +1097,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             let lang_features =
                 UNSTABLE_LANG_FEATURES.iter().map(|feature| feature.name).collect::<Vec<_>>();
             let lib_features = crates
-                .into_iter()
+                .iter()
                 .flat_map(|&cnum| {
                     tcx.lib_features(cnum).stability.keys().copied().into_sorted_stable_ord()
                 })
@@ -1100,11 +1105,33 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
 
             let valid_feature_names = [lang_features, lib_features].concat();
 
+            // Collect all of the marked as "removed" features
+            let unstable_removed_features = crates
+                .iter()
+                .flat_map(|&cnum| {
+                    find_attr!(tcx, cnum.as_def_id(), UnstableRemoved(rem_features) => rem_features)
+                        .into_iter()
+                        .flatten()
+                })
+                .collect::<Vec<_>>();
+
             for (feature, span) in remaining_lib_features {
-                let suggestion = feature
-                    .find_similar(&valid_feature_names)
-                    .map(|(actual_name, _)| errors::MisspelledFeature { span, actual_name });
-                tcx.dcx().emit_err(errors::UnknownFeature { span, feature, suggestion });
+                if let Some(removed) =
+                    unstable_removed_features.iter().find(|removed| removed.feature == feature)
+                {
+                    tcx.dcx().emit_err(errors::FeatureRemoved {
+                        span,
+                        feature,
+                        reason: removed.reason,
+                        link: removed.link,
+                        since: removed.since.to_string(),
+                    });
+                } else {
+                    let suggestion = feature
+                        .find_similar(&valid_feature_names)
+                        .map(|(actual_name, _)| errors::MisspelledFeature { span, actual_name });
+                    tcx.dcx().emit_err(errors::UnknownFeature { span, feature, suggestion });
+                }
             }
         }
     }
@@ -1158,5 +1185,14 @@ fn unnecessary_stable_feature_lint(
         hir::CRATE_HIR_ID,
         span,
         errors::UnnecessaryStableFeature { feature, since },
+    );
+}
+
+fn duplicate_feature_lint(tcx: TyCtxt<'_>, span: Span, feature: Symbol) {
+    tcx.emit_node_span_lint(
+        lint::builtin::DUPLICATE_FEATURES,
+        hir::CRATE_HIR_ID,
+        span,
+        errors::DuplicateFeature { feature },
     );
 }

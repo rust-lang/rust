@@ -3,13 +3,17 @@ use clippy_utils::higher::{If, IfLetOrMatch};
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::res::{MaybeDef, MaybeResPath};
 use clippy_utils::source::{IntoSpan, SpanRangeExt, snippet};
+use clippy_utils::usage::mutated_variables;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{SpanlessEq, get_ref_operators, is_unit_expr, peel_blocks_with_stmt, peel_ref_operators};
 use rustc_ast::BorrowKind;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatExpr, PatExprKind, PatKind};
+use rustc_hir::{Arm, Expr, ExprKind, HirId, HirIdSet, Pat, PatExpr, PatExprKind, PatKind};
+use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::LateContext;
+use rustc_middle::mir::FakeReadCause;
+use rustc_middle::ty;
 use rustc_span::symbol::Ident;
 use rustc_span::{BytePos, Span};
 
@@ -129,6 +133,7 @@ fn check_arm<'tcx>(
             (None, Some(e)) | (Some(e), None) => is_unit_expr(e),
             (Some(a), Some(b)) => SpanlessEq::new(cx).eq_expr(a, b),
         }
+        && !pat_bindings_moved_or_mutated(cx, outer_pat, inner.cond)
     {
         span_lint_hir_and_then(
             cx,
@@ -154,7 +159,7 @@ fn check_arm<'tcx>(
                 } else {
                     outer_pat.span.shrink_to_hi()
                 };
-                let (paren_start, inner_if_span, paren_end) = peel_parens(cx.tcx.sess.source_map(), inner_expr.span);
+                let (paren_start, inner_if_span, paren_end) = peel_parens(cx, inner_expr.span);
                 let inner_if = inner_if_span.split_at(2).0;
                 let mut sugg = vec![
                     (inner.then.span.shrink_to_lo(), "=> ".to_string()),
@@ -254,4 +259,49 @@ fn build_ref_method_chain(expr: Vec<&Expr<'_>>) -> Option<String> {
     }
 
     Some(req_method_calls)
+}
+
+/// Checks if any of the bindings in the `pat` are moved or mutated in the `expr`. It is invalid to
+/// move or mutate bindings in `if` guards.
+fn pat_bindings_moved_or_mutated<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    let mut delegate = MovedVarDelegate {
+        moved: HirIdSet::default(),
+    };
+    if ExprUseVisitor::for_clippy(cx, expr.hir_id.owner.def_id, &mut delegate)
+        .walk_expr(expr)
+        .is_err()
+    {
+        return true;
+    }
+
+    let mut candidates = delegate.moved;
+    if let Some(mutated) = mutated_variables(expr, cx) {
+        candidates.extend(mutated);
+    }
+
+    !pat.walk_short(|pat| {
+        if let PatKind::Binding(_, hir_id, ..) = pat.kind
+            && candidates.contains(&hir_id)
+        {
+            return false;
+        }
+        true
+    })
+}
+
+struct MovedVarDelegate {
+    moved: HirIdSet,
+}
+
+impl<'tcx> Delegate<'tcx> for MovedVarDelegate {
+    fn consume(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
+        if let PlaceBase::Local(hir_id) = cmt.place.base {
+            self.moved.insert(hir_id);
+        }
+    }
+
+    fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+    fn borrow(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {}
+    fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+    fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }

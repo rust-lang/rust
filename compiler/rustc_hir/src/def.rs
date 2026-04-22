@@ -8,9 +8,9 @@ use rustc_data_structures::stable_hasher::ToStableHashKey;
 use rustc_data_structures::unord::UnordMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
-use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
+use rustc_span::{HashStableContext, Symbol};
 
 use crate::definitions::DefPathData;
 use crate::hir;
@@ -120,7 +120,9 @@ pub enum DefKind {
 
     // Value namespace
     Fn,
-    Const,
+    Const {
+        is_type_const: bool,
+    },
     /// Constant generic parameter: `struct Foo<const N: usize> { ... }`
     ConstParam,
     Static {
@@ -147,7 +149,9 @@ pub enum DefKind {
     /// or `trait Foo { fn associated() {} }`
     AssocFn,
     /// Associated constant: `trait MyTrait { const ASSOC: usize; }`
-    AssocConst,
+    AssocConst {
+        is_type_const: bool,
+    },
 
     // Macro namespace
     Macro(MacroKinds),
@@ -188,7 +192,7 @@ pub enum DefKind {
     /// These are all represented with the same `ExprKind::Closure` in the AST and HIR,
     /// which makes it difficult to distinguish these during def collection. Therefore,
     /// we treat them all the same, and code which needs to distinguish them can match
-    /// or `hir::ClosureKind` or `type_of`.
+    /// on `hir::ClosureKind` or `type_of`.
     Closure,
     /// The definition of a synthetic coroutine body created by the lowering of a
     /// coroutine-closure, such as an async closure.
@@ -222,8 +226,8 @@ impl DefKind {
             DefKind::Trait => "trait",
             DefKind::ForeignTy => "foreign type",
             DefKind::AssocFn => "associated function",
-            DefKind::Const => "constant",
-            DefKind::AssocConst => "associated constant",
+            DefKind::Const { .. } => "constant",
+            DefKind::AssocConst { .. } => "associated constant",
             DefKind::TyParam => "type parameter",
             DefKind::ConstParam => "const parameter",
             DefKind::Macro(kinds) => kinds.descr(),
@@ -249,7 +253,7 @@ impl DefKind {
     pub fn article(&self) -> &'static str {
         match *self {
             DefKind::AssocTy
-            | DefKind::AssocConst
+            | DefKind::AssocConst { .. }
             | DefKind::AssocFn
             | DefKind::Enum
             | DefKind::OpaqueTy
@@ -277,12 +281,12 @@ impl DefKind {
             | DefKind::TyParam => Some(Namespace::TypeNS),
 
             DefKind::Fn
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::ConstParam
             | DefKind::Static { .. }
             | DefKind::Ctor(..)
             | DefKind::AssocFn
-            | DefKind::AssocConst => Some(Namespace::ValueNS),
+            | DefKind::AssocConst { .. } => Some(Namespace::ValueNS),
 
             DefKind::Macro(..) => Some(Namespace::MacroNS),
 
@@ -323,11 +327,11 @@ impl DefKind {
             DefKind::AssocTy => DefPathData::TypeNs(name.unwrap()),
 
             DefKind::Fn
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::ConstParam
             | DefKind::Static { .. }
             | DefKind::AssocFn
-            | DefKind::AssocConst
+            | DefKind::AssocConst { .. }
             | DefKind::Field => DefPathData::ValueNs(name.unwrap()),
             DefKind::Macro(..) => DefPathData::MacroNs(name.unwrap()),
             DefKind::LifetimeParam => DefPathData::LifetimeNs(name.unwrap()),
@@ -345,7 +349,7 @@ impl DefKind {
     }
 
     pub fn is_assoc(self) -> bool {
-        matches!(self, DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy)
+        matches!(self, DefKind::AssocConst { .. } | DefKind::AssocFn | DefKind::AssocTy)
     }
 
     /// This is a "module" in name resolution sense.
@@ -367,15 +371,15 @@ impl DefKind {
         )
     }
 
-    /// Whether the corresponding item has generic parameters, ie. the `generics_of` query works.
+    /// Whether the corresponding item has generic parameters, i.e. the `generics_of` query works.
     pub fn has_generics(self) -> bool {
         match self {
             DefKind::AnonConst
-            | DefKind::AssocConst
+            | DefKind::AssocConst { .. }
             | DefKind::AssocFn
             | DefKind::AssocTy
             | DefKind::Closure
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::Ctor(..)
             | DefKind::Enum
             | DefKind::Field
@@ -423,8 +427,8 @@ impl DefKind {
             | DefKind::ForeignTy
             | DefKind::TraitAlias
             | DefKind::AssocTy
-            | DefKind::Const
-            | DefKind::AssocConst
+            | DefKind::Const { .. }
+            | DefKind::AssocConst { .. }
             | DefKind::Macro(..)
             | DefKind::Use
             | DefKind::ForeignMod
@@ -459,12 +463,12 @@ impl DefKind {
             | DefKind::AssocTy
             | DefKind::TyParam
             | DefKind::Fn
-            | DefKind::Const
+            | DefKind::Const { .. }
             | DefKind::ConstParam
             | DefKind::Static { .. }
             | DefKind::Ctor(_, _)
             | DefKind::AssocFn
-            | DefKind::AssocConst
+            | DefKind::AssocConst { .. }
             | DefKind::Macro(_)
             | DefKind::ExternCrate
             | DefKind::Use
@@ -586,6 +590,13 @@ pub enum Res<Id = hir::HirId> {
     /// **Belongs to the type namespace.**
     ToolMod,
 
+    /// The resolution for an open module in a namespaced crate. E.g. `my_api`
+    /// in the namespaced crate `my_api::utils` when `my_api` isn't part of the
+    /// extern prelude.
+    ///
+    /// **Belongs to the type namespace.**
+    OpenMod(Symbol),
+
     // Macro namespace
     /// An attribute that is *not* implemented via macro.
     /// E.g., `#[inline]` and `#[rustfmt::skip]`, which are essentially directives,
@@ -701,11 +712,11 @@ impl IntoDiagArg for Namespace {
     }
 }
 
-impl<CTX: crate::HashStableContext> ToStableHashKey<CTX> for Namespace {
+impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for Namespace {
     type KeyType = Namespace;
 
     #[inline]
-    fn to_stable_hash_key(&self, _: &CTX) -> Namespace {
+    fn to_stable_hash_key(&self, _: &mut Hcx) -> Namespace {
         *self
     }
 }
@@ -834,6 +845,7 @@ impl<Id> Res<Id> {
             | Res::SelfTyAlias { .. }
             | Res::SelfCtor(..)
             | Res::ToolMod
+            | Res::OpenMod(..)
             | Res::NonMacroAttr(..)
             | Res::Err => None,
         }
@@ -865,6 +877,7 @@ impl<Id> Res<Id> {
             Res::Local(..) => "local variable",
             Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } => "self type",
             Res::ToolMod => "tool module",
+            Res::OpenMod(..) => "namespaced crate",
             Res::NonMacroAttr(attr_kind) => attr_kind.descr(),
             Res::Err => "unresolved item",
         }
@@ -891,6 +904,7 @@ impl<Id> Res<Id> {
                 Res::SelfTyAlias { alias_to, is_trait_impl }
             }
             Res::ToolMod => Res::ToolMod,
+            Res::OpenMod(sym) => Res::OpenMod(sym),
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
             Res::Err => Res::Err,
         }
@@ -907,6 +921,7 @@ impl<Id> Res<Id> {
                 Res::SelfTyAlias { alias_to, is_trait_impl }
             }
             Res::ToolMod => Res::ToolMod,
+            Res::OpenMod(sym) => Res::OpenMod(sym),
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
             Res::Err => Res::Err,
         })
@@ -932,9 +947,11 @@ impl<Id> Res<Id> {
     pub fn ns(&self) -> Option<Namespace> {
         match self {
             Res::Def(kind, ..) => kind.ns(),
-            Res::PrimTy(..) | Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } | Res::ToolMod => {
-                Some(Namespace::TypeNS)
-            }
+            Res::PrimTy(..)
+            | Res::SelfTyParam { .. }
+            | Res::SelfTyAlias { .. }
+            | Res::ToolMod
+            | Res::OpenMod(..) => Some(Namespace::TypeNS),
             Res::SelfCtor(..) | Res::Local(..) => Some(Namespace::ValueNS),
             Res::NonMacroAttr(..) => Some(Namespace::MacroNS),
             Res::Err => None,

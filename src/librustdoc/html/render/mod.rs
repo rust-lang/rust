@@ -1517,8 +1517,9 @@ fn render_assoc_items_inner(
     }
 
     if !traits.is_empty() {
-        let deref_impl =
-            traits.iter().find(|t| t.trait_did() == cx.tcx().lang_items().deref_trait());
+        let deref_impl = traits.iter().find(|t| {
+            t.trait_did() == cx.tcx().lang_items().deref_trait() && !t.is_negative_trait_impl()
+        });
         if let Some(impl_) = deref_impl {
             let has_deref_mut =
                 traits.iter().any(|t| t.trait_did() == cx.tcx().lang_items().deref_mut_trait());
@@ -2994,7 +2995,7 @@ fn repr_attribute<'tcx>(
             // Side note: There can only ever be one or zero non-1-ZST fields.
             let non_1zst_field = var.fields.iter().find(|field| {
                 let ty = ty::TypingEnv::post_analysis(tcx, field.did)
-                    .as_query_input(tcx.type_of(field.did).instantiate_identity());
+                    .as_query_input(tcx.type_of(field.did).instantiate_identity().skip_norm_wip());
                 tcx.layout_of(ty).is_ok_and(|layout| !layout.is_1zst())
             });
 

@@ -6,7 +6,7 @@ use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
-use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, RegionVid, Ty};
+use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, RegionVid, Ty, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -372,6 +372,119 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         }
     }
 
+    /// For closure/coroutine upvar regions, attempts to find a named lifetime
+    /// from the parent function's signature that corresponds to the anonymous
+    /// region `fr`. This handles cases where a parent function's named lifetime
+    /// (like `'a`) appears in a captured variable's type but gets assigned a
+    /// separate `RegionVid` without an `external_name` during region renumbering.
+    ///
+    /// Works by getting the parent function's parameter type (with real named
+    /// lifetimes via `liberate_late_bound_regions`), then structurally walking
+    /// both the parent's parameter type and the closure's upvar type to find
+    /// where `fr` appears and what named lifetime is at the same position.
+    #[instrument(level = "trace", skip(self))]
+    fn give_name_if_we_can_match_upvar_args(
+        &self,
+        fr: RegionVid,
+        upvar_index: usize,
+    ) -> Option<RegionName> {
+        let tcx = self.infcx.tcx;
+        let defining_ty = self.regioncx.universal_regions().defining_ty;
+
+        let closure_def_id = match defining_ty {
+            DefiningTy::Closure(def_id, _)
+            | DefiningTy::Coroutine(def_id, _)
+            | DefiningTy::CoroutineClosure(def_id, _) => def_id,
+            _ => return None,
+        };
+
+        let parent_def_id = tcx.parent(closure_def_id);
+
+        // Only works if the parent is a function with a fn_sig.
+        if !matches!(tcx.def_kind(parent_def_id), DefKind::Fn | DefKind::AssocFn) {
+            return None;
+        }
+
+        // Find which parameter index this upvar corresponds to by matching
+        // the captured variable's HirId against the parent's parameter patterns.
+        // This only matches simple bindings (not destructuring patterns) and
+        // only when the upvar is a direct parameter (not a local variable).
+        let captured_place = self.upvars.get(upvar_index)?;
+        let upvar_hir_id = captured_place.get_root_variable();
+        let parent_local_def_id = parent_def_id.as_local()?;
+        let parent_body = tcx.hir_body_owned_by(parent_local_def_id);
+        let param_index =
+            parent_body.params.iter().position(|param| param.pat.hir_id == upvar_hir_id)?;
+
+        // Get the parent fn's signature with liberated late-bound regions,
+        // so we have `ReLateParam` instead of `ReBound`.
+        let parent_fn_sig = tcx.fn_sig(parent_def_id).instantiate_identity().skip_norm_wip();
+        let liberated_sig = tcx.liberate_late_bound_regions(parent_def_id, parent_fn_sig);
+        let parent_param_ty = *liberated_sig.inputs().get(param_index)?;
+
+        // Get the upvar's NLL type (with ReVar regions from renumbering).
+        let upvar_nll_ty = *defining_ty.upvar_tys().get(upvar_index)?;
+
+        debug!(
+            "give_name_if_we_can_match_upvar_args: parent_param_ty={:?}, upvar_nll_ty={:?}",
+            parent_param_ty, upvar_nll_ty
+        );
+
+        // Collect free regions from both types in structural order.
+        // This only works when both types have the same structure, i.e.
+        // the upvar captures the whole variable, not a partial place like
+        // `x.field`. Bail out if the region counts differ, since that means
+        // the types diverged and positional correspondence is unreliable.
+        let mut parent_regions = vec![];
+        tcx.for_each_free_region(&parent_param_ty, |r| parent_regions.push(r));
+
+        let mut nll_regions = vec![];
+        tcx.for_each_free_region(&upvar_nll_ty, |r| nll_regions.push(r));
+
+        if parent_regions.len() != nll_regions.len() {
+            debug!(
+                "give_name_if_we_can_match_upvar_args: region count mismatch ({} vs {})",
+                parent_regions.len(),
+                nll_regions.len()
+            );
+            return None;
+        }
+
+        for (parent_r, nll_r) in iter::zip(&parent_regions, &nll_regions) {
+            if nll_r.as_var() == fr {
+                match parent_r.kind() {
+                    ty::ReLateParam(late_param) => {
+                        if let Some(name) = late_param.kind.get_name(tcx) {
+                            let span = late_param
+                                .kind
+                                .get_id()
+                                .and_then(|id| tcx.hir_span_if_local(id))
+                                .unwrap_or(DUMMY_SP);
+                            return Some(RegionName {
+                                name,
+                                source: RegionNameSource::NamedLateParamRegion(span),
+                            });
+                        }
+                    }
+                    ty::ReEarlyParam(ebr) => {
+                        if ebr.is_named() {
+                            let def_id =
+                                tcx.generics_of(parent_def_id).region_param(ebr, tcx).def_id;
+                            let span = tcx.hir_span_if_local(def_id).unwrap_or(DUMMY_SP);
+                            return Some(RegionName {
+                                name: ebr.name,
+                                source: RegionNameSource::NamedEarlyParamRegion(span),
+                            });
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        None
+    }
+
     /// Finds an argument that contains `fr` and label it with a fully
     /// elaborated type, returning something like `'1`. Result looks
     /// like:
@@ -386,18 +499,18 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         fr: RegionVid,
     ) -> Option<RegionName> {
         let implicit_inputs = self.regioncx.universal_regions().defining_ty.implicit_inputs();
-        let argument_index = self.regioncx.get_argument_index_for_region(self.infcx.tcx, fr)?;
+        let user_arg_index = self.regioncx.get_user_arg_index_for_region(self.infcx.tcx, fr)?;
 
         let arg_ty = self.regioncx.universal_regions().unnormalized_input_tys
-            [implicit_inputs + argument_index];
+            [implicit_inputs + user_arg_index];
         let (_, span) = self.regioncx.get_argument_name_and_span_for_region(
             self.body,
             self.local_names(),
-            argument_index,
+            user_arg_index,
         );
 
         let highlight = self
-            .get_argument_hir_ty_for_highlighting(argument_index)
+            .get_argument_hir_ty_for_highlighting(user_arg_index)
             .and_then(|arg_hir_ty| self.highlight_if_we_can_match_hir_ty(fr, arg_ty, arg_hir_ty))
             .unwrap_or_else(|| {
                 // `highlight_if_we_cannot_match_hir_ty` needs to know the number we will give to
@@ -415,10 +528,11 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
 
     fn get_argument_hir_ty_for_highlighting(
         &self,
-        argument_index: usize,
+        user_arg_index: usize,
     ) -> Option<&hir::Ty<'tcx>> {
         let fn_decl = self.infcx.tcx.hir_fn_decl_by_hir_id(self.mir_hir_id())?;
-        let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(argument_index)?;
+        // Closures don't have implicit self arguments in HIR, so use `user_arg_index` directly.
+        let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(user_arg_index)?;
         match argument_hir_ty.kind {
             // This indicates a variable with no type annotation, like
             // `|x|`... in that case, we can't highlight the type but
@@ -644,6 +758,13 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn give_name_if_anonymous_region_appears_in_upvars(&self, fr: RegionVid) -> Option<RegionName> {
         let upvar_index = self.regioncx.get_upvar_index_for_region(self.infcx.tcx, fr)?;
+
+        // Before synthesizing an anonymous name like `'1`, try to find a
+        // named lifetime from the parent function's signature that matches.
+        if let Some(region_name) = self.give_name_if_we_can_match_upvar_args(fr, upvar_index) {
+            return Some(region_name);
+        }
+
         let (upvar_name, upvar_span) = self.regioncx.get_upvar_name_and_span_for_region(
             self.infcx.tcx,
             self.upvars,
@@ -903,10 +1024,10 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             return None;
         };
 
-        let found = tcx
-            .any_free_region_meets(&tcx.type_of(region_parent).instantiate_identity(), |r| {
-                r.kind() == ty::ReEarlyParam(region)
-            });
+        let found = tcx.any_free_region_meets(
+            &tcx.type_of(region_parent).instantiate_identity().skip_norm_wip(),
+            |r| r.kind() == ty::ReEarlyParam(region),
+        );
 
         Some(RegionName {
             name: self.synthesize_region_name(),
@@ -931,12 +1052,15 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             return None;
         };
 
-        let predicates = self
+        let predicates: Vec<_> = self
             .infcx
             .tcx
             .predicates_of(self.body.source.def_id())
             .instantiate_identity(self.infcx.tcx)
-            .predicates;
+            .predicates
+            .into_iter()
+            .map(Unnormalized::skip_norm_wip)
+            .collect();
 
         if let Some(upvar_index) = self
             .regioncx

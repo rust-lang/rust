@@ -15,7 +15,6 @@ use ide_db::{
     syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
 };
 use itertools::Itertools;
-use stdx::format_to;
 use syntax::{
     AstNode, AstToken, Direction, NodeOrToken, SourceFile,
     SyntaxKind::*,
@@ -25,6 +24,7 @@ use syntax::{
         edit::{AstNodeEdit, IndentLevel},
         edit_in_place::AttrsOwnerEdit,
         make,
+        prec::ExprPrecedence,
         syntax_factory::SyntaxFactory,
     },
     syntax_editor::{Element, Removable, SyntaxEditor},
@@ -86,15 +86,29 @@ pub fn extract_trivial_expression(block_expr: &ast::BlockExpr) -> Option<ast::Ex
     None
 }
 
-pub(crate) fn wrap_block(expr: &ast::Expr) -> ast::BlockExpr {
+pub(crate) fn wrap_block(expr: &ast::Expr, make: &SyntaxFactory) -> ast::BlockExpr {
     if let ast::Expr::BlockExpr(block) = expr
         && let Some(first) = block.syntax().first_token()
         && first.kind() == T!['{']
     {
         block.reset_indent()
     } else {
-        make::block_expr(None, Some(expr.reset_indent().indent(1.into())))
+        make.block_expr(None, Some(expr.reset_indent().indent(1.into())))
     }
+}
+
+pub(crate) fn wrap_paren(expr: ast::Expr, make: &SyntaxFactory, prec: ExprPrecedence) -> ast::Expr {
+    if expr.precedence().needs_parentheses_in(prec) { make.expr_paren(expr).into() } else { expr }
+}
+
+pub(crate) fn wrap_paren_in_call(expr: ast::Expr, make: &SyntaxFactory) -> ast::Expr {
+    if needs_parens_in_call(make, &expr) { make.expr_paren(expr).into() } else { expr }
+}
+
+fn needs_parens_in_call(make: &SyntaxFactory, param: &ast::Expr) -> bool {
+    let call = make.expr_call(make.expr_unit(), make.arg_list(Vec::new()));
+    let callable = call.expr().expect("invalid make call");
+    param.needs_parens_in_place_of(call.syntax(), callable.syntax())
 }
 
 /// This is a method with a heuristics to support test methods annotated with custom test annotations, such as
@@ -190,6 +204,7 @@ pub fn filter_assoc_items(
 /// inserted.
 #[must_use]
 pub fn add_trait_assoc_items_to_impl(
+    make: &SyntaxFactory,
     sema: &Semantics<'_, RootDatabase>,
     config: &AssistConfig,
     original_items: &[InFile<ast::AssocItem>],
@@ -232,31 +247,23 @@ pub fn add_trait_assoc_items_to_impl(
         })
         .filter_map(|item| match item {
             ast::AssocItem::Fn(fn_) if fn_.body().is_none() => {
-                let fn_ = fn_.clone_subtree();
-                let new_body = &make::block_expr(
-                    None,
-                    Some(match config.expr_fill_default {
-                        ExprFillDefaultMode::Todo => make::ext::expr_todo(),
-                        ExprFillDefaultMode::Underscore => make::ext::expr_underscore(),
-                        ExprFillDefaultMode::Default => make::ext::expr_todo(),
-                    }),
-                );
-                let new_body = AstNodeEdit::indent(new_body, IndentLevel::single());
-                let mut fn_editor = SyntaxEditor::new(fn_.syntax().clone());
-                fn_.replace_or_insert_body(&mut fn_editor, new_body);
+                let (fn_editor, fn_) = SyntaxEditor::with_ast_node(&fn_);
+                let fill_expr: ast::Expr = match config.expr_fill_default {
+                    ExprFillDefaultMode::Todo | ExprFillDefaultMode::Default => make.expr_todo(),
+                    ExprFillDefaultMode::Underscore => make.expr_underscore().into(),
+                };
+                let new_body = make.block_expr(None::<ast::Stmt>, Some(fill_expr));
+                fn_.replace_or_insert_body(&fn_editor, new_body);
                 let new_fn_ = fn_editor.finish().new_root().clone();
                 ast::AssocItem::cast(new_fn_)
             }
             ast::AssocItem::TypeAlias(type_alias) => {
-                let type_alias = type_alias.clone_subtree();
+                let (type_alias_editor, type_alias) = SyntaxEditor::with_ast_node(&type_alias);
                 if let Some(type_bound_list) = type_alias.type_bound_list() {
-                    let mut type_alias_editor = SyntaxEditor::new(type_alias.syntax().clone());
-                    type_bound_list.remove(&mut type_alias_editor);
-                    let type_alias = type_alias_editor.finish().new_root().clone();
-                    ast::AssocItem::cast(type_alias)
-                } else {
-                    Some(ast::AssocItem::TypeAlias(type_alias))
-                }
+                    type_bound_list.remove(&type_alias_editor);
+                };
+                let type_alias = type_alias_editor.finish().new_root().clone();
+                ast::AssocItem::cast(type_alias)
             }
             item => Some(item),
         })
@@ -273,11 +280,6 @@ pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
 
 pub(crate) fn invert_boolean_expression(make: &SyntaxFactory, expr: ast::Expr) -> ast::Expr {
     invert_special_case(make, &expr).unwrap_or_else(|| make.expr_prefix(T![!], expr).into())
-}
-
-// FIXME: Migrate usages of this function to the above function and remove this.
-pub(crate) fn invert_boolean_expression_legacy(expr: ast::Expr) -> ast::Expr {
-    invert_special_case_legacy(&expr).unwrap_or_else(|| make::expr_prefix(T![!], expr).into())
 }
 
 fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Expr> {
@@ -327,10 +329,8 @@ fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Ex
             Some(make.expr_method_call(receiver, make.name_ref(method), arg_list).into())
         }
         ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::UnaryOp::Not => match pe.expr()? {
-            ast::Expr::ParenExpr(parexpr) => {
-                parexpr.expr().map(|e| e.clone_subtree().clone_for_update())
-            }
-            _ => pe.expr().map(|e| e.clone_subtree().clone_for_update()),
+            ast::Expr::ParenExpr(parexpr) => parexpr.expr(),
+            _ => pe.expr(),
         },
         ast::Expr::Literal(lit) => match lit.kind() {
             ast::LiteralKind::Bool(b) => match b {
@@ -343,63 +343,12 @@ fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Ex
     }
 }
 
-fn invert_special_case_legacy(expr: &ast::Expr) -> Option<ast::Expr> {
-    match expr {
-        ast::Expr::BinExpr(bin) => {
-            let bin = bin.clone_subtree();
-            let op_token = bin.op_token()?;
-            let rev_token = match op_token.kind() {
-                T![==] => T![!=],
-                T![!=] => T![==],
-                T![<] => T![>=],
-                T![<=] => T![>],
-                T![>] => T![<=],
-                T![>=] => T![<],
-                // Parenthesize other expressions before prefixing `!`
-                _ => {
-                    return Some(
-                        make::expr_prefix(T![!], make::expr_paren(expr.clone()).into()).into(),
-                    );
-                }
-            };
-            let mut bin_editor = SyntaxEditor::new(bin.syntax().clone());
-            bin_editor.replace(op_token, make::token(rev_token));
-            ast::Expr::cast(bin_editor.finish().new_root().clone())
-        }
-        ast::Expr::MethodCallExpr(mce) => {
-            let receiver = mce.receiver()?;
-            let method = mce.name_ref()?;
-            let arg_list = mce.arg_list()?;
-
-            let method = match method.text().as_str() {
-                "is_some" => "is_none",
-                "is_none" => "is_some",
-                "is_ok" => "is_err",
-                "is_err" => "is_ok",
-                _ => return None,
-            };
-            Some(make::expr_method_call(receiver, make::name_ref(method), arg_list).into())
-        }
-        ast::Expr::PrefixExpr(pe) if pe.op_kind()? == ast::UnaryOp::Not => match pe.expr()? {
-            ast::Expr::ParenExpr(parexpr) => parexpr.expr(),
-            _ => pe.expr(),
-        },
-        ast::Expr::Literal(lit) => match lit.kind() {
-            ast::LiteralKind::Bool(b) => match b {
-                true => Some(ast::Expr::Literal(make::expr_literal("false"))),
-                false => Some(ast::Expr::Literal(make::expr_literal("true"))),
-            },
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
 pub(crate) fn insert_attributes(
     before: impl Element,
-    edit: &mut SyntaxEditor,
+    editor: &SyntaxEditor,
     attrs: impl IntoIterator<Item = ast::Attr>,
 ) {
+    let make = editor.make();
     let mut attrs = attrs.into_iter().peekable();
     if attrs.peek().is_none() {
         return;
@@ -407,14 +356,10 @@ pub(crate) fn insert_attributes(
     let elem = before.syntax_element();
     let indent = IndentLevel::from_element(&elem);
     let whitespace = format!("\n{indent}");
-    edit.insert_all(
-        syntax::syntax_editor::Position::before(elem),
-        attrs
-            .flat_map(|attr| {
-                [attr.syntax().clone().into(), make::tokens::whitespace(&whitespace).into()]
-            })
-            .collect(),
-    );
+    let elements: Vec<syntax::SyntaxElement> = attrs
+        .flat_map(|attr| [attr.syntax().clone().into(), make.whitespace(&whitespace).into()])
+        .collect();
+    editor.insert_all(syntax::syntax_editor::Position::before(elem), elements);
 }
 
 pub(crate) fn next_prev() -> impl Iterator<Item = Direction> {
@@ -508,6 +453,15 @@ fn check_pat_variant_nested_or_literal_with_depth(
     }
 }
 
+pub(crate) fn expr_fill_default(config: &AssistConfig) -> ast::Expr {
+    let make = SyntaxFactory::without_mappings();
+    match config.expr_fill_default {
+        ExprFillDefaultMode::Todo => make.expr_todo(),
+        ExprFillDefaultMode::Underscore => make.expr_underscore().into(),
+        ExprFillDefaultMode::Default => make.expr_todo(),
+    }
+}
+
 // Uses a syntax-driven approach to find any impl blocks for the struct that
 // exist within the module/file
 //
@@ -575,134 +529,18 @@ fn has_any_fn(imp: &ast::Impl, names: &[String]) -> bool {
     false
 }
 
-/// Find the end of the `impl` block for the given `ast::Impl`.
-//
-// FIXME: this partially overlaps with `find_struct_impl`
-pub(crate) fn find_impl_block_end(impl_def: ast::Impl, buf: &mut String) -> Option<TextSize> {
-    buf.push('\n');
-    let end = impl_def
-        .assoc_item_list()
-        .and_then(|it| it.r_curly_token())?
-        .prev_sibling_or_token()?
-        .text_range()
-        .end();
-    Some(end)
-}
-
-/// Generates the surrounding `impl Type { <code> }` including type and lifetime
-/// parameters.
-// FIXME: migrate remaining uses to `generate_impl`
-pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
-    generate_impl_text_inner(adt, None, true, code)
-}
-
-/// Generates the surrounding `impl <trait> for Type { <code> }` including type
-/// and lifetime parameters, with `<trait>` appended to `impl`'s generic parameters' bounds.
-///
-/// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
-// FIXME: migrate remaining uses to `generate_trait_impl`
-#[allow(dead_code)]
-pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &str) -> String {
-    generate_impl_text_inner(adt, Some(trait_text), true, code)
-}
-
-/// Generates the surrounding `impl <trait> for Type { <code> }` including type
-/// and lifetime parameters, with `impl`'s generic parameters' bounds kept as-is.
-///
-/// This is useful for traits like `From<T>`, since `impl<T> From<T> for U<T>` doesn't require `T: From<T>`.
-// FIXME: migrate remaining uses to `generate_trait_impl_intransitive`
-pub(crate) fn generate_trait_impl_text_intransitive(
-    adt: &ast::Adt,
-    trait_text: &str,
-    code: &str,
-) -> String {
-    generate_impl_text_inner(adt, Some(trait_text), false, code)
-}
-
-fn generate_impl_text_inner(
-    adt: &ast::Adt,
-    trait_text: Option<&str>,
-    trait_is_transitive: bool,
-    code: &str,
-) -> String {
-    // Ensure lifetime params are before type & const params
-    let generic_params = adt.generic_param_list().map(|generic_params| {
-        let lifetime_params =
-            generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
-        let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
-            let param = match param {
-                ast::TypeOrConstParam::Type(param) => {
-                    // remove defaults since they can't be specified in impls
-                    let mut bounds =
-                        param.type_bound_list().map_or_else(Vec::new, |it| it.bounds().collect());
-                    if let Some(trait_) = trait_text {
-                        // Add the current trait to `bounds` if the trait is transitive,
-                        // meaning `impl<T> Trait for U<T>` requires `T: Trait`.
-                        if trait_is_transitive {
-                            bounds.push(make::type_bound_text(trait_));
-                        }
-                    };
-                    // `{ty_param}: {bounds}`
-                    let param = make::type_param(param.name()?, make::type_bound_list(bounds));
-                    ast::GenericParam::TypeParam(param)
-                }
-                ast::TypeOrConstParam::Const(param) => {
-                    // remove defaults since they can't be specified in impls
-                    let param = make::const_param(param.name()?, param.ty()?);
-                    ast::GenericParam::ConstParam(param)
-                }
-            };
-            Some(param)
-        });
-
-        make::generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
-    });
-
-    // FIXME: use syntax::make & mutable AST apis instead
-    // `trait_text` and `code` can't be opaque blobs of text
-    let mut buf = String::with_capacity(code.len());
-
-    // Copy any cfg attrs from the original adt
-    buf.push_str("\n\n");
-    let cfg_attrs = adt
-        .attrs()
-        .filter(|attr| attr.as_simple_call().map(|(name, _arg)| name == "cfg").unwrap_or(false));
-    cfg_attrs.for_each(|attr| buf.push_str(&format!("{attr}\n")));
-
-    // `impl{generic_params} {trait_text} for {name}{generic_params.to_generic_args()}`
-    buf.push_str("impl");
-    if let Some(generic_params) = &generic_params {
-        format_to!(buf, "{generic_params}");
-    }
-    buf.push(' ');
-    if let Some(trait_text) = trait_text {
-        buf.push_str(trait_text);
-        buf.push_str(" for ");
-    }
-    buf.push_str(&adt.name().unwrap().text());
-    if let Some(generic_params) = generic_params {
-        format_to!(buf, "{}", generic_params.to_generic_args());
-    }
-
-    match adt.where_clause() {
-        Some(where_clause) => {
-            format_to!(buf, "\n{where_clause}\n{{\n{code}\n}}");
-        }
-        None => {
-            format_to!(buf, " {{\n{code}\n}}");
-        }
-    }
-
-    buf
-}
-
 /// Generates the corresponding `impl Type {}` including type and lifetime
 /// parameters.
 pub(crate) fn generate_impl_with_item(
+    make: &SyntaxFactory,
     adt: &ast::Adt,
     body: Option<ast::AssocItemList>,
 ) -> ast::Impl {
-    generate_impl_inner(false, adt, None, true, body)
+    generate_impl_inner_with_factory(make, false, adt, None, true, body)
+}
+
+pub(crate) fn generate_impl_with_factory(make: &SyntaxFactory, adt: &ast::Adt) -> ast::Impl {
+    generate_impl_inner_with_factory(make, false, adt, None, true, None)
 }
 
 pub(crate) fn generate_impl(adt: &ast::Adt) -> ast::Impl {
@@ -713,16 +551,44 @@ pub(crate) fn generate_impl(adt: &ast::Adt) -> ast::Impl {
 /// and lifetime parameters, with `<trait>` appended to `impl`'s generic parameters' bounds.
 ///
 /// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
-pub(crate) fn generate_trait_impl(is_unsafe: bool, adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
-    generate_impl_inner(is_unsafe, adt, Some(trait_), true, None)
+pub(crate) fn generate_trait_impl(
+    make: &SyntaxFactory,
+    is_unsafe: bool,
+    adt: &ast::Adt,
+    trait_: ast::Type,
+) -> ast::Impl {
+    generate_impl_inner_with_factory(make, is_unsafe, adt, Some(trait_), true, None)
 }
 
 /// Generates the corresponding `impl <trait> for Type {}` including type
 /// and lifetime parameters, with `impl`'s generic parameters' bounds kept as-is.
 ///
 /// This is useful for traits like `From<T>`, since `impl<T> From<T> for U<T>` doesn't require `T: From<T>`.
-pub(crate) fn generate_trait_impl_intransitive(adt: &ast::Adt, trait_: ast::Type) -> ast::Impl {
-    generate_impl_inner(false, adt, Some(trait_), false, None)
+pub(crate) fn generate_trait_impl_intransitive(
+    make: &SyntaxFactory,
+    adt: &ast::Adt,
+    trait_: ast::Type,
+) -> ast::Impl {
+    generate_impl_inner_with_factory(make, false, adt, Some(trait_), false, None)
+}
+
+pub(crate) fn generate_trait_impl_intransitive_with_item(
+    make: &SyntaxFactory,
+    adt: &ast::Adt,
+    trait_: ast::Type,
+    body: ast::AssocItemList,
+) -> ast::Impl {
+    generate_impl_inner_with_factory(make, false, adt, Some(trait_), false, Some(body))
+}
+
+pub(crate) fn generate_trait_impl_with_item(
+    make: &SyntaxFactory,
+    is_unsafe: bool,
+    adt: &ast::Adt,
+    trait_: ast::Type,
+    body: ast::AssocItemList,
+) -> ast::Impl {
+    generate_impl_inner_with_factory(make, is_unsafe, adt, Some(trait_), true, Some(body))
 }
 
 fn generate_impl_inner(
@@ -773,8 +639,7 @@ fn generate_impl_inner(
 
     let ty = make::ty_path(make::ext::ident_path(&adt.name().unwrap().text()));
 
-    let cfg_attrs =
-        adt.attrs().filter(|attr| attr.as_simple_call().is_some_and(|(name, _arg)| name == "cfg"));
+    let cfg_attrs = adt.attrs().filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))));
     match trait_ {
         Some(trait_) => make::impl_trait(
             cfg_attrs,
@@ -793,6 +658,75 @@ fn generate_impl_inner(
         None => make::impl_(cfg_attrs, generic_params, generic_args, ty, adt.where_clause(), body),
     }
     .clone_for_update()
+}
+
+fn generate_impl_inner_with_factory(
+    make: &SyntaxFactory,
+    is_unsafe: bool,
+    adt: &ast::Adt,
+    trait_: Option<ast::Type>,
+    trait_is_transitive: bool,
+    body: Option<ast::AssocItemList>,
+) -> ast::Impl {
+    // Ensure lifetime params are before type & const params
+    let generic_params = adt.generic_param_list().map(|generic_params| {
+        let lifetime_params =
+            generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
+        let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
+            let param = match param {
+                ast::TypeOrConstParam::Type(param) => {
+                    // remove defaults since they can't be specified in impls
+                    let mut bounds =
+                        param.type_bound_list().map_or_else(Vec::new, |it| it.bounds().collect());
+                    if let Some(trait_) = &trait_ {
+                        // Add the current trait to `bounds` if the trait is transitive,
+                        // meaning `impl<T> Trait for U<T>` requires `T: Trait`.
+                        if trait_is_transitive {
+                            bounds.push(make.type_bound(trait_.clone()));
+                        }
+                    };
+                    // `{ty_param}: {bounds}`
+                    let param = make.type_param(param.name()?, make.type_bound_list(bounds));
+                    ast::GenericParam::TypeParam(param)
+                }
+                ast::TypeOrConstParam::Const(param) => {
+                    // remove defaults since they can't be specified in impls
+                    let param = make.const_param(param.name()?, param.ty()?);
+                    ast::GenericParam::ConstParam(param)
+                }
+            };
+            Some(param)
+        });
+
+        make.generic_param_list(itertools::chain(lifetime_params, ty_or_const_params))
+    });
+    let generic_args =
+        generic_params.as_ref().map(|params| params.to_generic_args().clone_for_update());
+    let adt_assoc_bounds =
+        trait_.as_ref().zip(generic_params.as_ref()).and_then(|(trait_, params)| {
+            generic_param_associated_bounds_with_factory(make, adt, trait_, params)
+        });
+
+    let ty: ast::Type = make.ty_path(make.ident_path(&adt.name().unwrap().text())).into();
+
+    let cfg_attrs = adt.attrs().filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))));
+    match trait_ {
+        Some(trait_) => make.impl_trait(
+            cfg_attrs,
+            is_unsafe,
+            None,
+            None,
+            generic_params,
+            generic_args,
+            false,
+            trait_,
+            ty,
+            adt_assoc_bounds,
+            adt.where_clause(),
+            body,
+        ),
+        None => make.impl_(cfg_attrs, generic_params, generic_args, ty, adt.where_clause(), body),
+    }
 }
 
 fn generic_param_associated_bounds(
@@ -840,26 +774,50 @@ fn generic_param_associated_bounds(
     trait_where_clause.peek().is_some().then(|| make::where_clause(trait_where_clause))
 }
 
-pub(crate) fn add_method_to_adt(
-    builder: &mut SourceChangeBuilder,
+fn generic_param_associated_bounds_with_factory(
+    make: &SyntaxFactory,
     adt: &ast::Adt,
-    impl_def: Option<ast::Impl>,
-    method: &str,
-) {
-    let mut buf = String::with_capacity(method.len() + 2);
-    if impl_def.is_some() {
-        buf.push('\n');
-    }
-    buf.push_str(method);
-
-    let start_offset = impl_def
-        .and_then(|impl_def| find_impl_block_end(impl_def, &mut buf))
-        .unwrap_or_else(|| {
-            buf = generate_impl_text(adt, &buf);
-            adt.syntax().text_range().end()
-        });
-
-    builder.insert(start_offset, buf);
+    trait_: &ast::Type,
+    generic_params: &ast::GenericParamList,
+) -> Option<ast::WhereClause> {
+    let in_type_params = |name: &ast::NameRef| {
+        generic_params
+            .generic_params()
+            .filter_map(|param| match param {
+                ast::GenericParam::TypeParam(type_param) => type_param.name(),
+                _ => None,
+            })
+            .any(|param| param.text() == name.text())
+    };
+    let adt_body = match adt {
+        ast::Adt::Enum(e) => e.variant_list().map(|it| it.syntax().clone()),
+        ast::Adt::Struct(s) => s.field_list().map(|it| it.syntax().clone()),
+        ast::Adt::Union(u) => u.record_field_list().map(|it| it.syntax().clone()),
+    };
+    let mut trait_where_clause = adt_body
+        .into_iter()
+        .flat_map(|it| it.descendants())
+        .filter_map(ast::Path::cast)
+        .filter_map(|path| {
+            let qualifier = path.qualifier()?.as_single_segment()?;
+            let qualifier = qualifier
+                .name_ref()
+                .or_else(|| match qualifier.type_anchor()?.ty()? {
+                    ast::Type::PathType(path_type) => path_type.path()?.as_single_name_ref(),
+                    _ => None,
+                })
+                .filter(in_type_params)?;
+            Some((qualifier, path.segment()?.name_ref()?))
+        })
+        .map(|(qualifier, assoc_name)| {
+            let segments = [qualifier, assoc_name].map(|nr| make.path_segment(nr));
+            let path = make.path_from_segments(segments, false);
+            let bounds = [make.type_bound(trait_.clone())];
+            make.where_pred(either::Either::Right(make.ty_path(path).into()), bounds)
+        })
+        .unique_by(|it| it.syntax().to_string())
+        .peekable();
+    trait_where_clause.peek().is_some().then(|| make.where_clause(trait_where_clause))
 }
 
 #[derive(Debug)]
@@ -886,8 +844,8 @@ enum ReferenceConversionType {
 }
 
 impl<'db> ReferenceConversion<'db> {
-    pub(crate) fn convert_type(&self, db: &'db dyn HirDatabase, module: hir::Module) -> ast::Type {
-        let ty = match self.conversion {
+    fn type_to_string(&self, db: &'db dyn HirDatabase, module: hir::Module) -> String {
+        match self.conversion {
             ReferenceConversionType::Copy => self
                 .ty
                 .display_source_code(db, module.into(), true)
@@ -937,25 +895,38 @@ impl<'db> ReferenceConversion<'db> {
                     .unwrap_or_else(|_| "_".to_owned());
                 format!("Result<&{first_type_argument_name}, &{second_type_argument_name}>")
             }
-        };
+        }
+    }
 
+    pub(crate) fn convert_type(&self, db: &'db dyn HirDatabase, module: hir::Module) -> ast::Type {
+        let ty = self.type_to_string(db, module);
         make::ty(&ty)
     }
 
-    pub(crate) fn getter(&self, field_name: String) -> ast::Expr {
-        let expr = make::expr_field(make::ext::expr_self(), &field_name);
+    pub(crate) fn convert_type_with_factory(
+        &self,
+        make: &SyntaxFactory,
+        db: &'db dyn HirDatabase,
+        module: hir::Module,
+    ) -> ast::Type {
+        let ty = self.type_to_string(db, module);
+        make.ty(&ty)
+    }
+
+    pub(crate) fn getter(&self, make: &SyntaxFactory, field_name: String) -> ast::Expr {
+        let expr = make.expr_field(make.expr_self(), &field_name);
 
         match self.conversion {
-            ReferenceConversionType::Copy => expr,
+            ReferenceConversionType::Copy => expr.into(),
             ReferenceConversionType::AsRefStr
             | ReferenceConversionType::AsRefSlice
             | ReferenceConversionType::Dereferenced
             | ReferenceConversionType::Option
             | ReferenceConversionType::Result => {
                 if self.impls_deref {
-                    make::expr_ref(expr, false)
+                    make.expr_ref(expr.into(), false)
                 } else {
-                    make::expr_method_call(expr, make::name_ref("as_ref"), make::arg_list([]))
+                    make.expr_method_call(expr.into(), make.name_ref("as_ref"), make.arg_list([]))
                         .into()
                 }
             }
@@ -1095,18 +1066,21 @@ pub(crate) fn trimmed_text_range(source_file: &SourceFile, initial_range: TextRa
 
 /// Convert a list of function params to a list of arguments that can be passed
 /// into a function call.
-pub(crate) fn convert_param_list_to_arg_list(list: ast::ParamList) -> ast::ArgList {
+pub(crate) fn convert_param_list_to_arg_list(
+    list: ast::ParamList,
+    make: &SyntaxFactory,
+) -> ast::ArgList {
     let mut args = vec![];
     for param in list.params() {
         if let Some(ast::Pat::IdentPat(pat)) = param.pat()
             && let Some(name) = pat.name()
         {
             let name = name.to_string();
-            let expr = make::expr_path(make::ext::ident_path(&name));
+            let expr = make.expr_path(make.ident_path(&name));
             args.push(expr);
         }
     }
-    make::arg_list(args)
+    make.arg_list(args)
 }
 
 /// Calculate the number of hashes required for a raw string containing `s`
@@ -1191,7 +1165,10 @@ pub(crate) fn replace_record_field_expr(
 
 /// Creates a token tree list from a syntax node, creating the needed delimited sub token trees.
 /// Assumes that the input syntax node is a valid syntax tree.
-pub(crate) fn tt_from_syntax(node: SyntaxNode) -> Vec<NodeOrToken<ast::TokenTree, SyntaxToken>> {
+pub(crate) fn tt_from_syntax(
+    node: SyntaxNode,
+    make: &SyntaxFactory,
+) -> Vec<NodeOrToken<ast::TokenTree, SyntaxToken>> {
     let mut tt_stack = vec![(None, vec![])];
 
     for element in node.descendants_with_tokens() {
@@ -1219,7 +1196,7 @@ pub(crate) fn tt_from_syntax(node: SyntaxNode) -> Vec<NodeOrToken<ast::TokenTree
                     "mismatched opening and closing delimiters"
                 );
 
-                let sub_tt = make::token_tree(delimiter.expect("unbalanced delimiters"), tt);
+                let sub_tt = make.token_tree(delimiter.expect("unbalanced delimiters"), tt);
                 parent_tt.push(NodeOrToken::Node(sub_tt));
             }
             _ => {
@@ -1252,6 +1229,20 @@ pub(crate) fn cover_let_chain(mut expr: ast::Expr, range: TextRange) -> Option<a
         }
         expr = rest?;
     }
+}
+
+pub(crate) fn cover_edit_range(
+    source: &SyntaxNode,
+    range: TextRange,
+) -> std::ops::RangeInclusive<syntax::SyntaxElement> {
+    let node = match source.covering_element(range) {
+        NodeOrToken::Node(node) => node,
+        NodeOrToken::Token(t) => t.parent().unwrap(),
+    };
+    let mut iter = node.children_with_tokens().filter(|it| range.contains_range(it.text_range()));
+    let first = iter.next().unwrap_or(node.into());
+    let last = iter.last().unwrap_or_else(|| first.clone());
+    first..=last
 }
 
 pub(crate) fn is_selected(

@@ -6,18 +6,16 @@ use std::cmp::{self, Ordering};
 use hir_def::{attrs::AttrFlags, signatures::FunctionSignature};
 use hir_expand::name::Name;
 use intern::sym;
-use rustc_type_ir::inherent::{AdtDef, IntoKind, SliceLike, Ty as _};
+use rustc_type_ir::inherent::{AdtDef, GenericArgs as _, IntoKind, SliceLike, Ty as _};
 use stdx::never;
 
 use crate::{
-    InferenceResult,
     display::DisplayTarget,
     drop::{DropGlue, has_drop_glue},
     mir::eval::{
-        Address, AdtId, Arc, Evaluator, FunctionId, GenericArgs, HasModule, HirDisplay,
-        InternedClosure, Interval, IntervalAndTy, IntervalOrOwned, ItemContainerId, Layout, Locals,
-        Lookup, MirEvalError, MirSpan, Mutability, Result, Ty, TyKind, from_bytes, not_supported,
-        pad16,
+        Address, AdtId, Arc, Evaluator, FunctionId, GenericArgs, HasModule, HirDisplay, Interval,
+        IntervalAndTy, IntervalOrOwned, ItemContainerId, Layout, Locals, Lookup, MirEvalError,
+        MirSpan, Mutability, Result, Ty, TyKind, from_bytes, not_supported, pad16,
     },
     next_solver::Region,
 };
@@ -45,7 +43,7 @@ impl<'db> Evaluator<'db> {
             return Ok(false);
         }
 
-        let function_data = self.db.function_signature(def);
+        let function_data = FunctionSignature::of(self.db, def);
         let attrs = AttrFlags::query(self.db, def.into());
         let is_intrinsic = FunctionSignature::is_intrinsic(self.db, def);
 
@@ -147,19 +145,14 @@ impl<'db> Evaluator<'db> {
                 return destination
                     .write_from_interval(self, Interval { addr, size: destination.size });
             }
-            TyKind::Closure(id, subst) => {
-                let [arg] = args else {
-                    not_supported!("wrong arg count for clone");
-                };
-                let addr = Address::from_bytes(arg.get(self)?)?;
-                let InternedClosure(closure_owner, _) = self.db.lookup_intern_closure(id.0);
-                let infer = InferenceResult::for_body(self.db, closure_owner);
-                let (captures, _) = infer.closure_info(id.0);
-                let layout = self.layout(self_ty)?;
-                let db = self.db;
-                let ty_iter = captures.iter().map(|c| c.ty(db, subst));
-                self.exec_clone_for_fields(ty_iter, layout, addr, def, locals, destination, span)?;
-            }
+            TyKind::Closure(_, closure_args) => self.exec_clone(
+                def,
+                args,
+                closure_args.as_closure().tupled_upvars_ty(),
+                locals,
+                destination,
+                span,
+            )?,
             TyKind::Tuple(subst) => {
                 let [arg] = args else {
                     not_supported!("wrong arg count for clone");
@@ -518,7 +511,7 @@ impl<'db> Evaluator<'db> {
             "sched_getaffinity" => {
                 let [_pid, _set_size, set] = args else {
                     return Err(MirEvalError::InternalError(
-                        "libc::write args are not provided".into(),
+                        "sched_getaffinity args are not provided".into(),
                     ));
                 };
                 let set = Address::from_bytes(set.get(self)?)?;
@@ -530,9 +523,7 @@ impl<'db> Evaluator<'db> {
             }
             "getenv" => {
                 let [name] = args else {
-                    return Err(MirEvalError::InternalError(
-                        "libc::write args are not provided".into(),
-                    ));
+                    return Err(MirEvalError::InternalError("getenv args are not provided".into()));
                 };
                 let mut name_buf = vec![];
                 let name = {
@@ -840,7 +831,7 @@ impl<'db> Evaluator<'db> {
                 // cases.
                 let [lhs, rhs] = args else {
                     return Err(MirEvalError::InternalError(
-                        "wrapping_add args are not provided".into(),
+                        "ptr_guaranteed_cmp args are not provided".into(),
                     ));
                 };
                 let ans = lhs.get(self)? == rhs.get(self)?;

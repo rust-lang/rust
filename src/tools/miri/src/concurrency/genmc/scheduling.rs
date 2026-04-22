@@ -1,11 +1,12 @@
-use genmc_sys::{ActionKind, ExecutionState};
+use genmc_sys::{ActionKind, ExecutionStatus};
 use rustc_data_structures::either::Either;
 use rustc_middle::mir::TerminatorKind;
 use rustc_middle::ty::{self, Ty};
 
 use super::GenmcCtx;
 use crate::{
-    InterpCx, InterpResult, MiriMachine, TerminationInfo, ThreadId, interp_ok, throw_machine_stop,
+    InterpCx, InterpResult, MiriMachine, TerminationInfo, ThreadId, interp_ok, sym,
+    throw_machine_stop,
 };
 
 enum NextInstrKind {
@@ -76,11 +77,11 @@ fn get_function_kind<'tcx>(
         // NOTE: Functions intercepted by Miri in `concurrency/genmc/intercep.rs` must also be added here.
         // Such intercepted functions, like `sys::Mutex::lock`, should be treated as atomics to ensure we call the scheduler when we encounter one of them.
         // These functions must also be classified whether they may have load semantics.
-        if ecx.tcx.is_diagnostic_item(rustc_span::sym::sys_mutex_lock, callee_def_id)
-            || ecx.tcx.is_diagnostic_item(rustc_span::sym::sys_mutex_try_lock, callee_def_id)
+        if ecx.tcx.is_diagnostic_item(sym::sys_mutex_lock, callee_def_id)
+            || ecx.tcx.is_diagnostic_item(sym::sys_mutex_try_lock, callee_def_id)
         {
             return interp_ok(MaybeAtomic(ActionKind::Load));
-        } else if ecx.tcx.is_diagnostic_item(rustc_span::sym::sys_mutex_unlock, callee_def_id) {
+        } else if ecx.tcx.is_diagnostic_item(sym::sys_mutex_unlock, callee_def_id) {
             return interp_ok(MaybeAtomic(ActionKind::NonLoad));
         }
         // The next step is a call to a regular Rust function.
@@ -116,9 +117,9 @@ impl GenmcCtx {
 
         let result = self.handle.borrow_mut().pin_mut().schedule_next(genmc_tid, atomic_kind);
         // Depending on the exec_state, we either schedule the given thread, or we are finished with this execution.
-        match result.exec_state {
-            ExecutionState::Ok => interp_ok(Some(thread_infos.get_miri_tid(result.next_thread))),
-            ExecutionState::Blocked => {
+        match result.exec_status {
+            ExecutionStatus::Ok => interp_ok(Some(thread_infos.get_miri_tid(result.next_thread))),
+            ExecutionStatus::Blocked => {
                 // This execution doesn't need further exploration. We treat this as "success, no
                 // leak check needed", which makes it a NOP in the big outer loop.
                 throw_machine_stop!(TerminationInfo::Exit {
@@ -126,7 +127,7 @@ impl GenmcCtx {
                     leak_check: false,
                 });
             }
-            ExecutionState::Finished => {
+            ExecutionStatus::Finished => {
                 let exit_status = self.exec_state.exit_status.get().expect(
                     "If the execution is finished, we should have a return value from the program.",
                 );
@@ -135,7 +136,7 @@ impl GenmcCtx {
                     leak_check: matches!(exit_status.exit_type, super::ExitType::MainThreadFinish),
                 });
             }
-            ExecutionState::Error => {
+            ExecutionStatus::Error => {
                 // GenMC found an error in one of the `handle_*` functions, but didn't return the detected error from the function immediately.
                 // This is still an bug in the user program, so we print the error string.
                 panic!(

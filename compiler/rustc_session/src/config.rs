@@ -23,7 +23,8 @@ use rustc_macros::{BlobDecodable, Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{
-    FileName, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm, Symbol, sym,
+    FileName, HashStableContext, RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm,
+    Symbol, sym,
 };
 use rustc_target::spec::{
     FramePointer, LinkSelfContainedComponents, LinkerFeatures, PanicStrategy, SplitDebuginfo,
@@ -38,7 +39,7 @@ use crate::errors::FileWriteFail;
 pub use crate::options::*;
 use crate::search_paths::SearchPath;
 use crate::utils::CanonicalizedPath;
-use crate::{EarlyDiagCtxt, HashStableContext, Session, filesearch, lint};
+use crate::{EarlyDiagCtxt, Session, filesearch, lint};
 
 mod cfg;
 mod externs;
@@ -636,10 +637,10 @@ macro_rules! define_output_types {
             const THIS_IMPLEMENTATION_HAS_BEEN_TRIPLE_CHECKED: () = ();
         }
 
-        impl<HCX: HashStableContext> ToStableHashKey<HCX> for OutputType {
+        impl<Hcx: HashStableContext> ToStableHashKey<Hcx> for OutputType {
             type KeyType = Self;
 
-            fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
+            fn to_stable_hash_key(&self, _: &mut Hcx) -> Self::KeyType {
                 *self
             }
         }
@@ -1319,7 +1320,8 @@ impl OutputFilenames {
     }
 }
 
-pub(crate) fn parse_remap_path_scope(
+// pub for rustdoc
+pub fn parse_remap_path_scope(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
     unstable_opts: &UnstableOptions,
@@ -1405,7 +1407,6 @@ impl Default for Options {
         };
 
         Options {
-            assert_incr_state: None,
             crate_types: Vec::new(),
             optimize: OptLevel::No,
             debuginfo: DebugInfo::None,
@@ -1449,6 +1450,7 @@ impl Default for Options {
             logical_env: FxIndexMap::default(),
             verbose: false,
             target_modifiers: BTreeMap::default(),
+            mitigation_coverage_map: Default::default(),
         }
     }
 }
@@ -1615,6 +1617,19 @@ pub fn build_target_config(
             let mut err =
                 early_dcx.early_struct_fatal(format!("error loading target specification: {e}"));
             err.help("run `rustc --print target-list` for a list of built-in targets");
+            let typed = target.tuple();
+            let limit = typed.len() / 3 + 1;
+            if let Some(suggestion) = rustc_target::spec::TARGETS
+                .iter()
+                .filter_map(|&t| {
+                    rustc_span::edit_distance::edit_distance_with_substrings(typed, t, limit)
+                        .map(|d| (d, t))
+                })
+                .min_by_key(|(d, _)| *d)
+                .map(|(_, t)| t)
+            {
+                err.help(format!("did you mean `{suggestion}`?"));
+            }
             err.emit()
         }
     }
@@ -2287,20 +2302,6 @@ fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInf
     if max_g > max_c { DebugInfo::Full } else { cg.debuginfo }
 }
 
-fn parse_assert_incr_state(
-    early_dcx: &EarlyDiagCtxt,
-    opt_assertion: &Option<String>,
-) -> Option<IncrementalStateAssertion> {
-    match opt_assertion {
-        Some(s) if s.as_str() == "loaded" => Some(IncrementalStateAssertion::Loaded),
-        Some(s) if s.as_str() == "not-loaded" => Some(IncrementalStateAssertion::NotLoaded),
-        Some(s) => {
-            early_dcx.early_fatal(format!("unexpected incremental state assertion value: {s}"))
-        }
-        None => None,
-    }
-}
-
 pub fn parse_externs(
     early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
@@ -2470,9 +2471,9 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_dcx.early_fatal(e));
 
-    let mut target_modifiers = BTreeMap::<OptionsTargetModifiers, String>::new();
+    let mut collected_options = Default::default();
 
-    let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut target_modifiers);
+    let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
 
     if !unstable_opts.unstable_options && json_timings {
@@ -2488,7 +2489,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let output_types = parse_output_types(early_dcx, &unstable_opts, matches);
 
-    let mut cg = CodegenOptions::build(early_dcx, matches, &mut target_modifiers);
+    let mut cg = CodegenOptions::build(early_dcx, matches, &mut collected_options);
     let (disable_local_thinlto, codegen_units) = should_override_cgus_and_disable_thinlto(
         early_dcx,
         &output_types,
@@ -2505,8 +2506,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     }
 
     let incremental = cg.incremental.as_ref().map(PathBuf::from);
-
-    let assert_incr_state = parse_assert_incr_state(early_dcx, &unstable_opts.assert_incr_state);
 
     if cg.profile_generate.enabled() && cg.profile_use.is_some() {
         early_dcx.early_fatal("options `-C profile-generate` and `-C profile-use` are exclusive");
@@ -2641,8 +2640,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     // -Zretpoline-external-thunk also requires -Zretpoline
     if unstable_opts.retpoline_external_thunk {
         unstable_opts.retpoline = true;
-        target_modifiers.insert(
-            OptionsTargetModifiers::UnstableOptions(UnstableOptionsTargetModifiers::retpoline),
+        collected_options.target_modifiers.insert(
+            OptionsTargetModifiers::UnstableOptions(UnstableOptionsTargetModifiers::Retpoline),
             "true".to_string(),
         );
     }
@@ -2759,7 +2758,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let verbose = matches.opt_present("verbose") || unstable_opts.verbose_internals;
 
     Options {
-        assert_incr_state,
         crate_types,
         optimize: opt_level,
         debuginfo,
@@ -2802,7 +2800,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         color,
         logical_env,
         verbose,
-        target_modifiers,
+        target_modifiers: collected_options.target_modifiers,
+        mitigation_coverage_map: collected_options.mitigations,
     }
 }
 

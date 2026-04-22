@@ -367,8 +367,8 @@ pub fn is_const_evaluatable<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> 
                     if matches!(
                         self.cx.qpath_res(p, e.hir_id),
                         Res::Def(
-                            DefKind::Const
-                                | DefKind::AssocConst
+                            DefKind::Const { .. }
+                                | DefKind::AssocConst { .. }
                                 | DefKind::AnonConst
                                 | DefKind::ConstParam
                                 | DefKind::Ctor(..)
@@ -437,7 +437,7 @@ pub fn is_expr_unsafe<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> bool {
                     ty::FnDef(id, _) if self.cx.tcx.fn_sig(id).skip_binder().safety().is_unsafe() => {
                         ControlFlow::Break(())
                     },
-                    ty::FnPtr(_, hdr) if hdr.safety.is_unsafe() => ControlFlow::Break(()),
+                    ty::FnPtr(_, hdr) if hdr.safety().is_unsafe() => ControlFlow::Break(()),
                     _ => walk_expr(self, e),
                 },
                 ExprKind::Path(ref p)

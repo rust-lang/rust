@@ -20,7 +20,9 @@ use rustc_middle::bug;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{
+    self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
+};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, sym};
 use specialization_graph::GraphExt;
@@ -117,7 +119,7 @@ pub fn translate_args_with_cause<'tcx>(
         param_env, source_impl, source_args, target_node
     );
     let source_trait_ref =
-        infcx.tcx.impl_trait_ref(source_impl).instantiate(infcx.tcx, source_args);
+        infcx.tcx.impl_trait_ref(source_impl).instantiate(infcx.tcx, source_args).skip_norm_wip();
 
     // translate the Self and Param parts of the generic parameters, since those
     // vary across impls
@@ -162,7 +164,7 @@ fn fulfill_implication<'tcx>(
     );
 
     let ocx = ObligationCtxt::new(infcx);
-    let source_trait_ref = ocx.normalize(cause, param_env, source_trait_ref);
+    let source_trait_ref = ocx.normalize(cause, param_env, Unnormalized::new_wip(source_trait_ref));
 
     if !ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
         infcx.dcx().span_delayed_bug(
@@ -185,12 +187,13 @@ fn fulfill_implication<'tcx>(
     // Now check that the source trait ref satisfies all the where clauses of the target impl.
     // This is not just for correctness; we also need this to constrain any params that may
     // only be referenced via projection predicates.
-    let predicates = ocx.normalize(
-        cause,
+    let predicates = infcx.tcx.predicates_of(target_impl).instantiate(infcx.tcx, target_args);
+    let obligations = predicates_for_generics(
+        |_, _| cause.clone(),
+        |pred| ocx.normalize(cause, param_env, pred),
         param_env,
-        infcx.tcx.predicates_of(target_impl).instantiate(infcx.tcx, target_args),
+        predicates,
     );
-    let obligations = predicates_for_generics(|_, _| cause.clone(), param_env, predicates);
     ocx.register_obligations(obligations);
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
@@ -315,12 +318,14 @@ pub(super) fn specializes(
     // Now check that the source trait ref satisfies all the where clauses of the target impl.
     // This is not just for correctness; we also need this to constrain any params that may
     // only be referenced via projection predicates.
-    let predicates = ocx.normalize(
-        cause,
+    let predicates =
+        infcx.tcx.predicates_of(parent_impl_def_id).instantiate(infcx.tcx, parent_args);
+    let obligations = predicates_for_generics(
+        |_, _| cause.clone(),
+        |pred| ocx.normalize(cause, param_env, pred),
         param_env,
-        infcx.tcx.predicates_of(parent_impl_def_id).instantiate(infcx.tcx, parent_args),
+        predicates,
     );
-    let obligations = predicates_for_generics(|_, _| cause.clone(), param_env, predicates);
     ocx.register_obligations(obligations);
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
@@ -345,11 +350,11 @@ pub(super) fn specializes(
             return false;
         }
 
-        let const_conditions = ocx.normalize(
-            cause,
-            param_env,
-            infcx.tcx.const_conditions(parent_impl_def_id).instantiate(infcx.tcx, parent_args),
-        );
+        let const_conditions =
+            infcx.tcx.const_conditions(parent_impl_def_id).instantiate(infcx.tcx, parent_args);
+        let const_conditions = const_conditions
+            .into_iter()
+            .map(|(trait_ref, span)| (ocx.normalize(cause, param_env, trait_ref), span));
         ocx.register_obligations(const_conditions.into_iter().map(|(trait_ref, _)| {
             Obligation::new(
                 infcx.tcx,
@@ -563,7 +568,7 @@ fn report_conflicting_impls<'tcx>(
     match used_to_be_allowed {
         None => {
             let reported = if overlap.with_impl.is_local()
-                || tcx.ensure_ok().orphan_check_impl(impl_def_id).is_ok()
+                || tcx.ensure_result().orphan_check_impl(impl_def_id).is_ok()
             {
                 let mut err = tcx.dcx().struct_span_err(impl_span, msg());
                 err.code(E0119);
@@ -578,10 +583,15 @@ fn report_conflicting_impls<'tcx>(
             let lint = match kind {
                 FutureCompatOverlapErrorKind::LeakCheck => COHERENCE_LEAK_CHECK,
             };
-            tcx.node_span_lint(lint, tcx.local_def_id_to_hir_id(impl_def_id), impl_span, |err| {
-                err.primary_message(msg());
-                decorate(tcx, &overlap, impl_span, err);
-            });
+            tcx.emit_node_span_lint(
+                lint,
+                tcx.local_def_id_to_hir_id(impl_def_id),
+                impl_span,
+                rustc_errors::DiagDecorator(|err| {
+                    err.primary_message(msg());
+                    decorate(tcx, &overlap, impl_span, err);
+                }),
+            );
             Ok(())
         }
     }

@@ -4,7 +4,7 @@
 use std::mem;
 use std::sync::Arc;
 
-use rustc_ast::{self as ast, Crate, DUMMY_NODE_ID, NodeId};
+use rustc_ast::{self as ast, Crate, DelegationSuffixes, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::AttributeParser;
 use rustc_errors::{Applicability, DiagCtxtHandle, StashKey};
@@ -16,9 +16,8 @@ use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{
     AstFragment, AstFragmentKind, Invocation, InvocationKind, SupportsMacroExpansion,
 };
-use rustc_feature::Features;
 use rustc_hir::attrs::{AttributeKind, CfgEntry, StrippedCfgItem};
-use rustc_hir::def::{self, DefKind, MacroKinds, Namespace, NonMacroAttrKind};
+use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::{Attribute, StabilityLevel};
 use rustc_middle::middle::stability;
@@ -35,6 +34,7 @@ use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroK
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 
 use crate::Namespace::*;
+use crate::def_collector::collect_definitions;
 use crate::errors::{
     self, AddAsNonDerive, CannotDetermineMacroResolution, CannotFindIdentInThisScope,
     MacroExpectedFound, RemoveSurroundingDerive,
@@ -43,11 +43,9 @@ use crate::hygiene::Macros20NormalizedSyntaxContext;
 use crate::imports::Import;
 use crate::{
     BindingKey, CacheCell, CmResolver, Decl, DeclKind, DeriveData, Determinacy, Finalize, IdentKey,
-    InvocationParent, MacroData, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult,
+    InvocationParent, MacroData, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, Res,
     ResolutionError, Resolver, ScopeSet, Segment, Used,
 };
-
-type Res = def::Res<NodeId>;
 
 /// Name declaration produced by a `macro_rules` item definition.
 /// Not modularized, can shadow previous `macro_rules` definitions, etc.
@@ -125,26 +123,18 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
 
 pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
     let (_, pre_configured_attrs) = &*tcx.crate_for_resolver(()).borrow();
-    registered_tools_ast(tcx.dcx(), pre_configured_attrs, tcx.sess, tcx.features())
+    registered_tools_ast(tcx.dcx(), pre_configured_attrs, tcx.sess)
 }
 
 pub fn registered_tools_ast(
     dcx: DiagCtxtHandle<'_>,
     pre_configured_attrs: &[ast::Attribute],
     sess: &Session,
-    features: &Features,
 ) -> RegisteredTools {
     let mut registered_tools = RegisteredTools::default();
 
     if let Some(Attribute::Parsed(AttributeKind::RegisterTool(tools, _))) =
-        AttributeParser::parse_limited(
-            sess,
-            pre_configured_attrs,
-            sym::register_tool,
-            DUMMY_SP,
-            DUMMY_NODE_ID,
-            Some(features),
-        )
+        AttributeParser::parse_limited(sess, pre_configured_attrs, &[sym::register_tool])
     {
         for tool in tools {
             if let Some(old_tool) = registered_tools.replace(tool) {
@@ -200,7 +190,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         // Integrate the new AST fragment into all the definition and module structures.
         // We are inside the `expansion` now, but other parent scope components are still the same.
         let parent_scope = ParentScope { expansion, ..self.invocation_parent_scopes[&expansion] };
-        let output_macro_rules_scope = self.build_reduced_graph(fragment, parent_scope);
+        let output_macro_rules_scope = collect_definitions(self, fragment, parent_scope);
         self.output_macro_rules_scopes.insert(expansion, output_macro_rules_scope);
 
         parent_scope.module.unexpanded_invocations.borrow_mut(self).remove(&expansion);
@@ -242,8 +232,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             )
         });
 
-        let parent_scope =
-            parent_module.map_or(self.empty_module, |def_id| self.expect_module(def_id));
+        let parent_scope = parent_module
+            .map_or(self.empty_module, |def_id| self.expect_module(def_id).expect_local());
         self.ast_transform_scopes.insert(expn_id, parent_scope);
 
         expn_id
@@ -286,7 +276,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             InvocationKind::Derive { ref path, .. } => (path, MacroKind::Derive),
             InvocationKind::GlobDelegation { ref item, .. } => {
                 let ast::AssocItemKind::DelegationMac(deleg) = &item.kind else { unreachable!() };
-                deleg_impl = Some(self.invocation_parent(invoc_id));
+                let DelegationSuffixes::Glob(star_span) = deleg.suffixes else { unreachable!() };
+                deleg_impl = Some((self.invocation_parent(invoc_id), star_span));
                 // It is sufficient to consider glob delegation a bang macro for now.
                 (&deleg.prefix, MacroKind::Bang)
             }
@@ -512,7 +503,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         cfg_span: Span,
     ) {
         self.stripped_cfg_items.push(StrippedCfgItem {
-            parent_module: parent_node,
+            parent_scope: parent_node,
             ident,
             cfg: (cfg, cfg_span),
         });
@@ -530,6 +521,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         &self,
         trait_def_id: DefId,
         impl_def_id: LocalDefId,
+        star_span: Span,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate> {
         let target_trait = self.expect_module(trait_def_id);
         if !target_trait.unexpanded_invocations.borrow().is_empty() {
@@ -549,13 +541,13 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
 
         let mut idents = Vec::new();
         target_trait.for_each_child(self, |this, ident, orig_ident_span, ns, _binding| {
-            // FIXME: Adjust hygiene for idents from globs, like for glob imports.
             if let Some(overriding_keys) = this.impl_binding_keys.get(&impl_def_id)
                 && overriding_keys.contains(&BindingKey::new(ident, ns))
             {
                 // The name is overridden, do not produce it from the glob delegation.
             } else {
-                idents.push((ident.orig(orig_ident_span), None));
+                // FIXME: Adjust hygiene for idents from globs, like for glob imports.
+                idents.push((ident.orig(star_span.with_ctxt(orig_ident_span.ctxt())), None));
             }
         });
         Ok(idents)
@@ -579,7 +571,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         node_id: NodeId,
         force: bool,
-        deleg_impl: Option<LocalDefId>,
+        deleg_impl: Option<(LocalDefId, Span)>,
         invoc_in_mod_inert_attr: Option<LocalDefId>,
         suggestion_span: Option<Span>,
     ) -> Result<(Arc<SyntaxExtension>, Res), Indeterminate> {
@@ -618,14 +610,20 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Report errors for the resolved macro.
-        for segment in &path.segments {
+        for (idx, segment) in path.segments.iter().enumerate() {
             if let Some(args) = &segment.args {
                 self.dcx().emit_err(errors::GenericArgumentsInMacroPath { span: args.span() });
             }
             if kind == MacroKind::Attr && segment.ident.as_str().starts_with("rustc") {
-                self.dcx().emit_err(errors::AttributesStartingWithRustcAreReserved {
-                    span: segment.ident.span,
-                });
+                if idx == 0 {
+                    self.dcx().emit_err(errors::AttributesStartingWithRustcAreReserved {
+                        span: segment.ident.span,
+                    });
+                } else {
+                    self.dcx().emit_err(errors::AttributesContainingRustcAreReserved {
+                        span: segment.ident.span,
+                    });
+                }
             }
         }
 
@@ -706,24 +704,55 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
         }
 
-        const DIAG_ATTRS: &[Symbol] =
-            &[sym::on_unimplemented, sym::do_not_recommend, sym::on_const];
+        const DIAGNOSTIC_ATTRIBUTES: &[(Symbol, Option<Symbol>)] = &[
+            (sym::on_unimplemented, None),
+            (sym::do_not_recommend, None),
+            (sym::on_move, Some(sym::diagnostic_on_move)),
+            (sym::on_const, Some(sym::diagnostic_on_const)),
+            (sym::on_unknown, Some(sym::diagnostic_on_unknown)),
+        ];
 
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
             && let [namespace, attribute, ..] = &*path.segments
             && namespace.ident.name == sym::diagnostic
-            && !DIAG_ATTRS.contains(&attribute.ident.name)
+            && !DIAGNOSTIC_ATTRIBUTES.iter().any(|(attr, feature)| {
+                attribute.ident.name == *attr
+                    && feature.is_none_or(|f| self.tcx.features().enabled(f))
+            })
         {
+            let name = attribute.ident.name;
             let span = attribute.span();
 
-            let typo = find_best_match_for_name(DIAG_ATTRS, attribute.ident.name, Some(5))
-                .map(|typo_name| errors::UnknownDiagnosticAttributeTypoSugg { span, typo_name });
+            let help = 'help: {
+                if self.tcx.sess.is_nightly_build() {
+                    for (attr, feature) in DIAGNOSTIC_ATTRIBUTES {
+                        if let Some(feature) = *feature
+                            && *attr == name
+                        {
+                            break 'help Some(errors::UnknownDiagnosticAttributeHelp::UseFeature {
+                                feature,
+                            });
+                        }
+                    }
+                }
+
+                let candidates = DIAGNOSTIC_ATTRIBUTES
+                    .iter()
+                    .filter_map(|(attr, feature)| {
+                        feature.is_none_or(|f| self.tcx.features().enabled(f)).then_some(*attr)
+                    })
+                    .collect::<Vec<_>>();
+
+                find_best_match_for_name(&candidates, name, None).map(|typo_name| {
+                    errors::UnknownDiagnosticAttributeHelp::Typo { span, typo_name }
+                })
+            };
 
             self.tcx.sess.psess.buffer_lint(
                 UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
                 span,
                 node_id,
-                errors::UnknownDiagnosticAttribute { typo },
+                errors::UnknownDiagnosticAttribute { help },
             );
         }
 
@@ -755,7 +784,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         kind: MacroKind,
         parent_scope: &ParentScope<'ra>,
         force: bool,
-        deleg_impl: Option<LocalDefId>,
+        deleg_impl: Option<(LocalDefId, Span)>,
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
         ignore_import: Option<Import<'ra>>,
         suggestion_span: Option<Span>,
@@ -840,10 +869,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let res = res?;
         let ext = match deleg_impl {
-            Some(impl_def_id) => match res {
-                def::Res::Def(DefKind::Trait, def_id) => {
+            Some((impl_def_id, star_span)) => match res {
+                Res::Def(DefKind::Trait, def_id) => {
                     let edition = self.tcx.sess.edition();
-                    Some(Arc::new(SyntaxExtension::glob_delegation(def_id, impl_def_id, edition)))
+                    Some(Arc::new(SyntaxExtension::glob_delegation(
+                        def_id,
+                        impl_def_id,
+                        star_span,
+                        edition,
+                    )))
                 }
                 _ => None,
             },
@@ -1064,8 +1098,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) {
         let span = path.span;
         if let Some(stability) = &ext.stability
-            && let StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. } =
-                stability.level
+            && let StabilityLevel::Unstable { reason, issue, implied_by, .. } = stability.level
         {
             let feature = stability.feature;
 
@@ -1073,25 +1106,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 |feature| self.tcx.features().enabled(feature) || span.allows_unstable(feature);
             let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
             if !is_allowed(feature) && !allowed_by_implication {
-                let lint_buffer = &mut self.lint_buffer;
-                let soft_handler = |lint, span, msg: String| {
-                    lint_buffer.buffer_lint(
-                        lint,
-                        node_id,
-                        span,
-                        // FIXME make this translatable
-                        errors::UnstableFeature { msg: msg.into() },
-                    )
-                };
                 stability::report_unstable(
                     self.tcx.sess,
                     feature,
                     reason.to_opt_reason(),
                     issue,
                     None,
-                    is_soft,
                     span,
-                    soft_handler,
                     stability::UnstableKind::Regular,
                 );
             }

@@ -18,6 +18,7 @@ use std::marker::PhantomData;
 
 use rustc_feature::{AttributeTemplate, template};
 use rustc_hir::attrs::AttributeKind;
+use rustc_span::edition::Edition;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
 
@@ -97,6 +98,7 @@ pub(crate) trait AttributeParser<S: Stage>: Default + 'static {
     /// If an attribute has this symbol, the `accept` function will be called on it.
     const ATTRIBUTES: AcceptMapping<Self, S>;
     const ALLOWED_TARGETS: AllowedTargets;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
 
     /// The parser has gotten a chance to accept the attributes on an item,
     /// here it can produce an attribute.
@@ -124,15 +126,10 @@ pub(crate) trait SingleAttributeParser<S: Stage>: 'static {
     /// If you need the parser to accept more than one path, use [`AttributeParser`] instead
     const PATH: &[Symbol];
 
-    /// Configures the precedence of attributes with the same `PATH` on a syntax node.
-    const ATTRIBUTE_ORDER: AttributeOrder;
-
     /// Configures what to do when when the same attribute is
     /// applied more than once on the same syntax node.
-    ///
-    /// [`ATTRIBUTE_ORDER`](Self::ATTRIBUTE_ORDER) specified which one is assumed to be correct,
-    /// and this specified whether to, for example, warn or error on the other one.
-    const ON_DUPLICATE: OnDuplicate<S>;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
 
     const ALLOWED_TARGETS: AllowedTargets;
 
@@ -162,28 +159,16 @@ impl<T: SingleAttributeParser<S>, S: Stage> AttributeParser<S> for Single<T, S> 
         <T as SingleAttributeParser<S>>::TEMPLATE,
         |group: &mut Single<T, S>, cx, args| {
             if let Some(pa) = T::convert(cx, args) {
-                match T::ATTRIBUTE_ORDER {
-                    // keep the first and report immediately. ignore this attribute
-                    AttributeOrder::KeepInnermost => {
-                        if let Some((_, unused)) = group.1 {
-                            T::ON_DUPLICATE.exec::<T>(cx, cx.attr_span, unused);
-                            return;
-                        }
-                    }
-                    // keep the new one and warn about the previous,
-                    // then replace
-                    AttributeOrder::KeepOutermost => {
-                        if let Some((_, used)) = group.1 {
-                            T::ON_DUPLICATE.exec::<T>(cx, used, cx.attr_span);
-                        }
-                    }
+                if let Some((_, used)) = group.1 {
+                    T::ON_DUPLICATE.exec::<T>(cx, used, cx.attr_span);
+                } else {
+                    group.1 = Some((pa, cx.attr_span));
                 }
-
-                group.1 = Some((pa, cx.attr_span));
             }
         },
     )];
     const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
+    const SAFETY: AttributeSafety = T::SAFETY;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         Some(self.1?.0)
@@ -206,7 +191,7 @@ pub(crate) enum OnDuplicate<S: Stage> {
     /// Custom function called when a duplicate attribute is found.
     ///
     /// - `unused` is the span of the attribute that was unused or bad because of some
-    ///   duplicate reason (see [`AttributeOrder`])
+    ///   duplicate reason
     /// - `used` is the span of the attribute that was used in favor of the unused attribute
     Custom(fn(cx: &AcceptContext<'_, '_, S>, used: Span, unused: Span)),
 }
@@ -223,8 +208,8 @@ impl<S: Stage> OnDuplicate<S> {
             OnDuplicate::WarnButFutureError => cx.warn_unused_duplicate_future_error(used, unused),
             OnDuplicate::Error => {
                 cx.emit_err(UnusedMultiple {
-                    this: used,
-                    other: unused,
+                    this: unused,
+                    other: used,
                     name: Symbol::intern(
                         &P::PATH.into_iter().map(|i| i.to_string()).collect::<Vec<_>>().join(".."),
                     ),
@@ -236,28 +221,16 @@ impl<S: Stage> OnDuplicate<S> {
     }
 }
 
-pub(crate) enum AttributeOrder {
-    /// Duplicates after the innermost instance of the attribute will be an error/warning.
-    /// Only keep the lowest attribute.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum AttributeSafety {
+    /// Normal attribute that does not need `#[unsafe(...)]`
+    Normal,
+    /// Unsafe attribute that requires safety obligations to be discharged.
     ///
-    /// Attributes are processed from bottom to top, so this raises a warning/error on all the attributes
-    /// further above the lowest one:
-    /// ```
-    /// #[stable(since="1.0")] //~ WARNING duplicated attribute
-    /// #[stable(since="2.0")]
-    /// ```
-    KeepInnermost,
-
-    /// Duplicates before the outermost instance of the attribute will be an error/warning.
-    /// Only keep the highest attribute.
-    ///
-    /// Attributes are processed from bottom to top, so this raises a warning/error on all the attributes
-    /// below the highest one:
-    /// ```
-    /// #[path="foo.rs"]
-    /// #[path="bar.rs"] //~ WARNING duplicated attribute
-    /// ```
-    KeepOutermost,
+    /// An error is emitted when `#[unsafe(...)]` is omitted, except when the attribute's edition
+    /// is less than the one stored in `unsafe_since`. This handles attributes that were safe in
+    /// earlier editions, but become unsafe in later ones.
+    Unsafe { unsafe_since: Option<Edition> },
 }
 
 /// An even simpler version of [`SingleAttributeParser`]:
@@ -267,8 +240,9 @@ pub(crate) enum AttributeOrder {
 //
 pub(crate) trait NoArgsAttributeParser<S: Stage>: 'static {
     const PATH: &[Symbol];
-    const ON_DUPLICATE: OnDuplicate<S>;
+    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
 
     /// Create the [`AttributeKind`] given attribute's [`Span`].
     const CREATE: fn(Span) -> AttributeKind;
@@ -284,14 +258,14 @@ impl<T: NoArgsAttributeParser<S>, S: Stage> Default for WithoutArgs<T, S> {
 
 impl<T: NoArgsAttributeParser<S>, S: Stage> SingleAttributeParser<S> for WithoutArgs<T, S> {
     const PATH: &[Symbol] = T::PATH;
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = T::ON_DUPLICATE;
+    const SAFETY: AttributeSafety = T::SAFETY;
     const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
     const TEMPLATE: AttributeTemplate = template!(Word);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         if let Err(span) = args.no_args() {
-            cx.expected_no_args(span);
+            cx.adcx().expected_no_args(span);
         }
         Some(T::CREATE(cx.attr_span))
     }
@@ -315,6 +289,7 @@ pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
     /// For example, individual representations from `#[repr(...)]` attributes into an `AttributeKind::Repr(x)`,
     ///  where `x` is a vec of these individual reprs.
     const CONVERT: ConvertFn<Self::Item>;
+    const SAFETY: AttributeSafety = AttributeSafety::Normal;
 
     const ALLOWED_TARGETS: AllowedTargets;
 
@@ -356,6 +331,7 @@ impl<T: CombineAttributeParser<S>, S: Stage> AttributeParser<S> for Combine<T, S
             group.items.extend(T::extend(cx, args))
         })];
     const ALLOWED_TARGETS: AllowedTargets = T::ALLOWED_TARGETS;
+    const SAFETY: AttributeSafety = T::SAFETY;
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_, S>) -> Option<AttributeKind> {
         if let Some(first_span) = self.first_span {

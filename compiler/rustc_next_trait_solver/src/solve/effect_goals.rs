@@ -6,7 +6,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::SolverTraitLangItem;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::solve::{AliasBoundKind, SizedTraitKind};
-use rustc_type_ir::{self as ty, Interner, TypingMode, elaborate};
+use rustc_type_ir::{self as ty, Interner, TypingMode, Unnormalized, elaborate};
 use tracing::instrument;
 
 use super::assembly::{Candidate, structural_traits};
@@ -84,15 +84,17 @@ where
         let cx = ecx.cx();
         let mut candidates = vec![];
 
-        if !ecx.cx().alias_has_const_conditions(alias_ty.def_id) {
+        if !ecx.cx().alias_has_const_conditions(alias_ty.kind.def_id()) {
             return vec![];
         }
 
         for clause in elaborate::elaborate(
             cx,
-            cx.explicit_implied_const_bounds(alias_ty.def_id)
+            cx.explicit_implied_const_bounds(alias_ty.kind.def_id())
                 .iter_instantiated(cx, alias_ty.args)
-                .map(|trait_ref| trait_ref.to_host_effect_clause(cx, goal.predicate.constness)),
+                .map(|trait_ref| {
+                    trait_ref.to_host_effect_clause(cx, goal.predicate.constness).skip_norm_wip()
+                }),
         ) {
             candidates.extend(Self::probe_and_match_goal_against_assumption(
                 ecx,
@@ -103,12 +105,14 @@ where
                     // Const conditions must hold for the implied const bound to hold.
                     ecx.add_goals(
                         GoalSource::AliasBoundConstCondition,
-                        cx.const_conditions(alias_ty.def_id)
+                        cx.const_conditions(alias_ty.kind.def_id())
                             .iter_instantiated(cx, alias_ty.args)
                             .map(|trait_ref| {
                                 goal.with(
                                     cx,
-                                    trait_ref.to_host_effect_clause(cx, goal.predicate.constness),
+                                    trait_ref
+                                        .to_host_effect_clause(cx, goal.predicate.constness)
+                                        .skip_norm_wip(),
                                 )
                             }),
                     );
@@ -155,12 +159,13 @@ where
         ecx.probe_trait_candidate(CandidateSource::Impl(impl_def_id)).enter(|ecx| {
             let impl_args = ecx.fresh_args_for_item(impl_def_id.into());
             ecx.record_impl_args(impl_args);
-            let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args);
+            let impl_trait_ref = impl_trait_ref.instantiate(cx, impl_args).skip_norm_wip();
 
             ecx.eq(goal.param_env, goal.predicate.trait_ref, impl_trait_ref)?;
             let where_clause_bounds = cx
                 .predicates_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
+                .map(Unnormalized::skip_norm_wip)
                 .map(|pred| goal.with(cx, pred));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
 
@@ -171,7 +176,9 @@ where
                 .map(|bound_trait_ref| {
                     goal.with(
                         cx,
-                        bound_trait_ref.to_host_effect_clause(cx, goal.predicate.constness),
+                        bound_trait_ref
+                            .to_host_effect_clause(cx, goal.predicate.constness)
+                            .skip_norm_wip(),
                     )
                 });
             ecx.add_goals(GoalSource::ImplWhereBound, const_conditions);
@@ -206,6 +213,7 @@ where
             let where_clause_bounds = cx
                 .predicates_of(goal.predicate.def_id().into())
                 .iter_instantiated(cx, goal.predicate.trait_ref.args)
+                .map(Unnormalized::skip_norm_wip)
                 .map(|p| goal.with(cx, p));
 
             let const_conditions = cx
@@ -214,7 +222,9 @@ where
                 .map(|bound_trait_ref| {
                     goal.with(
                         cx,
-                        bound_trait_ref.to_host_effect_clause(cx, goal.predicate.constness),
+                        bound_trait_ref
+                            .to_host_effect_clause(cx, goal.predicate.constness)
+                            .skip_norm_wip(),
                     )
                 });
             // While you could think of trait aliases to have a single builtin impl
@@ -272,6 +282,7 @@ where
         todo!("Fn* are not yet const")
     }
 
+    #[instrument(level = "trace", skip_all, ret)]
     fn consider_builtin_fn_trait_candidates(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -289,12 +300,17 @@ where
         let output_is_sized_pred =
             ty::TraitRef::new(cx, cx.require_trait_lang_item(SolverTraitLangItem::Sized), [output]);
         let requirements = cx
-            .const_conditions(def_id.into())
+            .const_conditions(def_id)
             .iter_instantiated(cx, args)
             .map(|trait_ref| {
                 (
                     GoalSource::ImplWhereBound,
-                    goal.with(cx, trait_ref.to_host_effect_clause(cx, goal.predicate.constness)),
+                    goal.with(
+                        cx,
+                        trait_ref
+                            .to_host_effect_clause(cx, goal.predicate.constness)
+                            .skip_norm_wip(),
+                    ),
                 )
             })
             .chain([(GoalSource::ImplWhereBound, goal.with(cx, output_is_sized_pred))]);
@@ -429,6 +445,13 @@ where
         _goal: Goal<I, Self>,
     ) -> Vec<Candidate<I>> {
         unreachable!("Unsize is not const")
+    }
+
+    fn consider_builtin_field_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<<D as SolverDelegate>::Interner, Self>,
+    ) -> Result<Candidate<<D as SolverDelegate>::Interner>, NoSolution> {
+        unreachable!("Field is not const")
     }
 }
 

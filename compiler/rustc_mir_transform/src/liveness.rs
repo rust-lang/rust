@@ -67,7 +67,7 @@ pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Den
     }
 
     // Don't run unused pass for #[derive]
-    let parent = tcx.parent(tcx.typeck_root_def_id(def_id.to_def_id()));
+    let parent = tcx.local_parent(tcx.typeck_root_def_id_local(def_id));
     if let DefKind::Impl { of_trait: true } = tcx.def_kind(parent)
         && find_attr!(tcx, parent, AutomaticallyDerived(..))
     {
@@ -201,8 +201,8 @@ fn maybe_suggest_unit_pattern_typo<'tcx>(
     let constants = tcx
         .hir_body_owners()
         .filter(|&def_id| {
-            matches!(tcx.def_kind(def_id), DefKind::Const)
-                && tcx.type_of(def_id).instantiate_identity() == ty
+            matches!(tcx.def_kind(def_id), DefKind::Const { .. })
+                && tcx.type_of(def_id).instantiate_identity().skip_norm_wip() == ty
                 && tcx.visibility(def_id).is_accessible_from(body_def_id, tcx)
         })
         .collect::<Vec<_>>();
@@ -242,7 +242,7 @@ fn maybe_drop_guard<'tcx>(
                 | ty::Dynamic(..)
                 | ty::Array(..)
                 | ty::Slice(..)
-                | ty::Alias(ty::Opaque, ..)
+                | ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. })
         ) && ty.needs_drop(tcx, typing_env)
     } else {
         false
@@ -1094,28 +1094,48 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                 self.body,
             );
 
-            // We probed MIR in reverse order for dataflow.
-            // We revert the vector to give a consistent order to the user.
-            for (source_info, Access { live, kind, is_direct }) in statements.into_iter().rev() {
+            // By convention, underscore-prefixed bindings are allowed to be unused explicitly.
+            if name.as_str().starts_with('_') {
+                continue;
+            }
+
+            let mut next_direct_assign = None;
+            let mut dead_statements = Vec::with_capacity(statements.len());
+
+            for (source_info, Access { live, kind, is_direct }) in statements.into_iter() {
+                let overwrite = match (kind, is_direct, next_direct_assign) {
+                    (AccessKind::Assign, true, Some(overwrite_span)) => {
+                        Some(errors::UnusedAssignOverwrite {
+                            assigned_span: source_info.span,
+                            overwrite_span,
+                            name,
+                        })
+                    }
+                    _ => None,
+                };
+
+                if kind == AccessKind::Assign && is_direct {
+                    next_direct_assign = Some(source_info.span);
+                }
+
                 if live {
                     continue;
                 }
-
                 // If this place was dropped and has non-trivial drop,
                 // skip reporting field assignments.
                 if !is_direct && is_maybe_drop_guard {
                     continue;
                 }
+                dead_statements.push((source_info, kind, is_direct, overwrite));
+            }
 
+            // We probed MIR in reverse order for dataflow.
+            // Emit diagnostics in source order instead.
+            for (source_info, kind, is_direct, overwrite) in dead_statements.into_iter().rev() {
                 // Report the dead assignment.
                 let Some(hir_id) = source_info.scope.lint_root(&self.body.source_scopes) else {
                     continue;
                 };
-
-                // By convention, underscore-prefixed bindings are allowed to be unused explicitly
-                if name.as_str().starts_with('_') {
-                    break;
-                }
 
                 match kind {
                     AccessKind::Assign => {
@@ -1126,11 +1146,14 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                             source_info.span,
                             self.body,
                         );
+                        let overwrite =
+                            if suggestion.is_none() && is_direct { overwrite } else { None };
+                        let help = suggestion.is_none() && overwrite.is_none();
                         tcx.emit_node_span_lint(
                             lint::builtin::UNUSED_ASSIGNMENTS,
                             hir_id,
                             source_info.span,
-                            errors::UnusedAssign { name, help: suggestion.is_none(), suggestion },
+                            errors::UnusedAssign { name, overwrite, help, suggestion },
                         )
                     }
                     AccessKind::Param => tcx.emit_node_span_lint(

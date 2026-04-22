@@ -5,8 +5,7 @@ use rustc_ast::{
     self as ast, AnonConst, AttrItem, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind,
     MgcaDisambiguation, PatKind, UnOp, attr, token, tokenstream,
 };
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Spanned, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::base::ExtCtxt;
@@ -316,7 +315,7 @@ impl<'a> ExtCtxt<'a> {
         self.expr_path(self.path_ident(span, id))
     }
     pub fn expr_self(&self, span: Span) -> Box<ast::Expr> {
-        self.expr_ident(span, Ident::with_dummy_span(kw::SelfLower))
+        self.expr_ident(span, Ident::new(kw::SelfLower, span))
     }
 
     pub fn expr_macro_call(&self, span: Span, call: Box<ast::MacCall>) -> Box<ast::Expr> {
@@ -716,6 +715,7 @@ impl<'a> ExtCtxt<'a> {
                     mutability,
                     expr: Some(expr),
                     define_opaque: None,
+                    eii_impls: Default::default(),
                 }
                 .into(),
             ),

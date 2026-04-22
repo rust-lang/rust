@@ -1,5 +1,5 @@
 use rustc_abi as abi;
-use rustc_middle::mir::interpret::{ConstAllocation, Scalar};
+use rustc_middle::mir::interpret::Scalar;
 
 use super::BackendTypes;
 
@@ -20,6 +20,7 @@ pub trait ConstCodegenMethods: BackendTypes {
     fn const_i8(&self, i: i8) -> Self::Value;
     fn const_i16(&self, i: i16) -> Self::Value;
     fn const_i32(&self, i: i32) -> Self::Value;
+    fn const_i64(&self, i: i64) -> Self::Value;
     fn const_int(&self, t: Self::Type, i: i64) -> Self::Value;
     fn const_u8(&self, i: u8) -> Self::Value;
     fn const_u32(&self, i: u32) -> Self::Value;
@@ -36,8 +37,6 @@ pub trait ConstCodegenMethods: BackendTypes {
 
     fn const_to_opt_uint(&self, v: Self::Value) -> Option<u64>;
     fn const_to_opt_u128(&self, v: Self::Value, sign_ext: bool) -> Option<u128>;
-
-    fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value;
 
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: Self::Type) -> Self::Value;
 

@@ -40,6 +40,8 @@ declare_clippy_lint! {
     "unused type parameters in function definitions"
 }
 
+impl_lint_pass!(ExtraUnusedTypeParameters => [EXTRA_UNUSED_TYPE_PARAMETERS]);
+
 pub struct ExtraUnusedTypeParameters {
     avoid_breaking_exported_api: bool,
 }
@@ -51,8 +53,6 @@ impl ExtraUnusedTypeParameters {
         }
     }
 }
-
-impl_lint_pass!(ExtraUnusedTypeParameters => [EXTRA_UNUSED_TYPE_PARAMETERS]);
 
 /// A visitor struct that walks a given function and gathers generic type parameters, plus any
 /// trait bounds those parameters have.

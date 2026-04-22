@@ -556,7 +556,7 @@ impl<T> Vec<T> {
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
     ///   allocated and deallocated with the same layout.)
-    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes), if
+    /// * The size of `T` times the `capacity` (i.e. the allocated size in bytes), if
     ///   nonzero, needs to be the same size as the pointer was allocated with.
     ///   (Because similar to alignment, [`dealloc`] must be called with the same
     ///   layout `size`.)
@@ -640,7 +640,8 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Self {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const unsafe fn from_raw_parts(ptr: *mut T, length: usize, capacity: usize) -> Self {
         unsafe { Self::from_raw_parts_in(ptr, length, capacity, Global) }
     }
 
@@ -658,7 +659,7 @@ impl<T> Vec<T> {
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
     ///   allocated and deallocated with the same layout.)
-    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes) needs
+    /// * The size of `T` times the `capacity` (i.e. the allocated size in bytes) needs
     ///   to be the same size as the pointer was allocated with. (Because similar to
     ///   alignment, [`dealloc`] must be called with the same layout `size`.)
     /// * `length` needs to be less than or equal to `capacity`.
@@ -742,7 +743,8 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[unstable(feature = "box_vec_non_null", issue = "130364")]
-    pub unsafe fn from_parts(ptr: NonNull<T>, length: usize, capacity: usize) -> Self {
+    #[rustc_const_unstable(feature = "box_vec_non_null", issue = "130364")]
+    pub const unsafe fn from_parts(ptr: NonNull<T>, length: usize, capacity: usize) -> Self {
         unsafe { Self::from_parts_in(ptr, length, capacity, Global) }
     }
 
@@ -836,7 +838,8 @@ impl<T> Vec<T> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "vec_into_raw_parts", since = "1.93.0")]
-    pub fn into_raw_parts(self) -> (*mut T, usize, usize) {
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
+    pub const fn into_raw_parts(self) -> (*mut T, usize, usize) {
         let mut me = ManuallyDrop::new(self);
         (me.as_mut_ptr(), me.len(), me.capacity())
     }
@@ -877,7 +880,8 @@ impl<T> Vec<T> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "box_vec_non_null", issue = "130364")]
-    pub fn into_parts(self) -> (NonNull<T>, usize, usize) {
+    #[rustc_const_unstable(feature = "box_vec_non_null", issue = "130364")]
+    pub const fn into_parts(self) -> (NonNull<T>, usize, usize) {
         let (ptr, len, capacity) = self.into_raw_parts();
         // SAFETY: A `Vec` always has a non-null pointer.
         (unsafe { NonNull::new_unchecked(ptr) }, len, capacity)
@@ -894,9 +898,17 @@ impl<T> Vec<T> {
     where
         T: Freeze,
     {
-        unsafe { core::intrinsics::const_make_global(self.as_mut_ptr().cast()) };
-        let me = ManuallyDrop::new(self);
-        unsafe { slice::from_raw_parts(me.as_ptr(), me.len) }
+        // `const_make_global` requires the pointer to point to the beginning of a heap allocation,
+        // which is not the case when `self.capacity()` is 0, or if `T::IS_ZST`,
+        // which is why we instead return a new slice in this case.
+        if self.capacity() == 0 || T::IS_ZST {
+            let me = ManuallyDrop::new(self);
+            unsafe { slice::from_raw_parts(NonNull::<T>::dangling().as_ptr(), me.len) }
+        } else {
+            unsafe { core::intrinsics::const_make_global(self.as_mut_ptr().cast()) };
+            let me = ManuallyDrop::new(self);
+            unsafe { slice::from_raw_parts(me.as_ptr(), me.len) }
+        }
     }
 }
 
@@ -1018,7 +1030,7 @@ const impl<T, A: [const] Allocator + [const] Destruct> Vec<T, A> {
     /// vector's elements to a larger allocation. This expensive operation is
     /// offset by the *capacity* *O*(1) insertions it allows.
     #[inline]
-    #[stable(feature = "push_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "push_mut", since = "1.95.0")]
     #[must_use = "if you don't need a reference to the value, use `Vec::push` instead"]
     pub fn push_mut(&mut self, value: T) -> &mut T {
         // Inform codegen that the length does not change across grow_one().
@@ -1050,8 +1062,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// use std::alloc::System;
     ///
-    /// # #[allow(unused_mut)]
-    /// let mut vec: Vec<i32, _> = Vec::new_in(System);
+    /// let vec: Vec<i32, System> = Vec::new_in(System);
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
@@ -1090,7 +1101,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
     ///   allocated and deallocated with the same layout.)
-    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes) needs
+    /// * The size of `T` times the `capacity` (i.e. the allocated size in bytes) needs
     ///   to be the same size as the pointer was allocated with. (Because similar to
     ///   alignment, [`dealloc`] must be called with the same layout `size`.)
     /// * `length` needs to be less than or equal to `capacity`.
@@ -1178,7 +1189,13 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub unsafe fn from_raw_parts_in(ptr: *mut T, length: usize, capacity: usize, alloc: A) -> Self {
+    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    pub const unsafe fn from_raw_parts_in(
+        ptr: *mut T,
+        length: usize,
+        capacity: usize,
+        alloc: A,
+    ) -> Self {
         ub_checks::assert_unsafe_precondition!(
             check_library_ub,
             "Vec::from_raw_parts_in requires that length <= capacity",
@@ -1201,7 +1218,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///   (`T` having a less strict alignment is not sufficient, the alignment really
     ///   needs to be equal to satisfy the [`dealloc`] requirement that memory must be
     ///   allocated and deallocated with the same layout.)
-    /// * The size of `T` times the `capacity` (ie. the allocated size in bytes) needs
+    /// * The size of `T` times the `capacity` (i.e. the allocated size in bytes) needs
     ///   to be the same size as the pointer was allocated with. (Because similar to
     ///   alignment, [`dealloc`] must be called with the same layout `size`.)
     /// * `length` needs to be less than or equal to `capacity`.
@@ -1287,8 +1304,14 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
+    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "box_vec_non_null", issue = "130364")]
-    pub unsafe fn from_parts_in(ptr: NonNull<T>, length: usize, capacity: usize, alloc: A) -> Self {
+    pub const unsafe fn from_parts_in(
+        ptr: NonNull<T>,
+        length: usize,
+        capacity: usize,
+        alloc: A,
+    ) -> Self {
         ub_checks::assert_unsafe_precondition!(
             check_library_ub,
             "Vec::from_parts_in requires that length <= capacity",
@@ -1336,7 +1359,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn into_raw_parts_with_alloc(self) -> (*mut T, usize, usize, A) {
+    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
+    pub const fn into_raw_parts_with_alloc(self) -> (*mut T, usize, usize, A) {
         let mut me = ManuallyDrop::new(self);
         let len = me.len();
         let capacity = me.capacity();
@@ -1385,8 +1409,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[unstable(feature = "allocator_api", issue = "32838")]
+    #[rustc_const_unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "box_vec_non_null", issue = "130364")]
-    pub fn into_parts_with_alloc(self) -> (NonNull<T>, usize, usize, A) {
+    pub const fn into_parts_with_alloc(self) -> (NonNull<T>, usize, usize, A) {
         let (ptr, len, capacity, alloc) = self.into_raw_parts_with_alloc();
         // SAFETY: A `Vec` always has a non-null pointer.
         (unsafe { NonNull::new_unchecked(ptr) }, len, capacity, alloc)
@@ -1835,7 +1860,7 @@ impl<T, A: Allocator> Vec<T, A> {
         // SAFETY: `slice::from_raw_parts_mut` requires pointee is a contiguous, aligned buffer of
         // size `len` containing properly-initialized `T`s. Data must not be accessed through any
         // other pointer for the returned lifetime. Further, `len * size_of::<T>` <=
-        // `ISIZE::MAX` and allocation does not "wrap" through overflowing memory addresses.
+        // `isize::MAX` and allocation does not "wrap" through overflowing memory addresses.
         //
         // * Vec API guarantees that self.buf:
         //      * contains only properly-initialized items within 0..len
@@ -2065,8 +2090,9 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Returns a reference to the underlying allocator.
     #[unstable(feature = "allocator_api", issue = "32838")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[inline]
-    pub fn allocator(&self) -> &A {
+    pub const fn allocator(&self) -> &A {
         self.buf.allocator()
     }
 
@@ -2271,7 +2297,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// the insertion index is 0.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    #[stable(feature = "push_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "push_mut", since = "1.95.0")]
     #[track_caller]
     #[must_use = "if you don't need a reference to the value, use `Vec::insert` instead"]
     pub fn insert_mut(&mut self, index: usize, element: T) -> &mut T {
@@ -3721,7 +3747,8 @@ impl<T: TrivialClone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> ops::Deref for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, A: Allocator> const ops::Deref for Vec<T, A> {
     type Target = [T];
 
     #[inline]
@@ -3731,7 +3758,8 @@ impl<T, A: Allocator> ops::Deref for Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A: Allocator> ops::DerefMut for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+impl<T, A: Allocator> const ops::DerefMut for Vec<T, A> {
     #[inline]
     fn deref_mut(&mut self) -> &mut [T] {
         self.as_mut_slice()
@@ -3796,7 +3824,8 @@ impl<T: Hash, A: Allocator> Hash for Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, I: SliceIndex<[T]>, A: Allocator> Index<I> for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+impl<T, I: [const] SliceIndex<[T]>, A: Allocator> const Index<I> for Vec<T, A> {
     type Output = I::Output;
 
     #[inline]
@@ -3806,7 +3835,8 @@ impl<T, I: SliceIndex<[T]>, A: Allocator> Index<I> for Vec<T, A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, I: SliceIndex<[T]>, A: Allocator> IndexMut<I> for Vec<T, A> {
+#[rustc_const_unstable(feature = "const_index", issue = "143775")]
+impl<T, I: [const] SliceIndex<[T]>, A: Allocator> const IndexMut<I> for Vec<T, A> {
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         IndexMut::index_mut(&mut **self, index)

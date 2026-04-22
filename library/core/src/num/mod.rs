@@ -27,16 +27,14 @@ macro_rules! sign_dependent_expr {
     };
 }
 
-// All these modules are technically private and only exposed for coretests:
-#[cfg(not(no_fp_fmt_parse))]
-pub mod bignum;
-#[cfg(not(no_fp_fmt_parse))]
-pub mod dec2flt;
-#[cfg(not(no_fp_fmt_parse))]
-pub mod diy_float;
-#[cfg(not(no_fp_fmt_parse))]
-pub mod flt2dec;
-pub mod fmt;
+// These modules are public only for testing.
+#[doc(hidden)]
+#[unstable(
+    feature = "num_internals",
+    reason = "internal routines only exposed for testing",
+    issue = "none"
+)]
+pub mod imp;
 
 #[macro_use]
 mod int_macros; // import int_impl!
@@ -44,28 +42,26 @@ mod int_macros; // import int_impl!
 mod uint_macros; // import uint_impl!
 
 mod error;
-mod int_bits;
-mod int_log10;
-mod int_sqrt;
-pub(crate) mod libm;
+#[cfg(not(no_fp_fmt_parse))]
+mod float_parse;
 mod nonzero;
-mod overflow_panic;
 mod saturating;
+mod traits;
 mod wrapping;
 
 /// 100% perma-unstable
 #[doc(hidden)]
 pub mod niche_types;
 
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(no_fp_fmt_parse))]
-pub use dec2flt::ParseFloatError;
 #[stable(feature = "int_error_matching", since = "1.55.0")]
 pub use error::IntErrorKind;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use error::ParseIntError;
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use error::TryFromIntError;
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(no_fp_fmt_parse))]
+pub use float_parse::ParseFloatError;
 #[stable(feature = "generic_nonzero", since = "1.79.0")]
 pub use nonzero::NonZero;
 #[unstable(
@@ -990,7 +986,8 @@ impl u8 {
         matches!(*self, b'0'..=b'9') | matches!(*self, b'A'..=b'F') | matches!(*self, b'a'..=b'f')
     }
 
-    /// Checks if the value is an ASCII punctuation character:
+    /// Checks if the value is an ASCII punctuation or symbol character
+    /// (i.e. not alphanumeric, whitespace, or control):
     ///
     /// - U+0021 ..= U+002F `! " # $ % & ' ( ) * + , - . /`, or
     /// - U+003A ..= U+0040 `: ; < = > ? @`, or
@@ -1031,7 +1028,8 @@ impl u8 {
             | matches!(*self, b'{'..=b'~')
     }
 
-    /// Checks if the value is an ASCII graphic character:
+    /// Checks if the value is an ASCII graphic character
+    /// (i.e. not whitespace or control):
     /// U+0021 '!' ..= U+007E '~'.
     ///
     /// # Examples
@@ -1068,6 +1066,9 @@ impl u8 {
     /// Checks if the value is an ASCII whitespace character:
     /// U+0020 SPACE, U+0009 HORIZONTAL TAB, U+000A LINE FEED,
     /// U+000C FORM FEED, or U+000D CARRIAGE RETURN.
+    ///
+    /// **Warning:** Because the list above excludes U+000B VERTICAL TAB,
+    /// `b.is_ascii_whitespace()` is **not** equivalent to `char::from(b).is_whitespace()`.
     ///
     /// Rust uses the WhatWG Infra Standard's [definition of ASCII
     /// whitespace][infra-aw]. There are several other definitions in
@@ -1800,3 +1801,12 @@ macro_rules! from_str_int_impl {
 
 from_str_int_impl! { signed isize i8 i16 i32 i64 i128 }
 from_str_int_impl! { unsigned usize u8 u16 u32 u64 u128 }
+
+macro_rules! impl_sealed {
+    ($($t:ty)*) => {$(
+        /// Allows extension traits within `core`.
+        #[unstable(feature = "sealed", issue = "none")]
+        impl crate::sealed::Sealed for $t {}
+    )*}
+}
+impl_sealed! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }

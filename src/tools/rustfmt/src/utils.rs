@@ -2,8 +2,8 @@ use std::borrow::Cow;
 
 use rustc_ast::YieldKind;
 use rustc_ast::ast::{
-    self, Attribute, MetaItem, MetaItemInner, MetaItemKind, NodeId, Path, Visibility,
-    VisibilityKind,
+    self, Attribute, ImplRestriction, MetaItem, MetaItemInner, MetaItemKind, NodeId, Path,
+    RestrictionKind, Visibility, VisibilityKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_span::{BytePos, LocalExpnId, Span, Symbol, SyntaxContext, sym, symbol};
@@ -70,6 +70,40 @@ pub(crate) fn format_visibility(
             let in_str = if is_keyword(&path) { "" } else { "in " };
 
             Cow::from(format!("pub({in_str}{path}) "))
+        }
+    }
+}
+
+pub(crate) fn format_impl_restriction(
+    context: &RewriteContext<'_>,
+    impl_restriction: &ImplRestriction,
+) -> String {
+    format_restriction("impl", context, &impl_restriction.kind)
+}
+
+fn format_restriction(
+    kw: &'static str,
+    context: &RewriteContext<'_>,
+    restriction: &RestrictionKind,
+) -> String {
+    match restriction {
+        RestrictionKind::Unrestricted => String::new(),
+        RestrictionKind::Restricted {
+            ref path,
+            id: _,
+            shorthand,
+        } => {
+            let Path { ref segments, .. } = **path;
+            let mut segments_iter = segments.iter().map(|seg| rewrite_ident(context, seg.ident));
+            if path.is_global() && segments_iter.next().is_none() {
+                panic!("non-global path in {kw}(restricted)?");
+            }
+            // FIXME use `segments_iter.intersperse("::").collect::<String>()` once
+            // `#![feature(iter_intersperse)]` is re-stabilized.
+            let path = itertools::join(segments_iter, "::");
+            let in_str = if *shorthand { "" } else { "in " };
+
+            format!("{kw}({in_str}{path}) ")
         }
     }
 }

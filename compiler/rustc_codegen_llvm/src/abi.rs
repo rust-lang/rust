@@ -2,8 +2,8 @@ use std::cmp;
 
 use libc::c_uint;
 use rustc_abi::{
-    ArmCall, BackendRepr, CanonAbi, HasDataLayout, InterruptKind, Primitive, Reg, RegKind, Size,
-    X86Call,
+    ArmCall, BackendRepr, CanonAbi, Float, HasDataLayout, Integer, InterruptKind, Primitive, Reg,
+    RegKind, Size, X86Call,
 };
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -23,7 +23,6 @@ use crate::attributes::{self, llfn_attrs_from_instance};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::llvm::{self, Attribute, AttributePlace, Type, Value};
-use crate::llvm_util;
 use crate::type_of::LayoutLlvmExt;
 
 trait ArgAttributesExt {
@@ -39,11 +38,18 @@ trait ArgAttributesExt {
 const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 1] =
     [(ArgAttribute::InReg, llvm::AttributeKind::InReg)];
 
-const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 4] = [
+const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 5] = [
     (ArgAttribute::NoAlias, llvm::AttributeKind::NoAlias),
     (ArgAttribute::NonNull, llvm::AttributeKind::NonNull),
     (ArgAttribute::ReadOnly, llvm::AttributeKind::ReadOnly),
     (ArgAttribute::NoUndef, llvm::AttributeKind::NoUndef),
+    (ArgAttribute::Writable, llvm::AttributeKind::Writable),
+];
+
+const CAPTURES_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 3] = [
+    (ArgAttribute::CapturesNone, llvm::AttributeKind::CapturesNone),
+    (ArgAttribute::CapturesAddress, llvm::AttributeKind::CapturesAddress),
+    (ArgAttribute::CapturesReadOnly, llvm::AttributeKind::CapturesReadOnly),
 ];
 
 fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attribute; 8]> {
@@ -82,18 +88,10 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
                 attrs.push(llattr.create_attr(cx.llcx));
             }
         }
-        // captures(...) is only available since LLVM 21.
-        if (21, 0, 0) <= llvm_util::get_version() {
-            const CAPTURES_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 3] = [
-                (ArgAttribute::CapturesNone, llvm::AttributeKind::CapturesNone),
-                (ArgAttribute::CapturesAddress, llvm::AttributeKind::CapturesAddress),
-                (ArgAttribute::CapturesReadOnly, llvm::AttributeKind::CapturesReadOnly),
-            ];
-            for (attr, llattr) in CAPTURES_ATTRIBUTES {
-                if regular.contains(attr) {
-                    attrs.push(llattr.create_attr(cx.llcx));
-                    break;
-                }
+        for (attr, llattr) in CAPTURES_ATTRIBUTES {
+            if regular.contains(attr) {
+                attrs.push(llattr.create_attr(cx.llcx));
+                break;
             }
         }
     } else if cx.tcx.sess.sanitizers().contains(SanitizerSet::MEMORY) {
@@ -140,7 +138,31 @@ impl LlvmType for Reg {
                 128 => cx.type_f128(),
                 _ => bug!("unsupported float: {:?}", self),
             },
-            RegKind::Vector => cx.type_vector(cx.type_i8(), self.size.bytes()),
+            RegKind::Vector { hint_vector_elem } => {
+                // NOTE: it is valid to ignore the element type hint (and always pick i8).
+                // But providing a more accurate type means fewer casts in LLVM IR,
+                // which helps with optimization.
+                let ty = match hint_vector_elem {
+                    Primitive::Int(integer, _) => match integer {
+                        Integer::I8 => cx.type_ix(8),
+                        Integer::I16 => cx.type_ix(16),
+                        Integer::I32 => cx.type_ix(32),
+                        Integer::I64 => cx.type_ix(64),
+                        Integer::I128 => cx.type_ix(128),
+                    },
+                    Primitive::Float(float) => match float {
+                        Float::F16 => cx.type_f16(),
+                        Float::F32 => cx.type_f32(),
+                        Float::F64 => cx.type_f64(),
+                        Float::F128 => cx.type_f128(),
+                    },
+                    Primitive::Pointer(_) => cx.type_ptr(),
+                };
+
+                assert!(self.size.bytes().is_multiple_of(hint_vector_elem.size(cx).bytes()));
+                let len = self.size.bytes() / hint_vector_elem.size(cx).bytes();
+                cx.type_vector(ty, len)
+            }
         }
     }
 }
@@ -508,9 +530,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 }
                 PassMode::Indirect { attrs, meta_attrs: None, on_stack: false } => {
                     let i = apply(attrs);
-                    if cx.sess().opts.optimize != config::OptLevel::No
-                        && llvm_util::get_version() >= (21, 0, 0)
-                    {
+                    if cx.sess().opts.optimize != config::OptLevel::No {
                         attributes::apply_to_llfn(
                             llfn,
                             llvm::AttributePlace::Argument(i),

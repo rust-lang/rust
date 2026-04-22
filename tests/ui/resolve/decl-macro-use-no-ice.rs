@@ -11,7 +11,7 @@ mod foo {
 
     pub macro m() {
         use f;  //~ ERROR `f` is private, and cannot be re-exported
-        f!();   //~ ERROR macro import `f` is private
+        f!();
     }
 }
 

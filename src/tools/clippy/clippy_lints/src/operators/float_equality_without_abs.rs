@@ -6,7 +6,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 
 use super::FLOAT_EQUALITY_WITHOUT_ABS;
 
@@ -35,7 +35,7 @@ pub(crate) fn check<'tcx>(
 
         // right hand side matches _::EPSILON
         && let ExprKind::Path(ref epsilon_path) = rhs.kind
-        && let Res::Def(DefKind::AssocConst, def_id) = cx.qpath_res(epsilon_path, rhs.hir_id)
+        && let Res::Def(DefKind::AssocConst { .. }, def_id) = cx.qpath_res(epsilon_path, rhs.hir_id)
         && let Some(sym) = cx.tcx.get_diagnostic_name(def_id)
         && matches!(sym, sym::f16_epsilon | sym::f32_epsilon | sym::f64_epsilon | sym::f128_epsilon)
 

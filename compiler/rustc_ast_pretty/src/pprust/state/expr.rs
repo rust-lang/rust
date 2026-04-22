@@ -162,7 +162,7 @@ impl<'a> State<'a> {
         self.word("{");
         let has_rest = match rest {
             ast::StructRest::Base(_) | ast::StructRest::Rest(_) => true,
-            ast::StructRest::None => false,
+            ast::StructRest::None | ast::StructRest::NoneWithError(_) => false,
         };
         if fields.is_empty() && !has_rest {
             self.word("}");
@@ -235,7 +235,15 @@ impl<'a> State<'a> {
             // In order to call a named field, needs parens: `(self.fun)()`
             // But not for an unnamed field: `self.0()`
             ast::ExprKind::Field(_, name) => !name.is_numeric(),
-            _ => func_fixup.precedence(func) < ExprPrecedence::Unambiguous,
+            // Block-like expressions (block, match, if, loop, ...) never
+            // parse as the callee of a call, regardless of context: the
+            // closing brace ends the expression and `(args)` becomes a
+            // separate tuple. Parenthesize them so the call survives a
+            // pretty-print round trip.
+            _ => {
+                func_fixup.precedence(func) < ExprPrecedence::Unambiguous
+                    || classify::expr_is_complete(func)
+            }
         };
 
         self.print_expr_cond_paren(func, needs_paren, func_fixup);
@@ -260,12 +268,15 @@ impl<'a> State<'a> {
         //
         //     loop { break x; }.method();
         //
-        self.print_expr_cond_paren(
-            receiver,
-            receiver.precedence() < ExprPrecedence::Unambiguous,
-            fixup.leftmost_subexpression_with_dot(),
-        );
+        let needs_paren = receiver.precedence() < ExprPrecedence::Unambiguous;
+        self.print_expr_cond_paren(receiver, needs_paren, fixup.leftmost_subexpression_with_dot());
 
+        // If the receiver is an unsuffixed float literal like `0.`, insert
+        // a space so the `.` of the method call doesn't merge with the
+        // trailing dot: `0. .method()` instead of `0..method()`.
+        if !needs_paren && expr_ends_with_dot(receiver) {
+            self.word(" ");
+        }
         self.word(".");
         self.print_ident(segment.ident);
         if let Some(args) = &segment.args {
@@ -658,11 +669,15 @@ impl<'a> State<'a> {
                 );
             }
             ast::ExprKind::Field(expr, ident) => {
+                let needs_paren = expr.precedence() < ExprPrecedence::Unambiguous;
                 self.print_expr_cond_paren(
                     expr,
-                    expr.precedence() < ExprPrecedence::Unambiguous,
+                    needs_paren,
                     fixup.leftmost_subexpression_with_dot(),
                 );
+                if !needs_paren && expr_ends_with_dot(expr) {
+                    self.word(" ");
+                }
                 self.word(".");
                 self.print_ident(*ident);
             }
@@ -670,7 +685,8 @@ impl<'a> State<'a> {
                 let expr_fixup = fixup.leftmost_subexpression_with_operator(true);
                 self.print_expr_cond_paren(
                     expr,
-                    expr_fixup.precedence(expr) < ExprPrecedence::Unambiguous,
+                    expr_fixup.precedence(expr) < ExprPrecedence::Unambiguous
+                        || classify::expr_is_complete(expr),
                     expr_fixup,
                 );
                 self.word("[");
@@ -685,11 +701,15 @@ impl<'a> State<'a> {
                 let fake_prec = ExprPrecedence::LOr;
                 if let Some(e) = start {
                     let start_fixup = fixup.leftmost_subexpression_with_operator(true);
-                    self.print_expr_cond_paren(
-                        e,
-                        start_fixup.precedence(e) < fake_prec,
-                        start_fixup,
-                    );
+                    let needs_paren = start_fixup.precedence(e) < fake_prec;
+                    self.print_expr_cond_paren(e, needs_paren, start_fixup);
+                    // If the start expression is a float literal ending with
+                    // `.`, we need a space before `..` or `..=` so that the
+                    // dots don't merge. E.g. `0. ..45.` must not become
+                    // `0...45.`.
+                    if !needs_paren && expr_ends_with_dot(e) {
+                        self.word(" ");
+                    }
                 }
                 match limits {
                     ast::RangeLimits::HalfOpen => self.word(".."),
@@ -880,9 +900,9 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&arm.attrs);
         self.print_pat(&arm.pat);
         self.space();
-        if let Some(e) = &arm.guard {
+        if let Some(guard) = &arm.guard {
             self.word_space("if");
-            self.print_expr(e, FixupContext::default());
+            self.print_expr(&guard.cond, FixupContext::default());
             self.space();
         }
 
@@ -1024,4 +1044,19 @@ fn reconstruct_format_args_template_string(pieces: &[FormatArgsPiece]) -> String
     }
     template.push('"');
     template
+}
+
+/// Returns `true` if the printed representation of this expression ends with
+/// a `.` character — specifically, an unsuffixed float literal like `0.` or
+/// `45.`. This is used to insert whitespace before range operators (`..`,
+/// `..=`) so that the dots don't merge (e.g. `0. ..45.` instead of `0...45.`).
+fn expr_ends_with_dot(expr: &ast::Expr) -> bool {
+    match &expr.kind {
+        ast::ExprKind::Lit(token_lit) => {
+            token_lit.kind == token::Float
+                && token_lit.suffix.is_none()
+                && token_lit.symbol.as_str().ends_with('.')
+        }
+        _ => false,
+    }
 }

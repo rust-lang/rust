@@ -1,6 +1,6 @@
 # Print an optspec for argparse to handle cmd's options that are independent of any subcommand.
 function __fish_x.py_global_optspecs
-	string join \n v/verbose i/incremental config= build-dir= build= host= target= exclude= skip= include-default-paths rustc-error-format= on-fail= dry-run dump-bootstrap-shims stage= keep-stage= keep-stage-std= src= j/jobs= warnings= json-output compile-time-deps color= bypass-bootstrap-lock rust-profile-generate= rust-profile-use= llvm-profile-use= llvm-profile-generate enable-bolt-settings skip-stage0-validation reproducible-artifact= set= ci= skip-std-check-if-no-download-rustc h/help
+	string join \n v/verbose q/quiet i/incremental config= build-dir= build= host= target= exclude= skip= include-default-paths rustc-error-format= on-fail= dry-run dump-bootstrap-shims stage= keep-stage= keep-stage-std= src= j/jobs= warnings= json-output compile-time-deps color= bypass-bootstrap-lock rust-profile-generate= rust-profile-use= llvm-profile-use= llvm-profile-generate enable-bolt-settings skip-stage0-validation reproducible-artifact= set= ci= skip-std-check-if-no-download-rustc h/help
 end
 
 function __fish_x.py_needs_command
@@ -47,6 +47,7 @@ complete -c x.py -n "__fish_x.py_needs_command" -l reproducible-artifact -d 'Add
 complete -c x.py -n "__fish_x.py_needs_command" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_needs_command" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_needs_command" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_needs_command" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_needs_command" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_needs_command" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_needs_command" -l dry-run -d 'dry run; don\'t build anything'
@@ -60,18 +61,23 @@ complete -c x.py -n "__fish_x.py_needs_command" -l skip-stage0-validation -d 'Sk
 complete -c x.py -n "__fish_x.py_needs_command" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
 complete -c x.py -n "__fish_x.py_needs_command" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_x.py_needs_command" -a "build" -d 'Compile either the compiler or libraries'
+complete -c x.py -n "__fish_x.py_needs_command" -a "b" -d 'Compile either the compiler or libraries'
 complete -c x.py -n "__fish_x.py_needs_command" -a "check" -d 'Compile either the compiler or libraries, using cargo check'
+complete -c x.py -n "__fish_x.py_needs_command" -a "c" -d 'Compile either the compiler or libraries, using cargo check'
 complete -c x.py -n "__fish_x.py_needs_command" -a "clippy" -d 'Run Clippy (uses rustup/cargo-installed clippy binary)'
 complete -c x.py -n "__fish_x.py_needs_command" -a "fix" -d 'Run cargo fix'
 complete -c x.py -n "__fish_x.py_needs_command" -a "fmt" -d 'Run rustfmt'
 complete -c x.py -n "__fish_x.py_needs_command" -a "doc" -d 'Build documentation'
+complete -c x.py -n "__fish_x.py_needs_command" -a "d" -d 'Build documentation'
 complete -c x.py -n "__fish_x.py_needs_command" -a "test" -d 'Build and run some test suites'
+complete -c x.py -n "__fish_x.py_needs_command" -a "t" -d 'Build and run some test suites'
 complete -c x.py -n "__fish_x.py_needs_command" -a "miri" -d 'Build and run some test suites *in Miri*'
 complete -c x.py -n "__fish_x.py_needs_command" -a "bench" -d 'Build and run some benchmarks'
 complete -c x.py -n "__fish_x.py_needs_command" -a "clean" -d 'Clean out build directories'
 complete -c x.py -n "__fish_x.py_needs_command" -a "dist" -d 'Build distribution artifacts'
 complete -c x.py -n "__fish_x.py_needs_command" -a "install" -d 'Install distribution artifacts'
 complete -c x.py -n "__fish_x.py_needs_command" -a "run" -d 'Run tools contained in this repository'
+complete -c x.py -n "__fish_x.py_needs_command" -a "r" -d 'Run tools contained in this repository'
 complete -c x.py -n "__fish_x.py_needs_command" -a "setup" -d 'Set up the environment for development'
 complete -c x.py -n "__fish_x.py_needs_command" -a "vendor" -d 'Vendor dependencies'
 complete -c x.py -n "__fish_x.py_needs_command" -a "perf" -d 'Perform profiling and benchmarking of the compiler using `rustc-perf`'
@@ -99,6 +105,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand build" -l set -d 'override opt
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l timings -d 'Pass `--timings` to Cargo to get crate build timings'
 complete -c x.py -n "__fish_x.py_using_subcommand build" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand build" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand build" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l dry-run -d 'dry run; don\'t build anything'
@@ -111,6 +118,43 @@ complete -c x.py -n "__fish_x.py_using_subcommand build" -l enable-bolt-settings
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_x.py_using_subcommand build" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
 complete -c x.py -n "__fish_x.py_using_subcommand build" -s h -l help -d 'Print help (see more with \'--help\')'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l config -d 'TOML configuration file for build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l build -d 'host target of the stage0 compiler' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l host -d 'host targets to build' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l target -d 'target targets to build' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l skip -d 'build paths to skip' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l rustc-error-format -d 'rustc error format' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l keep-stage -d 'stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_x.py_using_subcommand b" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l set -d 'override options in bootstrap.toml' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l timings -d 'Pass `--timings` to Cargo to get crate build timings'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -s q -l quiet -d 'use quiet output'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -s i -l incremental -d 'use incremental compilation'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l include-default-paths -d 'include default paths in addition to the provided ones'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l dry-run -d 'dry run; don\'t build anything'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l json-output -d 'use message-format=json'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l compile-time-deps -d 'only build proc-macros and build scripts (for rust-analyzer)'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
+complete -c x.py -n "__fish_x.py_using_subcommand b" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l build -d 'host target of the stage0 compiler' -r -f
@@ -136,6 +180,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand check" -l ci -d 'Make bootstra
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l all-targets -d 'Check all targets'
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l timings -d 'Pass `--timings` to Cargo to get crate build timings'
 complete -c x.py -n "__fish_x.py_using_subcommand check" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand check" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand check" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l dry-run -d 'dry run; don\'t build anything'
@@ -148,6 +193,44 @@ complete -c x.py -n "__fish_x.py_using_subcommand check" -l enable-bolt-settings
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_x.py_using_subcommand check" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
 complete -c x.py -n "__fish_x.py_using_subcommand check" -s h -l help -d 'Print help (see more with \'--help\')'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l config -d 'TOML configuration file for build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l build -d 'host target of the stage0 compiler' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l host -d 'host targets to build' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l target -d 'target targets to build' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l skip -d 'build paths to skip' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l rustc-error-format -d 'rustc error format' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l keep-stage -d 'stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_x.py_using_subcommand c" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l set -d 'override options in bootstrap.toml' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l all-targets -d 'Check all targets'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l timings -d 'Pass `--timings` to Cargo to get crate build timings'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -s q -l quiet -d 'use quiet output'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -s i -l incremental -d 'use incremental compilation'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l include-default-paths -d 'include default paths in addition to the provided ones'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l dry-run -d 'dry run; don\'t build anything'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l json-output -d 'use message-format=json'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l compile-time-deps -d 'only build proc-macros and build scripts (for rust-analyzer)'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
+complete -c x.py -n "__fish_x.py_using_subcommand c" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -s A -d 'clippy lints to allow' -r
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -s D -d 'clippy lints to deny' -r
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -s W -d 'clippy lints to warn on' -r
@@ -178,6 +261,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l fix
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l allow-dirty
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l allow-staged
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand clippy" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand clippy" -l dry-run -d 'dry run; don\'t build anything'
@@ -213,6 +297,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand fix" -l reproducible-artifact 
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand fix" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand fix" -l dry-run -d 'dry run; don\'t build anything'
@@ -250,6 +335,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l ci -d 'Make bootstrap 
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l check -d 'check formatting instead of applying'
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l all -d 'apply to all appropriate files, not just those that have been modified'
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand fmt" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand fmt" -l dry-run -d 'dry run; don\'t build anything'
@@ -287,6 +373,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand doc" -l ci -d 'Make bootstrap 
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l open -d 'open the docs in a browser'
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l json -d 'render the documentation in JSON format in addition to the usual HTML format'
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand doc" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l dry-run -d 'dry run; don\'t build anything'
@@ -299,12 +386,51 @@ complete -c x.py -n "__fish_x.py_using_subcommand doc" -l enable-bolt-settings -
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
 complete -c x.py -n "__fish_x.py_using_subcommand doc" -s h -l help -d 'Print help (see more with \'--help\')'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l config -d 'TOML configuration file for build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l build -d 'host target of the stage0 compiler' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l host -d 'host targets to build' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l target -d 'target targets to build' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l skip -d 'build paths to skip' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l rustc-error-format -d 'rustc error format' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l keep-stage -d 'stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_x.py_using_subcommand d" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l set -d 'override options in bootstrap.toml' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l open -d 'open the docs in a browser'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l json -d 'render the documentation in JSON format in addition to the usual HTML format'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -s q -l quiet -d 'use quiet output'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -s i -l incremental -d 'use incremental compilation'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l include-default-paths -d 'include default paths in addition to the provided ones'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l dry-run -d 'dry run; don\'t build anything'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l json-output -d 'use message-format=json'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l compile-time-deps -d 'only build proc-macros and build scripts (for rust-analyzer)'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
+complete -c x.py -n "__fish_x.py_using_subcommand d" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l test-args -d 'extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l compiletest-rustc-args -d 'extra options to pass the compiler when running compiletest tests' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l extra-checks -d 'comma-separated list of other files types to check (accepts py, py:lint, py:fmt, shell, cpp, cpp:fmt, js, js:lint, js:typecheck, spellcheck)' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l compare-mode -d 'mode describing what file the actual ui output will be compared to' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l pass -d 'force {check,build,run}-pass tests to this mode' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l run -d 'whether to execute run-* tests' -r
+complete -c x.py -n "__fish_x.py_using_subcommand test" -l verbose-run-make-subprocess-output -d 'whether to show verbose subprocess output for run-make tests; set to false to suppress output for passing tests (e.g. for cg_clif with --no-capture)' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l test-codegen-backend -d 'Use a different codegen backend when running tests' -r
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
@@ -329,15 +455,18 @@ complete -c x.py -n "__fish_x.py_using_subcommand test" -l reproducible-artifact
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l no-fail-fast -d 'run all tests regardless of failure'
-complete -c x.py -n "__fish_x.py_using_subcommand test" -l no-doc -d 'do not run doc tests'
-complete -c x.py -n "__fish_x.py_using_subcommand test" -l doc -d 'only run doc tests'
+complete -c x.py -n "__fish_x.py_using_subcommand test" -l all-targets -d 'Run all test targets (no doc tests)'
+complete -c x.py -n "__fish_x.py_using_subcommand test" -l doc -d 'Only run doc tests'
+complete -c x.py -n "__fish_x.py_using_subcommand test" -l tests -d 'Only run unit and integration tests'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l bless -d 'whether to automatically update stderr/stdout files'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l force-rerun -d 'rerun tests even if the inputs are unchanged'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l only-modified -d 'only run tests that result has been changed'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l rustfix-coverage -d 'enable this to generate a Rustfix coverage file, which is saved in `/<build_base>/rustfix_missing_coverage.txt`'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l no-capture -d 'don\'t capture stdout/stderr of tests'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l bypass-ignore-backends -d 'Ignore `//@ ignore-backends` directives'
+complete -c x.py -n "__fish_x.py_using_subcommand test" -l no-doc -d 'Deprecated. Use `--all-targets` or `--tests` instead'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand test" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l dry-run -d 'dry run; don\'t build anything'
@@ -350,6 +479,61 @@ complete -c x.py -n "__fish_x.py_using_subcommand test" -l enable-bolt-settings 
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
 complete -c x.py -n "__fish_x.py_using_subcommand test" -s h -l help -d 'Print help (see more with \'--help\')'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l test-args -d 'extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)' -r
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l compiletest-rustc-args -d 'extra options to pass the compiler when running compiletest tests' -r
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l extra-checks -d 'comma-separated list of other files types to check (accepts py, py:lint, py:fmt, shell, cpp, cpp:fmt, js, js:lint, js:typecheck, spellcheck)' -r
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l compare-mode -d 'mode describing what file the actual ui output will be compared to' -r
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l pass -d 'force {check,build,run}-pass tests to this mode' -r
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l run -d 'whether to execute run-* tests' -r
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l verbose-run-make-subprocess-output -d 'whether to show verbose subprocess output for run-make tests; set to false to suppress output for passing tests (e.g. for cg_clif with --no-capture)' -r -f -a "{true\t'',false\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l test-codegen-backend -d 'Use a different codegen backend when running tests' -r
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l config -d 'TOML configuration file for build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l build -d 'host target of the stage0 compiler' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l host -d 'host targets to build' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l target -d 'target targets to build' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l skip -d 'build paths to skip' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l rustc-error-format -d 'rustc error format' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l keep-stage -d 'stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_x.py_using_subcommand t" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l set -d 'override options in bootstrap.toml' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l no-fail-fast -d 'run all tests regardless of failure'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l all-targets -d 'Run all test targets (no doc tests)'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l doc -d 'Only run doc tests'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l tests -d 'Only run unit and integration tests'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l bless -d 'whether to automatically update stderr/stdout files'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l force-rerun -d 'rerun tests even if the inputs are unchanged'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l only-modified -d 'only run tests that result has been changed'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l rustfix-coverage -d 'enable this to generate a Rustfix coverage file, which is saved in `/<build_base>/rustfix_missing_coverage.txt`'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l no-capture -d 'don\'t capture stdout/stderr of tests'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l bypass-ignore-backends -d 'Ignore `//@ ignore-backends` directives'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l no-doc -d 'Deprecated. Use `--all-targets` or `--tests` instead'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -s q -l quiet -d 'use quiet output'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -s i -l incremental -d 'use incremental compilation'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l include-default-paths -d 'include default paths in addition to the provided ones'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l dry-run -d 'dry run; don\'t build anything'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l json-output -d 'use message-format=json'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l compile-time-deps -d 'only build proc-macros and build scripts (for rust-analyzer)'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
+complete -c x.py -n "__fish_x.py_using_subcommand t" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l test-args -d 'extra arguments to be passed for the test tool being used (e.g. libtest, compiletest or rustdoc)' -r
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
@@ -374,9 +558,12 @@ complete -c x.py -n "__fish_x.py_using_subcommand miri" -l reproducible-artifact
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l no-fail-fast -d 'run all tests regardless of failure'
-complete -c x.py -n "__fish_x.py_using_subcommand miri" -l no-doc -d 'do not run doc tests'
-complete -c x.py -n "__fish_x.py_using_subcommand miri" -l doc -d 'only run doc tests'
+complete -c x.py -n "__fish_x.py_using_subcommand miri" -l all-targets -d 'Run all test targets (no doc tests)'
+complete -c x.py -n "__fish_x.py_using_subcommand miri" -l doc -d 'Only run doc tests'
+complete -c x.py -n "__fish_x.py_using_subcommand miri" -l tests -d 'Only run unit and integration tests'
+complete -c x.py -n "__fish_x.py_using_subcommand miri" -l no-doc -d 'Deprecated. Use `--all-targets` or `--tests` instead'
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand miri" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand miri" -l dry-run -d 'dry run; don\'t build anything'
@@ -413,6 +600,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand bench" -l reproducible-artifac
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand bench" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand bench" -l dry-run -d 'dry run; don\'t build anything'
@@ -449,6 +637,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand clean" -l set -d 'override opt
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -l all -d 'Clean the entire build directory (not used by default)'
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand clean" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand clean" -l dry-run -d 'dry run; don\'t build anything'
@@ -484,6 +673,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand dist" -l reproducible-artifact
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand dist" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand dist" -l dry-run -d 'dry run; don\'t build anything'
@@ -519,6 +709,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand install" -l reproducible-artif
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand install" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand install" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand install" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand install" -l dry-run -d 'dry run; don\'t build anything'
@@ -555,6 +746,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand run" -l reproducible-artifact 
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand run" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand run" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand run" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l dry-run -d 'dry run; don\'t build anything'
@@ -567,6 +759,43 @@ complete -c x.py -n "__fish_x.py_using_subcommand run" -l enable-bolt-settings -
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
 complete -c x.py -n "__fish_x.py_using_subcommand run" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
 complete -c x.py -n "__fish_x.py_using_subcommand run" -s h -l help -d 'Print help (see more with \'--help\')'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l args -d 'arguments for the tool' -r
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l config -d 'TOML configuration file for build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l build -d 'host target of the stage0 compiler' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l host -d 'host targets to build' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l target -d 'target targets to build' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l exclude -d 'build paths to exclude' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l skip -d 'build paths to skip' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l rustc-error-format -d 'rustc error format' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l on-fail -d 'command to run on failure' -r -f -a "(__fish_complete_command)"
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l stage -d 'stage to build (indicates compiler to use/test, e.g., stage 0 uses the bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l keep-stage -d 'stage(s) to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l keep-stage-std -d 'stage(s) of the standard library to keep without recompiling (pass multiple times to keep e.g., both stages 0 and 1)' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l src -d 'path to the root of the rust checkout' -r -f -a "(__fish_complete_directories)"
+complete -c x.py -n "__fish_x.py_using_subcommand r" -s j -l jobs -d 'number of jobs to run in parallel' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l warnings -d 'if value is deny, will deny warnings if value is warn, will emit warnings otherwise, use the default configured behaviour' -r -f -a "{deny\t'',warn\t'',default\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l color -d 'whether to use color in cargo and rustc output' -r -f -a "{always\t'',never\t'',auto\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l rust-profile-generate -d 'generate PGO profile with rustc build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l rust-profile-use -d 'use PGO profile for rustc build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l llvm-profile-use -d 'use PGO profile for LLVM build' -r -F
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l reproducible-artifact -d 'Additional reproducible artifacts that should be added to the reproducible artifacts archive' -r
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l set -d 'override options in bootstrap.toml' -r -f
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
+complete -c x.py -n "__fish_x.py_using_subcommand r" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -s q -l quiet -d 'use quiet output'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -s i -l incremental -d 'use incremental compilation'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l include-default-paths -d 'include default paths in addition to the provided ones'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l dry-run -d 'dry run; don\'t build anything'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l dump-bootstrap-shims -d 'Indicates whether to dump the work done from bootstrap shims'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l json-output -d 'use message-format=json'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l compile-time-deps -d 'only build proc-macros and build scripts (for rust-analyzer)'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l bypass-bootstrap-lock -d 'Bootstrap uses this value to decide whether it should bypass locking the build process. This is rarely needed (e.g., compiling the std library for different targets in parallel)'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l llvm-profile-generate -d 'generate PGO profile with llvm built for rustc'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l enable-bolt-settings -d 'Enable BOLT link flags'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l skip-stage0-validation -d 'Skip stage0 compiler validation'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -l skip-std-check-if-no-download-rustc -d 'Skip checking the standard library if `rust.download-rustc` isn\'t available. This is mostly for RA as building the stage1 compiler to check the library tree on each code change might be too much for some computers'
+complete -c x.py -n "__fish_x.py_using_subcommand r" -s h -l help -d 'Print help (see more with \'--help\')'
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l config -d 'TOML configuration file for build' -r -F
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l build-dir -d 'Build directory, overrides `build.build-dir` in `bootstrap.toml`' -r -f -a "(__fish_complete_directories)"
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l build -d 'host target of the stage0 compiler' -r -f
@@ -590,6 +819,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand setup" -l reproducible-artifac
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand setup" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand setup" -l dry-run -d 'dry run; don\'t build anything'
@@ -627,6 +857,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l set -d 'override op
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l versioned-dirs -d 'Always include version in subdir name'
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand vendor" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand vendor" -l dry-run -d 'dry run; don\'t build anything'
@@ -662,6 +893,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subc
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and not __fish_seen_subcommand_from eprintln samply cachegrind benchmark compare" -l dry-run -d 'dry run; don\'t build anything'
@@ -705,6 +937,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcomma
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from eprintln" -l dry-run -d 'dry run; don\'t build anything'
@@ -743,6 +976,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcomma
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from samply" -l dry-run -d 'dry run; don\'t build anything'
@@ -781,6 +1015,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcomma
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from cachegrind" -l dry-run -d 'dry run; don\'t build anything'
@@ -819,6 +1054,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcomma
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from benchmark" -l dry-run -d 'dry run; don\'t build anything'
@@ -854,6 +1090,7 @@ complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcomma
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from compare" -l set -d 'override options in bootstrap.toml' -r -f
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from compare" -l ci -d 'Make bootstrap to behave as it\'s running on the CI environment or not' -r -f -a "{true\t'',false\t''}"
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from compare" -s v -l verbose -d 'use verbose output (-vv for very verbose)'
+complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from compare" -s q -l quiet -d 'use quiet output'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from compare" -s i -l incremental -d 'use incremental compilation'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from compare" -l include-default-paths -d 'include default paths in addition to the provided ones'
 complete -c x.py -n "__fish_x.py_using_subcommand perf; and __fish_seen_subcommand_from compare" -l dry-run -d 'dry run; don\'t build anything'

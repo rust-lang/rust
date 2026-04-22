@@ -1,23 +1,22 @@
 // Test where we change the body of a private method in an impl.
 // We then test what sort of functions must be rebuilt as a result.
 
-//@ revisions:cfail1 cfail2
+//@ revisions: bpass1 bpass2
 //@ compile-flags: -Z query-dep-graph
-//@ build-pass (FIXME(62277): could be check-pass?)
 //@ ignore-backends: gcc
+// FIXME(#62277): could be check-pass?
 
 #![feature(rustc_attrs)]
-#![feature(stmt_expr_attributes)]
 #![allow(dead_code)]
 #![crate_type = "rlib"]
 
-#![rustc_partition_codegened(module="struct_point-point", cfg="cfail2")]
+#![rustc_partition_codegened(module="struct_point-point", cfg="bpass2")]
 
-#![rustc_partition_reused(module="struct_point-fn_calls_methods_in_same_impl", cfg="cfail2")]
-#![rustc_partition_reused(module="struct_point-fn_calls_methods_in_another_impl", cfg="cfail2")]
-#![rustc_partition_reused(module="struct_point-fn_make_struct", cfg="cfail2")]
-#![rustc_partition_reused(module="struct_point-fn_read_field", cfg="cfail2")]
-#![rustc_partition_reused(module="struct_point-fn_write_field", cfg="cfail2")]
+#![rustc_partition_reused(module="struct_point-fn_calls_methods_in_same_impl", cfg="bpass2")]
+#![rustc_partition_reused(module="struct_point-fn_calls_methods_in_another_impl", cfg="bpass2")]
+#![rustc_partition_reused(module="struct_point-fn_make_struct", cfg="bpass2")]
+#![rustc_partition_reused(module="struct_point-fn_read_field", cfg="bpass2")]
+#![rustc_partition_reused(module="struct_point-fn_write_field", cfg="bpass2")]
 
 pub mod point {
     pub struct Point {
@@ -26,10 +25,10 @@ pub mod point {
     }
 
     fn distance_squared(this: &Point) -> f32 {
-        #[cfg(cfail1)]
+        #[cfg(bpass1)]
         return this.x + this.y;
 
-        #[cfg(cfail2)]
+        #[cfg(bpass2)]
         return this.x * this.x + this.y * this.y;
     }
 
@@ -55,8 +54,8 @@ pub mod fn_calls_methods_in_same_impl {
     // The cached result should actually be loaded from disk
     // (not just marked green) - for example, `DeadVisitor`
     // always runs during compilation as a "pass", and loads
-    // the typeck results for bodies.
-    #[rustc_clean(cfg="cfail2", loaded_from_disk="typeck")]
+    // the typeck_root results for bodies.
+    #[rustc_clean(cfg="bpass2", loaded_from_disk="typeck_root")]
     pub fn check() {
         let x = Point { x: 2.0, y: 2.0 };
         x.distance_from_origin();
@@ -67,7 +66,7 @@ pub mod fn_calls_methods_in_same_impl {
 pub mod fn_calls_methods_in_another_impl {
     use point::Point;
 
-    #[rustc_clean(cfg="cfail2")]
+    #[rustc_clean(cfg="bpass2")]
     pub fn check() {
         let mut x = Point { x: 2.0, y: 2.0 };
         x.translate(3.0, 3.0);
@@ -78,7 +77,7 @@ pub mod fn_calls_methods_in_another_impl {
 pub mod fn_make_struct {
     use point::Point;
 
-    #[rustc_clean(cfg="cfail2")]
+    #[rustc_clean(cfg="bpass2")]
     pub fn make_origin() -> Point {
         Point { x: 2.0, y: 2.0 }
     }
@@ -88,7 +87,7 @@ pub mod fn_make_struct {
 pub mod fn_read_field {
     use point::Point;
 
-    #[rustc_clean(cfg="cfail2")]
+    #[rustc_clean(cfg="bpass2")]
     pub fn get_x(p: Point) -> f32 {
         p.x
     }
@@ -98,7 +97,7 @@ pub mod fn_read_field {
 pub mod fn_write_field {
     use point::Point;
 
-    #[rustc_clean(cfg="cfail2")]
+    #[rustc_clean(cfg="bpass2")]
     pub fn inc_x(p: &mut Point) {
         p.x += 1.0;
     }

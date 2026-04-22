@@ -44,7 +44,7 @@ declare_lint_pass!(LenWithoutIsEmpty => [LEN_WITHOUT_IS_EMPTY]);
 
 impl<'tcx> LateLintPass<'tcx> for LenWithoutIsEmpty {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Trait(_, _, _, ident, _, _, trait_items) = item.kind
+        if let ItemKind::Trait(_, _, _, _, ident, _, _, trait_items) = item.kind
             && !item.span.from_expansion()
         {
             check_trait_items(cx, item, ident, trait_items);
@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for LenWithoutIsEmpty {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if item.ident.name == sym::len
             && let ImplItemKind::Fn(sig, _) = &item.kind
-            && sig.decl.implicit_self.has_implicit_self()
+            && sig.decl.implicit_self().has_implicit_self()
             && sig.decl.inputs.len() == 1
             && cx.effective_visibilities.is_exported(item.owner_id.def_id)
             && matches!(sig.decl.output, FnRetTy::Return(_))
@@ -64,7 +64,7 @@ impl<'tcx> LateLintPass<'tcx> for LenWithoutIsEmpty {
             && let Some(ty_id) = cx.qpath_res(ty_path, imp.self_ty.hir_id).opt_def_id()
             && let Some(local_id) = ty_id.as_local()
             && let ty_hir_id = cx.tcx.local_def_id_to_hir_id(local_id)
-            && let Some(output) = LenOutput::new(cx, cx.tcx.fn_sig(item.owner_id).instantiate_identity().skip_binder())
+            && let Some(output) = LenOutput::new(cx, cx.tcx.fn_sig(item.owner_id).instantiate_identity().skip_norm_wip().skip_binder())
         {
             let (name, kind) = match cx.tcx.hir_node(ty_hir_id) {
                 Node::ForeignItem(x) => (x.ident.name, "extern type"),
@@ -79,7 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for LenWithoutIsEmpty {
             check_for_is_empty(
                 cx,
                 sig.span,
-                sig.decl.implicit_self,
+                sig.decl.implicit_self(),
                 output,
                 ty_id,
                 name,
@@ -137,8 +137,8 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, ident: Iden
 }
 
 fn extract_future_output<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<&'tcx PathSegment<'tcx>> {
-    if let ty::Alias(_, alias_ty) = ty.kind()
-        && let Some(Node::OpaqueTy(opaque)) = cx.tcx.hir_get_if_local(alias_ty.def_id)
+    if let ty::Alias(alias_ty) = ty.kind()
+        && let Some(Node::OpaqueTy(opaque)) = cx.tcx.hir_get_if_local(alias_ty.kind.def_id())
         && let OpaqueTyOrigin::AsyncFn { .. } = opaque.origin
         && let [GenericBound::Trait(trait_ref)] = &opaque.bounds
         && let Some(segment) = trait_ref.trait_ref.path.segments.last()
@@ -313,7 +313,7 @@ fn check_for_is_empty(
             if !(is_empty.is_method()
                 && check_is_empty_sig(
                     cx,
-                    cx.tcx.fn_sig(is_empty.def_id).instantiate_identity().skip_binder(),
+                    cx.tcx.fn_sig(is_empty.def_id).instantiate_identity().skip_norm_wip().skip_binder(),
                     len_self_kind,
                     len_output,
                 )) =>

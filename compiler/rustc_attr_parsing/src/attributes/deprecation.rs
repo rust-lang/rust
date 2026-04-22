@@ -8,25 +8,25 @@ use crate::session_diagnostics::{
 };
 
 fn get<S: Stage>(
-    cx: &AcceptContext<'_, '_, S>,
+    cx: &mut AcceptContext<'_, '_, S>,
     name: Symbol,
     param_span: Span,
     arg: &ArgParser,
     item: Option<Symbol>,
 ) -> Option<Ident> {
     if item.is_some() {
-        cx.duplicate_key(param_span, name);
+        cx.adcx().duplicate_key(param_span, name);
         return None;
     }
     if let Some(v) = arg.name_value() {
         if let Some(value_str) = v.value_as_ident() {
             Some(value_str)
         } else {
-            cx.expected_string_literal(v.value_span, Some(&v.value_as_lit()));
+            cx.adcx().expected_string_literal(v.value_span, Some(&v.value_as_lit()));
             None
         }
     } else {
-        cx.expected_name_value(param_span, Some(name));
+        cx.adcx().expected_name_value(param_span, Some(name));
         None
     }
 }
@@ -34,8 +34,6 @@ fn get<S: Stage>(
 pub(crate) struct DeprecatedParser;
 impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
     const PATH: &[Symbol] = &[sym::deprecated];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepInnermost;
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowListWarnRest(&[
         Allow(Target::Fn),
         Allow(Target::Mod),
@@ -84,7 +82,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
             ArgParser::List(list) => {
                 for param in list.mixed() {
                     let Some(param) = param.meta_item() else {
-                        cx.unexpected_literal(param.span());
+                        cx.adcx().expected_not_literal(param.span());
                         return None;
                     };
 
@@ -116,7 +114,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
                                 Some(get(cx, name, param.span(), param.args(), suggestion)?.name);
                         }
                         _ => {
-                            cx.expected_specific_argument(
+                            cx.adcx().expected_specific_argument(
                                 param.span(),
                                 if features.deprecated_suggestion() {
                                     &[sym::since, sym::note, sym::suggestion]
@@ -131,7 +129,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
             }
             ArgParser::NameValue(v) => {
                 let Some(value) = v.value_as_ident() else {
-                    cx.expected_string_literal(v.value_span, Some(v.value_as_lit()));
+                    cx.adcx().expected_string_literal(v.value_span, Some(v.value_as_lit()));
                     return None;
                 };
                 note = Some(value);

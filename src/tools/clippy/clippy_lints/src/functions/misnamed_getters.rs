@@ -23,7 +23,7 @@ pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body:
 
     let name = ident.name.as_str();
 
-    let name = match decl.implicit_self {
+    let name = match decl.implicit_self() {
         ImplicitSelfKind::RefMut => {
             let Some(name) = name.strip_suffix("_mut") else {
                 return;

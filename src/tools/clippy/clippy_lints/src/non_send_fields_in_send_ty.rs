@@ -54,6 +54,8 @@ declare_clippy_lint! {
     "there is a field that is not safe to be sent to another thread in a `Send` struct"
 }
 
+impl_lint_pass!(NonSendFieldInSendTy => [NON_SEND_FIELDS_IN_SEND_TY]);
+
 pub struct NonSendFieldInSendTy {
     enable_raw_pointer_heuristic: bool,
 }
@@ -65,8 +67,6 @@ impl NonSendFieldInSendTy {
         }
     }
 }
-
-impl_lint_pass!(NonSendFieldInSendTy => [NON_SEND_FIELDS_IN_SEND_TY]);
 
 impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
             && send_trait == trait_id
             && of_trait.polarity == ImplPolarity::Positive
             && let ty_trait_ref = cx.tcx.impl_trait_ref(item.owner_id)
-            && let self_ty = ty_trait_ref.instantiate_identity().self_ty()
+            && let self_ty = ty_trait_ref.instantiate_identity().skip_norm_wip().self_ty()
             && let ty::Adt(adt_def, impl_trait_args) = self_ty.kind()
         {
             let mut non_send_fields = Vec::new();

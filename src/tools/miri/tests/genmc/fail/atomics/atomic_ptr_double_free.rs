@@ -1,5 +1,3 @@
-//@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
-
 // Test that we can detect a double-free bug across two threads, which only shows up if the second thread reads an atomic pointer at a very specific moment.
 // GenMC can detect this error consistently, without having to run the buggy code with multiple RNG seeds or in a loop.
 

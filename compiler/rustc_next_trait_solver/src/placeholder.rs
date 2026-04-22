@@ -32,8 +32,10 @@ where
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
 {
-    /// Returns `Some` if we *were* able to replace bound vars. If there are any bound vars that
-    /// use a binding level above `universe_indices.len()`, we fail.
+    /// Returns a type with all bound vars replaced by placeholders,
+    /// together with mappings from the new placeholders back to the original variable.
+    ///
+    /// Panics if there are any bound vars that use a binding level above `universe_indices.len()`.
     pub fn replace_bound_vars<T: TypeFoldable<I>>(
         infcx: &'a Infcx,
         universe_indices: &'a mut Vec<Option<ty::UniverseIndex>>,

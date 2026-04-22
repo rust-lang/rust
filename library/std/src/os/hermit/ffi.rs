@@ -1,4 +1,4 @@
-//! HermitCore-specific extension to the primitives in the `std::ffi` module
+//! Hermit-specific extension to the primitives in the `std::ffi` module
 //!
 //! # Examples
 //!

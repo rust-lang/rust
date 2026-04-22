@@ -13,7 +13,6 @@
 // This test case intentionally limits the usage of the std,
 // since it will be linked with an uninstrumented version of it.
 
-#![feature(core_intrinsics)]
 #![allow(invalid_value)]
 #![no_main]
 

@@ -17,15 +17,12 @@
 //! 3. Print the output of the given command. If it fails and `TIDY_PRINT_DIFF`
 //!    is set, rerun the tool to print a suggestion diff (for e.g. CI)
 
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 use std::{env, fmt, fs, io};
 
-use build_helper::ci::CiEnv;
-
-use crate::CiInfo;
 use crate::diagnostics::TidyCtx;
 
 mod rustdoc_js;
@@ -38,7 +35,7 @@ const MIN_PY_REV_STR: &str = "≥3.9";
 
 /// Path to find the python executable within a virtual environment
 #[cfg(target_os = "windows")]
-const REL_PY_PATH: &[&str] = &["Scripts", "python3.exe"];
+const REL_PY_PATH: &[&str] = &["Scripts", "python.exe"];
 #[cfg(not(target_os = "windows"))]
 const REL_PY_PATH: &[&str] = &["bin", "python3"];
 
@@ -53,7 +50,6 @@ const SPELLCHECK_VER: &str = "1.38.1";
 pub fn check(
     root_path: &Path,
     outdir: &Path,
-    ci_info: &CiInfo,
     librustdoc_path: &Path,
     tools_path: &Path,
     npm: &Path,
@@ -62,40 +58,6 @@ pub fn check(
     pos_args: Vec<String>,
     tidy_ctx: TidyCtx,
 ) {
-    let mut check = tidy_ctx.start_check("extra_checks");
-
-    if let Err(e) = check_impl(
-        root_path,
-        outdir,
-        ci_info,
-        librustdoc_path,
-        tools_path,
-        npm,
-        cargo,
-        extra_checks,
-        pos_args,
-        &tidy_ctx,
-    ) {
-        check.error(e);
-    }
-}
-
-fn check_impl(
-    root_path: &Path,
-    outdir: &Path,
-    ci_info: &CiInfo,
-    librustdoc_path: &Path,
-    tools_path: &Path,
-    npm: &Path,
-    cargo: &Path,
-    extra_checks: Option<Vec<String>>,
-    pos_args: Vec<String>,
-    tidy_ctx: &TidyCtx,
-) -> Result<(), Error> {
-    let show_diff =
-        std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1");
-    let bless = tidy_ctx.is_bless_enabled();
-
     // Split comma-separated args up
     let mut lint_args = match extra_checks {
         Some(s) => s
@@ -121,9 +83,12 @@ fn check_impl(
     };
     lint_args.retain(|ck| ck.is_non_if_installed_or_matches(root_path, outdir));
     if lint_args.iter().any(|ck| ck.auto) {
-        crate::files_modified_batch_filter(ci_info, &mut lint_args, |ck, path| {
-            ck.is_non_auto_or_matches(path)
-        });
+        crate::files_modified_batch_filter(
+            &tidy_ctx.base_commit,
+            tidy_ctx.is_running_on_ci(),
+            &mut lint_args,
+            |ck, path| ck.is_non_auto_or_matches(path),
+        );
     }
 
     macro_rules! extra_check {
@@ -131,12 +96,6 @@ fn check_impl(
             lint_args.iter().any(|arg| arg.matches(ExtraCheckLang::$lang, ExtraCheckKind::$kind))
         };
     }
-
-    let rerun_with_bless = |mode: &str, action: &str| {
-        if !bless {
-            eprintln!("rerun tidy with `--extra-checks={mode} --bless` to {action}");
-        }
-    };
 
     let python_lint = extra_check!(Py, Lint);
     let python_fmt = extra_check!(Py, Fmt);
@@ -154,204 +113,351 @@ fn check_impl(
         .partition(|arg| arg.to_str().is_some_and(|s| s.starts_with('-')));
 
     if python_lint || python_fmt || cpp_fmt {
-        let venv_path = outdir.join("venv");
-        let mut reqs_path = root_path.to_owned();
-        reqs_path.extend(PIP_REQ_PATH);
-        py_path = Some(get_or_create_venv(&venv_path, &reqs_path)?);
+        // Since python lint, format and cpp format share python env, we need to ensure python env is installed before running those checks.
+        let p = py_prepare(root_path, outdir, &tidy_ctx);
+        if p.is_none() {
+            return;
+        }
+        py_path = p;
     }
 
     if python_lint {
-        let py_path = py_path.as_ref().unwrap();
-        let args: &[&OsStr] = if bless {
-            eprintln!("linting python files and applying suggestions");
-            &["check".as_ref(), "--fix".as_ref()]
-        } else {
-            eprintln!("linting python files");
-            &["check".as_ref()]
-        };
+        check_python_lint(
+            root_path,
+            outdir,
+            &cfg_args,
+            &file_args,
+            py_path.as_ref().unwrap(),
+            &tidy_ctx,
+        );
+    }
 
-        let res = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, args);
+    if python_fmt {
+        check_python_fmt(
+            root_path,
+            outdir,
+            &cfg_args,
+            &file_args,
+            py_path.as_ref().unwrap(),
+            &tidy_ctx,
+        );
+    }
 
-        if res.is_err() && show_diff && !bless {
-            eprintln!("\npython linting failed! Printing diff suggestions:");
+    if cpp_fmt {
+        check_cpp_fmt(root_path, &cfg_args, &file_args, py_path.as_ref().unwrap(), &tidy_ctx);
+    }
 
-            let diff_res = run_ruff(
+    if shell_lint {
+        check_shell_lint(root_path, &cfg_args, &file_args, &tidy_ctx);
+    }
+
+    if spellcheck {
+        check_spellcheck(root_path, outdir, cargo, &tidy_ctx);
+    }
+
+    if js_lint || js_typecheck {
+        // Since js lint and format share node env, we need to ensure node env is installed before running those checks.
+        if js_prepare(root_path, outdir, npm, &tidy_ctx).is_none() {
+            return;
+        }
+    }
+
+    if js_lint {
+        check_js_lint(outdir, librustdoc_path, tools_path, &tidy_ctx);
+    }
+
+    if js_typecheck {
+        check_js_typecheck(outdir, librustdoc_path, &tidy_ctx);
+    }
+}
+
+fn py_prepare(root_path: &Path, outdir: &Path, tidy_ctx: &TidyCtx) -> Option<PathBuf> {
+    let mut check = tidy_ctx.start_check("extra_checks:py_prepare");
+
+    let venv_path = outdir.join("venv");
+    let mut reqs_path = root_path.to_owned();
+    reqs_path.extend(PIP_REQ_PATH);
+
+    match get_or_create_venv(&venv_path, &reqs_path) {
+        Ok(p) => Some(p),
+        Err(e) => {
+            check.error(e);
+            None
+        }
+    }
+}
+
+fn js_prepare(root_path: &Path, outdir: &Path, npm: &Path, tidy_ctx: &TidyCtx) -> Option<()> {
+    let mut check = tidy_ctx.start_check("extra_checks:js_prepare");
+
+    if let Err(e) = rustdoc_js::npm_install(root_path, outdir, npm) {
+        check.error(e.to_string());
+        return None;
+    }
+
+    Some(())
+}
+
+fn show_bless_help(mode: &str, action: &str, bless: bool) {
+    if !bless {
+        eprintln!("rerun tidy with `--extra-checks={mode} --bless` to {action}");
+    }
+}
+
+fn show_diff() -> bool {
+    std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1")
+}
+
+fn check_spellcheck(root_path: &Path, outdir: &Path, cargo: &Path, tidy_ctx: &TidyCtx) {
+    let mut check = tidy_ctx.start_check("extra_checks:spellcheck");
+
+    let bless = tidy_ctx.is_bless_enabled();
+
+    let config_path = root_path.join("typos.toml");
+    let mut args = vec!["-c", config_path.as_os_str().to_str().unwrap()];
+    args.extend_from_slice(SPELLCHECK_DIRS);
+
+    if bless {
+        eprintln!("spellchecking files and fixing typos");
+        args.push("--write-changes");
+    } else {
+        eprintln!("spellchecking files");
+    }
+
+    if let Err(e) =
+        spellcheck_runner(root_path, &outdir, &cargo, &args, tidy_ctx.is_running_on_ci())
+    {
+        show_bless_help("spellcheck", "fix typos", bless);
+        check.error(e);
+    }
+}
+
+fn check_js_lint(outdir: &Path, librustdoc_path: &Path, tools_path: &Path, tidy_ctx: &TidyCtx) {
+    let mut check = tidy_ctx.start_check("extra_checks:js_lint");
+
+    let bless = tidy_ctx.is_bless_enabled();
+
+    if bless {
+        eprintln!("linting javascript files and applying suggestions");
+    } else {
+        eprintln!("linting javascript files");
+    }
+
+    if let Err(e) = rustdoc_js::lint(outdir, librustdoc_path, tools_path, bless) {
+        show_bless_help("js:lint", "apply esplint suggestion", bless);
+        check.error(e);
+        return;
+    }
+
+    if let Err(e) = rustdoc_js::es_check(outdir, librustdoc_path) {
+        check.error(e);
+    }
+}
+
+fn check_js_typecheck(outdir: &Path, librustdoc_path: &Path, tidy_ctx: &TidyCtx) {
+    let mut check = tidy_ctx.start_check("extra_checks:js_typecheck");
+
+    eprintln!("typechecking javascript files");
+    if let Err(e) = rustdoc_js::typecheck(outdir, librustdoc_path) {
+        check.error(e);
+    }
+}
+
+fn check_shell_lint(
+    root_path: &Path,
+    cfg_args: &Vec<&OsStr>,
+    file_args: &Vec<&OsStr>,
+    tidy_ctx: &TidyCtx,
+) {
+    let mut check = tidy_ctx.start_check("extra_checks:shell_lint");
+
+    eprintln!("linting shell files");
+
+    let mut file_args_shc = file_args.clone();
+    let files;
+    if file_args.is_empty() {
+        match find_with_extension(root_path, None, &[OsStr::new("sh")]) {
+            Ok(f) => files = f,
+            Err(e) => {
+                check.error(e);
+                return;
+            }
+        }
+
+        file_args_shc.extend(files.iter().map(|p| p.as_os_str()));
+    }
+
+    if let Err(e) = shellcheck_runner(&merge_args(&cfg_args, &file_args_shc)) {
+        check.error(e);
+    }
+}
+
+fn check_python_lint(
+    root_path: &Path,
+    outdir: &Path,
+    cfg_args: &Vec<&OsStr>,
+    file_args: &Vec<&OsStr>,
+    py_path: &Path,
+    tidy_ctx: &TidyCtx,
+) {
+    let mut check = tidy_ctx.start_check("extra_checks:python_lint");
+
+    let bless = tidy_ctx.is_bless_enabled();
+
+    let args: &[&OsStr] = if bless {
+        eprintln!("linting python files and applying suggestions");
+        &["check".as_ref(), "--fix".as_ref()]
+    } else {
+        eprintln!("linting python files");
+        &["check".as_ref()]
+    };
+
+    let res = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, args);
+
+    if res.is_err() && !bless && show_diff() {
+        eprintln!("\npython linting failed! Printing diff suggestions:");
+
+        let diff_res = run_ruff(
+            root_path,
+            outdir,
+            py_path,
+            &cfg_args,
+            &file_args,
+            &["check".as_ref(), "--diff".as_ref()],
+        );
+        // `ruff check --diff` will return status 0 if there are no suggestions.
+        if diff_res.is_err() {
+            show_bless_help("py:lint", "apply ruff suggestions", bless);
+        }
+    }
+    if let Err(e) = res {
+        check.error(e);
+    }
+}
+
+fn check_python_fmt(
+    root_path: &Path,
+    outdir: &Path,
+    cfg_args: &Vec<&OsStr>,
+    file_args: &Vec<&OsStr>,
+    py_path: &Path,
+    tidy_ctx: &TidyCtx,
+) {
+    let mut check = tidy_ctx.start_check("extra_checks:python_fmt");
+
+    let bless = tidy_ctx.is_bless_enabled();
+
+    let mut args: Vec<&OsStr> = vec!["format".as_ref()];
+    if bless {
+        eprintln!("formatting python files");
+    } else {
+        eprintln!("checking python file formatting");
+        args.push("--check".as_ref());
+    }
+
+    let res = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, &args);
+
+    if res.is_err() && !bless {
+        if show_diff() {
+            eprintln!("\npython formatting does not match! Printing diff:");
+
+            let _ = run_ruff(
                 root_path,
                 outdir,
                 py_path,
                 &cfg_args,
                 &file_args,
-                &["check".as_ref(), "--diff".as_ref()],
+                &["format".as_ref(), "--diff".as_ref()],
             );
-            // `ruff check --diff` will return status 0 if there are no suggestions.
-            if diff_res.is_err() {
-                rerun_with_bless("py:lint", "apply ruff suggestions");
-            }
         }
-        // Rethrow error
-        res?;
+        show_bless_help("py:fmt", "reformat Python code", bless);
     }
 
-    if python_fmt {
-        let mut args: Vec<&OsStr> = vec!["format".as_ref()];
-        if bless {
-            eprintln!("formatting python files");
-        } else {
-            eprintln!("checking python file formatting");
-            args.push("--check".as_ref());
-        }
-
-        let py_path = py_path.as_ref().unwrap();
-        let res = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, &args);
-
-        if res.is_err() && !bless {
-            if show_diff {
-                eprintln!("\npython formatting does not match! Printing diff:");
-
-                let _ = run_ruff(
-                    root_path,
-                    outdir,
-                    py_path,
-                    &cfg_args,
-                    &file_args,
-                    &["format".as_ref(), "--diff".as_ref()],
-                );
-            }
-            rerun_with_bless("py:fmt", "reformat Python code");
-        }
-
-        // Rethrow error
-        res?;
+    if let Err(e) = res {
+        check.error(e);
     }
+}
 
-    if cpp_fmt {
-        let mut cfg_args_clang_format = cfg_args.clone();
-        let mut file_args_clang_format = file_args.clone();
-        let config_path = root_path.join(".clang-format");
-        let config_file_arg = format!("file:{}", config_path.display());
-        cfg_args_clang_format.extend(&["--style".as_ref(), config_file_arg.as_ref()]);
-        if bless {
-            eprintln!("formatting C++ files");
-            cfg_args_clang_format.push("-i".as_ref());
-        } else {
-            eprintln!("checking C++ file formatting");
-            cfg_args_clang_format.extend(&["--dry-run".as_ref(), "--Werror".as_ref()]);
+fn check_cpp_fmt(
+    root_path: &Path,
+    cfg_args: &Vec<&OsStr>,
+    file_args: &Vec<&OsStr>,
+    py_path: &Path,
+    tidy_ctx: &TidyCtx,
+) {
+    let mut check = tidy_ctx.start_check("extra_checks:cpp_fmt");
+
+    let bless = tidy_ctx.is_bless_enabled();
+
+    let mut cfg_args_clang_format = cfg_args.clone();
+    let mut file_args_clang_format = file_args.clone();
+    let config_path = root_path.join(".clang-format");
+    let mut config_file_arg = OsString::from("file:");
+    config_file_arg.push(&config_path);
+    cfg_args_clang_format.extend(&["--style".as_ref(), config_file_arg.as_ref()]);
+    if bless {
+        eprintln!("formatting C++ files");
+        cfg_args_clang_format.push("-i".as_ref());
+    } else {
+        eprintln!("checking C++ file formatting");
+        cfg_args_clang_format.extend(&["--dry-run".as_ref(), "--Werror".as_ref()]);
+    }
+    let files;
+    if file_args_clang_format.is_empty() {
+        let llvm_wrapper = root_path.join("compiler/rustc_llvm/llvm-wrapper");
+        match find_with_extension(
+            root_path,
+            Some(llvm_wrapper.as_path()),
+            &[OsStr::new("h"), OsStr::new("cpp")],
+        ) {
+            Ok(f) => files = f,
+            Err(e) => {
+                check.error(e);
+                return;
+            }
         }
-        let files;
-        if file_args_clang_format.is_empty() {
-            let llvm_wrapper = root_path.join("compiler/rustc_llvm/llvm-wrapper");
-            files = find_with_extension(
-                root_path,
-                Some(llvm_wrapper.as_path()),
-                &[OsStr::new("h"), OsStr::new("cpp")],
-            )?;
-            file_args_clang_format.extend(files.iter().map(|p| p.as_os_str()));
-        }
-        let args = merge_args(&cfg_args_clang_format, &file_args_clang_format);
-        let res = py_runner(py_path.as_ref().unwrap(), false, None, "clang-format", &args);
+        file_args_clang_format.extend(files.iter().map(|p| p.as_os_str()));
+    }
+    let args = merge_args(&cfg_args_clang_format, &file_args_clang_format);
+    let res = py_runner(py_path, false, None, "clang-format", &args);
 
-        if res.is_err() && show_diff && !bless {
-            eprintln!("\nclang-format linting failed! Printing diff suggestions:");
+    if res.is_err() && !bless && show_diff() {
+        eprintln!("\nclang-format linting failed! Printing diff suggestions:");
 
-            let mut cfg_args_clang_format_diff = cfg_args.clone();
-            cfg_args_clang_format_diff.extend(&["--style".as_ref(), config_file_arg.as_ref()]);
-            for file in file_args_clang_format {
-                let mut formatted = String::new();
-                let mut diff_args = cfg_args_clang_format_diff.clone();
-                diff_args.push(file);
-                let _ = py_runner(
-                    py_path.as_ref().unwrap(),
-                    false,
-                    Some(&mut formatted),
-                    "clang-format",
-                    &diff_args,
+        let mut cfg_args_diff = cfg_args.clone();
+        cfg_args_diff.extend(&["--style".as_ref(), config_file_arg.as_ref()]);
+        for file in file_args {
+            let mut formatted = String::new();
+            let mut diff_args = cfg_args_diff.clone();
+            diff_args.push(file);
+            let _ = py_runner(py_path, false, Some(&mut formatted), "clang-format", &diff_args);
+            if formatted.is_empty() {
+                eprintln!(
+                    "failed to obtain the formatted content for '{}'",
+                    file.to_string_lossy()
                 );
-                if formatted.is_empty() {
-                    eprintln!(
-                        "failed to obtain the formatted content for '{}'",
-                        file.to_string_lossy()
-                    );
-                    continue;
-                }
-                let actual = std::fs::read_to_string(file).unwrap_or_else(|e| {
-                    panic!(
-                        "failed to read the C++ file at '{}' due to '{e}'",
-                        file.to_string_lossy()
+                continue;
+            }
+            let actual = std::fs::read_to_string(file).unwrap_or_else(|e| {
+                panic!("failed to read the C++ file at '{}' due to '{e}'", file.to_string_lossy())
+            });
+            if formatted != actual {
+                let diff = similar::TextDiff::from_lines(&actual, &formatted);
+                eprintln!(
+                    "{}",
+                    diff.unified_diff().context_radius(4).header(
+                        &format!("{} (actual)", file.to_string_lossy()),
+                        &format!("{} (formatted)", file.to_string_lossy())
                     )
-                });
-                if formatted != actual {
-                    let diff = similar::TextDiff::from_lines(&actual, &formatted);
-                    eprintln!(
-                        "{}",
-                        diff.unified_diff().context_radius(4).header(
-                            &format!("{} (actual)", file.to_string_lossy()),
-                            &format!("{} (formatted)", file.to_string_lossy())
-                        )
-                    );
-                }
+                );
             }
-            rerun_with_bless("cpp:fmt", "reformat C++ code");
         }
-        // Rethrow error
-        res?;
+        show_bless_help("cpp:fmt", "reformat C++ code", bless);
     }
 
-    if shell_lint {
-        eprintln!("linting shell files");
-
-        let mut file_args_shc = file_args.clone();
-        let files;
-        if file_args_shc.is_empty() {
-            files = find_with_extension(root_path, None, &[OsStr::new("sh")])?;
-            file_args_shc.extend(files.iter().map(|p| p.as_os_str()));
-        }
-
-        shellcheck_runner(&merge_args(&cfg_args, &file_args_shc))?;
+    if let Err(e) = res {
+        check.error(e);
     }
-
-    if spellcheck {
-        let config_path = root_path.join("typos.toml");
-        let mut args = vec!["-c", config_path.as_os_str().to_str().unwrap()];
-
-        args.extend_from_slice(SPELLCHECK_DIRS);
-
-        if bless {
-            eprintln!("spellchecking files and fixing typos");
-            args.push("--write-changes");
-        } else {
-            eprintln!("spellchecking files");
-        }
-        let res = spellcheck_runner(root_path, &outdir, &cargo, &args);
-        if res.is_err() {
-            rerun_with_bless("spellcheck", "fix typos");
-        }
-        res?;
-    }
-
-    if js_lint || js_typecheck {
-        rustdoc_js::npm_install(root_path, outdir, npm)?;
-    }
-
-    if js_lint {
-        if bless {
-            eprintln!("linting javascript files and applying suggestions");
-        } else {
-            eprintln!("linting javascript files");
-        }
-        let res = rustdoc_js::lint(outdir, librustdoc_path, tools_path, bless);
-        if res.is_err() {
-            rerun_with_bless("js:lint", "apply eslint suggestions");
-        }
-        res?;
-        rustdoc_js::es_check(outdir, librustdoc_path)?;
-    }
-
-    if js_typecheck {
-        eprintln!("typechecking javascript files");
-        rustdoc_js::typecheck(outdir, librustdoc_path)?;
-    }
-
-    Ok(())
 }
 
 fn run_ruff(
@@ -629,9 +735,16 @@ fn spellcheck_runner(
     outdir: &Path,
     cargo: &Path,
     args: &[&str],
+    is_ci: bool,
 ) -> Result<(), Error> {
-    let bin_path =
-        ensure_version_or_cargo_install(outdir, cargo, "typos-cli", "typos", SPELLCHECK_VER)?;
+    let bin_path = ensure_version_or_cargo_install(
+        outdir,
+        cargo,
+        "typos-cli",
+        "typos",
+        SPELLCHECK_VER,
+        is_ci,
+    )?;
     match Command::new(bin_path).current_dir(src_root).args(args).status() {
         Ok(status) => {
             if status.success() {
@@ -713,6 +826,7 @@ fn ensure_version_or_cargo_install(
     pkg_name: &str,
     bin_name: &str,
     version: &str,
+    is_ci: bool,
 ) -> Result<PathBuf, Error> {
     if let Ok(bin_path) = ensure_version(build_dir, bin_name, version) {
         return Ok(bin_path);
@@ -746,7 +860,7 @@ fn ensure_version_or_cargo_install(
     // On CI, we set opt-level flag for quicker installation.
     // Since lower opt-level decreases the tool's performance,
     // we don't set this option on local.
-    if CiEnv::is_ci() {
+    if is_ci {
         cmd.env("RUSTFLAGS", "-Copt-level=0");
     }
 

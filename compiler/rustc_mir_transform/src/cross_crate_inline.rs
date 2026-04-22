@@ -35,11 +35,6 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return true;
     }
 
-    // FIXME(autodiff): replace this as per discussion in https://github.com/rust-lang/rust/pull/149033#discussion_r2535465880
-    if find_attr!(tcx, def_id, RustcAutodiff(..)) {
-        return true;
-    }
-
     if find_attr!(tcx, def_id, RustcIntrinsic) {
         // Intrinsic fallback bodies are always cross-crate inlineable.
         // To ensure that the MIR inliner doesn't cluelessly try to inline fallback
@@ -63,7 +58,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         return true;
     }
 
-    let sig = tcx.fn_sig(def_id).instantiate_identity();
+    let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
     for ty in sig.inputs().skip_binder().iter().chain(std::iter::once(&sig.output().skip_binder()))
     {
         // FIXME(f16_f128): in order to avoid crashes building `core`, always inline to skip
@@ -151,8 +146,9 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             TerminatorKind::Call { func, unwind, .. } => {
                 // We track calls because they make our function not a leaf (and in theory, the
                 // number of calls indicates how likely this function is to perturb other CGUs).
-                // But intrinsics don't have a body that gets assigned to a CGU, so they are
-                // ignored.
+                // But there are a handful of intrinsics such as raw_eq that should not block
+                // cross-crate-inlining. Adding a broad exception for all intrinsics benchmarks well
+                // and seems more sustainable than an ever-growing list of intrinsics to ignore.
                 if let Some((fn_def_id, _)) = func.const_fn_def()
                     && find_attr!(tcx, fn_def_id, RustcIntrinsic)
                 {

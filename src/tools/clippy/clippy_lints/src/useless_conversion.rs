@@ -41,13 +41,13 @@ declare_clippy_lint! {
     "calls to `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` which perform useless conversions to the same type"
 }
 
+impl_lint_pass!(UselessConversion => [USELESS_CONVERSION]);
+
 #[derive(Default)]
 pub struct UselessConversion {
     try_desugar_arm: Vec<HirId>,
     expn_depth: u32,
 }
-
-impl_lint_pass!(UselessConversion => [USELESS_CONVERSION]);
 
 enum MethodOrFunction {
     Method,
@@ -112,7 +112,7 @@ fn into_iter_bound<'tcx>(
                     }
                 }));
 
-                let predicate = EarlyBinder::bind(tr).instantiate(cx.tcx, args);
+                let predicate = EarlyBinder::bind(tr).instantiate(cx.tcx, args).skip_norm_wip();
                 let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
                 if !cx
                     .tcx

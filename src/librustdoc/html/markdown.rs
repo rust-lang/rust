@@ -109,13 +109,15 @@ pub(crate) struct MarkdownWithToc<'a> {
     pub(crate) edition: Edition,
     pub(crate) playground: &'a Option<Playground>,
 }
-/// A tuple struct like `Markdown` that renders the markdown escaping HTML tags
+
+/// A struct like `Markdown` that renders the markdown escaping HTML tags
 /// and includes no paragraph tags.
 pub(crate) struct MarkdownItemInfo<'a> {
     pub(crate) content: &'a str,
     pub(crate) links: &'a [RenderedLink],
     pub(crate) ids: &'a mut IdMap,
 }
+
 /// A tuple struct like `Markdown` that renders only the first paragraph.
 pub(crate) struct MarkdownSummaryLine<'a>(pub &'a str, pub &'a [RenderedLink]);
 
@@ -580,6 +582,7 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for HeadingLinks<'a, '_,
                 }
             }
             let id = self.id_map.derive(id);
+            let percent_encoded_id = small_url_encode(id.clone());
 
             if let Some(ref mut builder) = self.toc {
                 let mut text_header = String::new();
@@ -594,8 +597,9 @@ impl<'a, I: Iterator<Item = SpannedEvent<'a>>> Iterator for HeadingLinks<'a, '_,
                 std::cmp::min(level as u32 + (self.heading_offset as u32), MAX_HEADER_LEVEL);
             self.buf.push_back((Event::Html(format!("</h{level}>").into()), 0..0));
 
-            let start_tags =
-                format!("<h{level} id=\"{id}\"><a class=\"doc-anchor\" href=\"#{id}\">§</a>");
+            let start_tags = format!(
+                "<h{level} id=\"{id}\"><a class=\"doc-anchor\" href=\"#{percent_encoded_id}\">§</a>"
+            );
             return Some((Event::Html(start_tags.into()), 0..0));
         }
         event
@@ -799,14 +803,7 @@ impl<'tcx> ExtraInfo<'tcx> {
     }
 
     fn error_invalid_codeblock_attr(&self, msg: impl Into<DiagMessage>) {
-        self.tcx.node_span_lint(
-            crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
-            self.tcx.local_def_id_to_hir_id(self.def_id),
-            self.sp,
-            |lint| {
-                lint.primary_message(msg);
-            },
-        );
+        self.error_invalid_codeblock_attr_with_help(msg, |_| {});
     }
 
     fn error_invalid_codeblock_attr_with_help(
@@ -814,14 +811,14 @@ impl<'tcx> ExtraInfo<'tcx> {
         msg: impl Into<DiagMessage>,
         f: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
-        self.tcx.node_span_lint(
+        self.tcx.emit_node_span_lint(
             crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
             self.tcx.local_def_id_to_hir_id(self.def_id),
             self.sp,
-            |lint| {
+            rustc_errors::DiagDecorator(|lint| {
                 lint.primary_message(msg);
                 f(lint);
-            },
+            }),
         );
     }
 }
@@ -1497,10 +1494,10 @@ impl<'a> MarkdownItemInfo<'a> {
             let p = SpannedLinkReplacer::new(p, links);
             let p = footnotes::Footnotes::new(p, existing_footnotes);
             let p = TableWrapper::new(p.map(|(ev, _)| ev));
-            let p = p.filter(|event| {
-                !matches!(event, Event::Start(Tag::Paragraph) | Event::End(TagEnd::Paragraph))
-            });
-            html::write_html_fmt(&mut f, p)
+            // in legacy wrap mode, strip <p> elements to avoid them inserting newlines
+            html::write_html_fmt(&mut f, p)?;
+
+            Ok(())
         })
     }
 }

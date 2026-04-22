@@ -47,7 +47,7 @@ pub(crate) fn add_explicit_enum_discriminant(
 
     // Don't offer the assist if the enum has no variants or if all variants already have an
     // explicit discriminant.
-    if variant_list.variants().all(|variant_node| variant_node.expr().is_some()) {
+    if variant_list.variants().all(|variant_node| variant_node.const_arg().is_some()) {
         return None;
     }
 
@@ -72,7 +72,9 @@ fn add_variant_discriminant(
     variant_node: &ast::Variant,
     radix: &mut Radix,
 ) {
-    if let Some(expr) = variant_node.expr() {
+    if let Some(expr) = variant_node.const_arg()
+        && let Some(expr) = expr.expr()
+    {
         *radix = expr_radix(&expr).unwrap_or(*radix);
         return;
     }

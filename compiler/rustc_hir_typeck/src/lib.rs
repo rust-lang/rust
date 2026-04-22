@@ -1,6 +1,4 @@
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(assert_matches))]
-#![cfg_attr(bootstrap, feature(if_let_guard))]
 #![feature(box_patterns)]
 #![feature(iter_intersperse)]
 #![feature(iter_order_by)]
@@ -43,7 +41,7 @@ pub use coercion::can_coerce;
 use fn_ctxt::FnCtxt;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, HirIdMap, Node};
@@ -52,7 +50,7 @@ use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config;
 use rustc_span::Span;
@@ -84,7 +82,7 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
     &tcx.typeck(def_id).used_trait_imports
 }
 
-fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
+fn typeck_root<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
     typeck_with_inspect(tcx, def_id, None)
 }
 
@@ -97,6 +95,13 @@ pub fn inspect_typeck<'tcx>(
     def_id: LocalDefId,
     inspect: ObligationInspector<'tcx>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
+    // Closures' typeck results come from their outermost function,
+    // as they are part of the same "inference environment".
+    let typeck_root_def_id = tcx.typeck_root_def_id_local(def_id);
+    if typeck_root_def_id != def_id {
+        return tcx.typeck(typeck_root_def_id);
+    }
+
     typeck_with_inspect(tcx, def_id, Some(inspect))
 }
 
@@ -106,12 +111,7 @@ fn typeck_with_inspect<'tcx>(
     def_id: LocalDefId,
     inspector: Option<ObligationInspector<'tcx>>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
-    // Closures' typeck results come from their outermost function,
-    // as they are part of the same "inference environment".
-    let typeck_root_def_id = tcx.typeck_root_def_id(def_id.to_def_id()).expect_local();
-    if typeck_root_def_id != def_id {
-        return tcx.typeck(typeck_root_def_id);
-    }
+    assert!(!tcx.is_typeck_child(def_id.to_def_id()));
 
     let id = tcx.local_def_id_to_hir_id(def_id);
     let node = tcx.hir_node(id);
@@ -144,7 +144,7 @@ fn typeck_with_inspect<'tcx>(
             // a suggestion later on.
             fcx.lowerer().lower_fn_ty(id, header.safety(), header.abi, decl, None, None)
         } else {
-            tcx.fn_sig(def_id).instantiate_identity()
+            tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip()
         };
 
         check_abi(tcx, id, span, fn_sig.abi());
@@ -168,7 +168,7 @@ fn typeck_with_inspect<'tcx>(
                 .inputs_and_output
                 .iter()
                 .enumerate()
-                .map(|(idx, ty)| fcx.normalize(arg_span(idx), ty)),
+                .map(|(idx, ty)| fcx.normalize(arg_span(idx), Unnormalized::new_wip(ty))),
         );
 
         if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NAKED) {
@@ -188,12 +188,12 @@ fn typeck_with_inspect<'tcx>(
             // a suggestion later on.
             fcx.lowerer().lower_ty(ty)
         } else {
-            tcx.type_of(def_id).instantiate_identity()
+            tcx.type_of(def_id).instantiate_identity().skip_norm_wip()
         };
 
         loops::check(tcx, def_id, body);
 
-        let expected_type = fcx.normalize(body.value.span, expected_type);
+        let expected_type = fcx.normalize(body.value.span, Unnormalized::new_wip(expected_type));
 
         let wf_code = ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id)));
         fcx.register_wf_obligation(expected_type.into(), body.value.span, wf_code);
@@ -206,7 +206,9 @@ fn typeck_with_inspect<'tcx>(
             );
         }
 
-        fcx.check_expr_coercible_to_type(body.value, expected_type, None);
+        fcx.check_expr_coercible_to_type_or_error(body.value, expected_type, None, |err, _| {
+            extend_err_with_const_context(err, tcx, node, expected_type);
+        });
 
         fcx.write_ty(id, expected_type);
     };
@@ -242,7 +244,7 @@ fn typeck_with_inspect<'tcx>(
     assert!(fcx.deferred_call_resolutions.borrow().is_empty());
 
     for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
-        let ty = fcx.normalize(span, ty);
+        let ty = fcx.normalize(span, Unnormalized::new_wip(ty));
         fcx.require_type_is_sized(ty, span, code);
     }
 
@@ -276,6 +278,126 @@ fn typeck_with_inspect<'tcx>(
     typeck_results
 }
 
+fn extend_err_with_const_context(
+    err: &mut Diag<'_>,
+    tcx: TyCtxt<'_>,
+    node: hir::Node<'_>,
+    expected_ty: Ty<'_>,
+) {
+    match node {
+        hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, _), .. })
+        | hir::Node::TraitItem(hir::TraitItem {
+            kind: hir::TraitItemKind::Const(ty, _, _), ..
+        }) => {
+            // Point at the `Type` in `const NAME: Type = value;`.
+            err.span_label(ty.span, "expected because of the type of the associated constant");
+        }
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Const(_, _, ty, _), .. }) => {
+            // Point at the `Type` in `const NAME: Type = value;`.
+            err.span_label(ty.span, "expected because of the type of the constant");
+        }
+        hir::Node::Item(hir::Item { kind: hir::ItemKind::Static(_, _, ty, _), .. }) => {
+            // Point at the `Type` in `static NAME: Type = value;`.
+            err.span_label(ty.span, "expected because of the type of the static");
+        }
+        hir::Node::AnonConst(anon)
+            if let hir::Node::ConstArg(parent) = tcx.parent_hir_node(anon.hir_id)
+                && let hir::Node::Ty(parent) = tcx.parent_hir_node(parent.hir_id)
+                && let hir::TyKind::Array(_ty, _len) = parent.kind =>
+        {
+            // `[type; len]` in type context.
+            err.note("array length can only be `usize`");
+        }
+        hir::Node::AnonConst(anon)
+            if let hir::Node::ConstArg(parent) = tcx.parent_hir_node(anon.hir_id)
+                && let hir::Node::Expr(parent) = tcx.parent_hir_node(parent.hir_id)
+                && let hir::ExprKind::Repeat(_ty, _len) = parent.kind =>
+        {
+            // `[type; len]` in expr context.
+            err.note("array length can only be `usize`");
+        }
+        // FIXME: support method calls too.
+        hir::Node::AnonConst(anon)
+            if let hir::Node::ConstArg(parent) = tcx.parent_hir_node(anon.hir_id)
+                && let hir::Node::Expr(expr) = tcx.parent_hir_node(parent.hir_id)
+                && let hir::ExprKind::Path(path) = expr.kind
+                && let hir::QPath::Resolved(_, path) = path
+                && let Res::Def(_, def_id) = path.res =>
+        {
+            // `foo<N>()` in expression context, point at `foo`'s const parameter.
+            if let Some(i) =
+                path.segments.iter().last().and_then(|segment| segment.args).and_then(|args| {
+                    args.args.iter().position(|arg| {
+                        matches!(arg, hir::GenericArg::Const(arg) if arg.hir_id == parent.hir_id)
+                    })
+                })
+            {
+                let generics = tcx.generics_of(def_id);
+                let param = &generics.param_at(i, tcx);
+                let sp = tcx.def_span(param.def_id);
+                err.span_note(sp, "expected because of the type of the const parameter");
+            }
+        }
+        hir::Node::AnonConst(anon)
+            if let hir::Node::ConstArg(parent) = tcx.parent_hir_node(anon.hir_id)
+                && let hir::Node::Ty(ty) = tcx.parent_hir_node(parent.hir_id)
+                && let hir::TyKind::Path(path) = ty.kind
+                && let hir::QPath::Resolved(_, path) = path
+                && let Res::Def(_, def_id) = path.res =>
+        {
+            // `Foo<N>` in type context, point at `Foo`'s const parameter.
+            if let Some(i) =
+                path.segments.iter().last().and_then(|segment| segment.args).and_then(|args| {
+                    args.args.iter().position(|arg| {
+                        matches!(arg, hir::GenericArg::Const(arg) if arg.hir_id == parent.hir_id)
+                    })
+                })
+            {
+                let generics = tcx.generics_of(def_id);
+                let param = &generics.param_at(i, tcx);
+                let sp = tcx.def_span(param.def_id);
+                err.span_note(sp, "expected because of the type of the const parameter");
+            }
+        }
+        hir::Node::AnonConst(anon)
+            if let hir::Node::Variant(_variant) = tcx.parent_hir_node(anon.hir_id) =>
+        {
+            // FIXME: point at `repr` when present in the type.
+            err.note(
+                "enum variant discriminant can only be of a primitive type compatible with the \
+                 enum's `repr`",
+            );
+        }
+        hir::Node::AnonConst(anon)
+            if let hir::Node::ConstArg(parent) = tcx.parent_hir_node(anon.hir_id)
+                && let hir::Node::GenericParam(param) = tcx.parent_hir_node(parent.hir_id)
+                && let hir::GenericParamKind::Const { ty, .. } = param.kind =>
+        {
+            // `fn foo<const N: usize = ()>` point at the `usize`.
+            err.span_label(ty.span, "expected because of the type of the const parameter");
+        }
+        hir::Node::AnonConst(anon)
+            if let hir::Node::ConstArg(parent) = tcx.parent_hir_node(anon.hir_id)
+                && let hir::Node::TyPat(ty_pat) = tcx.parent_hir_node(parent.hir_id)
+                && let hir::Node::Ty(ty) = tcx.parent_hir_node(ty_pat.hir_id)
+                && let hir::TyKind::Pat(ty, _) = ty.kind =>
+        {
+            // Point at `char` in `pattern_type!(char is 1..=1)`.
+            err.span_label(ty.span, "the pattern must match the type");
+        }
+        hir::Node::AnonConst(anon)
+            if let hir::Node::Field(_) = tcx.parent_hir_node(anon.hir_id)
+                && let ty::Param(_) = expected_ty.kind() =>
+        {
+            err.note(
+                "the type of default fields referencing type parameters can't be assumed inside \
+                 the struct defining them",
+            );
+        }
+        _ => {}
+    }
+}
+
 fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Option<Ty<'tcx>> {
     let tcx = fcx.tcx;
     let def_id = fcx.body_id;
@@ -286,14 +408,15 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
             && let ty::AssocContainer::TraitImpl(Ok(trait_item_def_id)) = item.container
         {
             let impl_def_id = item.container_id(tcx);
-            let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate_identity();
+            let impl_trait_ref =
+                tcx.impl_trait_ref(impl_def_id).instantiate_identity().skip_norm_wip();
             let args = ty::GenericArgs::identity_for_item(tcx, def_id).rebase_onto(
                 tcx,
                 impl_def_id,
                 impl_trait_ref.args,
             );
             tcx.check_args_compatible(trait_item_def_id, args)
-                .then(|| tcx.type_of(trait_item_def_id).instantiate(tcx, args))
+                .then(|| tcx.type_of(trait_item_def_id).instantiate(tcx, args).skip_norm_wip())
         } else {
             Some(fcx.next_ty_var(span))
         }
@@ -540,7 +663,7 @@ fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         method_autoderef_steps: method::probe::method_autoderef_steps,
-        typeck,
+        typeck_root,
         used_trait_imports,
         check_transmutes: intrinsicck::check_transmutes,
         ..*providers

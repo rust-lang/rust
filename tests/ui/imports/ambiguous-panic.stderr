@@ -4,8 +4,6 @@ error: `panic` is ambiguous
 LL |     panic!();
    |     ^^^^^ ambiguous name
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #147319 <https://github.com/rust-lang/rust/issues/147319>
    = note: ambiguous because of a conflict between a name from a glob import and an outer scope during import or macro resolution
 note: `panic` could refer to the macro imported here
   --> $DIR/ambiguous-panic.rs:6:5
@@ -16,6 +14,8 @@ LL | use std::prelude::v1::*;
    = help: or use `crate::panic` to refer to this macro unambiguously
 note: `panic` could also refer to a macro from prelude
   --> $SRC_DIR/core/src/prelude/mod.rs:LL:COL
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #147319 <https://github.com/rust-lang/rust/issues/147319>
 note: the lint level is defined here
   --> $DIR/ambiguous-panic.rs:1:9
    |

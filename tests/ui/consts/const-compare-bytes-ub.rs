@@ -1,5 +1,5 @@
 //@ check-fail
-
+//@ ignore-parallel-frontend different alloc ids
 #![feature(core_intrinsics, const_cmp)]
 use std::intrinsics::compare_bytes;
 use std::mem::MaybeUninit;

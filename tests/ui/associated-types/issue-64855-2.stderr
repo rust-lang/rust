@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `Bar<'a> well-formed`
+error[E0275]: overflow evaluating whether `Bar<'a>` is well-formed
   --> $DIR/issue-64855-2.rs:5:36
    |
 LL | pub struct Bar<'a>(&'a Self) where Self: ;

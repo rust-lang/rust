@@ -10,7 +10,6 @@ fn main() {
     test_access_simple();
     test_access_nested();
     test_access_static();
-    pass_fn_ptr();
 }
 
 /// Test function that dereferences an int pointer and prints its contents from C.
@@ -81,17 +80,4 @@ fn test_access_static() {
     static STATIC: Static = Static { value: 9001, recurse: &STATIC };
 
     assert_eq!(unsafe { access_static(&STATIC) }, 9001);
-}
-
-fn pass_fn_ptr() {
-    extern "C" {
-        fn pass_fn_ptr(s: Option<extern "C" fn()>);
-    }
-
-    extern "C" fn nop() {}
-
-    unsafe {
-        pass_fn_ptr(None); // this one is fine
-        pass_fn_ptr(Some(nop)); // this one is not
-    }
 }

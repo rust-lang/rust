@@ -3,10 +3,9 @@
 //@ aux-build: codegen_cross_crate_other_crate.rs
 //@ compile-flags: -O
 //@ ignore-backends: gcc
-// FIXME: linking on windows (speciifcally mingw) not yet supported, see tracking issue #125418
+// FIXME: linking on windows (specifically mingw) not yet supported, see tracking issue #125418
 //@ ignore-windows
 // Tests whether calling EIIs works with the declaration in another crate.
-#![feature(extern_item_impls)]
 
 extern crate codegen_cross_crate_other_crate as codegen;
 

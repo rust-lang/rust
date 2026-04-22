@@ -22,7 +22,7 @@ use itertools::izip;
 use la_arena::Idx;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
-use span::{Edition, FileAstId, SyntaxContext};
+use span::{Edition, FileAstId, ROOT_ERASED_FILE_AST_ID, SyntaxContext};
 use stdx::always;
 use syntax::ast;
 use triomphe::Arc;
@@ -279,7 +279,7 @@ impl<'db> DefCollector<'db> {
         let _p = tracing::info_span!("seed_with_top_level").entered();
 
         let file_id = self.def_map.krate.root_file_id(self.db);
-        let item_tree = self.db.file_item_tree(file_id.into());
+        let item_tree = self.db.file_item_tree(file_id.into(), self.def_map.krate);
         let attrs = match item_tree.top_level_attrs() {
             AttrsOrCfg::Enabled { attrs } => attrs.as_ref(),
             AttrsOrCfg::CfgDisabled(it) => it.1.as_ref(),
@@ -369,7 +369,14 @@ impl<'db> DefCollector<'db> {
 
         self.inject_prelude();
 
-        if matches!(item_tree.top_level_attrs(), AttrsOrCfg::CfgDisabled(_)) {
+        if let AttrsOrCfg::CfgDisabled(attrs) = item_tree.top_level_attrs() {
+            let (cfg_expr, _) = &**attrs;
+            self.def_map.diagnostics.push(DefDiagnostic::unconfigured_code(
+                self.def_map.root,
+                InFile::new(file_id.into(), ROOT_ERASED_FILE_AST_ID),
+                cfg_expr.clone(),
+                self.cfg_options.clone(),
+            ));
             return;
         }
 
@@ -387,7 +394,7 @@ impl<'db> DefCollector<'db> {
     }
 
     fn seed_with_inner(&mut self, tree_id: TreeId) {
-        let item_tree = tree_id.item_tree(self.db);
+        let item_tree = tree_id.item_tree(self.db, self.def_map.krate);
         let is_cfg_enabled = matches!(item_tree.top_level_attrs(), AttrsOrCfg::Enabled { .. });
         if is_cfg_enabled {
             self.inject_prelude();
@@ -1708,7 +1715,7 @@ impl<'db> DefCollector<'db> {
         }
         let file_id = macro_call_id.into();
 
-        let item_tree = self.db.file_item_tree(file_id);
+        let item_tree = self.db.file_item_tree(file_id, self.def_map.krate);
 
         // Derive helpers that are in scope for an item are also in scope for attribute macro expansions
         // of that item (but not derive or fn like macros).
@@ -2335,10 +2342,10 @@ impl ModCollector<'_, '_> {
                     self.file_id(),
                     &module.name,
                     path_attr.as_deref(),
-                    self.def_collector.def_map.krate,
                 ) {
                     Ok((file_id, is_mod_rs, mod_dir)) => {
-                        let item_tree = db.file_item_tree(file_id.into());
+                        let item_tree =
+                            db.file_item_tree(file_id.into(), self.def_collector.def_map.krate);
                         match item_tree.top_level_attrs() {
                             AttrsOrCfg::CfgDisabled(cfg) => {
                                 self.emit_unconfigured_diagnostic(
@@ -2828,8 +2835,8 @@ foo!(KABOOM);
         let fixture = r#"
 //- /lib.rs crate:foo crate-attr:recursion_limit="4" crate-attr:no_core crate-attr:no_std crate-attr:feature(register_tool)
         "#;
-        let (db, file_id) = TestDB::with_single_file(fixture);
-        let def_map = crate_def_map(&db, file_id.krate(&db));
+        let (db, _) = TestDB::with_single_file(fixture);
+        let def_map = crate_def_map(&db, db.test_crate());
         assert_eq!(def_map.recursion_limit(), 4);
         assert!(def_map.is_no_core());
         assert!(def_map.is_no_std());

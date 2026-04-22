@@ -31,7 +31,8 @@ impl<'a> Parser<'a> {
 
                 MetaVarKind::Item
                 | MetaVarKind::Block
-                | MetaVarKind::Vis => false,
+                | MetaVarKind::Vis
+                | MetaVarKind::Guard => false,
 
                 MetaVarKind::Ident
                 | MetaVarKind::Lifetime
@@ -86,7 +87,8 @@ impl<'a> Parser<'a> {
                     | MetaVarKind::Ty { .. }
                     | MetaVarKind::Meta { .. }
                     | MetaVarKind::Path
-                    | MetaVarKind::Vis => false,
+                    | MetaVarKind::Vis
+                    | MetaVarKind::Guard => false,
                     MetaVarKind::Lifetime | MetaVarKind::Ident | MetaVarKind::TT => {
                         unreachable!()
                     }
@@ -102,6 +104,10 @@ impl<'a> Parser<'a> {
             NonterminalKind::Lifetime => match &token.kind {
                 token::Lifetime(..) | token::NtLifetime(..) => true,
                 _ => false,
+            },
+            NonterminalKind::Guard => match token.kind {
+                token::OpenInvisible(InvisibleOrigin::MetaVar(MetaVarKind::Guard)) => true,
+                _ => token.is_keyword(kw::If),
             },
             NonterminalKind::TT | NonterminalKind::Item | NonterminalKind::Stmt => {
                 token.kind.close_delim().is_none()
@@ -195,6 +201,9 @@ impl<'a> Parser<'a> {
                         token: self.token,
                     }))
                 }
+            }
+            NonterminalKind::Guard => {
+                Ok(ParseNtResult::Guard(self.expect_match_arm_guard(ForceCollect::Yes)?))
             }
         }
     }

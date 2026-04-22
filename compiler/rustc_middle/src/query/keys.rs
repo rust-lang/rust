@@ -13,7 +13,7 @@ use rustc_span::{DUMMY_SP, Ident, LocalExpnId, Span, Symbol};
 use crate::dep_graph::DepNodeIndex;
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::CanonicalQueryInput;
-use crate::mir::mono::CollectionMode;
+use crate::mono::CollectionMode;
 use crate::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::ValidityRequirement;
@@ -43,11 +43,6 @@ pub trait QueryKey: Sized + QueryKeyBounds {
     /// If the key is a [`DefId`] or `DefId`--equivalent, return that `DefId`.
     /// Otherwise, return `None`.
     fn key_as_def_id(&self) -> Option<DefId> {
-        None
-    }
-
-    /// Used to detect when ADT def ids are used as keys in a cycle for better error reporting.
-    fn def_id_for_ty_in_cycle(&self) -> Option<DefId> {
         None
     }
 }
@@ -265,14 +260,6 @@ impl<'tcx> QueryKey for Ty<'tcx> {
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
     }
-
-    fn def_id_for_ty_in_cycle(&self) -> Option<DefId> {
-        match *self.kind() {
-            ty::Adt(adt, _) => Some(adt.did()),
-            ty::Coroutine(def_id, ..) => Some(def_id),
-            _ => None,
-        }
-    }
 }
 
 impl<'tcx> QueryKey for (Ty<'tcx>, Ty<'tcx>) {
@@ -290,10 +277,6 @@ impl<'tcx> QueryKey for ty::Clauses<'tcx> {
 impl<'tcx, T: QueryKey> QueryKey for ty::PseudoCanonicalInput<'tcx, T> {
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.value.default_span(tcx)
-    }
-
-    fn def_id_for_ty_in_cycle(&self) -> Option<DefId> {
-        self.value.def_id_for_ty_in_cycle()
     }
 }
 
@@ -370,13 +353,6 @@ impl<'tcx> QueryKey for (ValidityRequirement, ty::PseudoCanonicalInput<'tcx, Ty<
 
     fn default_span(&self, _: TyCtxt<'_>) -> Span {
         DUMMY_SP
-    }
-
-    fn def_id_for_ty_in_cycle(&self) -> Option<DefId> {
-        match self.1.value.kind() {
-            ty::Adt(adt, _) => Some(adt.did()),
-            _ => None,
-        }
     }
 }
 

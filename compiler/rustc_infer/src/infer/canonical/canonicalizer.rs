@@ -10,8 +10,8 @@ use rustc_data_structures::sso::SsoHashMap;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, BoundVar, GenericArg, InferConst, List, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt,
+    self, BoundVar, Flags, GenericArg, InferConst, List, Ty, TyCtxt, TypeFlags, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, TypingModeEqWrapper,
 };
 use smallvec::SmallVec;
 use tracing::debug;
@@ -72,7 +72,7 @@ impl<'tcx> InferCtxt<'tcx> {
             query_state,
         )
         .unchecked_map(|(param_env, value)| param_env.and(value));
-        CanonicalQueryInput { canonical, typing_mode: self.typing_mode() }
+        CanonicalQueryInput { canonical, typing_mode: TypingModeEqWrapper(self.typing_mode()) }
     }
 
     /// Canonicalizes a query *response* `V`. When we canonicalize a
@@ -341,7 +341,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 }
 
                 debug!("canonical: type var found with vid {:?}", vid);
-                match self.infcx.unwrap().probe_ty_var(vid) {
+                match self.infcx.unwrap().try_resolve_ty_var(vid) {
                     // `t` could be a float / int variable; canonicalize that instead.
                     Ok(t) => {
                         debug!("(resolved to {:?})", t);
@@ -443,7 +443,7 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                 }
 
                 debug!("canonical: const var found with vid {:?}", vid);
-                match self.infcx.unwrap().probe_const_var(vid) {
+                match self.infcx.unwrap().try_resolve_const_var(vid) {
                     Ok(c) => {
                         debug!("(resolved to {:?})", c);
                         return self.fold_const(c);

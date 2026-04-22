@@ -1,25 +1,24 @@
 //! Manages calling a concrete function (with known MIR body) with argument passing,
 //! and returning the return value to the caller.
 
+use std::assert_matches;
 use std::borrow::Cow;
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};
-use rustc_data_structures::assert_matches;
-use rustc_errors::msg;
 use rustc_hir::def_id::DefId;
 use rustc_hir::find_attr;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
-use rustc_middle::ty::{self, AdtDef, Instance, Ty, VariantDef};
+use rustc_middle::ty::{self, AdtDef, Instance, Ty, Unnormalized, VariantDef};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAbi, FnAbi};
 use tracing::field::Empty;
 use tracing::{info, instrument, trace};
 
 use super::{
     CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
     Projectable, Provenance, ReturnAction, ReturnContinuation, Scalar, interp_ok, throw_ub,
-    throw_ub_custom,
+    throw_ub_format,
 };
 use crate::enter_trace_span;
 use crate::interpret::EnteredTraceSpan;
@@ -61,7 +60,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     }
 
     /// Helper function for argument untupling.
-    pub(super) fn fn_arg_field(
+    fn fn_arg_project_field(
         &self,
         arg: &FnArg<'tcx, M::Provenance>,
         field: FieldIdx,
@@ -220,7 +219,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Even if `ty` is normalized, the search for the unsized tail will project
                 // to fields, which can yield non-normalized types. So we need to provide a
                 // normalization function.
-                let normalize = |ty| self.tcx.normalize_erasing_regions(self.typing_env, ty);
+                let normalize = |ty| {
+                    self.tcx.normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(ty))
+                };
                 ty.ptr_metadata_ty(*self.tcx, normalize)
             };
             return interp_ok(meta_ty(caller) == meta_ty(callee));
@@ -284,7 +285,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         'tcx: 'y,
     {
         assert_eq!(callee_ty, callee_abi.layout.ty);
-        if callee_abi.mode == PassMode::Ignore {
+        if callee_abi.is_ignore() {
             // This one is skipped. Still must be made live though!
             if !already_live {
                 self.storage_live(callee_arg.as_local().unwrap())?;
@@ -293,7 +294,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
         // Find next caller arg.
         let Some((caller_arg, caller_abi)) = caller_args.next() else {
-            throw_ub_custom!(msg!("calling a function with fewer arguments than it requires"));
+            throw_ub_format!("calling a function with fewer arguments than it requires");
         };
         assert_eq!(caller_arg.layout().layout, caller_abi.layout.layout);
         // Sadly we cannot assert that `caller_arg.layout().ty` and `caller_abi.layout.ty` are
@@ -361,15 +362,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         } else {
             ty::List::empty()
         };
-        let callee_fn_abi = self.fn_abi_of_instance(instance, extra_tys)?;
+        let callee_fn_abi = self.fn_abi_of_instance_no_deduced_attrs(instance, extra_tys)?;
 
         if caller_fn_abi.conv != callee_fn_abi.conv {
-            throw_ub_custom!(
-                rustc_errors::msg!(
-                    "calling a function with calling convention \"{$callee_conv}\" using calling convention \"{$caller_conv}\""
-                ),
-                callee_conv = format!("{}", callee_fn_abi.conv),
-                caller_conv = format!("{}", caller_fn_abi.conv),
+            throw_ub_format!(
+                "calling a function with calling convention \"{callee_conv}\" using calling convention \"{caller_conv}\"",
+                callee_conv = callee_fn_abi.conv,
+                caller_conv = caller_fn_abi.conv,
             )
         }
 
@@ -407,161 +406,158 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // Push the "raw" frame -- this leaves locals uninitialized.
         self.push_stack_frame_raw(instance, body, destination, cont)?;
+        let preamble_span = self.frame().loc.unwrap_right(); // the span used for preamble errors
 
-        // If an error is raised here, pop the frame again to get an accurate backtrace.
-        // To this end, we wrap it all in a `try` block.
-        let res: InterpResult<'tcx> = try {
-            trace!(
-                "caller ABI: {:#?}, args: {:#?}",
-                caller_fn_abi,
-                args.iter()
-                    .map(|arg| (
-                        arg.layout().ty,
-                        match arg {
-                            FnArg::Copy(op) => format!("copy({op:?})"),
-                            FnArg::InPlace(mplace) => format!("in-place({mplace:?})"),
-                        }
-                    ))
-                    .collect::<Vec<_>>()
-            );
-            trace!(
-                "spread_arg: {:?}, locals: {:#?}",
-                body.spread_arg,
-                body.args_iter()
-                    .map(|local| (
-                        local,
-                        self.layout_of_local(self.frame(), local, None).unwrap().ty,
-                    ))
-                    .collect::<Vec<_>>()
-            );
-
-            // In principle, we have two iterators: Where the arguments come from, and where
-            // they go to.
-
-            // The "where they come from" part is easy, we expect the caller to do any special handling
-            // that might be required here (e.g. for untupling).
-            // If `with_caller_location` is set we pretend there is an extra argument (that
-            // we will not pass; our `caller_location` intrinsic implementation walks the stack instead).
-            assert_eq!(
-                args.len() + if with_caller_location { 1 } else { 0 },
-                caller_fn_abi.args.len(),
-                "mismatch between caller ABI and caller arguments",
-            );
-            let mut caller_args = args
-                .iter()
-                .zip(caller_fn_abi.args.iter())
-                .filter(|arg_and_abi| !matches!(arg_and_abi.1.mode, PassMode::Ignore));
-
-            // Now we have to spread them out across the callee's locals,
-            // taking into account the `spread_arg`. If we could write
-            // this is a single iterator (that handles `spread_arg`), then
-            // `pass_argument` would be the loop body. It takes care to
-            // not advance `caller_iter` for ignored arguments.
-            let mut callee_args_abis = callee_fn_abi.args.iter().enumerate();
-            // Determine whether there is a special VaList argument. This is always the
-            // last argument, and since arguments start at index 1 that's `arg_count`.
-            let va_list_arg =
-                callee_fn_abi.c_variadic.then(|| mir::Local::from_usize(body.arg_count));
-            for local in body.args_iter() {
-                // Construct the destination place for this argument. At this point all
-                // locals are still dead, so we cannot construct a `PlaceTy`.
-                let dest = mir::Place::from(local);
-                // `layout_of_local` does more than just the instantiation we need to get the
-                // type, but the result gets cached so this avoids calling the instantiation
-                // query *again* the next time this local is accessed.
-                let ty = self.layout_of_local(self.frame(), local, None)?.ty;
-                if Some(local) == va_list_arg {
-                    // This is the last callee-side argument of a variadic function.
-                    // This argument is a VaList holding the remaining caller-side arguments.
-                    self.storage_live(local)?;
-
-                    let place = self.eval_place(dest)?;
-                    let mplace = self.force_allocation(&place)?;
-
-                    // Consume the remaining arguments by putting them into the variable argument
-                    // list.
-                    let varargs = self.allocate_varargs(&mut caller_args, &mut callee_args_abis)?;
-                    // When the frame is dropped, these variable arguments are deallocated.
-                    self.frame_mut().va_list = varargs.clone();
-                    let key = self.va_list_ptr(varargs.into());
-
-                    // Zero the VaList, so it is fully initialized.
-                    self.write_bytes_ptr(
-                        mplace.ptr(),
-                        (0..mplace.layout.size.bytes()).map(|_| 0u8),
-                    )?;
-
-                    // Store the "key" pointer in the right field.
-                    let key_mplace = self.va_list_key_field(&mplace)?;
-                    self.write_pointer(key, &key_mplace)?;
-                } else if Some(local) == body.spread_arg {
-                    // Make the local live once, then fill in the value field by field.
-                    self.storage_live(local)?;
-                    // Must be a tuple
-                    let ty::Tuple(fields) = ty.kind() else {
-                        span_bug!(self.cur_span(), "non-tuple type for `spread_arg`: {ty}")
-                    };
-                    for (i, field_ty) in fields.iter().enumerate() {
-                        let dest = dest.project_deeper(
-                            &[mir::ProjectionElem::Field(FieldIdx::from_usize(i), field_ty)],
-                            *self.tcx,
-                        );
-                        let (idx, callee_abi) = callee_args_abis.next().unwrap();
-                        self.pass_argument(
-                            &mut caller_args,
-                            callee_abi,
-                            idx,
-                            &dest,
-                            field_ty,
-                            /* already_live */ true,
-                        )?;
+        trace!(
+            "caller ABI: {:#?}, args: {:#?}",
+            caller_fn_abi,
+            args.iter()
+                .map(|arg| (
+                    arg.layout().ty,
+                    match arg {
+                        FnArg::Copy(op) => format!("copy({op:?})"),
+                        FnArg::InPlace(mplace) => format!("in-place({mplace:?})"),
                     }
-                } else {
-                    // Normal argument. Cannot mark it as live yet, it might be unsized!
+                ))
+                .collect::<Vec<_>>()
+        );
+        trace!(
+            "spread_arg: {:?}, locals: {:#?}",
+            body.spread_arg,
+            body.args_iter()
+                .map(|local| (local, self.layout_of_local(self.frame(), local, None).unwrap().ty,))
+                .collect::<Vec<_>>()
+        );
+
+        // In principle, we have two iterators: Where the arguments come from, and where
+        // they go to.
+
+        // The "where they come from" part is easy, we expect the caller to do any special handling
+        // that might be required here (e.g. for untupling).
+        // If `with_caller_location` is set we pretend there is an extra argument (that
+        // we will not pass; our `caller_location` intrinsic implementation walks the stack instead).
+        assert_eq!(
+            args.len() + if with_caller_location { 1 } else { 0 },
+            caller_fn_abi.args.len(),
+            "mismatch between caller ABI and caller arguments",
+        );
+        let mut caller_args = args
+            .iter()
+            .zip(caller_fn_abi.args.iter())
+            .filter(|arg_and_abi| !arg_and_abi.1.is_ignore());
+
+        // Now we have to spread them out across the callee's locals,
+        // taking into account the `spread_arg`. If we could write
+        // this is a single iterator (that handles `spread_arg`), then
+        // `pass_argument` would be the loop body. It takes care to
+        // not advance `caller_iter` for ignored arguments.
+        let mut callee_args_abis = callee_fn_abi.args.iter().enumerate();
+        // Determine whether there is a special VaList argument. This is always the
+        // last argument, and since arguments start at index 1 that's `arg_count`.
+        let va_list_arg = callee_fn_abi.c_variadic.then(|| mir::Local::from_usize(body.arg_count));
+        for local in body.args_iter() {
+            // Update the span that we show in case of an error to point to this argument.
+            self.frame_mut().loc = Right(body.local_decls[local].source_info.span);
+            // Construct the destination place for this argument. At this point all
+            // locals are still dead, so we cannot construct a `PlaceTy`.
+            let dest = mir::Place::from(local);
+            // `layout_of_local` does more than just the instantiation we need to get the
+            // type, but the result gets cached so this avoids calling the instantiation
+            // query *again* the next time this local is accessed.
+            let ty = self.layout_of_local(self.frame(), local, None)?.ty;
+            if Some(local) == va_list_arg {
+                // This is the last callee-side argument of a variadic function.
+                // This argument is a VaList holding the remaining caller-side arguments.
+                self.storage_live(local)?;
+
+                let place = self.eval_place(dest)?;
+                let mplace = self.force_allocation(&place)?;
+
+                // Consume the remaining arguments by putting them into the variable argument
+                // list.
+                let varargs = self.allocate_varargs(
+                    &mut caller_args,
+                    // "Ignored" arguments aren't actually passed, so the callee should also
+                    // ignore them. (`pass_argument` does this for regular arguments.)
+                    (&mut callee_args_abis).filter(|(_, abi)| !abi.is_ignore()),
+                )?;
+                // When the frame is dropped, these variable arguments are deallocated.
+                self.frame_mut().va_list = varargs.clone();
+                let key = self.va_list_ptr(varargs.into());
+
+                // Zero the VaList, so it is fully initialized.
+                self.write_bytes_ptr(mplace.ptr(), (0..mplace.layout.size.bytes()).map(|_| 0u8))?;
+
+                // Store the "key" pointer in the right field.
+                let key_mplace = self.va_list_key_field(&mplace)?;
+                self.write_pointer(key, &key_mplace)?;
+            } else if Some(local) == body.spread_arg {
+                // Make the local live once, then fill in the value field by field.
+                self.storage_live(local)?;
+                // Must be a tuple
+                let ty::Tuple(fields) = ty.kind() else {
+                    span_bug!(self.cur_span(), "non-tuple type for `spread_arg`: {ty}")
+                };
+                for (i, field_ty) in fields.iter().enumerate() {
+                    let dest = dest.project_deeper(
+                        &[mir::ProjectionElem::Field(FieldIdx::from_usize(i), field_ty)],
+                        *self.tcx,
+                    );
                     let (idx, callee_abi) = callee_args_abis.next().unwrap();
                     self.pass_argument(
                         &mut caller_args,
                         callee_abi,
                         idx,
                         &dest,
-                        ty,
-                        /* already_live */ false,
+                        field_ty,
+                        /* already_live */ true,
                     )?;
                 }
+            } else {
+                // Normal argument. Cannot mark it as live yet, it might be unsized!
+                let (idx, callee_abi) = callee_args_abis.next().unwrap();
+                self.pass_argument(
+                    &mut caller_args,
+                    callee_abi,
+                    idx,
+                    &dest,
+                    ty,
+                    /* already_live */ false,
+                )?;
             }
-            // If the callee needs a caller location, pretend we consume one more argument from the ABI.
-            if instance.def.requires_caller_location(*self.tcx) {
-                callee_args_abis.next().unwrap();
-            }
-            // Now we should have no more caller args or callee arg ABIs.
-            assert!(
-                callee_args_abis.next().is_none(),
-                "mismatch between callee ABI and callee body arguments"
-            );
-            if caller_args.next().is_some() {
-                throw_ub_custom!(msg!("calling a function with more arguments than it expected"));
-            }
-            // Don't forget to check the return type!
-            if !self.check_argument_compat(&caller_fn_abi.ret, &callee_fn_abi.ret)? {
-                throw_ub!(AbiMismatchReturn {
-                    caller_ty: caller_fn_abi.ret.layout.ty,
-                    callee_ty: callee_fn_abi.ret.layout.ty
-                });
-            }
+        }
 
-            // Protect return place for in-place return value passing.
-            // We only need to protect anything if this is actually an in-memory place.
-            if let Some(mplace) = destination_mplace {
-                M::protect_in_place_function_argument(self, &mplace)?;
-            }
+        // Don't forget to check the return type!
+        self.frame_mut().loc = Right(body.local_decls[mir::RETURN_PLACE].source_info.span);
+        if !self.check_argument_compat(&caller_fn_abi.ret, &callee_fn_abi.ret)? {
+            throw_ub!(AbiMismatchReturn {
+                caller_ty: caller_fn_abi.ret.layout.ty,
+                callee_ty: callee_fn_abi.ret.layout.ty
+            });
+        }
+        // Protect return place for in-place return value passing.
+        // We only need to protect anything if this is actually an in-memory place.
+        if let Some(mplace) = destination_mplace {
+            M::protect_in_place_function_argument(self, &mplace)?;
+        }
 
-            // Don't forget to mark "initially live" locals as live.
-            self.storage_live_for_always_live_locals()?;
-        };
-        res.inspect_err_kind(|_| {
-            // Don't show the incomplete stack frame in the error stacktrace.
-            self.stack_mut().pop();
-        })
+        // For the final checks, use same span as preamble since it is unclear what else to do.
+        self.frame_mut().loc = Right(preamble_span);
+        // If the callee needs a caller location, pretend we consume one more argument from the ABI.
+        if instance.def.requires_caller_location(*self.tcx) {
+            callee_args_abis.next().unwrap();
+        }
+        // Now we should have no more caller args or callee arg ABIs.
+        assert!(
+            callee_args_abis.next().is_none(),
+            "mismatch between callee ABI and callee body arguments"
+        );
+        if caller_args.next().is_some() {
+            throw_ub_format!("calling a function with more arguments than it expected");
+        }
+
+        // Done!
+        self.push_stack_frame_done()
     }
 
     /// Initiate a call to this function -- pushing the stack frame and initializing the arguments.
@@ -661,12 +657,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     if caller_abi == ExternAbi::RustCall && !args.is_empty() {
                         // Untuple
                         let (untuple_arg, args) = args.split_last().unwrap();
+                        let ty::Tuple(untuple_fields) = untuple_arg.layout().ty.kind() else {
+                            span_bug!(self.cur_span(), "untuple argument must be a tuple")
+                        };
                         trace!("init_fn_call: Will pass last argument by untupling");
                         Cow::from(
                             args.iter()
+                                // The regular arguments.
                                 .map(|a| interp_ok(a.clone()))
-                                .chain((0..untuple_arg.layout().fields.count()).map(|i| {
-                                    self.fn_arg_field(untuple_arg, FieldIdx::from_usize(i))
+                                // The fields of the untupled argument.
+                                .chain((0..untuple_fields.len()).map(|i| {
+                                    self.fn_arg_project_field(untuple_arg, FieldIdx::from_usize(i))
                                 }))
                                 .collect::<InterpResult<'_, Vec<_>>>()?,
                         )
@@ -705,7 +706,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                             // actually access memory to resolve this method.
                             // Also see <https://github.com/rust-lang/miri/issues/2786>.
                             let val = self.read_immediate(&receiver)?;
-                            break self.ref_to_mplace(&val)?;
+                            break self.imm_ptr_to_mplace(&val)?;
                         }
                         ty::Dynamic(..) => break receiver.assert_mem_place(), // no immediate unsized values
                         _ => {
@@ -739,9 +740,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let vtable_entries = self.vtable_entries(receiver_trait.principal(), dyn_ty);
                 let Some(ty::VtblEntry::Method(fn_inst)) = vtable_entries.get(idx).copied() else {
                     // FIXME(fee1-dead) these could be variants of the UB info enum instead of this
-                    throw_ub_custom!(msg!(
-                        "`dyn` call trying to call something that is not a method"
-                    ));
+                    throw_ub_format!("`dyn` call trying to call something that is not a method");
                 };
                 trace!("Virtual call dispatches to {fn_inst:#?}");
                 // We can also do the lookup based on `def_id` and `dyn_ty`, and check that that
@@ -880,7 +879,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // then dispatches that to the normal call machinery. However, our call machinery currently
         // only supports calling `VtblEntry::Method`; it would choke on a `MetadataDropInPlace`. So
         // instead we do the virtual call stuff ourselves. It's easier here than in `eval_fn_call`
-        // since we can just get a place of the underlying type and use `mplace_to_ref`.
+        // since we can just get a place of the underlying type and use `mplace_to_imm_ptr`.
         let place = match place.layout.ty.kind() {
             ty::Dynamic(data, _) => {
                 // Dropping a trait object. Need to find actual drop fn.
@@ -899,9 +898,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 enter_trace_span!(M, resolve::resolve_drop_in_place, ty = ?place.layout.ty);
             ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty)
         };
-        let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty())?;
+        let fn_abi = self.fn_abi_of_instance_no_deduced_attrs(instance, ty::List::empty())?;
 
-        let arg = self.mplace_to_ref(&place)?;
+        let arg = self.mplace_to_imm_ptr(&place, None)?;
         let ret = MPlaceTy::fake_alloc_zst(self.layout_of(self.tcx.types.unit)?);
 
         self.init_fn_call(
@@ -947,7 +946,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
         );
         if unwinding && self.frame_idx() == 0 {
-            throw_ub_custom!(msg!("unwinding past the topmost frame of the stack"));
+            throw_ub_format!("unwinding past the topmost frame of the stack");
         }
 
         // Get out the return value. Must happen *before* the frame is popped as we have to get the

@@ -28,6 +28,7 @@ declare_clippy_lint! {
     suspicious,
     "almost complete range"
 }
+
 impl_lint_pass!(AlmostCompleteRange => [ALMOST_COMPLETE_RANGE]);
 
 pub struct AlmostCompleteRange {

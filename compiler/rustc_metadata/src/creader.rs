@@ -1,5 +1,6 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
+use std::collections::BTreeMap;
 use std::error::Error;
 use std::path::Path;
 use std::str::FromStr;
@@ -23,15 +24,15 @@ use rustc_middle::bug;
 use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
 use rustc_proc_macro::bridge::client::ProcMacro;
-use rustc_session::Session;
+use rustc_session::config::mitigation_coverage::DeniedPartialMitigationLevel;
 use rustc_session::config::{
     CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
     TargetModifier,
 };
 use rustc_session::cstore::{CrateDepKind, CrateSource, ExternCrate, ExternCrateSource};
-use rustc_session::lint::{self, BuiltinLintDiag};
 use rustc_session::output::validate_crate_name;
 use rustc_session::search_paths::PathKind;
+use rustc_session::{Session, lint};
 use rustc_span::def_id::DefId;
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, sym};
@@ -78,6 +79,9 @@ pub struct CStore {
     unused_externs: Vec<Symbol>,
 
     used_extern_options: FxHashSet<Symbol>,
+    /// Whether there was a failure in resolving crate,
+    /// it's used to suppress some diagnostics that would otherwise too noisey.
+    has_crate_resolve_with_fail: bool,
 }
 
 impl std::fmt::Debug for CStore {
@@ -329,6 +333,10 @@ impl CStore {
         self.has_alloc_error_handler
     }
 
+    pub fn had_extern_crate_load_failure(&self) -> bool {
+        self.has_crate_resolve_with_fail
+    }
+
     pub fn report_unused_deps(&self, tcx: TyCtxt<'_>) {
         let json_unused_externs = tcx.sess.opts.json_unused_externs;
 
@@ -457,6 +465,12 @@ impl CStore {
         }
     }
 
+    pub fn report_session_incompatibilities(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+        self.report_incompatible_target_modifiers(tcx, krate);
+        self.report_incompatible_partial_mitigations(tcx, krate);
+        self.report_incompatible_async_drop_feature(tcx, krate);
+    }
+
     pub fn report_incompatible_target_modifiers(&self, tcx: TyCtxt<'_>, krate: &Crate) {
         for flag_name in &tcx.sess.opts.cg.unsafe_allow_abi_mismatch {
             if !OptionsTargetModifiers::is_target_modifier(flag_name) {
@@ -474,6 +488,43 @@ impl CStore {
             let dep_mods = data.target_modifiers();
             if mods != dep_mods {
                 Self::report_target_modifiers_extended(tcx, krate, &mods, &dep_mods, data);
+            }
+        }
+    }
+
+    pub fn report_incompatible_partial_mitigations(&self, tcx: TyCtxt<'_>, krate: &Crate) {
+        let my_mitigations = tcx.sess.gather_enabled_denied_partial_mitigations();
+        let mut my_mitigations: BTreeMap<_, _> =
+            my_mitigations.iter().map(|mitigation| (mitigation.kind, mitigation)).collect();
+        for skipped_mitigation in tcx.sess.opts.allowed_partial_mitigations(tcx.sess.edition()) {
+            my_mitigations.remove(&skipped_mitigation);
+        }
+        const MAX_ERRORS_PER_MITIGATION: usize = 5;
+        let mut errors_per_mitigation = BTreeMap::new();
+        for (_cnum, data) in self.iter_crate_data() {
+            if data.is_proc_macro_crate() {
+                continue;
+            }
+            let their_mitigations = data.enabled_denied_partial_mitigations();
+            for my_mitigation in my_mitigations.values() {
+                let their_mitigation = their_mitigations
+                    .iter()
+                    .find(|mitigation| mitigation.kind == my_mitigation.kind)
+                    .map_or(DeniedPartialMitigationLevel::Enabled(false), |m| m.level);
+                if their_mitigation < my_mitigation.level {
+                    let errors = errors_per_mitigation.entry(my_mitigation.kind).or_insert(0);
+                    if *errors >= MAX_ERRORS_PER_MITIGATION {
+                        continue;
+                    }
+                    *errors += 1;
+
+                    tcx.dcx().emit_err(errors::MitigationLessStrictInDependency {
+                        span: krate.spans.inner_span.shrink_to_lo(),
+                        mitigation_name: my_mitigation.kind.to_string(),
+                        mitigation_level: my_mitigation.level.level_str().to_string(),
+                        extern_crate: data.name(),
+                    });
+                }
             }
         }
     }
@@ -515,6 +566,7 @@ impl CStore {
             resolved_externs: UnordMap::default(),
             unused_externs: Vec::new(),
             used_extern_options: Default::default(),
+            has_crate_resolve_with_fail: false,
         }
     }
 
@@ -724,6 +776,13 @@ impl CStore {
             }
             Err(err) => {
                 debug!("failed to resolve crate {} {:?}", name, dep_kind);
+                // crate maybe injrected with `standard_library_imports::inject`, their span is dummy.
+                // we ignore compiler-injected prelude/sysroot loads here so they don't suppress
+                // unrelated diagnostics, such as `unsupported targets for std library` etc,
+                // these maybe helpful for users to resolve crate loading failure.
+                if !tcx.sess.dcx().has_errors().is_some() && !span.is_dummy() {
+                    self.has_crate_resolve_with_fail = true;
+                }
                 let missing_core = self
                     .maybe_resolve_crate(
                         tcx,
@@ -1010,12 +1069,19 @@ impl CStore {
 
         info!("loading profiler");
 
+        // HACK: This uses conditional despite actually being unconditional to ensure that
+        // there is no error emitted when two dylibs independently depend on profiler_builtins.
+        // This is fine as profiler_builtins is always statically linked into the dylib just
+        // like compiler_builtins. Unlike compiler_builtins however there is no guaranteed
+        // common dylib that the duplicate crate check believes the crate to be included in.
+        // add_upstream_rust_crates has a corresponding check that forces profiler_builtins
+        // to be statically linked in even when marked as NotLinked.
         let name = Symbol::intern(&tcx.sess.opts.unstable_opts.profiler_runtime);
         let Some(cnum) = self.resolve_crate(
             tcx,
             name,
             DUMMY_SP,
-            CrateDepKind::Unconditional,
+            CrateDepKind::Conditional,
             CrateOrigin::Injected,
         ) else {
             return;
@@ -1211,7 +1277,7 @@ impl CStore {
                 lint::builtin::UNUSED_CRATE_DEPENDENCIES,
                 span,
                 ast::CRATE_NODE_ID,
-                BuiltinLintDiag::UnusedCrateDependency {
+                errors::UnusedCrateDependency {
                     extern_crate: name_interned,
                     local_crate: tcx.crate_name(LOCAL_CRATE),
                 },

@@ -145,15 +145,17 @@ pub trait Interner:
         + Eq
         + TypeVisitable<Self>
         + SliceLike<Item = Self::Pat>;
+    type FSigKind: FSigKind<Self>;
     type Safety: Safety<Self>;
     type Abi: Abi<Self>;
 
     // Kinds of consts
     type Const: Const<Self>;
+    type Consts: Copy + Debug + Hash + Eq + SliceLike<Item = Self::Const> + Default;
     type ParamConst: Copy + Debug + Hash + Eq + ParamLike;
     type ValueConst: ValueConst<Self>;
     type ExprConst: ExprConst<Self>;
-    type ValTree: ValTree<Self>;
+    type ValTree: Copy + Debug + Hash + Eq + IntoKind<Kind = ty::ValTreeKind<Self>>;
     type ScalarInt: Copy + Debug + Hash + Eq;
 
     // Kinds of regions
@@ -197,8 +199,7 @@ pub trait Interner:
 
     fn opt_alias_variances(
         self,
-        kind: impl Into<ty::AliasTermKind>,
-        def_id: Self::DefId,
+        kind: impl Into<ty::AliasTermKind<Self>>,
     ) -> Option<Self::VariancesOf>;
 
     fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;
@@ -210,9 +211,10 @@ pub trait Interner:
     type AdtDef: AdtDef<Self>;
     fn adt_def(self, adt_def_id: Self::AdtId) -> Self::AdtDef;
 
-    fn alias_ty_kind(self, alias: ty::AliasTy<Self>) -> ty::AliasTyKind;
+    fn alias_ty_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasTyKind<Self>;
 
-    fn alias_term_kind(self, alias: ty::AliasTerm<Self>) -> ty::AliasTermKind;
+    // FIXME: remove in favor of explicit construction
+    fn alias_term_kind_from_def_id(self, def_id: Self::DefId) -> ty::AliasTermKind<Self>;
 
     fn trait_ref_and_own_args_for_alias(
         self,
@@ -307,6 +309,7 @@ pub trait Interner:
 
     fn impl_is_const(self, def_id: Self::ImplId) -> bool;
     fn fn_is_const(self, def_id: Self::FunctionId) -> bool;
+    fn closure_is_const(self, def_id: Self::ClosureId) -> bool;
     fn alias_has_const_conditions(self, def_id: Self::DefId) -> bool;
     fn const_conditions(
         self,

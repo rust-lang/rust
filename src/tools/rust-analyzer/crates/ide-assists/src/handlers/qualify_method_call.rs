@@ -52,19 +52,16 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) ->
         cfg,
     )?;
 
-    let qualify_candidate = QualifyCandidate::ImplMethod(ctx.sema.db, call, resolved_call);
+    let qualify_candidate = QualifyCandidate::ImplMethod(ctx.sema.db, call.clone(), resolved_call);
 
     acc.add(
         AssistId::refactor_rewrite("qualify_method_call"),
         format!("Qualify `{ident}` method call"),
         range,
         |builder| {
-            qualify_candidate.qualify(
-                |replace_with: String| builder.replace(range, replace_with),
-                &receiver_path,
-                item_in_ns,
-                current_edition,
-            )
+            let editor = builder.make_editor(call.syntax());
+            qualify_candidate.qualify(|_| {}, &editor, &receiver_path, item_in_ns, current_edition);
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     );
     Some(())

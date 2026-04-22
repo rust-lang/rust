@@ -36,6 +36,7 @@ declare_clippy_lint! {
     style,
     "Perform saturating addition instead of implicitly checking max bound of data type"
 }
+
 declare_lint_pass!(ImplicitSaturatingAdd => [IMPLICIT_SATURATING_ADD]);
 
 impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {

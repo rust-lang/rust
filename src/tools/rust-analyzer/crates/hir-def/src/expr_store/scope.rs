@@ -1,13 +1,16 @@
 //! Name resolution for expressions.
 use hir_expand::{MacroDefId, name::Name};
 use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
-use triomphe::Arc;
 
 use crate::{
-    BlockId, DefWithBodyId,
+    BlockId, DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, VariantId,
     db::DefDatabase,
     expr_store::{Body, ExpressionStore, HygieneId},
-    hir::{Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement},
+    hir::{
+        Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement,
+        generics::GenericParams,
+    },
+    signatures::VariantFields,
 };
 
 pub type ScopeId = Idx<ScopeData>;
@@ -50,12 +53,45 @@ pub struct ScopeData {
     entries: IdxRange<ScopeEntry>,
 }
 
+#[salsa::tracked]
 impl ExprScopes {
-    pub(crate) fn expr_scopes_query(db: &dyn DefDatabase, def: DefWithBodyId) -> Arc<ExprScopes> {
-        let body = db.body(def);
-        let mut scopes = ExprScopes::new_body(&body);
+    #[salsa::tracked(returns(ref))]
+    pub fn body_expr_scopes(db: &dyn DefDatabase, def: DefWithBodyId) -> ExprScopes {
+        let body = Body::of(db, def);
+        let mut scopes = ExprScopes::new_body(body);
         scopes.shrink_to_fit();
-        Arc::new(scopes)
+        scopes
+    }
+
+    #[salsa::tracked(returns(ref))]
+    pub fn sig_expr_scopes(db: &dyn DefDatabase, def: GenericDefId) -> ExprScopes {
+        let (_, store) = GenericParams::with_store(db, def);
+        let roots = store.expr_roots();
+        let mut scopes = ExprScopes::new_store(store, roots);
+        scopes.shrink_to_fit();
+        scopes
+    }
+
+    #[salsa::tracked(returns(ref))]
+    pub fn variant_scopes(db: &dyn DefDatabase, def: VariantId) -> ExprScopes {
+        let fields = VariantFields::of(db, def);
+        let roots = fields.store.expr_roots();
+        let mut scopes = ExprScopes::new_store(&fields.store, roots);
+        scopes.shrink_to_fit();
+        scopes
+    }
+}
+
+impl ExprScopes {
+    #[inline]
+    pub fn of(db: &dyn DefDatabase, def: impl Into<ExpressionStoreOwnerId>) -> &ExprScopes {
+        match def.into() {
+            ExpressionStoreOwnerId::Body(def) => Self::body_expr_scopes(db, def),
+            ExpressionStoreOwnerId::Signature(def) => Self::sig_expr_scopes(db, def),
+            ExpressionStoreOwnerId::VariantFields(variant_id) => {
+                Self::variant_scopes(db, variant_id)
+            }
+        }
     }
 
     pub fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
@@ -115,7 +151,23 @@ impl ExprScopes {
             scopes.add_bindings(body, root, self_param, body.binding_hygiene(self_param));
         }
         scopes.add_params_bindings(body, root, &body.params);
-        compute_expr_scopes(body.body_expr, body, &mut scopes, &mut root);
+        compute_expr_scopes(body.root_expr(), body, &mut scopes, &mut root);
+        scopes
+    }
+
+    fn new_store(store: &ExpressionStore, roots: impl IntoIterator<Item = ExprId>) -> ExprScopes {
+        let mut scopes = ExprScopes {
+            scopes: Arena::default(),
+            scope_entries: Arena::default(),
+            scope_by_expr: ArenaMap::with_capacity(
+                store.expr_only.as_ref().map_or(0, |it| it.exprs.len()),
+            ),
+        };
+        let root = scopes.root_scope();
+        for root_expr in roots {
+            let mut scope = scopes.new_scope(root);
+            compute_expr_scopes(root_expr, store, &mut scopes, &mut scope);
+        }
         scopes
     }
 
@@ -272,7 +324,7 @@ fn compute_expr_scopes(
             let mut scope = scopes.root_scope();
             compute_expr_scopes(scopes, *id, &mut scope);
         }
-        Expr::Unsafe { id, statements, tail } | Expr::Async { id, statements, tail } => {
+        Expr::Unsafe { id, statements, tail } => {
             let mut scope = scopes.new_block_scope(*scope, *id, None);
             // Overwrite the old scope for the block expr, so that every block scope can be found
             // via the block itself (important for blocks that only contain items, no expressions).
@@ -319,7 +371,6 @@ fn compute_expr_scopes(
 
 #[cfg(test)]
 mod tests {
-    use base_db::RootQueryDb;
     use hir_expand::{InFile, name::AsName};
     use span::FileId;
     use syntax::{AstNode, algo::find_node_at_offset, ast};
@@ -327,7 +378,10 @@ mod tests {
     use test_utils::{assert_eq_text, extract_offset};
 
     use crate::{
-        FunctionId, ModuleDefId, db::DefDatabase, nameres::crate_def_map, test_db::TestDB,
+        DefWithBodyId, FunctionId, ModuleDefId,
+        expr_store::{Body, scope::ExprScopes},
+        nameres::crate_def_map,
+        test_db::TestDB,
     };
 
     fn find_function(db: &TestDB, file_id: FileId) -> FunctionId {
@@ -359,12 +413,12 @@ mod tests {
 
         let (file_id, _) = editioned_file_id.unpack(&db);
 
-        let file_syntax = db.parse(editioned_file_id).syntax_node();
+        let file_syntax = editioned_file_id.parse(&db).syntax_node();
         let marker: ast::PathExpr = find_node_at_offset(&file_syntax, offset).unwrap();
         let function = find_function(&db, file_id);
 
-        let scopes = db.expr_scopes(function.into());
-        let (_body, source_map) = db.body_with_source_map(function.into());
+        let scopes = ExprScopes::of(&db, DefWithBodyId::from(function));
+        let (_body, source_map) = Body::with_source_map(&db, function.into());
 
         let expr_id = source_map
             .node_expr(InFile { file_id: editioned_file_id.into(), value: &marker.into() })
@@ -515,15 +569,15 @@ fn foo() {
 
         let (file_id, _) = editioned_file_id.unpack(&db);
 
-        let file = db.parse(editioned_file_id).ok().unwrap();
+        let file = editioned_file_id.parse(&db).ok().unwrap();
         let expected_name = find_node_at_offset::<ast::Name>(file.syntax(), expected_offset.into())
             .expect("failed to find a name at the target offset");
         let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), offset).unwrap();
 
         let function = find_function(&db, file_id);
 
-        let scopes = db.expr_scopes(function.into());
-        let (_, source_map) = db.body_with_source_map(function.into());
+        let scopes = ExprScopes::body_expr_scopes(&db, DefWithBodyId::from(function));
+        let (_, source_map) = Body::with_source_map(&db, function.into());
 
         let expr_scope = {
             let expr_ast = name_ref.syntax().ancestors().find_map(ast::Expr::cast).unwrap();

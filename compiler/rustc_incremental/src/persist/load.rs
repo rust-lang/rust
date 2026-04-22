@@ -1,15 +1,15 @@
 //! Code to load the dep-graph from files.
 
-use std::path::{Path, PathBuf};
+use std::io;
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
 use rustc_middle::dep_graph::{DepGraph, SerializedDepGraph, WorkProductMap};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
-use rustc_serialize::Decodable;
-use rustc_serialize::opaque::MemDecoder;
+use rustc_serialize::opaque::{FileEncoder, MemDecoder};
+use rustc_serialize::{Decodable, Encodable};
 use rustc_session::config::IncrementalStateAssertion;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::Symbol;
@@ -17,73 +17,19 @@ use tracing::{debug, warn};
 
 use super::data::*;
 use super::fs::*;
-use super::save::build_dep_graph;
 use super::{file_format, work_product};
 use crate::errors;
+use crate::persist::file_format::{OpenFile, OpenFileError};
 
 #[derive(Debug)]
 /// Represents the result of an attempt to load incremental compilation data.
-pub enum LoadResult<T> {
+enum LoadResult {
     /// Loading was successful.
-    Ok {
-        #[allow(missing_docs)]
-        data: T,
-    },
+    Ok { prev_graph: Arc<SerializedDepGraph>, prev_work_products: WorkProductMap },
     /// The file either didn't exist or was produced by an incompatible compiler version.
     DataOutOfDate,
-    /// Loading the dep graph failed.
-    LoadDepGraph(PathBuf, std::io::Error),
-}
-
-impl<T: Default> LoadResult<T> {
-    /// Accesses the data returned in [`LoadResult::Ok`].
-    pub fn open(self, sess: &Session) -> T {
-        // Check for errors when using `-Zassert-incremental-state`
-        match (sess.opts.assert_incr_state, &self) {
-            (Some(IncrementalStateAssertion::NotLoaded), LoadResult::Ok { .. }) => {
-                sess.dcx().emit_fatal(errors::AssertNotLoaded);
-            }
-            (
-                Some(IncrementalStateAssertion::Loaded),
-                LoadResult::LoadDepGraph(..) | LoadResult::DataOutOfDate,
-            ) => {
-                sess.dcx().emit_fatal(errors::AssertLoaded);
-            }
-            _ => {}
-        };
-
-        match self {
-            LoadResult::LoadDepGraph(path, err) => {
-                sess.dcx().emit_warn(errors::LoadDepGraph { path, err });
-                Default::default()
-            }
-            LoadResult::DataOutOfDate => {
-                if let Err(err) = delete_all_session_dir_contents(sess) {
-                    sess.dcx()
-                        .emit_err(errors::DeleteIncompatible { path: dep_graph_path(sess), err });
-                }
-                Default::default()
-            }
-            LoadResult::Ok { data } => data,
-        }
-    }
-}
-
-fn load_data(path: &Path, sess: &Session) -> LoadResult<(Mmap, usize)> {
-    match file_format::read_file(
-        path,
-        sess.opts.unstable_opts.incremental_info,
-        sess.is_nightly_build(),
-        sess.cfg_version,
-    ) {
-        Ok(Some(data_and_pos)) => LoadResult::Ok { data: data_and_pos },
-        Ok(None) => {
-            // The file either didn't exist or was produced by an incompatible
-            // compiler version. Neither is an error.
-            LoadResult::DataOutOfDate
-        }
-        Err(err) => LoadResult::LoadDepGraph(path.to_path_buf(), err),
-    }
+    /// Loading failed due to an unexpected I/O error.
+    IoError { path: PathBuf, err: io::Error },
 }
 
 fn delete_dirty_work_product(sess: &Session, swp: SerializedWorkProduct) {
@@ -91,13 +37,8 @@ fn delete_dirty_work_product(sess: &Session, swp: SerializedWorkProduct) {
     work_product::delete_workproduct_files(sess, &swp.work_product);
 }
 
-fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkProductMap)> {
-    let prof = sess.prof.clone();
-
-    if sess.opts.incremental.is_none() {
-        // No incremental compilation.
-        return LoadResult::Ok { data: Default::default() };
-    }
+fn load_dep_graph(sess: &Session) -> LoadResult {
+    assert!(sess.opts.incremental.is_some());
 
     let _timer = sess.prof.generic_activity("incr_comp_prepare_load_dep_graph");
 
@@ -113,12 +54,12 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
     // when trying to load work products.
     if sess.incr_comp_session_dir_opt().is_some() {
         let work_products_path = work_products_path(sess);
-        let load_result = load_data(&work_products_path, sess);
 
-        if let LoadResult::Ok { data: (work_products_data, start_pos) } = load_result {
+        if let Ok(OpenFile { mmap, start_pos }) =
+            file_format::open_incremental_file(sess, &work_products_path)
+        {
             // Decode the list of work_products
-            let Ok(mut work_product_decoder) = MemDecoder::new(&work_products_data[..], start_pos)
-            else {
+            let Ok(mut work_product_decoder) = MemDecoder::new(&mmap[..], start_pos) else {
                 sess.dcx().emit_warn(errors::CorruptFile { path: &work_products_path });
                 return LoadResult::DataOutOfDate;
             };
@@ -145,13 +86,13 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
         }
     }
 
-    let _prof_timer = prof.generic_activity("incr_comp_load_dep_graph");
+    let _prof_timer = sess.prof.generic_activity("incr_comp_load_dep_graph");
 
-    match load_data(&path, sess) {
-        LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
-        LoadResult::LoadDepGraph(path, err) => LoadResult::LoadDepGraph(path, err),
-        LoadResult::Ok { data: (bytes, start_pos) } => {
-            let Ok(mut decoder) = MemDecoder::new(&bytes, start_pos) else {
+    match file_format::open_incremental_file(sess, &path) {
+        Err(OpenFileError::NotFoundOrHeaderMismatch) => LoadResult::DataOutOfDate,
+        Err(OpenFileError::IoError { err }) => LoadResult::IoError { path: path.to_owned(), err },
+        Ok(OpenFile { mmap, start_pos }) => {
+            let Ok(mut decoder) = MemDecoder::new(&mmap, start_pos) else {
                 sess.dcx().emit_warn(errors::CorruptFile { path: &path });
                 return LoadResult::DataOutOfDate;
             };
@@ -171,9 +112,9 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
                 return LoadResult::DataOutOfDate;
             }
 
-            let dep_graph = SerializedDepGraph::decode(&mut decoder);
+            let prev_graph = SerializedDepGraph::decode(&mut decoder);
 
-            LoadResult::Ok { data: (dep_graph, prev_work_products) }
+            LoadResult::Ok { prev_graph, prev_work_products }
         }
     }
 }
@@ -191,45 +132,104 @@ pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache> {
     let _prof_timer = sess.prof.generic_activity("incr_comp_load_query_result_cache");
 
     let path = query_cache_path(sess);
-    match load_data(&path, sess) {
-        LoadResult::Ok { data: (bytes, start_pos) } => {
-            let cache = OnDiskCache::new(sess, bytes, start_pos).unwrap_or_else(|()| {
+    match file_format::open_incremental_file(sess, &path) {
+        Ok(OpenFile { mmap, start_pos }) => {
+            let cache = OnDiskCache::new(sess, mmap, start_pos).unwrap_or_else(|()| {
                 sess.dcx().emit_warn(errors::CorruptFile { path: &path });
                 OnDiskCache::new_empty()
             });
             Some(cache)
         }
-        _ => Some(OnDiskCache::new_empty()),
+        Err(OpenFileError::NotFoundOrHeaderMismatch | OpenFileError::IoError { .. }) => {
+            Some(OnDiskCache::new_empty())
+        }
     }
 }
 
-/// Setups the dependency graph by loading an existing graph from disk and set up streaming of a
-/// new graph to an incremental session directory.
+/// Emits a fatal error if the assertion in `-Zassert-incr-state` doesn't match
+/// the outcome of trying to load previous-session state.
+fn maybe_assert_incr_state(sess: &Session, load_result: &LoadResult) {
+    // Return immediately if there's nothing to assert.
+    let Some(assertion) = sess.opts.unstable_opts.assert_incr_state else { return };
+
+    // Match exhaustively to make sure we don't miss any cases.
+    let loaded = match load_result {
+        LoadResult::Ok { .. } => true,
+        LoadResult::DataOutOfDate | LoadResult::IoError { .. } => false,
+    };
+
+    match assertion {
+        IncrementalStateAssertion::Loaded => {
+            if !loaded {
+                sess.dcx().emit_fatal(errors::AssertLoaded);
+            }
+        }
+        IncrementalStateAssertion::NotLoaded => {
+            if loaded {
+                sess.dcx().emit_fatal(errors::AssertNotLoaded)
+            }
+        }
+    }
+}
+
+/// Loads the previous session's dependency graph from disk if possible, and
+/// sets up streaming output for the current session's dep graph data into an
+/// incremental session directory.
+///
+/// In non-incremental mode, a dummy dep graph is returned immediately.
 pub fn setup_dep_graph(
     sess: &Session,
     crate_name: Symbol,
     stable_crate_id: StableCrateId,
 ) -> DepGraph {
-    // `load_dep_graph` can only be called after `prepare_session_directory`.
-    prepare_session_directory(sess, crate_name, stable_crate_id);
-
-    let res = sess.opts.build_dep_graph().then(|| load_dep_graph(sess));
-
-    if sess.opts.incremental.is_some() {
-        sess.time("incr_comp_garbage_collect_session_directories", || {
-            if let Err(e) = garbage_collect_session_directories(sess) {
-                warn!(
-                    "Error while trying to garbage collect incremental \
-                     compilation cache directory: {}",
-                    e
-                );
-            }
-        });
+    if sess.opts.incremental.is_none() {
+        return DepGraph::new_disabled();
     }
 
-    res.and_then(|result| {
-        let (prev_graph, prev_work_products) = result.open(sess);
-        build_dep_graph(sess, prev_graph, prev_work_products)
-    })
-    .unwrap_or_else(DepGraph::new_disabled)
+    // `load_dep_graph` can only be called after `prepare_session_directory`.
+    prepare_session_directory(sess, crate_name, stable_crate_id);
+    // Try to load the previous session's dep graph and work products.
+    let load_result = load_dep_graph(sess);
+
+    sess.time("incr_comp_garbage_collect_session_directories", || {
+        if let Err(e) = garbage_collect_session_directories(sess) {
+            warn!(
+                "Error while trying to garbage collect incremental compilation \
+                cache directory: {e}",
+            );
+        }
+    });
+
+    // Emit a fatal error if `-Zassert-incr-state` is present and unsatisfied.
+    maybe_assert_incr_state(sess, &load_result);
+
+    let (prev_graph, prev_work_products) = match load_result {
+        LoadResult::IoError { path, err } => {
+            sess.dcx().emit_warn(errors::LoadDepGraph { path, err });
+            Default::default()
+        }
+        LoadResult::DataOutOfDate => {
+            if let Err(err) = delete_all_session_dir_contents(sess) {
+                sess.dcx().emit_err(errors::DeleteIncompatible { path: dep_graph_path(sess), err });
+            }
+            Default::default()
+        }
+        LoadResult::Ok { prev_graph, prev_work_products } => (prev_graph, prev_work_products),
+    };
+
+    // Stream the dep-graph to an alternate file, to avoid overwriting anything in case of errors.
+    let path_buf = staging_dep_graph_path(sess);
+
+    let mut encoder = FileEncoder::new(&path_buf).unwrap_or_else(|err| {
+        // We're in incremental mode but couldn't set up streaming output of the dep graph.
+        // Exit immediately instead of continuing in an inconsistent and untested state.
+        sess.dcx().emit_fatal(errors::CreateDepGraph { path: &path_buf, err })
+    });
+
+    file_format::write_file_header(&mut encoder, sess);
+
+    // First encode the commandline arguments hash
+    sess.opts.dep_tracking_hash(false).encode(&mut encoder);
+
+    DepGraph::new(sess, prev_graph, prev_work_products, encoder)
 }

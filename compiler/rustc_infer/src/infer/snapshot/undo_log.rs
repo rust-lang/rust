@@ -1,7 +1,8 @@
+use std::assert_matches;
 use std::marker::PhantomData;
 
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
-use rustc_data_structures::{assert_matches, snapshot_vec as sv, unify as ut};
+use rustc_data_structures::{snapshot_vec as sv, unify as ut};
 use rustc_middle::ty::{self, OpaqueTypeKey, ProvisionalHiddenType};
 use tracing::debug;
 

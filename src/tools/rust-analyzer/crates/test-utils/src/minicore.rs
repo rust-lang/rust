@@ -936,6 +936,14 @@ pub mod ops {
                 }
             }
         }
+
+        mod internal_implementation_detail {
+            #[lang = "async_fn_kind_helper"]
+            trait AsyncFnKindHelper<GoalKind> {
+                #[lang = "async_fn_kind_upvars"]
+                type Upvars<'closure_env, Inputs, Upvars, BorrowedUpvarsAsFnPtr>;
+            }
+        }
     }
     pub use self::async_function::{AsyncFn, AsyncFnMut, AsyncFnOnce};
     // endregion:async_fn
@@ -1503,6 +1511,19 @@ pub mod slice {
             loop {}
         }
     }
+
+    // region:default
+    impl<T> const Default for &[T] {
+        fn default() -> Self {
+            &[]
+        }
+    }
+    impl<T> const Default for &mut [T] {
+        fn default() -> Self {
+            &mut []
+        }
+    }
+    // endregion:default
 }
 // endregion:slice
 

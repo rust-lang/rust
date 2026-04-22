@@ -32,8 +32,7 @@ use rustc_middle::ty::{
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
-use rustc_span::source_map::Spanned;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Spanned, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
@@ -375,10 +374,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.body
     }
 
-    fn unsized_feature_enabled(&self) -> bool {
-        self.tcx().features().unsized_fn_params()
-    }
-
     /// Equate the inferred type and the annotated type for user type annotations
     #[instrument(skip(self), level = "debug")]
     fn check_user_type_annotations(&mut self) {
@@ -452,8 +447,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = self.infcx.tcx;
 
         for proj in &user_ty.projs {
+            // Necessary for non-trivial patterns whose user-type annotation is an opaque type,
+            // e.g. `let (_a,): Tait = whatever`, see #105897
             if !self.infcx.next_trait_solver()
-                && let ty::Alias(ty::Opaque, ..) = curr_projected_ty.ty.kind()
+                && let ty::Alias(ty::AliasTy { kind: ty::Opaque { .. }, .. }) =
+                    curr_projected_ty.ty.kind()
             {
                 // There is nothing that we can compare here if we go through an opaque type.
                 // We're always in its defining scope as we can otherwise not project through
@@ -661,7 +659,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
 
-                if !self.unsized_feature_enabled() {
+                if !self.tcx().features().unsized_fn_params() {
                     let trait_ref = ty::TraitRef::new(
                         tcx,
                         tcx.require_lang_item(LangItem::Sized, self.last_span),
@@ -937,9 +935,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             }
         }
 
-        // When `unsized_fn_params` is enabled, only function calls
-        // and nullary ops are checked in `check_call_dest`.
-        if !self.unsized_feature_enabled() {
+        // When `unsized_fn_params` is enabled, this is checked in `check_call_dest`,
+        // and `hir_typeck` still forces all non-argument locals to be sized (i.e., we don't
+        // fully re-check what was already checked on HIR).
+        if !self.tcx().features().unsized_fn_params() {
             match self.body.local_kind(local) {
                 LocalKind::ReturnPointer | LocalKind::Arg => {
                     // return values of normal functions are required to be
@@ -1016,7 +1015,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         if let ty::FnDef(def_id, _) = *src_ty.kind()
                             && let ty::FnPtr(_, target_hdr) = *ty.kind()
                             && tcx.codegen_fn_attrs(def_id).safe_target_features
-                            && target_hdr.safety.is_safe()
+                            && target_hdr.safety().is_safe()
                             && let Some(safe_sig) = tcx.adjust_target_feature_sig(
                                 def_id,
                                 src_sig,
@@ -1760,7 +1759,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     );
                 }
             } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
-                let unnormalized_ty = tcx.type_of(static_def_id).instantiate_identity();
+                let unnormalized_ty =
+                    tcx.type_of(static_def_id).instantiate_identity().skip_norm_wip();
                 let normalized_ty = self.normalize(unnormalized_ty, locations);
                 let literal_ty = constant.const_.ty().builtin_deref(true).unwrap();
 
@@ -1954,8 +1954,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             // When `unsized_fn_params` is not enabled,
-            // this check is done at `check_local`.
-            if self.unsized_feature_enabled() {
+            // this check is done at `visit_local_decl`.
+            if self.tcx().features().unsized_fn_params() {
                 let span = term.source_info.span;
                 self.ensure_place_sized(dest_ty, span);
             }
@@ -1972,7 +1972,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         term_location: Location,
         call_source: CallSource,
     ) {
-        if args.len() < sig.inputs().len() || (args.len() > sig.inputs().len() && !sig.c_variadic) {
+        if args.len() < sig.inputs().len() || (args.len() > sig.inputs().len() && !sig.c_variadic())
+        {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
 

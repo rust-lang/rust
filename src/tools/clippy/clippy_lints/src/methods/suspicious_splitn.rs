@@ -2,8 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_note;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_span::Symbol;
-use rustc_span::source_map::Spanned;
+use rustc_span::{Spanned, Symbol};
 
 use super::SUSPICIOUS_SPLITN;
 
@@ -11,7 +10,7 @@ pub(super) fn check(cx: &LateContext<'_>, method_name: Symbol, expr: &Expr<'_>, 
     if count <= 1
         && let Some(call_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && let Some(impl_id) = cx.tcx.inherent_impl_of_assoc(call_id)
-        && let self_ty = cx.tcx.type_of(impl_id).instantiate_identity()
+        && let self_ty = cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip()
         && (self_ty.is_slice() || self_ty.is_str())
     {
         // Ignore empty slice and string literals when used with a literal count.

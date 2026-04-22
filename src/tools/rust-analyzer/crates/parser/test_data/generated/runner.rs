@@ -25,6 +25,8 @@ mod ok {
     #[test]
     fn asm_label() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_label.rs"); }
     #[test]
+    fn asm_sym_paren() { run_and_expect_no_errors("test_data/parser/inline/ok/asm_sym_paren.rs"); }
+    #[test]
     fn assoc_const_eq() {
         run_and_expect_no_errors("test_data/parser/inline/ok/assoc_const_eq.rs");
     }
@@ -84,6 +86,22 @@ mod ok {
     fn call_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/call_expr.rs"); }
     #[test]
     fn cast_expr() { run_and_expect_no_errors("test_data/parser/inline/ok/cast_expr.rs"); }
+    #[test]
+    fn cfg_attr() { run_and_expect_no_errors("test_data/parser/inline/ok/cfg_attr.rs"); }
+    #[test]
+    fn cfg_composite_pred() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/cfg_composite_pred.rs");
+    }
+    #[test]
+    fn cfg_key_value_pred() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/cfg_key_value_pred.rs");
+    }
+    #[test]
+    fn cfg_meta() { run_and_expect_no_errors("test_data/parser/inline/ok/cfg_meta.rs"); }
+    #[test]
+    fn cfg_true_false_pred() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/cfg_true_false_pred.rs");
+    }
     #[test]
     fn closure_binder() {
         run_and_expect_no_errors("test_data/parser/inline/ok/closure_binder.rs");
@@ -330,6 +348,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/impl_item_never_type.rs");
     }
     #[test]
+    fn impl_restrictions() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/impl_restrictions.rs");
+    }
+    #[test]
     fn impl_trait_type() {
         run_and_expect_no_errors("test_data/parser/inline/ok/impl_trait_type.rs");
     }
@@ -538,6 +560,14 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/record_literal_field_with_attr.rs");
     }
     #[test]
+    fn record_mut_restrictions_after() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/record_mut_restrictions_after.rs");
+    }
+    #[test]
+    fn record_mut_restrictions_before() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/record_mut_restrictions_before.rs");
+    }
+    #[test]
     fn record_pat_field() {
         run_and_expect_no_errors("test_data/parser/inline/ok/record_pat_field.rs");
     }
@@ -640,6 +670,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/tuple_field_attrs.rs");
     }
     #[test]
+    fn tuple_mut_restrictions() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/tuple_mut_restrictions.rs");
+    }
+    #[test]
     fn tuple_pat() { run_and_expect_no_errors("test_data/parser/inline/ok/tuple_pat.rs"); }
     #[test]
     fn tuple_pat_fields() {
@@ -653,6 +687,8 @@ mod ok {
     }
     #[test]
     fn type_alias() { run_and_expect_no_errors("test_data/parser/inline/ok/type_alias.rs"); }
+    #[test]
+    fn type_const() { run_and_expect_no_errors("test_data/parser/inline/ok/type_const.rs"); }
     #[test]
     fn type_item_type_params() {
         run_and_expect_no_errors("test_data/parser/inline/ok/type_item_type_params.rs");
@@ -791,6 +827,10 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/fn_ret_recovery.rs");
     }
     #[test]
+    fn function_ret_type_missing_arrow() {
+        run_and_expect_errors("test_data/parser/inline/err/function_ret_type_missing_arrow.rs");
+    }
+    #[test]
     fn gen_fn() {
         run_and_expect_errors_with_edition(
             "test_data/parser/inline/err/gen_fn.rs",
@@ -818,6 +858,10 @@ mod err {
         run_and_expect_errors(
             "test_data/parser/inline/err/invalid_question_for_type_trait_bound.rs",
         );
+    }
+    #[test]
+    fn key_ident_cfg_predicate() {
+        run_and_expect_errors("test_data/parser/inline/err/key_ident_cfg_predicate.rs");
     }
     #[test]
     fn let_else_right_curly_brace() {

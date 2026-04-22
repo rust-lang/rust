@@ -1,6 +1,6 @@
 //! Method lookup: the secret sauce of Rust. See the [rustc dev guide] for more information.
 //!
-//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/method-lookup.html
+//! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/hir-typeck/method-lookup.html
 
 mod confirm;
 mod prelude_edition_lints;
@@ -15,7 +15,7 @@ use rustc_infer::infer::{BoundRegionConversionTime, InferOk};
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TypeVisitableExt,
+    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TypeVisitableExt, Unnormalized,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
@@ -196,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // NOTE: on the failure path, we also record the possibly-used trait methods
         // since an unused import warning is kinda distracting from the method error.
-        for &import_id in &pick.import_ids {
+        for &import_id in pick.import_ids {
             debug!("used_trait_import: {:?}", import_id);
             self.typeck_results.borrow_mut().used_trait_imports.insert(import_id);
         }
@@ -421,7 +421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // N.B., instantiate late-bound regions before normalizing the
         // function signature so that normalization does not need to deal
         // with bound regions.
-        let fn_sig = tcx.fn_sig(def_id).instantiate(self.tcx, args);
+        let fn_sig = tcx.fn_sig(def_id).instantiate(self.tcx, args).skip_norm_wip();
         let fn_sig = self.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
             BoundRegionConversionTime::FnCall,
@@ -429,7 +429,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         let InferOk { value: fn_sig, obligations: o } =
-            self.at(&obligation.cause, self.param_env).normalize(fn_sig);
+            self.at(&obligation.cause, self.param_env).normalize(Unnormalized::new_wip(fn_sig));
         obligations.extend(o);
 
         // Register obligations for the parameters. This will include the
@@ -442,17 +442,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // any late-bound regions appearing in its bounds.
         let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, args);
 
-        let InferOk { value: bounds, obligations: o } =
-            self.at(&obligation.cause, self.param_env).normalize(bounds);
-        obligations.extend(o);
-        assert!(!bounds.has_escaping_bound_vars());
-
         let predicates_cause = obligation.cause.clone();
+        let mut normalization_obligations = PredicateObligations::new();
         obligations.extend(traits::predicates_for_generics(
             move |_, _| predicates_cause.clone(),
+            |pred| {
+                let InferOk { value: pred, obligations: o } =
+                    self.at(&obligation.cause, self.param_env).normalize(pred);
+                normalization_obligations.extend(o);
+                assert!(!pred.has_escaping_bound_vars());
+                pred
+            },
             self.param_env,
             bounds,
         ));
+        obligations.extend(normalization_obligations);
 
         // Also add an obligation for the method type being well-formed.
         debug!(
@@ -554,7 +558,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!(?pick);
         {
             let mut typeck_results = self.typeck_results.borrow_mut();
-            for import_id in pick.import_ids {
+            for &import_id in pick.import_ids {
                 debug!(used_trait_import=?import_id);
                 typeck_results.used_trait_imports.insert(import_id);
             }

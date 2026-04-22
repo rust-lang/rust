@@ -7,7 +7,7 @@ use ide::{
     RootDatabase, StaticIndex, StaticIndexedFile, SymbolInformationKind, TextRange, TokenId,
     TokenStaticData, VendoredLibrariesConfig,
 };
-use ide_db::LineIndexDatabase;
+use ide_db::line_index;
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 use rustc_hash::{FxHashMap, FxHashSet};
 use scip::types::{self as scip_types, SymbolInformation};
@@ -52,6 +52,7 @@ impl flags::Scip {
             load_out_dirs_from_check: true,
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: true,
+            num_worker_threads: self.num_threads.unwrap_or_else(num_cpus::get_physical),
             proc_macro_processes: config.proc_macro_num_processes(),
         };
         let cargo_config = config.cargo(None);
@@ -347,7 +348,7 @@ fn get_relative_filepath(
 
 fn get_line_index(db: &RootDatabase, file_id: FileId) -> LineIndex {
     LineIndex {
-        index: db.line_index(file_id),
+        index: line_index(db, file_id).clone(),
         encoding: PositionEncoding::Utf8,
         endings: LineEndings::Unix,
     }

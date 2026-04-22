@@ -6,9 +6,11 @@ use std::io::Error;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
+use rustc_abi::NumScalableVectors;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level, msg,
+    Diag, DiagArgValue, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, IntoDiagArg,
+    Level, msg,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::layout::LayoutError;
@@ -109,13 +111,6 @@ pub(crate) struct NoNatvisDirectory {
 #[diag("cached cgu {$cgu_name} should have an object file, but doesn't")]
 pub(crate) struct NoSavedObjectFile<'a> {
     pub cgu_name: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[track_caller]` requires Rust ABI", code = E0737)]
-pub(crate) struct RequiresRustAbi {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -739,14 +734,6 @@ pub enum InvalidMonomorphization<'tcx> {
         in_ty: Ty<'tcx>,
     },
 
-    #[diag("invalid monomorphization of `{$name}` intrinsic: `{$in_ty}` is not a floating-point type", code = E0511)]
-    FloatingPointType {
-        #[primary_span]
-        span: Span,
-        name: Symbol,
-        in_ty: Ty<'tcx>,
-    },
-
     #[diag("invalid monomorphization of `{$name}` intrinsic: unrecognized intrinsic `{$name}`", code = E0511)]
     UnrecognizedIntrinsic {
         #[primary_span]
@@ -821,6 +808,17 @@ pub enum InvalidMonomorphization<'tcx> {
         in_ty: Ty<'tcx>,
         ret_ty: Ty<'tcx>,
         out_len: u64,
+    },
+
+    #[diag("invalid monomorphization of `{$name}` intrinsic: expected return type with {$in_num_vecs} vectors (same as input type `{$in_ty}`), found `{$ret_ty}` with length {$out_num_vecs}", code = E0511)]
+    ReturnNumVecsInputType {
+        #[primary_span]
+        span: Span,
+        name: Symbol,
+        in_num_vecs: NumScalableVectors,
+        in_ty: Ty<'tcx>,
+        ret_ty: Ty<'tcx>,
+        out_num_vecs: NumScalableVectors,
     },
 
     #[diag("invalid monomorphization of `{$name}` intrinsic: expected second argument with length {$in_len} (same as input type `{$in_ty}`), found `{$arg_ty}` with length {$out_len}", code = E0511)]
@@ -1071,7 +1069,7 @@ pub(crate) struct TargetFeatureSafeTrait {
 
 #[derive(Diagnostic)]
 #[diag("target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}")]
-pub struct ForbiddenTargetFeatureAttr<'a> {
+pub(crate) struct ForbiddenTargetFeatureAttr<'a> {
     #[primary_span]
     pub span: Span,
     pub feature: &'a str,
@@ -1213,7 +1211,7 @@ pub(crate) struct ForbiddenCTargetFeature<'a> {
     pub reason: &'a str,
 }
 
-pub struct TargetFeatureDisableOrEnable<'a> {
+pub(crate) struct TargetFeatureDisableOrEnable<'a> {
     pub features: &'a [&'a str],
     pub span: Option<Span>,
     pub missing_features: Option<MissingFeatures>,
@@ -1221,7 +1219,7 @@ pub struct TargetFeatureDisableOrEnable<'a> {
 
 #[derive(Subdiagnostic)]
 #[help("add the missing features in a `target_feature` attribute")]
-pub struct MissingFeatures;
+pub(crate) struct MissingFeatures;
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
@@ -1248,8 +1246,30 @@ pub(crate) struct FeatureNotValid<'a> {
     #[primary_span]
     #[label("`{$feature}` is not valid for this target")]
     pub span: Span,
-    #[help("consider removing the leading `+` in the feature name")]
-    pub plus_hint: bool,
+    #[subdiagnostic]
+    pub hint: FeatureNotValidHint<'a>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum FeatureNotValidHint<'a> {
+    #[suggestion(
+        "consider removing the leading `+` in the feature name",
+        code = "enable = \"{stripped}\"",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    RemovePlusFromFeatureName {
+        #[primary_span]
+        span: Span,
+        stripped: &'a str,
+    },
+    #[help(
+        "valid names are: {$possibilities}{$and_more ->
+            [0] {\"\"}
+            *[other] {\" \"}and {$and_more} more
+        }"
+    )]
+    ValidFeatureNames { possibilities: DiagSymbolList<&'a str>, and_more: usize },
 }
 
 #[derive(Diagnostic)]

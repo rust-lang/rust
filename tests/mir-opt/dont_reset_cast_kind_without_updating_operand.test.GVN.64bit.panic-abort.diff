@@ -51,7 +51,7 @@
           StorageLive(_12);
           StorageLive(_13);
 -         _13 = boxed::box_new_uninit(const <() as std::mem::SizedTypeProperties>::LAYOUT) -> [return: bb2, unwind unreachable];
-+         _13 = boxed::box_new_uninit(const Layout {{ size: 0_usize, align: std::ptr::Alignment {{ _inner_repr_trick: std::ptr::alignment::AlignmentEnum::_Align1Shl0 }} }}) -> [return: bb2, unwind unreachable];
++         _13 = boxed::box_new_uninit(const Layout {{ size: 0_usize, align: std::mem::Alignment {{ _inner_repr_trick: mem::alignment::AlignmentEnum::_Align1Shl0 }} }}) -> [return: bb2, unwind unreachable];
       }
   
       bb1: {
@@ -71,13 +71,11 @@
           _2 = &_3;
           _1 = &(*_2);
           StorageDead(_2);
--         StorageLive(_5);
-+         nop;
+          StorageLive(_5);
           _10 = copy (*_1);
           _11 = copy ((_10.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *const () (Transmute);
           _5 = &raw const (*_11);
--         StorageLive(_6);
-+         nop;
+          StorageLive(_6);
           StorageLive(_7);
           _7 = copy _5;
           StorageLive(_14);
@@ -98,10 +96,8 @@
           StorageDead(_9);
           _0 = const ();
           StorageDead(_8);
--         StorageDead(_6);
--         StorageDead(_5);
-+         nop;
-+         nop;
+          StorageDead(_6);
+          StorageDead(_5);
           drop(_3) -> [return: bb1, unwind unreachable];
       }
 + }

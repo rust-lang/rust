@@ -7,8 +7,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem};
 use rustc_lint::LateContext;
-use rustc_span::Span;
-use rustc_span::source_map::Spanned;
+use rustc_span::{Span, Spanned};
 
 use super::CASE_SENSITIVE_FILE_EXTENSION_COMPARISONS;
 
@@ -31,7 +30,7 @@ pub(super) fn check<'tcx>(
 
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
-        && cx.tcx.type_of(impl_id).instantiate_identity().is_str()
+        && cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip().is_str()
         && let ExprKind::Lit(Spanned {
             node: LitKind::Str(ext_literal, ..),
             ..

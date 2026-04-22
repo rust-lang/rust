@@ -9,7 +9,7 @@ use rustc_span::def_id::{CrateNum, LocalDefId};
 use rustc_span::{ExpnHash, ExpnId};
 
 use crate::mir;
-use crate::query::on_disk_cache::{CacheEncoder, EncodedDepNodeIndex};
+use crate::query::on_disk_cache::CacheEncoder;
 use crate::ty::{Ty, TyCtxt};
 
 macro_rules! declare_hooks {
@@ -35,8 +35,10 @@ macro_rules! declare_hooks {
 
         impl Default for Providers {
             fn default() -> Self {
+                #[allow(unused)]
                 Providers {
-                    $($name: |_, $($arg,)*| default_hook(stringify!($name), &($($arg,)*))),*
+                    $($name:
+                        |_, $($arg,)*| default_hook(stringify!($name))),*
                 }
             }
         }
@@ -98,7 +100,7 @@ declare_hooks! {
     /// Trying to execute a query afterwards would attempt to read the result cache we just dropped.
     hook save_dep_graph() -> ();
 
-    hook query_key_hash_verify_all() -> ();
+    hook verify_query_key_hashes() -> ();
 
     /// Ensure the given scalar is valid for the given type.
     /// This checks non-recursive runtime validity.
@@ -109,17 +111,11 @@ declare_hooks! {
     /// Creates the MIR for a given `DefId`, including unreachable code.
     hook build_mir_inner_impl(def: LocalDefId) -> mir::Body<'tcx>;
 
-    hook try_mark_green(dep_node: &crate::dep_graph::DepNode) -> bool;
-
-    hook encode_all_query_results(
-        encoder: &mut CacheEncoder<'_, 'tcx>,
-        query_result_index: &mut EncodedDepNodeIndex
-    ) -> ();
+    /// Serializes all eligible query return values into the on-disk cache.
+    hook encode_query_values(encoder: &mut CacheEncoder<'_, 'tcx>) -> ();
 }
 
 #[cold]
-fn default_hook(name: &str, args: &dyn std::fmt::Debug) -> ! {
-    bug!(
-        "`tcx.{name}{args:?}` cannot be called as `{name}` was never assigned to a provider function"
-    )
+fn default_hook(name: &str) -> ! {
+    bug!("`tcx.{name}` cannot be called as `{name}` was never assigned to a provider function")
 }

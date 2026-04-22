@@ -1,5 +1,5 @@
 <!---
-lsp/ext.rs hash: 235f56089da3dbb5
+lsp/ext.rs hash: dc4ba5f417c74aa6
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -236,7 +236,7 @@ fn main() {
 ```
 
 The primary goal of `onEnter` is to handle automatic indentation when opening a new line.
-This is not yet implemented.
+This is partially implemented for single-line brace-delimited contents, in addition to comment continuation.
 The secondary goal is to handle fixing up syntax, like continuing doc strings and comments, and escaping `\n` in string literals.
 
 As proper cursor positioning is raison d'être for `onEnter`, it uses `SnippetTextEdit`.
@@ -653,7 +653,7 @@ Note that this functionality is intended primarily to inform the end user about 
 In particular, it's valid for the client to completely ignore this extension.
 Clients are discouraged from but are allowed to use the `health` status to decide if it's worth sending a request to the server.
 
-### Controlling Flycheck
+## Controlling Flycheck
 
 The flycheck/checkOnSave feature can be controlled via notifications sent by the client to the server.
 

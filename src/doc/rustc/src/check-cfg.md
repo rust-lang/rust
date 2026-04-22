@@ -53,7 +53,7 @@ To check for the _none_ value (ie `#[cfg(foo)]`) one can use the `none()` predic
 `values()`: `values(none())`. It can be followed or preceded by any number of `"value"`.
 
 To enable checking of values, but to provide an *none*/empty set of expected values
-(ie. expect `#[cfg(name)]`), use these forms:
+(i.e. expect `#[cfg(name)]`), use these forms:
 
 ```bash
 rustc --check-cfg 'cfg(name)'

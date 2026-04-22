@@ -109,6 +109,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         adb_test_dir: Default::default(),
         adb_device_status: Default::default(),
         verbose: Default::default(),
+        verbose_run_make_subprocess_output: Default::default(),
         remote_test_client: Default::default(),
         compare_mode: Default::default(),
         rustfix_coverage: Default::default(),
@@ -140,5 +141,7 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         override_codegen_backend: None,
         bypass_ignore_backends: Default::default(),
         jobs: Default::default(),
+        parallel_frontend_threads: Config::DEFAULT_PARALLEL_FRONTEND_THREADS,
+        iteration_count: Config::DEFAULT_ITERATION_COUNT,
     }
 }

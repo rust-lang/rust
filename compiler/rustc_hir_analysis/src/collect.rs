@@ -15,14 +15,15 @@
 //! crate as a kind of pass. This should eventually be factored away.
 
 use std::cell::Cell;
-use std::iter;
 use std::ops::{Bound, ControlFlow};
+use std::{assert_matches, iter};
 
 use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
-use rustc_data_structures::assert_matches;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, E0228, ErrorGuaranteed, StashKey};
+use rustc_errors::{
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, E0228, ErrorGuaranteed, Level, StashKey,
+};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
@@ -33,7 +34,8 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
-    self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, fold_regions,
+    self, AdtKind, Const, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
+    fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -92,7 +94,6 @@ pub(crate) fn provide(providers: &mut Providers) {
         const_param_default,
         anon_const_kind,
         const_of_item,
-        is_rhs_type_const,
         ..*providers
     };
 }
@@ -388,7 +389,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         let candidates = candidates
             .into_iter()
             .filter(|&InherentAssocCandidate { impl_, .. }| {
-                let impl_ty = self.tcx().type_of(impl_).instantiate_identity();
+                let impl_ty = self.tcx().type_of(impl_).instantiate_identity().skip_norm_wip();
 
                 // See comment on doing this operation for `self_ty`
                 let impl_ty = self.tcx.expand_free_alias_tys(impl_ty);
@@ -611,6 +612,19 @@ pub(super) fn lower_variant_ctor(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 }
 
 pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    struct ReprCIssue {
+        msg: &'static str,
+    }
+
+    impl<'a> Diagnostic<'a, ()> for ReprCIssue {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let Self { msg } = self;
+            Diag::new(dcx, level, msg)
+                .with_note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C")
+                .with_help("use `repr($int_ty)` instead to explicitly set the size of this enum")
+        }
+    }
+
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr().discr_type();
     let initial = repr_type.initial_discriminant(tcx);
@@ -660,15 +674,11 @@ pub(super) fn lower_enum_variant_types(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 } else {
                     "`repr(C)` enum discriminant does not fit into C `int`, and a previous discriminant does not fit into C `unsigned int`"
                 };
-                tcx.node_span_lint(
+                tcx.emit_node_span_lint(
                     rustc_session::lint::builtin::REPR_C_ENUMS_LARGER_THAN_INT,
                     tcx.local_def_id_to_hir_id(def_id),
                     span,
-                    |d| {
-                        d.primary_message(msg)
-                        .note("`repr(C)` enums with big discriminants are non-portable, and their size in Rust might not match their size in C")
-                        .help("use `repr($int_ty)` instead to explicitly set the size of this enum");
-                    }
+                    ReprCIssue { msg },
                 );
             }
         }
@@ -884,11 +894,25 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let item = tcx.hir_expect_item(def_id);
 
-    let (constness, is_alias, is_auto, safety) = match item.kind {
-        hir::ItemKind::Trait(constness, is_auto, safety, ..) => {
-            (constness, false, is_auto == hir::IsAuto::Yes, safety)
-        }
-        hir::ItemKind::TraitAlias(constness, ..) => (constness, true, false, hir::Safety::Safe),
+    let (constness, is_alias, is_auto, safety, impl_restriction) = match item.kind {
+        hir::ItemKind::Trait(constness, is_auto, safety, impl_restriction, ..) => (
+            constness,
+            false,
+            is_auto == hir::IsAuto::Yes,
+            safety,
+            if let hir::RestrictionKind::Restricted(path) = impl_restriction.kind {
+                ty::trait_def::ImplRestrictionKind::Restricted(path.res, impl_restriction.span)
+            } else {
+                ty::trait_def::ImplRestrictionKind::Unrestricted
+            },
+        ),
+        hir::ItemKind::TraitAlias(constness, ..) => (
+            constness,
+            true,
+            false,
+            hir::Safety::Safe,
+            ty::trait_def::ImplRestrictionKind::Unrestricted,
+        ),
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
@@ -937,6 +961,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         def_id: def_id.to_def_id(),
         safety,
         constness,
+        impl_restriction,
         paren_sugar,
         has_auto_impl: is_auto,
         is_marker,
@@ -1009,14 +1034,17 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
         Ctor(data) => {
             assert_matches!(data.ctor(), Some(_));
             let adt_def_id = tcx.hir_get_parent_item(hir_id).def_id.to_def_id();
-            let ty = tcx.type_of(adt_def_id).instantiate_identity();
-            let inputs = data.fields().iter().map(|f| tcx.type_of(f.def_id).instantiate_identity());
+            let ty = tcx.type_of(adt_def_id).instantiate_identity().skip_norm_wip();
+            let inputs = data
+                .fields()
+                .iter()
+                .map(|f| tcx.type_of(f.def_id).instantiate_identity().skip_norm_wip());
             // constructors for structs with `layout_scalar_valid_range` are unsafe to call
             let safety = match tcx.layout_scalar_valid_range(adt_def_id) {
                 (Bound::Unbounded, Bound::Unbounded) => hir::Safety::Safe,
                 _ => hir::Safety::Unsafe,
             };
-            ty::Binder::dummy(tcx.mk_fn_sig(inputs, ty, false, safety, ExternAbi::Rust))
+            ty::Binder::dummy(tcx.mk_fn_sig_rust_abi(inputs, ty, safety))
         }
 
         Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
@@ -1209,9 +1237,7 @@ fn recover_infer_ret_ty<'tcx>(
     let fn_sig = tcx.mk_fn_sig(
         fn_sig.inputs().iter().copied(),
         recovered_ret_ty.unwrap_or_else(|| Ty::new_error(tcx, guar)),
-        fn_sig.c_variadic,
-        fn_sig.safety,
-        fn_sig.abi,
+        fn_sig.fn_sig_kind,
     );
 
     late_param_regions_to_bound(tcx, scope, bound_vars, fn_sig)
@@ -1317,7 +1343,7 @@ pub fn suggest_impl_trait<'tcx>(
             let item_ty = ocx.normalize(
                 &ObligationCause::dummy(),
                 param_env,
-                Ty::new_projection_from_args(infcx.tcx, assoc_item_def_id, args),
+                Unnormalized::new(Ty::new_projection_from_args(infcx.tcx, assoc_item_def_id, args)),
             );
             // FIXME(compiler-errors): We may benefit from resolving regions here.
             if ocx.try_evaluate_obligations().is_empty()
@@ -1351,7 +1377,7 @@ fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader
     let of_trait = impl_
         .of_trait
         .unwrap_or_else(|| panic!("expected impl trait, found inherent impl on {def_id:?}"));
-    let selfty = tcx.type_of(def_id).instantiate_identity();
+    let selfty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
     let is_rustc_reservation = find_attr!(tcx, def_id, RustcReservationImpl(..));
 
     check_impl_constness(tcx, impl_.constness, &of_trait.trait_ref);
@@ -1575,9 +1601,10 @@ fn const_param_default<'tcx>(
     let def_id = local_def_id.to_def_id();
     let identity_args = ty::GenericArgs::identity_for_item(tcx, tcx.parent(def_id));
 
-    let ct = icx
-        .lowerer()
-        .lower_const_arg(default_ct, tcx.type_of(def_id).instantiate(tcx, identity_args));
+    let ct = icx.lowerer().lower_const_arg(
+        default_ct,
+        tcx.type_of(def_id).instantiate(tcx, identity_args).skip_norm_wip(),
+    );
     ty::EarlyBinder::bind(ct)
 }
 
@@ -1589,8 +1616,8 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             let parent_hir_node = tcx.hir_node(tcx.parent_hir_id(const_arg_id));
             if tcx.features().generic_const_exprs() {
                 ty::AnonConstKind::GCE
-            } else if tcx.features().opaque_generic_const_args() {
-                // Only anon consts that are the RHS of a const item can be OGCA.
+            } else if tcx.features().generic_const_args() {
+                // Only anon consts that are the RHS of a const item can be GCA.
                 // Note: We can't just check tcx.parent because it needs to be EXACTLY
                 // the RHS, not just part of the RHS.
                 if !is_anon_const_rhs_of_const_item(tcx, def) {
@@ -1598,9 +1625,9 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
                 }
 
                 let body = tcx.hir_body_owned_by(def);
-                let mut visitor = OGCAParamVisitor(tcx);
+                let mut visitor = GCAParamVisitor(tcx);
                 match visitor.visit_body(body) {
-                    ControlFlow::Break(UsesParam) => ty::AnonConstKind::OGCA,
+                    ControlFlow::Break(UsesParam) => ty::AnonConstKind::GCA,
                     ControlFlow::Continue(()) => ty::AnonConstKind::MCG,
                 }
             } else if tcx.features().min_generic_const_args() {
@@ -1641,11 +1668,11 @@ fn is_anon_const_rhs_of_const_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) 
     def_id == rhs_anon.def_id
 }
 
-struct OGCAParamVisitor<'tcx>(TyCtxt<'tcx>);
+struct GCAParamVisitor<'tcx>(TyCtxt<'tcx>);
 
 struct UsesParam;
 
-impl<'tcx> Visitor<'tcx> for OGCAParamVisitor<'tcx> {
+impl<'tcx> Visitor<'tcx> for GCAParamVisitor<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
     type Result = ControlFlow<UsesParam>;
 
@@ -1691,33 +1718,15 @@ fn const_of_item<'tcx>(
     };
     let icx = ItemCtxt::new(tcx, def_id);
     let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
-    let ct = icx
-        .lowerer()
-        .lower_const_arg(ct_arg, tcx.type_of(def_id.to_def_id()).instantiate(tcx, identity_args));
+    let ct = icx.lowerer().lower_const_arg(
+        ct_arg,
+        tcx.type_of(def_id.to_def_id()).instantiate(tcx, identity_args).skip_norm_wip(),
+    );
     if let Err(e) = icx.check_tainted_by_errors()
         && !ct.references_error()
     {
         ty::EarlyBinder::bind(Const::new_error(tcx, e))
     } else {
         ty::EarlyBinder::bind(ct)
-    }
-}
-
-/// Check if a Const or AssocConst is a type const (mgca)
-fn is_rhs_type_const<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> bool {
-    match tcx.hir_node_by_def_id(def) {
-        hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Const(_, _, _, hir::ConstItemRhs::TypeConst(_)),
-            ..
-        })
-        | hir::Node::ImplItem(hir::ImplItem {
-            kind: hir::ImplItemKind::Const(_, hir::ConstItemRhs::TypeConst(_)),
-            ..
-        })
-        | hir::Node::TraitItem(hir::TraitItem {
-            kind: hir::TraitItemKind::Const(_, _, hir::IsTypeConst::Yes),
-            ..
-        }) => return true,
-        _ => return false,
     }
 }

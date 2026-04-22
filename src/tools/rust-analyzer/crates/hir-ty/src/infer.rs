@@ -14,6 +14,7 @@
 //! the `ena` crate, which is extracted from rustc.
 
 mod autoderef;
+mod callee;
 pub(crate) mod cast;
 pub(crate) mod closure;
 mod coerce;
@@ -28,19 +29,20 @@ mod path;
 mod place_op;
 pub(crate) mod unify;
 
-use std::{cell::OnceCell, convert::identity, iter};
+use std::{cell::OnceCell, convert::identity, fmt, iter, ops::Deref};
 
-use base_db::Crate;
+use base_db::{Crate, FxIndexMap};
 use either::Either;
 use hir_def::{
-    AdtId, AssocItemId, ConstId, DefWithBodyId, FieldId, FunctionId, GenericDefId, GenericParamId,
-    ItemContainerId, LocalFieldId, Lookup, TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
-    expr_store::{Body, ExpressionStore, HygieneId, path::Path},
+    AdtId, AssocItemId, ConstId, ConstParamId, DefWithBodyId, ExpressionStoreOwnerId, FieldId,
+    FunctionId, GenericDefId, GenericParamId, ItemContainerId, LocalFieldId, Lookup, TraitId,
+    TupleFieldId, TupleId, TypeAliasId, TypeOrConstParamId, VariantId,
+    expr_store::{Body, ExpressionStore, HygieneId, RootExprOrigin, path::Path},
     hir::{BindingAnnotation, BindingId, ExprId, ExprOrPatId, LabelId, PatId},
     lang_item::LangItems,
     layout::Integer,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
-    signatures::{ConstSignature, EnumSignature, StaticSignature},
+    signatures::{ConstSignature, EnumSignature, FunctionSignature, StaticSignature},
     type_ref::{ConstRef, LifetimeRefId, TypeRef, TypeRefId},
 };
 use hir_expand::{mod_path::ModPath, name::Name};
@@ -53,15 +55,22 @@ use rustc_type_ir::{
     AliasTyKind, TypeFoldable,
     inherent::{AdtDef, IntoKind, Ty as _},
 };
+use smallvec::SmallVec;
 use span::Edition;
 use stdx::never;
 use thin_vec::ThinVec;
 
 use crate::{
     ImplTraitId, IncorrectGenericsLenKind, PathLoweringDiagnostic, TargetFeatures,
+    closure_analysis::PlaceBase,
     collect_type_inference_vars,
-    db::{HirDatabase, InternedClosureId, InternedOpaqueTyId},
+    db::{HirDatabase, InternedOpaqueTyId},
     infer::{
+        callee::DeferredCallResolution,
+        closure::analysis::{
+            BorrowKind,
+            expr_use_visitor::{FakeReadCause, Place},
+        },
         coerce::{CoerceMany, DynamicCoerceMany},
         diagnostics::{Diagnostics, InferenceTyLoweringContext as TyLoweringContext},
         expr::ExprIsRead,
@@ -70,14 +79,12 @@ use crate::{
         ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind, diagnostics::TyLoweringDiagnostic,
     },
     method_resolution::{CandidateId, MethodResolutionUnstableFeatures},
-    mir::MirSpan,
     next_solver::{
         AliasTy, Const, DbInterner, ErrorGuaranteed, GenericArg, GenericArgs, Region,
         StoredGenericArgs, StoredTy, StoredTys, Ty, TyKind, Tys,
         abi::Safety,
         infer::{InferCtxt, ObligationInspector, traits::ObligationCause},
     },
-    traits::FnTrait,
     utils::TargetFeatureIsSafeInTarget,
 };
 
@@ -90,7 +97,6 @@ pub use coerce::could_coerce;
 pub use unify::{could_unify, could_unify_deeply};
 
 use cast::{CastCheck, CastError};
-pub(crate) use closure::analysis::{CaptureKind, CapturedItem, CapturedItemWithoutTy};
 
 /// The entry point of type inference.
 fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult {
@@ -104,19 +110,18 @@ pub fn infer_query_with_inspect<'db>(
 ) -> InferenceResult {
     let _p = tracing::info_span!("infer_query").entered();
     let resolver = def.resolver(db);
-    let body = db.body(def);
-    let mut ctx = InferenceContext::new(db, def, &body, resolver);
+    let body = Body::of(db, def);
+    let mut ctx =
+        InferenceContext::new(db, ExpressionStoreOwnerId::Body(def), &body.store, resolver);
 
     if let Some(inspect) = inspect {
         ctx.table.infer_ctxt.attach_obligation_inspector(inspect);
     }
 
     match def {
-        DefWithBodyId::FunctionId(f) => {
-            ctx.collect_fn(f);
-        }
-        DefWithBodyId::ConstId(c) => ctx.collect_const(c, &db.const_signature(c)),
-        DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_signature(s)),
+        DefWithBodyId::FunctionId(f) => ctx.collect_fn(f, body.self_param, &body.params),
+        DefWithBodyId::ConstId(c) => ctx.collect_const(c, ConstSignature::of(db, c)),
+        DefWithBodyId::StaticId(s) => ctx.collect_static(StaticSignature::of(db, s)),
         DefWithBodyId::VariantId(v) => {
             ctx.return_ty = match EnumSignature::variant_body_type(db, v.lookup(db).parent) {
                 hir_def::layout::IntegerType::Pointer(signed) => match signed {
@@ -143,10 +148,113 @@ pub fn infer_query_with_inspect<'db>(
         }
     }
 
-    ctx.infer_body();
+    ctx.infer_body(body.root_expr());
 
-    ctx.infer_mut_body();
+    ctx.infer_mut_body(body.root_expr());
 
+    infer_finalize(ctx)
+}
+
+fn infer_cycle_result(db: &dyn HirDatabase, _: salsa::Id, _: DefWithBodyId) -> InferenceResult {
+    InferenceResult {
+        has_errors: true,
+        ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
+    }
+}
+
+/// Infer types for all const expressions in an item's signature.
+///
+/// This handles const expressions that appear in type positions within a generic
+/// item's signature, such as array lengths (`[T; N]`) and const generic arguments
+/// (`Foo<{ expr }>`). Each root expression is inferred independently within
+/// a shared `InferenceContext`, accumulating results into a single `InferenceResult`.
+fn infer_signature_query(db: &dyn HirDatabase, def: GenericDefId) -> InferenceResult {
+    let _p = tracing::info_span!("infer_signature_query").entered();
+    let store = ExpressionStore::of(db, def.into());
+    let mut roots = store.expr_roots_with_origins().peekable();
+    let Some(_) = roots.peek() else {
+        return InferenceResult::new(crate::next_solver::default_types(db).types.error);
+    };
+
+    let resolver = def.resolver(db);
+    let owner = ExpressionStoreOwnerId::Signature(def);
+
+    let mut ctx = InferenceContext::new(db, owner, store, resolver);
+
+    for (root_expr, origin) in roots {
+        let expected = match origin {
+            // Array lengths are always `usize`.
+            RootExprOrigin::ArrayLength => Expectation::has_type(ctx.types.types.usize),
+            // Const parameter default: look up the param's declared type.
+            RootExprOrigin::ConstParam(local_id) => Expectation::has_type(db.const_param_ty_ns(
+                ConstParamId::from_unchecked(TypeOrConstParamId { parent: def, local_id }),
+            )),
+            // Path const generic args: determining the expected type requires
+            // path resolution.
+            // FIXME
+            RootExprOrigin::GenericArgsPath => Expectation::None,
+            RootExprOrigin::BodyRoot => Expectation::None,
+        };
+        ctx.infer_expr(root_expr, &expected, ExprIsRead::Yes);
+    }
+
+    infer_finalize(ctx)
+}
+
+fn infer_variant_fields_query(db: &dyn HirDatabase, def: VariantId) -> InferenceResult {
+    let _p = tracing::info_span!("infer_variant_fields_query").entered();
+    let store = ExpressionStore::of(db, def.into());
+    let mut roots = store.expr_roots_with_origins().peekable();
+    let Some(_) = roots.peek() else {
+        return InferenceResult::new(crate::next_solver::default_types(db).types.error);
+    };
+
+    let resolver = def.resolver(db);
+    let owner = ExpressionStoreOwnerId::VariantFields(def);
+
+    let mut ctx = InferenceContext::new(db, owner, store, resolver);
+
+    for (root_expr, origin) in roots {
+        let expected = match origin {
+            // Array lengths are always `usize`.
+            RootExprOrigin::ArrayLength => Expectation::has_type(ctx.types.types.usize),
+            // unreachable
+            RootExprOrigin::ConstParam(_) => Expectation::None,
+            // Path const generic args: determining the expected type requires
+            // path resolution.
+            // FIXME
+            RootExprOrigin::GenericArgsPath => Expectation::None,
+            RootExprOrigin::BodyRoot => Expectation::None,
+        };
+        ctx.infer_expr(root_expr, &expected, ExprIsRead::Yes);
+    }
+
+    infer_finalize(ctx)
+}
+
+fn infer_signature_cycle_result(
+    db: &dyn HirDatabase,
+    _: salsa::Id,
+    _: GenericDefId,
+) -> InferenceResult {
+    InferenceResult {
+        has_errors: true,
+        ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
+    }
+}
+
+fn infer_variant_fields_cycle_result(
+    db: &dyn HirDatabase,
+    _: salsa::Id,
+    _: VariantId,
+) -> InferenceResult {
+    InferenceResult {
+        has_errors: true,
+        ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
+    }
+}
+
+fn infer_finalize(mut ctx: InferenceContext<'_, '_>) -> InferenceResult {
     ctx.handle_opaque_type_uses();
 
     ctx.type_inference_fallback();
@@ -163,7 +271,10 @@ pub fn infer_query_with_inspect<'db>(
 
     ctx.table.select_obligations_where_possible();
 
-    ctx.infer_closures();
+    // Closure and coroutine analysis may run after fallback
+    // because they don't constrain other type variables.
+    ctx.closure_analyze();
+    assert!(ctx.deferred_call_resolutions.is_empty());
 
     ctx.table.select_obligations_where_possible();
 
@@ -171,14 +282,6 @@ pub fn infer_query_with_inspect<'db>(
 
     ctx.resolve_all()
 }
-
-fn infer_cycle_result(db: &dyn HirDatabase, _: salsa::Id, _: DefWithBodyId) -> InferenceResult {
-    InferenceResult {
-        has_errors: true,
-        ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
-    }
-}
-
 /// Binding modes inferred for patterns.
 /// <https://doc.rust-lang.org/reference/patterns.html#binding-modes>
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
@@ -403,7 +506,7 @@ pub enum Adjust {
 /// The target type is `U` in both cases, with the region and mutability
 /// being those shared by both the receiver and the returned reference.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct OverloadedDeref(pub Option<Mutability>);
+pub struct OverloadedDeref(pub Mutability);
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum AutoBorrowMutability {
@@ -438,15 +541,6 @@ pub enum AutoBorrow {
     Ref(AutoBorrowMutability),
     /// Converts from T to *T.
     RawPtr(Mutability),
-}
-
-impl AutoBorrow {
-    fn mutability(self) -> Mutability {
-        match self {
-            AutoBorrow::Ref(mutbl) => mutbl.into(),
-            AutoBorrow::RawPtr(mutbl) => mutbl,
-        }
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -542,22 +636,264 @@ pub struct InferenceResult {
     /// the first `rest` has implicit `ref` binding mode, but the second `rest` binding mode is `move`.
     pub(crate) binding_modes: ArenaMap<PatId, BindingMode>,
 
-    pub(crate) closure_info: FxHashMap<InternedClosureId, (Vec<CapturedItem>, FnTrait)>,
-    // FIXME: remove this field
-    pub mutated_bindings_in_closure: FxHashSet<BindingId>,
-
     pub(crate) coercion_casts: FxHashSet<ExprId>,
+
+    pub closures_data: FxHashMap<ExprId, ClosureData>,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
+pub struct ClosureData {
+    /// Tracks the minimum captures required for a closure;
+    /// see `MinCaptureInformationMap` for more details.
+    pub min_captures: RootVariableMinCaptureList,
+
+    /// Tracks the fake reads required for a closure and the reason for the fake read.
+    /// When performing pattern matching for closures, there are times we don't end up
+    /// reading places that are mentioned in a closure (because of _ patterns). However,
+    /// to ensure the places are initialized, we introduce fake reads.
+    /// Consider these two examples:
+    /// ```ignore (discriminant matching with only wildcard arm)
+    /// let x: u8;
+    /// let c = || match x { _ => () };
+    /// ```
+    /// In this example, we don't need to actually read/borrow `x` in `c`, and so we don't
+    /// want to capture it. However, we do still want an error here, because `x` should have
+    /// to be initialized at the point where c is created. Therefore, we add a "fake read"
+    /// instead.
+    /// ```ignore (destructured assignments)
+    /// let c = || {
+    ///     let (t1, t2) = t;
+    /// }
+    /// ```
+    /// In the second example, we capture the disjoint fields of `t` (`t.0` & `t.1`), but
+    /// we never capture `t`. This becomes an issue when we build MIR as we require
+    /// information on `t` in order to create place `t.0` and `t.1`. We can solve this
+    /// issue by fake reading `t`.
+    pub fake_reads: Box<[(Place, FakeReadCause, SmallVec<[CaptureSourceStack; 2]>)]>,
+}
+
+/// Part of `MinCaptureInformationMap`; Maps a root variable to the list of `CapturedPlace`.
+/// Used to track the minimum set of `Place`s that need to be captured to support all
+/// Places captured by the closure starting at a given root variable.
+///
+/// This provides a convenient and quick way of checking if a variable being used within
+/// a closure is a capture of a local variable.
+pub(crate) type RootVariableMinCaptureList = FxIndexMap<BindingId, MinCaptureList>;
+
+/// Part of `MinCaptureInformationMap`; List of `CapturePlace`s.
+pub(crate) type MinCaptureList = Vec<CapturedPlace>;
+
+/// A composite describing a `Place` that is captured by a closure.
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+pub struct CapturedPlace {
+    /// The `Place` that is captured.
+    pub place: Place,
+
+    /// `CaptureKind` and expression(s) that resulted in such capture of `place`.
+    pub info: CaptureInfo,
+
+    /// Represents if `place` can be mutated or not.
+    pub mutability: Mutability,
+}
+
+impl CapturedPlace {
+    pub fn is_by_ref(&self) -> bool {
+        match self.info.capture_kind {
+            UpvarCapture::ByValue | UpvarCapture::ByUse => false,
+            UpvarCapture::ByRef(..) => true,
+        }
+    }
+
+    pub fn captured_local(&self) -> BindingId {
+        match self.place.base {
+            PlaceBase::Upvar { var_id: local, .. } | PlaceBase::Local(local) => local,
+            PlaceBase::Rvalue | PlaceBase::StaticItem => {
+                unreachable!("only locals can be captured")
+            }
+        }
+    }
+
+    /// The type of the capture stored in the closure, which is different from the type of the captured place
+    /// if we capture by reference.
+    pub fn captured_ty<'db>(&self, db: &'db dyn HirDatabase) -> Ty<'db> {
+        let place_ty = self.place.ty();
+        let make_ref = |mutbl| {
+            let interner = DbInterner::new_no_crate(db);
+            let region = Region::new_erased(interner);
+            Ty::new_ref(interner, region, place_ty, mutbl)
+        };
+        match self.info.capture_kind {
+            UpvarCapture::ByUse | UpvarCapture::ByValue => place_ty,
+            UpvarCapture::ByRef(kind) => make_ref(kind.to_mutbl_lossy()),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct CaptureSourceStack(CaptureSourceStackRepr);
+
+#[derive(Clone)]
+enum CaptureSourceStackRepr {
+    One(ExprOrPatId),
+    Two([ExprOrPatId; 2]),
+    Many(ThinVec<ExprOrPatId>),
+}
+
+impl PartialEq for CaptureSourceStack {
+    fn eq(&self, other: &Self) -> bool {
+        **self == **other
+    }
+}
+
+impl Eq for CaptureSourceStack {}
+
+impl std::hash::Hash for CaptureSourceStack {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        (**self).hash(state);
+    }
+}
+
+const _: () = assert!(size_of::<CaptureSourceStack>() == 16);
+
+impl Deref for CaptureSourceStack {
+    type Target = [ExprOrPatId];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        match &self.0 {
+            CaptureSourceStackRepr::One(it) => std::slice::from_ref(it),
+            CaptureSourceStackRepr::Two(it) => it,
+            CaptureSourceStackRepr::Many(it) => it,
+        }
+    }
+}
+
+impl fmt::Debug for CaptureSourceStack {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("CaptureSourceStack").field(&&**self).finish()
+    }
+}
+
+impl CaptureSourceStack {
+    #[inline]
+    pub fn len(&self) -> usize {
+        match &self.0 {
+            CaptureSourceStackRepr::One(_) => 1,
+            CaptureSourceStackRepr::Two(_) => 2,
+            CaptureSourceStackRepr::Many(it) => it.len(),
+        }
+    }
+
+    #[inline]
+    pub(crate) fn from_single(id: ExprOrPatId) -> Self {
+        Self(CaptureSourceStackRepr::One(id))
+    }
+
+    #[inline]
+    pub fn final_source(&self) -> ExprOrPatId {
+        *self.last().expect("should always have a final source")
+    }
+
+    pub fn push(&mut self, new_id: ExprOrPatId) {
+        match &mut self.0 {
+            CaptureSourceStackRepr::One(old_id) => {
+                self.0 = CaptureSourceStackRepr::Two([*old_id, new_id])
+            }
+            CaptureSourceStackRepr::Two([old_id1, old_id2]) => {
+                self.0 = CaptureSourceStackRepr::Many(ThinVec::from([*old_id1, *old_id2, new_id]));
+            }
+            CaptureSourceStackRepr::Many(old_ids) => old_ids.push(new_id),
+        }
+    }
+
+    pub fn truncate(&mut self, new_len: usize) {
+        debug_assert!(new_len > 0);
+        match &mut self.0 {
+            CaptureSourceStackRepr::One(_) => {}
+            CaptureSourceStackRepr::Two([first, _]) => {
+                if new_len == 1 {
+                    self.0 = CaptureSourceStackRepr::One(*first)
+                }
+            }
+            CaptureSourceStackRepr::Many(ids) => ids.truncate(new_len),
+        }
+    }
+
+    pub fn shrink_to_fit(&mut self) {
+        match &mut self.0 {
+            CaptureSourceStackRepr::One(_) | CaptureSourceStackRepr::Two(_) => {}
+            CaptureSourceStackRepr::Many(ids) => match **ids {
+                [one] => self.0 = CaptureSourceStackRepr::One(one),
+                [first, second] => self.0 = CaptureSourceStackRepr::Two([first, second]),
+                _ => ids.shrink_to_fit(),
+            },
+        }
+    }
+}
+
+/// Part of `MinCaptureInformationMap`; describes the capture kind (&, &mut, move)
+/// for a particular capture as well as identifying the part of the source code
+/// that triggered this capture to occur.
+#[derive(Eq, PartialEq, Clone, Debug, Hash)]
+pub struct CaptureInfo {
+    pub sources: SmallVec<[CaptureSourceStack; 2]>,
+
+    /// Capture mode that was selected
+    pub capture_kind: UpvarCapture,
+}
+
+/// Information describing the capture of an upvar. This is computed
+/// during `typeck`, specifically by `regionck`.
+#[derive(Eq, PartialEq, Clone, Debug, Copy, Hash)]
+pub enum UpvarCapture {
+    /// Upvar is captured by value. This is always true when the
+    /// closure is labeled `move`, but can also be true in other cases
+    /// depending on inference.
+    ByValue,
+
+    /// Upvar is captured by use. This is true when the closure is labeled `use`.
+    ByUse,
+
+    /// Upvar is captured by reference.
+    ByRef(BorrowKind),
 }
 
 #[salsa::tracked]
 impl InferenceResult {
     #[salsa::tracked(returns(ref), cycle_result = infer_cycle_result)]
-    pub fn for_body(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult {
+    fn for_body(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult {
         infer_query(db, def)
+    }
+
+    /// Infer types for all const expressions in an item's signature.
+    ///
+    /// Returns an `InferenceResult` containing type information for array lengths,
+    /// const generic arguments, and other const expressions appearing in type
+    /// positions within the item's signature.
+    #[salsa::tracked(returns(ref), cycle_result = infer_signature_cycle_result)]
+    fn for_signature(db: &dyn HirDatabase, def: GenericDefId) -> InferenceResult {
+        infer_signature_query(db, def)
+    }
+
+    #[salsa::tracked(returns(ref), cycle_result = infer_variant_fields_cycle_result)]
+    fn for_variant_fields(db: &dyn HirDatabase, def: VariantId) -> InferenceResult {
+        infer_variant_fields_query(db, def)
     }
 }
 
 impl InferenceResult {
+    pub fn of(db: &dyn HirDatabase, def: impl Into<ExpressionStoreOwnerId>) -> &InferenceResult {
+        match def.into() {
+            ExpressionStoreOwnerId::Signature(generic_def_id) => {
+                Self::for_signature(db, generic_def_id)
+            }
+            ExpressionStoreOwnerId::Body(def_with_body_id) => Self::for_body(db, def_with_body_id),
+            ExpressionStoreOwnerId::VariantFields(variant_id) => {
+                Self::for_variant_fields(db, variant_id)
+            }
+        }
+    }
+
     fn new(error_ty: Ty<'_>) -> Self {
         Self {
             method_resolutions: Default::default(),
@@ -577,9 +913,8 @@ impl InferenceResult {
             pat_adjustments: Default::default(),
             binding_modes: Default::default(),
             expr_adjustments: Default::default(),
-            closure_info: Default::default(),
-            mutated_bindings_in_closure: Default::default(),
             coercion_casts: Default::default(),
+            closures_data: Default::default(),
         }
     }
 
@@ -648,9 +983,6 @@ impl InferenceResult {
     }
     pub fn type_of_type_placeholder<'db>(&self, type_ref: TypeRefId) -> Option<Ty<'db>> {
         self.type_of_type_placeholder.get(&type_ref).map(|ty| ty.as_ref())
-    }
-    pub fn closure_info(&self, closure: InternedClosureId) -> &(Vec<CapturedItem>, FnTrait) {
-        self.closure_info.get(&closure).unwrap()
     }
     pub fn type_of_expr_or_pat<'db>(&self, id: ExprOrPatId) -> Option<Ty<'db>> {
         match id {
@@ -748,14 +1080,34 @@ impl InferenceResult {
     pub fn binding_ty<'db>(&self, id: BindingId) -> Ty<'db> {
         self.type_of_binding.get(id).map_or(self.error_ty.as_ref(), |it| it.as_ref())
     }
+
+    /// This does not deduplicate, which means you'll get the types once per capture.
+    pub fn closure_captures_tys<'db>(&self, closure: ExprId) -> impl Iterator<Item = Ty<'db>> {
+        self.closures_data[&closure]
+            .min_captures
+            .values()
+            .flat_map(|captures| captures.iter().map(|capture| capture.place.ty()))
+    }
+
+    /// Like [`Self::closure_captures_tys()`], but using [`CapturedPlace::captured_ty()`].
+    pub fn closure_captures_captured_tys<'db>(
+        &self,
+        db: &'db dyn HirDatabase,
+        closure: ExprId,
+    ) -> impl Iterator<Item = Ty<'db>> {
+        self.closures_data[&closure]
+            .min_captures
+            .values()
+            .flat_map(|captures| captures.iter().map(|capture| capture.captured_ty(db)))
+    }
 }
 
 /// The inference context contains all information needed during type inference.
 #[derive(Clone, Debug)]
 pub(crate) struct InferenceContext<'body, 'db> {
     pub(crate) db: &'db dyn HirDatabase,
-    pub(crate) owner: DefWithBodyId,
-    pub(crate) body: &'body Body,
+    pub(crate) owner: ExpressionStoreOwnerId,
+    pub(crate) store: &'body ExpressionStore,
     /// Generally you should not resolve things via this resolver. Instead create a TyLoweringContext
     /// and resolve the path via its methods. This will ensure proper error reporting.
     pub(crate) resolver: Resolver<'db>,
@@ -791,19 +1143,8 @@ pub(crate) struct InferenceContext<'body, 'db> {
 
     deferred_cast_checks: Vec<CastCheck<'db>>,
 
-    // fields related to closure capture
-    current_captures: Vec<CapturedItemWithoutTy>,
-    /// A stack that has an entry for each projection in the current capture.
-    ///
-    /// For example, in `a.b.c`, we capture the spans of `a`, `a.b`, and `a.b.c`.
-    /// We do that because sometimes we truncate projections (when a closure captures
-    /// both `a.b` and `a.b.c`), and we want to provide accurate spans in this case.
-    current_capture_span_stack: Vec<MirSpan>,
-    current_closure: Option<InternedClosureId>,
-    /// Stores the list of closure ids that need to be analyzed before this closure. See the
-    /// comment on `InferenceContext::sort_closures`
-    closure_dependencies: FxHashMap<InternedClosureId, Vec<InternedClosureId>>,
-    deferred_closures: FxHashMap<InternedClosureId, Vec<(Ty<'db>, Ty<'db>, Vec<Ty<'db>>, ExprId)>>,
+    /// The key is an expression defining a closure or a coroutine closure.
+    deferred_call_resolutions: FxHashMap<ExprId, Vec<DeferredCallResolution<'db>>>,
 
     diagnostics: Diagnostics,
 }
@@ -855,11 +1196,21 @@ fn find_continuable<'a, 'db>(
 impl<'body, 'db> InferenceContext<'body, 'db> {
     fn new(
         db: &'db dyn HirDatabase,
-        owner: DefWithBodyId,
-        body: &'body Body,
+        owner: ExpressionStoreOwnerId,
+        store: &'body ExpressionStore,
         resolver: Resolver<'db>,
     ) -> Self {
-        let trait_env = db.trait_environment_for_body(owner);
+        let trait_env = match owner {
+            ExpressionStoreOwnerId::Signature(generic_def_id) => {
+                db.trait_environment(ExpressionStoreOwnerId::from(generic_def_id))
+            }
+            ExpressionStoreOwnerId::Body(def_with_body_id) => {
+                db.trait_environment(ExpressionStoreOwnerId::Body(def_with_body_id))
+            }
+            ExpressionStoreOwnerId::VariantFields(variant_id) => {
+                db.trait_environment(ExpressionStoreOwnerId::VariantFields(variant_id))
+            }
+        };
         let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), Some(owner));
         let types = crate::next_solver::default_types(db);
         InferenceContext {
@@ -878,25 +1229,16 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             return_coercion: None,
             db,
             owner,
-            generic_def: match owner {
-                DefWithBodyId::FunctionId(it) => it.into(),
-                DefWithBodyId::StaticId(it) => it.into(),
-                DefWithBodyId::ConstId(it) => it.into(),
-                DefWithBodyId::VariantId(it) => it.lookup(db).parent.into(),
-            },
-            body,
+            generic_def: owner.generic_def(db),
+            store,
             traits_in_scope: resolver.traits_in_scope(db),
             resolver,
             diverges: Diverges::Maybe,
             breakables: Vec::new(),
             deferred_cast_checks: Vec::new(),
-            current_captures: Vec::new(),
-            current_capture_span_stack: Vec::new(),
-            current_closure: None,
-            deferred_closures: FxHashMap::default(),
-            closure_dependencies: FxHashMap::default(),
             inside_assignment: false,
             diagnostics: Diagnostics::default(),
+            deferred_call_resolutions: FxHashMap::default(),
         }
     }
 
@@ -908,7 +1250,9 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     fn target_features(&self) -> (&TargetFeatures<'db>, TargetFeatureIsSafeInTarget) {
         let (target_features, target_feature_is_safe) = self.target_features.get_or_init(|| {
             let target_features = match self.owner {
-                DefWithBodyId::FunctionId(id) => TargetFeatures::from_fn(self.db, id),
+                ExpressionStoreOwnerId::Body(DefWithBodyId::FunctionId(id)) => {
+                    TargetFeatures::from_fn(self.db, id)
+                }
                 _ => TargetFeatures::default(),
             };
             let target_feature_is_safe = match &self.krate().workspace_data(self.db).target {
@@ -953,7 +1297,12 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     // there is no problem in it being `pub(crate)`, remove this comment.
     fn resolve_all(self) -> InferenceResult {
         let InferenceContext {
-            mut table, mut result, tuple_field_accesses_rev, diagnostics, ..
+            mut table,
+            mut result,
+            tuple_field_accesses_rev,
+            diagnostics,
+            types,
+            ..
         } = self;
         let mut diagnostics = diagnostics.finish();
         // Destructure every single field so whenever new fields are added to `InferenceResult` we
@@ -969,16 +1318,12 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             type_of_type_placeholder,
             type_of_opaque,
             type_mismatches,
+            closures_data,
             has_errors,
             error_ty: _,
             pat_adjustments,
             binding_modes: _,
             expr_adjustments,
-            // Types in `closure_info` have already been `resolve_completely()`'d during
-            // `InferenceContext::infer_closures()` (in `HirPlace::ty()` specifically), so no need
-            // to resolve them here.
-            closure_info: _,
-            mutated_bindings_in_closure: _,
             tuple_field_access_types: _,
             coercion_casts: _,
             diagnostics: _,
@@ -1065,6 +1410,38 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             *has_errors = *has_errors || adjustment.as_ref().references_non_lt_error();
         }
         pat_adjustments.shrink_to_fit();
+        for closure_data in closures_data.values_mut() {
+            let ClosureData { min_captures, fake_reads } = closure_data;
+            let dummy_place = || Place {
+                base_ty: types.types.error.store(),
+                base: closure::analysis::expr_use_visitor::PlaceBase::Rvalue,
+                projections: Vec::new(),
+            };
+
+            for (place, _, sources) in fake_reads {
+                *place = table.resolve_completely(std::mem::replace(place, dummy_place()));
+                place.projections.shrink_to_fit();
+                for source in &mut *sources {
+                    source.shrink_to_fit();
+                }
+                sources.shrink_to_fit();
+            }
+
+            for min_capture in min_captures.values_mut() {
+                for captured in &mut *min_capture {
+                    let CapturedPlace { place, info, mutability: _ } = captured;
+                    *place = table.resolve_completely(std::mem::replace(place, dummy_place()));
+                    let CaptureInfo { sources, capture_kind: _ } = info;
+                    for source in &mut *sources {
+                        source.shrink_to_fit();
+                    }
+                    sources.shrink_to_fit();
+                }
+                min_capture.shrink_to_fit();
+            }
+            min_captures.shrink_to_fit();
+        }
+        closures_data.shrink_to_fit();
         result.tuple_field_access_types = tuple_field_accesses_rev
             .into_iter()
             .map(|subst| table.resolve_completely(subst).store())
@@ -1102,12 +1479,12 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         self.return_ty = return_ty;
     }
 
-    fn collect_fn(&mut self, func: FunctionId) {
-        let data = self.db.function_signature(func);
+    fn collect_fn(&mut self, func: FunctionId, self_param: Option<BindingId>, params: &[PatId]) {
+        let data = FunctionSignature::of(self.db, func);
         let mut param_tys = self.with_ty_lowering(
             &data.store,
             InferenceTyDiagnosticSource::Signature,
-            LifetimeElisionKind::for_fn_params(&data),
+            LifetimeElisionKind::for_fn_params(data),
             |ctx| data.params.iter().map(|&type_ref| ctx.lower_ty(type_ref)).collect::<Vec<_>>(),
         );
 
@@ -1130,13 +1507,13 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             param_tys.push(va_list_ty);
         }
         let mut param_tys = param_tys.into_iter().chain(iter::repeat(self.table.next_ty_var()));
-        if let Some(self_param) = self.body.self_param
+        if let Some(self_param) = self_param
             && let Some(ty) = param_tys.next()
         {
             let ty = self.process_user_written_ty(ty);
             self.write_binding_ty(self_param, ty);
         }
-        for (ty, pat) in param_tys.zip(&*self.body.params) {
+        for (ty, pat) in param_tys.zip(params) {
             let ty = self.process_user_written_ty(ty);
 
             self.infer_top_pat(*pat, ty, None);
@@ -1170,12 +1547,12 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         &self.table.infer_ctxt
     }
 
-    fn infer_body(&mut self) {
+    fn infer_body(&mut self, body_expr: ExprId) {
         match self.return_coercion {
-            Some(_) => self.infer_return(self.body.body_expr),
+            Some(_) => self.infer_return(body_expr),
             None => {
                 _ = self.infer_expr_coerce(
-                    self.body.body_expr,
+                    body_expr,
                     &Expectation::has_type(self.return_ty),
                     ExprIsRead::Yes,
                 )
@@ -1258,6 +1635,21 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         self.diagnostics.push(diagnostic);
     }
 
+    fn record_deferred_call_resolution(
+        &mut self,
+        closure_def_id: ExprId,
+        r: DeferredCallResolution<'db>,
+    ) {
+        self.deferred_call_resolutions.entry(closure_def_id).or_default().push(r);
+    }
+
+    fn remove_deferred_call_resolutions(
+        &mut self,
+        closure_def_id: ExprId,
+    ) -> Vec<DeferredCallResolution<'db>> {
+        self.deferred_call_resolutions.remove(&closure_def_id).unwrap_or_default()
+    }
+
     fn with_ty_lowering<R>(
         &mut self,
         store: &ExpressionStore,
@@ -1282,7 +1674,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         f: impl FnOnce(&mut TyLoweringContext<'db, '_>) -> R,
     ) -> R {
         self.with_ty_lowering(
-            self.body,
+            self.store,
             InferenceTyDiagnosticSource::Body,
             LifetimeElisionKind::Infer,
             f,
@@ -1311,9 +1703,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         });
 
         if placeholder_ids.len() == type_variables.len() {
-            for (placeholder_id, type_variable) in
-                placeholder_ids.into_iter().zip(type_variables.into_iter())
-            {
+            for (placeholder_id, type_variable) in placeholder_ids.into_iter().zip(type_variables) {
                 self.write_type_placeholder_ty(placeholder_id, type_variable);
             }
         }
@@ -1324,7 +1714,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     pub(crate) fn make_body_ty(&mut self, type_ref: TypeRefId) -> Ty<'db> {
         self.make_ty(
             type_ref,
-            self.body,
+            self.store,
             InferenceTyDiagnosticSource::Body,
             LifetimeElisionKind::Infer,
         )
@@ -1332,7 +1722,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     pub(crate) fn make_body_const(&mut self, const_ref: ConstRef, ty: Ty<'db>) -> Const<'db> {
         let const_ = self.with_ty_lowering(
-            self.body,
+            self.store,
             InferenceTyDiagnosticSource::Body,
             LifetimeElisionKind::Infer,
             |ctx| ctx.lower_const(const_ref, ty),
@@ -1342,7 +1732,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     pub(crate) fn make_path_as_body_const(&mut self, path: &Path, ty: Ty<'db>) -> Const<'db> {
         let const_ = self.with_ty_lowering(
-            self.body,
+            self.store,
             InferenceTyDiagnosticSource::Body,
             LifetimeElisionKind::Infer,
             |ctx| ctx.lower_path_as_const(path, ty),
@@ -1356,7 +1746,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     pub(crate) fn make_body_lifetime(&mut self, lifetime_ref: LifetimeRefId) -> Region<'db> {
         let lt = self.with_ty_lowering(
-            self.body,
+            self.store,
             InferenceTyDiagnosticSource::Body,
             LifetimeElisionKind::Infer,
             |ctx| ctx.lower_lifetime(lifetime_ref),
@@ -1519,6 +1909,23 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         result.unwrap_or(self.types.types.error)
     }
 
+    pub(crate) fn type_must_be_known_at_this_point(
+        &self,
+        _id: ExprOrPatId,
+        _ty: Ty<'db>,
+    ) -> Ty<'db> {
+        // FIXME: Emit an diagnostic.
+        self.types.types.error
+    }
+
+    pub(crate) fn require_type_is_sized(&mut self, ty: Ty<'db>) {
+        if !ty.references_non_lt_error()
+            && let Some(sized_trait) = self.lang_items.Sized
+        {
+            self.table.register_bound(ty, sized_trait, ObligationCause::new());
+        }
+    }
+
     fn expr_ty(&self, expr: ExprId) -> Ty<'db> {
         self.result.expr_ty(expr)
     }
@@ -1545,10 +1952,9 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             Some(res_assoc_ty) => {
                 let alias = Ty::new_alias(
                     self.interner(),
-                    AliasTyKind::Projection,
                     AliasTy::new(
                         self.interner(),
-                        res_assoc_ty.into(),
+                        AliasTyKind::Projection { def_id: res_assoc_ty.into() },
                         iter::once(inner_ty.into()).chain(params.iter().copied()),
                     ),
                 );
@@ -1571,12 +1977,70 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         let mut ctx = TyLoweringContext::new(
             self.db,
             &self.resolver,
-            &self.body.store,
+            self.store,
             &self.diagnostics,
             InferenceTyDiagnosticSource::Body,
             self.generic_def,
             LifetimeElisionKind::Infer,
         );
+
+        if let Some(type_anchor) = path.type_anchor() {
+            let mut segments = path.segments();
+            if segments.is_empty() {
+                return (self.err_ty(), None);
+            }
+            let (mut ty, type_ns) = ctx.lower_ty_ext(type_anchor);
+            ty = self.table.process_user_written_ty(ty);
+
+            if let Some(TypeNs::SelfType(impl_)) = type_ns
+                && let Some(trait_ref) = self.db.impl_trait(impl_)
+                && let trait_ref = trait_ref.instantiate_identity()
+                && let Some(assoc_type) = trait_ref
+                    .def_id
+                    .0
+                    .trait_items(self.db)
+                    .associated_type_by_name(segments.first().unwrap().name)
+            {
+                // `<Self>::AssocType`
+                let args = self.infcx().fill_rest_fresh_args(assoc_type.into(), trait_ref.args);
+                let alias = Ty::new_alias(
+                    self.interner(),
+                    AliasTy::new_from_args(
+                        self.interner(),
+                        AliasTyKind::Projection { def_id: assoc_type.into() },
+                        args,
+                    ),
+                );
+                ty = self.table.try_structurally_resolve_type(alias);
+                segments = segments.skip(1);
+            }
+
+            let variant = match ty.as_adt() {
+                Some((AdtId::StructId(id), _)) => id.into(),
+                Some((AdtId::UnionId(id), _)) => id.into(),
+                Some((AdtId::EnumId(id), _)) => {
+                    if let Some(segment) = segments.first()
+                        && let enum_data = id.enum_variants(self.db)
+                        && let Some(variant) = enum_data.variant(segment.name)
+                    {
+                        // FIXME: Report error if there are generics on the variant.
+                        segments = segments.skip(1);
+                        variant.into()
+                    } else {
+                        return (self.err_ty(), None);
+                    }
+                }
+                None => return (self.err_ty(), None),
+            };
+
+            if !segments.is_empty() {
+                // FIXME: Report an error.
+                return (self.err_ty(), None);
+            } else {
+                return (ty, Some(variant));
+            }
+        }
+
         let mut path_ctx = ctx.at_path(path, node);
         let interner = DbInterner::conjure();
         let (resolution, unresolved) = if value_ns {
@@ -1709,6 +2173,46 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                 });
                 (ty, variant)
             }
+            TypeNs::TraitId(_) => {
+                let Some(remaining_idx) = unresolved else {
+                    return (self.err_ty(), None);
+                };
+
+                let remaining_segments = path.segments().skip(remaining_idx);
+
+                if remaining_segments.len() >= 2 {
+                    path_ctx.ignore_last_segment();
+                }
+
+                let (mut ty, _) = path_ctx.lower_partly_resolved_path(resolution, true);
+                ty = self.table.process_user_written_ty(ty);
+
+                if let Some(segment) = remaining_segments.get(1)
+                    && let Some((AdtId::EnumId(id), _)) = ty.as_adt()
+                {
+                    let enum_data = id.enum_variants(self.db);
+                    if let Some(variant) = enum_data.variant(segment.name) {
+                        return if remaining_segments.len() == 2 {
+                            (ty, Some(variant.into()))
+                        } else {
+                            // We still have unresolved paths, but enum variants never have
+                            // associated types!
+                            // FIXME: Report an error.
+                            (self.err_ty(), None)
+                        };
+                    }
+                }
+
+                let variant = ty.as_adt().and_then(|(id, _)| match id {
+                    AdtId::StructId(s) => Some(VariantId::StructId(s)),
+                    AdtId::UnionId(u) => Some(VariantId::UnionId(u)),
+                    AdtId::EnumId(_) => {
+                        // FIXME Error E0071, expected struct, variant or union type, found enum `Foo`
+                        None
+                    }
+                });
+                (ty, variant)
+            }
             TypeNs::TypeAliasId(it) => {
                 let Some(mod_path) = path.mod_path() else {
                     never!("resolver should always resolve lang item paths");
@@ -1730,10 +2234,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                 // FIXME potentially resolve assoc type
                 (self.err_ty(), None)
             }
-            TypeNs::AdtId(AdtId::EnumId(_))
-            | TypeNs::BuiltinType(_)
-            | TypeNs::TraitId(_)
-            | TypeNs::ModuleId(_) => {
+            TypeNs::AdtId(AdtId::EnumId(_)) | TypeNs::BuiltinType(_) | TypeNs::ModuleId(_) => {
                 // FIXME diagnostic
                 (self.err_ty(), None)
             }

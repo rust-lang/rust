@@ -79,7 +79,7 @@ mod ambiguous_macros_only {
 #[doc(no_inline)]
 pub use self::ambiguous_macros_only::{vec, panic};
 
-#[stable(feature = "cfg_select", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "cfg_select", since = "1.95.0")]
 #[doc(no_inline)]
 pub use core::prelude::v1::cfg_select;
 
@@ -115,8 +115,12 @@ pub use core::prelude::v1::trace_macros;
 // (no public module for them to be re-exported from).
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 pub use core::prelude::v1::{
-    alloc_error_handler, bench, derive, global_allocator, test, test_case,
+    alloc_error_handler, bench, global_allocator, test, test_case,
 };
+
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+#[doc(no_inline)]
+pub use core::prelude::v1::derive;
 
 #[unstable(feature = "derive_const", issue = "118304")]
 pub use core::prelude::v1::derive_const;

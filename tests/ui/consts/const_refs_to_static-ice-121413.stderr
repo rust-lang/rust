@@ -4,7 +4,7 @@ error[E0433]: cannot find type `AtomicUsize` in this scope
 LL |     static FOO: Sync = AtomicUsize::new(0);
    |                        ^^^^^^^^^^^ use of undeclared type `AtomicUsize`
    |
-help: consider importing this struct
+help: consider importing this type alias
    |
 LL + use std::sync::atomic::AtomicUsize;
    |

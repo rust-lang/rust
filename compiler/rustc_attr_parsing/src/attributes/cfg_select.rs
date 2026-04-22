@@ -2,18 +2,19 @@ use rustc_ast::token::Token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, NodeId, token};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_errors::Diagnostic;
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::{AttrPath, Target};
 use rustc_parse::exp;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::Session;
-use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNREACHABLE_CFG_SELECT_PREDICATES;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 
-use crate::parser::MetaItemOrLitParser;
-use crate::{AttributeParser, ParsedDescription, ShouldEmit, parse_cfg_entry};
+use crate::attributes::AttributeSafety;
+use crate::parser::{AllowExprMetavar, MetaItemOrLitParser};
+use crate::{AttributeParser, ParsedDescription, ShouldEmit, errors, parse_cfg_entry};
 
 #[derive(Clone)]
 pub enum CfgSelectPredicate {
@@ -94,6 +95,7 @@ pub fn parse_cfg_select(
             let meta = MetaItemOrLitParser::parse_single(
                 p,
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
+                AllowExprMetavar::Yes,
             )
             .map_err(|diag| diag.emit())?;
             let cfg_span = meta.span();
@@ -104,6 +106,7 @@ pub fn parse_cfg_select(
                 AttrStyle::Inner,
                 AttrPath { segments: vec![sym::cfg_select].into_boxed_slice(), span: cfg_span },
                 None,
+                AttributeSafety::Normal,
                 ParsedDescription::Macro,
                 cfg_span,
                 lint_node_id,
@@ -152,11 +155,17 @@ fn lint_unreachable(
 
     let branch_is_unreachable = |predicate: CfgSelectPredicate, wildcard_span| {
         let span = predicate.span();
-        p.psess.buffer_lint(
+        p.psess.dyn_buffer_lint(
             UNREACHABLE_CFG_SELECT_PREDICATES,
             span,
             lint_node_id,
-            BuiltinLintDiag::UnreachableCfg { span, wildcard_span },
+            move |dcx, level| match wildcard_span {
+                Some(wildcard_span) => {
+                    errors::UnreachableCfgSelectPredicateWildcard { span, wildcard_span }
+                        .into_diag(dcx, level)
+                }
+                None => errors::UnreachableCfgSelectPredicate { span }.into_diag(dcx, level),
+            },
         );
     };
 

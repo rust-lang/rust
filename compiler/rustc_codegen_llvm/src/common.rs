@@ -12,7 +12,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hashes::Hash128;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
-use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, PointerArithmetic, Scalar};
+use rustc_middle::mir::interpret::{GlobalAlloc, PointerArithmetic, Scalar};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cstore::DllImport;
 use tracing::debug;
@@ -20,7 +20,7 @@ use tracing::debug;
 use crate::consts::const_alloc_to_llvm;
 pub(crate) use crate::context::CodegenCx;
 use crate::context::{GenericCx, SCx};
-use crate::llvm::{self, BasicBlock, ConstantInt, FALSE, Metadata, TRUE, ToLlvmBool, Type, Value};
+use crate::llvm::{self, BasicBlock, ConstantInt, FALSE, TRUE, ToLlvmBool, Type, Value};
 
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".
@@ -82,14 +82,14 @@ impl<'ll> Funclet<'ll> {
 }
 
 impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericCx<'ll, CX> {
-    type Value = &'ll Value;
-    type Metadata = &'ll Metadata;
     // FIXME(eddyb) replace this with a `Function` "subclass" of `Value`.
     type Function = &'ll Value;
-
     type BasicBlock = &'ll BasicBlock;
-    type Type = &'ll Type;
     type Funclet = Funclet<'ll>;
+
+    type Value = &'ll Value;
+    type Type = &'ll Type;
+    type FunctionSignature = &'ll Type;
 
     type DIScope = &'ll llvm::debuginfo::DIScope;
     type DILocation = &'ll llvm::debuginfo::DILocation;
@@ -157,6 +157,10 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
 
     fn const_i32(&self, i: i32) -> &'ll Value {
         self.const_int(self.type_i32(), i as i64)
+    }
+
+    fn const_i64(&self, i: i64) -> &'ll Value {
+        self.const_int(self.type_i64(), i as i64)
     }
 
     fn const_int(&self, t: &'ll Type, i: i64) -> &'ll Value {
@@ -357,10 +361,6 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                 }
             }
         }
-    }
-
-    fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value {
-        const_alloc_to_llvm(self, alloc.inner(), /*static*/ false)
     }
 
     fn const_ptr_byte_offset(&self, base_addr: Self::Value, offset: abi::Size) -> Self::Value {

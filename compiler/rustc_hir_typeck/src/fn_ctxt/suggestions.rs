@@ -19,12 +19,11 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Upcast,
+    self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
     suggest_constraining_type_params,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
-use rustc_span::source_map::Spanned;
-use rustc_span::{ExpnKind, Ident, MacroKind, Span, Symbol, sym};
+use rustc_span::{ExpnKind, Ident, MacroKind, Span, Spanned, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -932,6 +931,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             hir::FnRetTy::Return(hir_ty) => {
                 if let hir::TyKind::OpaqueDef(op_ty, ..) = hir_ty.kind
+                    && let [hir::GenericBound::Trait(trait_ref)] = op_ty.bounds
+                    && !trait_ref
+                        .trait_ref
+                        .path
+                        .segments
+                        .last()
+                        .and_then(|seg| seg.args)
+                        .map_or(false, |args| !args.constraints.is_empty())
+                {
+                    // Use the path to get the trait name string
+                    let trait_name = trait_ref
+                        .trait_ref
+                        .path
+                        .segments
+                        .iter()
+                        .map(|seg| seg.ident.as_str())
+                        .collect::<Vec<_>>()
+                        .join("::");
+
+                    err.subdiagnostic(errors::ExpectedReturnTypeLabel::ImplTrait {
+                        span: hir_ty.span,
+                        trait_name,
+                    });
+
+                    if let Some(ret_coercion_span) = self.ret_coercion_span.get() {
+                        let expected_name = expected.to_string();
+                        err.span_label(
+                            ret_coercion_span,
+                            format!("return type resolved to be `{expected_name}`"),
+                        );
+                    }
+
+                    self.try_suggest_return_impl_trait(err, expected, found, fn_id);
+                    self.try_note_caller_chooses_ty_for_ty_param(err, expected, found);
+                    return true;
+                } else if let hir::TyKind::OpaqueDef(op_ty, ..) = hir_ty.kind
                     // FIXME: account for RPITIT.
                     && let [hir::GenericBound::Trait(trait_ref)] = op_ty.bounds
                     && let Some(hir::PathSegment { args: Some(generic_args), .. }) =
@@ -966,7 +1001,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let bound_vars =
                         self.tcx.late_bound_vars(self.tcx.local_def_id_to_hir_id(fn_id));
                     let ty = Binder::bind_with_vars(ty, bound_vars);
-                    let ty = self.normalize(hir_ty.span, ty);
+                    let ty = self.normalize(hir_ty.span, Unnormalized::new_wip(ty));
                     let ty = self.tcx.instantiate_bound_regions_with_erased(ty);
                     if self.may_coerce(expected, ty) {
                         err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other {
@@ -1232,7 +1267,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     ty::Asyncness::No => ty,
                 };
-                let ty = self.normalize(expr.span, ty);
+                let ty = self.normalize(expr.span, Unnormalized::new_wip(ty));
                 self.may_coerce(found, ty)
             }
             hir::FnRetTy::DefaultReturn(_) if in_closure => {
@@ -1834,11 +1869,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => return false,
         };
-        if item.def_id == old_def_id || self.tcx.def_kind(item.def_id) != DefKind::AssocConst {
+        if item.def_id == old_def_id
+            || !matches!(self.tcx.def_kind(item.def_id), DefKind::AssocConst { .. })
+        {
             // Same item
             return false;
         }
-        let item_ty = self.tcx.type_of(item.def_id).instantiate_identity();
+        let item_ty = self.tcx.type_of(item.def_id).instantiate_identity().skip_norm_wip();
         // FIXME(compiler-errors): This check is *so* rudimentary
         if item_ty.has_param() {
             return false;
@@ -2379,7 +2416,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && match expr.kind {
                     ExprKind::Path(QPath::Resolved(
                         None,
-                        Path { res: Res::Def(DefKind::Const, _), .. },
+                        Path { res: Res::Def(DefKind::Const { .. }, _), .. },
                     )) => true,
                     ExprKind::Call(
                         Expr {
@@ -3106,14 +3143,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         let deref_kind = if checked_ty.is_box() {
                             // detect Box::new(..)
-                            // FIXME: use `box_new` diagnostic item instead?
                             if let ExprKind::Call(box_new, [_]) = expr.kind
                                 && let ExprKind::Path(qpath) = &box_new.kind
                                 && let Res::Def(DefKind::AssocFn, fn_id) =
                                     self.typeck_results.borrow().qpath_res(qpath, box_new.hir_id)
-                                && let Some(impl_id) = self.tcx.inherent_impl_of_assoc(fn_id)
-                                && self.tcx.type_of(impl_id).skip_binder().is_box()
-                                && self.tcx.item_name(fn_id) == sym::new
+                                && self.tcx.is_diagnostic_item(sym::box_new, fn_id)
                             {
                                 let l_paren = self.tcx.sess.source_map().next_point(box_new.span);
                                 let r_paren = self.tcx.sess.source_map().end_point(expr.span);

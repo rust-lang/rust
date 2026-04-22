@@ -8,7 +8,7 @@ use crate::iter::FusedIterator;
 use crate::marker::PhantomData;
 use crate::ptr::NonNull;
 use crate::slice::memchr;
-use crate::{fmt, ops, slice, str};
+use crate::{fmt, ops, range, slice, str};
 
 // FIXME: because this is doc(inline)d, we *have* to use intra-doc links because the actual link
 //   depends on where the item is being documented. however, since this is libcore, we can't
@@ -176,7 +176,8 @@ impl fmt::Debug for CStr {
 }
 
 #[stable(feature = "cstr_default", since = "1.10.0")]
-impl Default for &CStr {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+impl const Default for &CStr {
     #[inline]
     fn default() -> Self {
         c""
@@ -713,6 +714,16 @@ impl ops::Index<ops::RangeFrom<usize>> for CStr {
                 index.start
             );
         }
+    }
+}
+
+#[stable(feature = "new_range_from_api", since = "1.96.0")]
+impl ops::Index<range::RangeFrom<usize>> for CStr {
+    type Output = CStr;
+
+    #[inline]
+    fn index(&self, index: range::RangeFrom<usize>) -> &CStr {
+        ops::Index::index(self, ops::RangeFrom::from(index))
     }
 }
 

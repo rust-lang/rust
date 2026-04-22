@@ -308,7 +308,7 @@ impl<'tcx> VarVisitor<'_, 'tcx> {
                     }
                     return false; // no need to walk further *on the variable*
                 },
-                Res::Def(DefKind::Static { .. } | DefKind::Const, ..) => {
+                Res::Def(DefKind::Static { .. } | DefKind::Const { .. }, ..) => {
                     if index_used_directly {
                         self.indexed_directly.insert(
                             seqvar.segments[0].ident.name,
@@ -397,7 +397,7 @@ impl<'tcx> Visitor<'tcx> for VarVisitor<'_, 'tcx> {
             ExprKind::MethodCall(_, receiver, args, _) => {
                 let def_id = self.cx.typeck_results().type_dependent_def_id(expr.hir_id).unwrap();
                 for (ty, expr) in iter::zip(
-                    self.cx.tcx.fn_sig(def_id).instantiate_identity().inputs().skip_binder(),
+                    self.cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip().inputs().skip_binder(),
                     iter::once(receiver).chain(args.iter()),
                 ) {
                     self.prefer_mutable = false;

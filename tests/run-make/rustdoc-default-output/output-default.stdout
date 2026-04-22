@@ -150,7 +150,7 @@ Options:
         --generate-redirect-map 
                         Generate JSON file at the top level instead of
                         generating HTML redirection files
-        --emit [toolchain-shared-resources,invocation-specific,dep-info]
+        --emit [html-static-files,html-non-static-files,dep-info]
                         Comma separated list of types of output for rustdoc to
                         emit
         --no-run        Compile doctests without running them
@@ -160,6 +160,9 @@ Options:
                         rustdoc will emit a hard error.
         --remap-path-prefix FROM=TO
                         Remap source names in compiler messages
+        --remap-path-scope [macro,diagnostics,debuginfo,coverage,object,all]
+                        Defines which scopes of paths should be remapped by
+                        `--remap-path-prefix`
         --show-type-layout 
                         Include the memory layout of types in the docs
         --no-capture    Don't capture stdout and stderr of tests

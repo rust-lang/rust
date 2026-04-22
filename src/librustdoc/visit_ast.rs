@@ -373,6 +373,19 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     #[inline]
+    fn add_impl_to_current_mod(&mut self, item: &'tcx hir::Item<'_>, impl_: hir::Impl<'_>) {
+        self.add_to_current_mod(
+            item,
+            // The symbol here is used as a "sentinel" value and has no meaning in
+            // itself. It just tells that this is an inlined impl and that it should not
+            // be cleaned as a normal `ImplItem` but instead as a `PlaceholderImplItem`.
+            // It's to ensure that `doc_cfg` inheritance works as expected.
+            if impl_.of_trait.is_none() { None } else { Some(rustc_span::symbol::kw::Impl) },
+            None,
+        );
+    }
+
+    #[inline]
     fn add_to_current_mod(
         &mut self,
         item: &'tcx hir::Item<'_>,
@@ -426,12 +439,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // }
             // Bar::bar();
             // ```
-            if let hir::ItemKind::Impl(impl_) = item.kind &&
-                // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
-                // them up regardless of where they're located.
-                impl_.of_trait.is_none()
-            {
-                self.add_to_current_mod(item, None, None);
+            if let hir::ItemKind::Impl(impl_) = item.kind {
+                self.add_impl_to_current_mod(item, impl_);
             }
             return;
         }
@@ -469,11 +478,21 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     // If there was a private module in the current path then don't bother inlining
                     // anything as it will probably be stripped anyway.
                     if is_pub && self.inside_public_path {
-                        let please_inline = find_attr!(
-                            attrs,
-                            Doc(d)
-                            if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
-                        );
+                        let please_inline = if let Some(res_did) = res.opt_def_id()
+                            && matches!(tcx.def_kind(res_did), DefKind::Macro(MacroKinds::BANG))
+                        {
+                            crate::clean::macro_reexport_is_inline(
+                                tcx,
+                                item.owner_id.def_id,
+                                res_did,
+                            )
+                        } else {
+                            find_attr!(
+                                attrs,
+                                Doc(d)
+                                if d.inline.first().is_some_and(|(inline, _)| *inline == DocInline::Inline)
+                            )
+                        };
                         let ident = match kind {
                             hir::UseKind::Single(ident) => Some(ident.name),
                             hir::UseKind::Glob => None,
@@ -530,10 +549,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 }
             }
             hir::ItemKind::Impl(impl_) => {
-                // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
+                // Don't duplicate impls when inlining, we'll pick
                 // them up regardless of where they're located.
-                if !self.inlining && impl_.of_trait.is_none() {
-                    self.add_to_current_mod(item, None, None);
+                if !self.inlining {
+                    self.add_impl_to_current_mod(item, impl_);
                 }
             }
         }

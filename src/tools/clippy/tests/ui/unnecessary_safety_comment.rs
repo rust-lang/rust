@@ -100,3 +100,13 @@ mod issue_12048 {
 }
 
 fn main() {}
+
+mod issue16553 {
+    //! ```
+    //! // SAFETY: All is well.
+    //! unsafe {
+    //!    foo()
+    //! }
+    //! ```
+    mod blah {}
+}

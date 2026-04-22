@@ -1,4 +1,7 @@
 //@ run-pass
+//@ reference: expr.arith-logic.syntax
+//@ reference: patterns.literal.syntax
+//@ reference: patterns.literal.intro
 // Check that issue #954 stays fixed
 
 

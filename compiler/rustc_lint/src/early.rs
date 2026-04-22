@@ -17,6 +17,7 @@ use tracing::debug;
 
 use crate::context::{EarlyContext, LintContext, LintStore};
 use crate::passes::{EarlyLintPass, EarlyLintPassObject};
+use crate::{DecorateAttrLint, DiagAndSess};
 
 pub(super) mod diagnostics;
 
@@ -36,12 +37,26 @@ impl<'ecx, 'tcx, T: EarlyLintPass> EarlyContextAndPass<'ecx, 'tcx, T> {
     fn check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, node_id: _, lint_id, diagnostic } = early_lint;
-            self.context.opt_span_lint(lint_id.lint, span, |diag| match diagnostic {
+            match diagnostic {
                 DecorateDiagCompat::Builtin(b) => {
-                    diagnostics::decorate_builtin_lint(self.context.sess(), self.tcx, b, diag);
+                    self.context.opt_span_lint(
+                        lint_id.lint,
+                        span,
+                        DecorateAttrLint {
+                            sess: self.context.sess(),
+                            tcx: self.tcx,
+                            diagnostic: &b,
+                        },
+                    );
                 }
-                DecorateDiagCompat::Dynamic(d) => d.decorate_lint_box(diag),
-            });
+                DecorateDiagCompat::Dynamic(callback) => {
+                    self.context.opt_span_lint(
+                        lint_id.lint,
+                        span,
+                        DiagAndSess { callback, sess: self.context.sess() },
+                    );
+                }
+            }
         }
     }
 

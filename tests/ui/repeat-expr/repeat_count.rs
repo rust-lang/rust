@@ -27,10 +27,7 @@ fn main() {
     //~| NOTE expected `usize`, found `isize`
     //~| NOTE `-1_isize` cannot fit into type `usize`
     let h = [0; 4u8];
-    //~^ ERROR the constant `4` is not of type `usize`
-    //~| NOTE expected `usize`, found `u8`
-    //~| NOTE the length of array `[{integer}; 4]` must be type `usize`
-    //~| ERROR mismatched types
+    //~^ ERROR mismatched types
     //~| NOTE expected `usize`, found `u8`
     struct I {
         i: (),

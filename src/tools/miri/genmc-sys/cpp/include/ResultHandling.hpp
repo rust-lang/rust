@@ -5,7 +5,7 @@
 #include "rust/cxx.h"
 
 // GenMC headers:
-#include "Verification/VerificationError.hpp"
+#include "genmc/Verification/VerificationError.hpp"
 
 #include <format>
 #include <memory>

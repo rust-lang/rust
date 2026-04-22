@@ -17,11 +17,12 @@ use hir_def::{
     ImplId, ItemContainerId, ModuleId, TraitId,
     attrs::AttrFlags,
     builtin_derive::BuiltinDeriveImplMethod,
-    expr_store::path::GenericArgs as HirGenericArgs,
-    hir::ExprId,
+    expr_store::{Body, path::GenericArgs as HirGenericArgs},
+    hir::{ExprId, generics::GenericParams},
     lang_item::LangItems,
     nameres::{DefMap, block_def_map, crate_def_map},
     resolver::Resolver,
+    signatures::{ConstSignature, FunctionSignature},
 };
 use intern::{Symbol, sym};
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -218,7 +219,6 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
 /// between multiple candidates. We otherwise treat them as ordinary inference
 /// variable to avoid rejecting otherwise correct code.
 #[derive(Debug)]
-#[expect(dead_code)]
 pub(super) enum TreatNotYetDefinedOpaques {
     AsInfer,
     AsRigid,
@@ -323,7 +323,7 @@ impl<'db> InferenceTable<'db> {
         // any late-bound regions appearing in its bounds.
         let bounds = GenericPredicates::query_all(self.db, method_item.into());
         let bounds = clauses_as_obligations(
-            bounds.iter_instantiated_copied(interner, args.as_slice()),
+            bounds.iter_instantiated(interner, args.as_slice()),
             ObligationCause::new(),
             self.param_env,
         );
@@ -366,7 +366,7 @@ pub fn lookup_impl_const<'db>(
     };
     let trait_ref = TraitRef::new_from_args(interner, trait_id.into(), subs);
 
-    let const_signature = db.const_signature(const_id);
+    let const_signature = ConstSignature::of(db, const_id);
     let name = match const_signature.name.as_ref() {
         Some(name) => name,
         None => return (const_id, subs),
@@ -396,7 +396,7 @@ pub fn is_dyn_method<'db>(
     let ItemContainerId::TraitId(trait_id) = func.loc(db).container else {
         return None;
     };
-    let trait_params = db.generic_params(trait_id.into()).len();
+    let trait_params = GenericParams::of(db, trait_id.into()).len();
     let fn_params = fn_subst.len() - trait_params;
     let trait_ref = TraitRef::new_from_args(
         interner,
@@ -432,14 +432,14 @@ pub(crate) fn lookup_impl_method_query<'db>(
     let ItemContainerId::TraitId(trait_id) = func.loc(db).container else {
         return (Either::Left(func), fn_subst);
     };
-    let trait_params = db.generic_params(trait_id.into()).len();
+    let trait_params = GenericParams::of(db, trait_id.into()).len();
     let trait_ref = TraitRef::new_from_args(
         interner,
         trait_id.into(),
         GenericArgs::new_from_slice(&fn_subst[..trait_params]),
     );
 
-    let name = &db.function_signature(func).name;
+    let name = &FunctionSignature::of(db, func).name;
     let Some((impl_fn, impl_subst)) =
         lookup_impl_assoc_item_for_trait_ref(&infcx, trait_ref, env.param_env, name).and_then(
             |(assoc, impl_args)| {
@@ -623,7 +623,7 @@ impl InherentImpls {
                 // To better support custom derives, collect impls in all unnamed const items.
                 // const _: () = { ... };
                 for konst in module_data.scope.unnamed_consts() {
-                    let body = db.body(konst.into());
+                    let body = Body::of(db, konst.into());
                     for (_, block_def_map) in body.blocks(db) {
                         collect(db, block_def_map, map);
                     }
@@ -766,7 +766,7 @@ impl TraitImpls {
                 // To better support custom derives, collect impls in all unnamed const items.
                 // const _: () = { ... };
                 for konst in module_data.scope.unnamed_consts() {
-                    let body = db.body(konst.into());
+                    let body = Body::of(db, konst.into());
                     for (_, block_def_map) in body.blocks(db) {
                         collect(db, block_def_map, lang_items, map);
                     }

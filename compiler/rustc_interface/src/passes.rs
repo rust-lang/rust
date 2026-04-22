@@ -8,11 +8,12 @@ use std::{env, fs, iter};
 use rustc_ast::{self as ast, CRATE_NODE_ID};
 use rustc_attr_parsing::{AttributeParser, Early, ShouldEmit};
 use rustc_codegen_ssa::traits::CodegenBackend;
-use rustc_codegen_ssa::{CodegenResults, CrateInfo};
+use rustc_codegen_ssa::{CompiledModules, CrateInfo};
 use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal, par_fns};
 use rustc_data_structures::thousands;
+use rustc_errors::DiagCallback;
 use rustc_errors::timings::TimingSection;
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
@@ -21,9 +22,12 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
 use rustc_hir::limit::Limit;
-use rustc_hir::{Attribute, find_attr};
+use rustc_hir::lints::DelayedLint;
+use rustc_hir::{Attribute, MaybeOwner, Target, find_attr};
 use rustc_incremental::setup_dep_graph;
-use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
+use rustc_lint::{
+    BufferedEarlyLint, DecorateAttrLint, EarlyCheckNode, LintStore, unerased_lint_store,
+};
 use rustc_metadata::EncodedMetadata;
 use rustc_metadata::creader::CStore;
 use rustc_middle::arena::Arena;
@@ -301,8 +305,7 @@ fn configure_and_expand(
 
     resolver.resolve_crate(&krate);
 
-    CStore::from_tcx(tcx).report_incompatible_target_modifiers(tcx, &krate);
-    CStore::from_tcx(tcx).report_incompatible_async_drop_feature(tcx, &krate);
+    CStore::from_tcx(tcx).report_session_incompatibilities(tcx, &krate);
     krate
 }
 
@@ -495,7 +498,7 @@ fn env_var_os<'tcx>(tcx: TyCtxt<'tcx>, key: &'tcx OsStr) -> Option<&'tcx OsStr> 
     // NOTE: This only works for passes run before `write_dep_info`. See that
     // for extension points for configuring environment variables to be
     // properly change-tracked.
-    tcx.sess.psess.env_depinfo.borrow_mut().insert((
+    tcx.sess.env_depinfo.borrow_mut().insert((
         Symbol::intern(&key.to_string_lossy()),
         value.as_ref().and_then(|value| value.to_str()).map(|value| Symbol::intern(value)),
     ));
@@ -607,7 +610,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 
         // Account for explicitly marked-to-track files
         // (e.g. accessed in proc macros).
-        let file_depinfo = sess.psess.file_depinfo.borrow();
+        let file_depinfo = sess.file_depinfo.borrow();
 
         let normalize_path = |path: PathBuf| escape_dep_filename(&path.to_string_lossy());
 
@@ -719,7 +722,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             }
 
             // Emit special comments with information about accessed environment variables.
-            let env_depinfo = sess.psess.env_depinfo.borrow();
+            let env_depinfo = sess.env_depinfo.borrow();
             if !env_depinfo.is_empty() {
                 // We will soon sort, so the initial order does not matter.
                 #[allow(rustc::potential_query_instability)]
@@ -781,7 +784,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
 fn resolver_for_lowering_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
-) -> (&'tcx Steal<(ty::ResolverAstLowering, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
+) -> (&'tcx Steal<(ty::ResolverAstLowering<'tcx>, Arc<ast::Crate>)>, &'tcx ty::ResolverGlobalCtxt) {
     let arenas = Resolver::arenas();
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
@@ -878,6 +881,10 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
     let providers = &mut Providers::default();
     providers.queries.analysis = analysis;
     providers.queries.hir_crate = rustc_ast_lowering::lower_to_hir;
+    providers.queries.lower_delayed_owner = rustc_ast_lowering::lower_delayed_owner;
+    // `delayed_owner` is fed during `lower_delayed_owner`, by default it returns phantom,
+    // as if this query was not fed it means that `MaybeOwner` does not exist for provided LocalDefId.
+    providers.queries.delayed_owner = |_, _| MaybeOwner::Phantom;
     providers.queries.resolver_for_lowering_raw = resolver_for_lowering_raw;
     providers.queries.stripped_cfg_items = |tcx, _| &tcx.resolutions(()).stripped_cfg_items[..];
     providers.queries.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
@@ -964,6 +971,17 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
 
     let incremental = dep_graph.is_fully_enabled();
 
+    // Note: this function body is the origin point of the widely-used 'tcx lifetime.
+    //
+    // `gcx_cell` is defined here and `&gcx_cell` is passed to `create_global_ctxt`, which then
+    // actually creates the `GlobalCtxt` with a `gcx_cell.get_or_init(...)` call. This is done so
+    // that the resulting reference has the type `&'tcx GlobalCtxt<'tcx>`, which is what `TyCtxt`
+    // needs. If we defined and created the `GlobalCtxt` within `create_global_ctxt` then its type
+    // would be `&'a GlobalCtxt<'tcx>`, with two lifetimes.
+    //
+    // Similarly, by creating `arena` here and passing in `&arena`, that reference has the type
+    // `&'tcx WorkerLocal<Arena<'tcx>>`, also with one lifetime. And likewise for `hir_arena`.
+
     let gcx_cell = OnceLock::new();
     let arena = WorkerLocal::new(|_| Arena::default());
     let hir_arena = WorkerLocal::new(|_| rustc_hir::Arena::default());
@@ -1008,6 +1026,35 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
             res
         },
     )
+}
+
+pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
+    for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
+        if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
+            for lint in delayed_lints {
+                match lint {
+                    DelayedLint::AttributeParsing(attribute_lint) => {
+                        tcx.emit_node_span_lint(
+                            attribute_lint.lint_id.lint,
+                            attribute_lint.id,
+                            attribute_lint.span.clone(),
+                            DecorateAttrLint {
+                                sess: tcx.sess,
+                                tcx: Some(tcx),
+                                diagnostic: &attribute_lint.kind,
+                            },
+                        );
+                    }
+                    DelayedLint::Dynamic(attribute_lint) => tcx.emit_node_span_lint(
+                        attribute_lint.lint_id.lint,
+                        attribute_lint.id,
+                        attribute_lint.span.clone(),
+                        DiagCallback(&attribute_lint.callback),
+                    ),
+                }
+            }
+        }
+    }
 }
 
 /// Runs all analyses that we guarantee to run, even if errors were reported in earlier analyses.
@@ -1059,6 +1106,32 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         ]);
     });
 
+    sess.time("emit_ast_lowering_delayed_lints", || {
+        // Sanity check in debug mode that all lints are really noticed and we really will emit
+        // them all in the loop right below.
+        //
+        // During ast lowering, when creating items, foreign items, trait items and impl items,
+        // we store in them whether they have any lints in their owner node that should be
+        // picked up by `hir_crate_items`. However, theoretically code can run between that
+        // boolean being inserted into the item and the owner node being created. We don't want
+        // any new lints to be emitted there (you have to really try to manage that but still),
+        // but this check is there to catch that.
+        #[cfg(debug_assertions)]
+        {
+            let hir_items = tcx.hir_crate_items(());
+            for owner_id in hir_items.owners() {
+                if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id)
+                    && !delayed_lints.is_empty()
+                {
+                    // Assert that delayed_lint_items also picked up this item to have lints.
+                    assert!(hir_items.delayed_lint_items().any(|i| i == owner_id));
+                }
+            }
+        }
+
+        emit_delayed_lints(tcx);
+    });
+
     rustc_hir_analysis::check_crate(tcx);
     // Freeze definitions as we don't add new ones at this point.
     // We need to wait until now since we synthesize a by-move body
@@ -1098,7 +1171,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 // Eagerly check the unsubstituted layout for cycles.
                 tcx.ensure_ok().layout_of(
                     ty::TypingEnv::post_analysis(tcx, def_id.to_def_id())
-                        .as_query_input(tcx.type_of(def_id).instantiate_identity()),
+                        .as_query_input(tcx.type_of(def_id).instantiate_identity().skip_norm_wip()),
                 );
             }
         });
@@ -1194,7 +1267,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
 pub(crate) fn start_codegen<'tcx>(
     codegen_backend: &dyn CodegenBackend,
     tcx: TyCtxt<'tcx>,
-) -> (Box<dyn Any>, EncodedMetadata) {
+) -> (Box<dyn Any>, CrateInfo, EncodedMetadata) {
     tcx.sess.timings.start_section(tcx.sess.dcx(), TimingSection::Codegen);
 
     // Hook for tests.
@@ -1207,7 +1280,7 @@ pub(crate) fn start_codegen<'tcx>(
     // Don't run this test assertions when not doing codegen. Compiletest tries to build
     // build-fail tests in check mode first and expects it to not give an error in that case.
     if tcx.sess.opts.output_types.should_codegen() {
-        rustc_symbol_mangling::test::report_symbol_names(tcx);
+        rustc_symbol_mangling::test::dump_symbol_names_and_def_paths(tcx);
     }
 
     // Don't do code generation if there were any errors. Likewise if
@@ -1221,19 +1294,17 @@ pub(crate) fn start_codegen<'tcx>(
 
     let metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
 
-    let codegen = tcx.sess.time("codegen_crate", move || {
+    let crate_info = CrateInfo::new(tcx, codegen_backend.target_cpu(tcx.sess));
+
+    let codegen = tcx.sess.time("codegen_crate", || {
         if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
             // Skip crate items and just output metadata in -Z no-codegen mode.
             tcx.sess.dcx().abort_if_errors();
 
             // Linker::link will skip join_codegen in case of a CodegenResults Any value.
-            Box::new(CodegenResults {
-                modules: vec![],
-                allocator_module: None,
-                crate_info: CrateInfo::new(tcx, "<dummy cpu>".to_owned()),
-            })
+            Box::new(CompiledModules { modules: vec![], allocator_module: None })
         } else {
-            codegen_backend.codegen_crate(tcx)
+            codegen_backend.codegen_crate(tcx, &crate_info)
         }
     });
 
@@ -1245,7 +1316,7 @@ pub(crate) fn start_codegen<'tcx>(
         tcx.sess.code_stats.print_type_sizes();
     }
 
-    (codegen, metadata)
+    (codegen, crate_info, metadata)
 }
 
 /// Compute and validate the crate name.
@@ -1305,9 +1376,10 @@ pub(crate) fn parse_crate_name(
         AttributeParser::parse_limited_should_emit(
             sess,
             attrs,
-            sym::crate_name,
+            &[sym::crate_name],
             DUMMY_SP,
             rustc_ast::node_id::CRATE_NODE_ID,
+            Target::Crate,
             None,
             emit_errors,
         )?
@@ -1354,9 +1426,10 @@ pub fn collect_crate_types(
             AttributeParser::<Early>::parse_limited_should_emit(
                 session,
                 attrs,
-                sym::crate_type,
+                &[sym::crate_type],
                 crate_span,
                 CRATE_NODE_ID,
+                Target::Crate,
                 None,
                 ShouldEmit::EarlyFatal { also_emit_lints: false },
             )
@@ -1410,9 +1483,10 @@ fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit 
     let attr = AttributeParser::parse_limited_should_emit(
         sess,
         &krate_attrs,
-        sym::recursion_limit,
+        &[sym::recursion_limit],
         DUMMY_SP,
         rustc_ast::node_id::CRATE_NODE_ID,
+        Target::Crate,
         None,
         // errors are fatal here, but lints aren't.
         // If things aren't fatal we continue, and will parse this again.
@@ -1420,5 +1494,5 @@ fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit 
         // So, no lints here to avoid duplicates.
         ShouldEmit::EarlyFatal { also_emit_lints: false },
     );
-    crate::limits::get_recursion_limit(attr.as_slice())
+    crate::limits::get_recursion_limit(attr.as_slice(), sess)
 }

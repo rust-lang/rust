@@ -7,7 +7,7 @@ use std::fs::{
     rename,
 };
 use std::io::{self, ErrorKind, Read, Seek, SeekFrom, Write};
-use std::path::{Path, PathBuf};
+use std::path::{self, Path, PathBuf};
 use std::time::SystemTime;
 
 use rustc_abi::Size;
@@ -354,8 +354,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let path_raw = this.read_pointer(path_raw)?;
-        let path = this.read_path_from_c_str(path_raw)?;
         let flag = this.read_scalar(flag)?.to_i32()?;
+
+        let path = this.read_path_from_c_str(path_raw)?;
+        // Files in `/proc` won't work properly.
+        if matches!(this.tcx.sess.target.os, Os::Linux | Os::Android | Os::Illumos | Os::Solaris)
+            && path::absolute(&path).is_ok_and(|path| path.starts_with("/proc"))
+        {
+            this.machine.emit_diagnostic(NonHaltingDiagnostic::FileInProcOpened);
+        }
+
+        // We will "subtract" supported flags from this and at the end check that no bits are left.
+        let mut flag = flag;
 
         let mut options = OpenOptions::new();
 
@@ -372,6 +382,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Now we check the access mode
         let access_mode = flag & 0b11;
+        flag &= !access_mode;
 
         if access_mode == o_rdonly {
             writable = false;
@@ -383,23 +394,20 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         } else {
             throw_unsup_format!("unsupported access mode {:#x}", access_mode);
         }
-        // We need to check that there aren't unsupported options in `flag`. For this we try to
-        // reproduce the content of `flag` in the `mirror` variable using only the supported
-        // options.
-        let mut mirror = access_mode;
 
         let o_append = this.eval_libc_i32("O_APPEND");
         if flag & o_append == o_append {
+            flag &= !o_append;
             options.append(true);
-            mirror |= o_append;
         }
         let o_trunc = this.eval_libc_i32("O_TRUNC");
         if flag & o_trunc == o_trunc {
+            flag &= !o_trunc;
             options.truncate(true);
-            mirror |= o_trunc;
         }
         let o_creat = this.eval_libc_i32("O_CREAT");
         if flag & o_creat == o_creat {
+            flag &= !o_creat;
             // Get the mode.  On macOS, the argument type `mode_t` is actually `u16`, but
             // C integer promotion rules mean that on the ABI level, it gets passed as `u32`
             // (see https://github.com/rust-lang/rust/issues/71915).
@@ -423,11 +431,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
 
-            mirror |= o_creat;
-
             let o_excl = this.eval_libc_i32("O_EXCL");
             if flag & o_excl == o_excl {
-                mirror |= o_excl;
+                flag &= !o_excl;
                 options.create_new(true);
             } else {
                 options.create(true);
@@ -435,9 +441,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         }
         let o_cloexec = this.eval_libc_i32("O_CLOEXEC");
         if flag & o_cloexec == o_cloexec {
+            flag &= !o_cloexec;
             // We do not need to do anything for this flag because `std` already sets it.
             // (Technically we do not support *not* setting this flag, but we ignore that.)
-            mirror |= o_cloexec;
         }
         if this.tcx.sess.target.os == Os::Linux {
             let o_tmpfile = this.eval_libc_i32("O_TMPFILE");
@@ -449,6 +455,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let o_nofollow = this.eval_libc_i32("O_NOFOLLOW");
         if flag & o_nofollow == o_nofollow {
+            flag &= !o_nofollow;
             #[cfg(unix)]
             {
                 use std::os::unix::fs::OpenOptionsExt;
@@ -465,13 +472,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return this.set_last_error_and_return_i32(LibcError("ELOOP"));
                 }
             }
-            mirror |= o_nofollow;
         }
 
-        // If `flag` is not equal to `mirror`, there is an unsupported option enabled in `flag`,
-        // then we throw an error.
-        if flag != mirror {
-            throw_unsup_format!("unsupported flags {:#x}", flag & !mirror);
+        // If `flag` has any bits left set, those are not supported.
+        if flag != 0 {
+            throw_unsup_format!("unsupported flags {:#x}", flag);
         }
 
         // Reject if isolation is enabled.

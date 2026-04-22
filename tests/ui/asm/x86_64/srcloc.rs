@@ -1,12 +1,19 @@
-//@ only-x86_64
+//@ add-minicore
 //@ build-fail
-//@ compile-flags: -Ccodegen-units=1
+//@ compile-flags: --target x86_64-unknown-linux-gnu -Ccodegen-units=1
+//@ needs-llvm-components: x86
 //@ ignore-backends: gcc
+#![crate_type = "lib"]
+#![feature(no_core)]
+#![no_core]
 
-use std::arch::asm;
+extern crate minicore;
+use minicore::*;
 
 // Checks that inline asm errors are mapped to the correct line in the source code.
 
+#[unsafe(no_mangle)]
+#[rustfmt::skip]
 fn main() {
     unsafe {
         asm!("invalid_instruction");

@@ -32,7 +32,7 @@
 //@ lldb-command:continue
 
 //@ lldb-command:v self
-//@ lldb-check:[...] { 0 = 4444.5 1 = 5555 2 = 6666 3 = 7777.5 }
+//@ lldb-check:[...] (4444.5, 5555, 6666, 7777.5)
 //@ lldb-command:continue
 
 trait Trait {

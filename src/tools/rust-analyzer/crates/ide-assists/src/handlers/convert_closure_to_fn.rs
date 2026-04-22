@@ -24,7 +24,7 @@ use crate::assist_context::{AssistContext, Assists};
 // This converts a closure to a freestanding function, changing all captures to parameters.
 //
 // ```
-// # //- minicore: copy
+// # //- minicore: copy, fn
 // # struct String;
 // # impl String {
 // #     fn new() -> Self {}
@@ -90,6 +90,7 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
             }
         })
         .collect::<Option<Vec<_>>>()?;
+    let capture_params_start = params.len();
 
     let mut body = closure.body()?.clone_for_update();
     let mut is_gen = false;
@@ -152,7 +153,8 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 .map(|(_, _, it)| it.clone())
                 .unwrap_or_else(|| make::name("fun_name"));
             let captures = closure_ty.captured_items(ctx.db());
-            let capture_tys = closure_ty.capture_types(ctx.db());
+            let capture_tys =
+                captures.iter().map(|capture| capture.captured_ty(ctx.db())).collect::<Vec<_>>();
 
             let mut captures_as_args = Vec::with_capacity(captures.len());
 
@@ -163,22 +165,28 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
 
             for (capture, capture_ty) in std::iter::zip(&captures, &capture_tys) {
                 // FIXME: Allow configuring the replacement of `self`.
-                let capture_name =
-                    if capture.local().is_self(ctx.db()) && !capture.has_field_projections() {
-                        make::name("this")
-                    } else {
-                        make::name(&capture.place_to_name(ctx.db()))
-                    };
+                let is_self = capture.local().is_self(ctx.db()) && !capture.has_field_projections();
+                let capture_name = if is_self {
+                    make::name("this")
+                } else {
+                    make::name(&capture.place_to_name(ctx.db(), ctx.edition()))
+                };
 
                 closure_mentioned_generic_params.extend(capture_ty.generic_params(ctx.db()));
 
                 let capture_ty = capture_ty
                     .display_source_code(ctx.db(), module.into(), true)
                     .unwrap_or_else(|_| "_".to_owned());
-                params.push(make::param(
+                let param = make::param(
                     ast::Pat::IdentPat(make::ident_pat(false, false, capture_name.clone_subtree())),
                     make::ty(&capture_ty),
-                ));
+                );
+                if is_self {
+                    // Always put `this` first.
+                    params.insert(capture_params_start, param);
+                } else {
+                    params.push(param);
+                }
 
                 for capture_usage in capture.usages().sources(ctx.db()) {
                     if capture_usage.file_id() != ctx.file_id() {
@@ -188,24 +196,32 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
 
                     let capture_usage_source = capture_usage.source();
                     let capture_usage_source = capture_usage_source.to_node(&body_root);
-                    let expr = match capture_usage_source {
+                    let mut expr = match capture_usage_source {
                         Either::Left(expr) => expr,
                         Either::Right(pat) => {
                             let Some(expr) = expr_of_pat(pat) else { continue };
                             expr
                         }
                     };
+                    if !capture_usage.is_ref() {
+                        expr = peel_ref(expr);
+                    }
                     let replacement = wrap_capture_in_deref_if_needed(
                         &expr,
                         &capture_name,
                         capture.kind(),
-                        capture_usage.is_ref(),
+                        matches!(expr, ast::Expr::RefExpr(_)) || capture_usage.is_ref(),
                     )
                     .clone_for_update();
                     capture_usages_replacement_map.push((expr, replacement));
                 }
 
-                captures_as_args.push(capture_as_arg(ctx, capture));
+                let capture_as_arg = capture_as_arg(ctx, capture);
+                if is_self {
+                    captures_as_args.insert(0, capture_as_arg);
+                } else {
+                    captures_as_args.push(capture_as_arg);
+                }
             }
 
             let (closure_type_params, closure_where_clause) =
@@ -220,7 +236,7 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
             }
 
             let body = if wrap_body_in_block {
-                make::block_expr([], Some(body))
+                make::block_expr([], Some(body.reset_indent().indent(1.into())))
             } else {
                 ast::BlockExpr::cast(body.syntax().clone()).unwrap()
             };
@@ -463,24 +479,29 @@ fn compute_closure_type_params(
     (Some(make::generic_param_list(include_params)), where_clause)
 }
 
+fn peel_parens(mut expr: ast::Expr) -> ast::Expr {
+    loop {
+        if ast::ParenExpr::can_cast(expr.syntax().kind()) {
+            let Some(parent) = expr.syntax().parent().and_then(ast::Expr::cast) else { break };
+            expr = parent;
+        } else {
+            break;
+        }
+    }
+    expr
+}
+
+fn peel_ref(mut expr: ast::Expr) -> ast::Expr {
+    expr = peel_parens(expr);
+    expr.syntax().parent().and_then(ast::RefExpr::cast).map(Into::into).unwrap_or(expr)
+}
+
 fn wrap_capture_in_deref_if_needed(
     expr: &ast::Expr,
     capture_name: &ast::Name,
     capture_kind: CaptureKind,
     is_ref: bool,
 ) -> ast::Expr {
-    fn peel_parens(mut expr: ast::Expr) -> ast::Expr {
-        loop {
-            if ast::ParenExpr::can_cast(expr.syntax().kind()) {
-                let Some(parent) = expr.syntax().parent().and_then(ast::Expr::cast) else { break };
-                expr = parent;
-            } else {
-                break;
-            }
-        }
-        expr
-    }
-
     let capture_name = make::expr_path(make::path_from_text(&capture_name.text()));
     if capture_kind == CaptureKind::Move || is_ref {
         return capture_name;
@@ -507,8 +528,11 @@ fn wrap_capture_in_deref_if_needed(
 }
 
 fn capture_as_arg(ctx: &AssistContext<'_>, capture: &ClosureCapture<'_>) -> ast::Expr {
-    let place = parse_expr_from_str(&capture.display_place_source_code(ctx.db()), ctx.edition())
-        .expect("`display_place_source_code()` produced an invalid expr");
+    let place = parse_expr_from_str(
+        &capture.display_place_source_code(ctx.db(), ctx.edition()),
+        ctx.edition(),
+    )
+    .expect("`display_place_source_code()` produced an invalid expr");
     let needs_mut = match capture.kind() {
         CaptureKind::SharedRef => false,
         CaptureKind::MutableRef | CaptureKind::UniqueSharedRef => true,
@@ -688,7 +712,7 @@ mod tests {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore:copy
+//- minicore: copy, fn
 fn main() {
     let s = &mut true;
     let closure = |$0| { *s = false; };
@@ -710,7 +734,7 @@ fn main() {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore:copy
+//- minicore: copy, fn
 struct A { a: i32, b: bool }
 fn main() {
     let mut a = A { a: 123, b: false };
@@ -740,8 +764,8 @@ fn main() {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore:copy
-struct A { b: &'static B, c: i32 }
+//- minicore: copy, fn
+struct A { b: &'static mut B, c: i32 }
 struct B(bool, i32);
 struct C;
 impl C {
@@ -756,7 +780,7 @@ impl C {
 }
 "#,
             r#"
-struct A { b: &'static B, c: i32 }
+struct A { b: &'static mut B, c: i32 }
 struct B(bool, i32);
 struct C;
 impl C {
@@ -778,7 +802,7 @@ impl C {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore:copy
+//- minicore: copy, fn
 struct A { b: &'static B, c: i32 }
 struct B(bool, i32);
 impl A {
@@ -795,10 +819,10 @@ struct A { b: &'static B, c: i32 }
 struct B(bool, i32);
 impl A {
     fn foo(&self) {
-        fn closure(self_b_1: &i32) {
-            let b = *self_b_1;
+        fn closure(self_b: &B) {
+            let b = self_b.1;
         }
-        closure(&self.b.1);
+        closure(self.b);
     }
 }
 "#,
@@ -810,7 +834,7 @@ impl A {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore: copy, future
+//- minicore: copy, future, async_fn
 fn foo(&self) {
     let closure = async |$0| 1;
     closure();
@@ -832,7 +856,7 @@ fn foo(&self) {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore: copy, future
+//- minicore: copy, future, fn
 fn foo() {
     let closure = |$0| async { 1 };
     closure();
@@ -878,7 +902,7 @@ fn foo() {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore: copy
+//- minicore: copy, fn
 fn foo() {
     let closure = |$0| {};
     closure();
@@ -898,7 +922,7 @@ fn foo() {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore: copy
+//- minicore: copy, fn
 fn foo() {
     let a = 1;
     let closure = |$0| a;
@@ -918,7 +942,7 @@ fn foo() {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore: copy
+//- minicore: copy, fn
 fn foo() {
     let closure = |$0| 'label: {};
     closure();
@@ -936,7 +960,7 @@ fn foo() {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore: copy
+//- minicore: copy, fn
 fn foo() {
     let closure = |$0| {
         const { () }
@@ -956,7 +980,7 @@ fn foo() {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore: copy
+//- minicore: copy, fn
 fn foo() {
     let closure = |$0| unsafe { };
     closure();
@@ -968,6 +992,32 @@ fn foo() {
         unsafe { }
     }
     closure();
+}
+"#,
+        );
+        check_assist(
+            convert_closure_to_fn,
+            r#"
+//- minicore: copy, fn
+fn foo() {
+    {
+        let closure = |$0| match () {
+            () => {},
+        };
+        closure();
+    }
+}
+"#,
+            r#"
+fn foo() {
+    {
+        fn closure() {
+            match () {
+                () => {},
+            }
+        }
+        closure();
+    }
 }
 "#,
         );
@@ -1023,7 +1073,7 @@ fn foo() {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore: copy
+//- minicore: copy, fn
 struct A { b: B }
 struct B(bool, i32);
 fn foo() {
@@ -1040,7 +1090,7 @@ struct B(bool, i32);
 fn foo() {
     let mut a = A { b: B(true, 0) };
     fn closure(a_b_1: &mut i32) {
-        let A { b: B(_, ref mut c) } = a_b_1;
+        let A { b: B(_, ref mut c) } = *a_b_1;
     }
     closure(&mut a.b.1);
 }
@@ -1053,7 +1103,7 @@ fn foo() {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore: copy
+//- minicore: copy, fn
 fn foo() {
     let (mut a, b) = (0.1, "abc");
     let closure = |$0p1: i32, p2: &mut bool| {
@@ -1081,7 +1131,7 @@ fn foo() {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore: copy
+//- minicore: copy, fn
 fn foo() {
     let (mut a, b) = (0.1, "abc");
     let closure = |$0p1: i32, p2| {
@@ -1119,7 +1169,7 @@ fn foo() {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore: copy
+//- minicore: copy, fn
 fn foo() {
     let (mut a, b) = (0.1, "abc");
     let closure = |$0p1: i32, p2| {
@@ -1157,7 +1207,7 @@ fn foo() {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore: copy
+//- minicore: copy, from
 struct Foo<A, B, const C: usize>(A, B);
 impl<A, B: From<A>, const C: usize> Foo<A, B, C> {
     fn foo<D, E, F, G>(a: A, b: D)
@@ -1218,7 +1268,7 @@ fn foo() {
         check_assist(
             convert_closure_to_fn,
             r#"
-//- minicore:copy
+//- minicore: copy, fn
 fn main() {
     let a = &mut true;
     let closure = |$0| {

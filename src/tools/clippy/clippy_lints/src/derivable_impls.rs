@@ -56,6 +56,8 @@ declare_clippy_lint! {
     "manual implementation of the `Default` trait which is equal to a derive"
 }
 
+impl_lint_pass!(DerivableImpls => [DERIVABLE_IMPLS]);
+
 pub struct DerivableImpls {
     msrv: Msrv,
 }
@@ -65,8 +67,6 @@ impl DerivableImpls {
         DerivableImpls { msrv: conf.msrv }
     }
 }
-
-impl_lint_pass!(DerivableImpls => [DERIVABLE_IMPLS]);
 
 fn is_path_self(e: &Expr<'_>) -> bool {
     if let ExprKind::Path(QPath::Resolved(_, p)) = e.kind {
@@ -243,7 +243,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             && let Node::ImplItem(impl_item) = cx.tcx.hir_node(impl_item_hir)
             && let ImplItemKind::Fn(_, b) = &impl_item.kind
             && let Body { value: func_expr, .. } = cx.tcx.hir_body(*b)
-            && let &ty::Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
+            && let &ty::Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip().kind()
             && let attrs = cx.tcx.hir_attrs(item.hir_id())
             && !attrs.iter().any(|attr| attr.doc_str().is_some())
             && cx.tcx.hir_attrs(impl_item_hir).is_empty()

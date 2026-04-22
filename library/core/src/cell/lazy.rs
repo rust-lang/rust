@@ -346,7 +346,8 @@ impl<T, F: FnOnce() -> T> DerefMut for LazyCell<T, F> {
 }
 
 #[stable(feature = "lazy_cell", since = "1.80.0")]
-impl<T: Default> Default for LazyCell<T> {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+impl<T: Default> const Default for LazyCell<T> {
     /// Creates a new lazy value using `Default` as the initializing function.
     #[inline]
     fn default() -> LazyCell<T> {
@@ -363,6 +364,16 @@ impl<T: fmt::Debug, F> fmt::Debug for LazyCell<T, F> {
             None => d.field(&format_args!("<uninit>")),
         };
         d.finish()
+    }
+}
+
+#[stable(feature = "from_wrapper_impls", since = "1.96.0")]
+impl<T, F> From<T> for LazyCell<T, F> {
+    /// Constructs a `LazyCell` that starts already initialized
+    /// with the provided value.
+    #[inline]
+    fn from(value: T) -> Self {
+        Self { state: UnsafeCell::new(State::Init(value)) }
     }
 }
 

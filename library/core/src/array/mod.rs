@@ -11,7 +11,7 @@ use crate::convert::Infallible;
 use crate::error::Error;
 use crate::hash::{self, Hash};
 use crate::intrinsics::transmute_unchecked;
-use crate::iter::{UncheckedIterator, repeat_n};
+use crate::iter::{TrustedLen, UncheckedIterator, repeat_n};
 use crate::marker::Destruct;
 use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::ops::{
@@ -405,7 +405,8 @@ where
 
 /// Implements comparison of arrays [lexicographically](Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PartialOrd, const N: usize> PartialOrd for [T; N] {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T: [const] PartialOrd, const N: usize> const PartialOrd for [T; N] {
     #[inline]
     fn partial_cmp(&self, other: &[T; N]) -> Option<Ordering> {
         PartialOrd::partial_cmp(&&self[..], &&other[..])
@@ -430,7 +431,8 @@ impl<T: PartialOrd, const N: usize> PartialOrd for [T; N] {
 
 /// Implements comparison of arrays [lexicographically](Ord#lexicographical-comparison).
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Ord, const N: usize> Ord for [T; N] {
+#[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
+impl<T: [const] Ord, const N: usize> const Ord for [T; N] {
     #[inline]
     fn cmp(&self, other: &[T; N]) -> Ordering {
         Ord::cmp(&&self[..], &&other[..])
@@ -1003,22 +1005,70 @@ impl<T: [const] Destruct> const Drop for Guard<'_, T> {
 /// dropped.
 ///
 /// Used for [`Iterator::next_chunk`].
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 #[inline]
-pub(crate) fn iter_next_chunk<T, const N: usize>(
-    iter: &mut impl Iterator<Item = T>,
+pub(crate) const fn iter_next_chunk<T, const N: usize>(
+    iter: &mut impl [const] Iterator<Item = T>,
 ) -> Result<[T; N], IntoIter<T, N>> {
-    let mut array = [const { MaybeUninit::uninit() }; N];
-    let r = iter_next_chunk_erased(&mut array, iter);
-    match r {
-        Ok(()) => {
-            // SAFETY: All elements of `array` were populated.
-            Ok(unsafe { MaybeUninit::array_assume_init(array) })
-        }
-        Err(initialized) => {
-            // SAFETY: Only the first `initialized` elements were populated
-            Err(unsafe { IntoIter::new_unchecked(array, 0..initialized) })
+    iter.spec_next_chunk()
+}
+
+pub(crate) const trait SpecNextChunk<T, const N: usize>: Iterator<Item = T> {
+    fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>>;
+}
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<I: [const] Iterator<Item = T>, T, const N: usize> const SpecNextChunk<T, N> for I {
+    #[inline]
+    default fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>> {
+        let mut array = [const { MaybeUninit::uninit() }; N];
+        let r = iter_next_chunk_erased(&mut array, self);
+        match r {
+            Ok(()) => {
+                // SAFETY: All elements of `array` were populated.
+                Ok(unsafe { MaybeUninit::array_assume_init(array) })
+            }
+            Err(initialized) => {
+                // SAFETY: Only the first `initialized` elements were populated
+                Err(unsafe { IntoIter::new_unchecked(array, 0..initialized) })
+            }
         }
     }
+}
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+impl<I: [const] Iterator<Item = T> + TrustedLen, T, const N: usize> const SpecNextChunk<T, N>
+    for I
+{
+    fn spec_next_chunk(&mut self) -> Result<[T; N], IntoIter<T, N>> {
+        let len = (*self).size_hint().0;
+        let mut array = [const { MaybeUninit::uninit() }; N];
+        if len < N {
+            // SAFETY: `TrustedLen`, an unsafe trait, requires that i can get len items out of it.
+            unsafe { write(&mut array, self, len) };
+            // SAFETY: Only the first `len` elements were populated
+            Err(unsafe { IntoIter::new_unchecked(array, 0..len) })
+        } else {
+            // SAFETY: `TrustedLen`, an unsafe trait, requires that i can get N items out of it.
+            unsafe { write(&mut array, self, N) };
+            // SAFETY: All N items were populated
+            Ok(unsafe { MaybeUninit::array_assume_init(array) })
+        }
+    }
+}
+// SAFETY: `from` must have len items, and len items must be < N.
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
+const unsafe fn write<T, const N: usize>(
+    to: &mut [MaybeUninit<T>; N],
+    from: &mut impl [const] Iterator<Item = T>,
+    len: usize,
+) {
+    let mut guard = Guard { array_mut: to, initialized: 0 };
+    while guard.initialized < len {
+        // SAFETY: caller has guaranteed, from has len items.
+        let item = unsafe { from.next().unwrap_unchecked() };
+        // SAFETY: guard.initialized < len < N
+        unsafe { guard.push_unchecked(item) };
+    }
+    crate::mem::forget(guard);
 }
 
 /// Version of [`iter_next_chunk`] using a passed-in slice in order to avoid
@@ -1026,10 +1076,11 @@ pub(crate) fn iter_next_chunk<T, const N: usize>(
 ///
 /// Unfortunately this loop has two exit conditions, the buffer filling up
 /// or the iterator running out of items, making it tend to optimize poorly.
+#[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 #[inline]
-fn iter_next_chunk_erased<T>(
+const fn iter_next_chunk_erased<T>(
     buffer: &mut [MaybeUninit<T>],
-    iter: &mut impl Iterator<Item = T>,
+    iter: &mut impl [const] Iterator<Item = T>,
 ) -> Result<(), usize> {
     // if `Iterator::next` panics, this guard will drop already initialized items
     let mut guard = Guard { array_mut: buffer, initialized: 0 };

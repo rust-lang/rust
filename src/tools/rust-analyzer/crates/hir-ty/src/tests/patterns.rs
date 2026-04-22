@@ -294,6 +294,7 @@ fn infer_pattern_match_ergonomics_ref() {
 fn ref_pat_with_inference_variable() {
     check_no_mismatches(
         r#"
+//- minicore: fn
 enum E { A }
 fn test() {
     let f = |e| match e {
@@ -421,6 +422,8 @@ fn infer_pattern_match_byte_string_literal() {
             254..256 '&v': &'? [u8; 3]
             255..256 'v': [u8; 3]
             257..259 '{}': ()
+            199..200 '3': usize
+            62..63 'N': usize
         "#]],
     );
 }

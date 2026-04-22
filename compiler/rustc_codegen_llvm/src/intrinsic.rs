@@ -1,9 +1,10 @@
 use std::cmp::Ordering;
 use std::ffi::c_uint;
-use std::ptr;
+use std::{assert_matches, iter, ptr};
 
 use rustc_abi::{
-    Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size, WrappingRange,
+    Align, BackendRepr, Float, HasDataLayout, Integer, NumScalableVectors, Primitive, Size,
+    WrappingRange,
 };
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -11,20 +12,22 @@ use rustc_codegen_ssa::errors::{ExpectedPointerMutability, InvalidMonomorphizati
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::assert_matches;
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::find_attr;
 use rustc_middle::mir::BinOp;
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
-use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
+use rustc_middle::ty::{
+    self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv, Unnormalized,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
+use rustc_session::lint::builtin::DEPRECATED_LLVM_INTRINSIC;
 use rustc_span::{Span, Symbol, sym};
 use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
 use rustc_target::callconv::PassMode;
-use rustc_target::spec::Os;
+use rustc_target::spec::{Arch, Os};
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
@@ -36,9 +39,10 @@ use crate::builder::gpu_offload::{
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
 use crate::errors::{
-    AutoDiffWithoutEnable, AutoDiffWithoutLto, OffloadWithoutEnable, OffloadWithoutFatLTO,
+    AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, IntrinsicWrongArch,
+    OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };
-use crate::llvm::{self, Metadata, Type, Value};
+use crate::llvm::{self, Type, Value};
 use crate::type_of::LayoutLlvmExt;
 use crate::va_arg::emit_va_arg;
 
@@ -108,16 +112,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         sym::fmuladdf64 => ("llvm.fmuladd", &[bx.type_f64()]),
         sym::fmuladdf128 => ("llvm.fmuladd", &[bx.type_f128()]),
 
-        sym::fabsf16 => ("llvm.fabs", &[bx.type_f16()]),
-        sym::fabsf32 => ("llvm.fabs", &[bx.type_f32()]),
-        sym::fabsf64 => ("llvm.fabs", &[bx.type_f64()]),
-        sym::fabsf128 => ("llvm.fabs", &[bx.type_f128()]),
-
-        sym::minnumf16 => ("llvm.minnum", &[bx.type_f16()]),
-        sym::minnumf32 => ("llvm.minnum", &[bx.type_f32()]),
-        sym::minnumf64 => ("llvm.minnum", &[bx.type_f64()]),
-        sym::minnumf128 => ("llvm.minnum", &[bx.type_f128()]),
-
         // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
         // when llvm/llvm-project#{139380,139381,140445} are fixed.
         //sym::minimumf16 => ("llvm.minimum", &[bx.type_f16()]),
@@ -125,11 +119,6 @@ fn call_simple_intrinsic<'ll, 'tcx>(
         //sym::minimumf64 => ("llvm.minimum", &[bx.type_f64()]),
         //sym::minimumf128 => ("llvm.minimum", &[cx.type_f128()]),
         //
-        sym::maxnumf16 => ("llvm.maxnum", &[bx.type_f16()]),
-        sym::maxnumf32 => ("llvm.maxnum", &[bx.type_f32()]),
-        sym::maxnumf64 => ("llvm.maxnum", &[bx.type_f64()]),
-        sym::maxnumf128 => ("llvm.maxnum", &[bx.type_f128()]),
-
         // FIXME: LLVM currently mis-compile those intrinsics, re-enable them
         // when llvm/llvm-project#{139380,139381,140445} are fixed.
         //sym::maximumf16 => ("llvm.maximum", &[bx.type_f16()]),
@@ -196,6 +185,32 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let simple = call_simple_intrinsic(self, name, args);
         let llval = match name {
             _ if simple.is_some() => simple.unwrap(),
+            sym::minimum_number_nsz_f16
+            | sym::minimum_number_nsz_f32
+            | sym::minimum_number_nsz_f64
+            | sym::minimum_number_nsz_f128
+            | sym::maximum_number_nsz_f16
+            | sym::maximum_number_nsz_f32
+            | sym::maximum_number_nsz_f64
+            | sym::maximum_number_nsz_f128
+                // Need at least LLVM 22 for `min/maximumnum` to not crash LLVM.
+                if crate::llvm_util::get_version() >= (22, 0, 0) =>
+            {
+                let intrinsic_name = if name.as_str().starts_with("min") {
+                    "llvm.minimumnum"
+                } else {
+                    "llvm.maximumnum"
+                };
+                let call = self.call_intrinsic(
+                    intrinsic_name,
+                    &[args[0].layout.immediate_llvm_type(self.cx)],
+                    &[args[0].immediate(), args[1].immediate()],
+                );
+                // `nsz` on minimumnum/maximumnum is special: its only effect is to make
+                // signed-zero ordering non-deterministic.
+                unsafe { llvm::LLVMRustSetNoSignedZeros(call) };
+                call
+            }
             sym::ptr_mask => {
                 let ptr = args[0].immediate();
                 self.call_intrinsic(
@@ -272,38 +287,54 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
             sym::breakpoint => self.call_intrinsic("llvm.debugtrap", &[], &[]),
             sym::va_arg => {
-                match result.layout.backend_repr {
-                    BackendRepr::Scalar(scalar) => {
-                        match scalar.primitive() {
-                            Primitive::Int(..) => {
-                                if self.cx().size_of(result.layout.ty).bytes() < 4 {
-                                    // `va_arg` should not be called on an integer type
-                                    // less than 4 bytes in length. If it is, promote
-                                    // the integer to an `i32` and truncate the result
-                                    // back to the smaller type.
-                                    let promoted_result = emit_va_arg(self, args[0], tcx.types.i32);
-                                    self.trunc(promoted_result, result.layout.llvm_type(self))
-                                } else {
-                                    emit_va_arg(self, args[0], result.layout.ty)
-                                }
-                            }
-                            Primitive::Float(Float::F16) => {
-                                bug!("the va_arg intrinsic does not work with `f16`")
-                            }
-                            Primitive::Float(Float::F64) | Primitive::Pointer(_) => {
-                                emit_va_arg(self, args[0], result.layout.ty)
-                            }
-                            // `va_arg` should never be used with the return type f32.
-                            Primitive::Float(Float::F32) => {
-                                bug!("the va_arg intrinsic does not work with `f32`")
-                            }
-                            Primitive::Float(Float::F128) => {
-                                bug!("the va_arg intrinsic does not work with `f128`")
-                            }
+                let BackendRepr::Scalar(scalar) = result.layout.backend_repr else {
+                    bug!("the va_arg intrinsic does not support non-scalar types")
+                };
+
+                // We reject types that would never be passed as varargs in C because
+                // they get promoted to a larger type, specifically integers smaller than
+                // c_int and float type smaller than c_double.
+                match scalar.primitive() {
+                    Primitive::Pointer(_) => {
+                        // Pointers are always OK.
+                    }
+                    Primitive::Int(Integer::I128, _) => {
+                        // FIXME: maybe we should support these? At least on 32-bit powerpc
+                        // the logic in LLVM does not handle i128 correctly though.
+                        bug!("the va_arg intrinsic does not support `i128`/`u128`")
+                    }
+                    Primitive::Int(..) => {
+                        let int_width = self.cx().size_of(result.layout.ty).bits();
+                        let target_c_int_width = self.cx().sess().target.options.c_int_width;
+                        if int_width < u64::from(target_c_int_width) {
+                            // Smaller integer types are automatically promototed and `va_arg`
+                            // should not be called on them.
+                            bug!(
+                                "va_arg got i{} but needs at least c_int (an i{})",
+                                int_width,
+                                target_c_int_width
+                            );
                         }
                     }
-                    _ => bug!("the va_arg intrinsic does not work with non-scalar types"),
+                    Primitive::Float(Float::F16) => {
+                        bug!("the va_arg intrinsic does not support `f16`")
+                    }
+                    Primitive::Float(Float::F32) => {
+                        // c_double is actually f32 on avr.
+                        if self.cx().sess().target.arch != Arch::Avr {
+                            bug!("the va_arg intrinsic does not support `f32` on this target")
+                        }
+                    }
+                    Primitive::Float(Float::F64) => {
+                        // 64-bit floats are always OK.
+                    }
+                    Primitive::Float(Float::F128) => {
+                        // FIXME(f128) figure out whether we should support this.
+                        bug!("the va_arg intrinsic does not support `f128`")
+                    }
                 }
+
+                emit_va_arg(self, args[0], result.layout.ty)
             }
 
             sym::volatile_load | sym::unaligned_volatile_load => {
@@ -487,6 +518,20 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 }
             }
 
+            sym::fabs => {
+                let ty = args[0].layout.ty;
+                let ty::Float(f) = ty.kind() else {
+                    span_bug!(span, "the `fabs` intrinsic requires a floating-point argument, got {:?}", ty);
+                };
+                let llty = self.type_float_from_ty(*f);
+                let llvm_name = "llvm.fabs";
+                self.call_intrinsic(
+                    llvm_name,
+                    &[llty],
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
+            }
+
             sym::raw_eq => {
                 use BackendRepr::*;
                 let tp_ty = fn_args.type_at(0);
@@ -494,7 +539,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let use_integer_compare = match layout.backend_repr() {
                     Scalar(_) | ScalarPair(_, _) => true,
                     SimdVector { .. } => false,
-                    ScalableVector { .. } => {
+                    SimdScalableVector { .. } => {
                         tcx.dcx().emit_err(InvalidMonomorphization::NonScalableType {
                             span,
                             name: sym::raw_eq,
@@ -581,6 +626,115 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 self.pointercast(val, self.type_ptr())
             }
 
+            sym::sve_tuple_create2 => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                let tuple_ty = self.layout_of(fn_args.type_at(1));
+                assert_matches!(
+                    tuple_ty.backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(2),
+                        ..
+                    }
+                );
+                let ret = self.const_poison(self.backend_type(tuple_ty));
+                let ret = self.insert_value(ret, args[0].immediate(), 0);
+                self.insert_value(ret, args[1].immediate(), 1)
+            }
+
+            sym::sve_tuple_create3 => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                let tuple_ty = self.layout_of(fn_args.type_at(1));
+                assert_matches!(
+                    tuple_ty.backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(3),
+                        ..
+                    }
+                );
+                let ret = self.const_poison(self.backend_type(tuple_ty));
+                let ret = self.insert_value(ret, args[0].immediate(), 0);
+                let ret = self.insert_value(ret, args[1].immediate(), 1);
+                self.insert_value(ret, args[2].immediate(), 2)
+            }
+
+            sym::sve_tuple_create4 => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                let tuple_ty = self.layout_of(fn_args.type_at(1));
+                assert_matches!(
+                    tuple_ty.backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(4),
+                        ..
+                    }
+                );
+                let ret = self.const_poison(self.backend_type(tuple_ty));
+                let ret = self.insert_value(ret, args[0].immediate(), 0);
+                let ret = self.insert_value(ret, args[1].immediate(), 1);
+                let ret = self.insert_value(ret, args[2].immediate(), 2);
+                self.insert_value(ret, args[3].immediate(), 3)
+            }
+
+            sym::sve_tuple_get => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(2 | 3 | 4 | 5 | 6 | 7 | 8),
+                        ..
+                    }
+                );
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(1)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                self.extract_value(
+                    args[0].immediate(),
+                    fn_args.const_at(2).to_leaf().to_i32() as u64,
+                )
+            }
+
+            sym::sve_tuple_set => {
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(0)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(2 | 3 | 4 | 5 | 6 | 7 | 8),
+                        ..
+                    }
+                );
+                assert_matches!(
+                    self.layout_of(fn_args.type_at(1)).backend_repr,
+                    BackendRepr::SimdScalableVector {
+                        number_of_vectors: NumScalableVectors(1),
+                        ..
+                    }
+                );
+                self.insert_value(
+                    args[0].immediate(),
+                    args[1].immediate(),
+                    fn_args.const_at(2).to_leaf().to_i32() as u64,
+                )
+            }
+
             _ if name.as_str().starts_with("simd_") => {
                 // Unpack non-power-of-2 #[repr(packed, simd)] arguments.
                 // This gives them the expected layout of a regular #[repr(simd)] vector.
@@ -663,18 +817,18 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OperandRef<'tcx, Self::Value>],
-        is_cleanup: bool,
+        _is_cleanup: bool,
     ) -> Self::Value {
         let tcx = self.tcx();
 
         let fn_ty = instance.ty(tcx, self.typing_env());
         let fn_sig = match *fn_ty.kind() {
-            ty::FnDef(def_id, args) => {
-                tcx.instantiate_bound_regions_with_erased(tcx.fn_sig(def_id).instantiate(tcx, args))
-            }
+            ty::FnDef(def_id, args) => tcx.instantiate_bound_regions_with_erased(
+                tcx.fn_sig(def_id).instantiate(tcx, args).skip_norm_wip(),
+            ),
             _ => unreachable!(),
         };
-        assert!(!fn_sig.c_variadic);
+        assert!(!fn_sig.c_variadic());
 
         let ret_layout = self.layout_of(fn_sig.output());
         let llreturn_ty = if ret_layout.is_zst() {
@@ -692,42 +846,29 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             llargument_tys.push(arg_layout.immediate_llvm_type(self));
         }
 
-        let fn_ty = self.type_func(&llargument_tys, llreturn_ty);
-
         let fn_ptr = if let Some(&llfn) = self.intrinsic_instances.borrow().get(&instance) {
             llfn
         } else {
             let sym = tcx.symbol_name(instance).name;
 
-            // FIXME use get_intrinsic
             let llfn = if let Some(llfn) = self.get_declared_value(sym) {
                 llfn
             } else {
-                // Function addresses in Rust are never significant, allowing functions to
-                // be merged.
-                let llfn = declare_raw_fn(
-                    self,
-                    sym,
-                    llvm::CCallConv,
-                    llvm::UnnamedAddr::Global,
-                    llvm::Visibility::Default,
-                    fn_ty,
-                );
-
-                llfn
+                intrinsic_fn(self, sym, llreturn_ty, llargument_tys, instance)
             };
 
             self.intrinsic_instances.borrow_mut().insert(instance, llfn);
 
             llfn
         };
+        let fn_ty = self.get_type_of_global(fn_ptr);
 
         let mut llargs = vec![];
 
         for arg in args {
             match arg.val {
                 OperandValue::ZeroSized => {}
-                OperandValue::Immediate(_) => llargs.push(arg.immediate()),
+                OperandValue::Immediate(a) => llargs.push(a),
                 OperandValue::Pair(a, b) => {
                     llargs.push(a);
                     llargs.push(b);
@@ -753,24 +894,38 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         }
 
         debug!("call intrinsic {:?} with args ({:?})", instance, llargs);
-        let args = self.check_call("call", fn_ty, fn_ptr, &llargs);
+
+        for (dest_ty, arg) in iter::zip(self.func_params_types(fn_ty), &mut llargs) {
+            let src_ty = self.val_ty(arg);
+            assert!(
+                can_autocast(self, src_ty, dest_ty),
+                "Cannot match `{dest_ty:?}` (expected) with {src_ty:?} (found) in `{fn_ptr:?}"
+            );
+
+            *arg = autocast(self, arg, src_ty, dest_ty);
+        }
+
         let llret = unsafe {
             llvm::LLVMBuildCallWithOperandBundles(
                 self.llbuilder,
                 fn_ty,
                 fn_ptr,
-                args.as_ptr() as *const &llvm::Value,
-                args.len() as c_uint,
+                llargs.as_ptr(),
+                llargs.len() as c_uint,
                 ptr::dangling(),
                 0,
                 c"".as_ptr(),
             )
         };
-        if is_cleanup {
-            self.apply_attrs_to_cleanup_callsite(llret);
-        }
 
-        llret
+        let src_ty = self.val_ty(llret);
+        let dest_ty = llreturn_ty;
+        assert!(
+            can_autocast(self, dest_ty, src_ty),
+            "Cannot match `{src_ty:?}` (expected) with `{dest_ty:?}` (found) in `{fn_ptr:?}`"
+        );
+
+        autocast(self, llret, src_ty, dest_ty)
     }
 
     fn abort(&mut self) {
@@ -799,8 +954,9 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         &mut self,
         llvtable: &'ll Value,
         vtable_byte_offset: u64,
-        typeid: &'ll Metadata,
+        typeid: &[u8],
     ) -> Self::Value {
+        let typeid = self.create_metadata(typeid);
         let typeid = self.get_metadata_value(typeid);
         let vtable_byte_offset = self.const_i32(vtable_byte_offset as i32);
         let type_checked_load = self.call_intrinsic(
@@ -818,6 +974,263 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn va_end(&mut self, va_list: &'ll Value) -> &'ll Value {
         self.call_intrinsic("llvm.va_end", &[self.val_ty(va_list)], &[va_list])
     }
+}
+
+fn llvm_arch_for(rust_arch: &Arch) -> Option<&'static str> {
+    Some(match rust_arch {
+        Arch::AArch64 | Arch::Arm64EC => "aarch64",
+        Arch::AmdGpu => "amdgcn",
+        Arch::Arm => "arm",
+        Arch::Bpf => "bpf",
+        Arch::Hexagon => "hexagon",
+        Arch::LoongArch32 | Arch::LoongArch64 => "loongarch",
+        Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => "mips",
+        Arch::Nvptx64 => "nvvm",
+        Arch::PowerPC | Arch::PowerPC64 => "ppc",
+        Arch::RiscV32 | Arch::RiscV64 => "riscv",
+        Arch::S390x => "s390",
+        Arch::SpirV => "spv",
+        Arch::Wasm32 | Arch::Wasm64 => "wasm",
+        Arch::X86 | Arch::X86_64 => "x86",
+        _ => return None, // fallback for unknown archs
+    })
+}
+
+fn can_autocast<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: &'ll Type, llvm_ty: &'ll Type) -> bool {
+    if rust_ty == llvm_ty {
+        return true;
+    }
+
+    match cx.type_kind(llvm_ty) {
+        // Some LLVM intrinsics return **non-packed** structs, but they can't be mimicked from Rust
+        // due to auto field-alignment in non-packed structs (packed structs are represented in LLVM
+        // as, well, packed structs, so they won't match with those either)
+        TypeKind::Struct if cx.type_kind(rust_ty) == TypeKind::Struct => {
+            let rust_element_tys = cx.struct_element_types(rust_ty);
+            let llvm_element_tys = cx.struct_element_types(llvm_ty);
+
+            if rust_element_tys.len() != llvm_element_tys.len() {
+                return false;
+            }
+
+            iter::zip(rust_element_tys, llvm_element_tys).all(
+                |(rust_element_ty, llvm_element_ty)| {
+                    can_autocast(cx, rust_element_ty, llvm_element_ty)
+                },
+            )
+        }
+        TypeKind::Vector => {
+            let llvm_element_ty = cx.element_type(llvm_ty);
+            let element_count = cx.vector_length(llvm_ty) as u64;
+
+            if llvm_element_ty == cx.type_bf16() {
+                rust_ty == cx.type_vector(cx.type_i16(), element_count)
+            } else if llvm_element_ty == cx.type_i1() {
+                let int_width = element_count.next_power_of_two().max(8);
+                rust_ty == cx.type_ix(int_width)
+            } else {
+                false
+            }
+        }
+        TypeKind::BFloat => rust_ty == cx.type_i16(),
+        TypeKind::X86_AMX if cx.type_kind(rust_ty) == TypeKind::Vector => {
+            let element_ty = cx.element_type(rust_ty);
+            let element_count = cx.vector_length(rust_ty) as u64;
+
+            let element_size_bits = match cx.type_kind(element_ty) {
+                TypeKind::Half => 16,
+                TypeKind::Float => 32,
+                TypeKind::Double => 64,
+                TypeKind::FP128 => 128,
+                TypeKind::Integer => cx.int_width(element_ty),
+                TypeKind::Pointer => cx.int_width(cx.isize_ty),
+                _ => bug!(
+                    "Vector element type `{element_ty:?}` not one of integer, float or pointer"
+                ),
+            };
+
+            element_size_bits * element_count == 8192
+        }
+        _ => false,
+    }
+}
+
+fn autocast<'ll>(
+    bx: &mut Builder<'_, 'll, '_>,
+    val: &'ll Value,
+    src_ty: &'ll Type,
+    dest_ty: &'ll Type,
+) -> &'ll Value {
+    if src_ty == dest_ty {
+        return val;
+    }
+    match (bx.type_kind(src_ty), bx.type_kind(dest_ty)) {
+        // re-pack structs
+        (TypeKind::Struct, TypeKind::Struct) => {
+            let mut ret = bx.const_poison(dest_ty);
+            for (idx, (src_element_ty, dest_element_ty)) in
+                iter::zip(bx.struct_element_types(src_ty), bx.struct_element_types(dest_ty))
+                    .enumerate()
+            {
+                let elt = bx.extract_value(val, idx as u64);
+                let casted_elt = autocast(bx, elt, src_element_ty, dest_element_ty);
+                ret = bx.insert_value(ret, casted_elt, idx as u64);
+            }
+            ret
+        }
+        // cast from the i1xN vector type to the primitive type
+        (TypeKind::Vector, TypeKind::Integer) if bx.element_type(src_ty) == bx.type_i1() => {
+            let vector_length = bx.vector_length(src_ty) as u64;
+            let int_width = vector_length.next_power_of_two().max(8);
+
+            let val = if vector_length == int_width {
+                val
+            } else {
+                // zero-extends vector
+                let shuffle_indices = match vector_length {
+                    0 => unreachable!("zero length vectors are not allowed"),
+                    1 => vec![0, 1, 1, 1, 1, 1, 1, 1],
+                    2 => vec![0, 1, 2, 2, 2, 2, 2, 2],
+                    3 => vec![0, 1, 2, 3, 3, 3, 3, 3],
+                    4.. => (0..int_width as i32).collect(),
+                };
+                let shuffle_mask =
+                    shuffle_indices.into_iter().map(|i| bx.const_i32(i)).collect::<Vec<_>>();
+                bx.shuffle_vector(val, bx.const_null(src_ty), bx.const_vector(&shuffle_mask))
+            };
+            bx.bitcast(val, dest_ty)
+        }
+        // cast from the primitive type to the i1xN vector type
+        (TypeKind::Integer, TypeKind::Vector) if bx.element_type(dest_ty) == bx.type_i1() => {
+            let vector_length = bx.vector_length(dest_ty) as u64;
+            let int_width = vector_length.next_power_of_two().max(8);
+
+            let intermediate_ty = bx.type_vector(bx.type_i1(), int_width);
+            let intermediate = bx.bitcast(val, intermediate_ty);
+
+            if vector_length == int_width {
+                intermediate
+            } else {
+                let shuffle_mask: Vec<_> =
+                    (0..vector_length).map(|i| bx.const_i32(i as i32)).collect();
+                bx.shuffle_vector(
+                    intermediate,
+                    bx.const_poison(intermediate_ty),
+                    bx.const_vector(&shuffle_mask),
+                )
+            }
+        }
+        (TypeKind::Vector, TypeKind::X86_AMX) => {
+            bx.call_intrinsic("llvm.x86.cast.vector.to.tile", &[src_ty], &[val])
+        }
+        (TypeKind::X86_AMX, TypeKind::Vector) => {
+            bx.call_intrinsic("llvm.x86.cast.tile.to.vector", &[dest_ty], &[val])
+        }
+        _ => bx.bitcast(val, dest_ty), // for `bf16(xN)` <-> `u16(xN)`
+    }
+}
+
+fn intrinsic_fn<'ll, 'tcx>(
+    bx: &Builder<'_, 'll, 'tcx>,
+    name: &str,
+    rust_return_ty: &'ll Type,
+    rust_argument_tys: Vec<&'ll Type>,
+    instance: ty::Instance<'tcx>,
+) -> &'ll Value {
+    let tcx = bx.tcx;
+
+    let rust_fn_ty = bx.type_func(&rust_argument_tys, rust_return_ty);
+
+    let intrinsic = llvm::Intrinsic::lookup(name.as_bytes());
+
+    if let Some(intrinsic) = intrinsic
+        && intrinsic.is_target_specific()
+    {
+        let (llvm_arch, _) = name[5..].split_once('.').unwrap();
+        let rust_arch = &tcx.sess.target.arch;
+
+        if let Some(correct_llvm_arch) = llvm_arch_for(rust_arch)
+            && llvm_arch != correct_llvm_arch
+        {
+            tcx.dcx().emit_fatal(IntrinsicWrongArch {
+                name,
+                target_arch: rust_arch.desc(),
+                span: tcx.def_span(instance.def_id()),
+            });
+        }
+    }
+
+    if let Some(intrinsic) = intrinsic
+        && !intrinsic.is_overloaded()
+    {
+        // FIXME: also do this for overloaded intrinsics
+        let llfn = intrinsic.get_declaration(bx.llmod, &[]);
+        let llvm_fn_ty = bx.get_type_of_global(llfn);
+
+        let llvm_return_ty = bx.get_return_type(llvm_fn_ty);
+        let llvm_argument_tys = bx.func_params_types(llvm_fn_ty);
+        let llvm_is_variadic = bx.func_is_variadic(llvm_fn_ty);
+
+        let is_correct_signature = !llvm_is_variadic
+            && rust_argument_tys.len() == llvm_argument_tys.len()
+            && iter::once((rust_return_ty, llvm_return_ty))
+                .chain(iter::zip(rust_argument_tys, llvm_argument_tys))
+                .all(|(rust_ty, llvm_ty)| can_autocast(bx, rust_ty, llvm_ty));
+
+        if !is_correct_signature {
+            tcx.dcx().emit_fatal(IntrinsicSignatureMismatch {
+                name,
+                llvm_fn_ty: &format!("{llvm_fn_ty:?}"),
+                rust_fn_ty: &format!("{rust_fn_ty:?}"),
+                span: tcx.def_span(instance.def_id()),
+            });
+        }
+
+        return llfn;
+    }
+
+    // Function addresses in Rust are never significant, allowing functions to be merged.
+    let llfn = declare_raw_fn(
+        bx,
+        name,
+        llvm::CCallConv,
+        llvm::UnnamedAddr::Global,
+        llvm::Visibility::Default,
+        rust_fn_ty,
+    );
+
+    if intrinsic.is_none() {
+        let mut new_llfn = None;
+        let can_upgrade = unsafe { llvm::LLVMRustUpgradeIntrinsicFunction(llfn, &mut new_llfn) };
+
+        if !can_upgrade {
+            // This is either plain wrong, or this can be caused by incompatible LLVM versions
+            tcx.dcx().emit_fatal(UnknownIntrinsic { name, span: tcx.def_span(instance.def_id()) });
+        } else if let Some(def_id) = instance.def_id().as_local() {
+            // we can emit diagnostics only for local crates
+            let hir_id = tcx.local_def_id_to_hir_id(def_id);
+
+            // not all intrinsics are upgraded to some other intrinsics, most are upgraded to instruction sequences
+            let msg = if let Some(new_llfn) = new_llfn {
+                format!(
+                    "using deprecated intrinsic `{name}`, `{}` can be used instead",
+                    str::from_utf8(&llvm::get_value_name(new_llfn)).unwrap()
+                )
+            } else {
+                format!("using deprecated intrinsic `{name}`")
+            };
+
+            tcx.emit_node_lint(
+                DEPRECATED_LLVM_INTRINSIC,
+                hir_id,
+                rustc_errors::DiagDecorator(|d| {
+                    d.primary_message(msg).span(tcx.hir_span(hir_id));
+                }),
+            );
+        }
+    }
+
+    llfn
 }
 
 fn catch_unwind_intrinsic<'ll, 'tcx>(
@@ -1259,32 +1672,18 @@ fn get_rust_try_fn<'a, 'll, 'tcx>(
     // `unsafe fn(*mut i8) -> ()`
     let try_fn_ty = Ty::new_fn_ptr(
         tcx,
-        ty::Binder::dummy(tcx.mk_fn_sig(
-            [i8p],
-            tcx.types.unit,
-            false,
-            hir::Safety::Unsafe,
-            ExternAbi::Rust,
-        )),
+        ty::Binder::dummy(tcx.mk_fn_sig_rust_abi([i8p], tcx.types.unit, hir::Safety::Unsafe)),
     );
     // `unsafe fn(*mut i8, *mut i8) -> ()`
     let catch_fn_ty = Ty::new_fn_ptr(
         tcx,
-        ty::Binder::dummy(tcx.mk_fn_sig(
-            [i8p, i8p],
-            tcx.types.unit,
-            false,
-            hir::Safety::Unsafe,
-            ExternAbi::Rust,
-        )),
+        ty::Binder::dummy(tcx.mk_fn_sig_rust_abi([i8p, i8p], tcx.types.unit, hir::Safety::Unsafe)),
     );
     // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
-    let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig(
+    let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig_rust_abi(
         [try_fn_ty, i8p, catch_fn_ty],
         tcx.types.i32,
-        false,
         hir::Safety::Unsafe,
-        ExternAbi::Rust,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
     cx.rust_try_fn.set(Some(rust_try));
@@ -1322,29 +1721,8 @@ fn codegen_autodiff<'ll, 'tcx>(
     let ret_ty = sig.output();
     let llret_ty = bx.layout_of(ret_ty).llvm_type(bx);
 
-    // Get source, diff, and attrs
-    let (source_id, source_args) = match fn_args.into_type_list(tcx)[0].kind() {
-        ty::FnDef(def_id, source_params) => (def_id, source_params),
-        _ => bug!("invalid autodiff intrinsic args"),
-    };
-
-    let fn_source = match Instance::try_resolve(tcx, bx.cx.typing_env(), *source_id, source_args) {
-        Ok(Some(instance)) => instance,
-        Ok(None) => bug!(
-            "could not resolve ({:?}, {:?}) to a specific autodiff instance",
-            source_id,
-            source_args
-        ),
-        Err(_) => {
-            // An error has already been emitted
-            return;
-        }
-    };
-
-    let source_symbol = symbol_name_for_instance_in_crate(tcx, fn_source.clone(), LOCAL_CRATE);
-    let Some(fn_to_diff) = bx.cx.get_function(&source_symbol) else {
-        bug!("could not find source function")
-    };
+    let source_fn_ptr_ty = fn_args.into_type_list(tcx)[0];
+    let fn_to_diff = args[0].immediate();
 
     let (diff_id, diff_args) = match fn_args.into_type_list(tcx)[1].kind() {
         ty::FnDef(def_id, diff_args) => (def_id, diff_args),
@@ -1375,13 +1753,12 @@ fn codegen_autodiff<'ll, 'tcx>(
 
     adjust_activity_to_abi(
         tcx,
-        fn_source,
+        source_fn_ptr_ty,
         TypingEnv::fully_monomorphized(),
         &mut diff_attrs.input_activity,
     );
 
-    let fnc_tree =
-        rustc_middle::ty::fnc_typetrees(tcx, fn_source.ty(tcx, TypingEnv::fully_monomorphized()));
+    let fnc_tree = rustc_middle::ty::fnc_typetrees(tcx, source_fn_ptr_ty);
 
     // Build body
     generate_enzyme_call(
@@ -1436,9 +1813,20 @@ fn codegen_offload<'ll, 'tcx>(
     let sig = tcx.instantiate_bound_regions_with_erased(sig);
     let inputs = sig.inputs();
 
-    let metadata = inputs.iter().map(|ty| OffloadMetadata::from_ty(tcx, *ty)).collect::<Vec<_>>();
+    let fn_abi = cx.fn_abi_of_instance(fn_target, ty::List::empty());
 
-    let types = inputs.iter().map(|ty| cx.layout_of(*ty).llvm_type(cx)).collect::<Vec<_>>();
+    let mut metadata = Vec::new();
+    let mut types = Vec::new();
+
+    for (i, arg_abi) in fn_abi.args.iter().enumerate() {
+        let ty = inputs[i];
+        let decomposed = OffloadMetadata::handle_abi(cx, tcx, ty, arg_abi);
+
+        for (meta, entry_ty) in decomposed {
+            metadata.push(meta);
+            types.push(bx.cx.layout_of(entry_ty).llvm_type(bx.cx));
+        }
+    }
 
     let offload_globals_ref = cx.offload_globals.borrow();
     let offload_globals = match offload_globals_ref.as_ref() {
@@ -1531,6 +1919,23 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         ($ty: expr, $variant:ident) => {{
             require!($ty.is_simd(), InvalidMonomorphization::$variant { span, name, ty: $ty });
             $ty.simd_size_and_type(bx.tcx())
+        }};
+    }
+
+    macro_rules! require_simd_or_scalable {
+        ($ty: expr, $variant:ident) => {{
+            require!(
+                $ty.is_simd() || $ty.is_scalable_vector(),
+                InvalidMonomorphization::$variant { span, name, ty: $ty }
+            );
+            if $ty.is_simd() {
+                let (len, ty) = $ty.simd_size_and_type(bx.tcx());
+                (len, ty, None)
+            } else {
+                let (count, ty, num_vecs) =
+                    $ty.scalable_vector_parts(bx.tcx()).expect("`is_scalable_vector` was wrong");
+                (count as u64, ty, Some(num_vecs))
+            }
         }};
     }
 
@@ -1653,8 +2058,19 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         return Ok(splat);
     }
 
-    // every intrinsic below takes a SIMD vector as its first argument
-    let (in_len, in_elem) = require_simd!(args[0].layout.ty, SimdInput);
+    let supports_scalable = match name {
+        sym::simd_cast | sym::simd_select => true,
+        _ => false,
+    };
+
+    // Every intrinsic below takes a SIMD vector as its first argument. Some intrinsics also accept
+    // scalable vectors. `require_simd_or_scalable` is used regardless as it'll do the right thing
+    // for non-scalable vectors, and an additional check to prohibit scalable vectors for those
+    // intrinsics that do not support them is added.
+    if !supports_scalable {
+        let _ = require_simd!(args[0].layout.ty, SimdInput);
+    }
+    let (in_len, in_elem, in_num_vecs) = require_simd_or_scalable!(args[0].layout.ty, SimdInput);
     let in_ty = args[0].layout.ty;
 
     let comparison = match name {
@@ -1843,7 +2259,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if name == sym::simd_select {
         let m_elem_ty = in_elem;
         let m_len = in_len;
-        let (v_len, _) = require_simd!(args[1].layout.ty, SimdArgument);
+        let (v_len, _, _) = require_simd_or_scalable!(args[1].layout.ty, SimdArgument);
         require!(
             m_len == v_len,
             InvalidMonomorphization::MismatchedLengths { span, name, m_len, v_len }
@@ -1942,7 +2358,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         }
 
         let ty::Float(f) = in_elem.kind() else {
-            return_error!(InvalidMonomorphization::FloatingPointType { span, name, in_ty });
+            return_error!(InvalidMonomorphization::BasicFloatType { span, name, ty: in_ty });
         };
         let elem_ty = bx.cx.type_float_from_ty(*f);
 
@@ -2561,7 +2977,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         match in_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), Unnormalized::new_wip(ty))
                 });
                 require!(
                     metadata.is_unit(),
@@ -2575,7 +2991,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         match out_elem.kind() {
             ty::RawPtr(p_ty, _) => {
                 let metadata = p_ty.ptr_metadata_ty(bx.tcx, |ty| {
-                    bx.tcx.normalize_erasing_regions(bx.typing_env(), ty)
+                    bx.tcx.normalize_erasing_regions(bx.typing_env(), Unnormalized::new_wip(ty))
                 });
                 require!(
                     metadata.is_unit(),
@@ -2647,7 +3063,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     }
 
     if name == sym::simd_cast || name == sym::simd_as {
-        let (out_len, out_elem) = require_simd!(ret_ty, SimdReturn);
+        let (out_len, out_elem, out_num_vecs) = require_simd_or_scalable!(ret_ty, SimdReturn);
         require!(
             in_len == out_len,
             InvalidMonomorphization::ReturnLengthInputType {
@@ -2659,7 +3075,19 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 out_len
             }
         );
-        // casting cares about nominal type, not just structural type
+        require!(
+            in_num_vecs == out_num_vecs,
+            InvalidMonomorphization::ReturnNumVecsInputType {
+                span,
+                name,
+                in_num_vecs: in_num_vecs.unwrap_or(NumScalableVectors(1)),
+                in_ty,
+                ret_ty,
+                out_num_vecs: out_num_vecs.unwrap_or(NumScalableVectors(1))
+            }
+        );
+
+        // Casting cares about nominal type, not just structural type
         if in_elem == out_elem {
             return Ok(args[0].immediate());
         }
@@ -2739,16 +3167,15 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                     Ordering::Less => bx.fpext(args[0].immediate(), llret_ty),
                 });
             }
-            _ => { /* Unsupported. Fallthrough. */ }
+            _ => return_error!(InvalidMonomorphization::UnsupportedCast {
+                span,
+                name,
+                in_ty,
+                in_elem,
+                ret_ty,
+                out_elem
+            }),
         }
-        return_error!(InvalidMonomorphization::UnsupportedCast {
-            span,
-            name,
-            in_ty,
-            in_elem,
-            ret_ty,
-            out_elem
-        });
     }
     macro_rules! arith_binary {
         ($($name: ident: $($($p: ident),* => $call: ident),*;)*) => {
@@ -2776,8 +3203,8 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         simd_and: Uint, Int => and;
         simd_or: Uint, Int => or;
         simd_xor: Uint, Int => xor;
-        simd_fmax: Float => maxnum;
-        simd_fmin: Float => minnum;
+        simd_maximum_number_nsz: Float => maximum_number_nsz;
+        simd_minimum_number_nsz: Float => minimum_number_nsz;
 
     }
     macro_rules! arith_unary {

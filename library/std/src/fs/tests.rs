@@ -717,7 +717,7 @@ fn file_test_read_buf() {
     check!(file.read_buf(buf.unfilled()));
     assert_eq!(buf.filled(), &[1, 2, 3, 4]);
     // File::read_buf should omit buffer initialization.
-    assert_eq!(buf.init_len(), 4);
+    assert!(!buf.is_init());
 
     check!(fs::remove_file(filename));
 }
@@ -1731,6 +1731,8 @@ fn create_dir_all_with_junctions() {
 
 #[test]
 fn metadata_access_times() {
+    let start_time = SystemTime::now();
+
     let tmpdir = tmpdir();
 
     let b = tmpdir.join("b");
@@ -1751,7 +1753,14 @@ fn metadata_access_times() {
     if cfg!(target_os = "linux") {
         // Not always available
         match (a.created(), b.created()) {
-            (Ok(t1), Ok(t2)) => assert!(t1 <= t2),
+            // It could be that, when the system clock goes backwards (e.g., due time change)
+            // b, that gets created after a, has a greater creation date than a.
+            // When such rare case occurs we skip the test, since the test to check that b
+            // should be created after a would fail.
+            (Ok(t1), Ok(t2)) => match start_time.elapsed() {
+                Ok(_) => assert!(t1 <= t2),
+                Err(_) => {}
+            },
             (Err(e1), Err(e2))
                 if e1.kind() == ErrorKind::Uncategorized
                     && e2.kind() == ErrorKind::Uncategorized

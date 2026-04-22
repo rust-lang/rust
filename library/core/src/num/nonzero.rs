@@ -5,6 +5,7 @@ use crate::clone::{TrivialClone, UseCloned};
 use crate::cmp::Ordering;
 use crate::hash::{Hash, Hasher};
 use crate::marker::{Destruct, Freeze, StructuralPartialEq};
+use crate::num::imp;
 use crate::ops::{BitOr, BitOrAssign, Div, DivAssign, Neg, Rem, RemAssign};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
 use crate::str::FromStr;
@@ -183,7 +184,8 @@ impl_nonzero_auto_trait!(Unpin);
 impl_nonzero_auto_trait!(UnwindSafe);
 
 #[stable(feature = "nonzero", since = "1.28.0")]
-impl<T> Clone for NonZero<T>
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+impl<T> const Clone for NonZero<T>
 where
     T: ZeroablePrimitive,
 {
@@ -201,7 +203,8 @@ impl<T> Copy for NonZero<T> where T: ZeroablePrimitive {}
 
 #[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
-unsafe impl<T> TrivialClone for NonZero<T> where T: ZeroablePrimitive {}
+#[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+unsafe impl<T> const TrivialClone for NonZero<T> where T: ZeroablePrimitive {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "143800")]
@@ -647,8 +650,6 @@ macro_rules! nonzero_integer {
             /// # Example
             ///
             /// ```
-            /// #![feature(isolate_most_least_significant_one)]
-            ///
             /// # use core::num::NonZero;
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
@@ -659,7 +660,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+            #[stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
@@ -680,8 +682,6 @@ macro_rules! nonzero_integer {
             /// # Example
             ///
             /// ```
-            /// #![feature(isolate_most_least_significant_one)]
-            ///
             /// # use core::num::NonZero;
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
@@ -692,7 +692,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+            #[stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_stable(feature = "isolate_most_least_significant_one", since = "CURRENT_RUSTC_VERSION")]
             #[must_use = "this returns the result of the operation, \
                         without modifying the original"]
             #[inline(always)]
@@ -710,8 +711,6 @@ macro_rules! nonzero_integer {
             /// # Examples
             ///
             /// ```
-            /// #![feature(int_lowest_highest_one)]
-            ///
             /// # use core::num::NonZero;
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
@@ -721,7 +720,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[unstable(feature = "int_lowest_highest_one", issue = "145203")]
+            #[stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline(always)]
@@ -734,8 +734,6 @@ macro_rules! nonzero_integer {
             /// # Examples
             ///
             /// ```
-            /// #![feature(int_lowest_highest_one)]
-            ///
             /// # use core::num::NonZero;
             /// # fn main() { test().unwrap(); }
             /// # fn test() -> Option<()> {
@@ -745,7 +743,8 @@ macro_rules! nonzero_integer {
             /// # Some(())
             /// # }
             /// ```
-            #[unstable(feature = "int_lowest_highest_one", issue = "145203")]
+            #[stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
+            #[rustc_const_stable(feature = "int_lowest_highest_one", since = "CURRENT_RUSTC_VERSION")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline(always)]
@@ -1119,7 +1118,10 @@ macro_rules! nonzero_integer {
             /// assuming overflow cannot occur.
             /// Overflow is unchecked, and it is undefined behavior to overflow
             /// *even if the result would wrap to a non-zero value*.
-            /// The behavior is undefined as soon as
+            ///
+            /// # Safety
+            ///
+            /// This results in undefined behavior when
             #[doc = sign_dependent_expr!{
                 $signedness ?
                 if signed {
@@ -1696,7 +1698,10 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// assuming overflow cannot occur.
         /// Overflow is unchecked, and it is undefined behavior to overflow
         /// *even if the result would wrap to a non-zero value*.
-        /// The behavior is undefined as soon as
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when
         #[doc = concat!("`self + rhs > ", stringify!($Int), "::MAX`.")]
         ///
         /// # Examples
@@ -1817,7 +1822,7 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
                       without modifying the original"]
         #[inline]
         pub const fn ilog10(self) -> u32 {
-            super::int_log10::$Int(self)
+            imp::int_log10::$Int(self)
         }
 
         /// Calculates the midpoint (average) between `self` and `rhs`.
@@ -1947,19 +1952,18 @@ macro_rules! nonzero_integer_signedness_dependent_methods {
         /// # Examples
         ///
         /// ```
-        /// #![feature(uint_bit_width)]
-        ///
         /// # use core::num::NonZero;
         /// #
         /// # fn main() { test().unwrap(); }
         /// # fn test() -> Option<()> {
-        #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::MIN.bit_width(), NonZero::new(1)?);")]
+        #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1)?.bit_width(), NonZero::new(1)?);")]
         #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b111)?.bit_width(), NonZero::new(3)?);")]
         #[doc = concat!("assert_eq!(NonZero::<", stringify!($Int), ">::new(0b1110)?.bit_width(), NonZero::new(4)?);")]
         /// # Some(())
         /// # }
         /// ```
-        #[unstable(feature = "uint_bit_width", issue = "142326")]
+        #[stable(feature = "uint_bit_width", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "uint_bit_width", since = "CURRENT_RUSTC_VERSION")]
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline(always)]

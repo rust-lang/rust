@@ -13,6 +13,7 @@ use ::serde::{Deserialize, Serialize};
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::thin_vec::ThinVec;
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::find_attr;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
@@ -22,7 +23,7 @@ use stringdex::internals as stringdex_internals;
 use tracing::instrument;
 
 use crate::clean::types::{Function, Generics, ItemId, Type, WherePredicate};
-use crate::clean::{self, utils};
+use crate::clean::{self, ExternalLocation, utils};
 use crate::config::ShouldMerge;
 use crate::error::Error;
 use crate::formats::cache::{Cache, OrphanImplItem};
@@ -616,7 +617,8 @@ impl SerializedSearchIndex {
                          trait_parent,
                          deprecated,
                          unstable,
-                         associated_item_disambiguator,
+                         associated_item_disambiguator_or_extern_crate_url:
+                             associated_item_disambiguator,
                      }| EntryData {
                         krate: *map.get(krate).unwrap(),
                         ty: *ty,
@@ -627,7 +629,8 @@ impl SerializedSearchIndex {
                         trait_parent: trait_parent.and_then(|path_id| map.get(&path_id).copied()),
                         deprecated: *deprecated,
                         unstable: *unstable,
-                        associated_item_disambiguator: associated_item_disambiguator.clone(),
+                        associated_item_disambiguator_or_extern_crate_url:
+                            associated_item_disambiguator.clone(),
                     },
                 ),
                 self.descs[id].clone(),
@@ -898,7 +901,7 @@ struct EntryData {
     trait_parent: Option<usize>,
     deprecated: bool,
     unstable: bool,
-    associated_item_disambiguator: Option<String>,
+    associated_item_disambiguator_or_extern_crate_url: Option<String>,
 }
 
 impl Serialize for EntryData {
@@ -915,7 +918,7 @@ impl Serialize for EntryData {
         seq.serialize_element(&self.trait_parent.map(|id| id + 1).unwrap_or(0))?;
         seq.serialize_element(&if self.deprecated { 1 } else { 0 })?;
         seq.serialize_element(&if self.unstable { 1 } else { 0 })?;
-        if let Some(disambig) = &self.associated_item_disambiguator {
+        if let Some(disambig) = &self.associated_item_disambiguator_or_extern_crate_url {
             seq.serialize_element(&disambig)?;
         }
         seq.end()
@@ -961,7 +964,8 @@ impl<'de> Deserialize<'de> for EntryData {
                     trait_parent: Option::<i32>::from(trait_parent).map(|path| path as usize),
                     deprecated: deprecated != 0,
                     unstable: unstable != 0,
-                    associated_item_disambiguator,
+                    associated_item_disambiguator_or_extern_crate_url:
+                        associated_item_disambiguator,
                 })
             }
         }
@@ -1389,7 +1393,7 @@ pub(crate) fn build_index(
                         trait_parent: None,
                         deprecated: false,
                         unstable: false,
-                        associated_item_disambiguator: None,
+                        associated_item_disambiguator_or_extern_crate_url: None,
                     }),
                     crate_doc,
                     None,
@@ -1528,7 +1532,8 @@ pub(crate) fn build_index(
                 exact_module_path,
                 deprecated: item.is_deprecated,
                 unstable: item.is_unstable,
-                associated_item_disambiguator: if let Some(impl_id) = item.impl_id
+                associated_item_disambiguator_or_extern_crate_url: if let Some(impl_id) =
+                    item.impl_id
                     && let Some(parent_idx) = item.parent_idx
                     && associated_item_duplicates
                         .get(&(parent_idx, item.ty, item.name))
@@ -1537,6 +1542,14 @@ pub(crate) fn build_index(
                         > 1
                 {
                     Some(render::get_id_for_impl(tcx, ItemId::DefId(impl_id)))
+                } else if item.ty == ItemType::ExternCrate
+                    && let Some(local_def_id) = item.defid.and_then(|def_id| def_id.as_local())
+                    && let cnum = tcx.extern_mod_stmt_cnum(local_def_id).unwrap_or(LOCAL_CRATE)
+                    && let Some(ExternalLocation::Remote { url, is_absolute }) =
+                        cache.extern_locations.get(&cnum)
+                    && *is_absolute
+                {
+                    Some(format!("{}{}", url, tcx.crate_name(cnum).as_str()))
                 } else {
                     None
                 },
@@ -2049,6 +2062,7 @@ fn get_index_type_id(
         }
         // Not supported yet
         clean::Type::Pat(..)
+        | clean::Type::FieldOf(..)
         | clean::Generic(_)
         | clean::SelfTy
         | clean::ImplTrait(_)

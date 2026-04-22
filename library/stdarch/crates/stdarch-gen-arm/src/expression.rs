@@ -143,8 +143,6 @@ pub enum Expression {
     LLVMLink(LLVMLink),
     /// Casts the given expression to the specified (unchecked) type
     CastAs(Box<Expression>, String),
-    /// Returns the LLVM `undef` symbol
-    SvUndef,
     /// Multiplication
     Multiply(Box<Expression>, Box<Expression>),
     /// Xor
@@ -295,7 +293,7 @@ impl Expression {
     ///  - An unnecessary `unsafe` is a warning, made into an error by the CI's `-D warnings`.
     ///
     /// This **panics** if it encounters an expression that shouldn't appear in a safe function at
-    /// all (such as `SvUndef`).
+    /// all.
     pub fn requires_unsafe_wrapper(&self, ctx_fn: &str) -> bool {
         match self {
             // The call will need to be unsafe, but the declaration does not.
@@ -347,9 +345,6 @@ impl Expression {
             },
             // We only use macros to check const generics (using static assertions).
             Self::MacroCall(_name, _args) => false,
-            // Materialising uninitialised values is always unsafe, and we avoid it in safe
-            // functions.
-            Self::SvUndef => panic!("Refusing to wrap unsafe SvUndef in safe function '{ctx_fn}'."),
             // Variants that aren't tokenised. We shouldn't encounter these here.
             Self::MatchKind(..) => {
                 unimplemented!("The unsafety of {self:?} cannot be determined in '{ctx_fn}'.")
@@ -390,9 +385,7 @@ impl FromStr for Expression {
         static MACRO_RE: LazyLock<Regex> =
             LazyLock::new(|| Regex::new(r"^(?P<name>[\w\d_]+)!\((?P<ex>.*?)\);?$").unwrap());
 
-        if s == "SvUndef" {
-            Ok(Expression::SvUndef)
-        } else if MACRO_RE.is_match(s) {
+        if MACRO_RE.is_match(s) {
             let c = MACRO_RE.captures(s).unwrap();
             let ex = c["ex"].to_string();
             let _: TokenStream = ex
@@ -533,7 +526,6 @@ impl ToTokens for Expression {
                 let ty: TokenStream = ty.parse().expect("invalid syntax");
                 tokens.append_all(quote! { #ex as #ty })
             }
-            Self::SvUndef => tokens.append_all(quote! { simd_reinterpret(()) }),
             Self::Multiply(lhs, rhs) => tokens.append_all(quote! { #lhs * #rhs }),
             Self::Xor(lhs, rhs) => tokens.append_all(quote! { #lhs ^ #rhs }),
             Self::Type(ty) => ty.to_tokens(tokens),

@@ -3,12 +3,12 @@ use std::{fmt, sync::OnceLock};
 use arrayvec::ArrayVec;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
-use hir::{AsAssocItem, HasAttrs, HasCrate, HasSource, Semantics, Symbol, db::HirDatabase, sym};
+use hir::{AsAssocItem, HasAttrs, HasCrate, HasSource, Semantics, Symbol, sym};
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
+use ide_db::base_db::all_crates;
 use ide_db::impl_empty_upmap_from_ra_fixture;
 use ide_db::{
     FilePosition, FxHashMap, FxIndexMap, FxIndexSet, RootDatabase, SymbolKind,
-    base_db::RootQueryDb,
     defs::Definition,
     helpers::visit_file_defs,
     search::{FileReferenceNode, SearchScope},
@@ -55,7 +55,7 @@ impl fmt::Display for TestId {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub enum RunnableKind {
     TestMod { path: String },
-    Test { test_id: TestId, attr: TestAttr },
+    Test { test_id: TestId },
     Bench { test_id: TestId },
     DocTest { test_id: TestId },
     Bin,
@@ -334,8 +334,7 @@ pub(crate) fn runnable_fn(
         };
 
         if def.is_test(sema.db) {
-            let attr = TestAttr::from_fn(sema.db, def);
-            RunnableKind::Test { test_id: test_id(), attr }
+            RunnableKind::Test { test_id: test_id() }
         } else if def.is_bench(sema.db) {
             RunnableKind::Bench { test_id: test_id() }
         } else {
@@ -494,7 +493,7 @@ fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Op
         Definition::Module(it) => it.attrs(db),
         Definition::Function(it) => it.attrs(db),
         Definition::Adt(it) => it.attrs(db),
-        Definition::Variant(it) => it.attrs(db),
+        Definition::EnumVariant(it) => it.attrs(db),
         Definition::Const(it) => it.attrs(db),
         Definition::Static(it) => it.attrs(db),
         Definition::Trait(it) => it.attrs(db),
@@ -506,7 +505,7 @@ fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Op
     let krate = def.krate(db);
     let edition = krate.map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
     let display_target = krate
-        .unwrap_or_else(|| (*db.all_crates().last().expect("no crate graph present")).into())
+        .unwrap_or_else(|| (*all_crates(db).last().expect("no crate graph present")).into())
         .to_display_target(db);
     if !has_runnable_doc_test(db, &attrs) {
         return None;
@@ -558,17 +557,6 @@ fn module_def_doctest(sema: &Semantics<'_, RootDatabase>, def: Definition) -> Op
     Some(res)
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
-pub struct TestAttr {
-    pub ignore: bool,
-}
-
-impl TestAttr {
-    fn from_fn(db: &dyn HirDatabase, fn_def: hir::Function) -> TestAttr {
-        TestAttr { ignore: fn_def.is_ignore(db) }
-    }
-}
-
 fn has_runnable_doc_test(db: &RootDatabase, attrs: &hir::AttrsWithOwner) -> bool {
     const RUSTDOC_FENCES: [&str; 2] = ["```", "~~~"];
     const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
@@ -618,14 +606,14 @@ fn has_test_function_or_multiple_test_submodules(
                     return true;
                 }
             }
-            hir::ModuleDef::Module(submodule) => {
+            hir::ModuleDef::Module(submodule)
                 if has_test_function_or_multiple_test_submodules(
                     sema,
                     &submodule,
                     consider_exported_main,
-                ) {
-                    number_of_test_submodules += 1;
-                }
+                ) =>
+            {
+                number_of_test_submodules += 1;
             }
             _ => (),
         }

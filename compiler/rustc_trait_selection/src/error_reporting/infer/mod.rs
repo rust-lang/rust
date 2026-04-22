@@ -54,8 +54,7 @@ use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, DiagStyledString, IntoDiagArg, StringPart, pluralize};
 use rustc_hir as hir;
-use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::DefineOpaqueTypes;
@@ -66,7 +65,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeErrorToStringExt};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, WrapBinderMode, with_forced_trimmed_paths};
 use rustc_middle::ty::{
     self, List, ParamEnv, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt,
+    TypeVisitableExt, Unnormalized,
 };
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, sym};
 use tracing::{debug, instrument};
@@ -182,15 +181,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         let (def_id, args) = match *ty.kind() {
-            ty::Alias(_, ty::AliasTy { def_id, args, .. })
-                if self.tcx.def_kind(def_id) == DefKind::OpaqueTy =>
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => (def_id, args),
+            ty::Alias(ty::AliasTy { kind, args, .. })
+                if self.tcx.is_impl_trait_in_trait(kind.def_id()) =>
             {
-                (def_id, args)
-            }
-            ty::Alias(_, ty::AliasTy { def_id, args, .. })
-                if self.tcx.is_impl_trait_in_trait(def_id) =>
-            {
-                (def_id, args)
+                (kind.def_id(), args)
             }
             _ => return None,
         };
@@ -201,12 +196,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         self.tcx
             .explicit_item_self_bounds(def_id)
             .iter_instantiated_copied(self.tcx, args)
+            .map(Unnormalized::skip_norm_wip)
             .find_map(|(predicate, _)| {
                 predicate
                     .kind()
                     .map_bound(|kind| match kind {
                         ty::ClauseKind::Projection(projection_predicate)
-                            if projection_predicate.projection_term.def_id == item_def_id =>
+                            if projection_predicate.projection_term.def_id() == item_def_id =>
                         {
                             projection_predicate.term.as_type()
                         }
@@ -256,9 +252,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) {
-        let (alias, concrete) = match (expected.kind(), found.kind()) {
-            (ty::Alias(ty::Projection, proj), _) => (proj, found),
-            (_, ty::Alias(ty::Projection, proj)) => (proj, expected),
+        let (alias, &def_id, concrete) = match (expected.kind(), found.kind()) {
+            (ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. }), _) => {
+                (proj, def_id, found)
+            }
+            (_, ty::Alias(proj @ ty::AliasTy { kind: ty::Projection { def_id }, .. })) => {
+                (proj, def_id, expected)
+            }
             _ => return,
         };
 
@@ -278,7 +278,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
             let is_shadowed = self.infcx.probe(|_| {
                 let impl_substs = self.infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
-                let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_substs);
+                let impl_trait_ref =
+                    tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_substs).skip_norm_wip();
 
                 let expected_trait_ref = alias.trait_ref(tcx);
 
@@ -290,8 +291,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     return false;
                 }
 
-                let leaf_def = match specialization_graph::assoc_def(tcx, impl_def_id, alias.def_id)
-                {
+                let leaf_def = match specialization_graph::assoc_def(tcx, impl_def_id, def_id) {
                     Ok(leaf) => leaf,
                     Err(_) => return false,
                 };
@@ -309,7 +309,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if !tcx.check_args_compatible(impl_item_def_id, rebased_args) {
                     return false;
                 }
-                let impl_assoc_ty = tcx.type_of(impl_item_def_id).instantiate(tcx, rebased_args);
+                let impl_assoc_ty =
+                    tcx.type_of(impl_item_def_id).instantiate(tcx, rebased_args).skip_norm_wip();
 
                 self.infcx.can_eq(param_env, impl_assoc_ty, concrete)
             });
@@ -319,7 +320,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     "the associated type `{}` is defined as `{}` in the implementation, \
                     but the where-bound `{}` shadows this definition\n\
                     see issue #152409 <https://github.com/rust-lang/rust/issues/152409> for more information",
-                    self.ty_to_string(tcx.mk_ty_from_kind(ty::Alias(ty::Projection, *alias))),
+                    self.ty_to_string(tcx.mk_ty_from_kind(ty::Alias(*alias))),
                     self.ty_to_string(concrete),
                     self.ty_to_string(alias.self_ty())
                 ));
@@ -392,7 +393,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     {
                         err.span_suggestion_verbose(
                             span,
-                            "consider dereferencing to access the inner value using the Deref trait",
+                            "consider dereferencing to access the inner value using the `Deref` trait",
                             format!("{prefix}{peeled_snippet}"),
                             Applicability::MaybeIncorrect,
                         );
@@ -762,8 +763,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         sig2: &ty::PolyFnSig<'tcx>,
         fn_def2: Option<(DefId, Option<&'tcx [ty::GenericArg<'tcx>]>)>,
     ) -> (DiagStyledString, DiagStyledString) {
-        let sig1 = &(self.normalize_fn_sig)(*sig1);
-        let sig2 = &(self.normalize_fn_sig)(*sig2);
+        let sig1 = &(self.normalize_fn_sig)(Unnormalized::new_wip(*sig1));
+        let sig2 = &(self.normalize_fn_sig)(Unnormalized::new_wip(*sig2));
 
         let get_lifetimes = |sig| {
             use rustc_hir::def::Namespace;
@@ -785,12 +786,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         // ^^^^^^
         let safety = |fn_def, sig: ty::FnSig<'_>| match fn_def {
-            None => sig.safety.prefix_str(),
+            None => sig.safety().prefix_str(),
             Some((did, _)) => {
                 if self.tcx.codegen_fn_attrs(did).safe_target_features {
                     "#[target_features] "
                 } else {
-                    sig.safety.prefix_str()
+                    sig.safety().prefix_str()
                 }
             }
         };
@@ -801,11 +802,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //        ^^^^^^^^^^
-        if sig1.abi != ExternAbi::Rust {
-            values.0.push(format!("extern {} ", sig1.abi), sig1.abi != sig2.abi);
+        if sig1.abi() != ExternAbi::Rust {
+            values.0.push(format!("extern {} ", sig1.abi()), sig1.abi() != sig2.abi());
         }
-        if sig2.abi != ExternAbi::Rust {
-            values.1.push(format!("extern {} ", sig2.abi), sig1.abi != sig2.abi);
+        if sig2.abi() != ExternAbi::Rust {
+            values.1.push(format!("extern {} ", sig2.abi()), sig1.abi() != sig2.abi());
         }
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
@@ -845,17 +846,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
-        if sig1.c_variadic {
+        if sig1.c_variadic() {
             if len1 > 0 {
                 values.0.push_normal(", ");
             }
-            values.0.push("...", !sig2.c_variadic);
+            values.0.push("...", !sig2.c_variadic());
         }
-        if sig2.c_variadic {
+        if sig2.c_variadic() {
             if len2 > 0 {
                 values.1.push_normal(", ");
             }
-            values.1.push("...", !sig1.c_variadic);
+            values.1.push("...", !sig1.c_variadic());
         }
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
@@ -1274,8 +1275,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
-                let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
+                let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_norm_wip();
+                let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_norm_wip();
                 self.cmp_fn_sig(
                     &sig1,
                     Some((*did1, Some(args1))),
@@ -1285,12 +1286,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             (ty::FnDef(did1, args1), ty::FnPtr(sig_tys2, hdr2)) => {
-                let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
+                let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1).skip_norm_wip();
                 self.cmp_fn_sig(&sig1, Some((*did1, Some(args1))), &sig_tys2.with(*hdr2), None)
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnDef(did2, args2)) => {
-                let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
+                let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2).skip_norm_wip();
                 self.cmp_fn_sig(&sig_tys1.with(*hdr1), None, &sig2, Some((*did2, Some(args2))))
             }
 
@@ -1467,7 +1468,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                     ValuePairs::TraitRefs(_) => (false, Mismatch::Fixed("trait")),
                     ValuePairs::Aliases(ExpectedFound { expected, .. }) => {
-                        (false, Mismatch::Fixed(self.tcx.def_descr(expected.def_id)))
+                        (false, Mismatch::Fixed(self.tcx.def_descr(expected.def_id())))
                     }
                     ValuePairs::Regions(_) => (false, Mismatch::Fixed("lifetime")),
                     ValuePairs::ExistentialTraitRef(_) => {
@@ -1526,6 +1527,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         } else {
             label_or_note(span, terr.to_string(self.tcx));
+        }
+
+        if let Some(param_env) = param_env {
+            self.note_field_shadowed_by_private_candidate_in_cause(diag, cause, param_env);
         }
 
         if self.check_and_note_conflicting_crates(diag, terr) {
@@ -1662,7 +1667,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         && values.expected.sort_string(self.tcx)
                             != values.found.sort_string(self.tcx);
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
-                        (true, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })) => {
+                        (true, ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. })) => {
                             let sm = self.tcx.sess.source_map();
                             let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
                             DiagStyledString::normal(format!(
@@ -1672,11 +1677,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 pos.col.to_usize() + 1,
                             ))
                         }
-                        (true, ty::Alias(ty::Projection, proj))
-                            if self.tcx.is_impl_trait_in_trait(proj.def_id) =>
+                        (true, &ty::Alias(ty::AliasTy { kind: ty::Projection { def_id }, .. }))
+                            if self.tcx.is_impl_trait_in_trait(def_id) =>
                         {
                             let sm = self.tcx.sess.source_map();
-                            let pos = sm.lookup_char_pos(self.tcx.def_span(proj.def_id).lo());
+                            let pos = sm.lookup_char_pos(self.tcx.def_span(def_id).lo());
                             DiagStyledString::normal(format!(
                                 " (trait associated opaque type at <{}:{}:{}>)",
                                 sm.filename_for_diagnostics(&pos.file.name),
@@ -1793,12 +1798,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
         }
 
-        self.note_and_explain_type_err(diag, terr, cause, span, cause.body_id.to_def_id());
+        let body_owner_def_id = (cause.body_id != CRATE_DEF_ID).then(|| cause.body_id.to_def_id());
+        self.note_and_explain_type_err(diag, terr, cause, span, body_owner_def_id);
         if let Some(exp_found) = exp_found
             && let exp_found = TypeError::Sorts(exp_found)
             && exp_found != terr
         {
-            self.note_and_explain_type_err(diag, exp_found, cause, span, cause.body_id.to_def_id());
+            self.note_and_explain_type_err(diag, exp_found, cause, span, body_owner_def_id);
         }
 
         if let Some(ValuePairs::TraitRefs(exp_found)) = values
@@ -1823,7 +1829,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         debug!(?diag);
     }
 
-    pub fn type_error_additional_suggestions(
+    pub(crate) fn type_error_additional_suggestions(
         &self,
         trace: &TypeTrace<'tcx>,
         terr: TypeError<'tcx>,
@@ -2271,6 +2277,7 @@ impl<'tcx> ObligationCause<'tcx> {
             },
         }
     }
+
     fn as_failure_code_diag(
         &self,
         terr: TypeError<'tcx>,
@@ -2413,7 +2420,7 @@ impl TyCategory {
     pub fn from_ty(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Self, DefId)> {
         match *ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, .. }) => {
                 let kind =
                     if tcx.ty_is_opaque_future(ty) { Self::OpaqueFuture } else { Self::Opaque };
                 Some((kind, def_id))

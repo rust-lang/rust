@@ -1,4 +1,4 @@
-error[E0080]: calling non-const function `AtomicUsize::fetch_add`
+error[E0080]: calling non-const function `Atomic::<usize>::fetch_add`
   --> $DIR/const_refers_to_static.rs:11:5
    |
 LL |     FOO.fetch_add(1, Ordering::Relaxed)

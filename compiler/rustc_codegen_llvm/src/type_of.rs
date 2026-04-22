@@ -24,14 +24,54 @@ fn uncached_llvm_type<'a, 'tcx>(
             let element = layout.scalar_llvm_type_at(cx, element);
             return cx.type_vector(element, count);
         }
-        BackendRepr::ScalableVector { ref element, count } => {
+        BackendRepr::SimdScalableVector { ref element, count, number_of_vectors } => {
             let element = if element.is_bool() {
                 cx.type_i1()
             } else {
                 layout.scalar_llvm_type_at(cx, *element)
             };
 
-            return cx.type_scalable_vector(element, count);
+            let vector_type = cx.type_scalable_vector(element, count);
+            return match number_of_vectors.0 {
+                1 => vector_type,
+                2 => cx.type_struct(&[vector_type, vector_type], false),
+                3 => cx.type_struct(&[vector_type, vector_type, vector_type], false),
+                4 => cx.type_struct(&[vector_type, vector_type, vector_type, vector_type], false),
+                5 => cx.type_struct(
+                    &[vector_type, vector_type, vector_type, vector_type, vector_type],
+                    false,
+                ),
+                6 => cx.type_struct(
+                    &[vector_type, vector_type, vector_type, vector_type, vector_type, vector_type],
+                    false,
+                ),
+                7 => cx.type_struct(
+                    &[
+                        vector_type,
+                        vector_type,
+                        vector_type,
+                        vector_type,
+                        vector_type,
+                        vector_type,
+                        vector_type,
+                    ],
+                    false,
+                ),
+                8 => cx.type_struct(
+                    &[
+                        vector_type,
+                        vector_type,
+                        vector_type,
+                        vector_type,
+                        vector_type,
+                        vector_type,
+                        vector_type,
+                        vector_type,
+                    ],
+                    false,
+                ),
+                _ => bug!("`#[rustc_scalable_vector]` tuple struct with too many fields"),
+            };
         }
         BackendRepr::Memory { .. } | BackendRepr::ScalarPair(..) => {}
     }
@@ -187,7 +227,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
         match self.backend_repr {
             BackendRepr::Scalar(_)
             | BackendRepr::SimdVector { .. }
-            | BackendRepr::ScalableVector { .. } => true,
+            | BackendRepr::SimdScalableVector { .. } => true,
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => false,
         }
     }
@@ -197,7 +237,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
             BackendRepr::ScalarPair(..) => true,
             BackendRepr::Scalar(_)
             | BackendRepr::SimdVector { .. }
-            | BackendRepr::ScalableVector { .. }
+            | BackendRepr::SimdScalableVector { .. }
             | BackendRepr::Memory { .. } => false,
         }
     }

@@ -526,7 +526,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 debug!(?alias_args);
 
-                ty::AliasTerm::new_from_args(tcx, assoc_item.def_id, alias_args)
+                ty::AliasTerm::new_from_def_id(tcx, assoc_item.def_id, alias_args)
             })
         };
 
@@ -543,7 +543,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                     hir::Term::Const(ct) => {
                         let ty = projection_term.map_bound(|alias| {
-                            tcx.type_of(alias.def_id).instantiate(tcx, alias.args)
+                            tcx.type_of(alias.def_id()).instantiate(tcx, alias.args).skip_norm_wip()
                         });
                         let ty = check_assoc_const_binding_type(
                             self,
@@ -639,8 +639,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             .map_bound(|projection_term| projection_term.expect_ty(self.tcx()));
                         // Calling `skip_binder` is okay, because `lower_bounds` expects the `param_ty`
                         // parameter to have a skipped binder.
-                        let param_ty =
-                            Ty::new_alias(tcx, ty::Projection, projection_ty.skip_binder());
+                        let param_ty = Ty::new_alias(tcx, projection_ty.skip_binder());
                         self.lower_bounds(
                             param_ty,
                             hir_bounds,
@@ -730,7 +729,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     ty::Binder::bind_with_vars(trait_ref, tcx.late_bound_vars(item_segment.hir_id));
 
                 match self.lower_return_type_notation_ty(candidate, item_def_id, hir_ty.span) {
-                    Ok(ty) => Ty::new_alias(tcx, ty::Projection, ty),
+                    Ok(ty) => Ty::new_alias(tcx, ty),
                     Err(guar) => Ty::new_error(tcx, guar),
                 }
             }
@@ -773,7 +772,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
 
                 match self.lower_return_type_notation_ty(bound, item_def_id, hir_ty.span) {
-                    Ok(ty) => Ty::new_alias(tcx, ty::Projection, ty),
+                    Ok(ty) => Ty::new_alias(tcx, ty),
                     Err(guar) => Ty::new_error(tcx, guar),
                 }
             }
@@ -833,8 +832,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // Next, we need to check that the return-type notation is being used on
         // an RPITIT (return-position impl trait in trait) or AFIT (async fn in trait).
         let output = tcx.fn_sig(item_def_id).skip_binder().output();
-        let output = if let ty::Alias(ty::Projection, alias_ty) = *output.skip_binder().kind()
-            && tcx.is_impl_trait_in_trait(alias_ty.def_id)
+        let output = if let ty::Alias(alias_ty) = *output.skip_binder().kind()
+            && let ty::AliasTy { kind: ty::Projection { def_id: projection_def_id }, .. } = alias_ty
+            && tcx.is_impl_trait_in_trait(projection_def_id)
         {
             alias_ty
         } else {
@@ -851,7 +851,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // `rustc_middle::ty::predicate::Clause::instantiate_supertrait`
         // and it's no coincidence why.
         let shifted_output = tcx.shift_bound_var_indices(num_bound_vars, output);
-        Ok(ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args))
+        Ok(ty::EarlyBinder::bind(shifted_output).instantiate(tcx, args).skip_norm_wip())
     }
 }
 

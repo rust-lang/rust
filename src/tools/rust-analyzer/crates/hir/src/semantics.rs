@@ -10,12 +10,13 @@ use std::{
     ops::{self, ControlFlow, Not},
 };
 
-use base_db::FxIndexSet;
+use base_db::{FxIndexSet, all_crates, toolchain_channel};
 use either::Either;
 use hir_def::{
-    BuiltinDeriveImplId, DefWithBodyId, HasModule, MacroId, StructId, TraitId, VariantId,
+    BuiltinDeriveImplId, DefWithBodyId, ExpressionStoreOwnerId, HasModule, MacroId, StructId,
+    TraitId, VariantId,
     attrs::parse_extra_crate_attrs,
-    expr_store::{Body, ExprOrPatSource, HygieneId, path::Path},
+    expr_store::{Body, ExprOrPatSource, ExpressionStore, HygieneId, path::Path},
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
     nameres::{ModuleOrigin, crate_def_map},
     resolver::{self, HasResolver, Resolver, TypeNs, ValueNs},
@@ -23,6 +24,7 @@ use hir_def::{
 };
 use hir_expand::{
     EditionedFileId, ExpandResult, FileRange, HirFileId, InMacroFile, MacroCallId,
+    attrs::AstPathExt,
     builtin::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     files::{FileRangeWrapper, HirFileRange, InRealFile},
@@ -31,7 +33,7 @@ use hir_expand::{
 };
 use hir_ty::{
     InferenceResult,
-    diagnostics::{unsafe_operations, unsafe_operations_for_body},
+    diagnostics::unsafe_operations,
     infer_query_with_inspect,
     next_solver::{
         AnyImplId, DbInterner, Span,
@@ -54,10 +56,10 @@ use syntax::{
 
 use crate::{
     Adjust, Adjustment, Adt, AnyFunctionId, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const,
-    ConstParam, Crate, DefWithBody, DeriveHelper, Enum, Field, Function, GenericSubstitution,
-    HasSource, Impl, InFile, InlineAsmOperand, ItemInNs, Label, LifetimeParam, Local, Macro,
-    Module, ModuleDef, Name, OverloadedDeref, ScopeDef, Static, Struct, ToolModule, Trait,
-    TupleField, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
+    ConstParam, Crate, DeriveHelper, Enum, EnumVariant, ExpressionStoreOwner, Field, Function,
+    GenericSubstitution, HasSource, Impl, InFile, InlineAsmOperand, ItemInNs, Label, LifetimeParam,
+    Local, Macro, Module, ModuleDef, Name, OverloadedDeref, ScopeDef, Static, Struct, ToolModule,
+    Trait, TupleField, Type, TypeAlias, TypeParam, Union, Variant,
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{SourceAnalyzer, resolve_hir_path},
@@ -90,7 +92,7 @@ impl PathResolution {
             }
             PathResolution::Def(
                 ModuleDef::Const(_)
-                | ModuleDef::Variant(_)
+                | ModuleDef::EnumVariant(_)
                 | ModuleDef::Macro(_)
                 | ModuleDef::Function(_)
                 | ModuleDef::Module(_)
@@ -297,14 +299,15 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
         hir_expand::attrs::expand_cfg_attr::<Infallible>(
             extra_crate_attrs.chain(ast::attrs_including_inner(&item)),
             cfg_options,
-            |attr, _, _, _| {
-                let hir_expand::attrs::Meta::TokenTree { path, tt } = attr else {
+            |attr, _| {
+                let ast::Meta::TokenTreeMeta(attr) = attr else {
                     return ControlFlow::Continue(());
                 };
-                if path.segments.len() != 1 {
+                let (Some(segment), Some(tt)) = (attr.path().as_one_segment(), attr.token_tree())
+                else {
                     return ControlFlow::Continue(());
-                }
-                let lint_attr = match path.segments[0].text() {
+                };
+                let lint_attr = match &*segment {
                     "allow" => LintAttr::Allow,
                     "expect" => LintAttr::Expect,
                     "warn" => LintAttr::Warn,
@@ -367,8 +370,8 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
         self.imp.resolve_try_expr(try_expr)
     }
 
-    pub fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantDef> {
-        self.imp.resolve_variant(record_lit).map(VariantDef::from)
+    pub fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<Variant> {
+        self.imp.resolve_variant(record_lit).map(Variant::from)
     }
 
     pub fn file_to_module_def(&self, file: impl Into<FileId>) -> Option<Module> {
@@ -391,7 +394,7 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
     }
 
     pub fn is_nightly(&self, krate: Crate) -> bool {
-        let toolchain = self.db.toolchain_channel(krate.into());
+        let toolchain = toolchain_channel(self.db.as_dyn_database(), krate.into());
         // `toolchain == None` means we're in some detached files. Since we have no information on
         // the toolchain being used, let's just allow unstable items to be listed.
         matches!(toolchain, Some(base_db::ReleaseChannel::Nightly) | None)
@@ -409,7 +412,7 @@ impl<DB: HirDatabase + ?Sized> Semantics<'_, DB> {
         self.imp.to_def(e)
     }
 
-    pub fn to_enum_variant_def(&self, v: &ast::Variant) -> Option<Variant> {
+    pub fn to_enum_variant_def(&self, v: &ast::Variant) -> Option<EnumVariant> {
         self.imp.to_def(v)
     }
 
@@ -457,7 +460,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn parse(&self, file_id: EditionedFileId) -> ast::SourceFile {
         let hir_file_id = file_id.into();
-        let tree = self.db.parse(file_id).tree();
+        let tree = file_id.parse(self.db).tree();
         self.cache(tree.syntax().clone(), hir_file_id);
         tree
     }
@@ -466,24 +469,24 @@ impl<'db> SemanticsImpl<'db> {
     pub fn first_crate(&self, file: FileId) -> Option<Crate> {
         match self.file_to_module_defs(file).next() {
             Some(module) => Some(module.krate(self.db)),
-            None => self.db.all_crates().last().copied().map(Into::into),
+            None => all_crates(self.db).last().copied().map(Into::into),
         }
     }
 
     pub fn attach_first_edition_opt(&self, file: FileId) -> Option<EditionedFileId> {
         let krate = self.file_to_module_defs(file).next()?.krate(self.db);
-        Some(EditionedFileId::new(self.db, file, krate.edition(self.db), krate.id))
+        Some(EditionedFileId::new(self.db, file, krate.edition(self.db)))
     }
 
     pub fn attach_first_edition(&self, file: FileId) -> EditionedFileId {
         self.attach_first_edition_opt(file)
-            .unwrap_or_else(|| EditionedFileId::current_edition_guess_origin(self.db, file))
+            .unwrap_or_else(|| EditionedFileId::current_edition(self.db, file))
     }
 
     pub fn parse_guess_edition(&self, file_id: FileId) -> ast::SourceFile {
         let file_id = self.attach_first_edition(file_id);
 
-        let tree = self.db.parse(file_id).tree();
+        let tree = file_id.parse(self.db).tree();
         self.cache(tree.syntax().clone(), file_id.into());
         tree
     }
@@ -553,17 +556,6 @@ impl<'db> SemanticsImpl<'db> {
         Some(InFile::new(file_id.into(), node))
     }
 
-    pub fn check_cfg_attr(&self, attr: &ast::TokenTree) -> Option<bool> {
-        let file_id = self.find_file(attr.syntax()).file_id;
-        let krate = match file_id {
-            HirFileId::FileId(file_id) => {
-                self.file_to_module_defs(file_id.file_id(self.db)).next()?.krate(self.db).id
-            }
-            HirFileId::MacroFile(macro_file) => self.db.lookup_intern_macro_call(macro_file).krate,
-        };
-        hir_expand::check_cfg_attr_value(self.db, attr, krate)
-    }
-
     /// Expands the macro if it isn't one of the built-in ones that expand to custom syntax or dummy
     /// expansions.
     pub fn expand_allowed_builtins(
@@ -607,8 +599,8 @@ impl<'db> SemanticsImpl<'db> {
         Some(self.expand(macro_call_id).map(|it| InFile::new(macro_call_id.into(), it)))
     }
 
-    pub fn expand_derive_as_pseudo_attr_macro(&self, attr: &ast::Attr) -> Option<SyntaxNode> {
-        let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
+    pub fn expand_derive_as_pseudo_attr_macro(&self, attr: &ast::Meta) -> Option<SyntaxNode> {
+        let adt = attr.parent_attr()?.syntax().parent().and_then(ast::Adt::cast)?;
         let src = self.wrap_node_infile(attr.clone());
         let call_id = self.with_ctx(|ctx| {
             ctx.attr_to_derive_macro_call(src.with_value(&adt), src).map(|(_, it, _)| it)
@@ -616,7 +608,7 @@ impl<'db> SemanticsImpl<'db> {
         Some(self.parse_or_expand(call_id.into()))
     }
 
-    pub fn resolve_derive_macro(&self, attr: &ast::Attr) -> Option<Vec<Option<Macro>>> {
+    pub fn resolve_derive_macro(&self, attr: &ast::Meta) -> Option<Vec<Option<Macro>>> {
         let calls = self.derive_macro_calls(attr)?;
         self.with_ctx(|ctx| {
             Some(
@@ -643,7 +635,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn expand_derive_macro(
         &self,
-        attr: &ast::Attr,
+        attr: &ast::Meta,
     ) -> Option<Vec<Option<ExpandResult<SyntaxNode>>>> {
         let res: Vec<_> = self
             .derive_macro_calls(attr)?
@@ -661,9 +653,9 @@ impl<'db> SemanticsImpl<'db> {
 
     fn derive_macro_calls(
         &self,
-        attr: &ast::Attr,
+        attr: &ast::Meta,
     ) -> Option<Vec<Option<Either<MacroCallId, BuiltinDeriveImplId>>>> {
-        let adt = attr.syntax().parent().and_then(ast::Adt::cast)?;
+        let adt = attr.parent_attr()?.syntax().parent().and_then(ast::Adt::cast)?;
         let file_id = self.find_file(adt.syntax()).file_id;
         let adt = InFile::new(file_id, &adt);
         let src = InFile::new(file_id, attr.clone());
@@ -772,7 +764,11 @@ impl<'db> SemanticsImpl<'db> {
         let attr = self.wrap_node_infile(actual_macro_call.clone());
         let adt = actual_macro_call.syntax().parent().and_then(ast::Adt::cast)?;
         let macro_call_id = self.with_ctx(|ctx| {
-            ctx.attr_to_derive_macro_call(attr.with_value(&adt), attr).map(|(_, it, _)| it)
+            ctx.attr_to_derive_macro_call(
+                attr.with_value(&adt),
+                attr.with_value(attr.value.meta()?),
+            )
+            .map(|(_, it, _)| it)
         })?;
         hir_expand::db::expand_speculative(
             self.db,
@@ -785,16 +781,21 @@ impl<'db> SemanticsImpl<'db> {
     /// Checks if renaming `renamed` to `new_name` may introduce conflicts with other locals,
     /// and returns the conflicting locals.
     pub fn rename_conflicts(&self, to_be_renamed: &Local, new_name: &Name) -> Vec<Local> {
-        let body = self.db.body(to_be_renamed.parent);
+        // FIXME: signatures
+        let Some(def) = to_be_renamed.parent.as_def_with_body() else {
+            return Vec::new();
+        };
+        let body = Body::of(self.db, def);
         let resolver = to_be_renamed.parent.resolver(self.db);
-        let starting_expr = body.binding_owner(to_be_renamed.binding_id).unwrap_or(body.body_expr);
+        let starting_expr =
+            body.binding_owner(to_be_renamed.binding_id).unwrap_or(body.root_expr());
         let mut visitor = RenameConflictsVisitor {
-            body: &body,
+            body,
             conflicts: FxHashSet::default(),
             db: self.db,
             new_name: new_name.symbol().clone(),
             old_name: to_be_renamed.name(self.db).symbol().clone(),
-            owner: to_be_renamed.parent,
+            owner: def,
             to_be_renamed: to_be_renamed.binding_id,
             resolver,
         };
@@ -1322,7 +1323,7 @@ impl<'db> SemanticsImpl<'db> {
                                         // text ranges of the outer ones, and then all of the inner ones up
                                         // to the invoking attribute so that the inbetween is ignored.
                                         // FIXME: Should cfg_attr be handled differently?
-                                        let (attr, _, _, _) = attr_ids
+                                        let (attr, _) = attr_ids
                                             .invoc_attr()
                                             .find_attr_range_with_source(db, loc.krate, &item);
                                         let start = attr.syntax().text_range().start();
@@ -1429,7 +1430,7 @@ impl<'db> SemanticsImpl<'db> {
                                         let derive_call = ctx
                                             .attr_to_derive_macro_call(
                                                 InFile::new(expansion, &adt),
-                                                InFile::new(expansion, attr.clone()),
+                                                InFile::new(expansion, meta.clone()),
                                             )?
                                             .1;
 
@@ -1692,9 +1693,7 @@ impl<'db> SemanticsImpl<'db> {
                         hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
                         hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {
                             // FIXME: Should we handle unknown mutability better?
-                            Adjust::Deref(Some(OverloadedDeref(
-                                m.map(mutability).unwrap_or(Mutability::Shared),
-                            )))
+                            Adjust::Deref(Some(OverloadedDeref(mutability(m))))
                         }
                         hir_ty::Adjust::Deref(None) => Adjust::Deref(None),
                         hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::RawPtr(m)) => {
@@ -1819,6 +1818,28 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(try_expr.syntax())?.resolve_try_expr(self.db, try_expr)
     }
 
+    /// The type that the associated `try` block, closure or function expects.
+    pub fn try_expr_returned_type(&self, try_expr: &ast::TryExpr) -> Option<Type<'db>> {
+        self.ancestors_with_macros(try_expr.syntax().clone()).find_map(|parent| {
+            if let Some(try_block) = ast::BlockExpr::cast(parent.clone())
+                && try_block.try_block_modifier().is_some()
+            {
+                Some(self.type_of_expr(&try_block.into())?.original)
+            } else if let Some(closure) = ast::ClosureExpr::cast(parent.clone()) {
+                Some(
+                    self.type_of_expr(&closure.into())?
+                        .original
+                        .as_callable(self.db)?
+                        .return_type(),
+                )
+            } else if let Some(function) = ast::Fn::cast(parent) {
+                Some(self.to_def(&function)?.ret_type(self.db))
+            } else {
+                None
+            }
+        })
+    }
+
     // This does not resolve the method call to the correct trait impl!
     // We should probably fix that.
     pub fn resolve_method_call_as_callable(
@@ -1891,36 +1912,32 @@ impl<'db> SemanticsImpl<'db> {
         self.db.parse_macro_expansion(file_id).value.1.matched_arm
     }
 
-    pub fn get_unsafe_ops(&self, def: DefWithBody) -> FxHashSet<ExprOrPatSource> {
-        let Ok(def) = DefWithBodyId::try_from(def) else {
-            return FxHashSet::default();
-        };
-        let (body, source_map) = self.db.body_with_source_map(def);
-        let infer = InferenceResult::for_body(self.db, def);
+    pub fn get_unsafe_ops(&self, def: ExpressionStoreOwner) -> FxHashSet<ExprOrPatSource> {
+        let Ok(def) = ExpressionStoreOwnerId::try_from(def) else { return Default::default() };
+        let (body, source_map) = ExpressionStore::with_source_map(self.db, def);
+        let infer = InferenceResult::of(self.db, def);
         let mut res = FxHashSet::default();
-        unsafe_operations_for_body(self.db, infer, def, &body, &mut |node| {
-            if let Ok(node) = source_map.expr_or_pat_syntax(node) {
-                res.insert(node);
-            }
-        });
+        for root in body.expr_roots() {
+            unsafe_operations(self.db, infer, def, body, root, &mut |node, _| {
+                if let Ok(node) = source_map.expr_or_pat_syntax(node) {
+                    res.insert(node);
+                }
+            });
+        }
         res
     }
 
     pub fn get_unsafe_ops_for_unsafe_block(&self, block: ast::BlockExpr) -> Vec<ExprOrPatSource> {
         always!(block.unsafe_token().is_some());
+        let Some(sa) = self.analyze(block.syntax()) else { return vec![] };
+        let Some((def, store, sm, Some(infer))) = sa.def() else { return vec![] };
         let block = self.wrap_node_infile(ast::Expr::from(block));
-        let Some(def) = self.body_for(block.syntax()) else { return Vec::new() };
-        let Ok(def) = def.try_into() else {
-            return Vec::new();
-        };
-        let (body, source_map) = self.db.body_with_source_map(def);
-        let infer = InferenceResult::for_body(self.db, def);
-        let Some(ExprOrPatId::ExprId(block)) = source_map.node_expr(block.as_ref()) else {
+        let Some(ExprOrPatId::ExprId(block)) = sm.node_expr(block.as_ref()) else {
             return Vec::new();
         };
         let mut res = Vec::default();
-        unsafe_operations(self.db, infer, def, &body, block, &mut |node, _| {
-            if let Ok(node) = source_map.expr_or_pat_syntax(node) {
+        unsafe_operations(self.db, infer, def, store, block, &mut |node, _| {
+            if let Ok(node) = sm.expr_or_pat_syntax(node) {
                 res.push(node);
             }
         });
@@ -1972,7 +1989,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn resolve_offset_of_field(
         &self,
         name_ref: &ast::NameRef,
-    ) -> Option<(Either<Variant, Field>, GenericSubstitution<'db>)> {
+    ) -> Option<(Either<EnumVariant, Field>, GenericSubstitution<'db>)> {
         self.analyze_no_infer(name_ref.syntax())?.resolve_offset_of_field(self.db, name_ref)
     }
 
@@ -2092,13 +2109,9 @@ impl<'db> SemanticsImpl<'db> {
         Some(res)
     }
 
-    pub fn body_for(&self, node: InFile<&SyntaxNode>) -> Option<DefWithBody> {
+    pub fn store_owner_for(&self, node: InFile<&SyntaxNode>) -> Option<ExpressionStoreOwner> {
         let container = self.with_ctx(|ctx| ctx.find_container(node))?;
-
-        match container {
-            ChildContainer::DefWithBodyId(def) => Some(def.into()),
-            _ => None,
-        }
+        container.as_expression_store_owner().map(|id| id.into())
     }
 
     /// Returns none if the file of the node is not part of a crate.
@@ -2127,7 +2140,7 @@ impl<'db> SemanticsImpl<'db> {
         node: InFile<&SyntaxNode>,
         offset: Option<TextSize>,
         // replace this, just make the inference result a `LazyCell`
-        infer_body: bool,
+        infer: bool,
     ) -> Option<SourceAnalyzer<'db>> {
         let _p = tracing::info_span!("SemanticsImpl::analyze_impl").entered();
 
@@ -2135,26 +2148,42 @@ impl<'db> SemanticsImpl<'db> {
 
         let resolver = match container {
             ChildContainer::DefWithBodyId(def) => {
-                return Some(if infer_body {
+                return Some(if infer {
                     SourceAnalyzer::new_for_body(self.db, def, node, offset)
                 } else {
                     SourceAnalyzer::new_for_body_no_infer(self.db, def, node, offset)
                 });
             }
             ChildContainer::VariantId(def) => {
-                return Some(SourceAnalyzer::new_variant_body(self.db, def, node, offset));
+                return Some(SourceAnalyzer::new_variant_body(self.db, def, node, offset, infer));
             }
             ChildContainer::TraitId(it) => {
-                return Some(SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset));
+                return Some(if infer {
+                    SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset)
+                } else {
+                    SourceAnalyzer::new_generic_def_no_infer(self.db, it.into(), node, offset)
+                });
             }
             ChildContainer::ImplId(it) => {
-                return Some(SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset));
+                return Some(if infer {
+                    SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset)
+                } else {
+                    SourceAnalyzer::new_generic_def_no_infer(self.db, it.into(), node, offset)
+                });
             }
             ChildContainer::EnumId(it) => {
-                return Some(SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset));
+                return Some(if infer {
+                    SourceAnalyzer::new_generic_def(self.db, it.into(), node, offset)
+                } else {
+                    SourceAnalyzer::new_generic_def_no_infer(self.db, it.into(), node, offset)
+                });
             }
             ChildContainer::GenericDefId(it) => {
-                return Some(SourceAnalyzer::new_generic_def(self.db, it, node, offset));
+                return Some(if infer {
+                    SourceAnalyzer::new_generic_def(self.db, it, node, offset)
+                } else {
+                    SourceAnalyzer::new_generic_def_no_infer(self.db, it, node, offset)
+                });
             }
             ChildContainer::ModuleId(it) => it.resolver(self.db),
         };
@@ -2237,7 +2266,7 @@ impl<'db> SemanticsImpl<'db> {
         let Some(def) = def else { return false };
         let enclosing_node = enclosing_item.as_ref().either(|i| i.syntax(), |v| v.syntax());
 
-        let (body, source_map) = self.db.body_with_source_map(def);
+        let (body, source_map) = Body::with_source_map(self.db, def);
 
         let file_id = self.find_file(expr.syntax()).file_id;
 
@@ -2288,7 +2317,7 @@ impl<'db> SemanticsImpl<'db> {
         let sa = self.analyze(element.either(|e| e.syntax(), |s| s.syntax()))?;
         let store = sa.store()?;
         let mut resolver = sa.resolver.clone();
-        let def = resolver.body_owner()?;
+        let def = resolver.expression_store_owner()?;
 
         let is_not_generated = |path: &Path| {
             !path.mod_path().and_then(|path| path.as_ident()).is_some_and(Name::is_generated)
@@ -2425,7 +2454,7 @@ fn macro_call_to_macro_id(
         Either::Left(it) => {
             let node = match it.file_id {
                 HirFileId::FileId(file_id) => {
-                    it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
+                    it.to_ptr(db).to_node(&file_id.parse(db).syntax_node())
                 }
                 HirFileId::MacroFile(macro_file) => {
                     let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
@@ -2437,7 +2466,7 @@ fn macro_call_to_macro_id(
         Either::Right(it) => {
             let node = match it.file_id {
                 HirFileId::FileId(file_id) => {
-                    it.to_ptr(db).to_node(&db.parse(file_id).syntax_node())
+                    it.to_ptr(db).to_node(&file_id.parse(db).syntax_node())
                 }
                 HirFileId::MacroFile(macro_file) => {
                     let expansion_info = ctx.cache.get_or_insert_expansion(ctx.db, macro_file);
@@ -2479,7 +2508,7 @@ to_def_impls![
     (crate::Function, ast::Fn, fn_to_def),
     (crate::Field, ast::RecordField, record_field_to_def),
     (crate::Field, ast::TupleField, tuple_field_to_def),
-    (crate::Variant, ast::Variant, enum_variant_to_def),
+    (crate::EnumVariant, ast::Variant, enum_variant_to_def),
     (crate::TypeParam, ast::TypeParam, type_param_to_def),
     (crate::LifetimeParam, ast::LifetimeParam, lifetime_param_to_def),
     (crate::ConstParam, ast::ConstParam, const_param_to_def),
@@ -2538,11 +2567,16 @@ impl<'db> SemanticsScope<'db> {
         Crate { id: self.resolver.krate() }
     }
 
+    // FIXME: This is a weird function, we shouldn't have this?
     pub fn containing_function(&self) -> Option<Function> {
-        self.resolver.body_owner().and_then(|owner| match owner {
-            DefWithBodyId::FunctionId(id) => Some(id.into()),
+        self.resolver.expression_store_owner().and_then(|owner| match owner {
+            ExpressionStoreOwnerId::Body(DefWithBodyId::FunctionId(id)) => Some(id.into()),
             _ => None,
         })
+    }
+
+    pub fn expression_store_owner(&self) -> Option<ExpressionStoreOwner> {
+        self.resolver.expression_store_owner().map(Into::into)
     }
 
     pub(crate) fn resolver(&self) -> &Resolver<'db> {
@@ -2566,14 +2600,18 @@ impl<'db> SemanticsScope<'db> {
                     resolver::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
                     resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
                     resolver::ScopeDef::GenericParam(id) => ScopeDef::GenericParam(id.into()),
-                    resolver::ScopeDef::Local(binding_id) => match self.resolver.body_owner() {
-                        Some(parent) => ScopeDef::Local(Local { parent, binding_id }),
-                        None => continue,
-                    },
-                    resolver::ScopeDef::Label(label_id) => match self.resolver.body_owner() {
-                        Some(parent) => ScopeDef::Label(Label { parent, label_id }),
-                        None => continue,
-                    },
+                    resolver::ScopeDef::Local(binding_id) => {
+                        match self.resolver.expression_store_owner() {
+                            Some(parent) => ScopeDef::Local(Local { parent, binding_id }),
+                            None => continue,
+                        }
+                    }
+                    resolver::ScopeDef::Label(label_id) => {
+                        match self.resolver.expression_store_owner() {
+                            Some(parent) => ScopeDef::Label(Label { parent, label_id }),
+                            None => continue,
+                        }
+                    }
                 };
                 f(name.clone(), def)
             }

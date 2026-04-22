@@ -6,6 +6,8 @@ RUN sh /scripts/cross-apt-packages.sh
 WORKDIR /build
 
 COPY scripts/musl-toolchain.sh /build/
+COPY scripts/musl-cve-2026-6042.diff /build/
+COPY scripts/musl-cve-2026-40200.diff /build/
 # We need to mitigate rust-lang/rust#34978 when compiling musl itself as well
 RUN CFLAGS="-Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \
     CXXFLAGS="-Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \
@@ -18,11 +20,10 @@ RUN sh /scripts/sccache.sh
 
 ENV HOSTS=aarch64-unknown-linux-musl
 
-ENV RUST_CONFIGURE_ARGS \
-      --enable-full-tools \
+ENV RUST_CONFIGURE_ARGS="--enable-full-tools \
       --disable-docs \
       --musl-root-aarch64=/usr/local/aarch64-linux-musl \
       --enable-sanitizers \
       --enable-profiler \
-      --set target.aarch64-unknown-linux-musl.crt-static=false
-ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS
+      --set target.aarch64-unknown-linux-musl.crt-static=false"
+ENV SCRIPT="python3 ../x.py dist --host $HOSTS --target $HOSTS"

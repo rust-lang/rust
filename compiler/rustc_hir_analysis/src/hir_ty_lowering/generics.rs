@@ -1,6 +1,9 @@
 use rustc_ast::ast::ParamKindOrd;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, struct_span_code_err};
+use rustc_errors::{
+    Applicability, Diag, DiagCtxtHandle, Diagnostic, ErrorGuaranteed, Level, MultiSpan,
+    struct_span_code_err,
+};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, GenericArg};
@@ -72,7 +75,8 @@ fn generic_arg_mismatch_err(
             Res::Def(DefKind::TyParam, src_def_id) => {
                 if let Some(param_local_id) = param.def_id.as_local() {
                     let param_name = tcx.hir_ty_param_name(param_local_id);
-                    let param_type = tcx.type_of(param.def_id).instantiate_identity();
+                    let param_type =
+                        tcx.type_of(param.def_id).instantiate_identity().skip_norm_wip();
                     if param_type.is_suggestable(tcx, false) {
                         err.span_suggestion_verbose(
                             tcx.def_span(src_def_id),
@@ -382,17 +386,14 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
 
 /// Checks that the correct number of generic arguments have been provided.
 /// Used specifically for function calls.
-pub fn check_generic_arg_count_for_call(
+pub fn check_generic_arg_count_for_value_path(
     cx: &dyn HirTyLowerer<'_>,
     def_id: DefId,
     generics: &ty::Generics,
     seg: &hir::PathSegment<'_>,
     is_method_call: IsMethodCall,
 ) -> GenericArgCountResult {
-    let gen_pos = match is_method_call {
-        IsMethodCall::Yes => GenericArgPosition::MethodCall,
-        IsMethodCall::No => GenericArgPosition::Value,
-    };
+    let gen_pos = GenericArgPosition::Value(is_method_call);
     check_generic_arg_count(cx, def_id, seg, generics, gen_pos, generics.has_own_self())
 }
 
@@ -625,6 +626,17 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
     args: &hir::GenericArgs<'_>,
     position: GenericArgPosition,
 ) -> ExplicitLateBound {
+    struct LifetimeArgsIssue {
+        msg: &'static str,
+    }
+
+    impl<'a> Diagnostic<'a, ()> for LifetimeArgsIssue {
+        fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+            let Self { msg } = self;
+            Diag::new(dcx, level, msg)
+        }
+    }
+
     let param_counts = def.own_counts();
 
     if let Some(span_late) = def.has_late_bound_regions
@@ -635,7 +647,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         let note = "the late bound lifetime parameter is introduced here";
         let span = args.args[0].span();
 
-        if position == GenericArgPosition::Value
+        if position == GenericArgPosition::Value(IsMethodCall::No)
             && args.num_lifetime_params() != param_counts.lifetimes
         {
             struct_span_code_err!(cx.dcx(), span, E0794, "{}", msg)
@@ -644,13 +656,11 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         } else {
             let mut multispan = MultiSpan::from_span(span);
             multispan.push_span_label(span_late, note);
-            cx.tcx().node_span_lint(
+            cx.tcx().emit_node_span_lint(
                 LATE_BOUND_LIFETIME_ARGUMENTS,
                 args.args[0].hir_id(),
                 multispan,
-                |lint| {
-                    lint.primary_message(msg);
-                },
+                LifetimeArgsIssue { msg },
             );
         }
 

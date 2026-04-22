@@ -152,3 +152,189 @@ fn test_try_fold_specialization_intersperse_err() {
     iter.try_for_each(|item| if item == "b" { None } else { Some(()) });
     assert_eq!(iter.next(), None);
 }
+
+#[test]
+fn test_non_fused_iterator_intersperse() {
+    #[derive(Debug)]
+    struct TestCounter {
+        counter: usize,
+    }
+
+    /// Given a counter of 0, this produces:
+    /// `None` -> `Some(2)` -> `None` -> `Some(4)` -> `None` -> `Some(6)`
+    /// -> and then `None` endlessly
+    impl Iterator for TestCounter {
+        type Item = usize;
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.counter > 6 {
+                None
+            } else if self.counter % 2 == 0 {
+                self.counter += 1;
+                None
+            } else {
+                self.counter += 1;
+                Some(self.counter)
+            }
+        }
+    }
+
+    let counter = 0;
+    // places a 1 between `Some(_)` items
+    let non_fused_iter = TestCounter { counter };
+    let mut intersperse_iter = non_fused_iter.intersperse(1);
+    // Interspersed iter produces:
+    // `None` -> `Some(2)` -> `None` -> `Some(1)` -> Some(4)` -> `None` ->  `Some(1)` ->
+    // `Some(6)` -> and then `None` endlessly
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(2));
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(1));
+    assert_eq!(intersperse_iter.next(), Some(4));
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(1));
+    assert_eq!(intersperse_iter.next(), Some(6));
+    assert_eq!(intersperse_iter.next(), None);
+
+    // Extra check to make sure it is `None` after processing all items
+    assert_eq!(intersperse_iter.next(), None);
+}
+
+#[test]
+fn test_non_fused_iterator_intersperse_2() {
+    #[derive(Debug)]
+    struct TestCounter {
+        counter: usize,
+    }
+
+    // Given a counter of 0, this produces:
+    // `Some(1)` -> `Some(2)` -> `None` -> `Some(4)` -> `Some(5)` ->
+    // and then `None` endlessly
+    impl Iterator for TestCounter {
+        type Item = usize;
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.counter < 5 {
+                self.counter += 1;
+                if self.counter % 3 != 0 {
+                    return Some(self.counter);
+                } else {
+                    return None;
+                }
+            }
+            self.counter += 1;
+            None
+        }
+    }
+
+    let counter = 0;
+    // places a 100 between `Some(_)` items
+    let non_fused_iter = TestCounter { counter };
+    let mut intersperse_iter = non_fused_iter.intersperse(100);
+    // Interspersed iter produces:
+    // `Some(1)` -> `Some(100)` -> `Some(2)` -> `None` -> `Some(100)`
+    //  -> `Some(4)` -> `Some(100)` -> `Some(5)` -> `None` endlessly
+    assert_eq!(intersperse_iter.next(), Some(1));
+    assert_eq!(intersperse_iter.next(), Some(100));
+    assert_eq!(intersperse_iter.next(), Some(2));
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(100));
+    assert_eq!(intersperse_iter.next(), Some(4));
+    assert_eq!(intersperse_iter.next(), Some(100));
+    assert_eq!(intersperse_iter.next(), Some(5));
+    assert_eq!(intersperse_iter.next(), None);
+
+    // Extra check to make sure it is `None` after processing 6 items
+    assert_eq!(intersperse_iter.next(), None);
+}
+
+#[test]
+fn test_non_fused_iterator_intersperse_with() {
+    #[derive(Debug)]
+    struct TestCounter {
+        counter: usize,
+    }
+
+    // Given a counter of 0, this produces:
+    // `None` -> `Some(2)` -> `None` -> `Some(4)` -> `None` -> `Some(6)`
+    // -> and then `None` endlessly
+    impl Iterator for TestCounter {
+        type Item = usize;
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.counter > 6 {
+                None
+            } else if self.counter % 2 == 0 {
+                self.counter += 1;
+                None
+            } else {
+                self.counter += 1;
+                Some(self.counter)
+            }
+        }
+    }
+
+    let counter = 0;
+    let non_fused_iter = TestCounter { counter };
+    // places a 2 between `Some(_)` items
+    let mut intersperse_iter = non_fused_iter.intersperse_with(|| 1);
+    // Interspersed iter produces:
+    // `None` -> `Some(2)` -> `None` -> `Some(1)` -> Some(4)` -> `None` ->  `Some(1)` ->
+    // `Some(6)` -> and then `None` endlessly
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(2));
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(1));
+    assert_eq!(intersperse_iter.next(), Some(4));
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(1));
+    assert_eq!(intersperse_iter.next(), Some(6));
+    assert_eq!(intersperse_iter.next(), None);
+
+    // Extra check to make sure it is `None` after processing 6 items
+    assert_eq!(intersperse_iter.next(), None);
+}
+
+#[test]
+fn test_non_fused_iterator_intersperse_with_2() {
+    #[derive(Debug)]
+    struct TestCounter {
+        counter: usize,
+    }
+
+    // Given a counter of 0, this produces:
+    // `Some(1)` -> `Some(2)` -> `None` -> `Some(4)` -> `Some(5)` ->
+    // and then `None` endlessly
+    impl Iterator for TestCounter {
+        type Item = usize;
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.counter < 5 {
+                self.counter += 1;
+                if self.counter % 3 != 0 {
+                    return Some(self.counter);
+                } else {
+                    return None;
+                }
+            }
+            self.counter += 1;
+            None
+        }
+    }
+
+    let counter = 0;
+    // places a 100 between `Some(_)` items
+    let non_fused_iter = TestCounter { counter };
+    let mut intersperse_iter = non_fused_iter.intersperse_with(|| 100);
+    // Interspersed iter produces:
+    // `Some(1)` -> `Some(100)` -> `Some(2)` -> `None` -> `Some(100)`
+    //  -> `Some(4)` -> `Some(100)` -> `Some(5)` -> `None` endlessly
+    assert_eq!(intersperse_iter.next(), Some(1));
+    assert_eq!(intersperse_iter.next(), Some(100));
+    assert_eq!(intersperse_iter.next(), Some(2));
+    assert_eq!(intersperse_iter.next(), None);
+    assert_eq!(intersperse_iter.next(), Some(100));
+    assert_eq!(intersperse_iter.next(), Some(4));
+    assert_eq!(intersperse_iter.next(), Some(100));
+    assert_eq!(intersperse_iter.next(), Some(5));
+    assert_eq!(intersperse_iter.next(), None);
+
+    // Extra check to make sure it is `None` after processing 6 items
+    assert_eq!(intersperse_iter.next(), None);
+}

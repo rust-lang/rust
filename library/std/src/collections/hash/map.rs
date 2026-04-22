@@ -20,7 +20,7 @@ use crate::ops::Index;
 /// reasonable best-effort is made to generate this seed from a high quality,
 /// secure source of randomness provided by the host without blocking the
 /// program. Because of this, the randomness of the seed depends on the output
-/// quality of the system's random number coroutine when the seed is created.
+/// quality of the system's random number generator when the seed is created.
 /// In particular, seeds generated when the system's entropy pool is abnormally
 /// low such as during system boot may be of a lower quality.
 ///
@@ -301,8 +301,11 @@ impl<K, V, A: Allocator> HashMap<K, V, RandomState, A> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(allocator_api)]
     /// use std::collections::HashMap;
-    /// let mut map: HashMap<&str, i32> = HashMap::new();
+    /// use std::alloc::Global;
+    ///
+    /// let map: HashMap<i32, i32> = HashMap::new_in(Global);
     /// ```
     #[inline]
     #[must_use]
@@ -321,8 +324,11 @@ impl<K, V, A: Allocator> HashMap<K, V, RandomState, A> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(allocator_api)]
     /// use std::collections::HashMap;
-    /// let mut map: HashMap<&str, i32> = HashMap::with_capacity(10);
+    /// use std::alloc::Global;
+    ///
+    /// let map: HashMap<i32, i32> = HashMap::with_capacity_in(10, Global);
     /// ```
     #[inline]
     #[must_use]
@@ -357,6 +363,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// map.insert(1, 2);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     #[rustc_const_stable(feature = "const_collections_with_hasher", since = "1.85.0")]
     pub const fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
@@ -389,6 +396,7 @@ impl<K, V, S> HashMap<K, V, S> {
     /// map.insert(1, 2);
     /// ```
     #[inline]
+    #[must_use]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> HashMap<K, V, S> {
         HashMap { base: base::HashMap::with_capacity_and_hasher(capacity, hasher) }
@@ -408,7 +416,20 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
     /// the `HashMap` to be useful, see its documentation for details.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    /// use std::alloc::Global;
+    /// use std::collections::HashMap;
+    /// use std::hash::RandomState;
+    ///
+    /// let s = RandomState::new();
+    /// let map: HashMap<i32, i32> = HashMap::with_hasher_in(s, Global);
+    /// ```
     #[inline]
+    #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_hasher_in(hash_builder: S, alloc: A) -> Self {
         HashMap { base: base::HashMap::with_hasher_in(hash_builder, alloc) }
@@ -429,7 +450,19 @@ impl<K, V, S, A: Allocator> HashMap<K, V, S, A> {
     /// The `hasher` passed should implement the [`BuildHasher`] trait for
     /// the `HashMap` to be useful, see its documentation for details.
     ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(allocator_api)]
+    /// use std::alloc::Global;
+    /// use std::collections::HashMap;
+    /// use std::hash::RandomState;
+    ///
+    /// let s = RandomState::new();
+    /// let map: HashMap<i32, i32> = HashMap::with_capacity_and_hasher_in(10, s, Global);
+    /// ```
     #[inline]
+    #[must_use]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn with_capacity_and_hasher_in(capacity: usize, hash_builder: S, alloc: A) -> Self {
         HashMap { base: base::HashMap::with_capacity_and_hasher_in(capacity, hash_builder, alloc) }

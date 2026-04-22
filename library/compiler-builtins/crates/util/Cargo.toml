@@ -6,6 +6,7 @@ publish = false
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+cfg-if.workspace = true
 libm.workspace = true
 libm-macros.workspace = true
 libm-test.workspace = true

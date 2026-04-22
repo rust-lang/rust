@@ -803,6 +803,37 @@ fn foo() {
 }
 
 #[test]
+fn binop_rhs_never_place_diverges() {
+    check_no_mismatches(
+        r#"
+//- minicore: sized, add
+fn foo() -> i32 {
+    unsafe {
+        let p: *mut ! = 0 as _;
+        let mut x: i32 = 0;
+        x += *p;
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn binop_lhs_never_place_diverges() {
+    check_no_mismatches(
+        r#"
+//- minicore: sized, add
+fn foo() {
+    unsafe {
+        let p: *mut ! = 0 as _;
+        *p += 1;
+    }
+}
+"#,
+    );
+}
+
+#[test]
 fn never_place_isnt_diverging() {
     check_infer_with_mismatches(
         r#"
@@ -853,5 +884,20 @@ fn foo() {
             68..69 '_': i32
             73..74 '0': i32
         "#]],
+    );
+}
+
+#[test]
+fn never_coercion_in_struct_update_syntax() {
+    check_no_mismatches(
+        r#"
+struct Struct {
+    field: i32,
+}
+
+fn example() -> Struct {
+    Struct { ..loop {} }
+}
+    "#,
     );
 }

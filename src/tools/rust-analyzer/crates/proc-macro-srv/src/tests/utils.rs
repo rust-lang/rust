@@ -146,6 +146,10 @@ impl ProcMacroClientInterface for MockCallback<'_> {
     fn span_source(&mut self, span: Span) -> Span {
         span
     }
+
+    fn span_parent(&mut self, _span: Span) -> Option<Span> {
+        None
+    }
 }
 
 pub fn assert_expand_with_callback(

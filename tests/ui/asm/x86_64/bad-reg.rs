@@ -1,7 +1,7 @@
 //@ add-minicore
-//@ only-x86_64
 //@ revisions: stable experimental_reg
-//@ compile-flags: -C target-feature=+avx2,+avx512f
+//@ compile-flags: --target x86_64-unknown-linux-gnu -C target-feature=+avx2,+avx512f
+//@ needs-llvm-components: x86
 #![cfg_attr(experimental_reg, feature(asm_experimental_reg))]
 
 #![crate_type = "lib"]
@@ -22,9 +22,9 @@ fn main() {
         asm!("", in("foo") foo);
         //~^ ERROR invalid register `foo`: unknown register
         asm!("{:z}", in(reg) foo);
-        //~^ ERROR invalid asm template modifier for this register class
+        //~^ ERROR invalid asm template modifier `z` for this register class
         asm!("{:r}", in(xmm_reg) foo);
-        //~^ ERROR invalid asm template modifier for this register class
+        //~^ ERROR invalid asm template modifier `r` for this register class
         asm!("{:a}", const 0);
         //~^ ERROR asm template modifiers are not allowed for `const` arguments
         asm!("{:a}", sym main);
@@ -35,6 +35,10 @@ fn main() {
         //~^ ERROR invalid register `rsp`: the stack pointer cannot be used as an operand
         asm!("", in("ip") foo);
         //~^ ERROR invalid register `ip`: the instruction pointer cannot be used as an operand
+        asm!("", in("bl") foo);
+        //~^ ERROR cannot use register `bl`: rbx is used internally by LLVM and cannot be used as an operand for inline asm
+        asm!("", in("bh") foo);
+        //~^ ERROR cannot use register `bh`: rbx is used internally by LLVM and cannot be used as an operand for inline asm
 
         asm!("", in("st(2)") foo);
         //~^ ERROR register class `x87_reg` can only be used as a clobber, not as an input or output

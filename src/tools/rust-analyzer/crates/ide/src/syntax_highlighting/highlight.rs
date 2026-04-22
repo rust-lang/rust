@@ -307,12 +307,12 @@ fn highlight_name_ref(
                     h |= HlMod::Consuming;
                 }
                 // highlight unsafe traits as unsafe only in their implementations
-                Definition::Trait(trait_) if trait_.is_unsafe(db) => {
-                    if ast::Impl::for_trait_name_ref(&name_ref)
-                        .is_some_and(|impl_| impl_.unsafe_token().is_some())
-                    {
-                        h |= HlMod::Unsafe;
-                    }
+                Definition::Trait(trait_)
+                    if trait_.is_unsafe(db)
+                        && ast::Impl::for_trait_name_ref(&name_ref)
+                            .is_some_and(|impl_| impl_.unsafe_token().is_some()) =>
+                {
+                    h |= HlMod::Unsafe;
                 }
                 Definition::Function(_) => {
                     let is_unsafe = name_ref
@@ -538,7 +538,7 @@ pub(super) fn highlight_def(
 
             (Highlight::new(h), Some(adt.attrs(sema.db)))
         }
-        Definition::Variant(variant) => {
+        Definition::EnumVariant(variant) => {
             (Highlight::new(HlTag::Symbol(SymbolKind::Variant)), Some(variant.attrs(sema.db)))
         }
         Definition::Const(konst) => {

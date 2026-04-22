@@ -7,7 +7,7 @@ use rustc_errors::{
     Diag, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, ErrorGuaranteed, Level,
     MultiSpan,
 };
-use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTuple};
 
@@ -71,7 +71,7 @@ pub(crate) struct FeatureDiagnosticHelp {
     applicability = "maybe-incorrect",
     code = "#![feature({feature})]\n"
 )]
-pub struct FeatureDiagnosticSuggestion {
+pub(crate) struct FeatureDiagnosticSuggestion {
     pub feature: Symbol,
     #[primary_span]
     pub span: Span,
@@ -81,13 +81,6 @@ pub struct FeatureDiagnosticSuggestion {
 #[help("add `-Zcrate-attr=\"feature({$feature})\"` to the command-line options to enable")]
 pub(crate) struct CliFeatureDiagnosticHelp {
     pub(crate) feature: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag("must be a name of an associated function")]
-pub struct MustBeNameOfAssociatedFunction {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -518,17 +511,6 @@ pub(crate) struct FailedToCreateProfiler {
 }
 
 #[derive(Diagnostic)]
-#[diag("`-Csoft-float` is ignored on this target; it only has an effect on *eabihf targets")]
-#[note("this may become a hard error in a future version of Rust")]
-pub(crate) struct SoftFloatIgnored;
-
-#[derive(Diagnostic)]
-#[diag("`-Csoft-float` is unsound and deprecated; use a corresponding *eabi target instead")]
-#[note("it will be removed or ignored in a future version of Rust")]
-#[note("see issue #129893 <https://github.com/rust-lang/rust/issues/129893> for more information")]
-pub(crate) struct SoftFloatDeprecated;
-
-#[derive(LintDiagnostic)]
 #[diag("unexpected `--cfg {$cfg}` flag")]
 #[note("config `{$cfg_name}` is only supposed to be controlled by `{$controlled_by}`")]
 #[note("manually setting a built-in cfg can and does create incoherent behaviors")]
@@ -539,5 +521,9 @@ pub(crate) struct UnexpectedBuiltinCfg {
 }
 
 #[derive(Diagnostic)]
-#[diag("ThinLTO is not supported by the codegen backend")]
+#[diag("ThinLTO is not supported by the codegen backend, using fat LTO instead")]
 pub(crate) struct ThinLtoNotSupportedByBackend;
+
+#[derive(Diagnostic)]
+#[diag("`-Zpacked-stack` is only supported on s390x")]
+pub(crate) struct UnsupportedPackedStack;

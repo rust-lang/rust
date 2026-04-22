@@ -8,7 +8,7 @@ use rustc_hir::{AssignOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, LetSt
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::source_map::Spanned;
+use rustc_span::Spanned;
 use rustc_span::symbol::{Symbol, sym};
 
 #[derive(Debug, PartialEq, Eq)]

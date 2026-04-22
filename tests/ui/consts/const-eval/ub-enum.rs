@@ -4,7 +4,7 @@
 //@ normalize-stderr: "0x0+" -> "0x0"
 //@ normalize-stderr: "0x[0-9](\.\.|\])" -> "0x%$1"
 //@ dont-require-annotations: NOTE
-
+//@ ignore-parallel-frontend different alloc ids
 #![feature(never_type)]
 #![allow(invalid_value, unnecessary_transmutes)]
 
@@ -83,7 +83,7 @@ const GOOD_INHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(2u8) 
 const BAD_UNINHABITED_VARIANT1: UninhDiscriminant = unsafe { mem::transmute(1u8) };
 //~^ ERROR uninhabited enum variant
 const BAD_UNINHABITED_VARIANT2: UninhDiscriminant = unsafe { mem::transmute(3u8) };
-//~^ ERROR uninhabited enum variant
+//~^ ERROR expected a valid enum tag
 
 // # other
 
@@ -107,5 +107,18 @@ const TEST_ICE_89765: () = {
         //~^ ERROR uninhabited enum variant
     };
 };
+
+// # Regression test for https://github.com/rust-lang/rust/issues/153758
+// Discriminants at i64::MIN and i64::MAX produce a wrapping valid_range that covers
+// all values. A value like 0 passes the range check but doesn't match any variant.
+#[repr(i64)]
+#[derive(Copy, Clone)]
+enum WideRangeDiscriminants {
+    A = i64::MIN,
+    B = i64::MAX,
+}
+
+const BAD_WIDE_RANGE_ENUM: WideRangeDiscriminants = unsafe { mem::transmute(0_i64) };
+//~^ ERROR expected a valid enum tag
 
 fn main() {}

@@ -13,8 +13,8 @@ use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{
-    self, ClosureKind, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor,
+    self, ClosureKind, FnSigKind, GenericArgs, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, Unnormalized,
 };
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span};
@@ -72,7 +72,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!(?bound_sig, ?liberated_sig);
 
         let parent_args =
-            GenericArgs::identity_for_item(tcx, tcx.typeck_root_def_id(expr_def_id.to_def_id()));
+            GenericArgs::identity_for_item(tcx, tcx.typeck_root_def_id_local(expr_def_id));
 
         let tupled_upvars_ty = self.next_ty_var(expr_span);
 
@@ -85,13 +85,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Tuple up the arguments and insert the resulting function type into
                 // the `closures` table.
                 let sig = bound_sig.map_bound(|sig| {
-                    tcx.mk_fn_sig(
-                        [Ty::new_tup(tcx, sig.inputs())],
-                        sig.output(),
-                        sig.c_variadic,
-                        sig.safety,
-                        sig.abi,
-                    )
+                    tcx.mk_fn_sig([Ty::new_tup(tcx, sig.inputs())], sig.output(), sig.fn_sig_kind)
                 });
 
                 debug!(?sig, ?expected_kind);
@@ -231,9 +225,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         Ty::new_tup_from_iter(tcx, sig.inputs().iter().copied()),
                                     ],
                                     Ty::new_tup(tcx, &[bound_yield_ty, bound_return_ty]),
-                                    sig.c_variadic,
-                                    sig.safety,
-                                    sig.abi,
+                                    sig.fn_sig_kind,
                                 )
                             }),
                         ),
@@ -273,9 +265,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 liberated_sig = tcx.mk_fn_sig(
                     liberated_sig.inputs().iter().copied(),
                     coroutine_output_ty,
-                    liberated_sig.c_variadic,
-                    liberated_sig.safety,
-                    liberated_sig.abi,
+                    liberated_sig.fn_sig_kind,
                 );
 
                 (Ty::new_coroutine_closure(tcx, expr_def_id.to_def_id(), closure_args.args), None)
@@ -305,13 +295,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_kind: hir::ClosureKind,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         match *expected_ty.kind() {
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => self
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => self
                 .deduce_closure_signature_from_predicates(
                     expected_ty,
                     closure_kind,
                     self.tcx
                         .explicit_item_self_bounds(def_id)
                         .iter_instantiated_copied(self.tcx, args)
+                        .map(Unnormalized::skip_norm_wip)
                         .map(|(c, s)| (c.as_predicate(), s)),
                 ),
             ty::Dynamic(object_type, ..) => {
@@ -374,11 +365,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             {
                 let inferred_sig = self.normalize(
                     span,
-                    self.deduce_sig_from_projection(
+                    Unnormalized::new_wip(self.deduce_sig_from_projection(
                         Some(span),
                         closure_kind,
                         bound_predicate.rebind(proj_predicate),
-                    ),
+                    )),
                 );
 
                 // Make sure that we didn't infer a signature that mentions itself.
@@ -544,13 +535,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ret_param_ty = projection.skip_binder().term.expect_type();
         debug!(?ret_param_ty);
 
-        let sig = projection.rebind(self.tcx.mk_fn_sig(
-            input_tys,
-            ret_param_ty,
-            false,
-            hir::Safety::Safe,
-            ExternAbi::Rust,
-        ));
+        let sig = projection.rebind(self.tcx.mk_fn_sig_safe_rust_abi(input_tys, ret_param_ty));
 
         Some(ExpectedSig { cause_span, sig })
     }
@@ -630,13 +615,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let return_ty =
             return_ty.unwrap_or_else(|| self.next_ty_var(cause_span.unwrap_or(DUMMY_SP)));
 
-        let sig = projection.rebind(self.tcx.mk_fn_sig(
-            input_tys,
-            return_ty,
-            false,
-            hir::Safety::Safe,
-            ExternAbi::Rust,
-        ));
+        let sig = projection.rebind(self.tcx.mk_fn_sig_safe_rust_abi(input_tys, return_ty));
 
         Some(ExpectedSig { cause_span, sig })
     }
@@ -727,7 +706,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Watch out for some surprises and just ignore the
         // expectation if things don't see to match up with what we
         // expect.
-        if expected_sig.sig.c_variadic() != decl.c_variadic {
+        if expected_sig.sig.c_variadic() != decl.c_variadic() {
             return self.sig_of_closure_no_expectation(expr_def_id, decl, closure_kind);
         } else if expected_sig.sig.skip_binder().inputs_and_output.len() != decl.inputs.len() + 1 {
             return self.sig_of_closure_with_mismatched_number_of_arguments(
@@ -742,13 +721,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // in this binder we are creating.
         assert!(!expected_sig.sig.skip_binder().has_vars_bound_above(ty::INNERMOST));
         let bound_sig = expected_sig.sig.map_bound(|sig| {
-            self.tcx.mk_fn_sig(
-                sig.inputs().iter().cloned(),
-                sig.output(),
-                sig.c_variadic,
-                hir::Safety::Safe,
-                ExternAbi::RustCall,
-            )
+            let fn_sig_kind = FnSigKind::default()
+                .set_abi(ExternAbi::RustCall)
+                .set_safe(true)
+                .set_c_variadic(sig.c_variadic());
+            self.tcx.mk_fn_sig(sig.inputs().iter().cloned(), sig.output(), fn_sig_kind)
         });
 
         // `deduce_expectations_from_expected_type` introduces
@@ -881,13 +858,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let inputs =
                 supplied_sig.inputs().into_iter().map(|&ty| self.resolve_vars_if_possible(ty));
 
-            expected_sigs.liberated_sig = self.tcx.mk_fn_sig(
-                inputs,
-                supplied_output_ty,
-                expected_sigs.liberated_sig.c_variadic,
-                hir::Safety::Safe,
-                ExternAbi::RustCall,
-            );
+            let fn_sig_kind = FnSigKind::default()
+                .set_abi(ExternAbi::RustCall)
+                .set_safe(true)
+                .set_c_variadic(expected_sigs.liberated_sig.c_variadic());
+            expected_sigs.liberated_sig =
+                self.tcx.mk_fn_sig(inputs, supplied_output_ty, fn_sig_kind);
 
             Ok(InferOk { value: expected_sigs, obligations: all_obligations })
         })
@@ -957,14 +933,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             },
         };
 
+        let fn_sig_kind = FnSigKind::default()
+            .set_abi(ExternAbi::RustCall)
+            .set_safe(true)
+            .set_c_variadic(decl.c_variadic());
         let result = ty::Binder::bind_with_vars(
-            self.tcx.mk_fn_sig(
-                supplied_arguments,
-                supplied_return,
-                decl.c_variadic,
-                hir::Safety::Safe,
-                ExternAbi::RustCall,
-            ),
+            self.tcx.mk_fn_sig(supplied_arguments, supplied_return, fn_sig_kind),
             bound_vars,
         );
 
@@ -972,7 +946,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results.borrow_mut().user_provided_sigs.insert(expr_def_id, c_result);
 
         // Normalize only after registering in `user_provided_sigs`.
-        self.normalize(self.tcx.def_span(expr_def_id), result)
+        self.normalize(self.tcx.def_span(expr_def_id), Unnormalized::new_wip(result))
     }
 
     /// Invoked when we are translating the coroutine that results
@@ -1017,17 +991,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     get_future_output(obligation.predicate, obligation.cause.span)
                 })?
             }
-            ty::Alias(ty::Projection, _) => {
+            ty::Alias(ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
                 return Some(Ty::new_error_with_message(
                     self.tcx,
                     closure_span,
                     "this projection should have been projected to an opaque type",
                 ));
             }
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => self
+            ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => self
                 .tcx
                 .explicit_item_self_bounds(def_id)
                 .iter_instantiated_copied(self.tcx, args)
+                .map(Unnormalized::skip_norm_wip)
                 .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             ty::Error(_) => return Some(ret_ty),
             _ => {
@@ -1035,7 +1010,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        let output_ty = self.normalize(closure_span, output_ty);
+        let output_ty = self.normalize(closure_span, Unnormalized::new_wip(output_ty));
 
         // async fn that have opaque types in their return type need to redo the conversion to inference variables
         // as they fetch the still opaque version from the signature.
@@ -1082,11 +1057,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // The `Future` trait has only one associated item, `Output`,
         // so check that this is what we see.
         let output_assoc_item = self.tcx.associated_item_def_ids(trait_def_id)[0];
-        if output_assoc_item != predicate.projection_term.def_id {
+        if output_assoc_item != predicate.projection_term.def_id() {
             span_bug!(
                 cause_span,
                 "projecting associated item `{:?}` from future, which is not Output `{:?}`",
-                predicate.projection_term.def_id,
+                predicate.projection_term.kind,
                 output_assoc_item,
             );
         }
@@ -1121,13 +1096,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             lowerer.lower_ty(output);
         }
 
-        let result = ty::Binder::dummy(self.tcx.mk_fn_sig(
-            supplied_arguments,
-            err_ty,
-            decl.c_variadic,
-            hir::Safety::Safe,
-            ExternAbi::RustCall,
-        ));
+        let fn_sig_kind = FnSigKind::default()
+            .set_abi(ExternAbi::RustCall)
+            .set_safe(true)
+            .set_c_variadic(decl.c_variadic());
+        let result = ty::Binder::dummy(self.tcx.mk_fn_sig(supplied_arguments, err_ty, fn_sig_kind));
 
         debug!("supplied_sig_of_closure: result={:?}", result);
 
@@ -1142,7 +1115,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> ClosureSignatures<'tcx> {
         let liberated_sig =
             self.tcx().liberate_late_bound_regions(expr_def_id.to_def_id(), bound_sig);
-        let liberated_sig = self.normalize(self.tcx.def_span(expr_def_id), liberated_sig);
+        let liberated_sig =
+            self.normalize(self.tcx.def_span(expr_def_id), Unnormalized::new_wip(liberated_sig));
         ClosureSignatures { bound_sig, liberated_sig }
     }
 }

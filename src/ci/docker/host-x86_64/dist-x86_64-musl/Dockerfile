@@ -25,6 +25,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /build/
 
 COPY scripts/musl-toolchain.sh /build/
+COPY scripts/musl-cve-2026-6042.diff /build/
+COPY scripts/musl-cve-2026-40200.diff /build/
 # We need to mitigate rust-lang/rust#34978 when compiling musl itself as well
 RUN CFLAGS="-Wa,-mrelax-relocations=no -Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \
     CXXFLAGS="-Wa,-mrelax-relocations=no -Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \
@@ -35,14 +37,13 @@ RUN sh /scripts/sccache.sh
 
 ENV HOSTS=x86_64-unknown-linux-musl
 
-ENV RUST_CONFIGURE_ARGS \
-      --musl-root-x86_64=/usr/local/x86_64-linux-musl \
+ENV RUST_CONFIGURE_ARGS="--musl-root-x86_64=/usr/local/x86_64-linux-musl \
       --enable-extended \
       --enable-sanitizers \
       --enable-profiler \
       --enable-lld \
       --set target.x86_64-unknown-linux-musl.crt-static=false \
-      --build $HOSTS
+      --build $HOSTS"
 
 # Newer binutils broke things on some vms/distros (i.e., linking against
 # unknown relocs disabled by the following flag), so we need to go out of our
@@ -54,4 +55,4 @@ ENV CFLAGS_x86_64_unknown_linux_musl="-Wa,-mrelax-relocations=no -Wa,--compress-
     -Wl,--compress-debug-sections=none"
 
 # To run native tests replace `dist` below with `test`
-ENV SCRIPT python3 ../x.py dist --build $HOSTS
+ENV SCRIPT="python3 ../x.py dist --build $HOSTS"

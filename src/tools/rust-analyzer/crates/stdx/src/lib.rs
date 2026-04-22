@@ -1,5 +1,6 @@
 //! Missing batteries for standard libraries.
 
+use std::borrow::Cow;
 use std::io as sio;
 use std::process::Command;
 use std::{cmp::Ordering, ops, time::Instant};
@@ -221,18 +222,50 @@ pub fn trim_indent(mut text: &str) -> String {
     if text.starts_with('\n') {
         text = &text[1..];
     }
-    let indent = text
-        .lines()
-        .filter(|it| !it.trim().is_empty())
-        .map(|it| it.len() - it.trim_start().len())
-        .min()
-        .unwrap_or(0);
+    let indent = indent_of(text);
     text.split_inclusive('\n')
         .map(
             |line| {
                 if line.len() <= indent { line.trim_start_matches(' ') } else { &line[indent..] }
             },
         )
+        .collect()
+}
+
+#[must_use]
+fn indent_of(text: &str) -> usize {
+    text.lines()
+        .filter(|it| !it.trim().is_empty())
+        .map(|it| it.len() - it.trim_start().len())
+        .min()
+        .unwrap_or(0)
+}
+
+#[must_use]
+pub fn dedent_by(spaces: usize, text: &str) -> String {
+    text.split_inclusive('\n')
+        .map(|line| {
+            let trimmed = line.trim_start_matches(' ');
+            if line.len() - trimmed.len() <= spaces { trimmed } else { &line[spaces..] }
+        })
+        .collect()
+}
+
+/// Indent non empty lines, including the first line
+#[must_use]
+pub fn indent_string(s: &str, indent_level: u8) -> String {
+    if indent_level == 0 || s.is_empty() {
+        return s.to_owned();
+    }
+    let indent_str = "    ".repeat(indent_level as usize);
+    s.split_inclusive("\n")
+        .map(|line| {
+            if line.trim_end().is_empty() {
+                Cow::Borrowed(line)
+            } else {
+                format!("{indent_str}{line}").into()
+            }
+        })
         .collect()
 }
 
@@ -364,6 +397,37 @@ mod tests {
             ),
             "fn main() {\n    return 92;\n}\n"
         );
+    }
+
+    #[test]
+    fn test_dedent() {
+        assert_eq!(dedent_by(0, ""), "");
+        assert_eq!(dedent_by(1, ""), "");
+        assert_eq!(dedent_by(2, ""), "");
+        assert_eq!(dedent_by(0, "foo"), "foo");
+        assert_eq!(dedent_by(2, "foo"), "foo");
+        assert_eq!(dedent_by(2, "  foo"), "foo");
+        assert_eq!(dedent_by(2, "    foo"), "  foo");
+        assert_eq!(dedent_by(2, "    foo\nbar"), "  foo\nbar");
+        assert_eq!(dedent_by(2, "foo\n    bar"), "foo\n  bar");
+        assert_eq!(dedent_by(2, "foo\n\n    bar"), "foo\n\n  bar");
+        assert_eq!(dedent_by(2, "foo\n.\n    bar"), "foo\n.\n  bar");
+        assert_eq!(dedent_by(2, "foo\n .\n    bar"), "foo\n.\n  bar");
+        assert_eq!(dedent_by(2, "foo\n   .\n    bar"), "foo\n .\n  bar");
+    }
+
+    #[test]
+    fn test_indent_of() {
+        assert_eq!(indent_of(""), 0);
+        assert_eq!(indent_of(" "), 0);
+        assert_eq!(indent_of(" x"), 1);
+        assert_eq!(indent_of(" x\n"), 1);
+        assert_eq!(indent_of(" x\ny"), 0);
+        assert_eq!(indent_of(" x\n y"), 1);
+        assert_eq!(indent_of(" x\n  y"), 1);
+        assert_eq!(indent_of("  x\n  y"), 2);
+        assert_eq!(indent_of("  x\n  y\n"), 2);
+        assert_eq!(indent_of("  x\n\n  y\n"), 2);
     }
 
     #[test]

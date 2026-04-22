@@ -116,6 +116,8 @@ pub enum SyntaxKind {
     AWAIT_KW,
     BIKESHED_KW,
     BUILTIN_KW,
+    CFG_ATTR_KW,
+    CFG_KW,
     CLOBBER_ABI_KW,
     DEFAULT_KW,
     DYN_KW,
@@ -186,6 +188,10 @@ pub enum SyntaxKind {
     BREAK_EXPR,
     CALL_EXPR,
     CAST_EXPR,
+    CFG_ATOM,
+    CFG_ATTR_META,
+    CFG_COMPOSITE,
+    CFG_META,
     CLOSURE_EXPR,
     CONST,
     CONST_ARG,
@@ -212,10 +218,12 @@ pub enum SyntaxKind {
     IDENT_PAT,
     IF_EXPR,
     IMPL,
+    IMPL_RESTRICTION,
     IMPL_TRAIT_TYPE,
     INDEX_EXPR,
     INFER_TYPE,
     ITEM_LIST,
+    KEY_VALUE_META,
     LABEL,
     LET_ELSE,
     LET_EXPR,
@@ -238,9 +246,9 @@ pub enum SyntaxKind {
     MATCH_ARM_LIST,
     MATCH_EXPR,
     MATCH_GUARD,
-    META,
     METHOD_CALL_EXPR,
     MODULE,
+    MUT_RESTRICTION,
     NAME,
     NAME_REF,
     NEVER_TYPE,
@@ -254,6 +262,7 @@ pub enum SyntaxKind {
     PAREN_TYPE,
     PATH,
     PATH_EXPR,
+    PATH_META,
     PATH_PAT,
     PATH_SEGMENT,
     PATH_TYPE,
@@ -285,6 +294,7 @@ pub enum SyntaxKind {
     STMT_LIST,
     STRUCT,
     TOKEN_TREE,
+    TOKEN_TREE_META,
     TRAIT,
     TRY_BLOCK_MODIFIER,
     TRY_EXPR,
@@ -302,6 +312,7 @@ pub enum SyntaxKind {
     TYPE_PARAM,
     UNDERSCORE_EXPR,
     UNION,
+    UNSAFE_META,
     USE,
     USE_BOUND_GENERIC_ARGS,
     USE_TREE,
@@ -309,6 +320,7 @@ pub enum SyntaxKind {
     VARIANT,
     VARIANT_LIST,
     VISIBILITY,
+    VISIBILITY_INNER,
     WHERE_CLAUSE,
     WHERE_PRED,
     WHILE_EXPR,
@@ -360,6 +372,10 @@ impl SyntaxKind {
             | BREAK_EXPR
             | CALL_EXPR
             | CAST_EXPR
+            | CFG_ATOM
+            | CFG_ATTR_META
+            | CFG_COMPOSITE
+            | CFG_META
             | CLOSURE_EXPR
             | CONST
             | CONST_ARG
@@ -386,10 +402,12 @@ impl SyntaxKind {
             | IDENT_PAT
             | IF_EXPR
             | IMPL
+            | IMPL_RESTRICTION
             | IMPL_TRAIT_TYPE
             | INDEX_EXPR
             | INFER_TYPE
             | ITEM_LIST
+            | KEY_VALUE_META
             | LABEL
             | LET_ELSE
             | LET_EXPR
@@ -412,9 +430,9 @@ impl SyntaxKind {
             | MATCH_ARM_LIST
             | MATCH_EXPR
             | MATCH_GUARD
-            | META
             | METHOD_CALL_EXPR
             | MODULE
+            | MUT_RESTRICTION
             | NAME
             | NAME_REF
             | NEVER_TYPE
@@ -428,6 +446,7 @@ impl SyntaxKind {
             | PAREN_TYPE
             | PATH
             | PATH_EXPR
+            | PATH_META
             | PATH_PAT
             | PATH_SEGMENT
             | PATH_TYPE
@@ -459,6 +478,7 @@ impl SyntaxKind {
             | STMT_LIST
             | STRUCT
             | TOKEN_TREE
+            | TOKEN_TREE_META
             | TRAIT
             | TRY_BLOCK_MODIFIER
             | TRY_EXPR
@@ -476,6 +496,7 @@ impl SyntaxKind {
             | TYPE_PARAM
             | UNDERSCORE_EXPR
             | UNION
+            | UNSAFE_META
             | USE
             | USE_BOUND_GENERIC_ARGS
             | USE_TREE
@@ -483,6 +504,7 @@ impl SyntaxKind {
             | VARIANT
             | VARIANT_LIST
             | VISIBILITY
+            | VISIBILITY_INNER
             | WHERE_CLAUSE
             | WHERE_PRED
             | WHILE_EXPR
@@ -601,6 +623,8 @@ impl SyntaxKind {
             AUTO_KW => "auto",
             BIKESHED_KW => "bikeshed",
             BUILTIN_KW => "builtin",
+            CFG_KW => "cfg",
+            CFG_ATTR_KW => "cfg_attr",
             CLOBBER_ABI_KW => "clobber_abi",
             DEFAULT_KW => "default",
             DYN_KW => "dyn",
@@ -704,6 +728,8 @@ impl SyntaxKind {
             AUTO_KW => true,
             BIKESHED_KW => true,
             BUILTIN_KW => true,
+            CFG_KW => true,
+            CFG_ATTR_KW => true,
             CLOBBER_ABI_KW => true,
             DEFAULT_KW => true,
             DYN_KW if edition < Edition::Edition2018 => true,
@@ -795,6 +821,8 @@ impl SyntaxKind {
             AUTO_KW => true,
             BIKESHED_KW => true,
             BUILTIN_KW => true,
+            CFG_KW => true,
+            CFG_ATTR_KW => true,
             CLOBBER_ABI_KW => true,
             DEFAULT_KW => true,
             DYN_KW if edition < Edition::Edition2018 => true,
@@ -949,6 +977,8 @@ impl SyntaxKind {
             "auto" => AUTO_KW,
             "bikeshed" => BIKESHED_KW,
             "builtin" => BUILTIN_KW,
+            "cfg" => CFG_KW,
+            "cfg_attr" => CFG_ATTR_KW,
             "clobber_abi" => CLOBBER_ABI_KW,
             "default" => DEFAULT_KW,
             "dyn" if edition < Edition::Edition2018 => DYN_KW,
@@ -1121,6 +1151,8 @@ macro_rules ! T_ {
     [auto] => { $ crate :: SyntaxKind :: AUTO_KW };
     [bikeshed] => { $ crate :: SyntaxKind :: BIKESHED_KW };
     [builtin] => { $ crate :: SyntaxKind :: BUILTIN_KW };
+    [cfg] => { $ crate :: SyntaxKind :: CFG_KW };
+    [cfg_attr] => { $ crate :: SyntaxKind :: CFG_ATTR_KW };
     [clobber_abi] => { $ crate :: SyntaxKind :: CLOBBER_ABI_KW };
     [default] => { $ crate :: SyntaxKind :: DEFAULT_KW };
     [dyn] => { $ crate :: SyntaxKind :: DYN_KW };

@@ -4,11 +4,10 @@ use crate::{DefWithBodyId, ModuleDefId, hir::MatchArm, nameres::crate_def_map, t
 use expect_test::{Expect, expect};
 use la_arena::RawIdx;
 use test_fixture::WithFixture;
-use triomphe::Arc;
 
 use super::super::*;
 
-fn lower(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (TestDB, Arc<Body>, DefWithBodyId) {
+fn lower(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (TestDB, DefWithBodyId) {
     let db = TestDB::with_files(ra_fixture);
 
     let krate = db.fetch_test_crate();
@@ -24,8 +23,27 @@ fn lower(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> (TestDB, Arc<Body>,
     }
     let fn_def = fn_def.unwrap().into();
 
-    let body = db.body(fn_def);
-    (db, body, fn_def)
+    Body::of(&db, fn_def);
+    (db, fn_def)
+}
+
+fn pretty_print(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
+    let db = TestDB::with_files(ra_fixture);
+
+    let krate = db.fetch_test_crate();
+    let def_map = crate_def_map(&db, krate);
+    let mut fn_def = None;
+    'outer: for (_, module) in def_map.modules() {
+        for decl in module.scope.declarations() {
+            if let ModuleDefId::FunctionId(it) = decl {
+                fn_def = Some(it);
+                break 'outer;
+            }
+        }
+    }
+    let fn_def = fn_def.unwrap().into();
+
+    expect.assert_eq(&Body::of(&db, fn_def).pretty_print(&db, fn_def, Edition::CURRENT));
 }
 
 fn def_map_at(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> String {
@@ -144,7 +162,7 @@ mod m {
 
 #[test]
 fn desugar_for_loop() {
-    let (db, body, def) = lower(
+    pretty_print(
         r#"
 //- minicore: iterator
 fn main() {
@@ -154,9 +172,7 @@ fn main() {
     }
 }
 "#,
-    );
-
-    expect![[r#"
+        expect![[r#"
         fn main() {
             match builtin#lang(into_iter)(
                 0..10,
@@ -173,13 +189,13 @@ fn main() {
                     }
                 },
             }
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+        }"#]],
+    );
 }
 
 #[test]
 fn desugar_builtin_format_args_before_1_89_0() {
-    let (db, body, def) = lower(
+    pretty_print(
         r#"
 //- minicore: fmt_before_1_89_0
 fn main() {
@@ -188,9 +204,7 @@ fn main() {
     builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
 }
 "#,
-    );
-
-    expect![[r#"
+        expect![[r#"
         fn main() {
             let are = "are";
             let count = 10;
@@ -256,13 +270,13 @@ fn main() {
                     }
                 },
             );
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+        }"#]],
+    )
 }
 
 #[test]
 fn desugar_builtin_format_args_before_1_93_0() {
-    let (db, body, def) = lower(
+    pretty_print(
         r#"
 //- minicore: fmt_before_1_93_0
 fn main() {
@@ -271,9 +285,7 @@ fn main() {
     builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
 }
 "#,
-    );
-
-    expect![[r#"
+        expect![[r#"
         fn main() {
             let are = "are";
             let count = 10;
@@ -339,13 +351,13 @@ fn main() {
                     )
                 }
             };
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+        }"#]],
+    )
 }
 
 #[test]
 fn desugar_builtin_format_args() {
-    let (db, body, def) = lower(
+    pretty_print(
         r#"
 //- minicore: fmt
 fn main() {
@@ -356,9 +368,7 @@ fn main() {
     builtin#format_args("hello world", orphan = ());
 }
 "#,
-    );
-
-    expect![[r#"
+        expect![[r#"
         fn main() {
             let are = "are";
             let count = 10;
@@ -392,13 +402,13 @@ fn main() {
                     "hello world",
                 )
             };
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+        }"#]],
+    )
 }
 
 #[test]
 fn test_macro_hygiene() {
-    let (db, body, def) = lower(
+    pretty_print(
         r##"
 //- minicore: fmt, from
 //- /main.rs
@@ -428,10 +438,7 @@ impl SsrError {
     }
 }
 "##,
-    );
-
-    assert_eq!(db.body_with_source_map(def).1.diagnostics(), &[]);
-    expect![[r#"
+        expect![[r#"
         fn main() {
             _ = ra_test_fixture::error::SsrError::new(
                 {
@@ -449,13 +456,13 @@ impl SsrError {
                     }
                 },
             );
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+        }"#]],
+    )
 }
 
 #[test]
 fn regression_10300() {
-    let (db, body, def) = lower(
+    pretty_print(
         r#"
 //- minicore: concat, panic, fmt_before_1_89_0
 mod private {
@@ -472,16 +479,7 @@ fn f(a: i32, b: u32) -> String {
     m!();
 }
 "#,
-    );
-
-    let (_, source_map) = db.body_with_source_map(def);
-    assert_eq!(source_map.diagnostics(), &[]);
-
-    for (_, def_map) in body.blocks(&db) {
-        assert_eq!(def_map.diagnostics(), &[]);
-    }
-
-    expect![[r#"
+        expect![[r#"
         fn f(a, b) {
             {
                 core::panicking::panic_fmt(
@@ -497,8 +495,8 @@ fn f(a: i32, b: u32) -> String {
                     ),
                 );
             };
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+        }"#]],
+    )
 }
 
 #[test]
@@ -507,7 +505,7 @@ fn destructuring_assignment_tuple_macro() {
     // but in destructuring assignment it is valid, because `m!()()` is a valid expression, and destructuring
     // assignments start their lives as expressions. So we have to do the same.
 
-    let (db, body, def) = lower(
+    pretty_print(
         r#"
 struct Bar();
 
@@ -519,25 +517,16 @@ fn foo() {
     m!()() = Bar();
 }
 "#,
-    );
-
-    let (_, source_map) = db.body_with_source_map(def);
-    assert_eq!(source_map.diagnostics(), &[]);
-
-    for (_, def_map) in body.blocks(&db) {
-        assert_eq!(def_map.diagnostics(), &[]);
-    }
-
-    expect![[r#"
+        expect![[r#"
         fn foo() {
             Bar() = Bar();
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+        }"#]],
+    )
 }
 
 #[test]
 fn shadowing_record_variant() {
-    let (_, body, _) = lower(
+    let (db, def) = lower(
         r#"
 enum A {
     B { field: i32 },
@@ -550,6 +539,7 @@ fn f() {
 }
     "#,
     );
+    let body = Body::of(&db, def);
     assert_eq!(body.assert_expr_only().bindings.len(), 1, "should have a binding for `B`");
     assert_eq!(
         body[BindingId::from_raw(RawIdx::from_u32(0))].name.as_str(),
@@ -560,39 +550,35 @@ fn f() {
 
 #[test]
 fn regression_pretty_print_bind_pat() {
-    let (db, body, owner) = lower(
+    pretty_print(
         r#"
 fn foo() {
     let v @ u = 123;
 }
 "#,
-    );
-    let printed = body.pretty_print(&db, owner, Edition::CURRENT);
-
-    expect![[r#"
+        expect![[r#"
         fn foo() {
             let v @ u = 123;
-        }"#]]
-    .assert_eq(&printed);
+        }"#]],
+    );
 }
 
 #[test]
 fn skip_skips_body() {
-    let (db, body, owner) = lower(
+    pretty_print(
         r#"
 #[rust_analyzer::skip]
 async fn foo(a: (), b: i32) -> u32 {
     0 + 1 + b()
 }
 "#,
+        expect!["fn foo(�, �) �"],
     );
-    let printed = body.pretty_print(&db, owner, Edition::CURRENT);
-    expect!["fn foo(�, �) �"].assert_eq(&printed);
 }
 
 #[test]
 fn range_bounds_are_hir_exprs() {
-    let (_, body, _) = lower(
+    let (db, body) = lower(
         r#"
 pub const L: i32 = 6;
 mod x {
@@ -607,6 +593,7 @@ const fn f(x: i32) -> i32 {
 }"#,
     );
 
+    let body = Body::of(&db, body);
     let mtch_arms = body
         .assert_expr_only()
         .exprs
@@ -635,7 +622,7 @@ const fn f(x: i32) -> i32 {
 
 #[test]
 fn print_hir_precedences() {
-    let (db, body, def) = lower(
+    pretty_print(
         r#"
 fn main() {
     _ = &(1 - (2 - 3) + 4 * 5 * (6 + 7));
@@ -646,9 +633,7 @@ fn main() {
     let _ = &mut (*r as i32)
 }
 "#,
-    );
-
-    expect![[r#"
+        expect![[r#"
         fn main() {
             _ = &((1 - (2 - 3)) + (4 * 5) * (6 + 7));
             _ = 1 + 2 < 3 && true && 4 < 5 && (a || b || c) || d && e;
@@ -656,24 +641,43 @@ fn main() {
             break a && b || (return) || (return 2);
             let r = &2;
             let _ = &mut (*r as i32);
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+        }"#]],
+    )
 }
 
 #[test]
 fn async_fn_weird_param_patterns() {
-    let (db, body, def) = lower(
+    pretty_print(
         r#"
 async fn main(&self, param1: i32, ref mut param2: i32, _: i32, param4 @ _: i32, 123: i32) {}
 "#,
-    );
+        expect![[r#"
+            fn main(self, param1, mut param2, mut <ra@gennew>0, param4 @ _, mut <ra@gennew>1) async {
+                let ref mut param2 = param2;
+                let _ = <ra@gennew>0;
+                let 123 = <ra@gennew>1;
+                {}
+            }"#]],
+    )
+}
 
-    expect![[r#"
-        fn main(self, param1, mut param2, mut <ra@gennew>0, param4 @ _, mut <ra@gennew>1) async {
-            let ref mut param2 = param2;
-            let _ = <ra@gennew>0;
-            let 123 = <ra@gennew>1;
-            {}
-        }"#]]
-    .assert_eq(&body.pretty_print(&db, def, Edition::CURRENT))
+#[test]
+fn array_element_cfg() {
+    pretty_print(
+        r#"
+fn foo() {
+    [
+        (),
+        #[cfg(false)]
+        ()
+    ];
+}
+    "#,
+        expect![[r#"
+        fn foo() {
+            [
+                (),
+            ];
+        }"#]],
+    );
 }

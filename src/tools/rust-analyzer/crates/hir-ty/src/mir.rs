@@ -6,8 +6,7 @@ use base_db::Crate;
 use either::Either;
 use hir_def::{
     DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
-    expr_store::Body,
-    hir::{BindingAnnotation, BindingId, Expr, ExprId, Ordering, PatId},
+    hir::{BindingId, Expr, ExprId, Ordering, PatId},
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 use rustc_ast_ir::Mutability;
@@ -23,8 +22,8 @@ use crate::{
     display::{DisplayTarget, HirDisplay},
     infer::PointerCast,
     next_solver::{
-        Const, DbInterner, ErrorGuaranteed, GenericArgs, ParamEnv, StoredConst, StoredGenericArgs,
-        StoredTy, Ty, TyKind,
+        Allocation, AllocationData, DbInterner, ErrorGuaranteed, GenericArgs, ParamEnv,
+        StoredAllocation, StoredConst, StoredGenericArgs, StoredTy, Ty, TyKind,
         infer::{InferCtxt, traits::ObligationCause},
         obligation_ctxt::ObligationCtxt,
     },
@@ -40,7 +39,10 @@ pub use borrowck::{BorrowckResult, MutabilityReason, borrowck_query};
 pub use eval::{
     Evaluator, MirEvalError, VTableMap, interpret_mir, pad16, render_const_using_debug_impl,
 };
-pub use lower::{MirLowerError, lower_to_mir, mir_body_for_closure_query, mir_body_query};
+pub use lower::{
+    MirLowerError, lower_body_to_mir, lower_to_mir_with_store, mir_body_for_closure_query,
+    mir_body_query,
+};
 pub use monomorphization::{
     monomorphized_mir_body_for_closure_query, monomorphized_mir_body_query,
 };
@@ -104,7 +106,13 @@ pub enum OperandKind {
     /// [UCG#188]: https://github.com/rust-lang/unsafe-code-guidelines/issues/188
     Move(Place),
     /// Constants are already semantically values, and remain unchanged.
-    Constant { konst: StoredConst, ty: StoredTy },
+    Constant {
+        konst: StoredConst,
+        ty: StoredTy,
+    },
+    Allocation {
+        allocation: StoredAllocation,
+    },
     /// NON STANDARD: This kind of operand returns an immutable reference to that static memory. Rustc
     /// handles it with the `Constant` variant somehow.
     Static(StaticId),
@@ -112,11 +120,10 @@ pub enum OperandKind {
 
 impl<'db> Operand {
     fn from_concrete_const(data: Box<[u8]>, memory_map: MemoryMap<'db>, ty: Ty<'db>) -> Self {
-        let interner = DbInterner::conjure();
         Operand {
-            kind: OperandKind::Constant {
-                konst: Const::new_valtree(interner, ty, data, memory_map).store(),
-                ty: ty.store(),
+            kind: OperandKind::Allocation {
+                allocation: Allocation::new(AllocationData { ty, memory: data, memory_map })
+                    .store(),
             },
             span: None,
         }
@@ -160,7 +167,6 @@ impl<V: PartialEq> ProjectionElem<V> {
         infcx: &InferCtxt<'db>,
         env: ParamEnv<'db>,
         mut base: Ty<'db>,
-        closure_field: impl FnOnce(InternedClosureId, GenericArgs<'db>, usize) -> Ty<'db>,
         krate: Crate,
     ) -> Ty<'db> {
         let interner = infcx.interner;
@@ -215,7 +221,7 @@ impl<V: PartialEq> ProjectionElem<V> {
                 }
             },
             ProjectionElem::ClosureField(f) => match base.kind() {
-                TyKind::Closure(id, subst) => closure_field(id.0, subst, *f),
+                TyKind::Closure(_, args) => args.as_closure().tupled_upvars_ty().tuple_fields()[*f],
                 _ => {
                     never!("Only closure has closure field");
                     Ty::new_error(interner, ErrorGuaranteed)
@@ -703,17 +709,29 @@ pub enum MutBorrowKind {
 }
 
 impl BorrowKind {
-    fn from_hir(m: hir_def::type_ref::Mutability) -> Self {
+    fn from_hir_mutability(m: hir_def::type_ref::Mutability) -> Self {
         match m {
             hir_def::type_ref::Mutability::Shared => BorrowKind::Shared,
             hir_def::type_ref::Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
         }
     }
 
-    fn from_rustc(m: rustc_ast_ir::Mutability) -> Self {
+    fn from_rustc_mutability(m: rustc_ast_ir::Mutability) -> Self {
         match m {
             rustc_ast_ir::Mutability::Not => BorrowKind::Shared,
             rustc_ast_ir::Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
+        }
+    }
+
+    fn from_hir(bk: crate::infer::closure::analysis::BorrowKind) -> Self {
+        match bk {
+            crate::closure_analysis::BorrowKind::Immutable => Self::Shared,
+            crate::closure_analysis::BorrowKind::UniqueImmutable => {
+                Self::Mut { kind: MutBorrowKind::ClosureCapture }
+            }
+            crate::closure_analysis::BorrowKind::Mutable => {
+                Self::Mut { kind: MutBorrowKind::Default }
+            }
         }
     }
 }
@@ -1071,6 +1089,7 @@ pub struct MirBody {
     pub start_block: BasicBlockId,
     pub owner: DefWithBodyId,
     pub binding_locals: ArenaMap<BindingId, LocalId>,
+    pub upvar_locals: FxHashMap<BindingId, Vec<(LocalId, crate::closure_analysis::Place)>>,
     pub param_locals: Vec<LocalId>,
     /// This field stores the closures directly owned by this body. It is used
     /// in traversing every mir body.
@@ -1092,7 +1111,9 @@ impl MirBody {
                 OperandKind::Copy(p) | OperandKind::Move(p) => {
                     f(p, store);
                 }
-                OperandKind::Constant { .. } | OperandKind::Static(_) => (),
+                OperandKind::Constant { .. }
+                | OperandKind::Static(_)
+                | OperandKind::Allocation { .. } => (),
             }
         }
         for (_, block) in self.basic_blocks.iter_mut() {
@@ -1180,6 +1201,7 @@ impl MirBody {
             start_block: _,
             owner: _,
             binding_locals,
+            upvar_locals,
             param_locals,
             closures,
             projection_store,
@@ -1188,6 +1210,7 @@ impl MirBody {
         basic_blocks.shrink_to_fit();
         locals.shrink_to_fit();
         binding_locals.shrink_to_fit();
+        upvar_locals.shrink_to_fit();
         param_locals.shrink_to_fit();
         closures.shrink_to_fit();
         for (_, b) in basic_blocks.iter_mut() {
@@ -1205,20 +1228,6 @@ pub enum MirSpan {
     SelfParam,
     Unknown,
 }
-
-impl MirSpan {
-    pub fn is_ref_span(&self, body: &Body) -> bool {
-        match *self {
-            MirSpan::ExprId(expr) => matches!(body[expr], Expr::Ref { .. }),
-            // FIXME: Figure out if this is correct wrt. match ergonomics.
-            MirSpan::BindingId(binding) => {
-                matches!(body[binding].mode, BindingAnnotation::Ref | BindingAnnotation::RefMut)
-            }
-            MirSpan::PatId(_) | MirSpan::SelfParam | MirSpan::Unknown => false,
-        }
-    }
-}
-
 impl_from!(ExprId, PatId for MirSpan);
 
 impl From<&ExprId> for MirSpan {

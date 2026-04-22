@@ -290,8 +290,8 @@ impl<T: PointeeSized> *const T {
     ///     assert_eq!(ptr.as_ref_unchecked(), &10);
     /// }
     /// ```
-    #[stable(feature = "ptr_as_ref_unchecked", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "ptr_as_ref_unchecked", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "ptr_as_ref_unchecked", since = "1.95.0")]
+    #[rustc_const_stable(feature = "ptr_as_ref_unchecked", since = "1.95.0")]
     #[inline]
     #[must_use]
     pub const unsafe fn as_ref_unchecked<'a>(self) -> &'a T {

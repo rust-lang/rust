@@ -65,7 +65,7 @@ impl<'tcx> BasicBlocks<'tcx> {
 
     /// Returns basic blocks in a reverse postorder.
     ///
-    /// See [`traversal::reverse_postorder`]'s docs to learn what is preorder traversal.
+    /// See [`traversal::reverse_postorder`]'s docs to learn what is postorder traversal.
     ///
     /// [`traversal::reverse_postorder`]: crate::mir::traversal::reverse_postorder
     #[inline]
@@ -171,7 +171,7 @@ impl<D: Decoder> Decodable<D> for Cache {
     }
 }
 
-impl<CTX> HashStable<CTX> for Cache {
+impl<Hcx> HashStable<Hcx> for Cache {
     #[inline]
-    fn hash_stable(&self, _: &mut CTX, _: &mut StableHasher) {}
+    fn hash_stable(&self, _: &mut Hcx, _: &mut StableHasher) {}
 }

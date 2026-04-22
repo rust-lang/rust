@@ -138,6 +138,9 @@ pub enum Command {
     /// The `rust-version` file is used to determine the commit that will be intsalled.
     /// `rustup-toolchain-install-master` must be installed for this to work.
     Toolchain {
+        /// Overwrite the commit to install.
+        #[arg(long)]
+        commit: Option<String>,
         /// Flags that are passed through to `rustup-toolchain-install-master`.
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         flags: Vec<String>,
@@ -157,8 +160,8 @@ impl Command {
             | Self::Build { flags, .. }
             | Self::Check { flags, .. }
             | Self::Doc { flags, .. }
-            | Self::Fmt { flags }
-            | Self::Toolchain { flags }
+            | Self::Fmt { flags, .. }
+            | Self::Toolchain { flags, .. }
             | Self::Clippy { flags, .. }
             | Self::Run { flags, .. }
             | Self::Test { flags, .. } => {

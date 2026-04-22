@@ -70,18 +70,17 @@ See [Controlling pass/fail expectations](ui.md#controlling-passfail-expectations
 
 | Directive                   | Explanation                                 | Supported test suites                     | Possible values |
 |-----------------------------|---------------------------------------------|-------------------------------------------|-----------------|
-| `check-pass`                | Building (no codegen) should pass           | `ui`, `crashes`, `incremental`            | N/A             |
+| `check-pass`                | Building (no codegen) should pass           | `ui`, `crashes`                           | N/A             |
 | `check-fail`                | Building (no codegen) should fail           | `ui`, `crashes`                           | N/A             |
-| `build-pass`                | Building should pass                        | `ui`, `crashes`, `codegen`, `incremental` | N/A             |
+| `build-pass`                | Building should pass                        | `ui`, `crashes`, `codegen`                | N/A             |
 | `build-fail`                | Building should fail                        | `ui`, `crashes`                           | N/A             |
-| `run-pass`                  | Program must exit with code `0`             | `ui`, `crashes`, `incremental`            | N/A             |
+| `run-pass`                  | Program must exit with code `0`             | `ui`, `crashes`                           | N/A             |
 | `run-fail`                  | Program must exit with code `1..=127`       | `ui`, `crashes`                           | N/A             |
 | `run-crash`                 | Program must crash                          | `ui`                                      | N/A             |
 | `run-fail-or-crash`         | Program must `run-fail` or `run-crash`      | `ui`                                      | N/A             |
 | `ignore-pass`               | Ignore `--pass` flag                        | `ui`, `crashes`, `codegen`, `incremental` | N/A             |
 | `dont-check-failure-status` | Don't check exact failure status (i.e. `1`) | `ui`, `incremental`                       | N/A             |
-| `failure-status`            | Check                                       | `ui`, `crashes`                           | Any `u16`       |
-| `should-ice`                | Check failure status is `101`               | `coverage`, `incremental`                 | N/A             |
+| `failure-status`            | On failure, the compiler must exit with this status code. To expect an ICE, use `//@ failure-status: 101`. | `ui`, `crashes`, `incremental`            | Any `u16`       |
 | `should-fail`               | Compiletest self-test                       | All                                       | N/A             |
 
 ### Controlling output snapshots and normalizations
@@ -91,9 +90,9 @@ comparison](ui.md#output-comparison) and [Rustfix tests](ui.md#rustfix-tests) fo
 
 | Directive                         | Explanation                                                                                                              | Supported test suites                        | Possible values                                                                         |
 |-----------------------------------|--------------------------------------------------------------------------------------------------------------------------|----------------------------------------------|-----------------------------------------------------------------------------------------|
-| `check-run-results`               | Check run test binary `run-{pass,fail}` output snapshot                                                                  | `ui`, `crashes`, `incremental` if `run-pass` | N/A                                                                                     |
-| `error-pattern`                   | Check that output contains a specific string                                                                             | `ui`, `crashes`, `incremental` if `run-pass` | String                                                                                  |
-| `regex-error-pattern`             | Check that output contains a regex pattern                                                                               | `ui`, `crashes`, `incremental` if `run-pass` | Regex                                                                                   |
+| `check-run-results`               | Check run test binary `run-{pass,fail}` output snapshot                                                                  | `ui`, `crashes`, `incremental`               | N/A                                                                                     |
+| `error-pattern`                   | Check that output contains a specific string                                                                             | `ui`, `crashes`, `incremental`               | String                                                                                  |
+| `regex-error-pattern`             | Check that output contains a regex pattern                                                                               | `ui`, `crashes`, `incremental`               | Regex                                                                                   |
 | `check-stdout`                    | Check `stdout` against `error-pattern`s from running test binary[^check_stdout]                                          | `ui`, `crashes`, `incremental`               | N/A                                                                                     |
 | `normalize-stderr-32bit`          | Normalize actual stderr (for 32-bit platforms) with a rule `"<raw>" -> "<normalized>"` before comparing against snapshot | `ui`, `incremental`                          | `"<RAW>" -> "<NORMALIZED>"`, `<RAW>`/`<NORMALIZED>` is regex capture and replace syntax |
 | `normalize-stderr-64bit`          | Normalize actual stderr (for 64-bit platforms) with a rule `"<raw>" -> "<normalized>"` before comparing against snapshot | `ui`, `incremental`                          | `"<RAW>" -> "<NORMALIZED>"`, `<RAW>`/`<NORMALIZED>` is regex capture and replace syntax |
@@ -107,7 +106,7 @@ comparison](ui.md#output-comparison) and [Rustfix tests](ui.md#rustfix-tests) fo
 | `exec-env`                        | Env var to set when executing a test                                                                                     | `ui`, `crashes`                              | `<KEY>=<VALUE>`                                                                         |
 | `unset-exec-env`                  | Env var to unset when executing a test                                                                                   | `ui`, `crashes`                              | Any env var name                                                                        |
 | `stderr-per-bitwidth`             | Generate a stderr snapshot for each bitwidth                                                                             | `ui`                                         | N/A                                                                                     |
-| `forbid-output`                   | A pattern which must not appear in stderr/`cfail` output                                                                 | `ui`, `incremental`                          | Regex pattern                                                                           |
+| `forbid-output`                   | Check that compile/run output does not contain a specific string                                                         | `ui`, `incremental`                          | String                                                                                  |
 | `run-flags`                       | Flags passed to the test executable                                                                                      | `ui`                                         | Arbitrary flags                                                                         |
 | `known-bug`                       | No error annotation needed due to known bug                                                                              | `ui`, `crashes`, `incremental`               | Issue number `#123456`                                                                  |
 | `compare-output-by-lines`         | Compare the output by lines, rather than as a single string                                                              | All                                          | N/A                                                                                     |
@@ -148,6 +147,7 @@ Some examples of `X` in `ignore-X` or `only-X`:
 - When [remote testing] is used: `remote`
 - When particular debuggers are being tested: `cdb`, `gdb`, `lldb`
 - When particular debugger versions are matched: `ignore-gdb-version`
+- When the [parallel frontend] is enabled: `ignore-parallel-frontend`
 - Specific [compare modes]: `compare-mode-polonius`, `compare-mode-chalk`,
   `compare-mode-split-dwarf`, `compare-mode-split-dwarf-single`
 - The two different test modes used by coverage tests:
@@ -233,6 +233,7 @@ The following directives will check LLVM support:
 See also [Debuginfo tests](compiletest.md#debuginfo-tests) for directives for ignoring debuggers.
 
 [remote testing]: running.md#running-tests-on-a-remote-machine
+[parallel frontend]: compiletest.md#parallel-frontend
 [compare modes]: ui.md#compare-modes
 [`x86_64-gnu-debug`]: https://github.com/rust-lang/rust/blob/ab3dba92db355b8d97db915a2dca161a117e959c/src/ci/docker/host-x86_64/x86_64-gnu-debug/Dockerfile#L32
 [`aarch64-gnu-debug`]: https://github.com/rust-lang/rust/blob/20c909ff9cdd88d33768a4ddb8952927a675b0ad/src/ci/docker/host-aarch64/aarch64-gnu-debug/Dockerfile#L32
@@ -314,9 +315,7 @@ See [Pretty-printer](compiletest.md#pretty-printer-tests).
 
 - `no-auto-check-cfg` — disable auto check-cfg (only for `--check-cfg` tests)
 - [`revisions`](compiletest.md#revisions) — compile multiple times
--[`forbid-output`](compiletest.md#incremental-tests) — incremental cfail rejects
-      output pattern
-- [`should-ice`](compiletest.md#incremental-tests) — incremental cfail should ICE
+- [`forbid-output`](compiletest.md#incremental-tests) — check that output does not contain a specified string
 - [`reference`] — an annotation linking to a rule in the reference
 - `disable-gdb-pretty-printers` — disable gdb pretty printers for debuginfo tests
 

@@ -6,7 +6,7 @@ mod msg_macro;
 mod subdiagnostic;
 mod utils;
 
-use diagnostic::{DiagnosticDerive, LintDiagnosticDerive};
+use diagnostic::DiagnosticDerive;
 pub(super) use msg_macro::msg_macro;
 use proc_macro2::TokenStream;
 use subdiagnostic::SubdiagnosticDerive;
@@ -51,38 +51,6 @@ pub(super) fn diagnostic_derive(s: Structure<'_>) -> TokenStream {
     DiagnosticDerive::new(s).into_tokens()
 }
 
-/// Implements `#[derive(LintDiagnostic)]`, which allows for lints to be specified as a struct,
-/// independent from the actual lint emitting code.
-///
-/// ```ignore (rust)
-/// #[derive(LintDiagnostic)]
-/// #[diag("unused attribute")]
-/// pub(crate) struct UnusedAttribute {
-///     #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
-///     pub this: Span,
-///     #[note("attribute also specified here")]
-///     pub other: Span,
-///     #[warning(
-///         "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
-///     )]
-///     pub warning: bool,
-/// }
-/// ```
-///
-/// Then, later, to emit the error:
-///
-/// ```ignore (rust)
-/// cx.emit_span_lint(UNUSED_ATTRIBUTES, span, UnusedAttribute {
-///     ...
-/// });
-/// ```
-///
-/// See rustc dev guide for more examples on using the `#[derive(LintDiagnostic)]`:
-/// <https://rustc-dev-guide.rust-lang.org/diagnostics/diagnostic-structs.html#reference>
-pub(super) fn lint_diagnostic_derive(s: Structure<'_>) -> TokenStream {
-    LintDiagnosticDerive::new(s).into_tokens()
-}
-
 /// Implements `#[derive(Subdiagnostic)]`, which allows for labels, notes, helps and
 /// suggestions to be specified as a structs or enums, independent from the actual diagnostics
 /// emitting code or diagnostic derives.
@@ -99,7 +67,7 @@ pub(super) fn lint_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// Then, later, use the subdiagnostic in a diagnostic:
 ///
 /// ```ignore (rust)
-/// #[derive(LintDiagnostic)]
+/// #[derive(Diagnostic)]
 /// #[diag("unused doc comment")]
 /// pub(crate) struct BuiltinUnusedDocComment<'a> {
 ///     pub kind: &'a str,

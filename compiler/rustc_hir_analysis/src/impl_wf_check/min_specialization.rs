@@ -190,7 +190,7 @@ fn get_impl_args(
     }
 
     let assumed_wf_types = ocx.assumed_wf_types_and_report_errors(param_env, impl1_def_id)?;
-    let _ = ocx.resolve_regions_and_report_errors(impl1_def_id, param_env, assumed_wf_types);
+    ocx.resolve_regions_and_report_errors(impl1_def_id, param_env, assumed_wf_types)?;
     let Ok(impl2_args) = infcx.fully_resolve(impl2_args) else {
         let span = tcx.def_span(impl1_def_id);
         let guar = tcx.dcx().emit_err(GenericArgsOnOverriddenImpl { span });
@@ -215,7 +215,7 @@ fn unconstrained_parent_impl_args<'tcx>(
     let impl_generic_predicates = tcx.predicates_of(impl_def_id);
     let mut unconstrained_parameters = FxHashSet::default();
     let mut constrained_params = FxHashSet::default();
-    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate_identity();
+    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id).instantiate_identity().skip_norm_wip();
 
     // Unfortunately the functions in `constrained_generic_parameters` don't do
     // what we want here. We want only a list of constrained parameters while
@@ -326,7 +326,10 @@ fn check_predicates<'tcx>(
 ) -> Result<(), ErrorGuaranteed> {
     let impl1_predicates: Vec<_> = traits::elaborate(
         tcx,
-        tcx.predicates_of(impl1_def_id).instantiate(tcx, impl1_args).into_iter(),
+        tcx.predicates_of(impl1_def_id)
+            .instantiate(tcx, impl1_args)
+            .into_iter()
+            .map(|(c, s)| (c.skip_norm_wip(), s)),
     )
     .collect();
 
@@ -340,7 +343,7 @@ fn check_predicates<'tcx>(
             tcx.predicates_of(impl2_node.def_id())
                 .instantiate(tcx, impl2_args)
                 .into_iter()
-                .map(|(c, _s)| c.as_predicate()),
+                .map(|(c, _s)| c.skip_norm_wip().as_predicate()),
         )
         .collect()
     };
@@ -373,7 +376,7 @@ fn check_predicates<'tcx>(
         .map(|(c, _span)| c.as_predicate());
 
     // Include the well-formed predicates of the type parameters of the impl.
-    for arg in tcx.impl_trait_ref(impl1_def_id).instantiate_identity().args {
+    for arg in tcx.impl_trait_ref(impl1_def_id).instantiate_identity().skip_norm_wip().args {
         let Some(term) = arg.as_term() else {
             continue;
         };

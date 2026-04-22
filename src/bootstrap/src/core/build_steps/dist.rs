@@ -87,6 +87,12 @@ impl Step for Docs {
         // from a shared directory.
         builder.run_default_doc_steps();
 
+        // In case no default doc steps are run for host, it is possible that `<host>/doc` directory
+        // is never created.
+        if !builder.config.dry_run() {
+            t!(fs::create_dir_all(builder.doc_out(host)));
+        }
+
         let dest = "share/doc/rust/html";
 
         let mut tarball = Tarball::new(builder, "rust-docs", &host.triple);
@@ -630,9 +636,9 @@ impl Step for Rustc {
                 let page_src = file_entry.path();
                 let page_dst = man_dst.join(file_entry.file_name());
                 let src_text = t!(std::fs::read_to_string(&page_src));
-                let new_text = src_text.replace("<INSERT VERSION HERE>", &builder.version);
+                let version = builder.rust_info().version(builder.build, &builder.version);
+                let new_text = src_text.replace("<INSERT VERSION HERE>", &version);
                 t!(std::fs::write(&page_dst, &new_text));
-                t!(fs::copy(&page_src, &page_dst));
             }
 
             // Debugger scripts

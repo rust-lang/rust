@@ -29,8 +29,6 @@ pub struct Body {
     /// empty.
     pub params: Box<[PatId]>,
     pub self_param: Option<BindingId>,
-    /// The `ExprId` of the actual body expression.
-    pub body_expr: ExprId,
 }
 
 impl ops::Deref for Body {
@@ -68,11 +66,10 @@ impl ops::Deref for BodySourceMap {
     }
 }
 
+#[salsa::tracked]
 impl Body {
-    pub(crate) fn body_with_source_map_query(
-        db: &dyn DefDatabase,
-        def: DefWithBodyId,
-    ) -> (Arc<Body>, Arc<BodySourceMap>) {
+    #[salsa::tracked(lru = 512, returns(ref))]
+    pub fn with_source_map(db: &dyn DefDatabase, def: DefWithBodyId) -> (Arc<Body>, BodySourceMap) {
         let _p = tracing::info_span!("body_with_source_map_query").entered();
         let mut params = None;
 
@@ -99,18 +96,25 @@ impl Body {
                 DefWithBodyId::VariantId(v) => {
                     let s = v.lookup(db);
                     let src = s.source(db);
-                    src.map(|it| it.expr())
+                    src.map(|it| it.const_arg()?.expr())
                 }
             }
         };
         let module = def.module(db);
         let (body, source_map) = lower_body(db, def, file_id, module, params, body, is_async_fn);
 
-        (Arc::new(body), Arc::new(source_map))
+        (Arc::new(body), source_map)
     }
 
-    pub(crate) fn body_query(db: &dyn DefDatabase, def: DefWithBodyId) -> Arc<Body> {
-        db.body_with_source_map(def).0
+    #[salsa::tracked(returns(deref))]
+    pub fn of(db: &dyn DefDatabase, def: DefWithBodyId) -> Arc<Body> {
+        Self::with_source_map(db, def).0.clone()
+    }
+}
+
+impl Body {
+    pub fn root_expr(&self) -> ExprId {
+        self.store.expr_roots().next().unwrap()
     }
 
     pub fn pretty_print(
@@ -129,7 +133,7 @@ impl Body {
         expr: ExprId,
         edition: Edition,
     ) -> String {
-        pretty::print_expr_hir(db, self, owner, expr, edition)
+        pretty::print_expr_hir(db, self, owner.into(), expr, edition)
     }
 
     pub fn pretty_print_pat(
@@ -140,7 +144,7 @@ impl Body {
         oneline: bool,
         edition: Edition,
     ) -> String {
-        pretty::print_pat_hir(db, self, owner, pat, oneline, edition)
+        pretty::print_pat_hir(db, self, owner.into(), pat, oneline, edition)
     }
 }
 

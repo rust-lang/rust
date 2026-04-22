@@ -1,5 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
+use rustc_middle::ty::Unnormalized;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -32,6 +33,8 @@ declare_clippy_lint! {
     "large non-scalar const array may cause performance overhead"
 }
 
+impl_lint_pass!(LargeConstArrays => [LARGE_CONST_ARRAYS]);
+
 pub struct LargeConstArrays {
     maximum_allowed_size: u64,
 }
@@ -44,8 +47,6 @@ impl LargeConstArrays {
     }
 }
 
-impl_lint_pass!(LargeConstArrays => [LARGE_CONST_ARRAYS]);
-
 impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         if let ItemKind::Const(ident, generics, _, _) = &item.kind
@@ -54,10 +55,12 @@ impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
             // doesn't account for empty where-clauses that only consist of keyword `where` IINM.
             && generics.params.is_empty() && !generics.has_where_clause_predicates
             && !item.span.from_expansion()
-            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
+            && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity().skip_norm_wip()
             && let ty::Array(element_type, cst) = ty.kind()
             && let Some(element_count) = cx.tcx
-                .try_normalize_erasing_regions(cx.typing_env(), *cst).unwrap_or(*cst).try_to_target_usize(cx.tcx)
+                .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(*cst))
+                .unwrap_or(*cst)
+                .try_to_target_usize(cx.tcx)
             && let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes())
             && u128::from(self.maximum_allowed_size) < u128::from(element_count) * u128::from(element_size)
         {

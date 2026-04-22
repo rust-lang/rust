@@ -26,6 +26,8 @@ declare_clippy_lint! {
     "usage of a disallowed/placeholder name"
 }
 
+impl_lint_pass!(DisallowedNames => [DISALLOWED_NAMES]);
+
 pub struct DisallowedNames {
     disallow: FxHashSet<Symbol>,
 }
@@ -37,8 +39,6 @@ impl DisallowedNames {
         }
     }
 }
-
-impl_lint_pass!(DisallowedNames => [DISALLOWED_NAMES]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedNames {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {

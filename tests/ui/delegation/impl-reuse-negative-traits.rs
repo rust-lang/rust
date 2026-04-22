@@ -4,7 +4,6 @@
 
 trait Trait {
     fn foo(&self);
-    //~^ ERROR negative impls cannot have any items [E0749]
 }
 
 struct S;
@@ -15,5 +14,6 @@ impl Trait for S {
 struct F(S);
 
 reuse impl !Trait for F { &self.0 }
+//~^ ERROR negative impls cannot have any items
 
 fn main() {}

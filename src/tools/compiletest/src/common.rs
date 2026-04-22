@@ -14,7 +14,7 @@ use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
 
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
-    pub enum TestMode {
+    pub(crate) enum TestMode {
         Pretty => "pretty",
         DebugInfo => "debuginfo",
         Codegen => "codegen",
@@ -34,7 +34,7 @@ string_enum! {
 }
 
 impl TestMode {
-    pub fn aux_dir_disambiguator(self) -> &'static str {
+    pub(crate) fn aux_dir_disambiguator(self) -> &'static str {
         // Pretty-printing tests could run concurrently, and if they do,
         // they need to keep their output segregated.
         match self {
@@ -43,7 +43,7 @@ impl TestMode {
         }
     }
 
-    pub fn output_dir_disambiguator(self) -> &'static str {
+    pub(crate) fn output_dir_disambiguator(self) -> &'static str {
         // Coverage tests use the same test files for multiple test modes,
         // so each mode should have a separate output directory.
         match self {
@@ -56,7 +56,7 @@ impl TestMode {
 // Note that coverage tests use the same test files for multiple test modes.
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
-    pub enum TestSuite {
+    pub(crate) enum TestSuite {
         AssemblyLlvm => "assembly-llvm",
         CodegenLlvm => "codegen-llvm",
         CodegenUnits => "codegen-units",
@@ -83,7 +83,7 @@ string_enum! {
 
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug, Hash)]
-    pub enum PassMode {
+    pub(crate) enum PassMode {
         Check => "check",
         Build => "build",
         Run => "run",
@@ -92,7 +92,7 @@ string_enum! {
 
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug, Hash)]
-    pub enum RunResult {
+    pub(crate) enum RunResult {
         Pass => "run-pass",
         Fail => "run-fail",
         Crash => "run-crash",
@@ -100,7 +100,7 @@ string_enum! {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
-pub enum RunFailMode {
+pub(crate) enum RunFailMode {
     /// Running the program must make it exit with a regular failure exit code
     /// in the range `1..=127`. If the program is terminated by e.g. a signal
     /// the test will fail.
@@ -117,7 +117,7 @@ pub enum RunFailMode {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
-pub enum FailMode {
+pub(crate) enum FailMode {
     Check,
     Build,
     Run(RunFailMode),
@@ -125,7 +125,7 @@ pub enum FailMode {
 
 string_enum! {
     #[derive(Clone, Debug, PartialEq)]
-    pub enum CompareMode {
+    pub(crate) enum CompareMode {
         Polonius => "polonius",
         NextSolver => "next-solver",
         NextSolverCoherence => "next-solver-coherence",
@@ -136,7 +136,7 @@ string_enum! {
 
 string_enum! {
     #[derive(Clone, Copy, Debug, PartialEq)]
-    pub enum Debugger {
+    pub(crate) enum Debugger {
         Cdb => "cdb",
         Gdb => "gdb",
         Lldb => "lldb",
@@ -145,7 +145,7 @@ string_enum! {
 
 #[derive(Clone, Copy, Debug, PartialEq, Default, serde::Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum PanicStrategy {
+pub(crate) enum PanicStrategy {
     #[default]
     Unwind,
     Abort,
@@ -162,12 +162,13 @@ impl PanicStrategy {
 
 #[derive(Clone, Debug, PartialEq, serde::Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum Sanitizer {
+pub(crate) enum Sanitizer {
     Address,
     Cfi,
     Dataflow,
     Kcfi,
     KernelAddress,
+    KernelHwaddress,
     Leak,
     Memory,
     Memtag,
@@ -179,7 +180,7 @@ pub enum Sanitizer {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum CodegenBackend {
+pub(crate) enum CodegenBackend {
     Cranelift,
     Gcc,
     Llvm,
@@ -199,7 +200,7 @@ impl<'a> TryFrom<&'a str> for CodegenBackend {
 }
 
 impl CodegenBackend {
-    pub fn as_str(self) -> &'static str {
+    pub(crate) fn as_str(self) -> &'static str {
         match self {
             Self::Cranelift => "cranelift",
             Self::Gcc => "gcc",
@@ -207,7 +208,7 @@ impl CodegenBackend {
         }
     }
 
-    pub fn is_llvm(self) -> bool {
+    pub(crate) fn is_llvm(self) -> bool {
         matches!(self, Self::Llvm)
     }
 }
@@ -234,7 +235,7 @@ impl CodegenBackend {
 /// FIXME: audit these options to make sure we are not hashing less than necessary for build stamp
 /// (for changed test detection).
 #[derive(Debug, Clone)]
-pub struct Config {
+pub(crate) struct Config {
     /// Some [`TestMode`]s support [snapshot testing], where a *reference snapshot* of outputs (of
     /// `stdout`, `stderr`, or other form of artifacts) can be compared to the *actual output*.
     ///
@@ -242,17 +243,17 @@ pub struct Config {
     /// `compiletest` will only try to compare.
     ///
     /// [snapshot testing]: https://jestjs.io/docs/snapshot-testing
-    pub bless: bool,
+    pub(crate) bless: bool,
 
     /// Attempt to stop as soon as possible after any test fails. We may still run a few more tests
     /// before stopping when multiple test threads are used.
-    pub fail_fast: bool,
+    pub(crate) fail_fast: bool,
 
     /// Path to libraries needed to run the *staged* `rustc`-under-test on the **host** platform.
     ///
     /// For example:
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1/bin/lib`
-    pub host_compile_lib_path: Utf8PathBuf,
+    pub(crate) host_compile_lib_path: Utf8PathBuf,
 
     /// Path to libraries needed to run the compiled executable for the **target** platform. This
     /// corresponds to the **target** sysroot libraries, including the **target** standard library.
@@ -263,7 +264,7 @@ pub struct Config {
     /// FIXME: this is very under-documented in conjunction with the `remote-test-client` scheme and
     /// `RUNNER` scheme to actually run the target executable under the target platform environment,
     /// cf. [`Self::remote_test_client`] and [`Self::runner`].
-    pub target_run_lib_path: Utf8PathBuf,
+    pub(crate) target_run_lib_path: Utf8PathBuf,
 
     /// Path to the `rustc`-under-test.
     ///
@@ -282,7 +283,7 @@ pub struct Config {
     ///
     /// It is possible for this `rustc` to be a stage 0 `rustc` if explicitly configured with the
     /// bootstrap option `build.compiletest-allow-stage0=true` and specifying `--stage=0`.
-    pub rustc_path: Utf8PathBuf,
+    pub(crate) rustc_path: Utf8PathBuf,
 
     /// Path to a *staged* **host** platform cargo executable (unless stage 0 is forced). This
     /// staged `cargo` is only used within `run-make` test recipes during recipe run time (and is
@@ -293,14 +294,14 @@ pub struct Config {
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage1-tools-bin/cargo`
     ///
     /// FIXME: maybe rename this to reflect that this is a *staged* host cargo.
-    pub cargo_path: Option<Utf8PathBuf>,
+    pub(crate) cargo_path: Option<Utf8PathBuf>,
 
     /// Path to the stage 0 `rustc` used to build `run-make` recipes. This must not be confused with
     /// [`Self::rustc_path`].
     ///
     /// For example:
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/stage0/bin/rustc`
-    pub stage0_rustc_path: Option<Utf8PathBuf>,
+    pub(crate) stage0_rustc_path: Option<Utf8PathBuf>,
 
     /// Path to the stage 1 or higher `rustc` used to obtain target information via
     /// `--print=all-target-specs-json` and similar queries.
@@ -309,35 +310,35 @@ pub struct Config {
     /// But when running "stage 1" ui-fulldeps tests, `rustc_path` is a stage 0
     /// compiler, whereas target specs must be obtained from a stage 1+ compiler
     /// (in case the JSON format has changed since the last bootstrap bump).
-    pub query_rustc_path: Option<Utf8PathBuf>,
+    pub(crate) query_rustc_path: Option<Utf8PathBuf>,
 
     /// Path to the `rustdoc`-under-test. Like [`Self::rustc_path`], this `rustdoc` is *staged*.
-    pub rustdoc_path: Option<Utf8PathBuf>,
+    pub(crate) rustdoc_path: Option<Utf8PathBuf>,
 
     /// Path to the `src/tools/coverage-dump/` bootstrap tool executable.
-    pub coverage_dump_path: Option<Utf8PathBuf>,
+    pub(crate) coverage_dump_path: Option<Utf8PathBuf>,
 
     /// Path to the Python 3 executable to use for htmldocck and some run-make tests.
-    pub python: String,
+    pub(crate) python: String,
 
     /// Path to the `src/tools/jsondocck/` bootstrap tool executable.
-    pub jsondocck_path: Option<Utf8PathBuf>,
+    pub(crate) jsondocck_path: Option<Utf8PathBuf>,
 
     /// Path to the `src/tools/jsondoclint/` bootstrap tool executable.
-    pub jsondoclint_path: Option<Utf8PathBuf>,
+    pub(crate) jsondoclint_path: Option<Utf8PathBuf>,
 
     /// Path to a host LLVM `FileCheck` executable.
-    pub llvm_filecheck: Option<Utf8PathBuf>,
+    pub(crate) llvm_filecheck: Option<Utf8PathBuf>,
 
     /// Path to a host LLVM bintools directory.
     ///
     /// For example:
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/llvm/bin`
-    pub llvm_bin_dir: Option<Utf8PathBuf>,
+    pub(crate) llvm_bin_dir: Option<Utf8PathBuf>,
 
     /// The path to the **target** `clang` executable to run `clang`-based tests with. If `None`,
     /// then these tests will be ignored.
-    pub run_clang_based_tests_with: Option<Utf8PathBuf>,
+    pub(crate) run_clang_based_tests_with: Option<Utf8PathBuf>,
 
     /// Path to the directory containing the sources. This corresponds to the root folder of a
     /// `rust-lang/rust` checkout.
@@ -347,27 +348,27 @@ pub struct Config {
     ///
     /// FIXME: this name is confusing, because this is actually `$checkout_root`, **not** the
     /// `$checkout_root/src/` folder.
-    pub src_root: Utf8PathBuf,
+    pub(crate) src_root: Utf8PathBuf,
 
     /// Absolute path to the test suite directory.
     ///
     /// For example:
     /// - `/home/ferris/rust/tests/ui`
     /// - `/home/ferris/rust/tests/coverage`
-    pub src_test_suite_root: Utf8PathBuf,
+    pub(crate) src_test_suite_root: Utf8PathBuf,
 
     /// Path to the top-level build directory used by bootstrap.
     ///
     /// For example:
     /// - `/home/ferris/rust/build`
-    pub build_root: Utf8PathBuf,
+    pub(crate) build_root: Utf8PathBuf,
 
     /// Path to the build directory used by the current test suite.
     ///
     /// For example:
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/test/ui`
     /// - `/home/ferris/rust/build/x86_64-unknown-linux-gnu/test/coverage`
-    pub build_test_suite_root: Utf8PathBuf,
+    pub(crate) build_test_suite_root: Utf8PathBuf,
 
     /// Path to the directory containing the sysroot of the `rustc`-under-test.
     ///
@@ -383,21 +384,21 @@ pub struct Config {
     /// stage 0 is forced and no custom stage 0 `rustc` was otherwise specified (so that it
     /// *happens* to run against the bootstrap `rustc`, but this non-custom bootstrap `rustc` case
     /// is not really supported).
-    pub sysroot_base: Utf8PathBuf,
+    pub(crate) sysroot_base: Utf8PathBuf,
 
     /// The number of the stage under test.
-    pub stage: u32,
+    pub(crate) stage: u32,
 
     /// The id of the stage under test (stage1-xxx, etc).
     ///
     /// FIXME: reconsider this string; this is hashed for test build stamp.
-    pub stage_id: String,
+    pub(crate) stage_id: String,
 
     /// The [`TestMode`]. E.g. [`TestMode::Ui`]. Each test mode can correspond to one or more test
     /// suites.
     ///
     /// FIXME: stop using stringly-typed test suites!
-    pub mode: TestMode,
+    pub(crate) mode: TestMode,
 
     /// The test suite.
     ///
@@ -407,7 +408,7 @@ pub struct Config {
     /// Note that the same test suite (e.g. `tests/coverage/`) may correspond to multiple test
     /// modes, e.g. `tests/coverage/` can be run under both [`TestMode::CoverageRun`] and
     /// [`TestMode::CoverageMap`].
-    pub suite: TestSuite,
+    pub(crate) suite: TestSuite,
 
     /// When specified, **only** the specified [`Debugger`] will be used to run against the
     /// `tests/debuginfo` test suite. When unspecified, `compiletest` will attempt to find all three
@@ -419,30 +420,30 @@ pub struct Config {
     /// should have `bootstrap` allow the user to *explicitly* configure the debuggers, and *not*
     /// try to implicitly discover some random debugger from the user environment. This makes the
     /// debuginfo test suite particularly hard to work with.
-    pub debugger: Option<Debugger>,
+    pub(crate) debugger: Option<Debugger>,
 
     /// Run ignored tests *unconditionally*, overriding their ignore reason.
     ///
     /// FIXME: this is wired up through the test execution logic, but **not** accessible from
     /// `bootstrap` directly; `compiletest` exposes this as `--ignored`. I.e. you'd have to use `./x
     /// test $test_suite -- --ignored=true`.
-    pub run_ignored: bool,
+    pub(crate) run_ignored: bool,
 
     /// Whether *staged* `rustc`-under-test was built with debug assertions.
     ///
     /// FIXME: make it clearer that this refers to the staged `rustc`-under-test, not stage 0
     /// `rustc`.
-    pub with_rustc_debug_assertions: bool,
+    pub(crate) with_rustc_debug_assertions: bool,
 
     /// Whether *staged* `std` was built with debug assertions.
     ///
     /// FIXME: make it clearer that this refers to the staged `std`, not stage 0 `std`.
-    pub with_std_debug_assertions: bool,
+    pub(crate) with_std_debug_assertions: bool,
 
     /// Whether *staged* `std` was built with remapping of debuginfo.
     ///
     /// FIXME: make it clearer that this refers to the staged `std`, not stage 0 `std`.
-    pub with_std_remap_debuginfo: bool,
+    pub(crate) with_std_remap_debuginfo: bool,
 
     /// Only run tests that match these filters (using `libtest` "test name contains" filter logic).
     ///
@@ -451,25 +452,25 @@ pub struct Config {
     /// but this is often not intuitive. We should consider changing that behavior with an MCP to do
     /// test path *prefix* matching which better corresponds to how `compiletest` `tests/` are
     /// organized, and how users would intuitively expect the filtering logic to work like.
-    pub filters: Vec<String>,
+    pub(crate) filters: Vec<String>,
 
     /// Skip tests matching these substrings. The matching logic exactly corresponds to
     /// [`Self::filters`] but inverted.
     ///
     /// FIXME(#139660): ditto on test matching behavior.
-    pub skip: Vec<String>,
+    pub(crate) skip: Vec<String>,
 
     /// Exactly match the filter, rather than a substring.
     ///
     /// FIXME(#139660): ditto on test matching behavior.
-    pub filter_exact: bool,
+    pub(crate) filter_exact: bool,
 
     /// Force the pass mode of a check/build/run test to instead use this mode instead.
     ///
     /// FIXME: make it even more obvious (especially in PR CI where `--pass=check` is used) when a
     /// pass mode is forced when the test fails, because it can be very non-obvious when e.g. an
     /// error is emitted only when `//@ build-pass` but not `//@ check-pass`.
-    pub force_pass_mode: Option<PassMode>,
+    pub(crate) force_pass_mode: Option<PassMode>,
 
     /// Explicitly enable or disable running of the target test binary.
     ///
@@ -479,7 +480,7 @@ pub struct Config {
     /// FIXME: Currently `--run` is a tri-state, it can be `--run={auto,always,never}`, and when
     /// `--run=auto` is specified, it's run if the platform doesn't end with `-fuchsia`. See
     /// [`Config::run_enabled`].
-    pub run: Option<bool>,
+    pub(crate) run: Option<bool>,
 
     /// A command line to prefix target program execution with, for running under valgrind for
     /// example, i.e. `$runner target.exe [args..]`. Similar to `CARGO_*_RUNNER` configuration.
@@ -488,45 +489,45 @@ pub struct Config {
     /// scheme.
     ///
     /// FIXME: the runner scheme is very under-documented.
-    pub runner: Option<String>,
+    pub(crate) runner: Option<String>,
 
     /// Compiler flags to pass to the *staged* `rustc`-under-test when building for the **host**
     /// platform.
-    pub host_rustcflags: Vec<String>,
+    pub(crate) host_rustcflags: Vec<String>,
 
     /// Compiler flags to pass to the *staged* `rustc`-under-test when building for the **target**
     /// platform.
-    pub target_rustcflags: Vec<String>,
+    pub(crate) target_rustcflags: Vec<String>,
 
     /// Whether the *staged* `rustc`-under-test and the associated *staged* `std` has been built
     /// with randomized struct layouts.
-    pub rust_randomized_layout: bool,
+    pub(crate) rust_randomized_layout: bool,
 
     /// Whether tests should be optimized by default (`-O`). Individual test suites and test files
     /// may override this setting.
     ///
     /// FIXME: this flag / config option is somewhat misleading. For instance, in ui tests, it's
     /// *only* applied to the [`PassMode::Run`] test crate and not its auxiliaries.
-    pub optimize_tests: bool,
+    pub(crate) optimize_tests: bool,
 
     /// Target platform tuple.
-    pub target: String,
+    pub(crate) target: String,
 
     /// Host platform tuple.
-    pub host: String,
+    pub(crate) host: String,
 
     /// Path to / name of the Microsoft Console Debugger (CDB) executable.
     ///
     /// FIXME: this is an *opt-in* "override" option. When this isn't provided, we try to conjure a
     /// cdb by looking at the user's program files on Windows... See `debuggers::find_cdb`.
-    pub cdb: Option<Utf8PathBuf>,
+    pub(crate) cdb: Option<Utf8PathBuf>,
 
     /// Version of CDB.
     ///
     /// FIXME: `cdb_version` is *derived* from cdb, but it's *not* technically a config!
     ///
     /// FIXME: audit cdb version gating.
-    pub cdb_version: Option<[u16; 4]>,
+    pub(crate) cdb_version: Option<[u16; 4]>,
 
     /// Path to / name of the GDB executable.
     ///
@@ -535,7 +536,7 @@ pub struct Config {
     ///
     /// FIXME: we are propagating a python from `PYTHONPATH`, not from an explicit config for gdb
     /// debugger script.
-    pub gdb: Option<Utf8PathBuf>,
+    pub(crate) gdb: Option<Utf8PathBuf>,
 
     /// Version of GDB, encoded as ((major * 1000) + minor) * 1000 + patch
     ///
@@ -546,24 +547,24 @@ pub struct Config {
     /// purposes of debuginfo tests?
     ///
     /// FIXME: `gdb_version` is *derived* from gdb, but it's *not* technically a config!
-    pub gdb_version: Option<u32>,
+    pub(crate) gdb_version: Option<u32>,
 
     /// Path to or name of the LLDB executable to use for debuginfo tests.
-    pub lldb: Option<Utf8PathBuf>,
+    pub(crate) lldb: Option<Utf8PathBuf>,
 
     /// Version of LLDB.
     ///
     /// FIXME: `lldb_version` is *derived* from lldb, but it's *not* technically a config!
-    pub lldb_version: Option<u32>,
+    pub(crate) lldb_version: Option<u32>,
 
     /// Version of LLVM.
     ///
     /// FIXME: Audit the fallback derivation of
     /// [`crate::directives::extract_llvm_version_from_binary`], that seems very questionable?
-    pub llvm_version: Option<Version>,
+    pub(crate) llvm_version: Option<Version>,
 
     /// Is LLVM a system LLVM.
-    pub system_llvm: bool,
+    pub(crate) system_llvm: bool,
 
     /// Path to the android tools.
     ///
@@ -571,7 +572,7 @@ pub struct Config {
     ///
     /// FIXME: take a look at this; this is piggy-backing off of gdb code paths but only for
     /// `arm-linux-androideabi` target.
-    pub android_cross_path: Option<Utf8PathBuf>,
+    pub(crate) android_cross_path: Option<Utf8PathBuf>,
 
     /// Extra parameter to run adb on `arm-linux-androideabi`.
     ///
@@ -580,7 +581,7 @@ pub struct Config {
     ///
     /// FIXME: take a look at this; this is piggy-backing off of gdb code paths but only for
     /// `arm-linux-androideabi` target.
-    pub adb_path: Option<Utf8PathBuf>,
+    pub(crate) adb_path: Option<Utf8PathBuf>,
 
     /// Extra parameter to run test suite on `arm-linux-androideabi`.
     ///
@@ -589,18 +590,22 @@ pub struct Config {
     ///
     /// FIXME: take a look at this; this is piggy-backing off of gdb code paths but only for
     /// `arm-linux-androideabi` target.
-    pub adb_test_dir: Option<Utf8PathBuf>,
+    pub(crate) adb_test_dir: Option<Utf8PathBuf>,
 
     /// Status whether android device available or not. When unavailable, this will cause tests to
     /// panic when the test binary is attempted to be run.
     ///
     /// FIXME: take a look at this; this also influences adb in gdb code paths in a strange way.
-    pub adb_device_status: bool,
+    pub(crate) adb_device_status: bool,
 
     /// Verbose dump a lot of info.
     ///
     /// FIXME: this is *way* too coarse; the user can't select *which* info to verbosely dump.
-    pub verbose: bool,
+    pub(crate) verbose: bool,
+
+    /// Whether to enable verbose subprocess output for run-make tests.
+    /// Set to false to suppress output for passing tests (e.g. for cg_clif with --no-capture).
+    pub verbose_run_make_subprocess_output: bool,
 
     /// Where to find the remote test client process, if we're using it.
     ///
@@ -610,67 +615,67 @@ pub struct Config {
     /// Note: this is not to be confused with [`Self::runner`], which is a different scheme.
     ///
     /// FIXME: the `remote_test_client` scheme is very under-documented.
-    pub remote_test_client: Option<Utf8PathBuf>,
+    pub(crate) remote_test_client: Option<Utf8PathBuf>,
 
     /// [`CompareMode`] describing what file the actual ui output will be compared to.
     ///
     /// FIXME: currently, [`CompareMode`] is a mishmash of lot of things (different borrow-checker
     /// model, different trait solver, different debugger, etc.).
-    pub compare_mode: Option<CompareMode>,
+    pub(crate) compare_mode: Option<CompareMode>,
 
     /// If true, this will generate a coverage file with UI test files that run `MachineApplicable`
     /// diagnostics but are missing `run-rustfix` annotations. The generated coverage file is
     /// created in `$test_suite_build_root/rustfix_missing_coverage.txt`
-    pub rustfix_coverage: bool,
+    pub(crate) rustfix_coverage: bool,
 
     /// Whether to run `enzyme` autodiff tests.
-    pub has_enzyme: bool,
+    pub(crate) has_enzyme: bool,
 
     /// Whether to run `offload` autodiff tests.
-    pub has_offload: bool,
+    pub(crate) has_offload: bool,
 
     /// The current Rust channel info.
     ///
     /// FIXME: treat this more carefully; "stable", "beta" and "nightly" are definitely valid, but
     /// channel might also be "dev" or such, which should be treated as "nightly".
-    pub channel: String,
+    pub(crate) channel: String,
 
     /// Whether adding git commit information such as the commit hash has been enabled for building.
     ///
     /// FIXME: `compiletest` cannot trust `bootstrap` for this information, because `bootstrap` can
     /// have bugs and had bugs on that logic. We need to figure out how to obtain this e.g. directly
     /// from CI or via git locally.
-    pub git_hash: bool,
+    pub(crate) git_hash: bool,
 
     /// The default Rust edition.
-    pub edition: Option<Edition>,
+    pub(crate) edition: Option<Edition>,
 
     // Configuration for various run-make tests frobbing things like C compilers or querying about
     // various LLVM component information.
     //
     // FIXME: this really should be better packaged together.
     // FIXME: these need better docs, e.g. for *host*, or for *target*?
-    pub cc: String,
-    pub cxx: String,
-    pub cflags: String,
-    pub cxxflags: String,
-    pub ar: String,
-    pub target_linker: Option<String>,
-    pub host_linker: Option<String>,
-    pub llvm_components: String,
+    pub(crate) cc: String,
+    pub(crate) cxx: String,
+    pub(crate) cflags: String,
+    pub(crate) cxxflags: String,
+    pub(crate) ar: String,
+    pub(crate) target_linker: Option<String>,
+    pub(crate) host_linker: Option<String>,
+    pub(crate) llvm_components: String,
 
     /// Path to a NodeJS executable. Used for JS doctests, emscripten and WASM tests.
-    pub nodejs: Option<Utf8PathBuf>,
+    pub(crate) nodejs: Option<Utf8PathBuf>,
 
     /// Whether to rerun tests even if the inputs are unchanged.
-    pub force_rerun: bool,
+    pub(crate) force_rerun: bool,
 
     /// Only rerun the tests that result has been modified according to `git status`.
     ///
     /// FIXME: this is undocumented.
     ///
     /// FIXME: how does this interact with [`Self::force_rerun`]?
-    pub only_modified: bool,
+    pub(crate) only_modified: bool,
 
     // FIXME: these are really not "config"s, but rather are information derived from
     // `rustc`-under-test. This poses an interesting conundrum: if we're testing the
@@ -683,64 +688,72 @@ pub struct Config {
     // from print requests produced by the `rustc`-under-test.
     //
     // FIXME: move them out from `Config`, because they are *not* configs.
-    pub target_cfgs: OnceLock<TargetCfgs>,
-    pub builtin_cfg_names: OnceLock<HashSet<String>>,
-    pub supported_crate_types: OnceLock<HashSet<String>>,
+    pub(crate) target_cfgs: OnceLock<TargetCfgs>,
+    pub(crate) builtin_cfg_names: OnceLock<HashSet<String>>,
+    pub(crate) supported_crate_types: OnceLock<HashSet<String>>,
 
     /// Should we capture console output that would be printed by test runners via their `stdout`
     /// and `stderr` trait objects, or via the custom panic hook.
     ///
     /// The default is `true`. This can be disabled via the compiletest cli flag `--no-capture`
     /// (which mirrors the libtest `--no-capture` flag).
-    pub capture: bool,
+    pub(crate) capture: bool,
 
     /// Needed both to construct [`build_helper::git::GitConfig`].
-    pub nightly_branch: String,
-    pub git_merge_commit_email: String,
+    pub(crate) nightly_branch: String,
+    pub(crate) git_merge_commit_email: String,
 
     /// True if the profiler runtime is enabled for this target. Used by the
     /// `needs-profiler-runtime` directive in test files.
-    pub profiler_runtime: bool,
+    pub(crate) profiler_runtime: bool,
 
     /// Command for visual diff display, e.g. `diff-tool --color=always`.
-    pub diff_command: Option<String>,
+    pub(crate) diff_command: Option<String>,
 
     /// Path to minicore aux library (`tests/auxiliary/minicore.rs`), used for `no_core` tests that
     /// need `core` stubs in cross-compilation scenarios that do not otherwise want/need to
     /// `-Zbuild-std`. Used in e.g. ABI tests.
-    pub minicore_path: Utf8PathBuf,
+    pub(crate) minicore_path: Utf8PathBuf,
 
     /// Current codegen backend used.
-    pub default_codegen_backend: CodegenBackend,
+    pub(crate) default_codegen_backend: CodegenBackend,
     /// Name/path of the backend to use instead of `default_codegen_backend`.
-    pub override_codegen_backend: Option<String>,
+    pub(crate) override_codegen_backend: Option<String>,
     /// Whether to ignore `//@ ignore-backends`.
-    pub bypass_ignore_backends: bool,
+    pub(crate) bypass_ignore_backends: bool,
 
     /// Number of parallel jobs configured for the build.
     ///
     /// This is forwarded from bootstrap's `jobs` configuration.
-    pub jobs: u32,
+    pub(crate) jobs: u32,
+
+    /// Number of parallel threads to use for the frontend when building test artifacts.
+    pub(crate) parallel_frontend_threads: u32,
+    /// Number of times to execute each test.
+    pub(crate) iteration_count: u32,
 }
 
 impl Config {
+    pub(crate) const DEFAULT_PARALLEL_FRONTEND_THREADS: u32 = 1;
+    pub(crate) const DEFAULT_ITERATION_COUNT: u32 = 1;
+
     /// FIXME: this run scheme is... confusing.
-    pub fn run_enabled(&self) -> bool {
+    pub(crate) fn run_enabled(&self) -> bool {
         self.run.unwrap_or_else(|| {
             // Auto-detect whether to run based on the platform.
             !self.target.ends_with("-fuchsia")
         })
     }
 
-    pub fn target_cfgs(&self) -> &TargetCfgs {
+    pub(crate) fn target_cfgs(&self) -> &TargetCfgs {
         self.target_cfgs.get_or_init(|| TargetCfgs::new(self))
     }
 
-    pub fn target_cfg(&self) -> &TargetCfg {
+    pub(crate) fn target_cfg(&self) -> &TargetCfg {
         &self.target_cfgs().current
     }
 
-    pub fn matches_arch(&self, arch: &str) -> bool {
+    pub(crate) fn matches_arch(&self, arch: &str) -> bool {
         self.target_cfg().arch == arch
             || {
                 // Matching all the thumb variants as one can be convenient.
@@ -750,15 +763,15 @@ impl Config {
             || (arch == "i586" && self.target.starts_with("i586-"))
     }
 
-    pub fn matches_os(&self, os: &str) -> bool {
+    pub(crate) fn matches_os(&self, os: &str) -> bool {
         self.target_cfg().os == os
     }
 
-    pub fn matches_env(&self, env: &str) -> bool {
+    pub(crate) fn matches_env(&self, env: &str) -> bool {
         self.target_cfg().env == env
     }
 
-    pub fn matches_abi(&self, abi: &str) -> bool {
+    pub(crate) fn matches_abi(&self, abi: &str) -> bool {
         self.target_cfg().abi == abi
     }
 
@@ -767,29 +780,29 @@ impl Config {
         self.target_cfg().families.iter().any(|f| f == family)
     }
 
-    pub fn is_big_endian(&self) -> bool {
+    pub(crate) fn is_big_endian(&self) -> bool {
         self.target_cfg().endian == Endian::Big
     }
 
-    pub fn get_pointer_width(&self) -> u32 {
+    pub(crate) fn get_pointer_width(&self) -> u32 {
         *&self.target_cfg().pointer_width
     }
 
-    pub fn can_unwind(&self) -> bool {
+    pub(crate) fn can_unwind(&self) -> bool {
         self.target_cfg().panic == PanicStrategy::Unwind
     }
 
     /// Get the list of builtin, 'well known' cfg names
-    pub fn builtin_cfg_names(&self) -> &HashSet<String> {
+    pub(crate) fn builtin_cfg_names(&self) -> &HashSet<String> {
         self.builtin_cfg_names.get_or_init(|| builtin_cfg_names(self))
     }
 
     /// Get the list of crate types that the target platform supports.
-    pub fn supported_crate_types(&self) -> &HashSet<String> {
+    pub(crate) fn supported_crate_types(&self) -> &HashSet<String> {
         self.supported_crate_types.get_or_init(|| supported_crate_types(self))
     }
 
-    pub fn has_threads(&self) -> bool {
+    pub(crate) fn has_threads(&self) -> bool {
         // Wasm targets don't have threads unless `-threads` is in the target
         // name, such as `wasm32-wasip1-threads`.
         if self.target.starts_with("wasm") {
@@ -798,7 +811,7 @@ impl Config {
         true
     }
 
-    pub fn has_asm_support(&self) -> bool {
+    pub(crate) fn has_asm_support(&self) -> bool {
         // This should match the stable list in `LoweringContext::lower_inline_asm`.
         static ASM_SUPPORTED_ARCHS: &[&str] = &[
             "x86",
@@ -817,14 +830,14 @@ impl Config {
         ASM_SUPPORTED_ARCHS.contains(&self.target_cfg().arch.as_str())
     }
 
-    pub fn git_config(&self) -> GitConfig<'_> {
+    pub(crate) fn git_config(&self) -> GitConfig<'_> {
         GitConfig {
             nightly_branch: &self.nightly_branch,
             git_merge_commit_email: &self.git_merge_commit_email,
         }
     }
 
-    pub fn has_subprocess_support(&self) -> bool {
+    pub(crate) fn has_subprocess_support(&self) -> bool {
         // FIXME(#135928): compiletest is always a **host** tool. Building and running an
         // capability detection executable against the **target** is not trivial. The short term
         // solution here is to hard-code some targets to allow/deny, unfortunately.
@@ -834,23 +847,34 @@ impl Config {
             || self.target_cfg().os == "emscripten";
         !unsupported_target
     }
+
+    /// Whether the parallel frontend is enabled,
+    /// which is the case when `parallel_frontend_threads` is not set to `1`.
+    ///
+    /// - `0` means auto-detect: use the number of available hardware threads on the host.
+    ///   But we treat it as the parallel frontend being enabled in this case.
+    /// - `1` means single-threaded (parallel frontend disabled).
+    /// - `>1` means an explicitly configured thread count.
+    pub(crate) fn parallel_frontend_enabled(&self) -> bool {
+        self.parallel_frontend_threads != 1
+    }
 }
 
 /// Known widths of `target_has_atomic`.
-pub const KNOWN_TARGET_HAS_ATOMIC_WIDTHS: &[&str] = &["8", "16", "32", "64", "128", "ptr"];
+pub(crate) const KNOWN_TARGET_HAS_ATOMIC_WIDTHS: &[&str] = &["8", "16", "32", "64", "128", "ptr"];
 
 #[derive(Debug, Clone)]
-pub struct TargetCfgs {
-    pub current: TargetCfg,
-    pub all_targets: HashSet<String>,
-    pub all_archs: HashSet<String>,
-    pub all_oses: HashSet<String>,
-    pub all_oses_and_envs: HashSet<String>,
-    pub all_envs: HashSet<String>,
-    pub all_abis: HashSet<String>,
-    pub all_families: HashSet<String>,
-    pub all_pointer_widths: HashSet<String>,
-    pub all_rustc_abis: HashSet<String>,
+pub(crate) struct TargetCfgs {
+    pub(crate) current: TargetCfg,
+    pub(crate) all_targets: HashSet<String>,
+    pub(crate) all_archs: HashSet<String>,
+    pub(crate) all_oses: HashSet<String>,
+    pub(crate) all_oses_and_envs: HashSet<String>,
+    pub(crate) all_envs: HashSet<String>,
+    pub(crate) all_abis: HashSet<String>,
+    pub(crate) all_families: HashSet<String>,
+    pub(crate) all_pointer_widths: HashSet<String>,
+    pub(crate) all_rustc_abis: HashSet<String>,
 }
 
 impl TargetCfgs {
@@ -997,7 +1021,7 @@ impl TargetCfgs {
 
 #[derive(Clone, Debug, serde::Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub struct TargetCfg {
+pub(crate) struct TargetCfg {
     pub(crate) arch: String,
     #[serde(default = "default_os")]
     pub(crate) os: String,
@@ -1060,7 +1084,7 @@ fn default_binary_format_elf() -> Cow<'static, str> {
 
 #[derive(Eq, PartialEq, Clone, Debug, Default, serde::Deserialize)]
 #[serde(rename_all = "kebab-case")]
-pub enum Endian {
+pub(crate) enum Endian {
     #[default]
     Little,
     Big,
@@ -1094,7 +1118,7 @@ fn extract_cfg_name(check_cfg_line: &str) -> Result<&str, &'static str> {
     Ok(inner[..first_comma].trim())
 }
 
-pub const KNOWN_CRATE_TYPES: &[&str] =
+pub(crate) const KNOWN_CRATE_TYPES: &[&str] =
     &["bin", "cdylib", "dylib", "lib", "proc-macro", "rlib", "staticlib"];
 
 fn supported_crate_types(config: &Config) -> HashSet<String> {
@@ -1176,7 +1200,7 @@ pub(crate) struct TestPaths {
 }
 
 /// Used by `ui` tests to generate things like `foo.stderr` from `foo.rs`.
-pub fn expected_output_path(
+pub(crate) fn expected_output_path(
     testpaths: &TestPaths,
     revision: Option<&str>,
     compare_mode: &Option<CompareMode>,
@@ -1197,7 +1221,7 @@ pub fn expected_output_path(
     testpaths.file.with_extension(extension)
 }
 
-pub const UI_EXTENSIONS: &[&str] = &[
+pub(crate) const UI_EXTENSIONS: &[&str] = &[
     UI_STDERR,
     UI_SVG,
     UI_WINDOWS_SVG,
@@ -1211,18 +1235,18 @@ pub const UI_EXTENSIONS: &[&str] = &[
     UI_COVERAGE,
     UI_COVERAGE_MAP,
 ];
-pub const UI_STDERR: &str = "stderr";
-pub const UI_SVG: &str = "svg";
-pub const UI_WINDOWS_SVG: &str = "windows.svg";
-pub const UI_STDOUT: &str = "stdout";
-pub const UI_FIXED: &str = "fixed";
-pub const UI_RUN_STDERR: &str = "run.stderr";
-pub const UI_RUN_STDOUT: &str = "run.stdout";
-pub const UI_STDERR_64: &str = "64bit.stderr";
-pub const UI_STDERR_32: &str = "32bit.stderr";
-pub const UI_STDERR_16: &str = "16bit.stderr";
-pub const UI_COVERAGE: &str = "coverage";
-pub const UI_COVERAGE_MAP: &str = "cov-map";
+pub(crate) const UI_STDERR: &str = "stderr";
+pub(crate) const UI_SVG: &str = "svg";
+pub(crate) const UI_WINDOWS_SVG: &str = "windows.svg";
+pub(crate) const UI_STDOUT: &str = "stdout";
+pub(crate) const UI_FIXED: &str = "fixed";
+pub(crate) const UI_RUN_STDERR: &str = "run.stderr";
+pub(crate) const UI_RUN_STDOUT: &str = "run.stdout";
+pub(crate) const UI_STDERR_64: &str = "64bit.stderr";
+pub(crate) const UI_STDERR_32: &str = "32bit.stderr";
+pub(crate) const UI_STDERR_16: &str = "16bit.stderr";
+pub(crate) const UI_COVERAGE: &str = "coverage";
+pub(crate) const UI_COVERAGE_MAP: &str = "cov-map";
 
 /// Absolute path to the directory where all output for all tests in the given `relative_dir` group
 /// should reside. Example:
@@ -1232,12 +1256,12 @@ pub const UI_COVERAGE_MAP: &str = "cov-map";
 /// ```
 ///
 /// This is created early when tests are collected to avoid race conditions.
-pub fn output_relative_path(config: &Config, relative_dir: &Utf8Path) -> Utf8PathBuf {
+pub(crate) fn output_relative_path(config: &Config, relative_dir: &Utf8Path) -> Utf8PathBuf {
     config.build_test_suite_root.join(relative_dir)
 }
 
 /// Generates a unique name for the test, such as `testname.revision.mode`.
-pub fn output_testname_unique(
+pub(crate) fn output_testname_unique(
     config: &Config,
     testpaths: &TestPaths,
     revision: Option<&str>,
@@ -1254,7 +1278,7 @@ pub fn output_testname_unique(
 /// Absolute path to the directory where all output for the given
 /// test/revision should reside. Example:
 ///   /path/to/build/host-tuple/test/ui/relative/testname.revision.mode/
-pub fn output_base_dir(
+pub(crate) fn output_base_dir(
     config: &Config,
     testpaths: &TestPaths,
     revision: Option<&str>,
@@ -1266,7 +1290,7 @@ pub fn output_base_dir(
 /// Absolute path to the base filename used as output for the given
 /// test/revision. Example:
 ///   /path/to/build/host-tuple/test/ui/relative/testname.revision.mode/testname
-pub fn output_base_name(
+pub(crate) fn output_base_name(
     config: &Config,
     testpaths: &TestPaths,
     revision: Option<&str>,
@@ -1276,7 +1300,7 @@ pub fn output_base_name(
 
 /// Absolute path to the directory to use for incremental compilation. Example:
 ///   /path/to/build/host-tuple/test/ui/relative/testname.mode/testname.inc
-pub fn incremental_dir(
+pub(crate) fn incremental_dir(
     config: &Config,
     testpaths: &TestPaths,
     revision: Option<&str>,

@@ -31,8 +31,7 @@ There are two ways of writing translatable diagnostics:
    ("Simple" diagnostics being those that don't require a lot of logic in
    deciding to emit subdiagnostics and can therefore be represented as diagnostic structs).
    See [the diagnostic and subdiagnostic structs documentation](./diagnostic-structs.md).
-2. Using typed identifiers with `Diag` APIs (in
-   `Diagnostic` or `Subdiagnostic` or `LintDiagnostic` implementations).
+2. Using typed identifiers with `Diag` APIs (in `Diagnostic` or `Subdiagnostic` implementations).
 
 When adding or changing a translatable diagnostic,
 you don't need to worry about the translations.

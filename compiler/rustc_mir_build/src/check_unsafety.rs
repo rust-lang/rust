@@ -103,9 +103,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                 let guarantee = format!("that {}", suggestion);
                 let suggestion = sm
                     .indentation_before(span)
-                    .map(|indent| {
-                        format!("{}// TODO: Audit that {}.\n", indent, suggestion) // ignore-tidy-todo
-                    })
+                    .map(|indent| format!("{}// FIXME: Audit that {}.\n", indent, suggestion))
                     .unwrap_or_default();
 
                 self.tcx.emit_node_span_lint(
@@ -115,12 +113,12 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
                     CallToDeprecatedSafeFnRequiresUnsafe {
                         span,
                         function: with_no_trimmed_paths!(self.tcx.def_path_str(id)),
-                        guarantee,
                         sub: CallToDeprecatedSafeFnRequiresUnsafeSub {
                             start_of_line_suggestion: suggestion,
                             start_of_line: sm.span_extend_to_line(span).shrink_to_lo(),
                             left: span.shrink_to_lo(),
                             right: span.shrink_to_hi(),
+                            guarantee,
                         },
                     },
                 );
@@ -317,6 +315,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 | PatKind::Range { .. }
                 | PatKind::Slice { .. }
                 | PatKind::Array { .. }
+                | PatKind::Guard { .. }
                 // Never constitutes a witness of uninhabitedness.
                 | PatKind::Never => {
                     self.requires_unsafe(pat.span, AccessToUnionField);

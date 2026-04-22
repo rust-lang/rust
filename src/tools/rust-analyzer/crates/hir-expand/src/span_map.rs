@@ -86,7 +86,7 @@ pub(crate) fn real_span_map(
     let mut pairs = vec![(syntax::TextSize::new(0), span::ROOT_ERASED_FILE_AST_ID)];
     let ast_id_map = db.ast_id_map(editioned_file_id.into());
 
-    let tree = db.parse(editioned_file_id).tree();
+    let tree = editioned_file_id.parse(db).tree();
     // This is an incrementality layer. Basically we can't use absolute ranges for our spans as that
     // would mean we'd invalidate everything whenever we type. So instead we make the text ranges
     // relative to some AstIds reducing the risk of invalidation as typing somewhere no longer
@@ -135,7 +135,7 @@ pub(crate) fn real_span_map(
     });
 
     Arc::new(RealSpanMap::from_file(
-        editioned_file_id.editioned_file_id(db),
+        editioned_file_id.span_file_id(db),
         pairs.into_boxed_slice(),
         tree.syntax().text_range().end(),
     ))

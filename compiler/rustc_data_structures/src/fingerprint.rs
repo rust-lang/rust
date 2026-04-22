@@ -181,22 +181,24 @@ impl<D: Decoder> Decodable<D> for Fingerprint {
     }
 }
 
-// `PackedFingerprint` wraps a `Fingerprint`. Its purpose is to, on certain
-// architectures, behave like a `Fingerprint` without alignment requirements.
-// This behavior is only enabled on x86 and x86_64, where the impact of
-// unaligned accesses is tolerable in small doses.
-//
-// This may be preferable to use in large collections of structs containing
-// fingerprints, as it can reduce memory consumption by preventing the padding
-// that the more strictly-aligned `Fingerprint` can introduce. An application of
-// this is in the query dependency graph, which contains a large collection of
-// `DepNode`s. As of this writing, the size of a `DepNode` decreases by ~30%
-// (from 24 bytes to 17) by using the packed representation here, which
-// noticeably decreases total memory usage when compiling large crates.
-//
-// The wrapped `Fingerprint` is private to reduce the chance of a client
-// invoking undefined behavior by taking a reference to the packed field.
-#[cfg_attr(any(target_arch = "x86", target_arch = "x86_64"), repr(packed))]
+/// `PackedFingerprint` wraps a `Fingerprint`.
+/// Its purpose is to behave like a `Fingerprint` without alignment requirements.
+///
+/// This may be preferable to use in large collections of structs containing
+/// fingerprints, as it can reduce memory consumption by preventing the padding
+/// that the more strictly-aligned `Fingerprint` can introduce. An application of
+/// this is in the query dependency graph, which contains a large collection of
+/// `DepNode`s. As of this writing, the size of a `DepNode` decreases by 25%
+/// (from 24 bytes to 18) by using the packed representation here, which
+/// noticeably decreases total memory usage when compiling large crates.
+///
+/// (Unalignment was previously restricted to `x86` and `x86_64` hosts, but is
+/// now enabled by default for all host architectures, in the hope that the
+/// memory and cache savings should outweigh any unaligned access penalty.)
+///
+/// The wrapped `Fingerprint` is private to reduce the chance of a client
+/// invoking undefined behavior by taking a reference to the packed field.
+#[repr(packed)]
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Copy, Hash)]
 pub struct PackedFingerprint(Fingerprint);
 

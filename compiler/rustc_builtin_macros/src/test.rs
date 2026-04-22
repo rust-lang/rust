@@ -1,12 +1,11 @@
 //! The expansion from a test function to the appropriate test struct for libtest
 //! Ideally, this code would be in libtest but for efficiency and error messages it lives here.
 
-use std::iter;
+use std::{assert_matches, iter};
 
-use rustc_ast::{self as ast, GenericParamKind, HasNodeId, attr, join_path_idents};
+use rustc_ast::{self as ast, GenericParamKind, attr, join_path_idents};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::AttributeParser;
-use rustc_data_structures::assert_matches;
 use rustc_errors::{Applicability, Diag, Level};
 use rustc_expand::base::*;
 use rustc_hir::Attribute;
@@ -481,14 +480,7 @@ fn should_ignore_message(i: &ast::Item) -> Option<Symbol> {
 
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
     if let Some(Attribute::Parsed(AttributeKind::ShouldPanic { reason, .. })) =
-        AttributeParser::parse_limited(
-            cx.sess,
-            &i.attrs,
-            sym::should_panic,
-            i.span,
-            i.node_id(),
-            None,
-        )
+        AttributeParser::parse_limited(cx.sess, &i.attrs, &[sym::should_panic])
     {
         ShouldPanic::Yes(reason)
     } else {

@@ -35,9 +35,9 @@ pub(crate) struct CycleStack {
 #[derive(Subdiagnostic)]
 pub(crate) enum StackCount {
     #[note("...which immediately requires {$stack_bottom} again")]
-    Single,
+    Single { stack_bottom: String },
     #[note("...which again requires {$stack_bottom}, completing the cycle")]
-    Multiple,
+    Multiple { stack_bottom: String },
 }
 
 #[derive(Subdiagnostic)]
@@ -72,6 +72,31 @@ pub(crate) struct Cycle {
     pub stack_count: StackCount,
     #[subdiagnostic]
     pub alias: Option<Alias>,
+    #[subdiagnostic]
+    pub cycle_usage: Option<CycleUsage>,
+    #[note(
+        "see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information"
+    )]
+    pub note_span: (),
+}
+
+#[derive(Subdiagnostic)]
+#[note("...when {$stack_bottom}")]
+pub(crate) struct NestedCycleBottom {
+    pub stack_bottom: String,
+}
+
+#[derive(Diagnostic)]
+#[diag("internal compiler error: query cycle when printing cycle detected")]
+pub(crate) struct NestedCycle {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub stack_bottom: NestedCycleBottom,
+    #[subdiagnostic]
+    pub cycle_stack: Vec<CycleStack>,
+    #[subdiagnostic]
+    pub stack_count: StackCount,
     #[subdiagnostic]
     pub cycle_usage: Option<CycleUsage>,
     #[note(

@@ -147,7 +147,7 @@ fn render(
         detail(ctx.completion, func)
     };
     item.set_documentation(ctx.docs(func))
-        .set_deprecated(ctx.is_deprecated(func) || ctx.is_deprecated_assoc_item(func))
+        .set_deprecated(ctx.is_deprecated(func, func.as_assoc_item(db)))
         .detail(detail)
         .lookup_by(name.as_str().to_smolstr());
 
@@ -678,7 +678,7 @@ fn main() {
     fn complete_fn_param() {
         // has mut kw
         check_edit(
-            "mut bar: u32",
+            "bar: u32",
             r#"
 fn f(foo: (), mut bar: u32) {}
 fn g(foo: (), mut ba$0)
@@ -689,9 +689,34 @@ fn g(foo: (), mut bar: u32)
 "#,
         );
 
-        // has type param
+        // has unmatched mut kw
+        check_edit(
+            "bar: u32",
+            r#"
+fn f(foo: (), bar: u32) {}
+fn g(foo: (), mut ba$0)
+"#,
+            r#"
+fn f(foo: (), bar: u32) {}
+fn g(foo: (), mut bar: u32)
+"#,
+        );
+
         check_edit(
             "mut bar: u32",
+            r#"
+fn f(foo: (), mut bar: u32) {}
+fn g(foo: (), ba$0)
+"#,
+            r#"
+fn f(foo: (), mut bar: u32) {}
+fn g(foo: (), mut bar: u32)
+"#,
+        );
+
+        // has type param
+        check_edit(
+            "bar: u32",
             r#"
 fn g(foo: (), mut ba$0: u32)
 fn f(foo: (), mut bar: u32) {}
@@ -707,7 +732,7 @@ fn f(foo: (), mut bar: u32) {}
     fn complete_fn_mut_param_add_comma() {
         // add leading and trailing comma
         check_edit(
-            ", mut bar: u32,",
+            "bar: u32",
             r#"
 fn f(foo: (), mut bar: u32) {}
 fn g(foo: ()mut ba$0 baz: ())
@@ -746,7 +771,7 @@ fn g(foo: (), #[baz = "qux"] mut bar: u32)
         );
 
         check_edit(
-            r#", #[baz = "qux"] mut bar: u32"#,
+            r#"#[baz = "qux"] mut bar: u32"#,
             r#"
 fn f(foo: (), #[baz = "qux"] mut bar: u32) {}
 fn g(foo: ()#[baz = "qux"] mut ba$0)

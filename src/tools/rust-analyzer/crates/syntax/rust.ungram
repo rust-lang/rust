@@ -126,9 +126,41 @@ MacroStmts =
 Attr =
   '#' '!'? '[' Meta ']'
 
+CfgAttrMeta =
+  'cfg_attr' '(' CfgPredicate ',' (Meta (',' Meta)* ','?) ')'
+
+CfgMeta =
+  'cfg' '(' CfgPredicate ','? ')'
+
+CfgPredicate =
+  CfgAtom
+| CfgComposite
+
+CfgAtom =
+  ('#ident' | 'true' | 'false') ('=' '@string')?
+
+CfgComposite =
+  keyword:'#ident' '(' (CfgPredicate (',' CfgPredicate)* ','?) ')'
+
 Meta =
-  'unsafe' '(' Path ('=' Expr | TokenTree)? ')'
-| Path ('=' Expr | TokenTree)?
+  CfgAttrMeta
+| CfgMeta
+| UnsafeMeta
+| PathMeta
+| KeyValueMeta
+| TokenTreeMeta
+
+UnsafeMeta =
+  'unsafe' '(' Meta ')'
+
+PathMeta =
+  Path
+
+KeyValueMeta =
+  Path '=' Expr
+
+TokenTreeMeta =
+  Path TokenTree
 
 //*************************//
 //          Items          //
@@ -245,18 +277,23 @@ RecordFieldList =
 
 RecordField =
   Attr* Visibility? 'unsafe'?
-  Name ':' Type ('=' Expr)?
+  MutRestriction?
+  Name ':' Type ('=' default_val:ConstArg)?
 
 TupleFieldList =
   '(' fields:(TupleField (',' TupleField)* ','?)? ')'
 
 TupleField =
   Attr* Visibility?
+  MutRestriction?
   Type
 
 FieldList =
   RecordFieldList
 | TupleFieldList
+
+MutRestriction =
+  'mut' VisibilityInner
 
 Enum =
   Attr* Visibility?
@@ -268,7 +305,7 @@ VariantList =
 
 Variant =
   Attr* Visibility?
-  Name FieldList? ('=' Expr)?
+  Name FieldList? ('=' ConstArg)?
 
 Union =
   Attr* Visibility?
@@ -291,6 +328,7 @@ VariantDef =
 Const =
   Attr* Visibility?
   'default'?
+  'type'?
   'const' (Name | '_') GenericParamList? ':' Type
   ('=' body:Expr)?
   WhereClause? ';'
@@ -304,9 +342,13 @@ Static =
 Trait =
   Attr* Visibility?
   'unsafe'? 'auto'?
+  ImplRestriction?
   'trait' Name GenericParamList?
   (((':' TypeBoundList?)? WhereClause? AssocItemList) |
   ('=' TypeBoundList? WhereClause? ';'))
+
+ImplRestriction =
+  'impl' VisibilityInner
 
 AssocItemList =
   '{' Attr* AssocItem* '}'
@@ -336,8 +378,10 @@ ExternItem =
 | TypeAlias
 
 Visibility =
-  'pub' ('(' 'in'? Path ')')?
+  'pub' VisibilityInner?
 
+VisibilityInner =
+  '(' 'in'? Path ')'
 
 //****************************//
 // Statements and Expressions //

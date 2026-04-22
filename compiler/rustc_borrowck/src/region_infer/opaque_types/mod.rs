@@ -10,9 +10,9 @@ use rustc_infer::traits::ObligationCause;
 use rustc_macros::extension;
 use rustc_middle::mir::{Body, ConstraintCategory};
 use rustc_middle::ty::{
-    self, DefiningScopeKind, DefinitionSiteHiddenType, FallibleTypeFolder, GenericArg,
+    self, DefiningScopeKind, DefinitionSiteHiddenType, FallibleTypeFolder, Flags, GenericArg,
     GenericArgsRef, OpaqueTypeKey, ProvisionalHiddenType, Region, RegionVid, Ty, TyCtxt,
-    TypeFoldable, TypeSuperFoldable, TypeVisitableExt, fold_regions,
+    TypeFoldable, TypeSuperFoldable, TypeVisitableExt, Unnormalized, fold_regions,
 };
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
@@ -367,9 +367,10 @@ fn compute_definition_site_hidden_types_from_defining_uses<'tcx>(
         // usage of the opaque type and we can ignore it. This check is mirrored in typeck's
         // writeback.
         if !rcx.infcx.tcx.use_typing_mode_borrowck() {
-            if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.skip_binder().kind()
-                && alias_ty.def_id == opaque_type_key.def_id.to_def_id()
-                && alias_ty.args == opaque_type_key.args
+            if let &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
+                hidden_type.ty.skip_binder().kind()
+                && def_id == opaque_type_key.def_id.to_def_id()
+                && args == opaque_type_key.args
             {
                 continue;
             }
@@ -499,8 +500,8 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ToArgRegionsFolder<'_, 'tcx> {
                 Ty::new_coroutine(tcx, def_id, self.fold_closure_args(def_id, args)?)
             }
 
-            ty::Alias(kind, ty::AliasTy { def_id, args, .. })
-                if let Some(variances) = tcx.opt_alias_variances(kind, def_id) =>
+            ty::Alias(ty::AliasTy { kind, args, .. })
+                if let Some(variances) = tcx.opt_alias_variances(kind) =>
             {
                 let args = tcx.mk_args_from_iter(std::iter::zip(variances, args.iter()).map(
                     |(&v, s)| {
@@ -511,7 +512,7 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for ToArgRegionsFolder<'_, 'tcx> {
                         }
                     },
                 ))?;
-                ty::AliasTy::new_from_args(tcx, def_id, args).to_ty(tcx)
+                ty::AliasTy::new_from_args(tcx, kind, args).to_ty(tcx)
             }
 
             _ => ty.try_super_fold_with(self)?,
@@ -540,9 +541,10 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
     for &(key, hidden_type) in opaque_types {
         let Some(expected) = hidden_types.get(&key.def_id) else {
             if !tcx.use_typing_mode_borrowck() {
-                if let ty::Alias(ty::Opaque, alias_ty) = hidden_type.ty.kind()
-                    && alias_ty.def_id == key.def_id.to_def_id()
-                    && alias_ty.args == key.args
+                if let &ty::Alias(ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
+                    hidden_type.ty.kind()
+                    && def_id == key.def_id.to_def_id()
+                    && args == key.args
                 {
                     continue;
                 } else {
@@ -567,16 +569,17 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
         };
 
         // We erase all non-member region of the opaque and need to treat these as existentials.
-        let expected_ty =
-            ty::fold_regions(tcx, expected.ty.instantiate(tcx, key.args), |re, _dbi| {
-                match re.kind() {
-                    ty::ReErased => infcx.next_nll_region_var(
-                        NllRegionVariableOrigin::Existential { name: None },
-                        || crate::RegionCtxt::Existential(None),
-                    ),
-                    _ => re,
-                }
-            });
+        let expected_ty = ty::fold_regions(
+            tcx,
+            expected.ty.instantiate(tcx, key.args).skip_norm_wip(),
+            |re, _dbi| match re.kind() {
+                ty::ReErased => infcx.next_nll_region_var(
+                    NllRegionVariableOrigin::Existential { name: None },
+                    || crate::RegionCtxt::Existential(None),
+                ),
+                _ => re,
+            },
+        );
 
         // We now simply equate the expected with the actual hidden type.
         let locations = Locations::All(hidden_type.span);
@@ -596,8 +599,13 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
                         body.source.def_id().expect_local(),
                     );
                     // We need to normalize both types in the old solver before equatingt them.
-                    let actual_ty = ocx.normalize(&cause, infcx.param_env, hidden_type.ty);
-                    let expected_ty = ocx.normalize(&cause, infcx.param_env, expected_ty);
+                    let actual_ty = ocx.normalize(
+                        &cause,
+                        infcx.param_env,
+                        Unnormalized::new_wip(hidden_type.ty),
+                    );
+                    let expected_ty =
+                        ocx.normalize(&cause, infcx.param_env, Unnormalized::new_wip(expected_ty));
                     ocx.eq(&cause, infcx.param_env, actual_ty, expected_ty).map_err(|_| NoSolution)
                 },
                 "equating opaque types",

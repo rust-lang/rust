@@ -7,12 +7,13 @@ use std::borrow::Cow;
 
 pub use fluent_bundle::types::FluentType;
 pub use fluent_bundle::{self, FluentArgs, FluentError, FluentValue};
-use rustc_macros::{Decodable, Encodable};
+use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::Span;
 pub use unic_langid::{LanguageIdentifier, langid};
 
 mod diagnostic_impls;
 pub use diagnostic_impls::DiagArgFromDisplay;
+use rustc_data_structures::fx::FxIndexMap;
 
 pub fn register_functions<R, M>(bundle: &mut fluent_bundle::bundle::FluentBundle<R, M>) {
     bundle
@@ -27,7 +28,7 @@ pub fn register_functions<R, M>(bundle: &mut fluent_bundle::bundle::FluentBundle
 /// diagnostic messages.
 ///
 /// Intended to be removed once diagnostics are entirely translatable.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
 #[rustc_diagnostic_item = "DiagMessage"]
 pub enum DiagMessage {
     /// Non-translatable diagnostic message or a message that has been translated eagerly.
@@ -88,7 +89,7 @@ pub struct SpanLabel {
 ///   the error, and would be rendered with `^^^`.
 /// - They can have a *label*. In this case, the label is written next
 ///   to the mark in the snippet when we render.
-#[derive(Clone, Debug, Hash, PartialEq, Eq, Encodable, Decodable)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, Encodable, Decodable, HashStable_Generic)]
 pub struct MultiSpan {
     primary_spans: Vec<Span>,
     span_labels: Vec<(Span, DiagMessage)>,
@@ -309,6 +310,10 @@ pub enum DiagArgValue {
     Number(i32),
     StrListSepByAnd(Vec<Cow<'static, str>>),
 }
+
+/// A mapping from diagnostic argument names to their values.
+/// This contains all the arguments necessary to format a diagnostic message.
+pub type DiagArgMap = FxIndexMap<DiagArgName, DiagArgValue>;
 
 /// Converts a value of a type into a `DiagArg` (typically a field of an `Diag` struct).
 /// Implemented as a custom trait rather than `From` so that it is implemented on the type being

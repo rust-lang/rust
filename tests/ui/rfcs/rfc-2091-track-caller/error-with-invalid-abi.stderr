@@ -1,15 +1,46 @@
-error[E0737]: `#[track_caller]` requires Rust ABI
+error[E0737]: `#[track_caller]` can only be used with the Rust ABI
   --> $DIR/error-with-invalid-abi.rs:1:1
    |
 LL | #[track_caller]
-   | ^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^ using `#[track_caller]` here
+LL |
+LL | extern "C" fn c_fn() {}
+   | ---------- not using the Rust ABI because of this
 
-error[E0737]: `#[track_caller]` requires Rust ABI
-  --> $DIR/error-with-invalid-abi.rs:6:5
+error[E0737]: `#[track_caller]` can only be used with the Rust ABI
+  --> $DIR/error-with-invalid-abi.rs:9:5
+   |
+LL | extern "C" {
+   | ---------- not using the Rust ABI because of this
+LL |     #[track_caller]
+   |     ^^^^^^^^^^^^^^^ using `#[track_caller]` here
+
+error[E0737]: `#[track_caller]` can only be used with the Rust ABI
+  --> $DIR/error-with-invalid-abi.rs:22:5
    |
 LL |     #[track_caller]
-   |     ^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^ using `#[track_caller]` here
+LL |
+LL |     extern "C" fn c_method() {}
+   |     ---------- not using the Rust ABI because of this
 
-error: aborting due to 2 previous errors
+error[E0737]: `#[track_caller]` can only be used with the Rust ABI
+  --> $DIR/error-with-invalid-abi.rs:31:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^ using `#[track_caller]` here
+LL |
+LL | pub extern fn extern_missing_abi() {}
+   |     ------ not using the Rust ABI because of this
+
+warning: `extern` declarations without an explicit ABI are deprecated
+  --> $DIR/error-with-invalid-abi.rs:33:5
+   |
+LL | pub extern fn extern_missing_abi() {}
+   |     ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`
+   |
+   = note: `#[warn(missing_abi)]` on by default
+
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0737`.

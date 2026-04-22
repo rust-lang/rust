@@ -16,7 +16,7 @@ pub(super) fn hints(
     let file_id = file_id.file_id(sema.db);
     let literal = ast::String::cast(literal.token())?;
     let (analysis, fixture_analysis) =
-        Analysis::from_ra_fixture(sema, literal.clone(), &literal, config.minicore)?;
+        Analysis::from_ra_fixture(sema, literal.clone(), &literal, &config.ra_fixture)?;
     for virtual_file_id in fixture_analysis.files() {
         acc.extend(
             analysis

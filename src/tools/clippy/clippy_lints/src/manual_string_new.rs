@@ -34,6 +34,7 @@ declare_clippy_lint! {
     pedantic,
     "empty String is being created manually"
 }
+
 declare_lint_pass!(ManualStringNew => [MANUAL_STRING_NEW]);
 
 impl LateLintPass<'_> for ManualStringNew {

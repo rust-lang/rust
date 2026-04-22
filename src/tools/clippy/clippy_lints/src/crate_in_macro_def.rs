@@ -49,6 +49,7 @@ declare_clippy_lint! {
     suspicious,
     "using `crate` in a macro definition"
 }
+
 declare_lint_pass!(CrateInMacroDef => [CRATE_IN_MACRO_DEF]);
 
 impl EarlyLintPass for CrateInMacroDef {

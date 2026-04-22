@@ -17,9 +17,27 @@ mod mte;
 #[unstable(feature = "stdarch_aarch64_mte", issue = "129010")]
 pub use self::mte::*;
 
+mod rand;
+#[unstable(feature = "stdarch_aarch64_rand", issue = "153514")]
+pub use self::rand::*;
+
 mod neon;
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
 pub use self::neon::*;
+
+// The rest of `core_arch::aarch64` is available on `arm64ec` but SVE is not supported on `arm64ec`.
+#[cfg(any(target_arch = "aarch64", doc))]
+mod sve;
+#[cfg(any(target_arch = "aarch64", doc))]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+pub use self::sve::*;
+
+// The rest of `core_arch::aarch64` is available on `arm64ec` but SVE is not supported on `arm64ec`.
+#[cfg(any(target_arch = "aarch64", doc))]
+mod sve2;
+#[cfg(any(target_arch = "aarch64", doc))]
+#[unstable(feature = "stdarch_aarch64_sve", issue = "145052")]
+pub use self::sve2::*;
 
 mod prefetch;
 #[unstable(feature = "stdarch_aarch64_prefetch", issue = "117217")]

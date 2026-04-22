@@ -456,7 +456,18 @@ pub(crate) enum CaptureReasonLabel<'a> {
         is_move_msg: bool,
         is_loop_message: bool,
     },
-    #[label("help: consider calling `.as_ref()` or `.as_mut()` to borrow the type's contents")]
+    #[suggestion(
+        "consider calling `.as_ref()` to borrow the value's contents",
+        applicability = "maybe-incorrect",
+        code = ".as_ref()",
+        style = "verbose"
+    )]
+    #[suggestion(
+        "consider calling `.as_mut()` to mutably borrow the value's contents",
+        applicability = "maybe-incorrect",
+        code = ".as_mut()",
+        style = "verbose"
+    )]
     BorrowContent {
         #[primary_span]
         var_span: Span,
@@ -565,6 +576,16 @@ pub(crate) enum TypeNoCopy<'a, 'tcx> {
     )]
     Label {
         is_partial_move: bool,
+        ty: Ty<'tcx>,
+        place: &'a str,
+        #[primary_span]
+        span: Span,
+    },
+    #[label(
+        "data moved here because {$place} has type `{$ty}`, which does not implement the `Copy` \
+         trait"
+    )]
+    LabelMovedHere {
         ty: Ty<'tcx>,
         place: &'a str,
         #[primary_span]

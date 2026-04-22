@@ -1,7 +1,7 @@
 #![feature(rustc_attrs)]
 
-#[rustc_outlives]
-struct Foo<'b, U> { //~ ERROR rustc_outlives
+#[rustc_dump_inferred_outlives]
+struct Foo<'b, U> { //~ ERROR rustc_dump_inferred_outlives
     bar: Bar<'b, U>
 }
 

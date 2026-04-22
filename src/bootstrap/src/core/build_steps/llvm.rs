@@ -631,11 +631,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let version = get_llvm_version(builder, llvm_config);
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next())
-        && major >= 20
+        && major >= 21
     {
         return;
     }
-    panic!("\n\nbad LLVM version: {version}, need >=20\n\n")
+    panic!("\n\nbad LLVM version: {version}, need >=21\n\n")
 }
 
 fn configure_cmake(
@@ -650,6 +650,18 @@ fn configure_cmake(
     // Do not print installation messages for up-to-date files.
     // LLVM and LLD builds can produce a lot of those and hit CI limits on log size.
     cfg.define("CMAKE_INSTALL_MESSAGE", "LAZY");
+
+    if builder.config.quiet {
+        // Only log errors and warnings from `cmake`.
+        cfg.define("CMAKE_MESSAGE_LOG_LEVEL", "WARNING");
+
+        // If we're configuring llvm to build with `ninja`, we can suppress output from it with
+        // `--quiet`. Otherwise don't add anything since we don't know which build system is going
+        // to use.
+        if builder.ninja() {
+            cfg.build_arg("--quiet");
+        }
+    }
 
     // Do not allow the user's value of DESTDIR to influence where
     // LLVM will install itself. LLVM must always be installed in our
@@ -1151,12 +1163,18 @@ impl Step for Enzyme {
 
         let LlvmResult { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
 
+        // Enzyme links against LLVM. If we update the LLVM submodule libLLVM might get a new
+        // version number, in which case Enzyme will now fail to find LLVM. By including the LLVM
+        // hash into the Enzyme hash we force a rebuild of Enzyme when updating LLVM.
+        let enzyme_hash_input = builder.in_tree_llvm_info.sha().unwrap_or_default().to_owned()
+            + builder.enzyme_info.sha().unwrap_or_default();
+
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
         let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
             generate_smart_stamp_hash(
                 builder,
                 &builder.config.src.join("src/tools/enzyme"),
-                builder.enzyme_info.sha().unwrap_or_default(),
+                &enzyme_hash_input,
             )
         });
 
@@ -1552,6 +1570,8 @@ fn supported_sanitizers(
             &["asan", "dfsan", "lsan", "msan", "safestack", "tsan", "rtsan"],
         ),
         "x86_64-unknown-linux-gnuasan" => common_libs("linux", "x86_64", &["asan"]),
+        "x86_64-unknown-linux-gnumsan" => common_libs("linux", "x86_64", &["msan"]),
+        "x86_64-unknown-linux-gnutsan" => common_libs("linux", "x86_64", &["tsan"]),
         "x86_64-unknown-linux-musl" => {
             common_libs("linux", "x86_64", &["asan", "lsan", "msan", "tsan"])
         }

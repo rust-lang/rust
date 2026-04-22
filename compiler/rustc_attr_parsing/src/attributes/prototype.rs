@@ -5,10 +5,10 @@ use rustc_hir::Target;
 use rustc_hir::attrs::{AttributeKind, MirDialect, MirPhase};
 use rustc_span::{Span, Symbol, sym};
 
-use super::{AttributeOrder, OnDuplicate};
 use crate::attributes::SingleAttributeParser;
 use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
+use crate::session_diagnostics;
 use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::Allow;
 
@@ -17,17 +17,14 @@ pub(crate) struct CustomMirParser;
 impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
     const PATH: &[rustc_span::Symbol] = &[sym::custom_mir];
 
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
-
-    const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
-
     const ALLOWED_TARGETS: AllowedTargets = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
 
     const TEMPLATE: AttributeTemplate = template!(List: &[r#"dialect = "...", phase = "...""#]);
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(list) = args.list() else {
-            cx.expected_list(cx.attr_span, args);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_list(attr_span, args);
             return None;
         };
 
@@ -37,7 +34,7 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
 
         for item in list.mixed() {
             let Some(meta_item) = item.meta_item() else {
-                cx.expected_name_value(item.span(), None);
+                cx.adcx().expected_name_value(item.span(), None);
                 failed = true;
                 break;
             };
@@ -47,16 +44,17 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
             } else if let Some(arg) = meta_item.word_is(sym::phase) {
                 extract_value(cx, sym::phase, arg, meta_item.span(), &mut phase, &mut failed);
             } else if let Some(..) = meta_item.path().word() {
-                cx.expected_specific_argument(meta_item.span(), &[sym::dialect, sym::phase]);
+                cx.adcx().expected_specific_argument(meta_item.span(), &[sym::dialect, sym::phase]);
                 failed = true;
             } else {
-                cx.expected_name_value(meta_item.span(), None);
+                cx.adcx().expected_name_value(meta_item.span(), None);
                 failed = true;
             };
         }
 
         let dialect = parse_dialect(cx, dialect, &mut failed);
         let phase = parse_phase(cx, phase, &mut failed);
+        check_custom_mir(cx, dialect, phase, &mut failed);
 
         if failed {
             return None;
@@ -75,19 +73,19 @@ fn extract_value<S: Stage>(
     failed: &mut bool,
 ) {
     if out_val.is_some() {
-        cx.duplicate_key(span, key);
+        cx.adcx().duplicate_key(span, key);
         *failed = true;
         return;
     }
 
     let Some(val) = arg.name_value() else {
-        cx.expected_single_argument(arg.span().unwrap_or(span));
+        cx.adcx().expected_name_value(span, Some(key));
         *failed = true;
         return;
     };
 
     let Some(value_sym) = val.value_as_str() else {
-        cx.expected_string_literal(val.value_span, Some(val.value_as_lit()));
+        cx.adcx().expected_string_literal(val.value_span, Some(val.value_as_lit()));
         *failed = true;
         return;
     };
@@ -108,7 +106,7 @@ fn parse_dialect<S: Stage>(
         sym::runtime => MirDialect::Runtime,
 
         _ => {
-            cx.expected_specific_argument(span, &[sym::analysis, sym::built, sym::runtime]);
+            cx.adcx().expected_specific_argument(span, &[sym::analysis, sym::built, sym::runtime]);
             *failed = true;
             return None;
         }
@@ -130,11 +128,62 @@ fn parse_phase<S: Stage>(
         sym::optimized => MirPhase::Optimized,
 
         _ => {
-            cx.expected_specific_argument(span, &[sym::initial, sym::post_cleanup, sym::optimized]);
+            cx.adcx().expected_specific_argument(
+                span,
+                &[sym::initial, sym::post_cleanup, sym::optimized],
+            );
             *failed = true;
             return None;
         }
     };
 
     Some((phase, span))
+}
+
+fn check_custom_mir<S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    dialect: Option<(MirDialect, Span)>,
+    phase: Option<(MirPhase, Span)>,
+    failed: &mut bool,
+) {
+    let attr_span = cx.attr_span;
+    let Some((dialect, dialect_span)) = dialect else {
+        if let Some((_, phase_span)) = phase {
+            *failed = true;
+            cx.emit_err(session_diagnostics::CustomMirPhaseRequiresDialect {
+                attr_span,
+                phase_span,
+            });
+        }
+        return;
+    };
+
+    match dialect {
+        MirDialect::Analysis => {
+            if let Some((MirPhase::Optimized, phase_span)) = phase {
+                *failed = true;
+                cx.emit_err(session_diagnostics::CustomMirIncompatibleDialectAndPhase {
+                    dialect,
+                    phase: MirPhase::Optimized,
+                    attr_span,
+                    dialect_span,
+                    phase_span,
+                });
+            }
+        }
+
+        MirDialect::Built => {
+            if let Some((phase, phase_span)) = phase {
+                *failed = true;
+                cx.emit_err(session_diagnostics::CustomMirIncompatibleDialectAndPhase {
+                    dialect,
+                    phase,
+                    attr_span,
+                    dialect_span,
+                    phase_span,
+                });
+            }
+        }
+        MirDialect::Runtime => {}
+    }
 }

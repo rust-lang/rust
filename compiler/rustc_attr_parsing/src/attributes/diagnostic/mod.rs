@@ -3,8 +3,8 @@ use std::ops::Range;
 use rustc_errors::E0232;
 use rustc_hir::AttrPath;
 use rustc_hir::attrs::diagnostic::{
-    AppendConstMessage, Directive, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg,
-    Name, NameValue, OnUnimplementedCondition, Piece, Predicate,
+    Directive, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg, Name, NameValue,
+    OnUnimplementedCondition, Piece, Predicate,
 };
 use rustc_hir::lints::{AttributeLintKind, FormatWarning};
 use rustc_macros::Diagnostic;
@@ -22,7 +22,9 @@ use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItem
 
 pub(crate) mod do_not_recommend;
 pub(crate) mod on_const;
+pub(crate) mod on_move;
 pub(crate) mod on_unimplemented;
+pub(crate) mod on_unknown;
 
 #[derive(Copy, Clone)]
 pub(crate) enum Mode {
@@ -32,6 +34,49 @@ pub(crate) enum Mode {
     DiagnosticOnUnimplemented,
     /// `#[diagnostic::on_const]`
     DiagnosticOnConst,
+    /// `#[diagnostic::on_move]`
+    DiagnosticOnMove,
+    /// `#[diagnostic::on_unknown]`
+    DiagnosticOnUnknown,
+}
+
+impl Mode {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::RustcOnUnimplemented => "rustc_on_unimplemented",
+            Self::DiagnosticOnUnimplemented => "diagnostic::on_unimplemented",
+            Self::DiagnosticOnConst => "diagnostic::on_const",
+            Self::DiagnosticOnMove => "diagnostic::on_move",
+            Self::DiagnosticOnUnknown => "diagnostic::on_unknown",
+        }
+    }
+
+    fn expected_options(&self) -> &'static str {
+        const DEFAULT: &str =
+            "at least one of the `message`, `note` and `label` options are expected";
+        match self {
+            Self::RustcOnUnimplemented => {
+                "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>"
+            }
+            Self::DiagnosticOnUnimplemented => DEFAULT,
+            Self::DiagnosticOnConst => DEFAULT,
+            Self::DiagnosticOnMove => DEFAULT,
+            Self::DiagnosticOnUnknown => DEFAULT,
+        }
+    }
+
+    fn allowed_options(&self) -> &'static str {
+        const DEFAULT: &str = "only `message`, `note` and `label` are allowed as options";
+        match self {
+            Self::RustcOnUnimplemented => {
+                "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>"
+            }
+            Self::DiagnosticOnUnimplemented => DEFAULT,
+            Self::DiagnosticOnConst => DEFAULT,
+            Self::DiagnosticOnMove => DEFAULT,
+            Self::DiagnosticOnUnknown => DEFAULT,
+        }
+    }
 }
 
 fn merge_directives<S: Stage>(
@@ -77,6 +122,49 @@ fn merge<T, S: Stage>(
     }
 }
 
+fn parse_list<'p, S: Stage>(
+    cx: &mut AcceptContext<'_, '_, S>,
+    args: &'p ArgParser,
+    mode: Mode,
+) -> Option<&'p MetaItemListParser> {
+    let span = cx.attr_span;
+    match args {
+        ArgParser::List(items) if items.len() != 0 => return Some(items),
+        ArgParser::List(list) => {
+            // We're dealing with `#[diagnostic::attr()]`.
+            // This can be because that is what the user typed, but that's also what we'd see
+            // if the user used non-metaitem syntax. See `ArgParser::from_attr_args`.
+            cx.emit_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                AttributeLintKind::NonMetaItemDiagnosticAttribute,
+                list.span,
+            );
+        }
+        ArgParser::NoArgs => {
+            cx.emit_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                AttributeLintKind::MissingOptionsForDiagnosticAttribute {
+                    attribute: mode.as_str(),
+                    options: mode.expected_options(),
+                },
+                span,
+            );
+        }
+        ArgParser::NameValue(_) => {
+            cx.emit_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                AttributeLintKind::MalFormedDiagnosticAttribute {
+                    attribute: mode.as_str(),
+                    options: mode.allowed_options(),
+                    span,
+                },
+                span,
+            );
+        }
+    }
+    None
+}
+
 fn parse_directive_items<'p, S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     mode: Mode,
@@ -89,31 +177,20 @@ fn parse_directive_items<'p, S: Stage>(
     let mut notes = ThinVec::new();
     let mut parent_label = None;
     let mut subcommands = ThinVec::new();
-    let mut append_const_msg = None;
 
     for item in items {
         let span = item.span();
 
         macro malformed() {{
-            match mode {
-                Mode::RustcOnUnimplemented => {
-                    cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
-                }
-                Mode::DiagnosticOnUnimplemented => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnUnimplementedAttr { span },
-                        span,
-                    );
-                }
-                Mode::DiagnosticOnConst => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::MalformedOnConstAttr { span },
-                        span,
-                    );
-                }
-            }
+            cx.emit_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                AttributeLintKind::MalFormedDiagnosticAttribute {
+                    attribute: mode.as_str(),
+                    options: mode.allowed_options(),
+                    span,
+                },
+                span,
+            );
             continue;
         }}
 
@@ -121,36 +198,33 @@ fn parse_directive_items<'p, S: Stage>(
             let Some(ret) = (||{
                 Some($($code)*)
             })() else {
-
                 malformed!()
             };
             ret
         }}
 
         macro duplicate($name: ident, $($first_span:tt)*) {{
-            match mode {
-                Mode::RustcOnUnimplemented => {
-                    cx.emit_err(NoValueInOnUnimplemented { span: item.span() });
-                }
-                Mode::DiagnosticOnUnimplemented |Mode::DiagnosticOnConst => {
-                    cx.emit_lint(
-                        MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                        AttributeLintKind::IgnoredDiagnosticOption {
-                            first_span: $($first_span)*,
-                            later_span: span,
-                            option_name: $name,
-                        },
-                        span,
-                    );
-                }
-            }
+            cx.emit_lint(
+                MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                AttributeLintKind::IgnoredDiagnosticOption {
+                    first_span: $($first_span)*,
+                    later_span: span,
+                    option_name: $name,
+                },
+                span,
+            );
         }}
 
         let item: &MetaItemParser = or_malformed!(item.meta_item()?);
         let name = or_malformed!(item.ident()?).name;
 
-        // Some things like `message = "message"` must have a value.
-        // But with things like `append_const_msg` that is optional.
+        // Currently, as of April 2026, all arguments of all diagnostic attrs
+        // must have a value, like `message = "message"`. Thus in a well-formed
+        // diagnostic attribute this is never `None`.
+        //
+        // But we don't assert its presence yet because we don't want to mention it
+        // if someone does something like `#[diagnostic::on_unimplemented(doesnt_exist)]`.
+        // That happens in the big `match` below.
         let value: Option<Ident> = match item.args().name_value() {
             Some(nv) => Some(or_malformed!(nv.value_as_ident()?)),
             None => None,
@@ -163,7 +237,8 @@ fn parse_directive_items<'p, S: Stage>(
                 Ok((f, warnings)) => {
                     for warning in warnings {
                         let (FormatWarning::InvalidSpecifier { span, .. }
-                        | FormatWarning::PositionalArgument { span, .. }) = warning;
+                        | FormatWarning::PositionalArgument { span, .. }
+                        | FormatWarning::DisallowedPlaceholder { span }) = warning;
                         cx.emit_lint(
                             MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
                             AttributeLintKind::MalformedDiagnosticFormat { warning },
@@ -212,14 +287,6 @@ fn parse_directive_items<'p, S: Stage>(
             (_, sym::note) => {
                 let value = or_malformed!(value?);
                 notes.push(parse_format(value))
-            }
-
-            (Mode::RustcOnUnimplemented, sym::append_const_msg) => {
-                append_const_msg = if let Some(msg) = value {
-                    Some(AppendConstMessage::Custom(msg.name, item.span()))
-                } else {
-                    Some(AppendConstMessage::Default)
-                }
             }
             (Mode::RustcOnUnimplemented, sym::parent_label) => {
                 let value = or_malformed!(value?);
@@ -280,7 +347,6 @@ fn parse_directive_items<'p, S: Stage>(
         label,
         notes,
         parent_label,
-        append_const_msg,
     })
 }
 
@@ -322,6 +388,10 @@ fn parse_arg(
     is_source_literal: bool,
 ) -> FormatArg {
     let span = slice_span(input_span, arg.position_span.clone(), is_source_literal);
+    if matches!(mode, Mode::DiagnosticOnUnknown) {
+        warnings.push(FormatWarning::DisallowedPlaceholder { span });
+        return FormatArg::AsIs(sym::empty_braces);
+    }
 
     match arg.position {
         // Something like "hello {name}"
@@ -460,11 +530,12 @@ fn parse_filter(input: Symbol) -> FilterFormatString {
                 // if the integer type has been resolved, to allow targeting all integers.
                 // `"{integer}"` and `"{float}"` come from numerics that haven't been inferred yet,
                 // from the `Display` impl of `InferTy` to be precise.
+                // `"{union|enum|struct}"` is used as a special selector for ADTs.
                 //
                 // Don't try to format these later!
-                Position::ArgumentNamed(arg @ ("integer" | "integral" | "float")) => {
-                    LitOrArg::Lit(Symbol::intern(&format!("{{{arg}}}")))
-                }
+                Position::ArgumentNamed(
+                    arg @ ("integer" | "integral" | "float" | "union" | "enum" | "struct"),
+                ) => LitOrArg::Lit(Symbol::intern(&format!("{{{arg}}}"))),
 
                 Position::ArgumentNamed(arg) => LitOrArg::Arg(Symbol::intern(arg)),
                 Position::ArgumentImplicitlyIs(_) => LitOrArg::Lit(sym::empty_braces),
@@ -518,15 +589,6 @@ pub(crate) enum InvalidOnClause {
         span: Span,
         invalid_flag: Symbol,
     },
-}
-
-#[derive(Diagnostic)]
-#[diag("this attribute must have a value", code = E0232)]
-#[note("e.g. `#[rustc_on_unimplemented(message=\"foo\")]`")]
-pub(crate) struct NoValueInOnUnimplemented {
-    #[primary_span]
-    #[label("expected value here")]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]

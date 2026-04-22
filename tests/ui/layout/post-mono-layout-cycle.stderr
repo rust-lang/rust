@@ -5,12 +5,6 @@ error[E0391]: cycle detected when computing layout of `Wrapper<()>`
    = note: cycle used when computing layout of `core::option::Option<Wrapper<()>>`
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-note: the above error was encountered while instantiating `fn abi::<()>`
-  --> $DIR/post-mono-layout-cycle.rs:19:5
-   |
-LL |     abi::<T>(None);
-   |     ^^^^^^^^^^^^^^
-
 error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0391`.

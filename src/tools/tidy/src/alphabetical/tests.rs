@@ -5,7 +5,7 @@ use crate::diagnostics::{TidyCtx, TidyFlags};
 
 #[track_caller]
 fn test(lines: &str, name: &str, expected_msg: &str, expected_bad: bool) {
-    let tidy_ctx = TidyCtx::new(Path::new("/"), false, TidyFlags::default());
+    let tidy_ctx = TidyCtx::new(Path::new("/"), false, None, TidyFlags::default());
     let mut check = tidy_ctx.start_check("alphabetical-test");
     check_lines(Path::new(name), lines, &tidy_ctx, &mut check);
 
@@ -37,7 +37,7 @@ fn bless_test(before: &str, after: &str) {
     let temp_path = tempfile::Builder::new().tempfile().unwrap().into_temp_path();
     std::fs::write(&temp_path, before).unwrap();
 
-    let tidy_ctx = TidyCtx::new(Path::new("/"), false, TidyFlags::new(true));
+    let tidy_ctx = TidyCtx::new(Path::new("/"), false, None, TidyFlags::new(true));
 
     let mut check = tidy_ctx.start_check("alphabetical-test");
     check_lines(&temp_path, before, &tidy_ctx, &mut check);
@@ -115,7 +115,7 @@ fn test_rust_bad() {
         def
         // tidy-alphabetical-end
     ";
-    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:3: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -127,7 +127,7 @@ fn test_toml_bad() {
         def
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:3: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -141,7 +141,7 @@ fn test_features_bad() {
         #![feature(def)]
         tidy-alphabetical-end
     ";
-    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:3: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -154,7 +154,7 @@ fn test_indent_bad() {
             def
         $ tidy-alphabetical-end
     ";
-    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:3: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -170,7 +170,7 @@ fn test_split_bad() {
         )
         && tidy-alphabetical-end
     ";
-    bad(lines, "bad:3: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:4: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -339,7 +339,7 @@ fn test_numeric_bad() {
         item2
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:3: line not in alphabetical order (tip: use --bless to sort this list)");
 
     let lines = "\
         # tidy-alphabetical-start
@@ -347,7 +347,7 @@ fn test_numeric_bad() {
         zve64d
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 
     let lines = "\
         # tidy-alphabetical-start
@@ -355,7 +355,7 @@ fn test_numeric_bad() {
         00
         # tidy-alphabetical-end
     ";
-    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 }
 
 #[test]
@@ -394,7 +394,7 @@ fn multiline() {
         );
         tidy-alphabetical-end
     ";
-    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 
     let lines = "\
         tidy-alphabetical-start
@@ -406,7 +406,7 @@ fn multiline() {
          a);
         tidy-alphabetical-end
     ";
-    bad(lines, "bad:1: line not in alphabetical order (tip: use --bless to sort this list)");
+    bad(lines, "bad:2: line not in alphabetical order (tip: use --bless to sort this list)");
 
     let lines = "\
         force_unwind_tables: Option<bool> = (None, parse_opt_bool, [TRACKED],

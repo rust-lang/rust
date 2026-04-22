@@ -6,6 +6,7 @@ LL |     [1; || {}];
    |
    = note: expected type `usize`
            found closure `{closure@$DIR/array-len-is-closure.rs:4:9: 4:11}`
+   = note: array length can only be `usize`
 
 error: aborting due to 1 previous error
 

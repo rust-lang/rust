@@ -4,6 +4,27 @@ use crate::command::{Command, CompletedProcess};
 use crate::env::env_var;
 use crate::path_helpers::cwd;
 
+fn print_command_output(cmd: &Command, output: &CompletedProcess) {
+    cmd.inspect(|std_cmd| {
+        eprintln!("{std_cmd:?}");
+    });
+    eprintln!("output status: `{}`", output.status());
+    eprintln!("=== STDOUT ===\n{}\n\n", output.stdout_utf8());
+    eprintln!("=== STDERR ===\n{}\n\n", output.stderr_utf8());
+    if !cmd.get_context().is_empty() {
+        eprintln!("Context:\n{}", cmd.get_context());
+    }
+}
+
+pub(crate) fn verbose_print_command(cmd: &Command, output: &CompletedProcess) {
+    // Only prints when `--verbose-run-make-subprocess-output` is active (env var set),
+    // so that passing tests don't flood the terminal when using `--no-capture`.
+    if std::env::var_os("__RMAKE_VERBOSE_SUBPROCESS_OUTPUT").is_none() {
+        return;
+    }
+    print_command_output(cmd, output);
+}
+
 /// If a given [`Command`] failed (as indicated by its [`CompletedProcess`]), verbose print the
 /// executed command, failure location, output status and stdout/stderr, and abort the process with
 /// exit code `1`.
@@ -17,13 +38,7 @@ pub(crate) fn handle_failed_output(
     } else {
         eprintln!("command failed at line {caller_line_number}");
     }
-    eprintln!("{cmd:?}");
-    eprintln!("output status: `{}`", output.status());
-    eprintln!("=== STDOUT ===\n{}\n\n", output.stdout_utf8());
-    eprintln!("=== STDERR ===\n{}\n\n", output.stderr_utf8());
-    if !cmd.get_context().is_empty() {
-        eprintln!("Context:\n{}", cmd.get_context());
-    }
+    print_command_output(cmd, &output);
     std::process::exit(1)
 }
 

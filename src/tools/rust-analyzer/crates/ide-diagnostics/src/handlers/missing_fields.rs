@@ -1,6 +1,6 @@
 use either::Either;
 use hir::{
-    AssocItem, FindPathConfig, HirDisplay, InFile, Type,
+    AssocItem, FindPathConfig, HasVisibility, HirDisplay, InFile, Type,
     db::{ExpandDatabase, HirDatabase},
     sym,
 };
@@ -35,7 +35,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 // ```
 pub(crate) fn missing_fields(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Diagnostic {
     let mut message = String::from("missing structure fields:\n");
-    for field in &d.missed_fields {
+    for (field, _) in &d.missed_fields {
         format_to!(message, "- {}\n", field.display(ctx.sema.db, ctx.edition));
     }
 
@@ -57,7 +57,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
     // `struct A(usize);`
     // `let a = A { 0: () }`
     // but it is uncommon usage and it should not be encouraged.
-    if d.missed_fields.iter().any(|it| it.as_tuple_index().is_some()) {
+    if d.missed_fields.iter().any(|(name, _)| name.as_tuple_index().is_some()) {
         return None;
     }
 
@@ -67,6 +67,12 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
         ctx.sema.scope(d.field_list_parent.to_node(&root).syntax()).map(|it| it.module());
     let range = InFile::new(d.file, d.field_list_parent.text_range())
         .original_node_file_range_rooted_opt(ctx.sema.db)?;
+
+    if let Some(current_module) = current_module
+        && d.missed_fields.iter().any(|(_, field)| !field.is_visible_from(ctx.db(), current_module))
+    {
+        return None;
+    }
 
     let build_text_edit = |new_syntax: &SyntaxNode, old_syntax| {
         let edit = {
@@ -120,7 +126,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                 let field_expr = if let Some(local_candidate) = locals.get(&f.name(ctx.sema.db)) {
                     cov_mark::hit!(field_shorthand);
                     let candidate_ty = local_candidate.ty(ctx.sema.db);
-                    if ty.could_unify_with(ctx.sema.db, &candidate_ty) {
+                    if candidate_ty.could_coerce_to(ctx.sema.db, ty) {
                         None
                     } else {
                         Some(generate_fill_expr(ty))
@@ -254,7 +260,7 @@ fn get_default_constructor(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix};
+    use crate::tests::{check_diagnostics, check_fix, check_no_fix};
 
     #[test]
     fn missing_record_pat_field_diagnostic() {
@@ -588,14 +594,14 @@ fn test_fn() {
     fn test_fill_struct_fields_default() {
         check_fix(
             r#"
-//- minicore: default, option
+//- minicore: default, option, slice
 struct TestWithDefault(usize);
 impl Default for TestWithDefault {
     pub fn default() -> Self {
         Self(0)
     }
 }
-struct TestStruct { one: i32, two: TestWithDefault }
+struct TestStruct { one: i32, two: TestWithDefault, r: &'static [i32] }
 
 fn test_fn() {
     let s = TestStruct{ $0 };
@@ -608,10 +614,10 @@ impl Default for TestWithDefault {
         Self(0)
     }
 }
-struct TestStruct { one: i32, two: TestWithDefault }
+struct TestStruct { one: i32, two: TestWithDefault, r: &'static [i32] }
 
 fn test_fn() {
-    let s = TestStruct{ one: 0, two: TestWithDefault::default()  };
+    let s = TestStruct{ one: 0, two: TestWithDefault::default(), r: <&'static [i32]>::default()  };
 }
 ",
         );
@@ -932,6 +938,47 @@ fn main() {
     let Point { x, .. } = Point { z: 5, .. };
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn coerce_existing_local() {
+        check_fix(
+            r#"
+struct A {
+    v: f64,
+}
+
+fn f() -> A {
+    let v = loop {};
+    A {$0}
+}
+        "#,
+            r#"
+struct A {
+    v: f64,
+}
+
+fn f() -> A {
+    let v = loop {};
+    A { v }
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn inaccessible_fields() {
+        check_no_fix(
+            r#"
+mod foo {
+    pub struct Bar { baz: i32 }
+}
+
+fn qux() {
+    foo::Bar {$0};
+}
+        "#,
         );
     }
 }

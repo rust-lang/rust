@@ -118,6 +118,9 @@ unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
         process_heap_alloc(MaybeUninit::uninit(), flags, layout.size()) as *mut u8
     } else {
         // Allocate extra padding in order to be able to satisfy the alignment.
+        // This addition does not overflow due to `Layout` type invariants,
+        // `size()` is at most `isize::MAX` while
+        // `align()` is at most `1 << (bits in usize - 2)` if `size()` is non-zero.
         let total = layout.align() + layout.size();
 
         let ptr = process_heap_alloc(MaybeUninit::uninit(), flags, total) as *mut u8;

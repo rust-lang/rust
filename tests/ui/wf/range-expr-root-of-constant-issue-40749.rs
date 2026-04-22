@@ -1,9 +1,11 @@
 fn main() {
     [0; ..10];
-    //~^ ERROR mismatched types
-    //~| NOTE expected type `usize`
-    //~| NOTE found struct `RangeTo<{integer}>`
-    //~| NOTE expected `usize`, found `RangeTo<{integer}>
-    //~| NOTE in this expansion of desugaring of range expression
-    //~| NOTE in this expansion of desugaring of range expression
+    //~^ ERROR: mismatched types
+    //~| NOTE: expected type `usize`
+    //~| NOTE: found struct `RangeTo<{integer}>`
+    //~| NOTE: expected `usize`, found `RangeTo<{integer}>
+    //~| NOTE: array length can only be `usize`
+    //~| NOTE: in this expansion of desugaring of range expression
+    //~| NOTE: in this expansion of desugaring of range expression
+    //~| NOTE: in this expansion of desugaring of range expression
 }

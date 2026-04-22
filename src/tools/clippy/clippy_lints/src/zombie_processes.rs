@@ -54,6 +54,7 @@ declare_clippy_lint! {
     suspicious,
     "not waiting on a spawned child process"
 }
+
 declare_lint_pass!(ZombieProcesses => [ZOMBIE_PROCESSES]);
 
 impl<'tcx> LateLintPass<'tcx> for ZombieProcesses {

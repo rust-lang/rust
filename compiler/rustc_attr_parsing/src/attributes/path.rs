@@ -4,7 +4,6 @@ pub(crate) struct PathParser;
 
 impl<S: Stage> SingleAttributeParser<S> for PathParser {
     const PATH: &[Symbol] = &[sym::path];
-    const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepOutermost;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
     const ALLOWED_TARGETS: AllowedTargets =
         AllowedTargets::AllowListWarnRest(&[Allow(Target::Mod), Error(Target::Crate)]);
@@ -15,11 +14,12 @@ impl<S: Stage> SingleAttributeParser<S> for PathParser {
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let Some(nv) = args.name_value() else {
-            cx.expected_name_value(cx.attr_span, None);
+            let attr_span = cx.attr_span;
+            cx.adcx().expected_name_value(attr_span, None);
             return None;
         };
         let Some(path) = nv.value_as_str() else {
-            cx.expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
             return None;
         };
 

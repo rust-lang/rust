@@ -1,6 +1,6 @@
 //! This module ensures that if a function's ABI requires a particular target feature,
 //! that target feature is enabled both on the callee and all callers.
-use rustc_abi::{BackendRepr, CanonAbi, RegKind, X86Call};
+use rustc_abi::{BackendRepr, CanonAbi, ExternAbi, RegKind, X86Call};
 use rustc_hir::{CRATE_HIR_ID, HirId};
 use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
@@ -25,8 +25,11 @@ fn passes_vectors_by_value(mode: &PassMode, repr: &BackendRepr) -> UsesVectorReg
     match mode {
         PassMode::Ignore | PassMode::Indirect { .. } => UsesVectorRegisters::No,
         PassMode::Cast { pad_i32: _, cast }
-            if cast.prefix.iter().any(|r| r.is_some_and(|x| x.kind == RegKind::Vector))
-                || cast.rest.unit.kind == RegKind::Vector =>
+            if cast
+                .prefix
+                .iter()
+                .any(|r| r.is_some_and(|x| matches!(x.kind, RegKind::Vector { .. })))
+                || matches!(cast.rest.unit.kind, RegKind::Vector { .. }) =>
         {
             UsesVectorRegisters::FixedVector
         }
@@ -36,7 +39,7 @@ fn passes_vectors_by_value(mode: &PassMode, repr: &BackendRepr) -> UsesVectorReg
             UsesVectorRegisters::FixedVector
         }
         PassMode::Direct(..) | PassMode::Pair(..)
-            if matches!(repr, BackendRepr::ScalableVector { .. }) =>
+            if matches!(repr, BackendRepr::SimdScalableVector { .. }) =>
         {
             UsesVectorRegisters::ScalableVector
         }
@@ -157,6 +160,12 @@ fn do_check_unsized_params<'tcx>(
 /// - the signature requires target features that are not enabled
 fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
     let typing_env = ty::TypingEnv::fully_monomorphized();
+    let ty = instance.ty(tcx, typing_env);
+    if ty.is_fn() && ty.fn_sig(tcx).abi() == ExternAbi::Unadjusted {
+        // We disable all checks for the unadjusted ABI to allow linking to arbitrary LLVM
+        // intrinsics
+        return;
+    }
     let Ok(abi) = tcx.fn_abi_of_instance(typing_env.as_query_input((instance, ty::List::empty())))
     else {
         // An error will be reported during codegen if we cannot determine the ABI of this
@@ -191,9 +200,12 @@ fn check_call_site_abi<'tcx>(
     caller: InstanceKind<'tcx>,
     loc: impl Fn() -> (Span, HirId) + Copy,
 ) {
-    if callee.fn_sig(tcx).abi().is_rustic_abi() {
+    let extern_abi = callee.fn_sig(tcx).abi();
+    if extern_abi.is_rustic_abi() || extern_abi == ExternAbi::Unadjusted {
         // We directly handle the soundness of Rust ABIs -- so let's skip the majority of
         // call sites to avoid a perf regression.
+        // We disable all checks for the unadjusted ABI to allow linking to arbitrary LLVM
+        // intrinsics
         return;
     }
     let typing_env = ty::TypingEnv::fully_monomorphized();

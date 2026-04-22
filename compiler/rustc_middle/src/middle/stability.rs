@@ -4,15 +4,15 @@
 use std::num::NonZero;
 
 use rustc_ast::NodeId;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee, LintBuffer, LintDiagnostic, msg};
+use rustc_errors::{Applicability, Diag, Diagnostic, EmissionGuarantee, LintBuffer, msg};
 use rustc_feature::GateIssue;
 use rustc_hir::attrs::{DeprecatedSince, Deprecation};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, ConstStability, DefaultBodyStability, HirId, Stability};
 use rustc_macros::{Decodable, Encodable, HashStable, Subdiagnostic};
 use rustc_session::Session;
-use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
-use rustc_session::lint::{BuiltinLintDiag, DeprecatedSinceKind, Level, Lint};
+use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE};
+use rustc_session::lint::{DeprecatedSinceKind, Level, Lint};
 use rustc_session::parse::feature_err_issue;
 use rustc_span::{Span, Symbol, sym};
 use tracing::debug;
@@ -68,9 +68,7 @@ pub fn report_unstable(
     reason: Option<Symbol>,
     issue: Option<NonZero<u32>>,
     suggestion: Option<(Span, String, String, Applicability)>,
-    is_soft: bool,
     span: Span,
-    soft_handler: impl FnOnce(&'static Lint, Span, String),
     kind: UnstableKind,
 ) {
     let qual = match kind {
@@ -83,18 +81,14 @@ pub fn report_unstable(
         None => format!("use of unstable{qual} library feature `{feature}`"),
     };
 
-    if is_soft {
-        soft_handler(SOFT_UNSTABLE, span, msg)
-    } else {
-        let mut err = feature_err_issue(sess, feature, span, GateIssue::Library(issue), msg);
-        if let Some((inner_types, msg, sugg, applicability)) = suggestion {
-            err.span_suggestion(inner_types, msg, sugg, applicability);
-        }
-        if let UnstableKind::Const(kw) = kind {
-            err.span_label(kw, "trait is not stable as const yet");
-        }
-        err.emit();
+    let mut err = feature_err_issue(sess, feature, span, GateIssue::Library(issue), msg);
+    if let Some((inner_types, msg, sugg, applicability)) = suggestion {
+        err.span_suggestion(inner_types, msg, sugg, applicability);
     }
+    if let UnstableKind::Const(kw) = kind {
+        err.span_label(kw, "trait is not stable as const yet");
+    }
+    err.emit();
 }
 
 fn deprecation_lint(is_in_effect: bool) -> &'static Lint {
@@ -131,15 +125,8 @@ impl<'a, G: EmissionGuarantee> rustc_errors::Diagnostic<'a, G> for Deprecated {
         dcx: rustc_errors::DiagCtxtHandle<'a>,
         level: rustc_errors::Level,
     ) -> Diag<'a, G> {
-        let mut diag = Diag::new(dcx, level, "");
-        self.decorate_lint(&mut diag);
-        diag
-    }
-}
-
-impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for Deprecated {
-    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
-        diag.primary_message(match &self.since_kind {
+        let Self { sub, kind, path, note, since_kind } = self;
+        let mut diag = Diag::new(dcx, level, match &since_kind {
             DeprecatedSinceKind::InEffect => msg!(
                 "use of deprecated {$kind} `{$path}`{$has_note ->
                     [true] : {$note}
@@ -160,21 +147,22 @@ impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for Deprecated {
                     }"
                 )
             }
-        });
-        diag.arg("kind", self.kind);
-        diag.arg("path", self.path);
-        if let DeprecatedSinceKind::InVersion(version) = self.since_kind {
+        })
+        .with_arg("kind", kind)
+        .with_arg("path", path);
+        if let DeprecatedSinceKind::InVersion(version) = since_kind {
             diag.arg("version", version);
         }
-        if let Some(note) = self.note {
+        if let Some(note) = note {
             diag.arg("has_note", true);
             diag.arg("note", note);
         } else {
             diag.arg("has_note", false);
         }
-        if let Some(sub) = self.sub {
+        if let Some(sub) = sub {
             diag.subdiagnostic(sub);
         }
+        diag
     }
 }
 
@@ -199,23 +187,33 @@ fn deprecated_since_kind(is_in_effect: bool, since: DeprecatedSince) -> Deprecat
 pub fn early_report_macro_deprecation(
     lint_buffer: &mut LintBuffer,
     depr: &Deprecation,
-    span: Span,
+    suggestion_span: Span,
     node_id: NodeId,
     path: String,
 ) {
-    if span.in_derive_expansion() {
+    if suggestion_span.in_derive_expansion() {
         return;
     }
 
     let is_in_effect = depr.is_in_effect();
-    let diag = BuiltinLintDiag::DeprecatedMacro {
-        suggestion: depr.suggestion,
-        suggestion_span: span,
-        note: depr.note.map(|ident| ident.name),
-        path,
-        since_kind: deprecated_since_kind(is_in_effect, depr.since),
-    };
-    lint_buffer.buffer_lint(deprecation_lint(is_in_effect), node_id, span, diag);
+    let suggestion = depr.suggestion;
+    let note = depr.note.map(|ident| ident.name);
+    let since_kind = deprecated_since_kind(is_in_effect, depr.since);
+    lint_buffer.dyn_buffer_lint(
+        deprecation_lint(is_in_effect),
+        node_id,
+        suggestion_span,
+        move |dcx, level| {
+            let sub = suggestion.map(|suggestion| DeprecationSuggestion {
+                span: suggestion_span,
+                kind: "macro".to_owned(),
+                suggestion,
+            });
+
+            Deprecated { sub, kind: "macro".to_owned(), path, note, since_kind }
+                .into_diag(dcx, level)
+        },
+    );
 }
 
 fn late_report_deprecation(
@@ -272,7 +270,6 @@ pub enum EvalResult {
         reason: Option<Symbol>,
         issue: Option<NonZero<u32>>,
         suggestion: Option<(Span, String, String, Applicability)>,
-        is_soft: bool,
     },
     /// The item does not have the `#[stable]` or `#[unstable]` marker assigned.
     Unmarked,
@@ -392,7 +389,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(Stability {
-                level: hir::StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. },
+                level: hir::StabilityLevel::Unstable { reason, issue, implied_by, .. },
                 feature,
                 ..
             }) => {
@@ -434,13 +431,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
 
                 let suggestion = suggestion_for_allocator_api(self, def_id, span, feature);
-                EvalResult::Deny {
-                    feature,
-                    reason: reason.to_opt_reason(),
-                    issue,
-                    suggestion,
-                    is_soft,
-                }
+                EvalResult::Deny { feature, reason: reason.to_opt_reason(), issue, suggestion }
             }
             Some(_) => {
                 // Stable APIs are always ok to call and deprecated APIs are
@@ -475,7 +466,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(DefaultBodyStability {
-                level: hir::StabilityLevel::Unstable { reason, issue, is_soft, .. },
+                level: hir::StabilityLevel::Unstable { reason, issue, .. },
                 feature,
             }) => {
                 if span.allows_unstable(feature) {
@@ -491,7 +482,6 @@ impl<'tcx> TyCtxt<'tcx> {
                     reason: reason.to_opt_reason(),
                     issue,
                     suggestion: None,
-                    is_soft,
                 }
             }
             Some(_) => {
@@ -569,25 +559,18 @@ impl<'tcx> TyCtxt<'tcx> {
         allow_unstable: AllowUnstable,
         unmarked: impl FnOnce(Span, DefId),
     ) -> bool {
-        let soft_handler = |lint, span, msg: String| {
-            self.node_span_lint(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, |lint| {
-                lint.primary_message(msg);
-            })
-        };
         let eval_result =
             self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable);
         let is_allowed = matches!(eval_result, EvalResult::Allow);
         match eval_result {
             EvalResult::Allow => {}
-            EvalResult::Deny { feature, reason, issue, suggestion, is_soft } => report_unstable(
+            EvalResult::Deny { feature, reason, issue, suggestion } => report_unstable(
                 self.sess,
                 feature,
                 reason,
                 issue,
                 suggestion,
-                is_soft,
                 span,
-                soft_handler,
                 UnstableKind::Regular,
             ),
             EvalResult::Unmarked => unmarked(span, def_id),
@@ -624,12 +607,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
         match stability {
             Some(ConstStability {
-                level: hir::StabilityLevel::Unstable { reason, issue, is_soft, implied_by, .. },
+                level: hir::StabilityLevel::Unstable { reason, issue, implied_by, .. },
                 feature,
                 ..
             }) => {
-                assert!(!is_soft);
-
                 if span.allows_unstable(feature) {
                     debug!("body stability: skipping span={:?} since it is internal", span);
                     return;
@@ -653,9 +634,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     reason.to_opt_reason(),
                     issue,
                     None,
-                    false,
                     span,
-                    |_, _, _| {},
                     UnstableKind::Const(const_kw_span),
                 );
             }

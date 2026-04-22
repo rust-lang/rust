@@ -49,7 +49,7 @@ def eprint(*args, **kwargs):
     print(*args, **kwargs)
 
 
-def get(base, url, path, checksums, verbose=False):
+def get(base, url, path, checksums, verbose=0):
     with tempfile.NamedTemporaryFile(delete=False) as temp_file:
         temp_path = temp_file.name
 
@@ -66,11 +66,11 @@ def get(base, url, path, checksums, verbose=False):
         sha256 = checksums[url]
         if os.path.exists(path):
             if verify(path, sha256, False):
-                if verbose:
+                if verbose > 0:
                     eprint("using already-download file", path)
                 return
             else:
-                if verbose:
+                if verbose > 0:
                     eprint(
                         "ignoring already-download file",
                         path,
@@ -80,12 +80,12 @@ def get(base, url, path, checksums, verbose=False):
         download(temp_path, "{}/{}".format(base, url), True, verbose)
         if not verify(temp_path, sha256, verbose):
             raise RuntimeError("failed verification")
-        if verbose:
+        if verbose > 0:
             eprint("moving {} to {}".format(temp_path, path))
         shutil.move(temp_path, path)
     finally:
         if os.path.isfile(temp_path):
-            if verbose:
+            if verbose > 0:
                 eprint("removing", temp_path)
             os.unlink(temp_path)
 
@@ -113,11 +113,11 @@ def _download(path, url, probably_big, verbose, exception):
     # If an error occurs:
     #  - If we are on win32 fallback to powershell
     #  - Otherwise raise the error if appropriate
-    if probably_big or verbose:
+    if probably_big or verbose > 0:
         eprint("downloading {}".format(url))
 
     try:
-        if (probably_big or verbose) and "GITHUB_ACTIONS" not in os.environ:
+        if (probably_big or verbose > 0) and "GITHUB_ACTIONS" not in os.environ:
             option = "--progress-bar"
         else:
             option = "--silent"
@@ -180,7 +180,7 @@ def _download(path, url, probably_big, verbose, exception):
 
 def verify(path, expected, verbose):
     """Check if the sha256 sum of the given path is valid"""
-    if verbose:
+    if verbose > 0:
         eprint("verifying", path)
     with open(path, "rb") as source:
         found = hashlib.sha256(source.read()).hexdigest()
@@ -194,7 +194,7 @@ def verify(path, expected, verbose):
     return verified
 
 
-def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
+def unpack(tarball, tarball_suffix, dst, verbose=0, match=None):
     """Unpack the given tarball file"""
     eprint("extracting", tarball)
     fname = os.path.basename(tarball).replace(tarball_suffix, "")
@@ -208,7 +208,7 @@ def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
             name = name[len(match) + 1 :]
 
             dst_path = os.path.join(dst, name)
-            if verbose:
+            if verbose > 0:
                 eprint("  extracting", member)
             tar.extract(member, dst)
             src_path = os.path.join(dst, member)
@@ -218,9 +218,9 @@ def unpack(tarball, tarball_suffix, dst, verbose=False, match=None):
     shutil.rmtree(os.path.join(dst, fname))
 
 
-def run(args, verbose=False, exception=False, is_bootstrap=False, **kwargs):
+def run(args, verbose=0, exception=False, is_bootstrap=False, **kwargs):
     """Run a child program in a new process"""
-    if verbose:
+    if verbose > 0:
         eprint("running: " + " ".join(args))
     sys.stdout.flush()
     # Ensure that the .exe is used on Windows just in case a Linux ELF has been
@@ -233,7 +233,7 @@ def run(args, verbose=False, exception=False, is_bootstrap=False, **kwargs):
     code = ret.wait()
     if code != 0:
         err = "failed to run: " + " ".join(args)
-        if verbose or exception:
+        if verbose > 0 or exception:
             raise RuntimeError(err)
         # For most failures, we definitely do want to print this error, or the user will have no
         # idea what went wrong. But when we've successfully built bootstrap and it failed, it will
@@ -293,13 +293,13 @@ def default_build_triple(verbose):
             version = version.decode(default_encoding)
             host = next(x for x in version.split("\n") if x.startswith("host: "))
             triple = host.split("host: ")[1]
-            if verbose:
+            if verbose > 0:
                 eprint(
                     "detected default triple {} from pre-installed rustc".format(triple)
                 )
             return triple
         except Exception as e:
-            if verbose:
+            if verbose > 0:
                 eprint("pre-installed rustc not detected: {}".format(e))
                 eprint("falling back to auto-detect")
 
@@ -696,10 +696,10 @@ class RustBuild(object):
             for download_info in tarballs_download_info:
                 download_component(download_info)
 
-            # Unpack the tarballs in parallle.
+            # Unpack the tarballs in parallel.
             # In Python 2.7, Pool cannot be used as a context manager.
             pool_size = min(len(tarballs_download_info), get_cpus())
-            if self.verbose:
+            if self.verbose > 0:
                 print(
                     "Choosing a pool size of",
                     pool_size,
@@ -1126,6 +1126,8 @@ class RustBuild(object):
         ]
         # verbose cargo output is very noisy, so only enable it with -vv
         args.extend("--verbose" for _ in range(self.verbose - 1))
+        if self.verbose < 0:
+            args.append("--quiet")
 
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":
@@ -1259,7 +1261,12 @@ class RustBuild(object):
 
 def parse_args(args):
     """Parse the command line arguments that the python script needs."""
-    parser = argparse.ArgumentParser(add_help=False)
+
+    # Pass allow_abbrev=False to remove support for inexact matches (e.g.,
+    # `--json` turning on `--json-output`). The argument list here is partial,
+    # most flags are matched in the Rust bootstrap code. This prevents the
+    # default ambiguity checks in argparse from functioning correctly.
+    parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
     parser.add_argument("-h", "--help", action="store_true")
     parser.add_argument("--config")
     parser.add_argument("--build-dir")
@@ -1270,7 +1277,12 @@ def parse_args(args):
     parser.add_argument(
         "--warnings", choices=["deny", "warn", "default"], default="default"
     )
-    parser.add_argument("-v", "--verbose", action="count", default=0)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("-v", "--verbose", action="count", default=0)
+    # Note that we're storing the `--quiet` value in `verbose`. That way we don't need to thread
+    # `self.quiet` throughout the code. That could be error prone, which could let some output
+    # through that should have been suppressed.
+    group.add_argument("-q", "--quiet", action="store_const", const=-1, dest="verbose")
 
     return parser.parse_known_args(args)[0]
 

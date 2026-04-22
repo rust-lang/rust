@@ -35,7 +35,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn universe_of_ty(&self, vid: ty::TyVid) -> Option<ty::UniverseIndex> {
-        match self.probe_ty_var(vid) {
+        match self.try_resolve_ty_var(vid) {
             Err(universe) => Some(universe),
             Ok(_) => None,
         }
@@ -49,7 +49,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn universe_of_ct(&self, ct: ty::ConstVid) -> Option<ty::UniverseIndex> {
-        match self.probe_const_var(ct) {
+        match self.try_resolve_const_var(ct) {
             Err(universe) => Some(universe),
             Ok(_) => None,
         }
@@ -68,7 +68,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn opportunistic_resolve_ty_var(&self, vid: ty::TyVid) -> Ty<'tcx> {
-        match self.probe_ty_var(vid) {
+        match self.try_resolve_ty_var(vid) {
             Ok(ty) => ty,
             Err(_) => Ty::new_var(self.tcx, self.root_var(vid)),
         }
@@ -83,7 +83,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn opportunistic_resolve_ct_var(&self, vid: ty::ConstVid) -> ty::Const<'tcx> {
-        match self.probe_const_var(vid) {
+        match self.try_resolve_const_var(vid) {
             Ok(ct) => ct,
             Err(_) => ty::Const::new_var(self.tcx, self.root_const_var(vid)),
         }
@@ -103,7 +103,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
                 if let ty::Infer(infer_ty) = *ty.kind() {
                     match infer_ty {
                         ty::InferTy::TyVar(vid) => {
-                            !self.probe_ty_var(vid).is_err_and(|_| self.root_var(vid) == vid)
+                            !self.try_resolve_ty_var(vid).is_err_and(|_| self.root_var(vid) == vid)
                         }
                         ty::InferTy::IntVar(vid) => {
                             let mut inner = self.inner.borrow_mut();
@@ -133,7 +133,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
                 if let ty::ConstKind::Infer(infer_ct) = ct.kind() {
                     match infer_ct {
                         ty::InferConst::Var(vid) => !self
-                            .probe_const_var(vid)
+                            .try_resolve_const_var(vid)
                             .is_err_and(|_| self.root_const_var(vid) == vid),
                         ty::InferConst::Fresh(_) => true,
                     }

@@ -16,7 +16,6 @@ mod proc_macros;
 
 use std::{any::TypeId, iter, ops::Range, sync};
 
-use base_db::RootQueryDb;
 use expect_test::Expect;
 use hir_expand::{
     AstId, ExpansionInfo, InFile, MacroCallId, MacroCallKind, MacroKind,
@@ -45,6 +44,7 @@ use tt::{TextRange, TextSize};
 use crate::{
     AdtId, Lookup, ModuleDefId,
     db::DefDatabase,
+    expr_store::Body,
     nameres::{DefMap, ModuleSource, crate_def_map},
     src::HasSource,
     test_db::TestDB,
@@ -74,7 +74,7 @@ fn check_errors(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect)
             let editioned_file_id =
                 ast_id.file_id.file_id().expect("macros inside macros are not supported");
 
-            let ast = db.parse(editioned_file_id).syntax_node();
+            let ast = editioned_file_id.parse(&db).syntax_node();
             let ast_id_map = db.ast_id_map(ast_id.file_id);
             let node = ast_id_map.get_erased(ast_id.value).to_node(&ast);
             Some((node.text_range(), errors))
@@ -276,7 +276,7 @@ fn resolve_macro_call_id(
                 _ => continue,
             };
 
-            let (body, sm) = db.body_with_source_map(body);
+            let (body, sm) = Body::with_source_map(db, body);
             if let Some(it) = body
                 .blocks(db)
                 .find_map(|block| resolve_macro_call_id(db, block.1, ast_id, ast_ptr))
@@ -458,7 +458,7 @@ m!(g);
     "#;
 
     let (db, file_id) = TestDB::with_single_file(fixture);
-    let krate = file_id.krate(&db);
+    let krate = db.test_crate();
     let def_map = crate_def_map(&db, krate);
     let source = def_map[def_map.root].definition_source(&db);
     let source_file = match source.value {

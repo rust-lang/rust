@@ -2,19 +2,19 @@
 Usage: x.py <subcommand> [options] [<paths>...]
 
 Commands:
-  build    Compile either the compiler or libraries
-  check    Compile either the compiler or libraries, using cargo check
+  build    Compile either the compiler or libraries [aliases: b]
+  check    Compile either the compiler or libraries, using cargo check [aliases: c]
   clippy   Run Clippy (uses rustup/cargo-installed clippy binary)
   fix      Run cargo fix
   fmt      Run rustfmt
-  doc      Build documentation
-  test     Build and run some test suites
+  doc      Build documentation [aliases: d]
+  test     Build and run some test suites [aliases: t]
   miri     Build and run some test suites *in Miri*
   bench    Build and run some benchmarks
   clean    Clean out build directories
   dist     Build distribution artifacts
   install  Install distribution artifacts
-  run      Run tools contained in this repository
+  run      Run tools contained in this repository [aliases: r]
   setup    Set up the environment for development
   vendor   Vendor dependencies
   perf     Perform profiling and benchmarking of the compiler using `rustc-perf`
@@ -26,6 +26,8 @@ Arguments:
 Options:
   -v, --verbose...
           use verbose output (-vv for very verbose)
+  -q, --quiet
+          use quiet output
   -i, --incremental
           use incremental compilation
       --config <FILE>

@@ -3,8 +3,9 @@
 use std::{fmt, panic, sync::Mutex};
 
 use base_db::{
-    Crate, CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Nonce, RootQueryDb,
-    SourceDatabase, SourceRoot, SourceRootId, SourceRootInput,
+    Crate, CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Nonce, SourceDatabase,
+    SourceRoot, SourceRootId, SourceRootInput, all_crates, relevant_crates,
+    set_all_crates_with_durability,
 };
 use hir_expand::{InFile, files::FilePosition};
 use salsa::Durability;
@@ -15,6 +16,7 @@ use triomphe::Arc;
 use crate::{
     Lookup, ModuleDefId, ModuleId,
     db::DefDatabase,
+    expr_store::{Body, scope::ExprScopes},
     nameres::{DefMap, ModuleSource, block_def_map, crate_def_map},
     src::HasSource,
 };
@@ -48,7 +50,7 @@ impl Default for TestDB {
         };
         this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
         // This needs to be here otherwise `CrateGraphBuilder` panics.
-        this.set_all_crates(Arc::new(Box::new([])));
+        set_all_crates_with_durability(&mut this, std::iter::empty(), Durability::HIGH);
         _ = base_db::LibraryRoots::builder(Default::default())
             .durability(Durability::MEDIUM)
             .new(&this);
@@ -144,7 +146,7 @@ impl SourceDatabase for TestDB {
 
 impl TestDB {
     pub(crate) fn fetch_test_crate(&self) -> Crate {
-        let all_crates = self.all_crates();
+        let all_crates = all_crates(self);
         all_crates
             .iter()
             .copied()
@@ -156,7 +158,7 @@ impl TestDB {
     }
 
     pub(crate) fn module_for_file(&self, file_id: FileId) -> ModuleId {
-        for &krate in self.relevant_crates(file_id).iter() {
+        for &krate in relevant_crates(self, file_id).iter() {
             let crate_def_map = crate_def_map(self, krate);
             for (local_id, data) in crate_def_map.modules() {
                 if data.origin.file_id().map(|file_id| file_id.file_id(self)) == Some(file_id) {
@@ -284,10 +286,10 @@ impl TestDB {
         // Find the innermost block expression that has a `DefMap`.
         let (def_with_body, file_id) = fn_def?;
         let def_with_body = def_with_body.into();
-        let source_map = self.body_with_source_map(def_with_body).1;
-        let scopes = self.expr_scopes(def_with_body);
+        let source_map = &Body::with_source_map(self, def_with_body).1;
+        let scopes = ExprScopes::body_expr_scopes(self, def_with_body);
 
-        let root_syntax_node = self.parse(file_id).syntax_node();
+        let root_syntax_node = file_id.parse(self).syntax_node();
         let scope_iter =
             algo::ancestors_at_offset(&root_syntax_node, position.offset).filter_map(|node| {
                 let block = ast::BlockExpr::cast(node)?;

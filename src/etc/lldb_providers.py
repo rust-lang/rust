@@ -9,6 +9,7 @@ from lldb import (
     eBasicTypeUnsignedLong,
     eBasicTypeUnsignedChar,
     eFormatChar,
+    eTypeIsInteger,
 )
 
 from rust_types import is_tuple_fields
@@ -90,16 +91,25 @@ def unwrap_unique_or_non_null(unique_or_nonnull: SBValue) -> SBValue:
     return ptr if ptr.TypeIsPointerType() else ptr.GetChildAtIndex(0)
 
 
+def unwrap_scalar_wrappers(wrapper: SBValue) -> SBValue:
+    while (wrapper.type.GetTypeFlags() & eTypeIsInteger) == 0:
+        wrapper = wrapper.GetChildAtIndex(0)
+    return wrapper
+
+
 class DefaultSyntheticProvider:
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         # logger = Logger.Logger()
         # logger >> "Default synthetic provider for " + str(valobj.GetName())
         self.valobj = valobj
+        self.is_ptr = valobj.GetType().IsPointerType()
 
     def num_children(self) -> int:
         return self.valobj.GetNumChildren()
 
     def get_child_index(self, name: str) -> int:
+        if self.is_ptr and name == "$$dereference$$":
+            return self.valobj.Dereference().GetSyntheticValue()
         return self.valobj.GetIndexOfChildWithName(name)
 
     def get_child_at_index(self, index: int) -> SBValue:
@@ -110,6 +120,36 @@ class DefaultSyntheticProvider:
 
     def has_children(self) -> bool:
         return self.valobj.MightHaveChildren()
+
+    def get_value(self):
+        return self.valobj.value
+
+
+class IndirectionSyntheticProvider:
+    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
+        self.valobj = valobj
+
+    def num_children(self) -> int:
+        return 1
+
+    def get_child_index(self, name: str) -> int:
+        if self.is_ptr and name == "$$dereference$$":
+            return 0
+        return -1
+
+    def get_child_at_index(self, index: int) -> SBValue:
+        if index == 0:
+            return self.valobj.Dereference().GetSyntheticValue()
+        return None
+
+    def update(self):
+        pass
+
+    def has_children(self) -> bool:
+        return True
+
+    def get_value(self):
+        return self.valobj.value
 
 
 class EmptySyntheticProvider:
@@ -249,7 +289,7 @@ def vec_to_string(vec: SBValue) -> str:
     )
 
 
-def StdStringSummaryProvider(valobj, dict):
+def StdStringSummaryProvider(valobj: SBValue, dict: LLDBOpaque):
     inner_vec = (
         valobj.GetNonSyntheticValue()
         .GetChildMemberWithName("vec")
@@ -1246,12 +1286,9 @@ class StdRcSyntheticProvider:
     rust 1.33.0: struct NonNull<T> { pointer: *const T }
     struct NonZero<T>(T)
     struct RcInner<T> { strong: Cell<usize>, weak: Cell<usize>, value: T }
-    struct Cell<T> { value: UnsafeCell<T> }
-    struct UnsafeCell<T> { value: T }
 
     struct Arc<T> { ptr: NonNull<ArcInner<T>>, ... }
-    struct ArcInner<T> { strong: atomic::AtomicUsize, weak: atomic::AtomicUsize, data: T }
-    struct AtomicUsize { v: UnsafeCell<usize> }
+    struct ArcInner<T> { strong: atomic::Atomic<usize>, weak: atomic::Atomic<usize>, data: T }
     """
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque, is_atomic: bool = False):
@@ -1261,16 +1298,8 @@ class StdRcSyntheticProvider:
 
         self.value = self.ptr.GetChildMemberWithName("data" if is_atomic else "value")
 
-        self.strong = (
-            self.ptr.GetChildMemberWithName("strong")
-            .GetChildAtIndex(0)
-            .GetChildMemberWithName("value")
-        )
-        self.weak = (
-            self.ptr.GetChildMemberWithName("weak")
-            .GetChildAtIndex(0)
-            .GetChildMemberWithName("value")
-        )
+        self.strong = unwrap_scalar_wrappers(self.ptr.GetChildMemberWithName("strong"))
+        self.weak = unwrap_scalar_wrappers(self.ptr.GetChildMemberWithName("weak"))
 
         self.value_builder = ValueBuilder(valobj)
 

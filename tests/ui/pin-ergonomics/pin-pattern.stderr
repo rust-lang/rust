@@ -91,8 +91,7 @@ error[E0507]: cannot move out of `foo_mut.pointer` which is behind a mutable ref
 LL |     let &pin mut Foo(x) = foo_mut;
    |                      -    ^^^^^^^
    |                      |
-   |                      data moved here
-   |                      move occurs because `x` has type `T`, which does not implement the `Copy` trait
+   |                      data moved here because `x` has type `T`, which does not implement the `Copy` trait
    |
 help: consider removing the pinned mutable borrow
    |
@@ -106,8 +105,7 @@ error[E0507]: cannot move out of `foo_const.pointer` which is behind a shared re
 LL |     let &pin const Foo(x) = foo_const;
    |                        -    ^^^^^^^^^
    |                        |
-   |                        data moved here
-   |                        move occurs because `x` has type `T`, which does not implement the `Copy` trait
+   |                        data moved here because `x` has type `T`, which does not implement the `Copy` trait
    |
 help: consider removing the pinned borrow
    |
@@ -138,8 +136,7 @@ error[E0507]: cannot move out of a mutable reference
 LL |     ((&pin mut x,),): &'a pin mut (&'a mut (&'a pin mut Foo<T>,),),
    |     ^^^^^^^^^^^-^^^^
    |                |
-   |                data moved here
-   |                move occurs because `x` has type `Foo<T>`, which does not implement the `Copy` trait
+   |                data moved here because `x` has type `Foo<T>`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |

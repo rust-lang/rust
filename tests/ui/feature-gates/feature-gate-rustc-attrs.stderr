@@ -10,7 +10,7 @@ error: expected attribute, found macro `rustc::unknown`
 LL | #[rustc::unknown]
    |   ^^^^^^^^^^^^^^ not an attribute
 
-error: attributes starting with `rustc` are reserved for use by the `rustc` compiler
+error: attributes containing a segment starting with `rustc` are reserved for use by the `rustc` compiler
   --> $DIR/feature-gate-rustc-attrs.rs:14:12
    |
 LL | #[unknown::rustc]

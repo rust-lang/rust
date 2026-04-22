@@ -7,8 +7,6 @@ use std::iter;
 #[cfg(feature = "master")]
 use gccjit::Type;
 use gccjit::{ComparisonOp, Function, FunctionType, RValue, ToRValue, UnaryOp};
-#[cfg(feature = "master")]
-use rustc_abi::ExternAbi;
 use rustc_abi::{BackendRepr, HasDataLayout, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
@@ -23,11 +21,11 @@ use rustc_codegen_ssa::traits::{
     IntrinsicCallBuilderMethods, LayoutTypeCodegenMethods,
 };
 use rustc_data_structures::fx::FxHashSet;
-use rustc_middle::bug;
 #[cfg(feature = "master")]
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 use rustc_target::callconv::{ArgAbi, PassMode};
 
@@ -68,12 +66,8 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::fmaf32 => "fmaf",
         sym::fmaf64 => "fma",
         // FIXME: calling `fma` from libc without FMA target feature uses expensive software emulation
-        sym::fmuladdf32 => "fmaf", // TODO: use gcc intrinsic analogous to llvm.fmuladd.f32
-        sym::fmuladdf64 => "fma",  // TODO: use gcc intrinsic analogous to llvm.fmuladd.f64
-        sym::fabsf32 => "fabsf",
-        sym::fabsf64 => "fabs",
-        sym::minnumf32 => "fminf",
-        sym::minnumf64 => "fmin",
+        sym::fmuladdf32 => "fmaf", // FIXME: use gcc intrinsic analogous to llvm.fmuladd.f32
+        sym::fmuladdf64 => "fma",  // FIXME: use gcc intrinsic analogous to llvm.fmuladd.f64
         sym::minimumf32 => "fminimumf",
         sym::minimumf64 => "fminimum",
         sym::minimumf128 => {
@@ -92,8 +86,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
                 false,
             ));
         }
-        sym::maxnumf32 => "fmaxf",
-        sym::maxnumf64 => "fmax",
         sym::maximumf32 => "fmaximumf",
         sym::maximumf64 => "fmaximum",
         sym::maximumf128 => {
@@ -131,7 +123,7 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
     Some(cx.context.get_builtin_function(gcc_name))
 }
 
-// TODO(antoyo): We can probably remove these and use the fallback intrinsic implementation.
+// FIXME(antoyo): We can probably remove these and use the fallback intrinsic implementation.
 fn get_simple_function<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     name: Symbol,
@@ -198,60 +190,29 @@ fn get_simple_function<'gcc, 'tcx>(
 }
 
 fn get_simple_function_f128<'gcc, 'tcx>(
+    span: Span,
     cx: &CodegenCx<'gcc, 'tcx>,
     name: Symbol,
-) -> Option<Function<'gcc>> {
-    if !cx.supports_f128_type {
-        return None;
-    }
-
+) -> Function<'gcc> {
     let f128_type = cx.type_f128();
     let func_name = match name {
         sym::ceilf128 => "ceilf128",
-        sym::fabsf128 => "fabsf128",
+        sym::fabs => "fabsf128",
         sym::floorf128 => "floorf128",
         sym::truncf128 => "truncf128",
         sym::roundf128 => "roundf128",
         sym::round_ties_even_f128 => "roundevenf128",
         sym::sqrtf128 => "sqrtf128",
-        _ => return None,
+        _ => span_bug!(span, "used get_simple_function_f128 for non-unary f128 intrinsic"),
     };
-    Some(cx.context.new_function(
+    cx.context.new_function(
         None,
         FunctionType::Extern,
         f128_type,
         &[cx.context.new_parameter(None, f128_type, "a")],
         func_name,
         false,
-    ))
-}
-
-fn get_simple_function_f128_2args<'gcc, 'tcx>(
-    cx: &CodegenCx<'gcc, 'tcx>,
-    name: Symbol,
-) -> Option<Function<'gcc>> {
-    if !cx.supports_f128_type {
-        return None;
-    }
-
-    let f128_type = cx.type_f128();
-    let func_name = match name {
-        sym::maxnumf128 => "fmaxf128",
-        sym::minnumf128 => "fminf128",
-        sym::copysignf128 => "copysignf128",
-        _ => return None,
-    };
-    Some(cx.context.new_function(
-        None,
-        FunctionType::Extern,
-        f128_type,
-        &[
-            cx.context.new_parameter(None, f128_type, "a"),
-            cx.context.new_parameter(None, f128_type, "b"),
-        ],
-        func_name,
-        false,
-    ))
+    )
 }
 
 fn f16_builtin<'gcc, 'tcx>(
@@ -263,11 +224,9 @@ fn f16_builtin<'gcc, 'tcx>(
     let builtin_name = match name {
         sym::ceilf16 => "__builtin_ceilf",
         sym::copysignf16 => "__builtin_copysignf",
-        sym::fabsf16 => "fabsf",
+        sym::fabs => "fabsf",
         sym::floorf16 => "__builtin_floorf",
         sym::fmaf16 => "fmaf",
-        sym::maxnumf16 => "__builtin_fmaxf",
-        sym::minnumf16 => "__builtin_fminf",
         sym::powf16 => "__builtin_powf",
         sym::powif16 => {
             let func = cx.context.get_builtin_function("__builtin_powif");
@@ -305,11 +264,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let fn_args = instance.args;
 
         let simple = get_simple_intrinsic(self, name);
-        // TODO(antoyo): Only call get_simple_function_f128 and get_simple_function_f128_2args when
-        // it is the symbols for the supported f128 builtins.
-        let simple_func = get_simple_function(self, name)
-            .or_else(|| get_simple_function_f128(self, name))
-            .or_else(|| get_simple_function_f128_2args(self, name));
+        let simple_func = get_simple_function(self, name);
 
         let value = match name {
             _ if simple.is_some() => {
@@ -330,17 +285,48 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             }
             sym::ceilf16
             | sym::copysignf16
-            | sym::fabsf16
             | sym::floorf16
             | sym::fmaf16
-            | sym::maxnumf16
-            | sym::minnumf16
             | sym::powf16
             | sym::powif16
             | sym::roundf16
             | sym::round_ties_even_f16
             | sym::sqrtf16
             | sym::truncf16 => f16_builtin(self, name, args),
+            sym::ceilf128
+            | sym::floorf128
+            | sym::truncf128
+            | sym::roundf128
+            | sym::round_ties_even_f128
+            | sym::sqrtf128
+                if self.cx.supports_f128_type =>
+            {
+                let func = get_simple_function_f128(span, self, name);
+                self.cx.context.new_call(
+                    self.location,
+                    func,
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
+            }
+            sym::copysignf128 if self.cx.supports_f128_type => {
+                let f128_type = self.cx.type_f128();
+                let func = self.cx.context.new_function(
+                    None,
+                    FunctionType::Extern,
+                    f128_type,
+                    &[
+                        self.cx.context.new_parameter(None, f128_type, "a"),
+                        self.cx.context.new_parameter(None, f128_type, "b"),
+                    ],
+                    "copysignf128",
+                    false,
+                );
+                self.cx.context.new_call(
+                    self.location,
+                    func,
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
+            }
             sym::fmaf128 => {
                 let f128_type = self.cx.type_f128();
                 let func = self.cx.context.new_function(
@@ -406,7 +392,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             sym::volatile_load | sym::unaligned_volatile_load => {
                 let ptr = args[0].immediate();
                 let load = self.volatile_load(result.layout.gcc_type(self), ptr);
-                // TODO(antoyo): set alignment.
+                // FIXME(antoyo): set alignment.
                 if let BackendRepr::Scalar(scalar) = result.layout.backend_repr {
                     self.to_immediate_scalar(load, scalar)
                 } else {
@@ -498,6 +484,23 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     }
                 }
             }
+            sym::fabs => 'fabs: {
+                let ty = args[0].layout.ty;
+                let ty::Float(float_ty) = *ty.kind() else {
+                    span_bug!(span, "expected float type for fabs intrinsic: {:?}", ty);
+                };
+                let func = match float_ty {
+                    ty::FloatTy::F16 => break 'fabs f16_builtin(self, name, args),
+                    ty::FloatTy::F32 => self.context.get_builtin_function("fabsf"),
+                    ty::FloatTy::F64 => self.context.get_builtin_function("fabs"),
+                    ty::FloatTy::F128 => get_simple_function_f128(span, self, name),
+                };
+                self.cx.context.new_call(
+                    self.location,
+                    func,
+                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                )
+            }
 
             sym::raw_eq => {
                 use rustc_abi::BackendRepr::*;
@@ -505,7 +508,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 let layout = self.layout_of(tp_ty).layout;
                 let _use_integer_compare = match layout.backend_repr() {
                     Scalar(_) | ScalarPair(_, _) => true,
-                    SimdVector { .. } | ScalableVector { .. } => false,
+                    SimdVector { .. } | SimdScalableVector { .. } => false,
                     Memory { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
@@ -697,14 +700,14 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
     }
 
     fn assume(&mut self, value: Self::Value) {
-        // TODO(antoyo): switch to assume when it exists.
+        // FIXME(antoyo): switch to assume when it exists.
         // Or use something like this:
         // #define __assume(cond) do { if (!(cond)) __builtin_unreachable(); } while (0)
         self.expect(value, true);
     }
 
     fn expect(&mut self, cond: Self::Value, _expected: bool) -> Self::Value {
-        // TODO(antoyo)
+        // FIXME(antoyo)
         cond
     }
 
@@ -712,7 +715,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         &mut self,
         _vtable: Self::Value,
         _vtable_byte_offset: u64,
-        _typeid: Self::Value,
+        _typeid: &[u8],
     ) -> Self::Value {
         // Unsupported.
         self.context.new_rvalue_from_int(self.int_type, 0)
@@ -723,7 +726,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
     }
 
     fn va_end(&mut self, _va_list: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): implement.
+        // FIXME(antoyo): implement.
         self.context.new_rvalue_from_int(self.int_type, 0)
     }
 }
@@ -945,7 +948,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 if width == 8 { step3 } else { self.gcc_bswap(step3, width) }
             }
             128 => {
-                // TODO(antoyo): find a more efficient implementation?
+                // FIXME(antoyo): find a more efficient implementation?
                 let sixty_four = self.gcc_int(typ, 64);
                 let right_shift = self.gcc_lshr(value, sixty_four);
                 let high = self.gcc_int_cast(right_shift, self.u64_type);
@@ -1026,7 +1029,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             builder.context.new_cast(builder.location, res, builder.u32_type)
         }
 
-        // TODO(antoyo): use width?
+        // FIXME(antoyo): use width?
         let result_type = self.u32_type;
         let mut arg_type = arg.get_type();
         let arg = if arg_type.is_signed(self.cx) {
@@ -1035,7 +1038,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         } else {
             arg
         };
-        // TODO(antoyo): write a new function Type::is_compatible_with(&Type) and use it here
+        // FIXME(antoyo): write a new function Type::is_compatible_with(&Type) and use it here
         // instead of using is_uint().
         if arg_type.is_uchar(self.cx) || arg_type.is_ushort(self.cx) || arg_type.is_uint(self.cx) {
             let builtin = if count_leading { "__builtin_clz" } else { "__builtin_ctz" };
@@ -1139,7 +1142,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 
     fn pop_count(&mut self, value: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): use the optimized version with fewer operations.
+        // FIXME(antoyo): use the optimized version with fewer operations.
         let result_type = self.u32_type;
         let arg_type = value.get_type();
         let value_type = arg_type.to_unsigned(self.cx);
@@ -1148,7 +1151,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             if arg_type.is_signed(self.cx) { self.gcc_int_cast(value, value_type) } else { value };
 
         // only break apart 128-bit ints if they're not natively supported
-        // TODO(antoyo): remove this if/when native 128-bit integers land in libgccjit
+        // FIXME(antoyo): remove this if/when native 128-bit integers land in libgccjit
         if value_type.is_u128(self.cx) && !self.cx.supports_128bit_integers {
             let sixty_four = self.gcc_int(value_type, 64);
             let right_shift = self.gcc_lshr(value, sixty_four);
@@ -1478,32 +1481,26 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
     // `unsafe fn(*mut i8) -> ()`
     let try_fn_ty = Ty::new_fn_ptr(
         tcx,
-        ty::Binder::dummy(tcx.mk_fn_sig(
+        ty::Binder::dummy(tcx.mk_fn_sig_rust_abi(
             iter::once(i8p),
             tcx.types.unit,
-            false,
             rustc_hir::Safety::Unsafe,
-            ExternAbi::Rust,
         )),
     );
     // `unsafe fn(*mut i8, *mut i8) -> ()`
     let catch_fn_ty = Ty::new_fn_ptr(
         tcx,
-        ty::Binder::dummy(tcx.mk_fn_sig(
+        ty::Binder::dummy(tcx.mk_fn_sig_rust_abi(
             [i8p, i8p].iter().cloned(),
             tcx.types.unit,
-            false,
             rustc_hir::Safety::Unsafe,
-            ExternAbi::Rust,
         )),
     );
     // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
-    let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig(
+    let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig_rust_abi(
         [try_fn_ty, i8p, catch_fn_ty],
         tcx.types.i32,
-        false,
         rustc_hir::Safety::Unsafe,
-        ExternAbi::Rust,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
     cx.rust_try_fn.set(Some(rust_try));

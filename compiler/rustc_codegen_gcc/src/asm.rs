@@ -308,13 +308,13 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 }
 
                 InlineAsmOperandRef::SymFn { instance } => {
-                    // TODO(@Amanieu): Additional mangling is needed on
+                    // FIXME(@Amanieu): Additional mangling is needed on
                     // some targets to add a leading underscore (Mach-O)
                     // or byte count suffixes (x86 Windows).
                     constants_len += self.tcx.symbol_name(instance).name.len();
                 }
                 InlineAsmOperandRef::SymStatic { def_id } => {
-                    // TODO(@Amanieu): Additional mangling is needed on
+                    // FIXME(@Amanieu): Additional mangling is needed on
                     // some targets to add a leading underscore (Mach-O).
                     constants_len +=
                         self.tcx.symbol_name(Instance::mono(self.tcx, def_id)).name.len();
@@ -440,7 +440,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             match *piece {
                 InlineAsmTemplatePiece::String(ref string) => {
                     for char in string.chars() {
-                        // TODO(antoyo): might also need to escape | if rustc doesn't do it.
+                        // FIXME(antoyo): might also need to escape | if rustc doesn't do it.
                         let escaped_char = match char {
                             '%' => "%%",
                             '{' => "%{",
@@ -496,7 +496,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         }
 
                         InlineAsmOperandRef::SymFn { instance } => {
-                            // TODO(@Amanieu): Additional mangling is needed on
+                            // FIXME(@Amanieu): Additional mangling is needed on
                             // some targets to add a leading underscore (Mach-O)
                             // or byte count suffixes (x86 Windows).
                             let name = self.tcx.symbol_name(instance).name;
@@ -504,7 +504,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         }
 
                         InlineAsmOperandRef::SymStatic { def_id } => {
-                            // TODO(@Amanieu): Additional mangling is needed on
+                            // FIXME(@Amanieu): Additional mangling is needed on
                             // some targets to add a leading underscore (Mach-O).
                             let instance = Instance::mono(self.tcx, def_id);
                             let name = self.tcx.symbol_name(instance).name;
@@ -557,7 +557,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                 InlineAsmArch::PowerPC | InlineAsmArch::PowerPC64 => {
                     // "cc" is cr0 on powerpc.
                 }
-                // TODO(@Commeownist): I'm not 100% sure this one clobber is sufficient
+                // FIXME(@Commeownist): I'm not 100% sure this one clobber is sufficient
                 // on all architectures. For instance, what about FP stack?
                 _ => {
                     extended_asm.add_clobber("cc");
@@ -571,7 +571,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
             extended_asm.set_volatile_flag(true);
         }
         if !options.contains(InlineAsmOptions::NOSTACK) {
-            // TODO(@Commeownist): figure out how to align stack
+            // FIXME(@Commeownist): figure out how to align stack
         }
         if dest.is_none() && options.contains(InlineAsmOptions::NORETURN) {
             let builtin_unreachable = self.context.get_builtin_function("__builtin_unreachable");
@@ -640,7 +640,7 @@ fn explicit_reg_to_gcc(reg: InlineAsmReg) -> &'static str {
     // For explicit registers, we have to create a register variable: https://stackoverflow.com/a/31774784/389119
     match reg {
         InlineAsmReg::X86(reg) => {
-            // TODO(antoyo): add support for vector register.
+            // FIXME(antoyo): add support for vector register.
             match reg.reg_class() {
                 X86InlineAsmRegClass::reg_byte => {
                     // GCC does not support the `b` suffix, so we just strip it
@@ -687,7 +687,13 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::Bpf(BpfInlineAsmRegClass::wreg) => "w",
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => "r",
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg_pair) => "r",
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::preg) => {
+            unreachable!("clobber-only")
+        }
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::vreg) => "v",
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::vreg_pair) => "v",
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::qreg) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) => "r",
@@ -779,7 +785,17 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
             cx.type_vector(cx.type_i64(), 2)
         }
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::reg_pair) => cx.type_i64(),
         InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::preg) => {
+            unreachable!("clobber-only")
+        }
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::vreg) => {
+            cx.type_vector(cx.type_i32(), 16)
+        }
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::vreg_pair) => {
+            cx.type_vector(cx.type_i32(), 32)
+        }
+        InlineAsmRegClass::Hexagon(HexagonInlineAsmRegClass::qreg) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::LoongArch(LoongArchInlineAsmRegClass::reg) => cx.type_i32(),
@@ -901,7 +917,7 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         GlobalAsmOperandRef::SymFn { instance } => {
                             let function = get_fn(self, instance);
                             self.add_used_function(function);
-                            // TODO(@Amanieu): Additional mangling is needed on
+                            // FIXME(@Amanieu): Additional mangling is needed on
                             // some targets to add a leading underscore (Mach-O)
                             // or byte count suffixes (x86 Windows).
                             let name = self.tcx.symbol_name(instance).name;
@@ -909,8 +925,8 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         }
 
                         GlobalAsmOperandRef::SymStatic { def_id } => {
-                            // TODO(antoyo): set the global variable as used.
-                            // TODO(@Amanieu): Additional mangling is needed on
+                            // FIXME(antoyo): set the global variable as used.
+                            // FIXME(@Amanieu): Additional mangling is needed on
                             // some targets to add a leading underscore (Mach-O).
                             let instance = Instance::mono(self.tcx, def_id);
                             let name = self.tcx.symbol_name(instance).name;
@@ -930,7 +946,7 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn mangled_name(&self, instance: Instance<'tcx>) -> String {
-        // TODO(@Amanieu): Additional mangling is needed on
+        // FIXME(@Amanieu): Additional mangling is needed on
         // some targets to add a leading underscore (Mach-O)
         // or byte count suffixes (x86 Windows).
         self.tcx.symbol_name(instance).name.to_string()

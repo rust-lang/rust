@@ -14,8 +14,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, GenericArg, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
-use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, sym};
 use tracing::{debug, instrument};
 
 use crate::builder::Builder;
@@ -45,10 +44,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 TestKind::ScalarEq { value }
             }
 
-            TestableCase::Range(ref range) => {
-                assert_eq!(range.ty, match_pair.pattern_ty);
-                TestKind::Range(Arc::clone(range))
-            }
+            TestableCase::Range(ref range) => TestKind::Range(Arc::clone(range)),
 
             TestableCase::Slice { len, op } => TestKind::SliceLen { len, op },
 

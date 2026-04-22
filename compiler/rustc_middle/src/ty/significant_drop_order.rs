@@ -5,7 +5,7 @@ use rustc_span::Span;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt, Unnormalized};
 
 /// An additional filter to exclude well-known types from the ecosystem
 /// because their drops are trivial.
@@ -80,7 +80,7 @@ pub fn extract_component_raw<'tcx>(
     ty_seen: &mut UnordSet<Ty<'tcx>>,
 ) -> SmallVec<[Ty<'tcx>; 4]> {
     // Droppiness does not depend on regions, so let us erase them.
-    let ty = tcx.try_normalize_erasing_regions(typing_env, ty).unwrap_or(ty);
+    let ty = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)).unwrap_or(ty);
 
     let tys = tcx.list_significant_drop_tys(typing_env.as_query_input(ty));
     debug!(?ty, "components");
@@ -133,7 +133,7 @@ pub fn ty_dtor_span<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Span> {
         | ty::FnPtr(_, _)
         | ty::Tuple(_)
         | ty::Dynamic(_, _)
-        | ty::Alias(_, _)
+        | ty::Alias(_)
         | ty::Bound(_, _)
         | ty::Pat(_, _)
         | ty::Placeholder(_)

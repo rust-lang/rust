@@ -123,6 +123,8 @@ fn main() {
     let listener = bind_socket(config.bind);
     let (work, tmp): (PathBuf, PathBuf) = if cfg!(target_os = "android") {
         ("/data/local/tmp/work".into(), "/data/local/tmp/work/tmp".into())
+    } else if cfg!(target_os = "uefi") {
+        ("tmp\\work".into(), "tmp\\work\\tmp".into())
     } else {
         let mut work_dir = env::temp_dir();
         work_dir.push("work");
@@ -209,12 +211,12 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     let mut args = Vec::new();
     while t!(reader.read_until(0, &mut arg)) > 1 {
         args.push(t!(str::from_utf8(&arg[..arg.len() - 1])).to_string());
-        arg.truncate(0);
+        arg.clear();
     }
 
     // Next we'll get a bunch of env vars in pairs delimited by 0s as well
     let mut env = Vec::new();
-    arg.truncate(0);
+    arg.clear();
     while t!(reader.read_until(0, &mut arg)) > 1 {
         let key_len = arg.len() - 1;
         let val_len = t!(reader.read_until(0, &mut arg)) - 1;
@@ -225,7 +227,7 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
             let val = t!(str::from_utf8(val)).to_string();
             env.push((key, val));
         }
-        arg.truncate(0);
+        arg.clear();
     }
 
     // The section of code from here down to where we drop the lock is going to
@@ -274,6 +276,8 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     } else if cfg!(target_vendor = "apple") {
         // On Apple platforms, the environment variable is named differently.
         "DYLD_LIBRARY_PATH"
+    } else if cfg!(target_os = "uefi") {
+        "path"
     } else {
         "LD_LIBRARY_PATH"
     };

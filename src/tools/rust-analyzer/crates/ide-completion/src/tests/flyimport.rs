@@ -1243,6 +1243,39 @@ impl Bar for Foo {
 }
 
 #[test]
+fn no_flyimports_type_anchor() {
+    check(
+        r#"
+mod m {
+    pub fn foo() {}
+}
+struct Bar;
+trait Foo {}
+impl Foo for Bar {}
+fn main() {
+    <Bar as Foo>::foo$0
+}
+    "#,
+        expect![[r#""#]],
+    );
+
+    check(
+        r#"
+mod m {
+    pub fn foo() {}
+}
+struct Bar;
+trait Foo {}
+impl Foo for Bar {}
+fn main() {
+    <Bar>::foo$0
+}
+    "#,
+        expect![[r#""#]],
+    );
+}
+
+#[test]
 fn no_inherent_candidates_proposed() {
     check(
         r#"
@@ -2022,5 +2055,40 @@ fn main() {
     test.test_function()$0
 }
 "#,
+    );
+}
+
+#[test]
+fn prefer_underscore_import() {
+    check_edit(
+        "bar",
+        r#"
+mod foo {
+    #[rust_analyzer::prefer_underscore_import]
+    pub trait Ext {
+        fn bar(&self) {}
+    }
+    impl<T> Ext for T {}
+}
+
+fn baz() {
+    1.bar$0
+}
+    "#,
+        r#"
+use foo::Ext as _;
+
+mod foo {
+    #[rust_analyzer::prefer_underscore_import]
+    pub trait Ext {
+        fn bar(&self) {}
+    }
+    impl<T> Ext for T {}
+}
+
+fn baz() {
+    1.bar();$0
+}
+    "#,
     );
 }

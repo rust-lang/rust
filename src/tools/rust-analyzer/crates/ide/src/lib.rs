@@ -63,15 +63,18 @@ use std::panic::{AssertUnwindSafe, UnwindSafe};
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
 use hir::{ChangeWithProcMacros, EditionedFileId, crate_def_map, sym};
+use ide_db::base_db::relevant_crates;
+use ide_db::base_db::salsa::Durability;
+use ide_db::line_index;
+use ide_db::ra_fixture::RaFixtureAnalysis;
 use ide_db::{
-    FxHashMap, FxIndexSet, LineIndexDatabase,
+    FxHashMap, FxIndexSet,
     base_db::{
-        CrateOrigin, CrateWorkspaceData, Env, FileSet, RootQueryDb, SourceDatabase, VfsPath,
+        CrateOrigin, CrateWorkspaceData, Env, FileSet, SourceDatabase, VfsPath,
         salsa::{Cancelled, Database},
     },
     prime_caches, symbol_index,
 };
-use ide_db::{MiniCore, ra_fixture::RaFixtureAnalysis};
 use macros::UpmapFromRaFixture;
 use syntax::{AstNode, SourceFile, ast};
 use triomphe::Arc;
@@ -96,7 +99,7 @@ pub use crate::{
         AdjustmentHints, AdjustmentHintsMode, ClosureReturnTypeHints, DiscriminantHints,
         GenericParameterHints, InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart,
         InlayHintPosition, InlayHintsConfig, InlayKind, InlayTooltip, LazyProperty,
-        LifetimeElisionHints,
+        LifetimeElisionHints, TypeHintsPlacement,
     },
     join_lines::JoinLinesConfig,
     markup::Markup,
@@ -125,7 +128,8 @@ pub use ide_assists::{
 };
 pub use ide_completion::{
     CallableSnippets, CompletionConfig, CompletionFieldsToResolve, CompletionItem,
-    CompletionItemKind, CompletionItemRefMode, CompletionRelevance, Snippet, SnippetScope,
+    CompletionItemImport, CompletionItemKind, CompletionItemRefMode, CompletionRelevance, Snippet,
+    SnippetScope,
 };
 pub use ide_db::{
     FileId, FilePosition, FileRange, RootDatabase, Severity, SymbolKind,
@@ -135,6 +139,7 @@ pub use ide_db::{
     label::Label,
     line_index::{LineCol, LineIndex},
     prime_caches::ParallelPrimeCachesProgress,
+    ra_fixture::RaFixtureConfig,
     search::{ReferenceCategory, SearchScope},
     source_change::{FileSystemEdit, SnippetEdit, SourceChange},
     symbol_index::Query,
@@ -200,10 +205,18 @@ impl AnalysisHost {
         self.db.per_query_memory_usage()
     }
     pub fn trigger_cancellation(&mut self) {
-        self.db.trigger_cancellation();
+        // We need to do a synthetic write right now due to how fixpoint cycles handle cancellation
+        // the revision bump there is a reset marker for clearing fixpoint poisoning.
+        // That is `trigger_cancellation` is currently bugged wrt to cancellation.
+        // self.db.trigger_cancellation();
+        self.db.synthetic_write(Durability::LOW);
     }
     pub fn trigger_garbage_collection(&mut self) {
-        self.db.trigger_lru_eviction();
+        // We need to do a synthetic write right now due to how fixpoint cycles handle cancellation
+        // the revision bump there is a reset marker for clearing fixpoint poisoning.
+        // That is `trigger_lru_eviction` is currently bugged wrt to cancellation.
+        // self.db.trigger_lru_eviction();
+        self.db.synthetic_write(Durability::LOW);
         // SAFETY: `trigger_lru_eviction` triggers cancellation, so all running queries were canceled.
         unsafe { hir::collect_ty_garbage() };
     }
@@ -289,9 +302,9 @@ impl Analysis {
         sema: &Semantics<'_, RootDatabase>,
         literal: ast::String,
         expanded: &ast::String,
-        minicore: MiniCore<'_>,
+        config: &RaFixtureConfig<'_>,
     ) -> Option<(Analysis, RaFixtureAnalysis)> {
-        Self::from_ra_fixture_with_on_cursor(sema, literal, expanded, minicore, &mut |_| {})
+        Self::from_ra_fixture_with_on_cursor(sema, literal, expanded, config, &mut |_| {})
     }
 
     /// Like [`Analysis::from_ra_fixture()`], but also calls `on_cursor` with the cursor position.
@@ -299,11 +312,11 @@ impl Analysis {
         sema: &Semantics<'_, RootDatabase>,
         literal: ast::String,
         expanded: &ast::String,
-        minicore: MiniCore<'_>,
+        config: &RaFixtureConfig<'_>,
         on_cursor: &mut dyn FnMut(TextRange),
     ) -> Option<(Analysis, RaFixtureAnalysis)> {
         let analysis =
-            RaFixtureAnalysis::analyze_ra_fixture(sema, literal, expanded, minicore, on_cursor)?;
+            RaFixtureAnalysis::analyze_ra_fixture(sema, literal, expanded, config, on_cursor)?;
         Some((Analysis { db: analysis.db.clone() }, analysis))
     }
 
@@ -339,10 +352,9 @@ impl Analysis {
     pub fn parse(&self, file_id: FileId) -> Cancellable<SourceFile> {
         // FIXME edition
         self.with_db(|db| {
-            let editioned_file_id_wrapper =
-                EditionedFileId::current_edition_guess_origin(&self.db, file_id);
+            let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
 
-            db.parse(editioned_file_id_wrapper).tree()
+            editioned_file_id_wrapper.parse(db).tree()
         })
     }
 
@@ -357,7 +369,7 @@ impl Analysis {
     /// Gets the file's `LineIndex`: data structure to convert between absolute
     /// offsets and line/column representation.
     pub fn file_line_index(&self, file_id: FileId) -> Cancellable<Arc<LineIndex>> {
-        self.with_db(|db| db.line_index(file_id))
+        self.with_db(|db| line_index(db, file_id).clone())
     }
 
     /// Selects the next syntactic nodes encompassing the range.
@@ -369,8 +381,8 @@ impl Analysis {
     /// supported).
     pub fn matching_brace(&self, position: FilePosition) -> Cancellable<Option<TextSize>> {
         self.with_db(|db| {
-            let file_id = EditionedFileId::current_edition_guess_origin(&self.db, position.file_id);
-            let parse = db.parse(file_id);
+            let file_id = EditionedFileId::current_edition(&self.db, position.file_id);
+            let parse = file_id.parse(db);
             let file = parse.tree();
             matching_brace::matching_brace(&file, position.offset)
         })
@@ -413,7 +425,7 @@ impl Analysis {
     }
 
     /// Renders the crate graph to GraphViz "dot" syntax.
-    pub fn view_crate_graph(&self, full: bool) -> Cancellable<Result<String, String>> {
+    pub fn view_crate_graph(&self, full: bool) -> Cancellable<String> {
         self.with_db(|db| view_crate_graph::view_crate_graph(db, full))
     }
 
@@ -430,8 +442,8 @@ impl Analysis {
     pub fn join_lines(&self, config: &JoinLinesConfig, frange: FileRange) -> Cancellable<TextEdit> {
         self.with_db(|db| {
             let editioned_file_id_wrapper =
-                EditionedFileId::current_edition_guess_origin(&self.db, frange.file_id);
-            let parse = db.parse(editioned_file_id_wrapper);
+                EditionedFileId::current_edition(&self.db, frange.file_id);
+            let parse = editioned_file_id_wrapper.parse(db);
             join_lines::join_lines(config, &parse.tree(), frange.range)
         })
     }
@@ -471,9 +483,8 @@ impl Analysis {
     ) -> Cancellable<Vec<StructureNode>> {
         // FIXME: Edition
         self.with_db(|db| {
-            let editioned_file_id_wrapper =
-                EditionedFileId::current_edition_guess_origin(&self.db, file_id);
-            let source_file = db.parse(editioned_file_id_wrapper).tree();
+            let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
+            let source_file = editioned_file_id_wrapper.parse(db).tree();
             file_structure::file_structure(&source_file, config)
         })
     }
@@ -501,12 +512,14 @@ impl Analysis {
     }
 
     /// Returns the set of folding ranges.
-    pub fn folding_ranges(&self, file_id: FileId) -> Cancellable<Vec<Fold>> {
+    pub fn folding_ranges(&self, file_id: FileId, collapsed_text: bool) -> Cancellable<Vec<Fold>> {
         self.with_db(|db| {
-            let editioned_file_id_wrapper =
-                EditionedFileId::current_edition_guess_origin(&self.db, file_id);
+            let editioned_file_id_wrapper = EditionedFileId::current_edition(&self.db, file_id);
 
-            folding_ranges::folding_ranges(&db.parse(editioned_file_id_wrapper).tree())
+            folding_ranges::folding_ranges(
+                &editioned_file_id_wrapper.parse(db).tree(),
+                collapsed_text,
+            )
         })
     }
 
@@ -657,7 +670,7 @@ impl Analysis {
 
     /// Returns crates that this file *might* belong to.
     pub fn relevant_crates_for(&self, file_id: FileId) -> Cancellable<Vec<Crate>> {
-        self.with_db(|db| db.relevant_crates(file_id).iter().copied().collect())
+        self.with_db(|db| relevant_crates(db, file_id).to_vec())
     }
 
     /// Returns the edition of the given crate.
@@ -766,7 +779,7 @@ impl Analysis {
         &self,
         config: &CompletionConfig<'_>,
         position: FilePosition,
-        imports: impl IntoIterator<Item = String> + std::panic::UnwindSafe,
+        imports: impl IntoIterator<Item = CompletionItemImport> + std::panic::UnwindSafe,
     ) -> Cancellable<Vec<TextEdit>> {
         Ok(self
             .with_db(|db| ide_completion::resolve_completion_edits(db, config, position, imports))?
