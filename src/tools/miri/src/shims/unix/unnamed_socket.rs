@@ -126,11 +126,13 @@ impl FileDescription for AnonSocket {
     }
 
     fn short_fd_operations(&self) -> bool {
-        // Pipes guarantee that sufficiently small accesses are not broken apart:
-        // <https://pubs.opengroup.org/onlinepubs/9799919799/functions/write.html#tag_17_699_08>.
-        // For now, we don't bother checking for the size, and just entirely disable
-        // short accesses on pipes.
-        matches!(self.fd_type, AnonSocketType::Socketpair)
+        // Linux de-facto guarantees (or at least, applications like tokio assume [1, 2]) that
+        // when a read/write on a streaming socket comes back short, the kernel buffer is
+        // empty/full. SO we can't do short reads/writes here.
+        //
+        // [1]: https://github.com/tokio-rs/tokio/blob/6c03e03898d71eca976ee1ad8481cf112ae722ba/tokio/src/io/poll_evented.rs#L182
+        // [2]: https://github.com/tokio-rs/tokio/blob/6c03e03898d71eca976ee1ad8481cf112ae722ba/tokio/src/io/poll_evented.rs#L240
+        false
     }
 
     fn as_unix<'tcx>(&self, _ecx: &MiriInterpCx<'tcx>) -> &dyn UnixFileDescription {
