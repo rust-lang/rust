@@ -38,7 +38,7 @@ Overlapping is sometimes partially allowed:
 1. for marker traits
 2. under [specialization](traits/specialization.md)
 
-but normally isn't.
+It normally isn't.
 
 The overlap check has various modes (see [`OverlapMode`]).
 Importantly, there's the explicit negative impl check, and the implicit negative impl check.
@@ -65,7 +65,7 @@ In this example, we'd get:
 `MyCustomErrorType: From<&str>` and `MyCustomErrorType: From<?E>`, giving `?E = &str`.
 
 And thus, these two implementations would overlap.
-However, libstd provides `&str: !Error`, and therefore guarantees that there 
+However, libstd provides `&str: !Error`, and therefore guarantees that there
 will never be a positive implementation of `&str: Error`, and thus there is no overlap.
 
 Note that for this kind of negative impl check, we must have explicit negative implementations provided.
@@ -78,13 +78,13 @@ This is not currently stable.
 This check is done in [`impl_intersection_has_impossible_obligation`],
 and does not rely on negative trait implementations and is stable.
 
-Let's say there's a 
+Let's say there's a
 ```rust
 impl From<MyLocalType> for Box<dyn Error> {}  // in your own crate
 impl<E> From<E> for Box<dyn Error> where E: Error {} // in std
 ```
 
-This would give: `Box<dyn Error>: From<MyLocalType>`, and `Box<dyn Error>: From<?E>`,  
+This would give: `Box<dyn Error>: From<MyLocalType>`, and `Box<dyn Error>: From<?E>`,
 giving `?E = MyLocalType`.
 
 In your crate there's no `MyLocalType: Error`, downstream crates cannot implement `Error` (a remote trait) for `MyLocalType` (a remote type).
@@ -92,4 +92,3 @@ Therefore, these two impls do not overlap.
 Importantly, this works even if there isn't a `impl !Error for MyLocalType`.
 
 [`impl_intersection_has_impossible_obligation`]: https://doc.rust-lang.org/beta/nightly-rustc/rustc_trait_selection/traits/coherence/fn.impl_intersection_has_impossible_obligation.html
-
