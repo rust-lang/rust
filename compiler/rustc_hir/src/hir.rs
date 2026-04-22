@@ -3761,6 +3761,8 @@ pub enum OpaqueTyOrigin<D> {
 pub struct DelegationGenerics {
     pub parent_args_segment_id: Option<HirId>,
     pub child_args_segment_id: Option<HirId>,
+    pub self_ty_id: Option<HirId>,
+    pub propagate_self_ty: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]

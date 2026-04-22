@@ -171,14 +171,14 @@ mod test_10 {
     pub fn check() {
         fn with_ctx<'a, 'b, 'c, A, B, C, const N: usize, const M: bool>() {
             reuse <u8 as Trait>::foo as bar;
-            bar::<'a, 'b, 'c, u8, C, A, M>();
-            bar::<'static, 'static, 'static, u8, i32, i32, false>();
+            bar::<'a, 'b, 'c, C, A, M>();
+            bar::<'static, 'static, 'static, i32, i32, false>();
 
             reuse <u8 as Trait::<'static, 'static, i32>>::foo as bar1;
-            bar1::<'static, u8, i32, true>();
+            bar1::<'static, i32, true>();
 
             reuse <u8 as Trait::<'static, 'static, i32>>::foo::<'static, u32, true> as bar2;
-            bar2::<u8>();
+            bar2();
         }
 
         with_ctx::<i32, i32, i32, 1, true>();
@@ -211,7 +211,7 @@ mod test_11 {
 
     pub fn check<'b>() {
         reuse <usize as Trait>::foo;
-        foo::<'static, 'b, usize, u32, Struct, String, false>();
+        foo::<'static, 'b, u32, Struct, String, false>();
     }
 }
 

@@ -13,8 +13,8 @@ reuse Trait::<_>::foo::<i32> as generic_arguments1;
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
 reuse <u8 as Trait<_>>::foo as generic_arguments2;
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
-//~| ERROR mismatched types
 reuse <_ as Trait<_>>::foo as generic_arguments3;
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for functions
+//~| ERROR the placeholder `_` is not allowed within types on item signatures for functions
 
 fn main() {}

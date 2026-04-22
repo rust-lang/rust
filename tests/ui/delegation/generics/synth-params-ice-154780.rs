@@ -36,8 +36,8 @@ mod test_2 {
     reuse <X as Trait>::bar as bar2;
 
     pub fn check() {
-        assert_eq!(foo2::<'static, 'static, X, (), true, false, (), ()>(X, || 123), 123);
-        assert_eq!(bar2::<'static, X, (), true>(X, || 123), 123);
+        assert_eq!(foo2::<'static, 'static, (), true, false, (), ()>(X, || 123), 123);
+        assert_eq!(bar2::<'static, (), true>(X, || 123), 123);
     }
 }
 
