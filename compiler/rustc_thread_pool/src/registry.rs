@@ -126,7 +126,7 @@ where
 }
 
 pub struct Registry {
-    thread_infos: Vec<ThreadInfo>,
+    thread_infos: Box<[ThreadInfo]>,
     sleep: Sleep,
     injected_jobs: Injector<JobRef>,
     broadcasts: Mutex<Vec<Worker<JobRef>>>,
@@ -989,7 +989,7 @@ impl WorkerThread {
         debug_assert!(self.local_deque_is_empty());
 
         // otherwise, try to steal
-        let thread_infos = &self.registry.thread_infos.as_slice();
+        let thread_infos = &*self.registry.thread_infos;
         let num_threads = thread_infos.len();
         if num_threads <= 1 {
             return None;

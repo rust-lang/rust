@@ -12,7 +12,7 @@ struct CacheAligned<T>(T);
 /// You can only access the worker local value through the Deref impl
 /// on the thread pool it was constructed on. It will panic otherwise
 pub struct WorkerLocal<T> {
-    locals: Vec<CacheAligned<T>>,
+    locals: Box<[CacheAligned<T>]>,
     registry: Arc<Registry>,
 }
 
@@ -35,21 +35,15 @@ impl<T> WorkerLocal<T> {
 
     /// Returns the worker-local value for each thread
     #[inline]
-    pub fn into_inner(self) -> Vec<T> {
-        self.locals.into_iter().map(|c| c.0).collect()
+    pub fn into_inner(self) -> impl Iterator<Item = T> {
+        self.locals.into_vec().into_iter().map(|local| local.0)
     }
+}
 
-    fn current(&self) -> &T {
-        unsafe {
-            let worker_thread = WorkerThread::current();
-            if worker_thread.is_null()
-                || !std::ptr::eq(&*(*worker_thread).registry, &*self.registry)
-            {
-                panic!("WorkerLocal can only be used on the thread pool it was created on")
-            }
-            &self.locals[(*worker_thread).index].0
-        }
-    }
+#[inline(never)]
+#[cold]
+fn panic_different_registry() -> ! {
+    panic!("WorkerLocal can only be used on the thread pool it was created on")
 }
 
 impl<T> WorkerLocal<Vec<T>> {
@@ -70,7 +64,23 @@ impl<T> Deref for WorkerLocal<T> {
 
     #[inline(always)]
     fn deref(&self) -> &T {
-        self.current()
+        unsafe {
+            let worker_thread = WorkerThread::current();
+            if worker_thread.is_null()
+                || !std::ptr::eq(&*(*worker_thread).registry, &*self.registry)
+            {
+                panic_different_registry()
+            }
+            // SAFETY: `verify` will only return values less than
+            // `self.registry.num_threads` which is the size of the `self.locals` array.
+            &self.locals.get_unchecked((*worker_thread).index).0
+        }
+    }
+}
+
+impl<T: Default> Default for WorkerLocal<T> {
+    fn default() -> Self {
+        WorkerLocal::new(|_| Default::default())
     }
 }
 
