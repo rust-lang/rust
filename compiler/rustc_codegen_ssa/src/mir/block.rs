@@ -1147,8 +1147,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Special logic for tail calls with `PassMode::Indirect { on_stack: false, .. }` arguments.
         //
-        // Normally an indirect argument with `on_stack: false` would be passed as a pointer into
-        // the caller's stack frame. For tail calls, that would be unsound, because the caller's
+        // Normally an indirect argument that is allocated in the caller's stack frame
+        // would be passed as a pointer into the callee's stack frame.
+        // For tail calls, that would be unsound, because the caller's
         // stack frame is overwritten by the callee's stack frame.
         //
         // Therefore we store the argument for the callee in the corresponding caller's slot.
@@ -1240,59 +1241,57 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
 
-            match kind {
-                CallKind::Normal => {
-                    // The callee needs to own the argument memory if we pass it
-                    // by-ref, so make a local copy of non-immediate constants.
-                    if let &mir::Operand::Copy(_) | &mir::Operand::Constant(_) = &arg.node
-                        && let Ref(PlaceValue { llextra: None, .. }) = op.val
-                    {
-                        let tmp = PlaceRef::alloca(bx, op.layout);
-                        bx.lifetime_start(tmp.val.llval, tmp.layout.size);
-                        op.store_with_annotation(bx, tmp);
-                        op.val = Ref(tmp.val);
-                        lifetime_ends_after_call.push((tmp.val.llval, tmp.layout.size));
+            let by_move = if let PassMode::Indirect { on_stack: false, .. } = fn_abi.args[i].mode
+                && kind == CallKind::Tail
+            {
+                // Special logic for tail calls with `PassMode::Indirect { on_stack: false, .. }` arguments.
+                //
+                // Normally an indirect argument that is allocated in the caller's stack frame
+                // would be passed as a pointer into the callee's stack frame.
+                // For tail calls, that would be unsound, because the caller's
+                // stack frame is overwritten by the callee's stack frame.
+                //
+                // To handle the case, we introduce `tail_call_temporaries` to copy arguments into
+                // temporaries, then copy back to the caller's argument slots.
+                // Finally, we pass the caller's argument slots as arguments.
+                //
+                // To do that, the argument must be MUST-by-move value.
+                let Some(tmp) = tail_call_temporaries[i].take() else {
+                    span_bug!(fn_span, "missing temporary for indirect tail call argument #{i}")
+                };
+
+                let local = self.mir.args_iter().nth(i).unwrap();
+
+                match &self.locals[local] {
+                    LocalRef::Place(arg) => {
+                        bx.typed_place_copy(arg.val, tmp.val, fn_abi.args[i].layout);
+                        op.val = Ref(arg.val);
                     }
-                }
-                CallKind::Tail => {
-                    if let PassMode::Indirect { on_stack: false, .. } = fn_abi.args[i].mode {
-                        let Some(tmp) = tail_call_temporaries[i].take() else {
-                            span_bug!(
-                                fn_span,
-                                "missing temporary for indirect tail call argument #{i}"
-                            )
+                    LocalRef::Operand(arg) => {
+                        let Ref(place_value) = arg.val else {
+                            bug!("only `Ref` should use `PassMode::Indirect`");
                         };
-
-                        let local = self.mir.args_iter().nth(i).unwrap();
-
-                        match &self.locals[local] {
-                            LocalRef::Place(arg) => {
-                                bx.typed_place_copy(arg.val, tmp.val, fn_abi.args[i].layout);
-                                op.val = Ref(arg.val);
-                            }
-                            LocalRef::Operand(arg) => {
-                                let Ref(place_value) = arg.val else {
-                                    bug!("only `Ref` should use `PassMode::Indirect`");
-                                };
-                                bx.typed_place_copy(place_value, tmp.val, fn_abi.args[i].layout);
-                                op.val = arg.val;
-                            }
-                            LocalRef::UnsizedPlace(_) => {
-                                span_bug!(fn_span, "unsized types are not supported")
-                            }
-                            LocalRef::PendingOperand => {
-                                span_bug!(fn_span, "argument local should not be pending")
-                            }
-                        };
-
-                        bx.lifetime_end(tmp.val.llval, tmp.layout.size);
+                        bx.typed_place_copy(place_value, tmp.val, fn_abi.args[i].layout);
+                        op.val = arg.val;
                     }
-                }
-            }
+                    LocalRef::UnsizedPlace(_) => {
+                        span_bug!(fn_span, "unsized types are not supported")
+                    }
+                    LocalRef::PendingOperand => {
+                        span_bug!(fn_span, "argument local should not be pending")
+                    }
+                };
+
+                bx.lifetime_end(tmp.val.llval, tmp.layout.size);
+                true
+            } else {
+                matches!(arg.node, mir::Operand::Move(_))
+            };
 
             self.codegen_argument(
                 bx,
                 op,
+                by_move,
                 &mut llargs,
                 &fn_abi.args[i],
                 &mut lifetime_ends_after_call,
@@ -1331,6 +1330,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.codegen_argument(
                 bx,
                 location,
+                /* by_move */ false,
                 &mut llargs,
                 last_arg,
                 &mut lifetime_ends_after_call,
@@ -1649,6 +1649,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         bx: &mut Bx,
         op: OperandRef<'tcx, Bx::Value>,
+        by_move: bool,
         llargs: &mut Vec<Bx::Value>,
         arg: &ArgAbi<'tcx, Ty<'tcx>>,
         lifetime_ends_after_call: &mut Vec<(Bx::Value, Size)>,
@@ -1703,18 +1704,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 _ => (op.immediate_or_packed_pair(bx), arg.layout.align.abi, false),
             },
             Ref(op_place_val) => match arg.mode {
-                PassMode::Indirect { attrs, .. } => {
+                PassMode::Indirect { attrs, on_stack, .. } => {
+                    // For `foo(packed.large_field)`, and types with <4 byte alignment on x86,
+                    // alignment requirements may be higher than the type's alignment, so copy
+                    // to a higher-aligned alloca.
                     let required_align = match attrs.pointee_align {
                         Some(pointee_align) => cmp::max(pointee_align, arg.layout.align.abi),
                         None => arg.layout.align.abi,
                     };
-                    if op_place_val.align < required_align {
-                        // For `foo(packed.large_field)`, and types with <4 byte alignment on x86,
-                        // alignment requirements may be higher than the type's alignment, so copy
-                        // to a higher-aligned alloca.
+                    // Copy to an alloca when the argument is neither by-val nor by-move.
+                    if op_place_val.align < required_align || (!on_stack && !by_move) {
                         let scratch = PlaceValue::alloca(bx, arg.layout.size, required_align);
                         bx.lifetime_start(scratch.llval, arg.layout.size);
-                        bx.typed_place_copy(scratch, op_place_val, op.layout);
+                        op.store_with_annotation(bx, scratch.with_type(arg.layout));
                         lifetime_ends_after_call.push((scratch.llval, arg.layout.size));
                         (scratch.llval, scratch.align, true)
                     } else {
@@ -1800,6 +1802,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         lifetime_ends_after_call: &mut Vec<(Bx::Value, Size)>,
     ) -> usize {
         let tuple = self.codegen_operand(bx, operand);
+        let by_move = matches!(operand, mir::Operand::Move(_));
 
         // Handle both by-ref and immediate tuples.
         if let Ref(place_val) = tuple.val {
@@ -1810,13 +1813,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             for i in 0..tuple.layout.fields.count() {
                 let field_ptr = tuple_ptr.project_field(bx, i);
                 let field = bx.load_operand(field_ptr);
-                self.codegen_argument(bx, field, llargs, &args[i], lifetime_ends_after_call);
+                self.codegen_argument(
+                    bx,
+                    field,
+                    by_move,
+                    llargs,
+                    &args[i],
+                    lifetime_ends_after_call,
+                );
             }
         } else {
             // If the tuple is immediate, the elements are as well.
             for i in 0..tuple.layout.fields.count() {
                 let op = tuple.extract_field(self, bx, i);
-                self.codegen_argument(bx, op, llargs, &args[i], lifetime_ends_after_call);
+                self.codegen_argument(bx, op, by_move, llargs, &args[i], lifetime_ends_after_call);
             }
         }
         tuple.layout.fields.count()
