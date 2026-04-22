@@ -221,7 +221,7 @@ impl<'a> LazyDecoder for BlobDecodeContext<'a> {
 
 /// This is the decode context used when crate metadata was already read.
 /// Decoding of some types, like `Span` require some information to already been read.
-/// Can be constructed from a [`TyCtxt`] and [`CrateMetadataRef`] (see the [`Metadata`] trait)
+/// Can be constructed from a [`TyCtxt`] and [`CrateMetadataRef`] (see the [`MetaDecoder`] trait)
 pub(super) struct MetadataDecodeContext<'a, 'tcx> {
     blob_decoder: BlobDecodeContext<'a>,
     cdata: CrateMetadataRef<'a>,
@@ -255,19 +255,24 @@ impl<'a, 'tcx> Deref for MetadataDecodeContext<'a, 'tcx> {
     }
 }
 
-pub(super) trait Metadata<'a>: Copy {
+pub(super) trait MetaBlob<'a>: Copy {
+    fn blob(&self) -> &'a MetadataBlob;
+}
+
+pub(super) trait MetaDecoder: Copy {
     type Context: BlobDecoder + LazyDecoder;
 
-    fn blob(self) -> &'a MetadataBlob;
     fn decoder(self, pos: usize) -> Self::Context;
 }
 
-impl<'a> Metadata<'a> for &'a MetadataBlob {
-    type Context = BlobDecodeContext<'a>;
-
-    fn blob(self) -> &'a MetadataBlob {
+impl<'a> MetaBlob<'a> for &'a MetadataBlob {
+    fn blob(&self) -> &'a MetadataBlob {
         self
     }
+}
+
+impl<'a> MetaDecoder for &'a MetadataBlob {
+    type Context = BlobDecodeContext<'a>;
 
     fn decoder(self, pos: usize) -> Self::Context {
         BlobDecodeContext {
@@ -285,16 +290,18 @@ impl<'a> Metadata<'a> for &'a MetadataBlob {
     }
 }
 
-impl<'a, 'tcx> Metadata<'a> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
-    type Context = MetadataDecodeContext<'a, 'tcx>;
-
-    fn blob(self) -> &'a MetadataBlob {
-        &self.0.cdata.blob
+impl<'a> MetaBlob<'a> for &'a CrateMetadata {
+    fn blob(&self) -> &'a MetadataBlob {
+        &self.blob
     }
+}
+
+impl<'a, 'tcx> MetaDecoder for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
+    type Context = MetadataDecodeContext<'a, 'tcx>;
 
     fn decoder(self, pos: usize) -> MetadataDecodeContext<'a, 'tcx> {
         MetadataDecodeContext {
-            blob_decoder: self.blob().decoder(pos),
+            blob_decoder: self.0.cdata.blob().decoder(pos),
             cdata: self.0,
             tcx: self.1,
             alloc_decoding_session: self.0.cdata.alloc_decoding_state.new_decoding_session(),
@@ -304,7 +311,7 @@ impl<'a, 'tcx> Metadata<'a> for (CrateMetadataRef<'a>, TyCtxt<'tcx>) {
 
 impl<T: ParameterizedOverTcx> LazyValue<T> {
     #[inline]
-    fn decode<'a, 'tcx, M: Metadata<'a>>(self, metadata: M) -> T::Value<'tcx>
+    fn decode<'tcx, M: MetaDecoder>(self, metadata: M) -> T::Value<'tcx>
     where
         T::Value<'tcx>: Decodable<M::Context>,
     {
@@ -344,10 +351,7 @@ unsafe impl<D: Decoder, T: Decodable<D>> TrustedLen for DecodeIterator<T, D> {}
 
 impl<T: ParameterizedOverTcx> LazyArray<T> {
     #[inline]
-    fn decode<'a, 'tcx, M: Metadata<'a>>(
-        self,
-        metadata: M,
-    ) -> DecodeIterator<T::Value<'tcx>, M::Context>
+    fn decode<'tcx, M: MetaDecoder>(self, metadata: M) -> DecodeIterator<T::Value<'tcx>, M::Context>
     where
         T::Value<'tcx>: Decodable<M::Context>,
     {
@@ -468,7 +472,7 @@ impl<'a, 'tcx> SpanDecoder for MetadataDecodeContext<'a, 'tcx> {
             cdata
                 .root
                 .syntax_contexts
-                .get((cdata, tcx), id)
+                .get(cdata.cdata, id)
                 .unwrap_or_else(|| panic!("Missing SyntaxContext {id:?} for crate {cname:?}"))
                 .decode((cdata, tcx))
         })
@@ -494,13 +498,13 @@ impl<'a, 'tcx> SpanDecoder for MetadataDecodeContext<'a, 'tcx> {
             let expn_data = crate_data
                 .root
                 .expn_data
-                .get((crate_data, tcx), index)
+                .get(crate_data.cdata, index)
                 .unwrap()
                 .decode((crate_data, tcx));
             let expn_hash = crate_data
                 .root
                 .expn_hashes
-                .get((crate_data, tcx), index)
+                .get(crate_data.cdata, index)
                 .unwrap()
                 .decode((crate_data, tcx));
             (expn_data, expn_hash)
@@ -1017,7 +1021,7 @@ impl<'a> CrateMetadataRef<'a> {
             .root
             .tables
             .def_ident_span
-            .get((self, tcx), item_index)
+            .get(self.cdata, item_index)
             .unwrap_or_else(|| self.missing("def_ident_span", item_index))
             .decode((self, tcx));
         Some(Ident::new(name, span))
@@ -1032,11 +1036,11 @@ impl<'a> CrateMetadataRef<'a> {
         if cnum == LOCAL_CRATE { self.cnum } else { self.cnum_map[cnum] }
     }
 
-    fn def_kind(self, tcx: TyCtxt<'_>, item_id: DefIndex) -> DefKind {
+    fn def_kind(self, item_id: DefIndex) -> DefKind {
         self.root
             .tables
             .def_kind
-            .get((self, tcx), item_id)
+            .get(self.cdata, item_id)
             .unwrap_or_else(|| self.missing("def_kind", item_id))
     }
 
@@ -1044,7 +1048,7 @@ impl<'a> CrateMetadataRef<'a> {
         self.root
             .tables
             .def_span
-            .get((self, tcx), index)
+            .get(self.cdata, index)
             .unwrap_or_else(|| self.missing("def_span", index))
             .decode((self, tcx))
     }
@@ -1097,7 +1101,7 @@ impl<'a> CrateMetadataRef<'a> {
         };
 
         let data =
-            self.root.tables.variant_data.get((self, tcx), index).unwrap().decode((self, tcx));
+            self.root.tables.variant_data.get(self.cdata, index).unwrap().decode((self, tcx));
 
         let variant_did =
             if adt_kind == ty::AdtKind::Enum { Some(self.local_def_id(index)) } else { None };
@@ -1115,7 +1119,7 @@ impl<'a> CrateMetadataRef<'a> {
                         did,
                         name: self.item_name(did.index),
                         vis: self.get_visibility(tcx, did.index),
-                        safety: self.get_safety(tcx, did.index),
+                        safety: self.get_safety(did.index),
                         value: self.get_default_field(tcx, did.index),
                     })
                     .collect(),
@@ -1127,7 +1131,7 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     fn get_adt_def<'tcx>(self, tcx: TyCtxt<'tcx>, item_id: DefIndex) -> ty::AdtDef<'tcx> {
-        let kind = self.def_kind(tcx, item_id);
+        let kind = self.def_kind(item_id);
         let did = self.local_def_id(item_id);
 
         let adt_kind = match kind {
@@ -1137,17 +1141,17 @@ impl<'a> CrateMetadataRef<'a> {
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
         let repr =
-            self.root.tables.repr_options.get((self, tcx), item_id).unwrap().decode((self, tcx));
+            self.root.tables.repr_options.get(self.cdata, item_id).unwrap().decode((self, tcx));
 
         let mut variants: Vec<_> = if let ty::AdtKind::Enum = adt_kind {
             self.root
                 .tables
                 .module_children_non_reexports
-                .get((self, tcx), item_id)
+                .get(self.cdata, item_id)
                 .expect("variants are not encoded for an enum")
                 .decode((self, tcx))
                 .filter_map(|index| {
-                    let kind = self.def_kind(tcx, index);
+                    let kind = self.def_kind(index);
                     match kind {
                         DefKind::Ctor(..) => None,
                         _ => Some(self.get_variant(tcx, kind, index, did)),
@@ -1172,25 +1176,25 @@ impl<'a> CrateMetadataRef<'a> {
         self.root
             .tables
             .visibility
-            .get((self, tcx), id)
+            .get(self.cdata, id)
             .unwrap_or_else(|| self.missing("visibility", id))
             .decode((self, tcx))
             .map_id(|index| self.local_def_id(index))
     }
 
-    fn get_safety(self, tcx: TyCtxt<'_>, id: DefIndex) -> Safety {
-        self.root.tables.safety.get((self, tcx), id)
+    fn get_safety(self, id: DefIndex) -> Safety {
+        self.root.tables.safety.get(self.cdata, id)
     }
 
     fn get_default_field(self, tcx: TyCtxt<'_>, id: DefIndex) -> Option<DefId> {
-        self.root.tables.default_fields.get((self, tcx), id).map(|d| d.decode((self, tcx)))
+        self.root.tables.default_fields.get(self.cdata, id).map(|d| d.decode((self, tcx)))
     }
 
     fn get_expn_that_defined(self, tcx: TyCtxt<'_>, id: DefIndex) -> ExpnId {
         self.root
             .tables
             .expn_that_defined
-            .get((self, tcx), id)
+            .get(self.cdata, id)
             .unwrap_or_else(|| self.missing("expn_that_defined", id))
             .decode((self, tcx))
     }
@@ -1259,7 +1263,7 @@ impl<'a> CrateMetadataRef<'a> {
 
     fn get_mod_child(self, tcx: TyCtxt<'_>, id: DefIndex) -> ModChild {
         let ident = self.item_ident(tcx, id);
-        let res = Res::Def(self.def_kind(tcx, id), self.local_def_id(id));
+        let res = Res::Def(self.def_kind(id), self.local_def_id(id));
         let vis = self.get_visibility(tcx, id);
 
         ModChild { ident, res, vis, reexport_chain: Default::default() }
@@ -1282,12 +1286,12 @@ impl<'a> CrateMetadataRef<'a> {
             } else {
                 // Iterate over all children.
                 let non_reexports =
-                    self.root.tables.module_children_non_reexports.get((self, tcx), id);
+                    self.root.tables.module_children_non_reexports.get(self.cdata, id);
                 for child_index in non_reexports.unwrap().decode((self, tcx)) {
                     yield self.get_mod_child(tcx, child_index);
                 }
 
-                let reexports = self.root.tables.module_children_reexports.get((self, tcx), id);
+                let reexports = self.root.tables.module_children_reexports.get(self.cdata, id);
                 if !reexports.is_default() {
                     for reexport in reexports.decode((self, tcx)) {
                         yield reexport;
@@ -1303,7 +1307,7 @@ impl<'a> CrateMetadataRef<'a> {
         id: DefIndex,
     ) -> impl Iterator<Item = AmbigModChild> {
         gen move {
-            let children = self.root.tables.ambig_module_children.get((self, tcx), id);
+            let children = self.root.tables.ambig_module_children.get(self.cdata, id);
             if !children.is_default() {
                 for child in children.decode((self, tcx)) {
                     yield child;
@@ -1312,15 +1316,15 @@ impl<'a> CrateMetadataRef<'a> {
         }
     }
 
-    fn is_item_mir_available(self, tcx: TyCtxt<'_>, id: DefIndex) -> bool {
-        self.root.tables.optimized_mir.get((self, tcx), id).is_some()
+    fn is_item_mir_available(self, id: DefIndex) -> bool {
+        self.root.tables.optimized_mir.get(self.cdata, id).is_some()
     }
 
     fn get_fn_has_self_parameter(self, tcx: TyCtxt<'_>, id: DefIndex) -> bool {
         self.root
             .tables
             .fn_arg_idents
-            .get((self, tcx), id)
+            .get(self.cdata, id)
             .expect("argument names not encoded for a function")
             .decode((self, tcx))
             .nth(0)
@@ -1335,14 +1339,14 @@ impl<'a> CrateMetadataRef<'a> {
         self.root
             .tables
             .associated_item_or_field_def_ids
-            .get((self, tcx), id)
+            .get(self.cdata, id)
             .unwrap_or_else(|| self.missing("associated_item_or_field_def_ids", id))
             .decode((self, tcx))
             .map(move |child_index| self.local_def_id(child_index))
     }
 
     fn get_associated_item(self, tcx: TyCtxt<'_>, id: DefIndex) -> ty::AssocItem {
-        let kind = match self.def_kind(tcx, id) {
+        let kind = match self.def_kind(id) {
             DefKind::AssocConst { is_type_const } => {
                 ty::AssocKind::Const { name: self.item_name(id), is_type_const }
             }
@@ -1352,7 +1356,7 @@ impl<'a> CrateMetadataRef<'a> {
             },
             DefKind::AssocTy => {
                 let data = if let Some(rpitit_info) =
-                    self.root.tables.opt_rpitit_info.get((self, tcx), id)
+                    self.root.tables.opt_rpitit_info.get(self.cdata, id)
                 {
                     ty::AssocTypeData::Rpitit(rpitit_info.decode((self, tcx)))
                 } else {
@@ -1363,19 +1367,19 @@ impl<'a> CrateMetadataRef<'a> {
             _ => bug!("cannot get associated-item of `{:?}`", self.def_key(id)),
         };
         let container =
-            self.root.tables.assoc_container.get((self, tcx), id).unwrap().decode((self, tcx));
+            self.root.tables.assoc_container.get(self.cdata, id).unwrap().decode((self, tcx));
 
         ty::AssocItem { kind, def_id: self.local_def_id(id), container }
     }
 
     fn get_ctor(self, tcx: TyCtxt<'_>, node_id: DefIndex) -> Option<(CtorKind, DefId)> {
-        match self.def_kind(tcx, node_id) {
+        match self.def_kind(node_id) {
             DefKind::Struct | DefKind::Variant => {
                 let vdata = self
                     .root
                     .tables
                     .variant_data
-                    .get((self, tcx), node_id)
+                    .get(self.cdata, node_id)
                     .unwrap()
                     .decode((self, tcx));
                 vdata.ctor.map(|(kind, index)| (kind, self.local_def_id(index)))
@@ -1388,7 +1392,7 @@ impl<'a> CrateMetadataRef<'a> {
         self.root
             .tables
             .attributes
-            .get((self, tcx), id)
+            .get(self.cdata, id)
             .unwrap_or_else(|| {
                 // Structure and variant constructors don't have any attributes encoded for them,
                 // but we assume that someone passing a constructor ID actually wants to look at
@@ -1399,7 +1403,7 @@ impl<'a> CrateMetadataRef<'a> {
                 self.root
                     .tables
                     .attributes
-                    .get((self, tcx), parent_id)
+                    .get(self.cdata, parent_id)
                     .expect("no encoded attributes for a structure or variant")
             })
             .decode((self, tcx))
@@ -1414,7 +1418,7 @@ impl<'a> CrateMetadataRef<'a> {
             self.root
                 .tables
                 .inherent_impls
-                .get((self, tcx), id)
+                .get(self.cdata, id)
                 .decode((self, tcx))
                 .map(|index| self.local_def_id(index)),
         )
@@ -1475,7 +1479,7 @@ impl<'a> CrateMetadataRef<'a> {
         self.root
             .tables
             .proc_macro_quoted_spans
-            .get((self, tcx), index)
+            .get(self.cdata, index)
             .unwrap_or_else(|| panic!("Missing proc macro quoted span: {index:?}"))
             .decode((self, tcx))
     }
@@ -1538,14 +1542,14 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     fn get_macro(self, tcx: TyCtxt<'_>, id: DefIndex) -> ast::MacroDef {
-        match self.def_kind(tcx, id) {
+        match self.def_kind(id) {
             DefKind::Macro(_) => {
-                let macro_rules = self.root.tables.is_macro_rules.get((self, tcx), id);
+                let macro_rules = self.root.tables.is_macro_rules.get(self.cdata, id);
                 let body = self
                     .root
                     .tables
                     .macro_definition
-                    .get((self, tcx), id)
+                    .get(self.cdata, id)
                     .unwrap()
                     .decode((self, tcx));
                 ast::MacroDef { macro_rules, body: Box::new(body), eii_declaration: None }
@@ -1586,11 +1590,8 @@ impl<'a> CrateMetadataRef<'a> {
 
     fn expn_hash_to_expn_id(self, tcx: TyCtxt<'_>, index_guess: u32, hash: ExpnHash) -> ExpnId {
         let index_guess = ExpnIndex::from_u32(index_guess);
-        let old_hash = self
-            .root
-            .expn_hashes
-            .get((self, tcx), index_guess)
-            .map(|lazy| lazy.decode((self, tcx)));
+        let old_hash =
+            self.root.expn_hashes.get(self.cdata, index_guess).map(|lazy| lazy.decode((self, tcx)));
 
         let index = if old_hash == Some(hash) {
             // Fast path: the expn and its index is unchanged from the
@@ -1607,7 +1608,7 @@ impl<'a> CrateMetadataRef<'a> {
                     UnhashMap::with_capacity_and_hasher(end_id as usize, Default::default());
                 for i in 0..end_id {
                     let i = ExpnIndex::from_u32(i);
-                    if let Some(hash) = self.root.expn_hashes.get((self, tcx), i) {
+                    if let Some(hash) = self.root.expn_hashes.get(self.cdata, i) {
                         map.insert(hash.decode((self, tcx)), i);
                     }
                 }
@@ -1616,7 +1617,7 @@ impl<'a> CrateMetadataRef<'a> {
             map[&hash]
         };
 
-        let data = self.root.expn_data.get((self, tcx), index).unwrap().decode((self, tcx));
+        let data = self.root.expn_data.get(self.cdata, index).unwrap().decode((self, tcx));
         rustc_span::hygiene::register_expn_id(self.cnum, index, data, hash)
     }
 
@@ -1753,7 +1754,7 @@ impl<'a> CrateMetadataRef<'a> {
                 let source_file_to_import = self
                     .root
                     .source_map
-                    .get((self, tcx), source_file_index)
+                    .get(self.cdata, source_file_index)
                     .expect("missing source file")
                     .decode((self, tcx));
 
@@ -1854,19 +1855,19 @@ impl<'a> CrateMetadataRef<'a> {
             .clone()
     }
 
-    fn get_attr_flags(self, tcx: TyCtxt<'_>, index: DefIndex) -> AttrFlags {
-        self.root.tables.attr_flags.get((self, tcx), index)
+    fn get_attr_flags(self, index: DefIndex) -> AttrFlags {
+        self.root.tables.attr_flags.get(self.cdata, index)
     }
 
     fn get_intrinsic(self, tcx: TyCtxt<'_>, index: DefIndex) -> Option<ty::IntrinsicDef> {
-        self.root.tables.intrinsic.get((self, tcx), index).map(|d| d.decode((self, tcx)))
+        self.root.tables.intrinsic.get(self.cdata, index).map(|d| d.decode((self, tcx)))
     }
 
     fn get_doc_link_resolutions(self, tcx: TyCtxt<'_>, index: DefIndex) -> DocLinkResMap {
         self.root
             .tables
             .doc_link_resolutions
-            .get((self, tcx), index)
+            .get(self.cdata, index)
             .expect("no resolutions for a doc link")
             .decode((self, tcx))
     }
@@ -1879,7 +1880,7 @@ impl<'a> CrateMetadataRef<'a> {
         self.root
             .tables
             .doc_link_traits_in_scope
-            .get((self, tcx), index)
+            .get(self.cdata, index)
             .expect("no traits in scope for a doc link")
             .decode((self, tcx))
     }

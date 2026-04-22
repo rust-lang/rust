@@ -155,7 +155,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
 
                 // Query `def_kind` is not used because query system overhead is too expensive here.
-                let def_kind = self.cstore().def_kind_untracked(self.tcx, def_id);
+                let def_kind = self.cstore().def_kind_untracked(def_id);
                 if def_kind.is_module_like() {
                     let parent = self.tcx.opt_parent(def_id).map(|parent_id| {
                         self.get_nearest_non_block_module(parent_id).expect_extern()
