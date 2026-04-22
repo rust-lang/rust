@@ -2049,7 +2049,19 @@ fn confirm_impl_candidate<'cx, 'tcx>(
         Progress { term: err, obligations: nested }
     } else {
         assoc_term_own_obligations(selcx, obligation, &mut nested);
-        Progress { term: term.instantiate(tcx, args).skip_norm_wip(), obligations: nested }
+        let instantiated_term: Term<'tcx> = term.instantiate(tcx, args).skip_norm_wip();
+        if let Some(ct) = instantiated_term.as_const() {
+            let expected_ty =
+                tcx.type_of(assoc_term.item.def_id).instantiate(tcx, args).skip_norm_wip();
+            nested.push(Obligation::with_depth(
+                tcx,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                obligation.param_env,
+                ty::ClauseKind::ConstArgHasType(ct, expected_ty),
+            ));
+        }
+        Progress { term: instantiated_term, obligations: nested }
     };
     Ok(Projected::Progress(progress))
 }

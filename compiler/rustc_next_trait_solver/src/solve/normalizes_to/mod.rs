@@ -410,10 +410,22 @@ where
                 ty::AliasTermKind::ProjectionConst { .. }
                     if cx.is_type_const(target_item_def_id.into()) =>
                 {
-                    cx.const_of_item(target_item_def_id.into())
+                    let term: I::Term = cx
+                        .const_of_item(target_item_def_id.into())
                         .instantiate(cx, target_args)
                         .skip_norm_wip()
-                        .into()
+                        .into();
+                    if let Some(ct) = term.as_const() {
+                        let expected_ty = cx
+                            .type_of(target_item_def_id.into())
+                            .instantiate(cx, target_args)
+                            .skip_norm_wip();
+                        ecx.add_goal(
+                            GoalSource::Misc,
+                            goal.with(cx, ty::ClauseKind::ConstArgHasType(ct, expected_ty)),
+                        );
+                    }
+                    term
                 }
                 ty::AliasTermKind::ProjectionConst { .. } => {
                     let uv = ty::UnevaluatedConst::new(
