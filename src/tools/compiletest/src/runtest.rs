@@ -295,14 +295,9 @@ impl<'test> TestCx<'test> {
 
     fn should_run(&self, pm: Option<PassMode>) -> WillExecute {
         let test_should_run = match self.config.mode {
-            TestMode::Ui
-                if pm == Some(PassMode::Run)
-                    || matches!(self.props.fail_mode, Some(FailMode::Run(_))) =>
-            {
-                true
+            TestMode::Ui => {
+                pm == Some(PassMode::Run) || matches!(self.props.fail_mode, Some(FailMode::Run(_)))
             }
-            TestMode::MirOpt if pm == Some(PassMode::Run) => true,
-            TestMode::Ui | TestMode::MirOpt => false,
             mode => panic!("unimplemented for mode {:?}", mode),
         };
         if test_should_run { self.run_if_enabled() } else { WillExecute::No }
@@ -314,7 +309,7 @@ impl<'test> TestCx<'test> {
 
     fn should_run_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
-            TestMode::Ui | TestMode::MirOpt => pm == Some(PassMode::Run),
+            TestMode::Ui => pm == Some(PassMode::Run),
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
@@ -936,15 +931,6 @@ impl<'test> TestCx<'test> {
 
     fn compile_test(&self, will_execute: WillExecute, emit: Emit) -> ProcRes {
         self.compile_test_general(will_execute, emit, self.props.local_pass_mode(), Vec::new())
-    }
-
-    fn compile_test_with_passes(
-        &self,
-        will_execute: WillExecute,
-        emit: Emit,
-        passes: Vec<String>,
-    ) -> ProcRes {
-        self.compile_test_general(will_execute, emit, self.props.local_pass_mode(), passes)
     }
 
     fn compile_test_general(
