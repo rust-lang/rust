@@ -100,15 +100,12 @@ pub(crate) fn expand_deriving_partial_ord(
 
 // Special case for the type deriving both `PartialOrd` and `Ord`. Builds:
 // ```
-// Some(self.cmp(other))
+// Some(::core::cmp::Ord::cmp(self, other))
 // ```
 fn cs_partial_cmp_simple(cx: &ExtCtxt<'_>, span: Span, other_expr: Box<ast::Expr>) -> BlockOrExpr {
-    let cmp_expr = cx.expr_method_call(
-        span,
-        cx.expr_self(span),
-        Ident::new(sym::cmp, span),
-        thin_vec![other_expr],
-    );
+    let ord_cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
+    let cmp_expr =
+        cx.expr_call_global(span, ord_cmp_path, thin_vec![cx.expr_self(span), other_expr]);
     BlockOrExpr::new_expr(cx.expr_some(span, cmp_expr))
 }
 
