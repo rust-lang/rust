@@ -551,6 +551,17 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
         tcx.const_of_item(alias_term.def_id()).instantiate(tcx, args).skip_norm_wip().into()
     };
 
+    if let Some(ct) = term.as_const() {
+        let expected_ty = tcx.type_of(alias_term.def_id).instantiate(tcx, args);
+        obligations.push(Obligation::with_depth(
+            tcx,
+            cause.clone(),
+            depth + 1,
+            param_env,
+            ty::ClauseKind::ConstArgHasType(ct, expected_ty),
+        ));
+    }
+
     let mut term = selcx.infcx.resolve_vars_if_possible(term);
     if term.has_aliases() {
         term =

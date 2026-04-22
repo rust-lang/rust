@@ -5,6 +5,7 @@
 //! 2. equate the self type, and
 //! 3. instantiate and register where clauses.
 
+use rustc_type_ir::inherent::*;
 use rustc_type_ir::{self as ty, Interner, Unnormalized};
 
 use crate::delegate::SolverDelegate;
@@ -60,6 +61,15 @@ where
                 .skip_norm_wip()
                 .into()
         };
+
+        if let Some(ct) = normalized.as_const() {
+            let expected_ty = cx.type_of(inherent.def_id).instantiate(cx, inherent_args);
+            self.add_goal(
+                GoalSource::Misc,
+                goal.with(cx, ty::ClauseKind::ConstArgHasType(ct, expected_ty)),
+            );
+        }
+
         self.instantiate_normalizes_to_term(goal, normalized);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
