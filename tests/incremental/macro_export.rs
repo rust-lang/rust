@@ -1,6 +1,6 @@
-//@ revisions: bfail1 bfail2 bfail3
-//@ build-pass (FIXME(62277): could be check-pass?)
+//@ revisions: bpass1 bpass2 bpass3
 //@ ignore-backends: gcc
+// FIXME(#62277): could be check-pass?
 
 // This test case makes sure that we can compile with incremental compilation
 // enabled when there are macros exported from this crate. (See #37756)

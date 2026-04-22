@@ -4,9 +4,8 @@
 // In this test prior to fixing compiler was having problems figuring out
 // drop impl for T inside of m
 
-//@ revisions: bfail1 bfail2
+//@ revisions: bpass1 bpass2
 //@ compile-flags: --crate-type=lib
-//@ build-pass
 //@ ignore-backends: gcc
 
 #![allow(dead_code)]
@@ -32,9 +31,9 @@ impl<D: P> T<D> {
 }
 
 enum C {
-    #[cfg(bfail1)]
+    #[cfg(bpass1)]
     Up(()),
-    #[cfg(bfail2)]
+    #[cfg(bpass2)]
     Lorry(()),
 }
 

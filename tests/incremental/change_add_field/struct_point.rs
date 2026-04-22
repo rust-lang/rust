@@ -3,9 +3,8 @@
 // Fns with that type used only in their body are also recompiled, but
 // their callers are not.
 
-//@ revisions: bfail1 bfail2
+//@ revisions: bpass1 bpass2
 //@ compile-flags: -Z query-dep-graph
-//@ build-pass
 //@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]
@@ -13,24 +12,24 @@
 #![crate_type = "rlib"]
 
 // These are expected to require codegen.
-#![rustc_partition_codegened(module="struct_point-point", cfg="bfail2")]
-#![rustc_partition_codegened(module="struct_point-fn_with_type_in_sig", cfg="bfail2")]
-#![rustc_partition_codegened(module="struct_point-call_fn_with_type_in_sig", cfg="bfail2")]
-#![rustc_partition_codegened(module="struct_point-fn_with_type_in_body", cfg="bfail2")]
-#![rustc_partition_codegened(module="struct_point-fn_make_struct", cfg="bfail2")]
-#![rustc_partition_codegened(module="struct_point-fn_read_field", cfg="bfail2")]
-#![rustc_partition_codegened(module="struct_point-fn_write_field", cfg="bfail2")]
+#![rustc_partition_codegened(module="struct_point-point", cfg="bpass2")]
+#![rustc_partition_codegened(module="struct_point-fn_with_type_in_sig", cfg="bpass2")]
+#![rustc_partition_codegened(module="struct_point-call_fn_with_type_in_sig", cfg="bpass2")]
+#![rustc_partition_codegened(module="struct_point-fn_with_type_in_body", cfg="bpass2")]
+#![rustc_partition_codegened(module="struct_point-fn_make_struct", cfg="bpass2")]
+#![rustc_partition_codegened(module="struct_point-fn_read_field", cfg="bpass2")]
+#![rustc_partition_codegened(module="struct_point-fn_write_field", cfg="bpass2")]
 
-#![rustc_partition_reused(module="struct_point-call_fn_with_type_in_body", cfg="bfail2")]
+#![rustc_partition_reused(module="struct_point-call_fn_with_type_in_body", cfg="bpass2")]
 
 pub mod point {
-    #[cfg(bfail1)]
+    #[cfg(bpass1)]
     pub struct Point {
         pub x: f32,
         pub y: f32,
     }
 
-    #[cfg(bfail2)]
+    #[cfg(bpass2)]
     pub struct Point {
         pub x: f32,
         pub y: f32,
@@ -39,18 +38,18 @@ pub mod point {
 
     impl Point {
         pub fn origin() -> Point {
-            #[cfg(bfail1)]
+            #[cfg(bpass1)]
             return Point { x: 0.0, y: 0.0 };
 
-            #[cfg(bfail2)]
+            #[cfg(bpass2)]
             return Point { x: 0.0, y: 0.0, z: 0.0 };
         }
 
         pub fn total(&self) -> f32 {
-            #[cfg(bfail1)]
+            #[cfg(bpass1)]
             return self.x + self.y;
 
-            #[cfg(bfail2)]
+            #[cfg(bpass2)]
             return self.x + self.y + self.z;
         }
 
@@ -70,7 +69,7 @@ pub mod point {
 pub mod fn_with_type_in_sig {
     use point::Point;
 
-    #[rustc_clean(except="typeck_root,fn_sig,optimized_mir", cfg="bfail2")]
+    #[rustc_clean(except="typeck_root,fn_sig,optimized_mir", cfg="bpass2")]
     pub fn boop(p: Option<&Point>) -> f32 {
         p.map(|p| p.total()).unwrap_or(0.0)
     }
@@ -86,7 +85,7 @@ pub mod fn_with_type_in_sig {
 pub mod call_fn_with_type_in_sig {
     use fn_with_type_in_sig;
 
-    #[rustc_clean(except="typeck_root,optimized_mir", cfg="bfail2")]
+    #[rustc_clean(except="typeck_root,optimized_mir", cfg="bpass2")]
     pub fn bip() -> f32 {
         fn_with_type_in_sig::boop(None)
     }
@@ -102,7 +101,7 @@ pub mod call_fn_with_type_in_sig {
 pub mod fn_with_type_in_body {
     use point::Point;
 
-    #[rustc_clean(except="typeck_root,optimized_mir", cfg="bfail2")]
+    #[rustc_clean(except="typeck_root,optimized_mir", cfg="bpass2")]
     pub fn boop() -> f32 {
         Point::origin().total()
     }
@@ -115,7 +114,7 @@ pub mod fn_with_type_in_body {
 pub mod call_fn_with_type_in_body {
     use fn_with_type_in_body;
 
-    #[rustc_clean(cfg="bfail2")]
+    #[rustc_clean(cfg="bpass2")]
     pub fn bip() -> f32 {
         fn_with_type_in_body::boop()
     }
@@ -125,7 +124,7 @@ pub mod call_fn_with_type_in_body {
 pub mod fn_make_struct {
     use point::Point;
 
-    #[rustc_clean(except="typeck_root,fn_sig,optimized_mir", cfg="bfail2")]
+    #[rustc_clean(except="typeck_root,fn_sig,optimized_mir", cfg="bpass2")]
     pub fn make_origin(p: Point) -> Point {
         Point { ..p }
     }
@@ -135,7 +134,7 @@ pub mod fn_make_struct {
 pub mod fn_read_field {
     use point::Point;
 
-    #[rustc_clean(except="typeck_root,fn_sig,optimized_mir", cfg="bfail2")]
+    #[rustc_clean(except="typeck_root,fn_sig,optimized_mir", cfg="bpass2")]
     pub fn get_x(p: Point) -> f32 {
         p.x
     }
@@ -145,7 +144,7 @@ pub mod fn_read_field {
 pub mod fn_write_field {
     use point::Point;
 
-    #[rustc_clean(except="typeck_root,fn_sig,optimized_mir", cfg="bfail2")]
+    #[rustc_clean(except="typeck_root,fn_sig,optimized_mir", cfg="bpass2")]
     pub fn inc_x(p: &mut Point) {
         p.x += 1.0;
     }
