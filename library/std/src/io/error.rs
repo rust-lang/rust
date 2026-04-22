@@ -13,17 +13,23 @@ pub use alloc_crate::io::RawOsError;
 // This assumption is invalid on 64-bit UEFI, where error codes are 64-bit.
 // Therefore, the packed representation is explicitly disabled for UEFI
 // targets, and the unpacked representation must be used instead.
-#[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
-mod repr_bitpacked;
-#[cfg(all(target_pointer_width = "64", not(target_os = "uefi")))]
-use repr_bitpacked::Repr;
+#[cfg_attr(
+    all(target_pointer_width = "64", not(target_os = "uefi")),
+    path = "error/repr_bitpacked.rs"
+)]
+#[cfg_attr(
+    not(all(target_pointer_width = "64", not(target_os = "uefi"))),
+    path = "error/repr_unpacked.rs"
+)]
+mod repr;
 
-#[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
-mod repr_unpacked;
-#[cfg(any(not(target_pointer_width = "64"), target_os = "uefi"))]
-use repr_unpacked::Repr;
+#[cfg_attr(target_has_atomic_load_store = "ptr", path = "error/os_functions_atomic.rs")]
+#[cfg_attr(not(target_has_atomic_load_store = "ptr"), path = "error/os_functions.rs")]
+mod os_functions;
 
-use crate::{error, fmt, result, sys};
+use self::os_functions::{decode_error_kind, format_os_error, is_interrupted, set_functions};
+use self::repr::Repr;
+use crate::{error, fmt, result};
 
 /// A specialized [`Result`] type for I/O operations.
 ///
@@ -35,11 +41,11 @@ use crate::{error, fmt, result, sys};
 ///
 /// While usual Rust style is to import types directly, aliases of [`Result`]
 /// often are not, to make it easier to distinguish between them. [`Result`] is
-/// generally assumed to be [`std::result::Result`][`Result`], and so users of this alias
+/// generally assumed to be [`core::result::Result`][`Result`], and so users of this alias
 /// will generally use `io::Result` instead of shadowing the [prelude]'s import
-/// of [`std::result::Result`][`Result`].
+/// of [`core::result::Result`][`Result`].
 ///
-/// [`std::io`]: crate::io
+/// [`std::io`]: ../../std/io/index.html
 /// [`io::Error`]: Error
 /// [`Result`]: crate::result::Result
 /// [prelude]: crate::prelude
@@ -63,17 +69,18 @@ use crate::{error, fmt, result, sys};
 #[doc(search_unbox)]
 pub type Result<T> = result::Result<T, Error>;
 
-/// The error type for I/O operations of the [`Read`], [`Write`], [`Seek`], and
+/// The error type for I/O operations of the [`Read`][Read], [`Write`][Write], [`Seek`][Seek], and
 /// associated traits.
 ///
 /// Errors mostly originate from the underlying OS, but custom instances of
 /// `Error` can be created with crafted error messages and a particular value of
 /// [`ErrorKind`].
 ///
-/// [`Read`]: crate::io::Read
-/// [`Write`]: crate::io::Write
-/// [`Seek`]: crate::io::Seek
+/// [Read]: ../../std/io/trait.Read.html
+/// [Write]: ../../std/io/trait.Write.html
+/// [Seek]: ../../std/io/trait.Seek.html
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_has_incoherent_inherent_impls]
 pub struct Error {
     repr: Repr,
 }
@@ -86,29 +93,43 @@ impl fmt::Debug for Error {
 }
 
 /// Common errors constants for use in std
-#[allow(dead_code)]
+#[doc(hidden)]
 impl Error {
-    pub(crate) const INVALID_UTF8: Self =
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub const INVALID_UTF8: Self =
         const_error!(ErrorKind::InvalidData, "stream did not contain valid UTF-8");
 
-    pub(crate) const READ_EXACT_EOF: Self =
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub const READ_EXACT_EOF: Self =
         const_error!(ErrorKind::UnexpectedEof, "failed to fill whole buffer");
 
-    pub(crate) const UNKNOWN_THREAD_COUNT: Self = const_error!(
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub const UNKNOWN_THREAD_COUNT: Self = const_error!(
         ErrorKind::NotFound,
         "the number of hardware threads is not known for the target platform",
     );
 
-    pub(crate) const UNSUPPORTED_PLATFORM: Self =
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub const UNSUPPORTED_PLATFORM: Self =
         const_error!(ErrorKind::Unsupported, "operation not supported on this platform");
 
-    pub(crate) const WRITE_ALL_EOF: Self =
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub const WRITE_ALL_EOF: Self =
         const_error!(ErrorKind::WriteZero, "failed to write whole buffer");
 
-    pub(crate) const ZERO_TIMEOUT: Self =
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub const ZERO_TIMEOUT: Self =
         const_error!(ErrorKind::InvalidInput, "cannot set a 0 duration timeout");
 
-    pub(crate) const NO_ADDRESSES: Self =
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub const NO_ADDRESSES: Self =
         const_error!(ErrorKind::InvalidInput, "could not resolve to any addresses");
 }
 
@@ -154,7 +175,7 @@ enum ErrorData<C> {
 // have on 32 bit platforms.
 //
 // (For the sake of being explicit: the alignment requirement here only matters
-// if `error/repr_bitpacked.rs` is in use — for the unpacked repr it doesn't
+// if `error/repr_bitpacked.rs` is in use — for the unpacked repr it doesn't
 // matter at all)
 #[doc(hidden)]
 #[unstable(feature = "io_const_error_internals", issue = "none")]
@@ -167,8 +188,10 @@ pub struct SimpleMessage {
 
 /// Creates a new I/O error from a known kind of error and a string literal.
 ///
-/// Contrary to [`Error::new`], this macro does not allocate and can be used in
+/// Contrary to [`Error::new`][new], this macro does not allocate and can be used in
 /// `const` contexts.
+///
+/// [new]: ../../std/io/struct.Error.html#method.new
 ///
 /// # Example
 /// ```
@@ -183,7 +206,7 @@ pub struct SimpleMessage {
 /// ```
 #[rustc_macro_transparency = "semiopaque"]
 #[unstable(feature = "io_const_error", issue = "133448")]
-#[allow_internal_unstable(hint_must_use, io_const_error_internals)]
+#[allow_internal_unstable(core_io, hint_must_use, io_const_error_internals)]
 pub macro const_error($kind:expr, $message:expr $(,)?) {
     $crate::hint::must_use($crate::io::Error::from_static_message(
         const { &$crate::io::SimpleMessage { kind: $kind, message: $message } },
@@ -193,11 +216,128 @@ pub macro const_error($kind:expr, $message:expr $(,)?) {
 // As with `SimpleMessage`: `#[repr(align(4))]` here is just because
 // repr_bitpacked's encoding requires it. In practice it almost certainly be
 // already be this high or higher.
-#[derive(Debug)]
+#[doc(hidden)]
 #[repr(align(4))]
-struct Custom {
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+pub struct Custom {
     kind: ErrorKind,
-    error: Box<dyn error::Error + Send + Sync>,
+    error: crate::ptr::NonNull<dyn error::Error + Send + Sync>,
+    error_drop: unsafe fn(*mut (dyn error::Error + Send + Sync)),
+    outer_drop: unsafe fn(*mut Self),
+}
+
+// SAFETY: All members of `Custom` are `Send`
+unsafe impl Send for Custom {}
+
+// SAFETY: All members of `Custom` are `Sync`
+unsafe impl Sync for Custom {}
+
+impl fmt::Debug for Custom {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Custom").field("kind", &self.kind).field("error", self.error_ref()).finish()
+    }
+}
+
+impl Drop for Custom {
+    fn drop(&mut self) {
+        // SAFETY: `Custom::from_raw` ensures this call is safe.
+        unsafe {
+            (self.error_drop)(self.error.as_ptr());
+        }
+    }
+}
+
+impl Custom {
+    /// # Safety
+    ///
+    /// * `error` must be valid for up to a static lifetime, and own its pointee.
+    /// * `error_drop` must be safe to call for the pointer `error` exactly once.
+    /// * `outer_drop` must be safe to call on a pointer to this instance of `Custom`
+    ///   if it were stored within a [`CustomOwner`].
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub unsafe fn from_raw(
+        kind: ErrorKind,
+        error: crate::ptr::NonNull<dyn error::Error + Send + Sync>,
+        error_drop: unsafe fn(*mut (dyn error::Error + Send + Sync)),
+        outer_drop: unsafe fn(*mut Self),
+    ) -> Custom {
+        Custom { kind, error, error_drop, outer_drop }
+    }
+
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn into_raw(self) -> crate::ptr::NonNull<dyn error::Error + Send + Sync> {
+        let ptr = self.error;
+        core::mem::forget(self);
+        ptr
+    }
+
+    fn error_ref(&self) -> &(dyn error::Error + Send + Sync + 'static) {
+        // SAFETY:
+        // `from_raw` ensures `error` is a valid pointer up to a static lifetime
+        // and is owned by `self`
+        unsafe { self.error.as_ref() }
+    }
+
+    fn error_mut(&mut self) -> &mut (dyn error::Error + Send + Sync + 'static) {
+        // SAFETY:
+        // `from_raw` ensures `error` is a valid pointer up to a static lifetime
+        // and is owned by `self`
+        unsafe { self.error.as_mut() }
+    }
+}
+
+#[derive(Debug)]
+#[repr(transparent)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+#[doc(hidden)]
+pub struct CustomOwner(crate::ptr::NonNull<Custom>);
+
+// SAFETY: Custom is `Send`
+unsafe impl Send for CustomOwner {}
+
+// SAFETY: Custom is `Sync`
+unsafe impl Sync for CustomOwner {}
+
+impl Drop for CustomOwner {
+    fn drop(&mut self) {
+        // SAFETY: `CustomOwner::from_raw` ensures this call is safe.
+        unsafe {
+            (self.0.as_ref().outer_drop)(self.0.as_ptr());
+        }
+    }
+}
+
+impl CustomOwner {
+    /// # Safety
+    ///
+    /// * The `outer_drop` of the provided `custom` must be safe to call exactly once.
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub unsafe fn from_raw(custom: crate::ptr::NonNull<Custom>) -> CustomOwner {
+        CustomOwner(custom)
+    }
+
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    pub fn into_raw(self) -> crate::ptr::NonNull<Custom> {
+        let ptr = self.0;
+        core::mem::forget(self);
+        ptr
+    }
+
+    #[allow(dead_code, reason = "only required for unpacked representation")]
+    fn custom_ref(&self) -> &Custom {
+        // SAFETY:
+        // `from_raw` ensures `0` is a valid pointer up to a static lifetime
+        // and is owned by `self`
+        unsafe { self.0.as_ref() }
+    }
+
+    #[allow(dead_code, reason = "only required for unpacked representation")]
+    fn custom_mut(&mut self) -> &mut Custom {
+        // SAFETY:
+        // `from_raw` ensures `0` is a valid pointer up to a static lifetime
+        // and is owned by `self`
+        unsafe { self.0.as_mut() }
+    }
 }
 
 /// Intended for use for errors not exposed to the user, where allocating onto
@@ -224,6 +364,33 @@ impl From<ErrorKind> for Error {
 }
 
 impl Error {
+    /// # Safety
+    ///
+    /// The provided `CustomOwner` must have been constructed from a `Box` from the `alloc` crate.
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub unsafe fn from_custom_owner(custom: CustomOwner) -> Error {
+        Error { repr: Repr::new_custom(custom) }
+    }
+
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub fn into_custom_owner(self) -> result::Result<CustomOwner, Self> {
+        if matches!(self.repr.data(), ErrorData::Custom(..)) {
+            let ErrorData::Custom(c) = self.repr.into_data() else {
+                // SAFETY: Checked above using `matches!`.
+                unsafe { crate::hint::unreachable_unchecked() }
+            };
+            Ok(c)
+        } else {
+            Err(self)
+        }
+    }
+
     /// Creates a new I/O error from a known kind of error as well as an
     /// arbitrary error payload.
     ///
@@ -252,18 +419,21 @@ impl Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "io_error_new")]
     #[inline(never)]
+    #[rustc_allow_incoherent_impl]
     pub fn new<E>(kind: ErrorKind, error: E) -> Error
     where
         E: Into<Box<dyn error::Error + Send + Sync>>,
     {
-        Self::_new(kind, error.into())
+        error_from_box(kind, error.into())
     }
 
     /// Creates a new I/O error from an arbitrary error payload.
     ///
     /// This function is used to generically create I/O errors which do not
-    /// originate from the OS itself. It is a shortcut for [`Error::new`]
+    /// originate from the OS itself. It is a shortcut for [`Error::new`][new]
     /// with [`ErrorKind::Other`].
+    ///
+    /// [new]: struct.Error.html#method.new
     ///
     /// # Examples
     ///
@@ -277,15 +447,12 @@ impl Error {
     /// let custom_error2 = Error::other(custom_error);
     /// ```
     #[stable(feature = "io_error_other", since = "1.74.0")]
+    #[rustc_allow_incoherent_impl]
     pub fn other<E>(error: E) -> Error
     where
         E: Into<Box<dyn error::Error + Send + Sync>>,
     {
-        Self::_new(ErrorKind::Other, error.into())
-    }
-
-    fn _new(kind: ErrorKind, error: Box<dyn error::Error + Send + Sync>) -> Error {
-        Error { repr: Repr::new_custom(Box::new(Custom { kind, error })) }
+        error_from_box(ErrorKind::Other, error.into())
     }
 
     /// Creates a new I/O error from a known kind of error as well as a constant
@@ -303,6 +470,25 @@ impl Error {
     #[unstable(feature = "io_const_error_internals", issue = "none")]
     pub const fn from_static_message(msg: &'static SimpleMessage) -> Error {
         Self { repr: Repr::new_simple_message(msg) }
+    }
+
+    /// # Safety
+    ///
+    /// `functions` must point to data that is entirely constant; it must
+    /// not be created during runtime.
+    #[doc(hidden)]
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    #[must_use]
+    #[inline]
+    pub unsafe fn from_raw_os_error_with_functions(
+        code: RawOsError,
+        functions: &'static OsFunctions,
+    ) -> Error {
+        // SAFETY: Caller ensures `functions` is a constant not created at runtime.
+        unsafe {
+            set_functions(functions);
+        }
+        Error { repr: Repr::new_os(code) }
     }
 
     /// Returns an error representing the last OS error which occurred.
@@ -324,13 +510,14 @@ impl Error {
     /// let os_error = Error::last_os_error();
     /// println!("last OS error: {os_error:?}");
     /// ```
+    #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[doc(alias = "GetLastError")]
     #[doc(alias = "errno")]
     #[must_use]
     #[inline]
     pub fn last_os_error() -> Error {
-        Error::from_raw_os_error(sys::io::errno())
+        Error::from_raw_os_error(errno())
     }
 
     /// Creates a new instance of an [`Error`] from a particular OS error code.
@@ -358,21 +545,29 @@ impl Error {
     /// assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
     /// # }
     /// ```
+    #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     #[inline]
     pub fn from_raw_os_error(code: RawOsError) -> Error {
-        Error { repr: Repr::new_os(code) }
+        const FUNCTIONS: &'static OsFunctions = &OsFunctions {
+            format_os_error: |code, fmt| fmt.write_str(&error_string(code)),
+            decode_error_kind,
+            is_interrupted,
+        };
+
+        // SAFETY: `FUNCTIONS` is a constant and not created at runtime.
+        unsafe { Error::from_raw_os_error_with_functions(code, FUNCTIONS) }
     }
 
     /// Returns the OS error that this error represents (if any).
     ///
-    /// If this [`Error`] was constructed via [`last_os_error`] or
-    /// [`from_raw_os_error`], then this function will return [`Some`], otherwise
+    /// If this [`Error`] was constructed via [`last_os_error`][last_os_error] or
+    /// [`from_raw_os_error`][from_raw_os_error], then this function will return [`Some`], otherwise
     /// it will return [`None`].
     ///
-    /// [`last_os_error`]: Error::last_os_error
-    /// [`from_raw_os_error`]: Error::from_raw_os_error
+    /// [last_os_error]: ../../std/io/struct.Error.html#method.last_os_error
+    /// [from_raw_os_error]: ../../std/io/struct.Error.html#method.from_raw_os_error
     ///
     /// # Examples
     ///
@@ -408,10 +603,10 @@ impl Error {
 
     /// Returns a reference to the inner error wrapped by this error (if any).
     ///
-    /// If this [`Error`] was constructed via [`new`] then this function will
+    /// If this [`Error`] was constructed via [`new`][new] then this function will
     /// return [`Some`], otherwise it will return [`None`].
     ///
-    /// [`new`]: Error::new
+    /// [new]: ../../std/io/struct.Error.html#method.new
     ///
     /// # Examples
     ///
@@ -441,17 +636,17 @@ impl Error {
             ErrorData::Os(..) => None,
             ErrorData::Simple(..) => None,
             ErrorData::SimpleMessage(..) => None,
-            ErrorData::Custom(c) => Some(&*c.error),
+            ErrorData::Custom(c) => Some(c.error_ref()),
         }
     }
 
     /// Returns a mutable reference to the inner error wrapped by this error
     /// (if any).
     ///
-    /// If this [`Error`] was constructed via [`new`] then this function will
+    /// If this [`Error`] was constructed via [`new`][new] then this function will
     /// return [`Some`], otherwise it will return [`None`].
     ///
-    /// [`new`]: Error::new
+    /// [new]: ../../std/io/struct.Error.html#method.new
     ///
     /// # Examples
     ///
@@ -515,18 +710,18 @@ impl Error {
             ErrorData::Os(..) => None,
             ErrorData::Simple(..) => None,
             ErrorData::SimpleMessage(..) => None,
-            ErrorData::Custom(c) => Some(&mut *c.error),
+            ErrorData::Custom(c) => Some(c.error_mut()),
         }
     }
 
     /// Consumes the `Error`, returning its inner error (if any).
     ///
-    /// If this [`Error`] was constructed via [`new`] or [`other`],
+    /// If this [`Error`] was constructed via [`new`][new] or [`other`][other],
     /// then this function will return [`Some`],
     /// otherwise it will return [`None`].
     ///
-    /// [`new`]: Error::new
-    /// [`other`]: Error::other
+    /// [new]: struct.Error.html#method.new
+    /// [other]: struct.Error.html#method.other
     ///
     /// # Examples
     ///
@@ -551,13 +746,22 @@ impl Error {
     #[stable(feature = "io_error_inner", since = "1.3.0")]
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
+    #[rustc_allow_incoherent_impl]
     pub fn into_inner(self) -> Option<Box<dyn error::Error + Send + Sync>> {
-        match self.repr.into_data() {
-            ErrorData::Os(..) => None,
-            ErrorData::Simple(..) => None,
-            ErrorData::SimpleMessage(..) => None,
-            ErrorData::Custom(c) => Some(c.error),
-        }
+        let custom_owner = self.into_custom_owner().ok()?;
+
+        let ptr = custom_owner.into_raw().as_ptr();
+
+        // SAFETY:
+        // `Error` can only contain a `CustomOwner` if it was constructed using `Box::into_raw`.
+        let custom = unsafe { Box::<Custom>::from_raw(ptr) };
+
+        let ptr = custom.into_raw().as_ptr();
+
+        // SAFETY:
+        // Any `CustomOwner` from an `Error` was constructed by the `alloc` crate
+        // to contain a `Custom` which itself was constructed with `Box::into_raw`.
+        Some(unsafe { Box::from_raw(ptr) })
     }
 
     /// Attempts to downcast the custom boxed error to `E`.
@@ -571,8 +775,9 @@ impl Error {
     ///
     /// This method is meant to be a convenience routine for calling
     /// `Box<dyn Error + Sync + Send>::downcast` on the custom boxed error, returned by
-    /// [`Error::into_inner`].
+    /// [`Error::into_inner`][into_inner].
     ///
+    /// [into_inner]: struct.Error.html#method.into_inner
     ///
     /// # Examples
     ///
@@ -630,20 +835,21 @@ impl Error {
     /// # }
     /// ```
     #[stable(feature = "io_error_downcast", since = "1.79.0")]
+    #[rustc_allow_incoherent_impl]
     pub fn downcast<E>(self) -> result::Result<E, Self>
     where
         E: error::Error + Send + Sync + 'static,
     {
-        if let ErrorData::Custom(c) = self.repr.data()
-            && c.error.is::<E>()
+        if let Some(e) = self.get_ref()
+            && e.is::<E>()
         {
-            if let ErrorData::Custom(b) = self.repr.into_data()
-                && let Ok(err) = b.error.downcast::<E>()
+            if let Some(b) = self.into_inner()
+                && let Ok(err) = b.downcast::<E>()
             {
                 Ok(*err)
             } else {
                 // Safety: We have just checked that the condition is true
-                unsafe { crate::hint::unreachable_unchecked() }
+                unsafe { core::hint::unreachable_unchecked() }
             }
         } else {
             Err(self)
@@ -655,9 +861,9 @@ impl Error {
     /// This may be a value set by Rust code constructing custom `io::Error`s,
     /// or if this `io::Error` was sourced from the operating system,
     /// it will be a value inferred from the system's error encoding.
-    /// See [`last_os_error`] for more details.
+    /// See [`last_os_error`][last_os_error] for more details.
     ///
-    /// [`last_os_error`]: Error::last_os_error
+    /// [last_os_error]: ../../std/io/struct.Error.html#method.last_os_error
     ///
     /// # Examples
     ///
@@ -681,17 +887,19 @@ impl Error {
     #[inline]
     pub fn kind(&self) -> ErrorKind {
         match self.repr.data() {
-            ErrorData::Os(code) => sys::io::decode_error_kind(code),
+            ErrorData::Os(code) => decode_error_kind(code),
             ErrorData::Custom(c) => c.kind,
             ErrorData::Simple(kind) => kind,
             ErrorData::SimpleMessage(m) => m.kind,
         }
     }
 
+    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    #[doc(hidden)]
     #[inline]
-    pub(crate) fn is_interrupted(&self) -> bool {
+    pub fn is_interrupted(&self) -> bool {
         match self.repr.data() {
-            ErrorData::Os(code) => sys::io::is_interrupted(code),
+            ErrorData::Os(code) => is_interrupted(code),
             ErrorData::Custom(c) => c.kind == ErrorKind::Interrupted,
             ErrorData::Simple(kind) => kind == ErrorKind::Interrupted,
             ErrorData::SimpleMessage(m) => m.kind == ErrorKind::Interrupted,
@@ -705,8 +913,13 @@ impl fmt::Debug for Repr {
             ErrorData::Os(code) => fmt
                 .debug_struct("Os")
                 .field("code", &code)
-                .field("kind", &sys::io::decode_error_kind(code))
-                .field("message", &sys::io::error_string(code))
+                .field("kind", &decode_error_kind(code))
+                .field(
+                    "message",
+                    &fmt::from_fn(|fmt| {
+                        write!(fmt, "\"{}\"", fmt::from_fn(|fmt| format_os_error(code, fmt)))
+                    }),
+                )
                 .finish(),
             ErrorData::Custom(c) => fmt::Debug::fmt(&c, fmt),
             ErrorData::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
@@ -724,10 +937,10 @@ impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.repr.data() {
             ErrorData::Os(code) => {
-                let detail = sys::io::error_string(code);
+                let detail = fmt::from_fn(|fmt| format_os_error(code, fmt));
                 write!(fmt, "{detail} (os error {code})")
             }
-            ErrorData::Custom(ref c) => c.error.fmt(fmt),
+            ErrorData::Custom(c) => fmt::Display::fmt(c.error_ref(), fmt),
             ErrorData::Simple(kind) => kind.fmt(fmt),
             ErrorData::SimpleMessage(msg) => msg.message.fmt(fmt),
         }
@@ -742,7 +955,7 @@ impl error::Error for Error {
             ErrorData::Os(..) => None,
             ErrorData::Simple(..) => None,
             ErrorData::SimpleMessage(..) => None,
-            ErrorData::Custom(c) => c.error.cause(),
+            ErrorData::Custom(c) => c.error_ref().cause(),
         }
     }
 
@@ -751,7 +964,7 @@ impl error::Error for Error {
             ErrorData::Os(..) => None,
             ErrorData::Simple(..) => None,
             ErrorData::SimpleMessage(..) => None,
-            ErrorData::Custom(c) => c.error.source(),
+            ErrorData::Custom(c) => c.error_ref().source(),
         }
     }
 }
@@ -759,4 +972,34 @@ impl error::Error for Error {
 fn _assert_error_is_sync_send() {
     fn _is_sync_send<T: Sync + Send>() {}
     _is_sync_send::<Error>();
+}
+
+fn error_from_box(kind: ErrorKind, error: Box<dyn error::Error + Send + Sync>) -> Error {
+    /// # Safety
+    ///
+    /// `ptr` must be valid to pass into `Box::from_raw`.
+    unsafe fn drop_box_raw<T: ?Sized>(ptr: *mut T) {
+        // SAFETY
+        // Caller ensures `ptr` is valid to pass into `Box::from_raw`.
+        drop(unsafe { Box::from_raw(ptr) })
+    }
+
+    // SAFETY: the pointer returned by Box::into_raw is non-null.
+    let error = unsafe { core::ptr::NonNull::new_unchecked(Box::into_raw(error)) };
+
+    // SAFETY:
+    // * `error` is valid up to a static lifetime, and owns its pointee.
+    // * `drop_box_raw` is safe to call for the pointer `error` exactly once.
+    // * `drop_box_raw` is safe to call on a pointer to this instance of `Custom`,
+    //   and will be stored in a `CustomOwner`.
+    let custom = unsafe { Custom::from_raw(kind, error, drop_box_raw, drop_box_raw) };
+
+    // SAFETY: the pointer returned by Box::into_raw is non-null.
+    let custom = unsafe { core::ptr::NonNull::new_unchecked(Box::into_raw(Box::new(custom))) };
+
+    // SAFETY: the `outer_drop` provided to `custom` is valid for itself.
+    let custom_owner = unsafe { CustomOwner::from_raw(custom) };
+
+    // SAFETY: `custom_owner` has bee constructed from a `Box` from the `alloc` crate.
+    unsafe { Error::from_custom_owner(custom_owner) }
 }
