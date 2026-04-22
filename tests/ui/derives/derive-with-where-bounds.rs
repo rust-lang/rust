@@ -1,8 +1,11 @@
-//@ run-pass
+//! Regression test for https://github.com/rust-lang/rust/issues/19358.
+//@ check-pass
 
 #![allow(dead_code)]
 
-trait Trait { fn dummy(&self) { } }
+trait Trait {
+    fn dummy(&self) {}
+}
 
 #[derive(Debug)]
 struct Foo<T: Trait> {
@@ -10,7 +13,10 @@ struct Foo<T: Trait> {
 }
 
 #[derive(Debug)]
-struct Bar<T> where T: Trait {
+struct Bar<T>
+where
+    T: Trait,
+{
     bar: T,
 }
 

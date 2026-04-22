@@ -1,6 +1,5 @@
-//@ revisions: bfail1 bfail2
+//@ revisions: bpass1 bpass2
 //@ compile-flags: -O -Zhuman-readable-cgu-names -Cllvm-args=-import-instr-limit=10
-//@ build-pass
 //@ ignore-backends: gcc
 
 // rust-lang/rust#59535:
@@ -28,16 +27,16 @@ fn main() {
 
 mod foo {
 
-    // In bfail1, ThinLTO decides that foo() does not get inlined into main, and
+    // In bpass1, ThinLTO decides that foo() does not get inlined into main, and
     // instead bar() gets inlined into foo().
-    // In bfail2, foo() gets inlined into main.
+    // In bpass2, foo() gets inlined into main.
     pub fn foo(){
         bar()
     }
 
     // This function needs to be big so that it does not get inlined by ThinLTO
     // but *does* get inlined into foo() when it is declared `internal` in
-    // bfail1 (alone).
+    // bpass1 (alone).
     pub fn bar(){
         println!("quux1");
         println!("quux2");
@@ -55,7 +54,7 @@ mod bar {
 
     #[inline(never)]
     pub fn baz() {
-        #[cfg(bfail2)]
+        #[cfg(bpass2)]
         {
             crate::foo::bar();
         }

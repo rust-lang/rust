@@ -1,8 +1,7 @@
 // Test where we change the *signature* of a public, inherent method.
 
-//@ revisions: bfail1 bfail2
+//@ revisions: bpass1 bpass2
 //@ compile-flags: -Z query-dep-graph
-//@ build-pass
 //@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
@@ -10,13 +9,13 @@
 #![allow(dead_code)]
 
 // These are expected to require codegen.
-#![rustc_partition_codegened(module="struct_point-point", cfg="bfail2")]
-#![rustc_partition_codegened(module="struct_point-fn_calls_changed_method", cfg="bfail2")]
+#![rustc_partition_codegened(module="struct_point-point", cfg="bpass2")]
+#![rustc_partition_codegened(module="struct_point-fn_calls_changed_method", cfg="bpass2")]
 
-#![rustc_partition_reused(module="struct_point-fn_calls_another_method", cfg="bfail2")]
-#![rustc_partition_reused(module="struct_point-fn_make_struct", cfg="bfail2")]
-#![rustc_partition_reused(module="struct_point-fn_read_field", cfg="bfail2")]
-#![rustc_partition_reused(module="struct_point-fn_write_field", cfg="bfail2")]
+#![rustc_partition_reused(module="struct_point-fn_calls_another_method", cfg="bpass2")]
+#![rustc_partition_reused(module="struct_point-fn_make_struct", cfg="bpass2")]
+#![rustc_partition_reused(module="struct_point-fn_read_field", cfg="bpass2")]
+#![rustc_partition_reused(module="struct_point-fn_write_field", cfg="bpass2")]
 
 pub mod point {
     pub struct Point {
@@ -25,7 +24,7 @@ pub mod point {
     }
 
     impl Point {
-        #[cfg(bfail1)]
+        #[cfg(bpass1)]
         pub fn distance_from_point(&self, p: Option<Point>) -> f32 {
             let p = p.unwrap_or(Point { x: 0.0, y: 0.0 });
             let x_diff = self.x - p.x;
@@ -33,7 +32,7 @@ pub mod point {
             return x_diff * x_diff + y_diff * y_diff;
         }
 
-        #[cfg(bfail2)]
+        #[cfg(bpass2)]
         pub fn distance_from_point(&self, p: Option<&Point>) -> f32 {
             const ORIGIN: &Point = &Point { x: 0.0, y: 0.0 };
             let p = p.unwrap_or(ORIGIN);
@@ -52,7 +51,7 @@ pub mod point {
 pub mod fn_calls_changed_method {
     use point::Point;
 
-    #[rustc_clean(except="typeck_root,optimized_mir", cfg="bfail2")]
+    #[rustc_clean(except="typeck_root,optimized_mir", cfg="bpass2")]
     pub fn check() {
         let p = Point { x: 2.0, y: 2.0 };
         p.distance_from_point(None);
@@ -63,7 +62,7 @@ pub mod fn_calls_changed_method {
 pub mod fn_calls_another_method {
     use point::Point;
 
-    #[rustc_clean(cfg="bfail2")]
+    #[rustc_clean(cfg="bpass2")]
     pub fn check() {
         let p = Point { x: 2.0, y: 2.0 };
         p.x();
@@ -74,7 +73,7 @@ pub mod fn_calls_another_method {
 pub mod fn_make_struct {
     use point::Point;
 
-    #[rustc_clean(cfg="bfail2")]
+    #[rustc_clean(cfg="bpass2")]
     pub fn make_origin() -> Point {
         Point { x: 2.0, y: 2.0 }
     }
@@ -84,7 +83,7 @@ pub mod fn_make_struct {
 pub mod fn_read_field {
     use point::Point;
 
-    #[rustc_clean(cfg="bfail2")]
+    #[rustc_clean(cfg="bpass2")]
     pub fn get_x(p: Point) -> f32 {
         p.x
     }
@@ -94,7 +93,7 @@ pub mod fn_read_field {
 pub mod fn_write_field {
     use point::Point;
 
-    #[rustc_clean(cfg="bfail2")]
+    #[rustc_clean(cfg="bpass2")]
     pub fn inc_x(p: &mut Point) {
         p.x += 1.0;
     }

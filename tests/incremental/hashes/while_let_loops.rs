@@ -5,13 +5,13 @@
 // and make sure that the hash has changed, then change nothing between rev2 and
 // rev3 and make sure that the hash has not changed.
 
-//@ build-pass (FIXME(62277): could be check-pass?)
-//@ revisions: bfail1 bfail2 bfail3 bfail4 bfail5 bfail6
+//@ revisions: bpass1 bpass2 bpass3 bpass4 bpass5 bpass6
 //@ compile-flags: -Z query-dep-graph -O
-//@ [bfail1]compile-flags: -Zincremental-ignore-spans
-//@ [bfail2]compile-flags: -Zincremental-ignore-spans
-//@ [bfail3]compile-flags: -Zincremental-ignore-spans
+//@ [bpass1]compile-flags: -Zincremental-ignore-spans
+//@ [bpass2]compile-flags: -Zincremental-ignore-spans
+//@ [bpass3]compile-flags: -Zincremental-ignore-spans
 //@ ignore-backends: gcc
+// FIXME(#62277): could be check-pass?
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -19,7 +19,7 @@
 
 
 // Change loop body
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn change_loop_body() {
     let mut _x = 0;
     while let Some(0u32) = None {
@@ -28,11 +28,11 @@ pub fn change_loop_body() {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass6")]
 pub fn change_loop_body() {
     let mut _x = 0;
     while let Some(0u32) = None {
@@ -44,7 +44,7 @@ pub fn change_loop_body() {
 
 
 // Change loop body
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn change_loop_condition() {
     let mut _x = 0;
     while let Some(0u32) = None {
@@ -53,11 +53,11 @@ pub fn change_loop_condition() {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass6")]
 pub fn change_loop_condition() {
     let mut _x = 0;
     while let Some(1u32) = None {
@@ -69,7 +69,7 @@ pub fn change_loop_condition() {
 
 
 // Add break
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn add_break() {
     let mut _x = 0;
     while let Some(0u32) = None {
@@ -78,11 +78,11 @@ pub fn add_break() {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes, typeck_root")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes, typeck_root")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, typeck_root")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, typeck_root")]
+#[rustc_clean(cfg="bpass6")]
 pub fn add_break() {
     let mut _x = 0;
     while let Some(0u32) = None {
@@ -94,7 +94,7 @@ pub fn add_break() {
 
 
 // Add loop label
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn add_loop_label() {
     let mut _x = 0;
             while let Some(0u32) = None {
@@ -103,11 +103,11 @@ pub fn add_loop_label() {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass6")]
 pub fn add_loop_label() {
     let mut _x = 0;
     'label: while let Some(0u32) = None {
@@ -119,7 +119,7 @@ pub fn add_loop_label() {
 
 
 // Add loop label to break
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn add_loop_label_to_break() {
     let mut _x = 0;
     'label: while let Some(0u32) = None {
@@ -128,11 +128,11 @@ pub fn add_loop_label_to_break() {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass6")]
 pub fn add_loop_label_to_break() {
     let mut _x = 0;
     'label: while let Some(0u32) = None {
@@ -144,7 +144,7 @@ pub fn add_loop_label_to_break() {
 
 
 // Change break label
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn change_break_label() {
     let mut _x = 0;
     'outer: while let Some(0u32) = None {
@@ -155,11 +155,11 @@ pub fn change_break_label() {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass6")]
 pub fn change_break_label() {
     let mut _x = 0;
     'outer: while let Some(0u32) = None {
@@ -171,7 +171,7 @@ pub fn change_break_label() {
 }
 
 // Add loop label to continue
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn add_loop_label_to_continue() {
     let mut _x = 0;
     'label: while let Some(0u32) = None {
@@ -180,11 +180,11 @@ pub fn add_loop_label_to_continue() {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass6")]
 pub fn add_loop_label_to_continue() {
     let mut _x = 0;
     'label: while let Some(0u32) = None {
@@ -196,7 +196,7 @@ pub fn add_loop_label_to_continue() {
 
 
 // Change continue label
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn change_continue_label() {
     let mut _x = 0;
     'outer: while let Some(0u32) = None {
@@ -207,11 +207,11 @@ pub fn change_continue_label() {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass6")]
 pub fn change_continue_label() {
     let mut _x = 0;
     'outer: while let Some(0u32) = None {
@@ -225,7 +225,7 @@ pub fn change_continue_label() {
 
 
 // Change continue to break
-#[cfg(any(bfail1,bfail4))]
+#[cfg(any(bpass1,bpass4))]
 pub fn change_continue_to_break() {
     let mut _x = 0;
     while let Some(0u32) = None {
@@ -234,11 +234,11 @@ pub fn change_continue_to_break() {
     }
 }
 
-#[cfg(not(any(bfail1,bfail4)))]
-#[rustc_clean(cfg="bfail2", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail3")]
-#[rustc_clean(cfg="bfail5", except="opt_hir_owner_nodes")]
-#[rustc_clean(cfg="bfail6")]
+#[cfg(not(any(bpass1,bpass4)))]
+#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass3")]
+#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass6")]
 pub fn change_continue_to_break() {
     let mut _x = 0;
     while let Some(0u32) = None {
