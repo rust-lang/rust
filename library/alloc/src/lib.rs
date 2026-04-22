@@ -131,6 +131,8 @@
 #![feature(generic_atomic)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(inplace_iteration)]
+#![feature(io_const_error)]
+#![feature(io_const_error_internals)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(layout_for_ptr)]
