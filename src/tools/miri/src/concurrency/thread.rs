@@ -111,8 +111,8 @@ pub enum BlockReason {
     Epoll,
     /// Blocked on eventfd.
     Eventfd,
-    /// Blocked on unnamed_socket.
-    UnnamedSocket,
+    /// Blocked on virtual socket.
+    VirtualSocket,
     /// Blocked on an IO operation.
     IO,
     /// Blocked for any reason related to GenMC, such as `assume` statements (GenMC mode only).

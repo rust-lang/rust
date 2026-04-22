@@ -1,6 +1,6 @@
-//! This implements "anonymous" sockets, that do not correspond to anything on the host system and
+//! This implements "virtual" sockets, that do not correspond to anything on the host system and
 //! are entirely implemented inside Miri.
-//! We also use the same infrastructure to implement unnamed pipes.
+//! This is used to implement `socketpair` and `pipe`.
 
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::VecDeque;
@@ -22,7 +22,7 @@ use crate::*;
 const MAX_SOCKETPAIR_BUFFER_CAPACITY: usize = 0x34000;
 
 #[derive(Debug, PartialEq)]
-enum AnonSocketType {
+enum VirtualSocketType {
     // Either end of the socketpair fd.
     Socketpair,
     // Read end of the pipe.
@@ -31,16 +31,16 @@ enum AnonSocketType {
     PipeWrite,
 }
 
-/// One end of a pair of connected unnamed sockets.
+/// One end of a pair of connected virtual sockets.
 #[derive(Debug)]
-struct AnonSocket {
+struct VirtualSocket {
     /// The buffer we are reading from, or `None` if this is the writing end of a pipe.
     /// (In that case, the peer FD will be the reading end of that pipe.)
     readbuf: Option<RefCell<Buffer>>,
-    /// The `AnonSocket` file descriptor that is our "peer", and that holds the buffer we are
+    /// The `VirtualSocket` file descriptor that is our "peer", and that holds the buffer we are
     /// writing to. This is a weak reference because the other side may be closed before us; all
     /// future writes will then trigger EPIPE.
-    peer_fd: OnceCell<WeakFileDescriptionRef<AnonSocket>>,
+    peer_fd: OnceCell<WeakFileDescriptionRef<VirtualSocket>>,
     /// Indicates whether the peer has lost data when the file description is closed.
     /// This flag is set to `true` if the peer's `readbuf` is non-empty at the time
     /// of closure.
@@ -53,8 +53,8 @@ struct AnonSocket {
     blocked_write_tid: RefCell<Vec<ThreadId>>,
     /// Whether this fd is non-blocking or not.
     is_nonblock: Cell<bool>,
-    // Differentiate between different AnonSocket fd types.
-    fd_type: AnonSocketType,
+    // Differentiate between different virtual socket fd types.
+    fd_type: VirtualSocketType,
 }
 
 #[derive(Debug)]
@@ -69,17 +69,17 @@ impl Buffer {
     }
 }
 
-impl AnonSocket {
-    fn peer_fd(&self) -> &WeakFileDescriptionRef<AnonSocket> {
+impl VirtualSocket {
+    fn peer_fd(&self) -> &WeakFileDescriptionRef<VirtualSocket> {
         self.peer_fd.get().unwrap()
     }
 }
 
-impl FileDescription for AnonSocket {
+impl FileDescription for VirtualSocket {
     fn name(&self) -> &'static str {
         match self.fd_type {
-            AnonSocketType::Socketpair => "socketpair",
-            AnonSocketType::PipeRead | AnonSocketType::PipeWrite => "pipe",
+            VirtualSocketType::Socketpair => "socketpair",
+            VirtualSocketType::PipeRead | VirtualSocketType::PipeWrite => "pipe",
         }
     }
 
@@ -111,7 +111,7 @@ impl FileDescription for AnonSocket {
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        anonsocket_read(self, ptr, len, ecx, finish)
+        virtual_socket_read(self, ptr, len, ecx, finish)
     }
 
     fn write<'tcx>(
@@ -122,7 +122,7 @@ impl FileDescription for AnonSocket {
         ecx: &mut MiriInterpCx<'tcx>,
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
-        anonsocket_write(self, ptr, len, ecx, finish)
+        virtual_socket_write(self, ptr, len, ecx, finish)
     }
 
     fn short_fd_operations(&self) -> bool {
@@ -147,13 +147,13 @@ impl FileDescription for AnonSocket {
         // fd is closed, so we need to look at the original type of this socket, not at whether
         // the peer socket still exists.
         match self.fd_type {
-            AnonSocketType::Socketpair => {
+            VirtualSocketType::Socketpair => {
                 flags |= ecx.eval_libc_i32("O_RDWR");
             }
-            AnonSocketType::PipeRead => {
+            VirtualSocketType::PipeRead => {
                 flags |= ecx.eval_libc_i32("O_RDONLY");
             }
-            AnonSocketType::PipeWrite => {
+            VirtualSocketType::PipeWrite => {
                 flags |= ecx.eval_libc_i32("O_WRONLY");
             }
         }
@@ -192,9 +192,9 @@ impl FileDescription for AnonSocket {
     }
 }
 
-/// Write to AnonSocket based on the space available and return the written byte size.
-fn anonsocket_write<'tcx>(
-    self_ref: FileDescriptionRef<AnonSocket>,
+/// Write to VirtualSocket based on the space available and return the written byte size.
+fn virtual_socket_write<'tcx>(
+    self_ref: FileDescriptionRef<VirtualSocket>,
     ptr: Pointer,
     len: usize,
     ecx: &mut MiriInterpCx<'tcx>,
@@ -230,11 +230,11 @@ fn anonsocket_write<'tcx>(
             // Block the current thread; only keep a weak ref for this.
             let weak_self_ref = FileDescriptionRef::downgrade(&self_ref);
             ecx.block_thread(
-                BlockReason::UnnamedSocket,
+                BlockReason::VirtualSocket,
                 None,
                 callback!(
                     @capture<'tcx> {
-                        weak_self_ref: WeakFileDescriptionRef<AnonSocket>,
+                        weak_self_ref: WeakFileDescriptionRef<VirtualSocket>,
                         ptr: Pointer,
                         len: usize,
                         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
@@ -244,7 +244,7 @@ fn anonsocket_write<'tcx>(
                         // If we got unblocked, then our peer successfully upgraded its weak
                         // ref to us. That means we can also upgrade our weak ref.
                         let self_ref = weak_self_ref.upgrade().unwrap();
-                        anonsocket_write(self_ref, ptr, len, this, finish)
+                        virtual_socket_write(self_ref, ptr, len, this, finish)
                     }
                 ),
             );
@@ -268,7 +268,7 @@ fn anonsocket_write<'tcx>(
         let waiting_threads = std::mem::take(&mut *peer_fd.blocked_read_tid.borrow_mut());
         // FIXME: We can randomize the order of unblocking.
         for thread_id in waiting_threads {
-            ecx.unblock_thread(thread_id, BlockReason::UnnamedSocket)?;
+            ecx.unblock_thread(thread_id, BlockReason::VirtualSocket)?;
         }
         // Notify epoll waiters: we might be no longer writable, peer might now be readable.
         // The notification to the peer seems to be always sent on Linux, even if the
@@ -281,9 +281,9 @@ fn anonsocket_write<'tcx>(
     interp_ok(())
 }
 
-/// Read from AnonSocket and return the number of bytes read.
-fn anonsocket_read<'tcx>(
-    self_ref: FileDescriptionRef<AnonSocket>,
+/// Read from VirtualSocket and return the number of bytes read.
+fn virtual_socket_read<'tcx>(
+    self_ref: FileDescriptionRef<VirtualSocket>,
     ptr: Pointer,
     len: usize,
     ecx: &mut MiriInterpCx<'tcx>,
@@ -318,11 +318,11 @@ fn anonsocket_read<'tcx>(
             // Block the current thread; only keep a weak ref for this.
             let weak_self_ref = FileDescriptionRef::downgrade(&self_ref);
             ecx.block_thread(
-                BlockReason::UnnamedSocket,
+                BlockReason::VirtualSocket,
                 None,
                 callback!(
                     @capture<'tcx> {
-                        weak_self_ref: WeakFileDescriptionRef<AnonSocket>,
+                        weak_self_ref: WeakFileDescriptionRef<VirtualSocket>,
                         ptr: Pointer,
                         len: usize,
                         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
@@ -332,7 +332,7 @@ fn anonsocket_read<'tcx>(
                         // If we got unblocked, then our peer successfully upgraded its weak
                         // ref to us. That means we can also upgrade our weak ref.
                         let self_ref = weak_self_ref.upgrade().unwrap();
-                        anonsocket_read(self_ref, ptr, len, this, finish)
+                        virtual_socket_read(self_ref, ptr, len, this, finish)
                     }
                 ),
             );
@@ -365,7 +365,7 @@ fn anonsocket_read<'tcx>(
             let waiting_threads = std::mem::take(&mut *peer_fd.blocked_write_tid.borrow_mut());
             // FIXME: We can randomize the order of unblocking.
             for thread_id in waiting_threads {
-                ecx.unblock_thread(thread_id, BlockReason::UnnamedSocket)?;
+                ecx.unblock_thread(thread_id, BlockReason::VirtualSocket)?;
             }
             // Notify epoll waiters: peer is now writable.
             // Linux seems to always notify the peer if the read buffer is now empty.
@@ -381,7 +381,7 @@ fn anonsocket_read<'tcx>(
     interp_ok(())
 }
 
-impl UnixFileDescription for AnonSocket {
+impl UnixFileDescription for VirtualSocket {
     fn epoll_active_events<'tcx>(&self) -> InterpResult<'tcx, EpollEvents> {
         // We only check the status of EPOLLIN, EPOLLOUT, EPOLLHUP and EPOLLRDHUP flags.
         // If other event flags need to be supported in the future, the check should be added here.
@@ -489,23 +489,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // Generate file descriptions.
         let fds = &mut this.machine.fds;
-        let fd0 = fds.new_ref(AnonSocket {
+        let fd0 = fds.new_ref(VirtualSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
             peer_lost_data: Cell::new(false),
             blocked_read_tid: RefCell::new(Vec::new()),
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_sock_nonblock),
-            fd_type: AnonSocketType::Socketpair,
+            fd_type: VirtualSocketType::Socketpair,
         });
-        let fd1 = fds.new_ref(AnonSocket {
+        let fd1 = fds.new_ref(VirtualSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
             peer_lost_data: Cell::new(false),
             blocked_read_tid: RefCell::new(Vec::new()),
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_sock_nonblock),
-            fd_type: AnonSocketType::Socketpair,
+            fd_type: VirtualSocketType::Socketpair,
         });
 
         // Make the file descriptions point to each other.
@@ -559,23 +559,23 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Generate file descriptions.
         // pipefd[0] refers to the read end of the pipe.
         let fds = &mut this.machine.fds;
-        let fd0 = fds.new_ref(AnonSocket {
+        let fd0 = fds.new_ref(VirtualSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
             peer_fd: OnceCell::new(),
             peer_lost_data: Cell::new(false),
             blocked_read_tid: RefCell::new(Vec::new()),
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_nonblock),
-            fd_type: AnonSocketType::PipeRead,
+            fd_type: VirtualSocketType::PipeRead,
         });
-        let fd1 = fds.new_ref(AnonSocket {
+        let fd1 = fds.new_ref(VirtualSocket {
             readbuf: None,
             peer_fd: OnceCell::new(),
             peer_lost_data: Cell::new(false),
             blocked_read_tid: RefCell::new(Vec::new()),
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_nonblock),
-            fd_type: AnonSocketType::PipeWrite,
+            fd_type: VirtualSocketType::PipeWrite,
         });
 
         // Make the file descriptions point to each other.
