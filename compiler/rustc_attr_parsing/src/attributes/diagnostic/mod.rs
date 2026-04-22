@@ -20,7 +20,7 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::context::{AcceptContext, Stage};
 use crate::errors::{
     DisallowedPlaceholder, DisallowedPositionalArgument, InvalidFormatSpecifier,
-    MalFormedDiagnosticAttributeLint,
+    MalFormedDiagnosticAttributeLint, WrappedParserError,
 };
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
 
@@ -275,12 +275,15 @@ fn parse_directive_items<'p, S: Stage>(
                     f
                 }
                 Err(e) => {
-                    cx.emit_lint(
+                    cx.emit_dyn_lint(
                         MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-                        AttributeLintKind::DiagnosticWrappedParserError {
-                            description: e.description,
-                            label: e.label,
-                            span: slice_span(input.span, e.span, is_snippet),
+                        move |dcx, level| {
+                            WrappedParserError {
+                                description: &e.description,
+                                label: &e.label,
+                                span: slice_span(input.span, e.span.clone(), is_snippet),
+                            }
+                            .into_diag(dcx, level)
                         },
                         input.span,
                     );

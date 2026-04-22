@@ -3283,15 +3283,6 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("{$description}")]
-pub(crate) struct WrappedParserError<'a> {
-    pub description: &'a str,
-    #[label("{$label}")]
-    pub span: Span,
-    pub label: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag("`{$option_name}` is ignored due to previous definition of `{$option_name}`")]
 pub(crate) struct IgnoredDiagnosticOption {
     pub option_name: Symbol,

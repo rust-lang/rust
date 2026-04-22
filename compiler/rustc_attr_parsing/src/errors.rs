@@ -373,3 +373,12 @@ pub(crate) struct DisallowedPlaceholder;
 #[diag("invalid format specifier")]
 #[help("no format specifier are supported in this position")]
 pub(crate) struct InvalidFormatSpecifier;
+
+#[derive(Diagnostic)]
+#[diag("{$description}")]
+pub(crate) struct WrappedParserError<'a> {
+    pub description: &'a str,
+    #[label("{$label}")]
+    pub span: Span,
+    pub label: &'a str,
+}

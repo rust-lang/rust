@@ -2,7 +2,7 @@ use std::any::Any;
 
 use rustc_data_structures::sync::DynSend;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
-use rustc_hir::lints::{AttributeLintKind, FormatWarning};
+use rustc_hir::lints::AttributeLintKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 
@@ -43,9 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            AttributeLintKind::DiagnosticWrappedParserError { description, label, span } => {
-                lints::WrappedParserError { description, label, span: *span }.into_diag(dcx, level)
-            }
             &AttributeLintKind::IgnoredDiagnosticOption { option_name, first_span, later_span } => {
                 lints::IgnoredDiagnosticOption { option_name, first_span, later_span }
                     .into_diag(dcx, level)
