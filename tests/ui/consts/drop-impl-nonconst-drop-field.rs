@@ -1,6 +1,5 @@
 #![feature(const_trait_impl)]
 #![feature(const_destruct)]
-//@ check-pass
 
 use std::marker::Destruct;
 
@@ -11,12 +10,14 @@ impl Drop for NotConstDrop {
 }
 
 struct ConstDrop(NotConstDrop);
+//~^ ERROR: `NotConstDrop` does not implement `[const] Destruct`
 
 impl const Drop for ConstDrop {
     fn drop(&mut self) {}
 }
 
 struct ConstDrop2<T>(T);
+//~^ ERROR:  `T` does not implement `[const] Destruct`
 
 impl<T> const Drop for ConstDrop2<T> {
     fn drop(&mut self) {}
