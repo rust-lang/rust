@@ -130,6 +130,28 @@ where
             .expect("expected goal term to be fully unconstrained");
     }
 
+    /// Like `instantiate_normalizes_to_term`, but also registers a
+    /// `ConstArgHasType` goal when the term is a const. This ensures that
+    /// the const value's type matches the type of the alias it was
+    /// normalized from, preventing ICEs from type mismatches.
+    pub fn instantiate_normalizes_to_term_with_type_check(
+        &mut self,
+        goal: Goal<I, NormalizesTo<I>>,
+        term: I::Term,
+    ) {
+        if let Some(ct) = term.as_const() {
+            let cx = self.cx();
+            let alias = goal.predicate.alias;
+            let expected_ty =
+                cx.type_of(alias.def_id()).instantiate(cx, alias.args).skip_norm_wip();
+            self.add_goal(
+                GoalSource::Misc,
+                goal.with(cx, ty::ClauseKind::ConstArgHasType(ct, expected_ty)),
+            );
+        }
+        self.instantiate_normalizes_to_term(goal, term);
+    }
+
     /// Unlike `instantiate_normalizes_to_term` this instantiates the expected term
     /// with a rigid alias. Using this is pretty much always wrong.
     pub fn structurally_instantiate_normalizes_to_term(
@@ -410,22 +432,10 @@ where
                 ty::AliasTermKind::ProjectionConst { .. }
                     if cx.is_type_const(target_item_def_id.into()) =>
                 {
-                    let term: I::Term = cx
-                        .const_of_item(target_item_def_id.into())
+                    cx.const_of_item(target_item_def_id.into())
                         .instantiate(cx, target_args)
                         .skip_norm_wip()
-                        .into();
-                    if let Some(ct) = term.as_const() {
-                        let expected_ty = cx
-                            .type_of(target_item_def_id.into())
-                            .instantiate(cx, target_args)
-                            .skip_norm_wip();
-                        ecx.add_goal(
-                            GoalSource::Misc,
-                            goal.with(cx, ty::ClauseKind::ConstArgHasType(ct, expected_ty)),
-                        );
-                    }
-                    term
+                        .into()
                 }
                 ty::AliasTermKind::ProjectionConst { .. } => {
                     let uv = ty::UnevaluatedConst::new(
@@ -440,7 +450,7 @@ where
                 kind => panic!("expected projection, found {kind:?}"),
             };
 
-            ecx.instantiate_normalizes_to_term(goal, term);
+            ecx.instantiate_normalizes_to_term_with_type_check(goal, term);
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes).map_err(Into::into)
         })
     }
