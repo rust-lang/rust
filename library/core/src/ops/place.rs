@@ -65,6 +65,9 @@
 //! generic argument implementing the [`Subplace`] trait that specifies the
 //! subplace that the operation should affect.
 //!
+//! Note that the [`Subplace`] trait also can represent the entire place in case
+//! the operation affects the entire place (for example `let x = *ptr;`).
+//!
 //! This generic argument is supplied by the compiler when desugaring a place
 //! operation into the corresponding place operation trait function call. There
 //! is a direct translation from place expressions to types implementing the
@@ -385,7 +388,7 @@ where
 /// When `x: Self` and `Self::Target` has a subplace `S` accessible via
 /// `.foo.bar`, then `x.foo.bar` is also valid, has type `<Self::Wrapped as
 /// Subplace>::Target` and any place operation on it uses
-/// <code>[Self::wrap]\(sub\)</code> as the subplace instead of `S`.
+/// <code>[Self::wrap]\(sub\)</code> as the subplace instead of `sub`.
 ///
 /// # Safety
 ///
