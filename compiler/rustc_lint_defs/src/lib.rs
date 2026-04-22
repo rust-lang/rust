@@ -656,7 +656,6 @@ pub enum DeprecatedSinceKind {
 pub enum AttributeLintKind {
     UnexpectedCfgName((Symbol, Span), Option<(Symbol, Span)>),
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
-    IgnoredDiagnosticOption { option_name: Symbol, first_span: Span, later_span: Span },
     MissingOptionsForDiagnosticAttribute { attribute: &'static str, options: &'static str },
     NonMetaItemDiagnosticAttribute,
 }

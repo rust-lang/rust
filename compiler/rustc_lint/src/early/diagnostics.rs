@@ -43,10 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            &AttributeLintKind::IgnoredDiagnosticOption { option_name, first_span, later_span } => {
-                lints::IgnoredDiagnosticOption { option_name, first_span, later_span }
-                    .into_diag(dcx, level)
-            }
             &AttributeLintKind::MissingOptionsForDiagnosticAttribute { attribute, options } => {
                 lints::MissingOptionsForDiagnosticAttribute { attribute, options }
                     .into_diag(dcx, level)

@@ -3283,16 +3283,6 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("`{$option_name}` is ignored due to previous definition of `{$option_name}`")]
-pub(crate) struct IgnoredDiagnosticOption {
-    pub option_name: Symbol,
-    #[label("`{$option_name}` is first declared here")]
-    pub first_span: Span,
-    #[label("`{$option_name}` is later redundantly declared here")]
-    pub later_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("missing options for `{$attribute}` attribute")]
 #[help("{$options}")]
 pub(crate) struct MissingOptionsForDiagnosticAttribute {

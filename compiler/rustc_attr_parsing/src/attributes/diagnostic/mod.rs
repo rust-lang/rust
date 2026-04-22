@@ -19,8 +19,8 @@ use thin_vec::{ThinVec, thin_vec};
 
 use crate::context::{AcceptContext, Stage};
 use crate::errors::{
-    DisallowedPlaceholder, DisallowedPositionalArgument, InvalidFormatSpecifier,
-    MalFormedDiagnosticAttributeLint, WrappedParserError,
+    DisallowedPlaceholder, DisallowedPositionalArgument, IgnoredDiagnosticOption,
+    InvalidFormatSpecifier, MalFormedDiagnosticAttributeLint, WrappedParserError,
 };
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
 
@@ -116,12 +116,12 @@ fn merge<T, S: Stage>(
     match (first, later) {
         (Some(_) | None, None) => {}
         (Some((first_span, _)), Some((later_span, _))) => {
-            cx.emit_lint(
+            let first_span = *first_span;
+            cx.emit_dyn_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                AttributeLintKind::IgnoredDiagnosticOption {
-                    first_span: *first_span,
-                    later_span,
-                    option_name,
+                move |dcx, level| {
+                    IgnoredDiagnosticOption { first_span, later_span, option_name }
+                        .into_diag(dcx, level)
                 },
                 later_span,
             );
@@ -220,13 +220,14 @@ fn parse_directive_items<'p, S: Stage>(
         }}
 
         macro duplicate($name: ident, $($first_span:tt)*) {{
-            cx.emit_lint(
+            let first_span = $($first_span)*;
+            cx.emit_dyn_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                AttributeLintKind::IgnoredDiagnosticOption {
-                    first_span: $($first_span)*,
+                move |dcx, level| IgnoredDiagnosticOption {
+                    first_span,
                     later_span: span,
                     option_name: $name,
-                },
+                }.into_diag(dcx, level),
                 span,
             );
         }}
