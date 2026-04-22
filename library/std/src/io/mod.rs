@@ -3100,7 +3100,7 @@ impl<T: Read> Read for Take<T> {
 
             // Avoid accidentally quadratic behaviour by initializing the whole
             // cursor if only part of it was initialized.
-            if did_init_up_to_limit {
+            if did_init_up_to_limit && !is_init {
                 // SAFETY: No uninit data will be written.
                 let unfilled_before_advance = unsafe { buf.as_mut() };
 
