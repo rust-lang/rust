@@ -245,7 +245,7 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
                 .filter(|item| !tcx.generics_require_sized_self(item.def_id))
                 .map(move |assoc_item| {
                     super_poly_trait_ref.map_bound(|super_trait_ref| {
-                        let projection_term = ty::AliasTerm::new_from_args(
+                        let projection_term = ty::AliasTerm::new_from_def_id(
                             tcx,
                             assoc_item.def_id,
                             super_trait_ref.args,

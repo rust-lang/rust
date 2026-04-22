@@ -109,6 +109,7 @@ use rustc_hir::definitions::DefPathDataName;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
+use rustc_middle::mir::StatementKind;
 use rustc_middle::mono::{
     CodegenUnit, CodegenUnitNameBuilder, InstantiationMode, MonoItem, MonoItemData,
     MonoItemPartitions, Visibility,
@@ -1334,7 +1335,21 @@ pub(crate) fn provide(providers: &mut Providers) {
             | InstanceKind::DropGlue(..)
             | InstanceKind::AsyncDropGlueCtorShim(..) => {
                 let mir = tcx.instance_mir(instance.def);
-                mir.basic_blocks.iter().map(|bb| bb.statements.len() + 1).sum()
+                mir.basic_blocks
+                    .iter()
+                    .map(|bb| {
+                        bb.statements
+                            .iter()
+                            .filter_map(|stmt| match stmt.kind {
+                                StatementKind::StorageLive(_) | StatementKind::StorageDead(_) => {
+                                    None
+                                }
+                                _ => Some(stmt),
+                            })
+                            .count()
+                            + 1
+                    })
+                    .sum()
             }
             // Other compiler-generated shims size estimate: 1
             _ => 1,

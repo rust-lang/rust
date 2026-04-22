@@ -3,43 +3,42 @@
 // ends up with any spans in its LLVM bitecode, so LLVM is able to skip
 // re-building any modules which import 'inlined_fn'
 
-//@ revisions: bfail1 bfail2 bfail3
+//@ revisions: bpass1 bpass2 bpass3
 //@ compile-flags: -Z query-dep-graph -O
-//@ build-pass
 //@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]
 #![crate_type = "rlib"]
 #![rustc_expected_cgu_reuse(
     module = "cgu_keeps_identical_fn-foo",
-    cfg = "bfail2",
+    cfg = "bpass2",
     kind = "pre-lto"
 )]
 #![rustc_expected_cgu_reuse(
     module = "cgu_keeps_identical_fn-foo",
-    cfg = "bfail3",
+    cfg = "bpass3",
     kind = "pre-lto" // Should be "post-lto", see issue #119076
 )]
 #![rustc_expected_cgu_reuse(
     module = "cgu_keeps_identical_fn-bar",
-    cfg = "bfail2",
+    cfg = "bpass2",
     kind = "pre-lto" // Should be "post-lto", see issue #119076
 )]
 #![rustc_expected_cgu_reuse(
     module = "cgu_keeps_identical_fn-bar",
-    cfg = "bfail3",
+    cfg = "bpass3",
     kind = "pre-lto" // Should be "post-lto", see issue #119076
 )]
 
 mod foo {
 
     // Trivial functions like this one are imported very reliably by ThinLTO.
-    #[cfg(bfail1)]
+    #[cfg(bpass1)]
     pub fn inlined_fn() -> u32 {
         1234
     }
 
-    #[cfg(not(bfail1))]
+    #[cfg(not(bpass1))]
     pub fn inlined_fn() -> u32 {
         1234
     }

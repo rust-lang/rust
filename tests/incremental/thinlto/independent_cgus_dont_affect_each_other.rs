@@ -1,42 +1,41 @@
 // This test checks that a change in a CGU does not invalidate an unrelated CGU
 // during incremental ThinLTO.
 
-//@ revisions: bfail1 bfail2 bfail3
+//@ revisions: bpass1 bpass2 bpass3
 //@ compile-flags: -Z query-dep-graph -O
-//@ build-pass
 //@ ignore-backends: gcc
 
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]
 
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-foo",
-                            cfg="bfail2",
+                            cfg="bpass2",
                             kind="no")]
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-foo",
-                            cfg="bfail3",
+                            cfg="bpass3",
                             kind="pre-lto")] // Should be "post-lto", see issue #119076
 
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-bar",
-                            cfg="bfail2",
+                            cfg="bpass2",
                             kind="pre-lto")]
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-bar",
-                            cfg="bfail3",
+                            cfg="bpass3",
                             kind="pre-lto")] // Should be "post-lto", see issue #119076
 
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-baz",
-                            cfg="bfail2",
+                            cfg="bpass2",
                             kind="pre-lto")] // Should be "post-lto", see issue #119076
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-baz",
-                            cfg="bfail3",
+                            cfg="bpass3",
                             kind="pre-lto")] // Should be "post-lto", see issue #119076
 mod foo {
 
-    #[cfg(bfail1)]
+    #[cfg(bpass1)]
     pub fn inlined_fn() -> u32 {
         1234
     }
 
-    #[cfg(not(bfail1))]
+    #[cfg(not(bpass1))]
     pub fn inlined_fn() -> u32 {
         // See `cgu_keeps_identical_fn.rs` for why this is different
         // from the other version of this function.

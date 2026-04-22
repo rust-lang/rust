@@ -1911,7 +1911,11 @@ macro_rules! int_impl {
             }
         }
 
-        /// Returns the square root of the number, rounded down.
+        /// Returns the integer square root of the number, rounded down.
+        ///
+        /// This function returns the **principal (non-negative) square root**.
+        /// For a given number `n`, although both `x` and `-x` satisfy x<sup>2</sup> = n,
+        /// this function always returns the non-negative value.
         ///
         /// Returns `None` if `self` is negative.
         ///
@@ -3206,7 +3210,11 @@ macro_rules! int_impl {
             }
         }
 
-        /// Returns the square root of the number, rounded down.
+        /// Returns the integer square root of the number, rounded down.
+        ///
+        /// This function returns the **principal (non-negative) square root**.
+        /// For a given number `n`, although both `x` and `-x` satisfy x<sup>2</sup> = n,
+        /// this function always returns the non-negative value.
         ///
         /// # Panics
         ///

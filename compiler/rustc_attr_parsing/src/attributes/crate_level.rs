@@ -1,10 +1,11 @@
+use rustc_errors::Diagnostic;
 use rustc_hir::attrs::{CrateType, WindowsSubsystemKind};
-use rustc_hir::lints::AttributeLintKind;
 use rustc_session::lint::builtin::UNKNOWN_CRATE_TYPES;
 use rustc_span::Symbol;
 use rustc_span::edit_distance::find_best_match_for_name;
 
 use super::prelude::*;
+use crate::errors::{UnknownCrateTypes, UnknownCrateTypesSuggestion};
 
 pub(crate) struct CrateNameParser;
 
@@ -65,13 +66,17 @@ impl<S: Stage> CombineAttributeParser<S> for CrateTypeParser {
                     crate_type,
                     None,
                 );
-                cx.emit_lint(
+                let span = n.value_span;
+                cx.emit_dyn_lint(
                     UNKNOWN_CRATE_TYPES,
-                    AttributeLintKind::CrateTypeUnknown {
-                        span: n.value_span,
-                        suggested: candidate,
+                    move |dcx, level| {
+                        UnknownCrateTypes {
+                            sugg: candidate
+                                .map(|s| UnknownCrateTypesSuggestion { span, snippet: s }),
+                        }
+                        .into_diag(dcx, level)
                     },
-                    n.value_span,
+                    span,
                 );
             }
             return None;

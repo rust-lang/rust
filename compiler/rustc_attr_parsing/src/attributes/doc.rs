@@ -14,8 +14,9 @@ use super::prelude::{ALL_TARGETS, AllowedTargets};
 use super::{AcceptMapping, AttributeParser};
 use crate::context::{AcceptContext, FinalizeContext, Stage};
 use crate::errors::{
-    DocAliasDuplicated, DocAutoCfgExpectsHideOrShow, DocAutoCfgHideShowExpectsList,
-    DocAutoCfgHideShowUnexpectedItem, DocAutoCfgWrongLiteral, DocUnknownAny, DocUnknownInclude,
+    AttrCrateLevelOnly, DocAliasDuplicated, DocAutoCfgExpectsHideOrShow,
+    DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowUnexpectedItem, DocAutoCfgWrongLiteral,
+    DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude,
     DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, IllFormedAttributeInput,
 };
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
@@ -67,9 +68,9 @@ fn check_attr_not_crate_level<S: Stage>(
 /// Checks that an attribute is used at the crate level. Returns `true` if valid.
 fn check_attr_crate_level<S: Stage>(cx: &mut AcceptContext<'_, '_, S>, span: Span) -> bool {
     if cx.shared.target != Target::Crate {
-        cx.emit_lint(
+        cx.emit_dyn_lint(
             rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-            AttributeLintKind::AttrCrateLevelOnly,
+            |dcx, level| AttrCrateLevelOnly.into_diag(dcx, level),
             span,
         );
         return false;
@@ -216,16 +217,16 @@ impl DocParser {
                 }
             }
             Some(name) => {
-                cx.emit_lint(
+                cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::DocTestUnknown { name },
+                    move |dcx, level| DocTestUnknown { name }.into_diag(dcx, level),
                     path.span(),
                 );
             }
             None => {
-                cx.emit_lint(
+                cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    AttributeLintKind::DocTestLiteral,
+                    |dcx, level| DocTestLiteral.into_diag(dcx, level),
                     path.span(),
                 );
             }
@@ -587,9 +588,9 @@ impl DocParser {
             Some(sym::auto_cfg) => self.parse_auto_cfg(cx, path, args),
             Some(sym::test) => {
                 let Some(list) = args.list() else {
-                    cx.emit_lint(
+                    cx.emit_dyn_lint(
                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                        AttributeLintKind::DocTestTakesList,
+                        |dcx, level| DocTestTakesList.into_diag(dcx, level),
                         args.span().unwrap_or(path.span()),
                     );
                     return;

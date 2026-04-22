@@ -3,9 +3,9 @@
 // seeing it fire (on subsequent runs) if incremental compilation is
 // enabled.
 
-//@ revisions: bfail1 bfail2
-//@ build-pass (FIXME(62277): could be check-pass?)
+//@ revisions: bpass1 bpass2
 //@ ignore-backends: gcc
+// FIXME(#62277): could be check-pass?
 
 #![feature(rustc_attrs)]
 #![deny(unused_attributes)]

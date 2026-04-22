@@ -202,7 +202,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     .kind()
                     .map_bound(|kind| match kind {
                         ty::ClauseKind::Projection(projection_predicate)
-                            if projection_predicate.projection_term.def_id == item_def_id =>
+                            if projection_predicate.projection_term.def_id() == item_def_id =>
                         {
                             projection_predicate.term.as_type()
                         }
@@ -1468,7 +1468,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                     ValuePairs::TraitRefs(_) => (false, Mismatch::Fixed("trait")),
                     ValuePairs::Aliases(ExpectedFound { expected, .. }) => {
-                        (false, Mismatch::Fixed(self.tcx.def_descr(expected.def_id)))
+                        (false, Mismatch::Fixed(self.tcx.def_descr(expected.def_id())))
                     }
                     ValuePairs::Regions(_) => (false, Mismatch::Fixed("lifetime")),
                     ValuePairs::ExistentialTraitRef(_) => {

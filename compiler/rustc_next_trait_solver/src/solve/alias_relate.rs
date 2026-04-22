@@ -41,14 +41,14 @@ where
         // `{type error}` if the alias still contains infer vars, so we also
         // accept alias-relate goals where one of the terms is an error.
         debug_assert!(
-            lhs.to_alias_term().is_some()
-                || rhs.to_alias_term().is_some()
+            lhs.to_alias_term(self.cx()).is_some()
+                || rhs.to_alias_term(self.cx()).is_some()
                 || lhs.is_error()
                 || rhs.is_error()
         );
 
         // Structurally normalize the lhs.
-        let lhs = if let Some(alias) = lhs.to_alias_term() {
+        let lhs = if let Some(alias) = lhs.to_alias_term(self.cx()) {
             let term = self.next_term_infer_of_kind(lhs);
             self.add_goal(
                 GoalSource::TypeRelating,
@@ -60,7 +60,7 @@ where
         };
 
         // Structurally normalize the rhs.
-        let rhs = if let Some(alias) = rhs.to_alias_term() {
+        let rhs = if let Some(alias) = rhs.to_alias_term(self.cx()) {
             let term = self.next_term_infer_of_kind(rhs);
             self.add_goal(
                 GoalSource::TypeRelating,
@@ -87,7 +87,7 @@ where
             ty::AliasRelationDirection::Equate => ty::Invariant,
             ty::AliasRelationDirection::Subtype => ty::Covariant,
         };
-        match (lhs.to_alias_term(), rhs.to_alias_term()) {
+        match (lhs.to_alias_term(self.cx()), rhs.to_alias_term(self.cx())) {
             (None, None) => {
                 self.relate(param_env, lhs, variance, rhs)?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)

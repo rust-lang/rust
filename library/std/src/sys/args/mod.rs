@@ -42,8 +42,8 @@ cfg_select! {
         pub use wasip1::*;
     }
     all(target_os = "wasi", any(target_env = "p2", target_env = "p3")) => {
-        mod wasip2;
-        pub use wasip2::*;
+        mod wasi;
+        pub use wasi::*;
     }
     target_os = "xous" => {
         mod xous;

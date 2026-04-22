@@ -41,7 +41,7 @@ impl<'tcx> At<'_, 'tcx> {
 
         if self.infcx.next_trait_solver() {
             let term = term.skip_normalization();
-            if let None = term.to_alias_term() {
+            if let None = term.to_alias_term(self.infcx.tcx) {
                 return Ok(term);
             }
 

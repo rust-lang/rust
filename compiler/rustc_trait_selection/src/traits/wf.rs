@@ -478,7 +478,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
         //     `i32: Clone`
         //     `i32: Copy`
         // ]
-        let obligations = self.nominal_obligations(data.def_id, data.args);
+        let obligations = self.nominal_obligations(data.def_id(), data.args);
         self.out.extend(obligations);
 
         self.add_wf_preds_for_projection_args(data.args);
@@ -507,7 +507,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                 self.recursion_depth,
                 &mut self.out,
             );
-            let obligations = self.nominal_obligations(data.def_id, args);
+            let obligations = self.nominal_obligations(data.def_id(), args);
             self.out.extend(obligations);
         }
 
@@ -1001,7 +1001,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                             .map_bound(|p| {
                                 p.term.as_const().map(|ct| {
                                     let assoc_const_ty = tcx
-                                        .type_of(p.projection_term.def_id)
+                                        .type_of(p.projection_term.def_id())
                                         .instantiate(tcx, p.projection_term.args)
                                         .skip_norm_wip();
                                     ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(
@@ -1077,7 +1077,9 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                     if matches!(tcx.def_kind(uv.def), DefKind::AssocConst { .. })
                         && tcx.def_kind(tcx.parent(uv.def)) == (DefKind::Impl { of_trait: false })
                     {
-                        self.add_wf_preds_for_inherent_projection(uv.into());
+                        self.add_wf_preds_for_inherent_projection(
+                            ty::AliasTerm::from_unevaluated_const(tcx, uv),
+                        );
                         return; // Subtree is handled by above function
                     } else {
                         let obligations = self.nominal_obligations(uv.def, uv.args);

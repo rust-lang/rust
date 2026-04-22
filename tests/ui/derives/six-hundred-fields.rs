@@ -1,4 +1,5 @@
-//@ run-pass
+//! Regression test for https://github.com/rust-lang/rust/issues/58319.
+//@ build-pass
 fn main() {}
 #[derive(Clone)]
 pub struct Little;

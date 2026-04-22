@@ -958,7 +958,7 @@ where
         source_projection: ty::Binder<I, ty::ProjectionPredicate<I>>,
         target_projection: ty::AliasTerm<I>,
     ) -> bool {
-        source_projection.item_def_id() == target_projection.def_id
+        source_projection.item_def_id() == target_projection.def_id()
             && self
                 .ecx
                 .probe(|_| ProbeKind::ProjectionCompatibility)
@@ -982,7 +982,7 @@ where
             return Ok(None);
         }
 
-        let Some(replacements) = self.mapping.get(&alias_term.def_id) else {
+        let Some(replacements) = self.mapping.get(&alias_term.def_id()) else {
             return Ok(None);
         };
 
