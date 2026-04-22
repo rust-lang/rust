@@ -2,7 +2,6 @@
 //! Various struct layout tests.
 
 #![feature(rustc_attrs)]
-#![feature(never_type)]
 #![crate_type = "lib"]
 
 #[rustc_dump_layout(backend_repr)]

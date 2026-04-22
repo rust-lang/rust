@@ -1,5 +1,5 @@
 warning: label name `'a` shadows a label name that is already in scope
-  --> $DIR/loop-break-value.rs:140:17
+  --> $DIR/loop-break-value.rs:138:17
    |
 LL |     'a: loop {
    |     -- first declared here
@@ -8,7 +8,7 @@ LL |         let _ = 'a: loop {
    |                 ^^ label `'a` already in scope
 
 warning: label name `'a` shadows a label name that is already in scope
-  --> $DIR/loop-break-value.rs:152:17
+  --> $DIR/loop-break-value.rs:150:17
    |
 LL |     'a: loop {
    |     -- first declared here
@@ -17,7 +17,7 @@ LL |         let _ = 'a: loop {
    |                 ^^ label `'a` already in scope
 
 error[E0425]: cannot find value `LOOP` in this scope
-  --> $DIR/loop-break-value.rs:99:15
+  --> $DIR/loop-break-value.rs:97:15
    |
 LL |     'LOOP: for _ in 0 .. 9 {
    |     ----- a label with a similar name exists
@@ -28,7 +28,7 @@ LL |         break LOOP;
    |               help: use the similarly named label: `'LOOP`
 
 warning: denote infinite loops with `loop { ... }`
-  --> $DIR/loop-break-value.rs:30:5
+  --> $DIR/loop-break-value.rs:28:5
    |
 LL |     'while_loop: while true {
    |     ^^^^^^^^^^^^^^^^^^^^^^^ help: use `loop`
@@ -36,7 +36,7 @@ LL |     'while_loop: while true {
    = note: `#[warn(while_true)]` on by default
 
 error[E0571]: `break` with value from a `while` loop
-  --> $DIR/loop-break-value.rs:32:9
+  --> $DIR/loop-break-value.rs:30:9
    |
 LL |     'while_loop: while true {
    |     ----------------------- you can't `break` with a value in a `while` loop
@@ -56,7 +56,7 @@ LL +         break 'while_loop;
    |
 
 error[E0571]: `break` with value from a `while` loop
-  --> $DIR/loop-break-value.rs:34:13
+  --> $DIR/loop-break-value.rs:32:13
    |
 LL |     'while_loop: while true {
    |     ----------------------- you can't `break` with a value in a `while` loop
@@ -71,7 +71,7 @@ LL +             break 'while_loop;
    |
 
 error[E0571]: `break` with value from a `while` loop
-  --> $DIR/loop-break-value.rs:42:12
+  --> $DIR/loop-break-value.rs:40:12
    |
 LL |     while let Some(_) = Some(()) {
    |     ---------------------------- you can't `break` with a value in a `while` loop
@@ -85,7 +85,7 @@ LL +         if break {
    |
 
 error[E0571]: `break` with value from a `while` loop
-  --> $DIR/loop-break-value.rs:47:9
+  --> $DIR/loop-break-value.rs:45:9
    |
 LL |     while let Some(_) = Some(()) {
    |     ---------------------------- you can't `break` with a value in a `while` loop
@@ -99,7 +99,7 @@ LL +         break;
    |
 
 error[E0571]: `break` with value from a `while` loop
-  --> $DIR/loop-break-value.rs:53:13
+  --> $DIR/loop-break-value.rs:51:13
    |
 LL |     'while_let_loop: while let Some(_) = Some(()) {
    |     --------------------------------------------- you can't `break` with a value in a `while` loop
@@ -114,7 +114,7 @@ LL +             break 'while_let_loop;
    |
 
 error[E0571]: `break` with value from a `for` loop
-  --> $DIR/loop-break-value.rs:60:9
+  --> $DIR/loop-break-value.rs:58:9
    |
 LL |     for _ in &[1,2,3] {
    |     ----------------- you can't `break` with a value in a `for` loop
@@ -128,7 +128,7 @@ LL +         break;
    |
 
 error[E0571]: `break` with value from a `for` loop
-  --> $DIR/loop-break-value.rs:61:9
+  --> $DIR/loop-break-value.rs:59:9
    |
 LL |     for _ in &[1,2,3] {
    |     ----------------- you can't `break` with a value in a `for` loop
@@ -143,7 +143,7 @@ LL +         break;
    |
 
 error[E0571]: `break` with value from a `for` loop
-  --> $DIR/loop-break-value.rs:68:13
+  --> $DIR/loop-break-value.rs:66:13
    |
 LL |     'for_loop: for _ in &[1,2,3] {
    |     ---------------------------- you can't `break` with a value in a `for` loop
@@ -158,7 +158,7 @@ LL +             break 'for_loop;
    |
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:4:31
+  --> $DIR/loop-break-value.rs:2:31
    |
 LL |     let val: ! = loop { break break; };
    |         ---      ----         ^^^^^ expected `!`, found `()`
@@ -170,7 +170,7 @@ LL |     let val: ! = loop { break break; };
            found unit type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:11:19
+  --> $DIR/loop-break-value.rs:9:19
    |
 LL |             break "asdf";
    |             ------------ expected because of this `break`
@@ -179,7 +179,7 @@ LL |             break 123;
    |                   ^^^ expected `&str`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:16:15
+  --> $DIR/loop-break-value.rs:14:15
    |
 LL |     let _: i32 = loop {
    |         -        ---- this loop is expected to be of type `i32`
@@ -189,7 +189,7 @@ LL |         break "asdf";
    |               ^^^^^^ expected `i32`, found `&str`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:21:31
+  --> $DIR/loop-break-value.rs:19:31
    |
 LL |     let _: i32 = 'outer_loop: loop {
    |         -                     ---- this loop is expected to be of type `i32`
@@ -200,7 +200,7 @@ LL |             break 'outer_loop "nope";
    |                               ^^^^^^ expected `i32`, found `&str`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:27:9
+  --> $DIR/loop-break-value.rs:25:9
    |
 LL |     let _: Option<String> = loop {
    |         -                   ---- this loop is expected to be of type `Option<String>`
@@ -217,7 +217,7 @@ LL |         break None;
    |               ++++
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:77:26
+  --> $DIR/loop-break-value.rs:75:26
    |
 LL |                 break;
    |                 ----- expected because of this `break`
@@ -225,7 +225,7 @@ LL |                 break 'c 123;
    |                          ^^^ expected `()`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:84:15
+  --> $DIR/loop-break-value.rs:82:15
    |
 LL |         break (break, break);
    |               ^-----^^-----^
@@ -238,7 +238,7 @@ LL |         break (break, break);
                   found tuple `(_, _)`
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:89:15
+  --> $DIR/loop-break-value.rs:87:15
    |
 LL |         break;
    |         ----- expected because of this `break`
@@ -246,7 +246,7 @@ LL |         break 2;
    |               ^ expected `()`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:94:9
+  --> $DIR/loop-break-value.rs:92:9
    |
 LL |         break 2;
    |         ------- expected because of this `break`
@@ -259,7 +259,7 @@ LL |         break /* value */;
    |               +++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:112:9
+  --> $DIR/loop-break-value.rs:110:9
    |
 LL |                     break 'a 1;
    |                     ---------- expected because of this `break`
@@ -273,7 +273,7 @@ LL |         break /* value */;
    |               +++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:124:9
+  --> $DIR/loop-break-value.rs:122:9
    |
 LL |                     break 'a 1;
    |                     ---------- expected because of this `break`
@@ -287,7 +287,7 @@ LL |         break 'a /* value */;
    |                  +++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:135:15
+  --> $DIR/loop-break-value.rs:133:15
    |
 LL |         break;
    |         ----- expected because of this `break`
@@ -296,7 +296,7 @@ LL |         break 2;
    |               ^ expected `()`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:144:17
+  --> $DIR/loop-break-value.rs:142:17
    |
 LL |             break 2;
    |             ------- expected because of this `break`
@@ -310,7 +310,7 @@ LL |                 break 'a /* value */;
    |                          +++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:147:15
+  --> $DIR/loop-break-value.rs:145:15
    |
 LL |         break;
    |         ----- expected because of this `break`
@@ -319,7 +319,7 @@ LL |         break 2;
    |               ^ expected `()`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:156:17
+  --> $DIR/loop-break-value.rs:154:17
    |
 LL |             break 'a 2;
    |             ---------- expected because of this `break`
@@ -333,7 +333,7 @@ LL |                 break 'a /* value */;
    |                          +++++++++++
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:159:15
+  --> $DIR/loop-break-value.rs:157:15
    |
 LL |         break;
    |         ----- expected because of this `break`
@@ -342,7 +342,7 @@ LL |         break 2;
    |               ^ expected `()`, found integer
 
 error[E0308]: mismatched types
-  --> $DIR/loop-break-value.rs:163:15
+  --> $DIR/loop-break-value.rs:161:15
    |
 LL | fn main() {
    |          - expected `()` because of this return type

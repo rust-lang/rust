@@ -5,8 +5,6 @@
 // This shouldn't be allowed anyways, but we only deny it during MIR
 // building, so make sure we handle it semi-gracefully during typeck.
 
-#![feature(never_type)]
-
 fn main() {
     let x: !;
     match 1 {

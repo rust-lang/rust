@@ -3,8 +3,6 @@
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // skip-filecheck
 
-#![feature(never_type)]
-
 #[derive(Copy, Clone)]
 pub enum E {
     A(!, u32),

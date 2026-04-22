@@ -36,7 +36,7 @@
 //@ revisions: old next
 //@[next] compile-flags: -Znext-solver
 
-#![feature(rustc_attrs, never_type)]
+#![feature(rustc_attrs)]
 
 trait MyTrait {}
 
