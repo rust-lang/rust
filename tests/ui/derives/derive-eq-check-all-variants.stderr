@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `f64: Eq` is not satisfied
-  --> $DIR/issue-103157.rs:6:11
+  --> $DIR/derive-eq-check-all-variants.rs:6:11
    |
 LL | #[derive(PartialEq, Eq)]
    |                     -- in this derive macro expansion

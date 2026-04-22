@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/18738.
 //@ check-pass
 #![allow(dead_code)]
 #[derive(Eq, PartialEq, PartialOrd, Ord)]
@@ -8,7 +9,7 @@ enum Test<'a> {
 
 #[derive(Eq, PartialEq, PartialOrd, Ord)]
 struct Version {
-    vendor_info: &'static str
+    vendor_info: &'static str,
 }
 
 #[derive(Eq, PartialEq, PartialOrd, Ord)]
