@@ -57,8 +57,11 @@ pub(crate) fn expand_deriving_partial_ord(
     }));
     let (is_simple, substructure) = match item {
         Annotatable::Item(annitem) => match &annitem.kind {
-            // For unit structs, the default generated code is better.
+            // For unit structs/zero-variant enums, the default generated code is better.
             ItemKind::Struct(.., ast::VariantData::Unit(..)) => (false, default_substructure),
+            ItemKind::Enum(.., enum_def) if enum_def.variants.is_empty() => {
+                (false, default_substructure)
+            }
             ItemKind::Struct(_, ast::Generics { params, .. }, _)
             | ItemKind::Enum(_, ast::Generics { params, .. }, _)
                 if is_simple_candidate(params) =>
