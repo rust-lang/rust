@@ -1,7 +1,7 @@
 use rustc_ast::{ExprKind, ItemKind, MetaItem, PatKind, Safety, ast};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, sym};
-use thin_vec::thin_vec;
+use thin_vec::{ThinVec, thin_vec};
 
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
@@ -41,33 +41,33 @@ pub(crate) fn expand_deriving_partial_ord(
     } else {
         true
     };
-    let substructure = combine_substructure(Box::new(|cx, span, substr| {
+
+    let container_id = cx.current_expansion.id.expn_data().parent.expect_local();
+    let has_derive_ord = cx.resolver.has_derive_ord(container_id);
+    let is_simple_candidate = |params: &ThinVec<ast::GenericParam>| -> bool {
+        has_derive_ord
+            && !params.iter().any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. }))
+    };
+
+    let default_substructure = combine_substructure(Box::new(|cx, span, substr| {
         cs_partial_cmp(cx, span, substr, discr_then_data)
+    }));
+    let simple_substructure = combine_substructure(Box::new(|cx, span, _| {
+        cs_partial_cmp_simple(cx, span, cx.expr_ident(span, Ident::new(sym::other, span)))
     }));
     let (is_simple, substructure) = match item {
         Annotatable::Item(annitem) => match &annitem.kind {
+            // For unit structs, the default generated code is better.
+            ItemKind::Struct(.., ast::VariantData::Unit(..)) => (false, default_substructure),
             ItemKind::Struct(_, ast::Generics { params, .. }, _)
             | ItemKind::Enum(_, ast::Generics { params, .. }, _)
-                if let container_id = cx.current_expansion.id.expn_data().parent.expect_local()
-                    && cx.resolver.has_derive_ord(container_id)
-                    && !params
-                        .iter()
-                        .any(|param| matches!(param.kind, ast::GenericParamKind::Type { .. })) =>
+                if is_simple_candidate(params) =>
             {
-                (
-                    true,
-                    combine_substructure(Box::new(|cx, span, _| {
-                        cs_partial_cmp_simple(
-                            cx,
-                            span,
-                            cx.expr_ident(span, Ident::new(sym::other, span)),
-                        )
-                    })),
-                )
+                (true, simple_substructure)
             }
-            _ => (false, substructure),
+            _ => (false, default_substructure),
         },
-        _ => (false, substructure),
+        _ => (false, default_substructure),
     };
 
     let partial_cmp_def = MethodDef {

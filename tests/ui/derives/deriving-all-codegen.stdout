@@ -72,7 +72,7 @@ impl ::core::cmp::PartialOrd for Empty {
     #[inline]
     fn partial_cmp(&self, other: &Empty)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
+        ::core::option::Option::Some(::core::cmp::Ordering::Equal)
     }
 }
 #[automatically_derived]
@@ -1842,7 +1842,7 @@ impl ::core::cmp::PartialOrd for UnitStruct {
     #[inline]
     fn partial_cmp(&self, other: &UnitStruct)
         -> ::core::option::Option<::core::cmp::Ordering> {
-        ::core::option::Option::Some(::core::cmp::Ord::cmp(self, other))
+        ::core::option::Option::Some(::core::cmp::Ordering::Equal)
     }
 }
 #[automatically_derived]
