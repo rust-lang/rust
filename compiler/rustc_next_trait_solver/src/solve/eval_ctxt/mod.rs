@@ -8,7 +8,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, PathKind};
-use rustc_type_ir::solve::OpaqueTypesJank;
+use rustc_type_ir::solve::{OpaqueTypesJank, StalledOnCoroutines};
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
@@ -29,8 +29,8 @@ use crate::solve::search_graph::SearchGraph;
 use crate::solve::ty::may_use_unstable_feature;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData, FIXPOINT_STEP_LIMIT,
-    Goal, GoalEvaluation, GoalSource, GoalStalledOn, HasChanged, MaybeCause,
-    NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, inspect,
+    Goal, GoalEvaluation, GoalSource, GoalStalledOn, HasChanged, HasStalledCoroutineVisitor,
+    MaybeCause, NestedNormalizationGoals, NoSolution, QueryInput, QueryResult, Response, inspect,
 };
 
 mod probe;
@@ -217,10 +217,12 @@ where
             })
             .is_ok_and(|r| match r.certainty {
                 Certainty::Yes => true,
-                Certainty::Maybe { cause: _, opaque_types_jank } => match opaque_types_jank {
-                    OpaqueTypesJank::AllGood => true,
-                    OpaqueTypesJank::ErrorIfRigidSelfTy => false,
-                },
+                Certainty::Maybe { cause: _, opaque_types_jank, stalled_on_coroutines: _ } => {
+                    match opaque_types_jank {
+                        OpaqueTypesJank::AllGood => true,
+                        OpaqueTypesJank::ErrorIfRigidSelfTy => false,
+                    }
+                }
             })
         })
     }
@@ -480,7 +482,7 @@ where
         let has_changed =
             if !has_only_region_constraints(response) { HasChanged::Yes } else { HasChanged::No };
 
-        let (normalization_nested_goals, certainty) = instantiate_and_apply_query_response(
+        let (normalization_nested_goals, mut certainty) = instantiate_and_apply_query_response(
             self.delegate,
             goal.param_env,
             &orig_values,
@@ -498,61 +500,86 @@ where
         // Once we have decided on how to handle trait-system-refactor-initiative#75,
         // we should re-add an assert here.
 
-        let stalled_on = match certainty {
+        let stalled_on = match &mut certainty {
             Certainty::Yes => None,
-            Certainty::Maybe { .. } => match has_changed {
-                // FIXME: We could recompute a *new* set of stalled variables by walking
-                // through the orig values, resolving, and computing the root vars of anything
-                // that is not resolved. Only when *these* have changed is it meaningful
-                // to recompute this goal.
-                HasChanged::Yes => None,
-                HasChanged::No => {
-                    let mut stalled_vars = orig_values;
-
-                    // Remove the unconstrained RHS arg, which is expected to have changed.
-                    if let Some(normalizes_to) = goal.predicate.as_normalizes_to() {
-                        let normalizes_to = normalizes_to.skip_binder();
-                        let rhs_arg: I::GenericArg = normalizes_to.term.into();
-                        let idx = stalled_vars
-                            .iter()
-                            .rposition(|arg| *arg == rhs_arg)
-                            .expect("expected unconstrained arg");
-                        stalled_vars.swap_remove(idx);
-                    }
-
-                    // Remove the canonicalized universal vars, since we only care about stalled existentials.
-                    let mut sub_roots = Vec::new();
-                    stalled_vars.retain(|arg| match arg.kind() {
-                        // Lifetimes can never stall goals.
-                        ty::GenericArgKind::Lifetime(_) => false,
-                        ty::GenericArgKind::Type(ty) => match ty.kind() {
-                            ty::Infer(ty::TyVar(vid)) => {
-                                sub_roots.push(self.delegate.sub_unification_table_root_var(vid));
-                                true
+            Certainty::Maybe { cause: _, opaque_types_jank: _, stalled_on_coroutines } => {
+                match has_changed {
+                    // FIXME: We could recompute a *new* set of stalled variables by walking
+                    // through the orig values, resolving, and computing the root vars of anything
+                    // that is not resolved. Only when *these* have changed is it meaningful
+                    // to recompute this goal.
+                    HasChanged::Yes => None,
+                    HasChanged::No => {
+                        match self.typing_mode() {
+                            TypingMode::Analysis {
+                                defining_opaque_types_and_generators: stalled_coroutines,
+                            } => {
+                                if !stalled_coroutines.is_empty()
+                                    && goal
+                                        .predicate
+                                        .visit_with(&mut HasStalledCoroutineVisitor {
+                                            stalled_coroutines,
+                                            cache: Default::default(),
+                                        })
+                                        .is_break()
+                                {
+                                    *stalled_on_coroutines = StalledOnCoroutines::Yes;
+                                }
                             }
-                            ty::Infer(_) => true,
-                            ty::Param(_) | ty::Placeholder(_) => false,
-                            _ => unreachable!("unexpected orig_value: {ty:?}"),
-                        },
-                        ty::GenericArgKind::Const(ct) => match ct.kind() {
-                            ty::ConstKind::Infer(_) => true,
-                            ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) => false,
-                            _ => unreachable!("unexpected orig_value: {ct:?}"),
-                        },
-                    });
+                            TypingMode::Coherence
+                            | TypingMode::Borrowck { defining_opaque_types: _ }
+                            | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ }
+                            | TypingMode::PostAnalysis => {}
+                        }
 
-                    Some(GoalStalledOn {
-                        num_opaques: canonical_goal
-                            .canonical
-                            .value
-                            .predefined_opaques_in_body
-                            .len(),
-                        stalled_vars,
-                        sub_roots,
-                        stalled_certainty: certainty,
-                    })
+                        let mut stalled_vars = orig_values;
+
+                        // Remove the unconstrained RHS arg, which is expected to have changed.
+                        if let Some(normalizes_to) = goal.predicate.as_normalizes_to() {
+                            let normalizes_to = normalizes_to.skip_binder();
+                            let rhs_arg: I::GenericArg = normalizes_to.term.into();
+                            let idx = stalled_vars
+                                .iter()
+                                .rposition(|arg| *arg == rhs_arg)
+                                .expect("expected unconstrained arg");
+                            stalled_vars.swap_remove(idx);
+                        }
+
+                        // Remove the canonicalized universal vars, since we only care about stalled existentials.
+                        let mut sub_roots = Vec::new();
+                        stalled_vars.retain(|arg| match arg.kind() {
+                            // Lifetimes can never stall goals.
+                            ty::GenericArgKind::Lifetime(_) => false,
+                            ty::GenericArgKind::Type(ty) => match ty.kind() {
+                                ty::Infer(ty::TyVar(vid)) => {
+                                    sub_roots
+                                        .push(self.delegate.sub_unification_table_root_var(vid));
+                                    true
+                                }
+                                ty::Infer(_) => true,
+                                ty::Param(_) | ty::Placeholder(_) => false,
+                                _ => unreachable!("unexpected orig_value: {ty:?}"),
+                            },
+                            ty::GenericArgKind::Const(ct) => match ct.kind() {
+                                ty::ConstKind::Infer(_) => true,
+                                ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(_) => false,
+                                _ => unreachable!("unexpected orig_value: {ct:?}"),
+                            },
+                        });
+
+                        Some(GoalStalledOn {
+                            num_opaques: canonical_goal
+                                .canonical
+                                .value
+                                .predefined_opaques_in_body
+                                .len(),
+                            stalled_vars,
+                            sub_roots,
+                            stalled_certainty: certainty,
+                        })
+                    }
                 }
-            },
+            }
         };
 
         Ok((
@@ -1271,6 +1298,7 @@ where
         if let Certainty::Maybe {
             cause: cause @ MaybeCause::Overflow { keep_constraints: false, .. },
             opaque_types_jank,
+            stalled_on_coroutines,
         } = certainty
         {
             // If we have overflow, it's probable that we're substituting a type
@@ -1284,7 +1312,11 @@ where
             //
             // Changing this to retain some constraints in the future
             // won't be a breaking change, so this is good enough for now.
-            return Ok(self.make_ambiguous_response_no_constraints(cause, opaque_types_jank));
+            return Ok(self.make_ambiguous_response_no_constraints(
+                cause,
+                opaque_types_jank,
+                stalled_on_coroutines,
+            ));
         }
 
         let external_constraints =
@@ -1319,12 +1351,13 @@ where
         &self,
         cause: MaybeCause,
         opaque_types_jank: OpaqueTypesJank,
+        stalled_on_coroutines: StalledOnCoroutines,
     ) -> CanonicalResponse<I> {
         response_no_constraints_raw(
             self.cx(),
             self.max_input_universe,
             self.var_kinds,
-            Certainty::Maybe { cause, opaque_types_jank },
+            Certainty::Maybe { cause, opaque_types_jank, stalled_on_coroutines },
         )
     }
 
