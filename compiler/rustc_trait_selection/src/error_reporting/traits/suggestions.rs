@@ -2346,7 +2346,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         ) -> Ty<'tcx> {
             let inputs = trait_ref.args.type_at(1);
             let sig = match inputs.kind() {
-                ty::Tuple(inputs) if infcx.tcx.is_fn_trait(trait_ref.def_id) => {
+                ty::Tuple(inputs)
+                    if infcx.tcx.callable_trait_kind_from_def_id(trait_ref.def_id).is_some() =>
+                {
                     infcx.tcx.mk_fn_sig_safe_rust_abi(*inputs, infcx.next_ty_var(DUMMY_SP))
                 }
                 _ => infcx.tcx.mk_fn_sig_safe_rust_abi([inputs], infcx.next_ty_var(DUMMY_SP)),
