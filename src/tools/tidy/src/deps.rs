@@ -541,6 +541,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "vex-sdk",
     "wasip1",
     "wasip2",
+    "wasip3",
     "windows-link",
     "windows-sys",
     "windows-targets",
