@@ -710,6 +710,16 @@ impl FnDef {
         self.as_intrinsic().is_some()
     }
 
+    /// Get the constness of this function definition.
+    pub fn constness(&self) -> Constness {
+        with(|cx| cx.constness(*self))
+    }
+
+    /// Get the asyncness of this function definition.
+    pub fn asyncness(&self) -> Asyncness {
+        with(|cx| cx.asyncness(*self))
+    }
+
     /// Get the function signature for this function definition.
     pub fn fn_sig(&self) -> PolyFnSig {
         let kind = self.ty().kind();
@@ -1100,6 +1110,30 @@ impl FnSig {
 
     pub fn inputs(&self) -> &[Ty] {
         &self.inputs_and_output[..self.inputs_and_output.len() - 1]
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum Constness {
+    Const,
+    NotConst,
+}
+
+impl Constness {
+    pub fn is_const(self) -> bool {
+        matches!(self, Constness::Const)
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Serialize)]
+pub enum Asyncness {
+    Async,
+    NotAsync,
+}
+
+impl Asyncness {
+    pub fn is_async(self) -> bool {
+        matches!(self, Asyncness::Async)
     }
 }
 
