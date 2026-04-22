@@ -1,8 +1,8 @@
 error[E0562]: `impl Trait` is not allowed in the type of variable bindings
-  --> $DIR/issue-58504.rs:10:16
+  --> $DIR/issue-58504.rs:15:16
    |
-LL |     let gens: [impl Coroutine<Return=!, Yield=()>;2] = [ mk_gen(), mk_gen() ];
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     let gens: [impl Coroutine<Return = !, Yield = ()>; 2] = [mk_gen(), mk_gen()];
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
    = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information

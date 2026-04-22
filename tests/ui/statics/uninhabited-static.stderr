@@ -1,5 +1,5 @@
 error: static of uninhabited type
-  --> $DIR/uninhabited-static.rs:11:1
+  --> $DIR/uninhabited-static.rs:9:1
    |
 LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
    | ^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
    = note: `#[deny(uninhabited_static)]` (part of `#[deny(future_incompatible)]`) on by default
 
 error: static of uninhabited type
-  --> $DIR/uninhabited-static.rs:14:1
+  --> $DIR/uninhabited-static.rs:12:1
    |
 LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
    | ^^^^^^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
    = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
 
 error: static of uninhabited type
-  --> $DIR/uninhabited-static.rs:5:5
+  --> $DIR/uninhabited-static.rs:3:5
    |
 LL |     static VOID: Void;
    |     ^^^^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ LL |     static VOID: Void;
    = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
 
 error: static of uninhabited type
-  --> $DIR/uninhabited-static.rs:7:5
+  --> $DIR/uninhabited-static.rs:5:5
    |
 LL |     static NEVER: !;
    |     ^^^^^^^^^^^^^^^
@@ -40,13 +40,13 @@ LL |     static NEVER: !;
    = note: for more information, see issue #74840 <https://github.com/rust-lang/rust/issues/74840>
 
 error[E0080]: constructing invalid value of type Void: encountered a value of uninhabited type `Void`
-  --> $DIR/uninhabited-static.rs:11:31
+  --> $DIR/uninhabited-static.rs:9:31
    |
 LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `VOID2` failed here
 
 error[E0080]: constructing invalid value of type Void: encountered a value of uninhabited type `Void`
-  --> $DIR/uninhabited-static.rs:14:32
+  --> $DIR/uninhabited-static.rs:12:32
    |
 LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
    |                                ^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `NEVER2` failed here
@@ -56,7 +56,7 @@ error: aborting due to 6 previous errors
 For more information about this error, try `rustc --explain E0080`.
 Future incompatibility report: Future breakage diagnostic:
 error: static of uninhabited type
-  --> $DIR/uninhabited-static.rs:11:1
+  --> $DIR/uninhabited-static.rs:9:1
    |
 LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
    | ^^^^^^^^^^^^^^^^^^
@@ -68,7 +68,7 @@ LL | static VOID2: Void = unsafe { std::mem::transmute(()) };
 
 Future breakage diagnostic:
 error: static of uninhabited type
-  --> $DIR/uninhabited-static.rs:14:1
+  --> $DIR/uninhabited-static.rs:12:1
    |
 LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
    | ^^^^^^^^^^^^^^^^^^^
@@ -80,7 +80,7 @@ LL | static NEVER2: Void = unsafe { std::mem::transmute(()) };
 
 Future breakage diagnostic:
 error: static of uninhabited type
-  --> $DIR/uninhabited-static.rs:5:5
+  --> $DIR/uninhabited-static.rs:3:5
    |
 LL |     static VOID: Void;
    |     ^^^^^^^^^^^^^^^^^
@@ -92,7 +92,7 @@ LL |     static VOID: Void;
 
 Future breakage diagnostic:
 error: static of uninhabited type
-  --> $DIR/uninhabited-static.rs:7:5
+  --> $DIR/uninhabited-static.rs:5:5
    |
 LL |     static NEVER: !;
    |     ^^^^^^^^^^^^^^^

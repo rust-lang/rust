@@ -1,5 +1,5 @@
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:80:5
+  --> $DIR/must_use-result-unit-uninhabited.rs:79:5
    |
 LL |     result_unit_unit();
    |     ^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     let _ = result_unit_unit();
    |     +++++++
 
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:84:5
+  --> $DIR/must_use-result-unit-uninhabited.rs:83:5
    |
 LL |     result_unit_myuninhabited_nonexhaustive();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL |     let _ = result_unit_myuninhabited_nonexhaustive();
    |     +++++++
 
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:86:5
+  --> $DIR/must_use-result-unit-uninhabited.rs:85:5
    |
 LL |     result_unit_assoctype(S2);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     let _ = result_unit_assoctype(S2);
    |     +++++++
 
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:88:5
+  --> $DIR/must_use-result-unit-uninhabited.rs:87:5
    |
 LL |     S2.method_use_assoc_type();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -52,7 +52,7 @@ LL |     let _ = S2.method_use_assoc_type();
    |     +++++++
 
 error: unused `ControlFlow` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:90:5
+  --> $DIR/must_use-result-unit-uninhabited.rs:89:5
    |
 LL |     controlflow_unit();
    |     ^^^^^^^^^^^^^^^^^^
@@ -63,7 +63,7 @@ LL |     let _ = controlflow_unit();
    |     +++++++
 
 error: unused `Result` that must be used
-  --> $DIR/must_use-result-unit-uninhabited.rs:99:9
+  --> $DIR/must_use-result-unit-uninhabited.rs:98:9
    |
 LL |         self.generate();
    |         ^^^^^^^^^^^^^^^
