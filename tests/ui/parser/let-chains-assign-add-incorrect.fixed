@@ -15,6 +15,8 @@ fn test_where_left_is_not_let() {
     //~| ERROR binary assignment operation `+=` cannot be used in a let chain
     //~| NOTE cannot use `+=` in a let chain
     //~| HELP you might have meant to compare with `==` instead of assigning with `+=`
+    //~| ERROR mismatched types
+    //~| NOTE expected `bool`, found `()`
 }
 
 fn test_where_left_is_let() {
@@ -28,6 +30,8 @@ fn test_where_left_is_let() {
     //~| ERROR binary assignment operation `+=` cannot be used in a let chain
     //~| NOTE cannot use `+=` in a let chain
     //~| HELP you might have meant to compare with `==` instead of assigning with `+=`
+    //~| ERROR mismatched types
+    //~| NOTE expected `bool`, found `()`
 }
 
 fn main() {

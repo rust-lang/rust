@@ -34,19 +34,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs: &'tcx Expr<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let (lhs_ty, rhs_ty, return_ty) =
+        let (lhs_ty, rhs_ty, _return_ty) =
             self.check_overloaded_binop(expr, lhs, rhs, Op::AssignOp(op), expected);
 
         let category = BinOpCategory::from(op.node);
-        let ty = if !lhs_ty.is_ty_var()
-            && !rhs_ty.is_ty_var()
-            && is_builtin_binop(lhs_ty, rhs_ty, category)
+        if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, category)
         {
             self.enforce_builtin_binop_types(lhs.span, lhs_ty, rhs.span, rhs_ty, category);
-            self.tcx.types.unit
-        } else {
-            return_ty
-        };
+        }
 
         self.check_lhs_assignable(lhs, E0067, op.span, |err| {
             if let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty) {
@@ -86,7 +81,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         });
 
-        ty
+        self.tcx.types.unit
     }
 
     /// Checks a potentially overloaded binary operator.
