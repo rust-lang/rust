@@ -83,9 +83,3 @@ impl<T: Default> Default for WorkerLocal<T> {
         WorkerLocal::new(|_| Default::default())
     }
 }
-
-impl<T: Default> Default for WorkerLocal<T> {
-    fn default() -> Self {
-        WorkerLocal::new(|_| Default::default())
-    }
-}
