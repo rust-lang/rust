@@ -393,10 +393,16 @@ where
                 kind => panic!("expected projection, found {kind:?}"),
             };
 
-            ecx.instantiate_normalizes_to_term(
-                goal,
-                term.instantiate(cx, target_args).skip_norm_wip(),
-            );
+            let instantiated_term: I::Term = term.instantiate(cx, target_args);
+            if let Some(ct) = instantiated_term.as_const() {
+                let expected_ty = cx.type_of(target_item_def_id).instantiate(cx, target_args);
+                ecx.add_goal(
+                    GoalSource::Misc,
+                    goal.with(cx, ty::ClauseKind::ConstArgHasType(ct, expected_ty)),
+                );
+            }
+
+            ecx.instantiate_normalizes_to_term(goal, instantiated_term.skip_norm_wip());
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
