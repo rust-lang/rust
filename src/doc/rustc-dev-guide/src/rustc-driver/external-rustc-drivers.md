@@ -56,7 +56,7 @@ When developing out-of-tree projects that use `rustc_private` crates, you can co
 #### Configuration Steps
 
 1. Configure `rust-analyzer.rustc.source` to `"discover"` in your editor settings.
-   
+
    For VS Code, add to `rust_analyzer_settings.json`:
    ```json
    {
