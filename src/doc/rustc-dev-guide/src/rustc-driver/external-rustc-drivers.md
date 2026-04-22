@@ -6,14 +6,14 @@
 
 The `rustc_private` feature allows external crates to use compiler internals.
 
-### Using `rustc_private` with Official Toolchains
+### Using `rustc_private` with official toolchains
 
 When using the `rustc_private` feature with official Rust toolchains distributed via rustup, you need to install two additional components:
 
 1. **`rustc-dev`**: Provides compiler libraries
 2. **`llvm-tools`**: Provides LLVM libraries required for linking
 
-#### Installation Steps
+#### Installation steps
 
 Install both components using rustup:
 
@@ -21,7 +21,7 @@ Install both components using rustup:
 rustup component add rustc-dev llvm-tools
 ```
 
-#### Common Error
+#### Common error
 
 Without the `llvm-tools` component, you'll encounter linking errors like:
 
@@ -40,7 +40,7 @@ For custom-built toolchains or environments not using rustup, additional configu
 - LLVM libraries must be available in your system's library search paths
 - The LLVM version must match the one used to build your Rust toolchain
 
-#### Troubleshooting Steps
+#### Troubleshooting steps
 
 1. Verify LLVM is installed and accessible
 2. Ensure that library paths are set:
@@ -53,7 +53,7 @@ For custom-built toolchains or environments not using rustup, additional configu
 
 When developing out-of-tree projects that use `rustc_private` crates, you can configure `rust-analyzer` to recognize these crates.
 
-#### Configuration Steps
+#### Configuration steps
 
 1. Configure `rust-analyzer.rustc.source` to `"discover"` in your editor settings.
 
@@ -72,9 +72,9 @@ When developing out-of-tree projects that use `rustc_private` crates, you can co
 
 This configuration allows `rust-analyzer` to properly recognize and provide IDE support for `rustc_private` crates in out-of-tree projects.
 
-### Getting Nightly Documentation for `rustc_private`
+### Getting nightly documentation for `rustc_private`
 
-#### Latest Nightly
+#### Latest nightly
 
 For the latest nightly, you can install the `rustc-docs` component and open it directly in your browser:
 
@@ -85,7 +85,7 @@ rustup doc --rustc-docs
 
 > Note: The `rustc-docs` component is only available for recent nightly toolchains and may not be present for every nightly date. It was first introduced in [PR #75560](https://github.com/rust-lang/rust/pull/75560) (August 2020).
 
-#### Older Nightlies
+#### Older nightlies
 
 If you depend on compiler internals from an older nightly, you may want to refer to the internal documentation from that particular nightly.
 The only way to do this is to generate the documentation locally.
@@ -102,7 +102,7 @@ The output will include a `commit-hash` line identifying the exact source revisi
 Check out `rust-lang/rust` at that commit, then follow the steps in [compiler documentation](../building/compiler-documenting.md).
 
 
-### Additional Resources
+### Additional resources
 
 - [GitHub Issue #137421] explains that `rustc_private` linker failures often occur because `llvm-tools` is not installed
 
