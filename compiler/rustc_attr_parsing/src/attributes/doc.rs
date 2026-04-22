@@ -17,8 +17,8 @@ use crate::errors::{
     AttrCrateLevelOnly, DocAliasDuplicated, DocAutoCfgExpectsHideOrShow,
     DocAutoCfgHideShowExpectsList, DocAutoCfgHideShowUnexpectedItem, DocAutoCfgWrongLiteral,
     DocTestLiteral, DocTestTakesList, DocTestUnknown, DocUnknownAny, DocUnknownInclude,
-    DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, IllFormedAttributeInput,
-    MalformedDoc,
+    DocUnknownPasses, DocUnknownPlugins, DocUnknownSpotlight, ExpectedNoArgs,
+    IllFormedAttributeInput, MalformedDoc,
 };
 use crate::parser::{ArgParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser};
 use crate::session_diagnostics::{
@@ -94,9 +94,9 @@ fn expected_name_value<S: Stage>(
 
 // FIXME: remove this method once merged and use `cx.expected_no_args(span)` instead.
 fn expected_no_args<S: Stage>(cx: &mut AcceptContext<'_, '_, S>, span: Span) {
-    cx.emit_lint(
+    cx.emit_dyn_lint(
         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-        AttributeLintKind::ExpectedNoArgs,
+        |dcx, level| ExpectedNoArgs.into_diag(dcx, level),
         span,
     );
 }
