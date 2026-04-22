@@ -3283,23 +3283,6 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("positional format arguments are not allowed here")]
-#[help(
-    "only named format arguments with the name of one of the generic types are allowed in this context"
-)]
-pub(crate) struct DisallowedPositionalArgument;
-
-#[derive(Diagnostic)]
-#[diag("format arguments are not allowed here")]
-#[help("consider removing this format argument")]
-pub(crate) struct DisallowedPlaceholder;
-
-#[derive(Diagnostic)]
-#[diag("invalid format specifier")]
-#[help("no format specifier are supported in this position")]
-pub(crate) struct InvalidFormatSpecifier;
-
-#[derive(Diagnostic)]
 #[diag("{$description}")]
 pub(crate) struct WrappedParserError<'a> {
     pub description: &'a str,

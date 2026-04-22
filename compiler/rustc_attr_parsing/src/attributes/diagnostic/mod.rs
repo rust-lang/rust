@@ -18,7 +18,10 @@ use rustc_span::{Ident, InnerSpan, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::context::{AcceptContext, Stage};
-use crate::errors::MalFormedDiagnosticAttributeLint;
+use crate::errors::{
+    DisallowedPlaceholder, DisallowedPositionalArgument, InvalidFormatSpecifier,
+    MalFormedDiagnosticAttributeLint,
+};
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
 
 pub(crate) mod do_not_recommend;
@@ -252,9 +255,19 @@ fn parse_directive_items<'p, S: Stage>(
                         let (FormatWarning::InvalidSpecifier { span, .. }
                         | FormatWarning::PositionalArgument { span, .. }
                         | FormatWarning::DisallowedPlaceholder { span }) = warning;
-                        cx.emit_lint(
+                        cx.emit_dyn_lint(
                             MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-                            AttributeLintKind::MalformedDiagnosticFormat { warning },
+                            move |dcx, level| match warning {
+                                FormatWarning::PositionalArgument { .. } => {
+                                    DisallowedPositionalArgument.into_diag(dcx, level)
+                                }
+                                FormatWarning::InvalidSpecifier { .. } => {
+                                    InvalidFormatSpecifier.into_diag(dcx, level)
+                                }
+                                FormatWarning::DisallowedPlaceholder { .. } => {
+                                    DisallowedPlaceholder.into_diag(dcx, level)
+                                }
+                            },
                             span,
                         );
                     }

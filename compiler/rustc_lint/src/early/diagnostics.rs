@@ -43,17 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            AttributeLintKind::MalformedDiagnosticFormat { warning } => match warning {
-                FormatWarning::PositionalArgument { .. } => {
-                    lints::DisallowedPositionalArgument.into_diag(dcx, level)
-                }
-                FormatWarning::InvalidSpecifier { .. } => {
-                    lints::InvalidFormatSpecifier.into_diag(dcx, level)
-                }
-                FormatWarning::DisallowedPlaceholder { .. } => {
-                    lints::DisallowedPlaceholder.into_diag(dcx, level)
-                }
-            },
             AttributeLintKind::DiagnosticWrappedParserError { description, label, span } => {
                 lints::WrappedParserError { description, label, span: *span }.into_diag(dcx, level)
             }
