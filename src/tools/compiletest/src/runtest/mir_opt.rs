@@ -18,7 +18,7 @@ impl TestCx<'_> {
 
         let passes = std::mem::take(&mut test_info.passes);
 
-        let proc_res = self.compile_test_general(WillExecute::No, Emit::Mir, None, passes);
+        let proc_res = self.compile_test_general(WillExecute::No, Emit::Mir, passes);
         if !proc_res.status.success() {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
