@@ -297,13 +297,14 @@
 #[cfg(test)]
 mod tests;
 
-#[unstable(feature = "read_buf", issue = "78485")]
-pub use core::io::{BorrowedBuf, BorrowedCursor};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::io::{Chain, Empty, Repeat, Sink, Take, empty, repeat, sink};
-#[stable(feature = "iovec", since = "1.36.0")]
-pub use core::io::{IoSlice, IoSliceMut};
 use core::slice::memchr;
+
+#[unstable(feature = "read_buf", issue = "78485")]
+pub use alloc_crate::io::{BorrowedBuf, BorrowedCursor};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use alloc_crate::io::{Chain, Empty, Repeat, Sink, Take, empty, repeat, sink};
+#[stable(feature = "iovec", since = "1.36.0")]
+pub use alloc_crate::io::{IoSlice, IoSliceMut};
 
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use self::buffered::WriterPanicked;
