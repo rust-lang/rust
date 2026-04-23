@@ -1,5 +1,13 @@
 error: expected identifier, found `0`
-  --> $DIR/struct-field-numeric-shorthand.rs:4:19
+  --> $DIR/struct-expr-pat-tuple-index-shorthand.rs:10:15
+   |
+LL |     let Rgb { 0, 1, 2 };
+   |         ---   ^ expected identifier
+   |         |
+   |         while parsing the fields for this pattern
+
+error: expected identifier, found `0`
+  --> $DIR/struct-expr-pat-tuple-index-shorthand.rs:13:19
    |
 LL |     let _ = Rgb { 0, 1, 2 };
    |             ---   ^ expected identifier
@@ -7,7 +15,7 @@ LL |     let _ = Rgb { 0, 1, 2 };
    |             while parsing this struct
 
 error: expected identifier, found `1`
-  --> $DIR/struct-field-numeric-shorthand.rs:4:22
+  --> $DIR/struct-expr-pat-tuple-index-shorthand.rs:13:22
    |
 LL |     let _ = Rgb { 0, 1, 2 };
    |             ---      ^ expected identifier
@@ -15,12 +23,12 @@ LL |     let _ = Rgb { 0, 1, 2 };
    |             while parsing this struct
 
 error: expected identifier, found `2`
-  --> $DIR/struct-field-numeric-shorthand.rs:4:25
+  --> $DIR/struct-expr-pat-tuple-index-shorthand.rs:13:25
    |
 LL |     let _ = Rgb { 0, 1, 2 };
    |             ---         ^ expected identifier
    |             |
    |             while parsing this struct
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
