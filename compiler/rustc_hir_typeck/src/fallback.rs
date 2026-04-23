@@ -15,7 +15,7 @@ use rustc_middle::ty::{self, FloatVid, Ty, TyCtxt, TypeSuperVisitable, TypeVisit
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt, TraitEngine};
 use tracing::debug;
 
 use crate::{FnCtxt, errors};
