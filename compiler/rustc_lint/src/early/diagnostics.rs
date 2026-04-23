@@ -6,8 +6,6 @@ use rustc_hir::lints::AttributeLintKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 
-use crate::lints;
-
 mod check_cfg;
 
 pub struct DiagAndSess<'sess> {
@@ -41,10 +39,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
             &AttributeLintKind::UnexpectedCfgValue(name, value) => {
                 check_cfg::unexpected_cfg_value(self.sess, self.tcx, name, value)
                     .into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::NonMetaItemDiagnosticAttribute => {
-                lints::NonMetaItemDiagnosticAttribute.into_diag(dcx, level)
             }
         }
     }

@@ -400,3 +400,10 @@ pub(crate) struct MissingOptionsForDiagnosticAttribute {
     pub attribute: &'static str,
     pub options: &'static str,
 }
+
+#[derive(Diagnostic)]
+#[diag("expected a literal or missing delimiter")]
+#[help(
+    "only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma"
+)]
+pub(crate) struct NonMetaItemDiagnosticAttribute;

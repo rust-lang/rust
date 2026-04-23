@@ -3286,10 +3286,3 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 #[diag("`Eq::assert_receiver_is_total_eq` should never be implemented by hand")]
 #[note("this method was used to add checks to the `Eq` derive macro")]
 pub(crate) struct EqInternalMethodImplemented;
-
-#[derive(Diagnostic)]
-#[diag("expected a literal or missing delimiter")]
-#[help(
-    "only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma"
-)]
-pub(crate) struct NonMetaItemDiagnosticAttribute;

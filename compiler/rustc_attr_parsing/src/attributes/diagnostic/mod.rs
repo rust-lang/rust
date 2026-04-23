@@ -6,7 +6,7 @@ use rustc_hir::attrs::diagnostic::{
     Directive, FilterFormatString, Flag, FormatArg, FormatString, LitOrArg, Name, NameValue,
     OnUnimplementedCondition, Piece, Predicate,
 };
-use rustc_hir::lints::{AttributeLintKind, FormatWarning};
+use rustc_hir::lints::FormatWarning;
 use rustc_macros::Diagnostic;
 use rustc_parse_format::{
     Argument, FormatSpec, ParseError, ParseMode, Parser, Piece as RpfPiece, Position,
@@ -21,7 +21,7 @@ use crate::context::{AcceptContext, Stage};
 use crate::errors::{
     DisallowedPlaceholder, DisallowedPositionalArgument, IgnoredDiagnosticOption,
     InvalidFormatSpecifier, MalFormedDiagnosticAttributeLint, MissingOptionsForDiagnosticAttribute,
-    WrappedParserError,
+    NonMetaItemDiagnosticAttribute, WrappedParserError,
 };
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
 
@@ -145,9 +145,9 @@ fn parse_list<'p, S: Stage>(
             // We're dealing with `#[diagnostic::attr()]`.
             // This can be because that is what the user typed, but that's also what we'd see
             // if the user used non-metaitem syntax. See `ArgParser::from_attr_args`.
-            cx.emit_lint(
+            cx.emit_dyn_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                AttributeLintKind::NonMetaItemDiagnosticAttribute,
+                move |dcx, level| NonMetaItemDiagnosticAttribute.into_diag(dcx, level),
                 list.span,
             );
         }
