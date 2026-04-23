@@ -32,7 +32,7 @@ use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _
 use tracing::{debug, instrument};
 
 use super::FnCtxt;
-use crate::errors;
+use crate::errors::{self, SuggestBoxingForReturnImplTrait};
 use crate::fn_ctxt::rustc_span::BytePos;
 use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
@@ -961,6 +961,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ret_coercion_span,
                             format!("return type resolved to be `{expected_name}`"),
                         );
+                    }
+
+                    let trait_def_id = trait_ref.trait_ref.path.res.def_id();
+                    if self.tcx.is_dyn_compatible(trait_def_id) {
+                        err.subdiagnostic(SuggestBoxingForReturnImplTrait::ChangeReturnType {
+                            start_sp: hir_ty.span.with_hi(hir_ty.span.lo() + BytePos(4)),
+                            end_sp: hir_ty.span.shrink_to_hi(),
+                        });
+
+                        err.note("if you change the return type to expect trait objects, you'll need to wrap the returned values in `Box::new()`");
                     }
 
                     self.try_suggest_return_impl_trait(err, expected, found, fn_id);
