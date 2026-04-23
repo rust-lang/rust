@@ -58,7 +58,7 @@ impl<'tcx> ForestObligation for PendingPredicateObligation<'tcx> {
 /// along. Once all type inference constraints have been generated, the
 /// method `evaluate_obligations_error_on_ambiguity` can be used to report any remaining
 /// ambiguous cases as errors.
-pub struct FulfillmentContext<'tcx, E: 'tcx> {
+pub struct FulfillmentContext<'tcx, E> {
     /// A list of all obligations that have been registered with this
     /// fulfillment context.
     predicates: ObligationForest<PendingPredicateObligation<'tcx>>,

@@ -43,7 +43,7 @@ type PendingObligations<'tcx> =
 ///
 /// It is also likely that we want to use slightly different datastructures
 /// here as this will have to deal with far more root goals than `evaluate_all`.
-pub struct FulfillmentCtxt<'tcx, E: 'tcx> {
+pub struct FulfillmentCtxt<'tcx, E> {
     obligations: ObligationStorage<'tcx>,
 
     /// The snapshot in which this context was created. Using the context

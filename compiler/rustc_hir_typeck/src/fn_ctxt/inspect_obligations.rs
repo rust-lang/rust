@@ -9,6 +9,7 @@ use rustc_trait_selection::solve::Certainty;
 use rustc_trait_selection::solve::inspect::{
     InferCtxtProofTreeExt, InspectConfig, InspectGoal, ProofTreeVisitor,
 };
+use rustc_trait_selection::traits::TraitEngine;
 use tracing::{debug, instrument, trace};
 
 use crate::FnCtxt;

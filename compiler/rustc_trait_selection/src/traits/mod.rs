@@ -51,7 +51,7 @@ pub use self::dyn_compatibility::{
     DynCompatibilityViolation, dyn_compatibility_violations_for_assoc_item,
     hir_ty_lowering_dyn_compatibility_violations, is_vtable_safe_method,
 };
-pub use self::engine::{ObligationCtxt, TraitEngineExt};
+pub use self::engine::{DualFulfillmentCtxt, ObligationCtxt};
 pub use self::fulfill::{FulfillmentContext, OldSolverError, PendingPredicateObligation};
 pub use self::normalize::NormalizeExt;
 pub use self::project::{normalize_inherent_projection, normalize_projection_term};

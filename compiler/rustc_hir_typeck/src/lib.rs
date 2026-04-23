@@ -55,6 +55,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
+use rustc_trait_selection::traits::TraitEngine;
 use tracing::{debug, instrument};
 use typeck_root_ctxt::TypeckRootCtxt;
 
