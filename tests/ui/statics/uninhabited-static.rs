@@ -1,5 +1,3 @@
-#![feature(never_type)]
-
 enum Void {}
 extern "C" {
     static VOID: Void; //~ ERROR static of uninhabited type
