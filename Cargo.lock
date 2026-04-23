@@ -544,10 +544,11 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.2.30"
+version = "1.2.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "deec109607ca693028562ed836a5f1c4b8bd77755c4e132fc5ce11b0b6211ae7"
+checksum = "590f9024a68a8c40351881787f1934dc11afd69090f5edb6831464694d836ea3"
 dependencies = [
+ "find-msvc-tools",
  "jobserver",
  "libc",
  "shlex",
