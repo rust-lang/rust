@@ -1,6 +1,7 @@
-use std::cell::Cell;
+use std::cell::{Cell, UnsafeCell};
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
+use std::mem::ManuallyDrop;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, Once};
 use std::{fmt, io, mem, ptr, thread};
@@ -208,41 +209,36 @@ where
 }
 
 fn default_global_registry() -> Result<Arc<Registry>, ThreadPoolBuildError> {
-    let result = Registry::new(ThreadPoolBuilder::new());
+    Registry::new(ThreadPoolBuilder::new()).or_else(|e| {
+        // If we're running in an environment that doesn't support threads at all, we can fall back to
+        // using the current thread alone. This is crude, and probably won't work for non-blocking
+        // calls like `spawn` or `broadcast_spawn`, but a lot of stuff does work fine.
+        //
+        // Notably, this allows current WebAssembly targets to work even though their threading support
+        // is stubbed out, and we won't have to change anything if they do add real threading.
+        if e.is_unsupported() && WorkerThread::current(Option::is_none) {
+            let builder = ThreadPoolBuilder::new().num_threads(1).spawn_handler(|thread| {
+                // Rather than starting a new thread, we're just taking over the current thread
+                // *without* running the main loop, so we can still return from here.
+                // The WorkerThread is leaked, but we never shutdown the global pool anyway.
+                WorkerThread::set_current(WorkerThread::from(thread));
+                WorkerThread::current(|worker_thread| {
+                    let worker_thread = worker_thread.as_ref().unwrap();
+                    let latch = &worker_thread.registry.thread_infos[worker_thread.index].primed;
+                    // let registry know we are ready to do work
+                    unsafe { Latch::set(latch) }
+                });
 
-    // If we're running in an environment that doesn't support threads at all, we can fall back to
-    // using the current thread alone. This is crude, and probably won't work for non-blocking
-    // calls like `spawn` or `broadcast_spawn`, but a lot of stuff does work fine.
-    //
-    // Notably, this allows current WebAssembly targets to work even though their threading support
-    // is stubbed out, and we won't have to change anything if they do add real threading.
-    let unsupported = matches!(&result, Err(e) if e.is_unsupported());
-    if unsupported && WorkerThread::current().is_null() {
-        let builder = ThreadPoolBuilder::new().num_threads(1).spawn_handler(|thread| {
-            // Rather than starting a new thread, we're just taking over the current thread
-            // *without* running the main loop, so we can still return from here.
-            // The WorkerThread is leaked, but we never shutdown the global pool anyway.
-            let worker_thread = Box::leak(Box::new(WorkerThread::from(thread)));
-            let registry = &*worker_thread.registry;
-            let index = worker_thread.index;
+                Ok(())
+            });
 
-            unsafe {
-                WorkerThread::set_current(worker_thread);
-
-                // let registry know we are ready to do work
-                Latch::set(&registry.thread_infos[index].primed);
+            if let Ok(fallback_result) = Registry::new(builder) {
+                return Ok(fallback_result);
             }
-
-            Ok(())
-        });
-
-        let fallback_result = Registry::new(builder);
-        if fallback_result.is_ok() {
-            return fallback_result;
         }
-    }
 
-    result
+        Err(e)
+    })
 }
 
 struct Terminator<'a>(&'a Arc<Registry>);
@@ -319,47 +315,47 @@ impl Registry {
         Ok(registry)
     }
 
-    pub fn current() -> Arc<Registry> {
-        unsafe {
-            let worker_thread = WorkerThread::current();
-            let registry = if worker_thread.is_null() {
-                global_registry()
-            } else {
-                &(*worker_thread).registry
-            };
-            Arc::clone(registry)
-        }
+    pub fn current<F, R>(f: F) -> R
+    where
+        F: FnOnce(&Arc<Registry>) -> R,
+    {
+        WorkerThread::current(|worker_thread| {
+            f(match worker_thread {
+                Some(worker_thread) => &worker_thread.registry,
+                None => global_registry(),
+            })
+        })
+    }
+
+    pub fn current_cloned() -> Arc<Registry> {
+        Registry::current(Arc::clone)
     }
 
     /// Returns the number of threads in the current registry. This
     /// is better than `Registry::current().num_threads()` because it
     /// avoids incrementing the `Arc`.
     pub(super) fn current_num_threads() -> usize {
-        unsafe {
-            let worker_thread = WorkerThread::current();
-            if worker_thread.is_null() {
-                global_registry().num_threads()
-            } else {
-                (*worker_thread).registry.num_threads()
-            }
-        }
+        Registry::current(|registry| registry.num_threads())
     }
 
     /// Returns the current `WorkerThread` if it's part of this `Registry`.
-    pub(super) fn current_thread(&self) -> Option<&WorkerThread> {
-        unsafe {
-            let worker = WorkerThread::current().as_ref()?;
-            if worker.registry().id() == self.id() { Some(worker) } else { None }
-        }
+    pub(super) fn current_thread_with<F, R>(&self, f: F) -> R
+    where
+        F: FnOnce(Option<&WorkerThread>) -> R,
+    {
+        WorkerThread::current(|worker| {
+            f(worker.as_ref().filter(|worker| worker.registry.id() == self.id()))
+        })
     }
 
     /// Returns an opaque identifier for this registry.
     pub(super) fn id(&self) -> RegistryId {
         // We can rely on `self` not to change since we only ever create
         // registries that are boxed up in an `Arc` (see `new()` above).
-        RegistryId { addr: self as *const Self as usize }
+        RegistryId { addr: (self as *const Self).addr() }
     }
 
+    #[inline]
     pub(super) fn num_threads(&self) -> usize {
         self.thread_infos.len()
     }
@@ -417,14 +413,13 @@ impl Registry {
     /// worker thread for the registry, this will push onto the
     /// deque. Else, it will inject from the outside (which is slower).
     pub(super) fn inject_or_push(&self, job_ref: JobRef) {
-        let worker_thread = WorkerThread::current();
-        unsafe {
-            if !worker_thread.is_null() && (*worker_thread).registry().id() == self.id() {
-                (*worker_thread).push(job_ref);
+        self.current_thread_with(|worker_thread| {
+            if let Some(worker_thread) = worker_thread {
+                unsafe { worker_thread.push(job_ref) };
             } else {
-                self.inject(job_ref);
+                self.inject(job_ref)
             }
-        }
+        })
     }
 
     /// Push a job into the "external jobs" queue; it will be taken by
@@ -503,19 +498,19 @@ impl Registry {
         OP: FnOnce(&WorkerThread, bool) -> R + Send,
         R: Send,
     {
-        unsafe {
-            let worker_thread = WorkerThread::current();
-            if worker_thread.is_null() {
-                self.in_worker_cold(op)
-            } else if (*worker_thread).registry().id() != self.id() {
-                self.in_worker_cross(&*worker_thread, op)
-            } else {
-                // Perfectly valid to give them a `&T`: this is the
-                // current thread, so we know the data structure won't be
-                // invalidated until we return.
-                op(&*worker_thread, false)
+        WorkerThread::current(|worker_thread| {
+            let Some(worker_thread) = worker_thread else {
+                return unsafe { self.in_worker_cold(op) };
+            };
+            if worker_thread.registry().id() != self.id() {
+                return unsafe { self.in_worker_cross(worker_thread, op) };
             }
-        }
+
+            // Perfectly valid to give them a `&T`: this is the
+            // current thread, so we know the data structure won't be
+            // invalidated until we return.
+            op(&*worker_thread, false)
+        })
     }
 
     #[cold]
@@ -528,13 +523,12 @@ impl Registry {
 
         LOCK_LATCH.with(|l| {
             // This thread isn't a member of *any* thread pool, so just block.
-            debug_assert!(WorkerThread::current().is_null());
+            debug_assert!(WorkerThread::current(Option::is_none));
             let job = StackJob::new(
                 Tlv::null(),
                 |injected| {
-                    let worker_thread = WorkerThread::current();
-                    assert!(injected && !worker_thread.is_null());
-                    op(unsafe { &*worker_thread }, true)
+                    assert!(injected);
+                    WorkerThread::current(|worker_thread| op(worker_thread.as_ref().unwrap(), true))
                 },
                 LatchRef::new(l),
             );
@@ -560,9 +554,8 @@ impl Registry {
         let job = StackJob::new(
             Tlv::null(),
             |injected| {
-                let worker_thread = WorkerThread::current();
-                assert!(injected && !worker_thread.is_null());
-                op(unsafe { &*worker_thread }, true)
+                assert!(injected);
+                WorkerThread::current(|worker_thread| op(worker_thread.as_ref().unwrap(), true))
             },
             latch,
         );
@@ -618,12 +611,10 @@ impl Registry {
 /// if no other worker thread is active
 #[inline]
 pub fn mark_blocked() {
-    let worker_thread = WorkerThread::current();
-    assert!(!worker_thread.is_null());
-    unsafe {
-        let registry = &(*worker_thread).registry;
+    WorkerThread::current(|worker_thread| {
+        let registry = &*worker_thread.as_ref().unwrap().registry;
         registry.sleep.mark_blocked(&registry.deadlock_handler)
-    }
+    });
 }
 
 /// Mark a previously blocked Rayon worker thread as unblocked
@@ -695,7 +686,8 @@ pub(super) struct WorkerThread {
 // worker is fully unwound. Using an unsafe pointer avoids the need
 // for a RefCell<T> etc.
 thread_local! {
-    static WORKER_THREAD_STATE: Cell<*const WorkerThread> = const { Cell::new(ptr::null()) };
+    static WORKER_THREAD_STATE: ManuallyDrop<UnsafeCell<Option<WorkerThread>>> =
+        const { ManuallyDrop::new(UnsafeCell::new(None)) };
 }
 
 impl From<ThreadBuilder> for WorkerThread {
@@ -713,30 +705,53 @@ impl From<ThreadBuilder> for WorkerThread {
 
 impl Drop for WorkerThread {
     fn drop(&mut self) {
-        // Undo `set_current`
-        WORKER_THREAD_STATE.with(|t| {
-            assert!(t.get().eq(&(self as *const _)));
-            t.set(ptr::null());
-        });
+        assert!(WorkerThread::current(Option::is_none));
     }
 }
 
 impl WorkerThread {
-    /// Gets the `WorkerThread` index for the current thread; returns
-    /// NULL if this is not a worker thread. This pointer is valid
+    /// Gets the `WorkerThread` index for the current thread; passes
+    /// None if this is not a worker thread. This pointer is valid
     /// anywhere on the current thread.
     #[inline]
-    pub(super) fn current() -> *const WorkerThread {
-        WORKER_THREAD_STATE.with(Cell::get)
+    pub(super) fn current<F, R>(f: F) -> R
+    where
+        F: FnOnce(&Option<WorkerThread>) -> R,
+    {
+        WORKER_THREAD_STATE.with(|t| unsafe { f(&*t.get()) })
     }
 
     /// Sets `self` as the worker thread index for the current thread.
     /// This is done during worker thread startup.
-    unsafe fn set_current(thread: *const WorkerThread) {
-        WORKER_THREAD_STATE.with(|t| {
-            assert!(t.get().is_null());
-            t.set(thread);
-        });
+    fn set_current(thread: WorkerThread) {
+        WORKER_THREAD_STATE.with(|t| unsafe {
+            let t = &mut *t.get();
+            assert!(t.is_none());
+            *t = Some(thread)
+        })
+    }
+
+    /// Sets `self` as the worker thread index for the current thread.
+    /// This is done during worker thread startup.
+    fn with_current<F, R>(thread: WorkerThread, f: F) -> R
+    where
+        F: FnOnce(&WorkerThread) -> R,
+    {
+        WORKER_THREAD_STATE.with(|t| unsafe {
+            assert!((&*t.get()).is_none());
+            t.get().write(Some(thread));
+
+            struct Guard(*mut Option<WorkerThread>);
+
+            impl Drop for Guard {
+                fn drop(&mut self) {
+                    unsafe { self.0.replace(None) };
+                }
+            }
+
+            let _g = Guard(t.get());
+            f((&*t.get()).as_ref().unwrap_unchecked())
+        })
     }
 
     /// Returns the registry that owns this worker thread.
@@ -932,7 +947,8 @@ impl WorkerThread {
     }
 
     unsafe fn wait_until_out_of_work(&self) {
-        debug_assert_eq!(self as *const _, WorkerThread::current());
+        debug_assert!(WorkerThread::current(|curr| ptr::eq(self, curr.as_ref().unwrap())));
+
         let registry = &*self.registry;
         let index = self.index;
 
@@ -1020,36 +1036,36 @@ impl WorkerThread {
 }
 
 unsafe fn main_loop(thread: ThreadBuilder) {
-    let worker_thread = &WorkerThread::from(thread);
-    unsafe { WorkerThread::set_current(worker_thread) };
-    let registry = &*worker_thread.registry;
-    let index = worker_thread.index;
+    WorkerThread::with_current(WorkerThread::from(thread), |worker_thread| {
+        let registry = &*worker_thread.registry;
+        let index = worker_thread.index;
 
-    // let registry know we are ready to do work
-    unsafe { Latch::set(&registry.thread_infos[index].primed) };
+        // let registry know we are ready to do work
+        unsafe { Latch::set(&registry.thread_infos[index].primed) };
 
-    // Worker threads should not panic. If they do, just abort, as the
-    // internal state of the threadpool is corrupted. Note that if
-    // **user code** panics, we should catch that and redirect.
-    let abort_guard = unwind::AbortIfPanic;
+        // Worker threads should not panic. If they do, just abort, as the
+        // internal state of the threadpool is corrupted. Note that if
+        // **user code** panics, we should catch that and redirect.
+        let abort_guard = unwind::AbortIfPanic;
 
-    // Inform a user callback that we started a thread.
-    if let Some(ref handler) = registry.start_handler {
-        registry.catch_unwind(|| handler(index));
-    }
+        // Inform a user callback that we started a thread.
+        if let Some(ref handler) = registry.start_handler {
+            registry.catch_unwind(|| handler(index));
+        }
 
-    unsafe { worker_thread.wait_until_out_of_work() };
+        unsafe { worker_thread.wait_until_out_of_work() };
 
-    // Normal termination, do not abort.
-    mem::forget(abort_guard);
+        // Normal termination, do not abort.
+        mem::forget(abort_guard);
 
-    // Inform a user callback that we exited a thread.
-    if let Some(ref handler) = registry.exit_handler {
-        registry.catch_unwind(|| handler(index));
-        // We're already exiting the thread, there's nothing else to do.
-    }
+        // Inform a user callback that we exited a thread.
+        if let Some(ref handler) = registry.exit_handler {
+            registry.catch_unwind(|| handler(index));
+            // We're already exiting the thread, there's nothing else to do.
+        }
 
-    registry.release_thread();
+        registry.release_thread();
+    });
 }
 
 /// If already in a worker-thread, just execute `op`. Otherwise,
@@ -1062,17 +1078,16 @@ where
     OP: FnOnce(&WorkerThread, bool) -> R + Send,
     R: Send,
 {
-    unsafe {
-        let owner_thread = WorkerThread::current();
-        if !owner_thread.is_null() {
+    WorkerThread::current(|owner_thread| {
+        if let Some(owner_thread) = owner_thread {
             // Perfectly valid to give them a `&T`: this is the
             // current thread, so we know the data structure won't be
             // invalidated until we return.
-            op(&*owner_thread, false)
+            op(owner_thread, false)
         } else {
             global_registry().in_worker(op)
         }
-    }
+    })
 }
 
 /// [xorshift*] is a fast pseudorandom number generator which will

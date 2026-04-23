@@ -18,7 +18,7 @@ use crate::job::{ArcJob, HeapJob, JobFifo, JobRef, JobRefId};
 use crate::latch::{CountLatch, Latch};
 use crate::registry::{Registry, WorkerThread, global_registry, in_worker};
 use crate::tlv::{self, Tlv};
-use crate::unwind;
+use crate::{current_thread_index, unwind};
 
 #[cfg(test)]
 mod tests;
@@ -428,9 +428,11 @@ pub(crate) fn do_in_place_scope<'scope, OP, R>(registry: Option<&Arc<Registry>>,
 where
     OP: FnOnce(&Scope<'scope>) -> R,
 {
-    let thread = unsafe { WorkerThread::current().as_ref() };
-    let scope = Scope::<'scope>::new(thread, registry);
-    scope.base.complete(thread, || op(&scope))
+    WorkerThread::current(|thread| {
+        let thread = thread.as_ref();
+        let scope = Scope::<'scope>::new(thread, registry);
+        scope.base.complete(thread, || op(&scope))
+    })
 }
 
 /// Creates a "fork-join" scope `s` with FIFO order, and invokes the
@@ -465,9 +467,11 @@ pub(crate) fn do_in_place_scope_fifo<'scope, OP, R>(registry: Option<&Arc<Regist
 where
     OP: FnOnce(&ScopeFifo<'scope>) -> R,
 {
-    let thread = unsafe { WorkerThread::current().as_ref() };
-    let scope = ScopeFifo::<'scope>::new(thread, registry);
-    scope.base.complete(thread, || op(&scope))
+    WorkerThread::current(|thread| {
+        let thread = thread.as_ref();
+        let scope = ScopeFifo::<'scope>::new(thread, registry);
+        scope.base.complete(thread, || op(&scope))
+    })
 }
 
 impl<'scope> Scope<'scope> {
@@ -566,8 +570,7 @@ impl<'scope> Scope<'scope> {
             let scope = scope_ptr.as_ref();
             let body = &body;
 
-            let current_index = WorkerThread::current().as_ref().map(|worker| worker.index());
-            if current_index == scope.base.worker {
+            if scope.base.worker == current_thread_index() {
                 // Mark this job as started on the scope's worker thread.
                 scope.base.pending_jobs.lock().unwrap().remove(&id);
             }
@@ -639,8 +642,7 @@ impl<'scope> ScopeFifo<'scope> {
             // SAFETY: this job will execute before the scope ends.
             let scope = scope_ptr.as_ref();
 
-            let current_index = WorkerThread::current().as_ref().map(|worker| worker.index());
-            if current_index == scope.base.worker {
+            if scope.base.worker == current_thread_index() {
                 // Mark this job as started on the scope's worker thread.
                 scope.base.pending_jobs.lock().unwrap().remove(&id);
             }
