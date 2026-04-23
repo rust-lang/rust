@@ -10,6 +10,7 @@ impl<'a, 'b, 'c, T> Arg<'a, 'b, 'c, T> {
     fn constrain(self)
     where
         T: 'a,
+        T: 'c,
     {
     }
 }
