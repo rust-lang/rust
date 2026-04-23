@@ -129,9 +129,9 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
         let item_vars = ItemVars {
             typ,
             name: item.name.as_ref().unwrap().as_str(),
-            // If `type_` returns `None`, it means it's a bang macro with multiple kinds, but
+            // It's fine to use `type_` here because, even if it's a bang macro with multiple kinds,
             // since we're generating its documentation page, we can default to the "parent" type,
-            // ie "bang macro".
+            // ie "macro".
             item_type: &item.type_().to_string(),
             path_components,
             stability_since_raw: &stability_since_raw,
@@ -464,7 +464,7 @@ fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> i
                             stab_tags = print_extra_info_tags(tcx, myitem, item, None),
                             class = type_,
                             unsafety_flag = unsafety_flag,
-                            href = print_item_path(myitem),
+                            href = myitem.html_filename(),
                             title1 = myitem.type_(),
                             title2 = full_path(cx, myitem),
                         )?;

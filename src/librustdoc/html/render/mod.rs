@@ -536,13 +536,8 @@ impl AllTypes {
             let new_url = format!("{}/{}", url.join("/"), item.html_filename());
             url.push(name);
             let name = url.join("::");
-            let mut types = item.types();
-            if types.len() == 1 {
-                self.add_item_entry(types.pop().unwrap(), new_url, name);
-            } else {
-                for type_ in types {
-                    self.add_item_entry(type_, new_url.clone(), name.clone());
-                }
+            for type_ in item.types() {
+                self.add_item_entry(type_, new_url.clone(), name.clone());
             }
         }
     }

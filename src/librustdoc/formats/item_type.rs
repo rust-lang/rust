@@ -101,6 +101,10 @@ item_type! {
     // This number is reserved for use in JavaScript
     // Generic = 26,
     Attribute = 27,
+    // The two next ones represent an attr/derive macro declared as a `macro_rules!`. We need this
+    // distinction because they will point to a `macro.[name].html` file and not
+    // `[attr|derive].[name].html` file, so the link generation needs to take it into account while
+    // still having the filtering working as expected.
     BangMacroAttribute = 28,
     BangMacroDerive = 29,
 }

@@ -2899,13 +2899,6 @@ fn clean_maybe_renamed_item<'tcx>(
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Macro(_, macro_def, kinds) => match kinds {
-                MacroKinds::BANG => MacroItem(
-                    Macro {
-                        source: display_macro_source(cx.tcx, name, macro_def),
-                        macro_rules: macro_def.macro_rules,
-                    },
-                    MacroKinds::BANG,
-                ),
                 MacroKinds::ATTR => clean_proc_macro(item, &mut name, MacroKind::Attr, cx.tcx),
                 MacroKinds::DERIVE => clean_proc_macro(item, &mut name, MacroKind::Derive, cx.tcx),
                 _ => MacroItem(

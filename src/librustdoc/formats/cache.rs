@@ -382,8 +382,8 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::RequiredAssocTypeItem(..)
             | clean::AssocTypeItem(..)
             | clean::StrippedItem(..)
-            | clean::AttributeItem
-            | clean::KeywordItem => {
+            | clean::KeywordItem
+            | clean::AttributeItem => {
                 // FIXME: Do these need handling?
                 // The person writing this comment doesn't know.
                 // So would rather leave them to an expert,
@@ -599,7 +599,7 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     let is_unstable = item.is_unstable();
     let mut types = item.types();
     let index_item = IndexItem {
-        ty: types.pop().unwrap(),
+        ty: types.next().unwrap(),
         defid: Some(defid),
         name,
         module_path: parent_path.to_vec(),

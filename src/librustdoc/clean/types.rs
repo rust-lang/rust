@@ -745,31 +745,30 @@ impl Item {
         find_attr!(&self.attrs.other_attrs, NonExhaustive(..))
     }
 
-    /// Returns a documentation-level item type from the item.
+    /// Returns a documentation-level item type from the item. In case of a `macro_rules!` which
+    /// contains an attr/derive kind, it will always return `ItemType::Macro`. If you want all
+    /// kinds, you need to use [`Item::types`].
     pub(crate) fn type_(&self) -> ItemType {
         ItemType::from(self)
     }
 
-    // FIXME: Return an iterator instead of a `ThinVec`.
-    pub(crate) fn types(&self) -> ThinVec<ItemType> {
+    /// Returns an item types. There is only one case where it can return more than one kind:
+    /// for `macro_rules!` items which contain an attr/derive kind.
+    pub(crate) fn types(&self) -> impl Iterator<Item = ItemType> {
         if let ItemKind::MacroItem(_, macro_kinds) = self.kind {
-            let mut types = ThinVec::with_capacity(3);
-            for kind in macro_kinds.iter() {
-                match kind {
-                    MacroKinds::ATTR => types.push(ItemType::BangMacroAttribute),
-                    MacroKinds::DERIVE => types.push(ItemType::BangMacroDerive),
-                    MacroKinds::BANG => types.push(ItemType::Macro),
-                    _ => panic!("unsupported macro kind {kind:?}"),
-                }
-            }
-            return types;
+            Either::Right(macro_kinds.iter().map(|kind| match kind {
+                MacroKinds::ATTR => ItemType::BangMacroAttribute,
+                MacroKinds::DERIVE => ItemType::BangMacroDerive,
+                MacroKinds::BANG => ItemType::Macro,
+                _ => panic!("unsupported macro kind {kind:?}"),
+            }))
+        } else {
+            Either::Left(std::iter::once(self.type_()))
         }
-        let mut types = ThinVec::with_capacity(1);
-        types.push(self.type_());
-        types
     }
 
-    pub(crate) fn is_macro_rules(&self) -> bool {
+    /// Returns true if this a macro declared with the `macro` keyword or with `macro_rules!.
+    pub(crate) fn is_bang_macro_or_macro_rules(&self) -> bool {
         matches!(self.kind, ItemKind::MacroItem(..))
     }
 
@@ -946,8 +945,12 @@ pub(crate) enum ItemKind {
     ForeignStaticItem(Static, hir::Safety),
     /// `type`s from an extern block
     ForeignTypeItem,
-    /// A bang macro. it can be multiple things (macro, derive and attribute, potentially multiple
-    /// at once). Don't forget to look into the `MacroKinds` values.
+    /// A macro defined with `macro_rules` or the `macro` keyword. It can be multiple things (macro,
+    /// derive and attribute, potentially multiple at once). Don't forget to look into the
+    ///`MacroKinds` values.
+    ///
+    /// If a `macro_rules!` only contains a `attr`/`derive` branch, then it's not stored in this
+    /// variant but in the `ProcMacroItem` variant.
     MacroItem(Macro, MacroKinds),
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
