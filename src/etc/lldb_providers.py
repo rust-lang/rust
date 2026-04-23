@@ -233,8 +233,6 @@ def resolve_msvc_template_arg(arg_name: str, target: SBTarget) -> SBType:
             return result.GetPointerType()
 
     if arg_name.startswith("array$<"):
-        arg_name = arg_name[7:-1].strip()
-
         template_args = get_template_args(arg_name)
 
         element_name = next(template_args)
