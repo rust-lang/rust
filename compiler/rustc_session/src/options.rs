@@ -332,10 +332,6 @@ top_level_options!(
         /// If `Some`, enable incremental compilation, using the given
         /// directory to store intermediate results.
         incremental: Option<PathBuf> [UNTRACKED],
-        /// Set based on the result of the `Config::track_state` callback
-        /// for custom drivers to invalidate the incremental cache.
-        #[rustc_lint_opt_deny_field_access("should only be used via `Config::track_state`")]
-        untracked_state_hash: Hash64 [TRACKED_NO_CRATE_HASH],
 
         unstable_opts: UnstableOptions [SUBSTRUCT] { TARGET_MODIFIER: UnstableOptions(UnstableOptionsTargetModifiers) },
         prints: Vec<PrintRequest> [UNTRACKED],
