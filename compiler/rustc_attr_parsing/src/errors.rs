@@ -325,3 +325,70 @@ pub(crate) struct IncorrectDoNotRecommendLocation {
     #[label("not a trait implementation")]
     pub target_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("malformed `doc` attribute input")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct MalformedDoc;
+
+#[derive(Diagnostic)]
+#[diag("didn't expect any arguments here")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct ExpectedNoArgs;
+
+#[derive(Diagnostic)]
+#[diag("expected this to be of the form `... = \"...\"`")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct ExpectedNameValue;
+
+#[derive(Diagnostic)]
+#[diag("malformed `{$attribute}` attribute")]
+#[help("{$options}")]
+pub(crate) struct MalFormedDiagnosticAttributeLint {
+    pub attribute: &'static str,
+    pub options: &'static str,
+    #[label("invalid option found here")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("positional format arguments are not allowed here")]
+#[help(
+    "only named format arguments with the name of one of the generic types are allowed in this context"
+)]
+pub(crate) struct DisallowedPositionalArgument;
+
+#[derive(Diagnostic)]
+#[diag("format arguments are not allowed here")]
+#[help("consider removing this format argument")]
+pub(crate) struct DisallowedPlaceholder;
+
+#[derive(Diagnostic)]
+#[diag("invalid format specifier")]
+#[help("no format specifier are supported in this position")]
+pub(crate) struct InvalidFormatSpecifier;
+
+#[derive(Diagnostic)]
+#[diag("{$description}")]
+pub(crate) struct WrappedParserError<'a> {
+    pub description: &'a str,
+    #[label("{$label}")]
+    pub span: Span,
+    pub label: &'a str,
+}
+
+#[derive(Diagnostic)]
+#[diag("`{$option_name}` is ignored due to previous definition of `{$option_name}`")]
+pub(crate) struct IgnoredDiagnosticOption {
+    pub option_name: Symbol,
+    #[label("`{$option_name}` is first declared here")]
+    pub first_span: Span,
+    #[label("`{$option_name}` is later redundantly declared here")]
+    pub later_span: Span,
+}
