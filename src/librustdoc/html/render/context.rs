@@ -351,7 +351,7 @@ impl<'tcx> Context<'tcx> {
                 Some(s) => s,
             };
 
-            let is_macro_rules = item.is_macro_rules();
+            let is_macro_rules = item.is_bang_macro_or_macro_rules();
             for type_ in item.types() {
                 if inserted.entry(type_).or_default().insert(name) {
                     let type_ = type_.to_string();

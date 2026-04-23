@@ -5,6 +5,7 @@ use std::{ascii, mem};
 
 use rustc_ast as ast;
 use rustc_ast::join_path_idents;
+use rustc_ast::token::{Token, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
 use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir as hir;
@@ -617,9 +618,18 @@ fn render_macro_arms(
         .unwrap();
         // We skip the `=>`, macro "body" and the delimiter closing that "body" since we don't
         // render them.
-        tokens.next();
-        tokens.next();
-        tokens.next();
+        let _token = tokens.next();
+        // The `=>`.
+        debug_assert_matches!(
+            _token,
+            Some(TokenTree::Token(Token { kind: TokenKind::FatArrow, .. }, _))
+        );
+        let _token = tokens.next();
+        // The arm body.
+        debug_assert_matches!(_token, Some(TokenTree::Delimited(..)));
+        // The delimiter (which may be omitted on the last arm's body).
+        let _token = tokens.next();
+        debug_assert_matches!(_token, None | Some(TokenTree::Token(Token { .. }, _)));
     }
     out
 }
