@@ -18,7 +18,7 @@ fn foo() -> Result<String, String> { //~ NOTE expected `String` because of this
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE the trait `From<()>` is not implemented for `String`
     //~| NOTE the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-    //~| NOTE required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
+    //~| NOTE required for `Result<String, String>` to implement `FromResidual<Result<!, ()>>`
     Ok(one.to_string())
 }
 
@@ -34,7 +34,7 @@ fn bar() -> Result<(), String> { //~ NOTE expected `String` because of this
     //~| NOTE this can't be annotated with `?` because it has type `Result<_, ()>`
     //~| NOTE the trait `From<()>` is not implemented for `String`
     //~| NOTE the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-    //~| NOTE required for `Result<(), String>` to implement `FromResidual<Result<Infallible, ()>>`
+    //~| NOTE required for `Result<(), String>` to implement `FromResidual<Result<!, ()>>`
     //~| HELP `String` implements trait `From<T>`:
     Ok(one)
 }
@@ -53,7 +53,7 @@ fn baz() -> Result<String, String> { //~ NOTE expected `String` because of this
     //~| NOTE in this expansion of desugaring of operator `?`
     //~| NOTE the trait `From<()>` is not implemented for `String`
     //~| NOTE the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-    //~| NOTE required for `Result<String, String>` to implement `FromResidual<Result<Infallible, ()>>`
+    //~| NOTE required for `Result<String, String>` to implement `FromResidual<Result<!, ()>>`
     Ok(one.to_string())
 }
 

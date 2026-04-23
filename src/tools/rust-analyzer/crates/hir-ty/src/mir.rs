@@ -890,6 +890,7 @@ pub enum CastKind {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[allow(unreachable_code)] // https://github.com/rust-lang/rust/issues/154900
 pub enum Rvalue {
     /// Yields the operand unchanged
     Use(Operand),
