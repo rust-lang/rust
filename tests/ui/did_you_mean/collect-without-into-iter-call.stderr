@@ -31,6 +31,64 @@ help: call `.into_iter()` first
 LL |     items.into_iter().collect()
    |           ++++++++++++
 
-error: aborting due to 3 previous errors
+error[E0599]: `Vec<u32>` is not an iterator
+  --> $DIR/collect-without-into-iter-call.rs:28:23
+   |
+LL |         self.contents.filter(|v| *v % 2 == 1).count();
+   |                       ^^^^^^ `Vec<u32>` is not an iterator
+   |
+   = note: the following trait bounds were not satisfied:
+           `Vec<u32>: Iterator`
+           which is required by `&mut Vec<u32>: Iterator`
+           `[u32]: Iterator`
+           which is required by `&mut [u32]: Iterator`
+
+error[E0599]: `Vec<u32>` is not an iterator
+  --> $DIR/collect-without-into-iter-call.rs:32:23
+   |
+LL |         self.contents.filter(|v| *v % 2 == 1).count();
+   |                       ^^^^^^ `Vec<u32>` is not an iterator
+   |
+   = note: the following trait bounds were not satisfied:
+           `Vec<u32>: Iterator`
+           which is required by `&mut Vec<u32>: Iterator`
+           `[u32]: Iterator`
+           which is required by `&mut [u32]: Iterator`
+
+error[E0599]: no method named `filter` found for struct `Vec<u32>` in the current scope
+  --> $DIR/collect-without-into-iter-call.rs:36:23
+   |
+LL |         self.contents.filter(|v| *v % 2 == 1).count();
+   |                       ^^^^^^ `Vec<u32>` is not an iterator
+   |
+help: call `.into_iter()` first
+   |
+LL |         self.contents.into_iter().filter(|v| *v % 2 == 1).count();
+   |                       ++++++++++++
+
+error[E0599]: no method named `filter` found for reference `&Vec<u32>` in the current scope
+  --> $DIR/collect-without-into-iter-call.rs:41:14
+   |
+LL |     contents.filter(|v| *v % 2 == 1).count();
+   |              ^^^^^^ `&Vec<u32>` is not an iterator
+   |
+help: call `.into_iter()` first
+   |
+LL |     contents.into_iter().filter(|v| *v % 2 == 1).count();
+   |              ++++++++++++
+
+error[E0599]: `Vec<u32>` is not an iterator
+  --> $DIR/collect-without-into-iter-call.rs:45:17
+   |
+LL |     (*contents).filter(|v| *v % 2 == 1).count();
+   |                 ^^^^^^ `Vec<u32>` is not an iterator
+   |
+   = note: the following trait bounds were not satisfied:
+           `Vec<u32>: Iterator`
+           which is required by `&mut Vec<u32>: Iterator`
+           `[u32]: Iterator`
+           which is required by `&mut [u32]: Iterator`
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0599`.

@@ -48,6 +48,7 @@ use tracing::{debug, info, instrument};
 use super::probe::{AutorefOrPtrAdjustment, IsSuggestion, Mode, ProbeScope};
 use super::{CandidateSource, MethodError, NoMatchData};
 use crate::errors::{self, CandidateTraitNote, NoAssociatedItem};
+use crate::expr_use_visitor::expr_place;
 use crate::method::probe::UnsatisfiedPredicates;
 use crate::{Expectation, FnCtxt};
 
@@ -187,6 +188,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return false,
         }
         false
+    }
+
+    fn allows_into_iter_suggestion(&self, source: SelfSource<'tcx>) -> bool {
+        let SelfSource::MethodCall(rcvr_expr) = source else {
+            return true;
+        };
+
+        let rcvr_expr = rcvr_expr.peel_drop_temps().peel_blocks();
+        let Ok(place_with_id) = expr_place(self, rcvr_expr) else {
+            return true;
+        };
+
+        !place_with_id.place.deref_tys().any(Ty::is_ref)
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -853,6 +867,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ));
             }
         } else if self.impl_into_iterator_should_be_iterator(rcvr_ty, span, unsatisfied_predicates)
+            && self.allows_into_iter_suggestion(source)
         {
             err.span_label(span, format!("`{rcvr_ty}` is not an iterator"));
             if !span.in_external_macro(self.tcx.sess.source_map()) {

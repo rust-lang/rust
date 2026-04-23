@@ -17,3 +17,30 @@ fn process(items: impl IntoIterator<Item = String>) -> Vec<String> {
     items.collect()
     //~^ ERROR no method named `collect` found for type parameter `impl IntoIterator<Item = String>` in the current scope
 }
+
+// Regression test for https://github.com/rust-lang/rust/issues/155365
+struct Demo {
+    contents: Vec<u32>,
+}
+
+impl Demo {
+    fn shared(&self) {
+        self.contents.filter(|v| *v % 2 == 1).count(); //~ ERROR `Vec<u32>` is not an iterator
+    }
+
+    fn mutable(&mut self) {
+        self.contents.filter(|v| *v % 2 == 1).count(); //~ ERROR `Vec<u32>` is not an iterator
+    }
+
+    fn owned(self) {
+        self.contents.filter(|v| *v % 2 == 1).count(); //~ ERROR no method named `filter` found
+    }
+}
+
+fn filter_param(contents: &Vec<u32>) {
+    contents.filter(|v| *v % 2 == 1).count(); //~ ERROR no method named `filter` found
+}
+
+fn filter_explicit_deref(contents: &Vec<u32>) {
+    (*contents).filter(|v| *v % 2 == 1).count(); //~ ERROR `Vec<u32>` is not an iterator
+}

@@ -146,6 +146,18 @@ impl<'tcx, D: Delegate<'tcx>> Delegate<'tcx> for &mut D {
     }
 }
 
+impl<'tcx> Delegate<'tcx> for () {
+    fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn borrow(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {}
+
+    fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+}
+
 /// This trait makes `ExprUseVisitor` usable with both [`FnCtxt`]
 /// and [`LateContext`], depending on where in the compiler it is used.
 pub trait TypeInformationCtxt<'tcx> {
@@ -1854,4 +1866,11 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             false
         }
     }
+}
+
+pub(crate) fn expr_place<'tcx>(
+    fcx: &FnCtxt<'_, 'tcx>,
+    expr: &hir::Expr<'_>,
+) -> Result<PlaceWithHirId<'tcx>, ErrorGuaranteed> {
+    ExprUseVisitor::new(fcx, ()).cat_expr(expr)
 }
