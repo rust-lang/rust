@@ -319,7 +319,17 @@ impl<'tcx> TyCtxt<'tcx> {
             BodyOwnerKind::Fn if self.is_constructor(def_id) => return None,
             // Const closures use their parent's const context
             BodyOwnerKind::Closure if self.is_const_fn(def_id) => {
-                return self.hir_body_const_context(self.local_parent(local_def_id));
+                return Some(
+                    self.hir_body_const_context(self.local_parent(local_def_id)).unwrap_or_else(
+                        || {
+                            assert!(
+                                self.dcx().has_errors().is_some(),
+                                "`const` closure with no enclosing const context",
+                            );
+                            ConstContext::ConstFn
+                        },
+                    ),
+                );
             }
             BodyOwnerKind::Fn if self.is_const_fn(def_id) => ConstContext::ConstFn,
             BodyOwnerKind::Fn | BodyOwnerKind::Closure | BodyOwnerKind::GlobalAsm => return None,
