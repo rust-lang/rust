@@ -1,11 +1,11 @@
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
-  --> $DIR/ice-issue-138362.rs:11:20
+  --> $DIR/ice-issue-138362.rs:10:20
    |
 LL |     reuse HasSelf::method;
    |                    ^^^^^^ argument #1 is missing
    |
 note: method defined here
-  --> $DIR/ice-issue-138362.rs:5:8
+  --> $DIR/ice-issue-138362.rs:4:8
    |
 LL |     fn method(self);
    |        ^^^^^^ ----

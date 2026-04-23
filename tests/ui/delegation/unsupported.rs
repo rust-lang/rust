@@ -9,7 +9,6 @@
 #![feature(const_trait_impl)]
 #![feature(c_variadic)]
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 mod opaque {
     trait Trait {}

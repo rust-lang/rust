@@ -143,7 +143,8 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
                 let (param_count, c_variadic) = self.param_count(sig_id);
 
-                let mut generics = self.uplift_delegation_generics(delegation, sig_id, item_id);
+                let mut generics =
+                    self.uplift_delegation_generics(delegation, sig_id, item_id, is_method);
 
                 let body_id = self.lower_delegation_body(
                     delegation,
@@ -301,6 +302,8 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 hir::InferDelegationSig::Output(self.arena.alloc(hir::DelegationGenerics {
                     child_args_segment_id: generics.child.args_segment_id,
                     parent_args_segment_id: generics.parent.args_segment_id,
+                    self_ty_id: generics.self_ty_id,
+                    propagate_self_ty: generics.propagate_self_ty,
                 })),
             )),
             span,
@@ -553,6 +556,12 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     hir::QPath::TypeRelative(ty, self.arena.alloc(segment))
                 }
             };
+
+            generics.self_ty_id = match new_path {
+                hir::QPath::Resolved(ty, _) => ty,
+                hir::QPath::TypeRelative(ty, _) => Some(ty),
+            }
+            .map(|ty| ty.hir_id);
 
             let callee_path = self.arena.alloc(self.mk_expr(hir::ExprKind::Path(new_path), span));
             self.arena.alloc(self.mk_expr(hir::ExprKind::Call(callee_path, args), span))

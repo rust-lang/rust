@@ -1,6 +1,5 @@
 //@ run-pass
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 mod types {
     pub trait Trait<T> {

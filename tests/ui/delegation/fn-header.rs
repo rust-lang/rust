@@ -5,7 +5,6 @@
 
 #![feature(c_variadic)]
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 #![deny(unused_unsafe)]
 
 mod to_reuse {
