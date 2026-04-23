@@ -38,10 +38,10 @@
 //! Place operations are implemented by types that reference/contain/represent a
 //! place. This is because places are not part of the type system of Rust; a
 //! place expression has the type of the values that are contained in the place.
-//! The [`DerefPlace`] trait marks a type as containing a place; it also records
+//! The [`PlaceProxy`] trait marks a type as containing a place; it also records
 //! which type the values contained within the place have.
 //!
-//! When a type `X` implements [`DerefPlace`], values of type `X` can be
+//! When a type `X` implements [`PlaceProxy`], values of type `X` can be
 //! dereferenced, which results in a place that can be read from, written to, or
 //! borrowed. Any of those place operations are implemented by the corresponding
 //! place operation trait on the value the place originated from. This means
@@ -77,7 +77,7 @@
 //!
 //! In addition to the three visible operations, there are several other
 //! *implicit* operations that allow full customization of types implementing
-//! [`DerefPlace`]:
+//! [`PlaceProxy`]:
 //! - moving out of a subplace [`MovePlace`],
 //! - dropping a subplace [`DropPlace`] and dropping a fully moved-out pointer
 //!   [`DropHusk`], and
@@ -162,16 +162,17 @@ pub unsafe trait Subplace: Sized {
     ) -> (usize, <Self::Target as Pointee>::Metadata);
 }
 
-/// Marks a type as containing a place.
+/// Marks a type as a place proxy.
 ///
-/// Dereferencing a value of this type will result in a normal place expression
-/// that can be read from, written to, or borrowed. Each of these operations is
-/// only available if the corresponding trait is implemented:
+/// A place proxy can be dereferenced (`*val`). This results in a place for
+/// which any place operation is implemented by this type instead. The operation
+/// is available only if the corresponding place operation trait is implemented:
 /// - [`ReadPlace`]
 /// - [`WritePlace`]
 /// - [`BorrowPlace`]
 ///
-/// Further operation traits are also available:
+/// Furthermore, there are implicit place operations that can be supported by
+/// types implementing this trait:
 /// - [`MovePlace`]
 /// - [`DropPlace`]
 /// - [`DropHusk`]
@@ -180,10 +181,10 @@ pub unsafe trait Subplace: Sized {
 ///
 /// Read the [module](self) description for more information.
 #[unstable(feature = "field_projections", issue = "145383")]
-#[lang = "deref_place"]
-pub trait DerefPlace {
+#[lang = "place_proxy"]
+pub trait PlaceProxy {
     /// The type of the contained place.
-    #[lang = "deref_place_target"]
+    #[lang = "place_proxy_target"]
     type Target: ?Sized;
 }
 
@@ -196,7 +197,7 @@ pub trait DerefPlace {
 /// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "read_place"]
-pub unsafe trait ReadPlace<S>: DerefPlace
+pub unsafe trait ReadPlace<S>: PlaceProxy
 where
     S: Subplace<Source = Self::Target>,
     S::Target: Sized,
@@ -231,7 +232,7 @@ where
 /// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "write_place"]
-pub unsafe trait WritePlace<S>: DerefPlace
+pub unsafe trait WritePlace<S>: PlaceProxy
 where
     S: Subplace<Source = Self::Target>,
     S::Target: Sized,
@@ -263,10 +264,10 @@ where
 /// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "borrow_place"]
-pub unsafe trait BorrowPlace<S, X>: DerefPlace
+pub unsafe trait BorrowPlace<S, X>: PlaceProxy
 where
     S: Subplace<Source = Self::Target>,
-    X: DerefPlace<Target = S::Target>,
+    X: PlaceProxy<Target = S::Target>,
 {
     /// Whether the borrow operation is safe when used through the operator.
     ///
@@ -319,7 +320,7 @@ where
 /// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "drop_place"]
-pub unsafe trait DropPlace<S>: DerefPlace
+pub unsafe trait DropPlace<S>: PlaceProxy
 where
     S: Subplace<Source = Self::Target>,
 {
@@ -349,7 +350,7 @@ where
 /// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "drop_husk"]
-pub unsafe trait DropHusk: DerefPlace {
+pub unsafe trait DropHusk: PlaceProxy {
     /// Drops the
     ///
     /// # Safety
@@ -369,10 +370,10 @@ pub unsafe trait DropHusk: DerefPlace {
 /// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "nest_place"]
-pub unsafe trait NestPlace<S>: DerefPlace
+pub unsafe trait NestPlace<S>: PlaceProxy
 where
     S: Subplace<Source = Self::Target>,
-    S::Target: DerefPlace,
+    S::Target: PlaceProxy,
 {
     /// Obtain a raw pointer to the subplace contained by `this`.
     ///
@@ -395,7 +396,7 @@ where
 /// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
 #[lang = "wrap_place"]
-pub unsafe trait WrapPlace<S>: DerefPlace
+pub unsafe trait WrapPlace<S>: PlaceProxy
 where
     S: Subplace<Source = Self::Target>,
 {

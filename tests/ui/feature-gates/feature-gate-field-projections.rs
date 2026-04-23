@@ -4,7 +4,7 @@ use std::field::Field; //~ ERROR: use of unstable library feature `field_project
 use std::ops::place::Subplace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
 use std::field::field_of; //~ ERROR: use of unstable library feature `field_projections` [E0658]
 use std::ops::place::DropHusk; //~ ERROR: use of unstable library feature `field_projections` [E0658]
-use std::ops::place::DerefPlace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+use std::ops::place::PlaceProxy; //~ ERROR: use of unstable library feature `field_projections` [E0658]
 use std::ops::place::BorrowPlace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
 use std::ops::place::NestPlace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
 use std::ops::place::DropPlace; //~ ERROR: use of unstable library feature `field_projections` [E0658]
@@ -28,7 +28,7 @@ where
 
 struct MyPtr<T: ?Sized>(*mut T);
 
-impl<T: ?Sized> DerefPlace for MyPtr<T> {
+impl<T: ?Sized> PlaceProxy for MyPtr<T> {
     //~^ ERROR: use of unstable library feature `field_projections` [E0658]
     type Target = T; //~ ERROR: use of unstable library feature `field_projections` [E0658]
 }
@@ -130,7 +130,7 @@ where
     S: Subplace<Source = T>, //~ ERROR: use of unstable library feature `field_projections` [E0658]
     //~^ ERROR: use of unstable library feature `field_projections` [E0658]
     //~^^ ERROR: use of unstable library feature `field_projections` [E0658]
-    S::Target: DerefPlace, //~ ERROR: use of unstable library feature `field_projections` [E0658]
+    S::Target: PlaceProxy, //~ ERROR: use of unstable library feature `field_projections` [E0658]
                       //~^ ERROR: use of unstable library feature `field_projections` [E0658]
 {
     unsafe fn nested(this: *const Self, sub: S) -> *const S::Target {
@@ -146,7 +146,7 @@ where
     S: Subplace<Source = T>, //~ ERROR: use of unstable library feature `field_projections` [E0658]
     //~^ ERROR: use of unstable library feature `field_projections` [E0658]
     //~^^ ERROR: use of unstable library feature `field_projections` [E0658]
-    S::Target: Sized + DerefPlace, //~ ERROR: use of unstable library feature `field_projections` [E0658]
+    S::Target: Sized + PlaceProxy, //~ ERROR: use of unstable library feature `field_projections` [E0658]
                               //~^ ERROR: use of unstable library feature `field_projections` [E0658]
 {
     unsafe {
@@ -161,7 +161,7 @@ where
 
 struct MyWrapper<T: ?Sized>(T);
 
-impl<T: ?Sized> DerefPlace for MyWrapper<T> {
+impl<T: ?Sized> PlaceProxy for MyWrapper<T> {
     //~^ ERROR: use of unstable library feature `field_projections` [E0658]
     type Target = T; //~ ERROR: use of unstable library feature `field_projections` [E0658]
 }

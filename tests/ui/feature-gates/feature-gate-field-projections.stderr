@@ -51,7 +51,7 @@ LL | use std::ops::place::DropHusk;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:7:5
    |
-LL | use std::ops::place::DerefPlace;
+LL | use std::ops::place::PlaceProxy;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -151,7 +151,7 @@ LL |     type Target = T;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:31:17
    |
-LL | impl<T: ?Sized> DerefPlace for MyPtr<T> {
+LL | impl<T: ?Sized> PlaceProxy for MyPtr<T> {
    |                 ^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -371,7 +371,7 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:133:16
    |
-LL |     S::Target: DerefPlace,
+LL |     S::Target: PlaceProxy,
    |                ^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -401,7 +401,7 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:149:24
    |
-LL |     S::Target: Sized + DerefPlace,
+LL |     S::Target: Sized + PlaceProxy,
    |                        ^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -481,7 +481,7 @@ LL |     type Target = T;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:164:17
    |
-LL | impl<T: ?Sized> DerefPlace for MyWrapper<T> {
+LL | impl<T: ?Sized> PlaceProxy for MyWrapper<T> {
    |                 ^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -851,7 +851,7 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:133:5
    |
-LL |     S::Target: DerefPlace,
+LL |     S::Target: PlaceProxy,
    |     ^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -882,7 +882,7 @@ LL |     S: Subplace<Source = T>,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:149:5
    |
-LL |     S::Target: Sized + DerefPlace,
+LL |     S::Target: Sized + PlaceProxy,
    |     ^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information

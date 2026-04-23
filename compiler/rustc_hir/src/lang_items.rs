@@ -452,8 +452,8 @@ language_item_table! {
     SubplaceTarget,         sym::subplace_target,       subplace_target,        Target::AssocTy,                                    GenericRequirement::Exact(0);
     SubplaceOffset,         sym::subplace_offset,       subplace_offset,        Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(0);
 
-    DerefPlace,             sym::deref_place,           deref_place,            Target::Trait,                                      GenericRequirement::Exact(0);
-    DerefPlaceTarget,       sym::deref_place_target,    deref_place_target,     Target::AssocTy,                                    GenericRequirement::Exact(0);
+    PlaceProxy,             sym::place_proxy,           place_proxy,            Target::Trait,                                      GenericRequirement::Exact(0);
+    PlaceProxyTarget,       sym::place_proxy_target,    place_proxy_target,     Target::AssocTy,                                    GenericRequirement::Exact(0);
 
     ReadPlace,              sym::read_place,            read_place,             Target::Trait,                                      GenericRequirement::Exact(1);
     ReadPlaceSafety,        sym::read_place_safety,     read_place_safety,      Target::AssocConst,                                 GenericRequirement::Exact(1);
