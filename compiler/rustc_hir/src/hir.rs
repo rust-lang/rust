@@ -3761,6 +3761,8 @@ pub enum OpaqueTyOrigin<D> {
 pub struct DelegationGenerics {
     pub parent_args_segment_id: Option<HirId>,
     pub child_args_segment_id: Option<HirId>,
+    pub self_ty_id: Option<HirId>,
+    pub propagate_self_ty: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, HashStable_Generic)]
@@ -4455,17 +4457,17 @@ impl<'hir> Item<'hir> {
 
         expect_trait,
             (
+                &'hir ImplRestriction<'hir>,
                 Constness,
                 IsAuto,
                 Safety,
-                &'hir ImplRestriction<'hir>,
                 Ident,
                 &'hir Generics<'hir>,
                 GenericBounds<'hir>,
                 &'hir [TraitItemId]
             ),
-            ItemKind::Trait(constness, is_auto, safety, impl_restriction, ident, generics, bounds, items),
-            (*constness, *is_auto, *safety, impl_restriction, *ident, generics, bounds, items);
+            ItemKind::Trait(impl_restriction, constness, is_auto, safety, ident, generics, bounds, items),
+            (impl_restriction, *constness, *is_auto, *safety, *ident, generics, bounds, items);
 
         expect_trait_alias, (Constness, Ident, &'hir Generics<'hir>, GenericBounds<'hir>),
             ItemKind::TraitAlias(constness, ident, generics, bounds), (*constness, *ident, generics, bounds);
@@ -4657,10 +4659,10 @@ pub enum ItemKind<'hir> {
     Union(Ident, &'hir Generics<'hir>, VariantData<'hir>),
     /// A trait definition.
     Trait(
+        &'hir ImplRestriction<'hir>,
         Constness,
         IsAuto,
         Safety,
-        &'hir ImplRestriction<'hir>,
         Ident,
         &'hir Generics<'hir>,
         GenericBounds<'hir>,

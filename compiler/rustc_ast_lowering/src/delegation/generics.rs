@@ -67,6 +67,8 @@ pub(super) struct GenericsGenerationResult<'hir> {
 pub(super) struct GenericsGenerationResults<'hir> {
     pub(super) parent: GenericsGenerationResult<'hir>,
     pub(super) child: GenericsGenerationResult<'hir>,
+    pub(super) self_ty_id: Option<HirId>,
+    pub(super) propagate_self_ty: bool,
 }
 
 pub(super) struct GenericArgsPropagationDetails {
@@ -209,6 +211,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         delegation: &Delegation,
         sig_id: DefId,
         item_id: NodeId,
+        is_method: bool,
     ) -> GenericsGenerationResults<'hir> {
         let delegation_parent_kind =
             self.tcx.def_kind(self.tcx.local_parent(self.local_def_id(item_id)));
@@ -230,7 +233,12 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
             let child = DelegationGenerics::trait_impl(sig_params, child_user_specified);
             let child = GenericsGenerationResult::new(child);
 
-            return GenericsGenerationResults { parent, child };
+            return GenericsGenerationResults {
+                parent,
+                child,
+                self_ty_id: None,
+                propagate_self_ty: false,
+            };
         }
 
         let delegation_in_free_ctx =
@@ -238,13 +246,14 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
         let sig_parent = self.tcx.parent(sig_id);
         let sig_in_trait = matches!(self.tcx.def_kind(sig_parent), DefKind::Trait);
+        let free_to_trait_delegation = delegation_in_free_ctx && sig_in_trait;
+        let generate_self = free_to_trait_delegation && is_method && delegation.qself.is_none();
 
         let can_add_generics_to_parent = len >= 2
             && self.get_resolution_id(segments[len - 2].id).is_some_and(|def_id| {
                 matches!(self.tcx.def_kind(def_id), DefKind::Trait | DefKind::TraitAlias)
             });
 
-        let generate_self = delegation_in_free_ctx && sig_in_trait;
         let parent_generics = if can_add_generics_to_parent {
             let sig_parent_params = &self.tcx.generics_of(sig_parent).own_params[..];
 
@@ -278,6 +287,8 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         GenericsGenerationResults {
             parent: GenericsGenerationResult::new(parent_generics),
             child: GenericsGenerationResult::new(child_generics),
+            self_ty_id: None,
+            propagate_self_ty: free_to_trait_delegation && !generate_self,
         }
     }
 

@@ -1,23 +1,23 @@
 error: delegation is not supported in `extern` blocks
-  --> $DIR/glob-non-impl.rs:15:5
+  --> $DIR/glob-non-impl.rs:14:5
    |
 LL |     reuse Trait::*;
    |     ^^^^^^^^^^^^^^^
 
 error: glob delegation is only supported in impls
-  --> $DIR/glob-non-impl.rs:8:1
+  --> $DIR/glob-non-impl.rs:7:1
    |
 LL | reuse Trait::*;
    | ^^^^^^^^^^^^^^^
 
 error: glob delegation is only supported in impls
-  --> $DIR/glob-non-impl.rs:11:5
+  --> $DIR/glob-non-impl.rs:10:5
    |
 LL |     reuse Trait::*;
    |     ^^^^^^^^^^^^^^^
 
 error: glob delegation is only supported in impls
-  --> $DIR/glob-non-impl.rs:19:5
+  --> $DIR/glob-non-impl.rs:18:5
    |
 LL |     reuse Trait::*;
    |     ^^^^^^^^^^^^^^^

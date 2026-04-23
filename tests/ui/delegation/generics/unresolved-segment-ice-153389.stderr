@@ -1,5 +1,5 @@
 error[E0425]: cannot find function `missing` in this scope
-  --> $DIR/unresolved-segment-ice-153389.rs:9:11
+  --> $DIR/unresolved-segment-ice-153389.rs:8:11
    |
 LL |     reuse missing::<> as bar;
    |           ^^^^^^^ not found in this scope

@@ -1,5 +1,5 @@
 error[E0424]: expected value, found module `self`
-  --> $DIR/impl-reuse-self-hygiene.rs:10:76
+  --> $DIR/impl-reuse-self-hygiene.rs:9:76
    |
 LL | macro_rules! one_line_reuse { ($self:ident) => { reuse impl Trait for S1 { $self.0 } } }
    |                                                  --------------------------^^^^^----
@@ -13,7 +13,7 @@ LL | one_line_reuse!(self);
    = note: this error originates in the macro `one_line_reuse` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0424]: expected value, found module `self`
-  --> $DIR/impl-reuse-self-hygiene.rs:10:76
+  --> $DIR/impl-reuse-self-hygiene.rs:9:76
    |
 LL | macro_rules! one_line_reuse { ($self:ident) => { reuse impl Trait for S1 { $self.0 } } }
    |                                                  --------------------------^^^^^----
@@ -28,7 +28,7 @@ LL | one_line_reuse!(self);
    = note: this error originates in the macro `one_line_reuse` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0424]: expected value, found module `self`
-  --> $DIR/impl-reuse-self-hygiene.rs:17:22
+  --> $DIR/impl-reuse-self-hygiene.rs:16:22
    |
 LL | macro_rules! one_line_reuse_expr { ($x:expr) => { reuse impl Trait for S2 { $x } } }
    |                                                   ------------------------------ `self` not allowed in an implementation
@@ -36,7 +36,7 @@ LL | one_line_reuse_expr!(self.0);
    |                      ^^^^ `self` value is a keyword only available in methods with a `self` parameter
 
 error[E0424]: expected value, found module `self`
-  --> $DIR/impl-reuse-self-hygiene.rs:17:22
+  --> $DIR/impl-reuse-self-hygiene.rs:16:22
    |
 LL | macro_rules! one_line_reuse_expr { ($x:expr) => { reuse impl Trait for S2 { $x } } }
    |                                                   ------------------------------ `self` not allowed in an implementation
@@ -46,7 +46,7 @@ LL | one_line_reuse_expr!(self.0);
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0424]: expected value, found module `self`
-  --> $DIR/impl-reuse-self-hygiene.rs:24:23
+  --> $DIR/impl-reuse-self-hygiene.rs:23:23
    |
 LL | macro_rules! one_line_reuse_expr2 { ($x:expr) => { reuse impl Trait for s3!() { $x } } }
    |                                                    --------------------------------- `self` not allowed in an implementation
@@ -54,7 +54,7 @@ LL | one_line_reuse_expr2!(self.0);
    |                       ^^^^ `self` value is a keyword only available in methods with a `self` parameter
 
 error[E0424]: expected value, found module `self`
-  --> $DIR/impl-reuse-self-hygiene.rs:24:23
+  --> $DIR/impl-reuse-self-hygiene.rs:23:23
    |
 LL | macro_rules! one_line_reuse_expr2 { ($x:expr) => { reuse impl Trait for s3!() { $x } } }
    |                                                    --------------------------------- `self` not allowed in an implementation

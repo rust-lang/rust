@@ -1115,12 +1115,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     )
                 })
                 .collect();
-            // FIXME(fmease): Does not account for `dyn Trait<>` (suggs `dyn Trait<, X = Y>`).
-            let code = if let Some(snippet) = snippet.strip_suffix('>') {
-                // The user wrote `Trait<'a>` or similar and we don't have a term we can suggest,
-                // but at least we can clue them to the correct syntax `Trait<'a, Item = /* ... */>`
-                // while accounting for the `<'a>` in the suggestion.
-                format!("{}, {}>", snippet, bindings.join(", "))
+            let code = if let Some(snippet) = snippet.strip_suffix("<>") {
+                // Empty generics
+                format!("{snippet}<{}>", bindings.join(", "))
+            } else if let Some(snippet) = snippet.strip_suffix('>') {
+                // Non-empty generics
+                format!("{snippet}, {}>", bindings.join(", "))
             } else if in_expr_or_pat {
                 // The user wrote `Trait`, so we don't have a term we can suggest, but at least we
                 // can clue them to the correct syntax `Trait::<Item = /* ... */>`.

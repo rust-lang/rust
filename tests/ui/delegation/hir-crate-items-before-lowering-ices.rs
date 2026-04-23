@@ -1,7 +1,6 @@
 //@ revisions: ice_155125 ice_155127 ice_155128 ice_155164 ice_155202
 
 #![feature(min_generic_const_args, fn_delegation)]
-#![allow(incomplete_features)]
 
 #[cfg(ice_155125)]
 mod ice_155125 {

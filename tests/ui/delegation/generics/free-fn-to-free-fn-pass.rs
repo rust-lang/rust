@@ -1,6 +1,5 @@
 //@ run-pass
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 mod to_reuse {
     pub fn types<T, U>(x: U, y: T) -> (T, U) {

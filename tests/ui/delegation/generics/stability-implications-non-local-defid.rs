@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 #![feature(staged_api)]
 #![unstable(feature = "foo", issue = "none")]
 

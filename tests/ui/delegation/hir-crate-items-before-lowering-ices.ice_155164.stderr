@@ -1,5 +1,5 @@
 error: complex const arguments must be placed inside of a `const` block
-  --> $DIR/hir-crate-items-before-lowering-ices.rs:47:13
+  --> $DIR/hir-crate-items-before-lowering-ices.rs:46:13
    |
 LL | /             {
 LL | |

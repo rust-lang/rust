@@ -1,23 +1,23 @@
 // (#77273) These characters are in the general categories of
-// "Uppercase/Lowercase Letter".
-// The diagnostics don't provide meaningful suggestions for them
-// as we cannot convert them properly.
+// "Uppercase/Lowercase Letter",
+// but casing operations map them to themselves.
+// Therefore, we do not warn about casing
+// (but do warn about uncommon codepoints).
 
 //@ check-pass
 
-#![allow(uncommon_codepoints, unused)]
+#![allow(unused)]
 
 struct 𝕟𝕠𝕥𝕒𝕔𝕒𝕞𝕖𝕝;
-//~^ WARN: type `𝕟𝕠𝕥𝕒𝕔𝕒𝕞𝕖𝕝` should have an upper camel case name
+//~^ WARN identifier contains 9 non normalized (NFKC) characters
 
-// FIXME: How we should handle this?
 struct 𝕟𝕠𝕥_𝕒_𝕔𝕒𝕞𝕖𝕝;
-//~^ WARN: type `𝕟𝕠𝕥_𝕒_𝕔𝕒𝕞𝕖𝕝` should have an upper camel case name
+//~^ WARN identifier contains 9 non normalized (NFKC) characters
 
 static 𝗻𝗼𝗻𝘂𝗽𝗽𝗲𝗿𝗰𝗮𝘀𝗲: i32 = 1;
-//~^ WARN: static variable `𝗻𝗼𝗻𝘂𝗽𝗽𝗲𝗿𝗰𝗮𝘀𝗲` should have an upper case name
+//~^ WARN identifier contains 12 non normalized (NFKC) characters
 
 fn main() {
     let 𝓢𝓝𝓐𝓐𝓐𝓐𝓚𝓔𝓢 = 1;
-    //~^ WARN: variable `𝓢𝓝𝓐𝓐𝓐𝓐𝓚𝓔𝓢` should have a snake case name
+    //~^ WARN identifier contains 9 non normalized (NFKC) characters
 }

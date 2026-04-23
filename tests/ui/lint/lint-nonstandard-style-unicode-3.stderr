@@ -1,3 +1,12 @@
+warning: identifier contains a non normalized (NFKC) character: 'ǋ'
+  --> $DIR/lint-nonstandard-style-unicode-3.rs:27:8
+   |
+LL | static ǋ: () = ();
+   |        ^
+   |
+   = note: this character is included in the Not_NFKC Unicode general security profile
+   = note: `#[warn(uncommon_codepoints)]` on by default
+
 error: static variable `τεχ` should have an upper case name
   --> $DIR/lint-nonstandard-style-unicode-3.rs:17:8
    |
@@ -10,5 +19,17 @@ note: the lint level is defined here
 LL | #![forbid(non_upper_case_globals)]
    |           ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: static variable `ძალა_ერთობაშია` should have an upper case name
+  --> $DIR/lint-nonstandard-style-unicode-3.rs:24:8
+   |
+LL | static ძალა_ერთობაშია: () = ();
+   |        ^^^^^^^^^^^^^^ help: convert the identifier to upper case: `ᲫᲐᲚᲐ_ᲔᲠᲗᲝᲑᲐᲨᲘᲐ`
+
+error: static variable `ǋ` should have an upper case name
+  --> $DIR/lint-nonstandard-style-unicode-3.rs:27:8
+   |
+LL | static ǋ: () = ();
+   |        ^ help: convert the identifier to upper case: `Ǌ`
+
+error: aborting due to 3 previous errors; 1 warning emitted
 
