@@ -17,7 +17,7 @@
 use std::collections::{HashMap, HashSet};
 
 use melior::dialect::scf;
-use melior::ir::attribute::IntegerAttribute;
+use melior::ir::attribute::{FloatAttribute, IntegerAttribute};
 use melior::ir::operation::{OperationBuilder, OperationLike};
 use melior::ir::r#type::IntegerType;
 use melior::ir::{
@@ -26,14 +26,14 @@ use melior::ir::{
 };
 use melior::utility::register_all_llvm_translations;
 use rustc_abi::{FieldIdx, FieldsShape, Size as AbiSize};
-use rustc_ast::{IntTy, MutTy, UintTy};
+use rustc_ast::{FloatTy, IntTy, MutTy, UintTy};
 use rustc_index::IndexVec;
 use rustc_middle::mir::interpret::{CtfeProvenance, GlobalAlloc, Scalar, alloc_range};
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::{
     AggregateKind, BasicBlock, BasicBlockData, BinOp, Body, CastKind, Const, ConstOperand,
     ConstValue, Local, NonDivergingIntrinsic, Operand, Place, ProjectionElem, Rvalue, Statement,
-    StatementKind, UnevaluatedConst as MirUnevaluatedConst,
+    StatementKind, UnOp, UnevaluatedConst as MirUnevaluatedConst,
 };
 use rustc_middle::ty::layout::MaybeResult;
 use rustc_middle::ty::{
@@ -41,7 +41,7 @@ use rustc_middle::ty::{
     TyKind, TypingEnv, adjustment::PointerCoercion,
 };
 use rustc_mlir::load_all_dialects;
-use rustc_mlir::shared::arith::{Int, Predicate, create_constant, create_int_constant};
+use rustc_mlir::shared::arith::{Int, Predicate, create_constant, create_int_constant, create_negf, create_subi};
 use rustc_mlir::shared::attr::create_scalar_attr;
 use rustc_mlir::shared::builtin::{tensor_type, tensor_type_like};
 use rustc_mlir::shared::ub::create_ub_poison;
@@ -2111,7 +2111,49 @@ impl<'a> TritonCodegen<'a> {
                     }
                 }
             }
-            Rvalue::UnaryOp(un_op, operand) => todo!("UnaryOp: {:?} {:?}", un_op, operand),
+            Rvalue::UnaryOp(un_op, operand) => {
+                let op_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx,
+                    TypingEnv::fully_monomorphized(),
+                    EarlyBinder::bind(operand.ty(mir, tcx)),
+                );
+                let val =
+                    self.codegen_operand(tcx, instance, operand, op_ty, location, mlir_block, state)?;
+                let result = match un_op {
+                    UnOp::Neg => {
+                        let val_ty = val.r#type();
+                        if val_ty.is_integer() {
+                            // integer negation: 0 - x
+                            let zero_op: Operation<'a> =
+                                create_int_constant(self.module.context(), location, Int::I32(0))
+                                    .map_err(|e| MlirError::CreateOperation { err: e })?
+                                    .into();
+                            let zero: Value<'a, 'a> = zero_op.result(0).unwrap().into();
+                            mlir_block.append_operation(zero_op);
+                            let sub_op: Operation<'a> =
+                                create_subi(self.module.context(), location, zero, val)
+                                    .map_err(|e| MlirError::CreateOperation { err: e })?;
+                            let r = sub_op.result(0).unwrap().into();
+                            mlir_block.append_operation(sub_op);
+                            r
+                        } else {
+                            let neg_op: Operation<'a> =
+                                create_negf(self.module.context(), location, val)
+                                    .map_err(|e| MlirError::CreateOperation { err: e })?;
+                            let r = neg_op.result(0).unwrap().into();
+                            mlir_block.append_operation(neg_op);
+                            r
+                        }
+                    }
+                    UnOp::Not => {
+                        todo!("UnaryOp::Not: {:?}", operand)
+                    }
+                    UnOp::PtrMetadata => {
+                        todo!("UnaryOp::PtrMetadata: {:?}", operand)
+                    }
+                };
+                state.ssa_values.insert(place.local, result);
+            }
             Rvalue::Discriminant(src_place) => {
                 let src_ty = src_place.ty(mir, tcx).ty;
                 let norm_src_ty = instance.instantiate_mir_and_normalize_erasing_regions(
@@ -3023,6 +3065,30 @@ impl<'a> TritonCodegen<'a> {
                     let const_op: Operation<'a> = melior::dialect::arith::constant(
                         self.module.context(),
                         attr.into(),
+                        location,
+                    )
+                    .into();
+                    let result = const_op.result(0).unwrap();
+                    mlir_block.append_operation(const_op);
+                    Ok(result.into())
+                }
+                TyKind::Float(float_ty) => {
+                    // Float constants are stored as Scalar::Int with their bit pattern.
+                    let (f64_val, mlir_ty) = match float_ty {
+                        FloatTy::F32 => {
+                            let f_val = f32::from_bits(scalar_int.to_u32()) as f64;
+                            (f_val, self.type_mapper.map_type(self.module.context(), &tcx, &ty))
+                        }
+                        FloatTy::F64 => {
+                            let f_val = f64::from_bits(scalar_int.to_u64());
+                            (f_val, self.type_mapper.map_type(self.module.context(), &tcx, &ty))
+                        }
+                        _ => todo!("Float type: {:?}", float_ty),
+                    };
+                    let float_attr = FloatAttribute::new(self.module.context(), mlir_ty, f64_val);
+                    let const_op: Operation<'a> = melior::dialect::arith::constant(
+                        self.module.context(),
+                        float_attr.into(),
                         location,
                     )
                     .into();

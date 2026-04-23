@@ -24,8 +24,9 @@ use rustc_middle::mir::{BasicBlock, Body, CallSource, Operand, Place, UnwindActi
 use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_mlir::shared::arith::{
     FpPredicate, Predicate, create_addf, create_addi, create_andi, create_cmpf, create_cmpi,
-    create_divsi, create_extsi, create_mulf, create_muli, create_muli_tensor, create_ori,
-    create_remsi, create_shrsi, create_shrui, create_shli, create_subf, create_subi, create_xori,
+    create_divf, create_divsi, create_extsi, create_mulf, create_muli, create_muli_tensor,
+    create_ori, create_remsi, create_shrsi, create_shrui, create_shli, create_subf, create_subi,
+    create_xori,
 };
 use rustc_mlir::shared::builtin::{tensor_type, tensor_type_like};
 use rustc_mlir::triton::tensor::add_ptr;
@@ -607,7 +608,12 @@ impl<'a> TritonCodegen<'a> {
                     mlir_block.append_operation(mul_op);
                     return Ok(Some(result.into()));
                 }
-                todo!("TritonCodegen::codegen_mul scalar: {:?} {:?}", lhs_ty, rhs_ty)
+                let mul_op: Operation =
+                    create_mulf(self.module.context(), location, lhs, rhs)
+                        .map_err(|e| MlirError::CreateOperation { err: e })?;
+                let result = mul_op.result(0).expect("MulF operation result not found");
+                mlir_block.append_operation(mul_op);
+                return Ok(Some(result.into()));
             }
         };
 
@@ -662,7 +668,12 @@ impl<'a> TritonCodegen<'a> {
                     mlir_block.append_operation(sub_op);
                     return Ok(Some(result.into()));
                 }
-                todo!("TritonCodegen::codegen_sub scalar float: {:?} {:?}", lhs_ty, rhs_ty)
+                let sub_op: Operation<'a> =
+                    create_subf(self.module.context(), location, lhs, rhs)
+                        .map_err(|e| MlirError::CreateOperation { err: e })?;
+                let result = sub_op.result(0).expect("SubF operation result not found");
+                mlir_block.append_operation(sub_op);
+                return Ok(Some(result.into()));
             }
         };
 
@@ -718,13 +729,13 @@ impl<'a> TritonCodegen<'a> {
                     mlir_block.append_operation(add_op);
                     return Ok(Some(result.into()));
                 }
-                todo!(
-                    "TritonCodegen::codegen_add scalar float: {:?}-> {:?} {:?}-> {:?}",
-                    lhs,
-                    lhs_ty,
-                    rhs,
-                    rhs_ty
-                )
+                let add_op: Operation<'a> =
+                    create_addf(self.module.context(), location, lhs, rhs)
+                        .map_err(|e| MlirError::CreateOperation { err: e })?
+                        .into();
+                let result = add_op.result(0).expect("AddF operation result not found");
+                mlir_block.append_operation(add_op);
+                return Ok(Some(result.into()));
             }
         };
 
@@ -775,7 +786,11 @@ impl<'a> TritonCodegen<'a> {
             mlir_block.append_operation(div_op);
             return Ok(Some(result.into()));
         }
-        todo!("TritonCodegen::codegen_div scalar float: {:?}", lhs_ty)
+        let div_op: Operation<'a> = create_divf(self.module.context(), location, lhs, rhs)
+            .map_err(|e| MlirError::CreateOperation { err: e })?;
+        let result = div_op.result(0).expect("DivF operation result not found");
+        mlir_block.append_operation(div_op);
+        Ok(Some(result.into()))
     }
 
     pub fn codegen_rem<'tcx>(

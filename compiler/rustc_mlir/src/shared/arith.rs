@@ -15,7 +15,7 @@
  */
 
 use melior::Context;
-use melior::dialect::arith::{andi, divsi, mulf, muli, ori, remsi, shli, shrsi, shrui, subf, subi, xori};
+use melior::dialect::arith::{andi, divf, divsi, mulf, muli, negf, ori, remsi, shli, shrsi, shrui, subf, subi, xori};
 use melior::dialect::ods::arith::{
     AddFOperation, AddIOperation, CmpFOperation, CmpIOperation, ConstantOperation, ExtSIOperation,
     MulIOperation,
@@ -296,6 +296,15 @@ pub fn create_divsi<'ctx>(
     Ok(divsi(lhs, rhs, location))
 }
 
+pub fn create_divf<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    lhs: Value<'ctx, 'ctx>,
+    rhs: Value<'ctx, 'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    Ok(divf(lhs, rhs, location))
+}
+
 pub fn create_remsi<'ctx>(
     _context: &'ctx Context,
     location: Location<'ctx>,
@@ -303,6 +312,14 @@ pub fn create_remsi<'ctx>(
     rhs: Value<'ctx, 'ctx>,
 ) -> Result<Operation<'ctx>, Error> {
     Ok(remsi(lhs, rhs, location))
+}
+
+pub fn create_negf<'ctx>(
+    _context: &'ctx Context,
+    location: Location<'ctx>,
+    operand: Value<'ctx, 'ctx>,
+) -> Result<Operation<'ctx>, Error> {
+    Ok(negf(operand, location))
 }
 
 pub fn create_extsi<'ctx>(
