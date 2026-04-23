@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ compile-flags: -Z identify_regions
 
 // Tests to make sure we correctly generate falseUnwind edges in loops

@@ -1,6 +1,6 @@
 // Check that `-Zmir-enable-passes=+Inline` does not ICE because of stolen MIR.
 //@ test-mir-pass: Inline
-// skip-filecheck
+//@ skip-filecheck
 #![crate_type = "lib"]
 
 // Randomize `def_path_hash` by defining them under a module with different names

@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 #![allow(incomplete_features)]
 #![feature(explicit_tail_calls)]

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock};
 
-use crate::common::Config;
+use crate::common::{Config, TestMode};
 use crate::directives::{
     DirectiveLine, NormalizeKind, NormalizeRule, TestProps, parse_and_update_aux,
     parse_edition_range, split_flags,
@@ -311,6 +311,18 @@ fn make_directive_handlers_map() -> HashMap<&'static str, Handler> {
             if let Some(flags) = config.parse_name_value_directive(ln, LLVM_COV_FLAGS) {
                 props.llvm_cov_flags.extend(split_flags(&flags));
             }
+        }),
+        handler("skip-filecheck", |config, ln, props| {
+            let directive_name = ln.name;
+            // FIXME(Zalathar): Someday we should add unified support for declaring
+            // and checking which modes are supported by each directive.
+            if !matches!(config.mode, TestMode::Assembly | TestMode::Codegen | TestMode::MirOpt) {
+                panic!(
+                    "directive `//@ {directive_name}` is not supported by this test suite (mode: {mode:?})",
+                    mode = config.mode
+                );
+            }
+            config.set_name_directive(ln, directive_name, &mut props.skip_filecheck);
         }),
         handler(FILECHECK_FLAGS, |config, ln, props| {
             if let Some(flags) = config.parse_name_value_directive(ln, FILECHECK_FLAGS) {

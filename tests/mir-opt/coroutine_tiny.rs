@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //! Tests that coroutines that cannot return or unwind don't have unnecessary
 //! panic branches.
 

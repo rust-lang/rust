@@ -1,5 +1,5 @@
 //@ compile-flags: -Zmir-opt-level=0
-// skip-filecheck
+//@ skip-filecheck
 // EMIT_MIR receiver_ptr_mutability.main.built.after.mir
 
 #![feature(arbitrary_self_types_pointers)]
