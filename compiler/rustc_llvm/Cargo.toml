@@ -11,7 +11,7 @@ libc = "0.2.73"
 [build-dependencies]
 # tidy-alphabetical-start
 # `cc` updates often break things, so we pin it here.
-cc = "=1.2.21"
+cc = "=1.2.30"
 shlex = "1.3.0"
 # tidy-alphabetical-end
 
