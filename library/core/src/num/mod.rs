@@ -1334,95 +1334,99 @@ impl u128 {
     carrying_carryless_mul_impl! { u128, u256 }
 }
 
-#[cfg(target_pointer_width = "16")]
 impl usize {
     uint_impl! {
         Self = usize,
-        ActualT = u16,
         SignedT = isize,
-        BITS = 16,
-        BITS_MINUS_ONE = 15,
-        MAX = 65535,
-        rot = 4,
-        rot_op = "0xa003",
-        rot_result = "0x3a",
-        fsh_op = "0x2de",
-        fshl_result = "0x30",
-        fshr_result = "0x302d",
-        clmul_lhs = "0x9012",
-        clmul_rhs = "0xcd34",
-        clmul_result = "0x928",
-        swap_op = "0x1234",
-        swapped = "0x3412",
-        reversed = "0x2c48",
-        le_bytes = "[0x34, 0x12]",
-        be_bytes = "[0x12, 0x34]",
-        to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
-        from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
-        bound_condition = " on 16-bit targets",
+
+        #[cfg(target_pointer_width = "16")] {
+            ActualT = u16,
+            BITS = 16,
+            BITS_MINUS_ONE = 15,
+            MAX = 65535,
+            rot = 4,
+            rot_op = "0xa003",
+            rot_result = "0x3a",
+            fsh_op = "0x2de",
+            fshl_result = "0x30",
+            fshr_result = "0x302d",
+            clmul_lhs = "0x9012",
+            clmul_rhs = "0xcd34",
+            clmul_result = "0x928",
+            swap_op = "0x1234",
+            swapped = "0x3412",
+            reversed = "0x2c48",
+            le_bytes = "[0x34, 0x12]",
+            be_bytes = "[0x12, 0x34]",
+            to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
+            from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
+            bound_condition = " on 16-bit targets",
+        },
+
+        #[cfg(target_pointer_width = "32")] {
+            ActualT = u32,
+            BITS = 32,
+            BITS_MINUS_ONE = 31,
+            MAX = 4294967295,
+            rot = 8,
+            rot_op = "0x10000b3",
+            rot_result = "0xb301",
+            fsh_op = "0x2fe78e45",
+            fshl_result = "0xb32f",
+            fshr_result = "0xb32fe78e",
+            clmul_lhs = "0x56789012",
+            clmul_rhs = "0xf52ecd34",
+            clmul_result = "0x9b980928",
+            swap_op = "0x12345678",
+            swapped = "0x78563412",
+            reversed = "0x1e6a2c48",
+            le_bytes = "[0x78, 0x56, 0x34, 0x12]",
+            be_bytes = "[0x12, 0x34, 0x56, 0x78]",
+            to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
+            from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
+            bound_condition = " on 32-bit targets",
+        },
+
+        #[cfg(target_pointer_width = "64")] {
+            ActualT = u64,
+            BITS = 64,
+            BITS_MINUS_ONE = 63,
+            MAX = 18446744073709551615,
+            rot = 12,
+            rot_op = "0xaa00000000006e1",
+            rot_result = "0x6e10aa",
+            fsh_op = "0x2fe78e45983acd98",
+            fshl_result = "0x6e12fe",
+            fshr_result = "0x6e12fe78e45983ac",
+            clmul_lhs = "0x7890123456789012",
+            clmul_rhs = "0xdd358416f52ecd34",
+            clmul_result = "0xa6299579b980928",
+            swap_op = "0x1234567890123456",
+            swapped = "0x5634129078563412",
+            reversed = "0x6a2c48091e6a2c48",
+            le_bytes = "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+            be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+            to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
+            from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
+            bound_condition = " on 64-bit targets",
+        }
     }
+}
+
+#[cfg(target_pointer_width = "16")]
+impl usize {
     midpoint_impl! { usize, u32, unsigned }
     carrying_carryless_mul_impl! { usize, u32 }
 }
 
 #[cfg(target_pointer_width = "32")]
 impl usize {
-    uint_impl! {
-        Self = usize,
-        ActualT = u32,
-        SignedT = isize,
-        BITS = 32,
-        BITS_MINUS_ONE = 31,
-        MAX = 4294967295,
-        rot = 8,
-        rot_op = "0x10000b3",
-        rot_result = "0xb301",
-        fsh_op = "0x2fe78e45",
-        fshl_result = "0xb32f",
-        fshr_result = "0xb32fe78e",
-        clmul_lhs = "0x56789012",
-        clmul_rhs = "0xf52ecd34",
-        clmul_result = "0x9b980928",
-        swap_op = "0x12345678",
-        swapped = "0x78563412",
-        reversed = "0x1e6a2c48",
-        le_bytes = "[0x78, 0x56, 0x34, 0x12]",
-        be_bytes = "[0x12, 0x34, 0x56, 0x78]",
-        to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
-        from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
-        bound_condition = " on 32-bit targets",
-    }
     midpoint_impl! { usize, u64, unsigned }
     carrying_carryless_mul_impl! { usize, u64 }
 }
 
 #[cfg(target_pointer_width = "64")]
 impl usize {
-    uint_impl! {
-        Self = usize,
-        ActualT = u64,
-        SignedT = isize,
-        BITS = 64,
-        BITS_MINUS_ONE = 63,
-        MAX = 18446744073709551615,
-        rot = 12,
-        rot_op = "0xaa00000000006e1",
-        rot_result = "0x6e10aa",
-        fsh_op = "0x2fe78e45983acd98",
-        fshl_result = "0x6e12fe",
-        fshr_result = "0x6e12fe78e45983ac",
-        clmul_lhs = "0x7890123456789012",
-        clmul_rhs = "0xdd358416f52ecd34",
-        clmul_result = "0xa6299579b980928",
-        swap_op = "0x1234567890123456",
-        swapped = "0x5634129078563412",
-        reversed = "0x6a2c48091e6a2c48",
-        le_bytes = "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-        be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-        to_xe_bytes_doc = usize_isize_to_xe_bytes_doc!(),
-        from_xe_bytes_doc = usize_isize_from_xe_bytes_doc!(),
-        bound_condition = " on 64-bit targets",
-    }
     midpoint_impl! { usize, u128, unsigned }
     carrying_carryless_mul_impl! { usize, u128 }
 }
