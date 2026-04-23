@@ -7,9 +7,9 @@ LL |     const { read_n::<1>() }
 note: inside `read_n::<1>`
   --> $DIR/c-variadic-fail.rs:16:17
    |
-LL |         let _ = ap.arg::<i32>();
-   |                 ^^^^^^^^^^^^^^^
-note: inside `VaList::<'_>::arg::<i32>`
+LL |         let _ = ap.next_arg::<i32>();
+   |                 ^^^^^^^^^^^^^^^^^^^^
+note: inside `VaList::<'_>::next_arg::<i32>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
@@ -35,9 +35,9 @@ LL |     const { read_n::<2>(1) }
 note: inside `read_n::<2>`
   --> $DIR/c-variadic-fail.rs:16:17
    |
-LL |         let _ = ap.arg::<i32>();
-   |                 ^^^^^^^^^^^^^^^
-note: inside `VaList::<'_>::arg::<i32>`
+LL |         let _ = ap.next_arg::<i32>();
+   |                 ^^^^^^^^^^^^^^^^^^^^
+note: inside `VaList::<'_>::next_arg::<i32>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
@@ -63,9 +63,9 @@ LL |     const { read_as::<u32>(1i32) };
 note: inside `read_as::<u32>`
   --> $DIR/c-variadic-fail.rs:37:5
    |
-LL |     ap.arg::<T>()
-   |     ^^^^^^^^^^^^^
-note: inside `VaList::<'_>::arg::<u32>`
+LL |     ap.next_arg::<T>()
+   |     ^^^^^^^^^^^^^^^^^^
+note: inside `VaList::<'_>::next_arg::<u32>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
@@ -91,9 +91,9 @@ LL |     const { read_as::<i32>(1u32) };
 note: inside `read_as::<i32>`
   --> $DIR/c-variadic-fail.rs:37:5
    |
-LL |     ap.arg::<T>()
-   |     ^^^^^^^^^^^^^
-note: inside `VaList::<'_>::arg::<i32>`
+LL |     ap.next_arg::<T>()
+   |     ^^^^^^^^^^^^^^^^^^
+note: inside `VaList::<'_>::next_arg::<i32>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
@@ -119,9 +119,9 @@ LL |     const { read_as::<i32>(1u64) };
 note: inside `read_as::<i32>`
   --> $DIR/c-variadic-fail.rs:37:5
    |
-LL |     ap.arg::<T>()
-   |     ^^^^^^^^^^^^^
-note: inside `VaList::<'_>::arg::<i32>`
+LL |     ap.next_arg::<T>()
+   |     ^^^^^^^^^^^^^^^^^^
+note: inside `VaList::<'_>::next_arg::<i32>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
@@ -147,9 +147,9 @@ LL |     const { read_as::<f64>(1i32) };
 note: inside `read_as::<f64>`
   --> $DIR/c-variadic-fail.rs:37:5
    |
-LL |     ap.arg::<T>()
-   |     ^^^^^^^^^^^^^
-note: inside `VaList::<'_>::arg::<f64>`
+LL |     ap.next_arg::<T>()
+   |     ^^^^^^^^^^^^^^^^^^
+note: inside `VaList::<'_>::next_arg::<f64>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
@@ -175,9 +175,9 @@ LL |     const { read_as::<*const u8>(1i32) };
 note: inside `read_as::<*const u8>`
   --> $DIR/c-variadic-fail.rs:37:5
    |
-LL |     ap.arg::<T>()
-   |     ^^^^^^^^^^^^^
-note: inside `VaList::<'_>::arg::<*const u8>`
+LL |     ap.next_arg::<T>()
+   |     ^^^^^^^^^^^^^^^^^^
+note: inside `VaList::<'_>::next_arg::<*const u8>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
@@ -197,10 +197,10 @@ LL |     const { read_as::<*const u8>(1i32) };
 error[E0080]: memory access failed: ALLOC0 has been freed, so this pointer is dangling
   --> $DIR/c-variadic-fail.rs:75:13
    |
-LL |             ap.arg::<i32>();
-   |             ^^^^^^^^^^^^^^^ evaluation of `use_after_free::{constant#0}` failed inside this call
+LL |             ap.next_arg::<i32>();
+   |             ^^^^^^^^^^^^^^^^^^^^ evaluation of `use_after_free::{constant#0}` failed inside this call
    |
-note: inside `VaList::<'_>::arg::<i32>`
+note: inside `VaList::<'_>::next_arg::<i32>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered
@@ -300,9 +300,9 @@ LL |     const { unsafe { helper(1, 2, 3) } };
 note: inside `manual_copy_read::helper`
   --> $DIR/c-variadic-fail.rs:123:17
    |
-LL |         let _ = ap.arg::<i32>();
-   |                 ^^^^^^^^^^^^^^^
-note: inside `VaList::<'_>::arg::<i32>`
+LL |         let _ = ap.next_arg::<i32>();
+   |                 ^^^^^^^^^^^^^^^^^^^^
+note: inside `VaList::<'_>::next_arg::<i32>`
   --> $SRC_DIR/core/src/ffi/va_list.rs:LL:COL
 
 note: erroneous constant encountered

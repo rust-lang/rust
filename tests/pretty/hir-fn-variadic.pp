@@ -11,7 +11,8 @@ extern "C" {
     unsafe fn foo(x: i32, va1: ...);
 }
 
-unsafe extern "C" fn bar(_: i32, mut va2: ...) -> usize { va2.arg::<usize>() }
+unsafe extern "C" fn bar(_: i32, mut va2: ...)
+    -> usize { va2.next_arg::<usize>() }
 
 fn main() {
     fn g1(_: extern "C" fn(_: u8, va: ...)) { }

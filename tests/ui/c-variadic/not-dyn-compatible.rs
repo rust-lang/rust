@@ -12,7 +12,7 @@ trait Trait {
     fn get(&self) -> u64;
 
     unsafe extern "C" fn dyn_method_ref(&self, mut ap: ...) -> u64 {
-        self.get() + unsafe { ap.arg::<u64>() }
+        self.get() + unsafe { ap.next_arg::<u64>() }
     }
 }
 

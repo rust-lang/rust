@@ -13,7 +13,7 @@ const unsafe extern "C" fn read_n<const N: usize>(mut ap: ...) {
     let mut i = N;
     while i > 0 {
         i -= 1;
-        let _ = ap.arg::<i32>();
+        let _ = ap.next_arg::<i32>();
     }
 }
 
@@ -34,7 +34,7 @@ unsafe fn read_too_many() {
 }
 
 const unsafe extern "C" fn read_as<T: core::ffi::VaArgSafe>(mut ap: ...) -> T {
-    ap.arg::<T>()
+    ap.next_arg::<T>()
 }
 
 unsafe fn read_cast() {
@@ -72,7 +72,7 @@ fn use_after_free() {
         unsafe {
             let ap = helper(1, 2, 3);
             let mut ap = std::mem::transmute::<_, VaList>(ap);
-            ap.arg::<i32>();
+            ap.next_arg::<i32>();
             //~^ ERROR memory access failed: ALLOC0 has been freed, so this pointer is dangling [E0080]
         }
     };
@@ -82,12 +82,12 @@ fn manual_copy_drop() {
     const unsafe extern "C" fn helper(ap: ...) {
         // A copy created using Clone is valid, and can be used to read arguments.
         let mut copy = ap.clone();
-        assert!(copy.arg::<i32>() == 1i32);
+        assert!(copy.next_arg::<i32>() == 1i32);
 
         let mut copy: VaList = unsafe { std::mem::transmute_copy(&ap) };
 
         // Using the copy is actually fine.
-        let _ = copy.arg::<i32>();
+        let _ = copy.next_arg::<i32>();
         drop(copy);
 
         // But then using the original is UB.
@@ -103,7 +103,7 @@ fn manual_copy_forget() {
         let mut copy: VaList = unsafe { std::mem::transmute_copy(&ap) };
 
         // Using the copy is actually fine.
-        let _ = copy.arg::<i32>();
+        let _ = copy.next_arg::<i32>();
         std::mem::forget(copy);
 
         // The read (via `copy`) deallocated the original allocation.
@@ -119,8 +119,8 @@ fn manual_copy_read() {
         let mut copy: VaList = unsafe { std::mem::transmute_copy(&ap) };
 
         // Reading from `ap` after reading from `copy` is UB.
-        let _ = copy.arg::<i32>();
-        let _ = ap.arg::<i32>();
+        let _ = copy.next_arg::<i32>();
+        let _ = ap.next_arg::<i32>();
     }
 
     const { unsafe { helper(1, 2, 3) } };
