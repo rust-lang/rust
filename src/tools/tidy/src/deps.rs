@@ -544,15 +544,6 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "wasip3",
     "windows-link",
     "windows-sys",
-    "windows-targets",
-    "windows_aarch64_gnullvm",
-    "windows_aarch64_msvc",
-    "windows_i686_gnu",
-    "windows_i686_gnullvm",
-    "windows_i686_msvc",
-    "windows_x86_64_gnu",
-    "windows_x86_64_gnullvm",
-    "windows_x86_64_msvc",
     "wit-bindgen",
     // tidy-alphabetical-end
 ];
