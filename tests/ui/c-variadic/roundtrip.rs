@@ -10,11 +10,11 @@ use std::ffi::*;
 
 #[allow(improper_ctypes_definitions)]
 const unsafe extern "C" fn variadic<T: VaArgSafe>(mut ap: ...) -> (T, T) {
-    let x = ap.arg::<T>();
+    let x = ap.next_arg::<T>();
     // Intersperse a small type to test alignment logic. A `u32` (i.e. `c_uint`) is the smallest
     // type that implements `VaArgSafe`: smaller types would automatically be promoted.
-    assert!(ap.arg::<u32>() == 0xAAAA_AAAA);
-    let y = ap.arg::<T>();
+    assert!(ap.next_arg::<u32>() == 0xAAAA_AAAA);
+    let y = ap.next_arg::<T>();
 
     (x, y)
 }

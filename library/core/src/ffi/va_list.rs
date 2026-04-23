@@ -204,7 +204,7 @@ crate::cfg_select! {
 /// unsafe fn vmy_func(count: u32, mut ap: VaList<'_>) -> i32 {
 ///     let mut sum = 0;
 ///     for _ in 0..count {
-///         sum += unsafe { ap.arg::<i32>() };
+///         sum += unsafe { ap.next_arg::<i32>() };
 ///     }
 ///     sum
 /// }
@@ -213,7 +213,7 @@ crate::cfg_select! {
 /// assert_eq!(unsafe { my_func(3, 42i32, -7i32, 20i32) }, 55);
 /// ```
 ///
-/// The [`VaList::arg`] method reads the next argument from the variable argument list,
+/// The [`VaList::next_arg`] method reads the next argument from the variable argument list,
 /// and is equivalent to C `va_arg`.
 ///
 /// Cloning a `VaList` performs the equivalent of C `va_copy`, producing an independent cursor
@@ -284,7 +284,7 @@ mod sealed {
     impl<T> Sealed for *const T {}
 }
 
-/// Types that are valid to read using [`VaList::arg`].
+/// Types that are valid to read using [`VaList::next_arg`].
 ///
 /// This trait is implemented for primitive types that have a variable argument application-binary
 /// interface (ABI) on the current platform. It is always implemented for:
@@ -391,7 +391,7 @@ impl<'f> VaList<'f> {
     /// are no more variable arguments, is unsound.
     #[inline] // Avoid codegen when not used to help backends that don't support VaList.
     #[rustc_const_unstable(feature = "const_c_variadic", issue = "151787")]
-    pub const unsafe fn arg<T: VaArgSafe>(&mut self) -> T {
+    pub const unsafe fn next_arg<T: VaArgSafe>(&mut self) -> T {
         // SAFETY: the caller must uphold the safety contract for `va_arg`.
         unsafe { va_arg(self) }
     }
