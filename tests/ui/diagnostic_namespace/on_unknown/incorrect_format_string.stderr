@@ -6,7 +6,7 @@ LL | use std::does_not_exist;
    |
    = note: unresolved import `std::does_not_exist`
 
-error[E0432]: foo {}
+error[E0432]: foo {A}
   --> $DIR/incorrect_format_string.rs:10:5
    |
 LL | use std::does_not_exist2;
@@ -24,7 +24,7 @@ error[E0432]: unresolved import `std::does_not_exist4`
   --> $DIR/incorrect_format_string.rs:20:5
    |
 LL | use std::does_not_exist4;
-   |     ^^^^^^^^^^^^^^^^^^^^ foo {}
+   |     ^^^^^^^^^^^^^^^^^^^^ foo {A}
 
 error[E0432]: unresolved import `std::does_not_exist5`
   --> $DIR/incorrect_format_string.rs:25:5
@@ -35,62 +35,86 @@ LL | use std::does_not_exist5;
    = note: foo {}
 
 error[E0432]: unresolved import `std::does_not_exist6`
-  --> $DIR/incorrect_format_string.rs:30:5
+  --> $DIR/incorrect_format_string.rs:33:5
    |
 LL | use std::does_not_exist6;
    |     ^^^^^^^^^^^^^^^^^^^^ no `does_not_exist6` in the root
    |
-   = note: foo {}
+   = note: foo {Self} {ItemContext} {Trait} {A}
 
-warning: format arguments are not allowed here
+warning: positional arguments are not permitted in diagnostic attributes
   --> $DIR/incorrect_format_string.rs:3:42
    |
 LL | #[diagnostic::on_unknown(message = "foo {}")]
-   |                                          ^
+   |                                          ^ remove this format argument
    |
-   = help: consider removing this format argument
+   = help: you can print empty braces by escaping them
    = note: `#[warn(malformed_diagnostic_format_literals)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
-warning: format arguments are not allowed here
+warning: this format argument is not allowed in `#[diagnostic::on_unknown]`
   --> $DIR/incorrect_format_string.rs:8:42
    |
 LL | #[diagnostic::on_unknown(message = "foo {A}")]
-   |                                          ^
+   |                                          ^ remove this format argument
    |
-   = help: consider removing this format argument
+   = note: only `This` is allowed as a format argument, referring to the failed import
 
-warning: format arguments are not allowed here
+warning: positional arguments are not permitted in diagnostic attributes
   --> $DIR/incorrect_format_string.rs:13:40
    |
 LL | #[diagnostic::on_unknown(label = "foo {}")]
-   |                                        ^
+   |                                        ^ remove this format argument
    |
-   = help: consider removing this format argument
+   = help: you can print empty braces by escaping them
 
-warning: format arguments are not allowed here
+warning: this format argument is not allowed in `#[diagnostic::on_unknown]`
   --> $DIR/incorrect_format_string.rs:18:40
    |
 LL | #[diagnostic::on_unknown(label = "foo {A}")]
-   |                                        ^
+   |                                        ^ remove this format argument
    |
-   = help: consider removing this format argument
+   = note: only `This` is allowed as a format argument, referring to the failed import
 
-warning: format arguments are not allowed here
+warning: positional arguments are not permitted in diagnostic attributes
   --> $DIR/incorrect_format_string.rs:23:39
    |
 LL | #[diagnostic::on_unknown(note = "foo {}")]
-   |                                       ^
+   |                                       ^ remove this format argument
    |
-   = help: consider removing this format argument
+   = help: you can print empty braces by escaping them
 
-warning: format arguments are not allowed here
+warning: this format argument is not allowed in `#[diagnostic::on_unknown]`
   --> $DIR/incorrect_format_string.rs:28:39
    |
-LL | #[diagnostic::on_unknown(note = "foo {A}")]
-   |                                       ^
+LL | #[diagnostic::on_unknown(note = "foo {Self} {ItemContext} {Trait} {A}")]
+   |                                       ^^^^ remove this format argument
    |
-   = help: consider removing this format argument
+   = note: only `This` is allowed as a format argument, referring to the failed import
 
-error: aborting due to 6 previous errors; 6 warnings emitted
+warning: this format argument is not allowed in `#[diagnostic::on_unknown]`
+  --> $DIR/incorrect_format_string.rs:28:46
+   |
+LL | #[diagnostic::on_unknown(note = "foo {Self} {ItemContext} {Trait} {A}")]
+   |                                              ^^^^^^^^^^^ remove this format argument
+   |
+   = note: only `This` is allowed as a format argument, referring to the failed import
+
+warning: this format argument is not allowed in `#[diagnostic::on_unknown]`
+  --> $DIR/incorrect_format_string.rs:28:60
+   |
+LL | #[diagnostic::on_unknown(note = "foo {Self} {ItemContext} {Trait} {A}")]
+   |                                                            ^^^^^ remove this format argument
+   |
+   = note: only `This` is allowed as a format argument, referring to the failed import
+
+warning: this format argument is not allowed in `#[diagnostic::on_unknown]`
+  --> $DIR/incorrect_format_string.rs:28:68
+   |
+LL | #[diagnostic::on_unknown(note = "foo {Self} {ItemContext} {Trait} {A}")]
+   |                                                                    ^ remove this format argument
+   |
+   = note: only `This` is allowed as a format argument, referring to the failed import
+
+error: aborting due to 6 previous errors; 9 warnings emitted
 
 For more information about this error, try `rustc --explain E0432`.

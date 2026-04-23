@@ -23,7 +23,8 @@ trait NoContent {}
 trait ParameterNotPresent<A, B> {}
 
 #[rustc_on_unimplemented(label = "Unimplemented error on `{Self}` with params `<{A},{B},{}>`")]
-//~^ WARN positional format arguments are not allowed here
+//~^ WARN positional arguments are not permitted in diagnostic attributes
+//~| NOTE remove this format argument
 trait NoPositionalArgs<A, B> {}
 
 #[rustc_on_unimplemented(lorem = "")]

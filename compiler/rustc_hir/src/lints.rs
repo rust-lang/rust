@@ -1,8 +1,8 @@
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_error_messages::MultiSpan;
 use rustc_errors::{Diag, DiagCtxtHandle, Level};
+pub use rustc_lint_defs::AttributeLintKind;
 use rustc_lint_defs::LintId;
-pub use rustc_lint_defs::{AttributeLintKind, FormatWarning};
 
 use crate::HirId;
 

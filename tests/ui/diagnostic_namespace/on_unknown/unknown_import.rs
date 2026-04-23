@@ -7,7 +7,7 @@ pub mod foo {
     message = "first message",
     label = "first label",
     note = "custom note",
-    note = "custom note 2"
+    note = "custom note 2",
 )]
 use foo::Foo;
 //~^ERROR first message

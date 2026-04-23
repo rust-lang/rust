@@ -36,37 +36,29 @@ LL |     multiline string {unknown}")]
    |
    = help: expect either a generic argument name or `{Self}` as format argument
 
-error: invalid format specifier
+error: format specifiers are not permitted in diagnostic attributes
   --> $DIR/multiline_spans.rs:33:47
    |
 LL | ...                   {Self:+}")]
-   |                            ^^
-   |
-   = help: no format specifier are supported in this position
+   |                            ^^ remove this format specifier
 
-error: invalid format specifier
+error: format specifiers are not permitted in diagnostic attributes
   --> $DIR/multiline_spans.rs:38:64
    |
 LL | ...                   multiline string {Self:X}")]
-   |                                             ^^
-   |
-   = help: no format specifier are supported in this position
+   |                                             ^^ remove this format specifier
 
-error: invalid format specifier
+error: format specifiers are not permitted in diagnostic attributes
   --> $DIR/multiline_spans.rs:43:27
    |
 LL |     multiline string {Self:#}")]
-   |                           ^^
-   |
-   = help: no format specifier are supported in this position
+   |                           ^^ remove this format specifier
 
-error: invalid format specifier
+error: format specifiers are not permitted in diagnostic attributes
   --> $DIR/multiline_spans.rs:53:27
    |
 LL |     multiline string {Self:?}")]
-   |                           ^^
-   |
-   = help: no format specifier are supported in this position
+   |                           ^^ remove this format specifier
 
 error: aborting due to 8 previous errors
 

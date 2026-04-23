@@ -358,23 +358,6 @@ pub(crate) struct MalFormedDiagnosticAttributeLint {
 }
 
 #[derive(Diagnostic)]
-#[diag("positional format arguments are not allowed here")]
-#[help(
-    "only named format arguments with the name of one of the generic types are allowed in this context"
-)]
-pub(crate) struct DisallowedPositionalArgument;
-
-#[derive(Diagnostic)]
-#[diag("format arguments are not allowed here")]
-#[help("consider removing this format argument")]
-pub(crate) struct DisallowedPlaceholder;
-
-#[derive(Diagnostic)]
-#[diag("invalid format specifier")]
-#[help("no format specifier are supported in this position")]
-pub(crate) struct InvalidFormatSpecifier;
-
-#[derive(Diagnostic)]
 #[diag("{$description}")]
 pub(crate) struct WrappedParserError<'a> {
     pub description: &'a str,
@@ -407,3 +390,34 @@ pub(crate) struct MissingOptionsForDiagnosticAttribute {
     "only literals are allowed as values for the `message`, `note` and `label` options. These options must be separated by a comma"
 )]
 pub(crate) struct NonMetaItemDiagnosticAttribute;
+
+#[derive(Diagnostic, Clone, Copy)]
+pub(crate) enum FormatWarning {
+    #[diag("positional arguments are not permitted in diagnostic attributes")]
+    #[help("you can print empty braces by escaping them")]
+    PositionalArgument {
+        #[label("remove this format argument")]
+        span: Span,
+    },
+
+    #[diag("indexed format arguments are not permitted in diagnostic attributes")]
+    IndexedArgument {
+        #[label("remove this format argument")]
+        span: Span,
+    },
+
+    #[diag("format specifiers are not permitted in diagnostic attributes")]
+    InvalidSpecifier {
+        #[label("remove this format specifier")]
+        span: Span,
+    },
+
+    #[diag("this format argument is not allowed in `#[{$attr}]`")]
+    #[note("{$allowed}")]
+    DisallowedPlaceholder {
+        #[label("remove this format argument")]
+        span: Span,
+        attr: &'static str,
+        allowed: &'static str,
+    },
+}

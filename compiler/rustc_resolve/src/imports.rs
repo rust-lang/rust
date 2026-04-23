@@ -2,6 +2,7 @@
 
 use std::mem;
 
+use itertools::Itertools;
 use rustc_ast::{Item, NodeId};
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
@@ -879,8 +880,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let (message, label, notes) =
             // Feature gating for `on_unknown_attr` happens initialization of the field
             if let Some(directive) = errors[0].1.on_unknown_attr.as_ref().map(|a| &a.directive) {
+                let this = errors.iter().map(|(_import, err)| {
+
+                    // Is this unwrap_or reachable?
+                    err.segment.unwrap_or(kw::Underscore)
+                }).join(", ");
+
                 let args = FormatArgs {
-                    this: paths.join(", "),
+                    this,
                     // Unused
                     this_sugared: String::new(),
                     // Unused
