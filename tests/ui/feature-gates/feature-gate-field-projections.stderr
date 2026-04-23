@@ -71,8 +71,8 @@ LL | use std::ops::place::BorrowPlace;
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:9:5
    |
-LL | use std::ops::place::NestPlace;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | use std::ops::place::DerefPlace;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -351,8 +351,8 @@ LL | unsafe impl<T, S> BorrowPlace<S, MyPtr<S::Target>> for MyPtr<T>
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:136:5
    |
-LL |     unsafe fn nested(this: *const Self, sub: S) -> *const S::Target {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     unsafe fn deref(this: *const Self, sub: S) -> *const S::Target {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -381,8 +381,8 @@ LL |     S::Target: PlaceProxy,
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:127:19
    |
-LL | unsafe impl<T, S> NestPlace<S> for MyPtr<T>
-   |                   ^^^^^^^^^^^^
+LL | unsafe impl<T, S> DerefPlace<S> for MyPtr<T>
+   |                   ^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -441,7 +441,7 @@ LL | ...   let _ = BorrowPlace::<_, MyPtr<_>>::borrow(place, sub());
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:156:17
    |
-LL |         let _ = NestPlace::nested(place, sub());
+LL |         let _ = DerefPlace::deref(place, sub());
    |                 ^^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
@@ -704,10 +704,10 @@ LL |     S: Subplace<Source = T>,
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature `field_projections`
-  --> $DIR/feature-gate-field-projections.rs:136:59
+  --> $DIR/feature-gate-field-projections.rs:136:58
    |
-LL |     unsafe fn nested(this: *const Self, sub: S) -> *const S::Target {
-   |                                                           ^^^^^^^^^
+LL |     unsafe fn deref(this: *const Self, sub: S) -> *const S::Target {
+   |                                                          ^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable

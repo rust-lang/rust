@@ -81,7 +81,7 @@
 //! - moving out of a subplace [`MovePlace`],
 //! - dropping a subplace [`DropPlace`] and dropping a fully moved-out pointer
 //!   [`DropHusk`], and
-//! - support for accessing a nested pointer [`NestPlace`].
+//! - support for accessing a nested pointer [`DerefPlace`].
 //!
 //! ### Place Wrappers
 //!
@@ -176,7 +176,7 @@ pub unsafe trait Subplace: Sized {
 /// - [`MovePlace`]
 /// - [`DropPlace`]
 /// - [`DropHusk`]
-/// - [`NestPlace`]
+/// - [`DerefPlace`]
 /// - [`WrapPlace`]
 ///
 /// Read the [module](self) description for more information.
@@ -363,14 +363,14 @@ pub unsafe trait DropHusk: PlaceProxy {
 /// Accessing a nested pointer.
 ///
 /// When `x: Self`, then nested dereferences `let _ = **x;` is desugared into a
-/// combination of the corresponding operation and a [`NestPlace::nested`].
+/// combination of the corresponding operation and a [`DerefPlace::nested`].
 ///
 /// # Safety
 ///
 /// See the module-level section on [safety](crate::ops::place#safety).
 #[unstable(feature = "field_projections", issue = "145383")]
-#[lang = "nest_place"]
-pub unsafe trait NestPlace<S>: PlaceProxy
+#[lang = "deref_place"]
+pub unsafe trait DerefPlace<S>: PlaceProxy
 where
     S: Subplace<Source = Self::Target>,
     S::Target: PlaceProxy,
@@ -380,8 +380,8 @@ where
     /// # Safety
     ///
     /// See the module-level section on [safety](crate::ops::place#safety).
-    #[lang = "nest_place_nested"]
-    unsafe fn nested(this: *const Self, sub: S) -> *const S::Target;
+    #[lang = "deref_place_deref"]
+    unsafe fn deref(this: *const Self, sub: S) -> *const S::Target;
 }
 
 /// Forwards the subplace `S` of the place contained by this.

@@ -475,8 +475,8 @@ language_item_table! {
     BorrowPlaceSafety,      sym::borrow_place_safety,   borrow_place_safety,    Target::AssocConst,                                 GenericRequirement::Exact(2);
     BorrowPlaceBorrow,      sym::borrow_place_borrow,   borrow_place_borrow,    Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(2);
 
-    NestPlace,              sym::nest_place,            nest_place,             Target::Trait,                                      GenericRequirement::Exact(1);
-    NestPlaceNested,        sym::nest_place_nested,     nest_place_nested,      Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(1);
+    DerefPlace,             sym::deref_place,           deref_place,            Target::Trait,                                      GenericRequirement::Exact(1);
+    DerefPlaceNested,       sym::deref_place_deref,     deref_place_deref,      Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(1);
 
     WrapPlace,              sym::wrap_place,            wrap_place,             Target::Trait,                                      GenericRequirement::Exact(1);
     WrapPlaceWrapped,       sym::wrap_place_wrapped,    wrap_place_wrapped,     Target::AssocTy,                                    GenericRequirement::Exact(1);
