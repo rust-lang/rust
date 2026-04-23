@@ -325,3 +325,15 @@ pub(crate) struct IncorrectDoNotRecommendLocation {
     #[label("not a trait implementation")]
     pub target_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("target-based cfg should be avoided in build scripts")]
+pub(crate) struct UnexpectedCfg<'a> {
+    #[suggestion(
+        "use cargo environment variables if possible",
+        code = "{suggestion_message}",
+        applicability = "maybe-incorrect",
+    )]
+    pub span: Option<Span>,
+    pub suggestion_message: &'a str,
+}
