@@ -15,6 +15,7 @@ use crate::macros::AllVariants;
 pub struct PrintRequest {
     pub kind: PrintKind,
     pub out: OutFileName,
+    pub arg: Option<String>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -22,6 +23,7 @@ pub struct PrintRequest {
 pub enum PrintKind {
     // tidy-alphabetical-start
     AllTargetSpecsJson,
+    BackendHasMnemonic,
     BackendHasZstd,
     CallingConventions,
     Cfg,
@@ -60,6 +62,7 @@ impl PrintKind {
         match self {
             // tidy-alphabetical-start
             AllTargetSpecsJson => "all-target-specs-json",
+            BackendHasMnemonic => "backend-has-mnemonic",
             BackendHasZstd => "backend-has-zstd",
             CallingConventions => "calling-conventions",
             Cfg => "cfg",
@@ -113,7 +116,8 @@ impl PrintKind {
 
             // Unstable values:
             AllTargetSpecsJson => false,
-            BackendHasZstd => false, // (perma-unstable, for use by compiletest)
+            BackendHasMnemonic => false, // (perma-unstable, for use by compiletest)
+            BackendHasZstd => false,     // (perma-unstable, for use by compiletest)
             CheckCfg => false,
             CrateRootLintLevels => false,
             SupportedCrateTypes => false,
@@ -150,11 +154,19 @@ pub(crate) fn collect_print_requests(
 ) -> Vec<PrintRequest> {
     let mut prints = Vec::<PrintRequest>::new();
     if cg.target_cpu.as_deref() == Some("help") {
-        prints.push(PrintRequest { kind: PrintKind::TargetCPUs, out: OutFileName::Stdout });
+        prints.push(PrintRequest {
+            kind: PrintKind::TargetCPUs,
+            out: OutFileName::Stdout,
+            arg: None,
+        });
         cg.target_cpu = None;
     };
     if cg.target_feature == "help" {
-        prints.push(PrintRequest { kind: PrintKind::TargetFeatures, out: OutFileName::Stdout });
+        prints.push(PrintRequest {
+            kind: PrintKind::TargetFeatures,
+            out: OutFileName::Stdout,
+            arg: None,
+        });
         cg.target_feature = String::new();
     }
 
@@ -167,9 +179,25 @@ pub(crate) fn collect_print_requests(
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {
         let (req, out) = split_out_file_name(&req);
 
-        let kind = if let Some(print_kind) = PrintKind::from_str(req) {
+        let (kind, arg) = if let Some(print_kind) = PrintKind::from_str(req) {
+            // BackendHasMnemonic requires a mnemonic argument
+            if print_kind == PrintKind::BackendHasMnemonic {
+                early_dcx.early_fatal(
+                    "expected mnemonic name after `--print=backend-has-mnemonic:`, \
+                     for example: `--print=backend-has-mnemonic:RET`",
+                );
+            }
             check_print_request_stability(early_dcx, unstable_opts, print_kind);
-            print_kind
+            (print_kind, None)
+        } else if let Some(mnemonic) = req.strip_prefix("backend-has-mnemonic:") {
+            if mnemonic.is_empty() {
+                early_dcx.early_fatal(
+                    "expected mnemonic name after `--print=backend-has-mnemonic:`, \
+                     for example: `--print=backend-has-mnemonic:RET`",
+                );
+            }
+            check_print_request_stability(early_dcx, unstable_opts, PrintKind::BackendHasMnemonic);
+            (PrintKind::BackendHasMnemonic, Some(mnemonic.to_string()))
         } else {
             let is_nightly = nightly_options::match_is_nightly_build(matches);
             emit_unknown_print_request_help(early_dcx, req, is_nightly)
@@ -185,7 +213,7 @@ pub(crate) fn collect_print_requests(
             }
         }
 
-        PrintRequest { kind, out }
+        PrintRequest { kind, out, arg }
     }));
 
     prints

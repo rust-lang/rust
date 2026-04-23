@@ -1254,3 +1254,25 @@ fn test_edition_range_edition_to_test() {
     assert_edition_to_test(2018, range, Some(e2024));
     assert_edition_to_test(2018, range, Some(efuture));
 }
+
+#[test]
+fn needs_asm_mnemonic() {
+    let config_x86_64 = cfg().target("x86_64-unknown-linux-gnu").build();
+    let config_aarch64 = cfg().target("aarch64-unknown-linux-gnu").build();
+
+    // invalid mnemonic
+    assert!(check_ignore(&config_x86_64, "//@ needs-asm-mnemonic:GRUGGY"));
+    assert!(check_ignore(&config_aarch64, "//@ needs-asm-mnemonic:gruggy"));
+
+    // valid x86 and aarch64
+    assert!(!check_ignore(&config_x86_64, "//@ needs-asm-mnemonic:RET"));
+    assert!(!check_ignore(&config_aarch64, "//@ needs-asm-mnemonic:ret"));
+
+    // this is aarch64 specific
+    assert!(check_ignore(&config_x86_64, "//@ needs-asm-mnemonic:ldrsbwui"));
+    assert!(!check_ignore(&config_aarch64, "//@ needs-asm-mnemonic:LDRSBWui"));
+
+    // this is x86 specific
+    assert!(check_ignore(&config_aarch64, "//@ needs-asm-mnemonic:CMPxCHG16B"));
+    assert!(!check_ignore(&config_x86_64, "//@ needs-asm-mnemonic:CMPXchg16B"));
+}

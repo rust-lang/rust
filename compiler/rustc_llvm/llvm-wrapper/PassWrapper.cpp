@@ -19,6 +19,7 @@
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRPrinter/IRPrintingPasses.h"
 #include "llvm/LTO/LTO.h"
+#include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Object/ObjectFile.h"
@@ -92,6 +93,23 @@ extern "C" bool LLVMRustHasFeature(LLVMTargetMachineRef TM,
   TargetMachine *Target = unwrap(TM);
   const MCSubtargetInfo *MCInfo = Target->getMCSubtargetInfo();
   return MCInfo->checkFeatures(std::string("+") + Feature);
+}
+
+/// Check whether the target has a specific assembly mnemonic like `ret` or
+/// `nop`.
+extern "C" bool LLVMRustTargetHasMnemonic(LLVMTargetMachineRef TM,
+                                          const char *Mnemonic) {
+  TargetMachine *Target = unwrap(TM);
+  const MCInstrInfo *MII = Target->getMCInstrInfo();
+  StringRef MnemonicRef(Mnemonic);
+
+  for (unsigned i = 0; i < MII->getNumOpcodes(); i++) {
+    StringRef Name = MII->getName(i);
+    if (Name.equals_insensitive(MnemonicRef)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 enum class LLVMRustCodeModel {

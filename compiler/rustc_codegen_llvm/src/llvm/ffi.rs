@@ -2343,6 +2343,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustWriteValueToString(value_ref: &Value, s: &RustString);
 
     pub(crate) fn LLVMRustHasFeature(T: &TargetMachine, s: *const c_char) -> bool;
+    pub(crate) fn LLVMRustTargetHasMnemonic(T: &TargetMachine, s: *const c_char) -> bool;
 
     pub(crate) fn LLVMRustPrintTargetCPUs(TM: &TargetMachine, OutStr: &RustString);
     pub(crate) fn LLVMRustGetTargetFeaturesCount(T: &TargetMachine) -> size_t;
