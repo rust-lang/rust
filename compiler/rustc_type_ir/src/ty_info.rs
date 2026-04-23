@@ -3,26 +3,17 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 
 #[cfg(feature = "nightly")]
-use rustc_data_structures::fingerprint::Fingerprint;
-#[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_type_ir_macros::GenericTypeVisitable;
 
 use crate::{DebruijnIndex, TypeFlags};
 
 /// A helper type that you can wrap round your own type in order to automatically
-/// cache the stable hash, type flags and debruijn index on creation and
-/// not recompute it whenever the information is needed.
-/// This is only done in incremental mode. You can also opt out of caching by using
-/// StableHash::ZERO for the hash, in which case the hash gets computed each time.
-/// This is useful if you have values that you intern but never (can?) use for stable
-/// hashing.
+/// cache the type flags and debruijn index on creation and not recompute it
+/// whenever the information is needed.
 #[derive(Copy, Clone, GenericTypeVisitable)]
 pub struct WithCachedTypeInfo<T> {
     pub internee: T,
-
-    #[cfg(feature = "nightly")]
-    pub stable_hash: Fingerprint,
 
     /// This field provides fast access to information that is also contained
     /// in `kind`.
@@ -87,11 +78,6 @@ impl<T> Deref for WithCachedTypeInfo<T> {
 impl<T: Hash> Hash for WithCachedTypeInfo<T> {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
-        #[cfg(feature = "nightly")]
-        if self.stable_hash != Fingerprint::ZERO {
-            return self.stable_hash.hash(s);
-        }
-
         self.internee.hash(s)
     }
 }
@@ -99,27 +85,6 @@ impl<T: Hash> Hash for WithCachedTypeInfo<T> {
 #[cfg(feature = "nightly")]
 impl<T: HashStable<Hcx>, Hcx> HashStable<Hcx> for WithCachedTypeInfo<T> {
     fn hash_stable(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        if self.stable_hash == Fingerprint::ZERO || cfg!(debug_assertions) {
-            // No cached hash available. This can only mean that incremental is disabled.
-            // We don't cache stable hashes in non-incremental mode, because they are used
-            // so rarely that the performance actually suffers.
-
-            // We need to build the hash as if we cached it and then hash that hash, as
-            // otherwise the hashes will differ between cached and non-cached mode.
-            let stable_hash: Fingerprint = {
-                let mut hasher = StableHasher::new();
-                self.internee.hash_stable(hcx, &mut hasher);
-                hasher.finish()
-            };
-            if cfg!(debug_assertions) && self.stable_hash != Fingerprint::ZERO {
-                assert_eq!(
-                    stable_hash, self.stable_hash,
-                    "cached stable hash does not match freshly computed stable hash"
-                );
-            }
-            stable_hash.hash_stable(hcx, hasher);
-        } else {
-            self.stable_hash.hash_stable(hcx, hasher);
-        }
+        self.internee.hash_stable(hcx, hasher);
     }
 }
