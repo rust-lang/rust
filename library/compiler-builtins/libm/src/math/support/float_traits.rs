@@ -62,6 +62,7 @@ pub trait Float:
     const FRAC_PI_2: Self;
 
     const MIN_POSITIVE_NORMAL: Self;
+    const MIN_POSITIVE_SUBNORMAL: Self;
 
     /// The bitwidth of the float type
     const BITS: u32;
@@ -282,6 +283,9 @@ macro_rules! float_impl {
 
             // Exponent is a 1 in the LSB
             const MIN_POSITIVE_NORMAL: Self = $from_bits(1 << Self::SIG_BITS);
+
+            // Single 1 in the LSB
+            const MIN_POSITIVE_SUBNORMAL: Self = $from_bits(1);
 
             const PI: Self = core::$ty::consts::PI;
             const NEG_PI: Self = -Self::PI;
