@@ -121,7 +121,7 @@ struct RustcCallbacks {
 impl rustc_driver::Callbacks for RustcCallbacks {
     fn config(&mut self, config: &mut interface::Config) {
         let clippy_args_var = self.clippy_args_var.take();
-        config.track_state = Some(Box::new(move |sess, _hasher| {
+        config.track_state = Some(Box::new(move |sess| {
             track_clippy_args(sess, clippy_args_var.as_deref());
         }));
         config.extra_symbols = sym::EXTRA_SYMBOLS.into();
@@ -138,7 +138,7 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
         let conf_path = clippy_config::lookup_conf_file();
         let previous = config.register_lints.take();
         let clippy_args_var = self.clippy_args_var.take();
-        config.track_state = Some(Box::new(move |sess, _hasher| {
+        config.track_state = Some(Box::new(move |sess| {
             track_clippy_args(sess, clippy_args_var.as_deref());
             track_files(sess);
 
