@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ test-mir-pass: GVN
 //@ only-64bit
 //@ compile-flags: -Z mir-enable-passes=+Inline

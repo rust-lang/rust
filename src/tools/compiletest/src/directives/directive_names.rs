@@ -286,6 +286,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "rustc-env",
     "rustfix-only-machine-applicable",
     "should-fail",
+    "skip-filecheck",
     "stderr-per-bitwidth",
     "test-mir-pass",
     "unique-doc-out-dir",
