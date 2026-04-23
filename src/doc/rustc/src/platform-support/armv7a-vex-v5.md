@@ -11,7 +11,7 @@ Rust support for this target is not affiliated with VEX Robotics or IFI, and doe
 This target is maintained by members of the [vexide](https://github.com/vexide) organization:
 
 - [@lewisfm](https://github.com/lewisfm)
-- [@Tropix126](https://github.com/Tropix126)
+- [@tropicaaal](https://github.com/tropicaaal)
 - [@Gavin-Niederman](https://github.com/Gavin-Niederman)
 - [@max-niederman](https://github.com/max-niederman)
 
