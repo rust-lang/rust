@@ -5,7 +5,7 @@ set -eux
 # compatible with Stacked Borrows.
 export MIRIFLAGS="-Zmiri-tree-borrows"
 
-# One target that sets `mem-unaligned` and one that does not,
+# One target that sets `mem_unaligned` and one that does not,
 # and a big-endian target.
 targets=(
     x86_64-unknown-linux-gnu
