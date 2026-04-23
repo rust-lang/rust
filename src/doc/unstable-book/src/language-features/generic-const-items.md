@@ -25,7 +25,7 @@ See also: [generic_const_exprs], [min_generic_const_args].
 #![allow(incomplete_features)]
 #![feature(generic_const_items)]
 
-const GENERIC_VAL<const ARG: usize>: usize = const { ARG + 1 };
+const GENERIC_VAL<const ARG: usize>: usize = ARG + 1;
 
 #[test]
 fn generic_const_arg() {
@@ -41,13 +41,7 @@ fn generic_const_arg() {
 #![feature(generic_const_items)]
 
 // `GENERIC_VAL::<0>` will fail to compile
-const GENERIC_VAL<const ARG: usize>: usize = const {
-    if ARG > 0 {
-        ARG + 1
-    } else {
-        panic!("0 value")
-    }
-};
+const GENERIC_VAL<const ARG: usize>: usize = if ARG > 0 { ARG + 1 } else { panic!("0 value") };
 
 // Will fail to compile if the `Copy` derive is removed.
 const COPY_MARKER<C: Copy>: () = ();
