@@ -152,13 +152,8 @@ macro_rules! provide_one {
                 $tcx.ensure_ok().crate_hash($def_id.krate);
             }
 
-            let cdata = rustc_data_structures::sync::FreezeReadGuard::map(CStore::from_tcx($tcx), |c| {
-                c.get_crate_data($def_id.krate).cdata
-            });
-            let $cdata = crate::creader::CrateMetadataRef {
-                cdata: &cdata,
-                cstore: &CStore::from_tcx($tcx),
-            };
+            let cstore = CStore::from_tcx($tcx);
+            let $cdata = cstore.get_crate_data($def_id.krate);
 
             $compute
         }
