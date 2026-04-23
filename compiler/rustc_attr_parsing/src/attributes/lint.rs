@@ -8,6 +8,7 @@ use rustc_session::lint::builtin::{RENAMED_AND_REMOVED_LINTS, UNKNOWN_LINTS, UNU
 use rustc_session::lint::{CheckLintNameResult, LintId};
 
 use super::prelude::*;
+use crate::ShouldEmit;
 use crate::attributes::AcceptFn;
 use crate::session_diagnostics::UnknownToolInScopedLint;
 
@@ -136,13 +137,21 @@ fn validate_lint_attr<T: Lint, S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     args: &ArgParser,
 ) -> Option<LintAttribute> {
+    // ShouldEmit is Nothing during early parsing, so to avoid delayed bugs, we just dont emit
+    // The reason for why we don't want to delay bugs, is that when compiling lib
+    // they usually skip this attr parsing but since lint-attrs is parsed in pre expansion,
+    // these delayed bugs would never be emitted as errors and therefore ICE
+    let early = matches!(cx.stage.should_emit(), ShouldEmit::Nothing);
+
     let Some(lint_store) = cx.sess.lint_store.as_ref().map(|store| store.to_owned()) else {
         unreachable!("lint_store required while parsing attributes");
     };
     let lint_store = lint_store.as_ref();
     let Some(list) = args.list() else {
         let span = cx.inner_span;
-        cx.adcx().expected_list(span, args);
+        if !early {
+            cx.adcx().expected_list(span, args);
+        }
         return None;
     };
     let mut list = list.mixed().peekable();
@@ -155,7 +164,9 @@ fn validate_lint_attr<T: Lint, S: Stage>(
     let targeting_crate = matches!(cx.target, Target::Crate);
     while let Some(item) = list.next() {
         let Some(meta_item) = item.meta_item() else {
-            cx.adcx().expected_identifier(item.span());
+            if !early {
+                cx.adcx().expected_identifier(item.span());
+            }
             errored = true;
             continue;
         };
@@ -164,25 +175,33 @@ fn validate_lint_attr<T: Lint, S: Stage>(
             ArgParser::NameValue(nv_parser) if meta_item.path().word_is(sym::reason) => {
                 //FIXME replace this with duplicate check?
                 if list.peek().is_some() {
-                    cx.adcx().expected_nv_as_last_argument(meta_item.span(), sym::reason);
+                    if !early {
+                        cx.adcx().expected_nv_as_last_argument(meta_item.span(), sym::reason);
+                    }
                     errored = true;
                     continue;
                 }
 
                 let val_lit = nv_parser.value_as_lit();
                 let LitKind::Str(reason_sym, _) = val_lit.kind else {
-                    cx.adcx().expected_string_literal(nv_parser.value_span, Some(val_lit));
+                    if !early {
+                        cx.adcx().expected_string_literal(nv_parser.value_span, Some(val_lit));
+                    }
                     errored = true;
                     continue;
                 };
                 reason = Some(reason_sym);
             }
             ArgParser::NameValue(_) => {
-                cx.adcx().expected_specific_argument(meta_item.span(), &[sym::reason]);
+                if !early {
+                    cx.adcx().expected_specific_argument(meta_item.span(), &[sym::reason]);
+                }
                 errored = true;
             }
             ArgParser::List(list) => {
-                cx.adcx().expected_no_args(list.span);
+                if !early {
+                    cx.adcx().expected_no_args(list.span);
+                }
                 errored = true;
             }
             ArgParser::NoArgs => {
@@ -222,8 +241,12 @@ fn validate_lint_attr<T: Lint, S: Stage>(
                     tool_name,
                     tool_span,
                     meta_item_span,
+                    early,
                 ) {
-                    if !targeting_crate && ids.iter().any(|lint_id| lint_id.lint.crate_level_only) {
+                    if !early
+                        && !targeting_crate
+                        && ids.iter().any(|lint_id| lint_id.lint.crate_level_only)
+                    {
                         cx.emit_lint(
                             UNUSED_ATTRIBUTES,
                             AttributeLintKind::IgnoredUnlessCrateSpecified {
@@ -251,7 +274,7 @@ fn validate_lint_attr<T: Lint, S: Stage>(
         return None;
     }
 
-    if !skip_unused_check && lint_instances.is_empty() {
+    if !early && !skip_unused_check && lint_instances.is_empty() {
         let span = cx.attr_span;
         cx.adcx().warn_empty_attribute(span);
     }
@@ -274,6 +297,7 @@ fn check_lint<'a, S: Stage>(
     tool_name: Option<Symbol>,
     tool_span: Option<Span>,
     span: Span,
+    early: bool,
 ) -> Option<&'a [LintId]> {
     let Some(tools) = cx.tools else {
         unreachable!("tools required while parsing attributes");
@@ -289,15 +313,17 @@ fn check_lint<'a, S: Stage>(
                 None => original_name,
                 Some(new_lint_name) => {
                     let new_lint_name = Symbol::intern(&new_lint_name);
-                    cx.emit_lint(
-                        RENAMED_AND_REMOVED_LINTS,
-                        AttributeLintKind::DeprecatedLintName {
-                            name: *full_name,
-                            suggestion: span,
-                            replace: new_lint_name,
-                        },
-                        span,
-                    );
+                    if !early {
+                        cx.emit_lint(
+                            RENAMED_AND_REMOVED_LINTS,
+                            AttributeLintKind::DeprecatedLintName {
+                                name: *full_name,
+                                suggestion: span,
+                                replace: new_lint_name,
+                            },
+                            span,
+                        );
+                    }
                     new_lint_name
                 }
             };
@@ -313,21 +339,26 @@ fn check_lint<'a, S: Stage>(
         }
 
         CheckLintNameResult::NoTool => {
-            cx.emit_err(UnknownToolInScopedLint {
-                span: tool_span,
-                tool_name: tool_name.unwrap(),
-                full_lint_name: *full_name,
-                is_nightly_build: cx.sess.is_nightly_build(),
-            });
+            if !early {
+                cx.emit_err(UnknownToolInScopedLint {
+                    span: tool_span,
+                    tool_name: tool_name.unwrap(),
+                    full_lint_name: *full_name,
+                    is_nightly_build: cx.sess.is_nightly_build(),
+                });
+            }
+
             None
         }
 
         CheckLintNameResult::Renamed(replace) => {
-            cx.emit_lint(
-                RENAMED_AND_REMOVED_LINTS,
-                AttributeLintKind::RenamedLint { name: *full_name, replace, suggestion: span },
-                span,
-            );
+            if !early {
+                cx.emit_lint(
+                    RENAMED_AND_REMOVED_LINTS,
+                    AttributeLintKind::RenamedLint { name: *full_name, replace, suggestion: span },
+                    span,
+                );
+            }
 
             // Since it was renamed, and we have emitted the warning
             // we replace the "full_name", to ensure we don't get notes with:
@@ -348,33 +379,39 @@ fn check_lint<'a, S: Stage>(
         }
 
         CheckLintNameResult::RenamedToolLint(new_name) => {
-            cx.emit_lint(
-                RENAMED_AND_REMOVED_LINTS,
-                AttributeLintKind::RenamedLint {
-                    name: *full_name,
-                    replace: new_name,
-                    suggestion: span,
-                },
-                span,
-            );
+            if !early {
+                cx.emit_lint(
+                    RENAMED_AND_REMOVED_LINTS,
+                    AttributeLintKind::RenamedLint {
+                        name: *full_name,
+                        replace: new_name,
+                        suggestion: span,
+                    },
+                    span,
+                );
+            }
             None
         }
 
         CheckLintNameResult::Removed(reason) => {
-            cx.emit_lint(
-                RENAMED_AND_REMOVED_LINTS,
-                AttributeLintKind::RemovedLint { name: *full_name, reason },
-                span,
-            );
+            if !early {
+                cx.emit_lint(
+                    RENAMED_AND_REMOVED_LINTS,
+                    AttributeLintKind::RemovedLint { name: *full_name, reason },
+                    span,
+                );
+            }
             None
         }
 
         CheckLintNameResult::NoLint(suggestion) => {
-            cx.emit_lint(
-                UNKNOWN_LINTS,
-                AttributeLintKind::UnknownLint { name: *full_name, suggestion, span },
-                span,
-            );
+            if !early {
+                cx.emit_lint(
+                    UNKNOWN_LINTS,
+                    AttributeLintKind::UnknownLint { name: *full_name, suggestion, span },
+                    span,
+                );
+            }
             None
         }
     }
