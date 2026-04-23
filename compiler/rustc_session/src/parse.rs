@@ -20,7 +20,6 @@ use rustc_span::hygiene::ExpnId;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
 use rustc_span::{Span, Symbol, sym};
 
-use crate::Session;
 use crate::config::{Cfg, CheckCfg};
 use crate::errors::{
     CliFeatureDiagnosticHelp, FeatureDiagnosticForIssue, FeatureDiagnosticHelp,
@@ -28,6 +27,7 @@ use crate::errors::{
 };
 use crate::lint::builtin::UNSTABLE_SYNTAX_PRE_EXPANSION;
 use crate::lint::{Lint, LintId};
+use crate::{Session, SessionAndCrateName};
 
 /// Collected spans during parsing for places where a certain feature was
 /// used and should be feature gated accordingly in `check_crate`.
@@ -345,6 +345,31 @@ impl ParseSess {
             Some(span.into()),
             node_id,
             DecorateDiagCompat::Dynamic(Box::new(|dcx, level, _| callback(dcx, level))),
+        )
+    }
+
+    pub fn dyn_buffer_lint_sess<
+        F: for<'a> FnOnce(DiagCtxtHandle<'a>, Level, &SessionAndCrateName<'_>) -> Diag<'a, ()>
+            + DynSync
+            + DynSend
+            + 'static,
+    >(
+        &self,
+        lint: &'static Lint,
+        span: impl Into<MultiSpan>,
+        node_id: NodeId,
+        callback: F,
+    ) {
+        self.opt_span_buffer_lint(
+            lint,
+            Some(span.into()),
+            node_id,
+            DecorateDiagCompat::Dynamic(Box::new(|dcx, level, sess| {
+                let sess = sess
+                    .downcast_ref::<SessionAndCrateName<'_>>()
+                    .expect("expected a `SessionAndCrateName`");
+                callback(dcx, level, sess)
+            })),
         )
     }
 

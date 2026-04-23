@@ -477,7 +477,14 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     /// must be delayed until after HIR is built. This method will take care of the details of
     /// that.
     pub(crate) fn emit_dyn_lint<
-        F: for<'a> Fn(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + DynSync + 'static,
+        F: for<'a> Fn(
+                DiagCtxtHandle<'a>,
+                Level,
+                &rustc_session::SessionAndCrateName<'_>,
+            ) -> Diag<'a, ()>
+            + DynSend
+            + DynSync
+            + 'static,
     >(
         &mut self,
         lint: &'static Lint,
@@ -505,7 +512,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     pub(crate) fn warn_unused_duplicate(&mut self, used_span: Span, unused_span: Span) {
         self.emit_dyn_lint(
             rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            move |dcx, level| {
+            move |dcx, level, _| {
                 rustc_errors::lints::UnusedDuplicate {
                     this: unused_span,
                     other: used_span,
@@ -524,7 +531,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
     ) {
         self.emit_dyn_lint(
             rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            move |dcx, level| {
+            move |dcx, level, _| {
                 rustc_errors::lints::UnusedDuplicate {
                     this: unused_span,
                     other: used_span,
@@ -903,7 +910,7 @@ where
         let valid_without_list = self.template.word;
         self.emit_dyn_lint(
             rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-            move |dcx, level| {
+            move |dcx, level, _| {
                 crate::errors::EmptyAttributeList {
                     attr_span: span,
                     attr_path: &attr_path,
@@ -927,7 +934,7 @@ where
         let span = self.attr_span;
         self.emit_dyn_lint(
             lint,
-            move |dcx, level| {
+            move |dcx, level, _| {
                 crate::errors::IllFormedAttributeInput::new(&suggestions, None, help.as_deref())
                     .into_diag(dcx, level)
             },

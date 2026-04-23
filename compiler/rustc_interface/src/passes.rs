@@ -11,10 +11,12 @@ use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CompiledModules, CrateInfo};
 use rustc_data_structures::indexmap::IndexMap;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal, par_fns};
+use rustc_data_structures::sync::{
+    AppendOnlyIndexVec, DynSend, DynSync, FreezeLock, WorkerLocal, par_fns,
+};
 use rustc_data_structures::thousands;
-use rustc_errors::DiagCallback;
 use rustc_errors::timings::TimingSection;
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
@@ -43,6 +45,7 @@ use rustc_session::cstore::Untracked;
 use rustc_session::output::{filename_for_input, invalid_output_for_target};
 use rustc_session::parse::feature_err;
 use rustc_session::search_paths::PathKind;
+use rustc_span::def_id::CrateNum;
 use rustc_span::{
     DUMMY_SP, ErrorGuaranteed, ExpnKind, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,
 };
@@ -141,7 +144,7 @@ fn configure_and_expand(
     let tcx = resolver.tcx();
     let sess = tcx.sess;
     let features = tcx.features();
-    let lint_store = unerased_lint_store(tcx.sess);
+    let lint_store = unerased_lint_store(sess);
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let lint_check_node = (&krate, pre_configured_attrs);
     pre_expansion_lint(
@@ -1028,6 +1031,23 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
     )
 }
 
+struct DiagCallback<'a, 'tcx> {
+    callback: &'a Box<
+        dyn for<'b> Fn(DiagCtxtHandle<'b>, Level, &dyn Any) -> Diag<'b, ()> + DynSend + DynSync,
+    >,
+    info: rustc_session::SessionAndCrateName<'tcx>,
+}
+
+impl<'a, 'b, 'tcx> Diagnostic<'a, ()> for DiagCallback<'b, 'tcx> {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        let Self { callback, info } = self;
+        // FIXME: remove this transmute once lifetime coercion blocker is solved.
+        let info: rustc_session::SessionAndCrateName<'static> =
+            unsafe { std::mem::transmute(info) };
+        (callback)(dcx, level, &info)
+    }
+}
+
 pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
     for owner_id in tcx.hir_crate_items(()).delayed_lint_items() {
         if let Some(delayed_lints) = tcx.opt_ast_lowering_delayed_lints(owner_id) {
@@ -1045,12 +1065,18 @@ pub fn emit_delayed_lints(tcx: TyCtxt<'_>) {
                             },
                         );
                     }
-                    DelayedLint::Dynamic(attribute_lint) => tcx.emit_node_span_lint(
-                        attribute_lint.lint_id.lint,
-                        attribute_lint.id,
-                        attribute_lint.span.clone(),
-                        DiagCallback(&attribute_lint.callback),
-                    ),
+                    DelayedLint::Dynamic(attribute_lint) => {
+                        let info = rustc_session::SessionAndCrateName {
+                            sess: tcx.sess,
+                            crate_name: &move |crate_num: CrateNum| tcx.crate_name(crate_num),
+                        };
+                        tcx.emit_node_span_lint(
+                            attribute_lint.lint_id.lint,
+                            attribute_lint.id,
+                            attribute_lint.span.clone(),
+                            DiagCallback { callback: &attribute_lint.callback, info },
+                        );
+                    }
                 }
             }
         }

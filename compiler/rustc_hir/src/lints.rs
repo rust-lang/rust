@@ -33,7 +33,10 @@ pub struct DynAttribute {
     pub id: HirId,
     pub span: MultiSpan,
     pub callback: Box<
-        dyn for<'a> Fn(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + DynSync + 'static,
+        dyn for<'a> Fn(DiagCtxtHandle<'a>, Level, &dyn std::any::Any) -> Diag<'a, ()>
+            + DynSend
+            + DynSync
+            + 'static,
     >,
 }
 

@@ -9,8 +9,8 @@ use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lints::AttributeLintKind;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId, Target};
-use rustc_session::Session;
 use rustc_session::lint::LintId;
+use rustc_session::{Session, SessionAndCrateName};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
@@ -24,7 +24,10 @@ pub enum EmitAttribute {
     Static(AttributeLintKind),
     Dynamic(
         Box<
-            dyn for<'a> Fn(DiagCtxtHandle<'a>, Level) -> Diag<'a, ()> + DynSend + DynSync + 'static,
+            dyn for<'a> Fn(DiagCtxtHandle<'a>, Level, &SessionAndCrateName<'_>) -> Diag<'a, ()>
+                + DynSend
+                + DynSync
+                + 'static,
         >,
     ),
 }
@@ -132,7 +135,7 @@ impl<'sess> AttributeParser<'sess, Early> {
                     sess.psess.buffer_lint(lint_id.lint, span, target_node_id, kind)
                 }
                 EmitAttribute::Dynamic(callback) => {
-                    sess.psess.dyn_buffer_lint(lint_id.lint, span, target_node_id, callback)
+                    sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, callback)
                 }
             },
         )
@@ -219,7 +222,7 @@ impl<'sess> AttributeParser<'sess, Early> {
                 sess.psess.buffer_lint(lint_id.lint, span, target_node_id, kind)
             }
             EmitAttribute::Dynamic(callback) => {
-                sess.psess.dyn_buffer_lint(lint_id.lint, span, target_node_id, callback)
+                sess.psess.dyn_buffer_lint_sess(lint_id.lint, span, target_node_id, callback)
             }
         };
         if let Some(safety) = attr_safety {
