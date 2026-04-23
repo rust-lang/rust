@@ -543,7 +543,7 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "wasip2",
     "wasip3",
     "windows-link",
-    "windows-sys",
+    "windows-sys@0.61.100", // Enforce the usage of our dummy windows-sys patch. Keep version in sync.
     "wit-bindgen",
     // tidy-alphabetical-end
 ];
