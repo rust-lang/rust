@@ -3283,14 +3283,6 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("missing options for `{$attribute}` attribute")]
-#[help("{$options}")]
-pub(crate) struct MissingOptionsForDiagnosticAttribute {
-    pub attribute: &'static str,
-    pub options: &'static str,
-}
-
-#[derive(Diagnostic)]
 #[diag("`Eq::assert_receiver_is_total_eq` should never be implemented by hand")]
 #[note("this method was used to add checks to the `Eq` derive macro")]
 pub(crate) struct EqInternalMethodImplemented;

@@ -43,10 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            &AttributeLintKind::MissingOptionsForDiagnosticAttribute { attribute, options } => {
-                lints::MissingOptionsForDiagnosticAttribute { attribute, options }
-                    .into_diag(dcx, level)
-            }
             &AttributeLintKind::NonMetaItemDiagnosticAttribute => {
                 lints::NonMetaItemDiagnosticAttribute.into_diag(dcx, level)
             }

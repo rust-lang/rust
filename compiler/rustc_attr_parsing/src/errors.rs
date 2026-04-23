@@ -392,3 +392,11 @@ pub(crate) struct IgnoredDiagnosticOption {
     #[label("`{$option_name}` is later redundantly declared here")]
     pub later_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("missing options for `{$attribute}` attribute")]
+#[help("{$options}")]
+pub(crate) struct MissingOptionsForDiagnosticAttribute {
+    pub attribute: &'static str,
+    pub options: &'static str,
+}

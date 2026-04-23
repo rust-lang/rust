@@ -20,7 +20,8 @@ use thin_vec::{ThinVec, thin_vec};
 use crate::context::{AcceptContext, Stage};
 use crate::errors::{
     DisallowedPlaceholder, DisallowedPositionalArgument, IgnoredDiagnosticOption,
-    InvalidFormatSpecifier, MalFormedDiagnosticAttributeLint, WrappedParserError,
+    InvalidFormatSpecifier, MalFormedDiagnosticAttributeLint, MissingOptionsForDiagnosticAttribute,
+    WrappedParserError,
 };
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
 
@@ -151,11 +152,14 @@ fn parse_list<'p, S: Stage>(
             );
         }
         ArgParser::NoArgs => {
-            cx.emit_lint(
+            cx.emit_dyn_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                AttributeLintKind::MissingOptionsForDiagnosticAttribute {
-                    attribute: mode.as_str(),
-                    options: mode.expected_options(),
+                move |dcx, level| {
+                    MissingOptionsForDiagnosticAttribute {
+                        attribute: mode.as_str(),
+                        options: mode.expected_options(),
+                    }
+                    .into_diag(dcx, level)
                 },
                 span,
             );
