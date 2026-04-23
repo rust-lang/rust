@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/method-call-choice.rs:21:27
+  --> $DIR/method-call-choice.rs:20:27
    |
 LL |     reuse to_reuse::foo { self.0 }
    |                     ---   ^^^^^^ expected `&F`, found `F`
@@ -7,7 +7,7 @@ LL |     reuse to_reuse::foo { self.0 }
    |                     arguments to this function are incorrect
    |
 note: function defined here
-  --> $DIR/method-call-choice.rs:15:12
+  --> $DIR/method-call-choice.rs:14:12
    |
 LL |     pub fn foo(_: &F) {}
    |            ^^^ -----

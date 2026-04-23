@@ -1,7 +1,6 @@
 //@ compile-flags: -Z deduplicate-diagnostics=yes
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 trait Trait<T> {
     fn foo<U>(&self, _: U, _: T) {}

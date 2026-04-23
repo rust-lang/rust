@@ -1,11 +1,11 @@
 error[E0575]: expected method or associated constant, found associated type `Iterator::Item`
-  --> $DIR/def-path-hash-collision-ice-153410.rs:22:10
+  --> $DIR/def-path-hash-collision-ice-153410.rs:21:10
    |
 LL |     reuse< < <for<'a> fn()>::Output>::Item as Iterator>::*;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a method or associated constant
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/def-path-hash-collision-ice-153410.rs:20:6
+  --> $DIR/def-path-hash-collision-ice-153410.rs:19:6
    |
 LL | impl Iterator {
    |      ^^^^^^^^
@@ -20,7 +20,7 @@ LL | impl Iterator for /* Type */ {
    |               ++++++++++++++
 
 error[E0223]: ambiguous associated type
-  --> $DIR/def-path-hash-collision-ice-153410.rs:22:14
+  --> $DIR/def-path-hash-collision-ice-153410.rs:21:14
    |
 LL |     reuse< < <for<'a> fn()>::Output>::Item as Iterator>::*;
    |              ^^^^^^^^^^^^^^^^^^^^^^

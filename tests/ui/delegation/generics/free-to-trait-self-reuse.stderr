@@ -1,21 +1,21 @@
 error[E0277]: the trait bound `Struct: Bound<T>` is not satisfied
-  --> $DIR/free-to-trait-self-reuse.rs:32:49
+  --> $DIR/free-to-trait-self-reuse.rs:31:49
    |
 LL | impl<'a, T, const X: usize> Trait<'a, T, X> for Struct {}
    |                                                 ^^^^^^ unsatisfied trait bound
    |
 help: the trait `Bound<T>` is not implemented for `Struct`
-  --> $DIR/free-to-trait-self-reuse.rs:31:1
+  --> $DIR/free-to-trait-self-reuse.rs:30:1
    |
 LL | struct Struct;
    | ^^^^^^^^^^^^^
 help: the trait `Bound<T>` is implemented for `usize`
-  --> $DIR/free-to-trait-self-reuse.rs:16:1
+  --> $DIR/free-to-trait-self-reuse.rs:15:1
    |
 LL | impl<T> Bound<T> for usize {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `Trait`
-  --> $DIR/free-to-trait-self-reuse.rs:8:11
+  --> $DIR/free-to-trait-self-reuse.rs:7:11
    |
 LL | trait Trait<'a, T, const X: usize>
    |       ----- required by a bound in this trait
@@ -24,13 +24,13 @@ LL |     Self: Bound<T> + Sized,
    |           ^^^^^^^^ required by this bound in `Trait`
 
 error[E0277]: the trait bound `String: Trait<'a, T, X>` is not satisfied
-  --> $DIR/free-to-trait-self-reuse.rs:28:8
+  --> $DIR/free-to-trait-self-reuse.rs:27:8
    |
 LL | reuse <String as Trait>::method as error5;
    |        ^^^^^^ the trait `Trait<'a, T, X>` is not implemented for `String`
    |
 help: the following other types implement trait `Trait<'a, T, X>`
-  --> $DIR/free-to-trait-self-reuse.rs:15:1
+  --> $DIR/free-to-trait-self-reuse.rs:14:1
    |
 LL | impl<'a, T, const X: usize> Trait<'a, T, X> for usize {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `usize`
@@ -39,23 +39,23 @@ LL | impl<'a, T, const X: usize> Trait<'a, T, X> for Struct {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Struct`
 
 error[E0277]: the trait bound `Struct: Bound<T>` is not satisfied
-  --> $DIR/free-to-trait-self-reuse.rs:35:8
+  --> $DIR/free-to-trait-self-reuse.rs:34:8
    |
 LL | reuse <Struct as Trait>::method as error6;
    |        ^^^^^^ unsatisfied trait bound
    |
 help: the trait `Bound<T>` is not implemented for `Struct`
-  --> $DIR/free-to-trait-self-reuse.rs:31:1
+  --> $DIR/free-to-trait-self-reuse.rs:30:1
    |
 LL | struct Struct;
    | ^^^^^^^^^^^^^
 help: the trait `Bound<T>` is implemented for `usize`
-  --> $DIR/free-to-trait-self-reuse.rs:16:1
+  --> $DIR/free-to-trait-self-reuse.rs:15:1
    |
 LL | impl<T> Bound<T> for usize {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: required by a bound in `Trait::method`
-  --> $DIR/free-to-trait-self-reuse.rs:8:11
+  --> $DIR/free-to-trait-self-reuse.rs:7:11
    |
 LL |     Self: Bound<T> + Sized,
    |           ^^^^^^^^ required by this bound in `Trait::method`
@@ -64,7 +64,7 @@ LL |     fn method<U, const B: bool>(&self, x: U) {}
    |        ------ required by a bound in this associated function
 
 error[E0107]: function takes 3 generic arguments but 2 generic arguments were supplied
-  --> $DIR/free-to-trait-self-reuse.rs:44:5
+  --> $DIR/free-to-trait-self-reuse.rs:43:5
    |
 LL |     foo3::<String, true>(&123, "".to_string());
    |     ^^^^   ------  ---- supplied 2 generic arguments
@@ -72,7 +72,7 @@ LL |     foo3::<String, true>(&123, "".to_string());
    |     expected 3 generic arguments
    |
 note: function defined here, with 3 generic parameters: `Self`, `U`, `B`
-  --> $DIR/free-to-trait-self-reuse.rs:23:45
+  --> $DIR/free-to-trait-self-reuse.rs:22:45
    |
 LL | reuse Trait::<'static, i32, 123>::method as foo3;
    |                                   ------    ^^^^
@@ -82,7 +82,7 @@ LL |     foo3::<String, true, B>(&123, "".to_string());
    |                        +++
 
 error[E0107]: function takes 5 generic arguments but 4 generic arguments were supplied
-  --> $DIR/free-to-trait-self-reuse.rs:47:5
+  --> $DIR/free-to-trait-self-reuse.rs:46:5
    |
 LL |     bar3::<'static, i32, 123, bool, false>(&mut 123, true);
    |     ^^^^            ---  ---  ----  ----- supplied 4 generic arguments
@@ -90,7 +90,7 @@ LL |     bar3::<'static, i32, 123, bool, false>(&mut 123, true);
    |     expected 5 generic arguments
    |
 note: function defined here, with 5 generic parameters: `Self`, `T`, `X`, `U`, `B`
-  --> $DIR/free-to-trait-self-reuse.rs:25:25
+  --> $DIR/free-to-trait-self-reuse.rs:24:25
    |
 LL | reuse Trait::method3 as bar3;
    |              -------    ^^^^
@@ -100,7 +100,7 @@ LL |     bar3::<'static, i32, 123, bool, false, B>(&mut 123, true);
    |                                          +++
 
 error[E0107]: function takes 3 generic arguments but 2 generic arguments were supplied
-  --> $DIR/free-to-trait-self-reuse.rs:49:5
+  --> $DIR/free-to-trait-self-reuse.rs:48:5
    |
 LL |     bar4::<'static, usize, 321>(&mut 123, vec![123]);
    |     ^^^^            -----  --- supplied 2 generic arguments
@@ -108,7 +108,7 @@ LL |     bar4::<'static, usize, 321>(&mut 123, vec![123]);
    |     expected 3 generic arguments
    |
 note: function defined here, with 3 generic parameters: `Self`, `T`, `X`
-  --> $DIR/free-to-trait-self-reuse.rs:26:44
+  --> $DIR/free-to-trait-self-reuse.rs:25:44
    |
 LL | reuse Trait::method3::<Vec<i32>, false> as bar4;
    |              -------                       ^^^^

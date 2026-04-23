@@ -1,5 +1,4 @@
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 // Testing delegation from trait impl to free functions.
 mod test_1 {

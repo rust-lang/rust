@@ -1,23 +1,23 @@
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/free-fn-to-trait-infer.rs:12:15
+  --> $DIR/free-fn-to-trait-infer.rs:11:15
    |
 LL | reuse Trait::<_>::foo::<i32> as generic_arguments1;
    |               ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/free-fn-to-trait-infer.rs:14:20
+  --> $DIR/free-fn-to-trait-infer.rs:13:20
    |
 LL | reuse <u8 as Trait<_>>::foo as generic_arguments2;
    |                    ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/free-fn-to-trait-infer.rs:16:8
+  --> $DIR/free-fn-to-trait-infer.rs:15:8
    |
 LL | reuse <_ as Trait<_>>::foo as generic_arguments3;
    |        ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
-  --> $DIR/free-fn-to-trait-infer.rs:16:19
+  --> $DIR/free-fn-to-trait-infer.rs:15:19
    |
 LL | reuse <_ as Trait<_>>::foo as generic_arguments3;
    |                   ^ not allowed in type signatures

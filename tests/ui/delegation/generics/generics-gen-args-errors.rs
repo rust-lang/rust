@@ -1,7 +1,6 @@
 //@ compile-flags: -Z deduplicate-diagnostics=yes
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 mod test_1 {
     fn foo<'a: 'a, 'b: 'b, T: Clone, U: Clone, const N: usize>() {}
