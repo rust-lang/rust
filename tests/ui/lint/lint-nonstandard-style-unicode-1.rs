@@ -42,8 +42,18 @@ struct Hello_World;
 struct 你_ӟ;
 //~^ ERROR type `你_ӟ` should have an upper camel case name
 
-// and this is ok:
+struct ΦΙΛΟΣ_Σ;
+//~^ ERROR type `ΦΙΛΟΣ_Σ` should have an upper camel case name
+
+struct Σ_ΦΙΛΟΣ;
+//~^ ERROR type `Σ_ΦΙΛΟΣ` should have an upper camel case name
+
+// these are ok:
 
 struct 你_好;
+
+struct ძალა_ერთობაშია;
+
+struct Σ;
 
 fn main() {}

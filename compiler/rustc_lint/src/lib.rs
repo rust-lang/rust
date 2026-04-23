@@ -24,6 +24,7 @@
 #![feature(box_patterns)]
 #![feature(iter_order_by)]
 #![feature(rustc_attrs)]
+#![feature(titlecase)]
 #![feature(try_blocks)]
 // tidy-alphabetical-end
 
