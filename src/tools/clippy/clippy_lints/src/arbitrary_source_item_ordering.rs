@@ -307,10 +307,10 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                 }
             },
             ItemKind::Trait(
+                _impl_restriction,
                 _constness,
                 is_auto,
                 _safety,
-                _impl_restriction,
                 _ident,
                 _generics,
                 _generic_bounds,
