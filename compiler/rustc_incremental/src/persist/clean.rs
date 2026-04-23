@@ -55,7 +55,7 @@ const BASE_FN: &[&str] = &[
 /// DepNodes for Hir, which is pretty much everything
 const BASE_HIR: &[&str] = &[
     // opt_hir_owner_nodes should be computed for all nodes
-    label_strs::opt_hir_owner_nodes,
+    label_strs::owner,
 ];
 
 /// `impl` implementation of struct/trait

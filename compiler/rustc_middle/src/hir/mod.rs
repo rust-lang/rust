@@ -62,27 +62,6 @@ impl<'hir> Crate<'hir> {
     ) -> Crate<'hir> {
         Crate { owners, delayed_ids, delayed_resolver, opt_hir_hash }
     }
-
-    /// Serves as an entry point for getting `MaybeOwner`. As owner can either be in
-    /// `owners` of `hir_crate` or it can be delayed AST owner (i.e., delegations)
-    /// we need to firstly check in `hir_crate` and then delayed AST owners.
-    /// This method can be invoked when not all delayed AST owners are lowered.
-    pub fn owner(&self, tcx: TyCtxt<'hir>, def_id: LocalDefId) -> MaybeOwner<'hir> {
-        // Delayed LocalDefId can be in `self.owners` if there exists non-delayed LocalDefId
-        // which is greater than delayed LocalDefId, we use IndexVec for owners,
-        // so we will call ensure_contains_elem which will grow it.
-        if let Some(owner) = self.owners.get(def_id)
-            && (self.delayed_ids.is_empty() || !matches!(owner, MaybeOwner::Phantom))
-        {
-            return *owner;
-        }
-
-        if self.delayed_ids.contains(&def_id) {
-            tcx.ensure_done().lower_delayed_owner(def_id);
-        }
-
-        tcx.delayed_owner(def_id)
-    }
 }
 
 impl<Hcx: HashStableContext> HashStable<Hcx> for Crate<'_> {
@@ -431,8 +410,7 @@ impl<'tcx> TyCtxt<'tcx> {
             HirId {
                 owner: parent_owner_id,
                 local_id: self
-                    .hir_crate(())
-                    .owner(self, parent_owner_id.def_id)
+                    .owner(parent_owner_id.def_id)
                     .unwrap()
                     .parenting
                     .get(&owner_id.def_id)
@@ -465,19 +443,28 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
-    providers.local_def_id_to_hir_id = |tcx, def_id| match tcx.hir_crate(()).owner(tcx, def_id) {
-        MaybeOwner::Owner(_) => HirId::make_owner(def_id),
-        MaybeOwner::NonOwner(hir_id) => hir_id,
-        MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
+    // Serves as an entry point for getting `MaybeOwner`. As owner can either be in
+    // `owners` of `hir_crate` or it can be delayed AST owner (i.e., delegations)
+    // we need to firstly check in `hir_crate` and then delayed AST owners.
+    // This method can be invoked when not all delayed AST owners are lowered.
+    providers.owner = |tcx, def_id| {
+        // Delayed LocalDefId can be in `self.owners` if there exists non-delayed LocalDefId
+        // which is greater than delayed LocalDefId, we use IndexVec for owners,
+        // so we will call ensure_contains_elem which will grow it.
+        let krate = tcx.hir_crate(());
+        if let Some(owner) = krate.owners.get(def_id)
+            && (krate.delayed_ids.is_empty() || !matches!(owner, MaybeOwner::Phantom))
+        {
+            return *owner;
+        }
+
+        if krate.delayed_ids.contains(&def_id) {
+            tcx.ensure_done().lower_delayed_owner(def_id);
+        }
+
+        tcx.delayed_owner(def_id)
     };
-    providers.opt_hir_owner_nodes =
-        |tcx, id| tcx.hir_crate(()).owner(tcx, id).as_owner().map(|i| &i.nodes);
     providers.hir_owner_parent_q = |tcx, owner_id| tcx.hir_owner_parent_impl(owner_id);
-    providers.hir_attr_map = |tcx, id| {
-        tcx.hir_crate(()).owner(tcx, id.def_id).as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
-    };
-    providers.opt_ast_lowering_delayed_lints =
-        |tcx, id| tcx.hir_crate(()).owner(tcx, id.def_id).as_owner().map(|o| &o.delayed_lints);
     providers.def_span = |tcx, def_id| tcx.hir_span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
@@ -517,7 +504,4 @@ pub fn provide(providers: &mut Providers) {
         |tcx, trait_id| tcx.resolutions(()).trait_impls.get(&trait_id).map_or(&[], |xs| &xs[..]);
     providers.expn_that_defined =
         |tcx, id| tcx.resolutions(()).expn_that_defined.get(&id).copied().unwrap_or(ExpnId::root());
-    providers.in_scope_traits_map = |tcx, id| {
-        tcx.hir_crate(()).owner(tcx, id.def_id).as_owner().map(|owner_info| &owner_info.trait_map)
-    };
 }

@@ -12,6 +12,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
+use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
 use rustc_hir_pretty as pprust_hir;
 use rustc_span::def_id::StableCrateId;
@@ -19,7 +20,7 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 
 use crate::hir::{ModuleItems, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
-use crate::query::LocalCrate;
+use crate::query::{IntoQueryKey, LocalCrate};
 use crate::ty::TyCtxt;
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
@@ -101,6 +102,34 @@ impl<'tcx> Iterator for ParentOwnerIterator<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    pub fn local_def_id_to_hir_id(self, def_id: impl IntoQueryKey<LocalDefId>) -> HirId {
+        let def_id = def_id.into_query_key();
+        match self.owner(def_id) {
+            MaybeOwner::Owner(_) => HirId::make_owner(def_id),
+            MaybeOwner::NonOwner(hir_id) => hir_id,
+            MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
+        }
+    }
+
+    pub fn opt_ast_lowering_delayed_lints(self, id: OwnerId) -> Option<&'tcx DelayedLints> {
+        self.owner(id.def_id).as_owner().map(|o| &o.delayed_lints)
+    }
+
+    pub fn hir_attr_map(self, id: OwnerId) -> &'tcx AttributeMap<'tcx> {
+        self.owner(id.def_id).as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
+    }
+
+    pub fn in_scope_traits_map(
+        self,
+        id: OwnerId,
+    ) -> Option<&'tcx ItemLocalMap<&'tcx [TraitCandidate<'tcx>]>> {
+        self.owner(id.def_id).as_owner().map(|owner_info| &owner_info.trait_map)
+    }
+
+    pub fn opt_hir_owner_nodes(self, def_id: LocalDefId) -> Option<&'tcx OwnerNodes<'tcx>> {
+        self.owner(def_id).as_owner().map(|i| &i.nodes)
+    }
+
     #[inline]
     fn expect_hir_owner_nodes(self, def_id: LocalDefId) -> &'tcx OwnerNodes<'tcx> {
         self.opt_hir_owner_nodes(def_id)

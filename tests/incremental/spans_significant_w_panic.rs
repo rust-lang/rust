@@ -17,7 +17,7 @@ pub fn main() {
 }
 
 #[cfg(rpass2)]
-#[rustc_clean(cfg = "rpass2")]
+#[rustc_clean(cfg = "rpass2",except = "owner")]
 pub fn main() {
     if std::hint::black_box(false) {
         panic!()

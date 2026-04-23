@@ -29,9 +29,9 @@ pub fn change_loop_body() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass2", except="owner, optimized_mir")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass5", except="owner, optimized_mir")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_loop_body() {
     let mut _x = 0;
@@ -54,9 +54,9 @@ pub fn add_break() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, optimized_mir, typeck_root")]
+#[rustc_clean(cfg="bpass2", except="owner, optimized_mir, typeck_root")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, optimized_mir, typeck_root")]
+#[rustc_clean(cfg="bpass5", except="owner, optimized_mir, typeck_root")]
 #[rustc_clean(cfg="bpass6")]
 pub fn add_break() {
     let mut _x = 0;
@@ -79,9 +79,9 @@ pub fn add_loop_label() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 pub fn add_loop_label() {
     let mut _x = 0;
@@ -104,9 +104,9 @@ pub fn add_loop_label_to_break() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 pub fn add_loop_label_to_break() {
     let mut _x = 0;
@@ -131,9 +131,9 @@ pub fn change_break_label() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, optimized_mir, typeck_root")]
+#[rustc_clean(cfg="bpass2", except="owner, optimized_mir, typeck_root")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, optimized_mir, typeck_root")]
+#[rustc_clean(cfg="bpass5", except="owner, optimized_mir, typeck_root")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_break_label() {
     let mut _x = 0;
@@ -158,9 +158,9 @@ pub fn add_loop_label_to_continue() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass5", except="owner, optimized_mir")]
 #[rustc_clean(cfg="bpass6")]
 pub fn add_loop_label_to_continue() {
     let mut _x = 0;
@@ -185,9 +185,9 @@ pub fn change_continue_label() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg="bpass5", except="owner, optimized_mir")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_continue_label() {
     let mut _x = 0;
@@ -212,9 +212,9 @@ pub fn change_continue_to_break() {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="opt_hir_owner_nodes, typeck_root, optimized_mir")]
+#[rustc_clean(cfg="bpass2", except="owner, typeck_root, optimized_mir")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="opt_hir_owner_nodes, typeck_root, optimized_mir")]
+#[rustc_clean(cfg="bpass5", except="owner, typeck_root, optimized_mir")]
 #[rustc_clean(cfg="bpass6")]
 pub fn change_continue_to_break() {
     let mut _x = 0;

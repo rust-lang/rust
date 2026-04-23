@@ -26,12 +26,12 @@ pub fn add_parameter() {}
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(
     cfg = "bpass2",
-    except = "opt_hir_owner_nodes, optimized_mir, typeck_root, fn_sig"
+    except = "owner, optimized_mir, typeck_root, fn_sig"
 )]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(
     cfg = "bpass5",
-    except = "opt_hir_owner_nodes, optimized_mir, typeck_root, fn_sig"
+    except = "owner, optimized_mir, typeck_root, fn_sig"
 )]
 #[rustc_clean(cfg = "bpass6")]
 pub fn add_parameter(p: i32) {}
@@ -42,9 +42,9 @@ pub fn add_parameter(p: i32) {}
 pub fn add_return_type()       {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "opt_hir_owner_nodes")]
+#[rustc_clean(cfg = "bpass2", except = "owner")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5", except = "opt_hir_owner_nodes, optimized_mir")]
+#[rustc_clean(cfg = "bpass5", except = "owner, optimized_mir")]
 #[rustc_clean(cfg = "bpass6")]
 pub fn add_return_type() -> () {}
 
@@ -56,12 +56,12 @@ pub fn type_of_parameter(p: i32) {}
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(
     cfg = "bpass2",
-    except = "opt_hir_owner_nodes, optimized_mir, typeck_root, fn_sig"
+    except = "owner, optimized_mir, typeck_root, fn_sig"
 )]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(
     cfg = "bpass5",
-    except = "opt_hir_owner_nodes, optimized_mir, typeck_root, fn_sig"
+    except = "owner, optimized_mir, typeck_root, fn_sig"
 )]
 #[rustc_clean(cfg = "bpass6")]
 pub fn type_of_parameter(p: i64) {}
@@ -74,12 +74,12 @@ pub fn type_of_parameter_ref(p: &i32) {}
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(
     cfg = "bpass2",
-    except = "opt_hir_owner_nodes, optimized_mir, typeck_root, fn_sig"
+    except = "owner, optimized_mir, typeck_root, fn_sig"
 )]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(
     cfg = "bpass5",
-    except = "opt_hir_owner_nodes, optimized_mir, typeck_root, fn_sig"
+    except = "owner, optimized_mir, typeck_root, fn_sig"
 )]
 #[rustc_clean(cfg = "bpass6")]
 pub fn type_of_parameter_ref(p: &mut i32) {}
@@ -92,12 +92,12 @@ pub fn order_of_parameters(p1: i32, p2: i64) {}
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(
     cfg = "bpass2",
-    except = "opt_hir_owner_nodes, optimized_mir, typeck_root, fn_sig"
+    except = "owner, optimized_mir, typeck_root, fn_sig"
 )]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(
     cfg = "bpass5",
-    except = "opt_hir_owner_nodes, optimized_mir, typeck_root, fn_sig"
+    except = "owner, optimized_mir, typeck_root, fn_sig"
 )]
 #[rustc_clean(cfg = "bpass6")]
 pub fn order_of_parameters(p2: i64, p1: i32) {}
@@ -110,12 +110,12 @@ pub        fn make_unsafe() {}
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(
     cfg = "bpass2",
-    except = "opt_hir_owner_nodes, typeck_root, fn_sig"
+    except = "owner, typeck_root, fn_sig"
 )]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(
     cfg = "bpass5",
-    except = "opt_hir_owner_nodes, typeck_root, fn_sig"
+    except = "owner, typeck_root, fn_sig"
 )]
 #[rustc_clean(cfg = "bpass6")]
 pub unsafe fn make_unsafe() {}
@@ -126,9 +126,9 @@ pub unsafe fn make_unsafe() {}
 pub            fn make_extern() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "opt_hir_owner_nodes, typeck_root, fn_sig")]
+#[rustc_clean(cfg = "bpass2", except = "owner, typeck_root, fn_sig")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5", except = "opt_hir_owner_nodes, typeck_root, fn_sig")]
+#[rustc_clean(cfg = "bpass5", except = "owner, typeck_root, fn_sig")]
 #[rustc_clean(cfg = "bpass6")]
 pub extern "C" fn make_extern() {}
 
@@ -140,12 +140,12 @@ pub fn type_parameter   () {}
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(
     cfg = "bpass2",
-    except = "opt_hir_owner_nodes, generics_of, type_of, predicates_of"
+    except = "owner, generics_of, type_of, predicates_of"
 )]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(
     cfg = "bpass5",
-    except = "opt_hir_owner_nodes, generics_of, type_of, predicates_of"
+    except = "owner, generics_of, type_of, predicates_of"
 )]
 #[rustc_clean(cfg = "bpass6")]
 pub fn type_parameter<T>() {}
@@ -156,9 +156,9 @@ pub fn type_parameter<T>() {}
 pub fn lifetime_parameter    () {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "opt_hir_owner_nodes, generics_of,fn_sig")]
+#[rustc_clean(cfg = "bpass2", except = "owner, generics_of,fn_sig")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5", except = "opt_hir_owner_nodes, generics_of,fn_sig")]
+#[rustc_clean(cfg = "bpass5", except = "owner, generics_of,fn_sig")]
 #[rustc_clean(cfg = "bpass6")]
 pub fn lifetime_parameter<'a>() {}
 
@@ -168,7 +168,7 @@ pub fn lifetime_parameter<'a>() {}
 pub fn trait_bound<T    >() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "opt_hir_owner_nodes, predicates_of")]
+#[rustc_clean(cfg = "bpass2", except = "owner, predicates_of")]
 #[rustc_clean(cfg = "bpass3")]
 pub fn trait_bound<T: Eq>() {}
 
@@ -178,9 +178,9 @@ pub fn trait_bound<T: Eq>() {}
 pub fn builtin_bound<T      >() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "opt_hir_owner_nodes, predicates_of")]
+#[rustc_clean(cfg = "bpass2", except = "owner, predicates_of")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5", except = "opt_hir_owner_nodes, predicates_of")]
+#[rustc_clean(cfg = "bpass5", except = "owner, predicates_of")]
 #[rustc_clean(cfg = "bpass6")]
 pub fn builtin_bound<T: Send>() {}
 
@@ -192,12 +192,12 @@ pub fn lifetime_bound<'a, T>() {}
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(
     cfg = "bpass2",
-    except = "opt_hir_owner_nodes, generics_of, type_of, predicates_of,fn_sig"
+    except = "owner, generics_of, type_of, predicates_of,fn_sig"
 )]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(
     cfg = "bpass5",
-    except = "opt_hir_owner_nodes, generics_of, type_of, predicates_of,fn_sig,optimized_mir"
+    except = "owner, generics_of, type_of, predicates_of,fn_sig,optimized_mir"
 )]
 #[rustc_clean(cfg = "bpass6")]
 pub fn lifetime_bound<'a, T: 'a>() {}
@@ -208,7 +208,7 @@ pub fn lifetime_bound<'a, T: 'a>() {}
 pub fn second_trait_bound<T: Eq        >() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "opt_hir_owner_nodes, predicates_of")]
+#[rustc_clean(cfg = "bpass2", except = "owner, predicates_of")]
 #[rustc_clean(cfg = "bpass3")]
 pub fn second_trait_bound<T: Eq + Clone>() {}
 
@@ -218,9 +218,9 @@ pub fn second_trait_bound<T: Eq + Clone>() {}
 pub fn second_builtin_bound<T: Send        >() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "opt_hir_owner_nodes")]
+#[rustc_clean(cfg = "bpass2", except = "owner")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5", except = "opt_hir_owner_nodes, predicates_of")]
+#[rustc_clean(cfg = "bpass5", except = "owner, predicates_of")]
 #[rustc_clean(cfg = "bpass6")]
 pub fn second_builtin_bound<T: Send + Sized>() {}
 
@@ -232,12 +232,12 @@ pub fn second_lifetime_bound<'a, 'b, T: 'a     >() {}
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(
     cfg = "bpass2",
-    except = "opt_hir_owner_nodes, generics_of, type_of, predicates_of,fn_sig"
+    except = "owner, generics_of, type_of, predicates_of,fn_sig"
 )]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(
     cfg = "bpass5",
-    except = "opt_hir_owner_nodes, generics_of, type_of, predicates_of,fn_sig"
+    except = "owner, generics_of, type_of, predicates_of,fn_sig"
 )]
 #[rustc_clean(cfg = "bpass6")]
 pub fn second_lifetime_bound<'a, 'b, T: 'a + 'b>() {}
@@ -248,9 +248,9 @@ pub fn second_lifetime_bound<'a, 'b, T: 'a + 'b>() {}
 pub fn inline() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg = "bpass6")]
 #[inline]
 pub fn inline() {}
@@ -262,9 +262,9 @@ pub fn inline() {}
 pub fn inline_never() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg = "bpass6")]
 #[inline(never)]
 pub fn inline_never() {}
@@ -275,9 +275,9 @@ pub fn inline_never() {}
 pub fn no_mangle() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg = "bpass6")]
 #[unsafe(no_mangle)]
 pub fn no_mangle() {}
@@ -288,9 +288,9 @@ pub fn no_mangle() {}
 pub fn linkage() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2")]
+#[rustc_clean(cfg="bpass2", except="owner")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5")]
+#[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg = "bpass6")]
 #[linkage = "weak_odr"]
 pub fn linkage() {}
@@ -303,9 +303,9 @@ pub fn return_impl_trait() -> i32        {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "opt_hir_owner_nodes, typeck_root, fn_sig")]
+#[rustc_clean(cfg = "bpass2", except = "owner, typeck_root, fn_sig")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5", except = "opt_hir_owner_nodes, typeck_root, fn_sig, optimized_mir")]
+#[rustc_clean(cfg = "bpass5", except = "owner, typeck_root, fn_sig, optimized_mir")]
 #[rustc_clean(cfg = "bpass6")]
 pub fn return_impl_trait() -> impl Clone {
     0
@@ -319,9 +319,9 @@ pub fn change_return_impl_trait() -> impl Clone {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "opt_hir_owner_nodes")]
+#[rustc_clean(cfg = "bpass2", except = "owner")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5", except = "opt_hir_owner_nodes, typeck_root")]
+#[rustc_clean(cfg = "bpass5", except = "owner, typeck_root")]
 #[rustc_clean(cfg = "bpass6")]
 pub fn change_return_impl_trait() -> impl  Copy {
     0u32
@@ -340,12 +340,12 @@ pub mod change_return_type_indirectly {
 
     #[rustc_clean(
         cfg = "bpass2",
-        except = "opt_hir_owner_nodes, optimized_mir, typeck_root, fn_sig"
+        except = "owner, optimized_mir, typeck_root, fn_sig"
     )]
     #[rustc_clean(cfg = "bpass3")]
     #[rustc_clean(
         cfg = "bpass5",
-        except = "opt_hir_owner_nodes, optimized_mir, typeck_root, fn_sig"
+        except = "owner, optimized_mir, typeck_root, fn_sig"
     )]
     #[rustc_clean(cfg = "bpass6")]
     pub fn indirect_return_type() -> ReturnType {
@@ -363,12 +363,12 @@ pub mod change_parameter_type_indirectly {
 
     #[rustc_clean(
         cfg = "bpass2",
-        except = "opt_hir_owner_nodes, optimized_mir, typeck_root, fn_sig"
+        except = "owner, optimized_mir, typeck_root, fn_sig"
     )]
     #[rustc_clean(cfg = "bpass3")]
     #[rustc_clean(
         cfg = "bpass5",
-        except = "opt_hir_owner_nodes, optimized_mir, typeck_root, fn_sig"
+        except = "owner, optimized_mir, typeck_root, fn_sig"
     )]
     #[rustc_clean(cfg = "bpass6")]
     pub fn indirect_parameter_type(p: ParameterType) {}
@@ -385,9 +385,9 @@ pub mod change_trait_bound_indirectly {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg = "bpass2", except = "opt_hir_owner_nodes, predicates_of")]
+    #[rustc_clean(cfg = "bpass2", except = "owner, predicates_of")]
     #[rustc_clean(cfg = "bpass3")]
-    #[rustc_clean(cfg = "bpass5", except = "opt_hir_owner_nodes, predicates_of")]
+    #[rustc_clean(cfg = "bpass5", except = "owner, predicates_of")]
     #[rustc_clean(cfg = "bpass6")]
     pub fn indirect_trait_bound<T: Trait>(p: T) {}
 }
@@ -400,9 +400,9 @@ pub mod change_trait_bound_indirectly_in_where_clause {
     #[cfg(not(any(bpass1,bpass4)))]
     use super::ReferencedTrait2 as Trait;
 
-    #[rustc_clean(cfg = "bpass2", except = "opt_hir_owner_nodes, predicates_of")]
+    #[rustc_clean(cfg = "bpass2", except = "owner, predicates_of")]
     #[rustc_clean(cfg = "bpass3")]
-    #[rustc_clean(cfg = "bpass5", except = "opt_hir_owner_nodes, predicates_of")]
+    #[rustc_clean(cfg = "bpass5", except = "owner, predicates_of")]
     #[rustc_clean(cfg = "bpass6")]
     pub fn indirect_trait_bound_where<T>(p: T)
     where

@@ -119,6 +119,7 @@ macro_rules! arena_types {
             [] crate_inherent_impls: rustc_middle::ty::CrateInherentImpls,
             [] hir_owner_nodes: rustc_hir::OwnerNodes<'tcx>,
             [decode] token_stream: rustc_ast::tokenstream::TokenStream,
+            [] owner_info: rustc_hir::OwnerInfo<'tcx>,
         ]);
     )
 }
