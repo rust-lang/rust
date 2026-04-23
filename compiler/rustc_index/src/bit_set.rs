@@ -1,6 +1,4 @@
 use std::marker::PhantomData;
-#[cfg(not(feature = "nightly"))]
-use std::mem;
 use std::ops::{Bound, Range, RangeBounds};
 use std::rc::Rc;
 use std::{fmt, iter, slice};

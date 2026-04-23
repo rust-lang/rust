@@ -7,7 +7,7 @@ LL |         unsafe { va_arg(self) }
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: stack backtrace:
-           0: std::ffi::VaList::<'_>::arg
+           0: std::ffi::VaList::<'_>::next_arg
                at RUSTLIB/core/src/ffi/va_list.rs:LL:CC
            1: read_too_many::variadic
                at tests/fail/c-variadic.rs:LL:CC

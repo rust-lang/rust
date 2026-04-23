@@ -41,36 +41,6 @@ pub(in crate::num) const fn u8(n: u8) -> u8 {
     U8_ISQRT_WITH_REMAINDER[n as usize].0
 }
 
-/// Generates an `i*` function that returns the [integer square root](
-/// https://en.wikipedia.org/wiki/Integer_square_root) of any **nonnegative**
-/// input of a specific signed integer type.
-macro_rules! signed_fn {
-    ($SignedT:ident, $UnsignedT:ident) => {
-        /// Returns the [integer square root](
-        /// https://en.wikipedia.org/wiki/Integer_square_root) of any
-        /// **nonnegative**
-        #[doc = concat!("[`", stringify!($SignedT), "`](prim@", stringify!($SignedT), ")")]
-        /// input.
-        ///
-        /// # Safety
-        ///
-        /// This results in undefined behavior when the input is negative.
-        #[must_use = "this returns the result of the operation, \
-                      without modifying the original"]
-        #[inline]
-        pub(in crate::num) const unsafe fn $SignedT(n: $SignedT) -> $SignedT {
-            debug_assert!(n >= 0, "Negative input inside `isqrt`.");
-            $UnsignedT(n as $UnsignedT) as $SignedT
-        }
-    };
-}
-
-signed_fn!(i8, u8);
-signed_fn!(i16, u16);
-signed_fn!(i32, u32);
-signed_fn!(i64, u64);
-signed_fn!(i128, u128);
-
 /// Generates a `u*` function that returns the [integer square root](
 /// https://en.wikipedia.org/wiki/Integer_square_root) of any input of
 /// a specific unsigned integer type.
