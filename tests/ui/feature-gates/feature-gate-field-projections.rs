@@ -42,7 +42,7 @@ where
     //~^^ ERROR: use of unstable library feature `field_projections` [E0658]
     S::Target: Sized, //~ ERROR: use of unstable library feature `field_projections` [E0658]
 {
-    const SAFETY: bool = true; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+    const SAFE: bool = true; //~ ERROR: use of unstable library feature `field_projections` [E0658]
 
     unsafe fn read(this: *const Self, sub: S) -> S::Target {
         //~^ ERROR: use of unstable library feature `field_projections` [E0658]
@@ -61,7 +61,7 @@ where
     //~^^ ERROR: use of unstable library feature `field_projections` [E0658]
     S::Target: Sized, //~ ERROR: use of unstable library feature `field_projections` [E0658]
 {
-    const SAFETY: bool = true; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+    const SAFE: bool = true; //~ ERROR: use of unstable library feature `field_projections` [E0658]
 
     unsafe fn write(this: *const Self, sub: S, value: S::Target) {
         //~^ ERROR: use of unstable library feature `field_projections` [E0658]
@@ -114,7 +114,7 @@ where
                              //~^ ERROR: use of unstable library feature `field_projections` [E0658]
                              //~^^ ERROR: use of unstable library feature `field_projections` [E0658]
 {
-    const SAFETY: bool = true; //~ ERROR: use of unstable library feature `field_projections` [E0658]
+    const SAFE: bool = true; //~ ERROR: use of unstable library feature `field_projections` [E0658]
 
     unsafe fn borrow(this: *const Self, sub: S) -> MyPtr<S::Target> {
         //~^ ERROR: use of unstable library feature `field_projections` [E0658]

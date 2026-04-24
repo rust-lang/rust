@@ -161,8 +161,8 @@ LL | impl<T: ?Sized> PlaceProxy for MyPtr<T> {
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:45:5
    |
-LL |     const SAFETY: bool = true;
-   |     ^^^^^^^^^^^^^^^^^^
+LL |     const SAFE: bool = true;
+   |     ^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -201,8 +201,8 @@ LL | unsafe impl<T, S> ReadPlace<S> for MyPtr<T>
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:64:5
    |
-LL |     const SAFETY: bool = true;
-   |     ^^^^^^^^^^^^^^^^^^
+LL |     const SAFE: bool = true;
+   |     ^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
@@ -311,8 +311,8 @@ LL | unsafe impl<T> DropHusk for MyPtr<T> {
 error[E0658]: use of unstable library feature `field_projections`
   --> $DIR/feature-gate-field-projections.rs:117:5
    |
-LL |     const SAFETY: bool = true;
-   |     ^^^^^^^^^^^^^^^^^^
+LL |     const SAFE: bool = true;
+   |     ^^^^^^^^^^^^^^^^
    |
    = note: see issue #145383 <https://github.com/rust-lang/rust/issues/145383> for more information
    = help: add `#![feature(field_projections)]` to the crate attributes to enable
