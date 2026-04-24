@@ -203,6 +203,22 @@ lsx_vbitrev_b
 lsx_vbitrev_h
 lsx_vbitrev_w
 lsx_vbitrev_d
+lsx_vsadd_b
+lsx_vsadd_h
+lsx_vsadd_w
+lsx_vsadd_d
+lsx_vsadd_bu
+lsx_vsadd_hu
+lsx_vsadd_wu
+lsx_vsadd_du
+lsx_vssub_b
+lsx_vssub_h
+lsx_vssub_w
+lsx_vssub_d
+lsx_vssub_bu
+lsx_vssub_hu
+lsx_vssub_wu
+lsx_vssub_du
 
 # LASX intrinsics
 lasx_xvsll_b
@@ -403,3 +419,19 @@ lasx_xvbitrev_b
 lasx_xvbitrev_h
 lasx_xvbitrev_w
 lasx_xvbitrev_d
+lasx_xvsadd_b
+lasx_xvsadd_h
+lasx_xvsadd_w
+lasx_xvsadd_d
+lasx_xvsadd_bu
+lasx_xvsadd_hu
+lasx_xvsadd_wu
+lasx_xvsadd_du
+lasx_xvssub_b
+lasx_xvssub_h
+lasx_xvssub_w
+lasx_xvssub_d
+lasx_xvssub_bu
+lasx_xvssub_hu
+lasx_xvssub_wu
+lasx_xvssub_du
