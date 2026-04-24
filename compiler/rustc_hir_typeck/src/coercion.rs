@@ -1051,17 +1051,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &'tcx hir::Expr<'tcx>,
         expr_ty: Ty<'tcx>,
-        mut target: Ty<'tcx>,
+        target: Ty<'tcx>,
         allow_two_phase: AllowTwoPhase,
         cause: Option<ObligationCause<'tcx>>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
-        let source = self.try_structurally_resolve_type(expr.span, expr_ty);
-        if self.next_trait_solver() {
-            target = self.try_structurally_resolve_type(
-                cause.as_ref().map_or(expr.span, |cause| cause.span),
-                target,
-            );
-        }
+        let source = self.resolve_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
         let cause =
@@ -1244,8 +1238,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         new: &hir::Expr<'_>,
         new_ty: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
-        let prev_ty = self.try_structurally_resolve_type(cause.span, prev_ty);
-        let new_ty = self.try_structurally_resolve_type(new.span, new_ty);
+        let prev_ty = self.resolve_vars_with_obligations(prev_ty);
+        let new_ty = self.resolve_vars_with_obligations(new_ty);
         debug!(
             "coercion::try_find_coercion_lub({:?}, {:?}, exprs={:?} exprs)",
             prev_ty,

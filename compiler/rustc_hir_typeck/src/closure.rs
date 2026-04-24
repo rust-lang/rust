@@ -59,10 +59,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // closure sooner rather than later, so first examine the expected
         // type, and see if can glean a closure kind from there.
         let (expected_sig, expected_kind) = match expected.to_option(self) {
-            Some(ty) => self.deduce_closure_signature(
-                self.try_structurally_resolve_type(expr_span, ty),
-                closure.kind,
-            ),
+            Some(ty) => {
+                self.deduce_closure_signature(self.resolve_vars_with_obligations(ty), closure.kind)
+            }
             None => (None, None),
         };
 
@@ -963,7 +962,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let closure_span = self.tcx.def_span(body_def_id);
         let ret_ty = ret_coercion.borrow().expected_ty();
-        let ret_ty = self.try_structurally_resolve_type(closure_span, ret_ty);
+        let ret_ty = self.resolve_vars_with_obligations(ret_ty);
 
         let get_future_output = |predicate: ty::Predicate<'tcx>, span| {
             // Search for a pending obligation like

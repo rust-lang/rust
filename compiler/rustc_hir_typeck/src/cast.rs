@@ -102,7 +102,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ok(Some(PointerKind::Thin));
         }
 
-        let t = self.try_structurally_resolve_type(span, t);
+        let t = self.resolve_vars_with_obligations(t);
 
         Ok(match *t.kind() {
             ty::Slice(_) | ty::Str => Some(PointerKind::Length),
@@ -1041,8 +1041,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         mut m_cast: ty::TypeAndMut<'tcx>,
     ) -> Result<CastKind, CastError<'tcx>> {
         // array-ptr-cast: allow mut-to-mut, mut-to-const, const-to-const
-        m_expr.ty = fcx.try_structurally_resolve_type(self.expr_span, m_expr.ty);
-        m_cast.ty = fcx.try_structurally_resolve_type(self.cast_span, m_cast.ty);
+        m_expr.ty = fcx.resolve_vars_with_obligations(m_expr.ty);
+        m_cast.ty = fcx.resolve_vars_with_obligations(m_cast.ty);
 
         if m_expr.mutbl >= m_cast.mutbl
             && let ty::Array(ety, _) = m_expr.ty.kind()

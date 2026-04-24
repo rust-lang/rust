@@ -101,7 +101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // While we don't allow *arbitrary* coercions here, we *do* allow
         // coercions from ! to `expected`.
-        if self.try_structurally_resolve_type(expr.span, ty).is_never()
+        if self.resolve_vars_with_obligations(ty).is_never()
             && self.tcx.expr_guaranteed_to_constitute_read_for_never(expr)
         {
             if let Some(adjustments) = self.typeck_results.borrow().adjustments().get(expr.hir_id) {
@@ -319,7 +319,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // unless it's a place expression that isn't being read from, in which case
         // diverging would be unsound since we may never actually read the `!`.
         // e.g. `let _ = *never_ptr;` with `never_ptr: *const !`.
-        if self.try_structurally_resolve_type(expr.span, ty).is_never()
+        if self.resolve_vars_with_obligations(ty).is_never()
             && self.tcx.expr_guaranteed_to_constitute_read_for_never(expr)
         {
             self.diverges.set(self.diverges.get() | Diverges::always(expr.span));
@@ -473,7 +473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
-            match self.try_structurally_resolve_type(expr.span, ty).kind() {
+            match self.resolve_vars_with_obligations(ty).kind() {
                 ty::Ref(_, ty, _) | ty::RawPtr(ty, _) => {
                     if oprnd.is_syntactic_place_expr() {
                         // Places may legitimately have unsized types.
@@ -1206,7 +1206,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let cond_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
 
-        let expected = orig_expected.try_structurally_resolve_and_adjust_for_branches(self, sp);
+        let expected = orig_expected.try_structurally_resolve_and_adjust_for_branches(self);
         let then_ty = self.check_expr_with_expectation(then_expr, expected);
         let then_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
@@ -1476,7 +1476,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let rcvr_t = self.check_expr(rcvr);
-        let rcvr_t = self.try_structurally_resolve_type(rcvr.span, rcvr_t);
+        let rcvr_t = self.resolve_vars_with_obligations(rcvr_t);
 
         match self.lookup_method(rcvr_t, segment, segment.ident.span, expr, rcvr, args) {
             Ok(method) => {
@@ -1663,11 +1663,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let coerce_to = expected
                 .to_option(self)
                 .and_then(|uty| {
-                    self.try_structurally_resolve_type(expr.span, uty)
+                    self.resolve_vars_with_obligations(uty)
                         .builtin_index()
                         // Avoid using the original type variable as the coerce_to type, as it may resolve
                         // during the first coercion instead of being the LUB type.
-                        .filter(|t| !self.try_structurally_resolve_type(expr.span, *t).is_ty_var())
+                        .filter(|t| !self.resolve_vars_with_obligations(*t).is_ty_var())
                 })
                 .unwrap_or_else(|| self.next_ty_var(expr.span));
             let mut coerce = CoerceMany::with_capacity(coerce_to, args.len());
@@ -1792,7 +1792,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let mut expectations = expected
             .only_has_type(self)
-            .and_then(|ty| self.try_structurally_resolve_type(expr.span, ty).opt_tuple_fields())
+            .and_then(|ty| self.resolve_vars_with_obligations(ty).opt_tuple_fields())
             .unwrap_or_default()
             .iter();
 
@@ -1866,7 +1866,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let tcx = self.tcx;
 
-        let adt_ty = self.try_structurally_resolve_type(path_span, adt_ty);
+        let adt_ty = self.resolve_vars_with_obligations(adt_ty);
         let adt_ty_hint = expected.only_has_type(self).and_then(|expected| {
             self.fudge_inference_if_ok(|| {
                 let ocx = ObligationCtxt::new(self);
