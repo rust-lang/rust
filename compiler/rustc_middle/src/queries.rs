@@ -251,6 +251,15 @@ rustc_queries! {
         desc { "getting HIR parent of `{}`", tcx.def_path_str(key) }
     }
 
+    /// Gives access to the HIR attributes inside the HIR owner `key`.
+    ///
+    /// This can be conveniently accessed by `tcx.hir_*` methods.
+    /// Avoid calling this query directly.
+    query hir_attr_map(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
+        desc { "getting HIR owner attributes in `{}`", tcx.def_path_str(key) }
+        feedable
+    }
+
     /// Returns the *default* of the const pararameter given by `DefId`.
     ///
     /// E.g., given `struct Ty<const N: usize = 3>;` this returns `3` for `N`.

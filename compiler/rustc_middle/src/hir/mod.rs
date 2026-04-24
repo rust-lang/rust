@@ -443,6 +443,8 @@ pub fn provide(providers: &mut Providers) {
     providers.hir_crate_items = map::hir_crate_items;
     providers.crate_hash = map::crate_hash;
     providers.hir_module_items = map::hir_module_items;
+    providers.hir_attr_map =
+        |tcx, id| tcx.owner(id.def_id).as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs);
     // Serves as an entry point for getting `MaybeOwner`. As owner can either be in
     // `owners` of `hir_crate` or it can be delayed AST owner (i.e., delegations)
     // we need to firstly check in `hir_crate` and then delayed AST owners.

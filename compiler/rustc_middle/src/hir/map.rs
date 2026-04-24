@@ -18,7 +18,7 @@ use rustc_hir_pretty as pprust_hir;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 
-use crate::hir::{ModuleItems, nested_filter};
+use crate::hir::{MaybeOwner, ModuleItems, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::query::{IntoQueryKey, LocalCrate};
 use crate::ty::TyCtxt;
@@ -113,10 +113,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn opt_ast_lowering_delayed_lints(self, id: OwnerId) -> Option<&'tcx DelayedLints> {
         self.owner(id.def_id).as_owner().map(|o| &o.delayed_lints)
-    }
-
-    pub fn hir_attr_map(self, id: OwnerId) -> &'tcx AttributeMap<'tcx> {
-        self.owner(id.def_id).as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     }
 
     pub fn in_scope_traits_map(
