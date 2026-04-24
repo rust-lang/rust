@@ -706,6 +706,18 @@ pub(crate) struct UnknownArchiveKind<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag("archive `{$path}` was built as {$actual} format, but the target expects {$expected}")]
+#[help(
+    "this often occurs when using BSD-format archive tools on a GNU/Linux target; \
+    rebuild the archive with the correct format for the target platform"
+)]
+pub(crate) struct IncompatibleArchiveFormat {
+    pub path: PathBuf,
+    pub actual: String,
+    pub expected: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("linking static libraries is not supported for BPF")]
 pub(crate) struct BpfStaticlibNotSupported;
 
