@@ -2,7 +2,7 @@
 
 //@ has all_targets/fn.foo.html \
 //  '//*[@id="main-content"]/*[@class="item-info"]/*[@class="stab portability"]' \
-//  'Available on GNU or Catalyst or mac ABI or MSVC or musl or Newlib or \
+//  'Available on GNU or Catalyst or Managarm C Library or MSVC or musl or Newlib or \
 //  Neutrino 7.0 or Neutrino 7.1 or Neutrino 7.1 with io-sock or Neutrino 8.0 or \
 //  OpenHarmony or relibc or SGX or Simulator or WASIp1 or WASIp2 or WASIp3 or \
 //  uClibc or V5 or target_env=fake_env only.'
