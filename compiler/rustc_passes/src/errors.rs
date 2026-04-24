@@ -290,8 +290,6 @@ pub(crate) enum MacroExport {
 pub(crate) enum UnusedNote {
     #[note("attribute `{$name}` with an empty list has no effect")]
     EmptyList { name: Symbol },
-    #[note("attribute `{$name}` without any lints has no effect")]
-    NoLints { name: Symbol },
     #[note("`default_method_body_is_const` has been replaced with `const` on traits")]
     DefaultMethodBodyConst,
     #[note(

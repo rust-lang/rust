@@ -277,10 +277,18 @@ impl<S: Stage> AttributeParser<S> for NakedParser {
 
         let span = self.span?;
 
+        let Some(tools) = cx.tools else {
+            unreachable!("tools required while parsing attributes");
+        };
+
         // only if we found a naked attribute do we do the somewhat expensive check
         'outer: for other_attr in cx.all_attrs {
             for allowed_attr in ALLOW_LIST {
-                if other_attr.segments().next().is_some_and(|i| cx.tools.contains(&i.name)) {
+                if other_attr
+                    .segments()
+                    .next()
+                    .is_some_and(|i| tools.iter().any(|tool| tool.name == i.name))
+                {
                     // effectively skips the error message  being emitted below
                     // if it's a tool attribute
                     continue 'outer;

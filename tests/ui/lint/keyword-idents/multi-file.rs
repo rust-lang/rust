@@ -7,7 +7,6 @@
 // lints, configuring them via lint attributes doesn't propagate to submodules
 // in other files.
 // <https://github.com/rust-lang/rust/issues/132218>
-
 #[path = "./auxiliary/multi_file_submod.rs"]
 mod multi_file_submod;
 
