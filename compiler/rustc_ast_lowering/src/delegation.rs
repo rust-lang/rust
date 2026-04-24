@@ -508,7 +508,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
             // FIXME(fn_delegation): proper support for parent generics propagation
             // in method call scenario.
-            let segment = self.process_segment(span, &segment, &mut generics.child, false);
+            let segment = self.process_segment(span, &segment, &mut generics.child);
             let segment = self.arena.alloc(segment);
 
             self.arena.alloc(hir::Expr {
@@ -534,14 +534,10 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
 
                     new_path.segments = self.arena.alloc_from_iter(
                         new_path.segments.iter().enumerate().map(|(idx, segment)| {
-                            let mut process_segment = |result, add_lifetimes| {
-                                self.process_segment(span, segment, result, add_lifetimes)
-                            };
-
                             if idx + 2 == len {
-                                process_segment(&mut generics.parent, true)
+                                self.process_segment(span, segment, &mut generics.parent)
                             } else if idx + 1 == len {
-                                process_segment(&mut generics.child, false)
+                                self.process_segment(span, segment, &mut generics.child)
                             } else {
                                 segment.clone()
                             }
@@ -551,7 +547,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     hir::QPath::Resolved(ty, self.arena.alloc(new_path))
                 }
                 hir::QPath::TypeRelative(ty, segment) => {
-                    let segment = self.process_segment(span, segment, &mut generics.child, false);
+                    let segment = self.process_segment(span, segment, &mut generics.child);
 
                     hir::QPath::TypeRelative(ty, self.arena.alloc(segment))
                 }
@@ -584,13 +580,12 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         span: Span,
         segment: &hir::PathSegment<'hir>,
         result: &mut GenericsGenerationResult<'hir>,
-        add_lifetimes: bool,
     ) -> hir::PathSegment<'hir> {
         let details = result.generics.args_propagation_details();
 
         let segment = if details.should_propagate {
             let generics = result.generics.into_hir_generics(self, span);
-            let args = generics.into_generic_args(self, add_lifetimes, span);
+            let args = generics.into_generic_args(self, span);
 
             // Needed for better error messages (`trait-impl-wrong-args-count.rs` test).
             let args = if args.is_empty() { None } else { Some(args) };
