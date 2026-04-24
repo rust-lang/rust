@@ -34,8 +34,10 @@ pub fn rc_default_inplace() -> Rc<(String, String)> {
 #[no_mangle]
 pub fn arc_default_inplace() -> Arc<(String, String)> {
     // CHECK-NOT: alloca
-    // CHECK: [[ARC:%.*]] = {{.*}}call {{.*}}__rust_alloc(
+    // CHECK: [[ARC:%.*]] = {{.*}}call {{.*}}__rust_alloc(i[[#BITS:]]
     // CHECK-NOT: call void @llvm.memcpy
-    // CHECK: ret ptr [[ARC]]
+    // CHECK: [[DATA:%.*]] = getelementptr inbounds{{( nuw)?}} i8, ptr [[ARC]], i[[#BITS]] [[#div(BITS,4)]]
+    // CHECK-NOT: call void @llvm.memcpy
+    // CHECK: ret ptr [[DATA]]
     Arc::default()
 }

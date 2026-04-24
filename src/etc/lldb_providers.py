@@ -1305,45 +1305,32 @@ class StdRcSyntheticProvider:
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque, is_atomic: bool = False):
         self.valobj = valobj
 
-        if is_atomic:
-            self.ptr = unwrap_unique_or_non_null(
-                self.valobj.GetChildMemberWithName("ptr")
-            )
+        ptr = (
+            self.valobj.GetChildMemberWithName("raw_rc")
+            .GetChildMemberWithName("weak")
+            .GetChildMemberWithName("ptr")
+            .GetChildMemberWithName("pointer")
+        )
 
-            self.value = self.ptr.GetChildMemberWithName("data")
+        self.value = ptr.deref.Clone("value")
 
-            self.strong = unwrap_scalar_wrappers(
-                self.ptr.GetChildMemberWithName("strong")
-            )
+        target = valobj.GetTarget()
+        ref_counts_type = _get_or_init_ref_counts_type(target)
+        ref_counts_address = ptr.GetValueAsUnsigned() - ref_counts_type.size
 
-            self.weak = unwrap_scalar_wrappers(self.ptr.GetChildMemberWithName("weak"))
-        else:
-            ptr = (
-                self.valobj.GetChildMemberWithName("raw_rc")
-                .GetChildMemberWithName("weak")
-                .GetChildMemberWithName("ptr")
-                .GetChildMemberWithName("pointer")
-            )
+        ref_counts_value = target.CreateValueFromAddress(
+            "ref_counts",
+            SBAddress(ref_counts_address, target),
+            ref_counts_type,
+        )
 
-            self.value = ptr.deref.Clone("value")
+        self.strong = unwrap_scalar_wrappers(
+            ref_counts_value.GetChildMemberWithName("strong")
+        )
 
-            target = valobj.GetTarget()
-            ref_counts_type = _get_or_init_ref_counts_type(target)
-            ref_counts_address = ptr.GetValueAsUnsigned() - ref_counts_type.size
-
-            ref_counts_value = target.CreateValueFromAddress(
-                "ref_counts",
-                SBAddress(ref_counts_address, target),
-                ref_counts_type,
-            )
-
-            self.strong = unwrap_scalar_wrappers(
-                ref_counts_value.GetChildMemberWithName("strong")
-            )
-
-            self.weak = unwrap_scalar_wrappers(
-                ref_counts_value.GetChildMemberWithName("weak")
-            )
+        self.weak = unwrap_scalar_wrappers(
+            ref_counts_value.GetChildMemberWithName("weak")
+        )
 
         self.value_builder = ValueBuilder(valobj)
 

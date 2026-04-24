@@ -255,7 +255,6 @@ where
         self.weak.into_raw_parts()
     }
 
-    #[cfg(not(no_global_oom_handling))]
     pub(crate) unsafe fn is_unique<R>(&self) -> bool
     where
         R: RefCounter,
@@ -808,6 +807,23 @@ impl<A> RawRc<dyn Any, A> {
     /// # Safety
     ///
     /// `self` must point to a valid `T` value.
+    pub(crate) unsafe fn downcast_unchecked<T>(self) -> RawRc<T, A>
+    where
+        T: Any,
+    {
+        unsafe { self.cast() }
+    }
+}
+
+#[cfg(not(no_sync))]
+impl<A> RawRc<dyn Any + Send + Sync, A> {
+    pub(crate) fn downcast<T>(self) -> Result<RawRc<T, A>, Self>
+    where
+        T: Any,
+    {
+        if self.as_ref().is::<T>() { Ok(unsafe { self.downcast_unchecked() }) } else { Err(self) }
+    }
+
     pub(crate) unsafe fn downcast_unchecked<T>(self) -> RawRc<T, A>
     where
         T: Any,
