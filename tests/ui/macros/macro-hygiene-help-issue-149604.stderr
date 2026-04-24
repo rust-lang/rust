@@ -1,11 +1,11 @@
 error[E0425]: cannot find value `it` in this scope
-  --> $DIR/macro-hygiene-help-issue-149604.rs:7:14
+  --> $DIR/macro-hygiene-help-issue-149604.rs:8:14
    |
 LL |     let () = it;
    |              ^^ not found in this scope
    |
 help: an identifier with the same name is defined here, but is not accessible due to macro hygiene
-  --> $DIR/macro-hygiene-help-issue-149604.rs:1:35
+  --> $DIR/macro-hygiene-help-issue-149604.rs:2:35
    |
 LL | macro_rules! let_it { {} => { let it = (); } }
    |                                   ^^
@@ -15,7 +15,7 @@ LL |     let_it!();
    = note: this error originates in the macro `let_it` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `it` in this scope
-  --> $DIR/macro-hygiene-help-issue-149604.rs:2:50
+  --> $DIR/macro-hygiene-help-issue-149604.rs:3:50
    |
 LL | macro_rules! print_it { {} => { println!("{:?}", it); } }
    |                                                  ^^ not found in this scope
@@ -24,7 +24,7 @@ LL |     print_it!();
    |     ----------- in this macro invocation
    |
 help: an identifier with the same name is defined here, but is not accessible due to macro hygiene
-  --> $DIR/macro-hygiene-help-issue-149604.rs:1:35
+  --> $DIR/macro-hygiene-help-issue-149604.rs:2:35
    |
 LL | macro_rules! let_it { {} => { let it = (); } }
    |                                   ^^
