@@ -57,52 +57,10 @@ use crate::ptr;
 /// * There is code that drops the contents of the `ManuallyDrop` field, and
 ///   this code is outside the struct or enum's `Drop` implementation.
 ///
-/// In particular, the following hazards may occur:
-///
-/// #### Storing generic types
-///
-/// If the `ManuallyDrop` contains a client-supplied generic type, the client
-/// might provide a `Box` as that type. This would cause undefined behavior when
-/// the struct or enum is later moved, as mentioned in the previous section. For
+/// In particular, deriving `Debug`, `Clone`, `PartialEq`, `PartialOrd`, `Ord`,
+/// or `Hash` on the struct or enum could be unsound, since the derived
+/// implementations of these traits would access the `ManuallyDrop` field. For
 /// example, the following code causes undefined behavior:
-///
-/// ```no_run
-/// use std::mem::ManuallyDrop;
-///
-/// pub struct BadOption<T> {
-///     // Invariant: Has been dropped if `is_some` is false.
-///     value: ManuallyDrop<T>,
-///     is_some: bool,
-/// }
-/// impl<T> BadOption<T> {
-///     pub fn new(value: T) -> Self {
-///         Self { value: ManuallyDrop::new(value), is_some: true }
-///     }
-///     pub fn change_to_none(&mut self) {
-///         if self.is_some {
-///             self.is_some = false;
-///             unsafe {
-///                 // SAFETY: `value` hasn't been dropped yet, as per the invariant
-///                 // (This is actually unsound!)
-///                 ManuallyDrop::drop(&mut self.value);
-///             }
-///         }
-///     }
-/// }
-///
-/// // In another crate:
-///
-/// let mut option = BadOption::new(Box::new(42));
-/// option.change_to_none();
-/// let option2 = option; // Undefined behavior!
-/// ```
-///
-/// #### Deriving traits
-///
-/// Deriving `Debug`, `Clone`, `PartialEq`, `PartialOrd`, `Ord`, or `Hash` on
-/// the struct or enum could be unsound, since the derived implementations of
-/// these traits would access the `ManuallyDrop` field. For example, the
-/// following code causes undefined behavior:
 ///
 /// ```no_run
 /// use std::mem::ManuallyDrop;
@@ -131,13 +89,13 @@ use crate::ptr;
 /// println!("{:?}", foo); // Undefined behavior!
 /// ```
 ///
-/// # Interaction with `Box`
+/// # Pre-`1.96` Interaction with `Box`
 ///
-/// Currently, if you have a `ManuallyDrop<T>`, where the type `T` is a `Box` or
-/// contains a `Box` inside, then dropping the `T` followed by moving the
-/// `ManuallyDrop<T>` is [considered to be undefined
+/// Before Rust `1.96.0`, if you had a `ManuallyDrop<T>`, where the type `T`
+/// was a `Box` or contained a `Box` inside, then dropping the `T` followed by
+/// moving the `ManuallyDrop<T>` was [considered to be undefined
 /// behavior](https://github.com/rust-lang/unsafe-code-guidelines/issues/245).
-/// That is, the following code causes undefined behavior:
+/// That is, the following code caused undefined behavior:
 ///
 /// ```no_run
 /// use std::mem::ManuallyDrop;
@@ -146,7 +104,42 @@ use crate::ptr;
 /// unsafe {
 ///     ManuallyDrop::drop(&mut x);
 /// }
-/// let y = x; // Undefined behavior!
+/// let y = x; // Undefined behavior! (pre 1.96.0)
+/// ```
+///
+/// Note that this could also have happen with a generic type where the user of
+/// the library providing it could substitute the generic for a `Box<_>` and
+/// then move the library type:
+///
+/// ```no_run
+/// use std::mem::ManuallyDrop;
+///
+/// pub struct BadOption<T> {
+///     // Invariant: Has been dropped if `is_some` is false.
+///     value: ManuallyDrop<T>,
+///     is_some: bool,
+/// }
+/// impl<T> BadOption<T> {
+///     pub fn new(value: T) -> Self {
+///         Self { value: ManuallyDrop::new(value), is_some: true }
+///     }
+///     pub fn change_to_none(&mut self) {
+///         if self.is_some {
+///             self.is_some = false;
+///             unsafe {
+///                 // SAFETY: `value` hasn't been dropped yet, as per the invariant
+///                 // (This is actually unsound pre rust 1.96.0!)
+///                 ManuallyDrop::drop(&mut self.value);
+///             }
+///         }
+///     }
+/// }
+///
+/// // In another crate:
+///
+/// let mut option = BadOption::new(Box::new(42));
+/// option.change_to_none();
+/// let option2 = option; // Undefined behavior! (pre 1.96)
 /// ```
 ///
 /// [drop order]: https://doc.rust-lang.org/reference/destructors.html
