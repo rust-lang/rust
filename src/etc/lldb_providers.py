@@ -266,7 +266,7 @@ def aggregate_field_summary(valobj: SBValue, _dict) -> Generator[str, None, None
         if summary is None:
             summary = child.value
             if summary is None:
-                if is_tuple_fields(child):
+                if is_tuple_fields(child.GetType().fields):
                     summary = TupleSummaryProvider(child, _dict)
                 else:
                     summary = StructSummaryProvider(child, _dict)
