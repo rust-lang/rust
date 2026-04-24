@@ -101,6 +101,12 @@ item_type! {
     // This number is reserved for use in JavaScript
     // Generic = 26,
     Attribute = 27,
+    // The two next ones represent an attr/derive macro declared as a `macro_rules!`. We need this
+    // distinction because they will point to a `macro.[name].html` file and not
+    // `[attr|derive].[name].html` file, so the link generation needs to take it into account while
+    // still having the filtering working as expected.
+    BangMacroAttribute = 28,
+    BangMacroDerive = 29,
 }
 
 impl<'a> From<&'a clean::Item> for ItemType {
@@ -163,10 +169,9 @@ impl ItemType {
             DefKind::Trait => Self::Trait,
             DefKind::TyAlias => Self::TypeAlias,
             DefKind::TraitAlias => Self::TraitAlias,
-            DefKind::Macro(MacroKinds::BANG) => ItemType::Macro,
             DefKind::Macro(MacroKinds::ATTR) => ItemType::ProcAttribute,
             DefKind::Macro(MacroKinds::DERIVE) => ItemType::ProcDerive,
-            DefKind::Macro(_) => todo!("Handle macros with multiple kinds"),
+            DefKind::Macro(_) => ItemType::Macro,
             DefKind::ForeignTy => Self::ForeignType,
             DefKind::Variant => Self::Variant,
             DefKind::Field => Self::StructField,
@@ -221,8 +226,8 @@ impl ItemType {
             ItemType::AssocConst => "associatedconstant",
             ItemType::ForeignType => "foreigntype",
             ItemType::Keyword => "keyword",
-            ItemType::ProcAttribute => "attr",
-            ItemType::ProcDerive => "derive",
+            ItemType::ProcAttribute | ItemType::BangMacroAttribute => "attr",
+            ItemType::ProcDerive | ItemType::BangMacroDerive => "derive",
             ItemType::TraitAlias => "traitalias",
             ItemType::Attribute => "attribute",
         }

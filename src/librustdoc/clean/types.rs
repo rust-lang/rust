@@ -13,7 +13,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince, Deprecation, DocAttribute};
-use rustc_hir::def::{CtorKind, DefKind, Res};
+use rustc_hir::def::{CtorKind, DefKind, MacroKinds, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{Attribute, BodyId, ConstStability, Mutability, Stability, StableSince, find_attr};
@@ -745,9 +745,31 @@ impl Item {
         find_attr!(&self.attrs.other_attrs, NonExhaustive(..))
     }
 
-    /// Returns a documentation-level item type from the item.
+    /// Returns a documentation-level item type from the item. In case of a `macro_rules!` which
+    /// contains an attr/derive kind, it will always return `ItemType::Macro`. If you want all
+    /// kinds, you need to use [`Item::types`].
     pub(crate) fn type_(&self) -> ItemType {
         ItemType::from(self)
+    }
+
+    /// Returns an item types. There is only one case where it can return more than one kind:
+    /// for `macro_rules!` items which contain an attr/derive kind.
+    pub(crate) fn types(&self) -> impl Iterator<Item = ItemType> {
+        if let ItemKind::MacroItem(_, macro_kinds) = self.kind {
+            Either::Right(macro_kinds.iter().map(|kind| match kind {
+                MacroKinds::ATTR => ItemType::BangMacroAttribute,
+                MacroKinds::DERIVE => ItemType::BangMacroDerive,
+                MacroKinds::BANG => ItemType::Macro,
+                _ => panic!("unsupported macro kind {kind:?}"),
+            }))
+        } else {
+            Either::Left(std::iter::once(self.type_()))
+        }
+    }
+
+    /// Returns true if this a macro declared with the `macro` keyword or with `macro_rules!.
+    pub(crate) fn is_bang_macro_or_macro_rules(&self) -> bool {
+        matches!(self.kind, ItemKind::MacroItem(..))
     }
 
     pub(crate) fn defaultness(&self) -> Option<Defaultness> {
@@ -757,6 +779,11 @@ impl Item {
             }
             _ => None,
         }
+    }
+
+    /// Generates the HTML file name based on the item kind.
+    pub(crate) fn html_filename(&self) -> String {
+        format!("{type_}.{name}.html", type_ = self.type_(), name = self.name.unwrap())
     }
 
     /// Returns a `FnHeader` if `self` is a function item, otherwise returns `None`.
@@ -918,7 +945,13 @@ pub(crate) enum ItemKind {
     ForeignStaticItem(Static, hir::Safety),
     /// `type`s from an extern block
     ForeignTypeItem,
-    MacroItem(Macro),
+    /// A macro defined with `macro_rules` or the `macro` keyword. It can be multiple things (macro,
+    /// derive and attribute, potentially multiple at once). Don't forget to look into the
+    ///`MacroKinds` values.
+    ///
+    /// If a `macro_rules!` only contains a `attr`/`derive` branch, then it's not stored in this
+    /// variant but in the `ProcMacroItem` variant.
+    MacroItem(Macro, MacroKinds),
     ProcMacroItem(ProcMacro),
     PrimitiveItem(PrimitiveType),
     /// A required associated constant in a trait declaration.
@@ -973,7 +1006,7 @@ impl ItemKind {
             | ForeignFunctionItem(_, _)
             | ForeignStaticItem(_, _)
             | ForeignTypeItem
-            | MacroItem(_)
+            | MacroItem(..)
             | ProcMacroItem(_)
             | PrimitiveItem(_)
             | RequiredAssocConstItem(..)

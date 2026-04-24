@@ -601,8 +601,9 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     let aliases = item.attrs.get_doc_aliases();
     let is_deprecated = item.is_deprecated(tcx);
     let is_unstable = item.is_unstable();
+    let mut types = item.types();
     let index_item = IndexItem {
-        ty: item.type_(),
+        ty: types.next().unwrap(),
         defid: Some(defid),
         name,
         module_path: parent_path.to_vec(),
@@ -618,7 +619,11 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
         is_deprecated,
         is_unstable,
     };
-
+    for type_ in types {
+        let mut index_item_copy = index_item.clone();
+        index_item_copy.ty = type_;
+        cache.search_index.push(index_item_copy);
+    }
     cache.search_index.push(index_item);
 }
 

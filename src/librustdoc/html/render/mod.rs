@@ -126,7 +126,7 @@ enum RenderMode {
 
 /// Struct representing one entry in the JS search index. These are all emitted
 /// by hand to a large JS file at the end of cache-creation.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct IndexItem {
     pub(crate) ty: ItemType,
     pub(crate) defid: Option<DefId>,
@@ -507,30 +507,38 @@ impl AllTypes {
         }
     }
 
-    fn append(&mut self, item_name: String, item_type: &ItemType) {
+    fn add_item_entry(&mut self, item_type: ItemType, new_url: String, name: String) {
+        match item_type {
+            ItemType::Struct => self.structs.insert(ItemEntry::new(new_url, name)),
+            ItemType::Enum => self.enums.insert(ItemEntry::new(new_url, name)),
+            ItemType::Union => self.unions.insert(ItemEntry::new(new_url, name)),
+            ItemType::Primitive => self.primitives.insert(ItemEntry::new(new_url, name)),
+            ItemType::Trait => self.traits.insert(ItemEntry::new(new_url, name)),
+            ItemType::Macro => self.macros.insert(ItemEntry::new(new_url, name)),
+            ItemType::Function => self.functions.insert(ItemEntry::new(new_url, name)),
+            ItemType::TypeAlias => self.type_aliases.insert(ItemEntry::new(new_url, name)),
+            ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
+            ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
+            ItemType::ProcAttribute | ItemType::BangMacroAttribute => {
+                self.attribute_macros.insert(ItemEntry::new(new_url, name))
+            }
+            ItemType::ProcDerive | ItemType::BangMacroDerive => {
+                self.derive_macros.insert(ItemEntry::new(new_url, name))
+            }
+            ItemType::TraitAlias => self.trait_aliases.insert(ItemEntry::new(new_url, name)),
+            _ => true,
+        };
+    }
+
+    fn append(&mut self, item_name: String, item: &clean::Item) {
         let mut url: Vec<_> = item_name.split("::").skip(1).collect();
         if let Some(name) = url.pop() {
-            let new_url = format!("{}/{item_type}.{name}.html", url.join("/"));
+            let new_url = format!("{}/{}", url.join("/"), item.html_filename());
             url.push(name);
             let name = url.join("::");
-            match *item_type {
-                ItemType::Struct => self.structs.insert(ItemEntry::new(new_url, name)),
-                ItemType::Enum => self.enums.insert(ItemEntry::new(new_url, name)),
-                ItemType::Union => self.unions.insert(ItemEntry::new(new_url, name)),
-                ItemType::Primitive => self.primitives.insert(ItemEntry::new(new_url, name)),
-                ItemType::Trait => self.traits.insert(ItemEntry::new(new_url, name)),
-                ItemType::Macro => self.macros.insert(ItemEntry::new(new_url, name)),
-                ItemType::Function => self.functions.insert(ItemEntry::new(new_url, name)),
-                ItemType::TypeAlias => self.type_aliases.insert(ItemEntry::new(new_url, name)),
-                ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
-                ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
-                ItemType::ProcAttribute => {
-                    self.attribute_macros.insert(ItemEntry::new(new_url, name))
-                }
-                ItemType::ProcDerive => self.derive_macros.insert(ItemEntry::new(new_url, name)),
-                ItemType::TraitAlias => self.trait_aliases.insert(ItemEntry::new(new_url, name)),
-                _ => true,
-            };
+            for type_ in item.types() {
+                self.add_item_entry(type_, new_url.clone(), name.clone());
+            }
         }
     }
 
@@ -2574,7 +2582,7 @@ impl ItemSection {
             Self::ForeignTypes => "foreign-types",
             Self::Keywords => "keywords",
             Self::Attributes => "attributes",
-            Self::AttributeMacros => "attributes",
+            Self::AttributeMacros => "attribute-macros",
             Self::DeriveMacros => "derives",
             Self::TraitAliases => "trait-aliases",
         }
@@ -2635,8 +2643,8 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
         ItemType::ForeignType => ItemSection::ForeignTypes,
         ItemType::Keyword => ItemSection::Keywords,
         ItemType::Attribute => ItemSection::Attributes,
-        ItemType::ProcAttribute => ItemSection::AttributeMacros,
-        ItemType::ProcDerive => ItemSection::DeriveMacros,
+        ItemType::ProcAttribute | ItemType::BangMacroAttribute => ItemSection::AttributeMacros,
+        ItemType::ProcDerive | ItemType::BangMacroDerive => ItemSection::DeriveMacros,
         ItemType::TraitAlias => ItemSection::TraitAliases,
     }
 }
