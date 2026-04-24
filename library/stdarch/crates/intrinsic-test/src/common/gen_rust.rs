@@ -130,10 +130,13 @@ fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
 
     // Each function (and each specialization) has its own type. Erase that type with a cast.
     let mut coerce = String::from("fn(");
+    let mut c_coerce = String::from("fn(_, ");
     for _ in intrinsic.arguments.iter().filter(|a| !a.has_constraint()) {
         coerce += "_, ";
+        c_coerce += "_, ";
     }
     coerce += ") -> _";
+    c_coerce += ")";
 
     if intrinsic
         .arguments
@@ -152,7 +155,7 @@ fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
         intrinsic.iter_specializations(|imm_values| {
             writeln!(
                 w,
-                "        (\"{const_args}\", {intrinsic_name}::<{const_args}> as unsafe {coerce}, {intrinsic_name}_wrapper_{c_const_args} as unsafe extern \"C\" {coerce}),",
+                "        (\"{const_args}\", {intrinsic_name}::<{const_args}> as unsafe {coerce}, {intrinsic_name}_wrapper_{c_const_args} as unsafe extern \"C\" {c_coerce}),",
                 const_args = imm_values.iter().join(","),
                 c_const_args = imm_values.iter().join("_"),
             )
@@ -191,8 +194,12 @@ fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
             "        for i in 0..{passes} {{",
             "            unsafe {{",
             "{loaded_args}",
-            "                let __rust_return_value = rust({args});",
-            "                let __c_return_value = c({args});",
+            "                let __rust_return_value = rust({rust_args});",
+            "",
+            "                let mut __c_return_value = std::mem::MaybeUninit::uninit();",
+            "                c(__c_return_value.as_mut_ptr(){c_args});",
+            "                let __c_return_value = __c_return_value.assume_init();",
+            "",
             "                assert_eq!({cast_prefix}__rust_return_value{cast_suffix}, {cast_prefix}__c_return_value{cast_suffix}, \"{{id}}\");",
             "            }}",
             "        }}",
@@ -201,7 +208,8 @@ fn generate_rust_test_loop<T: IntrinsicTypeDefinition>(
         loaded_args = intrinsic
             .arguments
             .load_values_rust(Indentation::default().nest_by(4)),
-        args = intrinsic.arguments.as_call_param_rust(),
+        rust_args = intrinsic.arguments.as_call_param_rust(),
+        c_args = intrinsic.arguments.as_c_call_param_rust(),
         passes = passes,
         cast_prefix = cast_prefix,
         cast_suffix = cast_suffix,
@@ -250,7 +258,7 @@ pub fn write_bindings_rust<T: IntrinsicTypeDefinition>(
         intrinsic.iter_specializations(|imm_values| {
             writeln!(
                 w,
-                "    fn {name}_wrapper{imm_arglist}({arglist}) -> {return_ty};",
+                "    fn {name}_wrapper{imm_arglist}(__dst: *mut {return_ty}{arglist});",
                 return_ty = intrinsic.results.rust_type(),
                 name = intrinsic.name,
                 imm_arglist = imm_values

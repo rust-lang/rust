@@ -1,5 +1,7 @@
 use itertools::Itertools;
 
+use crate::common::intrinsic_helpers::TypeKind;
+
 use super::constraint::Constraint;
 use super::gen_rust::PASSES;
 use super::indentation::Indentation;
@@ -74,6 +76,11 @@ where
             format!("{}_vals", self.name.to_lowercase())
         }
     }
+
+    pub(crate) fn pass_by_ref(&self) -> bool {
+        // pass SIMD types and `f16` by reference
+        self.is_simd() || (self.ty.kind() == TypeKind::Float && self.ty.inner_size() == 16)
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -88,8 +95,12 @@ where
     pub fn as_non_imm_arglist_c(&self) -> String {
         self.iter()
             .filter(|arg| !arg.has_constraint())
-            .format_with(", ", |arg, fmt| {
-                fmt(&format_args!("{} {}", arg.to_c_type(), arg.name))
+            .format_with("", |arg, fmt| {
+                if arg.pass_by_ref() {
+                    fmt(&format_args!(", const {}* {}", arg.to_c_type(), arg.name))
+                } else {
+                    fmt(&format_args!(", {} {}", arg.to_c_type(), arg.name))
+                }
             })
             .to_string()
     }
@@ -97,8 +108,16 @@ where
     pub fn as_non_imm_arglist_rust(&self) -> String {
         self.iter()
             .filter(|arg| !arg.has_constraint())
-            .format_with(", ", |arg, fmt| {
-                fmt(&format_args!("{}: {}", arg.name, arg.ty.rust_type()))
+            .format_with("", |arg, fmt| {
+                if arg.pass_by_ref() {
+                    fmt(&format_args!(
+                        ", {}: *const {}",
+                        arg.name,
+                        arg.ty.rust_type()
+                    ))
+                } else {
+                    fmt(&format_args!(", {}: {}", arg.name, arg.ty.rust_type()))
+                }
             })
             .to_string()
     }
@@ -110,6 +129,9 @@ where
                 if arg.has_constraint() {
                     fmt(&imm_args.next().unwrap())
                 } else {
+                    if arg.pass_by_ref() {
+                        fmt(&"*")?;
+                    }
                     fmt(&arg.name)
                 }
             })
@@ -123,6 +145,19 @@ where
             .filter(|a| !a.has_constraint())
             .map(|arg| arg.generate_name())
             .join(", ")
+    }
+
+    pub fn as_c_call_param_rust(&self) -> String {
+        self.iter()
+            .filter(|a| !a.has_constraint())
+            .map(|arg| {
+                if arg.pass_by_ref() {
+                    format!(", &raw const {}", arg.generate_name())
+                } else {
+                    format!(", {}", arg.generate_name())
+                }
+            })
+            .join("")
     }
 
     /// Creates a line for each argument that initializes an array for Rust from which `loads` argument

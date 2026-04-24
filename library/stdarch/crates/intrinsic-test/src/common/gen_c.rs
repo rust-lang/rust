@@ -24,8 +24,8 @@ pub fn write_wrapper_c<T: IntrinsicTypeDefinition>(
             writeln!(
                 w,
                 "
-{return_ty} {name}_wrapper{imm_arglist}({arglist}) {{
-    return {name}({params});
+void {name}_wrapper{imm_arglist}({return_ty}* __dst{arglist}) {{
+    *__dst = {name}({params});
 }}",
                 return_ty = intrinsic.results.c_type(),
                 name = intrinsic.name,
