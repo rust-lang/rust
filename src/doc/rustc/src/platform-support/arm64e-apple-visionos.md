@@ -2,22 +2,24 @@
 
 **Tier: 3**
 
-ARM64e visionOS (1.0+)
+Apple arm64e visionOS.
 
 ## Target maintainers
 
-[@arttet](https://github.com/arttet)
+[@cypherair](https://github.com/cypherair)
 
 ## Requirements
 
-See the docs on [`*-apple-visionos`](apple-visionos.md) for general visionOS
-requirements.
+This target is cross-compiled and supports `std`.
+
+This target requires the visionOS SDK provided by Xcode.
+
+The deployment target can be configured with `XROS_DEPLOYMENT_TARGET`.
 
 ## Building the target
 
 You can build Rust with support for the target by adding it to the `target`
 list in `bootstrap.toml`:
-
 ```toml
 [build]
 target = ["arm64e-apple-visionos"]
@@ -26,16 +28,19 @@ target = ["arm64e-apple-visionos"]
 ## Building Rust programs
 
 Rust does not yet ship pre-compiled artifacts for this target.
-To compile for this target, you will need to build Rust with the target enabled
-(see [Building the target](#building-the-target) above).
+To compile for this target, you will need to build Rust with the target enabled.
 
 ## Testing
 
-The target does support running binaries on visionOS platforms with `arm64e`
-architecture.
+This target is not tested by Rust CI.
+
+Binaries are intended to run on visionOS devices with `arm64e` architecture.
+
+The visionOS simulator targets use `arm64`, not `arm64e`.
 
 ## Cross-compilation toolchains and C code
 
-The target does support `C` code.
-To build compatible `C` code, you have to use Xcode with the same compiler and
-flags.
+C code should be built with Apple's Clang from Xcode, using the visionOS SDK and
+matching deployment target.
+
+The Clang target is suffixed with `-xros`.
