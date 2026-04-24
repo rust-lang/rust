@@ -292,6 +292,7 @@ target | std | host | notes
 [`arm64e-apple-darwin`](platform-support/arm64e-apple-darwin.md)  | ✓ | ✓ | ARM64e Apple Darwin
 [`arm64e-apple-ios`](platform-support/arm64e-apple-ios.md) | ✓ |  | ARM64e Apple iOS
 [`arm64e-apple-tvos`](platform-support/arm64e-apple-tvos.md)  | ✓ |  | ARM64e Apple tvOS
+[`arm64e-apple-visionos`](platform-support/arm64e-apple-visionos.md)  | ✓ |  | ARM64e Apple visionOS
 [`armeb-unknown-linux-gnueabi`](platform-support/armeb-unknown-linux-gnueabi.md) | ✓ | ? | Arm BE8 the default Arm big-endian architecture since [Armv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en).
 [`armebv7r-none-eabi`](platform-support/armebv7r-none-eabi.md) | * |  | Bare Armv7-R, Big Endian
 [`armebv7r-none-eabihf`](platform-support/armebv7r-none-eabi.md) | * |  | Bare Armv7-R, Big Endian, hardfloat

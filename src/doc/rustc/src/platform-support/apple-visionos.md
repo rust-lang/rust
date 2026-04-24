@@ -6,6 +6,7 @@ Apple visionOS / xrOS targets.
 
 - `aarch64-apple-visionos`: Apple visionOS on arm64.
 - `aarch64-apple-visionos-sim`: Apple visionOS Simulator on arm64.
+- `arm64e-apple-visionos`: Apple visionOS on arm64e.
 
 ## Target maintainers
 
@@ -35,6 +36,14 @@ The targets are distributed through `rustup`, and can be installed using one of:
 ```console
 $ rustup target add aarch64-apple-visionos
 $ rustup target add aarch64-apple-visionos-sim
+```
+
+For the arm64e target, Rust does not currently ship pre-built artifacts. Build
+Rust with the target enabled in `bootstrap.toml`:
+
+```toml
+[build]
+target = ["arm64e-apple-visionos"]
 ```
 
 ## Building Rust programs

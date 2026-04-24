@@ -1615,6 +1615,7 @@ supported_targets! {
 
     ("aarch64-apple-visionos", aarch64_apple_visionos),
     ("aarch64-apple-visionos-sim", aarch64_apple_visionos_sim),
+    ("arm64e-apple-visionos", arm64e_apple_visionos),
 
     ("armebv7r-none-eabi", armebv7r_none_eabi),
     ("armebv7r-none-eabihf", armebv7r_none_eabihf),

@@ -46,6 +46,7 @@
         - [arm64e-apple-tvos](platform-support/arm64e-apple-tvos.md)
     - [\*-apple-watchos](platform-support/apple-watchos.md)
     - [\*-apple-visionos](platform-support/apple-visionos.md)
+        - [arm64e-apple-visionos](platform-support/arm64e-apple-visionos.md)
     - [aarch64-nintendo-switch-freestanding](platform-support/aarch64-nintendo-switch-freestanding.md)
     - [aarch64-unknown-linux-gnu](platform-support/aarch64-unknown-linux-gnu.md)
     - [aarch64-unknown-linux-musl](platform-support/aarch64-unknown-linux-musl.md)
