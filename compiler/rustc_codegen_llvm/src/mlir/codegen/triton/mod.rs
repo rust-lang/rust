@@ -550,7 +550,7 @@ fn compute_phi_join_locals<'tcx>(
 }
 
 /// Detect all Range-based `for` loops in the MIR body.
-fn detect_range_loop<'tcx>(mir: &Body<'tcx>) -> Vec<RangeLoopInfo> {
+fn detect_range_loop<'tcx>(instance: Instance<'tcx>, mir: &Body<'tcx>) -> Vec<RangeLoopInfo> {
     use rustc_middle::mir::TerminatorKind;
 
     let mut loops = Vec::new();
@@ -560,7 +560,7 @@ fn detect_range_loop<'tcx>(mir: &Body<'tcx>) -> Vec<RangeLoopInfo> {
                 // Back edge: bb → target (target is the loop header)
                 let header_bb = *target;
                 let back_edge_bb = bb;
-                if let Some(info) = try_build_range_loop_info(mir, header_bb, back_edge_bb) {
+                if let Some(info) = try_build_range_loop_info(instance, mir, header_bb, back_edge_bb) {
                     loops.push(info);
                 }
             }
@@ -570,6 +570,7 @@ fn detect_range_loop<'tcx>(mir: &Body<'tcx>) -> Vec<RangeLoopInfo> {
 }
 
 fn try_build_range_loop_info<'tcx>(
+    instance: Instance<'tcx>,
     mir: &Body<'tcx>,
     header_bb: BasicBlock,
     back_edge_bb: BasicBlock,
@@ -592,24 +593,21 @@ fn try_build_range_loop_info<'tcx>(
         // Pattern 1: SwitchInt header with explicit Lt comparison (older Rust MIR).
         if let TerminatorKind::SwitchInt { discr, targets } = &header_data.terminator().kind {
             let cases: Vec<(u128, BasicBlock)> = targets.iter().collect();
-            println!("[LOOP-DETECT] header={:?} back_edge={:?} SwitchInt cases={:?} otherwise={:?} discr={:?}",
-                header_bb, back_edge_bb, cases, targets.otherwise(), discr);
             if cases.len() == 1 && cases[0].0 == 0 {
                 let exit_bb = cases[0].1;
                 let body_entry_bb = targets.otherwise();
                 if let Operand::Move(p) | Operand::Copy(p) = discr {
                     if p.projection.is_empty() {
                         let discr_local = p.local;
-                        if let Some((counter_local, bl)) =
-                            find_lt_locals_in_stmts(&header_data.statements, discr_local)
+                        if let Some((counter_local, bl, bc)) =
+                            find_lt_locals_in_stmts(&header_data.statements, discr_local, instance)
                         {
-                            println!("[LOOP-DETECT] Pattern1 detected: counter={:?} bound_local={:?}", counter_local, bl);
                             break 'detect HeaderInfo {
                                 body_entry_bb,
                                 exit_bb,
                                 counter_local_hint: Some(counter_local),
-                                bound_local: Some(bl),
-                                bound_const: None,
+                                bound_local: bl,
+                                bound_const: bc,
                                 switch_bb: None,
                                 next_result_local: None,
                             };
@@ -617,7 +615,6 @@ fn try_build_range_loop_info<'tcx>(
                     }
                 }
             }
-            println!("[LOOP-DETECT] FAIL Pattern1: cases={:?}", cases);
         }
 
         // Pattern 2: Call header (Range::next) followed by SwitchInt on discriminant (Rust 1.93+).
@@ -627,8 +624,6 @@ fn try_build_range_loop_info<'tcx>(
             let switch_data = &mir.basic_blocks[*switch_bb_cand];
             if let TerminatorKind::SwitchInt { targets, .. } = &switch_data.terminator().kind {
                 let cases: Vec<(u128, BasicBlock)> = targets.iter().collect();
-                println!("[LOOP-DETECT] header={:?} back_edge={:?} Call+SwitchInt cases={:?} otherwise={:?}",
-                    header_bb, back_edge_bb, cases, targets.otherwise());
                 // Discriminant 0 = None (exit), discriminant 1 = Some (body)
                 if cases.len() == 2 && cases[0].0 == 0 && cases[1].0 == 1
                     && destination.projection.is_empty()
@@ -637,7 +632,6 @@ fn try_build_range_loop_info<'tcx>(
                     let body_entry_bb = cases[1].1;
                     let next_result_local = destination.local;
                     if let Some((bc, bl)) = find_range_bound(mir, header_bb) {
-                        println!("[LOOP-DETECT] Pattern2 detected: bound_const={:?} bound_local={:?}", bc, bl);
                         break 'detect HeaderInfo {
                             body_entry_bb,
                             exit_bb,
@@ -650,37 +644,30 @@ fn try_build_range_loop_info<'tcx>(
                     }
                 }
             }
-            println!("[LOOP-DETECT] FAIL Pattern2: switch_bb={:?}", switch_bb_cand);
         }
 
-        println!("[LOOP-DETECT] header={:?} back_edge={:?}: no pattern matched", header_bb, back_edge_bb);
         return None;
     };
 
     // Collect body blocks in topological (execution) order
     let body_bbs = collect_body_blocks_ordered(mir, hinfo.body_entry_bb, header_bb);
-    println!("[LOOP-DETECT] body_bbs={:?} back_edge_in_body={}", body_bbs, body_bbs.contains(&back_edge_bb));
     if !body_bbs.contains(&back_edge_bb) {
         return None;
     }
 
     // Find the induction local: extracted from Option::Some via downcast projection
-    let induction_result = find_induction_local_in_bbs(mir, &body_bbs);
-    println!("[LOOP-DETECT] induction_local={:?}", induction_result);
-    let induction_local = induction_result?;
+    let induction_local = find_induction_local_in_bbs(mir, &body_bbs)?;
 
     let counter_local = hinfo.counter_local_hint.unwrap_or(induction_local);
 
     // Find loop-carried locals (used before assigned in topological order).
     let mut iter_carry_locals = find_iter_carry_locals(mir, &body_bbs);
-    println!("[LOOP-DETECT] iter_carry_locals (before filter)={:?}", iter_carry_locals);
 
     // For the Call-header pattern, exclude the Range::next result local (next_result_local)
     // from iter-carry: it is synthesised by scf.for, not a user-defined loop-carried value.
     if let Some(nrl) = hinfo.next_result_local {
         iter_carry_locals.retain(|&l| l != nrl);
     }
-    println!("[LOOP-DETECT] iter_carry_locals (final)={:?}", iter_carry_locals);
 
     Some(RangeLoopInfo {
         header_bb,
@@ -744,11 +731,14 @@ fn try_const_operand_as_i64(c: &ConstOperand<'_>) -> Option<i64> {
     c.const_.try_to_scalar_int().map(|s| s.to_bits_unchecked() as i64)
 }
 
-/// Find the Lt statement that assigns `discr_local` and extract (counter_local, bound_local).
+/// Find the Lt statement that assigns `discr_local` and extract
+/// `(counter_local, bound_local_or_const)` where the bound is either a local or a constant.
+/// Returns `(counter, Some(bound_local), None)` or `(counter, None, Some(bound_const))`.
 fn find_lt_locals_in_stmts<'tcx>(
     stmts: &[Statement<'tcx>],
     discr_local: Local,
-) -> Option<(Local, Local)> {
+    instance: Instance<'tcx>,
+) -> Option<(Local, Option<Local>, Option<i64>)> {
     for stmt in stmts {
         if let StatementKind::Assign(assign) = &stmt.kind {
             let (dest, rvalue) = assign.as_ref();
@@ -759,14 +749,34 @@ fn find_lt_locals_in_stmts<'tcx>(
                         Operand::Move(p) | Operand::Copy(p) if p.projection.is_empty() => p.local,
                         _ => return None,
                     };
-                    let bound_local = match rhs {
-                        Operand::Move(p) | Operand::Copy(p) if p.projection.is_empty() => p.local,
-                        _ => return None,
-                    };
-                    // Resolve the counter_copy (might be a copy of the real counter)
                     let counter_local = find_copy_source_in_stmts(stmts, counter_copy)
                         .unwrap_or(counter_copy);
-                    return Some((counter_local, bound_local));
+                    match rhs {
+                        Operand::Move(p) | Operand::Copy(p) if p.projection.is_empty() => {
+                            return Some((counter_local, Some(p.local), None));
+                        }
+                        Operand::Constant(c) => {
+                            // Try simple scalar first (works for literal constants)
+                            if let Some(v) = try_const_operand_as_i64(c) {
+                                return Some((counter_local, None, Some(v)));
+                            }
+                            // Handle ConstKind::Param (const generic — resolve via instance substs)
+                            use rustc_middle::mir::Const as MirConst;
+                            if let MirConst::Ty(ty, const_val) = c.const_ {
+                                if ty.is_integral() {
+                                    if let ConstKind::Param(param) = const_val.kind() {
+                                        let subst = instance.args.const_at(param.index as usize);
+                                        let cv = subst.to_value();
+                                        if let Some(si) = cv.try_to_leaf() {
+                                            return Some((counter_local, None, Some(si.to_bits_unchecked() as i64)));
+                                        }
+                                    }
+                                }
+                            }
+                            return None;
+                        }
+                        _ => return None,
+                    }
                 }
             }
         }
@@ -1431,7 +1441,7 @@ impl<'a> TritonCodegen<'a> {
 
         // Detect all Range-based `for` loops. Loop body blocks live in the scf.for region, not
         // in the function region, so we skip creating MLIR blocks for them here.
-        let loop_infos = detect_range_loop(mir);
+        let loop_infos = detect_range_loop(*instance, mir);
 
         // The set of MIR blocks that belong to any scf.for region.
         let mut loop_region_blocks: HashSet<BasicBlock> = HashSet::new();
