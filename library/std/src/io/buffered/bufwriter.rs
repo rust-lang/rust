@@ -641,7 +641,8 @@ impl<W: ?Sized + Write> Write for BufWriter<W> {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        self.flush_buf().and_then(|()| self.get_mut().flush())
+        self.flush_buf()?;
+        self.get_mut().flush()
     }
 }
 
