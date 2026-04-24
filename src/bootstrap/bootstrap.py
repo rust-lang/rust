@@ -940,10 +940,10 @@ class RustBuild(object):
             if section_match is not None:
                 cur_section = section_match.group(1)
 
-            match = re.match(r"^{}\s*=(.*)$".format(key), line)
+            match = re.match(r"^({}\.)?{}\s*=(.*)$".format(section, key), line)
             if match is not None:
-                value = match.group(1)
-                if section is None or section == cur_section:
+                value = match.group(2)
+                if section is None or section == cur_section or match.group(1) is not None:
                     return RustBuild.get_string(value) or value.strip()
         return None
 
