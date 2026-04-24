@@ -15,7 +15,7 @@ From the wider Wasm ecosystem perspective, implementing WALI within engines allo
 ## Requirements
 
 ### Compilation
-This target is cross-compiled and requires an installation of the [WALI compiler/sysroot](https://github.com/arjunr2/WALI). This produces standard `wasm32` binaries with the WALI interface methods as module imports that need to be implemented by a supported engine (see the  "Execution" section below).
+This target is cross-compiled and requires an installation of the [WALI sysroot](https://github.com/Wasm-Thin-Kernel-Interfaces/WALI.git). This produces standard `wasm32` binaries with the WALI interface methods as module imports that need to be implemented by a supported engine (see the  "Execution" section below).
 
 `wali` targets *minimally require* the following LLVM feature flags:
 
@@ -31,7 +31,7 @@ This target is cross-compiled and requires an installation of the [WALI compiler
 > **Note**: Users can expect that new enabled-by-default Wasm features for LLVM are transitively incorporatable into this target -- see [wasm32-unknown-unknown](wasm32-unknown-unknown.md) for detailed information on WebAssembly features.
 
 
-> **Note**: The WALI ABI is similar to default Clang wasm32 ABIs but *not identical*. The primary difference is 64-bit `long` types as opposed to 32-bit for wasm32. This is required to maintain minimum source code changes for 64-bit host platforms currently supported. This may change in the future as the spec evolves.
+> **Note**: The WALI ABI is *not identical* to the default Clang wasm32 ABI. The primary difference is 64-bit `long` types as opposed to 32-bit for wasm32. This is required to maximize portability with minimum source code changes for currently supported 64-bit host platforms. These ABIs may converge in the future as the spec evolves.
 
 ### Execution
 Running generated WALI binaries also requires a supported compliant engine implementation -- a working implementation in the [WebAssembly Micro-Runtime (WAMR)](https://github.com/arjunr2/WALI) is included in the repo.
@@ -41,38 +41,28 @@ Running generated WALI binaries also requires a supported compliant engine imple
 ## Building the target
 
 You can build Rust with support for the target by adding it to the `target`
-list in `config.toml`, and pointing to the toolchain artifacts from the previous section ("Requirements->Compilation"). A sample `config.toml` for the `musl` environment will look like this, where `<WALI-root>` is the absolute path to the root directory of the [WALI repo](https://github.com/arjunr2/WALI):
+list in `bootstrap.toml`, and pointing to the toolchain artifacts from the previous section ("Requirements->Compilation"). A sample `bootstrap.toml` for the `musl` environment will look like this, where `<WALI-root>` is the absolute path to the root directory of the [WALI repo](https://github.com/arjunr2/WALI):
 
 ```toml
 [build]
 target = ["wasm32-wali-linux-musl"]
 
 [target.wasm32-wali-linux-musl]
-musl-root = "<WALI>/wali-musl/sysroot"
-llvm-config = "<WALI>/llvm-project/build/bin/llvm-config"
-cc = "<WALI>/llvm-project/build/bin/clang-18"
-cxx = "<WALI>/llvm-project/build/bin/clang-18"
-ar = "<WALI>/llvm-project/build/bin/llvm-ar"
-ranlib = "<WALI>/llvm-project/build/bin/llvm-ranlib"
+musl-root = "<WALI>/build/sysroot"
+cc = "<WALI>/build/llvm/bin/clang"
+cxx = "<WALI>/build/llvm/bin/clang++"
+ar = "<WALI>/build/llvm/bin/llvm-ar"
+ranlib = "<WALI>/build/llvm/bin/llvm-ranlib"
 llvm-libunwind = "system"
 crt-static = true
 ```
-
-> The `llvm-config` settings are only temporary, and the changes will eventually be upstreamed into LLVM
 
 ## Building Rust programs
 
 Rust does not yet ship pre-compiled artifacts for this target. To compile for
 this target, you will either need to build Rust with the target enabled (see
 "Building the target" above), or build your own copy of `core` by using
-`build-std` or similar.
-
-Rust program builds can use this target normally. Currently, linking WALI programs may require pointing the `linker` to the llvm build in the [Cargo config](https://doc.rust-lang.org/cargo/reference/config.html) (until LLVM is upstreamed). A `config.toml` for Cargo will look like the following:
-
-```toml
-[target.wasm32-wali-linux-musl]
-linker = "<WALI>/llvm-project/build/bin/lld"
-```
+`build-std` or similar (with the appropriate sysroot links).
 
 Note that the following `cfg` directives are set for `wasm32-wali-linux-*`:
 
