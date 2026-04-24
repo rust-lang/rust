@@ -1584,6 +1584,39 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         if output.is_ty_var() { None } else { Some((def_id_or_name, output, inputs)) }
     }
 
+    pub(super) fn where_clause_expr_matches_failed_self_ty(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        old_self_ty: Ty<'tcx>,
+    ) -> bool {
+        let ObligationCauseCode::WhereClauseInExpr(..) = obligation.cause.code() else {
+            return true;
+        };
+        let (Some(typeck_results), Some(body)) = (
+            self.typeck_results.as_ref(),
+            self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id),
+        ) else {
+            return true;
+        };
+
+        let mut expr_finder = FindExprBySpan::new(obligation.cause.span, self.tcx);
+        expr_finder.visit_expr(body.value);
+        let Some(expr) = expr_finder.result else {
+            return true;
+        };
+
+        let inner_old_self_ty = match old_self_ty.kind() {
+            ty::Ref(_, inner_ty, _) => Some(*inner_ty),
+            _ => None,
+        };
+
+        [typeck_results.expr_ty_adjusted_opt(expr)].into_iter().flatten().any(|expr_ty| {
+            self.can_eq(obligation.param_env, expr_ty, old_self_ty)
+                || inner_old_self_ty
+                    .is_some_and(|inner_ty| self.can_eq(obligation.param_env, expr_ty, inner_ty))
+        })
+    }
+
     pub(super) fn suggest_add_reference_to_arg(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -1855,6 +1888,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 return false;
             };
             if let hir::ExprKind::AddrOf(_, _, _) = expr.kind {
+                return false;
+            }
+            let old_self_ty = old_pred.skip_binder().self_ty();
+            if !old_self_ty.has_escaping_bound_vars()
+                && !self.where_clause_expr_matches_failed_self_ty(
+                    obligation,
+                    self.tcx.instantiate_bound_regions_with_erased(old_pred.self_ty()),
+                )
+            {
                 return false;
             }
             let needs_parens_post = expr_needs_parens(expr);
