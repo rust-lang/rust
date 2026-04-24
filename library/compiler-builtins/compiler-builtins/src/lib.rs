@@ -48,6 +48,9 @@ pub mod mem;
 pub mod sync;
 
 // `libm` expects its `support` module to be available in the crate root.
+#[cfg(feature = "unstable-public-internals")]
+pub use math::libm_math::support;
+#[cfg(not(feature = "unstable-public-internals"))]
 use math::libm_math::support;
 
 #[cfg(target_arch = "arm")]
@@ -60,7 +63,10 @@ pub mod aarch64;
 // in the builtins-test tests. So this is a way of enabling the module during testing.
 #[cfg(all(
     target_arch = "aarch64",
-    any(target_feature = "outline-atomics", feature = "mangled-names")
+    any(
+        target_feature = "outline-atomics",
+        feature = "unstable-public-internals"
+    )
 ))]
 pub mod aarch64_outline_atomics;
 
@@ -69,9 +75,6 @@ pub mod avr;
 
 #[cfg(target_arch = "hexagon")]
 pub mod hexagon;
-
-#[cfg(any(target_arch = "riscv32", target_arch = "riscv64"))]
-pub mod riscv;
 
 #[cfg(target_arch = "x86")]
 pub mod x86;

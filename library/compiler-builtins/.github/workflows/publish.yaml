@@ -11,15 +11,15 @@ jobs:
   release-plz:
     name: Release-plz
     runs-on: ubuntu-24.04
+    environment: publish
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          persist-credentials: false
           fetch-depth: 0
       - name: Install Rust (rustup)
         run: rustup update nightly --no-self-update && rustup default nightly
       - name: Run release-plz
-        uses: MarcoIeni/release-plz-action@v0.5
+        uses: release-plz/action@1528104d2ca23787631a1c1f022abb64b34c1e11 # v0.5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

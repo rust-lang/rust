@@ -1,7 +1,8 @@
 //! Traits related to testing.
 //!
-//! There are two main traits in this module:
+//! There are three main traits in this module:
 //!
+//! - `Tuple`: Implemented on tuples to help extract types.
 //! - `TupleCall`: implemented on tuples to allow calling them as function arguments.
 //! - `CheckOutput`: implemented on anything that is an output type for validation against an
 //!   expected value.
@@ -10,7 +11,7 @@ use std::panic::{RefUnwindSafe, UnwindSafe};
 use std::{fmt, panic};
 
 use anyhow::{Context, anyhow, bail, ensure};
-use libm::support::Hexf;
+use libm::support::{DisplayHex, Hex};
 
 use crate::precision::CheckAction;
 use crate::{
@@ -23,6 +24,7 @@ use crate::{
 /// tuple for multiple signatures).
 pub trait TupleCall<Func>: fmt::Debug {
     type Output;
+
     fn call(self, f: Func) -> Self::Output;
 
     /// Intercept panics and print the input to stderr before continuing.
@@ -42,6 +44,16 @@ pub trait TupleCall<Func>: fmt::Debug {
     }
 }
 
+/// Helper to allow extracting types from a tuple.
+pub trait Tuple {
+    type T0;
+    type T1;
+    type T2;
+}
+
+/// If a tuple contains fewer types than provided in `Tuple`, they use this struct.
+pub enum Unused {}
+
 /// A trait to implement on any output type so we can verify it in a generic way.
 pub trait CheckOutput<Input>: Sized {
     /// Validate `self` (actual) and `expected` are the same.
@@ -50,15 +62,24 @@ pub trait CheckOutput<Input>: Sized {
     fn validate(self, expected: Self, input: Input, ctx: &CheckCtx) -> TestResult;
 }
 
-/// A helper trait to print something as hex with the correct number of nibbles, e.g. a `u32`
-/// will always print with `0x` followed by 8 digits.
-///
-/// This is only used for printing errors so allocating is okay.
-pub trait Hex: Copy {
-    /// Hex integer syntax.
-    fn hex(self) -> String;
-    /// Hex float syntax.
-    fn hexf(self) -> String;
+/* implement Tuple */
+
+impl<T0> Tuple for (T0,) {
+    type T0 = T0;
+    type T1 = Unused;
+    type T2 = Unused;
+}
+
+impl<T0, T1> Tuple for (T0, T1) {
+    type T0 = T0;
+    type T1 = T1;
+    type T2 = Unused;
+}
+
+impl<T0, T1, T2> Tuple for (T0, T1, T2) {
+    type T0 = T0;
+    type T1 = T1;
+    type T2 = T2;
 }
 
 /* implement `TupleCall` */
@@ -142,47 +163,25 @@ where
     }
 }
 
-/* implement `Hex` */
+/* trait implementations for bool */
 
-impl<T1> Hex for (T1,)
+impl<Input> CheckOutput<Input> for bool
 where
-    T1: Hex,
+    Input: Copy + DisplayHex + fmt::Debug,
+    SpecialCase: MaybeOverride<Input>,
 {
-    fn hex(self) -> String {
-        format!("({},)", self.0.hex())
-    }
+    fn validate<'a>(self, expected: Self, input: Input, _ctx: &CheckCtx) -> TestResult {
+        anyhow::ensure!(
+            self == expected,
+            "\
+            \n    input:    {input:?} {ibits}\
+            \n    expected: {expected}\
+            \n    actual:   {self}\
+            ",
+            ibits = Hex(input),
+        );
 
-    fn hexf(self) -> String {
-        format!("({},)", self.0.hexf())
-    }
-}
-
-impl<T1, T2> Hex for (T1, T2)
-where
-    T1: Hex,
-    T2: Hex,
-{
-    fn hex(self) -> String {
-        format!("({}, {})", self.0.hex(), self.1.hex())
-    }
-
-    fn hexf(self) -> String {
-        format!("({}, {})", self.0.hexf(), self.1.hexf())
-    }
-}
-
-impl<T1, T2, T3> Hex for (T1, T2, T3)
-where
-    T1: Hex,
-    T2: Hex,
-    T3: Hex,
-{
-    fn hex(self) -> String {
-        format!("({}, {}, {})", self.0.hex(), self.1.hex(), self.2.hex())
-    }
-
-    fn hexf(self) -> String {
-        format!("({}, {}, {})", self.0.hexf(), self.1.hexf(), self.2.hexf())
+        Ok(())
     }
 }
 
@@ -191,19 +190,9 @@ where
 macro_rules! impl_int {
     ($($ty:ty),*) => {
         $(
-            impl Hex for $ty {
-                fn hex(self) -> String {
-                    format!("{self:#0width$x}", width = ((Self::BITS / 4) + 2) as usize)
-                }
-
-                fn hexf(self) -> String {
-                    String::new()
-                }
-            }
-
             impl<Input> $crate::CheckOutput<Input> for $ty
             where
-                Input: Hex + fmt::Debug,
+                Input: Copy + DisplayHex + fmt::Debug,
                 SpecialCase: MaybeOverride<Input>,
             {
                 fn validate<'a>(
@@ -221,8 +210,8 @@ macro_rules! impl_int {
 
 fn validate_int<I, Input>(actual: I, expected: I, input: Input, ctx: &CheckCtx) -> TestResult
 where
-    I: Int + Hex,
-    Input: Hex + fmt::Debug,
+    I: Int,
+    Input: Copy + DisplayHex + fmt::Debug,
     SpecialCase: MaybeOverride<Input>,
 {
     let (result, xfail_msg) = match SpecialCase::check_int(input, actual, expected, ctx) {
@@ -243,47 +232,29 @@ where
         None => String::new(),
     };
 
-    anyhow::ensure!(
-        result,
-        "\
-        \n    input:    {input:?} {ibits}\
-        \n    expected: {expected:<22?} {expbits}\
-        \n    actual:   {actual:<22?} {actbits}\
-        \n    {msg}\
-        ",
-        actbits = actual.hex(),
-        expbits = expected.hex(),
-        ibits = input.hex(),
-        msg = make_xfail_msg()
-    );
+    if !result {
+        bail!(make_error_message(
+            input,
+            expected,
+            actual,
+            "",
+            &make_xfail_msg()
+        ));
+    }
 
     Ok(())
 }
 
-impl_int!(u16, i16, u32, i32, u64, i64, u128, i128);
+impl_int!(u16, i16, u32, i32, u64, i64, u128, i128, usize);
 
 /* trait implementations for floats */
 
 macro_rules! impl_float {
     ($($ty:ty),*) => {
         $(
-            impl Hex for $ty {
-                fn hex(self) -> String {
-                    format!(
-                        "{:#0width$x}",
-                        self.to_bits(),
-                        width = ((Self::BITS / 4) + 2) as usize
-                    )
-                }
-
-                fn hexf(self) -> String {
-                    format!("{}", Hexf(self))
-                }
-            }
-
             impl<Input> $crate::CheckOutput<Input> for $ty
             where
-                Input: Hex + fmt::Debug,
+                Input: Copy + DisplayHex + fmt::Debug,
                 SpecialCase: MaybeOverride<Input>,
             {
                 fn validate<'a>(
@@ -301,8 +272,8 @@ macro_rules! impl_float {
 
 fn validate_float<F, Input>(actual: F, expected: F, input: Input, ctx: &CheckCtx) -> TestResult
 where
-    F: Float + Hex,
-    Input: Hex + fmt::Debug,
+    F: Float,
+    Input: Copy + DisplayHex + fmt::Debug,
     u32: TryFrom<F::SignedInt, Error: fmt::Debug>,
     SpecialCase: MaybeOverride<Input>,
 {
@@ -310,11 +281,11 @@ where
 
     // Create a wrapper function so we only need to `.with_context` once.
     let mut inner = || -> TestResult {
-        let mut allowed_ulp = ctx.ulp;
+        let mut allowed_ulp = ctx
+            .ulp
+            .expect("functions returning floats should have a default ulp set");
 
         match SpecialCase::check_float(input, actual, expected, ctx) {
-            // Forbid overrides if the items came from an explicit list
-            _ if ctx.gen_kind == GeneratorKind::List => (),
             CheckAction::AssertSuccess => (),
             CheckAction::AssertFailure(msg) => assert_failure_msg = Some(msg),
             CheckAction::Custom(res) => return res,
@@ -385,23 +356,7 @@ where
         }
     }
 
-    res.with_context(|| {
-        format!(
-            "\
-            \n    input:    {input:?}\
-            \n    as hex:   {ihex}\
-            \n    as bits:  {ibits}\
-            \n    expected: {expected:<22?} {exphex} {expbits}\
-            \n    actual:   {actual:<22?} {acthex} {actbits}\
-            ",
-            ihex = input.hexf(),
-            ibits = input.hex(),
-            exphex = expected.hexf(),
-            expbits = expected.hex(),
-            actbits = actual.hex(),
-            acthex = actual.hexf(),
-        )
-    })
+    res.with_context(|| make_error_message(input, expected, actual, "", ""))
 }
 
 impl_float!(f32, f64);
@@ -420,30 +375,27 @@ macro_rules! impl_tuples {
         $(
             impl<Input> CheckOutput<Input> for ($a, $b)
             where
-                Input: Hex + fmt::Debug,
+                Input: Copy + DisplayHex + fmt::Debug,
                 SpecialCase: MaybeOverride<Input>,
-              {
+            {
                 fn validate<'a>(
                     self,
                     expected: Self,
                     input: Input,
                     ctx: &CheckCtx,
                 ) -> TestResult {
-                    self.0.validate(expected.0, input, ctx)
+                    self.0
+                        .validate(expected.0, input, ctx)
                         .and_then(|()| self.1.validate(expected.1, input, ctx))
-                        .with_context(|| format!(
-                            "full context:\
-                            \n    input:    {input:?} {ibits}\
-                            \n    as hex:   {ihex}\
-                            \n    as bits:  {ibits}\
-                            \n    expected: {expected:?} {expbits}\
-                            \n    actual:   {self:?} {actbits}\
-                            ",
-                            ihex = input.hexf(),
-                            ibits = input.hex(),
-                            expbits = expected.hex(),
-                            actbits = self.hex(),
-                        ))
+                        .with_context(|| {
+                            make_error_message(
+                                input,
+                                expected,
+                                self,
+                                "full context:",
+                                "",
+                            )
+                        })
                 }
             }
         )*
@@ -451,6 +403,22 @@ macro_rules! impl_tuples {
 }
 
 impl_tuples!(
+    (i32, i32);
+    (i64, i64);
+    (i128, i128);
+
+    (u32, u32);
+    (u64, u64);
+    (u128, u128);
+
+    (i32, bool);
+    (i64, bool);
+    (i128, bool);
+
+    (u32, bool);
+    (u64, bool);
+    (u128, bool);
+
     (f32, i32);
     (f64, i32);
     (f32, f32);
@@ -468,3 +436,33 @@ impl_tuples!(
     (f128, i32);
     (f128, f128);
 );
+
+fn make_error_message<I, E, A>(
+    input: I,
+    expected: E,
+    actual: A,
+    pre_msg: &str,
+    post_msg: &str,
+) -> String
+where
+    I: Copy + fmt::Debug + DisplayHex,
+    E: Copy + fmt::Debug + DisplayHex,
+    A: Copy + fmt::Debug + DisplayHex,
+{
+    let pre_pad = if pre_msg.is_empty() { "" } else { "\n    " };
+    let post_pad = if post_msg.is_empty() { "" } else { "\n    " };
+    format!(
+        "\
+        {pre_pad}{pre_msg}\
+        \n    input:    {input:?}\
+        \n    as hex:   {ihex}\
+        \n    as bits:  {ihex:-}\
+        \n    expected: {expected:<16?}    {exphex}   {exphex:-}\
+        \n    actual:   {actual:<16?}    {acthex}   {acthex:-}\
+        {post_pad}{post_msg}\
+        ",
+        ihex = Hex(input),
+        exphex = Hex(expected),
+        acthex = Hex(actual),
+    )
+}

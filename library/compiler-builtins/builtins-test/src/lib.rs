@@ -19,8 +19,7 @@
 pub mod bench;
 extern crate alloc;
 
-use compiler_builtins::float::Float;
-use compiler_builtins::int::{Int, MinInt};
+use compiler_builtins::support::{Float, Int, MinInt};
 use rand_xoshiro::Xoshiro128StarStar;
 use rand_xoshiro::rand_core::{Rng, SeedableRng};
 
@@ -245,18 +244,18 @@ fn fuzz_float_step<F: Float>(rng: &mut Xoshiro128StarStar, f: &mut F) {
     let sign = (rng32 & 1) != 0;
 
     // exponent fuzzing. Only 4 bits for the selector needed.
-    let ones = (F::Int::ONE << F::EXP_BITS) - F::Int::ONE;
+    let ones = F::EXP_SAT;
     let r0 = (rng32 >> 1) % F::EXP_BITS;
     let r1 = (rng32 >> 5) % F::EXP_BITS;
     // custom rotate shift. Note that `F::Int` is unsigned, so we can shift right without smearing
     // the sign bit.
     let mask = if r1 == 0 {
-        ones.wrapping_shr(r0)
+        ones >> r0
     } else {
-        let tmp = ones.wrapping_shr(r0);
-        (tmp.wrapping_shl(r1) | tmp.wrapping_shr(F::EXP_BITS - r1)) & ones
+        let tmp = ones >> r0;
+        ((tmp << r1) | (tmp >> (F::EXP_BITS - r1))) & ones
     };
-    let mut exp = (f.to_bits() & F::EXP_MASK) >> F::SIG_BITS;
+    let mut exp = f.ex();
     match (rng32 >> 9) % 4 {
         0 => exp |= mask,
         1 => exp &= mask,
@@ -274,13 +273,13 @@ fn fuzz_float_step<F: Float>(rng: &mut Xoshiro128StarStar, f: &mut F) {
 macro_rules! float_edge_cases {
     ($F:ident, $case:ident, $inner:block) => {
         for exponent in [
-            F::Int::ZERO,
-            F::Int::ONE,
-            F::Int::ONE << (F::EXP_BITS / 2),
-            (F::Int::ONE << (F::EXP_BITS - 1)) - F::Int::ONE,
-            F::Int::ONE << (F::EXP_BITS - 1),
-            (F::Int::ONE << (F::EXP_BITS - 1)) + F::Int::ONE,
-            (F::Int::ONE << F::EXP_BITS) - F::Int::ONE,
+            0,
+            1,
+            1 << (F::EXP_BITS / 2),
+            (1 << (F::EXP_BITS - 1)) - 1,
+            1 << (F::EXP_BITS - 1),
+            (1 << (F::EXP_BITS - 1)) + 1,
+            (1 << F::EXP_BITS) - 1,
         ]
         .iter()
         {

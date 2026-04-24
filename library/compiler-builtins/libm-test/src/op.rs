@@ -16,18 +16,24 @@
 use std::fmt;
 use std::panic::{RefUnwindSafe, UnwindSafe};
 
-pub use shared::{ALL_OPERATIONS, FloatTy, MathOpInfo, Ty};
+pub use api_list_common::{ALL_OPERATIONS, Group, MathOpInfo, Ty};
 
-use crate::{CheckOutput, Float, TupleCall};
-
-mod shared {
-    include!("../../crates/libm-macros/src/shared.rs");
-}
+use crate::{CheckOutput, Tuple, TupleCall};
 
 /// An enum representing each possible symbol name (`sin`, `sinf`, `sinl`, etc).
 #[libm_macros::function_enum(BaseName)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Identifier {}
+
+impl Identifier {
+    /// Return information about this operation.
+    pub fn math_op(self) -> &'static MathOpInfo {
+        ALL_OPERATIONS
+            .iter()
+            .find(|op| op.name == self.as_str())
+            .unwrap()
+    }
+}
 
 impl fmt::Display for Identifier {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -49,9 +55,6 @@ impl fmt::Display for BaseName {
 /// Attributes ascribed to a `libm` routine including signature, type information,
 /// and naming.
 pub trait MathOp {
-    /// The float type used for this operation.
-    type FTy: Float;
-
     /// The function type representing the signature in a C library.
     type CFn: Copy;
 
@@ -72,6 +75,7 @@ pub trait MathOp {
     /// The required `TupleCall` bounds ensure this type can be passed either to the C function or
     /// to the Rust function.
     type RustArgs: Copy
+        + Tuple
         + TupleCall<Self::RustFn, Output = Self::RustRet>
         + TupleCall<Self::CFn, Output = Self::RustRet>
         + RefUnwindSafe;
@@ -90,38 +94,44 @@ pub trait MathOp {
 
     /// The function in `libm` which can be called.
     const ROUTINE: Self::RustFn;
-
-    /// Whether or not the function is part of libm public API.
-    const PUBLIC: bool;
 }
 
-/// Access the associated `FTy` type from an op (helper to avoid ambiguous associated types).
-pub type OpFTy<Op> = <Op as MathOp>::FTy;
-/// Access the associated `FTy::Int` type from an op (helper to avoid ambiguous associated types).
-pub type OpITy<Op> = <<Op as MathOp>::FTy as Float>::Int;
-/// Access the associated `CFn` type from an op (helper to avoid ambiguous associated types).
+/* Most of these are workarounds for <https://github.com/rust-lang/rust/issues/38078> */
+
+/// Access the associated `CFn` type from an op.
 pub type OpCFn<Op> = <Op as MathOp>::CFn;
-/// Access the associated `CRet` type from an op (helper to avoid ambiguous associated types).
+/// Access the associated `CRet` type from an op.
 pub type OpCRet<Op> = <Op as MathOp>::CRet;
-/// Access the associated `RustFn` type from an op (helper to avoid ambiguous associated types).
+/// Access the associated `RustFn` type from an op.
 pub type OpRustFn<Op> = <Op as MathOp>::RustFn;
-/// Access the associated `RustArgs` type from an op (helper to avoid ambiguous associated types).
+/// Access the associated `RustArgs` type from an op.
 pub type OpRustArgs<Op> = <Op as MathOp>::RustArgs;
-/// Access the associated `RustRet` type from an op (helper to avoid ambiguous associated types).
+/// Access the associated `RustRet` type from an op.
 pub type OpRustRet<Op> = <Op as MathOp>::RustRet;
+
+/// Get the type of the first Rust argument.
+pub type Arg0<Op> = <OpRustArgs<Op> as Tuple>::T0;
+/// Get the type of the second Rust argument.
+pub type Arg1<Op> = <OpRustArgs<Op> as Tuple>::T1;
+/// Get the type of the third Rust argument.
+pub type Arg2<Op> = <OpRustArgs<Op> as Tuple>::T2;
+
+/// If the Rust return type is a tuple, get the first type.
+pub type Ret0<Op> = <OpRustRet<Op> as Tuple>::T0;
+/// If the Rust return type is a tuple, get the second type.
+pub type Ret1<Op> = <OpRustRet<Op> as Tuple>::T1;
 
 macro_rules! create_op_modules {
     // Matcher for unary functions
     (
         fn_name: $fn_name:ident,
-        FTy: $FTy:ty,
         CFn: $CFn:ty,
         CArgs: $CArgs:ty,
         CRet: $CRet:ty,
         RustFn: $RustFn:ty,
         RustArgs: $RustArgs:ty,
         RustRet: $RustRet:ty,
-        public: $public:expr,
+        path: $path:path,
         attrs: [$($attr:meta),*],
     ) => {
         paste::paste! {
@@ -131,7 +141,6 @@ macro_rules! create_op_modules {
                 pub struct Routine;
 
                 impl MathOp for Routine {
-                    type FTy = $FTy;
                     type CFn = for<'a> $CFn;
                     type CArgs<'a> = $CArgs where Self: 'a;
                     type CRet = $CRet;
@@ -140,8 +149,7 @@ macro_rules! create_op_modules {
                     type RustRet = $RustRet;
 
                     const IDENTIFIER: Identifier = Identifier::[< $fn_name:camel >];
-                    const ROUTINE: Self::RustFn = libm::$fn_name;
-                    const PUBLIC: bool = $public;
+                    const ROUTINE: Self::RustFn = $path;
                 }
             }
 

@@ -1,18 +1,17 @@
 mod enums;
 mod parse;
-mod shared;
 
+use api_list_common::{ALL_OPERATIONS, Group, MathOpInfo, Ty};
 use parse::{Invocation, StructuredInput};
 use proc_macro as pm;
 use proc_macro2::{self as pm2, Span};
 use quote::{ToTokens, quote};
-pub(crate) use shared::{ALL_OPERATIONS, FloatTy, MathOpInfo, Ty};
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
-use syn::{Ident, ItemEnum};
+use syn::{Ident, ItemEnum, PathArguments, PathSegment};
 
 const KNOWN_TYPES: &[&str] = &[
-    "FTy", "CFn", "CArgs", "CRet", "RustFn", "RustArgs", "RustRet", "public",
+    "CFn", "CArgs", "CRet", "RustFn", "RustArgs", "RustRet", "path",
 ];
 
 /// Populate an enum with a variant representing function. Names are in upper camel case.
@@ -66,8 +65,6 @@ pub fn base_name_enum(attributes: pm::TokenStream, tokens: pm::TokenStream) -> p
 ///     (
 ///         // Name of that function
 ///         fn_name: $fn_name:ident,
-///         // The basic float type for this function (e.g. `f32`, `f64`)
-///         FTy: $FTy:ty,
 ///         // Function signature of the C version (e.g. `fn(f32, &mut f32) -> f32`)
 ///         CFn: $CFn:ty,
 ///         // A tuple representing the C version's arguments (e.g. `(f32, &mut f32)`)
@@ -80,8 +77,8 @@ pub fn base_name_enum(attributes: pm::TokenStream, tokens: pm::TokenStream) -> p
 ///         RustArgs: $RustArgs:ty,
 ///         // The Rust version's return type (e.g. `(f32, f32)`)
 ///         RustRet: $RustRet:ty,
-///         // True if this is part of `libm`'s public API
-///         public: $public:expr,
+///         // Path to the function, e.g. `libm::fma` or `crate::builtins_wrapper::addf32`.
+///         path: $path:path,
 ///         // Attributes for the current function, if any
 ///         attrs: [$($attr:meta),*],
 ///         // Extra tokens passed directly (if any)
@@ -143,11 +140,12 @@ pub fn for_each_function(tokens: pm::TokenStream) -> pm::TokenStream {
 fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static MathOpInfo>> {
     // Replace magic mappers with a list of relevant functions.
     if let Some(map) = &mut input.fn_extra {
-        for (name, ty) in [
-            ("ALL_F16", FloatTy::F16),
-            ("ALL_F32", FloatTy::F32),
-            ("ALL_F64", FloatTy::F64),
-            ("ALL_F128", FloatTy::F128),
+        for (name, group) in [
+            ("ALL_F16", Group::F16),
+            ("ALL_F32", Group::F32),
+            ("ALL_F64", Group::F64),
+            ("ALL_F128", Group::F128),
+            ("ALL_INT", Group::Integer),
         ] {
             let Some(k) = map.keys().find(|key| *key == name) else {
                 continue;
@@ -156,7 +154,19 @@ fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static MathOpInfo>
             let key = k.clone();
             let val = map.remove(&key).unwrap();
 
-            for op in ALL_OPERATIONS.iter().filter(|op| op.float_ty == ty) {
+            for op in ALL_OPERATIONS.iter().filter(|op| op.group == group) {
+                map.insert(Ident::new(op.name, key.span()), val.clone());
+            }
+        }
+
+        if let Some(k) = map.keys().find(|key| *key == "ALL_BUILTINS") {
+            let key = k.clone();
+            let val = map.remove(&key).unwrap();
+
+            for op in ALL_OPERATIONS
+                .iter()
+                .filter(|op| op.scope.defined_in_compiler_builtins())
+            {
                 map.insert(Ident::new(op.name, key.span()), val.clone());
             }
         }
@@ -220,8 +230,23 @@ fn validate(input: &mut StructuredInput) -> syn::Result<Vec<&'static MathOpInfo>
         }
 
         // Omit f16 and f128 functions if requested
-        if input.skip_f16_f128 && (func.float_ty == FloatTy::F16 || func.float_ty == FloatTy::F128)
-        {
+        if input.skip_f16_f128 {
+            if matches!(func.group, Group::F16 | Group::F128) {
+                continue;
+            }
+
+            if func
+                .rust_sig
+                .args
+                .iter()
+                .chain(func.rust_sig.returns.iter())
+                .any(|ty| matches!(ty, Ty::F16 | Ty::F128))
+            {
+                continue;
+            }
+        }
+
+        if input.skip_builtins && func.scope.defined_in_compiler_builtins() {
             continue;
         }
 
@@ -356,25 +381,33 @@ fn expand(input: StructuredInput, fn_list: &[&MathOpInfo]) -> syn::Result<pm2::T
             None => pm2::TokenStream::new(),
         };
 
-        let base_fty = func.float_ty;
-        let c_args = &func.c_sig.args;
-        let c_ret = &func.c_sig.returns;
-        let rust_args = &func.rust_sig.args;
-        let rust_ret = &func.rust_sig.returns;
-        let public = func.public;
+        let path = syn::Path {
+            leading_colon: None,
+            segments: func
+                .path
+                .split("::")
+                .map(|pseg| PathSegment {
+                    ident: Ident::new(pseg, Span::call_site()),
+                    arguments: PathArguments::None,
+                })
+                .collect(),
+        };
 
         let mut ty_fields = Vec::new();
         for ty in &input.emit_types {
+            let c_args = func.c_sig.args.iter().copied().map(ty_to_tokens);
+            let c_ret = func.c_sig.returns.iter().copied().map(ty_to_tokens);
+            let rust_args = func.rust_sig.args.iter().copied().map(ty_to_tokens);
+            let rust_ret = func.rust_sig.returns.iter().copied().map(ty_to_tokens);
             let field = match ty.to_string().as_str() {
-                "FTy" => quote! { FTy: #base_fty, },
                 "CFn" => quote! { CFn: fn( #(#c_args),* ,) -> ( #(#c_ret),* ), },
                 "CArgs" => quote! { CArgs: ( #(#c_args),* ,), },
                 "CRet" => quote! { CRet: ( #(#c_ret),* ), },
                 "RustFn" => quote! { RustFn: fn( #(#rust_args),* ,) -> ( #(#rust_ret),* ), },
                 "RustArgs" => quote! { RustArgs: ( #(#rust_args),* ,), },
                 "RustRet" => quote! { RustRet: ( #(#rust_ret),* ), },
-                "public" => quote! { public: #public, },
-                _ => unreachable!("checked in validation"),
+                "path" => quote! { path: #path, },
+                _ => unreachable!("fields should be checked in validation"),
             };
             ty_fields.push(field);
         }
@@ -450,7 +483,7 @@ impl VisitMut for MacroReplace {
 /// Return the unsuffixed version of a function name; e.g. `abs` and `absf` both return `abs`,
 /// `lgamma_r` and `lgammaf_r` both return `lgamma_r`.
 fn base_name(name: &str) -> &str {
-    let known_mappings = &[
+    let known_mappings = [
         ("erff", "erf"),
         ("erf", "erf"),
         ("lgammaf_r", "lgamma_r"),
@@ -458,45 +491,55 @@ fn base_name(name: &str) -> &str {
         ("modf", "modf"),
     ];
 
-    match known_mappings.iter().find(|known| known.0 == name) {
-        Some(found) => found.1,
-        None => name
-            .strip_suffix("f")
-            .or_else(|| name.strip_suffix("f16"))
-            .or_else(|| name.strip_suffix("f128"))
-            .unwrap_or(name),
+    if let Some(found) = known_mappings.iter().find(|known| known.0 == name) {
+        return found.1;
     }
+
+    // Attempt to strip unambiguous suffixes first. This is repeated so e.g.
+    // `extend_f32_f64` turns into `extend`.
+    let strip = [
+        "_f16", "_f32", "_f64", "_f128", "_i32", "_i64", "_i128", "_u32", "_u64", "_u128", "f16",
+        "f32", "f64", "f128",
+    ];
+
+    let mut any_found = false;
+    let mut ret = name;
+
+    for sfx in strip {
+        if let Some(stripped) = ret.strip_suffix(sfx) {
+            ret = stripped;
+            any_found = true;
+        }
+    }
+
+    // Only if no suffix was stripped, try stripping the C-style float suffix.
+    if !any_found && let Some(stripped) = ret.strip_suffix("f") {
+        ret = stripped;
+    }
+
+    ret
 }
 
-impl ToTokens for Ty {
-    fn to_tokens(&self, tokens: &mut pm2::TokenStream) {
-        let ts = match self {
-            Ty::F16 => quote! { f16 },
-            Ty::F32 => quote! { f32 },
-            Ty::F64 => quote! { f64 },
-            Ty::F128 => quote! { f128 },
-            Ty::I32 => quote! { i32 },
-            Ty::CInt => quote! { ::core::ffi::c_int },
-            Ty::MutF16 => quote! { &'a mut f16 },
-            Ty::MutF32 => quote! { &'a mut f32 },
-            Ty::MutF64 => quote! { &'a mut f64 },
-            Ty::MutF128 => quote! { &'a mut f128 },
-            Ty::MutI32 => quote! { &'a mut i32 },
-            Ty::MutCInt => quote! { &'a mut core::ffi::c_int },
-        };
-
-        tokens.extend(ts);
-    }
-}
-impl ToTokens for FloatTy {
-    fn to_tokens(&self, tokens: &mut pm2::TokenStream) {
-        let ts = match self {
-            FloatTy::F16 => quote! { f16 },
-            FloatTy::F32 => quote! { f32 },
-            FloatTy::F64 => quote! { f64 },
-            FloatTy::F128 => quote! { f128 },
-        };
-
-        tokens.extend(ts);
+fn ty_to_tokens(ty: Ty) -> pm2::TokenStream {
+    match ty {
+        Ty::F16 => quote! { f16 },
+        Ty::F32 => quote! { f32 },
+        Ty::F64 => quote! { f64 },
+        Ty::F128 => quote! { f128 },
+        Ty::I32 => quote! { i32 },
+        Ty::I64 => quote! { i64 },
+        Ty::I128 => quote! { i128 },
+        Ty::U32 => quote! { u32 },
+        Ty::U64 => quote! { u64 },
+        Ty::U128 => quote! { u128 },
+        Ty::USize => quote! { usize },
+        Ty::Bool => quote! { bool },
+        Ty::CInt => quote! { ::core::ffi::c_int },
+        Ty::MutF16 => quote! { &'a mut f16 },
+        Ty::MutF32 => quote! { &'a mut f32 },
+        Ty::MutF64 => quote! { &'a mut f64 },
+        Ty::MutF128 => quote! { &'a mut f128 },
+        Ty::MutI32 => quote! { &'a mut i32 },
+        Ty::MutCInt => quote! { &'a mut core::ffi::c_int },
     }
 }

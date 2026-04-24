@@ -118,7 +118,7 @@ mod mcpy {
         }
     }
 
-    library_benchmark_group!(name = memcpy; benchmarks = bench_cpy);
+    library_benchmark_group!(name = memcpy, benchmarks = [bench_cpy]);
 }
 
 mod mset {
@@ -167,7 +167,7 @@ mod mset {
         }
     }
 
-    library_benchmark_group!(name = memset; benchmarks = bench_set);
+    library_benchmark_group!(name = memset, benchmarks = [bench_set]);
 }
 
 mod mcmp {
@@ -235,7 +235,7 @@ mod mcmp {
         }
     }
 
-    library_benchmark_group!(name = memcmp; benchmarks = bench_cmp);
+    library_benchmark_group!(name = memcmp, benchmarks = [bench_cmp]);
 }
 
 mod mmove {
@@ -489,7 +489,7 @@ mod mmove {
         }
     }
 
-    library_benchmark_group!(name = memmove; benchmarks = forward_move, backward_move);
+    library_benchmark_group!(name = memmove, benchmarks = [forward_move, backward_move]);
 }
 
 use mcmp::memcmp;
@@ -497,4 +497,4 @@ use mcpy::memcpy;
 use mmove::memmove;
 use mset::memset;
 
-main!(library_benchmark_groups = memcpy, memset, memcmp, memmove);
+main!(library_benchmark_groups = [memcpy, memset, memcmp, memmove]);

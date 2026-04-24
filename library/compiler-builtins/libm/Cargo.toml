@@ -38,16 +38,14 @@ unstable-public-internals = []
 # Enable the nightly-only `f16` and `f128`.
 unstable-float = []
 
-# Used to prevent using any intrinsics or arch-specific code.
-#
-# HACK: this is a negative feature which is generally a bad idea in Cargo, but
-# we need it to be able to forbid other features when this crate is used in
-# Rust dependencies. Setting this overrides all features that may enable
-# hard float operations.
+# DEPRECATED: This feature is kept around for compatibility reasons but
+# does not do anything.
+# FIXME(1.0): remove this feature.
 force-soft-floats = []
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = [
-  # compiler-builtins sets this feature, but we use it in `libm`
+  # compiler-builtins sets these features, but we use them in `libm`
   'cfg(feature, values("compiler-builtins"))',
+  'cfg(feature, values("unmangled-names"))',
 ] }

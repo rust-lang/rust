@@ -1,5 +1,4 @@
-use crate::float::Float;
-use crate::int::Int;
+use crate::support::{Float, Int};
 
 /// Returns `a` raised to the power `b`
 fn pow<F: Float>(a: F, b: i32) -> F {

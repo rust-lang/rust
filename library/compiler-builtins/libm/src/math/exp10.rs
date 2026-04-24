@@ -11,7 +11,7 @@ const P10: &[f64] = &[
 pub fn exp10(x: f64) -> f64 {
     select_implementation! {
         name: x87_exp10,
-        use_arch_required: x86_no_sse,
+        use_arch_required: x86_no_sse2,
         args: x,
     }
 

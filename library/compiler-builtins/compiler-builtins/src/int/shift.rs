@@ -1,4 +1,4 @@
-use crate::int::{DInt, HInt, Int, MinInt};
+use crate::support::{DInt, HInt, Int, MinInt};
 
 trait Ashl: DInt {
     /// Returns `a << b`, requires `b < Self::BITS`

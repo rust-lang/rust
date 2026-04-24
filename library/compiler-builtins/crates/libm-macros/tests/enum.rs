@@ -23,16 +23,3 @@ fn basename() {
     assert_eq!(Identifier::Sin.base_name(), BaseName::Sin);
     assert_eq!(Identifier::Sinf.base_name(), BaseName::Sin);
 }
-
-#[test]
-fn math_op() {
-    assert_eq!(Identifier::Sin.math_op().float_ty, FloatTy::F64);
-    assert_eq!(Identifier::Sinf.math_op().float_ty, FloatTy::F32);
-}
-
-// Replicate the structure that we have in `libm-test`
-mod op {
-    include!("../../libm-macros/src/shared.rs");
-}
-
-use op::FloatTy;

@@ -78,6 +78,7 @@ libm_macros::for_each_function! {
     attributes: [],
     // Not provided by musl
     skip_f16_f128: true,
+    skip_builtins: true,
     skip: [
         // TODO integer inputs
         jn,

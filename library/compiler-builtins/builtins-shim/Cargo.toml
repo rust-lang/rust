@@ -39,27 +39,28 @@ test = false
 cc = { version = "1.2", optional = true }
 
 [features]
-default = []
+default = ["arch"]
+
+# Enable architecture-specific features such as SIMD or assembly routines. If
+# disabled, the generic version can be tested on any platform.
+arch = []
 
 # Enable compilation of C code in compiler-rt, filling in some more optimized
 # implementations and also filling in unimplemented intrinsics
 c = ["dep:cc"]
 
-# For implementations where there is both a generic version and a platform-
-# specific version, use the generic version. This is meant to enable testing
-# the generic versions on all platforms.
-no-asm = []
-
 # Flag this library as the unstable compiler-builtins lib. This must be enabled
 # when using as `std`'s dependency.'
-compiler-builtins = []
+compiler-builtins = ["unmangled-names"]
 
-# Generate memory-related intrinsics like memcpy
+# Enable `no_mangle` symbols for memory-related intrinsics like memcpy. The
+# mangled versions are always available.
 mem = []
 
-# Mangle all names so this can be linked in with other versions or other
-# compiler-rt implementations. Also used for testing
-mangled-names = []
+# Enable `no_mangle` symbols so this crate gets used as the runtime intrinsic
+# implementation. Leave this disabled for testing to avoid conflicting with
+# the system intrinsics.
+unmangled-names = []
 
 # This makes certain traits and function specializations public that
 # are not normally public but are required by the `builtins-test`

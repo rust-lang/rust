@@ -17,10 +17,8 @@ pub use big::{i256, u256};
 pub(crate) use cfg_if;
 pub use env::{FpResult, Round, Status};
 #[allow(unused_imports)]
-pub use float_traits::{DFloat, Float, HFloat, IntTy};
+pub use float_traits::{DFloat, Float, HFloat, HalfRep, IntTy};
 pub(crate) use float_traits::{f32_from_bits, f64_from_bits};
-#[cfg(any(test, feature = "unstable-public-internals"))]
-pub use hex_float::Hexf;
 #[cfg(f16_enabled)]
 #[allow(unused_imports)]
 pub use hex_float::hf16;
@@ -28,7 +26,7 @@ pub use hex_float::hf16;
 #[allow(unused_imports)]
 pub use hex_float::hf128;
 #[allow(unused_imports)]
-pub use hex_float::{hf32, hf64};
+pub use hex_float::{DisplayHex, Hex, hf32, hf64};
 pub use int_traits::{CastFrom, CastInto, DInt, HInt, Int, MinInt, NarrowingDiv};
 pub use modular::linear_mul_reduction;
 
@@ -69,4 +67,11 @@ pub unsafe fn unchecked_div_isize(x: isize, y: isize) -> isize {
             x / y
         }
     }
+}
+
+// FIXME(msrv): `div_ceil` is stablein 1.73.
+pub fn div_ceil_u32(a: u32, b: u32) -> u32 {
+    let d = a / b;
+    let r = a % b;
+    if r > 0 { d + 1 } else { d }
 }

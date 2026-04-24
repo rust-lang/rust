@@ -3,10 +3,12 @@ resolver = "2"
 members = [
     "builtins-shim",
     "builtins-test",
+    "crates/api-list-common",
     "crates/libm-macros",
     "crates/musl-math-sys",
     "crates/panic-handler",
     "crates/symbol-check",
+    "crates/update-api-list",
     "crates/util",
     "libm",
     "libm-test",
@@ -15,14 +17,15 @@ members = [
 default-members = [
     "builtins-shim",
     "builtins-test",
+    "crates/api-list-common",
     "crates/libm-macros",
     "libm",
     "libm-test",
 ]
 
 exclude = [
-    # `builtins-test-intrinsics` needs the feature `compiler-builtins` enabled
-    # and `mangled-names` disabled, which is the opposite of what is needed for
+    # `builtins-test-intrinsics` needs the features `compiler-builtins` and
+    # `unmangled-names` enabled, which is the opposite of what is needed for
     # other tests, so it makes sense to keep it out of the workspace.
     "builtins-test-intrinsics",
     # We test via the `builtins-shim` crate, so exclude the `compiler-builtins`
@@ -33,6 +36,7 @@ exclude = [
 
 [workspace.dependencies]
 anyhow = "1.0.101"
+api-list-common = { path = "crates/api-list-common" }
 assert_cmd = "2.1.2"
 cc = "1.2.56"
 cfg-if = "1.0.4"
@@ -40,8 +44,9 @@ compiler_builtins = { path = "builtins-shim", default-features = false }
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 getopts = "0.2.24"
 getrandom = "0.4.1"
+glob = "0.3.3"
 gmp-mpfr-sys = { version = "1.6.8", default-features = false }
-gungraun = "0.17.2"
+gungraun = "0.18.0"
 heck = "0.5.0"
 indicatif = { version = "0.18.3", default-features = false }
 libm = { path = "libm", default-features = false }
@@ -50,9 +55,10 @@ libm-test = { path = "libm-test", default-features = false }
 libtest-mimic = "0.8.1"
 musl-math-sys = { path = "crates/musl-math-sys" }
 no-panic = "0.1.36"
-object = { version = "0.38.1", features = ["wasm"] }
+object = { version = "0.39.0", features = ["wasm"] }
 panic-handler = { path = "crates/panic-handler" }
 paste = "1.0.15"
+pretty_assertions = "1.4.1"
 proc-macro2 = "1.0.106"
 quote = "1.0.44"
 rand = "0.10.0"

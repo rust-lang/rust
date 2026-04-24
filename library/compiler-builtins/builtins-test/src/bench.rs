@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 use core::cell::RefCell;
 
-use compiler_builtins::float::Float;
+use compiler_builtins::support::Float;
 
 /// Fuzz with these many items to ensure equal functions
 pub const CHECK_ITER_ITEMS: u32 = 10_000;
@@ -43,7 +43,7 @@ pub fn skip_sys_checks(test_name: &str) -> bool {
         return true;
     }
 
-    if cfg!(x86_no_sse) && X86_NO_SSE_SKIPPED.contains(&test_name) {
+    if cfg!(x86_no_sse2) && X86_NO_SSE_SKIPPED.contains(&test_name) {
         return true;
     }
 

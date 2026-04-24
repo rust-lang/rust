@@ -20,19 +20,45 @@ if [ "${USING_CONTAINER_RUSTC:-}" = 1 ]; then
         rustup target add "$target"
 fi
 
+# If nextest is available, use that
+command -v cargo-nextest && nextest=1 || nextest=0
+if [ "$nextest" = "1" ]; then
+    test_runner=(cargo nextest run --max-fail=20)
+    profile_flag="--cargo-profile"
+
+    # Workaround for https://github.com/nextest-rs/nextest/issues/2066
+    if [ -n "${CARGO_TARGET_DIR:-}" ]; then
+        cfg_file="/tmp/nextest-config.toml"
+        echo "[store]" >> "$cfg_file"
+        echo "dir = \"$CARGO_TARGET_DIR/nextest\"" >> "$cfg_file"
+        test_runner+=(--config-file "$cfg_file")
+    fi
+
+    # Not all configurations have tests to run on wasm
+    [[ "$target" = *"wasm"* ]] && test_runner+=(--no-tests=warn)
+else
+    test_runner=(cargo test --no-fail-fast)
+    profile_flag="--profile"
+fi
+
 # Test our implementation
 if [ "${BUILD_ONLY:-}" = "1" ]; then
     echo "no tests to run for build-only targets"
 else
-    test_builtins=(cargo test --package builtins-test --no-fail-fast --target "$target")
+    test_builtins=(
+        "${test_runner[@]}"
+        --package builtins-test
+        --target "$target"
+    )
+
     "${test_builtins[@]}"
     "${test_builtins[@]}" --release
     "${test_builtins[@]}" --features c
     "${test_builtins[@]}" --features c --release
-    "${test_builtins[@]}" --features no-asm
-    "${test_builtins[@]}" --features no-asm --release
     "${test_builtins[@]}" --benches
     "${test_builtins[@]}" --benches --release
+    "${test_builtins[@]}" --no-default-features
+    "${test_builtins[@]}" --no-default-features --release
 
     # Validate that having a verbatim path for the target directory works
     # (trivial to regress using `/` in paths to build artifacts rather than
@@ -53,12 +79,14 @@ symcheck+=(-- --build-and-check --target "$target")
 # Executable section checks are meaningless on no-std targets
 [[ "$target" == *"-none"* ]] && symcheck+=(--no-os)
 
-"${symcheck[@]}" -- -p compiler_builtins
-"${symcheck[@]}" -- -p compiler_builtins --release
-"${symcheck[@]}" -- -p compiler_builtins --features c
-"${symcheck[@]}" -- -p compiler_builtins --features c --release
-"${symcheck[@]}" -- -p compiler_builtins --features no-asm
-"${symcheck[@]}" -- -p compiler_builtins --features no-asm --release
+# We only need to check the configurations std may use
+symcheck_cb_args=(-- --package compiler_builtins --features compiler-builtins)
+"${symcheck[@]}" "${symcheck_cb_args[@]}"
+"${symcheck[@]}" "${symcheck_cb_args[@]}" --release
+"${symcheck[@]}" "${symcheck_cb_args[@]}" --features c
+"${symcheck[@]}" "${symcheck_cb_args[@]}" --features c --release
+"${symcheck[@]}" "${symcheck_cb_args[@]}" --no-default-features
+"${symcheck[@]}" "${symcheck_cb_args[@]}" --no-default-features --release
 
 run_intrinsics_test() {
     build_args=(--verbose --manifest-path builtins-test-intrinsics/Cargo.toml)
@@ -100,12 +128,12 @@ mflags=()
 # We enumerate features manually.
 mflags+=(--no-default-features)
 
-# Enable arch-specific routines when available.
-mflags+=(--features arch)
-
 # Always enable `unstable-float` since it expands available API but does not
 # change any implementations.
 mflags+=(--features unstable-float)
+
+# This is a host program that may not run in containers.
+mflags+=(--exclude update-api-list)
 
 # We need to specifically skip tests for musl-math-sys on systems that can't
 # build musl since otherwise `--all` will activate it.
@@ -157,28 +185,7 @@ if [ "${BUILD_ONLY:-}" = "1" ]; then
 else
     # symcheck tests need specific env setup, and is already tested above
     mflags+=(--workspace --exclude symbol-check --target "$target")
-    cmd=(cargo test "${mflags[@]}")
-    profile_flag="--profile"
-
-    # If nextest is available, use that
-    command -v cargo-nextest && nextest=1 || nextest=0
-    if [ "$nextest" = "1" ]; then
-        cmd=(cargo nextest run --max-fail=10)
-
-        # Workaround for https://github.com/nextest-rs/nextest/issues/2066
-        if [ -f /.dockerenv ]; then
-            cfg_file="/tmp/nextest-config.toml"
-            echo "[store]" >> "$cfg_file"
-            echo "dir = \"$CARGO_TARGET_DIR/nextest\"" >> "$cfg_file"
-            cmd+=(--config-file "$cfg_file")
-        fi
-
-        # Not all configurations have tests to run on wasm
-        [[ "$target" = *"wasm"* ]] && cmd+=(--no-tests=warn)
-
-        cmd+=("${mflags[@]}")
-        profile_flag="--cargo-profile"
-    fi
+    cmd=("${test_runner[@]}" "${mflags[@]}")
 
     # Test once without intrinsics
     "${cmd[@]}"
@@ -191,15 +198,15 @@ else
     cmd+=(--exclude util --exclude libm-macros)
 
     # Test once with intrinsics enabled
-    "${cmd[@]}" --features unstable-intrinsics
-    "${cmd[@]}" --features unstable-intrinsics --benches
+    "${cmd[@]}" --features arch,unstable-intrinsics
+    "${cmd[@]}" --features arch,unstable-intrinsics --benches
 
     # Test the same in release mode, which also increases coverage. Also ensure
     # the soft float routines are checked.
     "${cmd[@]}" "$profile_flag" release-checked
-    "${cmd[@]}" "$profile_flag" release-checked --features force-soft-floats
-    "${cmd[@]}" "$profile_flag" release-checked --features unstable-intrinsics
-    "${cmd[@]}" "$profile_flag" release-checked --features unstable-intrinsics --benches
+    "${cmd[@]}" "$profile_flag" release-checked --features arch
+    "${cmd[@]}" "$profile_flag" release-checked --features arch,unstable-intrinsics
+    "${cmd[@]}" "$profile_flag" release-checked --features arch,unstable-intrinsics --benches
 
     # Ensure that the routines do not panic.
     #

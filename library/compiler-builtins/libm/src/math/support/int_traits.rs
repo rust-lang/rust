@@ -3,6 +3,8 @@ use core::{cmp, fmt, ops};
 mod narrowing_div;
 pub use narrowing_div::NarrowingDiv;
 
+use crate::support::DisplayHex;
+
 /// Minimal integer implementations needed on all integer types, including wide integers.
 #[allow(dead_code)] // Some constants are only used with tests
 pub trait MinInt:
@@ -40,6 +42,7 @@ pub trait Int:
     + fmt::Display
     + fmt::Binary
     + fmt::LowerHex
+    + DisplayHex
     + ops::AddAssign
     + ops::SubAssign
     + ops::MulAssign

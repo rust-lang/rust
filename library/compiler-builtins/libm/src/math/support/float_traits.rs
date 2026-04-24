@@ -1,6 +1,11 @@
 use core::{fmt, mem, ops};
 
 use super::int_traits::{CastFrom, Int, MinInt};
+use crate::support::{DInt, DisplayHex};
+
+/// Wrapper to extract the integer type half of the float's size
+#[allow(unused)] // only used in c-b
+pub type HalfRep<F> = <<F as Float>::Int as DInt>::H;
 
 /// Whether MIPS sNaN/qNaNs should be used.
 ///
@@ -14,6 +19,7 @@ const MIPS_NAN: bool = cfg!(target_arch = "mips") || cfg!(target_arch = "mips64"
 pub trait Float:
     Copy
     + fmt::Debug
+    + DisplayHex
     + PartialEq
     + PartialOrd
     + ops::AddAssign
@@ -120,13 +126,7 @@ pub trait Float:
     /// This method returns `true` if two NaNs are compared. Use [`biteq`](Self::biteq) instead
     /// if `NaN` should not be treated separately.
     #[allow(dead_code)]
-    fn eq_repr(self, rhs: Self) -> bool {
-        if self.is_nan() && rhs.is_nan() {
-            true
-        } else {
-            self.biteq(rhs)
-        }
-    }
+    fn eq_repr(self, rhs: Self) -> bool;
 
     /// Returns true if the value is NaN.
     fn is_nan(self) -> bool;
@@ -299,6 +299,27 @@ macro_rules! float_impl {
             fn to_bits(self) -> Self::Int {
                 self.to_bits()
             }
+
+            fn eq_repr(self, rhs: Self) -> bool {
+                #[cfg(not(feature = "unmangled-names"))]
+                fn is_nan(x: $ty) -> bool {
+                    // When not using unmangled-names, the "real" compiler-builtins might not have
+                    // the necessary builtin (__unordtf2) to test whether `f128` is NaN.
+                    // FIXME(f128): Remove once the nightly toolchain has the __unordtf2 builtin
+                    // x is NaN if all the bits of the exponent are set and the significand is non-0
+                    x.to_bits() & $ty::EXP_MASK == $ty::EXP_MASK && x.to_bits() & $ty::SIG_MASK != 0
+                }
+                #[cfg(feature = "unmangled-names")]
+                fn is_nan(x: $ty) -> bool {
+                    x.is_nan()
+                }
+                if is_nan(self) && is_nan(rhs) {
+                    true
+                } else {
+                    self.to_bits() == rhs.to_bits()
+                }
+            }
+
             fn is_nan(self) -> bool {
                 self.is_nan()
             }
@@ -548,7 +569,7 @@ mod tests {
         }
         assert!(f32::NAN.is_qnan());
         // FIXME(rust-lang/rust#115567): x87 use in `is_snan` quiets the sNaN
-        if !cfg!(x86_no_sse) {
+        if !cfg!(x86_no_sse2) {
             assert!(f32::SNAN.is_snan());
         }
 
@@ -593,7 +614,7 @@ mod tests {
         }
         assert!(f64::NAN.is_qnan());
         // FIXME(rust-lang/rust#115567): x87 use in `is_snan` quiets the sNaN
-        if !cfg!(x86_no_sse) {
+        if !cfg!(x86_no_sse2) {
             assert!(f64::SNAN.is_snan());
         }
 

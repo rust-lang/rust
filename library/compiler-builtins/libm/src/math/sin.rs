@@ -86,7 +86,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[cfg_attr(x86_no_sse, ignore = "FIXME(i586): possible incorrect rounding")]
+    #[cfg_attr(x86_no_sse2, ignore = "FIXME(i586): possible incorrect rounding")]
     fn test_near_pi() {
         let x = f64::from_bits(0x400921fb000FD5DD); // 3.141592026217707
         let sx = f64::from_bits(0x3ea50d15ced1a4a2); // 6.273720864039205e-7

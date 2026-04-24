@@ -1,4 +1,4 @@
-ARG IMAGE=ubuntu:25.10
+ARG IMAGE=ubuntu:26.04
 FROM $IMAGE
 
 RUN apt-get update && \

@@ -77,7 +77,7 @@ static EXP2FT: [u64; TBLSIZE] = [
 pub fn exp2f(mut x: f32) -> f32 {
     select_implementation! {
         name: x87_exp2f,
-        use_arch_required: x86_no_sse,
+        use_arch_required: x86_no_sse2,
         args: x,
     }
 

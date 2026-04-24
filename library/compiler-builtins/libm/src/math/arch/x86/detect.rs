@@ -1,5 +1,5 @@
-// Using runtime feature detection requires atomics. Currently there are no x86 targets
-// that support sse but not `AtomicPtr`.
+//! Using runtime feature detection requires atomics. Currently there are no x86 targets
+//! that support sse but not `AtomicPtr`.
 
 #[cfg(target_arch = "x86")]
 use core::arch::x86::{__cpuid, __cpuid_count, _xgetbv, CpuidResult};

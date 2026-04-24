@@ -1,12 +1,12 @@
 #![allow(unused_features)]
 #![feature(decl_macro)] // so we can use pub(super)
 #![feature(macro_metavar_expr_concat)]
-#![cfg(all(target_arch = "aarch64", feature = "mangled-names"))]
+#![cfg(target_arch = "aarch64")]
 
 use std::sync::Mutex;
 
 use compiler_builtins::aarch64_outline_atomics::{get_have_lse_atomics, set_have_lse_atomics};
-use compiler_builtins::int::{Int, MinInt};
+use compiler_builtins::support::{Int, MinInt};
 use compiler_builtins::{foreach_bytes, foreach_ordering};
 
 #[track_caller]

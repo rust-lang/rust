@@ -1,4 +1,5 @@
 name: CI
+permissions: {}
 on:
   push: { branches: [main] }
   pull_request:
@@ -10,6 +11,7 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  LIBM_BUILD_VERBOSE: true
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings
   RUST_BACKTRACE: full
@@ -28,8 +30,9 @@ jobs:
       extensive_matrix: ${{ steps.script.outputs.extensive_matrix }}
       may_skip_libm_ci: ${{ steps.script.outputs.may_skip_libm_ci }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          persist-credentials: false
           fetch-depth: 500
       - name: Fetch pull request ref
         run: git fetch origin "$GITHUB_REF:$GITHUB_REF"
@@ -42,6 +45,9 @@ jobs:
   test:
     name: Build and test
     timeout-minutes: 60
+    # NOTE: self-hosted riscv64 runners are experimental and may be flaky.
+    # Do not block CI on failures from this platform for now.
+    continue-on-error: ${{ contains(matrix.os, 'self-hosted') }}
     strategy:
       fail-fast: false
       matrix:
@@ -72,6 +78,9 @@ jobs:
           os: ubuntu-24.04
         - target: powerpc64le-unknown-linux-gnu
           os: ubuntu-24.04-ppc64le
+        # FIXME(ci): re-enable these once more capacity is avialable
+        # - target: riscv64gc-unknown-linux-gnu
+        #   os: ["self-hosted", "linux", "riscv64"]
         - target: riscv64gc-unknown-linux-gnu
           os: ubuntu-24.04
         - target: s390x-unknown-linux-gnu
@@ -104,53 +113,58 @@ jobs:
     needs: [calculate_vars]
     env:
       BUILD_ONLY: ${{ matrix.build_only }}
+      JOB_TARGET: ${{ matrix.target }}
+      JOB_CHANNEL: ${{ matrix.channel }}
       MAY_SKIP_LIBM_CI: ${{ needs.calculate_vars.outputs.may_skip_libm_ci }}
+      RUN_IN_DOCKER: ${{ matrix.os == 'ubuntu-24.04' }}
     steps:
-    - name: Print $HOME
+    - name: Print runner information
       shell: bash
       run: |
         set -x
-        echo "${HOME:-not found}"
+        uname -a
+        lscpu || (sysctl -a | grep cpu) || true
+        echo "home: ${HOME:-not found}"
         pwd
-        printenv
-    - name: Print runner information
-      run: uname -a
 
     # Native ppc and s390x runners don't have rustup by default
     - name: Install rustup
       if: matrix.os == 'ubuntu-24.04-ppc64le' || matrix.os == 'ubuntu-24.04-s390x'
       run: sudo apt-get update && sudo apt-get install -y rustup
 
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with: { persist-credentials: false }
     - name: Install Rust (rustup)
       shell: bash
       run: |
         channel="nightly"
         # Account for channels that have required components (MinGW)
-        [ -n "${{ matrix.channel }}" ] && channel="${{ matrix.channel }}"
+        [ -n "$JOB_CHANNEL" ] && channel="$JOB_CHANNEL"
         rustup update "$channel" --no-self-update
         rustup default "$channel"
-        rustup target add "${{ matrix.target }}"
+        rustup target add "$JOB_TARGET"
 
-    - uses: taiki-e/install-action@nextest
+    - uses: taiki-e/install-action@bfadeaba214680fb4ab63e710bcb2a6a17019fdc # v2.70.4
+      with:
+        tool: nextest@0.9.131
 
-    - uses: Swatinem/rust-cache@v2
+    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
       with:
         key: ${{ matrix.target }}
     - name: Cache Docker layers
-      uses: actions/cache@v4
-      if: matrix.os == 'ubuntu-24.04'
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      if: ${{ env.RUN_IN_DOCKER == 'true' }}
       with:
         path: /tmp/.buildx-cache
         key: ${{ matrix.target }}-buildx-${{ github.sha }}
         restore-keys: ${{ matrix.target }}-buildx-
     # Configure buildx to use Docker layer caching
-    - uses: docker/setup-buildx-action@v3
-      if: matrix.os == 'ubuntu-24.04'
+    - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4
+      if: ${{ env.RUN_IN_DOCKER == 'true' }}
 
     - name: Cache compiler-rt
       id: cache-compiler-rt
-      uses: actions/cache@v4
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
       with:
         path: compiler-rt
         key: ${{ runner.os }}-compiler-rt-${{ hashFiles('ci/download-compiler-rt.sh') }}
@@ -166,19 +180,22 @@ jobs:
       shell: bash
 
     - name: Verify API list
-      if: matrix.os == 'ubuntu-24.04'
-      run: python3 etc/update-api-list.py --check
+      if: matrix.os == 'ubuntu-24.04' || contains(matrix.os, 'self-hosted')
+      run: |
+        # Must be run on the host (not in Docker) because git and fs access is required.
+        python3 etc/update-api-list.py --check
+        cargo test -p update-api-list
 
     # Non-linux tests just use our raw script
     - name: Run locally
-      if: matrix.os != 'ubuntu-24.04'
+      if: ${{ env.RUN_IN_DOCKER != 'true' }}
       shell: bash
-      run: ./ci/run.sh ${{ matrix.target }}
+      run: ./ci/run.sh "$JOB_TARGET"
 
     # Otherwise we use our docker containers to run builds
     - name: Run in Docker
-      if: matrix.os == 'ubuntu-24.04'
-      run: ./ci/run-docker.sh ${{ matrix.target }}
+      if: ${{ env.RUN_IN_DOCKER == 'true' }}
+      run: ./ci/run-docker.sh "$JOB_TARGET"
 
     - name: Print test logs if available
       if: always()
@@ -189,7 +206,7 @@ jobs:
     # https://github.com/docker/build-push-action/issues/252
     # https://github.com/moby/buildkit/issues/1896
     - name: Move Docker cache
-      if: matrix.os == 'ubuntu-24.04'
+      if: ${{ env.RUN_IN_DOCKER == 'true' }}
       run: |
         rm -rf /tmp/.buildx-cache
         mv /tmp/.buildx-cache-new /tmp/.buildx-cache
@@ -199,30 +216,43 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with: { persist-credentials: false }
     # Unlike rustfmt, stable clippy does not work on code with nightly features.
     - name: Install nightly `clippy`
       run: |
         rustup update nightly --no-self-update
         rustup default nightly
         rustup component add clippy
-    - uses: Swatinem/rust-cache@v2
+    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
     - name: Download musl source
       run: ./ci/update-musl.sh
     - run: cargo clippy --workspace --all-targets
+
+  zizmor:
+    name: Zizmor (Static analysis for GitHub Actions)
+    runs-on: ubuntu-24.04
+    permissions:
+      security-events: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with: { persist-credentials: false }
+      - uses: zizmorcore/zizmor-action@71321a20a9ded102f6e9ce5718a2fcec2c4f70d8 # v0.5.2
 
   build-custom:
     name: Build custom target
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with: { persist-credentials: false }
     - name: Install Rust
       run: |
         rustup update nightly --no-self-update
         rustup default nightly
         rustup component add rust-src
-    - uses: Swatinem/rust-cache@v2
+    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
     - run: |
         # Ensure we can build with custom target.json files (these can interact
         # poorly with build scripts)
@@ -237,13 +267,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with: { persist-credentials: false }
     - name: Install Rust
       run: |
         rustup update nightly --no-self-update
         rustup default nightly
         rustup component add rust-src
-    - uses: Swatinem/rust-cache@v2
+    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
     - run: |
         cargo build -p compiler_builtins -p libm \
           --target etc/thumbv6-none-eabi.json \
@@ -252,23 +283,30 @@ jobs:
 
   benchmarks:
     name: Benchmarks
-    timeout-minutes: 20
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         include:
-        - target: x86_64-unknown-linux-gnu
-          os: ubuntu-24.04
         - target: aarch64-unknown-linux-gnu
           os: ubuntu-24.04-arm
+        - target: i686-unknown-linux-gnu
+          os: ubuntu-24.04
+        - target: x86_64-unknown-linux-gnu
+          os: ubuntu-24.04
     runs-on: ${{ matrix.os }}
+    env:
+      JOB_TARGET: ${{ matrix.target }}
     steps:
-    - uses: actions/checkout@master
-    - uses: taiki-e/install-action@cargo-binstall
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with: { persist-credentials: false }
+    - uses: taiki-e/install-action@bfadeaba214680fb4ab63e710bcb2a6a17019fdc # v2.70.4
+      with:
+        tool: cargo-binstall@1.17.7
 
     - name: Set up dependencies
-      run: ./ci/install-bench-deps.sh
-    - uses: Swatinem/rust-cache@v2
+      run: ./ci/install-bench-deps.sh "$JOB_TARGET"
+    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
       with:
         key: ${{ matrix.target }}
     - name: Download musl source
@@ -278,16 +316,13 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
-      run: ./ci/bench-icount.sh ${{ matrix.target }}
+      run: ./ci/bench-icount.sh "$JOB_TARGET"
 
     - name: Upload the benchmark baseline
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: ${{ env.BASELINE_NAME }}
         path: ${{ env.BASELINE_NAME }}.tar.xz
-
-    - name: Run wall time benchmarks
-      run: ./ci/bench-walltime.sh
 
     - name: Print test logs if available
       if: always()
@@ -299,15 +334,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with: { persist-credentials: false }
     - name: Install Rust (rustup)
-      # FIXME(ci): not working in the 2026-02-11 nightly
-      # https://rust-lang.zulipchat.com/#narrow/channel/269128-miri/topic/build-script-build.20contains.20outdated.20or.20invalid.20JSON/with/573426109
-      run: rustup update nightly-2026-02-10 --no-self-update && rustup default nightly-2026-02-10
+      run: rustup update nightly --no-self-update && rustup default nightly
       shell: bash
     - run: rustup component add miri
     - run: cargo miri setup
-    - uses: Swatinem/rust-cache@v2
+    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
     - run: ./ci/miri.sh
 
   msrv:
@@ -317,13 +351,14 @@ jobs:
     env:
       RUSTFLAGS: # No need to check warnings on old MSRV, unset `-Dwarnings`
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with: { persist-credentials: false }
     - name: Install Rust
       run: |
         msrv="$(perl -ne 'print if s/rust-version\s*=\s*"(.*)"/\1/g' libm/Cargo.toml)"
         echo "MSRV: $msrv"
         rustup update "$msrv" --no-self-update && rustup default "$msrv"
-    - uses: Swatinem/rust-cache@v2
+    - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
     - run: |
         # FIXME(msrv): Remove the workspace Cargo.toml so 1.63 cargo doesn't see
         # `edition = "2024"` and get spooked.
@@ -335,7 +370,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with: { persist-credentials: false }
     - name: Install nightly `rustfmt`
       run: rustup set profile minimal && rustup default nightly && rustup component add rustfmt
     - run: cargo fmt -- --check
@@ -358,12 +394,13 @@ jobs:
     env:
       TO_TEST: ${{ matrix.to_test }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with: { persist-credentials: false }
       - name: Install Rust
         run: |
           rustup update nightly --no-self-update
           rustup default nightly
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
       - name: download musl source
         run: ./ci/update-musl.sh
       - name: Run extensive tests
@@ -383,13 +420,16 @@ jobs:
       - msrv
       - rustfmt
       - test
+      - zizmor
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     # GitHub branch protection is exceedingly silly and treats "jobs skipped because a dependency
     # failed" as success. So we have to do some contortions to ensure the job fails if any of its
     # dependencies fails.
     if: always() # make sure this is never "skipped"
+    env:
+      NEEDS: ${{ toJson(needs) }}
     steps:
       # Manually check the status of all dependencies. `if: failure()` does not work.
       - name: check if any dependency failed
-        run: jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
+        run: jq --exit-status 'all(.result == "success")' <<< "$NEEDS"

@@ -4,7 +4,7 @@ pub use implementation::trailing_zeros;
 pub(crate) use implementation::trailing_zeros;
 
 mod implementation {
-    use crate::int::{CastFrom, Int};
+    use crate::support::{CastFrom, Int};
 
     /// Returns number of trailing binary zeros in `x`.
     #[allow(dead_code)]

@@ -6,7 +6,7 @@
 #![allow(unused_macros)]
 
 use builtins_test::*;
-use compiler_builtins::float::Float;
+use compiler_builtins::support::Float;
 use rustc_apfloat::{Float as _, FloatConvert as _};
 
 mod i_to_f {
@@ -18,7 +18,7 @@ mod i_to_f {
                 #[test]
                 fn $fn() {
                     use compiler_builtins::float::conv::$fn;
-                    use compiler_builtins::int::Int;
+                    use compiler_builtins::support::Int;
 
                     fuzz(N, |x: $i_ty| {
                         let f0 = apfloat_fallback!(
@@ -27,7 +27,7 @@ mod i_to_f {
                             // When the builtin is not available, we need to use a different conversion
                             // method (since apfloat doesn't support `as` casting).
                             |x: $i_ty| {
-                                use compiler_builtins::int::MinInt;
+                                use compiler_builtins::support::MinInt;
 
                                 let apf = if <$i_ty>::SIGNED {
                                     FloatTy::from_i128(x.try_into().unwrap()).value
@@ -117,7 +117,7 @@ mod i_to_f {
 
     #[cfg(f128_enabled)]
     #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
-    i_to_f! { f128, Quad, not(feature = "no-sys-f128-int-convert"),
+    i_to_f! { f128, Quad, not(no_sys_f128_int_convert),
         u32, __floatunsitf;
         i32, __floatsitf;
         u64, __floatunditf;
@@ -128,7 +128,7 @@ mod i_to_f {
 
     #[cfg(f128_enabled)]
     #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
-    i_to_f! { f128, Quad, not(feature = "no-sys-f128-int-convert"),
+    i_to_f! { f128, Quad, not(no_sys_f128_int_convert),
         u32, __floatunsikf;
         i32, __floatsikf;
         u64, __floatundikf;
@@ -155,7 +155,7 @@ mod f_to_i {
                         // When the builtin is not available, we need to use a different conversion
                         // method (since apfloat doesn't support `as` casting).
                         |x: $f_ty| {
-                            use compiler_builtins::int::MinInt;
+                            use compiler_builtins::support::MinInt;
 
                             let apf = FloatTy::from_bits(x.to_bits().into());
                             let bits: usize = <$i_ty>::BITS.try_into().unwrap();
@@ -236,7 +236,7 @@ mod f_to_i {
                 x,
                 f128,
                 Quad,
-                not(feature = "no-sys-f128-int-convert"),
+                not(no_sys_f128_int_convert),
                 u32, __fixunstfsi;
                 u64, __fixunstfdi;
                 u128, __fixunstfti;
@@ -259,7 +259,8 @@ macro_rules! f_to_f {
     ) => {$(
         #[test]
         fn $fn() {
-            use compiler_builtins::float::{$mod::$fn, Float};
+            use compiler_builtins::float::$mod::$fn;
+            use compiler_builtins::support::Float;
             use rustc_apfloat::ieee::{$from_ap_ty, $to_ap_ty};
 
             fuzz_float(N, |x: $from_ty| {
@@ -308,12 +309,12 @@ mod extend {
     )))]
     f_to_f! {
         extend,
-        f16 => f32, Half => Single, __extendhfsf2, not(feature = "no-sys-f16");
-        f16 => f32, Half => Single, __gnu_h2f_ieee, not(feature = "no-sys-f16");
-        f16 => f64, Half => Double, __extendhfdf2, not(feature = "no-sys-f16-f64-convert");
-        f16 => f128, Half => Quad, __extendhftf2, not(feature = "no-sys-f16-f128-convert");
-        f32 => f128, Single => Quad, __extendsftf2, not(feature = "no-sys-f128");
-        f64 => f128, Double => Quad, __extenddftf2, not(feature = "no-sys-f128");
+        f16 => f32, Half => Single, __extendhfsf2, not(no_sys_f16);
+        f16 => f32, Half => Single, __gnu_h2f_ieee, not(no_sys_f16);
+        f16 => f64, Half => Double, __extendhfdf2, not(no_sys_f16_f64_convert);
+        f16 => f128, Half => Quad, __extendhftf2, not(no_sys_f16_f128_convert);
+        f32 => f128, Single => Quad, __extendsftf2, not(no_sys_f128);
+        f64 => f128, Double => Quad, __extenddftf2, not(no_sys_f128);
     }
 
     #[cfg(f128_enabled)]
@@ -321,8 +322,8 @@ mod extend {
     f_to_f! {
         extend,
         // FIXME(#655): `f16` tests disabled until we can bootstrap symbols
-        f32 => f128, Single => Quad, __extendsfkf2, not(feature = "no-sys-f128");
-        f64 => f128, Double => Quad, __extenddfkf2, not(feature = "no-sys-f128");
+        f32 => f128, Single => Quad, __extendsfkf2, not(no_sys_f128);
+        f64 => f128, Double => Quad, __extenddfkf2, not(no_sys_f128);
     }
 }
 
@@ -342,12 +343,12 @@ mod trunc {
     )))]
     f_to_f! {
         trunc,
-        f32 => f16, Single => Half, __truncsfhf2, not(feature = "no-sys-f16");
-        f32 => f16, Single => Half, __gnu_f2h_ieee, not(feature = "no-sys-f16");
-        f64 => f16, Double => Half, __truncdfhf2, not(feature = "no-sys-f16-f64-convert");
-        f128 => f16, Quad => Half, __trunctfhf2, not(feature = "no-sys-f16-f128-convert");
-        f128 => f32, Quad => Single, __trunctfsf2, not(feature = "no-sys-f128");
-        f128 => f64, Quad => Double, __trunctfdf2, not(feature = "no-sys-f128");
+        f32 => f16, Single => Half, __truncsfhf2, not(no_sys_f16);
+        f32 => f16, Single => Half, __gnu_f2h_ieee, not(no_sys_f16);
+        f64 => f16, Double => Half, __truncdfhf2, not(no_sys_f16_f64_convert);
+        f128 => f16, Quad => Half, __trunctfhf2, not(no_sys_f16_f128_convert);
+        f128 => f32, Quad => Single, __trunctfsf2, not(no_sys_f128);
+        f128 => f64, Quad => Double, __trunctfdf2, not(no_sys_f128);
     }
 
     #[cfg(f128_enabled)]
@@ -355,7 +356,7 @@ mod trunc {
     f_to_f! {
         trunc,
         // FIXME(#655): `f16` tests disabled until we can bootstrap symbols
-        f128 => f32, Quad => Single, __trunckfsf2, not(feature = "no-sys-f128");
-        f128 => f64, Quad => Double, __trunckfdf2, not(feature = "no-sys-f128");
+        f128 => f32, Quad => Single, __trunckfsf2, not(no_sys_f128);
+        f128 => f64, Quad => Double, __trunckfdf2, not(no_sys_f128);
     }
 }

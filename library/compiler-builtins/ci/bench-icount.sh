@@ -26,12 +26,20 @@ tag="$(echo "$target" | cut -d'-' -f1)"
 # after the first run with gungraun.
 [ -d "iai-home" ] && mv "iai-home" "$gungraun_home"
 
+failed="0"
+
 # Run benchmarks once
 function run_icount_benchmarks() {
     cargo_args=(
+        "--target" "$target"
         "--bench" "*icount*"
         "--no-default-features"
-        "--features" "unstable,unstable-float,icount"
+        "--features" "unstable unstable-float icount"
+        # Enable unmangled-names so our compiler-builtins gets used for
+        # intrinsics. This makes performance impacts of c-b changes show up
+        # in libm benchmarks and gives us a better idea of what will happen
+        # in std (e.g. speedups in __addtf3 will show up in fmaf128).
+        "--features" "compiler_builtins/unmangled-names"
     )
 
     gungraun_args=(
@@ -65,13 +73,18 @@ function run_icount_benchmarks() {
         # Disregard regressions after merge
         echo "Benchmarks completed with regressions; ignoring (not in a PR)"
     else
-        ./ci/ci-util.py handle-bench-regressions "$PR_NUMBER"
+        ./ci/ci-util.py handle-bench-regressions "$PR_NUMBER" || failed="1"
     fi
 }
 
 # Run once with softfloats, once with arch instructions enabled
-run_icount_benchmarks --features force-soft-floats -- --save-baseline=softfloat
-run_icount_benchmarks -- --save-baseline=hardfloat
+run_icount_benchmarks                 -- --save-baseline=arch_disabled
+run_icount_benchmarks --features arch -- --save-baseline=arch_enabled
+
+if [ "$failed" != "0" ]; then
+    echo "One or more benchmarks failed"
+    exit 1
+fi
 
 # Name and tar the new baseline
 name="baseline-icount-$tag-$(date -u +'%Y%m%d%H%M')-${GITHUB_SHA:0:12}"

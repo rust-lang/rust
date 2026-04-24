@@ -77,8 +77,7 @@ pub fn fmaxf128(x: f128, y: f128) -> f128 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::support::hex_float::Hexi;
-    use crate::support::{Float, Hexf};
+    use crate::support::{Float, Hex};
 
     fn fmin_spec_test<F: Float>(f: impl Fn(F, F) -> F) {
         // Note that (YaN, sNaN) and (sNaN, YaN) results differ from 754-2008. This is intentional,
@@ -171,7 +170,7 @@ mod tests {
 
         for (x, y, res) in cases {
             let val = f(x, y);
-            assert_biteq!(val, res, "fmin({}, {})", Hexf(x), Hexf(y));
+            assert_biteq!(val, res, "fmin({}, {})", Hex(x), Hex(y));
         }
 
         // Ordering between zeros does not matter
@@ -314,10 +313,10 @@ mod tests {
                 val,
                 res,
                 "fmax({}, {}) ({}, {})",
-                Hexf(x),
-                Hexf(y),
-                Hexi(x.to_bits()),
-                Hexi(y.to_bits()),
+                Hex(x),
+                Hex(y),
+                Hex(x.to_bits()),
+                Hex(y.to_bits()),
             );
         }
 

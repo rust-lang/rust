@@ -7,14 +7,13 @@
 macro_rules! basic {
     (
         fn_name: $fn_name:ident,
-        FTy: $FTy:ty,
         CFn: $CFn:ty,
         CArgs: $CArgs:ty,
         CRet: $CRet:ty,
         RustFn: $RustFn:ty,
         RustArgs: $RustArgs:ty,
         RustRet: $RustRet:ty,
-        public: $public:expr,
+        path: $path:path,
         attrs: [$($attr:meta),*],
         extra: [$($extra_tt:tt)*],
         fn_extra: $fn_extra:expr,
@@ -22,12 +21,11 @@ macro_rules! basic {
         $(#[$attr])*
         #[allow(dead_code)]
         pub mod $fn_name {
-            type FTy= $FTy;
             type CFnTy<'a> = $CFn;
             type RustFnTy = $RustFn;
             type RustArgsTy = $RustArgs;
             type RustRetTy = $RustRet;
-            const PUBLIC: bool = $public;
+            const PATH: &str = stringify!($path);
             const A: &[&str] = &[$($extra_tt)*];
             fn foo(a: f32) -> f32 {
                 $fn_extra(a)
@@ -147,6 +145,7 @@ fn test_fn_extra_expansion() {
     let mut vf32 = Vec::new();
     let mut vf64 = Vec::new();
     let mut vf128 = Vec::new();
+    let mut vbuiltins = Vec::new();
 
     // Test with no extra, no skip, and no attributes
     libm_macros::for_each_function! {
@@ -156,6 +155,7 @@ fn test_fn_extra_expansion() {
             ALL_F32 => vf32,
             ALL_F64 => vf64,
             ALL_F128 => vf128,
+            ALL_BUILTINS => vbuiltins,
         }
     }
 
@@ -171,8 +171,11 @@ fn test_fn_extra_expansion() {
     for name in vf32 {
         assert!(name.ends_with("f"), "{name}");
     }
-    let _ = vf64;
     for name in vf128 {
         assert!(name.ends_with("f128"), "{name}");
     }
+
+    // Nothing to assert here
+    let _ = vf64;
+    let _ = vbuiltins;
 }

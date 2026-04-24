@@ -78,6 +78,7 @@ run() {
         -e CI \
         -e CARGO_TARGET_DIR=/builtins-target \
         -e CARGO_TERM_COLOR \
+        -e LIBM_BUILD_VERBOSE \
         -e MAY_SKIP_LIBM_CI \
         -e RUSTFLAGS \
         -e RUST_BACKTRACE \
@@ -97,7 +98,7 @@ if [ "${1:-}" = "--help" ] || [ "$#" -gt 1 ]; then
     usage: ./ci/run-docker.sh [target]
 
     you can also set DOCKER_BASE_IMAGE to use something other than the default
-    ubuntu:25.10 (or rustlang/rust:nightly).
+    ubuntu:26.04 (or rustlang/rust:nightly).
     "
     exit
 fi

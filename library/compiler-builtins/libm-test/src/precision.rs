@@ -13,9 +13,38 @@ pub struct SpecialCase;
 
 /// ULP allowed to differ from the results returned by a test basis.
 #[allow(clippy::single_match)]
-pub fn default_ulp(ctx: &CheckCtx) -> u32 {
+pub fn default_ulp(ctx: &CheckCtx) -> Option<u32> {
     // ULP compared to the infinite (MPFR) result.
     let mut ulp = match ctx.base_name {
+        // Basic arithmetic needs to always be precise.
+        Bn::Add | Bn::Sub | Bn::Mul | Bn::Div => 0,
+        // FIXME(correctness): we need a better powi implementation (though this is no worse
+        // than C).
+        Bn::Powi if ctx.fn_ident == Id::Powif64 => 500_000,
+        Bn::Powi => 1000,
+
+        // Operations that only return non-float results
+        Bn::Eq | Bn::Ne | Bn::Gt | Bn::Ge | Bn::Lt | Bn::Le | Bn::Unord | Bn::Ilogb => return None,
+
+        // Integer ops
+        Bn::Ashl
+        | Bn::Ashr
+        | Bn::Lshr
+        | Bn::LeadingZeros
+        | Bn::TrailingZeros
+        | Bn::Iadd
+        | Bn::Iaddo
+        | Bn::Isub
+        | Bn::Isubo
+        | Bn::Imul
+        | Bn::Imulo
+        | Bn::Idiv
+        | Bn::Imod
+        | Bn::Idivmod => return None,
+
+        // Convrsion operations must be precise.
+        Bn::Extend | Bn::Narrow | Bn::Ftoi | Bn::Itof => 0,
+
         // Operations that require exact results. This list should correlate with what we
         // have documented at <https://doc.rust-lang.org/std/primitive.f32.html>.
         Bn::Ceil
@@ -32,7 +61,6 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         | Bn::FminimumNum
         | Bn::Fmod
         | Bn::Frexp
-        | Bn::Ilogb
         | Bn::Ldexp
         | Bn::Modf
         | Bn::Nextafter
@@ -47,6 +75,7 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
 
         // Operations that aren't required to be exact, but our implementations are.
         Bn::Cbrt => 0,
+        Bn::Hypot if ctx.fn_ident == Id::Hypot => 0,
 
         // Bessel functions have large inaccuracies.
         Bn::J0 | Bn::J1 | Bn::Y0 | Bn::Y1 | Bn::Jn | Bn::Yn => 8_000_000,
@@ -84,8 +113,10 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
         Bn::Tgamma => 20,
     };
 
-    // These have a separate implementation on i586
-    if cfg!(x86_no_sse) {
+    let mut orig_ulp = ulp;
+
+    // These have a separate implementation on i586 which is more accurate.
+    if cfg!(x86_no_sse2) {
         match ctx.fn_ident {
             Id::Exp => ulp = 1,
             Id::Exp2 => ulp = 1,
@@ -95,43 +126,17 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
             Id::Exp10f => ulp = 0,
             _ => (),
         }
-    }
 
-    // There are some cases where musl's approximation is less accurate than ours. For these
-    // cases, increase the ULP.
-    if ctx.basis == Musl {
-        match ctx.base_name {
-            Bn::Cosh => ulp = 2,
-            Bn::Exp10 if usize::BITS < 64 => ulp = 4,
-            Bn::Tanh => ulp = 4,
-            _ => (),
-        }
+        assert!(ulp <= orig_ulp, "pattern can be deleted {ctx:?}");
+        orig_ulp = ulp;
 
+        // Due to rust-lang/rust#114479 (unsound floating point behavior on x86 without SSE), the
+        // following operations have worse precision.
         match ctx.fn_ident {
-            Id::Cbrt => ulp = 2,
-            // FIXME(#401): musl has an incorrect result here.
-            Id::Fdim => ulp = 2,
-            Id::Exp2f => ulp = 1,
-            Id::Expf => ulp = 1,
-            Id::Sincosf => ulp = 500,
-            Id::Tgamma => ulp = 20,
-            _ => (),
-        }
-    }
-
-    if cfg!(target_arch = "x86") {
-        match ctx.fn_ident {
-            // Input `fma(0.999999999999999, 1.0000000000000013, 0.0) = 1.0000000000000002` is
-            // incorrect on i586 and i686.
+            // FIXME: these need to be correctly rounded but are not, likely due to LLVM bugs
+            // around precision without SSE float ops. It may be worth looking into an assembly
+            // implementation.
             Id::Fma => ulp = 1,
-            _ => (),
-        }
-    }
-
-    // In some cases, our implementation is less accurate than musl on i586.
-    if cfg!(x86_no_sse) {
-        match ctx.fn_ident {
-            // FIXME(#401): these need to be correctly rounded but are not.
             Id::Fmaf => ulp = 1,
             Id::Fdim => ulp = 1,
             Id::Round => ulp = 1,
@@ -139,13 +144,44 @@ pub fn default_ulp(ctx: &CheckCtx) -> u32 {
             Id::Asinh => ulp = 3,
             Id::Asinhf => ulp = 3,
             Id::Cbrt => ulp = 1,
-            Id::Log1p | Id::Log1pf => ulp = 2,
+            Id::Hypot => ulp = 1,
+            Id::Log1p => ulp = 2,
+            Id::Log1pf => ulp = 2,
             Id::Tan => ulp = 2,
             _ => (),
         }
+
+        assert!(ulp >= orig_ulp, "pattern can be deleted {ctx:?}");
+        orig_ulp = ulp;
     }
 
-    ulp
+    // There are some cases where musl's approximation is less accurate than ours, either due to
+    // the implementation itself or because of x87 inaccuracy problems. For these cases, increase
+    // the allowed ULP.
+    if ctx.basis == Musl {
+        match ctx.fn_ident {
+            // Musl probably runs into issues with the x87 ABI here which we don't have.
+            Id::Fma if cfg!(target_arch = "x86") => ulp = 1,
+            Id::Fdim => ulp = 2,
+
+            Id::Asinhf => ulp = 3,
+            Id::Cbrt => ulp = 2,
+            Id::Cosh => ulp = 2,
+            Id::Coshf => ulp = 2,
+            Id::Exp10 if cfg!(x86_no_sse2) => ulp = 4,
+            Id::Exp10f if cfg!(x86_no_sse2) => ulp = 4,
+            Id::Exp2f => ulp = 1,
+            Id::Expf => ulp = 1,
+            Id::Hypot => ulp = 1,
+            Id::Tanh => ulp = 4,
+            Id::Tanhf => ulp = 4,
+            _ => (),
+        }
+
+        assert!(ulp >= orig_ulp, "pattern can be deleted {ctx:?}");
+    }
+
+    Some(ulp)
 }
 
 /// Result of checking for possible overrides.
@@ -261,15 +297,6 @@ impl MaybeOverride<(f32,)> for SpecialCase {
 
 impl MaybeOverride<(f64,)> for SpecialCase {
     fn check_float<F: Float>(input: (f64,), actual: F, expected: F, ctx: &CheckCtx) -> CheckAction {
-        if cfg!(x86_no_sse)
-            && (ctx.base_name == BaseName::Rint || ctx.base_name == BaseName::Roundeven)
-            && (expected - actual).abs() <= F::ONE
-            && (expected - actual).abs() > F::ZERO
-        {
-            // Our rounding mode is incorrect.
-            return XFAIL("i586 rint rounding mode");
-        }
-
         if ctx.base_name == BaseName::J0 && input.0 < -1e300 {
             // Errors get huge close to -inf
             return XFAIL_NOCHECK;
@@ -499,18 +526,19 @@ fn int_float_common<F1: Float, F2: Float>(
     }
 
     // Our bessel functions blow up with large N values
-    if ctx.basis == Musl && (ctx.base_name == BaseName::Jn || ctx.base_name == BaseName::Yn) {
-        if cfg!(x86_no_sse) {
+    if ctx.base_name == BaseName::Jn || ctx.base_name == BaseName::Yn {
+        if cfg!(x86_no_sse2) {
             // Precision is especially bad on i586, not worth checking.
             return XFAIL_NOCHECK;
         }
 
-        if input.0 > 4000 {
+        if input.0 > 140 {
             return XFAIL_NOCHECK;
-        } else if input.0 > 100 {
-            return CheckAction::AssertWithUlp(2_000_000);
+        } else if input.0 > 80 {
+            return CheckAction::AssertWithUlp(10_000_000);
         }
     }
+
     DEFAULT
 }
 
@@ -525,3 +553,23 @@ impl MaybeOverride<(f32, f32, f32)> for SpecialCase {}
 impl MaybeOverride<(f64, f64, f64)> for SpecialCase {}
 #[cfg(f128_enabled)]
 impl MaybeOverride<(f128, f128, f128)> for SpecialCase {}
+
+impl MaybeOverride<(i32,)> for SpecialCase {}
+impl MaybeOverride<(i64,)> for SpecialCase {}
+impl MaybeOverride<(i128,)> for SpecialCase {}
+impl MaybeOverride<(u32,)> for SpecialCase {}
+impl MaybeOverride<(u64,)> for SpecialCase {}
+impl MaybeOverride<(u128,)> for SpecialCase {}
+
+impl MaybeOverride<(i32, i32)> for SpecialCase {}
+impl MaybeOverride<(i64, i64)> for SpecialCase {}
+impl MaybeOverride<(i128, i128)> for SpecialCase {}
+impl MaybeOverride<(u32, u32)> for SpecialCase {}
+impl MaybeOverride<(u64, u64)> for SpecialCase {}
+impl MaybeOverride<(u128, u128)> for SpecialCase {}
+
+impl MaybeOverride<(i32, u32)> for SpecialCase {}
+impl MaybeOverride<(i64, u32)> for SpecialCase {}
+impl MaybeOverride<(i128, u32)> for SpecialCase {}
+impl MaybeOverride<(u64, u32)> for SpecialCase {}
+impl MaybeOverride<(u128, u32)> for SpecialCase {}

@@ -3,7 +3,7 @@
 #[cfg(test)]
 mod tests;
 
-use core::ops;
+use core::{fmt, ops};
 
 use super::{DInt, HInt, Int, MinInt};
 
@@ -11,18 +11,18 @@ const U128_LO_MASK: u128 = u64::MAX as u128;
 
 /// A 256-bit unsigned integer represented as two 128-bit native-endian limbs.
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct u256 {
     pub hi: u128,
     pub lo: u128,
 }
 
 impl u256 {
-    #[cfg(any(test, feature = "unstable-public-internals"))]
     pub const MAX: Self = Self {
         lo: u128::MAX,
         hi: u128::MAX,
     };
+    pub const MIN: Self = Self { lo: 0, hi: 0 };
 
     /// Reinterpret as a signed integer
     pub fn signed(self) -> i256 {
@@ -35,15 +35,23 @@ impl u256 {
 
 /// A 256-bit signed integer represented as two 128-bit native-endian limbs.
 #[allow(non_camel_case_types)]
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Eq, Ord)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct i256 {
     pub hi: i128,
     pub lo: u128,
 }
 
 impl i256 {
+    pub const MAX: Self = Self {
+        lo: u128::MAX,
+        hi: i128::MAX,
+    };
+    pub const MIN: Self = Self {
+        lo: u128::MIN,
+        hi: i128::MIN,
+    };
+
     /// Reinterpret as an unsigned integer
-    #[cfg(any(test, feature = "unstable-public-internals"))]
     pub fn unsigned(self) -> u256 {
         u256 {
             lo: self.lo,
@@ -61,11 +69,8 @@ impl MinInt for u256 {
     const BITS: u32 = 256;
     const ZERO: Self = Self { lo: 0, hi: 0 };
     const ONE: Self = Self { lo: 1, hi: 0 };
-    const MIN: Self = Self { lo: 0, hi: 0 };
-    const MAX: Self = Self {
-        lo: u128::MAX,
-        hi: u128::MAX,
-    };
+    const MIN: Self = Self::MIN;
+    const MAX: Self = Self::MAX;
 }
 
 impl MinInt for i256 {
@@ -77,14 +82,8 @@ impl MinInt for i256 {
     const BITS: u32 = 256;
     const ZERO: Self = Self { lo: 0, hi: 0 };
     const ONE: Self = Self { lo: 1, hi: 0 };
-    const MIN: Self = Self {
-        lo: u128::MIN,
-        hi: i128::MIN,
-    };
-    const MAX: Self = Self {
-        lo: u128::MAX,
-        hi: i128::MAX,
-    };
+    const MIN: Self = Self::MIN;
+    const MAX: Self = Self::MAX;
 }
 
 macro_rules! impl_common {
@@ -278,5 +277,37 @@ impl DInt for i256 {
 
     fn hi(self) -> Self::H {
         self.hi
+    }
+}
+
+impl fmt::Debug for u256 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::LowerHex::fmt(self, f)
+    }
+}
+
+impl fmt::Debug for i256 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::LowerHex::fmt(&self.unsigned(), f)
+    }
+}
+
+impl fmt::LowerHex for u256 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        cfg_if! {
+            if #[cfg(feature = "compiler-builtins")] {
+                let _ = f;
+                unimplemented!()
+            } else {
+                let pfx= if f.alternate() { "0x"} else {""};
+                write!(f, "{pfx}{:032x}{:032x}", self.hi, self.lo)
+            }
+        }
+    }
+}
+
+impl fmt::LowerHex for i256 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::LowerHex::fmt(&self.unsigned(), f)
     }
 }

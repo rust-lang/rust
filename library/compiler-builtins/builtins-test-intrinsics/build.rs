@@ -1,10 +1,10 @@
-mod builtins_configure {
-    include!("../compiler-builtins/configure.rs");
-}
+#[path = "../libm/configure.rs"]
+mod configure;
+
+use configure::{Config, Library};
 
 fn main() {
-    println!("cargo::rerun-if-changed=../configure.rs");
-
-    let target = builtins_configure::Target::from_env();
-    builtins_configure::configure_aliases(&target);
+    println!("cargo::rerun-if-changed=../libm/configure.rs");
+    let cfg = Config::from_env(Library::BuiltinsTestIntrinsics);
+    configure::emit(&cfg);
 }

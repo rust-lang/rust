@@ -58,6 +58,14 @@ impl Float for f8 {
         self.0 as i8
     }
 
+    fn eq_repr(self, rhs: Self) -> bool {
+        if self.is_nan() && rhs.is_nan() {
+            true
+        } else {
+            self.to_bits() == rhs.to_bits()
+        }
+    }
+
     fn is_nan(self) -> bool {
         self.0 & Self::EXP_MASK == Self::EXP_MASK && self.0 & Self::SIG_MASK != 0
     }
