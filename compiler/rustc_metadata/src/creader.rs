@@ -111,21 +111,6 @@ enum LoadResult {
     Loaded(Library),
 }
 
-/// A reference to `CrateMetadata` that can also give access to whole crate store when necessary.
-#[derive(Clone, Copy)]
-pub(crate) struct CrateMetadataRef<'a> {
-    pub cdata: &'a CrateMetadata,
-    pub cstore: &'a CStore,
-}
-
-impl std::ops::Deref for CrateMetadataRef<'_> {
-    type Target = CrateMetadata;
-
-    fn deref(&self) -> &Self::Target {
-        self.cdata
-    }
-}
-
 struct CrateDump<'a>(&'a CStore);
 
 impl<'a> std::fmt::Debug for CrateDump<'a> {
@@ -245,11 +230,8 @@ impl CStore {
         self.metas[cnum].is_some()
     }
 
-    pub(crate) fn get_crate_data(&self, cnum: CrateNum) -> CrateMetadataRef<'_> {
-        let cdata = self.metas[cnum]
-            .as_ref()
-            .unwrap_or_else(|| panic!("Failed to get crate data for {cnum:?}"));
-        CrateMetadataRef { cdata, cstore: self }
+    pub(crate) fn get_crate_data(&self, cnum: CrateNum) -> &CrateMetadata {
+        self.metas[cnum].as_ref().unwrap_or_else(|| panic!("Failed to get crate data for {cnum:?}"))
     }
 
     pub(crate) fn get_crate_data_mut(&mut self, cnum: CrateNum) -> &mut CrateMetadata {
@@ -284,14 +266,13 @@ impl CStore {
     }
 
     pub fn all_proc_macro_def_ids(&self, tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> {
-        self.iter_crate_data()
-            .flat_map(move |(krate, data)| data.proc_macros_for_crate(tcx, krate, self))
+        self.iter_crate_data().flat_map(move |(krate, data)| data.proc_macros_for_crate(tcx, krate))
     }
 
     fn push_dependencies_in_postorder(&self, deps: &mut IndexSet<CrateNum>, cnum: CrateNum) {
         if !deps.contains(&cnum) {
-            let data = self.get_crate_data(cnum);
-            for dep in data.dependencies() {
+            let cdata = self.get_crate_data(cnum);
+            for dep in cdata.dependencies() {
                 if dep != cnum {
                     self.push_dependencies_in_postorder(deps, dep);
                 }
@@ -676,7 +657,6 @@ impl CStore {
 
         let crate_metadata = CrateMetadata::new(
             tcx,
-            self,
             metadata,
             crate_root,
             raw_proc_macros,
@@ -865,12 +845,12 @@ impl CStore {
                 // `private-dependency` when `register_crate` is called for the first time. Then it must be updated to
                 // `public-dependency` here.
                 let private_dep = self.is_private_dep(&tcx.sess.opts.externs, name, private_dep);
-                let data = self.get_crate_data_mut(cnum);
-                if data.is_proc_macro_crate() {
+                let cdata = self.get_crate_data_mut(cnum);
+                if cdata.is_proc_macro_crate() {
                     dep_kind = CrateDepKind::MacrosOnly;
                 }
-                data.set_dep_kind(cmp::max(data.dep_kind(), dep_kind));
-                data.update_and_private_dep(private_dep);
+                cdata.set_dep_kind(cmp::max(cdata.dep_kind(), dep_kind));
+                cdata.update_and_private_dep(private_dep);
                 Ok(cnum)
             }
             (LoadResult::Loaded(library), host_library) => {
@@ -1045,14 +1025,14 @@ impl CStore {
         ) else {
             return;
         };
-        let data = self.get_crate_data(cnum);
+        let cdata = self.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
         // and the panic strategy is indeed what we thought it was.
-        if !data.is_panic_runtime() {
+        if !cdata.is_panic_runtime() {
             tcx.dcx().emit_err(errors::CrateNotPanicRuntime { crate_name: name });
         }
-        if data.required_panic_strategy() != Some(desired_strategy) {
+        if cdata.required_panic_strategy() != Some(desired_strategy) {
             tcx.dcx()
                 .emit_err(errors::NoPanicStrategy { crate_name: name, strategy: desired_strategy });
         }
@@ -1086,10 +1066,10 @@ impl CStore {
         ) else {
             return;
         };
-        let data = self.get_crate_data(cnum);
+        let cdata = self.get_crate_data(cnum);
 
         // Sanity check the loaded crate to ensure it is indeed a profiler runtime
-        if !data.is_profiler_runtime() {
+        if !cdata.is_profiler_runtime() {
             tcx.dcx().emit_err(errors::NotProfilerRuntime { crate_name: name });
         }
     }
@@ -1243,9 +1223,9 @@ impl CStore {
         };
 
         // Sanity check that the loaded crate is `#![compiler_builtins]`
-        let cmeta = self.get_crate_data(cnum);
-        if !cmeta.is_compiler_builtins() {
-            tcx.dcx().emit_err(errors::CrateNotCompilerBuiltins { crate_name: cmeta.name() });
+        let cdata = self.get_crate_data(cnum);
+        if !cdata.is_compiler_builtins() {
+            tcx.dcx().emit_err(errors::CrateNotCompilerBuiltins { crate_name: cdata.name() });
         }
     }
 

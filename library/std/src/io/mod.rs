@@ -2226,6 +2226,21 @@ pub enum SeekFrom {
     Current(#[stable(feature = "rust1", since = "1.0.0")] i64),
 }
 
+/// Marks that a type `T` can have IO traits such as [`Seek`], [`Write`], etc. automatically
+/// implemented for handle types like [`Arc`][arc] as well.
+///
+/// This trait should only be implemented for types where `<&T as Trait>::method(&mut &value, ..)`
+/// would be identical to `<T as Trait>::method(&mut value, ..)`.
+///
+/// [`File`][file] passes this test, as operations on `&File` and `File` both affect
+/// the same underlying file.
+/// `[u8]` fails, because any modification to `&mut &[u8]` would only affect a temporary
+/// and be lost after the method has been called.
+///
+/// [file]: crate::fs::File
+/// [arc]: crate::sync::Arc
+pub(crate) trait IoHandle {}
+
 fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> Result<usize> {
     let mut read = 0;
     loop {

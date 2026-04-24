@@ -408,8 +408,7 @@ impl TestProps {
 
     fn update_fail_mode(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
         let check_ui = |mode: &str| {
-            // Mode::Crashes may need build-fail in order to trigger llvm errors or stack overflows
-            if config.mode != TestMode::Ui && config.mode != TestMode::Crashes {
+            if config.mode != TestMode::Ui {
                 panic!("`{}-fail` directive is only supported in UI tests", mode);
             }
         };
@@ -441,7 +440,6 @@ impl TestProps {
     fn update_pass_mode(&mut self, ln: &DirectiveLine<'_>, config: &Config) {
         let check_no_run = |s| match (config.mode, s) {
             (TestMode::Ui, _) => (),
-            (TestMode::Crashes, _) => (),
             (mode, _) => panic!("`{s}` directive is not supported in `{mode}` tests"),
         };
         let pass_mode = if config.parse_name_directive(ln, "check-pass") {

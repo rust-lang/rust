@@ -100,7 +100,7 @@ macro_rules! provide_one {
                     .root
                     .tables
                     .$name
-                    .get($cdata.cdata, $def_id.index)
+                    .get($cdata, $def_id.index)
                     .map(|lazy| lazy.decode(($cdata, $tcx)))
                     .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
@@ -109,7 +109,7 @@ macro_rules! provide_one {
     ($tcx:ident, $def_id:ident, $other:ident, $cdata:ident, $name:ident => { table_defaulted_array }) => {
         provide_one! {
             $tcx, $def_id, $other, $cdata, $name => {
-                let lazy = $cdata.root.tables.$name.get($cdata.cdata, $def_id.index);
+                let lazy = $cdata.root.tables.$name.get($cdata, $def_id.index);
                 let value = if lazy.is_default() {
                     &[] as &[_]
                 } else {
@@ -127,7 +127,7 @@ macro_rules! provide_one {
                     .root
                     .tables
                     .$name
-                    .get($cdata.cdata, $def_id.index)
+                    .get($cdata, $def_id.index)
                     .process_decoded($tcx, || panic!("{:?} does not have a {:?}", $def_id, stringify!($name)))
             }
         }
@@ -259,7 +259,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .coerce_unsized_info
-            .get(cdata.cdata, def_id.index)
+            .get(cdata, def_id.index)
             .map(|lazy| lazy.decode((cdata, tcx)))
             .process_decoded(tcx, || panic!("{def_id:?} does not have coerce_unsized_info"))) }
     mir_const_qualif => { table }
@@ -275,7 +275,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .eval_static_initializer
-            .get(cdata.cdata, def_id.index)
+            .get(cdata, def_id.index)
             .map(|lazy| lazy.decode((cdata, tcx)))
             .unwrap_or_else(|| panic!("{def_id:?} does not have eval_static_initializer")))
     }
@@ -288,7 +288,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .deduced_param_attrs
-            .get(cdata.cdata, def_id.index)
+            .get(cdata, def_id.index)
             .map(|lazy| {
                 &*tcx.arena.alloc_from_iter(lazy.decode((cdata, tcx)))
             })
@@ -301,7 +301,7 @@ provide! { tcx, def_id, other, cdata,
             .root
             .tables
             .trait_impl_trait_tys
-            .get(cdata.cdata, def_id.index)
+            .get(cdata, def_id.index)
             .map(|lazy| lazy.decode((cdata, tcx)))
             .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
     }
@@ -399,7 +399,9 @@ provide! { tcx, def_id, other, cdata,
     debugger_visualizers => { cdata.get_debugger_visualizers(tcx) }
 
     exportable_items => { tcx.arena.alloc_from_iter(cdata.get_exportable_items(tcx)) }
-    stable_order_of_exportable_impls => { tcx.arena.alloc(cdata.get_stable_order_of_exportable_impls(tcx).collect()) }
+    stable_order_of_exportable_impls => {
+        tcx.arena.alloc(cdata.get_stable_order_of_exportable_impls(tcx).collect())
+    }
     exported_non_generic_symbols => { cdata.exported_non_generic_symbols(tcx) }
     exported_generic_symbols => { cdata.exported_generic_symbols(tcx) }
 
@@ -590,16 +592,16 @@ impl CStore {
         let sess = tcx.sess;
         let _prof_timer = sess.prof.generic_activity("metadata_load_macro");
 
-        let data = self.get_crate_data(id.krate);
-        if data.root.is_proc_macro_crate() {
-            LoadedMacro::ProcMacro(data.load_proc_macro(tcx, id.index))
+        let cdata = self.get_crate_data(id.krate);
+        if cdata.root.is_proc_macro_crate() {
+            LoadedMacro::ProcMacro(cdata.load_proc_macro(tcx, id.index))
         } else {
             LoadedMacro::MacroDef {
-                def: data.get_macro(tcx, id.index),
-                ident: data.item_ident(tcx, id.index),
-                attrs: data.get_item_attrs(tcx, id.index).collect(),
-                span: data.get_span(tcx, id.index),
-                edition: data.root.edition,
+                def: cdata.get_macro(tcx, id.index),
+                ident: cdata.item_ident(tcx, id.index),
+                attrs: cdata.get_item_attrs(tcx, id.index).collect(),
+                span: cdata.get_span(tcx, id.index),
+                edition: cdata.root.edition,
             }
         }
     }
@@ -641,10 +643,10 @@ impl CStore {
     }
 
     pub fn set_used_recursively(&mut self, cnum: CrateNum) {
-        let cmeta = self.get_crate_data_mut(cnum);
-        if !cmeta.used {
-            cmeta.used = true;
-            let cnum_map = mem::take(&mut cmeta.cnum_map);
+        let cdata = self.get_crate_data_mut(cnum);
+        if !cdata.used {
+            cdata.used = true;
+            let cnum_map = mem::take(&mut cdata.cnum_map);
             for &dep_cnum in cnum_map.iter() {
                 self.set_used_recursively(dep_cnum);
             }
@@ -676,11 +678,11 @@ impl CStore {
         cnum: CrateNum,
         extern_crate: ExternCrate,
     ) {
-        let cmeta = self.get_crate_data_mut(cnum);
-        if cmeta.update_extern_crate_diagnostics(extern_crate) {
+        let cdata = self.get_crate_data_mut(cnum);
+        if cdata.update_extern_crate_diagnostics(extern_crate) {
             // Propagate the extern crate info to dependencies if it was updated.
             let extern_crate = ExternCrate { dependency_of: cnum, ..extern_crate };
-            let cnum_map = mem::take(&mut cmeta.cnum_map);
+            let cnum_map = mem::take(&mut cdata.cnum_map);
             for &dep_cnum in cnum_map.iter() {
                 self.update_transitive_extern_crate_diagnostics(dep_cnum, extern_crate);
             }

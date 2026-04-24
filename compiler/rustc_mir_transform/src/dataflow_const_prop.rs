@@ -41,6 +41,11 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
 
     #[instrument(skip_all level = "debug")]
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        // Avoid query cycles from coroutines.
+        if body.coroutine.is_some() {
+            return;
+        }
+
         debug!(def_id = ?body.source.def_id());
         if tcx.sess.mir_opt_level() < 4 && body.basic_blocks.len() > BLOCK_LIMIT {
             debug!("aborted dataflow const prop due too many basic blocks");
