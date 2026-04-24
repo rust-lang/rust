@@ -1,0 +1,164 @@
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:17:18
+   |
+LL |     let _ = (0,).00;
+   |                  ^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:20:16
+   |
+LL |     let _ = ().01_00;
+   |                ^^^^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:26:15
+   |
+LL |     let Xyz { 02: _, .. };
+   |               ^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:29:15
+   |
+LL |     let Xyz { 3_000: _, .. };
+   |               ^^^^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:33:19
+   |
+LL |     let _ = Xyz { 0x0: 0., 01: 0., 2__: 0. };
+   |                   ^^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:33:28
+   |
+LL |     let _ = Xyz { 0x0: 0., 01: 0., 2__: 0. };
+   |                            ^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:33:36
+   |
+LL |     let _ = Xyz { 0x0: 0., 01: 0., 2__: 0. };
+   |                                    ^^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:42:13
+   |
+LL |     let X { 00: _, 1_0: _, 0xF: _ };
+   |             ^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:42:20
+   |
+LL |     let X { 00: _, 1_0: _, 0xF: _ };
+   |                    ^^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:42:28
+   |
+LL |     let X { 00: _, 1_0: _, 0xF: _ };
+   |                            ^^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:47:17
+   |
+LL |     let _ = X { 001: (), 1_000: (), 0o7: () };
+   |                 ^^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:47:26
+   |
+LL |     let _ = X { 001: (), 1_000: (), 0o7: () };
+   |                          ^^^^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:47:37
+   |
+LL |     let _ = X { 001: (), 1_000: (), 0o7: () };
+   |                                     ^^^
+
+error: expected identifier, found `1e1`
+  --> $DIR/invalid-tuple-indices.rs:53:13
+   |
+LL |     let X { 1e1: _ } = X { 100e10: () };
+   |         -   ^^^ expected identifier
+   |         |
+   |         while parsing the fields for this pattern
+
+error: expected identifier, found `100e10`
+  --> $DIR/invalid-tuple-indices.rs:53:28
+   |
+LL |     let X { 1e1: _ } = X { 100e10: () };
+   |                        -   ^^^^^^ expected identifier
+   |                        |
+   |                        while parsing this struct
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:57:15
+   |
+LL |     let _ = x.0001;
+   |               ^^^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:58:15
+   |
+LL |     let _ = x.1_000;
+   |               ^^^^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:59:15
+   |
+LL |     let _ = x.0b1010;
+   |               ^^^^^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:60:15
+   |
+LL |     let _ = x.2e3;
+   |               ^^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:61:17
+   |
+LL |     let _ = x.1.00;
+   |                 ^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:62:17
+   |
+LL |     let _ = x.1.1_;
+   |                 ^^
+
+error: invalid tuple index
+  --> $DIR/invalid-tuple-indices.rs:63:17
+   |
+LL |     let _ = x.1.1e1;
+   |                 ^^^
+
+error: unexpected token: `1e+10`
+  --> $DIR/invalid-tuple-indices.rs:66:15
+   |
+LL |     let _ = x.1e+10;
+   |               ^^^^^
+
+error: expected one of `.`, `;`, `?`, `else`, or an operator, found `1e+10`
+  --> $DIR/invalid-tuple-indices.rs:66:15
+   |
+LL |     let _ = x.1e+10;
+   |               ^^^^^ expected one of `.`, `;`, `?`, `else`, or an operator
+
+error[E0609]: no field `100` on type `()`
+  --> $DIR/invalid-tuple-indices.rs:20:16
+   |
+LL |     let _ = ().01_00;
+   |                ^^^^^ unknown field
+
+error[E0026]: struct `Xyz` does not have a field named `3000`
+  --> $DIR/invalid-tuple-indices.rs:29:15
+   |
+LL |     let Xyz { 3_000: _, .. };
+   |               ^^^^^ struct `Xyz` does not have this field
+
+error: aborting due to 26 previous errors
+
+Some errors have detailed explanations: E0026, E0609.
+For more information about an error, try `rustc --explain E0026`.

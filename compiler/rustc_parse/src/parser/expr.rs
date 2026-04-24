@@ -44,7 +44,7 @@ pub(super) enum DestructuredFloat {
     /// 1.
     TrailingDot(Symbol, Span, Span),
     /// 1.2 | 1.2e3
-    MiddleDot(Symbol, Span, Span, Symbol, Span),
+    MiddleDot(Symbol, Span, Symbol, Span),
     /// Invalid
     Error,
 }
@@ -961,6 +961,7 @@ impl<'a> Parser<'a> {
             token::Ident(..) => self.parse_dot_suffix(base, lo),
             token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
                 let ident_span = self.token.span;
+                let symbol = self.validate_tuple_index(symbol, ident_span);
                 self.bump();
                 Ok(self.mk_expr_tuple_field_access(lo, ident_span, base, symbol, suffix))
             }
@@ -986,13 +987,9 @@ impl<'a> Parser<'a> {
                         self.mk_expr_tuple_field_access(lo, ident_span, base, sym, None)
                     }
                     // 1.2 | 1.2e3
-                    DestructuredFloat::MiddleDot(
-                        sym1,
-                        ident1_span,
-                        _dot_span,
-                        sym2,
-                        ident2_span,
-                    ) => {
+                    // FIXME(fmease): (preexisting) For some reason for `x.0.0xyz` (i.e., suffixed)
+                    //                highlight `0.0xyz` when we should just highlight `0xyz`.
+                    DestructuredFloat::MiddleDot(sym1, ident1_span, sym2, ident2_span) => {
                         // `foo.1.2` (or `foo.1.2e3`): two complete dot accesses. We end up with
                         // the `sym2` (`2` or `2e3`) token in `self.prev_token` and the following
                         // token in `self.token`.
@@ -1055,30 +1052,68 @@ impl<'a> Parser<'a> {
     //  support pushing "future tokens" (would be also helpful to `break_and_eat`), or
     //  we should break everything including floats into more basic proc-macro style
     //  tokens in the lexer (probably preferable).
+    // FIXME(fmease): De-jank the impl.
     pub(super) fn break_up_float(&self, float: Symbol, span: Span) -> DestructuredFloat {
         #[derive(Debug)]
         enum FloatComponent {
-            IdentLike(String),
+            IdentLike(IdentLike),
             Punct(char),
         }
         use FloatComponent::*;
 
+        #[derive(Debug, Default)]
+        struct IdentLike {
+            str: String,
+            len: usize,
+            poisoned: bool,
+        }
+
         let float_str = float.as_str();
         let mut components = Vec::new();
-        let mut ident_like = String::new();
+        let mut ident_like = IdentLike::default();
+        let mut zero = false;
+
         for c in float_str.chars() {
-            if c == '_' || c.is_ascii_alphanumeric() {
-                ident_like.push(c);
-            } else if matches!(c, '.' | '+' | '-') {
-                if !ident_like.is_empty() {
-                    components.push(IdentLike(mem::take(&mut ident_like)));
+            match c {
+                '0'..='9' => {
+                    ident_like.len += 1;
+                    if zero {
+                        ident_like.poisoned = true;
+                    }
+                    zero = c == '0' && ident_like.str.is_empty();
+                    if !zero {
+                        ident_like.str.push(c);
+                    }
                 }
-                components.push(Punct(c));
-            } else {
-                panic!("unexpected character in a float token: {c:?}")
+                '_' | 'b' | 'o' | 'x' => {
+                    ident_like.len += 1;
+                    ident_like.poisoned = true;
+                }
+                'e' | 'E' => {
+                    ident_like.len += 1;
+                    ident_like.poisoned = true;
+                    if mem::take(&mut zero) {
+                        ident_like.str.push('0');
+                    }
+                    ident_like.str.push(c);
+                }
+                '.' | '+' | '-' => {
+                    if mem::take(&mut zero) {
+                        ident_like.str.push('0');
+                    }
+                    if !ident_like.str.is_empty() {
+                        components.push(IdentLike(mem::take(&mut ident_like)));
+                    }
+                    components.push(Punct(c));
+                }
+                _ => panic!("unexpected character in a float token: {c:?}"),
             }
         }
-        if !ident_like.is_empty() {
+
+        if zero {
+            ident_like.str.push('0');
+        }
+        if !ident_like.str.is_empty() {
             components.push(IdentLike(ident_like));
         }
 
@@ -1090,44 +1125,58 @@ impl<'a> Parser<'a> {
 
         match &*components {
             // 1e2
-            [IdentLike(i)] => {
-                DestructuredFloat::Single(Symbol::intern(i), span)
-            }
+            [IdentLike(ident)] => {
+                if ident.poisoned {
+                    self.dcx().span_err(span, "invalid tuple index");
+                }
+
+                DestructuredFloat::Single(Symbol::intern(&ident.str), span) },
             // 1.
             [IdentLike(left), Punct('.')] => {
                 let (left_span, dot_span) = if can_take_span_apart() {
-                    let left_span = span.with_hi(span.lo() + BytePos::from_usize(left.len()));
+                    let left_span = span.with_hi(span.lo() + BytePos::from_usize(left.len));
                     let dot_span = span.with_lo(left_span.hi());
                     (left_span, dot_span)
                 } else {
                     (span, span)
                 };
-                let left = Symbol::intern(left);
+                if left.poisoned {
+                    self.dcx().span_err(left_span, "invalid tuple index");
+                }
+                let left = Symbol::intern(&left.str);
                 DestructuredFloat::TrailingDot(left, left_span, dot_span)
             }
             // 1.2 | 1.2e3
             [IdentLike(left), Punct('.'), IdentLike(right)] => {
-                let (left_span, dot_span, right_span) = if can_take_span_apart() {
-                    let left_span = span.with_hi(span.lo() + BytePos::from_usize(left.len()));
+                let (left_span, right_span) = if can_take_span_apart() {
+                    let left_span = span.with_hi(span.lo() + BytePos::from_usize(left.len));
                     let dot_span = span.with_lo(left_span.hi()).with_hi(left_span.hi() + BytePos(1));
                     let right_span = span.with_lo(dot_span.hi());
-                    (left_span, dot_span, right_span)
+                    (left_span, right_span)
                 } else {
-                    (span, span, span)
+                    (span, span)
                 };
-                let left = Symbol::intern(left);
-                let right = Symbol::intern(right);
-                DestructuredFloat::MiddleDot(left, left_span, dot_span, right, right_span)
+                if left.poisoned {
+                    self.dcx().span_err(left_span, "invalid tuple index");
+                }
+                let left = Symbol::intern(&left.str);
+                if right.poisoned {
+                    self.dcx().span_err(right_span, "invalid tuple index");
+                }
+                let right = Symbol::intern(&right.str);
+                DestructuredFloat::MiddleDot(left, left_span, right, right_span)
             }
             // 1e+ | 1e- (recovered)
-            [IdentLike(_), Punct('+' | '-')] |
+            [IdentLike(..), Punct('+' | '-')] |
             // 1e+2 | 1e-2
-            [IdentLike(_), Punct('+' | '-'), IdentLike(_)] |
+            [IdentLike(..), Punct('+' | '-'), IdentLike(..)] |
             // 1.2e+ | 1.2e-
-            [IdentLike(_), Punct('.'), IdentLike(_), Punct('+' | '-')] |
+            [IdentLike(..), Punct('.'), IdentLike(..), Punct('+' | '-')] |
             // 1.2e+3 | 1.2e-3
-            [IdentLike(_), Punct('.'), IdentLike(_), Punct('+' | '-'), IdentLike(_)] => {
+            [IdentLike(..), Punct('.'), IdentLike(..), Punct('+' | '-'), IdentLike(..)] => {
                 // See the FIXME about `TokenCursor` above.
+                // FIXME(fmease): We report 2 errors on `x.0e+1`.
+                // FIXME(fmease): (preexisting) Too many confusing errs in cases like `x.0x0.0`.
                 self.error_unexpected_after_dot();
                 DestructuredFloat::Error
             }
@@ -1187,13 +1236,7 @@ impl<'a> Parser<'a> {
                                 fields.insert(start_idx, Ident::new(sym, sym_span));
                             }
                             // 1.2 | 1.2e3
-                            DestructuredFloat::MiddleDot(
-                                symbol1,
-                                span1,
-                                _dot_span,
-                                symbol2,
-                                span2,
-                            ) => {
+                            DestructuredFloat::MiddleDot(symbol1, span1, symbol2, span2) => {
                                 trailing_dot = None;
                                 fields.insert(start_idx, Ident::new(symbol2, span2));
                                 fields.insert(start_idx, Ident::new(symbol1, span1));
