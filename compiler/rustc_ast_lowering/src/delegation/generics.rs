@@ -6,7 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::{bug, ty};
 use rustc_span::symbol::kw;
-use rustc_span::{Ident, Span};
+use rustc_span::{Ident, Span, sym};
 
 use crate::{LoweringContext, ResolverAstLoweringExt};
 
@@ -25,22 +25,37 @@ pub(super) enum DelegationGenericsKind {
     TraitImpl(bool /* Has user-specified args */),
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(super) enum GenericsPosition {
+    Parent,
+    Child,
+}
+
 pub(super) struct DelegationGenerics<T> {
     generics: T,
     kind: DelegationGenericsKind,
+    pos: GenericsPosition,
 }
 
 impl<'hir> DelegationGenerics<&'hir [ty::GenericParamDef]> {
-    fn default(generics: &'hir [ty::GenericParamDef]) -> Self {
-        DelegationGenerics { generics, kind: DelegationGenericsKind::Default }
+    fn default(generics: &'hir [ty::GenericParamDef], pos: GenericsPosition) -> Self {
+        DelegationGenerics { generics, pos, kind: DelegationGenericsKind::Default }
     }
 
-    fn user_specified(generics: &'hir [ty::GenericParamDef]) -> Self {
-        DelegationGenerics { generics, kind: DelegationGenericsKind::UserSpecified }
+    fn user_specified(generics: &'hir [ty::GenericParamDef], pos: GenericsPosition) -> Self {
+        DelegationGenerics { generics, pos, kind: DelegationGenericsKind::UserSpecified }
     }
 
-    fn trait_impl(generics: &'hir [ty::GenericParamDef], user_specified: bool) -> Self {
-        DelegationGenerics { generics, kind: DelegationGenericsKind::TraitImpl(user_specified) }
+    fn trait_impl(
+        generics: &'hir [ty::GenericParamDef],
+        user_specified: bool,
+        pos: GenericsPosition,
+    ) -> Self {
+        DelegationGenerics {
+            generics,
+            pos,
+            kind: DelegationGenericsKind::TraitImpl(user_specified),
+        }
     }
 }
 
@@ -103,8 +118,14 @@ impl<'hir> HirOrTyGenerics<'hir> {
         span: Span,
     ) -> &mut HirOrTyGenerics<'hir> {
         if let HirOrTyGenerics::Ty(ty) = self {
-            let params = ctx.uplift_delegation_generic_params(span, ty.generics);
-            *self = HirOrTyGenerics::Hir(DelegationGenerics { generics: params, kind: ty.kind });
+            let rename_self = matches!(ty.pos, GenericsPosition::Child);
+            let params = ctx.uplift_delegation_generic_params(span, ty.generics, rename_self);
+
+            *self = HirOrTyGenerics::Hir(DelegationGenerics {
+                generics: params,
+                kind: ty.kind,
+                pos: ty.pos,
+            });
         }
 
         self
@@ -120,7 +141,6 @@ impl<'hir> HirOrTyGenerics<'hir> {
     pub(super) fn into_generic_args(
         &self,
         ctx: &mut LoweringContext<'_, 'hir, impl ResolverAstLoweringExt<'hir>>,
-        add_lifetimes: bool,
         span: Span,
     ) -> &'hir hir::GenericArgs<'hir> {
         match self {
@@ -128,6 +148,7 @@ impl<'hir> HirOrTyGenerics<'hir> {
                 bug!("Attempting to get generic args before uplifting to HIR")
             }
             HirOrTyGenerics::Hir(hir) => {
+                let add_lifetimes = matches!(hir.pos, GenericsPosition::Parent);
                 ctx.create_generics_args_from_params(hir.generics.params, add_lifetimes, span)
             }
         }
@@ -227,10 +248,15 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         if matches!(delegation_parent_kind, DefKind::Impl { of_trait: true }) {
             // Considering parent generics, during signature inheritance
             // we will take those args that are in trait impl header trait ref.
-            let parent = DelegationGenerics::trait_impl(&[], true);
+            let parent = DelegationGenerics::trait_impl(&[], true, GenericsPosition::Parent);
             let parent = GenericsGenerationResult::new(parent);
 
-            let child = DelegationGenerics::trait_impl(sig_params, child_user_specified);
+            let child = DelegationGenerics::trait_impl(
+                sig_params,
+                child_user_specified,
+                GenericsPosition::Child,
+            );
+
             let child = GenericsGenerationResult::new(child);
 
             return GenericsGenerationResults {
@@ -263,25 +289,32 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     DelegationGenerics {
                         kind: DelegationGenericsKind::SelfAndUserSpecified,
                         generics: &sig_parent_params[..1],
+                        pos: GenericsPosition::Parent,
                     }
                 } else {
-                    DelegationGenerics::user_specified(&[])
+                    DelegationGenerics::user_specified(&[], GenericsPosition::Parent)
                 }
             } else {
                 let skip_self = usize::from(!generate_self);
-                DelegationGenerics::default(&sig_parent_params[skip_self..])
+                DelegationGenerics::default(
+                    &sig_parent_params[skip_self..],
+                    GenericsPosition::Parent,
+                )
             }
         } else {
-            DelegationGenerics::default(&[])
+            DelegationGenerics::default(&[], GenericsPosition::Parent)
         };
 
         let child_generics = if child_user_specified {
             let synth_params_index =
                 sig_params.iter().position(|p| p.kind.is_synthetic()).unwrap_or(sig_params.len());
 
-            DelegationGenerics::user_specified(&sig_params[synth_params_index..])
+            DelegationGenerics::user_specified(
+                &sig_params[synth_params_index..],
+                GenericsPosition::Child,
+            )
         } else {
-            DelegationGenerics::default(sig_params)
+            DelegationGenerics::default(sig_params, GenericsPosition::Child)
         };
 
         GenericsGenerationResults {
@@ -296,6 +329,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
         &mut self,
         span: Span,
         params: &'hir [ty::GenericParamDef],
+        rename_self: bool,
     ) -> &'hir hir::Generics<'hir> {
         let params = self.arena.alloc_from_iter(params.iter().map(|p| {
             let def_kind = match p.kind {
@@ -304,7 +338,20 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 GenericParamDefKind::Const { .. } => DefKind::ConstParam,
             };
 
-            let param_ident = Ident::new(p.name, span);
+            // Rename Self generic param to This so it is properly propagated.
+            // If the user will create a function `fn foo<Self>() {}` with generic
+            // param "Self" then it will not be generated in HIR, the same thing
+            // applies to traits, `trait Trait<Self> {}` will be represented as
+            // `trait Trait {}` in HIR and "unexpected keyword `Self` in generic parameters"
+            // error will be emitted.
+            // Note that we do not rename `Self` to `This` after non-recursive reuse
+            // from Trait, in this case the `Self` should not be propagated
+            // (we rely that implicit `Self` generic param of a trait is named "Self")
+            // and it is OK to have Self generic param generated during lowering.
+            let param_name =
+                if rename_self && p.name == kw::SelfUpper { sym::This } else { p.name };
+
+            let param_ident = Ident::new(param_name, span);
             let def_name = Some(param_ident.name);
             let node_id = self.next_node_id();
 
