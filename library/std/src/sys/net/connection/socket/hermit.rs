@@ -273,12 +273,11 @@ impl Socket {
     }
 
     pub fn set_keepalive(&self, keepalive: bool) -> io::Result<()> {
-        let value: i32 = if keepalive { 1 } else { 0 };
-        unsafe { setsockopt(self, netc::SOL_SOCKET, netc::SO_KEEPALIVE, value) }
+        unsafe { setsockopt(self, netc::SOL_SOCKET, netc::SO_KEEPALIVE, keepalive as c_int) }
     }
 
     pub fn keepalive(&self) -> io::Result<bool> {
-        let raw: i32 = unsafe { getsockopt(self, netc::SOL_SOCKET, netc::SO_KEEPALIVE)? };
+        let raw: c_int = unsafe { getsockopt(self, netc::SOL_SOCKET, netc::SO_KEEPALIVE)? };
         Ok(raw != 0)
     }
 
