@@ -117,14 +117,14 @@
 //!   not allowed.
 //!
 //! The safety of using the place operations via the operators will depend on
-//! the value of the `SAFETY` constant in the operation traits. At the moment we
+//! the value of the `SAFE` constant in the operation traits. At the moment we
 //! will only permit a literal value of `true` or `false` in implementations. It
 //! will dictate if people have to write for example `unsafe { &*ptr }` or if
 //! `*ptr` is allowed. It should be set to `true` when the borrow checker's
 //! guarantees of either disjoint subplaces or "all concurrent operations are
 //! shared" are enough to calling the operations' function correctly. If there
-//! are additional requirements, such as "ptr is valid", then `SAFETY` should be
-//! set to `false`. For example, `&mut T` will have `SAFETY = true` in
+//! are additional requirements, such as "ptr is valid", then `SAFE` should be
+//! set to `false`. For example, `&mut T` will have `SAFE = true` in
 //! [`ReadPlace`], but `NonNull<T>` will set it to `false`.
 
 use crate::ptr::Pointee;
@@ -207,8 +207,8 @@ where
     /// When the operator is used, the borrow checker follows its usual rules to
     /// ensure that no other operation conflicts with this one. If that alone is
     /// sufficient to make this operation sound, then this should be `true`.
-    #[lang = "read_place_safety"]
-    const SAFETY: bool;
+    #[lang = "read_place_safe"]
+    const SAFE: bool;
 
     /// Reads the subplace pointed to by `this`.
     ///
@@ -242,8 +242,8 @@ where
     /// When the operator is used, the borrow checker follows its usual rules to
     /// ensure that no other operation conflicts with this one. If that alone is
     /// sufficient to make this operation sound, then this should be `true`.
-    #[lang = "write_place_safety"]
-    const SAFETY: bool;
+    #[lang = "write_place_safe"]
+    const SAFE: bool;
 
     /// Writes to the subplace pointed to by `this`.
     ///
@@ -274,8 +274,8 @@ where
     /// When the operator is used, the borrow checker follows its usual rules to
     /// ensure that no other operation conflicts with this one. If that alone is
     /// sufficient to make this operation sound, then this should be `true`.
-    #[lang = "borrow_place_safety"]
-    const SAFETY: bool;
+    #[lang = "borrow_place_safe"]
+    const SAFE: bool;
 
     // FIXME: this is missing some associated items related to controlling the
     // borrow checker. The details need to still be worked out in a-mir-formality.

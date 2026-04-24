@@ -456,11 +456,11 @@ language_item_table! {
     PlaceProxyTarget,       sym::place_proxy_target,    place_proxy_target,     Target::AssocTy,                                    GenericRequirement::Exact(0);
 
     ReadPlace,              sym::read_place,            read_place,             Target::Trait,                                      GenericRequirement::Exact(1);
-    ReadPlaceSafety,        sym::read_place_safety,     read_place_safety,      Target::AssocConst,                                 GenericRequirement::Exact(1);
+    ReadPlaceSafety,        sym::read_place_safe,     read_place_safe,      Target::AssocConst,                                 GenericRequirement::Exact(1);
     ReadPlaceRead,          sym::read_place_read,       read_place_read,        Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(1);
 
     WritePlace,             sym::write_place,           write_place,            Target::Trait,                                      GenericRequirement::Exact(1);
-    WritePlaceSafety,       sym::write_place_safety,    write_place_safety,     Target::AssocConst,                                 GenericRequirement::Exact(1);
+    WritePlaceSafety,       sym::write_place_safe,    write_place_safe,     Target::AssocConst,                                 GenericRequirement::Exact(1);
     WritePlaceWrite,        sym::write_place_write,     write_place_write,      Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(1);
 
     MovePlace,              sym::move_place,            move_place,             Target::Trait,                                      GenericRequirement::Exact(1);
@@ -472,7 +472,7 @@ language_item_table! {
     DropHuskDropHusk,       sym::drop_husk_drop_husk,   drop_husk_drop_husk,    Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(0);
 
     BorrowPlace,            sym::borrow_place,          borrow_place,           Target::Trait,                                      GenericRequirement::Exact(2);
-    BorrowPlaceSafety,      sym::borrow_place_safety,   borrow_place_safety,    Target::AssocConst,                                 GenericRequirement::Exact(2);
+    BorrowPlaceSafety,      sym::borrow_place_safe,   borrow_place_safe,    Target::AssocConst,                                 GenericRequirement::Exact(2);
     BorrowPlaceBorrow,      sym::borrow_place_borrow,   borrow_place_borrow,    Target::Method(MethodKind::Trait { body: false }),  GenericRequirement::Exact(2);
 
     DerefPlace,             sym::deref_place,           deref_place,            Target::Trait,                                      GenericRequirement::Exact(1);
