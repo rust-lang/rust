@@ -878,6 +878,8 @@ fn configure_cmake(
     {
         if target.contains("apple") || target.is_windows() {
             ldflags.push_all("-static-libstdc++");
+        } else if builder.config.llvm_use_libcxx {
+            ldflags.push_all("-Wl,-Bsymbolic -static-libstdc++ -Wl,-Bstatic -lc++abi -Wl,-Bdynamic");
         } else {
             ldflags.push_all("-Wl,-Bsymbolic -static-libstdc++");
         }

@@ -486,13 +486,17 @@ fn main() {
     // C++ runtime library
     if !target.contains("msvc") {
         if let Some(s) = llvm_static_stdcpp {
-            assert!(cxxflags.into_iter().all(|flag| flag != "-stdlib=libc++"));
-            let path = PathBuf::from(s);
-            println!("cargo:rustc-link-search=native={}", path.parent().unwrap().display());
+            let path = PathBuf::from(s).parent().unwrap().display().to_string();
+            if !path.is_empty() {
+                println!("cargo:rustc-link-search=native={path}");
+            }
             if target.contains("windows") {
                 println!("cargo:rustc-link-lib=static:-bundle={stdcppname}");
             } else {
                 println!("cargo:rustc-link-lib=static={stdcppname}");
+                if stdcppname == "c++" {
+                    println!("cargo:rustc-link-lib=static=c++abi");
+                }
             }
         } else if cxxflags.into_iter().any(|flag| flag == "-stdlib=libc++") {
             println!("cargo:rustc-link-lib=c++");

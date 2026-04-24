@@ -1484,8 +1484,12 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
         && !target.contains("apple")
         && !target.contains("solaris")
     {
-        let libstdcxx_name =
-            if target.contains("windows-gnullvm") { "libc++.a" } else { "libstdc++.a" };
+        let libstdcxx_name = if target.contains("windows-gnullvm") || builder.config.llvm_use_libcxx
+        {
+            "libc++.a"
+        } else {
+            "libstdc++.a"
+        };
         let file = compiler_file(
             builder,
             &builder.cxx(target).unwrap(),
