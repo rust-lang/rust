@@ -11,6 +11,7 @@ use crate::utils::io::copy_file;
 pub fn with_bolt_instrumented<F: FnOnce(&Utf8Path) -> anyhow::Result<R>, R>(
     env: &Environment,
     path: &Utf8Path,
+    prof_root: &Utf8Path,
     func: F,
 ) -> anyhow::Result<R> {
     // Back up the original file.
@@ -21,8 +22,8 @@ pub fn with_bolt_instrumented<F: FnOnce(&Utf8Path) -> anyhow::Result<R>, R>(
 
     let instrumented_path = tempfile::NamedTempFile::new()?.into_temp_path();
 
-    let profile_dir =
-        tempfile::TempDir::new().context("Could not create directory for BOLT profiles")?;
+    let profile_dir = tempfile::TempDir::new_in(prof_root)
+        .context("Could not create directory for BOLT profiles")?;
     let profile_prefix = profile_dir.path().join("prof.fdata");
     let profile_prefix = Utf8Path::from_path(&profile_prefix).unwrap();
 
