@@ -363,6 +363,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     if impl_candidates.len() < 40 {
                         self.report_similar_impl_candidates(
                             impl_candidates.as_slice(),
+                            obligation,
                             trait_pred,
                             obligation.cause.body_id,
                             &mut err,

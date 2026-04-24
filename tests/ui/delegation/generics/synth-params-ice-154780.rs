@@ -62,40 +62,49 @@ mod test_3 {
     }
 }
 
-// FIXME(fn_delegation): rename Self generic param in recursive delegations
-// mod test_4 {
-//     trait Trait<'a, A, const B: bool> {
-//         fn foo<'b, const B2: bool, T, U>(&self, f: impl FnOnce() -> usize) -> usize {
-//             f()
-//         }
-//     }
+// Test recursive delegation through trait
+mod test_4 {
+    trait Trait<'a, A, const B: bool> {
+        fn foo<'b, const B2: bool, T, U>(&self, f: impl FnOnce() -> usize) -> usize {
+            f()
+        }
+    }
 
-//     struct X;
-//     impl<'a, A, const B: bool> Trait<'a, A, B> for X {}
+    struct X;
+    impl<'a, A, const B: bool> Trait<'a, A, B> for X {}
 
-//     reuse Trait::foo;
-//     reuse Trait::<'static, (), true>::foo::<true, (), ()> as bar;
+    reuse Trait::foo;
+    reuse Trait::<'static, (), true>::foo::<true, (), ()> as bar;
 
-//     trait Trait2 {
-//         reuse foo;
-//         reuse bar;
-//     }
+    trait Trait2 {
+        reuse foo;
+        reuse bar;
+    }
 
-//     reuse Trait2::foo as foo2;
-//     reuse Trait2::foo::<'static, X, (), true, false, (), ()> as foo3;
-//     reuse Trait2::bar as bar2;
-//     reuse Trait2::bar::<X> as bar3;
+    impl Trait2 for () {}
 
-//     pub fn check() {
-//         assert_eq!(foo::<'static, X, (), true, false, (), ()>(&X, || 123), 123);
-//         assert_eq!(bar::<X>(&X, || 123), 123);
-//         assert_eq!(bar(&X, || 123), 123);
-//     }
-// }
+    reuse <() as Trait2>::foo as foo2;
+    reuse <() as Trait2>::foo::<'static, X, (), true, false, (), ()> as foo3;
+    reuse <() as Trait2>::bar as bar2;
+    reuse <() as Trait2>::bar::<X> as bar3;
+
+    pub fn check() {
+        assert_eq!(foo::<'static, X, (), true, false, (), ()>(&X, || 123), 123);
+        assert_eq!(bar::<X>(&X, || 123), 123);
+        assert_eq!(bar(&X, || 123), 123);
+
+        assert_eq!(foo2::<'static, X, (), true, false, (), ()>(&X, || 123), 123);
+        assert_eq!(bar2::<X>(&X, || 123), 123);
+        assert_eq!(bar2(&X, || 123), 123);
+
+        assert_eq!(foo3(&X, || 123), 123);
+        assert_eq!(bar3(&X, || 123), 123);
+    }
+}
 
 fn main() {
     test_1::check();
     test_2::check();
     test_3::check();
-    // test_4::check();
+    test_4::check();
 }
