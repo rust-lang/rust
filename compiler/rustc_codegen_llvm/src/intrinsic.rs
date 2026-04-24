@@ -3,8 +3,8 @@ use std::ffi::c_uint;
 use std::{assert_matches, iter, ptr};
 
 use rustc_abi::{
-    Align, BackendRepr, Float, HasDataLayout, Integer, NumScalableVectors, Primitive, Size,
-    WrappingRange,
+    AddressSpace, Align, BackendRepr, Float, HasDataLayout, Integer, NumScalableVectors, Primitive,
+    Size, WrappingRange,
 };
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
@@ -176,6 +176,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         span: Span,
     ) -> Result<(), ty::Instance<'tcx>> {
         let tcx = self.tcx;
+        let llvm_version = crate::llvm_util::get_version();
 
         let name = tcx.item_name(instance.def_id());
         let fn_args = instance.args;
@@ -192,7 +193,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             | sym::maximum_number_nsz_f64
             | sym::maximum_number_nsz_f128
                 // Need at least LLVM 22 for `min/maximumnum` to not crash LLVM.
-                if crate::llvm_util::get_version() >= (22, 0, 0) =>
+                if llvm_version >= (22, 0, 0) =>
             {
                 let intrinsic_name = if name.as_str().starts_with("min") {
                     "llvm.minimumnum"
@@ -418,7 +419,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             }
 
             // FIXME move into the branch below when LLVM 22 is the lowest version we support.
-            sym::carryless_mul if crate::llvm_util::get_version() >= (22, 0, 0) => {
+            sym::carryless_mul if llvm_version >= (22, 0, 0) => {
                 let ty = args[0].layout.ty;
                 if !ty.is_integral() {
                     tcx.dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
@@ -616,6 +617,46 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
                 // We have copied the value to `result` already.
                 return Ok(());
+            }
+
+            sym::gpu_launch_sized_workgroup_mem => {
+                // Generate an anonymous global per call, with these properties:
+                // 1. The global is in the address space for workgroup memory
+                // 2. It is an `external` global
+                // 3. It is correctly aligned for the pointee `T`
+                // All instances of extern addrspace(gpu_workgroup) globals are merged in the LLVM backend.
+                // The name is irrelevant.
+                // See https://docs.nvidia.com/cuda/cuda-c-programming-guide/#shared
+                let name = if llvm_version < (23, 0, 0) && tcx.sess.target.arch == Arch::Nvptx64 {
+                    // The auto-assigned name for extern shared globals in the nvptx backend does
+                    // not compile in ptxas. Workaround this issue by assigning a name.
+                    // Fixed in LLVM 23.
+                    "gpu_launch_sized_workgroup_mem"
+                } else {
+                    ""
+                };
+                let global = self.declare_global_in_addrspace(
+                    name,
+                    self.type_array(self.type_i8(), 0),
+                    AddressSpace::GPU_WORKGROUP,
+                );
+                let ty::RawPtr(inner_ty, _) = result.layout.ty.kind() else { unreachable!() };
+                // The alignment of the global is used to specify the *minimum* alignment that
+                // must be obeyed by the GPU runtime.
+                // When multiple of these global variables are used by a kernel, the maximum alignment is taken.
+                // See https://github.com/llvm/llvm-project/blob/a271d07488a85ce677674bbe8101b10efff58c95/llvm/lib/Target/AMDGPU/AMDGPULowerModuleLDSPass.cpp#L821
+                let alignment = self.align_of(*inner_ty).bytes() as u32;
+                unsafe {
+                    // FIXME Workaround the above issue by taking maximum alignment if the global existed
+                    if tcx.sess.target.arch == Arch::Nvptx64 {
+                        if alignment > llvm::LLVMGetAlignment(global) {
+                            llvm::LLVMSetAlignment(global, alignment);
+                        }
+                    } else {
+                        llvm::LLVMSetAlignment(global, alignment);
+                    }
+                }
+                self.cx().const_pointercast(global, self.type_ptr())
             }
 
             sym::amdgpu_dispatch_ptr => {
