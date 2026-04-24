@@ -30,10 +30,22 @@ LL | |     /// line3
 error: unused doc comment
   --> $DIR/unused-doc-comments-for-macros.rs:20:9
    |
-LL |         /// line1
-   |         ^^^^^^^^^
+LL | /         /// line1
+LL | |         /// line2
+LL | |         /// line3
+   | |_________________^
    |
    = help: use `//` for a plain comment
 
-error: aborting due to 3 previous errors
+error: unused doc comment
+  --> $DIR/unused-doc-comments-for-macros.rs:24:9
+   |
+LL | /         /// line1
+LL | |         /// line2
+LL | |         /// line3
+   | |_________________^
+   |
+   = help: use `//` for a plain comment
+
+error: aborting due to 4 previous errors
 
