@@ -5,7 +5,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | extern crate std as other_std;
-   | ----------------------------- not an import
+   | ------------------------------ not an import
    |
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
@@ -16,7 +16,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | const CONST: () = ();
-   | --------------- not an import
+   | --------------------- not an import
 
 warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements
   --> $DIR/incorrect-locations.rs:13:1
@@ -25,7 +25,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | static STATIC: () = ();
-   | ----------------- not an import
+   | ----------------------- not an import
 
 warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements
   --> $DIR/incorrect-locations.rs:17:1
@@ -34,7 +34,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | type Type = ();
-   | --------- not an import
+   | --------------- not an import
 
 warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements
   --> $DIR/incorrect-locations.rs:21:1
@@ -43,7 +43,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | enum Enum {}
-   | --------- not an import
+   | ------------ not an import
 
 warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements
   --> $DIR/incorrect-locations.rs:25:1
@@ -52,7 +52,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | impl Enum {}
-   | --------- not an import
+   | ------------ not an import
 
 warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements
   --> $DIR/incorrect-locations.rs:29:1
@@ -70,7 +70,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | fn fun() {}
-   | -------- not an import
+   | ----------- not an import
 
 warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements
   --> $DIR/incorrect-locations.rs:37:1
@@ -79,7 +79,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | struct Struct {}
-   | ------------- not an import
+   | ---------------- not an import
 
 warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements
   --> $DIR/incorrect-locations.rs:41:1
@@ -88,7 +88,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | trait Trait {}
-   | ----------- not an import
+   | -------------- not an import
 
 warning: `#[diagnostic::on_unknown]` can only be applied to `use` statements
   --> $DIR/incorrect-locations.rs:45:1
@@ -97,7 +97,7 @@ LL | #[diagnostic::on_unknown(message = "foo")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | impl Trait for i32 {}
-   | ------------------ not an import
+   | --------------------- not an import
 
 warning: 11 warnings emitted
 

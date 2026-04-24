@@ -353,6 +353,98 @@ macro_rules! uint_impl {
             self as $SignedT
         }
 
+        /// Saturating conversion of `self` to a signed integer of the same size.
+        ///
+        /// The signed integer's maximum value is returned if `self` is larger
+        /// than the maximum positive value representable by the signed integer.
+        ///
+        /// For other kinds of signed integer casts, see
+        /// [`cast_signed`](Self::cast_signed),
+        /// [`checked_cast_signed`](Self::checked_cast_signed),
+        /// or [`strict_cast_signed`](Self::strict_cast_signed).
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_cast_extras)]
+        #[doc = concat!("let n = ", stringify!($SelfT), "::MAX;")]
+        ///
+        #[doc = concat!("assert_eq!(n.saturating_cast_signed(), ", stringify!($SignedT), "::MAX);")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".saturating_cast_signed(), 64", stringify!($SignedT), ");")]
+        /// ```
+        #[rustc_const_unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn saturating_cast_signed(self) -> $SignedT {
+            // Clamp to the signed integer max size, which is ActualT::MAX >> 1.
+            if self <= <$SignedT>::MAX.cast_unsigned() {
+                self.cast_signed()
+            } else {
+                <$SignedT>::MAX
+            }
+        }
+
+        /// Checked conversion of `self` to a signed integer of the same size,
+        /// returning `None` if `self` is larger than the signed integer's
+        /// maximum value.
+        ///
+        /// For other kinds of signed integer casts, see
+        /// [`cast_signed`](Self::cast_signed),
+        /// [`saturating_cast_signed`](Self::saturating_cast_signed),
+        /// or [`strict_cast_signed`](Self::strict_cast_signed).
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(integer_cast_extras)]
+        #[doc = concat!("let n = ", stringify!($SelfT), "::MAX;")]
+        ///
+        #[doc = concat!("assert_eq!(n.checked_cast_signed(), None);")]
+        #[doc = concat!("assert_eq!(64", stringify!($SelfT), ".checked_cast_signed(), Some(64", stringify!($SignedT), "));")]
+        /// ```
+        #[rustc_const_unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn checked_cast_signed(self) -> Option<$SignedT> {
+            if self <= <$SignedT>::MAX.cast_unsigned() {
+                Some(self.cast_signed())
+            } else {
+                None
+            }
+        }
+
+        /// Strict conversion of `self` to a signed integer of the same size,
+        /// which panics if `self` is larger than the signed integer's maximum
+        /// value.
+        ///
+        /// For other kinds of signed integer casts, see
+        /// [`cast_signed`](Self::cast_signed),
+        /// [`checked_cast_signed`](Self::checked_cast_signed),
+        /// or [`saturating_cast_signed`](Self::saturating_cast_signed).
+        ///
+        /// # Examples
+        ///
+        /// ```should_panic
+        /// #![feature(integer_cast_extras)]
+        #[doc = concat!("let _ = ", stringify!($SelfT), "::MAX.strict_cast_signed();")]
+        /// ```
+        #[rustc_const_unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[unstable(feature = "integer_cast_extras", issue = "154650")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[track_caller]
+        pub const fn strict_cast_signed(self) -> $SignedT {
+            match self.checked_cast_signed() {
+                Some(n) => n,
+                None => imp::overflow_panic::cast_integer(),
+            }
+        }
+
         /// Shifts the bits to the left by a specified amount, `n`,
         /// wrapping the truncated bits to the end of the resulting integer.
         ///
@@ -3590,7 +3682,7 @@ macro_rules! uint_impl {
                       without modifying the original"]
         #[inline]
         pub const fn isqrt(self) -> Self {
-            let result = imp::int_sqrt::$ActualT(self as $ActualT) as $SelfT;
+            let result = imp::int_sqrt::$ActualT(self as $ActualT) as Self;
 
             // Inform the optimizer what the range of outputs is. If testing
             // `core` crashes with no panic message and a `num::int_sqrt::u*`
@@ -3601,10 +3693,29 @@ macro_rules! uint_impl {
             // function, which means that increasing the input will never
             // cause the output to decrease. Thus, since the input for unsigned
             // integers is bounded by `[0, <$ActualT>::MAX]`, sqrt(n) will be
-            // bounded by `[sqrt(0), sqrt(<$ActualT>::MAX)]`.
+            // bounded by `[sqrt(0), sqrt(<$ActualT>::MAX)]` and bounding the
+            // input by `[1, <$ActualT>::MAX]` bounds sqrt(n) by
+            // `[sqrt(1), sqrt(<$ActualT>::MAX)]`.
             unsafe {
                 const MAX_RESULT: $SelfT = imp::int_sqrt::$ActualT(<$ActualT>::MAX) as $SelfT;
-                crate::hint::assert_unchecked(result <= MAX_RESULT);
+                crate::hint::assert_unchecked(result <= MAX_RESULT)
+            }
+
+            if self >= 1 {
+                // SAFETY: The above statements about monotonicity also apply here.
+                // Since the input in this branch is bounded by `[1, <$ActualT>::MAX]`,
+                // sqrt(n) is bounded by `[sqrt(1), sqrt(<$ActualT>::MAX)]`, and
+                // `sqrt(1) == 1`.
+                unsafe { crate::hint::assert_unchecked(result >= 1) }
+            }
+
+            // SAFETY: the isqrt implementation returns the square root and rounds down,
+            // meaning `result * result <= self`. This implies `result <= self`.
+            // The compiler needs both to optimize for both.
+            // `result * result <= self` implies the multiplication will not overflow.
+            unsafe {
+                crate::hint::assert_unchecked(result.unchecked_mul(result) <= self);
+                crate::hint::assert_unchecked(result <= self);
             }
 
             result

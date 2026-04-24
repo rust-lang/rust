@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 // Test graphviz output
 //@ compile-flags: -Z dump-mir-graphviz
 

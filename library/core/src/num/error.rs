@@ -122,7 +122,7 @@ pub enum IntErrorKind {
     /// This variant will be emitted when converting an integer that is not a power of
     /// two. This is required in some cases such as constructing an [`Alignment`].
     ///
-    /// [`Alignment`]: core::ptr::Alignment "ptr::Alignment"
+    /// [`Alignment`]: core::mem::Alignment "mem::Alignment"
     #[unstable(feature = "try_from_int_error_kind", issue = "153978")]
     // Also, #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     NotAPowerOfTwo,

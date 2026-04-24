@@ -4,10 +4,10 @@ error[E0282]: type annotations needed
 LL |     A = foo(),
    |         ^^^ cannot infer type of the type parameter `T` declared on the function `foo`
    |
-help: consider specifying the generic argument
+help: consider specifying a concrete type for the type parameter `T`
    |
-LL |     A = foo::<T>(),
-   |            +++++
+LL |     A = foo::</* Type */>(),
+   |            ++++++++++++++
 
 error[E0282]: type annotations needed
   --> $DIR/issue-64662.rs:3:9
@@ -15,10 +15,10 @@ error[E0282]: type annotations needed
 LL |     B = foo(),
    |         ^^^ cannot infer type of the type parameter `T` declared on the function `foo`
    |
-help: consider specifying the generic argument
+help: consider specifying a concrete type for the type parameter `T`
    |
-LL |     B = foo::<T>(),
-   |            +++++
+LL |     B = foo::</* Type */>(),
+   |            ++++++++++++++
 
 error: aborting due to 2 previous errors
 

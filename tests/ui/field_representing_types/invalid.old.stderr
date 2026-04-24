@@ -6,6 +6,7 @@ LL |     let _: field_of!(Struct);
    |
 note: while trying to match `,`
   --> $SRC_DIR/core/src/field.rs:LL:COL
+   = note: this macro expects a container type and a field path, like `field_of!(Type, field)` or `field_of!(Enum, Variant.field)`
 
 error: unexpected end of macro invocation
   --> $DIR/invalid.rs:24:29
@@ -15,6 +16,7 @@ LL |     let _: field_of!(Struct,);
    |
 note: while trying to match meta-variable `$fields:expr`
   --> $SRC_DIR/core/src/field.rs:LL:COL
+   = note: this macro expects a container type and a field path, like `field_of!(Type, field)` or `field_of!(Enum, Variant.field)`
 
 error: no rules expected `extra`
   --> $DIR/invalid.rs:25:37
@@ -23,6 +25,7 @@ LL |     let _: field_of!(Struct, field, extra);
    |                                     ^^^^^ no rules expected this token in macro call
    |
    = note: while trying to match sequence end
+   = note: this macro expects a container type and a field path, like `field_of!(Type, field)` or `field_of!(Enum, Variant.field)`
 
 error: offset_of expects dot-separated field and variant names
   --> $DIR/invalid.rs:27:28

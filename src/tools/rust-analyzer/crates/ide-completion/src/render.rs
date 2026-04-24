@@ -10,7 +10,7 @@ pub(crate) mod type_alias;
 pub(crate) mod union_literal;
 pub(crate) mod variant;
 
-use hir::{AsAssocItem, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type};
+use hir::{AsAssocItem, HasAttrs, HirDisplay, Impl, ModuleDef, ScopeDef, Type};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     RootDatabase, SnippetCap, SymbolKind,
@@ -23,7 +23,9 @@ use syntax::{AstNode, SmolStr, SyntaxKind, TextRange, ToSmolStr, ast, format_smo
 use crate::{
     CompletionContext, CompletionItem, CompletionItemKind, CompletionItemRefMode,
     CompletionRelevance,
-    context::{DotAccess, DotAccessKind, PathCompletionCtx, PathKind, PatternContext},
+    context::{
+        DotAccess, DotAccessKind, PathCompletionCtx, PathKind, PatternContext, TypeLocation,
+    },
     item::{Builder, CompletionRelevanceTypeMatch},
     render::{
         function::render_fn,
@@ -90,27 +92,32 @@ impl<'a> RenderContext<'a> {
             && self.completion.token.parent().is_some_and(|it| it.kind() == SyntaxKind::MACRO_CALL)
     }
 
-    fn is_deprecated(&self, def: impl HasAttrs) -> bool {
-        def.attrs(self.db()).is_deprecated()
-    }
-
-    fn is_deprecated_assoc_item(&self, as_assoc_item: impl AsAssocItem) -> bool {
+    /// Whether `def` is deprecated.
+    ///
+    /// This can happen for two reasons:
+    /// - the def is marked with `#[deprecated]`
+    /// - the def is an assoc item whose trait is deprecated
+    ///
+    /// In order to be able to check for the latter, we'd ideally want to `try_as_dyn<_, dyn AsAssocItem>(def)`
+    /// (see [`try_as_dyn`][]), but that function is currently unstable. Therefore, we employ a hack instead:
+    /// if `def` can be an assoc item, it should be passed to this method as follows:
+    /// ```ignore
+    /// self.is_deprecated(def, Some(def))
+    /// ```
+    /// otherwise, it should be passed as:
+    /// ```ignore
+    /// self.is_deprecated(def, None)
+    /// ```
+    ///
+    /// [`try_as_dyn`]: https://doc.rust-lang.org/std/any/fn.try_as_dyn.html
+    fn is_deprecated(&self, def: impl HasAttrs, def_as_assoc_item: Option<hir::AssocItem>) -> bool {
         let db = self.db();
-        let assoc = match as_assoc_item.as_assoc_item(db) {
-            Some(assoc) => assoc,
-            None => return false,
-        };
-
-        let is_assoc_deprecated = match assoc {
-            hir::AssocItem::Function(it) => self.is_deprecated(it),
-            hir::AssocItem::Const(it) => self.is_deprecated(it),
-            hir::AssocItem::TypeAlias(it) => self.is_deprecated(it),
-        };
-        is_assoc_deprecated
-            || assoc
-                .container_or_implemented_trait(db)
-                .map(|trait_| self.is_deprecated(trait_))
-                .unwrap_or(false)
+        def.attrs(db).is_deprecated()
+            || def_as_assoc_item
+                .and_then(|assoc| assoc.container_or_implemented_trait(db))
+                .is_some_and(|trait_| {
+                    self.is_deprecated(trait_, None /* traits can't be assoc items */)
+                })
     }
 
     // FIXME: remove this
@@ -127,7 +134,7 @@ pub(crate) fn render_field(
     ty: &hir::Type<'_>,
 ) -> CompletionItem {
     let db = ctx.db();
-    let is_deprecated = ctx.is_deprecated(field);
+    let is_deprecated = ctx.is_deprecated(field, None /* fields can't be assoc items */);
     let name = field.name(db);
     let (name, escaped_name) =
         (name.as_str().to_smolstr(), name.display_no_db(ctx.completion.edition).to_smolstr());
@@ -422,6 +429,7 @@ fn render_resolution_path(
     }
 
     let completion = ctx.completion;
+    let module = completion.module;
     let cap = ctx.snippet_cap();
     let db = completion.db;
     let config = completion.config;
@@ -466,6 +474,7 @@ fn render_resolution_path(
             exact_name_match: compute_exact_name_match(completion, &name),
             is_local: matches!(resolution, ScopeDef::Local(_)),
             requires_import,
+            has_local_inherent_impl: compute_has_local_inherent_impl(db, path_ctx, &ty, module),
             ..CompletionRelevance::default()
         });
 
@@ -572,10 +581,15 @@ fn scope_def_docs(db: &RootDatabase, resolution: ScopeDef) -> Option<Documentati
 }
 
 fn scope_def_is_deprecated(ctx: &RenderContext<'_>, resolution: ScopeDef) -> bool {
+    let db = ctx.db();
     match resolution {
-        ScopeDef::ModuleDef(it) => ctx.is_deprecated_assoc_item(it),
-        ScopeDef::GenericParam(it) => ctx.is_deprecated(it),
-        ScopeDef::AdtSelfType(it) => ctx.is_deprecated(it),
+        ScopeDef::ModuleDef(it) => ctx.is_deprecated(it, it.as_assoc_item(db)),
+        ScopeDef::GenericParam(it) => {
+            ctx.is_deprecated(it, None /* generic params can't be assoc items */)
+        }
+        ScopeDef::AdtSelfType(it) => {
+            ctx.is_deprecated(it, None /* `Self` can't be an assoc item */)
+        }
         _ => false,
     }
 }
@@ -660,6 +674,18 @@ fn compute_type_match(
     match_types(ctx, expected_type, completion_ty)
 }
 
+fn compute_has_local_inherent_impl(
+    db: &RootDatabase,
+    path_ctx: &PathCompletionCtx<'_>,
+    completion_ty: &hir::Type<'_>,
+    curr_module: hir::Module,
+) -> bool {
+    matches!(path_ctx.kind, PathKind::Type { location: TypeLocation::ImplTarget })
+        && Impl::all_for_type(db, completion_ty.clone())
+            .iter()
+            .any(|imp| imp.trait_(db).is_none() && imp.module(db) == curr_module)
+}
+
 fn compute_exact_name_match(ctx: &CompletionContext<'_>, completion_name: &str) -> bool {
     ctx.expected_name.as_ref().is_some_and(|name| name.text() == completion_name)
 }
@@ -717,7 +743,7 @@ fn path_ref_match(
         // FIXME: This might create inconsistent completions where we show a ref match in macro inputs
         // as long as nothing was typed yet
         if let Some(ref_mode) = compute_ref_match(completion, ty) {
-            item.ref_match(ref_mode, completion.position.offset);
+            item.ref_match(ref_mode, completion.source_range().start());
         }
     }
 }
@@ -832,6 +858,7 @@ mod tests {
                 ),
                 (relevance.trait_.is_some_and(|it| it.is_op_method), "op_method"),
                 (relevance.requires_import, "requires_import"),
+                (relevance.has_local_inherent_impl, "has_local_inherent_impl"),
             ]
             .into_iter()
             .filter_map(|(cond, desc)| if cond { Some(desc) } else { None })
@@ -1214,6 +1241,7 @@ fn main() { Foo::Fo$0 }
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1264,6 +1292,7 @@ fn main() { Foo::Fo$0 }
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1407,6 +1436,7 @@ fn main() { Foo::Fo$0 }
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1490,6 +1520,7 @@ fn main() { let _: m::Spam = S$0 }
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1526,6 +1557,7 @@ fn main() { let _: m::Spam = S$0 }
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1536,6 +1568,32 @@ fn main() { let _: m::Spam = S$0 }
 
     #[test]
     fn sets_deprecated_flag_in_items() {
+        check(
+            r#"
+#[deprecated]
+mod something_deprecated {}
+
+fn main() { som$0 }
+"#,
+            SymbolKind::Module,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "something_deprecated",
+                        detail_left: None,
+                        detail_right: None,
+                        source_range: 55..58,
+                        delete: 55..58,
+                        insert: "something_deprecated",
+                        kind: SymbolKind(
+                            Module,
+                        ),
+                        deprecated: true,
+                    },
+                ]
+            "#]],
+        );
+
         check(
             r#"
 #[deprecated]
@@ -1583,8 +1641,293 @@ fn main() { som$0 }
 
         check(
             r#"
+#[deprecated]
+struct A;
+
+fn main() { A$0 }
+"#,
+            SymbolKind::Struct,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "A",
+                        detail_left: None,
+                        detail_right: Some(
+                            "A",
+                        ),
+                        source_range: 37..38,
+                        delete: 37..38,
+                        insert: "A",
+                        kind: SymbolKind(
+                            Struct,
+                        ),
+                        detail: "A",
+                        deprecated: true,
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+#[deprecated]
+enum A {}
+
+fn main() { A$0 }
+"#,
+            SymbolKind::Enum,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "A",
+                        detail_left: None,
+                        detail_right: Some(
+                            "A",
+                        ),
+                        source_range: 37..38,
+                        delete: 37..38,
+                        insert: "A",
+                        kind: SymbolKind(
+                            Enum,
+                        ),
+                        detail: "A",
+                        deprecated: true,
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+enum A {
+    Okay,
+    #[deprecated]
+    Old,
+}
+
+fn main() { A::$0 }
+"#,
+            SymbolKind::Variant,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "Okay",
+                        detail_left: None,
+                        detail_right: Some(
+                            "Okay",
+                        ),
+                        source_range: 64..64,
+                        delete: 64..64,
+                        insert: "Okay$0",
+                        kind: SymbolKind(
+                            Variant,
+                        ),
+                        detail: "Okay",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: false,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                        },
+                        trigger_call_info: true,
+                    },
+                    CompletionItem {
+                        label: "Old",
+                        detail_left: None,
+                        detail_right: Some(
+                            "Old",
+                        ),
+                        source_range: 64..64,
+                        delete: 64..64,
+                        insert: "Old$0",
+                        kind: SymbolKind(
+                            Variant,
+                        ),
+                        detail: "Old",
+                        deprecated: true,
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: false,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                        },
+                        trigger_call_info: true,
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+#[deprecated]
+const A: i32 = 0;
+
+fn main() { A$0 }
+"#,
+            SymbolKind::Const,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "A",
+                        detail_left: None,
+                        detail_right: Some(
+                            "i32",
+                        ),
+                        source_range: 45..46,
+                        delete: 45..46,
+                        insert: "A",
+                        kind: SymbolKind(
+                            Const,
+                        ),
+                        detail: "i32",
+                        deprecated: true,
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+#[deprecated]
+static A: i32 = 0;
+
+fn main() { A$0 }
+"#,
+            SymbolKind::Static,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "A",
+                        detail_left: None,
+                        detail_right: Some(
+                            "i32",
+                        ),
+                        source_range: 46..47,
+                        delete: 46..47,
+                        insert: "A",
+                        kind: SymbolKind(
+                            Static,
+                        ),
+                        detail: "i32",
+                        deprecated: true,
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+#[deprecated]
+trait A {}
+
+impl A$0
+"#,
+            SymbolKind::Trait,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "A",
+                        detail_left: None,
+                        detail_right: None,
+                        source_range: 31..32,
+                        delete: 31..32,
+                        insert: "A",
+                        kind: SymbolKind(
+                            Trait,
+                        ),
+                        deprecated: true,
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+#[deprecated]
+type A = i32;
+
+fn main() { A$0 }
+"#,
+            SymbolKind::TypeAlias,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "A",
+                        detail_left: None,
+                        detail_right: None,
+                        source_range: 41..42,
+                        delete: 41..42,
+                        insert: "A",
+                        kind: SymbolKind(
+                            TypeAlias,
+                        ),
+                        deprecated: true,
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
+#[deprecated]
+macro_rules! a { _ => {}}
+
+fn main() { a$0 }
+"#,
+            SymbolKind::Macro,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "a!(…)",
+                        detail_left: None,
+                        detail_right: Some(
+                            "macro_rules! a",
+                        ),
+                        source_range: 53..54,
+                        delete: 53..54,
+                        insert: "a!($0)",
+                        kind: SymbolKind(
+                            Macro,
+                        ),
+                        lookup: "a!",
+                        detail: "macro_rules! a",
+                        deprecated: true,
+                    },
+                ]
+            "#]],
+        );
+
+        check(
+            r#"
 struct A { #[deprecated] the_field: u32 }
-fn foo() { A { the$0 } }
+
+fn main() { A { the$0 } }
 "#,
             SymbolKind::Field,
             expect![[r#"
@@ -1595,8 +1938,8 @@ fn foo() { A { the$0 } }
                         detail_right: Some(
                             "u32",
                         ),
-                        source_range: 57..60,
-                        delete: 57..60,
+                        source_range: 59..62,
+                        delete: 59..62,
                         insert: "the_field",
                         kind: SymbolKind(
                             Field,
@@ -1616,6 +1959,7 @@ fn foo() { A { the$0 } }
                             postfix_match: None,
                             function: None,
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                     },
                 ]
@@ -1675,6 +2019,7 @@ impl S {
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                     },
                     CompletionItem {
@@ -1766,6 +2111,7 @@ use self::E::*;
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         trigger_call_info: true,
                     },
@@ -1836,6 +2182,7 @@ fn foo(s: S) { s.$0 }
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                     },
                 ]
@@ -2048,6 +2395,7 @@ fn f() -> i32 {
                             postfix_match: None,
                             function: None,
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                     },
                 ]
@@ -2111,6 +2459,53 @@ fn go(world: &WorldSnapshot) { go(w$0) }
             expect![[r#"
                 lc r &mut i32 [type+local]
                 fn foo(…) fn(&mut i32) -> &i32 [type]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn complete_ref_match_after_keyword_prefix() {
+        // About https://github.com/rust-lang/rust-analyzer/issues/15139
+        check_kinds(
+            r#"
+fn foo(data: &i32) {}
+fn main() {
+    let indent = 2i32;
+    foo(in$0)
+}
+"#,
+            &[CompletionItemKind::SymbolKind(SymbolKind::Local)],
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "indent",
+                        detail_left: None,
+                        detail_right: Some(
+                            "i32",
+                        ),
+                        source_range: 65..67,
+                        delete: 65..67,
+                        insert: "indent",
+                        kind: SymbolKind(
+                            Local,
+                        ),
+                        detail: "i32",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: true,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: None,
+                            is_skipping_completion: false,
+                            has_local_inherent_impl: false,
+                        },
+                        ref_match: "&@65",
+                    },
+                ]
             "#]],
         );
     }
@@ -2189,6 +2584,48 @@ fn f() {
 "#,
             expect![[r#"
                 me aaa() fn(&self) -> u64 [name]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn score_has_local_inherent_impl() {
+        check_relevance(
+            r#"
+trait Foob {}
+struct Fooa {}
+impl Fooa {}
+
+impl Foo$0
+"#,
+            expect![[r#"
+                tt Foob  []
+                st Fooa Fooa [has_local_inherent_impl]
+            "#]],
+        );
+
+        // inherent impl in different modules, not trigger `has_local_inherent_impl`
+        check_relevance(
+            r#"
+trait Foob {}
+struct Fooa {}
+
+mod a {
+    use super::*;
+    impl Fooa {}
+}
+
+mod b {
+    use super::*;
+    impl Foo$0
+}
+
+"#,
+            expect![[r#"
+                st Fooa Fooa []
+                tt Foob  []
+                md a  []
+                md b  []
             "#]],
         );
     }
@@ -2861,6 +3298,7 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         ref_match: "&@107",
                     },
@@ -2948,6 +3386,7 @@ fn foo() {
                             postfix_match: None,
                             function: None,
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                     },
                 ]
@@ -3006,6 +3445,7 @@ fn main() {
                                 },
                             ),
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                         ref_match: "&@92",
                     },
@@ -3476,6 +3916,7 @@ fn main() {
                             postfix_match: None,
                             function: None,
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                     },
                     CompletionItem {
@@ -3510,6 +3951,7 @@ fn main() {
                             postfix_match: None,
                             function: None,
                             is_skipping_completion: false,
+                            has_local_inherent_impl: false,
                         },
                     },
                 ]

@@ -7,11 +7,12 @@
 use std::fmt::{self, Write};
 use std::hash::Hash;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_data_structures::unord::UnordMap;
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
-use rustc_macros::{BlobDecodable, Decodable, Encodable};
+use rustc_macros::{BlobDecodable, Decodable, Encodable, extension};
+use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{Symbol, kw, sym};
 use tracing::{debug, instrument};
 
@@ -97,45 +98,28 @@ impl DefPathTable {
     }
 }
 
-pub trait Disambiguator {
-    fn entry(&mut self, parent: LocalDefId, data: DefPathData) -> &mut u32;
-}
-
 #[derive(Debug, Default, Clone)]
 pub struct PerParentDisambiguatorState {
-    next: UnordMap<DefPathData, u32>,
+    #[cfg(debug_assertions)]
+    parent: Option<LocalDefId>,
+    next: FxHashMap<DefPathData, u32>,
 }
 
-impl Disambiguator for PerParentDisambiguatorState {
-    #[inline]
-    fn entry(&mut self, _: LocalDefId, data: DefPathData) -> &mut u32 {
-        self.next.entry(data).or_insert(0)
+impl PerParentDisambiguatorState {
+    #[inline(always)]
+    pub fn new(_parent: LocalDefId) -> PerParentDisambiguatorState {
+        PerParentDisambiguatorState {
+            #[cfg(debug_assertions)]
+            parent: Some(_parent),
+            next: Default::default(),
+        }
     }
 }
 
-#[derive(Debug, Default, Clone)]
-pub struct DisambiguatorState {
-    next: UnordMap<(LocalDefId, DefPathData), u32>,
-}
-
-impl Disambiguator for DisambiguatorState {
-    #[inline]
-    fn entry(&mut self, parent: LocalDefId, data: DefPathData) -> &mut u32 {
-        self.next.entry((parent, data)).or_insert(0)
-    }
-}
-
-impl DisambiguatorState {
-    pub const fn new() -> Self {
-        Self { next: Default::default() }
-    }
-
-    /// Creates a `DisambiguatorState` where the next allocated `(LocalDefId, DefPathData)` pair
-    /// will have `index` as the disambiguator.
-    pub fn with(def_id: LocalDefId, data: DefPathData, index: u32) -> Self {
-        let mut this = Self::new();
-        this.next.insert((def_id, data), index);
-        this
+#[extension(pub trait PerParentDisambiguatorsMap)]
+impl LocalDefIdMap<PerParentDisambiguatorState> {
+    fn get_or_create(&mut self, parent: LocalDefId) -> &mut PerParentDisambiguatorState {
+        self.entry(parent).or_insert_with(|| PerParentDisambiguatorState::new(parent))
     }
 }
 
@@ -408,7 +392,7 @@ impl Definitions {
         &mut self,
         parent: LocalDefId,
         data: DefPathData,
-        disambiguator: &mut impl Disambiguator,
+        disambiguator: &mut PerParentDisambiguatorState,
     ) -> LocalDefId {
         // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
         // reference to `Definitions` and we're already holding a mutable reference.
@@ -422,7 +406,14 @@ impl Definitions {
 
         // Find the next free disambiguator for this key.
         let disambiguator = {
-            let next_disamb = disambiguator.entry(parent, data);
+            #[cfg(debug_assertions)]
+            debug_assert_eq!(
+                parent,
+                disambiguator.parent.expect("must be set"),
+                "provided parent and parent in disambiguator must be the same"
+            );
+
+            let next_disamb = disambiguator.next.entry(data).or_insert(0);
             let disambiguator = *next_disamb;
             *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
             disambiguator

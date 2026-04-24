@@ -579,7 +579,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let Err(guar) = self
                     .tcx
                     .ensure_result()
-                    .coherent_trait(self.tcx.parent(data.projection_term.def_id))
+                    .coherent_trait(self.tcx.parent(data.projection_term.def_id()))
                 {
                     // Avoid bogus "type annotations needed `Foo: Bar`" errors on `impl Bar for Foo` in case
                     // other `Foo` impls are incoherent.

@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ test-mir-pass: ElaborateDrops
 //@ needs-unwind
 #![feature(allocator_api)]

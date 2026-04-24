@@ -1,6 +1,5 @@
 //@ check-pass
 
-#![allow(incomplete_features)]
 #![feature(fn_delegation)]
 #![feature(const_trait_impl)]
 #![allow(warnings)]

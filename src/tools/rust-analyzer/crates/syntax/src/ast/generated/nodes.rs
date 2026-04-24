@@ -484,6 +484,8 @@ impl Const {
     pub fn const_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![const]) }
     #[inline]
     pub fn default_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![default]) }
+    #[inline]
+    pub fn type_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![type]) }
 }
 pub struct ConstArg {
     pub(crate) syntax: SyntaxNode,
@@ -808,6 +810,15 @@ impl Impl {
     #[inline]
     pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
 }
+pub struct ImplRestriction {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ImplRestriction {
+    #[inline]
+    pub fn visibility_inner(&self) -> Option<VisibilityInner> { support::child(&self.syntax) }
+    #[inline]
+    pub fn impl_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![impl]) }
+}
 pub struct ImplTraitType {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1114,6 +1125,15 @@ impl Module {
     #[inline]
     pub fn mod_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mod]) }
 }
+pub struct MutRestriction {
+    pub(crate) syntax: SyntaxNode,
+}
+impl MutRestriction {
+    #[inline]
+    pub fn visibility_inner(&self) -> Option<VisibilityInner> { support::child(&self.syntax) }
+    #[inline]
+    pub fn mut_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![mut]) }
+}
 pub struct Name {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1399,6 +1419,8 @@ impl ast::HasVisibility for RecordField {}
 impl RecordField {
     #[inline]
     pub fn default_val(&self) -> Option<ConstArg> { support::child(&self.syntax) }
+    #[inline]
+    pub fn mut_restriction(&self) -> Option<MutRestriction> { support::child(&self.syntax) }
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     #[inline]
@@ -1690,6 +1712,8 @@ impl Trait {
     #[inline]
     pub fn assoc_item_list(&self) -> Option<AssocItemList> { support::child(&self.syntax) }
     #[inline]
+    pub fn impl_restriction(&self) -> Option<ImplRestriction> { support::child(&self.syntax) }
+    #[inline]
     pub fn semicolon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![;]) }
     #[inline]
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
@@ -1742,6 +1766,8 @@ impl ast::HasAttrs for TupleField {}
 impl ast::HasDocComments for TupleField {}
 impl ast::HasVisibility for TupleField {}
 impl TupleField {
+    #[inline]
+    pub fn mut_restriction(&self) -> Option<MutRestriction> { support::child(&self.syntax) }
     #[inline]
     pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
 }
@@ -2001,6 +2027,15 @@ pub struct Visibility {
 }
 impl Visibility {
     #[inline]
+    pub fn visibility_inner(&self) -> Option<VisibilityInner> { support::child(&self.syntax) }
+    #[inline]
+    pub fn pub_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![pub]) }
+}
+pub struct VisibilityInner {
+    pub(crate) syntax: SyntaxNode,
+}
+impl VisibilityInner {
+    #[inline]
     pub fn path(&self) -> Option<Path> { support::child(&self.syntax) }
     #[inline]
     pub fn l_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T!['(']) }
@@ -2008,8 +2043,6 @@ impl Visibility {
     pub fn r_paren_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![')']) }
     #[inline]
     pub fn in_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![in]) }
-    #[inline]
-    pub fn pub_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![pub]) }
 }
 pub struct WhereClause {
     pub(crate) syntax: SyntaxNode,
@@ -4192,6 +4225,38 @@ impl fmt::Debug for Impl {
         f.debug_struct("Impl").field("syntax", &self.syntax).finish()
     }
 }
+impl AstNode for ImplRestriction {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        IMPL_RESTRICTION
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == IMPL_RESTRICTION }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for ImplRestriction {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for ImplRestriction {}
+impl PartialEq for ImplRestriction {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for ImplRestriction {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for ImplRestriction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ImplRestriction").field("syntax", &self.syntax).finish()
+    }
+}
 impl AstNode for ImplTraitType {
     #[inline]
     fn kind() -> SyntaxKind
@@ -5118,6 +5183,38 @@ impl Clone for Module {
 impl fmt::Debug for Module {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Module").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for MutRestriction {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        MUT_RESTRICTION
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == MUT_RESTRICTION }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for MutRestriction {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for MutRestriction {}
+impl PartialEq for MutRestriction {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for MutRestriction {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for MutRestriction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MutRestriction").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for Name {
@@ -7390,6 +7487,38 @@ impl Clone for Visibility {
 impl fmt::Debug for Visibility {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Visibility").field("syntax", &self.syntax).finish()
+    }
+}
+impl AstNode for VisibilityInner {
+    #[inline]
+    fn kind() -> SyntaxKind
+    where
+        Self: Sized,
+    {
+        VISIBILITY_INNER
+    }
+    #[inline]
+    fn can_cast(kind: SyntaxKind) -> bool { kind == VISIBILITY_INNER }
+    #[inline]
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) { Some(Self { syntax }) } else { None }
+    }
+    #[inline]
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+impl hash::Hash for VisibilityInner {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) { self.syntax.hash(state); }
+}
+impl Eq for VisibilityInner {}
+impl PartialEq for VisibilityInner {
+    fn eq(&self, other: &Self) -> bool { self.syntax == other.syntax }
+}
+impl Clone for VisibilityInner {
+    fn clone(&self) -> Self { Self { syntax: self.syntax.clone() } }
+}
+impl fmt::Debug for VisibilityInner {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("VisibilityInner").field("syntax", &self.syntax).finish()
     }
 }
 impl AstNode for WhereClause {
@@ -10092,6 +10221,11 @@ impl std::fmt::Display for Impl {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
+impl std::fmt::Display for ImplRestriction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
 impl std::fmt::Display for ImplTraitType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
@@ -10233,6 +10367,11 @@ impl std::fmt::Display for MethodCallExpr {
     }
 }
 impl std::fmt::Display for Module {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for MutRestriction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
@@ -10588,6 +10727,11 @@ impl std::fmt::Display for VariantList {
     }
 }
 impl std::fmt::Display for Visibility {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for VisibilityInner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

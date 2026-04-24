@@ -1,4 +1,4 @@
 
 #!B //~ ERROR expected `[`, found `B`
 
-//@ reference: input.shebang
+//@ reference: shebang.position

@@ -133,7 +133,30 @@ pub(crate) fn record_field_list(p: &mut Parser<'_>) {
         // struct S { #[attr] f: f32 }
         attributes::outer_attrs(p);
         opt_visibility(p, false);
-        p.eat(T![unsafe]);
+
+        if p.at(T![mut]) && p.nth(1) == T!['('] {
+            // test record_mut_restrictions_before
+            // struct Foo { mut(super) unsafe i: i32 }
+            let m = p.start();
+            p.bump(T![mut]);
+            if !opt_visibility_inner(p, false) {
+                p.error("expected a mut restriction");
+            }
+            m.complete(p, MUT_RESTRICTION);
+        }
+
+        // We accept mut restriction both after and before `unsafe`, as the order is undecided yet.
+        if p.eat(T![unsafe]) && p.at(T![mut]) && p.nth(1) == T!['('] {
+            // test record_mut_restrictions_after
+            // struct Foo { unsafe mut(super) i: i32 }
+            let m = p.start();
+            p.bump(T![mut]);
+            if !opt_visibility_inner(p, false) {
+                p.error("expected a mut restriction");
+            }
+            m.complete(p, MUT_RESTRICTION);
+        }
+
         if p.at(IDENT) {
             name(p);
             p.expect(T![:]);
@@ -175,6 +198,18 @@ fn tuple_field_list(p: &mut Parser<'_>) {
             // struct S (#[attr] f32);
             attributes::outer_attrs(p);
             let has_vis = opt_visibility(p, true);
+
+            if p.at(T![mut]) && p.nth(1) == T!['('] {
+                // test tuple_mut_restrictions
+                // struct Foo(pub(crate) mut(super) i32);
+                let m = p.start();
+                p.bump(T![mut]);
+                if !opt_visibility_inner(p, false) {
+                    p.error("expected a mut restriction");
+                }
+                m.complete(p, MUT_RESTRICTION);
+            }
+
             if !p.at_ts(types::TYPE_FIRST) {
                 p.error("expected a type");
                 if has_vis {

@@ -1,8 +1,8 @@
 use std::any::Any;
 
 use rustc_data_structures::sync::DynSend;
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, Level};
-use rustc_hir::lints::{AttributeLintKind, FormatWarning};
+use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
+use rustc_hir::lints::AttributeLintKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 
@@ -43,98 +43,6 @@ impl<'a> Diagnostic<'a, ()> for DecorateAttrLint<'_, '_, '_> {
                     .into_diag(dcx, level)
             }
 
-            &AttributeLintKind::AmbiguousDeriveHelpers => {
-                lints::AmbiguousDeriveHelpers.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocAutoCfgHideShowUnexpectedItem { attr_name } => {
-                lints::DocAutoCfgHideShowUnexpectedItem { attr_name }.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocAutoCfgHideShowExpectsList { attr_name } => {
-                lints::DocAutoCfgHideShowExpectsList { attr_name }.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocInvalid => lints::DocInvalid.into_diag(dcx, level),
-
-            &AttributeLintKind::DocUnknownInclude { span, inner, value } => {
-                lints::DocUnknownInclude {
-                    inner,
-                    value,
-                    sugg: (span, Applicability::MaybeIncorrect),
-                }
-                .into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocUnknownSpotlight { span } => {
-                lints::DocUnknownSpotlight { sugg_span: span }.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocUnknownPasses { name, span } => {
-                lints::DocUnknownPasses { name, note_span: span }.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocUnknownPlugins { span } => {
-                lints::DocUnknownPlugins { label_span: span }.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocUnknownAny { name } => {
-                lints::DocUnknownAny { name }.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocAutoCfgWrongLiteral => {
-                lints::DocAutoCfgWrongLiteral.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocTestTakesList => lints::DocTestTakesList.into_diag(dcx, level),
-
-            &AttributeLintKind::DocTestUnknown { name } => {
-                lints::DocTestUnknown { name }.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DocTestLiteral => lints::DocTestLiteral.into_diag(dcx, level),
-
-            &AttributeLintKind::AttrCrateLevelOnly => {
-                lints::AttrCrateLevelOnly.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::DoNotRecommendDoesNotExpectArgs => {
-                lints::DoNotRecommendDoesNotExpectArgs.into_diag(dcx, level)
-            }
-
-            &AttributeLintKind::CrateTypeUnknown { span, suggested } => lints::UnknownCrateTypes {
-                sugg: suggested.map(|s| lints::UnknownCrateTypesSuggestion { span, snippet: s }),
-            }
-            .into_diag(dcx, level),
-
-            &AttributeLintKind::MalformedDoc => lints::MalformedDoc.into_diag(dcx, level),
-
-            &AttributeLintKind::ExpectedNoArgs => lints::ExpectedNoArgs.into_diag(dcx, level),
-
-            &AttributeLintKind::ExpectedNameValue => lints::ExpectedNameValue.into_diag(dcx, level),
-            &AttributeLintKind::MalFormedDiagnosticAttribute { attribute, options, span } => {
-                lints::MalFormedDiagnosticAttributeLint { attribute, options, span }
-                    .into_diag(dcx, level)
-            }
-
-            AttributeLintKind::MalformedDiagnosticFormat { warning } => match warning {
-                FormatWarning::PositionalArgument { .. } => {
-                    lints::DisallowedPositionalArgument.into_diag(dcx, level)
-                }
-                FormatWarning::InvalidSpecifier { .. } => {
-                    lints::InvalidFormatSpecifier.into_diag(dcx, level)
-                }
-                FormatWarning::DisallowedPlaceholder { .. } => {
-                    lints::DisallowedPlaceholder.into_diag(dcx, level)
-                }
-            },
-            AttributeLintKind::DiagnosticWrappedParserError { description, label, span } => {
-                lints::WrappedParserError { description, label, span: *span }.into_diag(dcx, level)
-            }
-            &AttributeLintKind::IgnoredDiagnosticOption { option_name, first_span, later_span } => {
-                lints::IgnoredDiagnosticOption { option_name, first_span, later_span }
-                    .into_diag(dcx, level)
-            }
             &AttributeLintKind::MissingOptionsForDiagnosticAttribute { attribute, options } => {
                 lints::MissingOptionsForDiagnosticAttribute { attribute, options }
                     .into_diag(dcx, level)

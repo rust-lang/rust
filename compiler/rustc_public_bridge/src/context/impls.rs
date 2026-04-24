@@ -383,6 +383,16 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         sig
     }
 
+    /// Retrieve the constness for the given function definition.
+    pub fn constness(&self, def_id: DefId) -> rustc_hir::Constness {
+        self.tcx.constness(def_id)
+    }
+
+    /// Retrieve the asyncness for the given function definition.
+    pub fn asyncness(&self, def_id: DefId) -> ty::Asyncness {
+        self.tcx.asyncness(def_id)
+    }
+
     /// Retrieve the intrinsic definition if the item corresponds one.
     pub fn intrinsic(&self, def_id: DefId) -> Option<IntrinsicDef> {
         let intrinsic = self.tcx.intrinsic_raw(def_id);

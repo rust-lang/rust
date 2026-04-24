@@ -156,11 +156,12 @@ series of steps.
 Compiletest starts with an empty directory with the `-C incremental` flag, and
 then runs the compiler for each revision, reusing the incremental results from previous steps.
 
-The revisions should start with:
+Each revision name must start with one of:
 
-* `cfail` — the test should fail to compile
-* `cpass` — the test should compile successully
-* `rpass` — the test should compile and run successfully
+* `cpass` - the test must compile successfully (check build, no codegen)
+* `bfail` — the test must fail to compile (full build, with codegen)
+* `bpass` — the test must compile successully (full build, with codegen)
+* `rpass` — the test must compile and run successfully
 
 To make the revisions unique, you should add a suffix like `rpass1` and `rpass2`.
 
@@ -185,7 +186,7 @@ fn foo() {
 fn main() { foo(); }
 ```
 
-`cfail` tests support the `forbid-output` directive to specify that a certain
+Incremental tests support the `forbid-output` directive to specify that a certain
 substring must not appear anywhere in the compiler output.
 This can be useful to ensure certain errors do not appear, but this can be fragile as error messages
 change over time, and a test may no longer be checking the right thing but will still pass.
@@ -457,7 +458,8 @@ as they must be compilable by a stage 0 rustc that may be a beta or even stable 
 
 By default, run-make tests print each subprocess command and its stdout/stderr.
 When running with `--no-capture` on `panic=abort` test suites (such as `cg_clif`),
-this can flood the terminal. Omit `--verbose-run-make-subprocess-output` to
+this can flood the terminal.
+Omit `--verbose-run-make-subprocess-output` to
 suppress this output for passing tests — failing tests always print regardless:
 
 ```bash

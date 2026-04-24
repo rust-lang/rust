@@ -38,12 +38,10 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
         let mut any_replacement = false;
         // Locals that participate in copy propagation either as a source or a destination.
         let mut unified = DenseBitSet::new_empty(body.local_decls.len());
-        let mut storage_to_remove = DenseBitSet::new_empty(body.local_decls.len());
 
         for (local, &head) in ssa.copy_classes().iter_enumerated() {
             if local != head {
                 any_replacement = true;
-                storage_to_remove.insert(head);
                 unified.insert(head);
                 unified.insert(local);
             }
@@ -58,7 +56,7 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
         // only if the head might be uninitialized at that point, or if the local is borrowed
         // (since we cannot easily determine when it's used).
         let storage_to_remove = if tcx.sess.emit_lifetime_markers() {
-            storage_to_remove.clear();
+            let mut storage_to_remove = DenseBitSet::new_empty(body.local_decls.len());
 
             // If the local is borrowed, we cannot easily determine if it is used, so we have to remove the storage statements.
             let borrowed_locals = ssa.borrowed_locals();
@@ -83,15 +81,16 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
                 storage_checker.visit_basic_block_data(bb, data);
             }
 
-            storage_checker.storage_to_remove
+            Some(storage_checker.storage_to_remove)
         } else {
-            // Remove the storage statements of all the head locals.
-            storage_to_remove
+            None
         };
 
+        // If None, remove the storage statements of all the unified locals.
+        let storage_to_remove = storage_to_remove.as_ref().unwrap_or(&unified);
         debug!(?storage_to_remove);
 
-        Replacer { tcx, copy_classes: ssa.copy_classes(), unified, storage_to_remove }
+        Replacer { tcx, copy_classes: ssa.copy_classes(), unified: &unified, storage_to_remove }
             .visit_body_preserves_cfg(body);
 
         crate::simplify::remove_unused_definitions(body);
@@ -106,8 +105,8 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
 /// all occurrences of the key get replaced by the value.
 struct Replacer<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    unified: DenseBitSet<Local>,
-    storage_to_remove: DenseBitSet<Local>,
+    unified: &'a DenseBitSet<Local>,
+    storage_to_remove: &'a DenseBitSet<Local>,
     copy_classes: &'a IndexSlice<Local, Local>,
 }
 

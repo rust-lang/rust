@@ -1,5 +1,5 @@
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
+    self, Flags, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     Unnormalized,
 };
 
@@ -95,7 +95,7 @@ where
                 } else {
                     // Skip lifetime parameters that are not captured, since they do
                     // not need to be live.
-                    let variances = tcx.opt_alias_variances(kind, kind.def_id());
+                    let variances = tcx.opt_alias_variances(kind);
 
                     for (idx, s) in args.iter().enumerate() {
                         if variances.map(|variances| variances[idx]) != Some(ty::Bivariant) {

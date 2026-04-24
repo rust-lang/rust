@@ -699,8 +699,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                     // `generic_const_exprs`
                                     .eq(
                                         DefineOpaqueTypes::Yes,
-                                        ty::AliasTerm::from(a),
-                                        ty::AliasTerm::from(b),
+                                        ty::AliasTerm::from_unevaluated_const(tcx, a),
+                                        ty::AliasTerm::from_unevaluated_const(tcx, b),
                                     )
                                 {
                                     return ProcessResult::Changed(mk_pending(

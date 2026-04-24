@@ -14,10 +14,6 @@ use crate::check_attr::ProcMacroKind;
 use crate::lang_items::Duplicate;
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::do_not_recommend]` can only be placed on trait implementations")]
-pub(crate) struct IncorrectDoNotRecommendLocation;
-
-#[derive(Diagnostic)]
 #[diag("`#[loop_match]` should be applied to a loop")]
 pub(crate) struct LoopMatchAttr {
     #[primary_span]
@@ -1305,5 +1301,12 @@ pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
 #[diag("unknown parameter `{$name}`")]
 #[help(r#"expect either a generic argument name or {"`{Self}`"} as format argument"#)]
 pub(crate) struct OnMoveMalformedFormatLiterals {
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown parameter `{$name}`")]
+#[help(r#"use {"`{This}`"} to refer to the macro name"#)]
+pub(crate) struct OnUnmatchArgsMalformedFormatLiterals {
     pub name: Symbol,
 }

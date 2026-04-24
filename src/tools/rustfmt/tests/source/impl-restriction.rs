@@ -18,24 +18,25 @@ bar )
 trait Baz {}
 
 pub
-const
 impl
 (self)
+const
 trait QuxConst {}
 
-pub 
-auto impl(
+pub
+impl(
 super
-)
+) auto
 trait QuxAuto {}
 
-pub 
-unsafe impl
-(in crate)
+pub
+impl
+(in crate) unsafe
 trait QuxUnsafe {}
 
-pub const 
-unsafe impl
+pub
+impl
 (in super
 ::foo)
+const unsafe
 trait QuxConstUnsafe {}

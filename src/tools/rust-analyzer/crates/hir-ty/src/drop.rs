@@ -1,15 +1,16 @@
 //! Utilities for computing drop info about types.
 
 use hir_def::{
-    AdtId,
+    AdtId, ImplId,
     signatures::{StructFlags, StructSignature},
 };
 use rustc_hash::FxHashSet;
-use rustc_type_ir::inherent::{AdtDef, IntoKind};
+use rustc_type_ir::inherent::{AdtDef, GenericArgs as _, IntoKind};
 use stdx::never;
 
 use crate::{
-    InferenceResult, consteval,
+    consteval,
+    db::HirDatabase,
     method_resolution::TraitImpls,
     next_solver::{
         DbInterner, ParamEnv, SimplifiedType, Ty, TyKind,
@@ -18,24 +19,23 @@ use crate::{
     },
 };
 
-fn has_destructor(interner: DbInterner<'_>, adt: AdtId) -> bool {
-    let db = interner.db;
+#[salsa::tracked]
+pub fn destructor(db: &dyn HirDatabase, adt: AdtId) -> Option<ImplId> {
     let module = match adt {
         AdtId::EnumId(id) => db.lookup_intern_enum(id).container,
         AdtId::StructId(id) => db.lookup_intern_struct(id).container,
         AdtId::UnionId(id) => db.lookup_intern_union(id).container,
     };
-    let Some(drop_trait) = interner.lang_items().Drop else {
-        return false;
-    };
+    let interner = DbInterner::new_with(db, module.krate(db));
+    let drop_trait = interner.lang_items().Drop?;
     let impls = match module.block(db) {
         Some(block) => match TraitImpls::for_block(db, block) {
             Some(it) => &**it,
-            None => return false,
+            None => return None,
         },
         None => TraitImpls::for_crate(db, module.krate(db)),
     };
-    !impls.for_trait_and_self_ty(drop_trait, &SimplifiedType::Adt(adt.into())).0.is_empty()
+    impls.for_trait_and_self_ty(drop_trait, &SimplifiedType::Adt(adt.into())).0.first().copied()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -71,7 +71,7 @@ fn has_drop_glue_impl<'db>(
     match ty.kind() {
         TyKind::Adt(adt_def, subst) => {
             let adt_id = adt_def.def_id().0;
-            if has_destructor(infcx.interner, adt_id) {
+            if adt_def.destructor(infcx.interner).is_some() {
                 return DropGlue::HasDropGlue;
             }
             match adt_id {
@@ -132,21 +132,17 @@ fn has_drop_glue_impl<'db>(
             has_drop_glue_impl(infcx, ty, env, visited)
         }
         TyKind::Slice(ty) => has_drop_glue_impl(infcx, ty, env, visited),
-        TyKind::Closure(closure_id, subst) => {
-            let owner = db.lookup_intern_closure(closure_id.0).0;
-            let infer = InferenceResult::of(db, owner);
-            let (captures, _) = infer.closure_info(closure_id.0);
-            let env = db.trait_environment(owner);
-            captures
-                .iter()
-                .map(|capture| has_drop_glue_impl(infcx, capture.ty(db, subst), env, visited))
-                .max()
-                .unwrap_or(DropGlue::None)
+        TyKind::Closure(_, args) => {
+            has_drop_glue_impl(infcx, args.as_closure().tupled_upvars_ty(), env, visited)
         }
-        // FIXME: Handle coroutines.
-        TyKind::Coroutine(..) | TyKind::CoroutineWitness(..) | TyKind::CoroutineClosure(..) => {
-            DropGlue::None
+        TyKind::Coroutine(_, args) => {
+            has_drop_glue_impl(infcx, args.as_coroutine().tupled_upvars_ty(), env, visited)
         }
+        TyKind::CoroutineClosure(_, args) => {
+            has_drop_glue_impl(infcx, args.as_coroutine_closure().tupled_upvars_ty(), env, visited)
+        }
+        // FIXME: Coroutine witness.
+        TyKind::CoroutineWitness(..) => DropGlue::None,
         TyKind::Ref(..)
         | TyKind::RawPtr(..)
         | TyKind::FnDef(..)

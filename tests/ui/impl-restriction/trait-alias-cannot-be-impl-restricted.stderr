@@ -1,0 +1,74 @@
+error: trait aliases cannot be `impl`-restricted
+  --> $DIR/trait-alias-cannot-be-impl-restricted.rs:4:1
+   |
+LL | impl(crate) trait Alias = Copy;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `impl`-restricted
+
+error: trait aliases cannot be `auto`
+  --> $DIR/trait-alias-cannot-be-impl-restricted.rs:5:1
+   |
+LL | impl(in crate) auto trait AutoAlias = Copy;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `auto`
+
+error: trait aliases cannot be `impl`-restricted
+  --> $DIR/trait-alias-cannot-be-impl-restricted.rs:5:1
+   |
+LL | impl(in crate) auto trait AutoAlias = Copy;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `impl`-restricted
+
+error: trait aliases cannot be `unsafe`
+  --> $DIR/trait-alias-cannot-be-impl-restricted.rs:7:1
+   |
+LL | impl(self) unsafe trait UnsafeAlias = Copy;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `unsafe`
+
+error: trait aliases cannot be `impl`-restricted
+  --> $DIR/trait-alias-cannot-be-impl-restricted.rs:7:1
+   |
+LL | impl(self) unsafe trait UnsafeAlias = Copy;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `impl`-restricted
+
+error: trait aliases cannot be `impl`-restricted
+  --> $DIR/trait-alias-cannot-be-impl-restricted.rs:9:1
+   |
+LL | impl(in self) const trait ConstAlias = Copy;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `impl`-restricted
+
+error: trait aliases cannot be `impl`-restricted
+  --> $DIR/trait-alias-cannot-be-impl-restricted.rs:12:5
+   |
+LL |     impl(super) trait InnerAlias = Copy;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `impl`-restricted
+
+error: trait aliases cannot be `unsafe`
+  --> $DIR/trait-alias-cannot-be-impl-restricted.rs:13:5
+   |
+LL |     impl(in crate::foo) const unsafe trait InnerConstUnsafeAlias = Copy;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `unsafe`
+
+error: trait aliases cannot be `impl`-restricted
+  --> $DIR/trait-alias-cannot-be-impl-restricted.rs:13:5
+   |
+LL |     impl(in crate::foo) const unsafe trait InnerConstUnsafeAlias = Copy;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `impl`-restricted
+
+error: trait aliases cannot be `auto`
+  --> $DIR/trait-alias-cannot-be-impl-restricted.rs:15:5
+   |
+LL |     impl(in crate::foo) unsafe auto trait InnerUnsafeAutoAlias = Copy;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `auto`
+
+error: trait aliases cannot be `unsafe`
+  --> $DIR/trait-alias-cannot-be-impl-restricted.rs:15:5
+   |
+LL |     impl(in crate::foo) unsafe auto trait InnerUnsafeAutoAlias = Copy;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `unsafe`
+
+error: trait aliases cannot be `impl`-restricted
+  --> $DIR/trait-alias-cannot-be-impl-restricted.rs:15:5
+   |
+LL |     impl(in crate::foo) unsafe auto trait InnerUnsafeAutoAlias = Copy;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trait aliases cannot be `impl`-restricted
+
+error: aborting due to 12 previous errors
+

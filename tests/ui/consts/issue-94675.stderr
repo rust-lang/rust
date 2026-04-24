@@ -1,21 +1,13 @@
-error[E0277]: the trait bound `Vec<usize>: [const] Index<_>` is not satisfied
-  --> $DIR/issue-94675.rs:11:9
+error: `IndexMut` is not yet stable as a const trait
+  --> $DIR/issue-94675.rs:11:17
    |
 LL |         self.bar[0] = baz.len();
-   |         ^^^^^^^^^^^
+   |                 ^^^
    |
-note: trait `Index` is implemented but not `const`
-  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
-
-error[E0277]: the trait bound `Vec<usize>: [const] IndexMut<usize>` is not satisfied
-  --> $DIR/issue-94675.rs:11:9
+help: add `#![feature(const_index)]` to the crate attributes to enable
    |
-LL |         self.bar[0] = baz.len();
-   |         ^^^^^^^^^^^
+LL + #![feature(const_index)]
    |
-note: trait `IndexMut` is implemented but not `const`
-  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0277`.

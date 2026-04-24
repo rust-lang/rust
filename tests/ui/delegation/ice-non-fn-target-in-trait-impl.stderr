@@ -1,11 +1,11 @@
 error[E0423]: expected function, found module `std::path`
-  --> $DIR/ice-non-fn-target-in-trait-impl.rs:14:11
+  --> $DIR/ice-non-fn-target-in-trait-impl.rs:13:11
    |
 LL |     reuse std::path::<> as bar;
    |           ^^^^^^^^^^^^^ not a function
 
 error[E0423]: expected function, found crate `core`
-  --> $DIR/ice-non-fn-target-in-trait-impl.rs:16:11
+  --> $DIR/ice-non-fn-target-in-trait-impl.rs:15:11
    |
 LL |     reuse core::<> as bar2;
    |           ^^^^^^^^ not a function

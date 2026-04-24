@@ -4,9 +4,9 @@
 // would then produce a `?0` which -- in turn -- triggered an ICE in
 // hashing.
 
-//@ revisions:cfail1
+//@ revisions: bfail1
 
 fn main() {
     println!("Hello, world! {}",*thread_rng().choose(&[0, 1, 2, 3]).unwrap());
-    //[cfail1]~^ ERROR cannot find function `thread_rng`
+    //[bfail1]~^ ERROR cannot find function `thread_rng`
 }

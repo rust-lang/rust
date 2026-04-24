@@ -1033,6 +1033,24 @@ fn can_autocast<'ll>(cx: &CodegenCx<'ll, '_>, rust_ty: &'ll Type, llvm_ty: &'ll 
             }
         }
         TypeKind::BFloat => rust_ty == cx.type_i16(),
+        TypeKind::X86_AMX if cx.type_kind(rust_ty) == TypeKind::Vector => {
+            let element_ty = cx.element_type(rust_ty);
+            let element_count = cx.vector_length(rust_ty) as u64;
+
+            let element_size_bits = match cx.type_kind(element_ty) {
+                TypeKind::Half => 16,
+                TypeKind::Float => 32,
+                TypeKind::Double => 64,
+                TypeKind::FP128 => 128,
+                TypeKind::Integer => cx.int_width(element_ty),
+                TypeKind::Pointer => cx.int_width(cx.isize_ty),
+                _ => bug!(
+                    "Vector element type `{element_ty:?}` not one of integer, float or pointer"
+                ),
+            };
+
+            element_size_bits * element_count == 8192
+        }
         _ => false,
     }
 }
@@ -1101,6 +1119,12 @@ fn autocast<'ll>(
                     bx.const_vector(&shuffle_mask),
                 )
             }
+        }
+        (TypeKind::Vector, TypeKind::X86_AMX) => {
+            bx.call_intrinsic("llvm.x86.cast.vector.to.tile", &[src_ty], &[val])
+        }
+        (TypeKind::X86_AMX, TypeKind::Vector) => {
+            bx.call_intrinsic("llvm.x86.cast.tile.to.vector", &[dest_ty], &[val])
         }
         _ => bx.bitcast(val, dest_ty), // for `bf16(xN)` <-> `u16(xN)`
     }
@@ -1789,9 +1813,20 @@ fn codegen_offload<'ll, 'tcx>(
     let sig = tcx.instantiate_bound_regions_with_erased(sig);
     let inputs = sig.inputs();
 
-    let metadata = inputs.iter().map(|ty| OffloadMetadata::from_ty(tcx, *ty)).collect::<Vec<_>>();
+    let fn_abi = cx.fn_abi_of_instance(fn_target, ty::List::empty());
 
-    let types = inputs.iter().map(|ty| cx.layout_of(*ty).llvm_type(cx)).collect::<Vec<_>>();
+    let mut metadata = Vec::new();
+    let mut types = Vec::new();
+
+    for (i, arg_abi) in fn_abi.args.iter().enumerate() {
+        let ty = inputs[i];
+        let decomposed = OffloadMetadata::handle_abi(cx, tcx, ty, arg_abi);
+
+        for (meta, entry_ty) in decomposed {
+            metadata.push(meta);
+            types.push(bx.cx.layout_of(entry_ty).llvm_type(bx.cx));
+        }
+    }
 
     let offload_globals_ref = cx.offload_globals.borrow();
     let offload_globals = match offload_globals_ref.as_ref() {

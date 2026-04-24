@@ -84,12 +84,12 @@ wasip1 = { version = "1.0.0", features = [
 ], default-features = false }
 
 [target.'cfg(all(target_os = "wasi", target_env = "p2"))'.dependencies]
-wasip2 = { version = '1.0.2', features = [
+wasip2 = { version = '1.0.3', features = [
     'rustc-dep-of-std',
 ], default-features = false }
 
 [target.'cfg(all(target_os = "wasi", target_env = "p3"))'.dependencies]
-wasip2 = { version = '1.0.2', features = [
+wasip3 = { version = '0.6.0', features = [
     'rustc-dep-of-std',
 ], default-features = false }
 

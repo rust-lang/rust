@@ -30,7 +30,7 @@ use unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 
 pub use crate::next_solver::infer::traits::ObligationInspector;
 use crate::next_solver::{
-    ArgOutlivesPredicate, BoundConst, BoundRegion, BoundTy, BoundVarKind, Goal, Predicate,
+    ArgOutlivesPredicate, BoundConst, BoundRegion, BoundTy, BoundVariableKind, Goal, Predicate,
     SolverContext,
     fold::BoundVarReplacerDelegate,
     infer::{at::ToTrace, select::EvaluationResult, traits::PredicateObligation},
@@ -53,7 +53,7 @@ mod outlives;
 pub mod region_constraints;
 pub mod relate;
 pub mod resolve;
-pub(crate) mod select;
+pub mod select;
 pub(crate) mod snapshot;
 pub(crate) mod traits;
 mod type_variable;
@@ -366,12 +366,16 @@ impl<'db> InferCtxtBuilder<'db> {
     where
         T: TypeFoldable<DbInterner<'db>>,
     {
-        let infcx = self.build(input.typing_mode);
+        let infcx = self.build(input.typing_mode.0);
         let (value, args) = infcx.instantiate_canonical(&input.canonical);
         (infcx, value, args)
     }
 
     pub fn build(&mut self, typing_mode: TypingMode<'db>) -> InferCtxt<'db> {
+        // We do not allow creating an InferCtxt for an Interner without a crate, because this means
+        // an interner without a crate cannot access the cache, therefore constructing it doesn't need
+        // to reinit the cache, and we construct a lot of no-crate interners.
+        self.interner.expect_crate();
         let InferCtxtBuilder { interner } = *self;
         InferCtxt {
             interner,
@@ -555,6 +559,16 @@ impl<'db> InferCtxt<'db> {
         // moves_by_default has a cache, which we want to use in other
         // cases.
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id)
+    }
+
+    pub fn type_is_use_cloned_modulo_regions(&self, param_env: ParamEnv<'db>, ty: Ty<'db>) -> bool {
+        let ty = self.resolve_vars_if_possible(ty);
+
+        let Some(use_cloned_def_id) = self.interner.lang_items().UseCloned else {
+            return false;
+        };
+
+        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, use_cloned_def_id)
     }
 
     pub fn unresolved_variables(&self) -> Vec<Ty<'db>> {
@@ -1098,9 +1112,9 @@ impl<'db> InferCtxt<'db> {
 
         for bound_var_kind in bound_vars {
             let arg: GenericArg<'db> = match bound_var_kind {
-                BoundVarKind::Ty(_) => self.next_ty_var().into(),
-                BoundVarKind::Region(_) => self.next_region_var().into(),
-                BoundVarKind::Const => self.next_const_var().into(),
+                BoundVariableKind::Ty(_) => self.next_ty_var().into(),
+                BoundVariableKind::Region(_) => self.next_region_var().into(),
+                BoundVariableKind::Const => self.next_const_var().into(),
             };
             args.push(arg);
         }
@@ -1110,13 +1124,13 @@ impl<'db> InferCtxt<'db> {
         }
 
         impl<'db> BoundVarReplacerDelegate<'db> for ToFreshVars<'db> {
-            fn replace_region(&mut self, br: BoundRegion) -> Region<'db> {
+            fn replace_region(&mut self, br: BoundRegion<'db>) -> Region<'db> {
                 self.args[br.var.index()].expect_region()
             }
-            fn replace_ty(&mut self, bt: BoundTy) -> Ty<'db> {
+            fn replace_ty(&mut self, bt: BoundTy<'db>) -> Ty<'db> {
                 self.args[bt.var.index()].expect_ty()
             }
-            fn replace_const(&mut self, bv: BoundConst) -> Const<'db> {
+            fn replace_const(&mut self, bv: BoundConst<'db>) -> Const<'db> {
                 self.args[bv.var.index()].expect_const()
             }
         }

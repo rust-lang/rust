@@ -2828,6 +2828,10 @@ impl Path {
 
     /// Checks whether the `Path` is empty.
     ///
+    /// Passing an empty path to most OS filesystem APIs will always result in an error.
+    ///
+    /// [Pushing][PathBuf::push] an empty path to an existing path will append a directory separator unless it already ends with a separator or the existing path is itself empty.
+    ///
     /// # Examples
     ///
     /// ```

@@ -216,7 +216,12 @@ pub fn walk_ty(ty: &ast::Type, cb: &mut dyn FnMut(ast::Type) -> bool) {
                 preorder.skip_subtree();
                 cb(ty);
             }
-            Some(ty) => {
+            Some(ty) =>
+            {
+                #[expect(
+                    clippy::collapsible_match,
+                    reason = "it won't compile due to exhaustiveness"
+                )]
                 if cb(ty) {
                     preorder.skip_subtree();
                 }

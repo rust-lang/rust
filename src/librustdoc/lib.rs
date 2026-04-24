@@ -81,6 +81,7 @@ use rustc_span::{BytePos, Span, SyntaxContext};
 use tracing::info;
 
 use crate::clean::utils::DOC_RUST_LANG_ORG_VERSION;
+use crate::config::EmitType;
 use crate::error::Error;
 use crate::formats::cache::Cache;
 
@@ -868,7 +869,11 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                     };
                     rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
                         let has_dep_info = render_options.dep_info().is_some();
-                        markdown::render_and_write(file, render_options, edition)?;
+                        if render_options.emit.contains(&EmitType::HtmlNonStaticFiles)
+                            || render_options.emit.is_empty()
+                        {
+                            markdown::render_and_write(file, render_options, edition)?;
+                        }
                         if has_dep_info {
                             // Register the loaded external files in the source map so they show up in depinfo.
                             // We can't load them via the source map because it gets created after we process the options.

@@ -31,7 +31,6 @@ pub(super) fn fn_hints(
     let param_list = func.param_list()?;
     let generic_param_list = func.generic_param_list();
     let ret_type = func.ret_type();
-    let self_param = param_list.self_param().filter(|it| it.amp_token().is_some());
     let gpl_append_range = func.name()?.syntax().text_range();
     hints_(
         acc,
@@ -49,7 +48,7 @@ pub(super) fn fn_hints(
         }),
         generic_param_list,
         ret_type,
-        self_param,
+        param_list.self_param(),
         |acc, allocated_lifetimes| {
             acc.push(InlayHint {
                 range: gpl_append_range,
@@ -208,6 +207,20 @@ fn hints_(
         Some(lt) => matches!(lt.text().as_str(), "'_"),
         None => true,
     };
+    let self_param = self_param.and_then(|it| {
+        if it.colon_token().is_none() {
+            return Some((it.amp_token(), it.lifetime()));
+        }
+        it.ty().map(|ty| {
+            let ref_type = ty.syntax().descendants().find_map(ast::RefType::cast);
+            let lifetime = ref_type
+                .as_ref()
+                .and_then(|it| it.lifetime())
+                .or_else(|| ty.syntax().descendants().find_map(ast::Lifetime::cast));
+            (ref_type.and_then(|it| it.amp_token()), lifetime)
+        })
+    });
+    let self_param = self_param.filter(|(amp, lt)| amp.is_some() || lt.is_some());
 
     let mk_lt_hint = |t: SyntaxToken, label: String| InlayHint {
         range: t.text_range(),
@@ -222,10 +235,9 @@ fn hints_(
 
     let potential_lt_refs = {
         let mut acc: Vec<_> = vec![];
-        if let Some(self_param) = &self_param {
-            let lifetime = self_param.lifetime();
+        if let Some((amp_token, lifetime)) = self_param.clone() {
             let is_elided = is_elided(&lifetime);
-            acc.push((None, self_param.amp_token(), lifetime, is_elided));
+            acc.push((None, amp_token, lifetime, is_elided));
         }
         params.for_each(|(name, ty)| {
             // FIXME: check path types
@@ -240,17 +252,14 @@ fn hints_(
                     is_trivial = false;
                     true
                 }
-                ast::Type::PathType(t) => {
+                ast::Type::PathType(t)
                     if t.path()
                         .and_then(|it| it.segment())
                         .and_then(|it| it.parenthesized_arg_list())
-                        .is_some()
-                    {
-                        is_trivial = false;
-                        true
-                    } else {
-                        false
-                    }
+                        .is_some() =>
+                {
+                    is_trivial = false;
+                    true
                 }
                 _ => false,
             })
@@ -339,17 +348,14 @@ fn hints_(
                 is_trivial = false;
                 true
             }
-            ast::Type::PathType(t) => {
+            ast::Type::PathType(t)
                 if t.path()
                     .and_then(|it| it.segment())
                     .and_then(|it| it.parenthesized_arg_list())
-                    .is_some()
-                {
-                    is_trivial = false;
-                    true
-                } else {
-                    false
-                }
+                    .is_some() =>
+            {
+                is_trivial = false;
+                true
             }
             _ => false,
         })
@@ -439,6 +445,9 @@ fn nested_out(a: &()) -> &   &X< &()>{}
                //^'0     ^'0 ^'0 ^'0
 
 impl () {
+    fn foo(self, x: &()) -> &() {}
+    // ^^^<'0>
+                 // ^'0     ^'0
     fn foo(&self) {}
     // ^^^<'0>
         // ^'0
@@ -448,6 +457,10 @@ impl () {
     fn foo(&self, a: &()) -> &() {}
     // ^^^<'0, '1>
         // ^'0       ^'1     ^'0
+    fn foo(self: &Self, a: &()) -> &() {}
+    // ^^^<'0, '1>
+              // ^'0       ^'1     ^'0
+
 }
 "#,
         );

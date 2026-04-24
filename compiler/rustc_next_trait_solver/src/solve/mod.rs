@@ -344,7 +344,7 @@ where
         param_env: I::ParamEnv,
         term: I::Term,
     ) -> Result<I::Term, NoSolution> {
-        if let Some(_) = term.to_alias_term() {
+        if let Some(_) = term.to_alias_term(self.cx()) {
             let normalized_term = self.next_term_infer_of_kind(term);
             let alias_relate_goal = Goal::new(
                 self.cx(),

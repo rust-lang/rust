@@ -34,6 +34,7 @@ use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroK
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 
 use crate::Namespace::*;
+use crate::def_collector::collect_definitions;
 use crate::errors::{
     self, AddAsNonDerive, CannotDetermineMacroResolution, CannotFindIdentInThisScope,
     MacroExpectedFound, RemoveSurroundingDerive,
@@ -189,7 +190,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         // Integrate the new AST fragment into all the definition and module structures.
         // We are inside the `expansion` now, but other parent scope components are still the same.
         let parent_scope = ParentScope { expansion, ..self.invocation_parent_scopes[&expansion] };
-        let output_macro_rules_scope = self.build_reduced_graph(fragment, parent_scope);
+        let output_macro_rules_scope = collect_definitions(self, fragment, parent_scope);
         self.output_macro_rules_scopes.insert(expansion, output_macro_rules_scope);
 
         parent_scope.module.unexpanded_invocations.borrow_mut(self).remove(&expansion);
@@ -709,6 +710,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             (sym::on_move, Some(sym::diagnostic_on_move)),
             (sym::on_const, Some(sym::diagnostic_on_const)),
             (sym::on_unknown, Some(sym::diagnostic_on_unknown)),
+            (sym::on_unmatch_args, Some(sym::diagnostic_on_unmatch_args)),
         ];
 
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)

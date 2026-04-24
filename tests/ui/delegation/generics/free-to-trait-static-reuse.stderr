@@ -1,0 +1,129 @@
+error[E0277]: the trait bound `Struct: Bound<T>` is not satisfied
+  --> $DIR/free-to-trait-static-reuse.rs:33:49
+   |
+LL | impl<'a, T, const X: usize> Trait<'a, T, X> for Struct {}
+   |                                                 ^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Bound<T>` is not implemented for `Struct`
+  --> $DIR/free-to-trait-static-reuse.rs:32:1
+   |
+LL | struct Struct;
+   | ^^^^^^^^^^^^^
+help: the trait `Bound<T>` is implemented for `usize`
+  --> $DIR/free-to-trait-static-reuse.rs:13:1
+   |
+LL | impl<T> Bound<T> for usize {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `Trait`
+  --> $DIR/free-to-trait-static-reuse.rs:7:11
+   |
+LL | trait Trait<'a, T, const X: usize>
+   |       ----- required by a bound in this trait
+LL | where
+LL |     Self: Bound<T>,
+   |           ^^^^^^^^ required by this bound in `Trait`
+
+error[E0283]: type annotations needed
+  --> $DIR/free-to-trait-static-reuse.rs:20:14
+   |
+LL | reuse Trait::static_method as error { self - 123 }
+   |              ^^^^^^^^^^^^^ cannot infer type
+   |
+note: multiple `impl`s satisfying `_: Trait<'a, T, X>` found
+  --> $DIR/free-to-trait-static-reuse.rs:12:1
+   |
+LL | impl<'a, T, const X: usize> Trait<'a, T, X> for usize {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl<'a, T, const X: usize> Trait<'a, T, X> for Struct {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0283]: type annotations needed
+  --> $DIR/free-to-trait-static-reuse.rs:22:35
+   |
+LL | reuse Trait::<'static, i32, 123>::static_method as error2;
+   |                                   ^^^^^^^^^^^^^ cannot infer type
+   |
+note: multiple `impl`s satisfying `_: Trait<'static, i32, 123>` found
+  --> $DIR/free-to-trait-static-reuse.rs:12:1
+   |
+LL | impl<'a, T, const X: usize> Trait<'a, T, X> for usize {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl<'a, T, const X: usize> Trait<'a, T, X> for Struct {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0283]: type annotations needed
+  --> $DIR/free-to-trait-static-reuse.rs:24:35
+   |
+LL | reuse Trait::<'static, i32, 123>::static_method::<'static, String, false> as error3;
+   |                                   ^^^^^^^^^^^^^ cannot infer type
+   |
+note: multiple `impl`s satisfying `_: Trait<'static, i32, 123>` found
+  --> $DIR/free-to-trait-static-reuse.rs:12:1
+   |
+LL | impl<'a, T, const X: usize> Trait<'a, T, X> for usize {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl<'a, T, const X: usize> Trait<'a, T, X> for Struct {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0283]: type annotations needed
+  --> $DIR/free-to-trait-static-reuse.rs:26:14
+   |
+LL | reuse Trait::static_method::<'static, Vec<i32>, false> as error4 { self + 4 }
+   |              ^^^^^^^^^^^^^ cannot infer type
+   |
+note: multiple `impl`s satisfying `_: Trait<'a, T, X>` found
+  --> $DIR/free-to-trait-static-reuse.rs:12:1
+   |
+LL | impl<'a, T, const X: usize> Trait<'a, T, X> for usize {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | impl<'a, T, const X: usize> Trait<'a, T, X> for Struct {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `String: Trait<'a, T, X>` is not satisfied
+  --> $DIR/free-to-trait-static-reuse.rs:29:8
+   |
+LL | reuse <String as Trait>::static_method as error5;
+   |        ^^^^^^ the trait `Trait<'a, T, X>` is not implemented for `String`
+   |
+help: the following other types implement trait `Trait<'a, T, X>`
+  --> $DIR/free-to-trait-static-reuse.rs:12:1
+   |
+LL | impl<'a, T, const X: usize> Trait<'a, T, X> for usize {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `usize`
+...
+LL | impl<'a, T, const X: usize> Trait<'a, T, X> for Struct {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `Struct`
+
+error[E0277]: the trait bound `Struct: Bound<T>` is not satisfied
+  --> $DIR/free-to-trait-static-reuse.rs:36:8
+   |
+LL | reuse <Struct as Trait>::static_method as error6;
+   |        ^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Bound<T>` is not implemented for `Struct`
+  --> $DIR/free-to-trait-static-reuse.rs:32:1
+   |
+LL | struct Struct;
+   | ^^^^^^^^^^^^^
+help: the trait `Bound<T>` is implemented for `usize`
+  --> $DIR/free-to-trait-static-reuse.rs:13:1
+   |
+LL | impl<T> Bound<T> for usize {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `Trait::static_method`
+  --> $DIR/free-to-trait-static-reuse.rs:7:11
+   |
+LL |     Self: Bound<T>,
+   |           ^^^^^^^^ required by this bound in `Trait::static_method`
+LL | {
+LL |     fn static_method<'c: 'c, U, const B: bool>(x: usize) {}
+   |        ------------- required by a bound in this associated function
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0277, E0283.
+For more information about an error, try `rustc --explain E0277`.

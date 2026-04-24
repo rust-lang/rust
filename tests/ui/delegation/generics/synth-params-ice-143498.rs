@@ -15,7 +15,6 @@
 #![feature(iter_partition_in_place)]
 #![feature(trusted_random_access)]
 #![feature(try_find)]
-#![allow(incomplete_features)]
 
 impl X {
 //~^ ERROR: cannot find type `X` in this scope

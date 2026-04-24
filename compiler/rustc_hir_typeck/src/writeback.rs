@@ -21,7 +21,7 @@ use rustc_infer::traits::solve::Goal;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
 use rustc_middle::ty::{
-    self, DefiningScopeKind, DefinitionSiteHiddenType, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    self, DefiningScopeKind, DefinitionSiteHiddenType, Flags, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     Unnormalized, fold_regions,
 };
@@ -933,7 +933,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     fn handle_term<T>(
         &mut self,
         value: T,
-        outer_exclusive_binder: impl FnOnce(T) -> ty::DebruijnIndex,
+        outer_exclusive_binder: impl FnOnce(&T) -> ty::DebruijnIndex,
         new_err: impl Fn(TyCtxt<'tcx>, ErrorGuaranteed) -> T,
     ) -> T
     where
@@ -946,7 +946,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
             let body_id = tcx.hir_body_owner_def_id(self.body.id());
             let cause = ObligationCause::misc(self.span.to_span(tcx), body_id);
             let at = self.fcx.at(&cause, self.fcx.param_env);
-            let universes = vec![None; outer_exclusive_binder(value).as_usize()];
+            let universes = vec![None; outer_exclusive_binder(&value).as_usize()];
             match solve::deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(
                 at,
                 Unnormalized::new_wip(value),

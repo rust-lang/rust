@@ -184,11 +184,12 @@ impl<'tcx> InferCtxt<'tcx> {
 
                 relation.register_predicates([ty::PredicateKind::AliasRelate(lhs, rhs, direction)]);
             } else {
-                let Some(source_alias) = source_term.to_alias_term() else {
+                let Some(source_alias) = source_term.to_alias_term(self.tcx) else {
                     bug!("generalized `{source_term:?} to infer, not an alias");
                 };
                 match source_alias.kind(self.tcx) {
-                    ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
+                    ty::AliasTermKind::ProjectionTy { .. }
+                    | ty::AliasTermKind::ProjectionConst { .. } => {
                         // FIXME: This does not handle subtyping correctly, we could
                         // instead create a new inference variable `?normalized_source`, emitting
                         // `Projection(normalized_source, ?ty_normalized)` and
@@ -199,14 +200,14 @@ impl<'tcx> InferCtxt<'tcx> {
                         }]);
                     }
                     // The old solver only accepts projection predicates for associated types.
-                    ty::AliasTermKind::InherentTy
-                    | ty::AliasTermKind::FreeTy
-                    | ty::AliasTermKind::OpaqueTy => {
+                    ty::AliasTermKind::InherentTy { .. }
+                    | ty::AliasTermKind::FreeTy { .. }
+                    | ty::AliasTermKind::OpaqueTy { .. } => {
                         return Err(TypeError::CyclicTy(source_term.expect_type()));
                     }
-                    ty::AliasTermKind::InherentConst
-                    | ty::AliasTermKind::FreeConst
-                    | ty::AliasTermKind::UnevaluatedConst => {
+                    ty::AliasTermKind::InherentConst { .. }
+                    | ty::AliasTermKind::FreeConst { .. }
+                    | ty::AliasTermKind::UnevaluatedConst { .. } => {
                         return Err(TypeError::CyclicConst(source_term.expect_const()));
                     }
                 }
@@ -755,7 +756,8 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                 // path), as doing this new No path breaks some GCE things. I expect GCE to be
                 // ripped out soon so this shouldn't matter soon.
                 StructurallyRelateAliases::No if !self.cx().features().generic_const_exprs() => {
-                    self.generalize_alias_term(uv.into()).map(|v| v.expect_const())
+                    self.generalize_alias_term(ty::AliasTerm::from_unevaluated_const(self.cx(), uv))
+                        .map(|v| v.expect_const())
                 }
                 _ => {
                     let ty::UnevaluatedConst { def, args } = uv;

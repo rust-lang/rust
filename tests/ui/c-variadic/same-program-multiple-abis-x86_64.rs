@@ -24,8 +24,8 @@ fn main() {
 //
 // #[unsafe(no_mangle)]
 // unsafe extern "C" fn variadic(a: u32, mut args: ...) -> u32 {
-//     let b = args.arg::<u32>();
-//     let c = args.arg::<u32>();
+//     let b = args.next_arg::<u32>();
+//     let c = args.next_arg::<u32>();
 //
 //     a + b + c
 // }

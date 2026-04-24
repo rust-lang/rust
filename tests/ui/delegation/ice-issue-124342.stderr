@@ -1,11 +1,11 @@
 error[E0425]: cannot find function `foo` in module `to_reuse`
-  --> $DIR/ice-issue-124342.rs:7:21
+  --> $DIR/ice-issue-124342.rs:6:21
    |
 LL |     reuse to_reuse::foo { foo }
    |                     ^^^ not found in `to_reuse`
 
 error[E0425]: cannot find value `foo` in this scope
-  --> $DIR/ice-issue-124342.rs:7:27
+  --> $DIR/ice-issue-124342.rs:6:27
    |
 LL |     reuse to_reuse::foo { foo }
    |                           ^^^

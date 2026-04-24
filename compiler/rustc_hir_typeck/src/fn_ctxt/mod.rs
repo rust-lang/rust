@@ -17,7 +17,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 };
 use rustc_infer::infer::{self, RegionVariableOrigin};
 use rustc_infer::traits::{DynCompatibilityViolation, Obligation};
-use rustc_middle::ty::{self, Const, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, Const, Flags, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_session::Session;
 use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;

@@ -348,6 +348,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/impl_item_never_type.rs");
     }
     #[test]
+    fn impl_restrictions() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/impl_restrictions.rs");
+    }
+    #[test]
     fn impl_trait_type() {
         run_and_expect_no_errors("test_data/parser/inline/ok/impl_trait_type.rs");
     }
@@ -556,6 +560,14 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/record_literal_field_with_attr.rs");
     }
     #[test]
+    fn record_mut_restrictions_after() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/record_mut_restrictions_after.rs");
+    }
+    #[test]
+    fn record_mut_restrictions_before() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/record_mut_restrictions_before.rs");
+    }
+    #[test]
     fn record_pat_field() {
         run_and_expect_no_errors("test_data/parser/inline/ok/record_pat_field.rs");
     }
@@ -658,6 +670,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/tuple_field_attrs.rs");
     }
     #[test]
+    fn tuple_mut_restrictions() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/tuple_mut_restrictions.rs");
+    }
+    #[test]
     fn tuple_pat() { run_and_expect_no_errors("test_data/parser/inline/ok/tuple_pat.rs"); }
     #[test]
     fn tuple_pat_fields() {
@@ -671,6 +687,8 @@ mod ok {
     }
     #[test]
     fn type_alias() { run_and_expect_no_errors("test_data/parser/inline/ok/type_alias.rs"); }
+    #[test]
+    fn type_const() { run_and_expect_no_errors("test_data/parser/inline/ok/type_const.rs"); }
     #[test]
     fn type_item_type_params() {
         run_and_expect_no_errors("test_data/parser/inline/ok/type_item_type_params.rs");

@@ -1,13 +1,16 @@
 use std::mem;
+use std::sync::Arc;
 
 use rustc_abi::ExternAbi;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::steal::Steal;
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::attrs::{AttributeKind, EiiImplResolution};
 use rustc_hir::def::{DefKind, PerNS, Res};
-use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
+use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId, LocalDefIdMap};
+use rustc_hir::definitions::PerParentDisambiguatorState;
 use rustc_hir::{
     self as hir, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin, Target, find_attr,
 };
@@ -48,11 +51,21 @@ impl<'hir> Owners<'_, 'hir> {
     }
 }
 
+/// Default disambiguators are used during default lowering, when we lower
+/// AST owners in a loop we can use the whole map, in contrast delayed lowering
+/// lowers each AST owner separately, so we use readonly disambiguators map
+/// with `Steal`s to get disambiguators.
+pub(super) enum Disambiguators {
+    Default(LocalDefIdMap<PerParentDisambiguatorState>),
+    Delayed(Arc<LocalDefIdMap<Steal<PerParentDisambiguatorState>>>),
+}
+
 pub(super) struct ItemLowerer<'a, 'hir, R> {
     pub(super) tcx: TyCtxt<'hir>,
     pub(super) resolver: &'a mut R,
     pub(super) ast_index: &'a IndexSlice<LocalDefId, AstOwner<'a>>,
     pub(super) owners: Owners<'a, 'hir>,
+    pub(super) disambiguators: &'a mut Disambiguators,
 }
 
 /// When we have a ty alias we *may* have two where clauses. To give the best diagnostics, we set the span
@@ -80,7 +93,7 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> ItemLowerer<'_, 'hir, R> {
         owner: NodeId,
         f: impl FnOnce(&mut LoweringContext<'_, 'hir, R>) -> hir::OwnerNode<'hir>,
     ) {
-        let mut lctx = LoweringContext::new(self.tcx, self.resolver);
+        let mut lctx = LoweringContext::new(self.tcx, self.resolver, self.disambiguators);
         lctx.with_hir_id_owner(owner, |lctx| f(lctx));
 
         for (def_id, info) in lctx.children {
@@ -543,10 +556,10 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                 })
             }
             ItemKind::Trait(box Trait {
+                impl_restriction,
                 constness,
                 is_auto,
                 safety,
-                impl_restriction,
                 ident,
                 generics,
                 bounds,
@@ -573,10 +586,10 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                     },
                 );
                 hir::ItemKind::Trait(
+                    impl_restriction,
                     constness,
                     *is_auto,
                     safety,
-                    impl_restriction,
                     ident,
                     generics,
                     bounds,

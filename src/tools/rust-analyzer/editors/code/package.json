@@ -3296,6 +3296,13 @@
             }
         ],
         "configurationDefaults": {
+            "[rust]": {
+                "editor.quickSuggestions": {
+                    "other": true,
+                    "comments": false,
+                    "strings": true
+                }
+            },
             "explorer.fileNesting.patterns": {
                 "Cargo.toml": "Cargo.lock"
             }

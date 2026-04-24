@@ -1052,80 +1052,69 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Is there an `[ impl(in? path) ]? trait` item `dist` tokens ahead?
-    fn is_trait_with_maybe_impl_restriction_in_front(&self, dist: usize) -> bool {
-        // `trait`
-        if self.is_keyword_ahead(dist, &[kw::Trait]) {
-            return true;
-        }
-        // `impl(`
-        if !self.is_keyword_ahead(dist, &[kw::Impl])
-            || !self.look_ahead(dist + 1, |t| t == &token::OpenParen)
-        {
-            return false;
-        }
-        // `crate | super | self) trait`
-        if self.is_keyword_ahead(dist + 2, &[kw::Crate, kw::Super, kw::SelfLower])
-            && self.look_ahead(dist + 3, |t| t == &token::CloseParen)
-            && self.is_keyword_ahead(dist + 4, &[kw::Trait])
-        {
-            return true;
-        }
-        // `impl(in? something) trait`
-        // We catch cases where the `in` keyword is missing to provide a
-        // better error message. This is handled later in
-        // `self.recover_incorrect_impl_restriction`.
-        self.tree_look_ahead(dist + 2, |t| {
-            if let TokenTree::Token(token, _) = t { token.is_keyword(kw::Trait) } else { false }
-        })
-        .unwrap_or(false)
-    }
-
-    /// Is this an `(const unsafe? auto? [ impl(in? path) ]? | unsafe auto? [ impl(in? path) ]? | auto [ impl(in? path) ]? | [ impl(in? path) ]?) trait` item?
+    /// Is this an `[impl(in? path)]? const? unsafe? auto? trait` item?
     fn check_trait_front_matter(&mut self) -> bool {
-        // `[ impl(in? path) ]? trait`
-        if self.is_trait_with_maybe_impl_restriction_in_front(0) {
-            return true;
+        const SUFFIXES: &[&[Symbol]] = &[
+            &[kw::Trait],
+            &[kw::Auto, kw::Trait],
+            &[kw::Unsafe, kw::Trait],
+            &[kw::Unsafe, kw::Auto, kw::Trait],
+            &[kw::Const, kw::Trait],
+            &[kw::Const, kw::Auto, kw::Trait],
+            &[kw::Const, kw::Unsafe, kw::Trait],
+            &[kw::Const, kw::Unsafe, kw::Auto, kw::Trait],
+        ];
+        // `impl(`
+        if self.check_keyword(exp!(Impl)) && self.look_ahead(1, |t| t == &token::OpenParen) {
+            // `impl(in` unambiguously introduces an `impl` restriction
+            if self.is_keyword_ahead(2, &[kw::In]) {
+                return true;
+            }
+            // `impl(crate | self | super)` + SUFFIX
+            if self.is_keyword_ahead(2, &[kw::Crate, kw::SelfLower, kw::Super])
+                && self.look_ahead(3, |t| t == &token::CloseParen)
+                && SUFFIXES.iter().any(|suffix| {
+                    suffix.iter().enumerate().all(|(i, kw)| self.is_keyword_ahead(i + 4, &[*kw]))
+                })
+            {
+                return true;
+            }
+            // Recover cases like `impl(path::to::module)` + SUFFIX to suggest inserting `in`.
+            SUFFIXES.iter().any(|suffix| {
+                suffix.iter().enumerate().all(|(i, kw)| {
+                    self.tree_look_ahead(i + 2, |t| {
+                        if let TokenTree::Token(token, _) = t {
+                            token.is_keyword(*kw)
+                        } else {
+                            false
+                        }
+                    })
+                    .unwrap_or(false)
+                })
+            })
+        } else {
+            SUFFIXES.iter().any(|suffix| {
+                suffix.iter().enumerate().all(|(i, kw)| {
+                    // We use `check_keyword` for the first token to include it in the expected tokens.
+                    if i == 0 {
+                        match *kw {
+                            kw::Const => self.check_keyword(exp!(Const)),
+                            kw::Unsafe => self.check_keyword(exp!(Unsafe)),
+                            kw::Auto => self.check_keyword(exp!(Auto)),
+                            kw::Trait => self.check_keyword(exp!(Trait)),
+                            _ => unreachable!(),
+                        }
+                    } else {
+                        self.is_keyword_ahead(i, &[*kw])
+                    }
+                })
+            })
         }
-        // `auto [ impl(in? path) ]? trait`
-        if self.check_keyword(exp!(Auto)) && self.is_trait_with_maybe_impl_restriction_in_front(1) {
-            return true;
-        }
-        // `unsafe auto? [ impl(in? path) ]? trait`
-        if self.check_keyword(exp!(Unsafe))
-            && (self.is_trait_with_maybe_impl_restriction_in_front(1)
-                || self.is_keyword_ahead(1, &[kw::Auto])
-                    && self.is_trait_with_maybe_impl_restriction_in_front(2))
-        {
-            return true;
-        }
-        // `const` ...
-        if !self.check_keyword(exp!(Const)) {
-            return false;
-        }
-        // `const [ impl(in? path) ]? trait`
-        if self.is_trait_with_maybe_impl_restriction_in_front(1) {
-            return true;
-        }
-        // `const (unsafe | auto) [ impl(in? path) ]? trait`
-        if self.is_keyword_ahead(1, &[kw::Unsafe, kw::Auto])
-            && self.is_trait_with_maybe_impl_restriction_in_front(2)
-        {
-            return true;
-        }
-        // `const unsafe auto [ impl(in? path) ]? trait`
-        self.is_keyword_ahead(1, &[kw::Unsafe])
-            && self.is_keyword_ahead(2, &[kw::Auto])
-            && self.is_trait_with_maybe_impl_restriction_in_front(3)
     }
 
-    /// Parses `const? unsafe? auto? [impl(in? path)]? trait Foo { ... }` or `trait Foo = Bar;`.
-    ///
-    /// FIXME(restrictions): The current keyword order follows the grammar specified in RFC 3323.
-    /// However, whether the restriction should be grouped closer to the visibility modifier
-    /// (e.g., `pub impl(crate) const unsafe auto trait`) remains an unresolved design question.
-    /// This ordering must be kept in sync with the logic in `check_trait_front_matter`.
+    /// Parses `[impl(in? path)]? const? unsafe? auto? trait Foo { ... }` or `trait Foo = Bar;`.
     fn parse_item_trait(&mut self, attrs: &mut AttrVec, lo: Span) -> PResult<'a, ItemKind> {
+        let impl_restriction = self.parse_impl_restriction()?;
         let constness = self.parse_constness(Case::Sensitive);
         if let Const::Yes(span) = constness {
             self.psess.gated_spans.gate(sym::const_trait_impl, span);
@@ -1138,8 +1127,6 @@ impl<'a> Parser<'a> {
         } else {
             IsAuto::No
         };
-
-        let impl_restriction = self.parse_impl_restriction()?;
 
         self.expect_keyword(exp!(Trait))?;
         let ident = self.parse_ident()?;
@@ -1181,10 +1168,10 @@ impl<'a> Parser<'a> {
             generics.where_clause = self.parse_where_clause()?;
             let items = self.parse_item_list(attrs, |p| p.parse_trait_item(ForceCollect::No))?;
             Ok(ItemKind::Trait(Box::new(Trait {
+                impl_restriction,
                 constness,
                 is_auto,
                 safety,
-                impl_restriction,
                 ident,
                 generics,
                 bounds,
@@ -2966,7 +2953,7 @@ impl<'a> Parser<'a> {
                         && !self.is_unsafe_foreign_mod()
                         // Rule out `async gen {` and `async gen move {`
                         && !self.is_async_gen_block()
-                        // Rule out `const unsafe auto` and `const unsafe trait` and `const unsafe impl`.
+                        // Rule out `const unsafe auto` and `const unsafe trait` and `const unsafe impl`
                         && !self.is_keyword_ahead(2, &[kw::Auto, kw::Trait, kw::Impl])
                     )
                 })

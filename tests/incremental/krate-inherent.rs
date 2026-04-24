@@ -1,11 +1,11 @@
-//@ revisions: cfail1 cfail2
+//@ revisions: bpass1 bpass2
 //@ compile-flags: -Z query-dep-graph
-//@ build-pass (FIXME(62277): could be check-pass?)
 //@ ignore-backends: gcc
+// FIXME(#62277): could be check-pass?
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
-#![rustc_partition_reused(module = "krate_inherent-x", cfg = "cfail2")]
+#![rustc_partition_reused(module = "krate_inherent-x", cfg = "bpass2")]
 #![crate_type = "rlib"]
 
 pub mod x {
@@ -20,5 +20,5 @@ pub mod x {
     }
 }
 
-#[cfg(cfail1)]
-pub fn bar() {} // remove this unrelated fn in cfail2, which should not affect `x::method`
+#[cfg(bpass1)]
+pub fn bar() {} // remove this unrelated fn in bpass2, which should not affect `x::method`

@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ needs-asm-support
 
 // `global_asm!` gets a fake body, make sure it is handled correctly

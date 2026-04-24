@@ -1,7 +1,6 @@
 //@ run-pass
 
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 mod to_reuse {
     pub fn foo(x: i32) -> i32 { x }

@@ -22,7 +22,7 @@ use crate::directives::{AuxCrate, TestProps};
 use crate::errors::{Error, ErrorKind, load_errors};
 use crate::output_capture::ConsoleOut;
 use crate::read2::{Truncated, read2_abbreviated};
-use crate::runtest::compute_diff::{DiffLine, make_diff, write_diff};
+use crate::runtest::compute_diff::{DiffLine, diff_by_lines, make_diff, write_diff};
 use crate::util::{Utf8PathBufExt, add_dylib_path, static_regex};
 use crate::{json, stamp_file_path};
 
@@ -295,14 +295,9 @@ impl<'test> TestCx<'test> {
 
     fn should_run(&self, pm: Option<PassMode>) -> WillExecute {
         let test_should_run = match self.config.mode {
-            TestMode::Ui
-                if pm == Some(PassMode::Run)
-                    || matches!(self.props.fail_mode, Some(FailMode::Run(_))) =>
-            {
-                true
+            TestMode::Ui => {
+                pm == Some(PassMode::Run) || matches!(self.props.fail_mode, Some(FailMode::Run(_)))
             }
-            TestMode::MirOpt if pm == Some(PassMode::Run) => true,
-            TestMode::Ui | TestMode::MirOpt => false,
             mode => panic!("unimplemented for mode {:?}", mode),
         };
         if test_should_run { self.run_if_enabled() } else { WillExecute::No }
@@ -314,7 +309,7 @@ impl<'test> TestCx<'test> {
 
     fn should_run_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
-            TestMode::Ui | TestMode::MirOpt => pm == Some(PassMode::Run),
+            TestMode::Ui => pm == Some(PassMode::Run),
             mode => panic!("unimplemented for mode {:?}", mode),
         }
     }
@@ -327,12 +322,15 @@ impl<'test> TestCx<'test> {
             TestMode::Incremental => {
                 let revision =
                     self.revision.expect("incremental tests require a list of revisions");
-                if revision.starts_with("cpass") || revision.starts_with("rpass") {
+                if revision.starts_with("cpass")
+                    || revision.starts_with("bpass")
+                    || revision.starts_with("rpass")
+                {
                     true
-                } else if revision.starts_with("cfail") {
-                    pm.is_some()
+                } else if revision.starts_with("bfail") {
+                    false
                 } else {
-                    panic!("revision name must begin with `cfail`, `cpass`, or `rpass`");
+                    panic!("revision name must begin with `cpass`, `bfail`, `bpass`, or `rpass`");
                 }
             }
             mode => panic!("unimplemented for mode {:?}", mode),
@@ -932,23 +930,13 @@ impl<'test> TestCx<'test> {
     }
 
     fn compile_test(&self, will_execute: WillExecute, emit: Emit) -> ProcRes {
-        self.compile_test_general(will_execute, emit, self.props.local_pass_mode(), Vec::new())
-    }
-
-    fn compile_test_with_passes(
-        &self,
-        will_execute: WillExecute,
-        emit: Emit,
-        passes: Vec<String>,
-    ) -> ProcRes {
-        self.compile_test_general(will_execute, emit, self.props.local_pass_mode(), passes)
+        self.compile_test_general(will_execute, emit, Vec::new())
     }
 
     fn compile_test_general(
         &self,
         will_execute: WillExecute,
         emit: Emit,
-        local_pm: Option<PassMode>,
         passes: Vec<String>,
     ) -> ProcRes {
         let compiler_kind = self.compiler_kind_for_non_aux();
@@ -972,7 +960,7 @@ impl<'test> TestCx<'test> {
                     // Note that we use the local pass mode here as we don't want
                     // to set unused to allow if we've overridden the pass mode
                     // via command line flags.
-                    && local_pm != Some(PassMode::Run)
+                    && self.props.local_pass_mode() != Some(PassMode::Run)
                 {
                     AllowUnused::Yes
                 } else {
@@ -2779,6 +2767,7 @@ impl<'test> TestCx<'test> {
                     expected,
                     actual,
                     actual_unnormalized,
+                    compare_output_by_lines || compare_output_by_lines_subset,
                 );
             }
         } else {
@@ -2816,6 +2805,7 @@ impl<'test> TestCx<'test> {
         expected: &str,
         actual: &str,
         actual_unnormalized: &str,
+        show_diff_by_lines: bool,
     ) {
         writeln!(self.stderr, "diff of {stream}:\n");
         if let Some(diff_command) = self.config.diff_command.as_deref() {
@@ -2881,6 +2871,10 @@ impl<'test> TestCx<'test> {
                 "{}",
                 write_diff(&mismatches_unnormalized, &mismatches_normalized, 0)
             );
+        }
+
+        if show_diff_by_lines {
+            write!(self.stderr, "{}", diff_by_lines(expected, actual));
         }
     }
 

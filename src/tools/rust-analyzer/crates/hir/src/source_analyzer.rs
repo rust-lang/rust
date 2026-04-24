@@ -37,7 +37,7 @@ use hir_ty::{
     lang_items::lang_items_for_bin_op,
     method_resolution::{self, CandidateId},
     next_solver::{
-        DbInterner, ErrorGuaranteed, GenericArgs, ParamEnv, Ty, TyKind, TypingMode,
+        AliasTy, DbInterner, ErrorGuaranteed, GenericArgs, ParamEnv, Ty, TyKind, TypingMode,
         infer::DbInternerInferExt,
     },
     traits::structurally_normalize_ty,
@@ -1293,10 +1293,14 @@ impl<'db> SourceAnalyzer<'db> {
                             PathResolution::Def(ModuleDef::Adt(adt_id.into())),
                         )
                     }
-                    TyKind::Alias(AliasTyKind::Projection, alias) => {
-                        let assoc_id = alias.def_id.expect_type_alias();
+                    TyKind::Alias(AliasTy {
+                        kind: AliasTyKind::Projection { def_id },
+                        args,
+                        ..
+                    }) => {
+                        let assoc_id = def_id.expect_type_alias();
                         (
-                            GenericSubstitution::new(assoc_id.into(), alias.args, env),
+                            GenericSubstitution::new(assoc_id.into(), args, env),
                             PathResolution::Def(ModuleDef::TypeAlias(assoc_id.into())),
                         )
                     }

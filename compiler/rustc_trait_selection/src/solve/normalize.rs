@@ -7,7 +7,7 @@ use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{FromSolverError, Obligation, TraitEngine};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
-    self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    self, FallibleTypeFolder, Flags, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt, UniverseIndex, Unnormalized,
 };
 use tracing::instrument;
@@ -107,7 +107,7 @@ where
         let tcx = infcx.tcx;
         let recursion_limit = tcx.recursion_limit();
         if !recursion_limit.value_within_limit(self.depth) {
-            let term = alias_term.to_alias_term().unwrap();
+            let term = alias_term.to_alias_term(tcx).unwrap();
 
             self.at.infcx.err_ctxt().report_overflow_error(
                 OverflowCause::DeeplyNormalize(term),

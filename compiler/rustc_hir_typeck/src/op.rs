@@ -34,19 +34,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs: &'tcx Expr<'tcx>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let (lhs_ty, rhs_ty, return_ty) =
+        let (lhs_ty, rhs_ty, _return_ty) =
             self.check_overloaded_binop(expr, lhs, rhs, Op::AssignOp(op), expected);
 
         let category = BinOpCategory::from(op.node);
-        let ty = if !lhs_ty.is_ty_var()
-            && !rhs_ty.is_ty_var()
-            && is_builtin_binop(lhs_ty, rhs_ty, category)
+        if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, category)
         {
             self.enforce_builtin_binop_types(lhs.span, lhs_ty, rhs.span, rhs_ty, category);
-            self.tcx.types.unit
-        } else {
-            return_ty
-        };
+        }
 
         self.check_lhs_assignable(lhs, E0067, op.span, |err| {
             if let Some(lhs_deref_ty) = self.deref_once_mutably_for_diagnostic(lhs_ty) {
@@ -86,7 +81,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         });
 
-        ty
+        self.tcx.types.unit
     }
 
     /// Checks a potentially overloaded binary operator.
@@ -1311,21 +1306,16 @@ fn deref_ty_if_possible(ty: Ty<'_>) -> Ty<'_> {
 }
 
 /// Returns `true` if this is a built-in arithmetic operation (e.g.,
-/// u32 + u32, i16x4 == i16x4) and false if these types would have to be
-/// overloaded to be legal. There are two reasons that we distinguish
+/// u32 + u32) and false if these types would have to be
+/// overloaded to be legal. The reason that we distinguish
 /// builtin operations from overloaded ones (vs trying to drive
 /// everything uniformly through the trait system and intrinsics or
-/// something like that):
+/// something like that) is that builtin operations can trivially
+/// be evaluated in constants on stable, but the traits and their
+/// impls for these primitive types.
 ///
-/// 1. Builtin operations can trivially be evaluated in constants.
-/// 2. For comparison operators applied to SIMD types the result is
-///    not of type `bool`. For example, `i16x4 == i16x4` yields a
-///    type like `i16x4`. This means that the overloaded trait
-///    `PartialEq` is not applicable.
-///
-/// Reason #2 is the killer. I tried for a while to always use
-/// overloaded logic and just check the types in constants/codegen after
-/// the fact, and it worked fine, except for SIMD types. -nmatsakis
+/// FIXME(const_trait_impls): once the traits and their impls are const stable
+/// remove this function and the builtin-specific checks.
 fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, category: BinOpCategory) -> bool {
     // Special-case a single layer of referencing, so that things like `5.0 + &6.0f32` work.
     // (See https://github.com/rust-lang/rust/issues/57447.)

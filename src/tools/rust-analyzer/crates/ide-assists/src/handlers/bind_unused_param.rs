@@ -1,5 +1,5 @@
 use crate::assist_context::{AssistContext, Assists};
-use ide_db::{LineIndexDatabase, assists::AssistId, defs::Definition};
+use ide_db::{assists::AssistId, defs::Definition, line_index};
 use syntax::{
     AstNode,
     ast::{self, HasName, edit::AstNodeEdit},
@@ -43,7 +43,7 @@ pub(crate) fn bind_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         format!("Bind as `let _ = {name};`"),
         param.syntax().text_range(),
         |builder| {
-            let line_index = ctx.db().line_index(ctx.vfs_file_id());
+            let line_index = line_index(ctx.db(), ctx.vfs_file_id());
 
             let indent = func.indent_level();
             let text_indent = indent + 1;

@@ -1,12 +1,15 @@
 //! This module contains functions for editing syntax trees. As the trees are
 //! immutable, all function here return a fresh copy of the tree, instead of
 //! doing an in-place modification.
+use parser::T;
 use std::{fmt, iter, ops};
 
 use crate::{
-    AstToken, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
-    ast::{self, AstNode, make},
-    syntax_editor::{SyntaxEditor, SyntaxMappingBuilder},
+    AstToken, NodeOrToken, SyntaxElement,
+    SyntaxKind::WHITESPACE,
+    SyntaxNode, SyntaxToken,
+    ast::{self, AstNode, HasName, make},
+    syntax_editor::{Position, SyntaxEditor, SyntaxMappingBuilder},
     ted,
 };
 
@@ -105,7 +108,7 @@ impl IndentLevel {
     }
 
     pub(super) fn clone_increase_indent(self, node: &SyntaxNode) -> SyntaxNode {
-        let (mut editor, node) = SyntaxEditor::new(node.clone());
+        let (editor, node) = SyntaxEditor::new(node.clone());
         let tokens = node
             .preorder_with_tokens()
             .filter_map(|event| match event {
@@ -139,7 +142,7 @@ impl IndentLevel {
     }
 
     pub(super) fn clone_decrease_indent(self, node: &SyntaxNode) -> SyntaxNode {
-        let (mut editor, node) = SyntaxEditor::new(node.clone());
+        let (editor, node) = SyntaxEditor::new(node.clone());
         let tokens = node
             .preorder_with_tokens()
             .filter_map(|event| match event {
@@ -193,6 +196,61 @@ pub trait AstNodeEdit: AstNode + Clone + Sized {
 }
 
 impl<N: AstNode + Clone> AstNodeEdit for N {}
+
+impl ast::IdentPat {
+    pub fn set_pat(&self, pat: Option<ast::Pat>, editor: &SyntaxEditor) -> ast::IdentPat {
+        let make = editor.make();
+        match pat {
+            None => {
+                if let Some(at_token) = self.at_token() {
+                    // Remove `@ Pat`
+                    let start = at_token.clone().into();
+                    let end = self
+                        .pat()
+                        .map(|it| it.syntax().clone().into())
+                        .unwrap_or_else(|| at_token.into());
+                    editor.delete_all(start..=end);
+
+                    // Remove any trailing ws
+                    if let Some(last) =
+                        self.syntax().last_token().filter(|it| it.kind() == WHITESPACE)
+                    {
+                        last.detach();
+                    }
+                }
+            }
+            Some(pat) => {
+                if let Some(old_pat) = self.pat() {
+                    // Replace existing pattern
+                    editor.replace(old_pat.syntax(), pat.syntax())
+                } else if let Some(at_token) = self.at_token() {
+                    // Have an `@` token but not a pattern yet
+                    editor.insert(Position::after(at_token), pat.syntax());
+                } else {
+                    // Don't have an `@`, should have a name
+                    let name = self.name().unwrap();
+                    let elements = vec![
+                        make.whitespace(" ").into(),
+                        make.token(T![@]).into(),
+                        make.whitespace(" ").into(),
+                        pat.syntax().clone().into(),
+                    ];
+
+                    if self.syntax().parent().is_none() {
+                        let (local, local_self) = SyntaxEditor::with_ast_node(self);
+                        let local_name = local_self.name().unwrap();
+                        local.insert_all(Position::after(local_name.syntax()), elements);
+                        let edit = local.finish();
+                        return ast::IdentPat::cast(edit.new_root().clone()).unwrap();
+                    } else {
+                        editor.insert_all(Position::after(name.syntax()), elements);
+                    }
+                }
+            }
+        }
+        self.clone()
+    }
+}
 
 #[test]
 fn test_increase_indent() {

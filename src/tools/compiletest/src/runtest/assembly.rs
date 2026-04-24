@@ -13,9 +13,11 @@ impl TestCx<'_> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        let proc_res = self.verify_with_filecheck(&output_path);
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("verification with 'FileCheck' failed", &proc_res);
+        if !self.props.skip_filecheck {
+            let proc_res = self.verify_with_filecheck(&output_path);
+            if !proc_res.status.success() {
+                self.fatal_proc_rec("verification with 'FileCheck' failed", &proc_res);
+            }
         }
     }
 
