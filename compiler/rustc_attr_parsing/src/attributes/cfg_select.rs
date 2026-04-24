@@ -1,15 +1,15 @@
-use rustc_ast::token::Token;
+use rustc_ast::token::{CommentKind, Token};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrStyle, NodeId, token};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::Diagnostic;
+use rustc_errors::{DiagDecorator, Diagnostic};
 use rustc_feature::{AttributeTemplate, Features};
 use rustc_hir::attrs::CfgEntry;
 use rustc_hir::{AttrPath, Target};
 use rustc_parse::exp;
 use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::Session;
-use rustc_session::lint::builtin::UNREACHABLE_CFG_SELECT_PREDICATES;
+use rustc_session::lint::builtin::{UNREACHABLE_CFG_SELECT_PREDICATES, UNUSED_DOC_COMMENTS};
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
@@ -78,12 +78,15 @@ pub fn parse_cfg_select(
     let mut branches = CfgSelectBranches::default();
 
     while p.token != token::Eof {
+        let doc_comment = eat_outer_doc_comments(p);
+
         if p.eat_keyword(exp!(Underscore)) {
             let underscore = p.prev_token;
             p.expect(exp!(FatArrow)).map_err(|e| e.emit())?;
 
             let tts = p.parse_delimited_token_tree().map_err(|e| e.emit())?;
             let span = underscore.span.to(p.token.span);
+            lint_unused_doc_comment(p, doc_comment, lint_node_id);
 
             match branches.wildcard {
                 None => branches.wildcard = Some((underscore, tts, span)),
@@ -123,6 +126,7 @@ pub fn parse_cfg_select(
 
             let tts = p.parse_delimited_token_tree().map_err(|e| e.emit())?;
             let span = cfg_span.to(p.token.span);
+            lint_unused_doc_comment(p, doc_comment, lint_node_id);
 
             match branches.wildcard {
                 None => branches.reachable.push((cfg, tts, span)),
@@ -141,6 +145,41 @@ pub fn parse_cfg_select(
     lint_unreachable(p, it, lint_node_id);
 
     Ok(branches)
+}
+
+fn eat_outer_doc_comments(p: &mut Parser<'_>) -> Option<(Span, CommentKind)> {
+    let mut doc_comment: Option<(Span, CommentKind)> = None;
+
+    while let token::DocComment(comment_kind, AttrStyle::Outer, _) = p.token.kind {
+        let span = p.token.span;
+        doc_comment = Some(match doc_comment {
+            Some((prev_span, _)) => (prev_span.with_hi(span.hi()), comment_kind),
+            None => (span, comment_kind),
+        });
+        p.bump();
+    }
+
+    doc_comment
+}
+
+fn lint_unused_doc_comment(
+    p: &mut Parser<'_>,
+    doc_comment: Option<(Span, CommentKind)>,
+    lint_node_id: NodeId,
+) {
+    let Some((span, comment_kind)) = doc_comment else { return };
+    let help = match comment_kind {
+        CommentKind::Line => "use `//` for a plain comment",
+        CommentKind::Block => "use `/* */` for a plain comment",
+    };
+    p.psess.buffer_lint(
+        UNUSED_DOC_COMMENTS,
+        span,
+        lint_node_id,
+        DiagDecorator(move |diag| {
+            diag.primary_message("unused doc comment").help(help);
+        }),
+    );
 }
 
 fn lint_unreachable(
