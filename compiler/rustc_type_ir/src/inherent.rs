@@ -17,6 +17,7 @@ use crate::{
     self as ty, ClauseKind, CollectAndApply, FieldInfo, Interner, PredicateKind, UpcastFrom,
 };
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Ty<I: Interner<Ty = Self>>:
     Copy
     + Debug
@@ -195,6 +196,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
     }
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Tys<I: Interner<Tys = Self>>:
     Copy + Debug + Hash + Eq + SliceLike<Item = I::Ty> + TypeFoldable<I> + Default
 {
@@ -203,6 +205,7 @@ pub trait Tys<I: Interner<Tys = Self>>:
     fn output(self) -> I::Ty;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait FSigKind<I: Interner<FSigKind = Self>>: Copy + Debug + Hash + Eq {
     /// The identity function.
     fn fn_sig_kind(self) -> Self;
@@ -220,6 +223,7 @@ pub trait FSigKind<I: Interner<FSigKind = Self>>: Copy + Debug + Hash + Eq {
     fn c_variadic(self) -> bool;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
     /// The identity function.
     fn abi(self) -> Self;
@@ -237,6 +241,7 @@ pub trait Abi<I: Interner<Abi = Self>>: Copy + Debug + Hash + Eq {
     fn unpack_abi(abi_index: u8) -> Self;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
     /// The `safe` safety mode.
     fn safe() -> Self;
@@ -251,6 +256,7 @@ pub trait Safety<I: Interner<Safety = Self>>: Copy + Debug + Hash + Eq {
     fn prefix_str(self) -> &'static str;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Region<I: Interner<Region = Self>>:
     Copy
     + Debug
@@ -276,6 +282,7 @@ pub trait Region<I: Interner<Region = Self>>:
     }
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Const<I: Interner<Const = Self>>:
     Copy
     + Debug
@@ -320,19 +327,23 @@ pub trait Const<I: Interner<Const = Self>>:
     }
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait ValueConst<I: Interner<ValueConst = Self>>: Copy + Debug + Hash + Eq {
     fn ty(self) -> I::Ty;
     fn valtree(self) -> I::ValTree;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait ExprConst<I: Interner<ExprConst = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
     fn args(self) -> I::GenericArgs;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait GenericsOf<I: Interner<GenericsOf = Self>> {
     fn count(&self) -> usize;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait GenericArg<I: Interner<GenericArg = Self>>:
     Copy
     + Debug
@@ -387,6 +398,7 @@ pub trait GenericArg<I: Interner<GenericArg = Self>>:
     }
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Term<I: Interner<Term = Self>>:
     Copy + Debug + Hash + Eq + IntoKind<Kind = ty::TermKind<I>> + TypeFoldable<I> + Relate<I>
 {
@@ -420,20 +432,23 @@ pub trait Term<I: Interner<Term = Self>>:
         }
     }
 
-    fn to_alias_term(self) -> Option<ty::AliasTerm<I>> {
+    fn to_alias_term(self, interner: I) -> Option<ty::AliasTerm<I>> {
         match self.kind() {
             ty::TermKind::Ty(ty) => match ty.kind() {
                 ty::Alias(alias_ty) => Some(alias_ty.into()),
                 _ => None,
             },
             ty::TermKind::Const(ct) => match ct.kind() {
-                ty::ConstKind::Unevaluated(uv) => Some(uv.into()),
+                ty::ConstKind::Unevaluated(uv) => {
+                    Some(ty::AliasTerm::from_unevaluated_const(interner, uv))
+                }
                 _ => None,
             },
         }
     }
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
     Copy + Debug + Hash + Eq + SliceLike<Item = I::GenericArg> + Default + Relate<I>
 {
@@ -473,6 +488,7 @@ pub trait GenericArgs<I: Interner<GenericArgs = Self>>:
     }
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Predicate<I: Interner<Predicate = Self>>:
     Copy
     + Debug
@@ -528,6 +544,7 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     }
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Clause<I: Interner<Clause = Self>>:
     Copy
     + Debug
@@ -577,6 +594,7 @@ pub trait Clause<I: Interner<Clause = Self>>:
     fn instantiate_supertrait(self, cx: I, trait_ref: ty::Binder<I, ty::TraitRef<I>>) -> Self;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Clauses<I: Interner<Clauses = Self>>:
     Copy
     + Debug
@@ -589,16 +607,19 @@ pub trait Clauses<I: Interner<Clauses = Self>>:
 {
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait IntoKind {
     type Kind;
 
     fn kind(self) -> Self::Kind;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait ParamLike: Copy + Debug + Hash + Eq {
     fn index(self) -> u32;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn def_id(self) -> I::AdtId;
 
@@ -635,10 +656,12 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn destructor(self, interner: I) -> Option<AdtDestructorKind>;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
     fn caller_bounds(self) -> impl SliceLike<Item = I::Clause>;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Features<I: Interner>: Copy {
     fn generic_const_exprs(self) -> bool;
 
@@ -647,6 +670,7 @@ pub trait Features<I: Interner>: Copy {
     fn feature_bound_holds_in_crate(self, symbol: I::Symbol) -> bool;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait DefId<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
     fn is_local(self) -> bool;
 
@@ -663,6 +687,7 @@ impl<I: Interner, T: DefId<I> + Into<I::DefId> + TryFrom<I::DefId, Error: std::f
 {
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait BoundExistentialPredicates<I: Interner>:
     Copy + Debug + Hash + Eq + Relate<I> + SliceLike<Item = ty::Binder<I, ty::ExistentialPredicate<I>>>
 {
@@ -677,10 +702,12 @@ pub trait BoundExistentialPredicates<I: Interner>:
     ) -> impl IntoIterator<Item = ty::Binder<I, ty::ExistentialProjection<I>>>;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Span<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
     fn dummy() -> Self;
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait OpaqueTypeStorageEntries: Debug + Copy + Default {
     /// Whether the number of opaques has changed in a way that necessitates
     /// reevaluating a goal. For now, this is only when the number of non-duplicated
@@ -767,6 +794,7 @@ impl<'a, S: SliceLike> SliceLike for &'a S {
     }
 }
 
+#[rust_analyzer::prefer_underscore_import]
 pub trait Symbol<I>: Copy + Hash + PartialEq + Eq + Debug {
     fn is_kw_underscore_lifetime(self) -> bool;
 }

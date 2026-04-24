@@ -20,6 +20,7 @@
 use hir::{PathResolution, Semantics};
 use ide_db::{
     FileId, RootDatabase,
+    base_db::SourceDatabase,
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
     ra_fixture::{RaFixtureConfig, UpmapFromRaFixture},
@@ -91,6 +92,8 @@ pub struct Declaration {
 pub struct FindAllRefsConfig<'a> {
     pub search_scope: Option<SearchScope>,
     pub ra_fixture: RaFixtureConfig<'a>,
+    pub exclude_imports: bool,
+    pub exclude_tests: bool,
 }
 
 /// Find all references to the item at the given position.
@@ -125,10 +128,23 @@ pub(crate) fn find_all_refs(
 ) -> Option<Vec<ReferenceSearchResult>> {
     let _p = tracing::info_span!("find_all_refs").entered();
     let syntax = sema.parse_guess_edition(position.file_id).syntax().clone();
+    let exclude_library_refs = !is_library_file(sema.db, position.file_id);
     let make_searcher = |literal_search: bool| {
         move |def: Definition| {
-            let mut usages =
-                def.usages(sema).set_scope(config.search_scope.as_ref()).include_self_refs().all();
+            let mut included_categories = ReferenceCategory::all();
+            if config.exclude_imports {
+                included_categories.remove(ReferenceCategory::IMPORT);
+            }
+            if config.exclude_tests {
+                included_categories.remove(ReferenceCategory::TEST);
+            }
+            let mut usages = def
+                .usages(sema)
+                .set_scope(config.search_scope.as_ref())
+                .set_included_categories(included_categories)
+                .set_exclude_library_files(exclude_library_refs)
+                .include_self_refs()
+                .all();
             if literal_search {
                 retain_adt_literal_usages(&mut usages, def, sema);
             }
@@ -205,6 +221,11 @@ pub(crate) fn find_all_refs(
             Some(find_defs(sema, &syntax, position.offset)?.into_iter().map(search).collect())
         }
     }
+}
+
+fn is_library_file(db: &RootDatabase, file_id: FileId) -> bool {
+    let source_root = db.file_source_root(file_id).source_root_id(db);
+    db.source_root(source_root).source_root(db).is_library
 }
 
 pub(crate) fn find_defs(
@@ -469,7 +490,7 @@ mod tests {
 
     #[test]
     fn exclude_tests() {
-        check(
+        check_with_filters(
             r#"
 fn test_func() {}
 
@@ -482,6 +503,8 @@ fn test() {
     test_func();
 }
 "#,
+            false,
+            false,
             expect![[r#"
                 test_func Function FileId(0) 0..17 3..12
 
@@ -490,7 +513,7 @@ fn test() {
             "#]],
         );
 
-        check(
+        check_with_filters(
             r#"
 fn test_func() {}
 
@@ -503,11 +526,140 @@ fn test() {
     test_func();
 }
 "#,
+            false,
+            false,
             expect![[r#"
                 test_func Function FileId(0) 0..17 3..12
 
                 FileId(0) 35..44
                 FileId(0) 96..105 test
+            "#]],
+        );
+
+        check_with_filters(
+            r#"
+fn test_func() {}
+
+fn func() {
+    test_func$0();
+}
+
+#[test]
+fn test() {
+    test_func();
+}
+"#,
+            false,
+            true,
+            expect![[r#"
+                test_func Function FileId(0) 0..17 3..12
+
+                FileId(0) 35..44
+            "#]],
+        );
+    }
+
+    #[test]
+    fn exclude_library_refs_filtering() {
+        // exclude refs in 3rd party lib
+        check_with_filters(
+            r#"
+//- /main.rs crate:main deps:dep
+use dep::foo;
+
+fn main() {
+    foo$0();
+}
+
+//- /dep/lib.rs crate:dep new_source_root:library
+pub fn foo() {}
+
+pub fn also_calls_foo() {
+    foo();
+}
+"#,
+            false,
+            false,
+            expect![[r#"
+                foo Function FileId(1) 0..15 7..10
+
+                FileId(0) 9..12 import
+                FileId(0) 31..34
+            "#]],
+        );
+
+        // exclude refs in stdlib
+        check_with_filters(
+            r#"
+//- minicore: option
+fn main() {
+    let _ = core::option::Option::Some$0(0);
+}
+"#,
+            false,
+            false,
+            expect![[r#"
+                Some Variant FileId(1) 5999..6031 6024..6028
+
+                FileId(0) 46..50
+            "#]],
+        );
+
+        // keep refs in local lib
+        check_with_filters(
+            r#"
+//- /main.rs crate:main deps:dep
+use dep::foo;
+
+fn main() {
+    foo$0();
+}
+
+//- /dep/lib.rs crate:dep
+pub fn foo() {}
+
+pub fn also_calls_foo() {
+    foo();
+}
+"#,
+            false,
+            false,
+            expect![[r#"
+                foo Function FileId(1) 0..15 7..10
+
+                FileId(0) 9..12 import
+                FileId(0) 31..34
+                FileId(1) 47..50
+            "#]],
+        );
+    }
+
+    #[test]
+    fn find_refs_from_library_source_keeps_library_refs() {
+        check_with_filters(
+            r#"
+//- /main.rs crate:main deps:dep
+use dep::foo;
+
+fn main() {
+    foo();
+}
+
+//- /dep/lib.rs crate:dep new_source_root:library
+pub fn foo$0() {}
+
+pub fn also_calls_foo() {
+    foo();
+}
+"#,
+            false,
+            false,
+            expect![[r#"
+                foo Function FileId(1) 0..15 7..10
+
+                FileId(0) 9..12 import
+                FileId(0) 31..34
+                FileId(1) 47..50
             "#]],
         );
     }
@@ -1556,7 +1708,16 @@ fn main() {
     }
 
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
-        check_with_scope(ra_fixture, None, expect)
+        check_with_filters(ra_fixture, false, false, expect)
+    }
+
+    fn check_with_filters(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        exclude_imports: bool,
+        exclude_tests: bool,
+        expect: Expect,
+    ) {
+        check_with_scope_and_filters(ra_fixture, None, exclude_imports, exclude_tests, expect)
     }
 
     fn check_with_scope(
@@ -1564,10 +1725,22 @@ fn main() {
         search_scope: Option<&mut dyn FnMut(&RootDatabase) -> SearchScope>,
         expect: Expect,
     ) {
+        check_with_scope_and_filters(ra_fixture, search_scope, false, false, expect)
+    }
+
+    fn check_with_scope_and_filters(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        search_scope: Option<&mut dyn FnMut(&RootDatabase) -> SearchScope>,
+        exclude_imports: bool,
+        exclude_tests: bool,
+        expect: Expect,
+    ) {
         let (analysis, pos) = fixture::position(ra_fixture);
         let config = FindAllRefsConfig {
             search_scope: search_scope.map(|it| it(&analysis.db)),
             ra_fixture: RaFixtureConfig::default(),
+            exclude_imports,
+            exclude_tests,
         };
         let refs = analysis.find_all_refs(pos, &config).unwrap().unwrap();
 
@@ -2567,6 +2740,7 @@ fn test() {
     fn goto_ref_fn_kw() {
         check(
             r#"
+//- minicore: fn
 macro_rules! N {
     ($i:ident, $x:expr, $blk:expr) => {
         for $i in 0..$x {

@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ compile-flags: -Zmir-opt-level=0 -C debug-assertions=yes
 
 // EMIT_MIR shifts.shift_signed.built.after.mir

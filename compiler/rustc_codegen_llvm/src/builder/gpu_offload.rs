@@ -448,14 +448,19 @@ pub(crate) fn gen_define_handling<'ll>(
         transfer.iter().map(|m| m.intersection(valid_begin_mappings).bits()).collect();
     let transfer_from: Vec<u64> =
         transfer.iter().map(|m| m.intersection(MappingFlags::FROM).bits()).collect();
+    let valid_kernel_mappings = MappingFlags::LITERAL | MappingFlags::IMPLICIT;
     // FIXME(offload): add `OMP_MAP_TARGET_PARAM = 0x20` only if necessary
-    let transfer_kernel = vec![MappingFlags::TARGET_PARAM.bits(); transfer_to.len()];
+    let transfer_kernel: Vec<u64> = transfer
+        .iter()
+        .map(|m| (m.intersection(valid_kernel_mappings) | MappingFlags::TARGET_PARAM).bits())
+        .collect();
 
     let actual_sizes = sizes
         .iter()
         .map(|s| match s {
             OffloadSize::Static(sz) => *sz,
-            OffloadSize::Dynamic => 0,
+            // NOTE(Sa4dUs): set `.offload_sizes` entry to 0 for sizes that we determine at runtime, just like clang
+            _ => 0,
         })
         .collect::<Vec<_>>();
     let offload_sizes =
@@ -542,12 +547,20 @@ pub(crate) fn scalar_width<'ll>(cx: &'ll SimpleCx<'_>, ty: &'ll Type) -> u64 {
 }
 
 fn get_runtime_size<'ll, 'tcx>(
-    _cx: &CodegenCx<'ll, 'tcx>,
-    _val: &'ll Value,
-    _meta: &OffloadMetadata,
+    builder: &mut Builder<'_, 'll, 'tcx>,
+    args: &[&'ll Value],
+    index: usize,
+    meta: &OffloadMetadata,
 ) -> &'ll Value {
-    // FIXME(Sa4dUs): handle dynamic-size data (e.g. slices)
-    bug!("offload does not support dynamic sizes yet");
+    match meta.payload_size {
+        OffloadSize::Slice { element_size } => {
+            let length_idx = index + 1;
+            let length = args[length_idx];
+            let length_i64 = builder.intcast(length, builder.cx.type_i64(), false);
+            builder.mul(length_i64, builder.cx.get_const_i64(element_size))
+        }
+        _ => bug!("unexpected offload size {:?}", meta.payload_size),
+    }
 }
 
 // For each kernel *call*, we now use some of our previous declared globals to move data to and from
@@ -588,7 +601,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     let OffloadKernelDims { num_workgroups, threads_per_block, workgroup_dims, thread_dims } =
         offload_dims;
 
-    let has_dynamic = metadata.iter().any(|m| matches!(m.payload_size, OffloadSize::Dynamic));
+    let has_dynamic = metadata.iter().any(|m| !matches!(m.payload_size, OffloadSize::Static(_)));
 
     let tgt_decl = offload_globals.launcher_fn;
     let tgt_target_kernel_ty = offload_globals.launcher_ty;
@@ -683,9 +696,9 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         let gep2 = builder.inbounds_gep(ty, a2, &[i32_0, idx]);
         builder.store(geps[i as usize], gep2, Align::EIGHT);
 
-        if matches!(metadata[i as usize].payload_size, OffloadSize::Dynamic) {
+        if !matches!(metadata[i as usize].payload_size, OffloadSize::Static(_)) {
             let gep3 = builder.inbounds_gep(ty2, a4, &[i32_0, idx]);
-            let size_val = get_runtime_size(cx, args[i as usize], &metadata[i as usize]);
+            let size_val = get_runtime_size(builder, args, i as usize, &metadata[i as usize]);
             builder.store(size_val, gep3, Align::EIGHT);
         }
     }

@@ -1,5 +1,5 @@
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
-  --> $DIR/hir-crate-items-before-lowering-ices.rs:37:11
+  --> $DIR/hir-crate-items-before-lowering-ices.rs:36:11
    |
 LL |       reuse a as b {
    |  ___________^______-
@@ -9,7 +9,7 @@ LL | |     }
    | |_____- unexpected argument of type `fn() {foo::<_>}`
    |
 note: function defined here
-  --> $DIR/hir-crate-items-before-lowering-ices.rs:35:8
+  --> $DIR/hir-crate-items-before-lowering-ices.rs:34:8
    |
 LL |     fn a() {}
    |        ^

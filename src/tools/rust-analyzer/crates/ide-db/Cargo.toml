@@ -25,7 +25,6 @@ arrayvec.workspace = true
 memchr = "2.7.5"
 salsa.workspace = true
 salsa-macros.workspace = true
-query-group.workspace = true
 triomphe.workspace = true
 nohash-hasher.workspace = true
 bitflags.workspace = true

@@ -1,7 +1,7 @@
 #!//bin/bash
 
 //@ check-pass
-//@ reference: input.shebang
+//@ reference: shebang.syntax
 fn main() {
     println!("a valid shebang (that is also a rust comment)")
 }

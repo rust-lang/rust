@@ -32,7 +32,7 @@ use rustc_data_structures::sync::{
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
-use rustc_hir::definitions::{DefPathData, Definitions, Disambiguator};
+use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
@@ -700,7 +700,25 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Feeds the HIR delayed owner during AST -> HIR delayed lowering.
     pub fn feed_delayed_owner(self, key: LocalDefId, owner: MaybeOwner<'tcx>) {
+        self.dep_graph.assert_ignored();
         TyCtxtFeed { tcx: self, key }.delayed_owner(owner);
+    }
+
+    // Trait impl item visibility is inherited from its trait when not specified
+    // explicitly. In that case we cannot determine it in early resolve,
+    // but instead are feeding it in late resolve, where we don't have access to the
+    // `TyCtxtFeed` anymore.
+    // To avoid having to hash the `LocalDefId` multiple times for inserting and removing the
+    // `TyCtxtFeed` from a hash table, we add this hack to feed the visibility.
+    // Do not use outside of the resolver query.
+    pub fn feed_visibility_for_trait_impl_item(self, key: LocalDefId, vis: ty::Visibility) {
+        if cfg!(debug_assertions) {
+            match self.def_kind(self.local_parent(key)) {
+                DefKind::Impl { of_trait: true } => {}
+                other => bug!("{key:?} is not an assoc item of a trait impl: {other:?}"),
+            }
+        }
+        TyCtxtFeed { tcx: self, key }.visibility(vis.to_def_id())
     }
 }
 
@@ -1398,7 +1416,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
         name: Option<Symbol>,
         def_kind: DefKind,
         override_def_path_data: Option<DefPathData>,
-        disambiguator: &mut impl Disambiguator,
+        disambiguator: &mut PerParentDisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let feed =
             self.tcx.create_def(parent, name, def_kind, override_def_path_data, disambiguator);
@@ -1416,7 +1434,7 @@ impl<'tcx> TyCtxt<'tcx> {
         name: Option<Symbol>,
         def_kind: DefKind,
         override_def_path_data: Option<DefPathData>,
-        disambiguator: &mut impl Disambiguator,
+        disambiguator: &mut PerParentDisambiguatorState,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let data = override_def_path_data.unwrap_or_else(|| def_kind.def_path_data(name));
         // The following call has the side effect of modifying the tables inside `definitions`.

@@ -9,8 +9,8 @@ use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
 pub use rustc_middle::traits::query::NormalizationResult;
 use rustc_middle::ty::{
-    self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
+    self, FallibleTypeFolder, Flags, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
 };
 use rustc_span::DUMMY_SP;
 use tracing::{debug, info, instrument};
@@ -256,8 +256,8 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                 }
             }
 
-            ty::Projection { def_id } | ty::Inherent { def_id } | ty::Free { def_id } => self
-                .try_fold_free_or_assoc(ty::AliasTerm::new(self.cx(), def_id, data.args))?
+            kind @ (ty::Projection { .. } | ty::Inherent { .. } | ty::Free { .. }) => self
+                .try_fold_free_or_assoc(ty::AliasTerm::new(self.cx(), kind.into(), data.args))?
                 .expect_type(),
         };
 
@@ -286,7 +286,7 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
                 |constant| crate::traits::evaluate_const(&self.infcx, constant, self.param_env),
             ),
             _ => self
-                .try_fold_free_or_assoc(ty::AliasTerm::new(self.cx(), uv.def, uv.args))?
+                .try_fold_free_or_assoc(ty::AliasTerm::from_unevaluated_const(self.cx(), uv))?
                 .expect_const(),
         };
         debug!(?constant, ?self.param_env);
@@ -329,16 +329,17 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
         debug!("QueryNormalizer: c_term = {:#?}", c_term);
         debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
         let result = match term.kind(tcx) {
-            ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
+            ty::AliasTermKind::ProjectionTy { .. } | ty::AliasTermKind::ProjectionConst { .. } => {
                 tcx.normalize_canonicalized_projection(c_term)
             }
-            ty::AliasTermKind::FreeTy | ty::AliasTermKind::FreeConst => {
+            ty::AliasTermKind::FreeTy { .. } | ty::AliasTermKind::FreeConst { .. } => {
                 tcx.normalize_canonicalized_free_alias(c_term)
             }
-            ty::AliasTermKind::InherentTy | ty::AliasTermKind::InherentConst => {
+            ty::AliasTermKind::InherentTy { .. } | ty::AliasTermKind::InherentConst { .. } => {
                 tcx.normalize_canonicalized_inherent_projection(c_term)
             }
-            kind @ (ty::AliasTermKind::OpaqueTy | ty::AliasTermKind::UnevaluatedConst) => {
+            kind @ (ty::AliasTermKind::OpaqueTy { .. }
+            | ty::AliasTermKind::UnevaluatedConst { .. }) => {
                 unreachable!("did not expect {kind:?} due to match arm above")
             }
         }?;
@@ -382,7 +383,7 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
             && (res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION)
                 || matches!(
                     term.kind(tcx),
-                    ty::AliasTermKind::FreeTy | ty::AliasTermKind::FreeConst
+                    ty::AliasTermKind::FreeTy { .. } | ty::AliasTermKind::FreeConst { .. }
                 ))
         {
             res.try_fold_with(self)

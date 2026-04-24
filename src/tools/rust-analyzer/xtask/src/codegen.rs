@@ -130,16 +130,17 @@ impl fmt::Display for Location {
 fn reformat(text: String) -> String {
     let sh = Shell::new().unwrap();
     let rustfmt_toml = project_root().join("rustfmt.toml");
-    let version = cmd!(sh, "rustup run stable rustfmt --version").read().unwrap_or_default();
+    let toolchain = &std::env::var("RUSTFMT_TOOLCHAIN").unwrap_or("stable".to_owned());
+    let version = cmd!(sh, "rustup run {toolchain} rustfmt --version").read().unwrap_or_default();
 
     // First try explicitly requesting the stable channel via rustup in case nightly is being used by default,
     // then plain rustfmt in case rustup isn't being used to manage the compiler (e.g. when using Nix).
-    let mut stdout = if !version.contains("stable") {
+    let mut stdout = if !version.contains(toolchain) {
         let version = cmd!(sh, "rustfmt --version").read().unwrap_or_default();
-        if !version.contains("stable") {
+        if !version.contains(toolchain) {
             panic!(
-                "Failed to run rustfmt from toolchain 'stable'. \
-                 Please run `rustup component add rustfmt --toolchain stable` to install it.",
+                "Failed to run rustfmt from toolchain '{toolchain}'. \
+                 Please run `rustup component add rustfmt --toolchain {toolchain}` to install it.",
             );
         } else {
             cmd!(sh, "rustfmt --config-path {rustfmt_toml} --config fn_single_line=true")
@@ -150,7 +151,7 @@ fn reformat(text: String) -> String {
     } else {
         cmd!(
             sh,
-            "rustup run stable rustfmt --config-path {rustfmt_toml} --config fn_single_line=true"
+            "rustup run {toolchain} rustfmt --config-path {rustfmt_toml} --config fn_single_line=true"
         )
         .stdin(text)
         .read()

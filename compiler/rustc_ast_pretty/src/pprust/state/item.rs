@@ -371,10 +371,10 @@ impl<'a> State<'a> {
                 self.bclose(item.span, empty, cb);
             }
             ast::ItemKind::Trait(box ast::Trait {
+                impl_restriction,
                 constness,
                 safety,
                 is_auto,
-                impl_restriction,
                 ident,
                 generics,
                 bounds,
@@ -382,10 +382,10 @@ impl<'a> State<'a> {
             }) => {
                 let (cb, ib) = self.head("");
                 self.print_visibility(&item.vis);
+                self.print_impl_restriction(impl_restriction);
                 self.print_constness(*constness);
                 self.print_safety(*safety);
                 self.print_is_auto(*is_auto);
-                self.print_impl_restriction(impl_restriction);
                 self.word_nbsp("trait");
                 self.print_ident(*ident);
                 self.print_generic_params(&generics.params);

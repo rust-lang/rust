@@ -526,7 +526,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
                 debug!(?alias_args);
 
-                ty::AliasTerm::new_from_args(tcx, assoc_item.def_id, alias_args)
+                ty::AliasTerm::new_from_def_id(tcx, assoc_item.def_id, alias_args)
             })
         };
 
@@ -543,7 +543,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     hir::Term::Ty(ty) => self.lower_ty(ty).into(),
                     hir::Term::Const(ct) => {
                         let ty = projection_term.map_bound(|alias| {
-                            tcx.type_of(alias.def_id).instantiate(tcx, alias.args).skip_norm_wip()
+                            tcx.type_of(alias.def_id()).instantiate(tcx, alias.args).skip_norm_wip()
                         });
                         let ty = check_assoc_const_binding_type(
                             self,

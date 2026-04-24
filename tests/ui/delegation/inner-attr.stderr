@@ -1,5 +1,5 @@
 error: an inner attribute is not permitted in this context
-  --> $DIR/inner-attr.rs:6:16
+  --> $DIR/inner-attr.rs:5:16
    |
 LL | reuse a as b { #![rustc_dummy] self }
    |                ^^^^^^^^^^^^^^^
@@ -10,13 +10,13 @@ LL | fn main() {}
    = note: inner attributes, like `#![no_std]`, annotate the item enclosing them, and are usually found at the beginning of source files
 
 error[E0061]: this function takes 0 arguments but 1 argument was supplied
-  --> $DIR/inner-attr.rs:6:7
+  --> $DIR/inner-attr.rs:5:7
    |
 LL | reuse a as b { #![rustc_dummy] self }
    |       ^                        ---- unexpected argument
    |
 note: function defined here
-  --> $DIR/inner-attr.rs:4:4
+  --> $DIR/inner-attr.rs:3:4
    |
 LL | fn a() {}
    |    ^

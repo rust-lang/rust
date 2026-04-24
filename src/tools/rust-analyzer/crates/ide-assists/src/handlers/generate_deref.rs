@@ -2,7 +2,7 @@ use hir::{ModPath, ModuleDef};
 use ide_db::{FileId, RootDatabase, famous_defs::FamousDefs};
 use syntax::{
     Edition,
-    ast::{self, AstNode, HasName, edit::AstNodeEdit, syntax_factory::SyntaxFactory},
+    ast::{self, AstNode, HasName, edit::AstNodeEdit},
     syntax_editor::Position,
 };
 
@@ -138,7 +138,8 @@ fn generate_edit(
     trait_path: ModPath,
     edition: Edition,
 ) {
-    let make = SyntaxFactory::with_mappings();
+    let editor = edit.make_editor(strukt.syntax());
+    let make = editor.make();
     let strukt_adt = ast::Adt::Struct(strukt.clone());
     let trait_ty = make.ty(&trait_path.display(db, edition).to_string());
 
@@ -195,15 +196,12 @@ fn generate_edit(
 
     let body = make.assoc_item_list(assoc_items);
     let indent = strukt.indent_level();
-    let impl_ = generate_trait_impl_intransitive_with_item(&make, &strukt_adt, trait_ty, body)
+    let impl_ = generate_trait_impl_intransitive_with_item(make, &strukt_adt, trait_ty, body)
         .indent(indent);
-
-    let mut editor = edit.make_editor(strukt.syntax());
     editor.insert_all(
         Position::after(strukt.syntax()),
         vec![make.whitespace(&format!("\n\n{indent}")).into(), impl_.syntax().clone().into()],
     );
-    editor.add_mappings(make.finish_with_mappings());
     edit.add_file_edits(file_id, editor);
 }
 

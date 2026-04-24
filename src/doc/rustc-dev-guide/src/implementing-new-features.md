@@ -162,7 +162,7 @@ The below steps needs to be followed in order to implement a new unstable featur
 
    ```rust ignore
    /// Allows defining identifiers beyond ASCII.
-   (unstable, non_ascii_idents, "CURRENT_RUSTC_VERSION", Some(55467), None),
+   (unstable, non_ascii_idents, "CURRENT_RUSTC_VERSION", Some(55467)),
    ```
 
    Features can be marked as incomplete,
@@ -173,7 +173,7 @@ The below steps needs to be followed in order to implement a new unstable featur
 
    ```rust ignore
    /// Allows deref patterns.
-   (incomplete, deref_patterns, "CURRENT_RUSTC_VERSION", Some(87121), None),
+   (incomplete, deref_patterns, "CURRENT_RUSTC_VERSION", Some(87121)),
    ```
 
    Feature flags related to a lang experiment must be marked as `incomplete`

@@ -135,7 +135,7 @@ pub(crate) struct TestProps {
     pub(crate) pretty_mode: String,
     // Only compare pretty output and don't try compiling
     pub(crate) pretty_compare_only: bool,
-    // Patterns which must not appear in the output of a cfail test.
+    /// Strings that must not appear in compile/run output.
     pub(crate) forbid_output: Vec<String>,
     // Revisions to test for incremental compilation.
     pub(crate) revisions: Vec<String>,
@@ -195,6 +195,9 @@ pub(crate) struct TestProps {
     /// Extra flags to pass to `llvm-cov` when producing coverage reports.
     /// Only used by the "coverage-run" test mode.
     pub(crate) llvm_cov_flags: Vec<String>,
+    /// Don't run LLVM's `filecheck` tool to check compiler output,
+    /// in tests that would normally run it.
+    pub(crate) skip_filecheck: bool,
     /// Extra flags to pass to LLVM's `filecheck` tool, in tests that use it.
     pub(crate) filecheck_flags: Vec<String>,
     /// Don't automatically insert any `--check-cfg` args
@@ -308,6 +311,7 @@ impl TestProps {
             mir_unit_test: None,
             remap_src_base: false,
             llvm_cov_flags: vec![],
+            skip_filecheck: false,
             filecheck_flags: vec![],
             no_auto_check_cfg: false,
             add_minicore: false,
@@ -438,14 +442,6 @@ impl TestProps {
         let check_no_run = |s| match (config.mode, s) {
             (TestMode::Ui, _) => (),
             (TestMode::Crashes, _) => (),
-            (TestMode::Codegen, "build-pass") => (),
-            (TestMode::Incremental, _) => {
-                // FIXME(Zalathar): This only detects forbidden directives that are
-                // declared _after_ the incompatible `//@ revisions:` directive(s).
-                if self.revisions.iter().any(|r| !r.starts_with("cfail")) {
-                    panic!("`{s}` directive is only supported in `cfail` incremental tests")
-                }
-            }
             (mode, _) => panic!("`{s}` directive is not supported in `{mode}` tests"),
         };
         let pass_mode = if config.parse_name_directive(ln, "check-pass") {

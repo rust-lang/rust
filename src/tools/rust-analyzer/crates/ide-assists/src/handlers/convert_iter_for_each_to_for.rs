@@ -1,12 +1,11 @@
 use hir::{Name, sym};
 use ide_db::famous_defs::FamousDefs;
-use stdx::format_to;
 use syntax::{
     AstNode,
-    ast::{self, HasArgList, HasLoopBody, edit::AstNodeEdit, syntax_factory::SyntaxFactory},
+    ast::{self, HasArgList, HasLoopBody, edit::AstNodeEdit},
 };
 
-use crate::{AssistContext, AssistId, Assists};
+use crate::{AssistContext, AssistId, Assists, utils::wrap_paren};
 
 // Assist: convert_iter_for_each_to_for
 //
@@ -57,7 +56,9 @@ pub(crate) fn convert_iter_for_each_to_for(
         "Replace this `Iterator::for_each` with a for loop",
         range,
         |builder| {
-            let make = SyntaxFactory::with_mappings();
+            let target_node = stmt.as_ref().map_or(method.syntax(), AstNode::syntax);
+            let editor = builder.make_editor(target_node);
+            let make = editor.make();
             let indent =
                 stmt.as_ref().map_or_else(|| method.indent_level(), ast::ExprStmt::indent_level);
 
@@ -68,9 +69,6 @@ pub(crate) fn convert_iter_for_each_to_for(
             .indent(indent);
 
             let expr_for_loop = make.expr_for_loop(param, receiver, block);
-
-            let target_node = stmt.as_ref().map_or(method.syntax(), AstNode::syntax);
-            let mut editor = builder.make_editor(target_node);
             editor.replace(target_node, expr_for_loop.syntax());
             builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
@@ -116,32 +114,40 @@ pub(crate) fn convert_for_loop_with_for_each(
         "Replace this for loop with `Iterator::for_each`",
         for_loop.syntax().text_range(),
         |builder| {
-            let mut buf = String::new();
+            let editor = builder.make_editor(for_loop.syntax());
+            let make = editor.make();
 
-            if let Some((expr_behind_ref, method, krate)) =
+            let mut receiver = iterable.clone();
+
+            let iter_method = if let Some((expr_behind_ref, method, krate)) =
                 is_ref_and_impls_iter_method(&ctx.sema, &iterable)
             {
+                receiver = expr_behind_ref;
                 // We have either "for x in &col" and col implements a method called iter
                 //             or "for x in &mut col" and col implements a method called iter_mut
-                format_to!(
-                    buf,
-                    "{expr_behind_ref}.{}()",
-                    method.display(ctx.db(), krate.edition(ctx.db()))
-                );
-            } else if let ast::Expr::RangeExpr(..) = iterable {
-                // range expressions need to be parenthesized for the syntax to be correct
-                format_to!(buf, "({iterable})");
-            } else if impls_core_iter(&ctx.sema, &iterable) {
-                format_to!(buf, "{iterable}");
-            } else if let ast::Expr::RefExpr(_) = iterable {
-                format_to!(buf, "({iterable}).into_iter()");
+                method.display(ctx.db(), krate.edition(ctx.db())).to_string()
             } else {
-                format_to!(buf, "{iterable}.into_iter()");
+                "into_iter".to_owned()
+            };
+
+            receiver = wrap_paren(receiver, make, ast::prec::ExprPrecedence::Postfix);
+
+            if !impls_core_iter(&ctx.sema, &iterable) {
+                receiver = make
+                    .expr_method_call(receiver, make.name_ref(&iter_method), make.arg_list([]))
+                    .into();
             }
 
-            format_to!(buf, ".for_each(|{pat}| {body});");
+            let loop_arg = make.expr_closure([make.untyped_param(pat)], body.into());
+            let for_each = make.expr_method_call(
+                receiver,
+                make.name_ref("for_each"),
+                make.arg_list([loop_arg.into()]),
+            );
+            let for_each = make.expr_stmt(for_each.into());
 
-            builder.replace(for_loop.syntax().text_range(), buf)
+            editor.replace(for_loop.syntax(), for_each.syntax());
+            builder.add_file_edits(ctx.vfs_file_id(), editor);
         },
     )
 }

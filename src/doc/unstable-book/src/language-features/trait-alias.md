@@ -26,7 +26,7 @@ pub fn main() {
     foo(&1);
 
     // Use trait alias for trait objects.
-    let a: &Bar = &123;
+    let a: &dyn Bar = &123;
     println!("{:?}", a);
     let b = Box::new(456) as Box<dyn Foo>;
     println!("{:?}", b);

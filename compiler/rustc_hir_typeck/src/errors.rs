@@ -173,6 +173,12 @@ pub(crate) enum ExpectedReturnTypeLabel<'tcx> {
         span: Span,
         expected: Ty<'tcx>,
     },
+    #[label("expected a single type implementing `{$trait_name}` because of return type")]
+    ImplTrait {
+        #[primary_span]
+        span: Span,
+        trait_name: String,
+    },
 }
 
 #[derive(Diagnostic)]

@@ -1,5 +1,5 @@
 // Regression test for #154878
-//@ revisions: cpass1 cpass2
+//@ revisions: bpass1 bpass2
 
 pub fn main() {
     let x = 42.0;

@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::hash::{Hash, Hasher};
-use std::{iter, mem};
+use std::iter;
 
 use either::Either;
 use hashbrown::hash_table::{self, Entry, HashTable};
@@ -183,19 +183,27 @@ impl<K: Eq + Hash, V> ShardedHashMap<K, V> {
         }
     }
 
+    /// Insert value into the [`ShardedHashMap`] with unique key.
+    ///
+    /// This function panics if debug_assertions are enabled and uniqueness is violated.
+    /// If uniqueness is violated but debug_assertions are disabled then lookups will arbitrarily
+    /// return one of the inserted elements.
     #[inline]
-    pub fn insert(&self, key: K, value: V) -> Option<V> {
+    pub fn insert_unique(&self, key: K, value: V) {
         let hash = make_hash(&key);
         let mut shard = self.lock_shard_by_hash(hash);
 
-        match table_entry(&mut shard, hash, &key) {
-            Entry::Occupied(e) => {
-                let previous = mem::replace(&mut e.into_mut().1, value);
-                Some(previous)
+        cfg_select! {
+            debug_assertions => match table_entry(&mut shard, hash, &key) {
+                Entry::Occupied(_) => {
+                    panic!("tried to insert key that's already present");
+                }
+                Entry::Vacant(e) => {
+                    e.insert((key, value));
+                }
             }
-            Entry::Vacant(e) => {
-                e.insert((key, value));
-                None
+            _ => {
+                shard.insert_unique(hash, (key, value), |(k, _)| make_hash(k));
             }
         }
     }

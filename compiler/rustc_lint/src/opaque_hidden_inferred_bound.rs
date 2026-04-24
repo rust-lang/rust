@@ -132,7 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
 
                 let proj_ty = Ty::new_projection_from_args(
                     cx.tcx,
-                    proj.projection_term.def_id,
+                    proj.projection_term.def_id(),
                     proj.projection_term.args,
                 );
                 // For every instance of the projection type in the bounds,
@@ -149,7 +149,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 // with `impl Send: OtherTrait`.
                 for (assoc_pred, assoc_pred_span) in cx
                     .tcx
-                    .explicit_item_bounds(proj.projection_term.def_id)
+                    .explicit_item_bounds(proj.projection_term.def_id())
                     .iter_instantiated_copied(cx.tcx, proj.projection_term.args)
                     .map(Unnormalized::skip_norm_wip)
                 {

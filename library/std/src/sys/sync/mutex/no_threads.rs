@@ -26,6 +26,6 @@ impl Mutex {
 
     #[inline]
     pub fn try_lock(&self) -> bool {
-        self.locked.replace(true) == false
+        !self.locked.replace(true)
     }
 }

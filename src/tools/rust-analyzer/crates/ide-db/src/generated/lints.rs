@@ -286,6 +286,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         deny_since: None,
     },
     Lint {
+        label: "deprecated_llvm_intrinsic",
+        description: r##"detects uses of deprecated LLVM intrinsics"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "deprecated_safe_2024",
         description: r##"detects unsafe functions being used as safe functions"##,
         default_severity: Severity::Allow,
@@ -422,6 +429,13 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         label: "ffi_unwind_calls",
         description: r##"call to foreign functions or function pointers with FFI-unwind ABI"##,
         default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "float_literal_f32_fallback",
+        description: r##"detects unsuffixed floating point literals whose type fallback to `f32`"##,
+        default_severity: Severity::Warning,
         warn_since: None,
         deny_since: None,
     },
@@ -1345,7 +1359,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "uninhabited_static",
         description: r##"uninhabited static"##,
-        default_severity: Severity::Warning,
+        default_severity: Severity::Error,
         warn_since: None,
         deny_since: None,
     },
@@ -1681,7 +1695,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     Lint {
         label: "varargs_without_pattern",
         description: r##"detects usage of `...` arguments without a pattern in non-foreign items"##,
-        default_severity: Severity::Warning,
+        default_severity: Severity::Error,
         warn_since: None,
         deny_since: None,
     },
@@ -1715,7 +1729,7 @@ pub const DEFAULT_LINTS: &[Lint] = &[
     },
     Lint {
         label: "future_incompatible",
-        description: r##"lint group for: internal-eq-trait-method-impls, aarch64-softfloat-neon, ambiguous-associated-items, ambiguous-derive-helpers, ambiguous-glob-imported-traits, ambiguous-glob-imports, ambiguous-import-visibilities, ambiguous-panic-imports, coherence-leak-check, conflicting-repr-hints, const-evaluatable-unchecked, elided-lifetimes-in-associated-constant, forbidden-lint-groups, ill-formed-attribute-input, invalid-macro-export-arguments, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, out-of-scope-macro-calls, patterns-in-fns-without-body, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, repr-c-enums-larger-than-int, repr-transparent-non-zst-fields, self-constructor-from-outer-item, semicolon-in-expressions-from-macros, uncovered-param-in-projection, uninhabited-static, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, varargs-without-pattern"##,
+        description: r##"lint group for: internal-eq-trait-method-impls, aarch64-softfloat-neon, ambiguous-associated-items, ambiguous-derive-helpers, ambiguous-glob-imported-traits, ambiguous-glob-imports, ambiguous-import-visibilities, ambiguous-panic-imports, coherence-leak-check, conflicting-repr-hints, const-evaluatable-unchecked, elided-lifetimes-in-associated-constant, float-literal-f32-fallback, forbidden-lint-groups, ill-formed-attribute-input, invalid-macro-export-arguments, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, out-of-scope-macro-calls, patterns-in-fns-without-body, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, repr-c-enums-larger-than-int, repr-transparent-non-zst-fields, self-constructor-from-outer-item, semicolon-in-expressions-from-macros, uncovered-param-in-projection, uninhabited-static, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, varargs-without-pattern"##,
         default_severity: Severity::Allow,
         warn_since: None,
         deny_since: None,
@@ -1790,13 +1804,6 @@ pub const DEFAULT_LINTS: &[Lint] = &[
         warn_since: None,
         deny_since: None,
     },
-    Lint {
-        label: "warnings",
-        description: r##"lint group for: all lints that are set to issue warnings"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
 ];
 
 pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
@@ -1813,7 +1820,7 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
     LintGroup {
         lint: Lint {
             label: "future_incompatible",
-            description: r##"lint group for: internal-eq-trait-method-impls, aarch64-softfloat-neon, ambiguous-associated-items, ambiguous-derive-helpers, ambiguous-glob-imported-traits, ambiguous-glob-imports, ambiguous-import-visibilities, ambiguous-panic-imports, coherence-leak-check, conflicting-repr-hints, const-evaluatable-unchecked, elided-lifetimes-in-associated-constant, forbidden-lint-groups, ill-formed-attribute-input, invalid-macro-export-arguments, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, out-of-scope-macro-calls, patterns-in-fns-without-body, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, repr-c-enums-larger-than-int, repr-transparent-non-zst-fields, self-constructor-from-outer-item, semicolon-in-expressions-from-macros, uncovered-param-in-projection, uninhabited-static, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, varargs-without-pattern"##,
+            description: r##"lint group for: internal-eq-trait-method-impls, aarch64-softfloat-neon, ambiguous-associated-items, ambiguous-derive-helpers, ambiguous-glob-imported-traits, ambiguous-glob-imports, ambiguous-import-visibilities, ambiguous-panic-imports, coherence-leak-check, conflicting-repr-hints, const-evaluatable-unchecked, elided-lifetimes-in-associated-constant, float-literal-f32-fallback, forbidden-lint-groups, ill-formed-attribute-input, invalid-macro-export-arguments, invalid-type-param-default, late-bound-lifetime-arguments, legacy-derive-helpers, macro-expanded-macro-exports-accessed-by-absolute-paths, out-of-scope-macro-calls, patterns-in-fns-without-body, proc-macro-derive-resolution-fallback, pub-use-of-private-extern-crate, repr-c-enums-larger-than-int, repr-transparent-non-zst-fields, self-constructor-from-outer-item, semicolon-in-expressions-from-macros, uncovered-param-in-projection, uninhabited-static, unstable-name-collisions, unstable-syntax-pre-expansion, unsupported-calling-conventions, varargs-without-pattern"##,
             default_severity: Severity::Allow,
             warn_since: None,
             deny_since: None,
@@ -1831,6 +1838,7 @@ pub const DEFAULT_LINT_GROUPS: &[LintGroup] = &[
             "conflicting_repr_hints",
             "const_evaluatable_unchecked",
             "elided_lifetimes_in_associated_constant",
+            "float_literal_f32_fallback",
             "forbidden_lint_groups",
             "ill_formed_attribute_input",
             "invalid_macro_export_arguments",
@@ -2484,6 +2492,22 @@ Allows `extern "x86-interrupt" fn()`.
 The tracking issue for this feature is: [#40180]
 
 [#40180]: https://github.com/rust-lang/rust/issues/40180
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "abort_immediate",
+        description: r##"# `abort_immediate`
+
+
+
+The tracking issue for this feature is: [#154601]
+
+[#154601]: https://github.com/rust-lang/rust/issues/154601
 
 ------------------------
 "##,
@@ -4615,6 +4639,47 @@ Allows checking whether or not the backend correctly supports unstable float typ
 This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 
 ------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "cfg_target_object_format",
+        description: r##"# `cfg_target_object_format`
+
+The tracking issue for this feature is: [#152586]
+
+[#152586]: https://github.com/rust-lang/rust/issues/152586
+
+------------------------
+
+The `cfg_target_object_format` feature makes it possible to execute different code
+depending on the current target's object file format.
+
+## Examples
+
+```rust
+#![feature(cfg_target_object_format)]
+
+#[cfg(target_object_format = "elf")]
+fn a() {
+    // ...
+}
+
+#[cfg(target_object_format = "mach-o")]
+fn a() {
+    // ...
+}
+
+fn b() {
+    if cfg!(target_object_format = "wasm") {
+        // ...
+    } else {
+        // ...
+    }
+}
+```
 "##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -6934,6 +6999,22 @@ The tracking issue for this feature is: [#154181]
         deny_since: None,
     },
     Lint {
+        label: "diagnostic_on_unknown",
+        description: r##"# `diagnostic_on_unknown`
+
+Allows giving unresolved imports a custom diagnostic message
+
+The tracking issue for this feature is: [#152900]
+
+[#152900]: https://github.com/rust-lang/rust/issues/152900
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "dir_entry_ext2",
         description: r##"# `dir_entry_ext2`
 
@@ -7704,6 +7785,22 @@ Enable the `f16` type for IEEE 16-bit floating numbers (half precision).
         deny_since: None,
     },
     Lint {
+        label: "f32_from_f16",
+        description: r##"# `f32_from_f16`
+
+
+
+The tracking issue for this feature is: [#154005]
+
+[#154005]: https://github.com/rust-lang/rust/issues/154005
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "fd",
         description: r##"# `fd`
 
@@ -8000,6 +8097,22 @@ The tracking issue for this feature is: [#91079]
         description: r##"# `flt2dec`
 
 This feature is internal to the Rust compiler and is not intended for general use.
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "fma4_target_feature",
+        description: r##"# `fma4_target_feature`
+
+fma4 target feature on x86.
+
+The tracking issue for this feature is: [#155233]
+
+[#155233]: https://github.com/rust-lang/rust/issues/155233
 
 ------------------------
 "##,
@@ -8889,22 +9002,6 @@ The tracking issue for this feature is: [#134821]
         deny_since: None,
     },
     Lint {
-        label: "int_lowest_highest_one",
-        description: r##"# `int_lowest_highest_one`
-
-
-
-The tracking issue for this feature is: [#145203]
-
-[#145203]: https://github.com/rust-lang/rust/issues/145203
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
         label: "int_roundings",
         description: r##"# `int_roundings`
 
@@ -9244,22 +9341,6 @@ The tracking issue for this feature is: [#117425]
 The tracking issue for this feature is: [#111192]
 
 [#111192]: https://github.com/rust-lang/rust/issues/111192
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "isolate_most_least_significant_one",
-        description: r##"# `isolate_most_least_significant_one`
-
-
-
-The tracking issue for this feature is: [#136909]
-
-[#136909]: https://github.com/rust-lang/rust/issues/136909
 
 ------------------------
 "##,
@@ -12989,19 +13070,20 @@ only discuss a few of them.
 ------------------------
 
 The `rustc_attrs` feature allows debugging rustc type layouts by using
-`#[rustc_layout(...)]` to debug layout at compile time (it even works
+`#[rustc_dump_layout(...)]` to debug layout at compile time (it even works
 with `cargo check`) as an alternative to `rustc -Z print-type-sizes`
 that is way more verbose.
 
-Options provided by `#[rustc_layout(...)]` are `debug`, `size`, `align`,
-`abi`. Note that it only works on sized types without generics.
+Options provided by `#[rustc_dump_layout(...)]` are `backend_repr`, `align`,
+`debug`, `homogeneous_aggregate` and `size`.
+Note that it only works on sized types without generics.
 
 ## Examples
 
 ```rust,compile_fail
 #![feature(rustc_attrs)]
 
-#[rustc_layout(abi, size)]
+#[rustc_dump_layout(backend_repr, size)]
 pub enum X {
     Y(u8, u8, u8),
     Z(isize),
@@ -13011,7 +13093,7 @@ pub enum X {
 When that is compiled, the compiler will error with something like
 
 ```text
-error: abi: Aggregate { sized: true }
+error: backend_repr: Aggregate { sized: true }
  --> src/lib.rs:4:1
   |
 4 | / pub enum T {
@@ -14874,6 +14956,38 @@ The tracking issue for this feature is: [#109929]
         deny_since: None,
     },
     Lint {
+        label: "transmute_neo",
+        description: r##"# `transmute_neo`
+
+
+
+The tracking issue for this feature is: [#155079]
+
+[#155079]: https://github.com/rust-lang/rust/issues/155079
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "transmute_prefix",
+        description: r##"# `transmute_prefix`
+
+
+
+The tracking issue for this feature is: [#155079]
+
+[#155079]: https://github.com/rust-lang/rust/issues/155079
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
         label: "transparent_unions",
         description: r##"# `transparent_unions`
 
@@ -15163,6 +15277,22 @@ The tracking issue for this feature is: [#149488]
 The tracking issue for this feature is: [#63178]
 
 [#63178]: https://github.com/rust-lang/rust/issues/63178
+
+------------------------
+"##,
+        default_severity: Severity::Allow,
+        warn_since: None,
+        deny_since: None,
+    },
+    Lint {
+        label: "try_from_int_error_kind",
+        description: r##"# `try_from_int_error_kind`
+
+
+
+The tracking issue for this feature is: [#153978]
+
+[#153978]: https://github.com/rust-lang/rust/issues/153978
 
 ------------------------
 "##,
@@ -15525,22 +15655,6 @@ This feature has no tracking issue, and is therefore likely internal to the comp
 The tracking issue for this feature is: [#100499]
 
 [#100499]: https://github.com/rust-lang/rust/issues/100499
-
-------------------------
-"##,
-        default_severity: Severity::Allow,
-        warn_since: None,
-        deny_since: None,
-    },
-    Lint {
-        label: "uint_bit_width",
-        description: r##"# `uint_bit_width`
-
-
-
-The tracking issue for this feature is: [#142326]
-
-[#142326]: https://github.com/rust-lang/rust/issues/142326
 
 ------------------------
 "##,

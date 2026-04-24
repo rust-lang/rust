@@ -51,31 +51,9 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use crate::errors;
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_unimplemented]` can only be applied to trait definitions")]
-struct DiagnosticOnUnimplementedOnlyForTraits;
-
-#[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_const]` can only be applied to trait impls")]
-struct DiagnosticOnConstOnlyForTraitImpls {
-    #[label("not a trait impl")]
-    item_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_const]` can only be applied to non-const trait impls")]
+#[diag("`#[diagnostic::on_const]` can only be applied to non-const trait implementations")]
 struct DiagnosticOnConstOnlyForNonConstTraitImpls {
-    #[label("this is a const trait impl")]
-    item_span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_move]` can only be applied to enums, structs or unions")]
-struct DiagnosticOnMoveOnlyForAdt;
-
-#[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_unknown]` can only be applied to `use` statements")]
-struct DiagnosticOnUnknownOnlyForImports {
-    #[label("not an import")]
+    #[label("this is a const trait implementation")]
     item_span: Span,
 }
 
@@ -221,12 +199,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 Attribute::Parsed(AttributeKind::RustcMustImplementOneOf { attr_span, fn_names }) => {
                     self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id,target)
                 },
-                Attribute::Parsed(AttributeKind::DoNotRecommend{attr_span}) => {self.check_do_not_recommend(*attr_span, hir_id, target, item)},
-                Attribute::Parsed(AttributeKind::OnUnimplemented{span, directive}) => {self.check_diagnostic_on_unimplemented(*span, hir_id, target,directive.as_deref())},
-                Attribute::Parsed(AttributeKind::OnUnknown { span, .. }) => { self.check_diagnostic_on_unknown(*span, hir_id, target) },
-                Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)}
-                Attribute::Parsed(AttributeKind::OnMove { span, directive }) => {
-                    self.check_diagnostic_on_move(*span, hir_id, target, directive.as_deref())
+                Attribute::Parsed(AttributeKind::OnUnimplemented{directive,..}) => {self.check_diagnostic_on_unimplemented(hir_id, directive.as_deref())},
+                Attribute::Parsed(AttributeKind::OnConst{span, ..}) => {self.check_diagnostic_on_const(*span, hir_id, target, item)},
+                Attribute::Parsed(AttributeKind::OnUnmatchArgs { directive, .. }) => {
+                    self.check_diagnostic_on_unmatch_args(hir_id, directive.as_deref())
+                },
+                Attribute::Parsed(AttributeKind::OnMove { directive , .. }) => {
+                    self.check_diagnostic_on_move(hir_id, directive.as_deref())
                 },
                 Attribute::Parsed(
                     // tidy-alphabetical-start
@@ -245,6 +224,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::CustomMir(..)
                     | AttributeKind::DebuggerVisualizer(..)
                     | AttributeKind::DefaultLibAllocator
+                    | AttributeKind::DoNotRecommend {..}
                     // `#[doc]` is actually a lot more than just doc comments, so is checked below
                     | AttributeKind::DocComment {..}
                     | AttributeKind::EiiDeclaration { .. }
@@ -275,6 +255,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     | AttributeKind::NoMain
                     | AttributeKind::NoMangle(..)
                     | AttributeKind::NoStd { .. }
+                    | AttributeKind::OnUnknown { .. }
                     | AttributeKind::Optimize(..)
                     | AttributeKind::PanicRuntime
                     | AttributeKind::PatchableFunctionEntry { .. }
@@ -512,47 +493,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[diagnostic::do_not_recommend]` is applied on a trait impl
-    fn check_do_not_recommend(
-        &self,
-        attr_span: Span,
-        hir_id: HirId,
-        target: Target,
-        item: Option<ItemLike<'_>>,
-    ) {
-        if !matches!(target, Target::Impl { .. })
-            || matches!(
-                item,
-                Some(ItemLike::Item(hir::Item {  kind: hir::ItemKind::Impl(_impl),.. }))
-                    if _impl.of_trait.is_none()
-            )
-        {
-            self.tcx.emit_node_span_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                errors::IncorrectDoNotRecommendLocation,
-            );
-        }
-    }
-
-    /// Checks if `#[diagnostic::on_unimplemented]` is applied to a trait definition
-    fn check_diagnostic_on_unimplemented(
-        &self,
-        attr_span: Span,
-        hir_id: HirId,
-        target: Target,
-        directive: Option<&Directive>,
-    ) {
-        if !matches!(target, Target::Trait) {
-            self.tcx.emit_node_span_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                DiagnosticOnUnimplementedOnlyForTraits,
-            );
-        }
-
+    /// Checks use of generic formatting parameters in `#[diagnostic::on_unimplemented]`
+    fn check_diagnostic_on_unimplemented(&self, hir_id: HirId, directive: Option<&Directive>) {
         if let Some(directive) = directive {
             if let Node::Item(Item {
                 kind: ItemKind::Trait(_, _, _, _, trait_name, generics, _, _),
@@ -587,7 +529,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if `#[diagnostic::on_const]` is applied to a trait impl
+    /// Checks if `#[diagnostic::on_const]` is applied to a on-const trait impl
     fn check_diagnostic_on_const(
         &self,
         attr_span: Span,
@@ -595,6 +537,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         target: Target,
         item: Option<ItemLike<'_>>,
     ) {
+        // We only check the non-constness here. A diagnostic for use
+        // on not-trait impl items is issued during attribute parsing.
         if target == (Target::Impl { of_trait: true }) {
             match item.unwrap() {
                 ItemLike::Item(it) => match it.expect_impl().constness {
@@ -613,35 +557,27 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ItemLike::ForeignItem => {}
             }
         }
-        let item_span = self.tcx.hir_span(hir_id);
-        self.tcx.emit_node_span_lint(
-            MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-            hir_id,
-            attr_span,
-            DiagnosticOnConstOnlyForTraitImpls { item_span },
-        );
-
-        // We don't check the validity of generic args here...whose generics would that be, anyway?
-        // The traits' or the impls'?
+        // FIXME(#155570) Can we do something with generic args here?
+        // regardless, we don't check the validity of generic args here
+        // ...whose generics would that be, anyway? The traits' or the impls'?
     }
 
-    /// Checks if `#[diagnostic::on_move]` is applied to an ADT definition
-    fn check_diagnostic_on_move(
-        &self,
-        attr_span: Span,
-        hir_id: HirId,
-        target: Target,
-        directive: Option<&Directive>,
-    ) {
-        if !matches!(target, Target::Enum | Target::Struct | Target::Union) {
-            self.tcx.emit_node_span_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                DiagnosticOnMoveOnlyForAdt,
-            );
+    /// Checks use of generic formatting parameters in `#[diagnostic::on_unmatch_args]`.
+    fn check_diagnostic_on_unmatch_args(&self, hir_id: HirId, directive: Option<&Directive>) {
+        if let Some(directive) = directive {
+            directive.visit_params(&mut |argument_name, span| {
+                self.tcx.emit_node_span_lint(
+                    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                    hir_id,
+                    span,
+                    errors::OnUnmatchArgsMalformedFormatLiterals { name: argument_name },
+                )
+            });
         }
+    }
 
+    /// Checks use of generic formatting parameters in `#[diagnostic::on_move]`
+    fn check_diagnostic_on_move(&self, hir_id: HirId, directive: Option<&Directive>) {
         if let Some(directive) = directive {
             if let Node::Item(Item {
                 kind:
@@ -672,19 +608,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     }
                 });
             }
-        }
-    }
-
-    /// Checks if `#[diagnostic::on_unknown]` is applied to a trait impl
-    fn check_diagnostic_on_unknown(&self, attr_span: Span, hir_id: HirId, target: Target) {
-        if !matches!(target, Target::Use) {
-            let item_span = self.tcx.hir_span(hir_id);
-            self.tcx.emit_node_span_lint(
-                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                hir_id,
-                attr_span,
-                DiagnosticOnUnknownOnlyForImports { item_span },
-            );
         }
     }
 

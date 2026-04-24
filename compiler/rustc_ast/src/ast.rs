@@ -3786,10 +3786,10 @@ pub struct TraitAlias {
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct Trait {
+    pub impl_restriction: ImplRestriction,
     pub constness: Const,
     pub safety: Safety,
     pub is_auto: IsAuto,
-    pub impl_restriction: ImplRestriction,
     pub ident: Ident,
     pub generics: Generics,
     #[visitable(extra = BoundKind::SuperTraits)]

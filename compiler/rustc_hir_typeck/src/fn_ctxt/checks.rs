@@ -1901,14 +1901,14 @@ impl FnParam<'_> {
     }
 }
 
-struct FnCallDiagCtxt<'a, 'b, 'tcx> {
-    arg_matching_ctxt: ArgMatchingCtxt<'a, 'b, 'tcx>,
+struct FnCallDiagCtxt<'a, 'tcx> {
+    arg_matching_ctxt: ArgMatchingCtxt<'a, 'tcx>,
     errors: Vec<Error<'tcx>>,
     matched_inputs: IndexVec<ExpectedIdx, Option<ProvidedIdx>>,
 }
 
-impl<'a, 'b, 'tcx> Deref for FnCallDiagCtxt<'a, 'b, 'tcx> {
-    type Target = ArgMatchingCtxt<'a, 'b, 'tcx>;
+impl<'a, 'tcx> Deref for FnCallDiagCtxt<'a, 'tcx> {
+    type Target = ArgMatchingCtxt<'a, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
         &self.arg_matching_ctxt
@@ -1921,9 +1921,9 @@ enum ArgumentsFormatting {
     Multiline { fallback_indent: String, brace_indent: String },
 }
 
-impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
+impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
     fn new(
-        arg: &'a FnCtxt<'b, 'tcx>,
+        arg: &'a FnCtxt<'a, 'tcx>,
         compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
         formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         provided_args: IndexVec<ProvidedIdx, &'tcx Expr<'tcx>>,
@@ -2346,6 +2346,17 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
                         provided_span,
                         format!("unexpected argument{idx}{provided_ty_name}"),
                     ));
+                    if self.provided_arg_tys.len() == 1
+                        && let Some(span) = self.maybe_suggest_expect_for_unwrap(provided_ty)
+                    {
+                        err.span_suggestion_verbose(
+                            span,
+                            "did you mean to use `expect`?",
+                            "expect",
+                            Applicability::MaybeIncorrect,
+                        );
+                        continue;
+                    }
                     let mut span = provided_span;
                     if span.can_be_used_for_suggestions()
                         && self.call_metadata.error_span.can_be_used_for_suggestions()
@@ -2618,7 +2629,7 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
         (suggestions, labels, suggestion_text)
     }
 
-    fn label_generic_mismatches(&self, err: &mut Diag<'b>) {
+    fn label_generic_mismatches(&self, err: &mut Diag<'a>) {
         self.fn_ctxt.label_generic_mismatches(
             err,
             self.fn_def_id,
@@ -2776,24 +2787,40 @@ impl<'a, 'b, 'tcx> FnCallDiagCtxt<'a, 'b, 'tcx> {
 
         (suggestion_span, suggestion)
     }
+
+    fn maybe_suggest_expect_for_unwrap(&self, provided_ty: Ty<'tcx>) -> Option<Span> {
+        let tcx = self.tcx();
+        if let Some(call_ident) = self.call_metadata.call_ident
+            && call_ident.name == sym::unwrap
+            && let Some(callee_ty) = self.callee_ty
+            && let ty::Adt(adt, _) = callee_ty.peel_refs().kind()
+            && (tcx.is_diagnostic_item(sym::Option, adt.did())
+                || tcx.is_diagnostic_item(sym::Result, adt.did()))
+            && self.may_coerce(provided_ty, Ty::new_static_str(tcx))
+        {
+            Some(call_ident.span)
+        } else {
+            None
+        }
+    }
 }
 
-struct ArgMatchingCtxt<'a, 'b, 'tcx> {
-    args_ctxt: ArgsCtxt<'a, 'b, 'tcx>,
+struct ArgMatchingCtxt<'a, 'tcx> {
+    args_ctxt: ArgsCtxt<'a, 'tcx>,
     provided_arg_tys: IndexVec<ProvidedIdx, (Ty<'tcx>, Span)>,
 }
 
-impl<'a, 'b, 'tcx> Deref for ArgMatchingCtxt<'a, 'b, 'tcx> {
-    type Target = ArgsCtxt<'a, 'b, 'tcx>;
+impl<'a, 'tcx> Deref for ArgMatchingCtxt<'a, 'tcx> {
+    type Target = ArgsCtxt<'a, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
         &self.args_ctxt
     }
 }
 
-impl<'a, 'b, 'tcx> ArgMatchingCtxt<'a, 'b, 'tcx> {
+impl<'a, 'tcx> ArgMatchingCtxt<'a, 'tcx> {
     fn new(
-        arg: &'a FnCtxt<'b, 'tcx>,
+        arg: &'a FnCtxt<'a, 'tcx>,
         compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
         formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         provided_args: IndexVec<ProvidedIdx, &'tcx Expr<'tcx>>,
@@ -2924,23 +2951,23 @@ impl<'a, 'b, 'tcx> ArgMatchingCtxt<'a, 'b, 'tcx> {
     }
 }
 
-struct ArgsCtxt<'a, 'b, 'tcx> {
-    call_ctxt: CallCtxt<'a, 'b, 'tcx>,
+struct ArgsCtxt<'a, 'tcx> {
+    call_ctxt: CallCtxt<'a, 'tcx>,
     call_metadata: CallMetadata,
     args_span: Span,
 }
 
-impl<'a, 'b, 'tcx> Deref for ArgsCtxt<'a, 'b, 'tcx> {
-    type Target = CallCtxt<'a, 'b, 'tcx>;
+impl<'a, 'tcx> Deref for ArgsCtxt<'a, 'tcx> {
+    type Target = CallCtxt<'a, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
         &self.call_ctxt
     }
 }
 
-impl<'a, 'b, 'tcx> ArgsCtxt<'a, 'b, 'tcx> {
+impl<'a, 'tcx> ArgsCtxt<'a, 'tcx> {
     fn new(
-        arg: &'a FnCtxt<'b, 'tcx>,
+        arg: &'a FnCtxt<'a, 'tcx>,
         compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
         formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         provided_args: IndexVec<ProvidedIdx, &'tcx Expr<'tcx>>,
@@ -2951,7 +2978,7 @@ impl<'a, 'b, 'tcx> ArgsCtxt<'a, 'b, 'tcx> {
         call_expr: &'tcx Expr<'tcx>,
         tuple_arguments: TupleArgumentsFlag,
     ) -> Self {
-        let call_ctxt: CallCtxt<'_, '_, '_> = CallCtxt::new(
+        let call_ctxt: CallCtxt<'_, '_> = CallCtxt::new(
             arg,
             compatibility_diagonal,
             formal_and_expected_inputs,
@@ -3058,8 +3085,8 @@ struct CallMetadata {
     is_method: bool,
 }
 
-struct CallCtxt<'a, 'b, 'tcx> {
-    fn_ctxt: &'a FnCtxt<'b, 'tcx>,
+struct CallCtxt<'a, 'tcx> {
+    fn_ctxt: &'a FnCtxt<'a, 'tcx>,
     compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
     formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
     provided_args: IndexVec<ProvidedIdx, &'tcx hir::Expr<'tcx>>,
@@ -3073,17 +3100,17 @@ struct CallCtxt<'a, 'b, 'tcx> {
     callee_ty: Option<Ty<'tcx>>,
 }
 
-impl<'a, 'b, 'tcx> Deref for CallCtxt<'a, 'b, 'tcx> {
-    type Target = &'a FnCtxt<'b, 'tcx>;
+impl<'a, 'tcx> Deref for CallCtxt<'a, 'tcx> {
+    type Target = &'a FnCtxt<'a, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
         &self.fn_ctxt
     }
 }
 
-impl<'a, 'b, 'tcx> CallCtxt<'a, 'b, 'tcx> {
+impl<'a, 'tcx> CallCtxt<'a, 'tcx> {
     fn new(
-        fn_ctxt: &'a FnCtxt<'b, 'tcx>,
+        fn_ctxt: &'a FnCtxt<'a, 'tcx>,
         compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
         formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         provided_args: IndexVec<ProvidedIdx, &'tcx hir::Expr<'tcx>>,
@@ -3093,7 +3120,7 @@ impl<'a, 'b, 'tcx> CallCtxt<'a, 'b, 'tcx> {
         call_span: Span,
         call_expr: &'tcx hir::Expr<'tcx>,
         tuple_arguments: TupleArgumentsFlag,
-    ) -> CallCtxt<'a, 'b, 'tcx> {
+    ) -> CallCtxt<'a, 'tcx> {
         let callee_expr = match &call_expr.peel_blocks().kind {
             hir::ExprKind::Call(callee, _) => Some(*callee),
             hir::ExprKind::MethodCall(_, receiver, ..) => {

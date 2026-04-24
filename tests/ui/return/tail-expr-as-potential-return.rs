@@ -59,7 +59,7 @@ fn method() -> Option<i32> {
     if true {
         Receiver.generic();
         //~^ ERROR type annotations needed
-        //~| HELP consider specifying the generic argument
+        //~| HELP consider specifying a concrete type for the type parameter `T`
     }
 
     None

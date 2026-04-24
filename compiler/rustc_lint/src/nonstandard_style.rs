@@ -47,38 +47,46 @@ declare_lint! {
 
 declare_lint_pass!(NonCamelCaseTypes => [NON_CAMEL_CASE_TYPES]);
 
-/// Some unicode characters *have* case, are considered upper case or lower case, but they *can't*
-/// be upper cased or lower cased. For the purposes of the lint suggestion, we care about being able
+/// Some unicode characters *have* case, are considered upper, title, or lower case, but they *can't*
+/// be title cased or lower cased. For the purposes of the lint suggestion, we care about being able
 /// to change the char's case.
 fn char_has_case(c: char) -> bool {
-    let mut l = c.to_lowercase();
-    let mut u = c.to_uppercase();
-    while let Some(l) = l.next() {
-        match u.next() {
-            Some(u) if l != u => return true,
-            _ => {}
+    !c.to_lowercase().eq(c.to_titlecase())
+}
+
+/// FIXME: we should add a more efficient version
+/// in the stdlib for this
+fn changes_when_titlecased(c: char) -> bool {
+    !c.to_titlecase().eq([c])
+}
+
+// contains a capitalisable character followed by, or preceded by, an underscore,
+// or contains an uppercase character that changes when titlecased,
+// or contains `__`
+fn not_camel_case(s: &str) -> bool {
+    let mut last = '\0';
+    s.chars().any(|snd| {
+        let fst = std::mem::replace(&mut last, snd);
+        match (fst, snd) {
+            ('_', '_') => return true,
+            ('_', _) if char_has_case(snd) => return true,
+            (_, '_') if char_has_case(fst) => return true,
+            _ => snd.is_uppercase() && changes_when_titlecased(snd),
         }
-    }
-    u.next().is_some()
+    })
 }
 
-fn is_camel_case(name: &str) -> bool {
+fn is_upper_camel_case(name: &str) -> bool {
     let name = name.trim_matches('_');
-    if name.is_empty() {
+    let Some(first) = name.chars().next() else {
         return true;
-    }
+    };
 
-    // start with a non-lowercase letter rather than non-uppercase
-    // ones (some scripts don't have a concept of upper/lowercase)
-    !name.chars().next().unwrap().is_lowercase()
-        && !name.contains("__")
-        && !name.chars().collect::<Vec<_>>().array_windows().any(|&[fst, snd]| {
-            // contains a capitalisable character followed by, or preceded by, an underscore
-            char_has_case(fst) && snd == '_' || char_has_case(snd) && fst == '_'
-        })
+    // some scripts don't have a concept of upper/lowercase
+    !(changes_when_titlecased(first) || not_camel_case(name))
 }
 
-fn to_camel_case(s: &str) -> String {
+fn to_upper_camel_case(s: &str) -> String {
     s.trim_matches('_')
         .split('_')
         .filter(|component| !component.is_empty())
@@ -87,22 +95,29 @@ fn to_camel_case(s: &str) -> String {
 
             let mut new_word = true;
             let mut prev_is_lower_case = true;
+            let mut prev_is_lowercased_sigma = false;
 
             for c in component.chars() {
                 // Preserve the case if an uppercase letter follows a lowercase letter, so that
                 // `camelCase` is converted to `CamelCase`.
-                if prev_is_lower_case && c.is_uppercase() {
+                if prev_is_lower_case && (c.is_uppercase() | c.is_titlecase()) {
                     new_word = true;
                 }
 
                 if new_word {
-                    camel_cased_component.extend(c.to_uppercase());
+                    camel_cased_component.extend(c.to_titlecase());
                 } else {
                     camel_cased_component.extend(c.to_lowercase());
                 }
 
-                prev_is_lower_case = c.is_lowercase();
+                prev_is_lower_case = c.is_lowercase() || c.is_titlecase();
+                prev_is_lowercased_sigma = !new_word && c == 'Σ';
                 new_word = false;
+            }
+
+            if prev_is_lowercased_sigma {
+                camel_cased_component.pop();
+                camel_cased_component.push('ς');
             }
 
             camel_cased_component
@@ -126,8 +141,8 @@ impl NonCamelCaseTypes {
     fn check_case(&self, cx: &EarlyContext<'_>, sort: &str, ident: &Ident) {
         let name = ident.name.as_str();
 
-        if !is_camel_case(name) {
-            let cc = to_camel_case(name);
+        if !is_upper_camel_case(name) {
+            let cc = to_upper_camel_case(name);
             let sub = if *name != cc {
                 NonCamelCaseTypeSub::Suggestion { span: ident.span, replace: cc }
             } else {
@@ -239,14 +254,20 @@ impl NonSnakeCase {
                 continue;
             }
             for ch in s.chars() {
-                if !buf.is_empty() && buf != "'" && ch.is_uppercase() && !last_upper {
-                    words.push(buf);
+                if !buf.is_empty()
+                    && buf != "'"
+                    && (ch.is_uppercase() || ch.is_titlecase())
+                    && !last_upper
+                {
+                    // We lowercase only at the end, to handle final sigma correctly
+                    words.push(buf.to_lowercase());
                     buf = String::new();
                 }
-                last_upper = ch.is_uppercase();
-                buf.extend(ch.to_lowercase());
+                last_upper = ch.is_uppercase() || ch.is_titlecase();
+                buf.push(ch);
             }
-            words.push(buf);
+            // We lowercase only at the end, to handle final sigma correctly
+            words.push(buf.to_lowercase());
         }
         words.join("_")
     }
@@ -266,7 +287,8 @@ impl NonSnakeCase {
 
             // This correctly handles letters in languages with and without
             // cases, as well as numbers and underscores.
-            !ident.chars().any(char::is_uppercase)
+            // FIXME: we should add a standard library impl of `c.to_lowercase().eq([c])`
+            ident.chars().all(|c| c.to_lowercase().eq([c]))
         }
 
         let name = ident.name.as_str();
@@ -478,10 +500,12 @@ impl<'a, 'b, F: FnOnce() -> NonUpperCaseGlobal<'b>> Diagnostic<'a, ()>
 impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext<'_>, sort: &str, did: Option<LocalDefId>, ident: &Ident) {
         let name = ident.name.as_str();
-        if name.chars().any(|c| c.is_lowercase()) {
+        // FIXME: we should add a more efficient version
+        // in the stdlib for `c.to_uppercase().eq([c])`
+        if !name.chars().all(|c| c.to_uppercase().eq([c])) {
             let uc = NonSnakeCase::to_snake_case(name).to_uppercase();
 
-            // If the item is exported, suggesting changing it's name would be breaking-change
+            // If the item is exported, suggesting changing its name would be a breaking change
             // and could break users without a "nice" applicable fix, so let's avoid it.
             let can_change_usages = if let Some(did) = did {
                 !cx.tcx.effective_visibilities(()).is_exported(did)

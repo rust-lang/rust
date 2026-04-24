@@ -1057,11 +1057,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // The `Future` trait has only one associated item, `Output`,
         // so check that this is what we see.
         let output_assoc_item = self.tcx.associated_item_def_ids(trait_def_id)[0];
-        if output_assoc_item != predicate.projection_term.def_id {
+        if output_assoc_item != predicate.projection_term.def_id() {
             span_bug!(
                 cause_span,
                 "projecting associated item `{:?}` from future, which is not Output `{:?}`",
-                predicate.projection_term.def_id,
+                predicate.projection_term.kind,
                 output_assoc_item,
             );
         }

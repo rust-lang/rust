@@ -35,6 +35,7 @@ impl HomogeneousAggregate {
     /// Try to combine two `HomogeneousAggregate`s, e.g. from two fields in
     /// the same `struct`. Only succeeds if only one of them has any data,
     /// or both units are identical.
+    #[cfg(feature = "nightly")]
     fn merge(self, other: HomogeneousAggregate) -> Result<HomogeneousAggregate, Heterogeneous> {
         match (self, other) {
             (x, HomogeneousAggregate::NoData) | (HomogeneousAggregate::NoData, x) => Ok(x),

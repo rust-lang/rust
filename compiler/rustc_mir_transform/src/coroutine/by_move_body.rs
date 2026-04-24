@@ -70,10 +70,10 @@
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::definitions::DisambiguatorState;
+use rustc_hir::definitions::PerParentDisambiguatorState;
+use rustc_hir::{self as hir};
 use rustc_middle::bug;
 use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
@@ -221,7 +221,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
         None,
         DefKind::SyntheticCoroutineBody,
         None,
-        &mut DisambiguatorState::new(),
+        &mut PerParentDisambiguatorState::new(parent_def_id),
     );
     by_move_body.source =
         mir::MirSource::from_instance(InstanceKind::Item(body_def.def_id().to_def_id()));

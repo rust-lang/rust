@@ -380,3 +380,23 @@ foo!(f$0);
         "#]],
     );
 }
+
+#[test]
+fn completes_variant_through_hidden_enum_alias() {
+    check(
+        r#"
+//- /lib.rs crate:dep
+#[doc(hidden)]
+pub enum Foo { Variant }
+pub type Bar = Foo;
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    let x = dep::Bar::V$0;
+}
+"#,
+        expect![[r#"
+            ev Variant Variant
+        "#]],
+    );
+}

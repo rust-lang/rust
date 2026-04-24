@@ -1,5 +1,5 @@
 error[E0405]: cannot find trait `Foo` in this scope
-  --> $DIR/const-type-ice-153433.rs:5:33
+  --> $DIR/const-type-ice-153433.rs:4:33
    |
 LL |     fn foo<const N: dyn for<'a> Foo>() {}
    |                                 ^^^ not found in this scope

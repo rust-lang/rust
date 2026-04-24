@@ -2,7 +2,6 @@
 
 #![feature(decl_macro)]
 #![feature(fn_delegation)]
-#![allow(incomplete_features)]
 
 macro_rules! reuse { {} => {} }
 

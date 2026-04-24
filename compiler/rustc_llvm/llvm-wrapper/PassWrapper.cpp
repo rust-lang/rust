@@ -165,10 +165,17 @@ static OptimizationLevel fromRust(LLVMRustPassBuilderOptLevel Level) {
     return OptimizationLevel::O2;
   case LLVMRustPassBuilderOptLevel::O3:
     return OptimizationLevel::O3;
+#if LLVM_VERSION_GE(23, 0)
+  case LLVMRustPassBuilderOptLevel::Os:
+    return OptimizationLevel::O2;
+  case LLVMRustPassBuilderOptLevel::Oz:
+    return OptimizationLevel::O2;
+#else
   case LLVMRustPassBuilderOptLevel::Os:
     return OptimizationLevel::Os;
   case LLVMRustPassBuilderOptLevel::Oz:
     return OptimizationLevel::Oz;
+#endif
   default:
     report_fatal_error("Bad PassBuilderOptLevel.");
   }

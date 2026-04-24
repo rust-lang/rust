@@ -176,7 +176,8 @@ impl fmt::Debug for CStr {
 }
 
 #[stable(feature = "cstr_default", since = "1.10.0")]
-impl Default for &CStr {
+#[rustc_const_unstable(feature = "const_default", issue = "143894")]
+impl const Default for &CStr {
     #[inline]
     fn default() -> Self {
         c""

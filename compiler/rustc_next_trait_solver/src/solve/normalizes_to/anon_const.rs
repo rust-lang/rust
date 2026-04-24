@@ -17,7 +17,7 @@ where
         if let Some(normalized_const) = self.evaluate_const(
             goal.param_env,
             ty::UnevaluatedConst::new(
-                goal.predicate.alias.def_id.try_into().unwrap(),
+                goal.predicate.alias.def_id().try_into().unwrap(),
                 goal.predicate.alias.args,
             ),
         ) {

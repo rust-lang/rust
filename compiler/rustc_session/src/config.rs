@@ -1419,7 +1419,6 @@ impl Default for Options {
             target_triple: TargetTuple::from_tuple(host_tuple()),
             test: false,
             incremental: None,
-            untracked_state_hash: Default::default(),
             unstable_opts,
             prints: Vec::new(),
             cg: Default::default(),
@@ -2641,7 +2640,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     if unstable_opts.retpoline_external_thunk {
         unstable_opts.retpoline = true;
         collected_options.target_modifiers.insert(
-            OptionsTargetModifiers::UnstableOptions(UnstableOptionsTargetModifiers::retpoline),
+            OptionsTargetModifiers::UnstableOptions(UnstableOptionsTargetModifiers::Retpoline),
             "true".to_string(),
         );
     }
@@ -2770,7 +2769,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         target_triple,
         test,
         incremental,
-        untracked_state_hash: Default::default(),
         unstable_opts,
         prints,
         cg,

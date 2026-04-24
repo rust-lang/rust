@@ -2,11 +2,11 @@
 #![deny(misplaced_diagnostic_attributes)]
 
 #[diagnostic::on_const(message = "tadaa", note = "boing")]
-//~^ ERROR: `#[diagnostic::on_const]` can only be applied to trait impls
+//~^ ERROR: `#[diagnostic::on_const]` can only be applied to non-const trait implementations
 pub struct Foo;
 
 #[diagnostic::on_const(message = "tadaa", note = "boing")]
-//~^ ERROR: `#[diagnostic::on_const]` can only be applied to non-const trait impls
+//~^ ERROR: `#[diagnostic::on_const]` can only be applied to non-const trait implementations
 impl const PartialEq for Foo {
     fn eq(&self, _other: &Foo) -> bool {
         true
@@ -14,7 +14,7 @@ impl const PartialEq for Foo {
 }
 
 #[diagnostic::on_const(message = "tadaa", note = "boing")]
-//~^ ERROR: `#[diagnostic::on_const]` can only be applied to trait impls
+//~^ ERROR: `#[diagnostic::on_const]` can only be applied to non-const trait implementations
 impl Foo {
     fn eq(&self, _other: &Foo) -> bool {
         true
@@ -23,7 +23,7 @@ impl Foo {
 
 impl PartialOrd for Foo {
     #[diagnostic::on_const(message = "tadaa", note = "boing")]
-    //~^ ERROR: `#[diagnostic::on_const]` can only be applied to trait impls
+    //~^ ERROR: `#[diagnostic::on_const]` can only be applied to non-const trait implementations
     fn partial_cmp(&self, other: &Foo) -> Option<std::cmp::Ordering> {
         None
     }

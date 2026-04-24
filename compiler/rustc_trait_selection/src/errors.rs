@@ -277,7 +277,8 @@ pub(crate) enum SourceKindSubdiag<'a> {
                 [const_with_param] value of const parameter
                 [const] value of the constant
             } `{$arg_name}` is specified
-            [underscore] , where the placeholders `_` are specified
+            [underscore_single] , where the placeholder `_` is specified
+            [underscore_multiple] , where the placeholders `_` are specified
             *[empty] {\"\"}
         }",
         style = "verbose",
@@ -330,6 +331,28 @@ pub(crate) enum SourceKindSubdiag<'a> {
         span: Span,
         arg_count: usize,
         args: String,
+    },
+    #[suggestion(
+        "consider specifying a concrete type for the type parameter `{$param}`",
+        style = "verbose",
+        code = "::</* Type */>",
+        applicability = "has-placeholders"
+    )]
+    GenericTypeSuggestion {
+        #[primary_span]
+        span: Span,
+        param: String,
+    },
+    #[suggestion(
+        "consider specifying a const for the const parameter `{$param}`",
+        style = "verbose",
+        code = "::</* CONST */>",
+        applicability = "has-placeholders"
+    )]
+    ConstGenericSuggestion {
+        #[primary_span]
+        span: Span,
+        param: String,
     },
 }
 

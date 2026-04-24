@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - master
+  pull_request:
+  merge_group:
 
 env:
   CARGO_INCREMENTAL: 0
@@ -28,6 +30,7 @@ jobs:
         run: cargo doc --all --no-deps --document-private-items
 
       - name: Deploy Docs
+        if: github.event_name == 'push' && github.repository == 'rust-lang/rust-analyzer' && github.ref == 'refs/heads/master'
         uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4.0.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

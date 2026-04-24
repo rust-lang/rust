@@ -47,7 +47,7 @@ fn render(
         ctx.completion.edition,
     );
     item.set_documentation(ctx.docs(type_alias))
-        .set_deprecated(ctx.is_deprecated(type_alias) || ctx.is_deprecated_assoc_item(type_alias))
+        .set_deprecated(ctx.is_deprecated(type_alias, type_alias.as_assoc_item(db)))
         .detail(detail)
         .set_relevance(ctx.completion_relevance());
 

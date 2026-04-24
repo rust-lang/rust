@@ -1,5 +1,5 @@
 error[E0424]: expected value, found module `self`
-  --> $DIR/self-hygiene.rs:4:34
+  --> $DIR/self-hygiene.rs:3:34
    |
 LL |   macro_rules! emit_self { () => { self } }
    |                                    ^^^^ `self` value is a keyword only available in methods with a `self` parameter
@@ -13,7 +13,7 @@ LL | |     }
    = note: this error originates in the macro `emit_self` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0424]: expected value, found module `self`
-  --> $DIR/self-hygiene.rs:4:34
+  --> $DIR/self-hygiene.rs:3:34
    |
 LL |   macro_rules! emit_self { () => { self } }
    |                                    ^^^^ `self` value is a keyword only available in methods with a `self` parameter

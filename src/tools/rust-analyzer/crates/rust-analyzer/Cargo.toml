@@ -28,7 +28,7 @@ dissimilar.workspace = true
 ide-completion.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
-scip = "0.5.2"
+scip = "0.7.1"
 lsp-types = { version = "=0.95.0", features = ["proposed"] }
 parking_lot = "0.12.4"
 xflags = "0.3.2"

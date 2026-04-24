@@ -1,4 +1,4 @@
-// skip-filecheck
+//@ skip-filecheck
 //@ compile-flags: -Z mir-opt-level=0 -C panic=abort
 
 #![feature(deref_patterns)]

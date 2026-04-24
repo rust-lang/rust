@@ -1,7 +1,10 @@
+use rustc_errors::Diagnostic;
 use rustc_hir::attrs::diagnostic::Directive;
+use rustc_session::lint::builtin::MISPLACED_DIAGNOSTIC_ATTRIBUTES;
 
 use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
+use crate::errors::DiagnosticOnUnimplementedOnlyForTraits;
 
 #[derive(Default)]
 pub(crate) struct OnUnimplementedParser {
@@ -19,11 +22,12 @@ impl OnUnimplementedParser {
         let span = cx.attr_span;
         self.span = Some(span);
 
-        // If target is not a trait, returning early will make `finalize` emit a
-        // `AttributeKind::OnUnimplemented {span, directive: None }`, to prevent it being
-        // accidentally used on non-trait items like trait aliases.
         if !matches!(cx.target, Target::Trait) {
-            // Lint later emitted in check_attr
+            cx.emit_dyn_lint(
+                MISPLACED_DIAGNOSTIC_ATTRIBUTES,
+                move |dcx, level| DiagnosticOnUnimplementedOnlyForTraits.into_diag(dcx, level),
+                span,
+            );
             return;
         }
 
