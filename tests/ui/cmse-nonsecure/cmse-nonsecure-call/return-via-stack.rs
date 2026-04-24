@@ -42,19 +42,23 @@ struct Test {
     i128: extern "cmse-nonsecure-call" fn() -> i128, //~ ERROR [E0798]
 }
 
-#[repr(C)]
-pub union ReprCUnionU64 {
-    _unused: u64,
-}
-
 #[repr(Rust)]
 pub union ReprRustUnionU64 {
     _unused: u64,
 }
 
+#[repr(C)]
+pub union ReprCUnionU64 {
+    _unused: u64,
+}
+
 #[no_mangle]
 pub fn test_union(
-    f1: extern "cmse-nonsecure-call" fn() -> ReprRustUnionU64, //~ ERROR [E0798]
-    f2: extern "cmse-nonsecure-call" fn() -> ReprCUnionU64,    //~ ERROR [E0798]
+    f1: extern "cmse-nonsecure-call" fn() -> ReprRustUnionU64,
+    //~^ ERROR return value of `"cmse-nonsecure-call"` function too large to pass via registers [E0798]
+    f2: extern "cmse-nonsecure-call" fn() -> ReprCUnionU64,
+    //~^ ERROR return value of `"cmse-nonsecure-call"` function too large to pass via registers [E0798]
+    f3: extern "cmse-nonsecure-call" fn() -> MaybeUninit<u32>,
+    f4: extern "cmse-nonsecure-call" fn() -> MaybeUninit<u64>,
 ) {
 }
