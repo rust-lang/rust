@@ -65,6 +65,7 @@ use core::cell::UnsafeCell;
 use core::mem;
 use core::sync::atomic::Atomic;
 
+mod raw_weak;
 mod rc_alloc;
 mod rc_layout;
 mod rc_value_pointer;
