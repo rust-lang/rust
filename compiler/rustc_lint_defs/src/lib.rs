@@ -658,13 +658,6 @@ pub enum AttributeLintKind {
     UnexpectedCfgValue((Symbol, Span), Option<(Symbol, Span)>),
 }
 
-#[derive(Debug, Clone, HashStable_Generic)]
-pub enum FormatWarning {
-    PositionalArgument { span: Span, help: String },
-    InvalidSpecifier { name: String, span: Span },
-    DisallowedPlaceholder { span: Span },
-}
-
 pub type RegisteredTools = FxIndexSet<Ident>;
 
 /// Declares a static item of type `&'static Lint`.

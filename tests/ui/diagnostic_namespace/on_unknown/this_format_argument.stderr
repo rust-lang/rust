@@ -1,0 +1,60 @@
+error[E0432]: unresolved import `foo::Foo`
+  --> $DIR/this_format_argument.rs:7:5
+   |
+LL | use foo::Foo;
+   |     ^^^^^^^^ no `Foo` in `foo`
+   |
+   = note: the name of this item is a single ident: `Foo`
+
+error[E0432]: unresolved import `foo::foo`
+  --> $DIR/this_format_argument.rs:13:10
+   |
+LL | use foo::foo::Foo;
+   |          ^^^ could not find `foo` in `foo`
+   |
+   = note: the name of this item is a single ident: `foo`
+
+error[E0432]: unresolved imports `foo::Bar`, `foo::Foo`
+  --> $DIR/this_format_argument.rs:19:11
+   |
+LL | use foo::{Bar, Foo};
+   |           ^^^  ^^^ no `Foo` in `foo`
+   |           |
+   |           no `Bar` in `foo`
+   |
+   = note: the name of this item is two idents: `Bar, Foo`
+
+error[E0432]: unresolved imports `foo::Foo`, `foo::bar`
+  --> $DIR/this_format_argument.rs:27:5
+   |
+LL |     Foo,
+   |     ^^^ no `Foo` in `foo`
+...
+LL |     bar::{Baz, Biz},
+   |     ^^^ could not find `bar` in `foo`
+   |
+   = note: the name of this item is many idents: `Foo, bar`
+
+error[E0432]: unresolved import `doesnt_exist`
+  --> $DIR/this_format_argument.rs:36:9
+   |
+LL | pub use doesnt_exist::*;
+   |         ^^^^^^^^^^^^ use of unresolved module or unlinked crate `doesnt_exist`
+   |
+   = note: the name of this is: `doesnt_exist`
+help: you might be missing a crate named `doesnt_exist`, add it to your project and import it in your code
+   |
+LL + extern crate doesnt_exist;
+   |
+
+error[E0432]: unresolved import `foo::Foo`
+  --> $DIR/this_format_argument.rs:42:5
+   |
+LL | use foo::Foo as DoNotUseForThisParam;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `Foo` in `foo`
+   |
+   = note: the name of this item is a single ident: `Foo`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0432`.
