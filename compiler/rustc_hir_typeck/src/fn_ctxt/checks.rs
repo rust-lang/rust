@@ -739,12 +739,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 compatibility_diagonal,
                 formal_and_expected_inputs,
                 provided_args,
-                fn_sig_kind.c_variadic(),
                 err_code,
                 fn_def_id,
                 call_span,
                 call_expr,
                 tuple_arguments,
+                fn_sig_kind,
             );
         }
     }
@@ -769,14 +769,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
         formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         provided_args: IndexVec<ProvidedIdx, &'tcx hir::Expr<'tcx>>,
-        // FIXME(splat): when the feature design is settled, replace this with FnSigKind, and
-        // improve the errors here
-        c_variadic: bool,
         err_code: ErrCode,
         fn_def_id: Option<DefId>,
         call_span: Span,
         call_expr: &'tcx hir::Expr<'tcx>,
         tuple_arguments: TupleArgumentsFlag,
+        // FIXME(splat): when the feature design is settled, improve the errors here
+        fn_sig_kind: FnSigKind,
     ) -> ErrorGuaranteed {
         // Next, let's construct the error
 
@@ -785,12 +784,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             compatibility_diagonal,
             formal_and_expected_inputs,
             provided_args,
-            c_variadic,
             err_code,
             fn_def_id,
             call_span,
             call_expr,
             tuple_arguments,
+            fn_sig_kind,
         );
 
         // First, check if we just need to wrap some arguments in a tuple.
@@ -870,6 +869,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &fn_call_diag_ctxt.formal_and_expected_inputs,
             fn_call_diag_ctxt.call_metadata.is_method,
             tuple_arguments,
+            fn_sig_kind,
         );
 
         // And add a suggestion block for all of the parameters
@@ -1548,6 +1548,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         formal_and_expected_inputs: &IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         is_method: bool,
         tuple_arguments: TupleArgumentsFlag,
+        fn_sig_kind: FnSigKind,
     ) {
         let Some(mut def_id) = callable_def_id else {
             return;
@@ -1648,22 +1649,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug_assert_eq!(params_with_generics.len(), matched_inputs.len());
                 // Gather all mismatched parameters with generics.
                 let mut mismatched_params = Vec::<MismatchedParam<'_>>::new();
+                let mut use_splat_fallback = false;
                 if let Some(expected_idx) = expected_idx {
                     let expected_idx = ExpectedIdx::from_usize(expected_idx);
-                    let &(expected_generic, ref expected_param) =
-                        &params_with_generics[expected_idx];
-                    if let Some(expected_generic) = expected_generic {
-                        mismatched_params.push(MismatchedParam {
-                            idx: expected_idx,
-                            generic: expected_generic,
-                            param: expected_param,
-                            deps: SmallVec::new(),
-                        });
-                    } else {
-                        // Still mark the mismatched parameter
-                        spans.push_span_label(expected_param.span(), "");
-                    }
-                } else {
+                    match params_with_generics.get(expected_idx) {
+                        Some(&(Some(expected_generic), ref expected_param)) => mismatched_params
+                            .push(MismatchedParam {
+                                idx: expected_idx,
+                                generic: expected_generic,
+                                param: expected_param,
+                                deps: SmallVec::new(),
+                            }),
+                        Some((None, expected_param)) => {
+                            // Still mark the mismatched parameter
+                            spans.push_span_label(expected_param.span(), "");
+                        }
+                        None => {
+                            if fn_sig_kind.splatted().is_none() {
+                                // FIXME(splat): when the arg is splatted, adjust its index
+                                use_splat_fallback = true;
+                            } else {
+                                span_bug!(
+                                    self.tcx.def_span(def_id),
+                                    "arg index {} out of bounds for method with {} inputs",
+                                    expected_idx.as_usize(),
+                                    params_with_generics.len(),
+                                );
+                            }
+                        }
+                    };
+                }
+
+                if expected_idx.is_none() || use_splat_fallback {
                     mismatched_params.extend(
                         params_with_generics.iter_enumerated().zip(matched_inputs).filter_map(
                             |((idx, &(generic, ref param)), matched_idx)| {
@@ -2107,24 +2124,24 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
         compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
         formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         provided_args: IndexVec<ProvidedIdx, &'tcx Expr<'tcx>>,
-        c_variadic: bool,
         err_code: ErrCode,
         fn_def_id: Option<DefId>,
         call_span: Span,
         call_expr: &'tcx Expr<'tcx>,
         tuple_arguments: TupleArgumentsFlag,
+        fn_sig_kind: FnSigKind,
     ) -> Self {
         let arg_matching_ctxt = ArgMatchingCtxt::new(
             arg,
             compatibility_diagonal,
             formal_and_expected_inputs,
             provided_args,
-            c_variadic,
             err_code,
             fn_def_id,
             call_span,
             call_expr,
             tuple_arguments,
+            fn_sig_kind,
         );
 
         // The algorithm here is inspired by levenshtein distance and longest common subsequence.
@@ -2207,7 +2224,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
                             self.arg_matching_ctxt.args_ctxt.call_metadata.full_call_span,
                             format!(
                                 "{call_name} takes {}{} but {} {} supplied",
-                                if self.c_variadic { "at least " } else { "" },
+                                if self.fn_sig_kind.c_variadic() { "at least " } else { "" },
                                 potentially_plural_count(
                                     self.formal_and_expected_inputs.len(),
                                     "argument"
@@ -2237,6 +2254,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
                         &self.formal_and_expected_inputs,
                         self.call_metadata.is_method,
                         self.tuple_arguments,
+                        self.fn_sig_kind,
                     );
                     self.suggest_confusable(&mut err);
                     Some(err.emit())
@@ -2402,6 +2420,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
                 &self.formal_and_expected_inputs,
                 self.call_metadata.is_method,
                 self.tuple_arguments,
+                self.fn_sig_kind,
             );
             self.arg_matching_ctxt.suggest_confusable(&mut err);
             self.detect_dotdot(&mut err, provided_ty, self.provided_args[provided_idx]);
@@ -2440,7 +2459,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
                     format!(
                         "this {} takes {}{} but {} {} supplied",
                         self.call_metadata.call_name,
-                        if self.c_variadic { "at least " } else { "" },
+                        if self.fn_sig_kind.c_variadic() { "at least " } else { "" },
                         potentially_plural_count(self.formal_and_expected_inputs.len(), "argument"),
                         potentially_plural_count(self.provided_args.len(), "argument"),
                         pluralize!("was", self.provided_args.len())
@@ -3004,24 +3023,24 @@ impl<'a, 'tcx> ArgMatchingCtxt<'a, 'tcx> {
         compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
         formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         provided_args: IndexVec<ProvidedIdx, &'tcx Expr<'tcx>>,
-        c_variadic: bool,
         err_code: ErrCode,
         fn_def_id: Option<DefId>,
         call_span: Span,
         call_expr: &'tcx Expr<'tcx>,
         tuple_arguments: TupleArgumentsFlag,
+        fn_sig_kind: FnSigKind,
     ) -> Self {
         let args_ctxt = ArgsCtxt::new(
             arg,
             compatibility_diagonal,
             formal_and_expected_inputs,
             provided_args,
-            c_variadic,
             err_code,
             fn_def_id,
             call_span,
             call_expr,
             tuple_arguments,
+            fn_sig_kind,
         );
         let provided_arg_tys = args_ctxt.provided_arg_tys();
 
@@ -3151,24 +3170,24 @@ impl<'a, 'tcx> ArgsCtxt<'a, 'tcx> {
         compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
         formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         provided_args: IndexVec<ProvidedIdx, &'tcx Expr<'tcx>>,
-        c_variadic: bool,
         err_code: ErrCode,
         fn_def_id: Option<DefId>,
         call_span: Span,
         call_expr: &'tcx Expr<'tcx>,
         tuple_arguments: TupleArgumentsFlag,
+        fn_sig_kind: FnSigKind,
     ) -> Self {
         let call_ctxt: CallCtxt<'_, '_> = CallCtxt::new(
             arg,
             compatibility_diagonal,
             formal_and_expected_inputs,
             provided_args,
-            c_variadic,
             err_code,
             fn_def_id,
             call_span,
             call_expr,
             tuple_arguments,
+            fn_sig_kind,
         );
 
         let call_metadata = call_ctxt.call_metadata();
@@ -3270,12 +3289,12 @@ struct CallCtxt<'a, 'tcx> {
     compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
     formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
     provided_args: IndexVec<ProvidedIdx, &'tcx hir::Expr<'tcx>>,
-    c_variadic: bool,
     err_code: ErrCode,
     fn_def_id: Option<DefId>,
     call_span: Span,
     call_expr: &'tcx hir::Expr<'tcx>,
     tuple_arguments: TupleArgumentsFlag,
+    fn_sig_kind: FnSigKind,
     callee_expr: Option<&'tcx Expr<'tcx>>,
     callee_ty: Option<Ty<'tcx>>,
 }
@@ -3294,12 +3313,12 @@ impl<'a, 'tcx> CallCtxt<'a, 'tcx> {
         compatibility_diagonal: IndexVec<ProvidedIdx, Compatibility<'tcx>>,
         formal_and_expected_inputs: IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         provided_args: IndexVec<ProvidedIdx, &'tcx hir::Expr<'tcx>>,
-        c_variadic: bool,
         err_code: ErrCode,
         fn_def_id: Option<DefId>,
         call_span: Span,
         call_expr: &'tcx hir::Expr<'tcx>,
         tuple_arguments: TupleArgumentsFlag,
+        fn_sig_kind: FnSigKind,
     ) -> CallCtxt<'a, 'tcx> {
         let callee_expr = match &call_expr.peel_blocks().kind {
             hir::ExprKind::Call(callee, _) => Some(*callee),
@@ -3326,12 +3345,12 @@ impl<'a, 'tcx> CallCtxt<'a, 'tcx> {
             compatibility_diagonal,
             formal_and_expected_inputs,
             provided_args,
-            c_variadic,
             err_code,
             fn_def_id,
             call_span,
             call_expr,
             tuple_arguments,
+            fn_sig_kind,
             callee_expr,
             callee_ty,
         }
