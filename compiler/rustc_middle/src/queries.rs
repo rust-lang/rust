@@ -216,13 +216,15 @@ rustc_queries! {
         desc { "lowering the delayed AST owner `{}`", tcx.def_path_str(def_id) }
     }
 
-    query owner(def_id: LocalDefId) -> hir::MaybeOwner<'tcx> {
+    query owner(def_id: LocalDefId) -> &'tcx rustc_middle::hir::ProjectedMaybeOwner<'tcx> {
         desc { "getting owner for `{}`", tcx.def_path_str(def_id) }
+        arena_cache
         feedable
     }
 
-    query delayed_owner(def_id: LocalDefId) -> hir::MaybeOwner<'tcx>  {
+    query delayed_owner(def_id: LocalDefId) -> &'tcx hir::MaybeOwner<'tcx>  {
         feedable
+        arena_cache
         desc { "getting child of lowered delayed AST owner `{}`", tcx.def_path_str(def_id) }
     }
 

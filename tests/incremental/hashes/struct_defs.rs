@@ -27,9 +27,9 @@
 pub struct LayoutPacked;
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="type_of,owner", cfg="bpass2")]
+#[rustc_clean(except="type_of", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="type_of,owner", cfg="bpass5")]
+#[rustc_clean(except="type_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 #[repr(packed)]
 pub struct LayoutPacked;
@@ -38,9 +38,9 @@ pub struct LayoutPacked;
 struct LayoutC;
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(except="type_of,owner", cfg="bpass2")]
+#[rustc_clean(except="type_of", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="type_of,owner", cfg="bpass5")]
+#[rustc_clean(except="type_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 #[repr(C)]
 struct LayoutC;
@@ -85,7 +85,7 @@ struct TupleStructAddField(
 struct TupleStructFieldVisibility(    char);
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2,owner", except="type_of")]
+#[rustc_clean(cfg="bpass2", except="type_of")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,type_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -143,7 +143,7 @@ struct RecordStructAddField {
 struct RecordStructFieldVisibility {     x: f32 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2,owner", except="type_of")]
+#[rustc_clean(cfg="bpass2", except="type_of")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,type_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -256,7 +256,7 @@ pub struct EmptyStruct;
 struct     Visibility;
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]

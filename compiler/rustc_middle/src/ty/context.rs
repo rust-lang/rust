@@ -36,9 +36,7 @@ use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorSta
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::limit::Limit;
-use rustc_hir::{
-    self as hir, CRATE_HIR_ID, HirId, MaybeOwner, Node, OwnerInfo, TraitCandidate, find_attr,
-};
+use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, MaybeOwner, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
 use rustc_macros::Diagnostic;
 use rustc_session::Session;
@@ -57,6 +55,7 @@ use tracing::{debug, instrument};
 use crate::arena::Arena;
 use crate::dep_graph::dep_node::make_metadata;
 use crate::dep_graph::{DepGraph, DepKindVTable, DepNodeIndex};
+use crate::hir::{ProjectedMaybeOwner, ProjectedOwnerInfo};
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarKind};
 use crate::lint::emit_lint_base;
@@ -763,26 +762,27 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
     pub fn feed_hir(&self) {
         let node = hir::OwnerNode::Synthetic;
         let bodies = Default::default();
-        let attrs = hir::AttributeMap::EMPTY.clone();
+        let attrs = hir::AttributeMap::EMPTY;
 
         let rustc_middle::hir::Hashes { opt_hash_including_bodies, .. } =
             self.tcx.hash_owner_nodes(node, &bodies, &attrs.map, attrs.define_opaque);
         let node = node.into();
 
-        self.owner(hir::MaybeOwner::Owner(self.tcx.arena.alloc(OwnerInfo {
-            attrs,
-            nodes: hir::OwnerNodes {
+        self.owner(ProjectedMaybeOwner::Owner(ProjectedOwnerInfo {
+            nodes: self.tcx.arena.alloc(hir::OwnerNodes {
                 opt_hash_including_bodies,
                 nodes: IndexVec::from_elem_n(
                     hir::ParentedNode { parent: hir::ItemLocalId::INVALID, node },
                     1,
                 ),
                 bodies,
-            },
-            parenting: Default::default(),
-            delayed_lints: Default::default(),
-            trait_map: Default::default(),
-        })));
+            }),
+            parenting: self.tcx.arena.alloc(Default::default()),
+            delayed_lints: self.tcx.arena.alloc(Default::default()),
+            trait_map: self.tcx.arena.alloc(Default::default()),
+        }));
+
+        self.feed_owner_id().hir_attr_map(attrs);
     }
 }
 

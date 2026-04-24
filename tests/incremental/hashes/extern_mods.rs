@@ -19,12 +19,12 @@
 #![crate_type = "rlib"]
 
 // Change function name --------------------------------------------------------
-#[cfg(any(bpass1,bpass4))]
+#[cfg(any(bpass1, bpass4))]
 extern "C" {
     pub fn change_function_name1(c: i64) -> i32;
 }
 
-#[cfg(not(any(bpass1,bpass4)))]
+#[cfg(not(any(bpass1, bpass4)))]
 #[rustc_clean(cfg = "bpass2", except = "owner")]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(cfg = "bpass5", except = "owner")]
@@ -34,102 +34,102 @@ extern "C" {
 }
 
 // Change parameter name -------------------------------------------------------
-#[cfg(any(bpass1,bpass4))]
+#[cfg(any(bpass1, bpass4))]
 extern "C" {
     pub fn change_parameter_name(c: i64) -> i32;
 }
 
-#[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[cfg(not(any(bpass1, bpass4)))]
+#[rustc_clean(cfg = "bpass2")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg = "bpass5")]
 #[rustc_clean(cfg = "bpass6")]
 extern "C" {
     pub fn change_parameter_name(d: i64) -> i32;
 }
 
 // Change parameter type -------------------------------------------------------
-#[cfg(any(bpass1,bpass4))]
+#[cfg(any(bpass1, bpass4))]
 extern "C" {
     pub fn change_parameter_type(c: i64) -> i32;
 }
 
-#[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[cfg(not(any(bpass1, bpass4)))]
+#[rustc_clean(cfg = "bpass2")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg = "bpass5")]
 #[rustc_clean(cfg = "bpass6")]
 extern "C" {
     pub fn change_parameter_type(c: i32) -> i32;
 }
 
 // Change return type ----------------------------------------------------------
-#[cfg(any(bpass1,bpass4))]
+#[cfg(any(bpass1, bpass4))]
 extern "C" {
     pub fn change_return_type(c: i32) -> i32;
 }
 
-#[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[cfg(not(any(bpass1, bpass4)))]
+#[rustc_clean(cfg = "bpass2")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg = "bpass5", except = "owner")]
 #[rustc_clean(cfg = "bpass6")]
 extern "C" {
-    pub fn change_return_type(c: i32) -> i8 ;
+    pub fn change_return_type(c: i32) -> i8;
 }
 
 // Add parameter ---------------------------------------------------------------
-#[cfg(any(bpass1,bpass4))]
+#[cfg(any(bpass1, bpass4))]
 extern "C" {
-    pub fn add_parameter(c: i32        ) -> i32;
+    pub fn add_parameter(c: i32) -> i32;
 }
 
-#[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[cfg(not(any(bpass1, bpass4)))]
+#[rustc_clean(cfg = "bpass2")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg = "bpass5", except = "owner")]
 #[rustc_clean(cfg = "bpass6")]
 extern "C" {
     pub fn add_parameter(c: i32, d: i32) -> i32;
 }
 
 // Add return type -------------------------------------------------------------
-#[cfg(any(bpass1,bpass4))]
+#[cfg(any(bpass1, bpass4))]
 extern "C" {
-    pub fn add_return_type(c: i32)       ;
+    pub fn add_return_type(c: i32);
 }
 
-#[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[cfg(not(any(bpass1, bpass4)))]
+#[rustc_clean(cfg = "bpass2")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg = "bpass5", except = "owner")]
 #[rustc_clean(cfg = "bpass6")]
 extern "C" {
     pub fn add_return_type(c: i32) -> i32;
 }
 
 // Make function variadic ------------------------------------------------------
-#[cfg(any(bpass1,bpass4))]
+#[cfg(any(bpass1, bpass4))]
 extern "C" {
-    pub fn make_function_variadic(c: i32     );
+    pub fn make_function_variadic(c: i32);
 }
 
-#[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[cfg(not(any(bpass1, bpass4)))]
+#[rustc_clean(cfg = "bpass2")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg = "bpass5", except = "owner")]
 #[rustc_clean(cfg = "bpass6")]
 extern "C" {
     pub fn make_function_variadic(c: i32, ...);
 }
 
 // Change calling convention ---------------------------------------------------
-#[cfg(any(bpass1,bpass4))]
+#[cfg(any(bpass1, bpass4))]
 extern "C" {
     pub fn change_calling_convention(c: (i32,));
 }
 
-#[cfg(not(any(bpass1,bpass4)))]
+#[cfg(not(any(bpass1, bpass4)))]
 #[rustc_clean(cfg = "bpass2", except = "owner")]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(cfg = "bpass5", except = "owner")]
@@ -139,27 +139,27 @@ extern "rust-call" {
 }
 
 // Make function public --------------------------------------------------------
-#[cfg(any(bpass1,bpass4))]
+#[cfg(any(bpass1, bpass4))]
 extern "C" {
-    fn     make_function_public(c: i32);
+    fn make_function_public(c: i32);
 }
 
-#[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[cfg(not(any(bpass1, bpass4)))]
+#[rustc_clean(cfg = "bpass2")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg = "bpass5", except = "owner")]
 #[rustc_clean(cfg = "bpass6")]
 extern "C" {
     pub fn make_function_public(c: i32);
 }
 
 // Add function ----------------------------------------------------------------
-#[cfg(any(bpass1,bpass4))]
+#[cfg(any(bpass1, bpass4))]
 extern "C" {
     pub fn add_function1(c: i32);
 }
 
-#[cfg(not(any(bpass1,bpass4)))]
+#[cfg(not(any(bpass1, bpass4)))]
 #[rustc_clean(cfg = "bpass2", except = "owner")]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(cfg = "bpass5", except = "owner")]
@@ -170,16 +170,16 @@ extern "C" {
 }
 
 // Change link-name ------------------------------------------------------------
-#[cfg(any(bpass1,bpass4))]
+#[cfg(any(bpass1, bpass4))]
 #[link(name = "foo")]
 extern "C" {
     pub fn change_link_name(c: i32);
 }
 
-#[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[cfg(not(any(bpass1, bpass4)))]
+#[rustc_clean(cfg = "bpass2")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg = "bpass5")]
 #[rustc_clean(cfg = "bpass6")]
 #[link(name = "bar")]
 extern "C" {
@@ -191,14 +191,14 @@ type c_i64 = i64;
 
 // Indirectly change parameter type --------------------------------------------
 mod indirectly_change_parameter_type {
-    #[cfg(any(bpass1,bpass4))]
+    #[cfg(any(bpass1, bpass4))]
     use super::c_i32 as c_int;
-    #[cfg(not(any(bpass1,bpass4)))]
+    #[cfg(not(any(bpass1, bpass4)))]
     use super::c_i64 as c_int;
 
-    #[rustc_clean(cfg="bpass2")]
+    #[rustc_clean(cfg = "bpass2")]
     #[rustc_clean(cfg = "bpass3")]
-    #[rustc_clean(cfg="bpass5")]
+    #[rustc_clean(cfg = "bpass5")]
     #[rustc_clean(cfg = "bpass6")]
     extern "C" {
         pub fn indirectly_change_parameter_type(c: c_int);
@@ -207,14 +207,14 @@ mod indirectly_change_parameter_type {
 
 // Indirectly change return type --------------------------------------------
 mod indirectly_change_return_type {
-    #[cfg(any(bpass1,bpass4))]
+    #[cfg(any(bpass1, bpass4))]
     use super::c_i32 as c_int;
-    #[cfg(not(any(bpass1,bpass4)))]
+    #[cfg(not(any(bpass1, bpass4)))]
     use super::c_i64 as c_int;
 
-    #[rustc_clean(cfg="bpass2")]
+    #[rustc_clean(cfg = "bpass2")]
     #[rustc_clean(cfg = "bpass3")]
-    #[rustc_clean(cfg="bpass5")]
+    #[rustc_clean(cfg = "bpass5")]
     #[rustc_clean(cfg = "bpass6")]
     extern "C" {
         pub fn indirectly_change_return_type() -> c_int;

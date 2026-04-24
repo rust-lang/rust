@@ -30,7 +30,7 @@
 enum     EnumVisibility { A }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
@@ -373,9 +373,9 @@ enum EnumAddMustUse {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 #[must_use]
 enum EnumAddMustUse {
@@ -393,9 +393,9 @@ enum EnumAddReprC {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="type_of,owner")]
+#[rustc_clean(cfg="bpass2", except="type_of")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="type_of,owner")]
+#[rustc_clean(cfg="bpass5", except="type_of")]
 #[rustc_clean(cfg="bpass6")]
 #[repr(C)]
 enum EnumAddReprC {

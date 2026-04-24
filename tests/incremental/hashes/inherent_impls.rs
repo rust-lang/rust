@@ -52,7 +52,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
@@ -83,7 +83,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
@@ -110,12 +110,12 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2", except="owner")]
+    #[rustc_clean(cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(cfg="bpass5", except="owner")]
     #[rustc_clean(cfg="bpass6")]
@@ -139,7 +139,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
@@ -168,7 +168,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
@@ -194,9 +194,9 @@ impl Foo {
 #[rustc_clean(cfg="bpass5", except="owner,associated_item_def_ids")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2", except="owner")]
+    #[rustc_clean(cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="owner")]
+    #[rustc_clean(cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_method_to_impl1(&self) { }
 
@@ -218,7 +218,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
@@ -243,7 +243,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
@@ -268,7 +268,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
@@ -294,14 +294,14 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2", except="owner")]
+    #[rustc_clean(cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="owner")]
+    #[rustc_clean(cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     #[inline]
     pub fn make_method_inline(&self) -> u8 { 0 }
@@ -320,7 +320,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
@@ -345,7 +345,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
@@ -370,7 +370,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
@@ -395,7 +395,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
@@ -429,7 +429,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
@@ -478,7 +478,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
@@ -524,7 +524,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
@@ -570,7 +570,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
@@ -619,7 +619,7 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
@@ -654,14 +654,14 @@ impl Foo {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 impl Foo {
-    #[rustc_clean(cfg="bpass2", except="owner")]
+    #[rustc_clean(cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="owner")]
+    #[rustc_clean(cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     #[unsafe(no_mangle)]
     pub fn add_no_mangle_to_method(&self) { }
@@ -685,12 +685,12 @@ impl Bar<u32> {
 impl<T> Bar<T> {
     #[rustc_clean(
         cfg="bpass2",
-        except="generics_of,fn_sig,typeck_root,type_of,optimized_mir,owner"
+        except="generics_of,fn_sig,typeck_root,type_of,optimized_mir"
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
         cfg="bpass5",
-        except="generics_of,fn_sig,typeck_root,type_of,optimized_mir,owner"
+        except="generics_of,fn_sig,typeck_root,type_of,optimized_mir"
     )]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_type_parameter_to_impl(&self) { }
@@ -710,9 +710,9 @@ impl Bar<u32> {
 #[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 impl Bar<u64> {
-    #[rustc_clean(cfg="bpass2", except="fn_sig,optimized_mir,typeck_root,owner")]
+    #[rustc_clean(cfg="bpass2", except="fn_sig,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="fn_sig,optimized_mir,typeck_root,owner")]
+    #[rustc_clean(cfg="bpass5", except="fn_sig,optimized_mir,typeck_root")]
     #[rustc_clean(cfg="bpass6")]
     pub fn change_impl_self_type(&self) { }
 }
@@ -731,9 +731,9 @@ impl<T> Bar<T> {
 #[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 impl<T: 'static> Bar<T> {
-    #[rustc_clean(cfg="bpass2", except="owner")]
+    #[rustc_clean(cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="owner")]
+    #[rustc_clean(cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_lifetime_bound_to_impl_parameter(&self) { }
 }
@@ -752,9 +752,9 @@ impl<T> Bar<T> {
 #[rustc_clean(cfg="bpass5", except="owner")]
 #[rustc_clean(cfg="bpass6")]
 impl<T: Clone> Bar<T> {
-    #[rustc_clean(cfg="bpass2", except="owner")]
+    #[rustc_clean(cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="owner")]
+    #[rustc_clean(cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     pub fn add_trait_bound_to_impl_parameter(&self) { }
 }

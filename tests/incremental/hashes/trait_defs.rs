@@ -29,7 +29,7 @@
 trait TraitVisibility { }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -94,7 +94,7 @@ trait TraitAddReturnType {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -119,7 +119,7 @@ trait TraitChangeReturnType {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -144,7 +144,7 @@ trait TraitAddParameterToMethod {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -176,7 +176,7 @@ trait TraitChangeMethodParameterName {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -208,7 +208,7 @@ trait TraitChangeMethodParameterType {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -233,7 +233,7 @@ trait TraitChangeMethodParameterTypeRef {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -258,7 +258,7 @@ trait TraitChangeMethodParametersOrder {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -283,7 +283,7 @@ trait TraitAddMethodAutoImplementation {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -327,7 +327,7 @@ trait TraitChangeModeSelfRefToMut {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -351,7 +351,7 @@ trait TraitChangeModeSelfOwnToMut: Sized {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(except="owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
@@ -375,7 +375,7 @@ trait TraitChangeModeSelfOwnToRef {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -400,7 +400,7 @@ trait TraitAddUnsafeModifier {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -425,7 +425,7 @@ trait TraitAddExternModifier {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -450,7 +450,7 @@ trait TraitChangeExternCToExternSystem {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -477,7 +477,7 @@ trait TraitAddTypeParameterToMethod {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -504,7 +504,7 @@ trait TraitAddLifetimeParameterToMethod {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -533,7 +533,7 @@ trait TraitAddTraitBoundToMethodTypeParameter {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -558,7 +558,7 @@ trait TraitAddBuiltinBoundToMethodTypeParameter {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(except="owner,predicates_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
@@ -589,7 +589,7 @@ trait TraitAddLifetimeBoundToMethodLifetimeParameter {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -620,7 +620,7 @@ trait TraitAddSecondTraitBoundToMethodTypeParameter {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -645,7 +645,7 @@ trait TraitAddSecondBuiltinBoundToMethodTypeParameter {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -676,7 +676,7 @@ trait TraitAddSecondLifetimeBoundToMethodLifetimeParameter {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -713,16 +713,16 @@ trait TraitAddAssociatedType {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(except="owner,associated_item_def_ids", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="owner,associated_item_def_ids,predicates_of", cfg="bpass5")]
+#[rustc_clean(except="associated_item_def_ids,owner", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 trait TraitAddAssociatedType {
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(cfg="bpass6")]
     type Associated;
 
-    #[rustc_clean(cfg="bpass2", except="owner")]
+    #[rustc_clean(cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="owner")]
+    #[rustc_clean(cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     fn method();
 }
@@ -745,7 +745,7 @@ trait TraitAddTraitBoundToAssociatedType {
 // Apparently the type bound contributes to the predicates of the trait, but
 // does not change the associated item itself.
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -774,7 +774,7 @@ trait TraitAddLifetimeBoundToAssociatedType<'a> {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -803,7 +803,7 @@ trait TraitAddDefaultToAssociatedType {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -855,7 +855,7 @@ trait TraitAddInitializerToAssociatedConstant {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -866,9 +866,9 @@ trait TraitAddInitializerToAssociatedConstant {
     #[rustc_clean(cfg="bpass6")]
     const Value: u32 = 1;
 
-    #[rustc_clean(cfg="bpass2", except="owner")]
+    #[rustc_clean(cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="owner")]
+    #[rustc_clean(cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     fn method();
 }
@@ -892,7 +892,7 @@ trait TraitChangeTypeOfAssociatedConstant {
 }
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
 #[rustc_clean(cfg="bpass5", except="owner,predicates_of")]
 #[rustc_clean(cfg="bpass6")]
@@ -903,9 +903,9 @@ trait TraitChangeTypeOfAssociatedConstant {
     #[rustc_clean(cfg="bpass6")]
     const Value: f64;
 
-    #[rustc_clean(cfg="bpass2", except="owner")]
+    #[rustc_clean(cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(cfg="bpass5", except="owner")]
+    #[rustc_clean(cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     fn method();
 }

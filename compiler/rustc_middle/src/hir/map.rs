@@ -18,7 +18,7 @@ use rustc_hir_pretty as pprust_hir;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 
-use crate::hir::{MaybeOwner, ModuleItems, nested_filter};
+use crate::hir::{ModuleItems, ProjectedMaybeOwner, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::query::{IntoQueryKey, LocalCrate};
 use crate::ty::TyCtxt;
@@ -105,25 +105,24 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn local_def_id_to_hir_id(self, def_id: impl IntoQueryKey<LocalDefId>) -> HirId {
         let def_id = def_id.into_query_key();
         match self.owner(def_id) {
-            MaybeOwner::Owner(_) => HirId::make_owner(def_id),
-            MaybeOwner::NonOwner(hir_id) => hir_id,
-            MaybeOwner::Phantom => bug!("No HirId for {:?}", def_id),
+            ProjectedMaybeOwner::Owner(_) => HirId::make_owner(def_id),
+            ProjectedMaybeOwner::NonOwner(hir_id) => *hir_id,
         }
     }
 
     pub fn opt_ast_lowering_delayed_lints(self, id: OwnerId) -> Option<&'tcx DelayedLints> {
-        self.owner(id.def_id).as_owner().map(|o| &o.delayed_lints)
+        self.owner(id.def_id).as_owner().map(|o| o.delayed_lints)
     }
 
     pub fn in_scope_traits_map(
         self,
         id: OwnerId,
     ) -> Option<&'tcx ItemLocalMap<&'tcx [TraitCandidate<'tcx>]>> {
-        self.owner(id.def_id).as_owner().map(|owner_info| &owner_info.trait_map)
+        self.owner(id.def_id).as_owner().map(|owner_info| owner_info.trait_map)
     }
 
     pub fn opt_hir_owner_nodes(self, def_id: LocalDefId) -> Option<&'tcx OwnerNodes<'tcx>> {
-        self.owner(def_id).as_owner().map(|i| &i.nodes)
+        self.owner(def_id).as_owner().map(|i| i.nodes)
     }
 
     #[inline]

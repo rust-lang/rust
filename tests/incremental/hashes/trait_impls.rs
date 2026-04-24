@@ -74,7 +74,7 @@ impl ChangeMethodBodyTrait for Foo {
 }
 
 #[cfg(not(any(bpass1, bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(except = "owner", cfg = "bpass5")]
 #[rustc_clean(cfg = "bpass6")]
@@ -109,7 +109,7 @@ impl ChangeMethodBodyTraitInlined for Foo {
 }
 
 #[cfg(not(any(bpass1, bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(except = "owner", cfg = "bpass5")]
 #[rustc_clean(cfg = "bpass6")]
@@ -142,7 +142,7 @@ pub trait ChangeMethodSelfnessTrait {
 }
 
 #[cfg(not(any(bpass1, bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(except = "owner", cfg = "bpass5")]
 #[rustc_clean(cfg = "bpass6")]
@@ -180,7 +180,7 @@ pub trait RemoveMethodSelfnessTrait {
 }
 
 #[cfg(not(any(bpass1, bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(except = "owner", cfg = "bpass5")]
 #[rustc_clean(cfg = "bpass6")]
@@ -220,7 +220,7 @@ pub trait ChangeMethodSelfmutnessTrait {
 }
 
 #[cfg(not(any(bpass1, bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(except = "owner", cfg = "bpass5")]
 #[rustc_clean(cfg = "bpass6")]
@@ -331,7 +331,7 @@ impl ChangeHasValueTrait for Foo {
 }
 
 #[cfg(not(any(bpass1, bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(cfg = "bpass5", except = "owner,predicates_of")]
 #[rustc_clean(cfg = "bpass6")]
@@ -344,9 +344,9 @@ pub trait ChangeHasValueTrait {
 }
 
 #[cfg(not(any(bpass1, bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5", except = "owner")]
+#[rustc_clean(cfg="bpass5")]
 #[rustc_clean(cfg = "bpass6")]
 impl ChangeHasValueTrait for Foo {
     fn method_name() {}
@@ -368,7 +368,7 @@ impl AddDefaultTrait for Foo {
 }
 
 #[cfg(not(any(bpass1, bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(cfg = "bpass5", except = "owner")]
 #[rustc_clean(cfg = "bpass6")]
@@ -402,7 +402,7 @@ pub trait AddArgumentTrait {
 }
 
 #[cfg(not(any(bpass1, bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(except = "owner", cfg = "bpass5")]
 #[rustc_clean(cfg = "bpass6")]
@@ -436,7 +436,7 @@ pub trait ChangeArgumentTypeTrait {
 }
 
 #[cfg(not(any(bpass1, bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(except = "owner", cfg = "bpass5")]
 #[rustc_clean(cfg = "bpass6")]
@@ -501,9 +501,9 @@ impl ChangeSelfTypeOfImpl for u32 {
 #[rustc_clean(except = "owner,impl_trait_header", cfg = "bpass5")]
 #[rustc_clean(cfg = "bpass6")]
 impl ChangeSelfTypeOfImpl for u64 {
-    #[rustc_clean(except = "fn_sig,typeck_root,optimized_mir,owner", cfg = "bpass2")]
+    #[rustc_clean(except = "fn_sig,typeck_root,optimized_mir", cfg = "bpass2")]
     #[rustc_clean(cfg = "bpass3")]
-    #[rustc_clean(except = "fn_sig,typeck_root,optimized_mir,owner", cfg = "bpass5")]
+    #[rustc_clean(except = "fn_sig,typeck_root,optimized_mir", cfg = "bpass5")]
     #[rustc_clean(cfg = "bpass6")]
     fn id(self) -> Self {
         self
@@ -528,9 +528,9 @@ impl<T> AddLifetimeBoundToImplParameter for T {
 #[rustc_clean(except = "owner", cfg = "bpass5")]
 #[rustc_clean(cfg = "bpass6")]
 impl<T: 'static> AddLifetimeBoundToImplParameter for T {
-    #[rustc_clean(cfg = "bpass2", except = "owner")]
+    #[rustc_clean(cfg="bpass2")]
     #[rustc_clean(cfg = "bpass3")]
-    #[rustc_clean(cfg = "bpass5", except = "owner")]
+    #[rustc_clean(cfg="bpass5")]
     #[rustc_clean(cfg = "bpass6")]
     fn id(self) -> Self {
         self
@@ -555,9 +555,9 @@ impl<T> AddTraitBoundToImplParameter for T {
 #[rustc_clean(except = "owner", cfg = "bpass5")]
 #[rustc_clean(cfg = "bpass6")]
 impl<T: Clone> AddTraitBoundToImplParameter for T {
-    #[rustc_clean(cfg = "bpass2", except = "owner")]
+    #[rustc_clean(cfg="bpass2")]
     #[rustc_clean(cfg = "bpass3")]
-    #[rustc_clean(cfg = "bpass5", except = "owner")]
+    #[rustc_clean(cfg="bpass5")]
     #[rustc_clean(cfg = "bpass6")]
     fn id(self) -> Self {
         self
@@ -580,14 +580,14 @@ impl AddNoMangleToMethod for Foo {
 }
 
 #[cfg(not(any(bpass1, bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(cfg = "bpass5", except = "owner")]
 #[rustc_clean(cfg = "bpass6")]
 impl AddNoMangleToMethod for Foo {
-    #[rustc_clean(cfg = "bpass2", except = "owner")]
+    #[rustc_clean(cfg="bpass2")]
     #[rustc_clean(cfg = "bpass3")]
-    #[rustc_clean(cfg = "bpass5", except = "owner")]
+    #[rustc_clean(cfg="bpass5")]
     #[rustc_clean(cfg = "bpass6")]
     #[unsafe(no_mangle)]
     fn add_no_mangle_to_method(&self) {}
@@ -613,14 +613,14 @@ impl MakeMethodInline for Foo {
 }
 
 #[cfg(not(any(bpass1, bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
 #[rustc_clean(cfg = "bpass5", except = "owner")]
 #[rustc_clean(cfg = "bpass6")]
 impl MakeMethodInline for Foo {
-    #[rustc_clean(cfg = "bpass2", except = "owner")]
+    #[rustc_clean(cfg="bpass2")]
     #[rustc_clean(cfg = "bpass3")]
-    #[rustc_clean(cfg = "bpass5", except = "owner")]
+    #[rustc_clean(cfg="bpass5")]
     #[rustc_clean(cfg = "bpass6")]
     #[inline]
     fn make_method_inline(&self) -> u8 {

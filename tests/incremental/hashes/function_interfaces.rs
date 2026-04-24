@@ -248,9 +248,9 @@ pub fn second_lifetime_bound<'a, 'b, T: 'a + 'b>() {}
 pub fn inline() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg="bpass5")]
 #[rustc_clean(cfg = "bpass6")]
 #[inline]
 pub fn inline() {}
@@ -262,9 +262,9 @@ pub fn inline() {}
 pub fn inline_never() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg="bpass5")]
 #[rustc_clean(cfg = "bpass6")]
 #[inline(never)]
 pub fn inline_never() {}
@@ -275,9 +275,9 @@ pub fn inline_never() {}
 pub fn no_mangle() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg="bpass5")]
 #[rustc_clean(cfg = "bpass6")]
 #[unsafe(no_mangle)]
 pub fn no_mangle() {}
@@ -288,9 +288,9 @@ pub fn no_mangle() {}
 pub fn linkage() {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg="bpass2", except="owner")]
+#[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg="bpass5", except="owner")]
+#[rustc_clean(cfg="bpass5")]
 #[rustc_clean(cfg = "bpass6")]
 #[linkage = "weak_odr"]
 pub fn linkage() {}
