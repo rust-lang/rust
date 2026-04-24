@@ -43,24 +43,6 @@ use crate::ptr;
 /// }
 /// ```
 ///
-/// # Interaction with `Box`
-///
-/// Currently, if you have a `ManuallyDrop<T>`, where the type `T` is a `Box` or
-/// contains a `Box` inside, then dropping the `T` followed by moving the
-/// `ManuallyDrop<T>` is [considered to be undefined
-/// behavior](https://github.com/rust-lang/unsafe-code-guidelines/issues/245).
-/// That is, the following code causes undefined behavior:
-///
-/// ```no_run
-/// use std::mem::ManuallyDrop;
-///
-/// let mut x = ManuallyDrop::new(Box::new(42));
-/// unsafe {
-///     ManuallyDrop::drop(&mut x);
-/// }
-/// let y = x; // Undefined behavior!
-/// ```
-///
 /// This is [likely to change in the
 /// future](https://rust-lang.github.io/rfcs/3336-maybe-dangling.html). In the
 /// meantime, consider using [`MaybeUninit`] instead.
@@ -147,6 +129,24 @@ use crate::ptr;
 ///
 /// let foo = Foo::new();
 /// println!("{:?}", foo); // Undefined behavior!
+/// ```
+///
+/// # Interaction with `Box`
+///
+/// Currently, if you have a `ManuallyDrop<T>`, where the type `T` is a `Box` or
+/// contains a `Box` inside, then dropping the `T` followed by moving the
+/// `ManuallyDrop<T>` is [considered to be undefined
+/// behavior](https://github.com/rust-lang/unsafe-code-guidelines/issues/245).
+/// That is, the following code causes undefined behavior:
+///
+/// ```no_run
+/// use std::mem::ManuallyDrop;
+///
+/// let mut x = ManuallyDrop::new(Box::new(42));
+/// unsafe {
+///     ManuallyDrop::drop(&mut x);
+/// }
+/// let y = x; // Undefined behavior!
 /// ```
 ///
 /// [drop order]: https://doc.rust-lang.org/reference/destructors.html
