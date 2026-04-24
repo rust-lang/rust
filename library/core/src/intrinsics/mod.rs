@@ -53,7 +53,7 @@
     issue = "none"
 )]
 
-use crate::ffi::va_list::{VaArgSafe, VaList};
+use crate::ffi::{VaArgSafe, VaList};
 use crate::marker::{ConstParamTy, DiscriminantKind, PointeeSized, Tuple};
 use crate::{mem, ptr};
 

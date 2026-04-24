@@ -2,6 +2,12 @@
 //!
 //! Better known as "varargs".
 
+#![unstable(
+    feature = "c_variadic",
+    issue = "44930",
+    reason = "the `c_variadic` feature has not been properly tested on all supported platforms"
+)]
+
 #[cfg(not(target_arch = "xtensa"))]
 use crate::ffi::c_void;
 use crate::fmt;

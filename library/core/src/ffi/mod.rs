@@ -23,19 +23,13 @@ use crate::fmt;
 #[stable(feature = "c_str_module", since = "1.88.0")]
 pub mod c_str;
 
+mod va_list;
 #[unstable(
     feature = "c_variadic",
     issue = "44930",
     reason = "the `c_variadic` feature has not been properly tested on all supported platforms"
 )]
 pub use self::va_list::{VaArgSafe, VaList};
-
-#[unstable(
-    feature = "c_variadic",
-    issue = "44930",
-    reason = "the `c_variadic` feature has not been properly tested on all supported platforms"
-)]
-pub mod va_list;
 
 mod primitives;
 #[stable(feature = "core_ffi_c", since = "1.64.0")]
