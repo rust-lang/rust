@@ -18,14 +18,14 @@
 //!
 //! A *place* in Rust is a particular location in memory. They are represented
 //! by [*place expressions*][ref-place-exprs], which take on the following form:
-//! - `$path`: paths that refer to locals variables (also parameters), statics,
-//!   constants, and functions.
-//! - `|$args...| $body`: closure expressions,
-//! - `$place as $ty`: certain `as`-casts of another place expression,
+//! - `$path`: paths that refer to locals variables (also parameters) and
+//!   statics,
 //! - `*$place`: dereferences of another place expression,
 //! - `$place[$expr]`: indexing operation of another place expression,
 //! - `$place.$ident`: field access of another place expression,
 //! - `($place)`: parenthesized place expressions,
+//! - `$value`: value expressions can be coerced to a temporary place whose
+//!   lifetime is determined from its context,
 //!
 //! Further reading:
 //! - <https://nadrieril.github.io/blog/2025/12/06/on-places-and-their-magic.html>
@@ -33,20 +33,23 @@
 //!
 //! [ref-place-exprs]: https://doc.rust-lang.org/reference/expressions.html#r-expr.place-value.place-expr-kinds
 //!
-//! ## Operation Traits
+//! ## Place Proxies
 //!
-//! Place operations are implemented by types that reference/contain/represent a
-//! place. This is because places are not part of the type system of Rust; a
-//! place expression has the type of the values that are contained in the place.
-//! The [`PlaceProxy`] trait marks a type as containing a place; it also records
-//! which type the values contained within the place have.
+//! Places and place expressions are not part of the type system of Rust and
+//! therefore cannot implement traits. To still be able to customize place
+//! operations via traits, they are implemented for types that act as a proxy
+//! for the place. Such types are called *place proxies* and they implement the
+//! [`PlaceProxy`] trait. Elements of a place proxy type denote/represent one
+//! specific place. Such an element can be dereferenced, which results in a
+//! place expression denoting the represented place. This is a normal place
+//! expression that can be used to perform place operations or can be composed
+//! into a bigger place expression.
 //!
-//! When a type `X` implements [`PlaceProxy`], values of type `X` can be
-//! dereferenced, which results in a place that can be read from, written to, or
-//! borrowed. Any of those place operations are implemented by the corresponding
-//! place operation trait on the value the place originated from. This means
-//! that the operations are only available if `X` implements the corresponding
-//! place operation trait:
+//! Place operations performed on the represented place are implemented by the
+//! corresponding place operation trait of this module. This trait must be
+//! implemented for the place's proxy type, otherwise the compiler will emit an
+//! error:
+//!
 //! - reading [`ReadPlace`],
 //! - writing [`WritePlace`], and
 //! - borrowing [`BorrowPlace`].
@@ -58,12 +61,11 @@
 //! ### Subplaces
 //!
 //! Place operations are allowed to target only a *subplace*. For example
-//! `my_struct.field = 42;` writes to only the `field` subplace. However,
-//! the operations traits are always applied to a type that references the
-//! *entire* place, since there is no type system level construct that
-//! represents only the subplace. For this reason, all operation traits have a
-//! generic argument implementing the [`Subplace`] trait that specifies the
-//! subplace that the operation should affect.
+//! `my_struct.field = 42;` writes to only the `field` subplace. Since places
+//! are operated upon through their proxy, which represents the *entire* place,
+//! each operation has a generic parameter denoting the subplace the operation
+//! is targeting. This generic implements the [`Subplace`] trait, which contains
+//! all the information describing the targeted subplace.
 //!
 //! Note that the [`Subplace`] trait also can represent the entire place in case
 //! the operation affects the entire place (for example `let x = *ptr;`).
@@ -71,13 +73,13 @@
 //! This generic argument is supplied by the compiler when desugaring a place
 //! operation into the corresponding place operation trait function call. There
 //! is a direct translation from place expressions to types implementing the
-//! [`Subplace`] trait (these are compiler-internal).
+//! [`Subplace`] trait.
 //!
 //! ### Implicit Operations
 //!
 //! In addition to the three visible operations, there are several other
-//! *implicit* operations that allow full customization of types implementing
-//! [`PlaceProxy`]:
+//! *implicit* operations that can be implemented for place proxies:
+//!
 //! - moving out of a subplace [`MovePlace`],
 //! - dropping a subplace [`DropPlace`] and dropping a fully moved-out pointer
 //!   [`DropHusk`], and
@@ -85,13 +87,14 @@
 //!
 //! ### Place Wrappers
 //!
-//! Place wrappers are types that implement the [`WrapPlace`] trait. They modify
-//! subplaces contained by their value. For example [`MaybeUninit<T>`] has all
-//! fields that `T` has (it forwards all subplaces of `T`), but those subplaces
-//! have `MaybeUninit<U>` as the type instead of `U`. Given `Struct` with a
-//! field of type `Field` called `field`, we can write `val.field` (this has
-//! type `Field`) given `val: Struct`; we can also write `val.field` given `val:
-//! MaybeUninit<Struct>` and then `val.field: MaybeUninit<Field>`.
+//! Place wrappers are a special kind of place proxy. They "physically contain"
+//! the place they are proxying for. A good example is [`MaybeUninit<T>`]. To
+//! support subplaces of these place wrappers, the [`WrapPlace`] trait exists.
+//! It allows forwarding subplaces to the proxy and changing the subplace access
+//! information. With [`MaybeUninit<T>`], this allows accessing any subplace
+//! under the transformation that it's type is wrapped in `MaybeUninit`. So
+//! Given `&MaybeUninit<Struct>`, the `field` subplace can be borrowed using `&`
+//! and it has type `&MaybeUninit<Field>`.
 //!
 //! [`MaybeUninit<T>`]: crate::mem::MaybeUninit
 //!
@@ -165,14 +168,16 @@ pub unsafe trait Subplace: Sized {
 /// Marks a type as a place proxy.
 ///
 /// A place proxy can be dereferenced (`*val`). This results in a place for
-/// which any place operation is implemented by this type instead. The operation
-/// is available only if the corresponding place operation trait is implemented:
+/// which any place operation is implemented by this type. The operation is
+/// available only if the corresponding place operation trait is implemented:
+///
 /// - [`ReadPlace`]
 /// - [`WritePlace`]
 /// - [`BorrowPlace`]
 ///
 /// Furthermore, there are implicit place operations that can be supported by
 /// types implementing this trait:
+///
 /// - [`MovePlace`]
 /// - [`DropPlace`]
 /// - [`DropHusk`]
@@ -333,10 +338,10 @@ where
     unsafe fn drop(this: *const Self, sub: S);
 }
 
-/// Dropping a pointer that points at a fully moved-out place.
+/// Dropping an empty place proxy.
 ///
-/// This operation is emitted by the compiler when a pointer is being dropped
-/// that had all of its fields moved out.
+/// This operation is emitted by the compiler when a place proxy is being
+/// dropped where all fields of the represented place were moved out.
 ///
 /// If no fields or only some fields have been moved out, all not yet moved out
 /// fields are dropped with the [`DropPlace`] trait. After that this pointer is
@@ -344,6 +349,11 @@ where
 ///
 /// Note that a write operation ([`WritePlace`]) can move a value into a
 /// previously moved-out field.
+///
+/// This trait cannot be implemented at the same time as [`Drop`], since it
+/// generalizes it. When this trait is implemented, dropping a value of type
+/// `Self` is done by first dropping the represented place using [`DropPlace`]
+/// and then calling drop_husk.
 ///
 /// # Safety
 ///
@@ -360,10 +370,10 @@ pub unsafe trait DropHusk: PlaceProxy {
     unsafe fn drop_husk(this: *const Self);
 }
 
-/// Accessing a nested pointer.
+/// Accessing a nested proxy.
 ///
-/// When `x: Self`, then nested dereferences `let _ = **x;` is desugared into a
-/// combination of the corresponding operation and a [`DerefPlace::nested`].
+/// When `x: Self`, then nested dereferences `let _ = **x;` are desugared into a
+/// combination of the corresponding operation and [`DerefPlace::deref`].
 ///
 /// # Safety
 ///
