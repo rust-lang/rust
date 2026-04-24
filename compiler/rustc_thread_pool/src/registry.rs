@@ -524,7 +524,7 @@ impl Registry {
         OP: FnOnce(&WorkerThread, bool) -> R + Send,
         R: Send,
     {
-        thread_local!(static LOCK_LATCH: LockLatch = LockLatch::new());
+        thread_local!(static LOCK_LATCH: LockLatch = const { LockLatch::new() });
 
         LOCK_LATCH.with(|l| {
             // This thread isn't a member of *any* thread pool, so just block.
