@@ -130,4 +130,4 @@ def classify_union(fields: List) -> RustType:
         assert len(fields) == 1
         return RustType.CompressedEnum
     else:
-        return RustType.RegularEnum
+        return RustType.Union

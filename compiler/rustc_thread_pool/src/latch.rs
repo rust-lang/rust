@@ -220,7 +220,7 @@ pub(super) struct LockLatch {
 
 impl LockLatch {
     #[inline]
-    pub(super) fn new() -> LockLatch {
+    pub(super) const fn new() -> LockLatch {
         LockLatch { m: Mutex::new(false), v: Condvar::new() }
     }
 

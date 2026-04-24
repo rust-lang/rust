@@ -1,5 +1,7 @@
 //@ edition:2015..2021
 //@ run-pass
+//@ reference: macro.decl.follow-set.token-pat
+//@ reference: macro.decl.follow-set.edition2021
 #![allow(unused_macros)]
 macro_rules! foo { ($x:pat | $y:pat) => {} } // should be ok
 macro_rules! bar { ($($x:pat)+ | $($y:pat)+) => {} } // should be ok

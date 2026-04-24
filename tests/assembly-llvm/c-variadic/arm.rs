@@ -7,7 +7,9 @@
 #![crate_type = "lib"]
 #![feature(c_variadic)]
 
-// Check that the assembly that rustc generates matches what clang emits.
+// Check that the assembly that rustc generates matches what clang emits. This example in particular
+// is related to https://github.com/rust-lang/rust/pull/144549 and shows the effect of us correctly
+// emitting annotations that start and end the lifetime of the va_list.
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn variadic(a: f64, mut args: ...) -> f64 {
