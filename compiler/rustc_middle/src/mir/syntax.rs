@@ -124,7 +124,6 @@ pub enum RuntimePhase {
     /// disallowed:
     /// * [`TerminatorKind::Yield`]
     /// * [`TerminatorKind::CoroutineDrop`]
-    /// * [`Rvalue::Aggregate`] for any `AggregateKind` except `Array`
     /// * [`Rvalue::CopyForDeref`]
     /// * [`PlaceElem::OpaqueCast`]
     /// * [`LocalInfo::DerefTemp`](super::LocalInfo::DerefTemp)
@@ -1442,9 +1441,6 @@ pub enum Rvalue<'tcx> {
     /// This is needed because dataflow analysis needs to distinguish
     /// `dest = Foo { x: ..., y: ... }` from `dest.x = ...; dest.y = ...;` in the case that `Foo`
     /// has a destructor.
-    ///
-    /// Disallowed after deaggregation for all aggregate kinds except `Array` and `Coroutine`. After
-    /// coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
     Aggregate(Box<AggregateKind<'tcx>>, IndexVec<FieldIdx, Operand<'tcx>>),
 
     /// A CopyForDeref is equivalent to a read from a place at the
