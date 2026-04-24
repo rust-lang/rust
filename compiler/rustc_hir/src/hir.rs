@@ -1622,7 +1622,6 @@ pub struct OwnerInfo<'hir> {
     /// Contents of the HIR.
     pub nodes: OwnerNodes<'hir>,
     /// Map from each nested owner to its parent's local id.
-    #[stable_hasher(ignore)]
     pub parenting: LocalDefIdMap<ItemLocalId>,
     /// Collected attributes of the HIR nodes.
     pub attrs: AttributeMap<'hir>,

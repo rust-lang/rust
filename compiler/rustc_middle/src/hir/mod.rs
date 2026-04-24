@@ -467,7 +467,6 @@ pub struct ProjectedOwnerInfo<'tcx> {
     pub nodes: &'tcx OwnerNodes<'tcx>,
 
     /// Map from each nested owner to its parent's local id.
-    #[stable_hasher(ignore)]
     pub parenting: &'tcx LocalDefIdMap<ItemLocalId>,
 
     /// Map indicating what traits are in scope for places where this
