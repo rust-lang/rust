@@ -591,7 +591,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(PlaceBuilder::from(temp))
             }
             ExprKind::Reborrow { .. } => {
-                todo!();
+                // FIXME(reborrow): it should currently be impossible to end up evaluating a
+                // Reborrow expression as a place. That might not in the future, but what this then
+                // evaluates to requires further thought.
+                unreachable!();
             }
         }
     }

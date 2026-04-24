@@ -365,7 +365,10 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | ZstLiteral { .. }
             | Yield { .. } => true,
             ExprKind::Reborrow { .. } => {
-                todo!();
+                // FIXME(reborrow): matching on a Reborrow expression should be impossible
+                // currently. Whether this remains to be true, and if the reborrow result then is a
+                // known valid scrutinee requires further thought.
+                unreachable!("Reborrow expression in match")
             }
         }
     }
