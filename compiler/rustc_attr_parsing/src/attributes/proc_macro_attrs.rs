@@ -73,7 +73,7 @@ fn parse_derive_like<S: Stage>(
         cx.adcx().expected_at_least_one_argument(list.span);
         return None;
     };
-    let Some(trait_attr) = trait_attr.meta_item() else {
+    let Some(trait_attr) = trait_attr.as_meta_item() else {
         cx.adcx().expected_not_literal(trait_attr.span());
         return None;
     };
@@ -93,7 +93,7 @@ fn parse_derive_like<S: Stage>(
     // Parse optional attributes
     let mut attributes = ThinVec::new();
     if let Some(attrs) = items.next() {
-        let Some(attr_list) = attrs.meta_item() else {
+        let Some(attr_list) = attrs.as_meta_item() else {
             cx.adcx().expected_not_literal(attrs.span());
             return None;
         };
@@ -105,7 +105,7 @@ fn parse_derive_like<S: Stage>(
 
         // Parse item in `attributes(...)` argument
         for attr in attr_list.mixed() {
-            let Some(attr) = attr.meta_item() else {
+            let Some(attr) = attr.as_meta_item() else {
                 cx.adcx().expected_identifier(attr.span());
                 return None;
             };

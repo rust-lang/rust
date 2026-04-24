@@ -21,9 +21,10 @@ impl<S: Stage> CombineAttributeParser<S> for AllowInternalUnstableParser {
         cx: &mut AcceptContext<'_, '_, S>,
         args: &ArgParser,
     ) -> impl IntoIterator<Item = Self::Item> {
+        let attr_span = cx.attr_span;
         parse_unstable(cx, args, <Self as CombineAttributeParser<S>>::PATH[0])
             .into_iter()
-            .zip(iter::repeat(cx.attr_span))
+            .zip(iter::repeat(attr_span))
     }
 }
 
@@ -46,9 +47,10 @@ impl<S: Stage> CombineAttributeParser<S> for UnstableFeatureBoundParser {
         if !cx.features().staged_api() {
             cx.emit_err(session_diagnostics::StabilityOutsideStd { span: cx.attr_span });
         }
+        let attr_span = cx.attr_span;
         parse_unstable(cx, args, <Self as CombineAttributeParser<S>>::PATH[0])
             .into_iter()
-            .zip(iter::repeat(cx.attr_span))
+            .zip(iter::repeat(attr_span))
     }
 }
 
@@ -75,7 +77,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcAllowConstFnUnstableParser {
 }
 
 fn parse_unstable<S: Stage>(
-    cx: &AcceptContext<'_, '_, S>,
+    cx: &mut AcceptContext<'_, '_, S>,
     args: &ArgParser,
     symbol: Symbol,
 ) -> impl IntoIterator<Item = Symbol> {
@@ -91,7 +93,7 @@ fn parse_unstable<S: Stage>(
 
     for param in list.mixed() {
         let param_span = param.span();
-        if let Some(ident) = param.meta_item().and_then(|i| i.path().word()) {
+        if let Some(ident) = param.as_meta_item().and_then(|i| i.path().word()) {
             res.push(ident.name);
         } else {
             cx.emit_err(session_diagnostics::ExpectsFeatures {

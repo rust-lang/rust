@@ -48,7 +48,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcAutodiffParser {
             cx.adcx().expected_at_least_one_argument(list.span);
             return None;
         };
-        let Some(mode) = mode.meta_item() else {
+        let Some(mode) = mode.as_meta_item() else {
             cx.adcx().expected_identifier(mode.span());
             return None;
         };

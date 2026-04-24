@@ -43,7 +43,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcMustImplementOneOfParser {
 
         let mut errored = false;
         for argument in inputs {
-            let Some(meta) = argument.meta_item() else {
+            let Some(meta) = argument.as_meta_item() else {
                 cx.adcx().expected_identifier(argument.span());
                 return None;
             };
@@ -209,18 +209,17 @@ fn parse_cgu_fields<S: Stage>(
     let mut kind = None::<(Symbol, Span)>;
 
     for arg in args.mixed() {
-        let Some(arg) = arg.meta_item() else {
-            cx.adcx().expected_name_value(args.span, None);
+        let Some((ident, arg)) = cx.expect_name_value(arg, arg.span(), None) else {
             continue;
         };
 
-        let res = match arg.ident().map(|i| i.name) {
-            Some(sym::cfg) => &mut cfg,
-            Some(sym::module) => &mut module,
-            Some(sym::kind) if accepts_kind => &mut kind,
+        let res = match ident.name {
+            sym::cfg => &mut cfg,
+            sym::module => &mut module,
+            sym::kind if accepts_kind => &mut kind,
             _ => {
                 cx.adcx().expected_specific_argument(
-                    arg.path().span(),
+                    ident.span,
                     if accepts_kind {
                         &[sym::cfg, sym::module, sym::kind]
                     } else {
@@ -231,22 +230,17 @@ fn parse_cgu_fields<S: Stage>(
             }
         };
 
-        let Some(i) = arg.args().name_value() else {
-            cx.adcx().expected_name_value(arg.span(), None);
-            continue;
-        };
-
-        let Some(str) = i.value_as_str() else {
-            cx.adcx().expected_string_literal(i.value_span, Some(i.value_as_lit()));
+        let Some(str) = arg.value_as_str() else {
+            cx.adcx().expected_string_literal(arg.value_span, Some(arg.value_as_lit()));
             continue;
         };
 
         if res.is_some() {
-            cx.adcx().duplicate_key(arg.span(), arg.ident().unwrap().name);
+            cx.adcx().duplicate_key(ident.span.to(arg.args_span()), ident.name);
             continue;
         }
 
-        *res = Some((str, i.value_span));
+        *res = Some((str, arg.value_span));
     }
 
     let Some((cfg, _)) = cfg else {
@@ -349,23 +343,15 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDeprecatedSafe2024Parser {
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
         let single = cx.expect_single_element_list(args, cx.attr_span)?;
 
-        let Some(arg) = single.meta_item() else {
-            cx.adcx().expected_name_value(single.span(), None);
+        let (path, arg) = cx.expect_name_value(single, cx.attr_span, None)?;
+
+        if path.name != sym::audit_that {
+            cx.adcx().expected_specific_argument(path.span, &[sym::audit_that]);
             return None;
         };
 
-        let Some(args) = arg.word_is(sym::audit_that) else {
-            cx.adcx().expected_specific_argument(arg.span(), &[sym::audit_that]);
-            return None;
-        };
-
-        let Some(nv) = args.name_value() else {
-            cx.adcx().expected_name_value(arg.span(), Some(sym::audit_that));
-            return None;
-        };
-
-        let Some(suggestion) = nv.value_as_str() else {
-            cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+        let Some(suggestion) = arg.value_as_str() else {
+            cx.adcx().expected_string_literal(arg.value_span, Some(arg.value_as_lit()));
             return None;
         };
 
@@ -412,39 +398,33 @@ impl<S: Stage> SingleAttributeParser<S> for RustcNeverTypeOptionsParser {
         let mut diverging_block_default = None::<Ident>;
 
         for arg in list.mixed() {
-            let Some(meta) = arg.meta_item() else {
-                cx.adcx().expected_name_value(arg.span(), None);
+            let Some((ident, arg)) = cx.expect_name_value(arg, arg.span(), None) else {
                 continue;
             };
 
-            let res = match meta.ident().map(|i| i.name) {
-                Some(sym::fallback) => &mut fallback,
-                Some(sym::diverging_block_default) => &mut diverging_block_default,
+            let res = match ident.name {
+                sym::fallback => &mut fallback,
+                sym::diverging_block_default => &mut diverging_block_default,
                 _ => {
                     cx.adcx().expected_specific_argument(
-                        meta.path().span(),
+                        ident.span,
                         &[sym::fallback, sym::diverging_block_default],
                     );
                     continue;
                 }
             };
 
-            let Some(nv) = meta.args().name_value() else {
-                cx.adcx().expected_name_value(meta.span(), None);
-                continue;
-            };
-
-            let Some(field) = nv.value_as_str() else {
-                cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
+            let Some(field) = arg.value_as_str() else {
+                cx.adcx().expected_string_literal(arg.value_span, Some(arg.value_as_lit()));
                 continue;
             };
 
             if res.is_some() {
-                cx.adcx().duplicate_key(meta.span(), meta.ident().unwrap().name);
+                cx.adcx().duplicate_key(ident.span, ident.name);
                 continue;
             }
 
-            *res = Some(Ident { name: field, span: nv.value_span });
+            *res = Some(Ident { name: field, span: arg.value_span });
         }
 
         let fallback = match fallback {
@@ -562,11 +542,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcSimdMonomorphizeLaneLimitParser
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "N");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let ArgParser::NameValue(nv) = args else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, None);
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
         Some(AttributeKind::RustcSimdMonomorphizeLaneLimit(cx.parse_limit_int(nv)?))
     }
 }
@@ -603,11 +579,7 @@ impl<S: Stage> SingleAttributeParser<S> for LangParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(nv) = args.name_value() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, None);
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
         let Some(name) = nv.value_as_str() else {
             cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
             return None;
@@ -692,7 +664,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcMirParser {
         };
 
         list.mixed()
-            .filter_map(|arg| arg.meta_item())
+            .filter_map(|arg| arg.as_meta_item())
             .filter_map(|mi| {
                 if let Some(ident) = mi.ident() {
                     match ident.name {
@@ -701,13 +673,11 @@ impl<S: Stage> CombineAttributeParser<S> for RustcMirParser {
                         sym::rustc_peek_liveness => Some(RustcMirKind::PeekLiveness),
                         sym::stop_after_dataflow => Some(RustcMirKind::StopAfterDataflow),
                         sym::borrowck_graphviz_postflow => {
-                            let Some(nv) = mi.args().name_value() else {
-                                cx.adcx().expected_name_value(
-                                    mi.span(),
-                                    Some(sym::borrowck_graphviz_postflow),
-                                );
-                                return None;
-                            };
+                            let nv = cx.expect_name_value(
+                                mi.args(),
+                                mi.span(),
+                                Some(sym::borrowck_graphviz_postflow),
+                            )?;
                             let Some(path) = nv.value_as_str() else {
                                 cx.adcx().expected_string_literal(nv.value_span, None);
                                 return None;
@@ -721,13 +691,11 @@ impl<S: Stage> CombineAttributeParser<S> for RustcMirParser {
                             }
                         }
                         sym::borrowck_graphviz_format => {
-                            let Some(nv) = mi.args().name_value() else {
-                                cx.adcx().expected_name_value(
-                                    mi.span(),
-                                    Some(sym::borrowck_graphviz_format),
-                                );
-                                return None;
-                            };
+                            let nv = cx.expect_name_value(
+                                mi.args(),
+                                mi.span(),
+                                Some(sym::borrowck_graphviz_format),
+                            )?;
                             let Some(format) = nv.value_as_ident() else {
                                 cx.adcx().expected_identifier(nv.value_span);
                                 return None;
@@ -814,10 +782,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcCleanParser {
         let mut cfg = None;
 
         for item in list.mixed() {
-            let Some((value, name)) =
-                item.meta_item().and_then(|m| Option::zip(m.args().name_value(), m.ident()))
-            else {
-                cx.adcx().expected_name_value(item.span(), None);
+            let Some((ident, value)) = cx.expect_name_value(item, item.span(), None) else {
                 continue;
             };
             let value_span = value.value_span;
@@ -825,11 +790,10 @@ impl<S: Stage> CombineAttributeParser<S> for RustcCleanParser {
                 cx.adcx().expected_string_literal(value_span, None);
                 continue;
             };
-            match name.name {
+            match ident.name {
                 sym::cfg if cfg.is_some() => {
                     cx.adcx().duplicate_key(item.span(), sym::cfg);
                 }
-
                 sym::cfg => {
                     cfg = Some(value);
                 }
@@ -851,7 +815,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcCleanParser {
                 }
                 _ => {
                     cx.adcx().expected_specific_argument(
-                        name.span,
+                        ident.span,
                         &[sym::cfg, sym::except, sym::loaded_from_disk],
                     );
                 }
@@ -906,7 +870,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcIfThisChangedParser {
             ArgParser::NoArgs => Some(AttributeKind::RustcIfThisChanged(cx.attr_span, None)),
             ArgParser::List(list) => {
                 let item = cx.expect_single(list)?;
-                let Some(ident) = item.meta_item().and_then(|item| item.ident()) else {
+                let Some(ident) = item.as_meta_item().and_then(|item| item.ident()) else {
                     cx.adcx().expected_identifier(item.span());
                     return None;
                 };
@@ -964,7 +928,7 @@ impl<S: Stage> CombineAttributeParser<S> for RustcThenThisWouldNeedParser {
             cx.emit_err(AttributeRequiresOpt { span: cx.attr_span, opt: "-Z query-dep-graph" });
         }
         let item = cx.expect_single_element_list(args, cx.attr_span)?;
-        let Some(ident) = item.meta_item().and_then(|item| item.ident()) else {
+        let Some(ident) = item.as_meta_item().and_then(|item| item.ident()) else {
             cx.adcx().expected_identifier(item.span());
             return None;
         };
@@ -1047,11 +1011,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDiagnosticItemParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "name");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(nv) = args.name_value() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(attr_span, None);
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
         let Some(value) = nv.value_as_str() else {
             cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
             return None;
@@ -1106,11 +1066,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcReservationImplParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "reservation message");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(nv) = args.name_value() else {
-            let attr_span = cx.attr_span;
-            cx.adcx().expected_name_value(args.span().unwrap_or(attr_span), None);
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
 
         let Some(value_str) = nv.value_as_str() else {
             cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));
@@ -1137,11 +1093,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcDocPrimitiveParser {
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: "primitive name");
 
     fn convert(cx: &mut AcceptContext<'_, '_, S>, args: &ArgParser) -> Option<AttributeKind> {
-        let Some(nv) = args.name_value() else {
-            let span = cx.attr_span;
-            cx.adcx().expected_name_value(args.span().unwrap_or(span), None);
-            return None;
-        };
+        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
 
         let Some(value_str) = nv.value_as_str() else {
             cx.adcx().expected_string_literal(nv.value_span, Some(nv.value_as_lit()));

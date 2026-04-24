@@ -16,7 +16,7 @@ use rustc_hir::{AttrPath, HirId};
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
-use rustc_span::{ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 
 // Glob imports to avoid big, bitrotty import lists
 use crate::attributes::allow_unstable::*;
@@ -61,7 +61,10 @@ use crate::attributes::test_attrs::*;
 use crate::attributes::traits::*;
 use crate::attributes::transparency::*;
 use crate::attributes::{AttributeParser as _, AttributeSafety, Combine, Single, WithoutArgs};
-use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, RefPathParser};
+use crate::parser::{
+    ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, NameValueParser,
+    RefPathParser,
+};
 use crate::session_diagnostics::{
     AttributeParseError, AttributeParseErrorReason, AttributeParseErrorSuggestions,
     ParsedDescription,
@@ -580,7 +583,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     /// - `#[allow(clippy::complexity)]`: `(clippy::complexity)` is a list
     /// - `#[rustfmt::skip::macros(target_macro_name)]`: `(target_macro_name)` is a list
     ///
-    /// This is a higher-level (and harder to misuse) wrapper over [`ArgParser::as_list`]. That
+    /// This is a higher-level (and harder to misuse) wrapper over [`ArgParser::as_list`] that
     /// allows using `?` when the attribute parsing function allows it. You may still want to use
     /// [`ArgParser::as_list`] for the following reasons:
     ///
@@ -601,8 +604,8 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     /// Asserts that a [`MetaItemListParser`] contains a single element and returns it, or emits an
     /// error and returns `None`.
     ///
-    /// This is a higher-level (and harder to misuse) wrapper over [`MetaItemListParser::as_single`].
-    /// That allows using `?` to early return. You may still want to use
+    /// This is a higher-level (and harder to misuse) wrapper over [`MetaItemListParser::as_single`],
+    /// that allows using `?` to early return. You may still want to use
     /// [`MetaItemListParser::as_single`] for the following reasons:
     ///
     /// - You want to emit your own diagnostics (for instance, with [`SharedContext::emit_err`]).
@@ -616,6 +619,133 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             self.adcx().expected_single_argument(list.span, list.len());
         }
         single
+    }
+
+    /// Asserts that a node is a name-value pair.
+    ///
+    /// Some examples:
+    ///
+    /// - `#[clippy::cyclomatic_complexity = "100"]`: `clippy::cyclomatic_complexity = "100"` is a
+    ///   name value pair, where the name is a path (`clippy::cyclomatic_complexity`). You already
+    ///   checked the path to get an `ArgParser`, so this method will effectively only assert that
+    ///   the `= "100"` is there and returns it.
+    /// - `#[doc = "hello"]`: `doc = "hello`  is also a name value pair. `= "hello"` is returned.
+    /// - `#[serde(rename_all = "lowercase")]`: `rename_all = "lowercase"` is a name value pair,
+    ///   where the name is an identifier (`rename_all`) and the value is a literal (`"lowercase"`).
+    ///   This returns both the path and the value.
+    ///
+    /// `arg` must be a reference to any node that may contain a name-value pair, that is:
+    ///
+    /// - [`MetaItemOrLitParser`],
+    /// - [`MetaItemParser`],
+    /// - [`ArgParser`].
+    ///
+    /// `name` can be set to `Some` for a nicer error message talking about the specific name that
+    /// was found lacking a value.
+    ///
+    /// This is a higher-level (and harder to misuse) wrapper over multiple `as_` methods in the
+    /// [`parser`][crate::parser] module. You may still want to use the lower-level methods for the
+    /// following reasons:
+    ///
+    /// - You want to emit your own diagnostics (for instance, with [`SharedContext::emit_err`]).
+    /// - The attribute can be parsed in multiple ways and it does not make sense to emit an error.
+    pub(crate) fn expect_name_value<'arg, Arg>(
+        &mut self,
+        arg: &'arg Arg,
+        span: Span,
+        name: Option<Symbol>,
+    ) -> Option<Arg::Output<'arg>>
+    where
+        Arg: ExpectNameValue,
+    {
+        arg.expect_name_value(self, span, name)
+    }
+}
+
+pub(crate) trait ExpectNameValue {
+    type Output<'a>
+    where
+        Self: 'a;
+    fn expect_name_value<'a, 'f, 'sess, S>(
+        &'a self,
+        cx: &mut AcceptContext<'f, 'sess, S>,
+        span: Span,
+        name: Option<Symbol>,
+    ) -> Option<Self::Output<'a>>
+    where
+        S: Stage;
+}
+
+impl ExpectNameValue for MetaItemOrLitParser {
+    type Output<'a> = (Ident, &'a NameValueParser);
+
+    fn expect_name_value<'a, 'f, 'sess, S>(
+        &'a self,
+        cx: &mut AcceptContext<'f, 'sess, S>,
+        span: Span,
+        name: Option<Symbol>,
+    ) -> Option<Self::Output<'a>>
+    where
+        S: Stage,
+    {
+        let Some(meta_item) = self.as_meta_item() else {
+            cx.adcx().expected_name_value(self.span(), name);
+            return None;
+        };
+
+        meta_item.expect_name_value(cx, span, name)
+    }
+}
+
+impl ExpectNameValue for MetaItemParser {
+    type Output<'a> = (Ident, &'a NameValueParser);
+
+    fn expect_name_value<'a, 'f, 'sess, S>(
+        &'a self,
+        cx: &mut AcceptContext<'f, 'sess, S>,
+        _span: Span, // Not needed: `MetaItemOrLitParser` carry its own span.
+        name: Option<Symbol>,
+    ) -> Option<Self::Output<'a>>
+    where
+        S: Stage,
+    {
+        let word = self.path().word();
+        let arg = self.args().as_name_value();
+
+        if word.is_none() {
+            cx.adcx().expected_identifier(self.path().span());
+        }
+
+        if arg.is_none() {
+            cx.adcx().expected_name_value(self.span(), name);
+        }
+
+        let Some((word, arg)) = word.zip(arg) else {
+            return None;
+        };
+
+        Some((word, arg))
+    }
+}
+
+impl ExpectNameValue for ArgParser {
+    type Output<'a> = &'a NameValueParser;
+
+    fn expect_name_value<'a, 'f, 'sess, S>(
+        &'a self,
+        cx: &mut AcceptContext<'f, 'sess, S>,
+        span: Span,
+        name: Option<Symbol>,
+    ) -> Option<Self::Output<'a>>
+    where
+        S: Stage,
+    {
+        let Some(nv) = self.as_name_value() else {
+            cx.adcx().expected_name_value(span, name);
+            return None;
+        };
+
+        Some(nv)
     }
 }
 
@@ -849,11 +979,7 @@ where
 
     /// Emit an error that a `name = value` pair was expected at this span. The symbol can be given for
     /// a nicer error message talking about the specific name that was found lacking a value.
-    pub(crate) fn expected_name_value(
-        &mut self,
-        span: Span,
-        name: Option<Symbol>,
-    ) -> ErrorGuaranteed {
+    fn expected_name_value(&mut self, span: Span, name: Option<Symbol>) -> ErrorGuaranteed {
         self.emit_parse_error(span, AttributeParseErrorReason::ExpectedNameValue(name))
     }
 

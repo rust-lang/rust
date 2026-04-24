@@ -7,7 +7,7 @@ use rustc_span::{Span, Symbol, sym};
 
 use crate::attributes::SingleAttributeParser;
 use crate::context::{AcceptContext, Stage};
-use crate::parser::ArgParser;
+use crate::parser::{ArgParser, NameValueParser};
 use crate::session_diagnostics;
 use crate::target_checking::AllowedTargets;
 use crate::target_checking::Policy::Allow;
@@ -29,23 +29,23 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
         let mut failed = false;
 
         for item in list.mixed() {
-            let Some(meta_item) = item.meta_item() else {
-                cx.adcx().expected_name_value(item.span(), None);
+            let Some((path, arg)) = cx.expect_name_value(item, item.span(), None) else {
                 failed = true;
                 break;
             };
 
-            if let Some(arg) = meta_item.word_is(sym::dialect) {
-                extract_value(cx, sym::dialect, arg, meta_item.span(), &mut dialect, &mut failed);
-            } else if let Some(arg) = meta_item.word_is(sym::phase) {
-                extract_value(cx, sym::phase, arg, meta_item.span(), &mut phase, &mut failed);
-            } else if let Some(..) = meta_item.path().word() {
-                cx.adcx().expected_specific_argument(meta_item.span(), &[sym::dialect, sym::phase]);
-                failed = true;
-            } else {
-                cx.adcx().expected_name_value(meta_item.span(), None);
-                failed = true;
-            };
+            match path.name {
+                sym::dialect => {
+                    extract_value(cx, sym::dialect, arg, item.span(), &mut dialect, &mut failed)
+                }
+                sym::phase => {
+                    extract_value(cx, sym::phase, arg, item.span(), &mut phase, &mut failed)
+                }
+                _ => {
+                    cx.adcx().expected_specific_argument(item.span(), &[sym::dialect, sym::phase]);
+                    failed = true;
+                }
+            }
         }
 
         let dialect = parse_dialect(cx, dialect, &mut failed);
@@ -63,7 +63,7 @@ impl<S: Stage> SingleAttributeParser<S> for CustomMirParser {
 fn extract_value<S: Stage>(
     cx: &mut AcceptContext<'_, '_, S>,
     key: Symbol,
-    arg: &ArgParser,
+    val: &NameValueParser,
     span: Span,
     out_val: &mut Option<(Symbol, Span)>,
     failed: &mut bool,
@@ -73,12 +73,6 @@ fn extract_value<S: Stage>(
         *failed = true;
         return;
     }
-
-    let Some(val) = arg.name_value() else {
-        cx.adcx().expected_name_value(span, Some(key));
-        *failed = true;
-        return;
-    };
 
     let Some(value_sym) = val.value_as_str() else {
         cx.adcx().expected_string_literal(val.value_span, Some(val.value_as_lit()));

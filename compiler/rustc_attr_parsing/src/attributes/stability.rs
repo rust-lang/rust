@@ -102,9 +102,7 @@ impl<S: Stage> AttributeParser<S> for StabilityParser {
             template!(NameValueStr: "deprecation message"),
             |this, cx, args| {
                 reject_outside_std!(cx);
-                let Some(nv) = args.name_value() else {
-                    let attr_span = cx.attr_span;
-                    cx.adcx().expected_name_value(attr_span, None);
+                let Some(nv) = cx.expect_name_value(args, cx.attr_span, None) else {
                     return;
                 };
                 let Some(value_str) = nv.value_as_str() else {
@@ -290,16 +288,19 @@ fn insert_value_into_option_or_error<S: Stage>(
 ) -> Option<()> {
     if item.is_some() {
         cx.adcx().duplicate_key(name.span, name.name);
-        None
-    } else if let Some(v) = param.args().name_value()
-        && let Some(s) = v.value_as_str()
-    {
-        *item = Some(s);
-        Some(())
-    } else {
-        cx.adcx().expected_name_value(param.span(), Some(name.name));
-        None
+        return None;
     }
+
+    let (_ident, arg) = cx.expect_name_value(param, param.span(), Some(name.name))?;
+
+    let Some(s) = arg.value_as_str() else {
+        cx.adcx().expected_string_literal(arg.value_span, Some(arg.value_as_lit()));
+        return None;
+    };
+
+    *item = Some(s);
+
+    Some(())
 }
 
 /// Read the content of a `stable`/`rustc_const_stable` attribute, and return the feature name and
@@ -315,7 +316,7 @@ pub(crate) fn parse_stability<S: Stage>(
 
     for param in list.mixed() {
         let param_span = param.span();
-        let Some(param) = param.meta_item() else {
+        let Some(param) = param.as_meta_item() else {
             cx.adcx().expected_not_literal(param.span());
             return None;
         };
@@ -382,7 +383,7 @@ pub(crate) fn parse_unstability<S: Stage>(
     let list = cx.expect_list(args, cx.attr_span)?;
 
     for param in list.mixed() {
-        let Some(param) = param.meta_item() else {
+        let Some(param) = param.as_meta_item() else {
             cx.adcx().expected_not_literal(param.span());
             return None;
         };
@@ -409,7 +410,7 @@ pub(crate) fn parse_unstability<S: Stage>(
                                 session_diagnostics::InvalidIssueString {
                                     span: param.span(),
                                     cause: session_diagnostics::InvalidIssueStringCause::from_int_error_kind(
-                                        param.args().name_value().unwrap().value_span,
+                                        param.args().as_name_value().unwrap().value_span,
                                         err.kind(),
                                     ),
                                 },
@@ -498,7 +499,7 @@ impl<S: Stage> CombineAttributeParser<S> for UnstableRemovedParser {
         let list = cx.expect_list(args, cx.attr_span)?;
 
         for param in list.mixed() {
-            let Some(param) = param.meta_item() else {
+            let Some(param) = param.as_meta_item() else {
                 cx.adcx().expected_not_literal(param.span());
                 return None;
             };

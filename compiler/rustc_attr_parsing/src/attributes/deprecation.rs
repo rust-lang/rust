@@ -18,15 +18,11 @@ fn get<S: Stage>(
         cx.adcx().duplicate_key(param_span, name);
         return None;
     }
-    if let Some(v) = arg.name_value() {
-        if let Some(value_str) = v.value_as_ident() {
-            Some(value_str)
-        } else {
-            cx.adcx().expected_string_literal(v.value_span, Some(&v.value_as_lit()));
-            None
-        }
+    let v = cx.expect_name_value(arg, param_span, Some(name))?;
+    if let Some(value_str) = v.value_as_ident() {
+        Some(value_str)
     } else {
-        cx.adcx().expected_name_value(param_span, Some(name));
+        cx.adcx().expected_string_literal(v.value_span, Some(&v.value_as_lit()));
         None
     }
 }
@@ -81,7 +77,7 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecatedParser {
             }
             ArgParser::List(list) => {
                 for param in list.mixed() {
-                    let Some(param) = param.meta_item() else {
+                    let Some(param) = param.as_meta_item() else {
                         cx.adcx().expected_not_literal(param.span());
                         return None;
                     };

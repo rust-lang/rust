@@ -39,7 +39,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
             ArgParser::List(list) => {
                 let l = cx.expect_single(list)?;
 
-                match l.meta_item().and_then(|i| i.path().word_sym()) {
+                match l.as_meta_item().and_then(|i| i.path().word_sym()) {
                     Some(sym::always) => {
                         Some(AttributeKind::Inline(InlineAttr::Always, cx.attr_span))
                     }

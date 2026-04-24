@@ -257,7 +257,7 @@ fn parse_directive_items<'p, S: Stage>(
             );
         }}
 
-        let item: &MetaItemParser = or_malformed!(item.meta_item()?);
+        let item: &MetaItemParser = or_malformed!(item.as_meta_item()?);
         let name = or_malformed!(item.ident()?).name;
 
         // Currently, as of April 2026, all arguments of all diagnostic attrs
@@ -267,7 +267,7 @@ fn parse_directive_items<'p, S: Stage>(
         // But we don't assert its presence yet because we don't want to mention it
         // if someone does something like `#[diagnostic::on_unimplemented(doesnt_exist)]`.
         // That happens in the big `match` below.
-        let value: Option<Ident> = match item.args().name_value() {
+        let value: Option<Ident> = match item.args().as_name_value() {
             Some(nv) => Some(or_malformed!(nv.value_as_ident()?)),
             None => None,
         };
@@ -538,7 +538,7 @@ pub(crate) fn parse_condition(
 }
 
 fn parse_predicate(input: &MetaItemOrLitParser) -> Result<Predicate, InvalidOnClause> {
-    let Some(meta_item) = input.meta_item() else {
+    let Some(meta_item) = input.as_meta_item() else {
         return Err(InvalidOnClause::UnsupportedLiteral { span: input.span() });
     };
 

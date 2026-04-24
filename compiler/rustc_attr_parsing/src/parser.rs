@@ -192,7 +192,7 @@ impl ArgParser {
     ///   to get an `ArgParser`, so this method will effectively only assert that the `= "100"` is
     ///   there
     /// - `#[doc = "hello"]`: `doc = "hello`  is also a name value pair
-    pub fn name_value(&self) -> Option<&NameValueParser> {
+    pub fn as_name_value(&self) -> Option<&NameValueParser> {
         match self {
             Self::NameValue(n) => Some(n),
             Self::List(_) | Self::NoArgs => None,
@@ -247,7 +247,7 @@ impl MetaItemOrLitParser {
         }
     }
 
-    pub fn meta_item(&self) -> Option<&MetaItemParser> {
+    pub fn as_meta_item(&self) -> Option<&MetaItemParser> {
         match self {
             MetaItemOrLitParser::MetaItemParser(parser) => Some(parser),
             MetaItemOrLitParser::Lit(_) => None,
@@ -264,8 +264,9 @@ impl MetaItemOrLitParser {
 /// MetaItems consist of some path, and some args. The args could be empty. In other words:
 ///
 /// - `name` -> args are empty
-/// - `name(...)` -> args are a [`list`](ArgParser::as_list), which is the bit between the parentheses
-/// - `name = value`-> arg is [`name_value`](ArgParser::name_value), where the argument is the
+/// - `name(...)` -> args are a [`list`](ArgParser::as_list), which is the bit between the
+///   parentheses
+/// - `name = value`-> arg is [`name_value`](ArgParser::as_name_value), where the argument is the
 ///   `= value` part
 ///
 /// The syntax of MetaItems can be found at <https://doc.rust-lang.org/reference/attributes.html>

@@ -31,7 +31,7 @@ extern "Rust" {}
 //~| NOTE expected this to be of the form `enable = "..."`
 #[target_feature(disable = "baz")]
 //~^ ERROR malformed `target_feature` attribute
-//~| NOTE expected this to be of the form `enable = "..."`
+//~| NOTE the only valid argument here is `enable`
 unsafe fn foo() {}
 
 #[target_feature(enable = "sse2")]
