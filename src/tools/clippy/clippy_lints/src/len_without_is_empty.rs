@@ -44,7 +44,7 @@ declare_lint_pass!(LenWithoutIsEmpty => [LEN_WITHOUT_IS_EMPTY]);
 
 impl<'tcx> LateLintPass<'tcx> for LenWithoutIsEmpty {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Trait(_, _, _, _, ident, _, _, trait_items) = item.kind
+        if let ItemKind::Trait { ident, items: trait_items, .. } = item.kind
             && !item.span.from_expansion()
         {
             check_trait_items(cx, item, ident, trait_items);

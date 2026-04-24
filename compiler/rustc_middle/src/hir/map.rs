@@ -654,7 +654,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     | ItemKind::Enum(..)
                     | ItemKind::Struct(..)
                     | ItemKind::Union(..)
-                    | ItemKind::Trait(..)
+                    | ItemKind::Trait { .. }
                     | ItemKind::Impl { .. },
                 ..
             })
@@ -705,7 +705,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     ItemKind::Enum(..) => "enum",
                     ItemKind::Struct(..) => "struct",
                     ItemKind::Union(..) => "union",
-                    ItemKind::Trait(..) => "trait",
+                    ItemKind::Trait { .. } => "trait",
                     ItemKind::TraitAlias(..) => "trait alias",
                     ItemKind::Impl { .. } => "impl",
                 };
@@ -955,7 +955,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }) => until_within(*outer_span, ty.span),
             // With generics and bounds.
             Node::Item(Item {
-                kind: ItemKind::Trait(_, _, _, _, _, generics, bounds, _),
+                kind: ItemKind::Trait { generics, bounds, .. },
                 span: outer_span,
                 ..
             })

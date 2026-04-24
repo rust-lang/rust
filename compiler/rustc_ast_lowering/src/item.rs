@@ -585,16 +585,16 @@ impl<'hir, R: ResolverAstLoweringExt<'hir>> LoweringContext<'_, 'hir, R> {
                         (safety, items, bounds)
                     },
                 );
-                hir::ItemKind::Trait(
+                hir::ItemKind::Trait {
                     impl_restriction,
                     constness,
-                    *is_auto,
+                    is_auto: *is_auto,
                     safety,
                     ident,
                     generics,
                     bounds,
                     items,
-                )
+                }
             }
             ItemKind::TraitAlias(box TraitAlias { constness, ident, generics, bounds }) => {
                 let constness = self.lower_constness(*constness);

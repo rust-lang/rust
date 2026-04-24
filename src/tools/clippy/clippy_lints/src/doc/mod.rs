@@ -769,7 +769,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                     {
                         missing_headers::check(cx, item.owner_id, sig, headers, Some(body), self.check_private_items);
                     },
-                    ItemKind::Trait(_, _, _, unsafety, ..) => match (headers.safety, unsafety) {
+                    ItemKind::Trait { safety, .. } => match (headers.safety, safety) {
                         (false, Safety::Unsafe) => span_lint(
                             cx,
                             MISSING_SAFETY_DOC,

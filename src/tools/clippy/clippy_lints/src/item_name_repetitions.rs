@@ -528,7 +528,7 @@ impl LateLintPass<'_> for ItemNameRepetitions {
             | ItemKind::Fn { ident, .. }
             | ItemKind::Macro(ident, ..)
             | ItemKind::Static(_, ident, ..)
-            | ItemKind::Trait(_, _, _, _, ident, ..)
+            | ItemKind::Trait { ident, ..}
             | ItemKind::TraitAlias(_, ident, ..)
             | ItemKind::TyAlias(ident, ..)
             | ItemKind::Union(ident, ..)

@@ -132,7 +132,7 @@ impl Target {
             ItemKind::Enum(..) => Target::Enum,
             ItemKind::Struct(..) => Target::Struct,
             ItemKind::Union(..) => Target::Union,
-            ItemKind::Trait(..) => Target::Trait,
+            ItemKind::Trait { .. } => Target::Trait,
             ItemKind::TraitAlias(..) => Target::TraitAlias,
             ItemKind::Impl(imp_) => Target::Impl { of_trait: imp_.of_trait.is_some() },
         }
