@@ -724,6 +724,56 @@ fn test_auto_ci_changed_in_pr() {
 }
 
 #[test]
+fn test_push_ci_unchanged_anywhere_uses_nightly_ref() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.set_origin_nightly_ref(&sha);
+
+        ctx.create_branch("feature");
+        ctx.modify("b");
+        ctx.commit();
+
+        let src = ctx.check_modifications(&["c"], CiEnv::GitHubActions);
+        assert_eq!(src, PathFreshness::LastModifiedUpstream { upstream: sha });
+    });
+}
+
+#[test]
+fn test_push_ci_changed_in_branch_uses_nightly_ref() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.set_origin_nightly_ref(&sha);
+
+        ctx.create_branch("feature");
+        ctx.modify("b");
+        ctx.commit();
+
+        let src = ctx.check_modifications(&["b"], CiEnv::GitHubActions);
+        assert_eq!(src, modified(sha, &["b"]));
+    });
+}
+
+#[test]
+fn test_ci_merge_without_upstream_parent_falls_back_to_nightly_ref() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.set_origin_nightly_ref(&sha);
+
+        ctx.create_branch("feature");
+        ctx.modify("b");
+        ctx.commit();
+        ctx.create_branch("nested");
+        ctx.modify("c");
+        ctx.commit();
+        ctx.switch_to_branch("feature");
+        ctx.merge("nested", "Tester <tester@rust-lang.org>");
+
+        let src = ctx.check_modifications(&["d"], CiEnv::GitHubActions);
+        assert_eq!(src, PathFreshness::LastModifiedUpstream { upstream: sha });
+    });
+}
+
+#[test]
 fn test_local_uncommitted_modifications() {
     git_test(|ctx| {
         let sha = ctx.create_upstream_merge(&["a"]);
