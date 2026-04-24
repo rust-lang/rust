@@ -1,6 +1,6 @@
 Future incompatibility report: Future breakage diagnostic:
 warning: missing pattern for `...` argument
-  --> $DIR/c-variadic.rs:7:34
+  --> $DIR/c-variadic.rs:6:34
    |
 LL | unsafe extern "C" fn foo(_: i32, ...) {}
    |                                  ^^^

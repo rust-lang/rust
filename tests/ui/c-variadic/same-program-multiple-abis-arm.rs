@@ -2,7 +2,7 @@
 //@ only-arm
 //@ ignore-thumb (this test uses arm assembly)
 //@ only-eabihf (the assembly below requires float hardware support)
-#![feature(c_variadic, c_variadic_naked_functions)]
+#![feature(c_variadic_naked_functions)]
 
 // Check that multiple c-variadic calling conventions can be used in the same program.
 //
@@ -21,8 +21,6 @@ fn main() {
 // following code compiled for the `armv7-unknown-linux-gnueabihf` target:
 //
 // ```rust
-// #![feature(c_variadic)]
-//
 // #[unsafe(no_mangle)]
 // unsafe extern "C" fn variadic(a: f64, mut args: ...) -> f64 {
 //     let b = args.next_arg::<f64>();
