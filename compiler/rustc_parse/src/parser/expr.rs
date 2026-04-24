@@ -866,7 +866,7 @@ impl<'a> Parser<'a> {
             // `raw [ const | mut ]`.
             let found_raw = self.eat_keyword(exp!(Raw));
             assert!(found_raw);
-            let mutability = self.parse_const_or_mut().unwrap();
+            let mutability = self.parse_mut_or_const().unwrap();
             (ast::BorrowKind::Raw, mutability)
         } else {
             match self.parse_pin_and_mut() {
