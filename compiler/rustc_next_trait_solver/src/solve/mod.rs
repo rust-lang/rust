@@ -91,7 +91,7 @@ where
         goal: Goal<I, ty::OutlivesPredicate<I, I::Ty>>,
     ) -> QueryResult<I> {
         let ty::OutlivesPredicate(ty, lt) = goal.predicate;
-        self.register_ty_outlives(ty, lt);
+        self.register_ty_outlives(ty, lt, VisibleForLeakCheck::Yes);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
@@ -101,7 +101,7 @@ where
         goal: Goal<I, ty::OutlivesPredicate<I, I::Region>>,
     ) -> QueryResult<I> {
         let ty::OutlivesPredicate(a, b) = goal.predicate;
-        self.register_region_outlives(a, b);
+        self.register_region_outlives(a, b, VisibleForLeakCheck::Yes);
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 

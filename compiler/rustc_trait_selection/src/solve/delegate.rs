@@ -112,6 +112,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                     SubregionOrigin::RelateRegionParamBound(span, None),
                     outlives.1,
                     outlives.0,
+                    ty::VisibleForLeakCheck::Yes,
                 );
                 Some(Certainty::Yes)
             }
@@ -119,6 +120,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 self.0.register_type_outlives_constraint(
                     outlives.0,
                     outlives.1,
+                    ty::VisibleForLeakCheck::Yes,
                     &ObligationCause::dummy_with_span(span),
                 );
 
@@ -204,7 +206,9 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         .map(|obligations| obligations.into_iter().map(|obligation| obligation.as_goal()).collect())
     }
 
-    fn make_deduplicated_region_constraints(&self) -> Vec<ty::RegionConstraint<'tcx>> {
+    fn make_deduplicated_region_constraints(
+        &self,
+    ) -> Vec<(ty::RegionConstraint<'tcx>, ty::VisibleForLeakCheck)> {
         // Cannot use `take_registered_region_obligations` as we may compute the response
         // inside of a `probe` whenever we have multiple choices inside of the solver.
         let region_obligations = self.0.inner.borrow().region_obligations().to_owned();
@@ -221,8 +225,8 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         region_constraints
             .constraints
             .into_iter()
-            .filter(|&(outlives, _)| seen.insert(outlives))
-            .map(|(outlives, _)| outlives)
+            .filter(|&(outlives, _, vis)| seen.insert((outlives, vis)))
+            .map(|(outlives, _, vis)| (outlives, vis))
             .collect()
     }
 

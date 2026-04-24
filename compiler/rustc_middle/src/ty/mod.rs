@@ -63,7 +63,7 @@ pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
 )]
 use rustc_type_ir::inherent;
 pub use rustc_type_ir::relate::VarianceDiagInfo;
-pub use rustc_type_ir::solve::{CandidatePreferenceMode, SizedTraitKind};
+pub use rustc_type_ir::solve::{CandidatePreferenceMode, SizedTraitKind, VisibleForLeakCheck};
 pub use rustc_type_ir::*;
 #[allow(hidden_glob_reexports, unused_imports)]
 use rustc_type_ir::{InferCtxtLike, Interner};

@@ -490,7 +490,12 @@ pub(crate) fn coerce_unsized_info<'tcx>(
         }
 
         (&ty::Ref(r_a, ty_a, mutbl_a), &ty::Ref(r_b, ty_b, mutbl_b)) => {
-            infcx.sub_regions(SubregionOrigin::RelateObjectBound(span), r_b, r_a);
+            infcx.sub_regions(
+                SubregionOrigin::RelateObjectBound(span),
+                r_b,
+                r_a,
+                ty::VisibleForLeakCheck::Yes,
+            );
             let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
             let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
             check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ref(tcx, r_b, ty))

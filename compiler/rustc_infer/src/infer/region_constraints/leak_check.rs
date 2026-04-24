@@ -369,7 +369,11 @@ impl<'tcx> MiniGraph<'tcx> {
         Self::iterate_region_constraints(
             region_constraints,
             only_consider_snapshot,
-            |target, source| {
+            |target, source, vis| {
+                if vis == ty::VisibleForLeakCheck::No {
+                    return;
+                }
+
                 let source_node = Self::add_node(&mut nodes, source);
                 let target_node = Self::add_node(&mut nodes, target);
                 edges.push((source_node, target_node));
@@ -384,7 +388,7 @@ impl<'tcx> MiniGraph<'tcx> {
     fn iterate_region_constraints(
         region_constraints: &RegionConstraintCollector<'_, 'tcx>,
         only_consider_snapshot: Option<&CombinedSnapshot<'tcx>>,
-        mut each_edge: impl FnMut(ty::Region<'tcx>, ty::Region<'tcx>),
+        mut each_edge: impl FnMut(ty::Region<'tcx>, ty::Region<'tcx>, ty::VisibleForLeakCheck),
     ) {
         if let Some(snapshot) = only_consider_snapshot {
             for undo_entry in
@@ -392,10 +396,11 @@ impl<'tcx> MiniGraph<'tcx> {
             {
                 match undo_entry {
                     &AddConstraint(i) => {
-                        region_constraints.data().constraints[i]
-                            .0
-                            .iter_outlives()
-                            .for_each(|c| each_edge(c.sub, c.sup));
+                        region_constraints.data().constraints[i].0.iter_outlives().for_each(
+                            |Constraint { kind: _, sub, sup, visible_for_leak_check }| {
+                                each_edge(sub, sup, visible_for_leak_check)
+                            },
+                        );
                     }
                     &AddVerify(i) => span_bug!(
                         region_constraints.data().verifys[i].origin.span(),
@@ -410,7 +415,9 @@ impl<'tcx> MiniGraph<'tcx> {
                 .constraints
                 .iter()
                 .flat_map(|(c, _)| c.iter_outlives())
-                .for_each(|c| each_edge(c.sub, c.sup))
+                .for_each(|Constraint { kind: _, sub, sup, visible_for_leak_check }| {
+                    each_edge(sub, sup, visible_for_leak_check)
+                })
         }
     }
 

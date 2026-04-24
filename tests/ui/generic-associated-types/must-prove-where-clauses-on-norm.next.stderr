@@ -2,12 +2,10 @@ error[E0308]: mismatched types
   --> $DIR/must-prove-where-clauses-on-norm.rs:23:61
    |
 LL |     let func: for<'a, 'b> fn((), &'b str) -> &'static str = foo::<()>;
-   |               -------------------------------------------   ^^^^^^^^^ one type is more general than the other
-   |               |
-   |               expected due to this
+   |                                                             ^^^^^^^^^ one type is more general than the other
    |
-   = note: expected fn pointer `for<'b> fn((), &'b _) -> &'static _`
-                 found fn item `for<'b> fn(<() as Trait>::Assoc<'_, 'b>, &'b _) -> &_ {foo::<'_, ()>}`
+   = note: expected fn pointer `for<'b> fn((), &'b _) -> &_`
+              found fn pointer `for<'b> fn((), &'b _) -> &_`
 
 error: aborting due to 1 previous error
 

@@ -83,13 +83,13 @@ fn implied_outlives_bounds<'a, 'tcx>(
         // outlives bound required proving some higher-ranked coroutine obl.
         let QueryRegionConstraints { constraints, assumptions: _ } = constraints;
         let cause = ObligationCause::misc(span, body_id);
-        for &(constraint, _) in &constraints {
+        for &(constraint, _, vis) in &constraints {
             match constraint {
                 ty::RegionConstraint::Outlives(predicate) => {
-                    infcx.register_outlives_constraint(predicate, &cause)
+                    infcx.register_outlives_constraint(predicate, vis, &cause)
                 }
                 ty::RegionConstraint::Eq(predicate) => {
-                    infcx.register_region_eq_constraint(predicate, &cause)
+                    infcx.register_region_eq_constraint(predicate, vis, &cause)
                 }
             }
         }

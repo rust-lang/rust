@@ -74,7 +74,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         let assumptions =
             elaborate::elaborate_outlives_assumptions(self.infcx.tcx, assumptions.iter().copied());
 
-        for &(constraint, constraint_category) in constraints {
+        for &(constraint, constraint_category, _) in constraints {
             constraint.iter_outlives().for_each(|predicate| {
                 self.convert(predicate, constraint_category, &assumptions);
             });
@@ -205,6 +205,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                             t1,
                             r2,
                             constraint_category,
+                            ty::VisibleForLeakCheck::Yes,
                         );
                     }
 
@@ -296,7 +297,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 // FIXME(higher_ranked_auto): What should we do with the assumptions here?
                 if let Some(QueryRegionConstraints { constraints, assumptions: _ }) = constraints {
                     next_outlives_predicates.extend(constraints.iter().flat_map(
-                        |(constraint, category)| {
+                        |(constraint, category, _)| {
                             constraint.iter_outlives().map(|outlives| (outlives, *category))
                         },
                     ));
@@ -315,6 +316,7 @@ impl<'a, 'b, 'tcx> TypeOutlivesDelegate<'tcx> for &'a mut ConstraintConversion<'
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
         constraint_category: ConstraintCategory<'tcx>,
+        _vis: ty::VisibleForLeakCheck,
     ) {
         let b = self.to_region_vid(b);
         let a = self.to_region_vid(a);

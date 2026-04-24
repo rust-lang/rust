@@ -8,6 +8,7 @@ use crate::fold::TypeFoldable;
 use crate::inherent::*;
 use crate::relate::RelateResult;
 use crate::relate::combine::PredicateEmittingRelation;
+use crate::solve::VisibleForLeakCheck;
 use crate::{self as ty, Interner, TyVid};
 
 /// The current typing mode of an inference context. We unfortunately have some
@@ -323,6 +324,7 @@ pub trait InferCtxtLike: Sized {
         &self,
         sub: <Self::Interner as Interner>::Region,
         sup: <Self::Interner as Interner>::Region,
+        vis: VisibleForLeakCheck,
         span: <Self::Interner as Interner>::Span,
     );
 
@@ -330,6 +332,7 @@ pub trait InferCtxtLike: Sized {
         &self,
         a: <Self::Interner as Interner>::Region,
         b: <Self::Interner as Interner>::Region,
+        vis: VisibleForLeakCheck,
         span: <Self::Interner as Interner>::Span,
     );
 
@@ -337,6 +340,7 @@ pub trait InferCtxtLike: Sized {
         &self,
         ty: <Self::Interner as Interner>::Ty,
         r: <Self::Interner as Interner>::Region,
+        vis: VisibleForLeakCheck,
         span: <Self::Interner as Interner>::Span,
     );
 

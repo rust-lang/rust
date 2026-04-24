@@ -256,24 +256,44 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.probe(|_| probe())
     }
 
-    fn sub_regions(&self, sub: ty::Region<'tcx>, sup: ty::Region<'tcx>, span: Span) {
+    fn sub_regions(
+        &self,
+        sub: ty::Region<'tcx>,
+        sup: ty::Region<'tcx>,
+        vis: ty::VisibleForLeakCheck,
+        span: Span,
+    ) {
         self.inner.borrow_mut().unwrap_region_constraints().make_subregion(
             SubregionOrigin::RelateRegionParamBound(span, None),
             sub,
             sup,
+            vis,
         );
     }
 
-    fn equate_regions(&self, a: ty::Region<'tcx>, b: ty::Region<'tcx>, span: Span) {
+    fn equate_regions(
+        &self,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>,
+        vis: ty::VisibleForLeakCheck,
+        span: Span,
+    ) {
         self.inner.borrow_mut().unwrap_region_constraints().make_eqregion(
             SubregionOrigin::RelateRegionParamBound(span, None),
             a,
             b,
+            vis,
         );
     }
 
-    fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>, span: Span) {
-        self.register_type_outlives_constraint(ty, r, &ObligationCause::dummy_with_span(span));
+    fn register_ty_outlives(
+        &self,
+        ty: Ty<'tcx>,
+        r: ty::Region<'tcx>,
+        vis: ty::VisibleForLeakCheck,
+        span: Span,
+    ) {
+        self.register_type_outlives_constraint(ty, r, vis, &ObligationCause::dummy_with_span(span));
     }
 
     type OpaqueTypeStorageEntries = OpaqueTypeStorageEntries;

@@ -510,6 +510,7 @@ pub struct TypeOutlivesConstraint<'tcx> {
     pub sub_region: ty::Region<'tcx>,
     pub sup_type: Ty<'tcx>,
     pub origin: SubregionOrigin<'tcx>,
+    pub visible_for_leak_check: ty::VisibleForLeakCheck,
 }
 
 /// Used to configure inference contexts before their creation.
@@ -698,8 +699,9 @@ impl<'tcx> InferCtxt<'tcx> {
         origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
+        vis: ty::VisibleForLeakCheck,
     ) {
-        self.inner.borrow_mut().unwrap_region_constraints().make_subregion(origin, a, b);
+        self.inner.borrow_mut().unwrap_region_constraints().make_subregion(origin, a, b, vis);
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -708,8 +710,9 @@ impl<'tcx> InferCtxt<'tcx> {
         origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
+        vis: ty::VisibleForLeakCheck,
     ) {
-        self.inner.borrow_mut().unwrap_region_constraints().make_eqregion(origin, a, b);
+        self.inner.borrow_mut().unwrap_region_constraints().make_eqregion(origin, a, b, vis);
     }
 
     /// Processes a `Coerce` predicate from the fulfillment context.

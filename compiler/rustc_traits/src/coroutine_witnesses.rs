@@ -80,7 +80,7 @@ fn compute_assumptions<'tcx>(
         tcx.mk_outlives_from_iter(
             constraints
                 .into_iter()
-                .flat_map(|(constraint, _)| constraint.iter_outlives())
+                .flat_map(|(constraint, _, _)| constraint.iter_outlives())
                 // FIXME(higher_ranked_auto): We probably should deeply resolve these before
                 // filtering out infers which only correspond to unconstrained infer regions
                 // which we can sometimes get.
