@@ -53,6 +53,46 @@ if TYPE_CHECKING:
 PY3 = sys.version_info[0] == 3
 
 
+class LLDBVersion:
+    __slots__ = ("major", "minor", "patch")
+
+    def __init__(self, major: int, minor: int = 0, patch: int = 0):
+        self.major = major
+        self.minor = minor
+        self.patch = patch
+
+    def __gte__(self, other: LLDBVersion):
+        return self.at_least(other.major, other.minor, other.patch)
+
+    def at_least(self, major: int, minor: int = 0, patch: int = 0):
+        if self.major < major:
+            return False
+
+        if self.major > major:
+            return True
+
+        if self.minor < minor:
+            return False
+
+        if self.minor > minor:
+            return True
+
+        if self.patch < patch:
+            return False
+
+        if self.patch >= patch:
+            return True
+
+    def has_static_field_access(self) -> bool:
+        return self.major >= 18
+
+    def has_type_recognizers(self) -> bool:
+        return self.major >= 19
+
+
+DBG_VERSION: LLDBVersion = LLDBVersion(0, 0, 0)
+
+
 class LLDBOpaque:
     """
     An marker type for use in type hints to denote LLDB bookkeeping variables. Values marked with
@@ -70,14 +110,18 @@ class ValueBuilder:
     def from_int(self, name: str, value: int) -> SBValue:
         type = self.valobj.GetType().GetBasicType(eBasicTypeLong)
         data = SBData.CreateDataFromSInt64Array(
-            self.endianness, self.pointer_size, [value]
+            self.endianness,
+            self.pointer_size,
+            [value],
         )
         return self.valobj.CreateValueFromData(name, data, type)
 
     def from_uint(self, name: str, value: int) -> SBValue:
         type = self.valobj.GetType().GetBasicType(eBasicTypeUnsignedLong)
         data = SBData.CreateDataFromUInt64Array(
-            self.endianness, self.pointer_size, [value]
+            self.endianness,
+            self.pointer_size,
+            [value],
         )
         return self.valobj.CreateValueFromData(name, data, type)
 
@@ -120,33 +164,6 @@ class DefaultSyntheticProvider:
 
     def has_children(self) -> bool:
         return self.valobj.MightHaveChildren()
-
-    def get_value(self):
-        return self.valobj.value
-
-
-class IndirectionSyntheticProvider:
-    def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
-        self.valobj = valobj
-
-    def num_children(self) -> int:
-        return 1
-
-    def get_child_index(self, name: str) -> int:
-        if self.is_ptr and name == "$$dereference$$":
-            return 0
-        return -1
-
-    def get_child_at_index(self, index: int) -> SBValue:
-        if index == 0:
-            return self.valobj.Dereference().GetSyntheticValue()
-        return None
-
-    def update(self):
-        pass
-
-    def has_children(self) -> bool:
-        return True
 
     def get_value(self):
         return self.valobj.value
@@ -233,8 +250,6 @@ def resolve_msvc_template_arg(arg_name: str, target: SBTarget) -> SBType:
             return result.GetPointerType()
 
     if arg_name.startswith("array$<"):
-        arg_name = arg_name[7:-1].strip()
-
         template_args = get_template_args(arg_name)
 
         element_name = next(template_args)
@@ -622,6 +637,10 @@ class MSVCEnumSyntheticProvider:
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
+        # This allows the summary provider to still print something
+        # even if we can't find the variant for whatever reason
+        self.variant = valobj
+        self.value = valobj
         self.update()
 
     def update(self):
@@ -653,9 +672,7 @@ class MSVCEnumSyntheticProvider:
                     ).GetValueAsUnsigned()
                     if tag == discr:
                         self.variant = child
-                        self.value = child.GetChildMemberWithName(
-                            "value"
-                        ).GetSyntheticValue()
+                        self.value = child.GetChildMemberWithName("value")
                         return
                 else:  # if invalid, DISCR must be a range
                     begin: int = (
@@ -673,16 +690,12 @@ class MSVCEnumSyntheticProvider:
                     if begin < end:
                         if begin <= tag <= end:
                             self.variant = child
-                            self.value = child.GetChildMemberWithName(
-                                "value"
-                            ).GetSyntheticValue()
+                            self.value = child.GetChildMemberWithName("value")
                             return
                     else:
                         if tag >= begin or tag <= end:
                             self.variant = child
-                            self.value = child.GetChildMemberWithName(
-                                "value"
-                            ).GetSyntheticValue()
+                            self.value = child.GetChildMemberWithName("value")
                             return
         else:  # if invalid, tag is a 128 bit value
             tag_lo: int = self.valobj.GetChildMemberWithName(
@@ -716,9 +729,7 @@ class MSVCEnumSyntheticProvider:
                     discr: int = (exact_hi << 64) | exact_lo
                     if tag == discr:
                         self.variant = child
-                        self.value = child.GetChildMemberWithName(
-                            "value"
-                        ).GetSyntheticValue()
+                        self.value = child.GetChildMemberWithName("value")
                         return
                 else:  # if invalid, DISCR must be a range
                     begin_lo: int = (
@@ -750,16 +761,12 @@ class MSVCEnumSyntheticProvider:
                     if begin < end:
                         if begin <= tag <= end:
                             self.variant = child
-                            self.value = child.GetChildMemberWithName(
-                                "value"
-                            ).GetSyntheticValue()
+                            self.value = child.GetChildMemberWithName("value")
                             return
                     else:
                         if tag >= begin or tag <= end:
                             self.variant = child
-                            self.value = child.GetChildMemberWithName(
-                                "value"
-                            ).GetSyntheticValue()
+                            self.value = child.GetChildMemberWithName("value")
                             return
 
     def num_children(self) -> int:
