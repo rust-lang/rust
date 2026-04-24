@@ -88,11 +88,30 @@ enum SlotSize {
     Bytes1 = 1,
 }
 
+/// Whether to respect a value alignment that is higher than the slot alignment.
+///
+/// When `No` the argument is in the next slot, when `Yes` there will be empty slots
+/// until a slot's starting address has the required alignment.
 enum AllowHigherAlign {
     No,
     Yes,
 }
 
+/// Determines where in the slot the value is located. Only takes effect on big-endian targets.
+///
+/// with 8-byte slots, a 32-bit integer is either stored right-adjusted:
+///
+/// ```text
+/// [0x0, 0x0, 0x0, 0x0, 0xaa, 0xaa, 0xaa, 0xaa]
+/// ```
+///
+/// or left-adjusted:
+///
+/// ```text
+/// [0xaa, 0xaa, 0xaa, 0xaa, 0x0, 0x0, 0x0, 0x0]
+/// ```
+///
+/// Most big-endian targets store values as right-adjusted.
 enum ForceRightAdjust {
     No,
     Yes,
@@ -1169,7 +1188,8 @@ pub(super) fn emit_va_arg<'ll, 'tcx>(
             if target_ty_size > 2 * 8 { PassMode::Indirect } else { PassMode::Direct },
             SlotSize::Bytes8,
             AllowHigherAlign::Yes,
-            ForceRightAdjust::No,
+            // sparc64 is a big-endian target and stores variable arguments right-adjusted.
+            ForceRightAdjust::Yes,
         ),
         Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => emit_ptr_va_arg(
             bx,
