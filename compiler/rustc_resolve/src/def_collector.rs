@@ -150,7 +150,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     &self.r.tcx.sess,
                     self.r.tcx.features(),
                     Vec::new(),
-                    Early { emit_errors: ShouldEmit::Nothing },
+                    ShouldEmit::Nothing,
                 );
                 let attrs = parser.parse_attribute_list(
                     &i.attrs,

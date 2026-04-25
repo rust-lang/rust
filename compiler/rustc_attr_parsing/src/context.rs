@@ -355,8 +355,6 @@ pub trait Stage: Sized + 'static + Sealed {
     type Id: Copy;
 
     fn parsers() -> &'static GroupType<Self>;
-
-    fn should_emit(&self) -> ShouldEmit;
 }
 
 // allow because it's a sealed trait
@@ -366,10 +364,6 @@ impl Stage for Early {
 
     fn parsers() -> &'static GroupType<Self> {
         &early::ATTRIBUTE_PARSERS
-    }
-
-    fn should_emit(&self) -> ShouldEmit {
-        self.emit_errors
     }
 }
 
@@ -381,19 +375,11 @@ impl Stage for Late {
     fn parsers() -> &'static GroupType<Self> {
         &late::ATTRIBUTE_PARSERS
     }
-
-    fn should_emit(&self) -> ShouldEmit {
-        ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed }
-    }
 }
 
 /// Used when parsing attributes for miscellaneous things *before* ast lowering
-pub struct Early {
-    /// Whether to emit errors or delay them as a bug.
-    /// For most attributes, the attribute will be parsed again in the `Late` stage and in this case the errors should be delayed.
-    /// But for some, such as `cfg`, the attribute will be removed before the `Late` stage so errors must be emitted.
-    pub emit_errors: ShouldEmit,
-}
+pub struct Early;
+
 /// used when parsing attributes during ast lowering
 pub struct Late;
 
@@ -473,7 +459,7 @@ impl<'f, 'sess: 'f, S: Stage> SharedContext<'f, 'sess, S> {
         span: impl Into<MultiSpan>,
     ) {
         if !matches!(
-            self.stage.should_emit(),
+            self.should_emit,
             ShouldEmit::ErrorsAndLints { .. } | ShouldEmit::EarlyFatal { also_emit_lints: true }
         ) {
             return;
