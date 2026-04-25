@@ -1001,9 +1001,12 @@ class RustBuild(object):
 
         >>> rb = RustBuild()
         >>> rb.build_dir = "build"
-        >>> rb.bootstrap_binary() == os.path.join("build", "bootstrap")
+        >>> rb.bootstrap_out() == os.path.join("build", "bootstrap", rb.build)
         True
         """
+        return os.path.join(self.bootstrap_cargo_target_dir(), self.build)
+
+    def bootstrap_cargo_target_dir(self):
         return os.path.join(self.build_dir, "bootstrap")
 
     def bootstrap_binary(self):
@@ -1011,7 +1014,7 @@ class RustBuild(object):
 
         >>> rb = RustBuild()
         >>> rb.build_dir = "build"
-        >>> rb.bootstrap_binary() == os.path.join("build", "bootstrap",
+        >>> rb.bootstrap_binary() == os.path.join("build", "bootstrap", rb.build,
         ... "debug", "bootstrap")
         True
         """
@@ -1033,8 +1036,7 @@ class RustBuild(object):
             print("::endgroup::")
 
     def build_bootstrap_cmd(self, env):
-        """For tests."""
-        build_dir = os.path.join(self.build_dir, "bootstrap")
+        build_dir = self.bootstrap_cargo_target_dir()
         if self.clean and os.path.exists(build_dir):
             shutil.rmtree(build_dir)
         # `CARGO_BUILD_TARGET` breaks bootstrap build.
@@ -1120,10 +1122,14 @@ class RustBuild(object):
             self.cargo(),
             "build",
             "--jobs=" + self.jobs,
+            "--target",
+            self.build,
             "--manifest-path",
             os.path.join(self.rust_root, "src/bootstrap/Cargo.toml"),
             "-Zroot-dir=" + self.rust_root,
+            "--bins",
         ]
+
         # verbose cargo output is very noisy, so only enable it with -vv
         args.extend("--verbose" for _ in range(self.verbose - 1))
         if self.verbose < 0:
