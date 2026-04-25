@@ -4,6 +4,12 @@ error: attributes starting with `rustc` are reserved for use by the `rustc` comp
 LL | #[rustc_dumm]
    |   ^^^^^^^^^^
 
+error: cannot find attribute `cfg_attr_trace` in this scope
+  --> $DIR/attribute-typos.rs:15:3
+   |
+LL | #[cfg_attr_trace]
+   |   ^^^^^^^^^^^^^^
+
 error: cannot find attribute `rustc_dumm` in this scope
   --> $DIR/attribute-typos.rs:7:3
    |
@@ -14,6 +20,12 @@ help: a built-in attribute with a similar name exists
    |
 LL | #[rustc_dummy]
    |             +
+
+error: cannot find attribute `cfg_trace` in this scope
+  --> $DIR/attribute-typos.rs:12:3
+   |
+LL | #[cfg_trace]
+   |   ^^^^^^^^^
 
 error: cannot find attribute `tests` in this scope
   --> $DIR/attribute-typos.rs:4:3
@@ -41,5 +53,5 @@ help: a built-in attribute with a similar name exists
 LL | #[deprecated]
    |       +
 
-error: aborting due to 4 previous errors
+error: aborting due to 6 previous errors
 
