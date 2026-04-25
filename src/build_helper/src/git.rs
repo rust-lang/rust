@@ -49,8 +49,9 @@ pub enum PathFreshness {
 /// It can be used to figure out if we should download artifacts from CI or rather
 /// build them locally.
 ///
-/// The function assumes that at least a single upstream bors merge commit is in the
-/// local git history.
+/// If no upstream bors merge commit can be found in the available local git history,
+/// the function returns `MissingUpstream` so callers can conservatively avoid using
+/// CI artifacts.
 ///
 /// `target_paths` should be a non-empty slice of paths (git `pathspec`s) relative to `git_dir`
 /// whose modifications would invalidate the artifact.
@@ -89,11 +90,10 @@ pub fn check_path_modifications(
     let upstream_sha = if matches!(ci_env, CiEnv::GitHubActions) {
         // CI may be running on a synthetic merge ref or a shallow fork push ref.
         // `get_closest_upstream_commit` handles the trusted merge-parent fast path and falls back
-        // to the fetched nightly branch ref when the merge-parent assumption is not valid.
-        Some(
-            get_closest_upstream_commit(Some(git_dir), config, ci_env)?
-                .expect("No upstream commit was found on CI"),
-        )
+        // to the fetched nightly branch ref when the merge-parent assumption is not valid. If a
+        // fork push clone does not have that ref either, conservatively report `MissingUpstream`
+        // so callers disable CI downloads and build locally instead of panicking.
+        get_closest_upstream_commit(Some(git_dir), config, ci_env)?
     } else {
         // Outside CI, we want to find the most recent upstream commit that
         // modified the set of paths, to have an upstream reference that does not change

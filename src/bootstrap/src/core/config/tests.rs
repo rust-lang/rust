@@ -754,6 +754,20 @@ fn test_push_ci_changed_in_branch_uses_nightly_ref() {
 }
 
 #[test]
+fn test_push_ci_missing_upstream_returns_missing_upstream() {
+    git_test(|ctx| {
+        ctx.create_branch("feature");
+        ctx.modify("b");
+        ctx.commit();
+        ctx.modify("c");
+        ctx.commit();
+
+        let src = ctx.check_modifications(&["d"], CiEnv::GitHubActions);
+        assert_eq!(src, PathFreshness::MissingUpstream);
+    });
+}
+
+#[test]
 fn test_ci_merge_without_upstream_parent_falls_back_to_nightly_ref() {
     git_test(|ctx| {
         let sha = ctx.create_upstream_merge(&["a"]);
