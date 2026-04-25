@@ -16,7 +16,13 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Constness {
             // Foreign functions cannot be evaluated at compile-time.
             Constness::NotConst
         }
-        Node::Expr(e) if let ExprKind::Closure(c) = e.kind => c.constness,
+        Node::Expr(e) if let ExprKind::Closure(c) = e.kind => {
+            if let Constness::Const = c.constness && tcx.hir_body_const_context(tcx.local_parent(def_id)).is_none() {
+                tcx.dcx().span_err(tcx.def_span(def_id), "cannot use `const` closures outside of const contexts");
+                return Constness::NotConst;
+            }
+            c.constness
+        },
         // FIXME(fee1-dead): extract this one out and rename this query to `fn_constness` so we don't need `is_const_fn` anymore.
         Node::Item(i) if let ItemKind::Impl(impl_) = i.kind => impl_.constness,
         Node::Item(Item { kind: ItemKind::Fn { sig, .. }, .. }) => sig.header.constness,
