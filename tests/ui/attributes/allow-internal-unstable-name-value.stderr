@@ -1,0 +1,8 @@
+error: `allow_internal_unstable` expects feature names
+  --> $DIR/allow-internal-unstable-name-value.rs:4:27
+   |
+LL | #[allow_internal_unstable(cat = "meow")]
+   |                           ^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

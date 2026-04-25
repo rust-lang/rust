@@ -91,14 +91,29 @@ fn parse_unstable<S: Stage>(
 
     for param in list.mixed() {
         let param_span = param.span();
-        if let Some(ident) = param.meta_item().and_then(|i| i.path().word()) {
-            res.push(ident.name);
-        } else {
+        let fail = || {
             cx.emit_err(session_diagnostics::ExpectsFeatures {
                 span: param_span,
                 name: symbol.to_ident_string(),
-            });
-        }
+            })
+        };
+
+        let Some(meta_item) = param.meta_item() else {
+            fail();
+            continue;
+        };
+
+        let Ok(()) = meta_item.args().no_args() else {
+            fail();
+            continue;
+        };
+
+        let Some(ident) = meta_item.path().word() else {
+            fail();
+            continue;
+        };
+
+        res.push(ident.name);
     }
 
     res
