@@ -24,7 +24,7 @@ use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, libdir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, Kind, exit, trace};
+use crate::{CLang, FileType, GitRepo, Kind, exit, trace};
 
 #[derive(Clone)]
 pub struct LlvmResult {
@@ -305,7 +305,10 @@ impl Step for Llvm {
             LlvmBuildStatus::ShouldBuild(m) => m,
         };
 
-        if builder.llvm_link_shared() && target.is_windows() && !target.is_windows_gnullvm() {
+        if builder.llvm_link_shared()
+            && target.is_windows()
+            && !(target.is_windows_gnullvm() || target.is_msvc())
+        {
             panic!("shared linking to LLVM is not currently supported on {}", target.triple);
         }
 
@@ -406,6 +409,8 @@ impl Step for Llvm {
         // for the tools. We don't do this on every platform as it doesn't work
         // equally well everywhere.
         if builder.llvm_link_shared() {
+            cfg.define("LLVM_BUILD_LLVM_DYLIB_VIS", "ON");
+            cfg.define("LLVM_BUILD_LLVM_DYLIB", "ON");
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
@@ -554,12 +559,13 @@ impl Step for Llvm {
 
         cfg.build();
 
-        // Helper to find the name of LLVM's shared library on darwin and linux.
+        // Helper to find the name of LLVM's shared library.
         let find_llvm_lib_name = |extension| {
             let major = get_llvm_version_major(builder, &res.host_llvm_config);
+            let prefix = if target.is_msvc() { "" } else { "lib" };
             match &llvm_version_suffix {
-                Some(version_suffix) => format!("libLLVM-{major}{version_suffix}.{extension}"),
-                None => format!("libLLVM-{major}.{extension}"),
+                Some(version_suffix) => format!("{prefix}LLVM-{major}{version_suffix}.{extension}"),
+                None => format!("{prefix}LLVM-{major}.{extension}"),
             }
         };
 
@@ -572,6 +578,17 @@ impl Step for Llvm {
             let lib_llvm = out_dir.join("build").join("lib").join(lib_name);
             if !lib_llvm.exists() {
                 t!(builder.symlink_file("libLLVM.dylib", &lib_llvm));
+            }
+        }
+
+        // Create the .dll.lib import file which llvm-config incorrectly points to
+        if builder.llvm_link_shared() && target.is_msvc() {
+            let lib_name = find_llvm_lib_name("");
+            let lib_path = out_dir.join("lib");
+            let wanted = lib_path.clone().join(lib_name.clone() + "dll.lib");
+            let wrong = lib_path.join(lib_name + "lib");
+            if wrong.exists() && !wanted.exists() {
+                builder.copy_link(&wrong, &wanted, FileType::Regular);
             }
         }
 
