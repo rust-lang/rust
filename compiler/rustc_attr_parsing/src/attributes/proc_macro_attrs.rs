@@ -127,7 +127,7 @@ fn parse_derive_like<S: Stage>(
             if rustc_feature::is_builtin_attr_name(ident.name) {
                 cx.emit_dyn_lint(
                     AMBIGUOUS_DERIVE_HELPERS,
-                    |dcx, level, _| crate::errors::AmbiguousDeriveHelpers.into_diag(dcx, level),
+                    |dcx, level| crate::errors::AmbiguousDeriveHelpers.into_diag(dcx, level),
                     ident.span,
                 );
             }

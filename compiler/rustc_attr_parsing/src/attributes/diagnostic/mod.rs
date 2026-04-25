@@ -142,7 +142,7 @@ fn merge<T, S: Stage>(
             let first_span = *first_span;
             cx.emit_dyn_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level, _| {
+                move |dcx, level| {
                     IgnoredDiagnosticOption { first_span, later_span, option_name }
                         .into_diag(dcx, level)
                 },
@@ -169,14 +169,14 @@ fn parse_list<'p, S: Stage>(
             // if the user used non-metaitem syntax. See `ArgParser::from_attr_args`.
             cx.emit_dyn_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level, _| NonMetaItemDiagnosticAttribute.into_diag(dcx, level),
+                move |dcx, level| NonMetaItemDiagnosticAttribute.into_diag(dcx, level),
                 list.span,
             );
         }
         ArgParser::NoArgs => {
             cx.emit_dyn_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level, _| {
+                move |dcx, level| {
                     MissingOptionsForDiagnosticAttribute {
                         attribute: mode.as_str(),
                         options: mode.expected_options(),
@@ -189,7 +189,7 @@ fn parse_list<'p, S: Stage>(
         ArgParser::NameValue(_) => {
             cx.emit_dyn_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level, _| {
+                move |dcx, level| {
                     MalFormedDiagnosticAttributeLint {
                         attribute: mode.as_str(),
                         options: mode.allowed_options(),
@@ -223,7 +223,7 @@ fn parse_directive_items<'p, S: Stage>(
         macro malformed() {{
             cx.emit_dyn_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level, _| {
+                move |dcx, level| {
                     MalFormedDiagnosticAttributeLint {
                         attribute: mode.as_str(),
                         options: mode.allowed_options(),
@@ -249,7 +249,7 @@ fn parse_directive_items<'p, S: Stage>(
             let first_span = $($first_span)*;
             cx.emit_dyn_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level, _| IgnoredDiagnosticOption {
+                move |dcx, level| IgnoredDiagnosticOption {
                     first_span,
                     later_span: span,
                     option_name: $name,
@@ -285,7 +285,7 @@ fn parse_directive_items<'p, S: Stage>(
                         | FormatWarning::DisallowedPlaceholder { span, .. }) = warning;
                         cx.emit_dyn_lint(
                             MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-                            move |dcx, level, _| warning.into_diag(dcx, level),
+                            move |dcx, level| warning.into_diag(dcx, level),
                             span,
                         );
                     }
@@ -295,7 +295,7 @@ fn parse_directive_items<'p, S: Stage>(
                 Err(e) => {
                     cx.emit_dyn_lint(
                         MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
-                        move |dcx, level, _| {
+                        move |dcx, level| {
                             WrappedParserError {
                                 description: &e.description,
                                 label: &e.label,

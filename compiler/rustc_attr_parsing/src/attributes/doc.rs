@@ -70,7 +70,7 @@ fn check_attr_crate_level<S: Stage>(cx: &mut AcceptContext<'_, '_, S>, span: Spa
     if cx.shared.target != Target::Crate {
         cx.emit_dyn_lint(
             rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-            |dcx, level, _| AttrCrateLevelOnly.into_diag(dcx, level),
+            |dcx, level| AttrCrateLevelOnly.into_diag(dcx, level),
             span,
         );
         return false;
@@ -86,7 +86,7 @@ fn expected_name_value<S: Stage>(
 ) {
     cx.emit_dyn_lint(
         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-        |dcx, level, _| ExpectedNameValue.into_diag(dcx, level),
+        |dcx, level| ExpectedNameValue.into_diag(dcx, level),
         span,
     );
 }
@@ -95,7 +95,7 @@ fn expected_name_value<S: Stage>(
 fn expected_no_args<S: Stage>(cx: &mut AcceptContext<'_, '_, S>, span: Span) {
     cx.emit_dyn_lint(
         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-        |dcx, level, _| ExpectedNoArgs.into_diag(dcx, level),
+        |dcx, level| ExpectedNoArgs.into_diag(dcx, level),
         span,
     );
 }
@@ -109,7 +109,7 @@ fn expected_string_literal<S: Stage>(
 ) {
     cx.emit_dyn_lint(
         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-        |dcx, level, _| MalformedDoc.into_diag(dcx, level),
+        |dcx, level| MalformedDoc.into_diag(dcx, level),
         span,
     );
 }
@@ -179,7 +179,7 @@ impl DocParser {
                     let unused_span = path.span();
                     cx.emit_dyn_lint(
                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                        move |dcx, level, _| {
+                        move |dcx, level| {
                             rustc_errors::lints::UnusedDuplicate {
                                 this: unused_span,
                                 other: used_span,
@@ -205,7 +205,7 @@ impl DocParser {
                     let span = cx.attr_span;
                     cx.emit_dyn_lint(
                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                        |dcx, level, _| MalformedDoc.into_diag(dcx, level),
+                        |dcx, level| MalformedDoc.into_diag(dcx, level),
                         span,
                     );
                     return;
@@ -219,14 +219,14 @@ impl DocParser {
             Some(name) => {
                 cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    move |dcx, level, _| DocTestUnknown { name }.into_diag(dcx, level),
+                    move |dcx, level| DocTestUnknown { name }.into_diag(dcx, level),
                     path.span(),
                 );
             }
             None => {
                 cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    |dcx, level, _| DocTestLiteral.into_diag(dcx, level),
+                    |dcx, level| DocTestLiteral.into_diag(dcx, level),
                     path.span(),
                 );
             }
@@ -263,7 +263,7 @@ impl DocParser {
         if let Some(first_definition) = self.attribute.aliases.get(&alias).copied() {
             cx.emit_dyn_lint(
                 rustc_session::lint::builtin::UNUSED_ATTRIBUTES,
-                move |dcx, level, _| DocAliasDuplicated { first_definition }.into_diag(dcx, level),
+                move |dcx, level| DocAliasDuplicated { first_definition }.into_diag(dcx, level),
                 span,
             );
         }
@@ -351,7 +351,7 @@ impl DocParser {
                     let MetaItemOrLitParser::MetaItemParser(item) = meta else {
                         cx.emit_dyn_lint(
                             rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                            |dcx, level, _| DocAutoCfgExpectsHideOrShow.into_diag(dcx, level),
+                            |dcx, level| DocAutoCfgExpectsHideOrShow.into_diag(dcx, level),
                             meta.span(),
                         );
                         continue;
@@ -362,7 +362,7 @@ impl DocParser {
                         _ => {
                             cx.emit_dyn_lint(
                                 rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                                |dcx, level, _| DocAutoCfgExpectsHideOrShow.into_diag(dcx, level),
+                                |dcx, level| DocAutoCfgExpectsHideOrShow.into_diag(dcx, level),
                                 item.span(),
                             );
                             continue;
@@ -371,7 +371,7 @@ impl DocParser {
                     let ArgParser::List(list) = item.args() else {
                         cx.emit_dyn_lint(
                             rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                            move |dcx, level, _| {
+                            move |dcx, level| {
                                 DocAutoCfgHideShowExpectsList { attr_name }.into_diag(dcx, level)
                             },
                             item.span(),
@@ -385,7 +385,7 @@ impl DocParser {
                         let MetaItemOrLitParser::MetaItemParser(sub_item) = item else {
                             cx.emit_dyn_lint(
                                 rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                                move |dcx, level, _| {
+                                move |dcx, level| {
                                     DocAutoCfgHideShowUnexpectedItem { attr_name }
                                         .into_diag(dcx, level)
                                 },
@@ -401,7 +401,7 @@ impl DocParser {
                                     // cx.expected_identifier(sub_item.path().span());
                                     cx.emit_dyn_lint(
                                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                                        |dcx, level, _| MalformedDoc.into_diag(dcx, level),
+                                        |dcx, level| MalformedDoc.into_diag(dcx, level),
                                         sub_item.path().span(),
                                     );
                                     continue;
@@ -428,7 +428,7 @@ impl DocParser {
                             _ => {
                                 cx.emit_dyn_lint(
                                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                                    move |dcx, level, _| {
+                                    move |dcx, level| {
                                         DocAutoCfgHideShowUnexpectedItem { attr_name }
                                             .into_diag(dcx, level)
                                     },
@@ -446,7 +446,7 @@ impl DocParser {
                 else {
                     cx.emit_dyn_lint(
                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                        move |dcx, level, _| DocAutoCfgWrongLiteral.into_diag(dcx, level),
+                        move |dcx, level| DocAutoCfgWrongLiteral.into_diag(dcx, level),
                         nv.value_span,
                     );
                     return;
@@ -590,7 +590,7 @@ impl DocParser {
                 let Some(list) = args.list() else {
                     cx.emit_dyn_lint(
                         rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                        |dcx, level, _| DocTestTakesList.into_diag(dcx, level),
+                        |dcx, level| DocTestTakesList.into_diag(dcx, level),
                         args.span().unwrap_or(path.span()),
                     );
                     return;
@@ -607,7 +607,7 @@ impl DocParser {
                             // cx.unexpected_literal(lit.span);
                             cx.emit_dyn_lint(
                                 rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                                |dcx, level, _| MalformedDoc.into_diag(dcx, level),
+                                |dcx, level| MalformedDoc.into_diag(dcx, level),
                                 lit.span,
                             );
                         }
@@ -618,9 +618,7 @@ impl DocParser {
                 let span = path.span();
                 cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    move |dcx, level, _| {
-                        DocUnknownSpotlight { sugg_span: span }.into_diag(dcx, level)
-                    },
+                    move |dcx, level| DocUnknownSpotlight { sugg_span: span }.into_diag(dcx, level),
                     span,
                 );
             }
@@ -633,7 +631,7 @@ impl DocParser {
                 let span = path.span();
                 cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    move |dcx, level, _| {
+                    move |dcx, level| {
                         DocUnknownInclude {
                             inner,
                             value,
@@ -648,7 +646,7 @@ impl DocParser {
                 let span = path.span();
                 cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    move |dcx, level, _| {
+                    move |dcx, level| {
                         DocUnknownPasses { name, note_span: span }.into_diag(dcx, level)
                     },
                     span,
@@ -658,16 +656,14 @@ impl DocParser {
                 let span = path.span();
                 cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    move |dcx, level, _| {
-                        DocUnknownPlugins { label_span: span }.into_diag(dcx, level)
-                    },
+                    move |dcx, level| DocUnknownPlugins { label_span: span }.into_diag(dcx, level),
                     span,
                 );
             }
             Some(name) => {
                 cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    move |dcx, level, _| DocUnknownAny { name }.into_diag(dcx, level),
+                    move |dcx, level| DocUnknownAny { name }.into_diag(dcx, level),
                     path.span(),
                 );
             }
@@ -677,7 +673,7 @@ impl DocParser {
                 let name = Symbol::intern(&full_name);
                 cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    move |dcx, level, _| DocUnknownAny { name }.into_diag(dcx, level),
+                    move |dcx, level| DocUnknownAny { name }.into_diag(dcx, level),
                     path.span(),
                 );
             }
@@ -695,7 +691,7 @@ impl DocParser {
                 let span = cx.attr_span;
                 cx.emit_dyn_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                    move |dcx, level, _| {
+                    move |dcx, level| {
                         IllFormedAttributeInput::new(&suggestions, None, None).into_diag(dcx, level)
                     },
                     span,

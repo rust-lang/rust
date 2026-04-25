@@ -69,7 +69,7 @@ impl<S: Stage> CombineAttributeParser<S> for CrateTypeParser {
                 let span = n.value_span;
                 cx.emit_dyn_lint(
                     UNKNOWN_CRATE_TYPES,
-                    move |dcx, level, _| {
+                    move |dcx, level| {
                         UnknownCrateTypes {
                             sugg: candidate
                                 .map(|s| UnknownCrateTypesSuggestion { span, snippet: s }),

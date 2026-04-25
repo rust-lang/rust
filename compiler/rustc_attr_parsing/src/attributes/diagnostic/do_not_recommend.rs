@@ -26,9 +26,7 @@ impl<S: Stage> SingleAttributeParser<S> for DoNotRecommendParser {
         if !matches!(args, ArgParser::NoArgs) {
             cx.emit_dyn_lint(
                 MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                |dcx, level, _| {
-                    crate::errors::DoNotRecommendDoesNotExpectArgs.into_diag(dcx, level)
-                },
+                |dcx, level| crate::errors::DoNotRecommendDoesNotExpectArgs.into_diag(dcx, level),
                 attr_span,
             );
         }
@@ -37,7 +35,7 @@ impl<S: Stage> SingleAttributeParser<S> for DoNotRecommendParser {
             let target_span = cx.target_span;
             cx.emit_dyn_lint(
                 MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level, _| {
+                move |dcx, level| {
                     IncorrectDoNotRecommendLocation { target_span }.into_diag(dcx, level)
                 },
                 attr_span,

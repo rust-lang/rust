@@ -27,7 +27,7 @@ impl<S: Stage> AttributeParser<S> for OnUnmatchArgsParser {
             if !matches!(cx.target, Target::MacroDef) {
                 cx.emit_dyn_lint(
                     MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                    move |dcx, level, _| DiagnosticOnUnmatchArgsOnlyForMacros.into_diag(dcx, level),
+                    move |dcx, level| DiagnosticOnUnmatchArgsOnlyForMacros.into_diag(dcx, level),
                     span,
                 );
                 return;

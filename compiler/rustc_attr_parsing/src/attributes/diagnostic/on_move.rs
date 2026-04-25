@@ -35,7 +35,7 @@ impl OnMoveParser {
         if !matches!(cx.target, Target::Enum | Target::Struct | Target::Union) {
             cx.emit_dyn_lint(
                 MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level, _| DiagnosticOnMoveOnlyForAdt.into_diag(dcx, level),
+                move |dcx, level| DiagnosticOnMoveOnlyForAdt.into_diag(dcx, level),
                 span,
             );
             return;

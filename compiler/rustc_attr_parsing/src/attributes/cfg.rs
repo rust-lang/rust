@@ -228,7 +228,7 @@ pub(crate) fn parse_name_value<S: Stage>(
 
     match cx.sess.psess.check_config.expecteds.get(&name) {
         Some(ExpectedValues::Some(values)) if !values.contains(&value.map(|(v, _)| v)) => cx
-            .emit_dyn_lint(
+            .emit_dyn_lint_with_sess(
                 UNEXPECTED_CFGS,
                 move |dcx, level, sess| {
                     check_cfg::unexpected_cfg_value(sess, (name, name_span), value)
@@ -236,7 +236,7 @@ pub(crate) fn parse_name_value<S: Stage>(
                 },
                 span,
             ),
-        None if cx.sess.psess.check_config.exhaustive_names => cx.emit_dyn_lint(
+        None if cx.sess.psess.check_config.exhaustive_names => cx.emit_dyn_lint_with_sess(
             UNEXPECTED_CFGS,
             move |dcx, level, sess| {
                 check_cfg::unexpected_cfg_name(sess, (name, name_span), value).into_diag(dcx, level)

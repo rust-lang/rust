@@ -25,7 +25,7 @@ impl OnUnimplementedParser {
         if !matches!(cx.target, Target::Trait) {
             cx.emit_dyn_lint(
                 MISPLACED_DIAGNOSTIC_ATTRIBUTES,
-                move |dcx, level, _| DiagnosticOnUnimplementedOnlyForTraits.into_diag(dcx, level),
+                move |dcx, level| DiagnosticOnUnimplementedOnlyForTraits.into_diag(dcx, level),
                 span,
             );
             return;
