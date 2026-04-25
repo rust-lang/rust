@@ -1345,6 +1345,9 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 [mentions."tests/codegen-llvm/stack-protector.rs"]
 cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 
+[mentions."tests/debuginfo/basic-stepping.rs"]
+cc = ["@Enselic"]
+
 [mentions."tests/ui/sanitizer"]
 cc = ["@rcvalle"]
 
